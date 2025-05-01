@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { $logger, Alepha, type Static } from "@alepha/core";
 import { $hook, $inject, t } from "@alepha/core";
 import {
-	type HttpLink,
 	type ServeDescriptorOptions,
 	ServerLinksProvider,
 	ServerProvider,
@@ -236,9 +235,8 @@ export class ReactServerProvider {
 		}
 
 		if (this.alepha.has(ServerLinksProvider) && hasAuth) {
-			args.links = (await this.alepha
-				.get(ServerLinksProvider)
-				.links()) as HttpLink[];
+			const srv = this.alepha.get(ServerLinksProvider);
+			args.links = (await srv.links()) as any;
 			this.alepha.als.set("links", args.links);
 		}
 

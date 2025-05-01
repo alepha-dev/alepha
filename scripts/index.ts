@@ -4,6 +4,7 @@ import { verify } from "./verify.ts";
 import { publish } from "./publish.ts";
 import { up } from "./up.ts";
 import { release } from "./release.ts";
+import { build } from "./build.ts";
 
 cli({
 	name: "alepha",
@@ -12,6 +13,7 @@ cli({
 		clean,
 		verify,
 		publish,
+		build,
 		up,
 		release
 	]

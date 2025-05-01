@@ -103,7 +103,7 @@ export class ReactAuthProvider {
 	/**
 	 * Configure Fastify to forward Session Access Token to Header Authorization.
 	 */
-	protected readonly configureFastify = $hook({
+	protected readonly onRequest = $hook({
 		name: "server:onRequest",
 		after: this.serverCookieProvider,
 		handler: async ({ request }) => {

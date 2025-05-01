@@ -26,7 +26,6 @@ import type {
 	RouteRequestArgs,
 } from "../descriptors/$route";
 import { $route } from "../descriptors/$route";
-import type { RouteContext } from "../descriptors/$route.ts";
 import { $serve } from "../descriptors/$serve";
 import { ForbiddenError } from "../errors/ForbiddenError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
@@ -37,7 +36,6 @@ import { streamToBuffer } from "../helpers/streamToBuffer";
 import { HttpClient } from "../services/HttpClient";
 import type { HttpConfig } from "./ServerProvider";
 import { ServerProvider } from "./ServerProvider";
-import type { RouteObject } from "./ServerProvider.ts";
 
 const envSchema = t.object({
 	/**
@@ -57,23 +55,6 @@ const envSchema = t.object({
 
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
-	interface Hooks {
-		"server:onRequest": {
-			request: RouteHandlerArgs;
-			context: RouteContext;
-			route: RouteObject;
-		};
-		"server:onRoute": {
-			route: RouteObject;
-		};
-		"server:onSend": {
-			request: RouteHandlerArgs;
-			context: RouteContext;
-			route: RouteObject;
-			status: number;
-			ms: number;
-		};
-	}
 }
 
 export class RouteServerDescriptorProvider {

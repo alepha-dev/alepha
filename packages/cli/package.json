@@ -1,19 +1,19 @@
 {
-	"name": "@alepha/cli",
-	"version": "0.6.1",
-	"type": "module",
-	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"dependencies": {
-		"@sinclair/typebox": "^0.34.33",
-		"dotenv": "^16.5.0",
-		"shx": "^0.4.0"
-	},
-	"devDependencies": {
-		"pkgroll": "^2.12.2"
-	},
-	"scripts": {
-		"build": "pkgroll --clean-dist"
-	}
+  "name": "@alepha/cli",
+  "version": "0.6.1",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.33",
+    "dotenv": "^16.5.0",
+    "shx": "^0.4.0"
+  },
+  "devDependencies": {
+    "pkgroll": "^2.12.2"
+  },
+  "scripts": {
+    "build": "pkgroll --clean-dist"
+  }
 }

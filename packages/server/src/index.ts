@@ -3,18 +3,40 @@ import { $inject, Alepha, autoInject, t } from "@alepha/core";
 import { $permission, $realm, $role, SecurityModule } from "@alepha/security";
 import { $proxy } from "./descriptors/$proxy";
 import { $route } from "./descriptors/$route";
+import type { RouteContext, RouteHandlerArgs } from "./descriptors/$route.ts";
 import { $serve } from "./descriptors/$serve";
 import { RouteServerDescriptorProvider } from "./providers/RouteServerDescriptorProvider";
 import { ServerCookieProvider } from "./providers/ServerCookieProvider.ts";
 import { ServerHealthProvider } from "./providers/ServerHealthProvider";
 import { ServerLinksProvider } from "./providers/ServerLinksProvider";
 import { ServerProvider } from "./providers/ServerProvider";
+import type { RouteObject } from "./providers/ServerProvider.ts";
 import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
 import { FastifyHelmetProvider } from "./providers/fastify/FastifyHelmetProvider";
 import { FastifyMetricsProvider } from "./providers/fastify/FastifyMetricsProvider";
 import { FastifyOpenApiProvider } from "./providers/fastify/FastifyOpenApiProvider";
 import { FastifyServerProvider } from "./providers/fastify/FastifyServerProvider";
 import { MockServerProvider } from "./providers/mock/MockServerProvider";
+
+declare module "@alepha/core" {
+	interface Hooks {
+		"server:onRequest": {
+			request: RouteHandlerArgs;
+			context: RouteContext;
+			route: RouteObject;
+		};
+		"server:onRoute": {
+			route: RouteObject;
+		};
+		"server:onSend": {
+			request: RouteHandlerArgs;
+			context: RouteContext;
+			route: RouteObject;
+			status: number;
+			ms: number;
+		};
+	}
+}
 
 export { KIND } from "@alepha/core";
 export * from "./descriptors/$proxy";
