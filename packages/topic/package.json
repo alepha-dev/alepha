@@ -1,14 +1,14 @@
 {
   "name": "@alepha/topic",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "license": "MIT",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "browser": "./src/index.browser.ts",
   "dependencies": {
-    "@alepha/core": "0.6.1",
-    "@alepha/redis": "0.6.1"
+    "@alepha/core": "0.6.2",
+    "@alepha/redis": "0.6.2"
   },
   "devDependencies": {
     "pkgroll": "^2.12.2",
