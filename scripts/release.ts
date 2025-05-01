@@ -3,6 +3,7 @@ import { up } from "./up.ts";
 import { build } from "./build.ts";
 import { readFile } from "node:fs/promises";
 import { publish } from "./publish.ts";
+import { verify } from "./verify.ts";
 
 export const release = $command({
 	when: ["release"],
@@ -17,15 +18,8 @@ export const release = $command({
 			return;
 		}
 
-		await run("yarn format");
-		await run("yarn lint");
-		await run("yarn check");
-		await run("yarn test");
-
+		await verify.handler({ run, flags });
 		await up.handler({ run, flags });
-
-		await run("yarn a build");
-		await run("yarn convert ts");
 
 		const version = await getVersion();
 
@@ -34,10 +28,10 @@ export const release = $command({
 
 		log("");
 		log("Release project successfully.");
-		log("- Run `git push --follow-tags` to push commit to remote repository.");
 		log(
 			"- Run `yarn a publish` to push packages to npm registry.",
 		);
+		log("- Run `git push --follow-tags` to push commit to remote repository.");
 		log("");
 	},
 })

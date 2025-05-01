@@ -18,6 +18,7 @@
 	},
 	"scripts": {
 		"a": "node scripts/index.ts",
+		"v": "yarn a verify",
 		"format": "biome format --write",
 		"lint": "biome lint --write",
 		"check": "tsc --noEmit",
