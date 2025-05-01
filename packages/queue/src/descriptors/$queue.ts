@@ -1,0 +1,57 @@
+import type { Static, TSchema } from "@alepha/core";
+import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
+import type { QueueProvider } from "../providers/QueueProvider";
+
+const KEY = "QUEUE";
+
+export interface QueueMessageSchema {
+	headers?: TSchema;
+	payload: TSchema;
+}
+
+export interface QueueDescriptorOptions<T extends QueueMessageSchema> {
+	name?: string; // or use the key
+	description?: string;
+	provider?: "memory" | (() => QueueProvider);
+	schema: T;
+	handler?: (message: { payload: Static<T["payload"]> }) => Promise<void>;
+}
+
+export interface QueueDescriptor<
+	T extends QueueMessageSchema = QueueMessageSchema,
+> {
+	[KIND]: typeof KEY;
+	options: QueueDescriptorOptions<T>;
+
+	name(): string;
+	provider(): QueueProvider;
+	push(...payload: Array<Static<T["payload"]>>): Promise<void>;
+}
+
+/**
+ * Queue descriptor.
+ *
+ * @param options - The queue options.
+ * @returns The descriptor value.
+ */
+export const $queue = <T extends QueueMessageSchema>(
+	options: QueueDescriptorOptions<T>,
+): QueueDescriptor<T> => {
+	__descriptor(KEY);
+
+	return {
+		[KIND]: KEY,
+		options,
+		name: () => {
+			throw new NotImplementedError(KEY);
+		},
+		provider: () => {
+			throw new NotImplementedError(KEY);
+		},
+		push: async () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+};
+
+$queue[KIND] = KEY;

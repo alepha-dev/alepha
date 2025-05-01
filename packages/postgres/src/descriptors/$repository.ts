@@ -1,0 +1,51 @@
+import { __descriptor, KIND, type TObject } from "@alepha/core";
+import type { TableConfig } from "drizzle-orm";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns";
+import type { PostgresProvider } from "../providers/drivers/PostgresProvider";
+import type { Repository } from "../services/Repository";
+
+const KEY = "REPOSITORY";
+
+export interface RepositoryDescriptorOptions<
+	TEntity extends TableConfig,
+	TSchema extends TObject,
+> {
+	/**
+	 * The table to create the repository for.
+	 */
+	table: PgTableWithColumnsAndSchema<TEntity, TSchema>;
+
+	/**
+	 * Override default provider.
+	 */
+	provider?: () => PostgresProvider;
+}
+
+/**
+ * @param optionsOrTable
+ */
+export const $repository = <
+	TEntity extends TableConfig,
+	TSchema extends TObject,
+>(
+	optionsOrTable:
+		| RepositoryDescriptorOptions<TEntity, TSchema>
+		| PgTableWithColumnsAndSchema<TEntity, TSchema>,
+): Repository<PgTableWithColumnsAndSchema<TEntity, TSchema>, TSchema> => {
+	__descriptor(KEY);
+
+	const options =
+		"table" in optionsOrTable ? optionsOrTable : { table: optionsOrTable };
+	const table = options.table as PgTableWithColumnsAndSchema<TEntity, TSchema>;
+	const schema = table[PG_SCHEMA] as TObject;
+
+	return {
+		[KIND]: KEY,
+		options,
+		table,
+		schema,
+	} as any;
+};
+
+$repository[KIND] = KEY;

@@ -1,0 +1,111 @@
+{
+	"name": "alepha",
+	"version": "0.6.1",
+	"type": "module",
+	"license": "MIT",
+	"main": "./dist/core.js",
+	"types": "./dist/core.d.ts",
+	"dependencies": {
+		"@alepha/cache": "0.6.1",
+		"@alepha/cli": "0.6.1",
+		"@alepha/core": "0.6.1",
+		"@alepha/lock": "0.6.1",
+		"@alepha/postgres": "0.6.1",
+		"@alepha/queue": "0.6.1",
+		"@alepha/react": "0.6.1",
+		"@alepha/redis": "0.6.1",
+		"@alepha/scheduler": "0.6.1",
+		"@alepha/security": "0.6.1",
+		"@alepha/server": "0.6.1",
+		"@alepha/testing": "0.6.1",
+		"@alepha/topic": "0.6.1",
+		"@alepha/vite": "0.6.1"
+	},
+	"peerDependencies": {
+		"@types/react": "^19",
+		"react": "^19"
+	},
+	"peerDependenciesMeta": {
+		"@types/react": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@types/react": "^19",
+		"pkgroll": "^2.12.2",
+		"react": "^19"
+	},
+	"scripts": {
+		"build": "pkgroll --clean-dist"
+	},
+	"exports": {
+		".": {
+			"import": "./dist/core.js",
+			"require": "./dist/core.cjs",
+			"types": "./dist/core.d.ts"
+		},
+		"./core": {
+			"import": "./dist/core.js",
+			"require": "./dist/core.cjs",
+			"types": "./dist/core.d.ts"
+		},
+		"./vite": {
+			"import": "./dist/vite.js",
+			"require": "./dist/vite.cjs",
+			"types": "./dist/vite.d.ts"
+		},
+		"./react": {
+			"import": "./dist/react.js",
+			"require": "./dist/react.cjs",
+			"types": "./dist/react.d.ts"
+		},
+		"./cache": {
+			"import": "./dist/cache.js",
+			"require": "./dist/cache.cjs",
+			"types": "./dist/cache.d.ts"
+		},
+		"./postgres": {
+			"import": "./dist/postgres.js",
+			"require": "./dist/postgres.cjs",
+			"types": "./dist/postgres.d.ts"
+		},
+		"./redis": {
+			"import": "./dist/redis.js",
+			"require": "./dist/redis.cjs",
+			"types": "./dist/redis.d.ts"
+		},
+		"./lock": {
+			"import": "./dist/lock.js",
+			"require": "./dist/lock.cjs",
+			"types": "./dist/lock.d.ts"
+		},
+		"./topic": {
+			"import": "./dist/topic.js",
+			"require": "./dist/topic.cjs",
+			"types": "./dist/topic.d.ts"
+		},
+		"./queue": {
+			"import": "./dist/queue.js",
+			"require": "./dist/queue.cjs",
+			"types": "./dist/queue.d.ts"
+		},
+		"./scheduler": {
+			"import": "./dist/scheduler.js",
+			"require": "./dist/scheduler.cjs",
+			"types": "./dist/scheduler.d.ts"
+		},
+		"./security": {
+			"import": "./dist/security.js",
+			"require": "./dist/security.cjs",
+			"types": "./dist/security.d.ts"
+		},
+		"./server": {
+			"import": "./dist/server.js",
+			"require": "./dist/server.cjs",
+			"types": "./dist/server.d.ts"
+		}
+	}
+}

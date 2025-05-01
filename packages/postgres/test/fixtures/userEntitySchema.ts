@@ -1,0 +1,19 @@
+import type { Static } from "@alepha/core";
+import { t } from "@alepha/core";
+import { pg, table, uniqueIndex } from "../../src";
+
+export const userEntitySchema = pg.entity({
+	name: t.string(),
+	profile: t.object({
+		age: t.number(),
+	}),
+	role: pg.default(t.string(), "user"),
+});
+
+export const insertUserEntitySchema = t.pg.insert(userEntitySchema);
+export type UserEntity = Static<typeof userEntitySchema>;
+export type InsertUserEntity = Static<typeof insertUserEntitySchema>;
+
+export const userEntity = table("user", userEntitySchema, (table) => [
+	uniqueIndex("name").on(table.name),
+]);

@@ -1,0 +1,37 @@
+import { useClient } from "@alepha/react";
+import { useState } from "react";
+import type Api from "../Api";
+import type { IncResponse } from "../Api";
+
+const Test = (props: { inc: IncResponse }) => {
+	const cli = useClient().of<Api>();
+	const [state, setState] = useState<IncResponse>(props.inc);
+
+	return (
+		<div>
+			<button
+				onClick={async () => {
+					await cli.hi();
+				}}
+			>
+				hi
+			</button>
+			<button
+				onClick={async () => {
+					setState(await cli.inc());
+				}}
+			>
+				inc
+			</button>
+			{state && (
+				<div>
+					<div>Type: {state.type}</div>
+					<div>Count: {state.count}</div>
+					<div>Session: {state.v}</div>
+				</div>
+			)}
+		</div>
+	);
+};
+
+export default Test;

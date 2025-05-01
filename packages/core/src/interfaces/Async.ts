@@ -1,0 +1,14 @@
+/**
+ * Represents a value that can be either a value or a promise.
+ */
+export type Async<T> = T | Promise<T>;
+
+/**
+ * Represents a function that returns a promise.
+ */
+export type PromiseFn = (...args: any[]) => Promise<any>;
+
+/**
+ * Represents a function that returns an async value.
+ */
+export type AsyncFn = (...args: any[]) => Async<any>;

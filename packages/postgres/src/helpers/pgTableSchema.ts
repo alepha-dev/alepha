@@ -1,0 +1,93 @@
+import type { TObject } from "@sinclair/typebox";
+import type { BuildColumns } from "drizzle-orm";
+import type { BuildExtraConfigColumns } from "drizzle-orm/column-builder";
+import { pgTable } from "drizzle-orm/pg-core";
+import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core/table";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA";
+import type {
+	FromSchema,
+	PgTableWithColumnsAndSchema,
+} from "./schemaToColumns";
+import { schemaToColumns } from "./schemaToColumns";
+
+/**
+ * Create a table with a json schema.
+ *
+ * @param name The name of the table.
+ * @param schema The json schema of the table.
+ * @param extraConfig Extra configuration for the table.
+ */
+export const pgTableSchema = <
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+>(
+	name: TTableName,
+	schema: TSchema,
+	extraConfig?: (
+		self: BuildExtraConfigColumns<TTableName, TColumnsMap, "pg">,
+	) => PgTableExtraConfigValue[],
+): PgTableWithColumnsAndSchema<
+	PgTableConfig<TTableName, TSchema, TColumnsMap>,
+	TSchema
+> => {
+	const table = pgTable(
+		name,
+		schemaToColumns(schema) as TColumnsMap,
+		extraConfig,
+	) as PgTableWithColumnsAndSchema<
+		PgTableConfig<TTableName, TSchema, TColumnsMap>,
+		TSchema
+	>;
+
+	table[PG_SCHEMA] = schema;
+
+	return table;
+};
+
+/**
+ * @alias pgTableSchema
+ */
+export const table = pgTableSchema; // for convenience
+
+export const table2 = <
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+>(
+	name: TTableName,
+	schema: TSchema,
+	extraConfig?: (
+		self: BuildExtraConfigColumns<TTableName, TColumnsMap, "pg">,
+	) => PgTableExtraConfigValue[],
+): PgTableWithColumnsAndSchema<
+	PgTableConfig<TTableName, TSchema, TColumnsMap>,
+	TSchema
+> => {
+	const table = pgTable(
+		name,
+		schemaToColumns(schema) as TColumnsMap,
+		extraConfig,
+	) as PgTableWithColumnsAndSchema<
+		PgTableConfig<TTableName, TSchema, TColumnsMap>,
+		TSchema
+	>;
+
+	table[PG_SCHEMA] = schema;
+
+	return table;
+};
+
+/**
+ *
+ */
+export type PgTableConfig<
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+> = {
+	name: TTableName;
+	schema: any;
+	columns: BuildColumns<TTableName, TColumnsMap, "pg">;
+	dialect: "pg";
+};

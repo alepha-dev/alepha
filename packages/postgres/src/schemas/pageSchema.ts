@@ -1,0 +1,55 @@
+import { t } from "@alepha/core";
+import type {
+	ObjectOptions,
+	TArray,
+	TBoolean,
+	TInteger,
+	TIntersect,
+	TObject,
+} from "@sinclair/typebox";
+
+/**
+ * Page Schema
+ *
+ * @param objectSchema
+ * @param options
+ */
+export const pageSchema = <T extends TObject | TIntersect>(
+	objectSchema: T,
+	options?: ObjectOptions,
+): TPage<T> =>
+	t.object(
+		{
+			content: t.array(objectSchema),
+			can: t.object({
+				next: t.boolean(),
+				previous: t.boolean(),
+			}),
+			page: t.object({
+				number: t.int(),
+				size: t.int(),
+			}),
+		},
+		{
+			title: objectSchema.title ? `${objectSchema.title}Page` : undefined,
+			...options,
+		},
+	);
+
+/**
+ *
+ */
+export type TPage<T extends TObject | TIntersect> = TObject<{
+	content: TArray<T>;
+	can: TObject<{ next: TBoolean; previous: TBoolean }>;
+	page: TObject<{ number: TInteger; size: TInteger }>;
+}>;
+
+/**
+ *
+ */
+export type Page<T> = {
+	content: T[];
+	can: { next: boolean; previous: boolean };
+	page: { number: number; size: number };
+};
