@@ -2,6 +2,7 @@ import { $command, log } from "@alepha/cli";
 import { up } from "./up.ts";
 import { build } from "./build.ts";
 import { readFile } from "node:fs/promises";
+import { publish } from "./publish.ts";
 
 export const release = $command({
 	when: ["release"],
@@ -10,17 +11,21 @@ export const release = $command({
 		...up.flags,
 	},
 	handler: async ({ run, flags }) => {
-		const n = await run("git diff");
-		console.log(n);
+		const diff = await run("git diff");
+		if (!!diff) {
+			log("Error - You must commit file(s) before running the release script.");
+			return;
+		}
 
-		return;
 		await run("yarn format");
 		await run("yarn lint");
 		await run("yarn check");
 		await run("yarn test");
 
-		await build.handler({ run, flags });
 		await up.handler({ run, flags });
+
+		await run("yarn a build");
+		await run("yarn convert ts");
 
 		const version = await getVersion();
 
@@ -31,7 +36,7 @@ export const release = $command({
 		log("Release project successfully.");
 		log("- Run `git push --follow-tags` to push commit to remote repository.");
 		log(
-			"- Run `yarn a publish` to push the packages to npm registry.",
+			"- Run `yarn a publish` to push packages to npm registry.",
 		);
 		log("");
 	},

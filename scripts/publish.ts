@@ -1,4 +1,5 @@
 import { $command } from "@alepha/cli";
+import { build } from "./build.ts";
 
 export const publish = $command({
 	when: ["publish"],
@@ -15,10 +16,16 @@ export const publish = $command({
 		},
 	},
 	handler: async ({ run, flags }) => {
+
+		await build.handler({ run, flags });
+
 		const registry = flags.registry ? `--registry ${flags.registry}` : "";
 		const dryRunArg = flags.dryRun ? "--dry-run" : "";
 		await run(
 			`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${dryRunArg} ${registry}`
 		);
+
+		await run("yarn convert ts");
+		await run("yarn a clean");
 	},
 })

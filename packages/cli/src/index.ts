@@ -46,6 +46,14 @@ export type InferFlags<T extends Flags> = {
 		: never;
 };
 
+export interface CreateCommand<T extends Flags> {
+	when?: string[];
+	handler: (ctx: { flags: InferFlags<T>; run: Runner }) => void | Promise<void>;
+	description: string;
+	skipSummary?: boolean;
+	flags?: T;
+}
+
 export interface Command<T extends Flags> {
 	when?: string[];
 	handler: (ctx: { flags: InferFlags<T>; run: Runner }) => void | Promise<void>;
@@ -54,7 +62,14 @@ export interface Command<T extends Flags> {
 	flags: T;
 }
 
-export const $command = <T extends Flags>(opts: Command<T>) => opts;
+export const $command = <T extends Flags>(
+	opts: CreateCommand<T>,
+): Command<T> => {
+	return {
+		...opts,
+		flags: opts.flags ?? ({} as T),
+	};
+};
 
 const parseFlags = <T extends Flags>(
 	flags: T,
