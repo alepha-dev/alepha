@@ -220,6 +220,8 @@ export const $route = <
 
 $route[KIND] = "ROUTE";
 
+export const $action = $route;
+
 export interface RequestConfig {
 	body?: TSchema;
 	params?: TSchema;

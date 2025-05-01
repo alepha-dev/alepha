@@ -1,5 +1,13 @@
 {
   "name": "@alepha/cache",
+  "description": "Cache module for Alepha - supports Redis and in-memory cache",
+  "keywords": [
+    "alepha",
+    "cache",
+    "redis",
+    "in-memory"
+  ],
+  "author": "Feunard",
   "version": "0.6.1",
   "type": "module",
   "license": "MIT",
@@ -16,5 +24,9 @@
   },
   "scripts": {
     "build": "pkgroll --clean-dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/feunard/alepha"
   }
 }

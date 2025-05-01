@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { exec } from "node:child_process";
+import { join } from "node:path";
 import type { Static, TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
@@ -241,7 +242,8 @@ export async function run(
 	log(`Starting '${name}' ...`);
 
 	if (isShxCommand(cmd)) {
-		cmd = `shx ${cmd}`;
+		const shxPath = join(process.cwd(), "node_modules", ".bin", "shx");
+		cmd = `${shxPath} ${cmd}`;
 	}
 
 	const now = Date.now();
