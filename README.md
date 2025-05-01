@@ -3,8 +3,6 @@
 <img src="assets/logo.png" alt="Logo" style="width: 256px"/>
 
 <h1>Alepha</h1>
-<hr/>
-
 <h5>You probably don't need this.</h5>
 
 </div>

@@ -6364,7 +6364,6 @@ __metadata:
     "@vitest/coverage-v8": "npm:^3.1.2"
     "@vitest/ui": "npm:^3.1.2"
     depcheck: "npm:^1.4.7"
-    tsx: "npm:^4.19.4"
     typescript: "npm:^5.8.3"
     vitest: "npm:^3.1.2"
   languageName: unknown
