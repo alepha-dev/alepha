@@ -1,7 +1,18 @@
-import { KIND, __descriptor } from "@alepha/core";
-import type { fastifyHttpProxy } from "@fastify/http-proxy";
+import { type Async, KIND, __descriptor } from "@alepha/core";
+import type { ServerRequest } from "../providers/ServerRouterProvider.ts";
 
-export type ProxyDescriptorOptions = Parameters<typeof fastifyHttpProxy>[1];
+export type ProxyDescriptorOptions = {
+	path: string;
+	target: string;
+	beforeRequest?: (
+		request: ServerRequest,
+		proxyRequest: RequestInit,
+	) => Async<void>;
+	afterResponse?: (
+		request: ServerRequest,
+		proxyResponse: Response,
+	) => Async<void>;
+};
 
 export interface ProxyDescriptor {
 	[KIND]: "PROXY";

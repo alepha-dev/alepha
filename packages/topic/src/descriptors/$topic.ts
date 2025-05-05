@@ -1,6 +1,9 @@
 import type { DurationLike, Static, TSchema } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
-import type { TopicProvider, UnSubscribeFn } from "../providers/TopicProvider";
+import type {
+	TopicProvider,
+	UnSubscribeFn,
+} from "../providers/TopicProvider.ts";
 
 const KEY = "TOPIC";
 

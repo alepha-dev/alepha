@@ -1,8 +1,8 @@
 import { $hook, $inject, KIND } from "@alepha/core";
 import { sql } from "drizzle-orm";
-import type { SequenceDescriptor } from "../descriptors/$sequence";
-import { $sequence } from "../descriptors/$sequence";
-import { PostgresProvider } from "./drivers/PostgresProvider";
+import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
+import { $sequence } from "../descriptors/$sequence.ts";
+import { PostgresProvider } from "./drivers/PostgresProvider.ts";
 
 export class SequenceProvider {
 	protected readonly provider = $inject(PostgresProvider);

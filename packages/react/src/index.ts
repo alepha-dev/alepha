@@ -1,20 +1,20 @@
-import { $inject, Alepha, type Static, autoInject, t } from "@alepha/core";
+import { $inject, Alepha, type Static, __bind, t } from "@alepha/core";
 import { ServerLinksProvider, ServerModule } from "@alepha/server";
-import { $auth } from "./descriptors/$auth";
-import { $page } from "./descriptors/$page";
-import { PageDescriptorProvider } from "./providers/PageDescriptorProvider";
-import { ReactAuthProvider } from "./providers/ReactAuthProvider";
-import { ReactServerProvider } from "./providers/ReactServerProvider";
-import { Auth } from "./services/Auth";
-export { default as NestedView } from "./components/NestedView";
+import { $auth } from "./descriptors/$auth.ts";
+import { $page } from "./descriptors/$page.ts";
+import { PageDescriptorProvider } from "./providers/PageDescriptorProvider.ts";
+import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
+import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
+import { ReactAuth } from "./services/ReactAuth.ts";
+export { default as NestedView } from "./components/NestedView.tsx";
 
 export * from "./index.shared";
-export * from "./providers/PageDescriptorProvider";
-export * from "./providers/ReactBrowserProvider";
-export * from "./providers/ReactServerProvider";
-export * from "./providers/ReactAuthProvider";
-export * from "./services/Router";
-export * from "./errors/RedirectionError";
+export * from "./providers/PageDescriptorProvider.ts";
+export * from "./providers/ReactBrowserProvider.ts";
+export * from "./providers/ReactServerProvider.ts";
+export * from "./providers/ReactAuthProvider.ts";
+export * from "./services/ReactRouter.ts";
+export * from "./errors/RedirectionError.ts";
 
 const envSchema = t.object({
 	REACT_AUTH_ENABLED: t.boolean({ default: false }),
@@ -37,10 +37,10 @@ export class ReactModule {
 
 		if (this.env.REACT_AUTH_ENABLED) {
 			this.alepha.with(ReactAuthProvider);
-			this.alepha.with(Auth);
+			this.alepha.with(ReactAuth);
 		}
 	}
 }
 
-autoInject($page, ReactModule);
-autoInject($auth, ReactAuthProvider, Auth);
+__bind($page, ReactModule);
+__bind($auth, ReactAuthProvider, ReactAuth);

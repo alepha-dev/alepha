@@ -10,10 +10,10 @@ import {
 import type {
 	CacheDescriptor,
 	CacheDescriptorOptions,
-} from "../descriptors/$cache";
-import { $cache } from "../descriptors/$cache";
-import { CacheProvider } from "./CacheProvider";
-import { MemoryCacheProvider } from "./MemoryCacheProvider";
+} from "../descriptors/$cache.ts";
+import { $cache } from "../descriptors/$cache.ts";
+import { CacheProvider } from "./CacheProvider.ts";
+import { MemoryCacheProvider } from "./MemoryCacheProvider.ts";
 
 const envSchema = t.object({
 	CACHE_DEFAULT_TTL: t.number({

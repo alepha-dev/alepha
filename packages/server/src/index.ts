@@ -1,94 +1,81 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, autoInject, t } from "@alepha/core";
-import { $permission, $realm, $role, SecurityModule } from "@alepha/security";
-import { $proxy } from "./descriptors/$proxy";
-import { $route } from "./descriptors/$route";
-import type { RouteContext, RouteHandlerArgs } from "./descriptors/$route.ts";
-import { $serve } from "./descriptors/$serve";
-import { RouteServerDescriptorProvider } from "./providers/RouteServerDescriptorProvider";
-import { ServerCookieProvider } from "./providers/ServerCookieProvider.ts";
-import { ServerHealthProvider } from "./providers/ServerHealthProvider";
-import { ServerLinksProvider } from "./providers/ServerLinksProvider";
-import { ServerProvider } from "./providers/ServerProvider";
-import type { RouteObject } from "./providers/ServerProvider.ts";
-import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
-import { FastifyHelmetProvider } from "./providers/fastify/FastifyHelmetProvider";
-import { FastifyMetricsProvider } from "./providers/fastify/FastifyMetricsProvider";
-import { FastifyOpenApiProvider } from "./providers/fastify/FastifyOpenApiProvider";
-import { FastifyServerProvider } from "./providers/fastify/FastifyServerProvider";
-import { MockServerProvider } from "./providers/mock/MockServerProvider";
+import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { $realm, $role } from "@alepha/security";
+
+import { $action, $route } from "./descriptors/$action.ts";
+import { $remote } from "./descriptors/$remote.ts";
+import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
+import type {
+	ServerRequest,
+	ServerRoute,
+} from "./providers/ServerRouterProvider.ts";
+import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
+import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
+import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
+import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
+import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
+import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
-		"server:onRequest": {
-			request: RouteHandlerArgs;
-			context: RouteContext;
-			route: RouteObject;
-		};
 		"server:onRoute": {
-			route: RouteObject;
+			route: ServerRoute;
 		};
+		"server:onRequest": {
+			route: ServerRoute;
+			request: ServerRequest;
+		};
+		"server:onError": {
+			route: ServerRoute;
+			request: ServerRequest;
+			error: Error;
+		};
+		// last chance to modify the response
 		"server:onSend": {
-			request: RouteHandlerArgs;
-			context: RouteContext;
-			route: RouteObject;
-			status: number;
-			ms: number;
+			route: ServerRoute;
+			request: ServerRequest;
+		};
+		// response is ready
+		"server:onResponse": {
+			route: ServerRoute;
+			request: ServerRequest;
+			response: Response;
 		};
 	}
 }
 
 export { KIND } from "@alepha/core";
-export * from "./descriptors/$proxy";
-export * from "./descriptors/$remote";
-export * from "./descriptors/$route";
-export * from "./descriptors/$serve";
-export * from "./descriptors/$cookie";
-export * from "./helpers/createMultipartFile";
-export * from "./helpers/createResponseFile";
-export * from "./helpers/CookieManager";
-export * from "./helpers/streamToBuffer";
-export * from "./providers/ServerCookieProvider.ts";
-export * from "./providers/fastify/FastifyHelmetProvider";
-export * from "./providers/fastify/FastifyMultipartProvider";
-export * from "./providers/fastify/FastifyOpenApiProvider";
-export * from "./providers/ServerSecurityProvider.ts";
-export * from "./providers/fastify/FastifyServerProvider";
-export * from "./providers/MultipartTypeProvider";
-export * from "./providers/RouteBrowserDescriptorProvider";
-export * from "./providers/ServerLinksProvider";
-export * from "./providers/ServerProvider";
-export * from "./schemas/errorSchema";
-export * from "./schemas/okSchema";
-export * from "./services/HttpClient";
+export * from "./descriptors/$remote.ts";
+export * from "./descriptors/$action.ts";
+export * from "./descriptors/$cookie.ts";
+export * from "./descriptors/$swagger.ts";
+export * from "./descriptors/$proxy.ts";
+export * from "./descriptors/$serve.ts";
+export * from "./helpers/createResponseFile.ts";
+export * from "./providers/ServerRouterProvider.ts";
+export * from "./providers/ServerActionDescriptorProvider.ts";
+export * from "./providers/BrowserActionDescriptorProvider.ts";
+export * from "./providers/features/ServerSecurityProvider.ts";
+export * from "./providers/features/ServerLinksProvider.ts";
+export * from "./providers/features/ServerLoggerProvider.ts";
+export * from "./providers/features/ServerCookiesProvider.ts";
+export * from "./providers/features/ServerStaticProvider.ts";
+export * from "./providers/features/ServerProxyProvider.ts";
+export * from "./providers/platforms/ServerProvider.ts";
+export * from "./providers/platforms/NodeHttpServerProvider.ts";
+export * from "./schemas/errorSchema.ts";
+export * from "./schemas/okSchema.ts";
+export * from "./services/HttpClient.ts";
 
-export * from "./errors/BadRequestError";
-export * from "./errors/ConflictError";
-export * from "./errors/ForbiddenError";
-export * from "./errors/HttpError";
-export * from "./errors/NotFoundError";
-export * from "./errors/UnauthorizedError";
-export * from "./errors/ValidationError";
+export * from "./errors/BadRequestError.ts";
+export * from "./errors/ConflictError.ts";
+export * from "./errors/ForbiddenError.ts";
+export * from "./errors/HttpError.ts";
+export * from "./errors/NotFoundError.ts";
+export * from "./errors/UnauthorizedError.ts";
+export * from "./errors/ValidationError.ts";
 
 const envSchema = t.object({
-	SERVER_PROVIDER: t.enum(["fastify", "mock"], { default: "fastify" }),
-	SERVER_OPENAPI_ENABLED: t.boolean({
-		default: false,
-		description: "Enable the OpenAPI endpoint.",
-	}),
-	SERVER_METRICS_ENABLED: t.boolean({
-		default: false,
-		description: "Enable the metrics endpoint.",
-	}),
-	SERVER_HEALTH_ENABLED: t.boolean({
-		default: false,
-		description: "Enable the health check endpoint.",
-	}),
-	SERVER_SECURITY_ENABLED: t.optional(
-		t.boolean({
-			description: "Enable security for all endpoints by default.",
-		}),
-	),
 	SERVER_LINKS_ENABLED: t.boolean({
 		default: false,
 		description: "Enable links provider which expose APIs on an URL.",
@@ -104,75 +91,25 @@ export class ServerModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		const provider = this.env.SERVER_PROVIDER;
+		this.alepha.with({
+			default: true,
+			provide: ServerProvider,
+			use: NodeHttpServerProvider,
+		});
 
-		if (provider === "fastify") {
-			this.registerFastify();
-		} else {
-			this.alepha.register({
-				provide: ServerProvider,
-				use: MockServerProvider,
-			});
-		}
+		this.alepha.with(ServerActionDescriptorProvider);
 
-		if (this.env.SERVER_HEALTH_ENABLED) {
-			this.alepha.register(ServerHealthProvider);
-		}
-
-		if (this.env.SERVER_SECURITY_ENABLED) {
-			this.alepha.register(SecurityModule);
-		}
+		this.alepha.with(ServerLoggerProvider);
+		this.alepha.with(ServerBodyParserProvider);
 
 		if (this.env.SERVER_LINKS_ENABLED) {
-			this.alepha.register(ServerLinksProvider);
-		}
-
-		if (this.env.SERVER_SECURITY_ENABLED) {
-			this.alepha.register(ServerSecurityModule);
-		}
-
-		this.alepha.register(RouteServerDescriptorProvider);
-	}
-
-	protected registerFastify() {
-		// Fastify
-		this.alepha
-			.register({
-				provide: ServerProvider,
-				use: FastifyServerProvider,
-			})
-			.register(ServerCookieProvider)
-			.register(FastifyHelmetProvider);
-
-		if (this.env.SERVER_OPENAPI_ENABLED) {
-			this.alepha.register(FastifyOpenApiProvider);
-		}
-
-		if (this.env.SERVER_METRICS_ENABLED) {
-			this.alepha.register(FastifyMetricsProvider);
-		}
-
-		if (this.env.SERVER_SECURITY_ENABLED || this.alepha.has(SecurityModule)) {
-			this.alepha.register(ServerSecurityProvider);
+			this.alepha.with(ServerLinksProvider);
 		}
 	}
 }
 
-export class ServerSecurityModule {
-	protected readonly env = $inject(envSchema);
-	protected readonly alepha = $inject(Alepha);
-
-	constructor() {
-		if (this.env.SERVER_PROVIDER === "fastify") {
-			this.alepha.register(ServerSecurityProvider);
-		}
-	}
-}
-
-autoInject($route, ServerModule);
-autoInject($proxy, ServerModule);
-autoInject($serve, ServerModule);
-
-autoInject($realm, ServerSecurityModule);
-autoInject($role, ServerSecurityModule);
-autoInject($permission, ServerSecurityModule);
+__bind($route, ServerModule);
+__bind($action, ServerModule);
+__bind($remote, ServerModule);
+__bind($realm, ServerSecurityProvider);
+__bind($role, ServerSecurityProvider);

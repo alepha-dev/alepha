@@ -12,13 +12,13 @@ import type {
 } from "@sinclair/typebox";
 import type { TableConfig } from "drizzle-orm/pg-core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type {
 	PgDefault,
 	PgMany,
 	PgPrimaryKey,
 	PgRef,
-} from "../constants/PG_SYMBOLS";
+} from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_CREATED_AT,
 	PG_DEFAULT,
@@ -29,15 +29,15 @@ import {
 	PG_SERIAL,
 	PG_UPDATED_AT,
 	PG_VERSION,
-} from "../constants/PG_SYMBOLS";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns";
-import type { TInsertObject } from "../interfaces/TInsertObject";
-import type { TEntity } from "../schemas/entitySchema";
-import { legacyIdSchema } from "../schemas/legacyIdSchema";
-import type { TPage } from "../schemas/pageSchema";
-import { pageSchema } from "../schemas/pageSchema";
-import type { PgAttr } from "../schemas/pgAttr";
-import { pgAttr } from "../schemas/pgAttr";
+} from "../constants/PG_SYMBOLS.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
+import type { TInsertObject } from "../interfaces/TInsertObject.ts";
+import type { TEntity } from "../schemas/entitySchema.ts";
+import { legacyIdSchema } from "../schemas/legacyIdSchema.ts";
+import type { TPage } from "../schemas/pageSchema.ts";
+import { pageSchema } from "../schemas/pageSchema.ts";
+import type { PgAttr } from "../schemas/pgAttr.ts";
+import { pgAttr } from "../schemas/pgAttr.ts";
 
 declare module "@alepha/core" {
 	interface TypeProvider {

@@ -1,23 +1,20 @@
-import { $inject, Alepha, autoInject } from "@alepha/core";
-import { $route } from "./descriptors/$route";
-import { RouteBrowserDescriptorProvider } from "./providers/RouteBrowserDescriptorProvider";
+import { $inject, Alepha, __bind } from "@alepha/core";
+import { $route } from "./descriptors/$action.ts";
+import { BrowserActionDescriptorProvider } from "./providers/BrowserActionDescriptorProvider.ts";
 
-export * from "./descriptors/$route";
-export * from "./helpers/createMultipartFile";
-export * from "./helpers/streamToBuffer";
-export * from "./providers/MultipartTypeProvider";
-export * from "./providers/RouteBrowserDescriptorProvider";
-export * from "./schemas/errorSchema";
-export * from "./schemas/okSchema";
-export * from "./services/HttpClient";
-export * from "./errors/HttpError";
+export * from "./descriptors/$action.ts";
+export * from "./providers/BrowserActionDescriptorProvider.ts";
+export * from "./services/HttpClient.ts";
+export * from "./schemas/errorSchema.ts";
+export * from "./schemas/okSchema.ts";
+export * from "./errors/HttpError.ts";
 
 export class ServerModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		this.alepha.register(RouteBrowserDescriptorProvider);
+		this.alepha.register(BrowserActionDescriptorProvider);
 	}
 }
 
-autoInject($route, ServerModule);
+__bind($route, ServerModule);

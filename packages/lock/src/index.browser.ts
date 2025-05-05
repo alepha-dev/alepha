@@ -1,16 +1,16 @@
-import { $inject, Alepha, autoInject } from "@alepha/core";
+import { $inject, Alepha, __bind } from "@alepha/core";
 import { MemoryTopicProvider } from "@alepha/topic";
-import { $lock } from "./descriptors/$lock";
-import { LockDescriptorProvider } from "./providers/LockDescriptorProvider";
-import { LockProvider } from "./providers/LockProvider";
-import { LockTopicProvider } from "./providers/LockTopicProvider";
-import { MemoryLockProvider } from "./providers/MemoryLockProvider";
+import { $lock } from "./descriptors/$lock.ts";
+import { LockDescriptorProvider } from "./providers/LockDescriptorProvider.ts";
+import { LockProvider } from "./providers/LockProvider.ts";
+import { LockTopicProvider } from "./providers/LockTopicProvider.ts";
+import { MemoryLockProvider } from "./providers/MemoryLockProvider.ts";
 
-export * from "./descriptors/$lock";
-export * from "./providers/LockDescriptorProvider";
-export * from "./providers/LockProvider";
-export * from "./providers/LockTopicProvider";
-export * from "./providers/MemoryLockProvider";
+export * from "./descriptors/$lock.ts";
+export * from "./providers/LockDescriptorProvider.ts";
+export * from "./providers/LockProvider.ts";
+export * from "./providers/LockTopicProvider.ts";
+export * from "./providers/MemoryLockProvider.ts";
 
 export class LockModule {
 	protected readonly alepha = $inject(Alepha);
@@ -32,4 +32,4 @@ export class LockModule {
 	}
 }
 
-autoInject($lock, LockModule);
+__bind($lock, LockModule);

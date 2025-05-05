@@ -45,32 +45,32 @@ import type {
 	TableConfig,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA";
-import type { PgSymbolKeys } from "../constants/PG_SYMBOLS";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
+import type { PgSymbolKeys } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_MANY,
 	PG_PRIMARY_KEY,
 	PG_UPDATED_AT,
 	PG_VERSION,
-} from "../constants/PG_SYMBOLS";
-import { $repository } from "../descriptors/$repository";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
-import { PgConflictError } from "../errors/PgConflictError";
-import { PgError } from "../errors/PgError";
-import { VersionMismatchError } from "../errors/VersionMismatchError";
-import type { NullifyIfOptional } from "../helpers/nullToUndefined";
-import { nullToUndefined } from "../helpers/nullToUndefined";
-import { aggregateRowsByRelation } from "../helpers/relations";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns";
-import type { FilterOperators } from "../interfaces/FilterOperators";
-import type { InferInsert } from "../interfaces/InferInsert";
-import type { PgQuery } from "../interfaces/PgQuery";
-import type { PgQueryWhere } from "../interfaces/PgQueryWhere";
-import { pg } from "../providers/PostgresTypeProvider";
-import type { SQLLike } from "../providers/drivers/PostgresProvider";
-import { PostgresProvider } from "../providers/drivers/PostgresProvider";
-import type { PageQuery } from "../schemas/pageQuerySchema";
-import type { Page } from "../schemas/pageSchema";
+} from "../constants/PG_SYMBOLS.ts";
+import { $repository } from "../descriptors/$repository.ts";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.ts";
+import { PgConflictError } from "../errors/PgConflictError.ts";
+import { PgError } from "../errors/PgError.ts";
+import { VersionMismatchError } from "../errors/VersionMismatchError.ts";
+import type { NullifyIfOptional } from "../helpers/nullToUndefined.ts";
+import { nullToUndefined } from "../helpers/nullToUndefined.ts";
+import { aggregateRowsByRelation } from "../helpers/relations.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
+import type { FilterOperators } from "../interfaces/FilterOperators.ts";
+import type { InferInsert } from "../interfaces/InferInsert.ts";
+import type { PgQuery } from "../interfaces/PgQuery.ts";
+import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
+import { pg } from "../providers/PostgresTypeProvider.ts";
+import type { SQLLike } from "../providers/drivers/PostgresProvider.ts";
+import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
+import type { PageQuery } from "../schemas/pageQuerySchema.ts";
+import type { Page } from "../schemas/pageSchema.ts";
 
 /**
  *

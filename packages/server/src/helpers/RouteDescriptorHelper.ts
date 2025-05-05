@@ -1,37 +1,49 @@
 import type { Permission } from "@alepha/security";
+import type { RouteDescriptorOptions } from "../descriptors/$action.ts";
 import {
-	type RouteDescriptorOptions,
+	type RequestConfigSchema,
 	type RouteMethod,
 	routeMethods,
-} from "../descriptors/$route";
+} from "../providers/ServerRouterProvider.ts";
+import type { HttpClientLink } from "../services/HttpClient.ts";
 
 export class RouteDescriptorHelper {
-	/**
-	 *
-	 * @param options
-	 * @param instance
-	 * @param key
-	 * @param prefix
-	 */
-	public url(
-		options: { url?: string },
+	public name(
+		options: RouteDescriptorOptions,
+		instance: any,
+		key: string,
+	): string {
+		if (options.name) {
+			return options.name;
+		}
+
+		return key;
+	}
+
+	public path(
+		options: RouteDescriptorOptions,
 		instance: any,
 		key: string,
 		prefix = "",
 	) {
-		const url = options.url ?? `/${key}`;
-
-		if (url.endsWith("/*")) {
-			return url;
-		}
-
-		return prefix + url;
+		return prefix + (options.path ?? `/${key}`);
 	}
 
-	/**
-	 *
-	 * @param options
-	 */
+	public link(
+		options: RouteDescriptorOptions,
+		instance: any,
+		key: string,
+		prefix = "",
+	): HttpClientLink {
+		return {
+			method: this.method(options),
+			path: this.path(options, instance, key, prefix),
+			name: this.name(options, instance, key),
+			group: this.group(options, instance),
+			schema: options.schema,
+		};
+	}
+
 	public method(options: {
 		method?: string;
 		schema?: any;
@@ -46,31 +58,51 @@ export class RouteDescriptorHelper {
 		return options.schema?.body ? "POST" : "GET";
 	}
 
-	/**
-	 *
-	 * @param options
-	 * @param instance
-	 * @param key
-	 */
 	public permission(
 		options: RouteDescriptorOptions,
 		instance: any,
 		key: string,
-	): string {
-		return `${this.group(options, instance)}:${options.name ?? key}`;
+	): Permission {
+		return {
+			group: this.group(options, instance),
+			name: options.name ?? key,
+			url: this.path(options, instance, key),
+			method: this.method(options),
+			description: options.description,
+		};
 	}
 
-	/**
-	 *
-	 * @param options
-	 * @param instance
-	 */
 	public group(options: RouteDescriptorOptions, instance: any): string {
 		if (options.group) {
 			return options.group;
 		}
 
 		return this.short(instance.constructor.name);
+	}
+
+	public isMultipart(options: { schema?: RequestConfigSchema }): boolean {
+		if (options.schema?.body) {
+			for (const key in options.schema.body.properties) {
+				if (options.schema.body.properties[key].type === "file") {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public bodyContentType(options: RouteDescriptorOptions): string | undefined {
+		const method = this.method(options);
+		const hasBody = method === "POST" || method === "PATCH" || method === "PUT";
+
+		if (hasBody) {
+			if (this.isMultipart(options)) {
+				return "multipart/form-data";
+			}
+			if (options.schema?.body) {
+				return "application/json";
+			}
+		}
 	}
 
 	protected short(name: string) {
@@ -83,27 +115,5 @@ export class RouteDescriptorHelper {
 				.replace(/_/g, "-")
 				.toLowerCase()
 		);
-	}
-
-	/**
-	 * Retrieves the permission from the given route.
-	 *
-	 * @param route - The route object from which to retrieve the permission.
-	 * @return The permission associated with the route, or undefined if not found.
-	 */
-	public permissionFromRoute(route: {
-		schema?: any;
-	}): Permission | undefined {
-		const schema = route.schema;
-		if (
-			schema &&
-			"operationId" in schema &&
-			typeof schema.operationId === "string"
-		) {
-			return {
-				group: schema.tags?.[0]?.toLowerCase(),
-				name: schema.operationId,
-			};
-		}
 	}
 }

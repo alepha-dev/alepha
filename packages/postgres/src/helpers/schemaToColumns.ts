@@ -4,9 +4,9 @@ import type {
 	PgColumnBuilderBase,
 	PgTableWithColumns,
 } from "drizzle-orm/pg-core";
-import type { PG_SCHEMA } from "../constants/PG_SCHEMA";
-import { PG_MANY, PG_PRIMARY_KEY, PG_REF } from "../constants/PG_SYMBOLS";
-import { mapFieldToColumn } from "./mapFieldToColumn";
+import type { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
+import { PG_MANY, PG_PRIMARY_KEY, PG_REF } from "../constants/PG_SYMBOLS.ts";
+import { mapFieldToColumn } from "./mapFieldToColumn.ts";
 
 /**
  * Convert a schema to columns.

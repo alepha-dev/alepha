@@ -1,5 +1,5 @@
 import { Alepha, run } from "@alepha/core";
-import { App } from "./App";
+import { App } from "./App.ts";
 
 const alepha = Alepha.create({});
 

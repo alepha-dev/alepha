@@ -1,7 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { expect, test } from "vitest";
 import { $sequence } from "../src";
-import { SequenceProvider } from "../src/providers/SequenceProvider";
+import { SequenceProvider } from "../src/providers/SequenceProvider.ts";
 
 const alepha = Alepha.create();
 const app = alepha.get(

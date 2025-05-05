@@ -3,12 +3,14 @@
  */
 export class Timeout {
 	private timer: any = null;
+	private duration: number;
+	private readonly now: number;
+	private readonly callback: () => void;
 
-	constructor(
-		private now: number,
-		private duration: number,
-		private callback: () => void,
-	) {
+	constructor(now: number, duration: number, callback: () => void) {
+		this.now = now;
+		this.duration = duration;
+		this.callback = callback;
 		this.start();
 	}
 

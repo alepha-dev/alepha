@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { __descriptor, Alepha, autoInject, KIND } from "../src";
+import { Alepha, KIND, __bind, __descriptor } from "../src";
 
 test("autoInject", () => {
 	class A {}
@@ -17,7 +17,7 @@ test("autoInject", () => {
 
 	dummy[KIND] = "DUMMY";
 
-	autoInject(dummy, A);
+	__bind(dummy, A);
 
 	const app = Alepha.create();
 

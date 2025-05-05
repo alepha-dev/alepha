@@ -1,7 +1,7 @@
-import type { Alepha } from "../Alepha";
-import { KIND } from "../constants/KIND";
-import { __descriptor } from "../helpers/descriptor";
-import type { Async } from "../interfaces/Async";
+import type { Alepha } from "../Alepha.ts";
+import { KIND } from "../constants/KIND.ts";
+import { __descriptor } from "../helpers/descriptor.ts";
+import type { Async } from "../interfaces/Async.ts";
 
 const KEY = "HOOK";
 
@@ -59,6 +59,15 @@ export interface HookDescriptor<T extends keyof Hooks> {
 	[KIND]: typeof KEY;
 	options: HookOptions<T>;
 	(app: Hooks[T]): Async<any>;
+
+	//TODO:
+	/*
+	   .called - number of times the hook has been called
+	   .calledAt - last time the hook was called
+	   .paused() - boolean - if the hook is paused
+	   .pausedAt - number - when the hook was paused
+	   .resume() - function to resume the hook
+	 */
 }
 
 /**

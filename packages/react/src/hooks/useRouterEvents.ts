@@ -1,7 +1,7 @@
 import { useContext, useEffect } from "react";
-import { RouterContext } from "../contexts/RouterContext";
-import { RouterLayerContext } from "../contexts/RouterLayerContext";
-import type { RouterState } from "../services/Router";
+import { RouterContext } from "../contexts/RouterContext.ts";
+import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import type { RouterState } from "../services/ReactRouter.ts";
 
 export const useRouterEvents = (
 	opts: {

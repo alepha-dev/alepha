@@ -2,8 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
 import { Table, sql } from "drizzle-orm";
-import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider";
-import type { PostgresProvider } from "./drivers/PostgresProvider";
+import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider.ts";
+import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 
 export class DrizzleKitProvider {
 	protected readonly log = $logger();

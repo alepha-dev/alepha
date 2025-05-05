@@ -1,11 +1,11 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import type { TObject } from "@sinclair/typebox";
 import type { PgTableWithColumns, TableConfig } from "drizzle-orm/pg-core";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA";
-import type { RepositoryDescriptorOptions } from "../descriptors/$repository";
-import { $repository } from "../descriptors/$repository";
-import { Repository } from "../services/Repository";
-import { PostgresProvider } from "./drivers/PostgresProvider";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
+import type { RepositoryDescriptorOptions } from "../descriptors/$repository.ts";
+import { $repository } from "../descriptors/$repository.ts";
+import { Repository } from "../services/Repository.ts";
+import { PostgresProvider } from "./drivers/PostgresProvider.ts";
 
 export class RepositoryDescriptorProvider {
 	protected readonly log = $logger();

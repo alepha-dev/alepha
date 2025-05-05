@@ -7,20 +7,20 @@ import {
 	DateTimeProvider,
 	KIND,
 } from "@alepha/core";
-import type { SubscriberDescriptorOptions } from "../descriptors/$subscriber";
-import { $subscriber } from "../descriptors/$subscriber";
+import type { SubscriberDescriptorOptions } from "../descriptors/$subscriber.ts";
+import { $subscriber } from "../descriptors/$subscriber.ts";
 import type {
 	TopicDescriptor,
 	TopicDescriptorOptions,
 	TopicMessage,
 	TopicMessageSchema,
 	TopicWaitOptions,
-} from "../descriptors/$topic";
-import { $topic } from "../descriptors/$topic";
-import { TopicTimeoutError } from "../errors/TopicTimeoutError";
-import { MemoryTopicProvider } from "./MemoryTopicProvider";
-import type { UnSubscribeFn } from "./TopicProvider";
-import { TopicProvider } from "./TopicProvider";
+} from "../descriptors/$topic.ts";
+import { $topic } from "../descriptors/$topic.ts";
+import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
+import { MemoryTopicProvider } from "./MemoryTopicProvider.ts";
+import type { UnSubscribeFn } from "./TopicProvider.ts";
+import { TopicProvider } from "./TopicProvider.ts";
 
 export class TopicDescriptorProvider {
 	protected readonly log = $logger();

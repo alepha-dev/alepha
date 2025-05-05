@@ -1,7 +1,7 @@
 import { $inject, $logger } from "@alepha/core";
 import type { RedisClient } from "@alepha/redis";
 import { RedisProvider } from "@alepha/redis";
-import { LockProvider } from "./LockProvider";
+import { LockProvider } from "./LockProvider.ts";
 
 /**
  * A store provider that uses Redis.

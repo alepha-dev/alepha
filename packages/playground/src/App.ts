@@ -1,7 +1,7 @@
 import { $inject } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { HttpClient } from "@alepha/server";
-import type Api from "./Api";
+import type Api from "./Api.ts";
 
 export class App {
 	api = $inject(HttpClient).of<Api>();
@@ -29,12 +29,12 @@ export class App {
 				],
 			};
 		},
-		lazy: () => import("./components/Layout"),
+		lazy: () => import("./components/Layout.tsx"),
 		children: () => [this.home, this.test],
 	});
 
 	home = $page({
-		lazy: () => import("./components/Home"),
+		lazy: () => import("./components/Home.tsx"),
 	});
 
 	test = $page({
@@ -51,6 +51,6 @@ export class App {
 				inc: await this.api.inc(),
 			};
 		},
-		lazy: () => import("./components/Test"),
+		lazy: () => import("./components/Test.tsx"),
 	});
 }

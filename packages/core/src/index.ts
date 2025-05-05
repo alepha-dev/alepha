@@ -1,9 +1,9 @@
-import type { Env } from "./Alepha";
-import { Alepha } from "./Alepha";
-import type { Async } from "./interfaces/Async";
-import type { Class } from "./interfaces/Class";
+import type { Env } from "./Alepha.ts";
+import { Alepha } from "./Alepha.ts";
+import type { Async } from "./interfaces/Async.ts";
+import type { Class } from "./interfaces/Class.ts";
 
-export * from "./index.shared";
+export * from "./index.shared.ts";
 
 export const run = (
 	arg: Alepha | Class | ((env?: Env) => Alepha),
@@ -48,7 +48,12 @@ export const run = (
 				];
 
 				for (const trap of traps) {
-					process.once(trap, async () => {
+					process.once(trap, async (error) => {
+						if (error instanceof Error) {
+							alepha.log.error("Uncaught Exception", error);
+						} else {
+							alepha.log.info("Received signal", { trap });
+						}
 						try {
 							await alepha.stop();
 							console.log(" ");

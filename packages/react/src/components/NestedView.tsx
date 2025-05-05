@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useContext, useEffect, useState } from "react";
-import { RouterContext } from "../contexts/RouterContext";
-import { RouterLayerContext } from "../contexts/RouterLayerContext";
+import { RouterContext } from "../contexts/RouterContext.ts";
+import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 
 export interface NestedViewProps {
 	children?: ReactNode;

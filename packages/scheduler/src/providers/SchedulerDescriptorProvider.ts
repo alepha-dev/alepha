@@ -13,8 +13,8 @@ import { CronJob } from "cron";
 import type {
 	SchedulerDescriptor,
 	SchedulerDescriptorOptions,
-} from "../descriptors/$scheduler";
-import { $scheduler } from "../descriptors/$scheduler";
+} from "../descriptors/$scheduler.ts";
+import { $scheduler } from "../descriptors/$scheduler.ts";
 
 const envSchema = t.object({
 	SCHEDULER_PREFIX: t.optional(

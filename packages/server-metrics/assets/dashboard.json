@@ -1,0 +1,158 @@
+{
+	"dashboard": {
+		"id": null,
+		"uid": null,
+		"title": "Node.js Server Metrics",
+		"tags": [],
+		"timezone": "browser",
+		"schemaVersion": 16,
+		"version": 0,
+		"panels": [
+			{
+				"datasource": null,
+				"fieldConfig": {
+					"defaults": {},
+					"overrides": []
+				},
+				"gridPos": {
+					"h": 8,
+					"w": 12,
+					"x": 0,
+					"y": 0
+				},
+				"id": 1,
+				"options": {
+					"colorMode": "value",
+					"graphMode": "area",
+					"justifyMode": "auto",
+					"orientation": "auto",
+					"reduceOptions": {
+						"calcs": ["mean"],
+						"fields": "",
+						"values": false
+					},
+					"textMode": "auto"
+				},
+				"pluginVersion": "7.4.0",
+				"targets": [
+					{
+						"expr": "nodejs_cpu_usage_percent",
+						"legendFormat": "{{instance}}",
+						"refId": "A"
+					}
+				],
+				"title": "CPU Usage",
+				"type": "stat"
+			},
+			{
+				"datasource": null,
+				"fieldConfig": {
+					"defaults": {},
+					"overrides": []
+				},
+				"gridPos": {
+					"h": 8,
+					"w": 12,
+					"x": 12,
+					"y": 0
+				},
+				"id": 2,
+				"options": {
+					"colorMode": "value",
+					"graphMode": "area",
+					"justifyMode": "auto",
+					"orientation": "auto",
+					"reduceOptions": {
+						"calcs": ["mean"],
+						"fields": "",
+						"values": false
+					},
+					"textMode": "auto"
+				},
+				"pluginVersion": "7.4.0",
+				"targets": [
+					{
+						"expr": "nodejs_memory_usage_bytes",
+						"legendFormat": "{{instance}}",
+						"refId": "A"
+					}
+				],
+				"title": "Memory Usage",
+				"type": "stat"
+			},
+			{
+				"datasource": null,
+				"fieldConfig": {
+					"defaults": {},
+					"overrides": []
+				},
+				"gridPos": {
+					"h": 8,
+					"w": 12,
+					"x": 0,
+					"y": 8
+				},
+				"id": 3,
+				"options": {
+					"colorMode": "value",
+					"graphMode": "area",
+					"justifyMode": "auto",
+					"orientation": "auto",
+					"reduceOptions": {
+						"calcs": ["mean"],
+						"fields": "",
+						"values": false
+					},
+					"textMode": "auto"
+				},
+				"pluginVersion": "7.4.0",
+				"targets": [
+					{
+						"expr": "nodejs_heap_usage_bytes",
+						"legendFormat": "{{instance}}",
+						"refId": "A"
+					}
+				],
+				"title": "Heap Usage",
+				"type": "stat"
+			},
+			{
+				"datasource": null,
+				"fieldConfig": {
+					"defaults": {},
+					"overrides": []
+				},
+				"gridPos": {
+					"h": 8,
+					"w": 12,
+					"x": 12,
+					"y": 8
+				},
+				"id": 4,
+				"options": {
+					"colorMode": "value",
+					"graphMode": "area",
+					"justifyMode": "auto",
+					"orientation": "auto",
+					"reduceOptions": {
+						"calcs": ["mean"],
+						"fields": "",
+						"values": false
+					},
+					"textMode": "auto"
+				},
+				"pluginVersion": "7.4.0",
+				"targets": [
+					{
+						"expr": "rate(nodejs_gc_duration_seconds_sum[1m]) / rate(nodejs_gc_duration_seconds_count[1m])",
+						"legendFormat": "{{instance}}",
+						"refId": "A"
+					}
+				],
+				"title": "GC Duration",
+				"type": "stat"
+			}
+		]
+	},
+	"overwrite": true
+}

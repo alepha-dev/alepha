@@ -2,22 +2,22 @@ import type { Record, Static, TObject, TSchema } from "@sinclair/typebox";
 import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
-import { KIND } from "./constants/KIND";
-import { PROVIDER } from "./constants/PROVIDER";
-import { STARTED } from "./constants/STARTED";
-import { __alephaRef } from "./descriptors/$cursor";
-import type { Hooks } from "./descriptors/$hook";
-import { $hook } from "./descriptors/$hook";
-import { AppNotStartedError } from "./errors/AppNotStartedError";
-import { AppRunError } from "./errors/AppRunError";
-import { CircularDependencyError } from "./errors/CircularDependencyError";
-import { ContainerLockedError } from "./errors/ContainerLockedError";
-import { TypeBoxError } from "./errors/TypeBoxError";
-import type { Descriptor, DescriptorItem } from "./helpers/descriptor";
-import { isDescriptorValue } from "./helpers/descriptor";
-import type { Class, ClassEntry, ClassProvider } from "./interfaces/Class";
+import { KIND } from "./constants/KIND.ts";
+import { PROVIDER } from "./constants/PROVIDER.ts";
+import { STARTED } from "./constants/STARTED.ts";
+import { __alephaRef } from "./descriptors/$cursor.ts";
+import type { Hooks } from "./descriptors/$hook.ts";
+import { $hook } from "./descriptors/$hook.ts";
+import { AppNotStartedError } from "./errors/AppNotStartedError.ts";
+import { AppRunError } from "./errors/AppRunError.ts";
+import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
+import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
+import { TypeBoxError } from "./errors/TypeBoxError.ts";
+import type { Descriptor, DescriptorItem } from "./helpers/descriptor.ts";
+import { isDescriptorValue } from "./helpers/descriptor.ts";
+import type { Class, ClassEntry, ClassProvider } from "./interfaces/Class.ts";
 import { AsyncLocalStorageProvider } from "./providers/AsyncLocalStorageProvider.ts";
-import { Logger, type LoggerEnv } from "./services/Logger";
+import { Logger, type LoggerEnv } from "./services/Logger.ts";
 
 export interface Env extends LoggerEnv {
 	[key: string]: string | boolean | number | undefined;
@@ -495,20 +495,14 @@ export class Alepha {
 		return instance;
 	}
 
-	/**
-	 * Runs the specified async function for all registered providers.
-	 *
-	 * @param func - The name of the function to run for each provider.
-	 * @param [payload=this] - The payload to pass to the function. Default is the current instance.
-	 * @param [options] - The options for running the function.
-	 * @param [options.reverse] - If true, the functions are executed in reverse order.
-	 * @param [options.cache] - If true, functions are cached for better performance.
-	 * @return A Promise that resolves when all async functions have been executed.
-	 */
 	public async run(
-		func: keyof Hooks,
+		func: keyof Hooks, // TODO: hook refactoring
 		payload: any = this,
-		options: { reverse?: boolean; log?: boolean; started?: boolean } = {},
+		options: {
+			reverse?: boolean;
+			log?: boolean; // TODO: should be false by default
+			started?: boolean;
+		} = {},
 	): Promise<void> {
 		if (!this.locked) {
 			throw new AppNotStartedError();
@@ -519,6 +513,7 @@ export class Alepha {
 			this.log.trace(`${func} ...`);
 		}
 
+		// TODO: this part is bad, we must index callbacks somewhere, not parsing all the time
 		let hooks = this.getDescriptorValues($hook).filter(
 			(it) => it.value.options.name === func,
 		);
@@ -526,6 +521,7 @@ export class Alepha {
 		const copy = [...hooks].toReversed();
 		hooks = [];
 		for (const it of copy) {
+			// TODO: implement priority (first, last, before, after)
 			if (it.value.options.priority === "last") {
 				hooks.unshift(it);
 			} else {
@@ -544,12 +540,19 @@ export class Alepha {
 				this.log.trace(`${func}(${instance.constructor.name}${printKey}) ...`);
 			}
 
+			// all the .started, [STARTED] was added to "cleanup" started services during a start failure
+			// TODO: we should remove this, it start fails, we should just let the app crash
+
 			if (func !== "stop" || !options.started || instance[STARTED]) {
 				try {
 					await value.options.handler(payload);
 				} catch (error) {
-					this.log.error(error as Error);
+					if (!options.log) {
+						throw error;
+					}
+					this.log.error(error as Error); // TODO: idk if we should log it here
 					throw new AppRunError(
+						// TODO: do we really need this?
 						func,
 						instance.constructor.name,
 						error as Error,
@@ -558,7 +561,7 @@ export class Alepha {
 			}
 
 			if (func === "start") {
-				instance[STARTED] = true;
+				instance[STARTED] = true; // TODO: should be done in the hook + explain why we need this
 			}
 
 			if (options.log !== false) {
@@ -784,6 +787,9 @@ export class Alepha {
 
 		const obj = instance as unknown as Record<string, any>;
 		for (const key of Object.keys(obj)) {
+			if (obj[key]?.[KIND] && obj[key].options) {
+				obj[key].options.name ??= key;
+			}
 			const provider = obj[key]?.[PROVIDER];
 			if (provider) {
 				Object.defineProperty(instance, key, {

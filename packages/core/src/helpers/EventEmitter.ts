@@ -1,4 +1,4 @@
-import type { Async } from "../interfaces/Async";
+import type { Async } from "../interfaces/Async.ts";
 
 export interface EventEmitterItem<T extends object> {
 	name: keyof T;

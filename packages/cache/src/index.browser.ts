@@ -1,13 +1,13 @@
-import { $inject, Alepha, autoInject } from "@alepha/core";
-import { $cache } from "./descriptors/$cache";
-import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider";
-import { CacheProvider } from "./providers/CacheProvider";
-import { MemoryCacheProvider } from "./providers/MemoryCacheProvider";
+import { $inject, Alepha, __bind } from "@alepha/core";
+import { $cache } from "./descriptors/$cache.ts";
+import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider.ts";
+import { CacheProvider } from "./providers/CacheProvider.ts";
+import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
 
-export * from "./descriptors/$cache";
-export * from "./providers/CacheDescriptorProvider";
-export * from "./providers/CacheProvider";
-export * from "./providers/MemoryCacheProvider";
+export * from "./descriptors/$cache.ts";
+export * from "./providers/CacheDescriptorProvider.ts";
+export * from "./providers/CacheProvider.ts";
+export * from "./providers/MemoryCacheProvider.ts";
 
 export class CacheModule {
 	protected readonly alepha = $inject(Alepha);
@@ -21,4 +21,4 @@ export class CacheModule {
 	}
 }
 
-autoInject($cache, CacheModule);
+__bind($cache, CacheModule);

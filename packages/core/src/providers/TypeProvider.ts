@@ -16,6 +16,7 @@ import type {
 	TProperties,
 	TSchema,
 	TString,
+	TUnsafe,
 	Union,
 	UnsafeOptions,
 } from "@sinclair/typebox";
@@ -27,8 +28,8 @@ import * as TypeBoxValue from "@sinclair/typebox/value";
 export { TypeBox, TypeBoxValue };
 
 import { Value } from "@sinclair/typebox/value";
-import { PRIMITIVE } from "../constants/PRIMITIVE";
-import { fullFormats } from "../helpers/formats";
+import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
+import { fullFormats } from "../helpers/formats.ts";
 
 export { TypeGuard } from "@sinclair/typebox";
 export type {
@@ -350,9 +351,26 @@ export class TypeProvider {
 			[Kind]: kind,
 			...options,
 		});
+
+	file = (): TFile =>
+		t.unsafe<File>("Any", {
+			format: "binary",
+			type: "string",
+		});
 }
 
 export const t = new TypeProvider();
+
+export type TFile = TUnsafe<File>;
+
+export const isTypeFile = (value: TSchema): value is TFile => {
+	return (
+		value &&
+		value[Kind] === "Any" &&
+		value.type === "string" &&
+		value.format === "binary"
+	);
+};
 
 export type TextLength = "short" | "long" | "rich";
 

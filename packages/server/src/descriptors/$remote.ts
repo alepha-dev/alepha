@@ -2,30 +2,36 @@ import { KIND } from "@alepha/core";
 
 export const REMOTE_DESCRIPTOR_KEY = "REMOTE";
 
-export interface RemoteDescriptorOptions<T extends object> {
+export interface RemoteDescriptorOptions {
 	/**
 	 * The URL of the remote service.
 	 */
-	url: string;
+	url: string | (() => string);
 
 	/**
-	 * The API of the remote service.
+	 * One or many instance of classes to be registered as remote services.
+	 * Services must contain some $action() descriptors.
 	 */
-	api: T;
+	services: object | Array<object>;
+
+	/**
+	 * The name of the remote service.
+	 *
+	 * @default Member of the class containing the remote service.
+	 */
+	name?: string;
 }
 
-export interface RemoteDescriptor<T extends object> {
+export interface RemoteDescriptor {
 	[KIND]: typeof REMOTE_DESCRIPTOR_KEY;
-	options: RemoteDescriptorOptions<T>;
+	options: RemoteDescriptorOptions;
 }
 
-export const $remote = <T extends object>(
-	options: RemoteDescriptorOptions<T>,
-) => {
+export const $remote = (options: RemoteDescriptorOptions) => {
 	return {
 		[KIND]: REMOTE_DESCRIPTOR_KEY,
 		options,
-	} as RemoteDescriptor<T>;
+	} as RemoteDescriptor;
 };
 
 $remote[KIND] = REMOTE_DESCRIPTOR_KEY;

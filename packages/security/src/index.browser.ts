@@ -1,9 +1,9 @@
-export * from "./errors/InvalidPermissionError";
-export * from "./errors/SecurityError";
-export * from "./interfaces/UserAccountInfo";
-export * from "./interfaces/UserAccountToken";
-export * from "./schemas/permissionSchema";
-export * from "./schemas/roleSchema";
+export * from "./errors/InvalidPermissionError.ts";
+export * from "./errors/SecurityError.ts";
+export * from "./interfaces/UserAccountInfo.ts";
+export * from "./interfaces/UserAccountToken.ts";
+export * from "./schemas/permissionSchema.ts";
+export * from "./schemas/roleSchema.ts";
 
 export class SecurityModule {
 	// do nothing

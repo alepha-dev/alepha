@@ -3,12 +3,12 @@ import type { BuildColumns } from "drizzle-orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm/column-builder";
 import { pgTable } from "drizzle-orm/pg-core";
 import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core/table";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type {
 	FromSchema,
 	PgTableWithColumnsAndSchema,
-} from "./schemaToColumns";
-import { schemaToColumns } from "./schemaToColumns";
+} from "./schemaToColumns.ts";
+import { schemaToColumns } from "./schemaToColumns.ts";
 
 /**
  * Create a table with a json schema.

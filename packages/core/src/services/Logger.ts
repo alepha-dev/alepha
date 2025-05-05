@@ -127,16 +127,8 @@ export class Logger {
 		});
 	}
 
-	public silent() {
-		// for fastify/pino compatibility - but not used
-	}
-
-	public fatal() {
-		// for fastify/pino compatibility - but not used
-	}
-
-	public error(message: unknown, data?: object | Error | string) {
-		this.log("error", message, data);
+	public error(message: unknown, data?: object | Error | string | unknown) {
+		this.log("error", message, data as object | Error | string);
 	}
 
 	public warn(message: unknown, data?: object | Error | string) {
@@ -317,4 +309,50 @@ export class Logger {
 
 		return str;
 	}
+}
+
+// ---
+
+export class MockLogger extends Logger {
+	store: MockLoggerStore;
+
+	constructor(
+		options: LoggerOptions & { store: MockLoggerStore } = {
+			store: { stack: [] },
+		},
+	) {
+		super({
+			...options,
+			level: options.level ?? "info",
+			name: options.name ?? "App",
+			caller: options.caller ?? "",
+			context: options.context ?? "",
+			color: false,
+			json: true,
+			als: options.als,
+		});
+		this.store = options.store;
+	}
+
+	print(msg: string) {
+		this.store.stack.push(JSON.parse(msg));
+	}
+
+	child(options: LoggerOptions) {
+		return new MockLogger({
+			...options,
+			level: options.level ?? this.level,
+			name: options.name ?? this.name,
+			caller: options.caller ?? this.caller,
+			context: options.context ?? this.context,
+			color: options.color ?? this.color,
+			json: options.json ?? this.json,
+			als: options.als ?? this.als,
+			store: this.store,
+		});
+	}
+}
+
+export interface MockLoggerStore {
+	stack: Array<{ date: string; level: string; msg: string; data?: object }>;
 }

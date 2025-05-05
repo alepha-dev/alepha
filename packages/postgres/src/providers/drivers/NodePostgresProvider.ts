@@ -8,8 +8,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { ClientConfig } from "pg";
 import pg from "pg";
-import { DrizzleKitProvider } from "../DrizzleKitProvider";
-import type { PostgresProvider, SQLLike } from "./PostgresProvider";
+import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
+import type { PostgresProvider, SQLLike } from "./PostgresProvider.ts";
 
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}

@@ -1,9 +1,9 @@
 import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 import type { TObject, TProperties } from "@sinclair/typebox";
-import { createdAtSchema } from "./createdAtSchema";
-import { legacyIdSchema } from "./legacyIdSchema";
-import { updatedAtSchema } from "./updatedAtSchema";
+import { createdAtSchema } from "./createdAtSchema.ts";
+import { legacyIdSchema } from "./legacyIdSchema.ts";
+import { updatedAtSchema } from "./updatedAtSchema.ts";
 
 /**
  * Entity Schema.

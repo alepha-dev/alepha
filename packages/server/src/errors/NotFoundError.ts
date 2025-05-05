@@ -1,7 +1,11 @@
-import { HttpError } from "./HttpError";
+import { HttpError } from "./HttpError.ts";
 
 export class NotFoundError extends HttpError {
-	constructor(message = "Resource not found") {
-		super(404, "ERR_RESOURCE_NOTFOUND", message);
+	constructor(message = "Resource not found", cause?: unknown) {
+		super({
+			message,
+			status: 404,
+			cause,
+		});
 	}
 }

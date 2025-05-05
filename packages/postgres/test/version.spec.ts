@@ -2,7 +2,7 @@ import { $inject, Alepha, DateTimeProvider, t } from "@alepha/core";
 import { expect, test } from "vitest";
 import type { TransactionContext } from "../src";
 import { $repository, pg, table } from "../src";
-import { VersionMismatchError } from "../src/errors/VersionMismatchError";
+import { VersionMismatchError } from "../src/errors/VersionMismatchError.ts";
 
 class A {
 	dt = $inject(DateTimeProvider);

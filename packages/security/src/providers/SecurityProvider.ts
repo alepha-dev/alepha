@@ -10,19 +10,19 @@ import {
 	t,
 } from "@alepha/core";
 import type { JSONWebKeySet, JWTPayload } from "jose";
-import { $permission } from "../descriptors/$permission";
-import type { RealmDescriptor } from "../descriptors/$realm";
-import { $realm } from "../descriptors/$realm";
-import { $role } from "../descriptors/$role";
-import { InvalidPermissionError } from "../errors/InvalidPermissionError";
-import { InvalidTokenError } from "../errors/InvalidTokenError";
-import { RealmNotFoundError } from "../errors/RealmNotFoundError";
-import { SecurityError } from "../errors/SecurityError";
-import type { UserAccountInfo } from "../interfaces/UserAccountInfo";
-import type { UserAccountToken } from "../interfaces/UserAccountToken";
-import type { Permission } from "../schemas/permissionSchema";
-import type { Role } from "../schemas/roleSchema";
-import { JwtProvider } from "./JwtProvider";
+import { $permission } from "../descriptors/$permission.ts";
+import type { RealmDescriptor } from "../descriptors/$realm.ts";
+import { $realm } from "../descriptors/$realm.ts";
+import { $role } from "../descriptors/$role.ts";
+import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
+import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
+import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
+import { SecurityError } from "../errors/SecurityError.ts";
+import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
+import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
+import type { Permission } from "../schemas/permissionSchema.ts";
+import type { Role } from "../schemas/roleSchema.ts";
+import { JwtProvider } from "./JwtProvider.ts";
 
 const envSchema = t.object({
 	SECURITY_SECRET_KEY: t.string({ default: "replace-me-with-a-secret-key" }),

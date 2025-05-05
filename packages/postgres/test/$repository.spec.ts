@@ -1,9 +1,9 @@
 import { Alepha } from "@alepha/core";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { $repository } from "../src";
-import { bigEntity } from "./fixtures/bigEntitySchema";
-import type { InsertUserEntity } from "./fixtures/userEntitySchema";
-import { userEntity } from "./fixtures/userEntitySchema";
+import { bigEntity } from "./fixtures/bigEntitySchema.ts";
+import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
+import { userEntity } from "./fixtures/userEntitySchema.ts";
 
 class App {
 	users = $repository(userEntity);

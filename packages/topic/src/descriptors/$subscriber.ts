@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
-import type { TopicDescriptor, TopicMessageSchema } from "./$topic";
+import type { TopicDescriptor, TopicMessageSchema } from "./$topic.ts";
 
 const KEY = "SUBSCRIBER";
 

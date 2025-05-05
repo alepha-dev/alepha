@@ -1,7 +1,7 @@
 import type { DurationLike } from "luxon";
-import type { Async } from "../interfaces/Async";
-import { DateTimeProvider } from "../providers/DateTimeProvider";
-import { $cursor } from "./$cursor";
+import type { Async } from "../interfaces/Async.ts";
+import { DateTimeProvider } from "../providers/DateTimeProvider.ts";
+import { $cursor } from "./$cursor.ts";
 
 export interface IntervalDescriptorOptions {
 	/**

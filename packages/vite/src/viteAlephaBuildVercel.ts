@@ -27,7 +27,7 @@ export interface ViteAlephaBuildVercelOptions {
  */
 export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
 	const outputFile = opts.filename;
-	const client = opts.client || "client";
+	const client = opts.client;
 
 	return {
 		name: "vite-plugin-alepha-build-vercel",
@@ -37,11 +37,15 @@ export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
 				mkdirSync("dist/api");
 			}
 
+			const templateState = client
+				? `alepha.state("ReactServerProvider.template", \`${readFileSync(`dist/${client}/index.html`, "utf-8")}\`);`
+				: "";
+
 			writeFileSync(
 				"dist/api/index.mjs",
 				`import "../server/${outputFile}.mjs";
 
-alepha.state("ReactServerProvider.template", \`${readFileSync(`dist/${client}/index.html`, "utf-8")}\`);
+${templateState}
 
 export default async function (req, res) {
 \tawait alepha.start();
@@ -73,7 +77,9 @@ export default async function (req, res) {
 			);
 
 			// for now, I don't know how to override /index.html by / on vercel, so we delete it
-			unlinkSync("dist/client/index.html");
+			if (client) {
+				unlinkSync("dist/client/index.html");
+			}
 		},
 	};
 }

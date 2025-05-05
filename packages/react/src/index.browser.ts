@@ -1,11 +1,11 @@
-import { $inject, Alepha, autoInject } from "@alepha/core";
-import { $page } from "./descriptors/$page";
-import { PageDescriptorProvider } from "./providers/PageDescriptorProvider";
-import { ReactBrowserProvider } from "./providers/ReactBrowserProvider";
-import { Auth } from "./services/Auth";
+import { $inject, Alepha, __bind } from "@alepha/core";
+import { $page } from "./descriptors/$page.ts";
+import { PageDescriptorProvider } from "./providers/PageDescriptorProvider.ts";
+import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
+import { ReactAuth } from "./services/ReactAuth.ts";
 
 export * from "./index.shared";
-export * from "./providers/ReactBrowserProvider";
+export * from "./providers/ReactBrowserProvider.ts";
 
 export class ReactModule {
 	protected readonly alepha = $inject(Alepha);
@@ -14,8 +14,8 @@ export class ReactModule {
 		this.alepha //
 			.with(PageDescriptorProvider)
 			.with(ReactBrowserProvider)
-			.with(Auth);
+			.with(ReactAuth);
 	}
 }
 
-autoInject($page, ReactModule);
+__bind($page, ReactModule);

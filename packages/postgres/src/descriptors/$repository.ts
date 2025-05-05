@@ -1,9 +1,9 @@
 import { __descriptor, KIND, type TObject } from "@alepha/core";
 import type { TableConfig } from "drizzle-orm";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns";
-import type { PostgresProvider } from "../providers/drivers/PostgresProvider";
-import type { Repository } from "../services/Repository";
+import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
+import type { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
+import type { Repository } from "../services/Repository.ts";
 
 const KEY = "REPOSITORY";
 

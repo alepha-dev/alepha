@@ -1,10 +1,10 @@
 import type { TObject, TSchema } from "@sinclair/typebox";
 import { eq, getTableName } from "drizzle-orm";
 import type { PgColumn, PgSelectJoinFn } from "drizzle-orm/pg-core";
-import type { PgManyOptions } from "../constants/PG_SYMBOLS";
-import { PG_MANY, PG_PRIMARY_KEY } from "../constants/PG_SYMBOLS";
-import type { PgQuery, PgQueryWith } from "../interfaces/PgQuery";
-import type { PgAttrField } from "../services/Repository";
+import type { PgManyOptions } from "../constants/PG_SYMBOLS.ts";
+import { PG_MANY, PG_PRIMARY_KEY } from "../constants/PG_SYMBOLS.ts";
+import type { PgQuery, PgQueryWith } from "../interfaces/PgQuery.ts";
+import type { PgAttrField } from "../services/Repository.ts";
 
 /*
 

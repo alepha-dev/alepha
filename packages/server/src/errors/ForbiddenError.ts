@@ -1,7 +1,16 @@
-import { HttpError } from "./HttpError";
+import { HttpError } from "./HttpError.ts";
 
 export class ForbiddenError extends HttpError {
-	constructor(message = "No permission to access this resource") {
-		super(403, "ERR_ACCESS_CONTROL", message);
+	constructor(
+		message = "No permission to access this resource",
+		cause?: unknown,
+	) {
+		super(
+			{
+				message,
+				status: 403,
+			},
+			cause,
+		);
 	}
 }

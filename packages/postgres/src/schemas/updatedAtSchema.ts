@@ -1,6 +1,6 @@
 import { t } from "@alepha/core";
-import { PG_DEFAULT, PG_UPDATED_AT } from "../constants/PG_SYMBOLS";
-import { pgAttr } from "./pgAttr";
+import { PG_DEFAULT, PG_UPDATED_AT } from "../constants/PG_SYMBOLS.ts";
+import { pgAttr } from "./pgAttr.ts";
 
 /**
  *

@@ -1,32 +1,33 @@
-export * from "./Alepha";
+export * from "./Alepha.ts";
 
-export * from "./constants/KIND";
-export * from "./constants/PROVIDER";
+export * from "./constants/KIND.ts";
+export * from "./constants/OPTIONS.ts";
+export * from "./constants/PROVIDER.ts";
 
-export * from "./descriptors/$cursor";
-export * from "./descriptors/$hook";
-export * from "./descriptors/$inject";
-export * from "./descriptors/$interval";
-export * from "./descriptors/$logger";
-export * from "./descriptors/$module";
-export * from "./descriptors/$retry";
+export * from "./descriptors/$cursor.ts";
+export * from "./descriptors/$hook.ts";
+export * from "./descriptors/$inject.ts";
+export * from "./descriptors/$interval.ts";
+export * from "./descriptors/$logger.ts";
+export * from "./descriptors/$module.ts";
+export * from "./descriptors/$retry.ts";
 
-export * from "./errors/AppNotStartedError";
-export * from "./errors/CircularDependencyError";
-export * from "./errors/ContainerLockedError";
-export * from "./errors/NotImplementedError";
-export * from "./errors/TypeBoxError";
+export * from "./errors/AppNotStartedError.ts";
+export * from "./errors/CircularDependencyError.ts";
+export * from "./errors/ContainerLockedError.ts";
+export * from "./errors/NotImplementedError.ts";
+export * from "./errors/TypeBoxError.ts";
 
-export * from "./helpers/EventEmitter";
-export * from "./helpers/descriptor";
-export * from "./helpers/Interval";
-export * from "./helpers/Timeout";
+export * from "./helpers/EventEmitter.ts";
+export * from "./helpers/descriptor.ts";
+export * from "./helpers/Interval.ts";
+export * from "./helpers/Timeout.ts";
 
-export * from "./interfaces/Async";
-export * from "./interfaces/Class";
+export * from "./interfaces/Async.ts";
+export * from "./interfaces/Class.ts";
 
 export * from "./providers/AsyncLocalStorageProvider.ts";
-export * from "./providers/DateTimeProvider";
-export * from "./providers/TypeProvider";
+export * from "./providers/DateTimeProvider.ts";
+export * from "./providers/TypeProvider.ts";
 
-export * from "./services/Logger";
+export * from "./services/Logger.ts";

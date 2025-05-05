@@ -1,5 +1,5 @@
 import type { OptionalKind, Static, TObject } from "@sinclair/typebox";
-import type { PG_DEFAULT } from "../constants/PG_SYMBOLS";
+import type { PG_DEFAULT } from "../constants/PG_SYMBOLS.ts";
 
 export type InferInsert<T extends TObject> = StaticEntry<T> &
 	StaticDefaultEntry<T>;

@@ -10,7 +10,7 @@ import type {
 	TReadonly,
 	TSchema,
 } from "@sinclair/typebox";
-import type { PG_DEFAULT } from "../constants/PG_SYMBOLS";
+import type { PG_DEFAULT } from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Fork of the original typebox schema "TObject".

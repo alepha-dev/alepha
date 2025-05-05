@@ -1,19 +1,19 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, autoInject, t } from "@alepha/core";
+import { $inject, Alepha, __bind, t } from "@alepha/core";
 import { MemoryTopicProvider, RedisTopicProvider } from "@alepha/topic";
-import { $lock } from "./descriptors/$lock";
-import { LockDescriptorProvider } from "./providers/LockDescriptorProvider";
-import { LockProvider } from "./providers/LockProvider";
-import { LockTopicProvider } from "./providers/LockTopicProvider";
-import { MemoryLockProvider } from "./providers/MemoryLockProvider";
-import { RedisLockProvider } from "./providers/RedisLockProvider";
+import { $lock } from "./descriptors/$lock.ts";
+import { LockDescriptorProvider } from "./providers/LockDescriptorProvider.ts";
+import { LockProvider } from "./providers/LockProvider.ts";
+import { LockTopicProvider } from "./providers/LockTopicProvider.ts";
+import { MemoryLockProvider } from "./providers/MemoryLockProvider.ts";
+import { RedisLockProvider } from "./providers/RedisLockProvider.ts";
 
-export * from "./descriptors/$lock";
-export * from "./providers/LockDescriptorProvider";
-export * from "./providers/LockProvider";
-export * from "./providers/LockTopicProvider";
-export * from "./providers/MemoryLockProvider";
-export * from "./providers/RedisLockProvider";
+export * from "./descriptors/$lock.ts";
+export * from "./providers/LockDescriptorProvider.ts";
+export * from "./providers/LockProvider.ts";
+export * from "./providers/LockTopicProvider.ts";
+export * from "./providers/MemoryLockProvider.ts";
+export * from "./providers/RedisLockProvider.ts";
 
 const envSchema = t.object({
 	LOCK_PROVIDER: t.enum(["memory", "redis"], { default: "memory" }),
@@ -50,4 +50,4 @@ export class LockModule {
 	}
 }
 
-autoInject($lock, LockModule);
+__bind($lock, LockModule);

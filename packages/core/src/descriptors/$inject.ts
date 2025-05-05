@@ -1,9 +1,8 @@
-import type { TObject } from "@sinclair/typebox";
-import { PROVIDER } from "../constants/PROVIDER";
-import type { Class } from "../interfaces/Class";
-import type { Static } from "../providers/TypeProvider";
-import { TypeGuard } from "../providers/TypeProvider";
-import { $cursor } from "./$cursor";
+import type { Static, TObject } from "@sinclair/typebox";
+import { PROVIDER } from "../constants/PROVIDER.ts";
+import type { Class } from "../interfaces/Class.ts";
+import { TypeGuard } from "../providers/TypeProvider.ts";
+import { $cursor } from "./$cursor.ts";
 
 /**
  * Get the instance of the specified type from the context.

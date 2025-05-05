@@ -1,7 +1,7 @@
 import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 import { pg, table } from "../../src";
-import type { userEntitySchema } from "./userEntitySchema";
+import type { userEntitySchema } from "./userEntitySchema.ts";
 
 export const bigEntitySchema = t.object({
 	id: pg.primaryKey(pg.serial()),

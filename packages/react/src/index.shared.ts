@@ -1,28 +1,28 @@
-export { default as NestedView } from "./components/NestedView";
-export { default as Link } from "./components/Link";
+export { default as NestedView } from "./components/NestedView.tsx";
+export { default as Link } from "./components/Link.tsx";
 
-export * from "./contexts/RouterContext";
-export * from "./contexts/RouterLayerContext";
+export * from "./contexts/RouterContext.ts";
+export * from "./contexts/RouterLayerContext.ts";
 
-export * from "./services/Auth";
+export * from "./services/ReactAuth.ts";
 
-export * from "./descriptors/$page";
-export * from "./descriptors/$auth";
+export * from "./descriptors/$page.ts";
+export * from "./descriptors/$auth.ts";
 
-export * from "./hooks/RouterHookApi";
+export * from "./hooks/RouterHookApi.ts";
 
 // --- Hooks
 // - core
-export * from "./hooks/useInject";
+export * from "./hooks/useInject.ts";
 // - http
-export * from "./hooks/useClient";
+export * from "./hooks/useClient.ts";
 // - router
-export * from "./hooks/useQueryParams";
-export * from "./hooks/useRouter";
-export * from "./hooks/useRouterEvents";
-export * from "./hooks/useRouterState";
-export * from "./hooks/useActive";
+export * from "./hooks/useQueryParams.ts";
+export * from "./hooks/useRouter.ts";
+export * from "./hooks/useRouterEvents.ts";
+export * from "./hooks/useRouterState.ts";
+export * from "./hooks/useActive.ts";
 // - auth
-export * from "./hooks/useAuth";
+export * from "./hooks/useAuth.ts";
 
-export * from "./services/Router";
+export * from "./services/ReactRouter.ts";

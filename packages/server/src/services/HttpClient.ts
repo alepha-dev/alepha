@@ -1,22 +1,26 @@
 import { $cache } from "@alepha/cache";
 import {
+	$inject,
+	Alepha,
 	type DurationLike,
 	EventEmitter,
 	type TSchema,
-	TypeGuard,
+	t,
 } from "@alepha/core";
-import { $inject, Alepha, t } from "@alepha/core";
 import type {
-	RequestConfig,
+	ClientRequestEntry,
+	ClientRequestFetchOptions,
 	RouteDescriptor,
-	RouteDescriptorOptions,
-	RouteFetchRequestOptions,
+} from "../descriptors/$action.ts";
+import { HttpError } from "../errors/HttpError.ts";
+import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
+import type {
+	RequestConfigSchema,
 	RouteMethod,
-	RouteRequestArgs,
-} from "../descriptors/$route";
-import { HttpError } from "../errors/HttpError";
-import { UnauthorizedError } from "../errors/UnauthorizedError";
-import { errorSchema } from "../schemas/errorSchema";
+	ServerHandler,
+	ServerRequestConfigEntry,
+} from "../providers/ServerRouterProvider.ts";
+import { errorSchema } from "../schemas/errorSchema.ts";
 
 const envSchema = t.object({
 	SERVER_API_URL: t.string({
@@ -24,9 +28,6 @@ const envSchema = t.object({
 	}),
 });
 
-/**
- *
- */
 export class HttpClient extends EventEmitter<{
 	onError: HttpError;
 	beforeFetch: FetchBeforeHook;
@@ -41,66 +42,51 @@ export class HttpClient extends EventEmitter<{
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
 	protected host = "";
 
-	/**
-	 *
-	 * @param url
-	 * @param options
-	 */
 	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
 		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
 	}
 
-	/**
-	 *
-	 */
 	public async clear() {
 		await this.cache.invalidate();
 	}
 
-	/**
-	 * Create a fetcher function.
-	 *
-	 * @param routeDescriptorOptions - The route descriptor options.
-	 * @param additionalArgs - Additional arguments to pass to the fetcher.
-	 */
-	public createFetcher(
-		routeDescriptorOptions: RouteDescriptorOptions<RequestConfig>,
-		additionalArgs?: FetchFactoryAdditionalOptions,
+	public createFetchFunction(
+		link: HttpClientLink,
+		options?: FetchFactoryAdditionalOptions,
 	) {
 		return (
-			config: RouteRequestArgs,
-			fetchRequestOptions: RouteFetchRequestOptions = {},
+			config: Partial<ClientRequestEntry> = {},
+			fetchOptions: ClientRequestFetchOptions = {},
 		) => {
-			return this.request(
+			const host =
+				typeof options?.host === "function" ? options.host() : options?.host;
+			return this.request({
 				config,
-				fetchRequestOptions,
-				routeDescriptorOptions,
-				additionalArgs,
-			);
+				fetch: fetchOptions,
+				link,
+				host: host ?? this.host,
+			});
 		};
 	}
 
-	/**
-	 *
-	 * @param config
-	 * @param fetchRequestOptions
-	 * @param routeDescriptorOptions
-	 * @param additionalArgs
-	 */
-	public async request(
-		config: RouteRequestArgs,
-		fetchRequestOptions: RouteFetchRequestOptions = {},
-		routeDescriptorOptions: RouteDescriptorOptions<RequestConfig> = {},
-		additionalArgs: FetchFactoryAdditionalOptions = {},
-	) {
-		const init: RequestInit = {
-			...fetchRequestOptions.request,
+	public async request(args: {
+		link: HttpClientLink;
+		fetch?: ClientRequestFetchOptions;
+		config?: ServerRequestConfigEntry;
+		host?: string;
+	}) {
+		const route = args.link;
+		const options = args.fetch ?? {};
+		const config = args.config ?? {};
+		const host = args.host ?? "";
+
+		const request: RequestInit = {
+			...options.request,
 		};
 
-		const method = routeDescriptorOptions.method?.toUpperCase() ?? "GET";
+		const method = route.method;
 		const headers: Record<string, string> = {};
-		const host = additionalArgs?.host ?? "";
-		const url = this.url(host, routeDescriptorOptions, config);
+		const url = this.url(host, route, config);
 		const cacheKey = url.replace(host, "");
 
 		const data = await this.cache.get(cacheKey);
@@ -109,142 +95,70 @@ export class HttpClient extends EventEmitter<{
 		}
 
 		await this.emit("beforeFetch", {
-			route: routeDescriptorOptions,
+			route,
 			config,
-			options: fetchRequestOptions,
+			options,
 			headers,
-			request: init,
+			request,
 		});
 
-		this.method(init, routeDescriptorOptions);
+		request.method = method;
 
-		await this.body(init, headers, routeDescriptorOptions, config);
+		await this.body(request, headers, route, config);
 
-		if (fetchRequestOptions.bearer) {
-			if (typeof fetchRequestOptions.bearer === "string") {
-				headers.Authorization = `Bearer ${fetchRequestOptions.bearer}`;
-			} else {
-				headers.Authorization = `Bearer ${await fetchRequestOptions.bearer()}`;
-			}
-		}
-
-		await this.body(init, headers, routeDescriptorOptions, config);
-
-		init.headers = headers;
-
-		const request = {
-			...init,
-			...fetchRequestOptions.request,
+		request.headers = {
+			...config.headers,
+			...request.headers,
+			...headers,
 		};
 
 		const response = await this.fetch(url, request, {
-			schema: this.getResponseSchema(routeDescriptorOptions.schema),
-			safe: fetchRequestOptions.test?.safe,
+			schema: route.schema?.response,
 		});
 
-		if (fetchRequestOptions.cache !== undefined && method === "GET") {
+		if (options.cache !== undefined && method === "GET") {
 			await this.cache.set(
 				cacheKey,
 				response,
-				typeof fetchRequestOptions.cache === "boolean"
-					? undefined
-					: fetchRequestOptions.cache,
+				typeof options.cache === "boolean" ? undefined : options.cache,
 			);
 		}
 
 		return response;
 	}
 
-	/**
-	 * Get the response schema from the request config.
-	 *
-	 * @param schema
-	 */
-	protected getResponseSchema(schema?: RequestConfig): TSchema | undefined {
-		if (!schema?.response) return;
-
-		if (TypeGuard.IsSchema(schema.response)) {
-			return schema.response;
-		}
-
-		const statusCodes = [200, 201, 204] as const;
-
-		for (const code of statusCodes) {
-			if (code in schema.response) {
-				const response = (schema.response as { [code]: TSchema })[code];
-				if (TypeGuard.IsSchema(response)) {
-					return response;
-				}
-			}
-		}
-	}
-
-	/**
-	 * Create the URL for the request.
-	 *
-	 * @param host
-	 * @param options
-	 * @param args
-	 * @protected
-	 */
 	protected url(
 		host: string,
-		options: RouteDescriptorOptions<RequestConfig>,
-		args: RouteRequestArgs<RequestConfig>,
+		link: HttpClientLink,
+		args: ServerRequestConfigEntry,
 	) {
-		let url = host + (options.url ?? "/");
+		let url = host + link.path;
 
-		url = this.pathVariables(url, options, args);
+		url = this.pathVariables(url, link, args);
 
-		url = this.queryParams(url, options, args);
+		url = this.queryParams(url, link, args);
 
 		return url;
 	}
 
-	/**
-	 * Set the method for the request.
-	 *
-	 * @param init
-	 * @param options
-	 * @protected
-	 */
-	protected method(
-		init: RequestInit,
-		options: RouteDescriptorOptions<RequestConfig>,
-	) {
-		init.method = options.method ?? (options.schema?.body ? "post" : "get");
-	}
-
-	/**
-	 * Set the body for the request.
-	 *
-	 * @param init
-	 * @param headers
-	 * @param options
-	 * @param args
-	 * @protected
-	 */
 	protected async body(
 		init: RequestInit,
 		headers: Record<string, string>,
-		options: RouteDescriptorOptions<RequestConfig>,
-		args: RouteRequestArgs<RequestConfig> = {},
+		link: HttpClientLink,
+		args: ServerRequestConfigEntry = {},
 	) {
-		if (options.parse === "multipart/form-data") {
+		if (link.contentType === "multipart/form-data") {
+			headers["content-type"] = "multipart/form-data";
+
 			const formData = new FormData();
 
-			const body = args.body as unknown as Record<string, any>;
-			if (options.schema?.body && typeof body === "object") {
-				for (const key of Object.keys(body)) {
-					if (typeof body[key].toBlob === "function") {
-						formData.append(key, body[key].toBlob());
-						continue;
-					}
-
-					if (typeof body[key].toBuffer === "function") {
-						const arr = await body[key].toBuffer();
-						formData.append(key, new Blob(arr));
-					}
+			for (const [key, value] of Object.entries(args.body ?? {})) {
+				if (typeof value === "string") {
+					formData.append(key, value);
+					continue;
+				}
+				if (value instanceof Blob) {
+					formData.append(key, value);
 				}
 			}
 
@@ -253,25 +167,17 @@ export class HttpClient extends EventEmitter<{
 			return;
 		}
 
-		if (!init.body && options.schema?.body) {
+		if (!init.body && link.schema?.body) {
 			init.body = JSON.stringify(
-				this.alepha.parse(options.schema?.body, args.body),
+				this.alepha.parse(link.schema?.body, args.body),
 			);
 		}
 
 		if (init.body) {
-			headers["Content-Type"] = "application/json";
+			headers["content-type"] = "application/json";
 		}
 	}
 
-	/**
-	 * Perform the fetch request.
-	 *
-	 * @param url
-	 * @param request
-	 * @param options - {FetchRunOptions}
-	 * @protected
-	 */
 	public async fetch(
 		url: string,
 		request: RequestInit,
@@ -319,23 +225,16 @@ export class HttpClient extends EventEmitter<{
 	): Promise<Response | any> {
 		if (options.schema) {
 			if (response.status === 204) {
-				return response;
+				return;
 			}
 
-			const json = await response.json();
+			const text = await response.text();
+
+			const json = JSON.parse(text);
 
 			if (response.status >= 400) {
-				if (options.safe) {
-					return json;
-				}
-
 				const jsonError = this.alepha.parse(errorSchema, json);
-
-				const error = new HttpError(
-					jsonError.statusCode,
-					jsonError.code ?? "",
-					jsonError.message,
-				);
+				const error = new HttpError(jsonError);
 
 				await this.emit("onError", error);
 
@@ -348,22 +247,14 @@ export class HttpClient extends EventEmitter<{
 		return response;
 	}
 
-	/**
-	 * Replace path variables in the URL.
-	 *
-	 * @param url
-	 * @param options
-	 * @param args
-	 * @protected
-	 */
 	protected pathVariables(
 		url: string,
-		options: RouteDescriptorOptions<RequestConfig>,
-		args: RouteRequestArgs<RequestConfig> = {},
+		action: HttpClientLink,
+		args: ServerRequestConfigEntry = {},
 	): string {
-		if (options.schema?.params && typeof args.params === "object") {
+		if (action.schema?.params && typeof args.params === "object") {
 			const params = this.alepha.parse(
-				options.schema.params,
+				action.schema.params,
 				args.params,
 			) as Record<string, any>;
 
@@ -376,22 +267,14 @@ export class HttpClient extends EventEmitter<{
 		return url;
 	}
 
-	/**
-	 * Add query parameters to the URL.
-	 *
-	 * @param url
-	 * @param options
-	 * @param args
-	 * @protected
-	 */
 	protected queryParams(
 		url: string,
-		options: RouteDescriptorOptions<RequestConfig>,
-		args: RouteRequestArgs<RequestConfig> = {},
+		action: HttpClientLink,
+		args: ServerRequestConfigEntry = {},
 	): string {
-		if (options.schema?.query && typeof args.query === "object") {
+		if (action.schema?.query && typeof args.query === "object") {
 			return `${url}?${new URLSearchParams(
-				this.alepha.parse(options.schema.query, args?.query ?? {}) as Record<
+				this.alepha.parse(action.schema.query, args.query ?? {}) as Record<
 					string,
 					string
 				>,
@@ -400,24 +283,28 @@ export class HttpClient extends EventEmitter<{
 		return url;
 	}
 
-	/**
-	 *
-	 * @param options
-	 */
 	public of<T extends object>(
 		options: {
 			group?: string;
+			host?: string | (() => string);
 		} = {},
-	): HttpVirtualClient2<T> {
-		return new Proxy<HttpVirtualClient2<T>>({} as HttpVirtualClient2<T>, {
+	): HttpVirtualClient<T> {
+		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
 			get: (_, prop) => {
 				if (typeof prop !== "string") {
 					return;
 				}
 
-				const $ = async (config: any = {}, options: any = {}) => {
-					const links = await this.getLinks();
+				const $ = async (config: any = {}) => {
+					const host: string | undefined =
+						typeof options.host === "function" ? options.host() : options.host;
+
+					const links = await this.getLinks({
+						host,
+					});
+
 					const link = links.find((a) => a.name === prop);
+
 					if (!link) {
 						const error = new UnauthorizedError(`Action ${prop} not found.`);
 						await this.emit("onError", error);
@@ -426,32 +313,41 @@ export class HttpClient extends EventEmitter<{
 
 					// if a handler is defined, use it (ssr)
 					if (link.handler) {
-						return link.handler(
-							{
-								url: link.url,
-								cookies: config.cookies ?? {},
-								query: config.query ?? {},
-								body: config.body ?? {},
-								params: config.params ?? {},
-								headers: config.headers ?? {},
+						return link.handler({
+							method: link.method,
+							url: new URL(`http://localhost${link.path}`),
+							query: config.query ?? {},
+							body: config.body ?? {},
+							params: config.params ?? {},
+							headers: config.headers ?? {},
+							metadata: {},
+							cookies: { req: {}, res: {} },
+							raw: {},
+							reply: {
+								headers: {},
+								redirect: () => {},
 							},
-							options,
-						);
+						});
 					}
 
 					// else, make a request
-					return this.request(config, options, {
-						method: link.method,
-						url: link.url.startsWith(this.env.SERVER_API_URL)
-							? link.url
-							: `${this.env.SERVER_API_URL}${link.url}`,
-						schema: {
-							body: t.any(),
-							query: t.any(),
-							params: t.any(),
-							response: t.any(),
+					return this.request({
+						host: host ?? this.env.SERVER_API_URL,
+						config,
+						link: {
+							...link,
+							schema: {
+								body: t.any(),
+								query: t.any(),
+								params: t.any(),
+								response: t.any(),
+							},
 						},
 					});
+				};
+
+				$.fetch = (args: any) => {
+					return $(args);
 				};
 
 				$.can = () => {
@@ -475,15 +371,13 @@ export class HttpClient extends EventEmitter<{
 		return !!links?.some((link) => link.name === name);
 	}
 
-	/**
-	 * Get the links from the server.
-	 *
-	 * @param force - Skip the cache and fetch the links again.
-	 */
-	public async getLinks(force = false): Promise<HttpClientLink[]> {
-		if (!this.links || force) {
+	public async getLinks(
+		opts: { force?: boolean; host?: string } = {},
+	): Promise<HttpClientLink[]> {
+		if (!this.links || opts.force) {
+			const host = opts.host ?? "";
 			this.links = await this.json<any[]>(
-				`${this.env.SERVER_API_URL}${this.URL_LINKS}`,
+				`${host}${this.env.SERVER_API_URL}${this.URL_LINKS}`,
 			);
 		}
 
@@ -494,9 +388,9 @@ export class HttpClient extends EventEmitter<{
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface FetchBeforeHook {
-	route: RouteDescriptorOptions<RequestConfig>;
-	config: RouteRequestArgs<RequestConfig>;
-	options: RouteFetchRequestOptions;
+	route: HttpClientLink;
+	config: ServerRequestConfigEntry;
+	options: ClientRequestFetchOptions;
 	headers: Record<string, string>;
 	request: RequestInit;
 }
@@ -509,35 +403,28 @@ export type HttpClientPendingRequests = Record<
 export type HttpClientHookFn = (args: FetchBeforeHook) => Promise<void> | void;
 
 export interface FetchFactoryAdditionalOptions {
-	host?: string;
+	host?: string | (() => string);
 }
 
 export interface FetchRunOptions {
 	schema?: TSchema;
 	raw?: boolean;
 	cache?: boolean | DurationLike;
-	safe?: boolean;
 }
 
 export interface HttpClientLink {
-	name: string;
 	method: RouteMethod;
-	url: string;
+	path: string;
+	name: string;
 	group?: string;
-	schema?: any;
-	handler?: (config: any, options: any) => Promise<any>;
+	contentType?: string; // application/json or multipart/form-data
 	protected?: boolean;
+	// only for server actions, not for client actions
+	schema?: RequestConfigSchema;
+	handler?: ServerHandler;
 }
 
 export type HttpVirtualClient<T> = {
-	[K in keyof T]: T[K] extends RouteDescriptor
-		? T[K] & {
-				can: () => boolean;
-			}
-		: never;
-};
-
-export type HttpVirtualClient2<T> = {
 	[K in keyof T as T[K] extends RouteDescriptor ? K : never]: T[K] & {
 		can: () => boolean;
 	};

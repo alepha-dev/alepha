@@ -1,12 +1,12 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
-import type { PageDescriptorOptions } from "../descriptors/$page";
-import { $page } from "../descriptors/$page";
-import type { PageRoute, PageRouteEntry } from "../services/Router";
-import { Router } from "../services/Router";
+import type { PageDescriptorOptions } from "../descriptors/$page.ts";
+import { $page } from "../descriptors/$page.ts";
+import type { PageRoute, PageRouteEntry } from "../services/ReactRouter.ts";
+import { ReactRouter } from "../services/ReactRouter.ts";
 
 export class PageDescriptorProvider {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly router = $inject(Router);
+	protected readonly router = $inject(ReactRouter);
 
 	protected readonly configure = $hook({
 		name: "configure",

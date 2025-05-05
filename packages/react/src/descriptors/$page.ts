@@ -1,11 +1,10 @@
 import type { Async, Static, TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { UserAccountToken } from "@alepha/security";
-import type { CookieManager, HttpLink } from "@alepha/server";
+import type { Cookies, HttpClientLink } from "@alepha/server";
 import type { FC } from "react";
-import type { RouterHookApi } from "../hooks/RouterHookApi";
-import {} from "../services/Router";
-import type { RouterRenderHeadContext } from "../services/Router";
+import type { RouterHookApi } from "../hooks/RouterHookApi.ts";
+import type { RouterRenderHeadContext } from "../services/ReactRouter.ts";
 
 export const pageDescriptorKey = "PAGE";
 
@@ -93,8 +92,8 @@ export interface PageDescriptorOptions<
 
 export interface PageContext {
 	user?: UserAccountToken;
-	cookies?: CookieManager;
-	links?: HttpLink[];
+	cookies?: Cookies;
+	links?: HttpClientLink[];
 }
 
 export interface PageDescriptorConfigValue<

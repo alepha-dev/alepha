@@ -1,7 +1,7 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
 import { $repository, pg, Repository, table } from "../src";
-import { legacyIdSchema } from "../src/schemas/legacyIdSchema";
+import { legacyIdSchema } from "../src/schemas/legacyIdSchema.ts";
 
 const testSchema = pg.entity({
 	name: t.string(),

@@ -2,7 +2,7 @@ import { Alepha, t } from "@alepha/core";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { test } from "vitest";
-import { NestedView, Router } from "../src";
+import { NestedView, ReactRouter } from "../src";
 
 const str = (r: { element: ReactNode }): string => {
 	return renderToString(r.element).replaceAll("<!-- -->", "");
@@ -10,7 +10,7 @@ const str = (r: { element: ReactNode }): string => {
 
 test("Router - Basic", async ({ expect }) => {
 	const alepha = Alepha.create();
-	const router = alepha.get(Router);
+	const router = alepha.get(ReactRouter);
 
 	router.add({
 		name: "Test",
@@ -24,7 +24,7 @@ test("Router - Basic", async ({ expect }) => {
 
 test("Router - NestedView", async ({ expect }) => {
 	const alepha = Alepha.create();
-	const router = alepha.get(Router);
+	const router = alepha.get(ReactRouter);
 
 	router.add({
 		name: "Test",
@@ -61,7 +61,7 @@ test("Router - NestedView", async ({ expect }) => {
 
 test("Router - All routes", async ({ expect }) => {
 	const alepha = Alepha.create();
-	const router = alepha.get(Router);
+	const router = alepha.get(ReactRouter);
 
 	router.add({
 		children: [

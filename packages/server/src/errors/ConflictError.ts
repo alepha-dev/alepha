@@ -1,7 +1,13 @@
-import { HttpError } from "./HttpError";
+import { HttpError } from "./HttpError.ts";
 
 export class ConflictError extends HttpError {
-	constructor(message = "Entity already exists") {
-		super(409, "ERR_CONFLICT", message);
+	constructor(message = "Entity already exists", cause?: unknown) {
+		super(
+			{
+				message,
+				status: 409,
+			},
+			cause,
+		);
 	}
 }

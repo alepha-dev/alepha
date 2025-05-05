@@ -1,35 +1,35 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, autoInject, t } from "@alepha/core";
-import { $repository } from "./descriptors/$repository";
-import { $sequence } from "./descriptors/$sequence";
-import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider";
-import { PostgresProvider } from "./providers/drivers/PostgresProvider";
-import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider";
-import { SequenceProvider } from "./providers/SequenceProvider";
+import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { $repository } from "./descriptors/$repository.ts";
+import { $sequence } from "./descriptors/$sequence.ts";
+import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
+import { SequenceProvider } from "./providers/SequenceProvider.ts";
+import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
+import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
-export * from "./constants/PG_SCHEMA";
-export * from "./constants/PG_SYMBOLS";
-export * from "./descriptors/$repository";
-export * from "./descriptors/$sequence";
-export * from "./descriptors/$transaction";
-export * from "./errors/EntityNotFoundError";
-export * from "./helpers/nullToUndefined";
-export * from "./helpers/pgTableSchema";
-export * from "./helpers/schemaToColumns";
-export * from "./interfaces/FilterOperators";
-export * from "./interfaces/PgQuery";
-export * from "./interfaces/PgQueryWhere";
-export * from "./providers/drivers/NodePostgresProvider";
-export * from "./providers/drivers/PostgresProvider";
-export * from "./providers/PostgresTypeProvider";
-export * from "./providers/RepositoryDescriptorProvider";
-export * from "./schemas/entitySchema";
-export * from "./schemas/pageQuerySchema";
-export * from "./schemas/pageSchema";
-export * from "./services/Repository";
-export * from "./types/schema";
+export * from "./constants/PG_SCHEMA.ts";
+export * from "./constants/PG_SYMBOLS.ts";
+export * from "./descriptors/$repository.ts";
+export * from "./descriptors/$sequence.ts";
+export * from "./descriptors/$transaction.ts";
+export * from "./errors/EntityNotFoundError.ts";
+export * from "./helpers/nullToUndefined.ts";
+export * from "./helpers/pgTableSchema.ts";
+export * from "./helpers/schemaToColumns.ts";
+export * from "./interfaces/FilterOperators.ts";
+export * from "./interfaces/PgQuery.ts";
+export * from "./interfaces/PgQueryWhere.ts";
+export * from "./providers/drivers/NodePostgresProvider.ts";
+export * from "./providers/drivers/PostgresProvider.ts";
+export * from "./providers/PostgresTypeProvider.ts";
+export * from "./providers/RepositoryDescriptorProvider.ts";
+export * from "./schemas/entitySchema.ts";
+export * from "./schemas/pageQuerySchema.ts";
+export * from "./schemas/pageSchema.ts";
+export * from "./services/Repository.ts";
+export * from "./types/schema.ts";
 
 const envSchema = t.object({
 	POSTGRES_PROVIDER: t.optional(t.enum(["pg"])),
@@ -67,5 +67,5 @@ export class PostgresModule {
 	}
 }
 
-autoInject($repository, PostgresModule);
-autoInject($sequence, PostgresModule);
+__bind($repository, PostgresModule);
+__bind($sequence, PostgresModule);

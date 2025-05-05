@@ -1,6 +1,6 @@
 import type { DurationLike } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
-import type { CacheProvider } from "../providers/CacheProvider";
+import type { CacheProvider } from "../providers/CacheProvider.ts";
 
 const KEY = "CACHE";
 

@@ -9,14 +9,14 @@ const migrate = $command({
 	when: ["migrate", "m"],
 	description: "Run alepha migrations",
 	handler: async () => {
-		const alepha = Alepha.create({
+		await Alepha.create({
 			env: {
 				DATABASE_URL,
 				DATABASE_MIGRATIONS_FOLDER: "./drizzle",
 			},
-		}).with(PostgresModule);
-		await alepha.start();
-		await alepha.stop();
+		})
+			.with(PostgresModule)
+			.start();
 	},
 });
 

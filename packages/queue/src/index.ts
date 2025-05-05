@@ -1,17 +1,17 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, autoInject, t } from "@alepha/core";
-import { $queue } from "./descriptors/$queue";
-import { MemoryQueueProvider } from "./providers/MemoryQueueProvider";
-import { QueueDescriptorProvider } from "./providers/QueueDescriptorProvider";
-import { QueueProvider } from "./providers/QueueProvider";
-import { RedisQueueProvider } from "./providers/RedisQueueProvider";
+import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { $queue } from "./descriptors/$queue.ts";
+import { MemoryQueueProvider } from "./providers/MemoryQueueProvider.ts";
+import { QueueDescriptorProvider } from "./providers/QueueDescriptorProvider.ts";
+import { QueueProvider } from "./providers/QueueProvider.ts";
+import { RedisQueueProvider } from "./providers/RedisQueueProvider.ts";
 
-export * from "./descriptors/$consumer";
-export * from "./descriptors/$queue";
-export * from "./providers/MemoryQueueProvider";
-export * from "./providers/QueueDescriptorProvider";
-export * from "./providers/QueueProvider";
-export * from "./providers/RedisQueueProvider";
+export * from "./descriptors/$consumer.ts";
+export * from "./descriptors/$queue.ts";
+export * from "./providers/MemoryQueueProvider.ts";
+export * from "./providers/QueueDescriptorProvider.ts";
+export * from "./providers/QueueProvider.ts";
+export * from "./providers/RedisQueueProvider.ts";
 
 const envSchema = t.object({
 	QUEUE_PROVIDER: t.enum(["memory", "redis"], { default: "memory" }),
@@ -38,4 +38,4 @@ export class QueueModule {
 	}
 }
 
-autoInject($queue, QueueModule);
+__bind($queue, QueueModule);

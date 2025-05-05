@@ -1,7 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { expect, test } from "vitest";
 import { $repository } from "../src";
-import { userEntity } from "./fixtures/userEntitySchema";
+import { userEntity } from "./fixtures/userEntitySchema.ts";
 
 test("PostgresProvider - basic", async () => {
 	class UserService {

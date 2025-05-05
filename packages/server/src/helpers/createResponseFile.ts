@@ -6,7 +6,7 @@ export const createResponseFile = (
 	const response = new Response(buffer as BodyInit);
 
 	response.headers.set(
-		"Content-Type",
+		"content-type",
 		contentType ?? "application/octet-stream",
 	);
 

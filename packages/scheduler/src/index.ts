@@ -1,9 +1,9 @@
-import { $inject, Alepha, autoInject } from "@alepha/core";
-import { $scheduler } from "./descriptors/$scheduler";
-import { SchedulerDescriptorProvider } from "./providers/SchedulerDescriptorProvider";
+import { $inject, Alepha, __bind } from "@alepha/core";
+import { $scheduler } from "./descriptors/$scheduler.ts";
+import { SchedulerDescriptorProvider } from "./providers/SchedulerDescriptorProvider.ts";
 
-export * from "./descriptors/$scheduler";
-export * from "./providers/SchedulerDescriptorProvider";
+export * from "./descriptors/$scheduler.ts";
+export * from "./providers/SchedulerDescriptorProvider.ts";
 
 export class SchedulerModule {
 	protected readonly alepha = $inject(Alepha);
@@ -13,4 +13,4 @@ export class SchedulerModule {
 	}
 }
 
-autoInject($scheduler, SchedulerModule);
+__bind($scheduler, SchedulerModule);

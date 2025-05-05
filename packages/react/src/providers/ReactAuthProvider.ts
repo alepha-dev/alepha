@@ -3,9 +3,9 @@ import {
 	$cookie,
 	$route,
 	BadRequestError,
-	type CookieManager,
-	type HttpLink,
-	ServerCookieProvider,
+	type Cookies,
+	type HttpClientLink,
+	ServerCookiesProvider,
 } from "@alepha/server";
 import {
 	type Configuration,
@@ -18,13 +18,13 @@ import {
 	randomPKCECodeVerifier,
 	refreshTokenGrant,
 } from "openid-client";
-import { $auth } from "../descriptors/$auth";
-import type { PreviousLayerData } from "../services/Router";
+import { $auth } from "../descriptors/$auth.ts";
+import type { PreviousLayerData } from "../services/ReactRouter.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly serverCookieProvider = $inject(ServerCookieProvider);
+	protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
 	protected authProviders: AuthProvider[] = [];
 
 	protected readonly authorizationCode = $cookie({
@@ -105,7 +105,7 @@ export class ReactAuthProvider {
 	 */
 	protected readonly onRequest = $hook({
 		name: "server:onRequest",
-		after: this.serverCookieProvider,
+		after: this.serverCookiesProvider,
 		handler: async ({ request }) => {
 			if (
 				request.cookies &&
@@ -114,7 +114,7 @@ export class ReactAuthProvider {
 			) {
 				const tokens = await this.refresh(request.cookies);
 				if (tokens) {
-					request.headers.rep("authorization", `Bearer ${tokens.access_token}`);
+					request.headers.authorization = `Bearer ${tokens.access_token}`;
 				}
 
 				if (
@@ -133,7 +133,7 @@ export class ReactAuthProvider {
 	 * @protected
 	 */
 	protected async refresh(
-		cookies: CookieManager,
+		cookies: Cookies,
 	): Promise<SessionTokens | undefined> {
 		const now = Date.now();
 		const tokens = this.tokens.get(cookies);
@@ -188,7 +188,7 @@ export class ReactAuthProvider {
 	public readonly login = $route({
 		security: false,
 		internal: true,
-		url: "/_oauth/login",
+		path: "/_oauth/login",
 		group: "auth",
 		method: "GET",
 		schema: {
@@ -197,7 +197,7 @@ export class ReactAuthProvider {
 				provider: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ query, cookies, url }) => {
+		handler: async ({ query, cookies, url, reply }) => {
 			const { client, redirectUri } = this.provider(query.provider);
 
 			const codeVerifier = randomPKCECodeVerifier();
@@ -221,12 +221,7 @@ export class ReactAuthProvider {
 				redirectUri: query.redirect ?? "/",
 			});
 
-			return new Response("", {
-				status: 302,
-				headers: {
-					Location: buildAuthorizationUrl(client, parameters).toString(),
-				},
-			});
+			reply.redirect(buildAuthorizationUrl(client, parameters).toString());
 		},
 	});
 
@@ -236,7 +231,7 @@ export class ReactAuthProvider {
 	public readonly callback = $route({
 		security: false,
 		internal: true,
-		url: "/_oauth/callback",
+		path: "/_oauth/callback",
 		group: "auth",
 		method: "GET",
 		schema: {
@@ -244,7 +239,7 @@ export class ReactAuthProvider {
 				provider: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ url, cookies, query }) => {
+		handler: async ({ url, cookies, query, reply }) => {
 			const { client } = this.provider(query.provider);
 
 			const authorizationCode = this.authorizationCode.get(cookies);
@@ -268,7 +263,7 @@ export class ReactAuthProvider {
 				this.user.set(cookies, user);
 			}
 
-			return Response.redirect(authorizationCode.redirectUri ?? "/");
+			reply.redirect(authorizationCode.redirectUri ?? "/");
 		},
 	});
 
@@ -308,7 +303,7 @@ export class ReactAuthProvider {
 	public readonly logout = $route({
 		security: false,
 		internal: true,
-		url: "/_oauth/logout",
+		path: "/_oauth/logout",
 		group: "auth",
 		method: "GET",
 		schema: {
@@ -317,7 +312,7 @@ export class ReactAuthProvider {
 				provider: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ query, cookies }) => {
+		handler: async ({ query, cookies, reply }) => {
 			const { client } = this.provider(query.provider);
 			const tokens = this.tokens.get(cookies);
 			const idToken = tokens?.id_token;
@@ -333,7 +328,12 @@ export class ReactAuthProvider {
 			this.tokens.del(cookies);
 			this.user.del(cookies);
 
-			return Response.redirect(buildEndSessionUrl(client, params).toString());
+			const location = buildEndSessionUrl(client, params).toString();
+
+			reply.redirect(buildEndSessionUrl(client, params).toString());
+
+			reply.headers.location = buildEndSessionUrl(client, params).toString();
+			reply.status = 302;
 		},
 	});
 
@@ -422,5 +422,5 @@ export interface ReactHydrationState {
 	user?: ReactUser;
 	auth?: "server" | "client";
 	layers?: PreviousLayerData[];
-	links?: HttpLink[];
+	links?: HttpClientLink[];
 }

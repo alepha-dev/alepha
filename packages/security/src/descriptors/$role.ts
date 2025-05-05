@@ -1,5 +1,5 @@
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
-import type { Role } from "../schemas/roleSchema";
+import type { Role } from "../schemas/roleSchema.ts";
 
 const KEY = "ROLE";
 

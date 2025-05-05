@@ -1,6 +1,6 @@
 import type { Timeout } from "@alepha/core";
 import { $inject, $logger, DateTimeProvider } from "@alepha/core";
-import type { LockProvider } from "./LockProvider";
+import type { LockProvider } from "./LockProvider.ts";
 
 /**
  * A simple in-memory store provider.

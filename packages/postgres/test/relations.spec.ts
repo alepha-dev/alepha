@@ -1,8 +1,8 @@
 import type { Env } from "@alepha/core";
 import { Alepha } from "@alepha/core";
 import { expect, test } from "vitest";
-import { PgError } from "../src/errors/PgError";
-import { Blog } from "./fixtures/blogSchema";
+import { PgError } from "../src/errors/PgError.ts";
+import { Blog } from "./fixtures/blogSchema.ts";
 
 const setup = async (env: Env = {}) => {
 	const alepha = Alepha.create({ env });

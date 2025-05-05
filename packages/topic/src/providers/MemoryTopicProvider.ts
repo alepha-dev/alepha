@@ -2,7 +2,7 @@ import type {
 	SubscribeCallback,
 	TopicProvider,
 	UnSubscribeFn,
-} from "./TopicProvider";
+} from "./TopicProvider.ts";
 
 export class MemoryTopicProvider implements TopicProvider {
 	protected readonly subscriptions: Record<string, SubscribeCallback[]> = {};

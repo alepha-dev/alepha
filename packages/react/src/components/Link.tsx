@@ -1,8 +1,8 @@
 import React from "react";
 import type { AnchorHTMLAttributes } from "react";
-import { RouterContext } from "../contexts/RouterContext";
+import { RouterContext } from "../contexts/RouterContext.ts";
 import type { PageDescriptor } from "../descriptors/$page.ts";
-import { useRouter } from "../hooks/useRouter";
+import { useRouter } from "../hooks/useRouter.ts";
 
 export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 	to: string | PageDescriptor;

@@ -8,16 +8,16 @@ import {
 	KIND,
 	t,
 } from "@alepha/core";
-import type { ConsumerDescriptorOptions } from "../descriptors/$consumer";
-import { $consumer } from "../descriptors/$consumer";
+import type { ConsumerDescriptorOptions } from "../descriptors/$consumer.ts";
+import { $consumer } from "../descriptors/$consumer.ts";
 import type {
 	QueueDescriptor,
 	QueueDescriptorOptions,
 	QueueMessageSchema,
-} from "../descriptors/$queue";
-import { $queue } from "../descriptors/$queue";
-import { MemoryQueueProvider } from "./MemoryQueueProvider";
-import { QueueProvider } from "./QueueProvider";
+} from "../descriptors/$queue.ts";
+import { $queue } from "../descriptors/$queue.ts";
+import { MemoryQueueProvider } from "./MemoryQueueProvider.ts";
+import { QueueProvider } from "./QueueProvider.ts";
 
 const envSchema = t.object({
 	/**

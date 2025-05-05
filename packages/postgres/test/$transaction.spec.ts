@@ -1,7 +1,7 @@
 import { $inject, Alepha, DateTimeProvider, t } from "@alepha/core";
 import { expect, test } from "vitest";
 import { $repository, $transaction, pg, table } from "../src";
-import { PgConflictError } from "../src/errors/PgConflictError";
+import { PgConflictError } from "../src/errors/PgConflictError.ts";
 
 class App {
 	dt = $inject(DateTimeProvider);

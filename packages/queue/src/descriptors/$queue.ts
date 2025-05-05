@@ -1,6 +1,6 @@
 import type { Static, TSchema } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
-import type { QueueProvider } from "../providers/QueueProvider";
+import type { QueueProvider } from "../providers/QueueProvider.ts";
 
 const KEY = "QUEUE";
 

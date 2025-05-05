@@ -1,2 +1,2 @@
-export * from "./providers/RedisProvider";
-export * from "./providers/RedisSubscriberProvider";
+export * from "./providers/RedisProvider.ts";
+export * from "./providers/RedisSubscriberProvider.ts";

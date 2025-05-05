@@ -1,11 +1,11 @@
 /// <reference types="vite/client" />
 
-import type { Env } from "./Alepha";
-import { Alepha } from "./Alepha";
-import type { Async } from "./interfaces/Async";
-import type { Class } from "./interfaces/Class";
+import type { Env } from "./Alepha.ts";
+import { Alepha } from "./Alepha.ts";
+import type { Async } from "./interfaces/Async.ts";
+import type { Class } from "./interfaces/Class.ts";
 
-export * from "./index.shared";
+export * from "./index.shared.ts";
 
 export const run = (
 	arg: Alepha | Class | ((env?: Env) => Alepha),

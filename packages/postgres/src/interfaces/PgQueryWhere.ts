@@ -1,5 +1,5 @@
 import type { SQL, SQLWrapper } from "drizzle-orm";
-import type { FilterOperators } from "./FilterOperators";
+import type { FilterOperators } from "./FilterOperators.ts";
 
 export type PgQueryWhere<T extends object> = {
 	[Key in keyof T]?: FilterOperators<T[Key]>;

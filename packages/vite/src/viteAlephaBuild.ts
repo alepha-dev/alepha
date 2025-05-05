@@ -1,3 +1,4 @@
+import { access } from "node:fs/promises";
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
 import gzipPlugin from "rollup-plugin-gzip";
@@ -47,14 +48,6 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 			}),
 		);
 
-		if (options.vercel) {
-			plugins.push(
-				viteAlephaBuildVercel({
-					filename: filename,
-				}),
-			);
-		}
-
 		await viteBuild({
 			build: {
 				outDir: "dist/client",
@@ -63,7 +56,18 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 		});
 	};
 
-	const viteBuildServer = async () => {
+	const viteBuildServer = async (opts: { client?: string }) => {
+		const plugins: any[] = [];
+
+		if (options.vercel) {
+			plugins.push(
+				viteAlephaBuildVercel({
+					filename: filename,
+					client: opts.client,
+				}),
+			);
+		}
+
 		await viteBuild({
 			ssr: {
 				noExternal: true,
@@ -79,6 +83,7 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 					},
 				},
 			},
+			plugins,
 		});
 	};
 
@@ -91,8 +96,15 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 			}
 
 			process.env.VITE_DOUBLE_BUILD_DONE = "true";
-			await viteBuildServer();
-			await viteBuildClient();
+			const hasClient = await access("index.html").catch(() => false);
+
+			await viteBuildServer({
+				client: hasClient ? "client" : undefined,
+			});
+
+			if (hasClient) {
+				await viteBuildClient();
+			}
 
 			// Prevent the default build from running again
 			process.exit(0);

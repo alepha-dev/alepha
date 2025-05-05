@@ -12,10 +12,10 @@ import { $topic, TopicTimeoutError } from "@alepha/topic";
 import type {
 	LockDescriptor,
 	LockDescriptorOptions,
-} from "../descriptors/$lock";
-import { $lock } from "../descriptors/$lock";
-import { LockProvider } from "./LockProvider";
-import { LockTopicProvider } from "./LockTopicProvider";
+} from "../descriptors/$lock.ts";
+import { $lock } from "../descriptors/$lock.ts";
+import { LockProvider } from "./LockProvider.ts";
+import { LockTopicProvider } from "./LockTopicProvider.ts";
 
 const envSchema = t.object({
 	LOCK_PREFIX_KEY: t.string({ default: "lock" }),

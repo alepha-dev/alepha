@@ -1,18 +1,21 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { $logger, Alepha, type Static } from "@alepha/core";
-import { $hook, $inject, t } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import {
 	type ServeDescriptorOptions,
+	type ServerHandler,
 	ServerLinksProvider,
-	ServerProvider,
+	ServerRouterProvider,
+	ServerStaticProvider,
 } from "@alepha/server";
-import type { RouteObject } from "@alepha/server";
 import { type CheerioAPI, load } from "cheerio";
 import { renderToString } from "react-dom/server";
-import { $page, type PageContext } from "../descriptors/$page";
-import { Router, type RouterRenderHeadContext } from "../services/Router";
+import { $page, type PageContext } from "../descriptors/$page.ts";
+import {
+	ReactRouter,
+	type RouterRenderHeadContext,
+} from "../services/ReactRouter.ts";
 import { ReactAuthProvider } from "./ReactAuthProvider.ts";
 
 export const envSchema = t.object({
@@ -33,8 +36,9 @@ declare module "@alepha/core" {
 export class ReactServerProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly router = $inject(Router);
-	protected readonly serverProvider = $inject(ServerProvider);
+	protected readonly router = $inject(ReactRouter);
+	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
+	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly env = $inject(envSchema);
 
 	protected readonly configure = $hook({
@@ -63,19 +67,11 @@ export class ReactServerProvider {
 			this.alepha.state("ReactServerProvider.ssr", true);
 			const templateUrl = `${url}/index.html`;
 
-			const route = this.createHandler(() =>
+			const handler = this.createHandler(() =>
 				fetch(templateUrl)
 					.then((it) => it.text())
 					.catch(() => undefined),
 			);
-
-			await this.serverProvider.route(route);
-
-			// fallback for static files
-			await this.serverProvider.route({
-				...route,
-				url: "*",
-			});
 
 			return;
 		}
@@ -100,22 +96,14 @@ export class ReactServerProvider {
 				return;
 			}
 
-			await this.serverProvider.serve(this.createStaticHandler(root));
+			await this.serverStaticProvider.serve(this.createStaticHandler(root));
 		}
 
 		const template =
 			this.alepha.state("ReactServerProvider.template") ??
 			(await readFile(join(root, "index.html"), "utf-8"));
 
-		const route = this.createHandler(async () => template);
-
-		await this.serverProvider.route(route); // we must take control of "/", or it will be handled by the static handler
-
-		// fallback for static files
-		await this.serverProvider.route({
-			...route,
-			url: "*",
-		});
+		const handler = this.createHandler(async () => template);
 
 		this.alepha.state("ReactServerProvider.ssr", true);
 	}
@@ -128,13 +116,10 @@ export class ReactServerProvider {
 	protected createStaticHandler(root: string): ServeDescriptorOptions {
 		return {
 			root,
-			prefix: this.env.REACT_SERVER_PREFIX,
-			logLevel: "warn",
+			path: this.env.REACT_SERVER_PREFIX,
 			cacheControl: true,
 			immutable: true,
-			preCompressed: true,
-			maxAge: "30d",
-			index: false,
+			maxAge: { days: 30 },
 		};
 	}
 
@@ -145,24 +130,96 @@ export class ReactServerProvider {
 	 */
 	protected createHandler(
 		templateLoader: () => Promise<string | undefined>,
-	): RouteObject {
-		return {
-			method: "GET",
-			url: "/",
-			handler: async (ctx) => {
-				const template = await templateLoader();
-				if (!template) {
-					return new Response("Not found", { status: 404 });
-				}
+	): ServerHandler {
+		return async (ctx) => {
+			const { url, cookies, user, reply } = ctx;
 
-				const response = this.notFoundHandler(ctx.url);
-				if (response) {
-					// not found handler for static files (favicon, css, js, etc)
-					return response;
-				}
+			const template = await templateLoader();
+			if (!template) {
+				throw new Error("Template not found");
+			}
 
-				return await this.ssr(ctx.url, template, ctx);
-			},
+			// const response = this.notFoundHandler(ctx.url);
+			// if (response) {
+			// 	// not found handler for static files (favicon, css, js, etc)
+			// 	return response;
+			// }
+
+			const hasAuth = this.alepha.has(ReactAuthProvider);
+
+			// if user is not set, we can have non-trusted user from cookie
+			if (!ctx.user && ctx.cookies && hasAuth) {
+				const auth = this.alepha.get(ReactAuthProvider);
+				ctx.user = auth.user.get(ctx.cookies);
+				if (ctx.user) {
+					ctx.user.roles = []; // user from cookie is not trusted, it's only here for UI
+				}
+			}
+
+			const args: PageContext = {};
+
+			args.cookies = cookies;
+			args.user = user;
+
+			// forward links
+			if (this.alepha.has(ServerLinksProvider) && hasAuth) {
+				const srv = this.alepha.get(ServerLinksProvider);
+				args.links = (await srv.links()) as any;
+				this.alepha.als.set("links", args.links);
+			}
+
+			const { element, layers, redirect, context } = await this.router.render(
+				url.pathname + url.search,
+				{
+					args,
+				},
+			);
+
+			if (redirect) {
+				return reply.redirect(redirect);
+			}
+
+			const html = renderToString(element);
+			const $ = load(template);
+
+			const script = `<script>window.__ssr=${JSON.stringify({
+				links: args.links,
+				layers: layers.map((it) => ({
+					...it,
+					error: it.error
+						? {
+								...it.error,
+								name: it.error.name,
+								message: it.error.message,
+								stack: it.error.stack, // TODO: Hide stack in production ?
+							}
+						: undefined,
+					index: undefined,
+					path: undefined,
+					element: undefined,
+				})),
+			})}</script>`;
+
+			const body = $("body");
+			const root = body.find(`#${this.env.REACT_ROOT_ID}`);
+			if (root.length) {
+				root.html(html);
+			} else {
+				body.prepend(`<div id="${this.env.REACT_ROOT_ID}">${html}</div>`);
+			}
+
+			body.append(script);
+
+			if (context.head) {
+				this.renderHeadContext($, context.head);
+			}
+
+			const text = $.html();
+
+			reply.status = 200;
+			reply.headers["content-type"] = "text/html";
+
+			return text;
 		};
 	}
 
@@ -173,6 +230,8 @@ export class ReactServerProvider {
 	protected processDescriptors() {
 		const pages = this.alepha.getDescriptorValues($page);
 		for (const { key, instance, value } of pages) {
+			// =>
+
 			instance[key].render = async (
 				options: {
 					params?: Record<string, string>;
@@ -199,101 +258,6 @@ export class ReactServerProvider {
 				);
 			};
 		}
-	}
-
-	/**
-	 *
-	 * @param url
-	 * @protected
-	 */
-	protected notFoundHandler(url: URL) {
-		if (url.pathname.match(/\.\w+$/)) {
-			return new Response("Not found", { status: 404 });
-		}
-	}
-
-	/**
-	 *
-	 * @param url
-	 * @param template
-	 * @param args
-	 */
-	public async ssr(
-		url: URL,
-		template: string,
-		args: PageContext = {},
-	): Promise<Response> {
-		const hasAuth = this.alepha.has(ReactAuthProvider);
-
-		// if user is not set, we can have non-trusted user from cookie
-		if (!args.user && args.cookies && hasAuth) {
-			const auth = this.alepha.get(ReactAuthProvider);
-			args.user = auth.user.get(args.cookies);
-			if (args.user) {
-				args.user.roles = []; // user from cookie is not trusted, it's only here for UI
-			}
-		}
-
-		if (this.alepha.has(ServerLinksProvider) && hasAuth) {
-			const srv = this.alepha.get(ServerLinksProvider);
-			args.links = (await srv.links()) as any;
-			this.alepha.als.set("links", args.links);
-		}
-
-		const { element, layers, redirect, context } = await this.router.render(
-			url.pathname + url.search,
-			{
-				args,
-			},
-		);
-
-		if (redirect) {
-			return new Response("", {
-				status: 302,
-				headers: {
-					Location: redirect,
-				},
-			});
-		}
-
-		const html = renderToString(element);
-		const $ = load(template);
-
-		const script = `<script>window.__ssr=${JSON.stringify({
-			links: args.links,
-			layers: layers.map((it) => ({
-				...it,
-				error: it.error
-					? {
-							...it.error,
-							name: it.error.name,
-							message: it.error.message,
-							stack: it.error.stack, // TODO: Hide stack in production ?
-						}
-					: undefined,
-				index: undefined,
-				path: undefined,
-				element: undefined,
-			})),
-		})}</script>`;
-
-		const body = $("body");
-		const root = body.find(`#${this.env.REACT_ROOT_ID}`);
-		if (root.length) {
-			root.html(html);
-		} else {
-			body.prepend(`<div id="${this.env.REACT_ROOT_ID}">${html}</div>`);
-		}
-
-		body.append(script);
-
-		if (context.head) {
-			this.renderHeadContext($, context.head);
-		}
-
-		return new Response($.html(), {
-			headers: { "Content-Type": "text/html" },
-		});
 	}
 
 	protected renderHeadContext(

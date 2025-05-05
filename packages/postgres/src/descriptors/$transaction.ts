@@ -1,8 +1,8 @@
 import { $cursor, $retry } from "@alepha/core";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
-import { VersionMismatchError } from "../errors/VersionMismatchError";
-import { PostgresProvider } from "../providers/drivers/PostgresProvider";
+import { VersionMismatchError } from "../errors/VersionMismatchError.ts";
+import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 
 export interface TransactionDescriptorOptions<T extends any[], R> {
 	/**

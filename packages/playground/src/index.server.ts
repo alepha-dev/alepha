@@ -1,5 +1,5 @@
 import { Alepha, run } from "@alepha/core";
-import Api from "./Api";
+import Api from "./Api.ts";
 import { App } from "./App.ts";
 import { UserApi } from "./api/UserApi.ts";
 

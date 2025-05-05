@@ -1,13 +1,14 @@
-import type { IntervalDescriptorOptions } from "../descriptors/$interval";
+import type { IntervalDescriptorOptions } from "../descriptors/$interval.ts";
 
 export class Interval {
 	private timer: any = null;
 	private readonly run: () => Promise<void>;
+	private duration: number;
+	private options: IntervalDescriptorOptions;
 
-	constructor(
-		private duration: number,
-		private options: IntervalDescriptorOptions,
-	) {
+	constructor(duration: number, options: IntervalDescriptorOptions) {
+		this.options = options;
+		this.duration = duration;
 		this.run = async () => {
 			try {
 				await this.options.handler();

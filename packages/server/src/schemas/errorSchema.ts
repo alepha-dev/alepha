@@ -2,12 +2,22 @@ import { t } from "@alepha/core";
 
 export const errorSchema = t.object(
 	{
-		statusCode: t.uint({
+		error: t.string({ description: "HTTP error name" }),
+		status: t.uint({
 			description: "HTTP status code",
 		}),
-		error: t.string({ description: "HTTP error name" }),
-		code: t.optional(t.string({ description: "Error code name" })),
 		message: t.string({ description: "Short text which describe the error" }),
+		details: t.optional(
+			t.string({
+				description: "Detailed description of the error",
+			}),
+		),
+		cause: t.optional(
+			t.object({
+				name: t.string(),
+				message: t.string(),
+			}),
+		),
 	},
 	{
 		title: "HttpError",

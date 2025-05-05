@@ -1,7 +1,7 @@
 import type { UserAccountToken } from "@alepha/security";
 import { useContext } from "react";
-import { RouterContext } from "../contexts/RouterContext";
-import { Auth } from "../services/Auth";
+import { RouterContext } from "../contexts/RouterContext.ts";
+import { ReactAuth } from "../services/ReactAuth.ts";
 
 export const useAuth = (): AuthHook => {
 	const ctx = useContext(RouterContext);
@@ -14,10 +14,10 @@ export const useAuth = (): AuthHook => {
 	return {
 		user: args.user,
 		logout: () => {
-			ctx.alepha.get(Auth).logout();
+			ctx.alepha.get(ReactAuth).logout();
 		},
 		login: (provider?: string) => {
-			ctx.alepha.get(Auth).login();
+			ctx.alepha.get(ReactAuth).login();
 		},
 	};
 };

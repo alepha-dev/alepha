@@ -1,16 +1,16 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, autoInject, t } from "@alepha/core";
-import { $cache } from "./descriptors/$cache";
-import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider";
-import { CacheProvider } from "./providers/CacheProvider";
-import { MemoryCacheProvider } from "./providers/MemoryCacheProvider";
-import { RedisCacheProvider } from "./providers/RedisCacheProvider";
+import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { $cache } from "./descriptors/$cache.ts";
+import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider.ts";
+import { CacheProvider } from "./providers/CacheProvider.ts";
+import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
+import { RedisCacheProvider } from "./providers/RedisCacheProvider.ts";
 
-export * from "./descriptors/$cache";
-export * from "./providers/CacheDescriptorProvider";
-export * from "./providers/CacheProvider";
-export * from "./providers/MemoryCacheProvider";
-export * from "./providers/RedisCacheProvider";
+export * from "./descriptors/$cache.ts";
+export * from "./providers/CacheDescriptorProvider.ts";
+export * from "./providers/CacheProvider.ts";
+export * from "./providers/MemoryCacheProvider.ts";
+export * from "./providers/RedisCacheProvider.ts";
 
 const envSchema = t.object({
 	CACHE_PROVIDER: t.enum(["memory", "redis", "sqlite"], {
@@ -40,4 +40,4 @@ export class CacheModule {
 	}
 }
 
-autoInject($cache, CacheModule);
+__bind($cache, CacheModule);

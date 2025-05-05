@@ -1,5 +1,5 @@
 import type { TSchema } from "@sinclair/typebox";
-import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS";
+import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Decorates a schema with a Postgres attribute.

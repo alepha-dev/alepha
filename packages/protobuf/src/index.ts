@@ -1,1 +1,1 @@
-export * from "./providers/ProtobufProvider";
+export * from "./providers/ProtobufProvider.ts";

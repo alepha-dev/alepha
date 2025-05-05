@@ -1,15 +1,15 @@
-import { $inject, Alepha, autoInject } from "@alepha/core";
-import { $topic } from "./descriptors/$topic";
-import { MemoryTopicProvider } from "./providers/MemoryTopicProvider";
-import { TopicDescriptorProvider } from "./providers/TopicDescriptorProvider";
-import { TopicProvider } from "./providers/TopicProvider";
+import { $inject, Alepha, __bind } from "@alepha/core";
+import { $topic } from "./descriptors/$topic.ts";
+import { MemoryTopicProvider } from "./providers/MemoryTopicProvider.ts";
+import { TopicDescriptorProvider } from "./providers/TopicDescriptorProvider.ts";
+import { TopicProvider } from "./providers/TopicProvider.ts";
 
-export * from "./descriptors/$subscriber";
-export * from "./descriptors/$topic";
-export * from "./errors/TopicTimeoutError";
-export * from "./providers/MemoryTopicProvider";
-export * from "./providers/TopicDescriptorProvider";
-export * from "./providers/TopicProvider";
+export * from "./descriptors/$subscriber.ts";
+export * from "./descriptors/$topic.ts";
+export * from "./errors/TopicTimeoutError.ts";
+export * from "./providers/MemoryTopicProvider.ts";
+export * from "./providers/TopicDescriptorProvider.ts";
+export * from "./providers/TopicProvider.ts";
 
 export class TopicModule {
 	protected readonly alepha = $inject(Alepha);
@@ -25,4 +25,4 @@ export class TopicModule {
 	}
 }
 
-autoInject($topic, TopicModule);
+__bind($topic, TopicModule);

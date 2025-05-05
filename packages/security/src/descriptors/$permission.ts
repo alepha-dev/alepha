@@ -1,6 +1,6 @@
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
-import type { UserAccountInfo } from "../interfaces/UserAccountInfo";
-import type { Permission } from "../schemas/permissionSchema";
+import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
+import type { Permission } from "../schemas/permissionSchema.ts";
 
 const KEY = "PERMISSION";
 

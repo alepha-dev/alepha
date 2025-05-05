@@ -1,7 +1,7 @@
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
-import type { SecurityUserAccountProvider } from "../providers/SecurityProvider";
-import type { Role } from "../schemas/roleSchema";
+import type { SecurityUserAccountProvider } from "../providers/SecurityProvider.ts";
+import type { Role } from "../schemas/roleSchema.ts";
 
 const KEY = "REALM";
 

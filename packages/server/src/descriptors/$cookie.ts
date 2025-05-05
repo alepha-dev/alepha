@@ -6,12 +6,11 @@ import {
 	type Static,
 	type TSchema,
 } from "@alepha/core";
-import type { Cookie, CookieManager } from "../helpers/CookieManager";
 
-/**
- *
- */
 export interface CookieDescriptorOptions<T extends TSchema> {
+	/**
+	 *
+	 */
 	schema: T;
 
 	/**
@@ -77,17 +76,17 @@ export interface CookieDescriptor<T extends TSchema> {
 	/**
 	 *
 	 */
-	set: (cookies: CookieManager, value: Static<T>) => void;
+	set: (cookies: Cookies, value: Static<T>) => void;
 
 	/**
 	 *
 	 */
-	get: (cookies: CookieManager) => Static<T> | undefined;
+	get: (cookies: Cookies) => Static<T> | undefined;
 
 	/**
 	 *
 	 */
-	del: (cookies: CookieManager) => void;
+	del: (cookies: Cookies) => void;
 }
 
 /**
@@ -102,7 +101,7 @@ export const $cookie = <T extends TSchema>(
 	return {
 		options,
 
-		get: (cookies: CookieManager) => {
+		get: (cookies: Cookies) => {
 			try {
 				if (cookies.req[options.name]) {
 					let value: string = decodeURIComponent(cookies.req[options.name]);
@@ -123,11 +122,11 @@ export const $cookie = <T extends TSchema>(
 			return undefined;
 		},
 
-		del: (cookies: CookieManager) => {
+		del: (cookies: Cookies) => {
 			cookies.res[options.name] = null;
 		},
 
-		set: (cookies: CookieManager, data: Static<T>) => {
+		set: (cookies: Cookies, data: Static<T>) => {
 			let value = JSON.stringify(context.parse(options.schema, data));
 
 			if (options.compress) {
@@ -154,3 +153,18 @@ export const $cookie = <T extends TSchema>(
 		},
 	};
 };
+
+export interface Cookies {
+	req: Record<string, string>;
+	res: Record<string, Cookie | null>;
+}
+
+export interface Cookie {
+	value: string;
+	path?: string;
+	maxAge?: number;
+	secure?: boolean;
+	httpOnly?: boolean;
+	sameSite?: "strict" | "lax" | "none";
+	domain?: string;
+}

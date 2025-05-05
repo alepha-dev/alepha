@@ -1,6 +1,10 @@
 import { t } from "@alepha/core";
-import { PG_DEFAULT, PG_PRIMARY_KEY, PG_SERIAL } from "../constants/PG_SYMBOLS";
-import { pgAttr } from "./pgAttr";
+import {
+	PG_DEFAULT,
+	PG_PRIMARY_KEY,
+	PG_SERIAL,
+} from "../constants/PG_SYMBOLS.ts";
+import { pgAttr } from "./pgAttr.ts";
 
 export const legacyIdSchema = pgAttr(
 	pgAttr(pgAttr(t.int(), PG_PRIMARY_KEY), PG_SERIAL),

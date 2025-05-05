@@ -1,7 +1,7 @@
 import type { Static, TArray, TObject } from "@sinclair/typebox";
 import type { SQLWrapper } from "drizzle-orm";
-import type { PG_MANY } from "../constants/PG_SYMBOLS";
-import type { PgQueryWhere } from "./PgQueryWhere";
+import type { PG_MANY } from "../constants/PG_SYMBOLS.ts";
+import type { PgQueryWhere } from "./PgQueryWhere.ts";
 
 export interface PgQuery<T extends TObject> {
 	where?: PgQueryWhereWithMany<T> | SQLWrapper;

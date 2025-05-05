@@ -12,7 +12,7 @@ import {
 	createLocalJWKSet,
 } from "jose";
 import { SignJWT, createRemoteJWKSet, jwtVerify } from "jose";
-import { SecurityError } from "../errors/SecurityError";
+import { SecurityError } from "../errors/SecurityError.ts";
 
 /**
  * Provides utilities for working with JSON Web Tokens (JWT).

@@ -8,10 +8,10 @@ import type {
 	RouterMatchOptions,
 	RouterRenderContext,
 	RouterState,
-} from "../services/Router";
-import { Router } from "../services/Router";
-import type { RouterRenderHeadContext } from "../services/Router";
-import type { ReactHydrationState } from "./ReactAuthProvider";
+} from "../services/ReactRouter.ts";
+import { ReactRouter } from "../services/ReactRouter.ts";
+import type { RouterRenderHeadContext } from "../services/ReactRouter.ts";
+import type { ReactHydrationState } from "./ReactAuthProvider.ts";
 
 const envSchema = t.object({
 	REACT_ROOT_ID: t.string({ default: "root" }),
@@ -24,7 +24,7 @@ declare module "@alepha/core" {
 export class ReactBrowserProvider {
 	protected readonly log = $logger();
 	protected readonly client = $inject(HttpClient);
-	protected readonly router = $inject(Router);
+	protected readonly router = $inject(ReactRouter);
 	protected readonly env = $inject(envSchema);
 	protected root!: Root;
 

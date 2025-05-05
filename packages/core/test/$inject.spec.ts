@@ -8,7 +8,7 @@ import {
 	t,
 	TypeBoxError,
 } from "../src";
-import { MissingContextError } from "../src/errors/MissingContextError";
+import { MissingContextError } from "../src/errors/MissingContextError.ts";
 
 test("$inject - basic", () => {
 	class A {

@@ -1,4 +1,4 @@
-import type { UserAccountInfo } from "./UserAccountInfo";
+import type { UserAccountInfo } from "./UserAccountInfo.ts";
 
 export interface UserAccountToken extends UserAccountInfo {
 	/**

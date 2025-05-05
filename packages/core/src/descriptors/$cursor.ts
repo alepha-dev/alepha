@@ -1,6 +1,6 @@
-import type { Alepha } from "../Alepha";
-import { MissingContextError } from "../errors/MissingContextError";
-import type { Class } from "../interfaces/Class";
+import type { Alepha } from "../Alepha.ts";
+import { MissingContextError } from "../errors/MissingContextError.ts";
+import type { Class } from "../interfaces/Class.ts";
 
 /**
  * Used to store the current context and definition during injections.

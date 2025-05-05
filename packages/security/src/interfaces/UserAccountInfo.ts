@@ -1,4 +1,4 @@
-import type { Role } from "../schemas/roleSchema";
+import type { Role } from "../schemas/roleSchema.ts";
 
 /**
  * Represents a User Account extracted from JWT.

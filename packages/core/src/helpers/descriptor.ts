@@ -1,8 +1,9 @@
-import { KIND } from "../constants/KIND";
-import type { STARTED } from "../constants/STARTED";
-import type { CursorDescriptor } from "../descriptors/$cursor";
-import { $cursor } from "../descriptors/$cursor";
-import type { Class } from "../interfaces/Class";
+import type { Alepha } from "../Alepha.ts";
+import { KIND } from "../constants/KIND.ts";
+import type { STARTED } from "../constants/STARTED.ts";
+import type { CursorDescriptor } from "../descriptors/$cursor.ts";
+import { $cursor } from "../descriptors/$cursor.ts";
+import type { Class } from "../interfaces/Class.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -67,18 +68,41 @@ export const __descriptor = (kind: string) => {
  *
  * Like, you auto-inject the ServerModule when a `$route` descriptor is used.
  *
- * @param whenDescriptor
- * @param classes
+ * @param descriptor
+ * @param to
  */
-export const autoInject = (
-	whenDescriptor: { [KIND]: string },
-	...classes: Class[]
-) => {
+export const __bind = (descriptor: { [KIND]: string }, ...to: Class[]) => {
 	descriptorEvents.on("create", (ctx) => {
 		if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
-			if (ctx[KIND] === whenDescriptor[KIND]) {
-				for (const injectedClass of classes) {
+			if (ctx[KIND] === descriptor[KIND]) {
+				for (const injectedClass of to) {
 					ctx.context.register(injectedClass);
+				}
+			}
+		}
+	});
+};
+
+export const ___bind = (args: {
+	when: { [KIND]: string } | Array<{ [KIND]: string }>;
+	register: Class | Class[];
+	check?: (ctx: Alepha) => boolean;
+}) => {
+	descriptorEvents.on("create", (ctx) => {
+		const descriptors = Array.isArray(args.when) ? args.when : [args.when];
+		const services = Array.isArray(args.register)
+			? args.register
+			: [args.register];
+		if (
+			!ctx.context.env.EXPLICIT_PROVIDERS &&
+			!ctx.context.isLocked() &&
+			(!args.check || args.check(ctx.context))
+		) {
+			for (const descriptor of descriptors) {
+				if (ctx[KIND] === descriptor[KIND]) {
+					for (const serv of services) {
+						ctx.context.register(serv);
+					}
 				}
 			}
 		}

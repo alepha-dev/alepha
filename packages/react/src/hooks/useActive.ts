@@ -1,9 +1,9 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { RouterContext } from "../contexts/RouterContext";
-import { RouterLayerContext } from "../contexts/RouterLayerContext";
-import type { AnchorProps } from "../services/Router";
-import type { HrefLike } from "./RouterHookApi";
-import { useRouter } from "./useRouter";
+import { RouterContext } from "../contexts/RouterContext.ts";
+import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import type { AnchorProps } from "../services/ReactRouter.ts";
+import type { HrefLike } from "./RouterHookApi.ts";
+import { useRouter } from "./useRouter.ts";
 
 export const useActive = (path: HrefLike): UseActiveHook => {
 	const router = useRouter();

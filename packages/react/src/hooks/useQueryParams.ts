@@ -1,7 +1,7 @@
 import type { Alepha, Static, TObject } from "@alepha/core";
 import { useContext, useEffect, useState } from "react";
-import { RouterContext } from "../contexts/RouterContext";
-import { useRouter } from "./useRouter";
+import { RouterContext } from "../contexts/RouterContext.ts";
+import { useRouter } from "./useRouter.ts";
 
 export interface UseQueryParamsHookOptions {
 	format?: "base64" | "querystring";

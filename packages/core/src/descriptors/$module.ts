@@ -1,9 +1,8 @@
-import type { TObject } from "@sinclair/typebox";
-import type { Alepha } from "../Alepha";
-import { KIND } from "../constants/KIND";
-import type { ClassEntry } from "../interfaces/Class";
-import type { Static } from "../providers/TypeProvider";
-import { $cursor } from "./$cursor";
+import type { Static, TObject } from "@sinclair/typebox";
+import type { Alepha } from "../Alepha.ts";
+import { KIND } from "../constants/KIND.ts";
+import type { ClassEntry } from "../interfaces/Class.ts";
+import { $cursor } from "./$cursor.ts";
 
 // !!
 // !! WORK IN PROGRESS
