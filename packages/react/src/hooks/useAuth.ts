@@ -9,10 +9,10 @@ export const useAuth = (): AuthHook => {
 		throw new Error("useAuth must be used within a RouterContext");
 	}
 
-	const args = ctx.args ?? {};
+	const context = ctx.context ?? {};
 
 	return {
-		user: args.user,
+		user: context.user,
 		logout: () => {
 			ctx.alepha.get(ReactAuth).logout();
 		},

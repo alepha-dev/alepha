@@ -1,7 +1,6 @@
 import type { Static } from "@alepha/core";
 import { $inject, Alepha, __bind, t } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
-
 import { $action, $route } from "./descriptors/$action.ts";
 import { $remote } from "./descriptors/$remote.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";

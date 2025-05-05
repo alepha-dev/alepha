@@ -1,16 +1,29 @@
 import { Alepha, t } from "@alepha/core";
-import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { test } from "vitest";
-import { NestedView, ReactRouter } from "../src";
+import { NestedView } from "../src";
+import { BrowserRouterProvider } from "../src/providers/BrowserRouterProvider.ts";
 
-const str = (r: { element: ReactNode }): string => {
-	return renderToString(r.element).replaceAll("<!-- -->", "");
+const setup = () => {
+	const alepha = Alepha.create();
+	const router = alepha.get(BrowserRouterProvider);
+
+	const render = async (path: string): Promise<string> => {
+		const { element } = await router.transition(
+			new URL(`http://localhost${path}`),
+		);
+		return renderToString(element).replaceAll("<!-- -->", "");
+	};
+
+	return {
+		router,
+		render,
+		alepha,
+	};
 };
 
 test("Router - Basic", async ({ expect }) => {
-	const alepha = Alepha.create();
-	const router = alepha.get(ReactRouter);
+	const { router, render, alepha } = setup();
 
 	router.add({
 		name: "Test",
@@ -18,13 +31,14 @@ test("Router - Basic", async ({ expect }) => {
 		component: () => "Hey",
 	});
 
-	expect(str(await router.render("/"))).toEqual("Hey");
-	expect(str(await router.render("/zz"))).toEqual("Not Found");
+	await alepha.start();
+
+	expect(await render("/")).toEqual("Hey");
+	expect(await render("/zz")).toEqual("Not Found");
 });
 
 test("Router - NestedView", async ({ expect }) => {
-	const alepha = Alepha.create();
-	const router = alepha.get(ReactRouter);
+	const { router, render, alepha } = setup();
 
 	router.add({
 		name: "Test",
@@ -55,16 +69,21 @@ test("Router - NestedView", async ({ expect }) => {
 		],
 	});
 
-	expect(str(await router.render("/"))).toEqual("((Home))");
-	expect(str(await router.render("/hello/jack"))).toEqual("((Hello, jack!))");
+	await alepha.start();
+
+	expect(await render("/")).toEqual("((Home))");
+	expect(await render("/hello/jack")).toEqual("((Hello, jack!))");
 });
 
 test("Router - All routes", async ({ expect }) => {
-	const alepha = Alepha.create();
-	const router = alepha.get(ReactRouter);
+	const { router, render, alepha } = setup();
 
 	router.add({
 		children: [
+			{
+				path: "/*",
+				component: () => "404",
+			},
 			{
 				component: () => "home",
 			},
@@ -117,22 +136,23 @@ test("Router - All routes", async ({ expect }) => {
 				},
 			},
 		],
-		notFoundHandler: () => "404",
 	});
 
-	expect(str(await router.render("/"))).toEqual("home");
-	expect(str(await router.render("/about"))).toEqual("about");
-	expect(str(await router.render("/noop"))).toEqual("404");
-	expect(str(await router.render("/noop/noop"))).toEqual("404");
-	expect(str(await router.render("/sub"))).toEqual("a");
-	expect(str(await router.render("/sub/"))).toEqual("a");
-	expect(str(await router.render("/sub/b"))).toEqual("b");
-	expect(str(await router.render("/sub/noop"))).toEqual("404");
-	expect(str(await router.render("/users"))).toEqual("yo");
-	expect(str(await router.render("/users/"))).toEqual("yo");
-	expect(str(await router.render("/users/a"))).toEqual("hey a");
-	expect(str(await router.render("/users/boom"))).toEqual("Error: boom");
-	expect(str(await router.render("/users/new"))).toEqual("users/new");
-	expect(str(await router.render("/users/hey/ho"))).toEqual("404");
-	expect(str(await router.render("/users/a/profile"))).toEqual("profile of a");
+	await alepha.start();
+
+	expect(await render("/")).toEqual("home");
+	expect(await render("/about")).toEqual("about");
+	expect(await render("/noop")).toEqual("404");
+	expect(await render("/noop/noop")).toEqual("404");
+	expect(await render("/sub")).toEqual("a");
+	expect(await render("/sub/")).toEqual("a");
+	expect(await render("/sub/b")).toEqual("b");
+	expect(await render("/sub/noop")).toEqual("404");
+	expect(await render("/users")).toEqual("yo");
+	expect(await render("/users/")).toEqual("yo");
+	expect(await render("/users/a")).toEqual("hey a");
+	expect(await render("/users/boom")).toEqual("Error: boom");
+	expect(await render("/users/new")).toEqual("users/new");
+	expect(await render("/users/hey/ho")).toEqual("404");
+	expect(await render("/users/a/profile")).toEqual("profile of a");
 });

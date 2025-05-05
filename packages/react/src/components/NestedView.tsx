@@ -24,7 +24,7 @@ const NestedView = (props: NestedViewProps) => {
 
 	useEffect(() => {
 		if (app?.alepha.isBrowser()) {
-			return app?.router.on("end", (state) => {
+			return app?.events.on("end", (state) => {
 				setView(state.layers[index]?.element);
 			});
 		}

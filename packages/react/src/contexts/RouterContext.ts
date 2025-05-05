@@ -1,13 +1,16 @@
-import type { Alepha } from "@alepha/core";
+import type { Alepha, EventEmitter } from "@alepha/core";
 import { createContext } from "react";
-import type { PageContext } from "../descriptors/$page.ts";
-import type { ReactRouter, RouterState } from "../services/ReactRouter.ts";
+import type {
+	PageReactContext,
+	RouterEvents,
+	RouterState,
+} from "../providers/PageDescriptorProvider.ts";
 
 export interface RouterContextValue {
-	router: ReactRouter;
 	alepha: Alepha;
 	state: RouterState;
-	args: PageContext;
+	context: PageReactContext;
+	events: EventEmitter<RouterEvents>;
 }
 
 export const RouterContext = createContext<RouterContextValue | undefined>(

@@ -24,5 +24,3 @@ export * from "./hooks/useRouterState.ts";
 export * from "./hooks/useActive.ts";
 // - auth
 export * from "./hooks/useAuth.ts";
-
-export * from "./services/ReactRouter.ts";

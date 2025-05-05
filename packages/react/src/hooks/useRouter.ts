@@ -4,9 +4,6 @@ import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import { RouterHookApi } from "./RouterHookApi.ts";
 
-/**
- *
- */
 export const useRouter = (): RouterHookApi => {
 	const ctx = useContext(RouterContext);
 	const layer = useContext(RouterLayerContext);
@@ -23,6 +20,6 @@ export const useRouter = (): RouterHookApi => {
 					? ctx.alepha.get(ReactBrowserProvider)
 					: undefined,
 			),
-		[ctx.router, layer],
+		[layer],
 	);
 };

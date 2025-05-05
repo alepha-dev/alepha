@@ -28,7 +28,7 @@ export class EventEmitter<T extends object> {
 	 * @param name
 	 * @param data
 	 */
-	protected async emit<Key extends keyof T>(
+	public async emit<Key extends keyof T>(
 		name: Key,
 		data: T[Key],
 	): Promise<void> {

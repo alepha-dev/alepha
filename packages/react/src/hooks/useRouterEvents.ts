@@ -1,7 +1,7 @@
 import { useContext, useEffect } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import type { RouterState } from "../services/ReactRouter.ts";
+import type { RouterState } from "../providers/PageDescriptorProvider.ts";
 
 export const useRouterEvents = (
 	opts: {
@@ -23,15 +23,15 @@ export const useRouterEvents = (
 		const onError = opts.onError;
 
 		if (onBegin) {
-			subs.push(ctx.router.on("begin", onBegin));
+			subs.push(ctx.events.on("begin", onBegin));
 		}
 
 		if (onEnd) {
-			subs.push(ctx.router.on("end", onEnd));
+			subs.push(ctx.events.on("end", onEnd));
 		}
 
 		if (onError) {
-			subs.push(ctx.router.on("error", onError));
+			subs.push(ctx.events.on("error", onError));
 		}
 
 		return () => {

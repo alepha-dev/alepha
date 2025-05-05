@@ -3,14 +3,13 @@ import type { UserAccountToken } from "@alepha/security";
 import { HttpClient, type HttpClientLink } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
+import type { Head } from "../descriptors/$page.ts";
+import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {
 	PreviousLayerData,
-	RouterMatchOptions,
-	RouterRenderContext,
 	RouterState,
-} from "../services/ReactRouter.ts";
-import { ReactRouter } from "../services/ReactRouter.ts";
-import type { RouterRenderHeadContext } from "../services/ReactRouter.ts";
+	TransitionOptions,
+} from "./PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./ReactAuthProvider.ts";
 
 const envSchema = t.object({
@@ -24,7 +23,7 @@ declare module "@alepha/core" {
 export class ReactBrowserProvider {
 	protected readonly log = $logger();
 	protected readonly client = $inject(HttpClient);
-	protected readonly router = $inject(ReactRouter);
+	protected readonly router = $inject(BrowserRouterProvider);
 	protected readonly env = $inject(envSchema);
 	protected root!: Root;
 
@@ -36,7 +35,7 @@ export class ReactBrowserProvider {
 		layers: [],
 		pathname: "",
 		search: "",
-		context: {},
+		head: {},
 	};
 
 	/**
@@ -122,16 +121,19 @@ export class ReactBrowserProvider {
 			url?: string;
 			previous?: PreviousLayerData[];
 		} = {},
-	): Promise<{ url: string; context: RouterRenderContext }> {
+	): Promise<{ url: string; head: Head }> {
 		const previous = options.previous ?? this.state.layers;
 		const url = options.url ?? this.url;
 
 		this.transitioning = { to: url };
 
-		const result = await this.router.render(url, {
-			previous,
-			state: this.state,
-		});
+		const result = await this.router.transition(
+			new URL(`http://localhost${url}`),
+			{
+				previous,
+				state: this.state,
+			},
+		);
 
 		if (result.redirect) {
 			return await this.render({ url: result.redirect });
@@ -139,7 +141,7 @@ export class ReactBrowserProvider {
 
 		this.transitioning = undefined;
 
-		return { url, context: result.context };
+		return { url, head: result.head };
 	}
 
 	/**
@@ -148,10 +150,11 @@ export class ReactBrowserProvider {
 	 * @param ctx
 	 * @protected
 	 */
-	protected renderHeadContext(ctx: RouterRenderHeadContext) {
+	protected renderHeadContext(ctx: Head) {
 		if (ctx.title) {
 			this.document.title = ctx.title;
 		}
+
 		if (ctx.bodyAttributes) {
 			for (const [key, value] of Object.entries(ctx.bodyAttributes)) {
 				if (value) {
@@ -161,6 +164,7 @@ export class ReactBrowserProvider {
 				}
 			}
 		}
+
 		if (ctx.htmlAttributes) {
 			for (const [key, value] of Object.entries(ctx.htmlAttributes)) {
 				if (value) {
@@ -170,6 +174,7 @@ export class ReactBrowserProvider {
 				}
 			}
 		}
+
 		if (ctx.meta) {
 			for (const [key, value] of Object.entries(ctx.meta)) {
 				const meta = this.document.querySelector(`meta[name="${key}"]`);
@@ -248,9 +253,9 @@ export class ReactBrowserProvider {
 				this.client.links = cache.links as HttpClientLink[];
 			}
 
-			const { context } = await this.render({ previous });
-			if (context.head) {
-				this.renderHeadContext(context.head);
+			const { head } = await this.render({ previous });
+			if (head) {
+				this.renderHeadContext(head);
 			}
 
 			const element = this.router.root(this.state, {
@@ -270,10 +275,8 @@ export class ReactBrowserProvider {
 				this.render();
 			});
 
-			this.router.on("end", ({ context }) => {
-				if (context.head) {
-					this.renderHeadContext(context.head);
-				}
+			this.router.events.on("end", ({ head }) => {
+				this.renderHeadContext(head);
 			});
 		},
 	});
@@ -281,10 +284,7 @@ export class ReactBrowserProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/**
- *
- */
 export interface RouterGoOptions {
 	replace?: boolean;
-	match?: RouterMatchOptions;
+	match?: TransitionOptions;
 }

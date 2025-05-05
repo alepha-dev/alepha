@@ -7,6 +7,27 @@ export class App {
 	api = $inject(HttpClient).of<Api>();
 	client = $inject(HttpClient);
 
+	home = $page({
+		lazy: () => import("./components/Home.tsx"),
+	});
+
+	test = $page({
+		name: "Test",
+		path: "/test",
+		can: () => this.api.inc.can(),
+		head: (q) => {
+			return {
+				title: `Test ${q.inc.v}`,
+			};
+		},
+		resolve: async () => {
+			return {
+				inc: await this.api.inc(),
+			};
+		},
+		lazy: () => import("./components/Test.tsx"),
+	});
+
 	layout = $page({
 		resolve: async ({ query }) => {
 			return {
@@ -30,27 +51,6 @@ export class App {
 			};
 		},
 		lazy: () => import("./components/Layout.tsx"),
-		children: () => [this.home, this.test],
-	});
-
-	home = $page({
-		lazy: () => import("./components/Home.tsx"),
-	});
-
-	test = $page({
-		name: "Test",
-		path: "/test",
-		can: () => this.api.inc.can(),
-		head: (q) => {
-			return {
-				title: `Test ${q.inc.v}`,
-			};
-		},
-		resolve: async () => {
-			return {
-				inc: await this.api.inc(),
-			};
-		},
-		lazy: () => import("./components/Test.tsx"),
+		children: [this.home, this.test],
 	});
 }

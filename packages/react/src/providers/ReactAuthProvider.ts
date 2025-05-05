@@ -19,7 +19,7 @@ import {
 	refreshTokenGrant,
 } from "openid-client";
 import { $auth } from "../descriptors/$auth.ts";
-import type { PreviousLayerData } from "../services/ReactRouter.ts";
+import type { PreviousLayerData } from "./PageDescriptorProvider.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();

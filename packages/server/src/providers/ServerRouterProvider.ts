@@ -40,7 +40,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		return this.push({
 			path,
-			schema: route.schema,
 			handler: (request) => this.handle(route, request, responseType),
 		});
 	}
@@ -416,12 +415,11 @@ export interface ServerRequest<
 
 export interface ServerRoute<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> {
-	path: string;
-	schema?: TConfig;
-	handler: ServerHandler<TConfig>;
+> extends Route {
 	method?: RouteMethod; // undefined = all
 	silent?: boolean;
+	handler: ServerHandler<TConfig>;
+	schema?: TConfig;
 }
 
 export type ServerResponse<
@@ -460,7 +458,6 @@ export interface ServerReply {
 
 export interface ServerRouteWithHandler extends Route {
 	handler: (request: ServerRawRequest) => Async<Response>;
-	schema?: RequestConfigSchema;
 }
 
 export interface ServerRawRequest {

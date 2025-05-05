@@ -1,119 +1,55 @@
 import type { Async, Static, TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
-import type { UserAccountToken } from "@alepha/security";
-import type { Cookies, HttpClientLink } from "@alepha/server";
 import type { FC } from "react";
 import type { RouterHookApi } from "../hooks/RouterHookApi.ts";
-import type { RouterRenderHeadContext } from "../services/ReactRouter.ts";
 
-export const pageDescriptorKey = "PAGE";
+const KEY = "PAGE";
 
-export interface PageDescriptorConfigSchema {
+export interface PageConfigSchema {
 	query?: TSchema;
 	params?: TSchema;
 }
+
 export type TPropsDefault = any;
+
 export type TPropsParentDefault = object;
 
 export interface PageDescriptorOptions<
-	TConfig extends PageDescriptorConfigSchema = PageDescriptorConfigSchema,
+	TConfig extends PageConfigSchema = PageConfigSchema,
 	TProps extends object = TPropsDefault,
 	TPropsParent extends object = TPropsParentDefault,
 > {
-	/**
-	 *
-	 */
 	name?: string;
 
-	/**
-	 *
-	 */
 	path?: string;
 
-	/**
-	 *
-	 */
 	schema?: TConfig;
 
-	/**
-	 * Function to call when the page is loaded.
-	 */
-	resolve?: (
-		config: PageDescriptorConfigValue<TConfig> &
-			TPropsParent & { context: PageContext },
-		context: PageContext,
-	) => Async<TProps>;
+	resolve?: (config: PageResolve<TConfig, TPropsParent>) => Async<TProps>;
 
-	/**
-	 * Component to render when the page is loaded.
-	 */
 	component?: FC<TProps & TPropsParent>;
 
-	/**
-	 * Component to render when the page is loaded. (like .component)
-	 */
 	lazy?: () => Promise<{ default: FC<TProps & TPropsParent> }>;
 
-	/**
-	 *
-	 */
-	children?: () => Array<{ options: PageDescriptorOptions }>;
+	children?: Array<{ options: PageDescriptorOptions }>;
 
-	/**
-	 *
-	 */
 	parent?: { options: PageDescriptorOptions<any, TPropsParent> };
 
-	/**
-	 *
-	 */
 	can?: () => boolean;
 
-	/**
-	 *
-	 */
-	head?:
-		| RouterRenderHeadContext
-		| ((
-				props: TProps,
-				previous?: RouterRenderHeadContext,
-		  ) => RouterRenderHeadContext);
+	head?: Head | ((props: TProps, previous?: Head) => Head);
 
-	/**
-	 *
-	 */
 	notFoundHandler?: FC<{ url: string }>;
 
-	/**
-	 *
-	 */
 	errorHandler?: FC<{ error: Error; url: string }>;
 }
 
-export interface PageContext {
-	user?: UserAccountToken;
-	cookies?: Cookies;
-	links?: HttpClientLink[];
-}
-
-export interface PageDescriptorConfigValue<
-	TConfig extends PageDescriptorConfigSchema = PageDescriptorConfigSchema,
-> {
-	query: TConfig["query"] extends TSchema
-		? Static<TConfig["query"]>
-		: Record<string, string>;
-	params: TConfig["params"] extends TSchema
-		? Static<TConfig["params"]>
-		: Record<string, string>;
-	pathname: string;
-}
-
 export interface PageDescriptor<
-	TConfig extends PageDescriptorConfigSchema = PageDescriptorConfigSchema,
+	TConfig extends PageConfigSchema = PageConfigSchema,
 	TProps extends object = TPropsDefault,
 	TPropsParent extends object = TPropsParentDefault,
 > {
-	[KIND]: typeof pageDescriptorKey;
+	[KIND]: typeof KEY;
 	render: (options?: {
 		params?: Record<string, string>;
 		query?: Record<string, string>;
@@ -127,26 +63,74 @@ export interface PageDescriptor<
 }
 
 export const $page = <
-	TConfig extends PageDescriptorConfigSchema = PageDescriptorConfigSchema,
+	TConfig extends PageConfigSchema = PageConfigSchema,
 	TProps extends object = TPropsDefault,
 	TPropsParent extends object = TPropsParentDefault,
 >(
 	options: PageDescriptorOptions<TConfig, TProps, TPropsParent>,
 ): PageDescriptor<TConfig, TProps, TPropsParent> => {
-	__descriptor(pageDescriptorKey);
+	__descriptor(KEY);
+
+	if (options.children) {
+		for (const child of options.children) {
+			child.options.parent = {
+				options: options as PageDescriptorOptions<any, any, any>,
+			};
+		}
+	}
+
+	if (options.parent) {
+		options.parent.options.children ??= [];
+		options.parent.options.children.push({
+			options: options as PageDescriptorOptions<any, any, any>,
+		});
+	}
+
 	return {
-		[KIND]: pageDescriptorKey,
+		[KIND]: KEY,
 		options,
 		render: () => {
-			throw new NotImplementedError(pageDescriptorKey);
+			throw new NotImplementedError(KEY);
 		},
 		go: () => {
-			throw new NotImplementedError(pageDescriptorKey);
+			throw new NotImplementedError(KEY);
 		},
 		createAnchorProps: () => {
-			throw new NotImplementedError(pageDescriptorKey);
+			throw new NotImplementedError(KEY);
 		},
 	};
 };
 
-$page[KIND] = pageDescriptorKey;
+$page[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface Head {
+	title?: string;
+	titleSeparator?: string;
+	htmlAttributes?: Record<string, string>;
+	bodyAttributes?: Record<string, string>;
+	meta?: Array<{ name: string; content: string }>;
+}
+
+export interface PageRequestConfig<
+	TConfig extends PageConfigSchema = PageConfigSchema,
+> {
+	params: TConfig["params"] extends TSchema
+		? Static<TConfig["params"]>
+		: Record<string, string>;
+
+	query: TConfig["query"] extends TSchema
+		? Static<TConfig["query"]>
+		: Record<string, string>;
+}
+
+export type PageResolve<
+	TConfig extends PageConfigSchema = PageConfigSchema,
+	TPropsParent extends object = TPropsParentDefault,
+> = PageRequestConfig<TConfig> & TPropsParent & PageResolveContext;
+
+export interface PageResolveContext {
+	url: URL;
+	head: Head;
+}

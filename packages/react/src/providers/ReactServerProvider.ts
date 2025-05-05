@@ -3,19 +3,20 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import {
-	type ServeDescriptorOptions,
 	type ServerHandler,
 	ServerLinksProvider,
+	type ServerRoute,
 	ServerRouterProvider,
 	ServerStaticProvider,
 } from "@alepha/server";
 import { type CheerioAPI, load } from "cheerio";
 import { renderToString } from "react-dom/server";
-import { $page, type PageContext } from "../descriptors/$page.ts";
+import { $page, type Head } from "../descriptors/$page.ts";
 import {
-	ReactRouter,
-	type RouterRenderHeadContext,
-} from "../services/ReactRouter.ts";
+	PageDescriptorProvider,
+	type PageRequest,
+	type PageRoute,
+} from "./PageDescriptorProvider.ts";
 import { ReactAuthProvider } from "./ReactAuthProvider.ts";
 
 export const envSchema = t.object({
@@ -36,7 +37,7 @@ declare module "@alepha/core" {
 export class ReactServerProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly router = $inject(ReactRouter);
+	protected readonly pageDescriptorProvider = $inject(PageDescriptorProvider);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly env = $inject(envSchema);
@@ -44,100 +45,136 @@ export class ReactServerProvider {
 	protected readonly configure = $hook({
 		name: "configure",
 		handler: async () => {
-			await this.configureRoutes();
-		},
-	});
-
-	id = Math.random().toString(36).substring(2, 7);
-
-	protected async configureRoutes() {
-		this.alepha.state("ReactServerProvider.ssr", false);
-
-		if (this.alepha.isTest()) {
-			this.processDescriptors();
-		}
-
-		if (this.router.empty()) {
-			return;
-		}
-
-		if (process.env.VITE_ALEPHA_DEV === "true") {
-			const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
-			this.log.info("SSR (vite) OK");
-			this.alepha.state("ReactServerProvider.ssr", true);
-			const templateUrl = `${url}/index.html`;
-
-			const handler = this.createHandler(() =>
-				fetch(templateUrl)
-					.then((it) => it.text())
-					.catch(() => undefined),
-			);
-
-			return;
-		}
-
-		let root = "";
-
-		if (!this.alepha.isServerless()) {
-			const maybe = [
-				join(process.cwd(), this.env.REACT_SERVER_DIST),
-				join(process.cwd(), "..", this.env.REACT_SERVER_DIST),
-			];
-
-			for (const it of maybe) {
-				if (existsSync(it)) {
-					root = it;
-					break;
-				}
-			}
-
-			if (!root) {
-				this.log.warn("Missing static files, SSR will be disabled");
+			const routes: ServerRoute[] = [];
+			const pages = this.alepha.getDescriptorValues($page);
+			if (pages.length === 0) {
 				return;
 			}
 
-			await this.serverStaticProvider.serve(this.createStaticHandler(root));
+			for (const { key, instance, value } of pages) {
+				const name = value.options.name ?? key;
+				const page = value.options;
+
+				if (this.alepha.isTest()) {
+					instance[key].render = this.createRenderFunction(name);
+				}
+			}
+
+			if (process.env.VITE_ALEPHA_DEV === "true") {
+				this.configureVite();
+				return;
+			}
+
+			let root = "";
+			if (!this.alepha.isServerless()) {
+				root = this.getPublicDirectory();
+
+				if (!root) {
+					this.log.warn("Missing static files, SSR will be disabled");
+					return;
+				}
+
+				await this.configureStaticServer(root);
+			} else {
+			}
+
+			const template =
+				this.alepha.state("ReactServerProvider.template") ??
+				(await readFile(join(root, "index.html"), "utf-8"));
+
+			for (const page of this.pageDescriptorProvider.getPages()) {
+				this.serverRouterProvider.route({
+					path: page.match,
+					handler: this.createHandler(page, async () => template),
+				});
+			}
+
+			this.alepha.state("ReactServerProvider.ssr", true);
+		},
+	});
+
+	protected getPublicDirectory(): string {
+		const maybe = [
+			join(process.cwd(), this.env.REACT_SERVER_DIST),
+			join(process.cwd(), "..", this.env.REACT_SERVER_DIST),
+		];
+
+		for (const it of maybe) {
+			if (existsSync(it)) {
+				return it;
+			}
 		}
 
-		const template =
-			this.alepha.state("ReactServerProvider.template") ??
-			(await readFile(join(root, "index.html"), "utf-8"));
-
-		const handler = this.createHandler(async () => template);
-
-		this.alepha.state("ReactServerProvider.ssr", true);
+		return "";
 	}
 
-	/**
-	 *
-	 * @param root
-	 * @protected
-	 */
-	protected createStaticHandler(root: string): ServeDescriptorOptions {
-		return {
+	protected async configureStaticServer(root: string) {
+		await this.serverStaticProvider.serve({
 			root,
 			path: this.env.REACT_SERVER_PREFIX,
 			cacheControl: true,
 			immutable: true,
 			maxAge: { days: 30 },
+		});
+	}
+
+	protected configureVite() {
+		const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
+		this.log.info("SSR (vite) OK");
+		this.alepha.state("ReactServerProvider.ssr", true);
+		const templateUrl = `${url}/index.html`;
+		const templateLoader = () =>
+			fetch(templateUrl)
+				.then((it) => it.text())
+				.catch(() => undefined);
+
+		for (const page of this.pageDescriptorProvider.getPages()) {
+			const handler = this.createHandler(page, templateLoader);
+			this.serverRouterProvider.route({
+				path: page.match,
+				handler,
+			});
+		}
+	}
+
+	protected createRenderFunction(name: string) {
+		return async (
+			options: {
+				params?: Record<string, string>;
+				query?: Record<string, string>;
+			} = {},
+		) => {
+			const page = this.pageDescriptorProvider.page(name);
+			const state = await this.pageDescriptorProvider.createLayers(page, {
+				url: new URL("http://localhost"),
+				params: options.params ?? {},
+				query: options.query ?? {},
+				head: {},
+				context: {},
+			});
+			return renderToString(this.pageDescriptorProvider.root(state));
 		};
 	}
 
-	/**
-	 *
-	 * @param templateLoader
-	 * @protected
-	 */
 	protected createHandler(
+		page: PageRoute,
 		templateLoader: () => Promise<string | undefined>,
 	): ServerHandler {
-		return async (ctx) => {
-			const { url, cookies, user, reply } = ctx;
-
+		return async ({ url, user, reply, cookies, query, params }) => {
 			const template = await templateLoader();
 			if (!template) {
 				throw new Error("Template not found");
 			}
+
+			const request: PageRequest = {
+				url,
+				params,
+				query,
+				head: {},
+				context: {
+					user, // user from request
+				},
+			};
 
 			// const response = this.notFoundHandler(ctx.url);
 			// if (response) {
@@ -147,44 +184,41 @@ export class ReactServerProvider {
 
 			const hasAuth = this.alepha.has(ReactAuthProvider);
 
+			// -- user
 			// if user is not set, we can have non-trusted user from cookie
-			if (!ctx.user && ctx.cookies && hasAuth) {
+			if (!request.context.user && cookies && hasAuth) {
 				const auth = this.alepha.get(ReactAuthProvider);
-				ctx.user = auth.user.get(ctx.cookies);
-				if (ctx.user) {
-					ctx.user.roles = []; // user from cookie is not trusted, it's only here for UI
+				request.context.user = auth.user.get(cookies);
+				if (request.context.user) {
+					request.context.user.roles = []; // user from cookie is not trusted
 				}
 			}
 
-			const args: PageContext = {};
-
-			args.cookies = cookies;
-			args.user = user;
-
-			// forward links
+			// -- links
 			if (this.alepha.has(ServerLinksProvider) && hasAuth) {
 				const srv = this.alepha.get(ServerLinksProvider);
-				args.links = (await srv.links()) as any;
-				this.alepha.als.set("links", args.links);
+				request.context.links = (await srv.links()) as any;
+				this.alepha.als.set("links", request.context.links);
 			}
 
-			const { element, layers, redirect, context } = await this.router.render(
-				url.pathname + url.search,
-				{
-					args,
-				},
+			const state = await this.pageDescriptorProvider.createLayers(
+				page,
+				request,
 			);
 
-			if (redirect) {
-				return reply.redirect(redirect);
+			if (state.redirect) {
+				return reply.redirect(state.redirect);
 			}
+
+			const element = this.pageDescriptorProvider.root(state, request.context);
 
 			const html = renderToString(element);
 			const $ = load(template);
 
+			// create hydration data
 			const script = `<script>window.__ssr=${JSON.stringify({
-				links: args.links,
-				layers: layers.map((it) => ({
+				links: request.context.links,
+				layers: state.layers.map((it) => ({
 					...it,
 					error: it.error
 						? {
@@ -200,6 +234,7 @@ export class ReactServerProvider {
 				})),
 			})}</script>`;
 
+			// inject app into template
 			const body = $("body");
 			const root = body.find(`#${this.env.REACT_ROOT_ID}`);
 			if (root.length) {
@@ -208,12 +243,15 @@ export class ReactServerProvider {
 				body.prepend(`<div id="${this.env.REACT_ROOT_ID}">${html}</div>`);
 			}
 
+			// inject ssr hydration data
 			body.append(script);
 
-			if (context.head) {
-				this.renderHeadContext($, context.head);
+			// inject head meta
+			if (state.head) {
+				this.renderHead($, state.head);
 			}
 
+			// render as string
 			const text = $.html();
 
 			reply.status = 200;
@@ -223,73 +261,35 @@ export class ReactServerProvider {
 		};
 	}
 
-	/**
-	 *
-	 * @protected
-	 */
-	protected processDescriptors() {
-		const pages = this.alepha.getDescriptorValues($page);
-		for (const { key, instance, value } of pages) {
-			// =>
-
-			instance[key].render = async (
-				options: {
-					params?: Record<string, string>;
-					query?: Record<string, string>;
-				} = {},
-			) => {
-				const name = value.options.name ?? key;
-				const page = this.router.page(name);
-				const layers = await this.router.createLayers(
-					"",
-					page,
-					options.params ?? {},
-					options.query ?? {},
-					[],
-				);
-
-				return renderToString(
-					this.router.root({
-						layers,
-						pathname: "",
-						search: "",
-						context: {},
-					}),
-				);
-			};
-		}
-	}
-
-	protected renderHeadContext(
-		$: CheerioAPI,
-		headContext: RouterRenderHeadContext,
-	) {
-		const head = $("head");
-		if (head) {
-			if (headContext.title) {
-				head.find("title").remove();
-				head.append(`<title>${headContext.title}</title>`);
+	protected renderHead($: CheerioAPI, head: Head) {
+		const element = $("head");
+		if (element.length) {
+			if (head.title) {
+				element.find("title").remove();
+				element.append(`<title>${head.title}</title>`);
 			}
-			if (headContext.meta) {
-				for (const it of headContext.meta) {
-					const meta = head.find(`meta[name="${it.name}"]`);
+			if (head.meta) {
+				for (const it of head.meta) {
+					const meta = element.find(`meta[name="${it.name}"]`);
 					if (meta.length) {
 						meta.attr("content", it.content);
 					} else {
-						head.append(`<meta name="${it.name}" content="${it.content}" />`);
+						element.append(
+							`<meta name="${it.name}" content="${it.content}" />`,
+						);
 					}
 				}
 			}
 		}
 
-		if (headContext.htmlAttributes) {
-			for (const [key, value] of Object.entries(headContext.htmlAttributes)) {
+		if (head.htmlAttributes) {
+			for (const [key, value] of Object.entries(head.htmlAttributes)) {
 				$("html").attr(key, value);
 			}
 		}
 
-		if (headContext.bodyAttributes) {
-			for (const [key, value] of Object.entries(headContext.bodyAttributes)) {
+		if (head.bodyAttributes) {
+			for (const [key, value] of Object.entries(head.bodyAttributes)) {
 				$("body").attr(key, value);
 			}
 		}

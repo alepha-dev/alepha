@@ -1,9 +1,11 @@
-import {} from "react";
+import type {
+	AnchorProps,
+	RouterState,
+} from "../providers/PageDescriptorProvider.ts";
 import type {
 	ReactBrowserProvider,
 	RouterGoOptions,
 } from "../providers/ReactBrowserProvider.ts";
-import type { AnchorProps, RouterState } from "../services/ReactRouter.ts";
 
 export class RouterHookApi {
 	constructor(

@@ -19,7 +19,6 @@ const Link = (props: LinkProps) => {
 
 	const can = typeof props.to === "string" ? undefined : props.to.options.can;
 	if (can && !can()) {
-		console.log("I cannot go to", to);
 		return null;
 	}
 

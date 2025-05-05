@@ -13,7 +13,6 @@ export * from "./providers/PageDescriptorProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
 export * from "./providers/ReactAuthProvider.ts";
-export * from "./services/ReactRouter.ts";
 export * from "./errors/RedirectionError.ts";
 
 const envSchema = t.object({
