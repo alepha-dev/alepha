@@ -1,10 +1,9 @@
-import type {} from "node:http";
 import type { Static, TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { UserAccountToken } from "@alepha/security";
+import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
 	RequestConfigSchema,
-	RouteMethod,
 	ServerHandler,
 	ServerRoute,
 } from "../providers/ServerRouterProvider.ts";

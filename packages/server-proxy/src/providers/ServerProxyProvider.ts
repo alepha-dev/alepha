@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
-import { ServerRouterProvider } from "@alepha/server";
+import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
+import { routeMethods } from "@alepha/server";
 import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
 
 export class ServerProxyProvider {
@@ -10,7 +11,7 @@ export class ServerProxyProvider {
 		name: "configure",
 		handler: async () => {
 			const proxies = this.alepha.getDescriptorValues($proxy);
-			for (const { value, instance, key } of proxies) {
+			for (const { value } of proxies) {
 				if (value.options.disabled) {
 					continue;
 				}
@@ -23,49 +24,53 @@ export class ServerProxyProvider {
 	public proxy(options: ProxyDescriptorOptions) {
 		const path = options.path;
 		const target = options.target;
+		const handler: ServerHandler = async (request) => {
+			const url = new URL(request.url.pathname, target);
+			if (request.url.search) {
+				url.search = request.url.search;
+			}
 
-		this.routerProvider.route({
-			path,
-			handler: async (request) => {
-				const url = new URL(request.url.pathname, target);
-				if (request.url.search) {
-					url.search = request.url.search;
+			const requestInit = {
+				url: url.toString(),
+				method: request.method,
+				headers: request.headers,
+				body: request.body,
+			};
+
+			if (requestInit.body) {
+				(requestInit as any).duplex = "half";
+			}
+
+			if (options.beforeRequest) {
+				await options.beforeRequest(request, requestInit);
+			}
+
+			const response = await fetch(requestInit.url, requestInit);
+
+			request.reply.status = response.status;
+
+			for (const [header, value] of response.headers.entries()) {
+				if (header === "content-length") {
+					continue;
 				}
 
-				const requestInit = {
-					url: url.toString(),
-					method: request.method,
-					headers: request.headers,
-					body: request.body,
-				};
+				request.reply.headers[header] = value;
+			}
 
-				if (requestInit.body) {
-					(requestInit as any).duplex = "half";
-				}
+			request.reply.body = response.body;
 
-				if (options.beforeRequest) {
-					await options.beforeRequest(request, requestInit);
-				}
+			if (options.afterResponse) {
+				await options.afterResponse(request, response);
+			}
+		};
 
-				const response = await fetch(requestInit.url, requestInit);
-
-				request.reply.status = response.status;
-
-				for (const [header, value] of response.headers.entries()) {
-					if (header === "content-length") {
-						continue;
-					}
-
-					request.reply.headers[header] = value;
-				}
-
-				request.reply.body = response.body;
-
-				if (options.afterResponse) {
-					await options.afterResponse(request, response);
-				}
-			},
-		});
+		for (const method of routeMethods) {
+			this.routerProvider.route({
+				method,
+				path,
+				handler,
+			});
+		}
 
 		this.alepha.log.info("Proxying", { path, target });
 	}

@@ -50,6 +50,8 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 		started: false,
 	};
 
+	const cwd = process.cwd();
+
 	const ssr = () => {
 		if (!state.app) return false;
 		return state.app.state("ReactServerProvider.ssr" as keyof State) ?? false;
@@ -166,11 +168,6 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 			return !file.startsWith("/api");
 		}
 
-		// swagger
-		if (pathname.startsWith("/docs")) {
-			return false;
-		}
-
 		// static assets
 		if (pathname.match(/\.\w{2,5}$/)) {
 			return true;
@@ -251,7 +248,11 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 					req.url &&
 					!isViteFile(req.url)
 				) {
-					return state.app.handle(req, res);
+					return state.app.handle(req, res).then((status) => {
+						if (!status) {
+							next();
+						}
+					});
 				}
 				next();
 			});

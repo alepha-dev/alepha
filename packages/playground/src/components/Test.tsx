@@ -1,7 +1,7 @@
 import { useClient } from "@alepha/react";
 import { useState } from "react";
-import type Api from "../Api.ts";
-import type { IncResponse } from "../Api.ts";
+import type Api from "../controllers/Api.ts";
+import type { IncResponse } from "../controllers/Api.ts";
 
 const Test = (props: { inc: IncResponse }) => {
 	const cli = useClient().of<Api>();

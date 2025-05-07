@@ -3,7 +3,7 @@ import { $sequence } from "@alepha/postgres";
 import { $auth } from "@alepha/react-auth";
 import { $realm } from "@alepha/security";
 import { $route as $action, $cookie } from "@alepha/server";
-import { Service } from "./Service.ts";
+import { DummyService } from "../services/DummyService.ts";
 
 export const incResponse = t.object({
 	type: t.string(),
@@ -27,7 +27,7 @@ class Api {
 		}),
 	);
 
-	srv = $inject(Service);
+	srv = $inject(DummyService);
 
 	auth = $auth({
 		oidc: {

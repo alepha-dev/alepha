@@ -49,6 +49,7 @@ export const pgTableSchema = <
  * @alias pgTableSchema
  */
 export const table = pgTableSchema; // for convenience
+export const $table = pgTableSchema; // for convenience
 
 export const table2 = <
 	TTableName extends string,

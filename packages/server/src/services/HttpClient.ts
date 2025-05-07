@@ -7,6 +7,7 @@ import {
 	type TSchema,
 	t,
 } from "@alepha/core";
+import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
 	ClientRequestEntry,
 	ClientRequestFetchOptions,
@@ -16,7 +17,6 @@ import { HttpError } from "../errors/HttpError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import type {
 	RequestConfigSchema,
-	RouteMethod,
 	ServerHandler,
 	ServerRequestConfigEntry,
 } from "../providers/ServerRouterProvider.ts";

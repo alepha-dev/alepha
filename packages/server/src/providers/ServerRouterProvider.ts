@@ -16,6 +16,7 @@ import {
 } from "@alepha/core";
 import { type Route, RouterProvider } from "@alepha/router";
 import type { UserAccountToken } from "@alepha/security";
+import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { Cookies } from "../descriptors/$cookie.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
@@ -33,7 +34,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 	) {
 		let path = route.path;
 		if (route.method) {
-			path = `${path}/${route.method}`;
+			path = `/${route.method.toUpperCase()}/${route.path}`.replace(
+				/\/+/g,
+				"/",
+			);
 		}
 
 		const responseType = this.getResponseType(route.schema);
@@ -342,21 +346,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-export const routeMethods = [
-	// list of supported http methods
-	"GET",
-	"POST",
-	"PUT",
-	"PATCH",
-	"DELETE",
-	"HEAD",
-	"OPTIONS",
-	"CONNECT",
-	"TRACE",
-] as const;
-
-export type RouteMethod = (typeof routeMethods)[number];
 
 export interface RequestConfigSchema {
 	body?: TSchema;

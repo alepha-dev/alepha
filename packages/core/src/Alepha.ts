@@ -132,7 +132,7 @@ export class Alepha {
 		return this._state.log;
 	}
 
-	public handle?: (req: any, res: any) => Promise<void>;
+	public handle?: (req: any, res: any) => Promise<any>;
 
 	/**
 	 * The environment variables for the App.
@@ -219,12 +219,20 @@ export class Alepha {
 	/**
 	 * Returns whether the App is running in a serverless environment.
 	 */
-	public isServerless(): boolean {
+	public isServerless(): boolean | "vite" | "vercel" {
 		if (this.isBrowser()) {
 			return false;
 		}
 
-		return !!process.env.VITE_ALEPHA_DEV || process.env.RUNTIME === "vercel";
+		if (process.env.RUNTIME === "vercel") {
+			return "vercel";
+		}
+
+		if (process.env.VITE_ALEPHA_DEV) {
+			return "vite";
+		}
+
+		return false;
 	}
 
 	/**

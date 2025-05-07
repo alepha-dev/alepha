@@ -12,3 +12,4 @@ export * from "./hooks/useRouter.ts";
 export * from "./hooks/useRouterEvents.ts";
 export * from "./hooks/useRouterState.ts";
 export * from "./hooks/useActive.ts";
+export * from "./errors/RedirectionError.ts";

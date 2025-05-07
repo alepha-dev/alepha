@@ -2,6 +2,7 @@ import { $inject, Alepha, __bind } from "@alepha/core";
 import { $route } from "./descriptors/$action.ts";
 import { BrowserActionDescriptorProvider } from "./providers/BrowserActionDescriptorProvider.ts";
 
+export * from "./constants/routeMethods.ts";
 export * from "./descriptors/$action.ts";
 export * from "./providers/BrowserActionDescriptorProvider.ts";
 export * from "./services/HttpClient.ts";

@@ -63,9 +63,10 @@ test("$proxy", async () => {
 		},
 	});
 
+	expect(response.status).toBe(200);
+
 	const json = await response.json();
 
-	expect(response.status).toBe(200);
 	expect(response.headers.get("x-hello")).toBe("world");
 	expect(json).toEqual({
 		message: "Hello Mr.JACK!",

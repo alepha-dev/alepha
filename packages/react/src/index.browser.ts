@@ -1,5 +1,4 @@
 import { $inject, Alepha, __bind } from "@alepha/core";
-import { RouterProvider } from "@alepha/router";
 import { $page } from "./descriptors/$page.ts";
 import { BrowserRouterProvider } from "./providers/BrowserRouterProvider.ts";
 import { PageDescriptorProvider } from "./providers/PageDescriptorProvider.ts";
@@ -14,12 +13,8 @@ export class ReactModule {
 	constructor() {
 		this.alepha //
 			.with(PageDescriptorProvider)
-			.with(ReactBrowserProvider);
-
-		this.alepha.with({
-			provide: RouterProvider,
-			use: BrowserRouterProvider,
-		});
+			.with(ReactBrowserProvider)
+			.with(BrowserRouterProvider);
 	}
 }
 

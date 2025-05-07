@@ -13,6 +13,7 @@ import {
 	SecurityProvider,
 	type UserAccountToken,
 } from "@alepha/security";
+import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
 	ClientRequestEntry,
 	ClientRequestGenericOptions,
@@ -27,7 +28,6 @@ import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
 import { HttpClient } from "../services/HttpClient.ts";
 import {
 	type RequestConfigSchema,
-	type RouteMethod,
 	type ServerRequest,
 	type ServerRequestConfigEntry,
 	type ServerRoute,

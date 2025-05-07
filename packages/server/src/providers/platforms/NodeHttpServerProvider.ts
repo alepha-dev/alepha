@@ -2,8 +2,8 @@ import type { IncomingMessage } from "node:http";
 import { type ServerResponse, createServer } from "node:http";
 import { Readable } from "node:stream";
 import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
+import type { RouteMethod } from "../../constants/routeMethods.ts";
 import {
-	type RouteMethod,
 	type ServerRawRequest,
 	ServerRouterProvider,
 } from "../ServerRouterProvider.ts";
@@ -37,17 +37,22 @@ export class NodeHttpServerProvider implements ServerProvider {
 	public async handle(
 		req: IncomingMessage,
 		res: ServerResponse,
-	): Promise<void> {
+	): Promise<number | void> {
 		try {
 			const url = new URL(`http://${req.headers.host}${req.url}`);
 			const { route, params } = this.router.match(
-				`${url.pathname}/${req.method}`,
+				`/${req.method}${url.pathname}`.replace(/\/+/g, "/"),
 			);
 
 			if (!route) {
+				if (this.alepha.isServerless() === "vite") {
+					// if vite is running, let it handle the request
+					return;
+				}
+
 				res.writeHead(404, { "content-type": "text/plain" });
 				res.end("Not Found");
-				return;
+				return 404;
 			}
 
 			const request = this.createRouterRequest(req, res, params);
@@ -56,14 +61,17 @@ export class NodeHttpServerProvider implements ServerProvider {
 			res.writeHead(response.status, Object.fromEntries(response.headers));
 			if (!response.body) {
 				res.end();
-				return;
+				return response.status;
 			}
 
 			Readable.from(response.body).pipe(res);
+
+			return response.status;
 		} catch (err) {
 			this.log.error("Error handling request", err);
 			res.writeHead(500, { "content-type": "text/plain" });
 			res.end("Internal Server Error");
+			return 500;
 		}
 	}
 
@@ -120,6 +128,10 @@ export class NodeHttpServerProvider implements ServerProvider {
 	protected readonly stop = $hook({
 		name: "stop",
 		handler: async () => {
+			if (this.alepha.isServerless()) {
+				return;
+			}
+
 			if (this.alepha.isProduction()) {
 				await this.close();
 				return;

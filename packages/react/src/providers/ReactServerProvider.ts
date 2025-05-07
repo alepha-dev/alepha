@@ -61,7 +61,7 @@ export class ReactServerProvider {
 				}
 			}
 
-			if (process.env.VITE_ALEPHA_DEV === "true") {
+			if (this.alepha.isServerless() === "vite") {
 				this.configureVite();
 				return;
 			}
@@ -83,16 +83,22 @@ export class ReactServerProvider {
 				this.alepha.state("ReactServerProvider.template") ??
 				(await readFile(join(root, "index.html"), "utf-8"));
 
-			for (const page of this.pageDescriptorProvider.getPages()) {
-				this.serverRouterProvider.route({
-					path: page.match,
-					handler: this.createHandler(page, async () => template),
-				});
-			}
+			this.registerPages(async () => template);
 
 			this.alepha.state("ReactServerProvider.ssr", true);
 		},
 	});
+
+	protected registerPages(templateLoader: () => Promise<string | undefined>) {
+		for (const page of this.pageDescriptorProvider.getPages()) {
+			this.log.debug(`+ ${page.match} -> ${page.name}`);
+			this.serverRouterProvider.route({
+				method: "GET",
+				path: page.match,
+				handler: this.createHandler(page, templateLoader),
+			});
+		}
+	}
 
 	protected getPublicDirectory(): string {
 		const maybe = [
@@ -124,18 +130,12 @@ export class ReactServerProvider {
 		this.log.info("SSR (vite) OK");
 		this.alepha.state("ReactServerProvider.ssr", true);
 		const templateUrl = `${url}/index.html`;
-		const templateLoader = () =>
+
+		this.registerPages(() =>
 			fetch(templateUrl)
 				.then((it) => it.text())
-				.catch(() => undefined);
-
-		for (const page of this.pageDescriptorProvider.getPages()) {
-			const handler = this.createHandler(page, templateLoader);
-			this.serverRouterProvider.route({
-				path: page.match,
-				handler,
-			});
-		}
+				.catch(() => undefined),
+		);
 	}
 
 	protected createRenderFunction(name: string) {

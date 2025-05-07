@@ -39,31 +39,18 @@ export class ReactBrowserProvider {
 		head: {},
 	};
 
-	/**
-	 *
-	 */
 	public get document() {
 		return window.document;
 	}
 
-	/**
-	 *
-	 */
 	public get history() {
 		return window.history;
 	}
 
-	/**
-	 *
-	 */
 	public get url(): string {
 		return window.location.pathname + window.location.search;
 	}
 
-	/**
-	 *
-	 * @param props
-	 */
 	public async invalidate(props?: Record<string, any>) {
 		const previous: PreviousLayerData[] = [];
 
@@ -112,11 +99,6 @@ export class ReactBrowserProvider {
 		this.history.pushState({}, "", url);
 	}
 
-	/**
-	 *
-	 * @param options
-	 * @protected
-	 */
 	protected async render(
 		options: {
 			url?: string;

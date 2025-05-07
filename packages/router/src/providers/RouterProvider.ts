@@ -50,8 +50,9 @@ export class RouterProvider<T extends Route = Route> {
 		if (path[0] !== "/") {
 			throw new Error(`Path "${path}" must start with "/"`);
 		}
-
 		const parts = this.createParts(path);
+		console.log(this.tree, parts);
+
 		let cursor = this.tree;
 		let wildcard: { route: T } | undefined;
 		const params: Record<string, string> = {};

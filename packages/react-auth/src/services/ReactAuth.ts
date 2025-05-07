@@ -7,7 +7,6 @@ export class ReactAuth {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client = $inject(HttpClient);
-	protected readonly browser = $inject(ReactBrowserProvider);
 
 	public readonly slugs = {
 		login: "/api/_oauth/login",
@@ -35,15 +34,18 @@ export class ReactAuth {
 	});
 
 	protected getUserFromCookies(): UserAccountToken | undefined {
-		const cookies = this.browser.document.cookie.split("; ");
-		const userCookie = cookies.find((cookie) => cookie.startsWith("user="));
+		if (this.alepha.isBrowser()) {
+			const browser = this.alepha.get(ReactBrowserProvider);
+			const cookies = browser.document.cookie.split("; ");
+			const userCookie = cookies.find((cookie) => cookie.startsWith("user="));
 
-		try {
-			if (userCookie) {
-				return JSON.parse(decodeURIComponent(userCookie.split("=")[1]));
+			try {
+				if (userCookie) {
+					return JSON.parse(decodeURIComponent(userCookie.split("=")[1]));
+				}
+			} catch (error) {
+				this.log.warn(error, "Failed to parse user cookie");
 			}
-		} catch (error) {
-			this.log.warn(error, "Failed to parse user cookie");
 		}
 
 		return undefined;

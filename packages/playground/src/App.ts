@@ -1,7 +1,7 @@
 import { $inject } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { HttpClient } from "@alepha/server";
-import type Api from "./Api.ts";
+import type Api from "./controllers/Api.ts";
 
 export class App {
 	api = $inject(HttpClient).of<Api>();
@@ -29,6 +29,7 @@ export class App {
 	});
 
 	layout = $page({
+		path: "/",
 		resolve: async ({ query }) => {
 			return {
 				name: query.name ?? "Alepha",

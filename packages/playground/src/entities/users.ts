@@ -1,7 +1,7 @@
 import { t } from "@alepha/core";
-import { pg, table } from "@alepha/postgres";
+import { $table, pg } from "@alepha/postgres";
 
-export const users = table(
+export const users = $table(
 	"users",
 	t.object({
 		id: pg.primaryKey(t.uuid()),
@@ -9,7 +9,6 @@ export const users = table(
 		updatedAt: pg.updatedAt(),
 		version: pg.version(),
 		email: t.string(),
-		firstName: t.string(),
-		lastName: t.string(),
+		password: t.string(),
 	}),
 );
