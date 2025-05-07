@@ -1,6 +1,6 @@
 import type { AsyncLocalStorageProvider } from "../providers/AsyncLocalStorageProvider.ts";
 
-export type LogLevel = "error" | "warn" | "info" | "debug" | "trace";
+export type LogLevel = "error" | "warn" | "info" | "debug" | "trace" | "silent";
 
 export interface LoggerEnv {
 	/**
@@ -10,7 +10,7 @@ export interface LoggerEnv {
 	 * - test = "error"
 	 * - prod = "info"
 	 */
-	LOG_LEVEL?: "trace" | "debug" | "info" | "warn" | "error";
+	LOG_LEVEL?: "trace" | "debug" | "info" | "warn" | "error" | "silent";
 
 	/**
 	 * Disable colors in the console output.
@@ -80,6 +80,7 @@ export const COLORS = {
 };
 
 export const LEVEL_COLORS: Record<LogLevel, string> = {
+	silent: "",
 	error: COLORS.red,
 	warn: COLORS.orange,
 	info: COLORS.green,
@@ -89,6 +90,7 @@ export const LEVEL_COLORS: Record<LogLevel, string> = {
 
 export class Logger {
 	protected levelOrder: Record<LogLevel, number> = {
+		silent: -1,
 		error: 0,
 		warn: 1,
 		info: 2,

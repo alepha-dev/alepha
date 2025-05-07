@@ -1,17 +1,13 @@
 {
-  "name": "@alepha/server",
+  "name": "@alepha/server-proxy",
   "version": "0.6.2",
   "type": "module",
   "license": "MIT",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "browser": "./src/index.browser.ts",
   "dependencies": {
-    "@alepha/cache": "0.6.2",
     "@alepha/core": "0.6.2",
-    "@alepha/router": "0.6.2",
-    "@alepha/security": "0.6.2",
-    "@fastify/busboy": "^3.1.1"
+    "@alepha/server": "0.6.2"
   },
   "devDependencies": {
     "pkgroll": "^2.12.2",

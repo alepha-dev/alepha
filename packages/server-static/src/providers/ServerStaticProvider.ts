@@ -3,14 +3,8 @@ import { readdir } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
-import {
-	$serve,
-	type ServeDescriptorOptions,
-} from "../../descriptors/$serve.ts";
-import {
-	type ServerHandler,
-	ServerRouterProvider,
-} from "../ServerRouterProvider.ts";
+import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
+import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
 export class ServerStaticProvider {
 	protected readonly alepha = $inject(Alepha);

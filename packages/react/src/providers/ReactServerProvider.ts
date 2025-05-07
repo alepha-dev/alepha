@@ -6,16 +6,16 @@ import {
 	type ServerHandler,
 	ServerLinksProvider,
 	ServerRouterProvider,
-	ServerStaticProvider,
 } from "@alepha/server";
-import { type CheerioAPI, load } from "cheerio";
+import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
-import { $page, type Head } from "../descriptors/$page.ts";
+import { $page } from "../descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
 	type PageRequest,
 	type PageRoute,
 } from "./PageDescriptorProvider.ts";
+import { ServerHeadProvider } from "./ServerHeadProvider.ts";
 
 export const envSchema = t.object({
 	REACT_SERVER_DIST: t.string({ default: "client" }),
@@ -38,7 +38,12 @@ export class ReactServerProvider {
 	protected readonly pageDescriptorProvider = $inject(PageDescriptorProvider);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+	protected readonly headProvider = $inject(ServerHeadProvider);
 	protected readonly env = $inject(envSchema);
+	protected readonly ROOT_DIV_REGEX = new RegExp(
+		`<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
+		"is",
+	);
 
 	protected readonly configure = $hook({
 		name: "configure",
@@ -193,9 +198,7 @@ export class ReactServerProvider {
 			}
 
 			const element = this.pageDescriptorProvider.root(state, request);
-
-			const html = renderToString(element);
-			const $ = load(template);
+			const app = renderToString(element);
 
 			// create hydration data
 			const script = `<script>window.__ssr=${JSON.stringify({
@@ -216,64 +219,56 @@ export class ReactServerProvider {
 				})),
 			})}</script>`;
 
-			// inject app into template
-			const body = $("body");
-			const root = body.find(`#${this.env.REACT_ROOT_ID}`);
-			if (root.length) {
-				root.html(html);
-			} else {
-				body.prepend(`<div id="${this.env.REACT_ROOT_ID}">${html}</div>`);
-			}
-
-			// inject ssr hydration data
-			body.append(script);
-
-			// inject head meta
-			if (state.head) {
-				this.renderHead($, state.head);
-			}
-
-			// render as string
-			const text = $.html();
+			const response = {
+				html: template,
+			};
 
 			reply.status = 200;
 			reply.headers["content-type"] = "text/html";
+			reply.headers["cache-control"] =
+				"no-store, no-cache, must-revalidate, proxy-revalidate";
+			reply.headers.pragma = "no-cache";
+			reply.headers.expires = "0";
 
-			return text;
+			// inject app into template
+			this.fillTemplate(response, app, script);
+
+			// inject head meta
+			if (state.head) {
+				response.html = this.headProvider.renderHead(response.html, state.head);
+			}
+
+			// TODO: hook for plugins "react:server:template"
+			// { response: { html: string }, request, state }
+
+			return response.html;
 		};
 	}
 
-	protected renderHead($: CheerioAPI, head: Head) {
-		const element = $("head");
-		if (element.length) {
-			if (head.title) {
-				element.find("title").remove();
-				element.append(`<title>${head.title}</title>`);
-			}
-			if (head.meta) {
-				for (const it of head.meta) {
-					const meta = element.find(`meta[name="${it.name}"]`);
-					if (meta.length) {
-						meta.attr("content", it.content);
-					} else {
-						element.append(
-							`<meta name="${it.name}" content="${it.content}" />`,
-						);
-					}
-				}
+	fillTemplate(response: { html: string }, app: string, script: string) {
+		if (this.ROOT_DIV_REGEX.test(response.html)) {
+			// replace contents of the existing <div id="root">
+			response.html = response.html.replace(
+				this.ROOT_DIV_REGEX,
+				(_match, beforeId, afterId) => {
+					return `<div${beforeId} id="${this.env.REACT_ROOT_ID}"${afterId}>${app}</div>`;
+				},
+			);
+		} else {
+			const bodyOpenTag = /<body([^>]*)>/i;
+			if (bodyOpenTag.test(response.html)) {
+				response.html = response.html.replace(bodyOpenTag, (match) => {
+					return `${match}\n<div id="${this.env.REACT_ROOT_ID}">${app}</div>`;
+				});
 			}
 		}
 
-		if (head.htmlAttributes) {
-			for (const [key, value] of Object.entries(head.htmlAttributes)) {
-				$("html").attr(key, value);
-			}
-		}
-
-		if (head.bodyAttributes) {
-			for (const [key, value] of Object.entries(head.bodyAttributes)) {
-				$("body").attr(key, value);
-			}
+		const bodyCloseTagRegex = /<\/body>/i;
+		if (bodyCloseTagRegex.test(response.html)) {
+			response.html = response.html.replace(
+				bodyCloseTagRegex,
+				`${script}\n</body>`,
+			);
 		}
 	}
 }

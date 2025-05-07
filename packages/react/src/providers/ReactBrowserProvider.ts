@@ -3,6 +3,7 @@ import { HttpClient, type HttpClientLink } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import type { Head } from "../descriptors/$page.ts";
+import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {
 	PreviousLayerData,
@@ -23,6 +24,7 @@ export class ReactBrowserProvider {
 	protected readonly client = $inject(HttpClient);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(BrowserRouterProvider);
+	protected readonly headProvider = $inject(BrowserHeadProvider);
 	protected readonly env = $inject(envSchema);
 	protected root!: Root;
 
@@ -144,52 +146,6 @@ export class ReactBrowserProvider {
 	}
 
 	/**
-	 * Render the helmet context.
-	 *
-	 * @param ctx
-	 * @protected
-	 */
-	protected renderHeadContext(ctx: Head) {
-		if (ctx.title) {
-			this.document.title = ctx.title;
-		}
-
-		if (ctx.bodyAttributes) {
-			for (const [key, value] of Object.entries(ctx.bodyAttributes)) {
-				if (value) {
-					this.document.body.setAttribute(key, value);
-				} else {
-					this.document.body.removeAttribute(key);
-				}
-			}
-		}
-
-		if (ctx.htmlAttributes) {
-			for (const [key, value] of Object.entries(ctx.htmlAttributes)) {
-				if (value) {
-					this.document.documentElement.setAttribute(key, value);
-				} else {
-					this.document.documentElement.removeAttribute(key);
-				}
-			}
-		}
-
-		if (ctx.meta) {
-			for (const [key, value] of Object.entries(ctx.meta)) {
-				const meta = this.document.querySelector(`meta[name="${key}"]`);
-				if (meta) {
-					meta.setAttribute("content", value.content);
-				} else {
-					const newMeta = this.document.createElement("meta");
-					newMeta.setAttribute("name", key);
-					newMeta.setAttribute("content", value.content);
-					this.document.head.appendChild(newMeta);
-				}
-			}
-		}
-	}
-
-	/**
 	 * Get embedded layers from the server.
 	 *
 	 * @protected
@@ -240,7 +196,7 @@ export class ReactBrowserProvider {
 
 			const { head } = await this.render({ previous });
 			if (head) {
-				this.renderHeadContext(head);
+				this.headProvider.renderHead(this.document, head);
 			}
 
 			const context = {};
@@ -266,7 +222,7 @@ export class ReactBrowserProvider {
 			});
 
 			this.router.events.on("end", ({ head }) => {
-				this.renderHeadContext(head);
+				this.headProvider.renderHead(this.document, head);
 			});
 		},
 	});

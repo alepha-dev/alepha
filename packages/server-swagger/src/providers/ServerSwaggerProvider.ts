@@ -10,17 +10,17 @@ import {
 	t,
 } from "@alepha/core";
 import { SecurityModule } from "@alepha/security";
+import {
+	ServerActionDescriptorProvider,
+	type ServerRouteAction,
+	ServerRouterProvider,
+} from "@alepha/server";
+import { ServerStaticProvider } from "@alepha/server-static";
 import type { OpenAPIV3 } from "openapi-types";
 import {
 	$swagger,
 	type SwaggerDescriptorOptions,
-} from "../../descriptors/$swagger.ts";
-import {
-	ServerActionDescriptorProvider,
-	type ServerRouteAction,
-} from "../ServerActionDescriptorProvider.ts";
-import { ServerRouterProvider } from "../ServerRouterProvider.ts";
-import { ServerStaticProvider } from "./ServerStaticProvider.ts";
+} from "../descriptors/$swagger.ts";
 
 const envSchema = t.object({
 	SERVER_OPENAPI_PREFIX: t.string({ default: "/docs" }),
@@ -58,7 +58,7 @@ export class ServerSwaggerProvider {
 
 			await this.serverStaticProvider.serve({
 				path: doc.value.options.prefix ?? this.env.SERVER_OPENAPI_PREFIX,
-				root: join(import.meta.filename, "../../../../assets/swagger-ui"),
+				root: join(import.meta.filename, "../../../assets/swagger-ui"),
 			});
 
 			this.serverRouterProvider.route({
@@ -191,7 +191,7 @@ export class ServerSwaggerProvider {
 			};
 		}
 
-		return openApi;
+		return JSON.parse(JSON.stringify(openApi));
 	}
 
 	public isBodyMultipart(schema: TObject): boolean {

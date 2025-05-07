@@ -1,5 +1,5 @@
 import { type Async, KIND, __descriptor } from "@alepha/core";
-import type { ServerRequest } from "../providers/ServerRouterProvider.ts";
+import type { ServerRequest } from "@alepha/server";
 
 export type ProxyDescriptorOptions = {
 	path: string;
