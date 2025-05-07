@@ -1,10 +1,5 @@
-import {
-	Link,
-	NestedView,
-	useAuth,
-	useInject,
-	useRouterEvents,
-} from "@alepha/react";
+import { Link, NestedView, useInject, useRouterEvents } from "@alepha/react";
+import { useAuth } from "@alepha/react-auth";
 import { AppShell, Burger, MantineProvider } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";

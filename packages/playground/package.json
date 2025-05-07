@@ -11,6 +11,7 @@
 		"@alepha/core": "0.6.2",
 		"@alepha/postgres": "0.6.2",
 		"@alepha/react": "0.6.2",
+		"@alepha/react-auth": "0.6.2",
 		"@alepha/server": "0.6.2",
 		"@mantine/core": "^7.17.5",
 		"@mantine/hooks": "^7.17.5",

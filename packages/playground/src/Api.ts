@@ -1,6 +1,6 @@
 import { $inject, $logger, type Static, t } from "@alepha/core";
 import { $sequence } from "@alepha/postgres";
-import { $auth } from "@alepha/react";
+import { $auth } from "@alepha/react-auth";
 import { $realm } from "@alepha/security";
 import { $route as $action, $cookie } from "@alepha/server";
 import { Service } from "./Service.ts";

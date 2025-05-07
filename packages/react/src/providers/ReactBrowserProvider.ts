@@ -1,5 +1,4 @@
-import { $hook, $inject, $logger, type Static, t } from "@alepha/core";
-import type { UserAccountToken } from "@alepha/security";
+import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import { HttpClient, type HttpClientLink } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
@@ -10,7 +9,6 @@ import type {
 	RouterState,
 	TransitionOptions,
 } from "./PageDescriptorProvider.ts";
-import type { ReactHydrationState } from "./ReactAuthProvider.ts";
 
 const envSchema = t.object({
 	REACT_ROOT_ID: t.string({ default: "root" }),
@@ -23,6 +21,7 @@ declare module "@alepha/core" {
 export class ReactBrowserProvider {
 	protected readonly log = $logger();
 	protected readonly client = $inject(HttpClient);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(BrowserRouterProvider);
 	protected readonly env = $inject(envSchema);
 	protected root!: Root;
@@ -223,20 +222,6 @@ export class ReactBrowserProvider {
 		return div;
 	}
 
-	protected getUserFromCookies(): UserAccountToken | undefined {
-		const cookies = this.document.cookie.split("; ");
-		const userCookie = cookies.find((cookie) => cookie.startsWith("user="));
-		try {
-			if (userCookie) {
-				return JSON.parse(decodeURIComponent(userCookie.split("=")[1]));
-			}
-		} catch (error) {
-			this.log.warn(error, "Failed to parse user cookie");
-		}
-
-		return undefined;
-	}
-
 	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
@@ -258,9 +243,14 @@ export class ReactBrowserProvider {
 				this.renderHeadContext(head);
 			}
 
-			const element = this.router.root(this.state, {
-				user: cache?.user ?? this.getUserFromCookies(),
+			const context = {};
+
+			await this.alepha.run("react:browser:render", {
+				context,
+				cache,
 			});
+
+			const element = this.router.root(this.state, context);
 
 			if (previous.length > 0) {
 				this.root = hydrateRoot(this.getRootElement(), element);
@@ -287,4 +277,9 @@ export class ReactBrowserProvider {
 export interface RouterGoOptions {
 	replace?: boolean;
 	match?: TransitionOptions;
+}
+
+export interface ReactHydrationState {
+	layers?: PreviousLayerData[];
+	links?: HttpClientLink[];
 }

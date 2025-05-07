@@ -4,7 +4,6 @@ import {
 	$route,
 	BadRequestError,
 	type Cookies,
-	type HttpClientLink,
 	ServerCookiesProvider,
 } from "@alepha/server";
 import {
@@ -19,7 +18,6 @@ import {
 	refreshTokenGrant,
 } from "openid-client";
 import { $auth } from "../descriptors/$auth.ts";
-import type { PreviousLayerData } from "./PageDescriptorProvider.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();
@@ -60,6 +58,13 @@ export class ReactAuthProvider {
 			name: t.optional(t.string()),
 			email: t.optional(t.string()),
 		}),
+	});
+
+	public readonly onRender = $hook({
+		name: "react:server:render",
+		handler: async ({ request, pageRequest }) => {
+			pageRequest.user = request.user;
+		},
 	});
 
 	protected readonly configure = $hook({
@@ -122,6 +127,12 @@ export class ReactAuthProvider {
 					!this.tokens.get(request.cookies)
 				) {
 					this.user.del(request.cookies);
+				}
+
+				const user = this.user.get(request.cookies);
+				if (user) {
+					request.user = user;
+					request.user.roles = []; // user from cookie is not trusted
 				}
 			}
 		},
@@ -398,14 +409,6 @@ export interface SessionTokens {
 	issued_at?: number;
 }
 
-export interface SessionAuthorizationCode {
-	codeVerifier?: string;
-	redirectUri?: string;
-	nonce?: string;
-	max_age?: number;
-	state?: string;
-}
-
 export interface AuthProvider {
 	name: string;
 	redirectUri: string;
@@ -416,11 +419,4 @@ export interface ReactUser {
 	id: string;
 	name?: string;
 	email?: string;
-}
-
-export interface ReactHydrationState {
-	user?: ReactUser;
-	auth?: "server" | "client";
-	layers?: PreviousLayerData[];
-	links?: HttpClientLink[];
 }

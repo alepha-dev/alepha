@@ -58,6 +58,7 @@ __metadata:
     "@alepha/core": "npm:0.6.2"
     "@alepha/postgres": "npm:0.6.2"
     "@alepha/react": "npm:0.6.2"
+    "@alepha/react-auth": "npm:0.6.2"
     "@alepha/server": "npm:0.6.2"
     "@alepha/vite": "npm:0.6.2"
     "@mantine/core": "npm:^7.17.5"
@@ -112,18 +113,35 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/react-auth@npm:0.6.2, @alepha/react-auth@workspace:packages/react-auth":
+  version: 0.0.0-use.local
+  resolution: "@alepha/react-auth@workspace:packages/react-auth"
+  dependencies:
+    "@alepha/core": "npm:0.6.2"
+    "@alepha/react": "npm:0.6.2"
+    "@alepha/security": "npm:0.6.2"
+    "@alepha/server": "npm:0.6.2"
+    "@types/react": "npm:^19.1.2"
+    openid-client: "npm:^6.4.2"
+    pkgroll: "npm:^2.12.2"
+    react: "npm:^19.1.0"
+    vitest: "npm:^3.1.2"
+  peerDependencies:
+    "@types/react": ^19
+    react: ^19
+  languageName: unknown
+  linkType: soft
+
 "@alepha/react@npm:0.6.2, @alepha/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@alepha/react@workspace:packages/react"
   dependencies:
     "@alepha/core": "npm:0.6.2"
     "@alepha/router": "npm:0.6.2"
-    "@alepha/security": "npm:0.6.2"
     "@alepha/server": "npm:0.6.2"
     "@types/react": "npm:^19.1.2"
     "@types/react-dom": "npm:^19.1.3"
     cheerio: "npm:^1.0.0"
-    openid-client: "npm:^6.4.2"
     pkgroll: "npm:^2.12.2"
     react: "npm:^19.1.0"
     react-dom: "npm:^19.1.0"
@@ -2227,6 +2245,7 @@ __metadata:
     "@alepha/postgres": "npm:0.6.2"
     "@alepha/queue": "npm:0.6.2"
     "@alepha/react": "npm:0.6.2"
+    "@alepha/react-auth": "npm:0.6.2"
     "@alepha/redis": "npm:0.6.2"
     "@alepha/scheduler": "npm:0.6.2"
     "@alepha/security": "npm:0.6.2"

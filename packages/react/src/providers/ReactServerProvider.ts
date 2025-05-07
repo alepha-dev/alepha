@@ -5,7 +5,6 @@ import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import {
 	type ServerHandler,
 	ServerLinksProvider,
-	type ServerRoute,
 	ServerRouterProvider,
 	ServerStaticProvider,
 } from "@alepha/server";
@@ -17,7 +16,6 @@ import {
 	type PageRequest,
 	type PageRoute,
 } from "./PageDescriptorProvider.ts";
-import { ReactAuthProvider } from "./ReactAuthProvider.ts";
 
 export const envSchema = t.object({
 	REACT_SERVER_DIST: t.string({ default: "client" }),
@@ -45,7 +43,6 @@ export class ReactServerProvider {
 	protected readonly configure = $hook({
 		name: "configure",
 		handler: async () => {
-			const routes: ServerRoute[] = [];
 			const pages = this.alepha.getDescriptorValues($page);
 			if (pages.length === 0) {
 				return;
@@ -53,7 +50,6 @@ export class ReactServerProvider {
 
 			for (const { key, instance, value } of pages) {
 				const name = value.options.name ?? key;
-				const page = value.options;
 
 				if (this.alepha.isTest()) {
 					instance[key].render = this.createRenderFunction(name);
@@ -145,13 +141,14 @@ export class ReactServerProvider {
 			} = {},
 		) => {
 			const page = this.pageDescriptorProvider.page(name);
+
 			const state = await this.pageDescriptorProvider.createLayers(page, {
 				url: new URL("http://localhost"),
 				params: options.params ?? {},
 				query: options.query ?? {},
 				head: {},
-				context: {},
 			});
+
 			return renderToString(this.pageDescriptorProvider.root(state));
 		};
 	}
@@ -160,7 +157,8 @@ export class ReactServerProvider {
 		page: PageRoute,
 		templateLoader: () => Promise<string | undefined>,
 	): ServerHandler {
-		return async ({ url, user, reply, cookies, query, params }) => {
+		return async (serverRequest) => {
+			const { url, reply, query, params } = serverRequest;
 			const template = await templateLoader();
 			if (!template) {
 				throw new Error("Template not found");
@@ -171,35 +169,19 @@ export class ReactServerProvider {
 				params,
 				query,
 				head: {},
-				context: {
-					user, // user from request
-				},
 			};
 
-			// const response = this.notFoundHandler(ctx.url);
-			// if (response) {
-			// 	// not found handler for static files (favicon, css, js, etc)
-			// 	return response;
-			// }
-
-			const hasAuth = this.alepha.has(ReactAuthProvider);
-
-			// -- user
-			// if user is not set, we can have non-trusted user from cookie
-			if (!request.context.user && cookies && hasAuth) {
-				const auth = this.alepha.get(ReactAuthProvider);
-				request.context.user = auth.user.get(cookies);
-				if (request.context.user) {
-					request.context.user.roles = []; // user from cookie is not trusted
-				}
-			}
-
 			// -- links
-			if (this.alepha.has(ServerLinksProvider) && hasAuth) {
+			if (this.alepha.has(ServerLinksProvider)) {
 				const srv = this.alepha.get(ServerLinksProvider);
-				request.context.links = (await srv.links()) as any;
-				this.alepha.als.set("links", request.context.links);
+				request.links = (await srv.links()) as any;
+				this.alepha.als.set("links", request.links);
 			}
+
+			await this.alepha.run("react:server:render", {
+				request: serverRequest,
+				pageRequest: request,
+			});
 
 			const state = await this.pageDescriptorProvider.createLayers(
 				page,
@@ -210,14 +192,14 @@ export class ReactServerProvider {
 				return reply.redirect(state.redirect);
 			}
 
-			const element = this.pageDescriptorProvider.root(state, request.context);
+			const element = this.pageDescriptorProvider.root(state, request);
 
 			const html = renderToString(element);
 			const $ = load(template);
 
 			// create hydration data
 			const script = `<script>window.__ssr=${JSON.stringify({
-				links: request.context.links,
+				links: request.links,
 				layers: state.layers.map((it) => ({
 					...it,
 					error: it.error

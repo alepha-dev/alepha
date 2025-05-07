@@ -1,5 +1,4 @@
 import { $hook, $inject, $logger, Alepha, EventEmitter } from "@alepha/core";
-import type { UserAccountToken } from "@alepha/security";
 import type { HttpClientLink } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
 import NestedView from "../components/NestedView.tsx";
@@ -515,7 +514,7 @@ export interface RouterRenderResult {
 	element: ReactNode;
 }
 
-export interface PageRequest {
+export interface PageRequest extends PageReactContext {
 	url: URL;
 	params: Record<string, any>;
 	query: Record<string, string>;
@@ -523,16 +522,13 @@ export interface PageRequest {
 
 	// previous layers (browser history or browser hydration, always null on server)
 	previous?: PreviousLayerData[];
-
-	// will be passed to ReactContext
-	context: PageReactContext;
 }
 
 export interface CreateLayersResult extends RouterState {
 	redirect?: string;
 }
 
+// will be passed to ReactContext
 export interface PageReactContext {
-	user?: UserAccountToken;
 	links?: HttpClientLink[];
 }

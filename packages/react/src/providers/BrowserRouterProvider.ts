@@ -77,7 +77,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 						previous,
 						...state,
 						head: state.head,
-						context: options.context ?? {},
+						...(options.context ?? {}),
 					},
 				);
 

@@ -13,6 +13,7 @@
 		"@alepha/postgres": "0.6.2",
 		"@alepha/queue": "0.6.2",
 		"@alepha/react": "0.6.2",
+		"@alepha/react-auth": "0.6.2",
 		"@alepha/redis": "0.6.2",
 		"@alepha/scheduler": "0.6.2",
 		"@alepha/security": "0.6.2",
@@ -61,6 +62,11 @@
 			"import": "./dist/react.js",
 			"require": "./dist/react.cjs",
 			"types": "./dist/react.d.ts"
+		},
+		"./react/auth": {
+			"import": "./dist/react/auth.js",
+			"require": "./dist/react/auth.cjs",
+			"types": "./dist/react/auth.d.ts"
 		},
 		"./cache": {
 			"import": "./dist/cache.js",

@@ -1,6 +1,6 @@
+import { RouterContext } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { useContext } from "react";
-import { RouterContext } from "../contexts/RouterContext.ts";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
 export const useAuth = (): AuthHook => {
