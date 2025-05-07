@@ -36,7 +36,7 @@ export class HttpClient extends EventEmitter<{
 	protected readonly env = $inject(envSchema);
 
 	public readonly URL_LINKS = "/_links";
-	public readonly cache = $cache();
+	public readonly cache = $cache<any>();
 	public links?: Array<HttpClientLink>;
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
@@ -178,11 +178,11 @@ export class HttpClient extends EventEmitter<{
 		}
 	}
 
-	public async fetch(
+	public async fetch<T>(
 		url: string,
 		request: RequestInit,
-		options: FetchRunOptions,
-	) {
+		options: FetchRunOptions = {},
+	): Promise<T> {
 		// make a key for the request
 		// this will be used to check if the request is already pending
 		const key = JSON.stringify({

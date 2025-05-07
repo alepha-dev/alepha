@@ -12,6 +12,7 @@ export type ProxyDescriptorOptions = {
 		request: ServerRequest,
 		proxyResponse: Response,
 	) => Async<void>;
+	disabled?: boolean;
 };
 
 export interface ProxyDescriptor {

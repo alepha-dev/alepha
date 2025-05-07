@@ -441,7 +441,9 @@ export type ResponseBodyType =
 	| ArrayBuffer //
 	| NodeStream // Node stream Readable (stream)
 	| WebStream // Web stream Readable (stream)
+	| ReadableStream // Web stream Readable (stream)
 	| undefined // undefined response (no response)
+	| null // null response (no response)
 	| void; // void response (no response)
 
 export type ServerHandler<

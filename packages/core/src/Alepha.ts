@@ -753,7 +753,7 @@ export class Alepha {
 	protected createLogger(env: Env): Logger {
 		return new Logger({
 			als: this.als,
-			level: env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info"),
+			level: env.LOG_LEVEL ?? (this.isTest() ? "error" : "info"),
 			name: env.APP_NAME,
 			json: env.LOG_FORMAT === "json",
 			caller: "Alepha",
