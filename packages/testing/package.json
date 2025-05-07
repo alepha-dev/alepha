@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@faker-js/faker": "^9.7.0",
-    "drizzle-kit": "0.31.0"
+    "drizzle-kit": "0.31.1"
   },
   "devDependencies": {
     "pkgroll": "^2.12.2"
