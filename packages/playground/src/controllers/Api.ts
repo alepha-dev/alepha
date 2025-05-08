@@ -3,6 +3,7 @@ import { $sequence } from "@alepha/postgres";
 import { $auth } from "@alepha/react-auth";
 import { $realm } from "@alepha/security";
 import { $route as $action, $cookie } from "@alepha/server";
+import { $swagger } from "@alepha/server-swagger";
 import { DummyService } from "../services/DummyService.ts";
 
 export const incResponse = t.object({
@@ -15,6 +16,15 @@ export type IncResponse = Static<typeof incResponse>;
 
 class Api {
 	seq = $sequence();
+
+	docs = $swagger({
+		prefix: "/docs",
+		info: {
+			title: "Api",
+			version: "1.0.0",
+			description: "Api description",
+		},
+	});
 
 	env = $inject(
 		t.object({

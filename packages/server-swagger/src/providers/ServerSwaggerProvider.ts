@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
 	$hook,
@@ -36,7 +37,7 @@ declare module "@alepha/core" {
 }
 
 export class ServerSwaggerProvider {
-	protected readonly routeServerDescriptorProvider = $inject(
+	protected readonly serverActionProvider = $inject(
 		ServerActionDescriptorProvider,
 	);
 	protected readonly env = $inject(envSchema);
@@ -46,28 +47,21 @@ export class ServerSwaggerProvider {
 
 	protected readonly configure = $hook({
 		name: "configure",
-		after: this.routeServerDescriptorProvider,
+		after: this.serverActionProvider,
 		handler: async (alepha) => {
 			const doc = alepha.getDescriptorValues($swagger)?.[0];
 			if (!doc || doc.value.options.disabled) {
 				return;
 			}
 
-			const json = this.configureOpenApi(doc.value.options);
+			const options = doc.value.options;
+
+			const json = this.configureOpenApi(options);
+
 			doc.instance[doc.key].json = () => json;
 
-			await this.serverStaticProvider.serve({
-				path: doc.value.options.prefix ?? this.env.SERVER_OPENAPI_PREFIX,
-				root: join(import.meta.filename, "../../../assets/swagger-ui"),
-			});
-
-			this.serverRouterProvider.route({
-				path: `${this.env.SERVER_OPENAPI_PREFIX}/json`,
-				schema: {
-					response: t.json(),
-				},
-				handler: () => json,
-			});
+			await this.configureSwaggerApi(json);
+			await this.configureSwaggerUi(options);
 		},
 	});
 
@@ -92,7 +86,7 @@ export class ServerSwaggerProvider {
 
 		const excludeTags = this.env.SERVER_OPENAPI_EXCLUDE_TAGS.split(",");
 
-		for (const route of this.routeServerDescriptorProvider.getActions()) {
+		for (const route of this.serverActionProvider.getActions()) {
 			if (!route.options.schema) {
 				continue;
 			}
@@ -244,5 +238,45 @@ export class ServerSwaggerProvider {
 				status: Number(status),
 			};
 		}
+	}
+
+	protected async configureSwaggerApi(json: OpenAPIV3.Document) {
+		this.serverRouterProvider.route({
+			method: "GET",
+			path: `${this.env.SERVER_OPENAPI_PREFIX}/json`,
+			schema: {
+				response: t.json(),
+			},
+			handler: () => json,
+		});
+	}
+
+	protected async configureSwaggerUi(options: SwaggerDescriptorOptions) {
+		const initializer = `
+		window.onload = function() {
+			window.ui = SwaggerUIBundle({
+				url: "/docs/json",
+				dom_id: '#swagger-ui',
+				deepLinking: true,
+				presets: [
+					SwaggerUIBundle.presets.apis,
+					SwaggerUIStandalonePreset
+				],
+				plugins: [
+					SwaggerUIBundle.plugins.DownloadUrl
+				],
+				layout: "StandaloneLayout"
+			});
+		};
+		`;
+
+		const root = join(import.meta.filename, "../../../assets/swagger-ui");
+
+		await this.serverStaticProvider.serve({
+			path: options.prefix ?? this.env.SERVER_OPENAPI_PREFIX,
+			root,
+		});
+
+		await writeFile(join(root, "swagger-initializer.js"), initializer);
 	}
 }

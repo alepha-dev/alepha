@@ -60,6 +60,7 @@ __metadata:
     "@alepha/react": "npm:0.6.2"
     "@alepha/react-auth": "npm:0.6.2"
     "@alepha/server": "npm:0.6.2"
+    "@alepha/server-swagger": "npm:0.6.2"
     "@alepha/vite": "npm:0.6.2"
     "@mantine/core": "npm:^8.0.0"
     "@mantine/hooks": "npm:^8.0.0"
@@ -237,6 +238,8 @@ __metadata:
     "@alepha/server-static": "npm:0.6.2"
     openapi-types: "npm:^12.1.3"
     pkgroll: "npm:^2.12.2"
+    shx: "npm:^0.4.0"
+    swagger-ui-dist: "npm:^5.21.0"
     vitest: "npm:^3.1.3"
   languageName: unknown
   linkType: soft
@@ -1765,6 +1768,13 @@ __metadata:
   version: 4.40.2
   resolution: "@rollup/rollup-win32-x64-msvc@npm:4.40.2"
   conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@scarf/scarf@npm:=1.4.0":
+  version: 1.4.0
+  resolution: "@scarf/scarf@npm:1.4.0"
+  checksum: 10c0/332118bb488e7a70eaad068fb1a33f016d30442fb0498b37a80cb425c1e741853a5de1a04dce03526ed6265481ecf744aa6e13f072178d19e6b94b19f623ae1c
   languageName: node
   linkType: hard
 
@@ -6287,6 +6297,15 @@ __metadata:
   version: 1.0.0
   resolution: "supports-preserve-symlinks-flag@npm:1.0.0"
   checksum: 10c0/6c4032340701a9950865f7ae8ef38578d8d7053f5e10518076e6554a9381fa91bd9c6850193695c141f32b21f979c985db07265a758867bac95de05f7d8aeb39
+  languageName: node
+  linkType: hard
+
+"swagger-ui-dist@npm:^5.21.0":
+  version: 5.21.0
+  resolution: "swagger-ui-dist@npm:5.21.0"
+  dependencies:
+    "@scarf/scarf": "npm:=1.4.0"
+  checksum: 10c0/fed58b709cc956f5965cc3e2c522898365ecd43f5bb942252d7352e52039ef7b2106b915165295114009ce7e1b64c2b2cb97edf93e3f2a44adfed70bb8a4fac8
   languageName: node
   linkType: hard
 

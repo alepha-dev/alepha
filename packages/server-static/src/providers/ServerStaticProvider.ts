@@ -65,6 +65,7 @@ export class ServerStaticProvider {
 
 		for (const route of routes) {
 			this.routerProvider.route(route);
+
 			if (
 				options.indexFallback !== false &&
 				route.path.endsWith("index.html")

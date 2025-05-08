@@ -18,7 +18,7 @@ import { type Route, RouterProvider } from "@alepha/router";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { Cookies } from "../descriptors/$cookie.ts";
-import { HttpError } from "../errors/HttpError.ts";
+import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
 // Router used in Server (action, proxy, ssr, etc...)
@@ -32,14 +32,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 	public route<TConfig extends RequestConfigSchema = RequestConfigSchema>(
 		route: ServerRoute<TConfig>,
 	) {
-		let path = route.path;
-		if (route.method) {
-			path = `/${route.method.toUpperCase()}/${route.path}`.replace(
-				/\/+/g,
-				"/",
-			);
-		}
-
+		const method = (route.method ?? "GET").toUpperCase();
+		const path = `/${method}/${route.path}`.replace(/\/+/g, "/");
 		const responseType = this.getResponseType(route.schema);
 
 		return this.push({
@@ -222,6 +216,21 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			request.reply.headers["content-type"] = "application/json";
 			request.reply.body = JSON.stringify(HttpError.toJSON(error));
 		} else {
+			if (
+				"status" in error &&
+				typeof error.status === "number" &&
+				!!errorNameByStatus[error.status]
+			) {
+				request.reply.status = error.status;
+				request.reply.headers["content-type"] = "application/json";
+				request.reply.body = JSON.stringify({
+					status: error.status,
+					error: errorNameByStatus[error.status],
+					message: (error as Error).message,
+				});
+				return;
+			}
+
 			request.reply.status = 500;
 			request.reply.headers["content-type"] = "application/json";
 			request.reply.body = JSON.stringify({

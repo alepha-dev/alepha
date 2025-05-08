@@ -50,8 +50,6 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 		started: false,
 	};
 
-	const cwd = process.cwd();
-
 	const ssr = () => {
 		if (!state.app) return false;
 		return state.app.state("ReactServerProvider.ssr" as keyof State) ?? false;
@@ -163,15 +161,6 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 	 */
 	const isViteFile = (file: string) => {
 		const [pathname] = file.split("?");
-
-		if (!ssr()) {
-			return !file.startsWith("/api");
-		}
-
-		// static assets
-		if (pathname.match(/\.\w{2,5}$/)) {
-			return true;
-		}
 
 		// vite internal files
 		if (pathname.startsWith("/@")) {

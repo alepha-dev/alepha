@@ -11,8 +11,6 @@ No file-based routing, no decorator, no magic—just structure, simplicity, and 
 
 ## Installation
 
-No boilerplate, no starters, no scaffolding rituals. Just install the library, create a TypeScript file, and begin.
-
 ```bash
 npm install alepha
 ```
