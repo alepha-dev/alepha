@@ -3,8 +3,7 @@ import { $hook, $inject, $logger, Alepha, KIND, t } from "@alepha/core";
 import {
 	$route,
 	type ClientRequestEntry,
-	type ClientRequestFetchOptions,
-	type ClientRequestGenericOptions,
+	type ClientRequestOptions,
 	type RouteDescriptor,
 } from "../descriptors/$action.ts";
 import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
@@ -45,18 +44,14 @@ export class BrowserActionDescriptorProvider {
 			},
 		);
 
-		const $ = (
-			config: ClientRequestEntry,
-			opts: ClientRequestGenericOptions = {},
-		) => fetcher(config, opts);
+		const $ = (config: ClientRequestEntry, opts: ClientRequestOptions = {}) =>
+			fetcher(config, opts);
 
 		$[KIND] = "ROUTE";
 		$.options = value.options;
 
-		$.fetch = (
-			config: ClientRequestEntry,
-			opts: ClientRequestFetchOptions = {},
-		) => fetcher(config, opts);
+		$.fetch = (config: ClientRequestEntry, opts: ClientRequestOptions = {}) =>
+			fetcher(config, opts);
 
 		$.permission = () => this.helper.permission(value.options, instance, key);
 

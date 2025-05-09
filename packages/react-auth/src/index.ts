@@ -7,7 +7,7 @@ import {
 } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
 
-export * from "./index.shared";
+export * from "./index.shared.ts";
 export * from "./providers/ReactAuthProvider.ts";
 
 declare module "@alepha/react" {

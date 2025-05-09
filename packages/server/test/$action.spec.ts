@@ -26,12 +26,12 @@ ctxRemote.with(
 
 const ctxClientLocal = Alepha.create();
 const apiClientLocal = ctxClientLocal.get(HttpClient).of<CrudApp>({
-	host: () => ctx.get(ServerProvider).hostname,
+	host: () => `${ctx.get(ServerProvider).hostname}`,
 });
 
 const ctxClientRemote = Alepha.create();
-const apiClientRemote = ctxClientLocal.get(HttpClient).of<CrudApp>({
-	host: () => ctx.get(ServerProvider).hostname,
+const apiClientRemote = ctxClientRemote.get(HttpClient).of<CrudApp>({
+	host: () => `${ctx.get(ServerProvider).hostname}`,
 });
 
 afterEach(() => {

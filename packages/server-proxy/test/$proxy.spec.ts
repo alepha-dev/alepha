@@ -59,6 +59,7 @@ test("$proxy", async () => {
 		method: "POST",
 		body: JSON.stringify({ name: "Jack" }),
 		headers: {
+			"Content-Type": "application/json",
 			prefix: "Mr.",
 		},
 	});

@@ -163,7 +163,10 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 		const [pathname] = file.split("?");
 
 		// vite internal files
-		if (pathname.startsWith("/@")) {
+		if (
+			pathname.startsWith("/@") ||
+			pathname.includes("/node_modules/.vite/")
+		) {
 			return true;
 		}
 
@@ -237,11 +240,12 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 					req.url &&
 					!isViteFile(req.url)
 				) {
-					return state.app.handle(req, res).then((status) => {
+					state.app.handle(req, res).then((status) => {
 						if (!status) {
 							next();
 						}
 					});
+					return;
 				}
 				next();
 			});

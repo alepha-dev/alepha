@@ -57,7 +57,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 				// create request
 				const request: ServerRequest = {
 					...rawRequest,
-					body: rawRequest.body ?? {},
+					body: null,
 					metadata: {},
 					cookies: {
 						req: {},
@@ -466,7 +466,6 @@ export interface ServerRawRequest {
 	headers: Record<string, string>;
 	query: Record<string, string>;
 	params: Record<string, string>;
-	body?: ReadableStream;
 	raw: {
 		node?: {
 			req: IncomingMessage;

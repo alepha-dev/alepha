@@ -1,18 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { createReadStream, createWriteStream } from "node:fs";
-import { readFile, stat, unlink } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
-import { ReadableStream } from "node:stream/web";
-import { TextDecoder } from "node:util";
+import type Stream from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
-import { $hook, $inject, Alepha, TypeGuard, isTypeFile, t } from "@alepha/core";
-import Busboy, {
-	type BusboyFileStream,
-	type BusboyHeaders,
-} from "@fastify/busboy";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { HttpError } from "../../errors/HttpError.ts";
-import { RouteDescriptorHelper } from "../../helpers/RouteDescriptorHelper.ts";
-import type { ServerRequest, ServerRoute } from "../ServerRouterProvider.ts";
 
 const envSchema = t.object({
 	SERVER_BODY_PARSER_INFLATE: t.boolean({
@@ -20,7 +10,7 @@ const envSchema = t.object({
 		description: "Enable decompression of request body.",
 	}),
 	SERVER_BODY_PARSER_LIMIT: t.uint({
-		default: 100_000,
+		default: 100_000, // 100KB
 		min: 0,
 		description: "Maximum size of request body in bytes.",
 	}),
@@ -28,89 +18,31 @@ const envSchema = t.object({
 
 export class ServerBodyParserProvider {
 	protected readonly env = $inject(envSchema);
-	protected readonly helper = $inject(RouteDescriptorHelper);
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({
 		name: "server:onRequest",
 		handler: async ({ route, request }) => {
-			if (!(request.body instanceof ReadableStream)) {
-				return; // empty body or already parsed
+			if (request.body) {
+				return; // already parsed
+			}
+
+			const stream: Stream | undefined = request.raw.node?.req;
+			if (!stream) {
+				return; // not a node request - skip
 			}
 
 			if (route.schema?.body) {
-				const body = await this.parse(request.body, request.headers);
+				const body = await this.parse(stream, request.headers);
 				if (body) {
 					request.body = body;
-					return;
 				}
 			}
-
-			// multipart/form-data is Node.js only for now
-			if (!this.helper.isMultipart(route)) {
-				return;
-			}
-
-			const contentType = request.headers["content-type"];
-
-			if (!contentType?.startsWith("multipart/form-data")) {
-				throw new HttpError({
-					status: 415,
-					message: `Invalid content-type: ${contentType} - only "multipart/form-data" is accepted`,
-				});
-			}
-
-			const cleanup = await this.handleMultipartBody(route, request);
-
-			request.metadata.multipart = { cleanup };
 		},
 	});
-
-	protected readonly onSend = $hook({
-		name: "server:onSend",
-		handler: async ({ request }) => {
-			const cleanup = request.metadata.multipart?.cleanup;
-			if (typeof cleanup === "function") {
-				await cleanup();
-			}
-		},
-	});
-
-	public async parseText(
-		stream: ReadableStream,
-		contentEncoding?: string,
-	): Promise<string> {
-		const buffer = await this.streamToBuffer(stream);
-		const bufferInflated = await this.maybeDecompress(buffer, contentEncoding);
-		try {
-			return new TextDecoder().decode(bufferInflated);
-		} catch (error) {
-			throw new HttpError(
-				{
-					status: 400,
-					message: "Malformed text",
-				},
-				error,
-			);
-		}
-	}
-
-	public async parseUrlEncoded(
-		stream: ReadableStream,
-		contentEncoding?: string,
-	): Promise<object> {
-		const text = await this.parseText(stream, contentEncoding);
-		const params = new URLSearchParams(text);
-		const result: Record<string, string> = {};
-		for (const [key, value] of params.entries()) {
-			result[key] = value;
-		}
-
-		return result;
-	}
 
 	public async parse(
-		stream: ReadableStream,
+		stream: Stream,
 		headers: Record<string, string>,
 	): Promise<object | string | undefined> {
 		const contentType = headers["content-type"];
@@ -133,146 +65,55 @@ export class ServerBodyParserProvider {
 		return undefined;
 	}
 
-	public async handleMultipartBody(
-		route: ServerRoute,
-		request: ServerRequest,
-	): Promise<any> {
-		const req = request.raw.node?.req;
-		if (!req) {
-			return;
-		}
-
-		const result = await this.parseMultipart(req);
-		const body: any = {};
-
-		if (!route.schema?.body) {
-			return;
-		}
-
-		for (const [key, value] of Object.entries(route.schema.body.properties)) {
-			if (TypeGuard.IsSchema(value)) {
-				if (isTypeFile(value)) {
-					body[key] = result.files[key];
-				} else {
-					body[key] = this.alepha.parse(value, result.fields[key]);
-				}
-			}
-		}
-
-		request.body = body;
-
-		return async () => {
-			for (const file of Object.values(result.files)) {
-				await file.cleanup();
-			}
-		};
-	}
-
-	public async parseMultipart(req: IncomingMessage): Promise<MultipartResult> {
-		const contentType = req.headers["content-type"];
-		if (!contentType?.startsWith("multipart/form-data")) {
-			throw new Error(`Unsupported content-type: ${contentType}`);
-		}
-
-		const busboy = Busboy({ headers: req.headers as BusboyHeaders });
-		const fields: Record<string, string | string[]> = {};
-		const files: Record<string, HybridFile> = {};
-
-		const fileWrites: Promise<void>[] = [];
-
-		busboy.on("field", (name, value) => {
-			if (fields[name]) {
-				if (Array.isArray(fields[name])) {
-					(fields[name] as string[]).push(value);
-				} else {
-					fields[name] = [fields[name] as string, value];
-				}
-			} else {
-				fields[name] = value;
-			}
-		});
-
-		busboy.on(
-			"file",
-			(
-				name: string,
-				stream: BusboyFileStream,
-				filename: string,
-				_transferEncoding: string,
-				mimeType: string,
-			) => {
-				const tmpPath = randomUUID();
-				const writeStream = createWriteStream(tmpPath);
-				const writeDone = new Promise<void>((resolve, reject) => {
-					stream.pipe(writeStream);
-					writeStream.on("finish", resolve);
-					writeStream.on("error", reject);
-				});
-
-				fileWrites.push(writeDone);
-
-				files[name] = {
-					_state: {
-						cleanup: false,
-						size: 0,
-						tmpPath,
-					},
-					name: filename,
-					type: mimeType,
-					lastModified: Date.now(),
-					get size() {
-						return this._state.size;
-					},
-					stream() {
-						return ReadableStream.from(createReadStream(tmpPath));
-					},
-					async arrayBuffer() {
-						const buffer = await readFile(tmpPath);
-						await this.cleanup();
-						return buffer;
-					},
-					async cleanup() {
-						if (this._state.cleanup) {
-							return;
-						}
-						await unlink(tmpPath); // Clean up the temp file
-						this._state.cleanup = true;
-					},
-				};
-			},
-		);
-
-		req.pipe(busboy);
-
-		await new Promise<void>((resolve) => busboy.on("finish", resolve));
-		await Promise.all(fileWrites);
-		for (const file of Object.values(files)) {
-			file._state.size = await stat(file._state.tmpPath).then(
-				(stat) => stat.size,
+	public async parseText(
+		stream: Stream,
+		contentEncoding?: string,
+	): Promise<string> {
+		const buffer = await this.streamToBuffer(stream);
+		const bufferInflated = await this.maybeDecompress(buffer, contentEncoding);
+		try {
+			return bufferInflated.toString("utf-8");
+		} catch (error) {
+			throw new HttpError(
+				{
+					status: 400,
+					message: "Malformed text",
+				},
+				error,
 			);
 		}
-
-		return { fields, files };
 	}
 
-	protected async streamToBuffer(stream: ReadableStream): Promise<Buffer> {
-		const reader = stream.getReader();
-		const chunks: Uint8Array[] = [];
-		let totalLength = 0;
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			totalLength += value.byteLength;
-			if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
-				throw new HttpError({ status: 413, message: "Body exceeds limit" });
-			}
-
-			chunks.push(value);
+	public async parseUrlEncoded(
+		stream: Stream,
+		contentEncoding?: string,
+	): Promise<object> {
+		const text = await this.parseText(stream, contentEncoding);
+		const params = new URLSearchParams(text);
+		const result: Record<string, string> = {};
+		for (const [key, value] of params.entries()) {
+			result[key] = value;
 		}
 
-		return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+		return result;
+	}
+
+	public async parseJson(
+		stream: Stream,
+		contentEncoding?: string,
+	): Promise<object> {
+		try {
+			const text = await this.parseText(stream, contentEncoding);
+			return JSON.parse(text);
+		} catch (error) {
+			throw new HttpError(
+				{
+					status: 400,
+					message: "Malformed JSON",
+				},
+				error,
+			);
+		}
 	}
 
 	protected async maybeDecompress(
@@ -316,40 +157,29 @@ export class ServerBodyParserProvider {
 		}
 	}
 
-	public async parseJson(
-		stream: ReadableStream,
-		contentEncoding?: string,
-	): Promise<object> {
-		try {
-			return JSON.parse(await this.parseText(stream, contentEncoding));
-		} catch (error) {
-			throw new HttpError(
-				{
-					status: 400,
-					message: "Malformed JSON",
-				},
-				error,
-			);
-		}
+	protected streamToBuffer(req: Stream): Promise<Buffer> {
+		const chunks: Buffer[] = [];
+		let totalLength = 0;
+
+		return new Promise((resolve, reject) => {
+			req.on("data", (chunk) => {
+				totalLength += chunk.length;
+
+				if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
+					(req as IncomingMessage).destroy(); // stop receiving data
+					return reject(new Error("Body size limit exceeded"));
+				}
+
+				chunks.push(chunk);
+			});
+
+			req.on("end", () => {
+				resolve(Buffer.concat(chunks));
+			});
+
+			req.on("error", (err) => {
+				reject(err);
+			});
+		});
 	}
-}
-
-interface MultipartResult {
-	fields: Record<string, string | string[]>;
-	files: Record<string, HybridFile>;
-}
-
-interface HybridFile {
-	name: string;
-	type: string;
-	size: number;
-	lastModified: number;
-	stream(): ReadableStream<Uint8Array>;
-	arrayBuffer(): Promise<Uint8Array>;
-	cleanup(): Promise<void>;
-	_state: {
-		cleanup: boolean;
-		size: number;
-		tmpPath: string;
-	};
 }

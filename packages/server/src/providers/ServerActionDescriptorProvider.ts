@@ -16,7 +16,7 @@ import {
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
 	ClientRequestEntry,
-	ClientRequestGenericOptions,
+	ClientRequestOptions,
 	RouteDescriptor,
 	RouteDescriptorOptions,
 } from "../descriptors/$action.ts";
@@ -149,7 +149,7 @@ export class ServerActionDescriptorProvider {
 
 		const $ = (
 			config: Partial<ClientRequestEntry> = {},
-			opts: ClientRequestGenericOptions = {},
+			opts: ClientRequestOptions = {},
 		) => {
 			return functions.local(config, opts);
 		};
@@ -227,7 +227,7 @@ export class ServerActionDescriptorProvider {
 
 				const $ = (
 					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestGenericOptions = {},
+					opts: ClientRequestOptions = {},
 				) => {
 					return localFunction(config, opts);
 				};
@@ -237,7 +237,7 @@ export class ServerActionDescriptorProvider {
 
 				$.fetch = (
 					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestGenericOptions = {},
+					opts: ClientRequestOptions = {},
 				) => localFunction(config, opts);
 
 				instance[key] = $;
@@ -267,14 +267,14 @@ export class ServerActionDescriptorProvider {
 
 				const $ = (
 					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestGenericOptions = {},
+					opts: ClientRequestOptions = {},
 				) => remoteFunction(config, opts);
 
 				$[KIND] = "ROUTE";
 				$.options = routeDescriptor.options;
 				$.fetch = (
 					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestGenericOptions = {},
+					opts: ClientRequestOptions = {},
 				) => {
 					return remoteFunction(config, opts);
 				};
@@ -305,7 +305,7 @@ export class ServerActionDescriptorProvider {
 	) {
 		return async (
 			config: ServerRequestConfigEntry = {},
-			options: ClientRequestGenericOptions = {},
+			options: ClientRequestOptions = {},
 		): Promise<any> => {
 			const request = this.alepha.als.get<ServerRequest>("request");
 			if (request) {

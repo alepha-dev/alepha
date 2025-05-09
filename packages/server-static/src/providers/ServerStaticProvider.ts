@@ -4,6 +4,7 @@ import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
+import mime from "mime";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
 export class ServerStaticProvider {
@@ -77,6 +78,14 @@ export class ServerStaticProvider {
 			}
 		}
 
+		// redirect to trailing slash (e.g. /dist -> /dist/)
+		if (!prefix.endsWith("/")) {
+			this.routerProvider.route({
+				path: prefix,
+				handler: ({ reply }) => reply.redirect(`${prefix}/`),
+			});
+		}
+
 		this.directories.push({
 			options,
 			files: files.map((file) => file.replace(root, "").replace(/\\/g, "/")),
@@ -89,10 +98,15 @@ export class ServerStaticProvider {
 	): Promise<ServerHandler> {
 		// TODO: check if file.gz exists and serve it when header "accept-encoding" contains "gzip"
 		// TODO: same for file.br
-		return async (): Promise<NodeStream> => {
+		return async ({ reply }): Promise<NodeStream> => {
 			const filepath = join(root, file);
 			const filename = basename(filepath);
 			const stream = createReadStream(filepath);
+
+			reply.headers["content-type"] =
+				mime.getType(filename) ?? "application/octet-stream";
+			reply.headers["accept-ranges"] = "bytes";
+			reply.headers["content-encoding"] = "identity";
 
 			// TODO: cache-control
 			// TODO: etag

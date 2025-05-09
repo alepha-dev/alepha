@@ -91,7 +91,7 @@ export interface RouteDescriptor<
 	 */
 	(
 		config?: ClientRequestEntry<TConfig>,
-		opts?: ClientRequestGenericOptions,
+		opts?: ClientRequestOptions,
 	): ClientRequestResponse<TConfig>;
 
 	/**
@@ -99,7 +99,7 @@ export interface RouteDescriptor<
 	 */
 	fetch: (
 		config?: ClientRequestEntry<TConfig>,
-		opts?: ClientRequestFetchOptions,
+		opts?: ClientRequestOptions,
 	) => ClientRequestResponse<TConfig>;
 
 	/**
@@ -182,7 +182,7 @@ export type ClientRequestEntryContainer<
 		: undefined;
 };
 
-export interface ClientRequestGenericOptions {
+export interface ClientRequestOptions {
 	/**
 	 * Built-in cache options.
 	 * Number as seconds or boolean to enable cache.
@@ -195,9 +195,7 @@ export interface ClientRequestGenericOptions {
 	 * In testing environments, you can pass a partial user token.
 	 */
 	user?: Partial<UserAccountToken>;
-}
 
-export interface ClientRequestFetchOptions extends ClientRequestGenericOptions {
 	/**
 	 * Standard request fetch options.
 	 */

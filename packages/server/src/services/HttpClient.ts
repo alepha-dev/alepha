@@ -10,7 +10,7 @@ import {
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
 	ClientRequestEntry,
-	ClientRequestFetchOptions,
+	ClientRequestOptions,
 	RouteDescriptor,
 } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
@@ -56,7 +56,7 @@ export class HttpClient extends EventEmitter<{
 	) {
 		return (
 			config: Partial<ClientRequestEntry> = {},
-			fetchOptions: ClientRequestFetchOptions = {},
+			fetchOptions: ClientRequestOptions = {},
 		) => {
 			const host =
 				typeof options?.host === "function" ? options.host() : options?.host;
@@ -71,7 +71,7 @@ export class HttpClient extends EventEmitter<{
 
 	public async request(args: {
 		link: HttpClientLink;
-		fetch?: ClientRequestFetchOptions;
+		fetch?: ClientRequestOptions;
 		config?: ServerRequestConfigEntry;
 		host?: string;
 	}) {
@@ -86,6 +86,7 @@ export class HttpClient extends EventEmitter<{
 
 		const method = route.method;
 		const headers: Record<string, string> = {};
+
 		const url = this.url(host, route, config);
 		const cacheKey = url.replace(host, "");
 
@@ -147,8 +148,15 @@ export class HttpClient extends EventEmitter<{
 		link: HttpClientLink,
 		args: ServerRequestConfigEntry = {},
 	) {
-		if (link.contentType === "multipart/form-data") {
-			headers["content-type"] = "multipart/form-data";
+		const hasHeader =
+			typeof init.headers === "object" &&
+			"content-type" in init.headers &&
+			init.headers["content-type"] === "multipart/form-data";
+		if (link.contentType === "multipart/form-data" || hasHeader) {
+			if (hasHeader) {
+				// @ts-ignore
+				delete init.headers["content-type"];
+			}
 
 			const formData = new FormData();
 
@@ -295,7 +303,7 @@ export class HttpClient extends EventEmitter<{
 					return;
 				}
 
-				const $ = async (config: any = {}) => {
+				const $ = async (config: any = {}, args: ClientRequestOptions = {}) => {
 					const host: string | undefined =
 						typeof options.host === "function" ? options.host() : options.host;
 
@@ -332,7 +340,7 @@ export class HttpClient extends EventEmitter<{
 
 					// else, make a request
 					return this.request({
-						host: host ?? this.env.SERVER_API_URL,
+						host,
 						config,
 						link: {
 							...link,
@@ -343,11 +351,12 @@ export class HttpClient extends EventEmitter<{
 								response: t.any(),
 							},
 						},
+						fetch: args,
 					});
 				};
 
-				$.fetch = (args: any) => {
-					return $(args);
+				$.fetch = (config: any, args: ClientRequestOptions = {}) => {
+					return $(config, args);
 				};
 
 				$.can = () => {
@@ -390,7 +399,7 @@ export class HttpClient extends EventEmitter<{
 export interface FetchBeforeHook {
 	route: HttpClientLink;
 	config: ServerRequestConfigEntry;
-	options: ClientRequestFetchOptions;
+	options: ClientRequestOptions;
 	headers: Record<string, string>;
 	request: RequestInit;
 }
@@ -399,8 +408,6 @@ export type HttpClientPendingRequests = Record<
 	string,
 	Promise<any> | undefined
 >;
-
-export type HttpClientHookFn = (args: FetchBeforeHook) => Promise<void> | void;
 
 export interface FetchFactoryAdditionalOptions {
 	host?: string | (() => string);

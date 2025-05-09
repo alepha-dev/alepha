@@ -84,15 +84,11 @@ export class NodeHttpServerProvider implements ServerProvider {
 		const query = Object.fromEntries(url.searchParams.entries());
 		const headers = req.headers as Record<string, string>;
 		const method = (req.method?.toUpperCase() ?? "GET") as RouteMethod;
-		const body = this.shouldHaveBody(method)
-			? (Readable.toWeb(req) as ReadableStream)
-			: undefined;
 
 		return {
 			method,
 			url,
 			headers,
-			body,
 			params,
 			query,
 			raw: {

@@ -9,7 +9,10 @@ export class ServerLoggerProvider {
 		handler: ({ route, request }) => {
 			if (!route.silent) {
 				request.metadata.now = Date.now();
-				this.log.info("Incoming request");
+				this.log.info("Incoming request", {
+					method: request.method,
+					path: request.url.pathname,
+				});
 			}
 		},
 	});

@@ -1,5 +1,9 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
-import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
+import {
+	type ServerHandler,
+	type ServerRequest,
+	ServerRouterProvider,
+} from "@alepha/server";
 import { routeMethods } from "@alepha/server";
 import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
 
@@ -34,7 +38,7 @@ export class ServerProxyProvider {
 				url: url.toString(),
 				method: request.method,
 				headers: request.headers,
-				body: request.body,
+				body: this.getRawRequestBody(request),
 			};
 
 			if (requestInit.body) {
@@ -73,5 +77,18 @@ export class ServerProxyProvider {
 		}
 
 		this.alepha.log.info("Proxying", { path, target });
+	}
+
+	private getRawRequestBody(req: ServerRequest): any {
+		const { method } = req;
+
+		if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+			return;
+		}
+
+		// Node.js request
+		if (req.raw.node?.req) {
+			return req.raw.node.req;
+		}
 	}
 }

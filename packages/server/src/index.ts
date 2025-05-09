@@ -11,6 +11,7 @@ import type {
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
+import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
 import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
 import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
@@ -95,6 +96,7 @@ export class ServerModule {
 
 		this.alepha.with(ServerLoggerProvider);
 		this.alepha.with(ServerBodyParserProvider);
+		this.alepha.with(ServerMultipartProvider);
 
 		if (this.env.SERVER_LINKS_ENABLED) {
 			this.alepha.with(ServerLinksProvider);

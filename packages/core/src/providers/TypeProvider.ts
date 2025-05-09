@@ -28,6 +28,7 @@ import * as TypeBoxValue from "@sinclair/typebox/value";
 export { TypeBox, TypeBoxValue };
 
 import { Value } from "@sinclair/typebox/value";
+import { OPTIONS } from "../constants/OPTIONS.ts";
 import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
 import { fullFormats } from "../helpers/formats.ts";
 
@@ -352,8 +353,9 @@ export class TypeProvider {
 			...options,
 		});
 
-	file = (): TFile =>
+	file = (options?: { max?: number }): TFile =>
 		t.unsafe<File>("Any", {
+			[OPTIONS]: options,
 			format: "binary",
 			type: "string",
 		});
