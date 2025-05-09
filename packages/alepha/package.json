@@ -118,6 +118,31 @@
 			"import": "./dist/server.js",
 			"require": "./dist/server.cjs",
 			"types": "./dist/server.d.ts"
+		},
+		"./server/cookies": {
+			"import": "./dist/server/cookies.js",
+			"require": "./dist/server/cookies.cjs",
+			"types": "./dist/server/cookies.d.ts"
+		},
+		"./server/metrics": {
+			"import": "./dist/server/metrics.js",
+			"require": "./dist/server/metrics.cjs",
+			"types": "./dist/server/metrics.d.ts"
+		},
+		"./server/proxy": {
+			"import": "./dist/server/proxy.js",
+			"require": "./dist/server/proxy.cjs",
+			"types": "./dist/server/proxy.d.ts"
+		},
+		"./server/static": {
+			"import": "./dist/server/static.js",
+			"require": "./dist/server/static.cjs",
+			"types": "./dist/server/static.d.ts"
+		},
+		"./server/swagger": {
+			"import": "./dist/server/swagger.js",
+			"require": "./dist/server/swagger.cjs",
+			"types": "./dist/server/swagger.d.ts"
 		}
 	}
 }
