@@ -7,12 +7,10 @@ import Api from "./controllers/Api.ts";
 const alepha = Alepha.create({
 	env: {
 		...process.env,
-		LOG_LEVEL: "info",
-		SERVER_SECURITY_ENABLED: true,
+		LOG_LEVEL: "debug",
 		SERVER_LINKS_ENABLED: true,
 		POSTGRES_SYNCHRONIZE: true,
 		POSTGRES_REJECT_UNAUTHORIZED: false,
-		REACT_SERVER_DIST: "dist",
 	},
 });
 

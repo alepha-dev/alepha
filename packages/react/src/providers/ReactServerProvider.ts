@@ -76,7 +76,6 @@ export class ReactServerProvider {
 				}
 
 				await this.configureStaticServer(root);
-			} else {
 			}
 
 			const template =

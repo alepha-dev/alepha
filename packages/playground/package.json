@@ -31,7 +31,7 @@
 		"vite": "^6.3.5"
 	},
 	"scripts": {
-		"start": "node dist/server.js",
+		"start": "cd dist && node server/index.server.mjs",
 		"dev": "vite",
 		"dist": "vite build",
 		"kit": "yarn drizzle-kit",

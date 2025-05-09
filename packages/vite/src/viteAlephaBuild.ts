@@ -1,4 +1,5 @@
 import { access } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
 import gzipPlugin from "rollup-plugin-gzip";
@@ -96,7 +97,9 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 			}
 
 			process.env.VITE_DOUBLE_BUILD_DONE = "true";
-			const hasClient = await access("index.html").catch(() => false);
+			const hasClient = await access(join(process.cwd(), "index.html"))
+				.then(() => true)
+				.catch(() => false);
 
 			await viteBuildServer({
 				client: hasClient ? "client" : undefined,
