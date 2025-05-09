@@ -1,7 +1,8 @@
-import { $hook, $logger } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 
 export class ServerLoggerProvider {
 	protected readonly log = $logger("Server");
+	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({
 		name: "server:onRequest",
@@ -10,19 +11,25 @@ export class ServerLoggerProvider {
 			if (!route.silent) {
 				const req = request.raw.node?.req;
 
-				const ip = req
-					? request.headers["x-forwarded-for"]?.split(",")[0] ||
-						req.socket.remoteAddress
-					: undefined;
-
 				request.metadata.now = Date.now();
 
-				this.log.info("Incoming request", {
+				const data: Record<string, string> = {
 					method: request.method,
 					path: request.url.pathname,
-					agent: request.headers["user-agent"],
-					ip: ip,
-				});
+				};
+
+				if (this.alepha.isProduction()) {
+					data.agent = request.headers["user-agent"];
+					const ip = req
+						? request.headers["x-forwarded-for"]?.split(",")[0] ||
+							req.socket.remoteAddress
+						: undefined;
+					if (ip) {
+						data.ip = ip;
+					}
+				}
+
+				this.log.info("Incoming request", data);
 			}
 		},
 	});
