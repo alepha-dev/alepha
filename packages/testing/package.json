@@ -3,8 +3,8 @@
   "version": "0.6.3",
   "type": "module",
   "license": "MIT",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "dependencies": {
     "@faker-js/faker": "^9.7.0",
     "drizzle-kit": "0.31.1"
@@ -14,12 +14,5 @@
   },
   "scripts": {
     "build": "pkgroll --clean-dist"
-  },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
-    }
   }
 }

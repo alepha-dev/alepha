@@ -1,7 +1,7 @@
 import { $command, log } from "@alepha/cli";
 import { up } from "./up.ts";
 import { readFile } from "node:fs/promises";
-import { build } from "./build.ts";
+import { verify } from "./verify.ts";
 
 export const release = $command({
 	when: ["release"],
@@ -16,8 +16,7 @@ export const release = $command({
 			return;
 		}
 
-		await run("yarn");
-		await build.handler({run, flags});
+		await verify.handler({ run, flags });
 		await up.handler({ run, flags });
 
 		const version = await getVersion();
@@ -28,7 +27,7 @@ export const release = $command({
 		log("");
 		log("Release project successfully.");
 		log(
-			"- Run `yarn a publish` to push packages to npm registry.",
+			"- Run `yarn alepha publish` to push packages to npm registry.",
 		);
 		log("- Run `git push --follow-tags` to push commit to remote repository.");
 		log("");
