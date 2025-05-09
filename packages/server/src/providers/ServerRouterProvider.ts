@@ -151,9 +151,20 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			}
 		}
 
+		const headers = new Headers();
+		for (const [key, value] of Object.entries(reply.headers)) {
+			if (Array.isArray(value)) {
+				for (const v of value) {
+					headers.append(key, v);
+				}
+			} else {
+				headers.set(key, value);
+			}
+		}
+
 		const init = {
 			status: reply.status,
-			headers: reply.headers,
+			headers,
 		};
 
 		if (!reply.body) {

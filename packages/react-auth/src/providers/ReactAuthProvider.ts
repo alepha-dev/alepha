@@ -79,20 +79,36 @@ export class ReactAuthProvider {
 						`Discover OIDC auth provider -> ${options.oidc.issuer}`,
 					);
 
-					const client = await discovery(
-						new URL(options.oidc.issuer),
-						options.oidc.clientId,
-						{
-							client_secret: options.oidc.clientSecret,
+					const oidc = options.oidc;
+
+					const client: {
+						cache?: Configuration;
+						get: () => Promise<Configuration>;
+					} = {
+						cache: undefined,
+						async get() {
+							this.cache ??= await discovery(
+								new URL(oidc.issuer),
+								oidc.clientId,
+								{
+									client_secret: oidc.clientSecret,
+								},
+								undefined,
+								{
+									execute: [allowInsecureRequests],
+								},
+							);
+
+							return this.cache as Configuration;
 						},
-						undefined,
-						{
-							execute: [allowInsecureRequests],
-						},
-					);
+					};
+
+					if (this.alepha.isProduction() && !this.alepha.isServerless()) {
+						await client.get(); // preload discovery on production, if not serverless
+					}
 
 					instance[key].jwks = () => {
-						return client.serverMetadata().jwks_uri;
+						//return client.serverMetadata().jwks_uri;
 					};
 
 					this.authProviders.push({
@@ -159,8 +175,9 @@ export class ReactAuthProvider {
 				if (tokens.refresh_token) {
 					// but has refresh token
 					try {
+						const provider = await this.provider();
 						const newTokens = await refreshTokenGrant(
-							this.authProviders[0].client,
+							provider.client,
 							tokens.refresh_token,
 						);
 
@@ -209,7 +226,7 @@ export class ReactAuthProvider {
 			}),
 		},
 		handler: async ({ query, cookies, url, reply }) => {
-			const { client, redirectUri } = this.provider(query.provider);
+			const { client, redirectUri } = await this.provider(query.provider);
 
 			const codeVerifier = randomPKCECodeVerifier();
 			const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
@@ -251,7 +268,7 @@ export class ReactAuthProvider {
 			}),
 		},
 		handler: async ({ url, cookies, query, reply }) => {
-			const { client } = this.provider(query.provider);
+			const { client } = await this.provider(query.provider);
 
 			const authorizationCode = this.authorizationCode.get(cookies);
 			if (!authorizationCode) {
@@ -324,7 +341,7 @@ export class ReactAuthProvider {
 			}),
 		},
 		handler: async ({ query, cookies, reply }) => {
-			const { client } = this.provider(query.provider);
+			const { client } = await this.provider(query.provider);
 			const tokens = this.tokens.get(cookies);
 			const idToken = tokens?.id_token;
 
@@ -339,8 +356,6 @@ export class ReactAuthProvider {
 			this.tokens.del(cookies);
 			this.user.del(cookies);
 
-			const location = buildEndSessionUrl(client, params).toString();
-
 			reply.redirect(buildEndSessionUrl(client, params).toString());
 
 			reply.headers.location = buildEndSessionUrl(client, params).toString();
@@ -353,23 +368,32 @@ export class ReactAuthProvider {
 	 * @param name
 	 * @protected
 	 */
-	protected provider(name?: string) {
+	protected async provider(name?: string) {
 		if (!name) {
-			const client = this.authProviders[0];
-			if (!client) {
+			const authProvider = this.authProviders[0];
+			if (!authProvider) {
 				throw new BadRequestError("Client name is required");
 			}
-			return client;
+			return {
+				...authProvider,
+				client: await authProvider.client.get(),
+			};
 		}
 
 		const authProvider = this.authProviders.find(
 			(provider) => provider.name === name,
 		);
+
 		if (!authProvider) {
 			throw new BadRequestError(`Client ${name} not found`);
 		}
 
-		return authProvider;
+		await authProvider.client.get();
+
+		return {
+			...authProvider,
+			client: await authProvider.client.get(),
+		};
 	}
 
 	/**
@@ -412,7 +436,9 @@ export interface SessionTokens {
 export interface AuthProvider {
 	name: string;
 	redirectUri: string;
-	client: Configuration;
+	client: {
+		get: () => Promise<Configuration>;
+	};
 }
 
 export interface ReactUser {

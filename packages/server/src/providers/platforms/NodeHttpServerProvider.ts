@@ -58,7 +58,16 @@ export class NodeHttpServerProvider implements ServerProvider {
 			const request = this.createRouterRequest(req, res, params);
 			const response = await route.handler(request);
 
-			res.writeHead(response.status, Object.fromEntries(response.headers));
+			response.headers.forEach((value, key) => {
+				if (key === "set-cookie") {
+					// handle set-cookie separately
+					res.setHeader(key, response.headers.getSetCookie());
+				} else {
+					res.setHeader(key, value);
+				}
+			});
+
+			res.writeHead(response.status);
 			if (!response.body) {
 				res.end();
 				return response.status;
