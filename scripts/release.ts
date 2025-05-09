@@ -1,9 +1,7 @@
 import { $command, log } from "@alepha/cli";
 import { up } from "./up.ts";
-import { build } from "./build.ts";
 import { readFile } from "node:fs/promises";
-import { publish } from "./publish.ts";
-import { verify } from "./verify.ts";
+import { build } from "./build.ts";
 
 export const release = $command({
 	when: ["release"],
@@ -18,7 +16,8 @@ export const release = $command({
 			return;
 		}
 
-		await verify.handler({ run, flags });
+		await run("yarn");
+		await build.handler({run, flags});
 		await up.handler({ run, flags });
 
 		const version = await getVersion();
