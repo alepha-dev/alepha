@@ -1,8 +1,14 @@
 import { createReadStream } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { access, readdir, stat } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	DateTimeProvider,
+} from "@alepha/core";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import mime from "mime";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
@@ -10,6 +16,7 @@ import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 export class ServerStaticProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly routerProvider = $inject(ServerRouterProvider);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly log = $logger();
 
 	protected readonly directories: ServeDirectory[] = [];
@@ -59,7 +66,7 @@ export class ServerStaticProvider {
 				const path = file.replace(root, "").replace(/\\/g, "/");
 				return {
 					path: join(prefix, path).replace(/\\/g, "/"),
-					handler: await this.createFileHandler(root, path),
+					handler: await this.createFileHandler(join(root, path), options),
 				};
 			}),
 		);
@@ -93,28 +100,86 @@ export class ServerStaticProvider {
 	}
 
 	public async createFileHandler(
-		root: string,
-		file: string,
+		filepath: string,
+		options: ServeDescriptorOptions,
 	): Promise<ServerHandler> {
-		// TODO: check if file.gz exists and serve it when header "accept-encoding" contains "gzip"
-		// TODO: same for file.br
-		return async ({ reply }): Promise<NodeStream> => {
-			const filepath = join(root, file);
-			const filename = basename(filepath);
-			const stream = createReadStream(filepath);
+		const filename = basename(filepath);
 
-			reply.headers["content-type"] =
-				mime.getType(filename) ?? "application/octet-stream";
+		const hasGzip = await access(`${filepath}.gz`)
+			.then(() => true)
+			.catch(() => false);
+
+		const hasBr = await access(`${filepath}.br`)
+			.then(() => true)
+			.catch(() => false);
+
+		const fileStat = await stat(filepath);
+		const lastModified = fileStat.mtime.toUTCString();
+		const etag = `"${fileStat.size}-${fileStat.mtime.getTime()}"`;
+		const contentType = mime.getType(filename) ?? "application/octet-stream";
+		const cacheControl = this.getCacheControl(filename, options);
+
+		return async (request): Promise<NodeStream | undefined> => {
+			const { headers, reply } = request;
+			let path = filepath;
+
+			const encoding = headers["accept-encoding"];
+			if (encoding) {
+				if (hasBr && encoding.includes("br")) {
+					reply.headers["content-encoding"] = "br";
+					path += ".br";
+				} else if (hasGzip && encoding.includes("gzip")) {
+					reply.headers["content-encoding"] = "gzip";
+					path += ".gz";
+				}
+			}
+
+			const stream = createReadStream(path);
+
+			reply.headers["content-type"] = contentType;
 			reply.headers["accept-ranges"] = "bytes";
-			reply.headers["content-encoding"] = "identity";
+			reply.headers["last-modified"] = lastModified;
 
-			// TODO: cache-control
-			// TODO: etag
-			// TODO: last-modified
-			// TODO: content-length
+			if (cacheControl) {
+				reply.headers["cache-control"] =
+					`public, max-age=${cacheControl.maxAge}`;
+				if (cacheControl.immutable) {
+					reply.headers["cache-control"] += ", immutable";
+				}
+			}
+
+			reply.headers.etag = etag;
+			if (
+				headers["if-none-match"] === etag ||
+				headers["if-modified-since"] === lastModified
+			) {
+				reply.status = 304;
+				return;
+			}
 
 			return stream;
 		};
+	}
+
+	protected getCacheControl(
+		filename: string,
+		options: ServeDescriptorOptions,
+	): { maxAge: number; immutable: boolean } | undefined {
+		if (!options.cacheControl) {
+			return;
+		}
+
+		const fileTypes = options.cacheControl.fileTypes ?? [".js", ".css"];
+		for (const type of fileTypes) {
+			if (filename.endsWith(type)) {
+				return {
+					immutable: options.cacheControl.immutable ?? true,
+					maxAge: this.dateTimeProvider
+						.duration(options.cacheControl.maxAge ?? { days: 2 })
+						.as("seconds"),
+				};
+			}
+		}
 	}
 
 	public async getAllFiles(

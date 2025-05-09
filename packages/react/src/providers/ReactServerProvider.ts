@@ -120,9 +120,6 @@ export class ReactServerProvider {
 		await this.serverStaticProvider.serve({
 			root,
 			path: this.env.REACT_SERVER_PREFIX,
-			cacheControl: true,
-			immutable: true,
-			maxAge: { days: 30 },
 		});
 	}
 

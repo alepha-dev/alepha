@@ -18,6 +18,7 @@ class Api {
 	seq = $sequence();
 
 	docs = $swagger({
+		ui: false,
 		prefix: "/docs",
 		info: {
 			title: "Api",

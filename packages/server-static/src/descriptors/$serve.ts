@@ -50,23 +50,32 @@ export interface ServeDescriptorOptions {
 	/**
 	 * Whether to use cache control headers.
 	 *
-	 * @default false
+	 * @default {}
 	 */
-	cacheControl?: boolean;
+	cacheControl?: Partial<CacheControlOptions> | false;
+}
 
+export interface CacheControlOptions {
 	/**
-	 * Whether to use immutable cache control headers.
+	 * Whether to use cache control headers.
 	 *
-	 * @default false
+	 * @default [.js, .css]
 	 */
-	immutable?: boolean;
+	fileTypes: string[];
 
 	/**
 	 * The maximum age of the cache in seconds.
 	 *
-	 * @default 0
+	 * @default 60 * 60 * 24 * 2 // 2 days
 	 */
-	maxAge?: DurationLike;
+	maxAge: DurationLike;
+
+	/**
+	 * Whether to use immutable cache control headers.
+	 *
+	 * @default true
+	 */
+	immutable: boolean;
 }
 
 export interface ServeDescriptor {

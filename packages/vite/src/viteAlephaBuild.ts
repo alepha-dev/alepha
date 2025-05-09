@@ -71,7 +71,7 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 
 		await viteBuild({
 			ssr: {
-				noExternal: true,
+				//	noExternal: true,
 			},
 			publicDir: false,
 			build: {
