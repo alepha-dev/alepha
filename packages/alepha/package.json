@@ -5,6 +5,7 @@
 	"license": "MIT",
 	"main": "./dist/core.js",
 	"types": "./dist/core.d.ts",
+	"files": ["dist", "src"],
 	"dependencies": {
 		"@alepha/cache": "0.6.3",
 		"@alepha/cli": "0.6.3",
@@ -45,7 +46,7 @@
 		"react": "^19.1.0"
 	},
 	"scripts": {
-		"build": "pkgroll --clean-dist"
+		"build": "pkgroll --clean-dist --sourcemap"
 	},
 	"exports": {
 		".": {

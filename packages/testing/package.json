@@ -13,6 +13,6 @@
     "pkgroll": "^2.12.2"
   },
   "scripts": {
-    "build": "pkgroll --clean-dist"
+    "build": "pkgroll --clean-dist --sourcemap"
   }
 }

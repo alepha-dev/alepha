@@ -5,6 +5,10 @@
   "license": "MIT",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
   "dependencies": {
     "@sinclair/typebox": "^0.34.33",
     "dotenv": "^16.5.0",
@@ -14,6 +18,6 @@
     "pkgroll": "^2.12.2"
   },
   "scripts": {
-    "build": "pkgroll --clean-dist"
+    "build": "pkgroll --clean-dist --sourcemap"
   }
 }
