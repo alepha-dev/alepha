@@ -1,4 +1,3 @@
-import type { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import type { STARTED } from "../constants/STARTED.ts";
 import type { CursorDescriptor } from "../descriptors/$cursor.ts";
@@ -77,32 +76,6 @@ export const __bind = (descriptor: { [KIND]: string }, ...to: Class[]) => {
 			if (ctx[KIND] === descriptor[KIND]) {
 				for (const injectedClass of to) {
 					ctx.context.register(injectedClass);
-				}
-			}
-		}
-	});
-};
-
-export const ___bind = (args: {
-	when: { [KIND]: string } | Array<{ [KIND]: string }>;
-	register: Class | Class[];
-	check?: (ctx: Alepha) => boolean;
-}) => {
-	descriptorEvents.on("create", (ctx) => {
-		const descriptors = Array.isArray(args.when) ? args.when : [args.when];
-		const services = Array.isArray(args.register)
-			? args.register
-			: [args.register];
-		if (
-			!ctx.context.env.EXPLICIT_PROVIDERS &&
-			!ctx.context.isLocked() &&
-			(!args.check || args.check(ctx.context))
-		) {
-			for (const descriptor of descriptors) {
-				if (ctx[KIND] === descriptor[KIND]) {
-					for (const serv of services) {
-						ctx.context.register(serv);
-					}
 				}
 			}
 		}

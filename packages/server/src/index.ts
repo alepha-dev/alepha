@@ -1,5 +1,4 @@
-import type { Static } from "@alepha/core";
-import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { $inject, Alepha, type Static, __bind, t } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
 import { $action, $route } from "./descriptors/$action.ts";
 import { $remote } from "./descriptors/$remote.ts";
@@ -71,8 +70,8 @@ export * from "./errors/ValidationError.ts";
 
 const envSchema = t.object({
 	SERVER_LINKS_ENABLED: t.boolean({
-		default: false,
-		description: "Enable links provider which expose APIs on an URL.",
+		default: true,
+		description: "Enable links-provider, which expose APIs on /api/_links.",
 	}),
 });
 

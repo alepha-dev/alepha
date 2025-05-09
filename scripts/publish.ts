@@ -26,6 +26,6 @@ export const publish = $command({
 		);
 
 		await run("yarn convert ts");
-		await run("yarn a clean");
+		await run("yarn alepha clean");
 	},
 })
