@@ -8,10 +8,20 @@ export class ServerLoggerProvider {
 		priority: "first",
 		handler: ({ route, request }) => {
 			if (!route.silent) {
+				const req = request.raw.node?.req;
+
+				const ip = req
+					? request.headers["x-forwarded-for"]?.split(",")[0] ||
+						req.socket.remoteAddress
+					: undefined;
+
 				request.metadata.now = Date.now();
+
 				this.log.info("Incoming request", {
 					method: request.method,
 					path: request.url.pathname,
+					agent: request.headers["user-agent"],
+					ip: ip,
 				});
 			}
 		},

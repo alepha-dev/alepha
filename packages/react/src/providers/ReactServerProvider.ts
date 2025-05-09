@@ -62,7 +62,7 @@ export class ReactServerProvider {
 			}
 
 			if (this.alepha.isServerless() === "vite") {
-				this.configureVite();
+				await this.configureVite();
 				return;
 			}
 
@@ -82,7 +82,7 @@ export class ReactServerProvider {
 				this.alepha.state("ReactServerProvider.template") ??
 				(await readFile(join(root, "index.html"), "utf-8"));
 
-			this.registerPages(async () => template);
+			await this.registerPages(async () => template);
 
 			this.alepha.state("ReactServerProvider.ssr", true);
 		},
@@ -123,13 +123,13 @@ export class ReactServerProvider {
 		});
 	}
 
-	protected configureVite() {
+	protected async configureVite() {
 		const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
 		this.log.info("SSR (vite) OK");
 		this.alepha.state("ReactServerProvider.ssr", true);
 		const templateUrl = `${url}/index.html`;
 
-		this.registerPages(() =>
+		await this.registerPages(() =>
 			fetch(templateUrl)
 				.then((it) => it.text())
 				.catch(() => undefined),
