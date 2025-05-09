@@ -17,7 +17,6 @@ import {
 import { type Route, RouterProvider } from "@alepha/router";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
-import type { Cookies } from "../descriptors/$cookie.ts";
 import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { isFileLike } from "./features/ServerMultipartProvider.ts";
@@ -66,14 +65,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			},
 			async () => {
 				// create request
-				const request: ServerRequest = {
+				const request = {
 					...rawRequest,
 					body: null,
 					metadata: {},
-					cookies: {
-						req: {},
-						res: {},
-					},
 					reply: {
 						headers: {},
 						redirect: (url: string) => {
@@ -81,7 +76,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 							request.reply.headers.location = url;
 						},
 					},
-				};
+				} as ServerRequest;
 
 				try {
 					// there are some built-in hooks that are called before the request is handled
@@ -417,7 +412,6 @@ export interface ServerRequest<
 	metadata: Record<string, any>;
 
 	// sugar methods
-	cookies: Cookies;
 	reply: ServerReply;
 
 	// forward raw request

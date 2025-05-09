@@ -1,11 +1,10 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $route, BadRequestError } from "@alepha/server";
 import {
 	$cookie,
-	$route,
-	BadRequestError,
 	type Cookies,
 	ServerCookiesProvider,
-} from "@alepha/server";
+} from "@alepha/server-cookies";
 import {
 	type Configuration,
 	allowInsecureRequests,

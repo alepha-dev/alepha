@@ -1,0 +1,19 @@
+{
+  "name": "@alepha/server-cookies",
+  "version": "0.6.2",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@alepha/core": "0.6.2",
+    "@alepha/server": "0.6.2"
+  },
+  "devDependencies": {
+    "pkgroll": "^2.12.2",
+    "vitest": "^3.1.3"
+  },
+  "scripts": {
+    "build": "pkgroll --clean-dist"
+  }
+}

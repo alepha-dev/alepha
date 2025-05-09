@@ -11,6 +11,7 @@
     "@alepha/react": "0.6.2",
     "@alepha/security": "0.6.2",
     "@alepha/server": "0.6.2",
+    "@alepha/server-cookies": "0.6.2",
     "openid-client": "^6.5.0"
   },
   "devDependencies": {

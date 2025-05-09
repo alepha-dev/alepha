@@ -1,5 +1,6 @@
+import "@alepha/server"; // for hooks
 import { $hook } from "@alepha/core";
-import type { Cookie } from "../../descriptors/$cookie.ts";
+import type { Cookie } from "../descriptors/$cookie.ts";
 
 export class ServerCookiesProvider {
 	public readonly onRequest = $hook({

@@ -3,104 +3,55 @@ import {
 	$cursor,
 	DateTimeProvider,
 	type DurationLike,
+	KIND,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
 
 export interface CookieDescriptorOptions<T extends TSchema> {
-	/**
-	 *
-	 */
 	schema: T;
 
-	/**
-	 *
-	 */
 	name: string;
 
-	/**
-	 *
-	 */
 	path?: string; // default: "/"
 
-	/**
-	 *
-	 */
 	ttl?: DurationLike; // map to maxAge
 
-	/**
-	 *
-	 */
 	secure?: boolean; // TODO: "auto" - secure=true if ctx.url.protocol === "https"
 
-	/**
-	 *
-	 */
 	httpOnly?: boolean;
 
-	/**
-	 *
-	 */
 	sameSite?: "strict" | "lax" | "none"; // default: "lax"
 
-	/**
-	 *
-	 */
 	domain?: string;
 
-	/**
-	 *
-	 */
 	compress?: boolean;
 
-	/**
-	 *
-	 */
 	encrypt?: boolean; // not implemented yet
 
-	/**
-	 *
-	 */
 	sign?: boolean; // not implemented yet
 }
 
-/**
- *
- */
 export interface CookieDescriptor<T extends TSchema> {
-	/**
-	 *
-	 */
+	[KIND]: "COOKIE";
+
 	options: CookieDescriptorOptions<T>;
 
-	/**
-	 *
-	 */
 	set: (cookies: Cookies, value: Static<T>) => void;
 
-	/**
-	 *
-	 */
 	get: (cookies: Cookies) => Static<T> | undefined;
 
-	/**
-	 *
-	 */
 	del: (cookies: Cookies) => void;
 }
 
-/**
- *
- * @param options
- */
 export const $cookie = <T extends TSchema>(
 	options: CookieDescriptorOptions<T>,
 ): CookieDescriptor<T> => {
 	const { context } = $cursor();
 
 	return {
+		[KIND]: "COOKIE",
 		options,
-
 		get: (cookies: Cookies) => {
 			try {
 				if (cookies.req[options.name]) {
@@ -153,6 +104,8 @@ export const $cookie = <T extends TSchema>(
 		},
 	};
 };
+
+$cookie[KIND] = "COOKIE";
 
 export interface Cookies {
 	req: Record<string, string>;

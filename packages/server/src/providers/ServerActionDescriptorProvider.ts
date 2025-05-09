@@ -169,7 +169,6 @@ export class ServerActionDescriptorProvider {
 		// -- Links
 
 		this.client.links ??= [];
-
 		this.client.links.push({
 			...action,
 			schema: action.options.schema,
@@ -320,20 +319,9 @@ export class ServerActionDescriptorProvider {
 			const request = this.alepha.als.get<ServerRequest>("request");
 			if (request) {
 				options.user ??= request?.user;
-				//options.cookies ??= request?.cookies;
 			}
-			// TODO: hook - "local:onRequest" ? forward cookies like this
 
-			config.params ??= {};
-			config.query ??= {};
-			config.headers ??= {};
-
-			this.routerProvider.validateRequest(value.options, {
-				params: config.params,
-				query: config.query,
-				headers: config.headers,
-				body: config.body,
-			});
+			// TODO: hook - "local:onRequest" ?
 
 			const handler = value.options.handler;
 			if (!handler) {
@@ -346,7 +334,8 @@ export class ServerActionDescriptorProvider {
 				value.options.security !== false,
 			);
 
-			const serverActionRequest: ServerRequest = {
+			const serverActionRequest: Partial<ServerRequest> = {
+				...request,
 				...options,
 				method: value.options.method ?? "GET",
 				url: new URL(`http://localhost${value.options.path ?? ""}`),
@@ -360,14 +349,15 @@ export class ServerActionDescriptorProvider {
 				},
 				metadata: {},
 				raw: {},
-				cookies: {
-					req: {},
-					res: {},
-				},
-				user: user as UserAccountToken, // we lie
+				user,
 			};
 
-			const response = await handler(serverActionRequest);
+			this.routerProvider.validateRequest(
+				value.options,
+				serverActionRequest as ServerRequest,
+			);
+
+			const response = await handler(serverActionRequest as ServerRequest);
 			if (!response) {
 				return;
 			}
@@ -375,8 +365,6 @@ export class ServerActionDescriptorProvider {
 			if (TypeGuard.IsVoid(value.options.schema?.response)) {
 				return;
 			}
-
-			// TODO: handle file/blob/buffer & stream
 
 			return value.options.schema?.response
 				? this.alepha.parse(value.options.schema.response, response)

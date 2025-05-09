@@ -18,6 +18,7 @@ import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import type {
 	RequestConfigSchema,
 	ServerHandler,
+	ServerRequest,
 	ServerRequestConfigEntry,
 } from "../providers/ServerRouterProvider.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
@@ -321,7 +322,7 @@ export class HttpClient extends EventEmitter<{
 
 					// if a handler is defined, use it (ssr)
 					if (link.handler) {
-						return link.handler({
+						const request = {
 							method: link.method,
 							url: new URL(`http://localhost${link.path}`),
 							query: config.query ?? {},
@@ -329,13 +330,14 @@ export class HttpClient extends EventEmitter<{
 							params: config.params ?? {},
 							headers: config.headers ?? {},
 							metadata: {},
-							cookies: { req: {}, res: {} },
 							raw: {},
 							reply: {
 								headers: {},
 								redirect: () => {},
 							},
-						});
+						} as Partial<ServerRequest>;
+
+						return link.handler(request as ServerRequest);
 					}
 
 					// else, make a request
