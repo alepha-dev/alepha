@@ -27,9 +27,7 @@ export class ReactAuth {
 	public readonly onRender = $hook({
 		name: "react:browser:render",
 		handler: async ({ context, hydration }) => {
-			if (hydration?.user) {
-				context.user = hydration.user ?? this.getUserFromCookies();
-			}
+			context.user = hydration?.user ?? this.getUserFromCookies();
 		},
 	});
 
