@@ -65,13 +65,13 @@ export class ServerStaticProvider {
 		);
 
 		for (const route of routes) {
-			this.routerProvider.route(route);
+			await this.routerProvider.route(route);
 
 			if (
 				options.indexFallback !== false &&
 				route.path.endsWith("index.html")
 			) {
-				this.routerProvider.route({
+				await this.routerProvider.route({
 					path: route.path.replace(/index\.html$/, ""),
 					handler: route.handler,
 				});
@@ -80,7 +80,7 @@ export class ServerStaticProvider {
 
 		// redirect to trailing slash (e.g. /dist -> /dist/)
 		if (!prefix.endsWith("/")) {
-			this.routerProvider.route({
+			await this.routerProvider.route({
 				path: prefix,
 				handler: ({ reply }) => reply.redirect(`${prefix}/`),
 			});

@@ -55,6 +55,7 @@ export * from "./providers/BrowserActionDescriptorProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
+export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/features/ServerCookiesProvider.ts";
 export * from "./providers/platforms/ServerProvider.ts";
 export * from "./providers/platforms/NodeHttpServerProvider.ts";

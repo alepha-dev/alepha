@@ -88,10 +88,12 @@ export class ReactServerProvider {
 		},
 	});
 
-	protected registerPages(templateLoader: () => Promise<string | undefined>) {
+	protected async registerPages(
+		templateLoader: () => Promise<string | undefined>,
+	) {
 		for (const page of this.pageDescriptorProvider.getPages()) {
 			this.log.debug(`+ ${page.match} -> ${page.name}`);
-			this.serverRouterProvider.route({
+			await this.serverRouterProvider.route({
 				method: "GET",
 				path: page.match,
 				handler: this.createHandler(page, templateLoader),
@@ -182,10 +184,16 @@ export class ReactServerProvider {
 				this.alepha.als.set("links", request.links);
 			}
 
-			await this.alepha.run("react:server:render", {
-				request: serverRequest,
-				pageRequest: request,
-			});
+			await this.alepha.run(
+				"react:server:render",
+				{
+					request: serverRequest,
+					pageRequest: request,
+				},
+				{
+					log: false,
+				},
+			);
 
 			const state = await this.pageDescriptorProvider.createLayers(
 				page,

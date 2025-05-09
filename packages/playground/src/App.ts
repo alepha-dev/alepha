@@ -11,6 +11,14 @@ export class App {
 		lazy: () => import("./components/Home.tsx"),
 	});
 
+	about = $page({
+		head: {
+			title: "About",
+		},
+		path: "/about",
+		component: () => "About",
+	});
+
 	test = $page({
 		name: "Test",
 		path: "/test",
@@ -41,7 +49,6 @@ export class App {
 				titleSeparator: " - ",
 				htmlAttributes: {
 					lang: "en",
-					"data-mantine-color-scheme": "dark",
 				},
 				meta: [
 					{
@@ -52,6 +59,6 @@ export class App {
 			};
 		},
 		lazy: () => import("./components/Layout.tsx"),
-		children: [this.home, this.test],
+		children: [this.home, this.test, this.about],
 	});
 }

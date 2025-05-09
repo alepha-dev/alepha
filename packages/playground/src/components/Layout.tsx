@@ -17,7 +17,7 @@ const Layout = () => {
 
 	return (
 		<StrictMode>
-			<MantineProvider defaultColorScheme="dark">
+			<MantineProvider defaultColorScheme="light">
 				<NavigationProgress />
 				<AppShell
 					header={{ height: 60 }}
@@ -43,8 +43,16 @@ const Layout = () => {
 								<Link to="/">Home</Link>
 							</li>
 							<li>
-								<Link to={routes.test} />
+								<Link to="/about">About</Link>
 							</li>
+							<li>
+								<Link to="/upload">Upload</Link>
+							</li>
+							{routes.test.can() && (
+								<li>
+									<Link to={routes.test}>Test</Link>
+								</li>
+							)}
 							{!auth.user && (
 								<li>
 									<button onClick={() => auth.login()}>login</button>

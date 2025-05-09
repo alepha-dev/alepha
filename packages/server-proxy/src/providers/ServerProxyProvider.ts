@@ -20,12 +20,12 @@ export class ServerProxyProvider {
 					continue;
 				}
 
-				this.proxy(value.options);
+				await this.proxy(value.options);
 			}
 		},
 	});
 
-	public proxy(options: ProxyDescriptorOptions) {
+	public async proxy(options: ProxyDescriptorOptions) {
 		const path = options.path;
 		const target = options.target;
 		const handler: ServerHandler = async (request) => {
@@ -69,7 +69,7 @@ export class ServerProxyProvider {
 		};
 
 		for (const method of routeMethods) {
-			this.routerProvider.route({
+			await this.routerProvider.route({
 				method,
 				path,
 				handler,

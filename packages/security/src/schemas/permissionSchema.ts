@@ -26,11 +26,13 @@ export const permissionSchema = t.object({
 		}),
 	),
 
-	url: t.optional(
+	path: t.optional(
 		t.string({
-			description: "URL of the permission. When available.",
+			description: "Pathname of the permission. When available.",
 		}),
 	),
+
+	contentType: t.optional(t.string()),
 });
 
 export type Permission = Static<typeof permissionSchema>;

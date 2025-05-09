@@ -12,13 +12,16 @@ export class ServerLinksProvider {
 		path: "/_links",
 		group: "system",
 		schema: {
-			response: t.array(httpLinkSchema),
+			response: t.array(httpLinkSchema, {
+				maxItems: 1000,
+			}),
 		},
 		internal: true,
 		security: false,
 		handler: async ({ user }) => {
 			if (this.alepha.has(SecurityProvider)) {
 				const security = this.alepha.get(SecurityProvider);
+
 				if (user) {
 					return security.getPermissions(user);
 				}

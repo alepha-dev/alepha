@@ -12,6 +12,14 @@ export class ServerSecurityProvider {
 		priority: "last",
 		handler: async ({ request, route }) => {
 			if (!isServerAction(route)) {
+				try {
+					request.user = await this.securityProvider.createUserFromToken(
+						request.headers.authorization,
+					);
+				} catch (error) {
+					// Ignore error if no token is provided
+					this.log.trace("Error while creating user from token", { error });
+				}
 				return;
 			}
 

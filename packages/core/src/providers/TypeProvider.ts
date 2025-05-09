@@ -1,3 +1,4 @@
+import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type {
 	ArrayOptions,
 	IntegerOptions,
@@ -21,7 +22,6 @@ import type {
 	UnsafeOptions,
 } from "@sinclair/typebox";
 import { FormatRegistry, Kind, Type } from "@sinclair/typebox";
-
 import * as TypeBox from "@sinclair/typebox";
 import * as TypeBoxValue from "@sinclair/typebox/value";
 
@@ -354,16 +354,26 @@ export class TypeProvider {
 		});
 
 	file = (options?: { max?: number }): TFile =>
-		t.unsafe<File>("Any", {
+		t.unsafe<FileLike>("Any", {
 			[OPTIONS]: options,
 			format: "binary",
 			type: "string",
 		});
 }
 
+export interface FileLike {
+	name: string;
+	type: string;
+	size: number;
+	lastModified: number;
+	stream(): ReadableStream | NodeWebStream;
+	arrayBuffer(): Promise<ArrayBuffer>;
+	text(): Promise<string>;
+}
+
 export const t = new TypeProvider();
 
-export type TFile = TUnsafe<File>;
+export type TFile = TUnsafe<FileLike>;
 
 export const isTypeFile = (value: TSchema): value is TFile => {
 	return (

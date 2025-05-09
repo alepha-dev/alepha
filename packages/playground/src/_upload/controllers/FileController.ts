@@ -1,13 +1,9 @@
-import { writeFile } from "node:fs/promises";
-import { t } from "@alepha/core";
+import { type FileLike, t } from "@alepha/core";
 import { $action } from "@alepha/server";
+import { file } from "@alepha/server";
 
 export class FileCtrl {
-	file?: {
-		buffer: ArrayBuffer;
-		name: string;
-		type: string;
-	};
+	file?: FileLike;
 
 	push = $action({
 		security: false,
@@ -20,25 +16,13 @@ export class FileCtrl {
 			}),
 		},
 		handler: async ({ body }) => {
-			console.time("buffer");
-			this.file = {
-				buffer: await body.file.arrayBuffer(),
-				name: body.file.name,
-				type: body.file.type,
-			};
-			await writeFile(
-				`./file-buffer-${this.file.name}`,
-				Buffer.from(this.file.buffer),
-			);
-			console.timeEnd("buffer");
+			const buffer = await body.file.arrayBuffer();
+			this.file = await file(buffer, body.file);
 		},
 	});
 
-	download = $action({
+	image = $action({
 		schema: {
-			params: t.object({
-				name: t.string(),
-			}),
 			response: t.file(),
 		},
 		handler: () => {
@@ -46,9 +30,21 @@ export class FileCtrl {
 				throw new Error("No file uploaded");
 			}
 
-			return new File([this.file.buffer], this.file.name, {
-				type: this.file.type,
-			});
+			return this.file;
+		},
+	});
+
+	download = $action({
+		security: false,
+		schema: {
+			response: t.file(),
+		},
+		handler: () => {
+			if (!this.file) {
+				throw new Error("No file uploaded");
+			}
+
+			return this.file;
 		},
 	});
 }

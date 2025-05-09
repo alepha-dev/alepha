@@ -5,7 +5,7 @@ const Home = () => {
 
 	return (
 		<div>
-			Home Page :)zzz
+			Home Page
 			<br />
 			<input value={a} onChange={(e) => setA(e.target.value)} />
 		</div>

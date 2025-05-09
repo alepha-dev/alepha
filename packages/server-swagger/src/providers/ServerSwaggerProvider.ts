@@ -244,7 +244,7 @@ export class ServerSwaggerProvider {
 	}
 
 	protected async configureSwaggerApi(json: OpenAPIV3.Document) {
-		this.serverRouterProvider.route({
+		await this.serverRouterProvider.route({
 			method: "GET",
 			path: `${this.env.SERVER_OPENAPI_PREFIX}/json`,
 			schema: {

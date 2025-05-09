@@ -75,7 +75,7 @@ export class ServerActionDescriptorProvider {
 			}
 			const routes = this.alepha.getDescriptorValues($route);
 			for (const { value, key, instance } of routes) {
-				this.registerAction(value, key, instance);
+				await this.registerAction(value, key, instance);
 			}
 		},
 	});
@@ -93,7 +93,7 @@ export class ServerActionDescriptorProvider {
 		});
 	}
 
-	public registerAction(
+	public async registerAction(
 		value: RouteDescriptor,
 		key: string,
 		instance: any,
@@ -119,7 +119,12 @@ export class ServerActionDescriptorProvider {
 			path,
 			name: this.helper.name(options, instance, key),
 			group: this.helper.group(options, instance),
-			permission: this.helper.permission(options, instance, key),
+			permission: this.helper.permission(
+				options,
+				instance,
+				key,
+				this.env.SERVER_API_PREFIX,
+			),
 			schema: options.schema,
 			handler,
 			options,
@@ -129,7 +134,7 @@ export class ServerActionDescriptorProvider {
 
 		// --- Routing
 
-		this.routerProvider.route(action);
+		await this.routerProvider.route(action);
 
 		// --- Log
 
@@ -216,7 +221,12 @@ export class ServerActionDescriptorProvider {
 			if (value.options.use === routeDescriptor && value.options.handler) {
 				const localFunction = this.createLocalFunction(
 					value,
-					this.helper.permission(value.options, instance, key),
+					this.helper.permission(
+						value.options,
+						instance,
+						key,
+						this.env.SERVER_API_PREFIX,
+					),
 				);
 
 				this.log.trace(

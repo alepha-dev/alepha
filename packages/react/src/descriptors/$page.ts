@@ -60,6 +60,7 @@ export interface PageDescriptor<
 		onClick: () => void;
 	};
 	options: PageDescriptorOptions<TConfig, TProps, TPropsParent>;
+	can: () => boolean;
 }
 
 export const $page = <
@@ -97,6 +98,12 @@ export const $page = <
 		},
 		createAnchorProps: () => {
 			throw new NotImplementedError(KEY);
+		},
+		can: () => {
+			if (options.can) {
+				return options.can();
+			}
+			return true;
 		},
 	};
 };

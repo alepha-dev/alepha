@@ -1,4 +1,4 @@
-import { useClient } from "@alepha/react";
+import { Link, useClient } from "@alepha/react";
 import { useState } from "react";
 import type { FileCtrl } from "../controllers/FileController.ts";
 
@@ -8,9 +8,10 @@ const Upload = () => {
 
 	return (
 		<fieldset>
+			<Link to={"/"}>Home</Link>
 			<h1>Upload</h1>
 			<form
-				onSubmit={(e) => {
+				onSubmit={async (e) => {
 					e.preventDefault();
 					e.stopPropagation();
 
@@ -18,12 +19,14 @@ const Upload = () => {
 						return;
 					}
 
-					client.push({
+					await client.push({
 						body: {
 							file,
 							metadata: "test",
 						},
 					});
+
+					setFile(null);
 				}}
 			>
 				<input
@@ -40,6 +43,10 @@ const Upload = () => {
 				/>
 				<button type="submit">Upload</button>
 			</form>
+			<a href={"/api/download"} download>
+				download
+			</a>
+			<img src={"/api/image"} width={200} />
 		</fieldset>
 	);
 };

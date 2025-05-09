@@ -45,7 +45,7 @@ export class PageDescriptorProvider {
 					events: events ?? new EventEmitter<RouterEvents>(),
 				},
 			},
-			state.layers[0]?.element,
+			createElement(NestedView, {}, state.layers[0]?.element),
 		);
 	}
 

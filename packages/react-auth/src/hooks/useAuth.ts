@@ -19,6 +19,9 @@ export const useAuth = (): AuthHook => {
 		login: (provider?: string) => {
 			ctx.alepha.get(ReactAuth).login();
 		},
+		can: (something: { can: () => boolean }) => {
+			return something.can();
+		},
 	};
 };
 
@@ -26,4 +29,5 @@ export interface AuthHook {
 	user?: UserAccountToken;
 	logout: () => void;
 	login: (provider?: string) => void;
+	can: (something: { can: () => boolean }) => boolean;
 }

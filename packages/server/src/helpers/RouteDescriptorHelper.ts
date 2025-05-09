@@ -59,13 +59,15 @@ export class RouteDescriptorHelper {
 		options: RouteDescriptorOptions,
 		instance: any,
 		key: string,
+		prefix = "",
 	): Permission {
 		return {
 			group: this.group(options, instance),
 			name: options.name ?? key,
-			url: this.path(options, instance, key),
+			path: this.path(options, instance, key, prefix),
 			method: this.method(options),
 			description: options.description,
+			contentType: this.bodyContentType(options),
 		};
 	}
 

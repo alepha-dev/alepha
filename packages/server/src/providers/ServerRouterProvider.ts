@@ -20,6 +20,7 @@ import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { Cookies } from "../descriptors/$cookie.ts";
 import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
+import { isFileLike } from "./features/ServerMultipartProvider.ts";
 
 // Router used in Server (action, proxy, ssr, etc...)
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
@@ -29,12 +30,22 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		return Math.random().toString(36).substring(2, 15);
 	}
 
-	public route<TConfig extends RequestConfigSchema = RequestConfigSchema>(
+	public async route<TConfig extends RequestConfigSchema = RequestConfigSchema>(
 		route: ServerRoute<TConfig>,
 	) {
 		const method = (route.method ?? "GET").toUpperCase();
 		const path = `/${method}/${route.path}`.replace(/\/+/g, "/");
 		const responseType = this.getResponseType(route.schema);
+
+		await this.alepha.run(
+			"server:onRoute",
+			{
+				route,
+			},
+			{
+				log: false,
+			},
+		);
 
 		return this.push({
 			path,
@@ -338,12 +349,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		}
 
 		if (responseType === "file") {
-			if (reply.body instanceof File) {
-				const file = reply.body as File;
-				reply.body = file.stream() as WebStream;
-				reply.headers["content-type"] = file.type;
+			if (isFileLike(reply.body)) {
+				reply.headers["content-type"] = reply.body.type;
 				reply.headers["content-disposition"] =
-					`attachment; filename="${file.name}"`;
+					`attachment; filename="${reply.body.name}"`;
+				reply.body = reply.body.stream() as WebStream;
 				return;
 			}
 

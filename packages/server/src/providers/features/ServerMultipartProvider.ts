@@ -2,10 +2,16 @@ import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { readFile, stat, unlink } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
-import * as os from "node:os";
 import { ReadableStream } from "node:stream/web";
 import {} from "node:zlib";
-import { $hook, $inject, Alepha, TypeGuard, isTypeFile } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	Alepha,
+	type FileLike,
+	TypeGuard,
+	isTypeFile,
+} from "@alepha/core";
 import Busboy, {
 	type BusboyConfig,
 	type BusboyFileStream,
@@ -148,10 +154,9 @@ export class ServerMultipartProvider {
 				_: string,
 				mimeType: string,
 			) => {
-				const tmpPath = `${os.tmpdir()}/${randomUUID()}`;
+				const tmpPath = `${randomUUID()}`;
 				const writer = createWriteStream(tmpPath);
 
-				stream.pipe(writer);
 				pending.push(
 					new Promise<void>((resolve, reject) => {
 						stream.pipe(writer);
@@ -176,7 +181,10 @@ export class ServerMultipartProvider {
 						return ReadableStream.from(createReadStream(tmpPath));
 					},
 					async arrayBuffer() {
-						return await readFile(tmpPath);
+						return Buffer.from(await readFile(tmpPath)).buffer as ArrayBuffer;
+					},
+					text: async () => {
+						return await readFile(tmpPath, "utf-8");
 					},
 					async cleanup() {
 						if (this._state.cleanup) {
@@ -190,13 +198,9 @@ export class ServerMultipartProvider {
 			},
 		);
 
-		const task = Promise.withResolvers<void>();
-
-		parser.on("finish", task.resolve);
-
 		req.pipe(parser);
 
-		await task.promise;
+		await new Promise((resolve) => parser.on("finish", resolve));
 		await Promise.all(pending);
 
 		for (const file of Object.values(files)) {
@@ -214,13 +218,7 @@ interface MultipartResult {
 	files: Record<string, HybridFile>;
 }
 
-interface HybridFile {
-	name: string;
-	type: string;
-	size: number;
-	lastModified: number;
-	stream(): ReadableStream<Uint8Array>;
-	arrayBuffer(): Promise<Uint8Array>;
+interface HybridFile extends FileLike {
 	cleanup(): Promise<void>;
 	_state: {
 		cleanup: boolean;
@@ -228,3 +226,106 @@ interface HybridFile {
 		tmpPath: string;
 	};
 }
+
+/**
+ * Create a file-like object from various sources.
+ */
+export const file = async (
+	source: string | Buffer | ArrayBuffer, // TODO: FileLike, Blob, WebStream, NodeStream
+	options: {
+		type?: string;
+		name?: string;
+	} = {},
+): Promise<FileLike> => {
+	if (typeof source === "string") {
+		const path = source;
+		const stats = await stat(path);
+		if (!stats.isFile()) {
+			throw new Error(`File not found: ${path}`);
+		}
+
+		const stream = createReadStream(path);
+
+		return {
+			name: options.name ?? (path.split("/").pop() || ""),
+			type: options.type ?? getContentType(options.name ?? path),
+			size: stats.size,
+			lastModified: stats.mtimeMs,
+			stream: () => ReadableStream.from(stream),
+			arrayBuffer: async () => {
+				return Buffer.from(await readFile(path)).buffer as ArrayBuffer;
+			},
+			text: async () => {
+				return await readFile(path, "utf-8");
+			},
+		};
+	}
+
+	const name = options.name ?? "file";
+	const buffer = Buffer.isBuffer(source) ? source : Buffer.from(source);
+	return {
+		name,
+		type: options.type ?? getContentType(options.name ?? name),
+		size: buffer.byteLength,
+		lastModified: Date.now(),
+		stream: () =>
+			new ReadableStream({
+				start(it) {
+					it.enqueue(buffer);
+					it.close();
+				},
+			}),
+		arrayBuffer: async () => {
+			return buffer.buffer as ArrayBuffer;
+		},
+		text: async () => {
+			return buffer.toString("utf-8");
+		},
+	};
+};
+
+export const isFileLike = (value: any): value is FileLike => {
+	return (
+		!!value &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		typeof value.name === "string" &&
+		typeof value.type === "string" &&
+		typeof value.size === "number" &&
+		typeof value.stream === "function"
+	);
+};
+
+export const getContentType = (filename: string): string => {
+	if (filename.endsWith(".json")) {
+		return "application/json";
+	}
+	if (filename.endsWith(".txt")) {
+		return "text/plain";
+	}
+	if (filename.endsWith(".html")) {
+		return "text/html";
+	}
+	if (filename.endsWith(".xml")) {
+		return "application/xml";
+	}
+	if (filename.endsWith(".csv")) {
+		return "text/csv";
+	}
+	if (filename.endsWith(".pdf")) {
+		return "application/pdf";
+	}
+	if (filename.endsWith(".zip")) {
+		return "application/zip";
+	}
+	if (filename.endsWith(".png")) {
+		return "image/png";
+	}
+	if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+		return "image/jpeg";
+	}
+	if (filename.endsWith(".gif")) {
+		return "image/gif";
+	}
+	return "application/octet-stream";
+};
