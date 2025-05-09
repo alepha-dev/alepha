@@ -1,13 +1,15 @@
 {
   "name": "@alepha/security",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "browser": "./src/index.browser.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "browser": {
+    "./dist/index.js": "./dist/index.browser.js"
+  },
   "dependencies": {
-    "@alepha/core": "0.6.2",
+    "@alepha/core": "0.6.3",
     "jose": "^6.0.11"
   },
   "devDependencies": {
@@ -16,5 +18,13 @@
   },
   "scripts": {
     "build": "pkgroll --clean-dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.browser.js"
+    }
   }
 }

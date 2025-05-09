@@ -1,15 +1,22 @@
 {
   "name": "@alepha/router",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "devDependencies": {
     "pkgroll": "^2.12.2",
     "vitest": "^3.1.3"
   },
   "scripts": {
     "build": "pkgroll --clean-dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
   }
 }

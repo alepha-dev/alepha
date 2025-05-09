@@ -1,11 +1,13 @@
 {
   "name": "@alepha/core",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "browser": "./src/index.browser.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "browser": {
+    "./dist/index.js": "./dist/index.browser.js"
+  },
   "dependencies": {
     "@sinclair/typebox": "^0.34.33",
     "luxon": "^3.6.1"
@@ -16,5 +18,13 @@
   },
   "scripts": {
     "build": "pkgroll --clean-dist"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.browser.js"
+    }
   }
 }
