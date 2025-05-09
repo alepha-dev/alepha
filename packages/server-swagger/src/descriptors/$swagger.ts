@@ -13,6 +13,8 @@ export interface SwaggerDescriptorOptions {
 	 * If true, docs will be disabled.
 	 */
 	disabled?: boolean;
+
+	ui?: boolean;
 }
 
 export interface SwaggerDescriptor {

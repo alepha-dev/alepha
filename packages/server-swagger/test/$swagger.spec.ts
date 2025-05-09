@@ -64,6 +64,7 @@ class App {
 			title: "My API",
 			version: "1.0.0",
 		},
+		ui: false,
 	});
 }
 

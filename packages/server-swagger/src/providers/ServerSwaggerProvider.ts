@@ -61,7 +61,10 @@ export class ServerSwaggerProvider {
 			doc.instance[doc.key].json = () => json;
 
 			await this.configureSwaggerApi(json);
-			await this.configureSwaggerUi(options);
+
+			if (options.ui !== false) {
+				await this.configureSwaggerUi(options);
+			}
 		},
 	});
 
