@@ -58,7 +58,7 @@ export interface HookOptions<T extends keyof Hooks> {
 }
 
 export interface Hook<T extends keyof Hooks = any> {
-	caller: Class;
+	caller?: Class;
 	priority?: "first" | "last";
 	callback: (payload: Hooks[T]) => Async<void>;
 }

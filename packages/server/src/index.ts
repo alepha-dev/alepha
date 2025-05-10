@@ -1,10 +1,16 @@
 import { $inject, Alepha, type Static, __bind, t } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
-import { $action, $route } from "./descriptors/$action.ts";
+import {
+	$action,
+	$route,
+	type ClientRequestOptions,
+} from "./descriptors/$action.ts";
 import { $remote } from "./descriptors/$remote.ts";
+import type { HttpError } from "./errors/HttpError.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
 import type {
 	ServerRequest,
+	ServerRequestConfigEntry,
 	ServerResponse,
 	ServerRoute,
 } from "./providers/ServerRouterProvider.ts";
@@ -15,6 +21,7 @@ import { ServerMultipartProvider } from "./providers/features/ServerMultipartPro
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
 import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
 import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
+import type { HttpClientLink } from "./services/HttpClient.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
@@ -40,6 +47,17 @@ declare module "@alepha/core" {
 			route: ServerRoute;
 			request: ServerRequest;
 			response: ServerResponse;
+		};
+		"client:onRequest": {
+			route: HttpClientLink;
+			config: ServerRequestConfigEntry;
+			options: ClientRequestOptions;
+			headers: Record<string, string>;
+			request: RequestInit;
+		};
+		"client:onError": {
+			route?: HttpClientLink;
+			error: HttpError;
 		};
 	}
 }

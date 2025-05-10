@@ -1,9 +1,10 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import type { AnchorProps } from "../providers/PageDescriptorProvider.ts";
 import type { HrefLike } from "./RouterHookApi.ts";
 import { useRouter } from "./useRouter.ts";
+import { useRouterEvents } from "./useRouterEvents.ts";
 
 export const useActive = (path: HrefLike): UseActiveHook => {
 	const router = useRouter();
@@ -23,10 +24,9 @@ export const useActive = (path: HrefLike): UseActiveHook => {
 	const [isPending, setPending] = useState(false);
 	const isActive = current === href;
 
-	useEffect(
-		() => ctx.events.on("end", ({ pathname }) => setCurrent(pathname)),
-		[],
-	);
+	useRouterEvents({
+		onEnd: ({ state }) => setCurrent(state.pathname),
+	});
 
 	return {
 		name,

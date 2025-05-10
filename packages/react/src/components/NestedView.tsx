@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import { useRouterEvents } from "../hooks/useRouterEvents.ts";
 
 export interface NestedViewProps {
 	children?: ReactNode;
@@ -22,13 +23,14 @@ const NestedView = (props: NestedViewProps) => {
 		app?.state.layers[index]?.element,
 	);
 
-	useEffect(() => {
-		if (app?.alepha.isBrowser()) {
-			return app?.events.on("end", (state) => {
+	useRouterEvents(
+		{
+			onEnd: ({ state }) => {
 				setView(state.layers[index]?.element);
-			});
-		}
-	}, [app]);
+			},
+		},
+		[app],
+	);
 
 	return view ?? props.children ?? null;
 };

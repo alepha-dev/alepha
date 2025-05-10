@@ -555,7 +555,7 @@ export class Alepha {
 		}
 
 		for (const hook of events) {
-			const name = hook.caller.name;
+			const name = hook.caller?.name ?? "unknown";
 			if (options.log !== false) {
 				ctx.now2 = Date.now();
 				this.log.trace(`${func}(${name}) ...`);
@@ -864,6 +864,9 @@ export class Alepha {
 		// purge also events
 		for (const type in this._events) {
 			this._events[type] = this._events[type].filter((it) => {
+				if (!it.caller) {
+					return true;
+				}
 				for (const { instance } of this.registry.values()) {
 					if (it.caller === instance.constructor) {
 						return true;

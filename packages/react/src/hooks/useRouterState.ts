@@ -1,7 +1,8 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import type { RouterState } from "../providers/PageDescriptorProvider.ts";
+import { useRouterEvents } from "./useRouterEvents.ts";
 
 export const useRouterState = (): RouterState => {
 	const ctx = useContext(RouterContext);
@@ -11,13 +12,10 @@ export const useRouterState = (): RouterState => {
 	}
 
 	const [state, setState] = useState(ctx.state);
-	useEffect(
-		() =>
-			ctx.events.on("end", (it) => {
-				setState({ ...it });
-			}),
-		[],
-	);
+
+	useRouterEvents({
+		onEnd: ({ state }) => setState({ ...state }),
+	});
 
 	return state;
 };

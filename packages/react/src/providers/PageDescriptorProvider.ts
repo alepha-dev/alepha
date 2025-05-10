@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, Alepha, EventEmitter } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import type { HttpClientLink } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
 import NestedView from "../components/NestedView.tsx";
@@ -30,11 +30,7 @@ export class PageDescriptorProvider {
 		throw new Error(`Page ${name} not found`);
 	}
 
-	public root(
-		state: RouterState,
-		context: PageReactContext = {},
-		events?: EventEmitter<RouterEvents>,
-	): ReactNode {
+	public root(state: RouterState, context: PageReactContext = {}): ReactNode {
 		return createElement(
 			RouterContext.Provider,
 			{
@@ -42,7 +38,6 @@ export class PageDescriptorProvider {
 					alepha: this.alepha,
 					state,
 					context,
-					events: events ?? new EventEmitter<RouterEvents>(),
 				},
 			},
 			createElement(NestedView, {}, state.layers[0]?.element),
@@ -478,13 +473,6 @@ export type PreviousLayerData = Omit<Layer, "element">;
 export interface AnchorProps {
 	href?: string;
 	onClick?: (ev: any) => any;
-}
-
-export interface RouterEvents {
-	begin: undefined;
-	success: undefined;
-	error: Error;
-	end: RouterState;
 }
 
 export interface RouterState {

@@ -14,13 +14,11 @@ export class ReactAuth {
 	};
 
 	public readonly start = $hook({
-		name: "start",
-		handler: async () => {
-			this.client.on("onError", (err) => {
-				if (err.status === 401) {
-					this.login();
-				}
-			});
+		name: "client:onError",
+		handler: async ({ error }) => {
+			if (error.status === 401) {
+				this.login();
+			}
 		},
 	});
 

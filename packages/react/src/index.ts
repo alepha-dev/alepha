@@ -9,6 +9,7 @@ import {
 	PageDescriptorProvider,
 	type PageReactContext,
 	type PageRequest,
+	type RouterState,
 } from "./providers/PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
@@ -29,6 +30,20 @@ declare module "@alepha/core" {
 		"react:server:render": {
 			request: ServerRequest;
 			pageRequest: PageRequest;
+		};
+
+		"react:transition:begin": {
+			state: RouterState;
+		};
+		"react:transition:success": {
+			state: RouterState;
+		};
+		"react:transition:error": {
+			error: Error;
+			state: RouterState;
+		};
+		"react:transition:end": {
+			state: RouterState;
 		};
 	}
 }

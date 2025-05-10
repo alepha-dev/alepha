@@ -3,7 +3,6 @@ import {
 	$inject,
 	Alepha,
 	type DurationLike,
-	EventEmitter,
 	type TSchema,
 	t,
 } from "@alepha/core";
@@ -29,10 +28,7 @@ const envSchema = t.object({
 	}),
 });
 
-export class HttpClient extends EventEmitter<{
-	onError: HttpError;
-	beforeFetch: FetchBeforeHook;
-}> {
+export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly env = $inject(envSchema);
 
@@ -96,7 +92,7 @@ export class HttpClient extends EventEmitter<{
 			return data;
 		}
 
-		await this.emit("beforeFetch", {
+		await this.alepha.emit("client:onRequest", {
 			route,
 			config,
 			options,
@@ -245,7 +241,9 @@ export class HttpClient extends EventEmitter<{
 				const jsonError = this.alepha.parse(errorSchema, json);
 				const error = new HttpError(jsonError);
 
-				await this.emit("onError", error);
+				await this.alepha.emit("client:onError", {
+					error,
+				});
 
 				throw error;
 			}
@@ -316,7 +314,12 @@ export class HttpClient extends EventEmitter<{
 
 					if (!link) {
 						const error = new UnauthorizedError(`Action ${prop} not found.`);
-						await this.emit("onError", error);
+
+						await this.alepha.emit("client:onError", {
+							route: link,
+							error,
+						});
+
 						throw error;
 					}
 
@@ -397,14 +400,6 @@ export class HttpClient extends EventEmitter<{
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-export interface FetchBeforeHook {
-	route: HttpClientLink;
-	config: ServerRequestConfigEntry;
-	options: ClientRequestOptions;
-	headers: Record<string, string>;
-	request: RequestInit;
-}
 
 export type HttpClientPendingRequests = Record<
 	string,

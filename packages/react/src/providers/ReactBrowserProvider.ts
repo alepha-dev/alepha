@@ -166,7 +166,7 @@ export class ReactBrowserProvider {
 	 *
 	 * @protected
 	 */
-	protected ready = $hook({
+	public readonly ready = $hook({
 		name: "ready",
 		handler: async () => {
 			const hydration = this.getHydrationState();
@@ -203,9 +203,18 @@ export class ReactBrowserProvider {
 				this.render();
 			});
 
-			this.router.events.on("end", ({ head }) => {
-				this.headProvider.renderHead(this.document, head);
+			this.alepha.on("react:transition:end", {
+				callback: ({ state }) => {
+					this.headProvider.renderHead(this.document, state.head);
+				},
 			});
+		},
+	});
+
+	public readonly onTransitionEnd = $hook({
+		name: "react:transition:end",
+		handler: async ({ state }) => {
+			this.headProvider.renderHead(this.document, state.head);
 		},
 	});
 }

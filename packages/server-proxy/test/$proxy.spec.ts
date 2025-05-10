@@ -52,7 +52,7 @@ Alepha.create({
 
 const alephaProxy = Alepha.create().with(AppProxy);
 
-test("$proxy", async () => {
+test("$proxy", { repeats: 10 }, async () => {
 	const hostname = alephaProxy.get(ServerProvider).hostname;
 
 	const response = await fetch(`${hostname}/api/hello?transform=uppercase`, {

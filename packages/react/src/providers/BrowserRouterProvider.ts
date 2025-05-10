@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, Alepha, EventEmitter } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { type Route, RouterProvider } from "@alepha/router";
 import type { ReactNode } from "react";
 import {
@@ -6,7 +6,6 @@ import {
 	type PageReactContext,
 	type PageRoute,
 	type PageRouteEntry,
-	type RouterEvents,
 	type RouterRenderResult,
 	type RouterState,
 	type TransitionOptions,
@@ -21,7 +20,6 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly pageDescriptorProvider = $inject(PageDescriptorProvider);
-	public readonly events = new EventEmitter<RouterEvents>();
 
 	public add(entry: PageRouteEntry) {
 		this.pageDescriptorProvider.add(entry);
@@ -54,7 +52,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			head: {},
 		};
 
-		await this.events.emit("begin", undefined);
+		await this.alepha.emit("react:transition:begin", { state });
 
 		try {
 			const previous = options.previous;
@@ -103,7 +101,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				});
 			}
 
-			await this.events.emit("success", undefined);
+			await this.alepha.emit("react:transition:success", { state });
 		} catch (e) {
 			this.log.error(e);
 			state.layers = [
@@ -115,11 +113,16 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				},
 			];
 
-			await this.events.emit("error", e as Error);
+			await this.alepha.emit("react:transition:error", {
+				error: e as Error,
+				state,
+			});
 		}
 
 		if (!options.state) {
-			await this.events.emit("end", state);
+			await this.alepha.emit("react:transition:end", {
+				state,
+			});
 			return {
 				element: this.root(state, options.context),
 				layers: state.layers,
@@ -132,7 +135,10 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 		options.state.search = state.search;
 		options.state.head = state.head;
 
-		await this.events.emit("end", options.state);
+		await this.alepha.emit("react:transition:end", {
+			state: options.state,
+		});
+
 		return {
 			element: this.root(state, options.context),
 			layers: options.state.layers,
@@ -141,6 +147,6 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 	}
 
 	public root(state: RouterState, context: PageReactContext = {}): ReactNode {
-		return this.pageDescriptorProvider.root(state, context, this.events);
+		return this.pageDescriptorProvider.root(state, context);
 	}
 }
