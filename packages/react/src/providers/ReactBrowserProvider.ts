@@ -169,11 +169,11 @@ export class ReactBrowserProvider {
 	protected ready = $hook({
 		name: "ready",
 		handler: async () => {
-			const cache = this.getHydrationState();
-			const previous = cache?.layers ?? [];
+			const hydration = this.getHydrationState();
+			const previous = hydration?.layers ?? [];
 
-			if (cache?.links) {
-				this.client.links = cache.links as HttpClientLink[];
+			if (hydration?.links) {
+				this.client.links = hydration.links as HttpClientLink[];
 			}
 
 			const { head } = await this.render({ previous });
@@ -183,9 +183,9 @@ export class ReactBrowserProvider {
 
 			const context = {};
 
-			await this.alepha.run("react:browser:render", {
+			await this.alepha.emit("react:browser:render", {
 				context,
-				cache,
+				hydration,
 			});
 
 			const element = this.router.root(this.state, context);

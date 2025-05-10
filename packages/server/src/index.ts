@@ -5,6 +5,7 @@ import { $remote } from "./descriptors/$remote.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
 import type {
 	ServerRequest,
+	ServerResponse,
 	ServerRoute,
 } from "./providers/ServerRouterProvider.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
@@ -38,7 +39,7 @@ declare module "@alepha/core" {
 		"server:onResponse": {
 			route: ServerRoute;
 			request: ServerRequest;
-			response: Response;
+			response: ServerResponse;
 		};
 	}
 }

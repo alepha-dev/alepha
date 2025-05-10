@@ -2,6 +2,8 @@ import type { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import { __descriptor } from "../helpers/descriptor.ts";
 import type { Async } from "../interfaces/Async.ts";
+import type { Class } from "../interfaces/Class.ts";
+import { $cursor } from "./$cursor.ts";
 
 const KEY = "HOOK";
 
@@ -52,7 +54,13 @@ export interface HookOptions<T extends keyof Hooks> {
 
 	after?: object | Array<object>;
 
-	priority?: "first" | "last" | number;
+	priority?: "first" | "last";
+}
+
+export interface Hook<T extends keyof Hooks = any> {
+	caller: Class;
+	priority?: "first" | "last";
+	callback: (payload: Hooks[T]) => Async<void>;
 }
 
 export interface HookDescriptor<T extends keyof Hooks> {
@@ -98,6 +106,18 @@ export const $hook = <T extends keyof Hooks>(
 	options: HookOptions<T>,
 ): HookDescriptor<T> => {
 	__descriptor(KEY);
+
+	const { context, definition } = $cursor();
+
+	if (!definition) {
+		throw new Error("Hook must be called inside a class");
+	}
+
+	context.on(options.name, {
+		caller: definition,
+		priority: options.priority,
+		callback: options.handler,
+	});
 
 	const $: HookDescriptor<T> = (arg: Hooks[T]) => options.handler(arg);
 

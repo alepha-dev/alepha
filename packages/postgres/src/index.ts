@@ -44,7 +44,6 @@ export class PostgresModule {
 	protected readonly env = $inject(envSchema);
 
 	constructor() {
-		this.alepha.register(SequenceProvider);
 		this.alepha.register(RepositoryDescriptorProvider);
 
 		const name = this.getDefaultProviderName();
@@ -56,6 +55,8 @@ export class PostgresModule {
 				pg: NodePostgresProvider,
 			}[name],
 		});
+
+		this.alepha.register(SequenceProvider);
 	}
 
 	protected getDefaultProviderName() {

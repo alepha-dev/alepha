@@ -2,9 +2,8 @@ import type {
 	IncomingMessage,
 	ServerResponse as NodeServerResponse,
 } from "node:http";
-import { Readable as NodeStream } from "node:stream";
-import { Readable } from "node:stream";
-import { ReadableStream as WebStream } from "node:stream/web";
+import type { Readable as NodeStream } from "node:stream";
+import type { ReadableStream as WebStream } from "node:stream/web";
 import {
 	$inject,
 	Alepha,
@@ -36,7 +35,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		const path = `/${method}/${route.path}`.replace(/\/+/g, "/");
 		const responseType = this.getResponseType(route.schema);
 
-		await this.alepha.run(
+		await this.alepha.emit(
 			"server:onRoute",
 			{
 				route,
@@ -56,7 +55,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		route: ServerRoute,
 		rawRequest: ServerRawRequest,
 		responseType: ResponseType,
-	): Promise<Response> {
+	): Promise<ServerResponse> {
 		const requestId = this.createRequestId();
 
 		return await this.alepha.als.run(
@@ -84,7 +83,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 					// - ServerSecurityProvider (build user from headers)
 					// - ServerLoggerProvider (log request)
 
-					await this.alepha.run(
+					await this.alepha.emit(
 						"server:onRequest", // this hook will fill request.user and request.cookies
 						{
 							request,
@@ -115,7 +114,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 					await this.errorHandler(route, request, error as Error);
 				}
 
-				await this.alepha.run(
+				await this.alepha.emit(
 					"server:onSend",
 					{
 						request,
@@ -127,9 +126,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 				);
 
 				// create response
-				const response = this.createResponse(request);
+				const response = {
+					status: request.reply.status ?? (request.reply.body ? 200 : 204),
+					headers: request.reply.headers,
+					body: request.reply.body as any,
+				};
 
-				await this.alepha.run(
+				await this.alepha.emit(
 					"server:onResponse",
 					{
 						request,
@@ -144,48 +147,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 				return response;
 			},
 		);
-	}
-
-	protected createResponse(request: ServerRequest): Response {
-		const reply = request.reply;
-
-		if (!reply.status) {
-			if (reply.body) {
-				reply.status = 200;
-			} else {
-				reply.status = 204;
-			}
-		}
-
-		const headers = new Headers();
-		for (const [key, value] of Object.entries(reply.headers)) {
-			if (Array.isArray(value)) {
-				for (const v of value) {
-					headers.append(key, v);
-				}
-			} else {
-				headers.set(key, value);
-			}
-		}
-
-		const init = {
-			status: reply.status,
-			headers,
-		};
-
-		if (!reply.body) {
-			return new Response(null, init);
-		}
-
-		if (reply.body instanceof NodeStream) {
-			return new Response(Readable.toWeb(reply.body) as ReadableStream, init);
-		}
-
-		if (reply.body instanceof WebStream) {
-			return new Response(reply.body as ReadableStream, init);
-		}
-
-		return new Response(reply.body, init);
 	}
 
 	protected getResponseType(schema?: RequestConfigSchema): ResponseType {
@@ -257,7 +218,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			});
 		}
 
-		await this.alepha.run(
+		await this.alepha.emit(
 			"server:onError",
 			{
 				request,
@@ -435,7 +396,7 @@ export interface ServerRoute<
 	schema?: TConfig;
 }
 
-export type ServerResponse<
+export type ServerResponseBody<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > = TConfig["response"] extends TSchema
 	? Static<TConfig["response"]>
@@ -461,7 +422,7 @@ export type ResponseBodyType =
 
 export type ServerHandler<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = (request: ServerRequest<TConfig>) => Async<ServerResponse<TConfig>>;
+> = (request: ServerRequest<TConfig>) => Async<ServerResponseBody<TConfig>>;
 
 export interface ServerReply {
 	headers: Record<string, string> & { "set-cookie"?: string[] };
@@ -471,8 +432,14 @@ export interface ServerReply {
 	redirect(url: string): void;
 }
 
+export interface ServerResponse {
+	body: string | ArrayBuffer | NodeStream | WebStream;
+	headers: Record<string, string>;
+	status: number;
+}
+
 export interface ServerRouteWithHandler extends Route {
-	handler: (request: ServerRawRequest) => Async<Response>;
+	handler: (request: ServerRawRequest) => Promise<ServerResponse>;
 }
 
 export interface ServerRawRequest {

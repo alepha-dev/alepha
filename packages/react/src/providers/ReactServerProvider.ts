@@ -181,7 +181,7 @@ export class ReactServerProvider {
 				this.alepha.als.set("links", request.links);
 			}
 
-			await this.alepha.run(
+			await this.alepha.emit(
 				"react:server:render",
 				{
 					request: serverRequest,

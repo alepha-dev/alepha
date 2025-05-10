@@ -4,12 +4,9 @@ import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
 import { PROVIDER } from "./constants/PROVIDER.ts";
-import { STARTED } from "./constants/STARTED.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
-import type { Hooks } from "./descriptors/$hook.ts";
-import { $hook } from "./descriptors/$hook.ts";
+import type { Hook, Hooks } from "./descriptors/$hook.ts";
 import { AppNotStartedError } from "./errors/AppNotStartedError.ts";
-import { AppRunError } from "./errors/AppRunError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
@@ -126,6 +123,8 @@ export class Alepha {
 	protected _lazyRegistrations: Array<Promise<{ default: Class<object> }>> = [];
 	protected _cacheEnv = new Map<TSchema, any>();
 	protected _cacheTypeCheck = new Map<TSchema, TypeCheck<TSchema>>();
+	protected _events: Record<string, Array<Hook>> = {};
+
 	public readonly als = new AsyncLocalStorageProvider();
 
 	public get log(): Logger {
@@ -268,7 +267,7 @@ export class Alepha {
 
 		await this.als.configure();
 
-		await this.run("configure");
+		await this.emit("configure", this);
 
 		this.configured = true;
 	}
@@ -299,11 +298,11 @@ export class Alepha {
 
 		await this.configure();
 
-		await this.run("start");
+		await this.emit("start", this);
 
 		this.started = true;
 
-		await this.run("ready");
+		await this.emit("ready", this);
 
 		this.log.info(`App is now ready [${Date.now() - now}ms]`);
 
@@ -328,7 +327,7 @@ export class Alepha {
 		}
 
 		this.log.info("Stopping App...");
-		await this.run("stop", this, { reverse: true });
+		await this.emit("stop", this, { reverse: true });
 		this.log.info("App is now off");
 
 		this.started = false;
@@ -503,84 +502,74 @@ export class Alepha {
 		return instance;
 	}
 
-	public async run(
-		func: keyof Hooks, // TODO: hook refactoring
-		payload: any = this,
+	public on<T extends keyof Hooks>(event: T, hook: Hook<T>) {
+		if (!this._events[event]) {
+			this._events[event] = [];
+		}
+
+		if (hook.priority === "first") {
+			this._events[event].unshift(hook);
+		} else if (hook.priority === "last") {
+			this._events[event].push(hook);
+		} else {
+			const index = this._events[event].findIndex(
+				(it) => it.priority === "last",
+			);
+			if (index !== -1) {
+				this._events[event].splice(index, 0, hook);
+			} else {
+				this._events[event].push(hook);
+			}
+		}
+
+		return () => {
+			this._events[event] = this._events[event].filter(
+				(it) => it.callback !== hook.callback,
+			);
+		};
+	}
+
+	public async emit<T extends keyof Hooks>(
+		func: keyof Hooks,
+		payload: Hooks[T],
 		options: {
 			reverse?: boolean;
-			log?: boolean; // TODO: should be false by default
-			started?: boolean;
+			log?: boolean;
 		} = {},
 	): Promise<void> {
 		if (!this.locked) {
 			throw new AppNotStartedError();
 		}
 
-		const now = Date.now();
-		if (options.log !== false) {
+		const ctx: any = {};
+
+		if (options.log) {
+			ctx.now = Date.now();
 			this.log.trace(`${func} ...`);
 		}
 
-		// TODO: this part is bad, we must index callbacks somewhere, not parsing all the time
-		let hooks = this.getDescriptorValues($hook).filter(
-			(it) => it.value.options.name === func,
-		);
+		let events = this._events[func] ?? [];
 
-		const copy = [...hooks].toReversed();
-		hooks = [];
-		for (const it of copy) {
-			// TODO: implement priority (first, last, before, after)
-			if (it.value.options.priority === "last") {
-				hooks.unshift(it);
-			} else {
-				hooks.push(it);
-			}
+		if (options.reverse) {
+			events = events.toReversed();
 		}
 
-		if (!options.reverse) {
-			hooks = hooks.toReversed();
-		}
-
-		for (const { value, key, instance } of hooks) {
-			const now2 = Date.now();
-			const printKey = key === func ? "" : `.${key}`;
+		for (const hook of events) {
+			const name = hook.caller.name;
 			if (options.log !== false) {
-				this.log.trace(`${func}(${instance.constructor.name}${printKey}) ...`);
+				ctx.now2 = Date.now();
+				this.log.trace(`${func}(${name}) ...`);
 			}
 
-			// all the .started, [STARTED] was added to "cleanup" started services during a start failure
-			// TODO: we should remove this, it start fails, we should just let the app crash
+			await hook.callback(payload);
 
-			if (func !== "stop" || !options.started || instance[STARTED]) {
-				try {
-					await value.options.handler(payload);
-				} catch (error) {
-					if (!options.log) {
-						throw error;
-					}
-					this.log.error(error as Error); // TODO: idk if we should log it here
-					throw new AppRunError(
-						// TODO: do we really need this?
-						func,
-						instance.constructor.name,
-						error as Error,
-					);
-				}
-			}
-
-			if (func === "start") {
-				instance[STARTED] = true; // TODO: should be done in the hook + explain why we need this
-			}
-
-			if (options.log !== false) {
-				this.log.debug(
-					`${func}(${instance.constructor.name}${printKey}) OK [${Date.now() - now2}ms]`,
-				);
+			if (options.log) {
+				this.log.debug(`${func}(${name}) OK [${Date.now() - ctx.now2}ms]`);
 			}
 		}
 
-		if (options.log !== false) {
-			this.log.debug(`${func} OK [${Date.now() - now}ms]`);
+		if (options.log) {
+			this.log.debug(`${func} OK [${Date.now() - ctx.now}ms]`);
 		}
 	}
 
@@ -870,6 +859,17 @@ export class Alepha {
 			}
 
 			this.registry = registry;
+		}
+
+		// purge also events
+		for (const type in this._events) {
+			this._events[type] = this._events[type].filter((it) => {
+				for (const { instance } of this.registry.values()) {
+					if (it.caller === instance.constructor) {
+						return true;
+					}
+				}
+			});
 		}
 	}
 }

@@ -38,50 +38,53 @@ export class NodeHttpServerProvider implements ServerProvider {
 		req: IncomingMessage,
 		res: ServerResponse,
 	): Promise<number | void> {
-		try {
-			const url = new URL(`http://${req.headers.host}${req.url}`);
-			const { route, params } = this.router.match(
-				`/${req.method}${url.pathname}`.replace(/\/+/g, "/"),
-			);
+		const { route, params } = this.router.match(`/${req.method}${req.url}`);
 
-			if (!route) {
-				if (this.alepha.isServerless() === "vite") {
-					// if vite is running, let it handle the request
-					return;
-				}
-
-				res.writeHead(404, { "content-type": "text/plain" });
-				res.end("Not Found");
-				return 404;
+		if (!route) {
+			if (this.alepha.isServerless() === "vite") {
+				// if vite is running, let it handle the request
+				return;
 			}
 
-			const request = this.createRouterRequest(req, res, params);
-			const response = await route.handler(request);
-
-			response.headers.forEach((value, key) => {
-				if (key === "set-cookie") {
-					// handle set-cookie separately
-					res.setHeader(key, response.headers.getSetCookie());
-				} else {
-					res.setHeader(key, value);
-				}
-			});
-
-			res.writeHead(response.status);
-			if (!response.body) {
-				res.end();
-				return response.status;
-			}
-
-			Readable.from(response.body).pipe(res);
-
-			return response.status;
-		} catch (err) {
-			this.log.error("Error handling request", err);
-			res.writeHead(500, { "content-type": "text/plain" });
-			res.end("Internal Server Error");
-			return 500;
+			// if no route is found, return basic 404
+			// note: you should not use this in production, use a custom 404 page instead by adding a route /*
+			res.writeHead(404, { "content-type": "text/plain" });
+			res.end("Not Found");
+			return 404;
 		}
+
+		const request = this.createRouterRequest(req, res, params);
+		const response = await route.handler(request).catch(() => {
+			return {
+				status: 500,
+				headers: { "content-type": "text/plain" },
+				body: "Internal Server Error",
+			};
+		});
+
+		res.writeHead(response.status, response.headers);
+
+		// empty body, just end the response
+		if (!response.body) {
+			res.end();
+			return response.status;
+		}
+
+		// if response.body is web stream
+		if (response.body instanceof ReadableStream) {
+			Readable.from(response.body).pipe(res);
+			return response.status;
+		}
+
+		// if response.body is stream
+		if (response.body instanceof Readable) {
+			response.body.pipe(res);
+			return response.status;
+		}
+
+		// else
+		res.end(response.body);
+		return response.status;
 	}
 
 	public createRouterRequest(

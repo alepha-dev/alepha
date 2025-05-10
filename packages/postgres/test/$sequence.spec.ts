@@ -5,7 +5,7 @@ import { SequenceProvider } from "../src/providers/SequenceProvider.ts";
 
 const alepha = Alepha.create();
 const app = alepha.get(
-	class {
+	class App {
 		seq = $sequence();
 		seq2 = $sequence({ start: 100, increment: 2 });
 	},

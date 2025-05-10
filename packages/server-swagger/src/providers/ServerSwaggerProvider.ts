@@ -95,7 +95,6 @@ export class ServerSwaggerProvider {
 
 		const schemas: Record<string, any> = {};
 		const schema = (source: TSchema) => {
-			console.log(source.title);
 			if (source.title) {
 				schemas[source.title] = source;
 				return { $ref: `#/components/schemas/${source.title}` };

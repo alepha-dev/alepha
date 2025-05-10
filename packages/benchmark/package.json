@@ -1,0 +1,21 @@
+{
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@alepha/core": "0.6.3",
+		"@alepha/server": "0.6.3",
+		"@types/autocannon": "^7.12.7",
+		"autocannon": "^8.0.0",
+		"express": "^5.1.0",
+		"fastify": "^5.3.2",
+		"npm-run-all": "^4.1.5"
+	},
+	"scripts": {
+		"alepha": "node src/alepha.ts",
+		"express": "node src/express.js",
+		"fastify": "node src/fastify.ts",
+		"raw": "node src/raw.ts",
+		"benchmark": "node src/run.ts",
+		"concurrent": "npm-run-all -p alepha express fastify raw"
+	}
+}

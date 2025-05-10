@@ -3,7 +3,8 @@ import { $hook, $inject, Alepha } from "../src";
 
 test("$hook - with swapping", async () => {
 	let count = 0;
-	class P {
+
+	class Interface {
 		n = 10;
 		c = $hook({
 			name: "configure",
@@ -13,18 +14,18 @@ test("$hook - with swapping", async () => {
 		});
 	}
 
-	const app = new Alepha().with(P);
+	const app = new Alepha().with(Interface);
 
 	expect(count).toBe(0);
 
-	class MyP extends P {
+	class Impl extends Interface {
 		n = 1;
 		id = Math.random();
 	}
 
 	app.with({
-		provide: P,
-		use: MyP,
+		provide: Interface,
+		use: Impl, // expects to be swapped, event from "Interface" will be deleted
 	});
 
 	expect(count).toBe(0);
