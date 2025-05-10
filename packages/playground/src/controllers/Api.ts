@@ -7,26 +7,26 @@ import { $cookie } from "@alepha/server-cookies";
 import { $swagger } from "@alepha/server-swagger";
 import { DummyService } from "../services/DummyService.ts";
 
-export const incResponse = t.object({
-	type: t.string(),
-	count: t.number(),
-	v: t.number(),
-});
+export const incResponse = t.object(
+	{
+		type: t.string({
+			description: "The type of the response.",
+		}),
+		count: t.uint({
+			description: "The current count.",
+		}),
+		v: t.uint(),
+	},
+	{
+		title: "IncResponse",
+		description: "A short description about this resource.",
+	},
+);
 
 export type IncResponse = Static<typeof incResponse>;
 
 class Api {
 	seq = $sequence();
-
-	docs = $swagger({
-		ui: false,
-		prefix: "/docs",
-		info: {
-			title: "Api",
-			version: "1.0.0",
-			description: "Api description",
-		},
-	});
 
 	env = $inject(
 		t.object({
@@ -34,17 +34,45 @@ class Api {
 				default: "https://keycloak.sdser.online",
 			}),
 			KEYCLOAK_REALM: t.string({
-				default: "customers",
+				default: "agents",
+			}),
+			KEYCLOAK_CLIENT_ID: t.string({
+				default: "sds-ui-admin",
 			}),
 		}),
 	);
+
+	docs = $swagger({
+		prefix: "/docs",
+		info: {
+			title: "Api",
+			version: "1.0.0",
+			description: "Api description",
+		},
+		ui: {
+			initOAuth: {
+				realm: this.env.KEYCLOAK_REALM,
+				clientId: this.env.KEYCLOAK_CLIENT_ID,
+				usePkceWithAuthorizationCodeGrant: true,
+			},
+		},
+		rewrite: (doc) => {
+			doc.components ??= {};
+			doc.components.securitySchemes = {
+				bearerAuth: {
+					type: "openIdConnect",
+					openIdConnectUrl: `${this.env.KEYCLOAK_URL}/realms/${this.env.KEYCLOAK_REALM}/.well-known/openid-configuration`,
+				},
+			};
+		},
+	});
 
 	srv = $inject(DummyService);
 
 	auth = $auth({
 		oidc: {
 			issuer: `${this.env.KEYCLOAK_URL}/realms/${this.env.KEYCLOAK_REALM}`,
-			clientId: "sds-ui-shop",
+			clientId: this.env.KEYCLOAK_CLIENT_ID,
 		},
 	});
 
@@ -52,7 +80,7 @@ class Api {
 		secret: `${this.env.KEYCLOAK_URL}/realms/${this.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`,
 		roles: [
 			{
-				name: "sds:customer",
+				name: "sds:admin",
 				permissions: [
 					{
 						name: "*",

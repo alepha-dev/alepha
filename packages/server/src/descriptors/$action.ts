@@ -60,6 +60,11 @@ export interface RouteDescriptorOptions<
 	schema?: TConfig;
 
 	/**
+	 * Short description of the route.
+	 */
+	summary?: string;
+
+	/**
 	 * Long description of the route.
 	 */
 	description?: string;

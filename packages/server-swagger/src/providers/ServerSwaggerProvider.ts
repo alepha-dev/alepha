@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
 	$hook,
@@ -6,6 +5,7 @@ import {
 	Alepha,
 	type Static,
 	type TObject,
+	type TSchema,
 	TypeGuard,
 	isTypeFile,
 	t,
@@ -58,6 +58,10 @@ export class ServerSwaggerProvider {
 
 			const json = this.configureOpenApi(options);
 
+			if (options.rewrite) {
+				options.rewrite(json);
+			}
+
 			doc.instance[doc.key].json = () => json;
 
 			await this.configureSwaggerApi(json);
@@ -89,6 +93,16 @@ export class ServerSwaggerProvider {
 
 		const excludeTags = this.env.SERVER_OPENAPI_EXCLUDE_TAGS.split(",");
 
+		const schemas: Record<string, any> = {};
+		const schema = (source: TSchema) => {
+			console.log(source.title);
+			if (source.title) {
+				schemas[source.title] = source;
+				return { $ref: `#/components/schemas/${source.title}` };
+			}
+			return source;
+		};
+
 		for (const route of this.serverActionProvider.getActions()) {
 			if (!route.options.schema) {
 				continue;
@@ -109,7 +123,7 @@ export class ServerSwaggerProvider {
 
 			const operation: OpenAPIV3.OperationObject = {
 				operationId: route.name,
-				summary: route.name,
+				summary: route.options.summary,
 				description: route.options.description,
 				tags: [route.group],
 				responses: {
@@ -118,7 +132,7 @@ export class ServerSwaggerProvider {
 						content: response.type
 							? {
 									[response.type]: {
-										schema: response.schema,
+										schema: schema(response.schema),
 									},
 								}
 							: undefined,
@@ -145,7 +159,7 @@ export class ServerSwaggerProvider {
 						required: true,
 						content: {
 							"application/json": {
-								schema: route.options.schema.body,
+								schema: schema(route.options.schema.body),
 							},
 						},
 					};
@@ -161,7 +175,7 @@ export class ServerSwaggerProvider {
 						name: key,
 						in: "query",
 						required: false,
-						schema: value,
+						schema: schema(value),
 					});
 				}
 			}
@@ -175,7 +189,7 @@ export class ServerSwaggerProvider {
 						name: key,
 						in: "path",
 						required: true,
-						schema: value,
+						schema: schema(value),
 					});
 				}
 			}
@@ -187,6 +201,8 @@ export class ServerSwaggerProvider {
 				[route.method.toLowerCase()]: operation,
 			};
 		}
+
+		if (openApi.components) openApi.components.schemas = schemas;
 
 		return JSON.parse(JSON.stringify(openApi));
 	}
@@ -255,31 +271,48 @@ export class ServerSwaggerProvider {
 	}
 
 	protected async configureSwaggerUi(options: SwaggerDescriptorOptions) {
+		const ui = typeof options.ui === "object" ? options.ui : {};
+		const prefix = options.prefix ?? this.env.SERVER_OPENAPI_PREFIX;
 		const initializer = `
-		window.onload = function() {
-			window.ui = SwaggerUIBundle({
-				url: "/docs/json",
-				dom_id: '#swagger-ui',
-				deepLinking: true,
-				presets: [
-					SwaggerUIBundle.presets.apis,
-					SwaggerUIStandalonePreset
-				],
-				plugins: [
-					SwaggerUIBundle.plugins.DownloadUrl
-				],
-				layout: "StandaloneLayout"
-			});
-		};
-		`;
+window.onload = function() {
+	window.ui = SwaggerUIBundle({
+		url: "/docs/json",
+		dom_id: '#swagger-ui',
+		deepLinking: true,
+		presets: [
+			SwaggerUIBundle.presets.apis,
+			SwaggerUIStandalonePreset
+		],
+		plugins: [
+			SwaggerUIBundle.plugins.DownloadUrl
+		],
+		layout: "BaseLayout"
+	});
+
+  document.body.style.backgroundColor = "#f2f2f2";
+
+	const options = ${JSON.stringify(ui)};
+
+	if (options.initOAuth) {
+		ui.initOAuth(options.initOAuth);
+	}
+};
+		`.trim();
 
 		const root = join(import.meta.filename, "../../../assets/swagger-ui");
 
 		await this.serverStaticProvider.serve({
-			path: options.prefix ?? this.env.SERVER_OPENAPI_PREFIX,
+			path: prefix,
 			root,
 		});
 
-		await writeFile(join(root, "swagger-initializer.js"), initializer);
+		await this.serverRouterProvider.route({
+			method: "GET",
+			path: `${prefix}/swagger-initializer.js`,
+			handler: ({ reply }) => {
+				reply.headers["content-type"] = "application/javascript; charset=utf-8";
+				return initializer;
+			},
+		});
 	}
 }

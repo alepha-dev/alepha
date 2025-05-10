@@ -103,7 +103,6 @@ test("$swagger", () => {
 							},
 						},
 					],
-					summary: "hello",
 					description: "Hello world",
 					tags: ["app"],
 					responses: {
@@ -112,17 +111,7 @@ test("$swagger", () => {
 							content: {
 								"application/json": {
 									schema: {
-										title: "HelloResponse",
-										description: "Hello response",
-										additionalProperties: false,
-										type: "object",
-										properties: {
-											message: {
-												maxLength: 255,
-												type: "string",
-											},
-										},
-										required: ["message"],
+										$ref: "#/components/schemas/HelloResponse",
 									},
 								},
 							},
@@ -149,6 +138,22 @@ test("$swagger", () => {
 				},
 			},
 		},
-		components: {},
+		components: {
+			schemas: {
+				HelloResponse: {
+					additionalProperties: false,
+					description: "Hello response",
+					properties: {
+						message: {
+							maxLength: 255,
+							type: "string",
+						},
+					},
+					required: ["message"],
+					title: "HelloResponse",
+					type: "object",
+				},
+			},
+		},
 	});
 });

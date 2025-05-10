@@ -19,12 +19,12 @@
   },
   "devDependencies": {
     "pkgroll": "^2.12.2",
-    "shx": "^0.4.0",
     "swagger-ui-dist": "^5.21.0",
-    "vitest": "^3.1.3"
+    "vitest": "^3.1.3",
+    "zx": "^8.5.4"
   },
   "scripts": {
-    "copy": "yarn shx mkdir -p assets/swagger-ui && yarn shx cp -r ../../node_modules/swagger-ui-dist/* ./assets/swagger-ui",
+    "copy": "node scripts/copy.ts",
     "build": "pkgroll --clean-dist --sourcemap && yarn copy"
   },
   "scarfSettings": {

@@ -85,14 +85,6 @@ export class ServerStaticProvider {
 			}
 		}
 
-		// redirect to trailing slash (e.g. /dist -> /dist/)
-		if (!prefix.endsWith("/")) {
-			await this.routerProvider.route({
-				path: prefix,
-				handler: ({ reply }) => reply.redirect(`${prefix}/`),
-			});
-		}
-
 		this.directories.push({
 			options,
 			files: files.map((file) => file.replace(root, "").replace(/\\/g, "/")),
