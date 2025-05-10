@@ -1,6 +1,6 @@
 {
   "name": "@alepha/server",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "type": "module",
   "license": "MIT",
   "main": "./src/index.ts",
@@ -11,10 +11,10 @@
     "src"
   ],
   "dependencies": {
-    "@alepha/cache": "0.6.3",
-    "@alepha/core": "0.6.3",
-    "@alepha/router": "0.6.3",
-    "@alepha/security": "0.6.3",
+    "@alepha/cache": "0.6.4",
+    "@alepha/core": "0.6.4",
+    "@alepha/router": "0.6.4",
+    "@alepha/security": "0.6.4",
     "@fastify/busboy": "^3.1.1"
   },
   "devDependencies": {
