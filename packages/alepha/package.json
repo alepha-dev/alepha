@@ -3,9 +3,8 @@
 	"version": "0.6.4",
 	"type": "module",
 	"license": "MIT",
-	"main": "./dist/core.js",
-	"types": "./dist/core.d.ts",
-	"files": ["dist", "src"],
+	"main": "./core.js",
+	"types": "./core.d.ts",
 	"dependencies": {
 		"@alepha/cache": "0.6.4",
 		"@alepha/cli": "0.6.4",
@@ -46,103 +45,108 @@
 		"react": "^19.1.0"
 	},
 	"scripts": {
-		"build": "pkgroll --clean-dist --sourcemap"
+		"build": "pkgroll --sourcemap --dist ./"
 	},
 	"exports": {
 		".": {
-			"import": "./dist/core.js",
-			"require": "./dist/core.cjs",
-			"types": "./dist/core.d.ts"
+			"import": "./core.js",
+			"require": "./core.cjs",
+			"types": "./core.d.ts"
 		},
 		"./core": {
-			"import": "./dist/core.js",
-			"require": "./dist/core.cjs",
-			"types": "./dist/core.d.ts"
+			"import": "./core.js",
+			"require": "./core.cjs",
+			"types": "./core.d.ts"
+		},
+		"./cli": {
+			"import": "./cli.js",
+			"require": "./cli.cjs",
+			"types": "./cli.d.ts"
 		},
 		"./vite": {
-			"import": "./dist/vite.js",
-			"require": "./dist/vite.cjs",
-			"types": "./dist/vite.d.ts"
+			"import": "./vite.js",
+			"require": "./vite.cjs",
+			"types": "./vite.d.ts"
 		},
 		"./react": {
-			"import": "./dist/react.js",
-			"require": "./dist/react.cjs",
-			"types": "./dist/react.d.ts"
+			"import": "./react.js",
+			"require": "./react.cjs",
+			"types": "./react.d.ts"
 		},
 		"./react/auth": {
-			"import": "./dist/react/auth.js",
-			"require": "./dist/react/auth.cjs",
-			"types": "./dist/react/auth.d.ts"
+			"import": "./react/auth.js",
+			"require": "./react/auth.cjs",
+			"types": "./react/auth.d.ts"
 		},
 		"./cache": {
-			"import": "./dist/cache.js",
-			"require": "./dist/cache.cjs",
-			"types": "./dist/cache.d.ts"
+			"import": "./cache.js",
+			"require": "./cache.cjs",
+			"types": "./cache.d.ts"
 		},
 		"./postgres": {
-			"import": "./dist/postgres.js",
-			"require": "./dist/postgres.cjs",
-			"types": "./dist/postgres.d.ts"
+			"import": "./postgres.js",
+			"require": "./postgres.cjs",
+			"types": "./postgres.d.ts"
 		},
 		"./redis": {
-			"import": "./dist/redis.js",
-			"require": "./dist/redis.cjs",
-			"types": "./dist/redis.d.ts"
+			"import": "./redis.js",
+			"require": "./redis.cjs",
+			"types": "./redis.d.ts"
 		},
 		"./lock": {
-			"import": "./dist/lock.js",
-			"require": "./dist/lock.cjs",
-			"types": "./dist/lock.d.ts"
+			"import": "./lock.js",
+			"require": "./lock.cjs",
+			"types": "./lock.d.ts"
 		},
 		"./topic": {
-			"import": "./dist/topic.js",
-			"require": "./dist/topic.cjs",
-			"types": "./dist/topic.d.ts"
+			"import": "./topic.js",
+			"require": "./topic.cjs",
+			"types": "./topic.d.ts"
 		},
 		"./queue": {
-			"import": "./dist/queue.js",
-			"require": "./dist/queue.cjs",
-			"types": "./dist/queue.d.ts"
+			"import": "./queue.js",
+			"require": "./queue.cjs",
+			"types": "./queue.d.ts"
 		},
 		"./scheduler": {
-			"import": "./dist/scheduler.js",
-			"require": "./dist/scheduler.cjs",
-			"types": "./dist/scheduler.d.ts"
+			"import": "./scheduler.js",
+			"require": "./scheduler.cjs",
+			"types": "./scheduler.d.ts"
 		},
 		"./security": {
-			"import": "./dist/security.js",
-			"require": "./dist/security.cjs",
-			"types": "./dist/security.d.ts"
+			"import": "./security.js",
+			"require": "./security.cjs",
+			"types": "./security.d.ts"
 		},
 		"./server": {
-			"import": "./dist/server.js",
-			"require": "./dist/server.cjs",
-			"types": "./dist/server.d.ts"
+			"import": "./server.js",
+			"require": "./server.cjs",
+			"types": "./server.d.ts"
 		},
 		"./server/cookies": {
-			"import": "./dist/server/cookies.js",
-			"require": "./dist/server/cookies.cjs",
-			"types": "./dist/server/cookies.d.ts"
+			"import": "./server/cookies.js",
+			"require": "./server/cookies.cjs",
+			"types": "./server/cookies.d.ts"
 		},
 		"./server/metrics": {
-			"import": "./dist/server/metrics.js",
-			"require": "./dist/server/metrics.cjs",
-			"types": "./dist/server/metrics.d.ts"
+			"import": "./server/metrics.js",
+			"require": "./server/metrics.cjs",
+			"types": "./server/metrics.d.ts"
 		},
 		"./server/proxy": {
-			"import": "./dist/server/proxy.js",
-			"require": "./dist/server/proxy.cjs",
-			"types": "./dist/server/proxy.d.ts"
+			"import": "./server/proxy.js",
+			"require": "./server/proxy.cjs",
+			"types": "./server/proxy.d.ts"
 		},
 		"./server/static": {
-			"import": "./dist/server/static.js",
-			"require": "./dist/server/static.cjs",
-			"types": "./dist/server/static.d.ts"
+			"import": "./server/static.js",
+			"require": "./server/static.cjs",
+			"types": "./server/static.d.ts"
 		},
 		"./server/swagger": {
-			"import": "./dist/server/swagger.js",
-			"require": "./dist/server/swagger.cjs",
-			"types": "./dist/server/swagger.d.ts"
+			"import": "./server/swagger.js",
+			"require": "./server/swagger.cjs",
+			"types": "./server/swagger.d.ts"
 		}
 	}
 }

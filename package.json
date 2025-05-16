@@ -23,7 +23,6 @@
 		"lint": "biome lint --write",
 		"check": "tsc --noEmit",
 		"test": "vitest run",
-		"convert": "node scripts/convert.ts",
-		"check-dependencies": "yarn workspaces foreach -Apt --no-private exec depcheck --ignores=@alepha/testing,shx,vitest,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets"
+		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=@alepha/testing,shx,vitest,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets"
 	}
 }

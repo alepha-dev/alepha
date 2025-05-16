@@ -1,0 +1,6 @@
+*.cjs
+*.map
+*.d.ts
+*.js
+react
+server

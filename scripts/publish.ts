@@ -25,7 +25,6 @@ export const publish = $command({
 			`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${dryRunArg} ${registry}`
 		);
 
-		await run("yarn convert ts");
 		await run("yarn alepha clean");
 	},
 })

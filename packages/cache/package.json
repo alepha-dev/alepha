@@ -1,36 +1,42 @@
 {
-  "name": "@alepha/cache",
-  "description": "Cache module for Alepha - supports Redis and in-memory cache",
-  "keywords": [
-    "alepha",
-    "cache",
-    "redis",
-    "in-memory"
-  ],
-  "author": "Feunard",
-  "version": "0.6.4",
-  "type": "module",
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "browser": "./src/index.browser.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@alepha/core": "0.6.4",
-    "@alepha/redis": "0.6.4"
-  },
-  "devDependencies": {
-    "pkgroll": "^2.12.2",
-    "vitest": "^3.1.3"
-  },
-  "scripts": {
-    "build": "pkgroll --clean-dist --sourcemap"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/feunard/alepha"
-  }
+	"name": "@alepha/cache",
+	"description": "Cache module for Alepha - supports Redis and in-memory cache",
+	"keywords": ["alepha", "cache", "redis", "in-memory"],
+	"author": "Feunard",
+	"version": "0.6.4",
+	"type": "module",
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"browser": "./src/index.browser.ts",
+	"files": ["dist", "src"],
+	"dependencies": {
+		"@alepha/core": "0.6.4",
+		"@alepha/redis": "0.6.4"
+	},
+	"devDependencies": {
+		"pkgroll": "^2.12.2",
+		"vitest": "^3.1.3"
+	},
+	"scripts": {
+		"build": "pkgroll --clean-dist --sourcemap"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/feunard/alepha"
+	},
+	"publishConfig": {
+		"main": "./dist/index.cjs",
+		"types": "./dist/index.d.ts",
+		"browser": "./dist/index.browser.js",
+		"module": "./dist/index.js",
+		"exports": {
+			".": {
+				"import": "./dist/index.js",
+				"require": "./dist/index.cjs",
+				"types": "./dist/index.d.ts",
+				"browser": "./dist/index.browser.js"
+			}
+		}
+	}
 }
