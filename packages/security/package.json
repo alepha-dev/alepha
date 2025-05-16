@@ -21,18 +21,13 @@
 	"scripts": {
 		"build": "pkgroll --clean-dist --sourcemap"
 	},
-	"publishConfig": {
-		"main": "./dist/index.cjs",
-		"types": "./dist/index.d.ts",
-		"browser": "./dist/index.browser.js",
-		"module": "./dist/index.js",
-		"exports": {
-			".": {
-				"import": "./dist/index.js",
-				"require": "./dist/index.cjs",
-				"types": "./dist/index.d.ts",
-				"browser": "./dist/index.browser.js"
-			}
+	"module": "./src/index.ts",
+	"exports": {
+		".": {
+			"import": "./src/index.ts",
+			"require": "./src/index.ts",
+			"types": "./src/index.ts",
+			"browser": "./src/index.browser.ts"
 		}
 	}
 }

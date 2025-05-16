@@ -7,7 +7,6 @@
 	"types": "./core.d.ts",
 	"dependencies": {
 		"@alepha/cache": "0.6.6",
-		"@alepha/cli": "0.6.6",
 		"@alepha/core": "0.6.6",
 		"@alepha/datetime": "0.6.6",
 		"@alepha/lock": "0.6.6",
@@ -30,13 +29,17 @@
 	},
 	"peerDependencies": {
 		"@types/react": "^19",
-		"react": "^19"
+		"react": "^19",
+		"vite": "^6"
 	},
 	"peerDependenciesMeta": {
 		"@types/react": {
 			"optional": true
 		},
 		"react": {
+			"optional": true
+		},
+		"vite": {
 			"optional": true
 		}
 	},
@@ -48,13 +51,7 @@
 	"scripts": {
 		"build": "pkgroll --sourcemap --dist ./"
 	},
-	"files": [
-		"src",
-		"**/*.js",
-		"**/*.cjs",
-		"**/*.d.ts",
-		"**/*.map"
-	],
+	"files": ["src", "**/*.js", "**/*.cjs", "**/*.d.ts", "**/*.map"],
 	"exports": {
 		".": {
 			"import": "./core.js",
@@ -65,11 +62,6 @@
 			"import": "./core.js",
 			"require": "./core.cjs",
 			"types": "./core.d.ts"
-		},
-		"./cli": {
-			"import": "./cli.js",
-			"require": "./cli.cjs",
-			"types": "./cli.d.ts"
 		},
 		"./vite": {
 			"import": "./vite.js",

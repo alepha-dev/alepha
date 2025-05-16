@@ -320,6 +320,8 @@ __metadata:
     rollup: "npm:^4.40.2"
     rollup-plugin-gzip: "npm:^4.0.1"
     vite: "npm:^6.3.5"
+  peerDependencies:
+    vite: ^6
   languageName: unknown
   linkType: soft
 
@@ -2592,7 +2594,6 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@alepha/cache": "npm:0.6.6"
-    "@alepha/cli": "npm:0.6.6"
     "@alepha/core": "npm:0.6.6"
     "@alepha/datetime": "npm:0.6.6"
     "@alepha/lock": "npm:0.6.6"
@@ -2618,10 +2619,13 @@ __metadata:
   peerDependencies:
     "@types/react": ^19
     react: ^19
+    vite: ^6
   peerDependenciesMeta:
     "@types/react":
       optional: true
     react:
+      optional: true
+    vite:
       optional: true
   languageName: unknown
   linkType: soft

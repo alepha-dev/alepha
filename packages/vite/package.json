@@ -14,16 +14,18 @@
 	"devDependencies": {
 		"vite": "^6.3.5"
 	},
-	"publishConfig": {
-		"main": "./dist/index.cjs",
-		"types": "./dist/index.d.ts",
-		"module": "./dist/index.js",
-		"exports": {
-			".": {
-				"import": "./dist/index.js",
-				"require": "./dist/index.cjs",
-				"types": "./dist/index.d.ts"
-			}
+	"peerDependencies": {
+		"vite": "^6"
+	},
+	"scripts": {
+		"build": "pkgroll --clean-dist --sourcemap"
+	},
+	"module": "./src/index.ts",
+	"exports": {
+		".": {
+			"import": "./src/index.ts",
+			"require": "./src/index.ts",
+			"types": "./src/index.ts"
 		}
 	}
 }

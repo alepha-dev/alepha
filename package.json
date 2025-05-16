@@ -19,6 +19,7 @@
 	"scripts": {
 		"alepha": "node scripts/index.ts",
 		"v": "yarn alepha verify",
+		"convert": "node scripts/convert.ts",
 		"format": "biome format --write",
 		"lint": "biome lint --write",
 		"check": "tsc --noEmit",
