@@ -80,7 +80,7 @@ async function main(to?: string) {
 					pkg.exports["."].browser = "./dist/index.browser.js";
 				}
 			}
-			await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2).replaceAll("  ", "\t")}\n`);
+			await writeFile(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 			console.log(`Patched ${name} to ${action}`);
 		} catch (error) {
 			console.error(`Failed to patch ${name}`, error);
