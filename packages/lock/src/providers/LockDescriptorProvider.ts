@@ -1,4 +1,10 @@
-import { type AsyncFn, type DateTime, type DurationLike, OPTIONS, type Static } from "@alepha/core";
+import {
+	type AsyncFn,
+	type DateTime,
+	type DurationLike,
+	OPTIONS,
+	type Static,
+} from "@alepha/core";
 import {
 	$hook,
 	$inject,

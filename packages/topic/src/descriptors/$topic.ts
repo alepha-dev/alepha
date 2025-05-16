@@ -1,4 +1,9 @@
-import { type DurationLike, OPTIONS, type Static, type TSchema } from "@alepha/core";
+import {
+	type DurationLike,
+	OPTIONS,
+	type Static,
+	type TSchema,
+} from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 import type {
 	TopicProvider,

@@ -2,8 +2,8 @@ import type {
 	IncomingMessage,
 	ServerResponse as NodeServerResponse,
 } from "node:http";
-import type {Readable as NodeStream} from "node:stream";
-import type {ReadableStream as WebStream} from "node:stream/web";
+import type { Readable as NodeStream } from "node:stream";
+import type { ReadableStream as WebStream } from "node:stream/web";
 import {
 	$inject,
 	Alepha,
@@ -13,12 +13,12 @@ import {
 	TypeGuard,
 	isTypeFile,
 } from "@alepha/core";
-import {type Route, RouterProvider} from "@alepha/router";
-import type {UserAccountToken} from "@alepha/security";
-import type {RouteMethod} from "../constants/routeMethods.ts";
-import {HttpError, errorNameByStatus} from "../errors/HttpError.ts";
-import {ValidationError} from "../errors/ValidationError.ts";
-import {isFileLike} from "./features/ServerMultipartProvider.ts";
+import { type Route, RouterProvider } from "@alepha/router";
+import type { UserAccountToken } from "@alepha/security";
+import type { RouteMethod } from "../constants/routeMethods.ts";
+import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
+import { isFileLike } from "./features/ServerMultipartProvider.ts";
 
 // Router used in Server (action, proxy, ssr, etc...)
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
@@ -47,8 +47,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		return this.push({
 			path,
-			handler: (request) =>
-				this.handle(route, request, responseType, false),
+			handler: (request) => this.handle(route, request, responseType, false),
 		});
 	}
 
@@ -56,7 +55,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		route: ServerRoute,
 		rawRequest: ServerRawRequest,
 		responseType: ResponseType,
-		als = false
+		als = false,
 	): Promise<ServerResponse> {
 		// create request
 		const request = {
@@ -82,16 +81,19 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			{
 				context: requestId, // for logging
 			},
-			() => this.processRequest(request, route, responseType, true)
+			() => this.processRequest(request, route, responseType, true),
 		);
 	}
 
-	protected async processRequest(request: ServerRequest,
-																 route: ServerRoute,
-																 responseType: ResponseType, als = false) {
-		await this.doRequestHandler(route, request, responseType, als).catch(error =>
-			this.errorHandler(route, request, error as Error)
-		)
+	protected async processRequest(
+		request: ServerRequest,
+		route: ServerRoute,
+		responseType: ResponseType,
+		als = false,
+	) {
+		await this.doRequestHandler(route, request, responseType, als).catch(
+			(error) => this.errorHandler(route, request, error as Error),
+		);
 
 		await this.alepha.emit(
 			"server:onSend",
@@ -126,9 +128,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		return response;
 	}
 
-	protected async doRequestHandler(route: ServerRoute, request: ServerRequest,
-																	 responseType: ResponseType,
-																	 als = false) {
+	protected async doRequestHandler(
+		route: ServerRoute,
+		request: ServerRequest,
+		responseType: ResponseType,
+		als = false,
+	) {
 		// there are some built-in hooks that are called before the request is handled
 		// - ServerBodyParserProvider (parse body)
 		// - ServerSecurityProvider (build user from headers)
@@ -150,10 +155,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		// request is ready to be used
 		if (als) {
-			this.alepha.als.set<ServerRequest>(
-				"request",
-				request as ServerRequest,
-			);
+			this.alepha.als.set<ServerRequest>("request", request as ServerRequest);
 		}
 
 		// call the handler

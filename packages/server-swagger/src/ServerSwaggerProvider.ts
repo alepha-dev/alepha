@@ -3,11 +3,12 @@ import {
 	$hook,
 	$inject,
 	Alepha,
-	isTypeFile,
-	t,
+	OPTIONS,
 	type TObject,
 	type TSchema,
 	TypeGuard,
+	isTypeFile,
+	t,
 } from "@alepha/core";
 import { SecurityModule } from "@alepha/security";
 import {
@@ -35,11 +36,11 @@ export class ServerSwaggerProvider {
 		after: this.serverActionProvider,
 		handler: async (alepha) => {
 			const doc = alepha.getDescriptorValues($swagger)?.[0];
-			if (!doc || doc.value.options.disabled) {
+			if (!doc || doc.value[OPTIONS].disabled) {
 				return;
 			}
 
-			const options = doc.value.options;
+			const options = doc.value[OPTIONS];
 
 			const json = this.configureOpenApi(options);
 
