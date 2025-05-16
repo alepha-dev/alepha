@@ -72,6 +72,7 @@ export class QueueDescriptorProvider {
 
 	protected readonly start = $hook({
 		name: "start",
+		priority: "last",
 		handler: () => {
 			if (this.state.consumers.length > 0) {
 				this.startWorkers(this.state.consumers);
@@ -326,5 +327,6 @@ export class QueueDescriptorProvider {
 
 		// wake up workers
 		this.state.abortController.abort();
+		this.state.abortController = new AbortController();
 	}
 }

@@ -39,21 +39,11 @@ export const run = (
 			}
 
 			if (typeof process === "object") {
-				const traps = [
-					"SIGTERM",
-					"SIGINT",
-					"SIGUSR2",
-					"unhandledRejection",
-					"uncaughtException",
-				];
+				const traps = ["SIGTERM", "SIGINT", "SIGUSR2"];
 
 				for (const trap of traps) {
-					process.once(trap, async (error) => {
-						if (error instanceof Error) {
-							alepha.log.error("Uncaught Exception", error);
-						} else {
-							alepha.log.info("Received signal", { trap });
-						}
+					process.once(trap, async () => {
+						alepha.log.info("Received signal", { trap });
 						try {
 							await alepha.stop();
 							console.log(" ");
