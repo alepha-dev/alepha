@@ -1,4 +1,5 @@
-import { $inject, Alepha, DateTimeProvider, t } from "@alepha/core";
+import { $inject, Alepha, t } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
 import { $repository, $transaction, pg, table } from "../src";
 import { PgConflictError } from "../src/errors/PgConflictError.ts";

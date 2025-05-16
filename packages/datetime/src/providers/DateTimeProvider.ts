@@ -1,13 +1,9 @@
+import { $hook, $logger } from "@alepha/core";
 import type { DurationLike, DurationLikeObject } from "luxon";
 import { DateTime, Duration } from "luxon";
-import { $hook } from "../descriptors/$hook.ts";
 import type { IntervalDescriptorOptions } from "../descriptors/$interval.ts";
-import { $logger } from "../descriptors/$logger.ts";
 import { Interval } from "../helpers/Interval.ts";
 import { Timeout } from "../helpers/Timeout.ts";
-
-export { DateTime, Duration } from "luxon";
-export type { DurationLike } from "luxon";
 
 export class DateTimeProvider {
 	protected log = $logger();

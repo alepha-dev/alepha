@@ -1,12 +1,6 @@
-import { OPTIONS, type Timeout } from "@alepha/core";
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	DateTimeProvider,
-	KIND,
-} from "@alepha/core";
+import { OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, KIND } from "@alepha/core";
+import { DateTimeProvider, type Timeout } from "@alepha/datetime";
 import type { SubscriberDescriptorOptions } from "../descriptors/$subscriber.ts";
 import { $subscriber } from "../descriptors/$subscriber.ts";
 import type {

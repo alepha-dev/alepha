@@ -1,7 +1,6 @@
+import { $cursor, type Async } from "@alepha/core";
 import type { DurationLike } from "luxon";
-import type { Async } from "../interfaces/Async.ts";
 import { DateTimeProvider } from "../providers/DateTimeProvider.ts";
-import { $cursor } from "./$cursor.ts";
 
 export interface IntervalDescriptorOptions {
 	/**

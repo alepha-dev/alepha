@@ -1,6 +1,3 @@
-/**
- *
- */
 export class Timeout {
 	private timer: any = null;
 	private duration: number;

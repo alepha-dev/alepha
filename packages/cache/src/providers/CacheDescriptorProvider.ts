@@ -1,12 +1,14 @@
-import { type DurationLike, OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
 	Alepha,
-	DateTimeProvider,
 	KIND,
+	OPTIONS,
+	type Static,
 	t,
 } from "@alepha/core";
+import type { DurationLike } from "@alepha/datetime";
+import { DateTimeProvider } from "@alepha/datetime";
 import type {
 	CacheDescriptor,
 	CacheDescriptorOptions,

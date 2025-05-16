@@ -8,8 +8,7 @@
 	"browser": "./src/index.browser.ts",
 	"files": ["dist", "src"],
 	"dependencies": {
-		"@sinclair/typebox": "^0.34.33",
-		"luxon": "^3.6.1"
+		"@sinclair/typebox": "^0.34.33"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",

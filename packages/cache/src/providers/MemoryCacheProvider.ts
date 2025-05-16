@@ -1,5 +1,5 @@
-import type { Timeout } from "@alepha/core";
-import { $inject, $logger, DateTimeProvider } from "@alepha/core";
+import { $inject, $logger } from "@alepha/core";
+import { DateTimeProvider, type Timeout } from "@alepha/datetime";
 import type { CacheProvider } from "./CacheProvider.ts";
 
 /**

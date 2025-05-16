@@ -1,5 +1,6 @@
+import { Alepha } from "@alepha/core";
 import { expect, test } from "vitest";
-import { Alepha, DateTimeProvider } from "../src";
+import { DateTimeProvider } from "../src";
 
 test("DateTimeProvider#pause", async () => {
 	const app = Alepha.create();

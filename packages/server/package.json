@@ -10,6 +10,7 @@
 	"dependencies": {
 		"@alepha/cache": "0.6.4",
 		"@alepha/core": "0.6.4",
+		"@alepha/datetime": "0.6.4",
 		"@alepha/router": "0.6.4",
 		"@alepha/security": "0.6.4",
 		"@fastify/busboy": "^3.1.1"

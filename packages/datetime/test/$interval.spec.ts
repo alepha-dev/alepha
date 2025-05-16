@@ -1,5 +1,6 @@
+import { $hook, Alepha } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $hook, $interval, Alepha, DateTimeProvider } from "../src";
+import { $interval, DateTimeProvider } from "../src";
 
 test("$interval - basic", async () => {
 	let count = 0;

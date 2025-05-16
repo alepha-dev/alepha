@@ -10,6 +10,7 @@ __metadata:
   resolution: "@alepha/cache@workspace:packages/cache"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/redis": "npm:0.6.4"
     pkgroll: "npm:^2.12.2"
     vitest: "npm:^3.1.3"
@@ -32,6 +33,16 @@ __metadata:
   resolution: "@alepha/core@workspace:packages/core"
   dependencies:
     "@sinclair/typebox": "npm:^0.34.33"
+    pkgroll: "npm:^2.12.2"
+    vitest: "npm:^3.1.3"
+  languageName: unknown
+  linkType: soft
+
+"@alepha/datetime@npm:0.6.4, @alepha/datetime@workspace:packages/datetime":
+  version: 0.0.0-use.local
+  resolution: "@alepha/datetime@workspace:packages/datetime"
+  dependencies:
+    "@alepha/core": "npm:0.6.4"
     luxon: "npm:^3.6.1"
     pkgroll: "npm:^2.12.2"
     vitest: "npm:^3.1.3"
@@ -43,6 +54,7 @@ __metadata:
   resolution: "@alepha/lock@workspace:packages/lock"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/redis": "npm:0.6.4"
     "@alepha/topic": "npm:0.6.4"
     pkgroll: "npm:^2.12.2"
@@ -81,6 +93,7 @@ __metadata:
   resolution: "@alepha/postgres@workspace:packages/postgres"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/lock": "npm:0.6.4"
     "@sinclair/typebox": "npm:^0.34.33"
     "@types/pg": "npm:8.15.2"
@@ -108,6 +121,7 @@ __metadata:
   resolution: "@alepha/queue@workspace:packages/queue"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/redis": "npm:0.6.4"
     pkgroll: "npm:^2.12.2"
     vitest: "npm:^3.1.3"
@@ -178,6 +192,7 @@ __metadata:
   resolution: "@alepha/scheduler@workspace:packages/scheduler"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/lock": "npm:0.6.4"
     cron: "npm:^4.3.0"
     pkgroll: "npm:^2.12.2"
@@ -201,6 +216,7 @@ __metadata:
   resolution: "@alepha/server-cookies@workspace:packages/server-cookies"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/server": "npm:0.6.4"
     pkgroll: "npm:^2.12.2"
     vitest: "npm:^3.1.3"
@@ -234,6 +250,7 @@ __metadata:
   resolution: "@alepha/server-static@workspace:packages/server-static"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/server": "npm:0.6.4"
     mime: "npm:^4.0.7"
     pkgroll: "npm:^2.12.2"
@@ -263,6 +280,7 @@ __metadata:
   dependencies:
     "@alepha/cache": "npm:0.6.4"
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/router": "npm:0.6.4"
     "@alepha/security": "npm:0.6.4"
     "@fastify/busboy": "npm:^3.1.1"
@@ -286,6 +304,7 @@ __metadata:
   resolution: "@alepha/topic@workspace:packages/topic"
   dependencies:
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/redis": "npm:0.6.4"
     pkgroll: "npm:^2.12.2"
     vitest: "npm:^3.1.3"
@@ -2575,6 +2594,7 @@ __metadata:
     "@alepha/cache": "npm:0.6.4"
     "@alepha/cli": "npm:0.6.4"
     "@alepha/core": "npm:0.6.4"
+    "@alepha/datetime": "npm:0.6.4"
     "@alepha/lock": "npm:0.6.4"
     "@alepha/postgres": "npm:0.6.4"
     "@alepha/queue": "npm:0.6.4"

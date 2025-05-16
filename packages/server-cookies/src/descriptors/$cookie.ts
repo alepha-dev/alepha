@@ -1,13 +1,12 @@
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
 	$cursor,
-	DateTimeProvider,
-	type DurationLike,
 	KIND,
 	OPTIONS,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
+import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 
 export interface CookieDescriptorOptions<T extends TSchema> {
 	schema: T;

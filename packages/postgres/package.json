@@ -9,6 +9,7 @@
 	"files": ["dist", "src"],
 	"dependencies": {
 		"@alepha/core": "0.6.4",
+		"@alepha/datetime": "0.6.4",
 		"@alepha/lock": "0.6.4",
 		"@sinclair/typebox": "^0.34.33",
 		"drizzle-orm": "^0.43.1",

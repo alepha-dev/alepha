@@ -1,5 +1,6 @@
 import type { ClassEntry } from "@alepha/core";
-import { $inject, Alepha, DateTimeProvider, t } from "@alepha/core";
+import { $inject, Alepha, t } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import {
 	LockProvider,
 	MemoryLockProvider,

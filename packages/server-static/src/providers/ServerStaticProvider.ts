@@ -2,14 +2,8 @@ import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	DateTimeProvider,
-	OPTIONS,
-} from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import mime from "mime";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";

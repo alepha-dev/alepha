@@ -9,6 +9,7 @@
 	"files": ["dist", "src"],
 	"dependencies": {
 		"@alepha/core": "0.6.4",
+		"@alepha/datetime": "0.6.4",
 		"@alepha/redis": "0.6.4",
 		"@alepha/topic": "0.6.4"
 	},

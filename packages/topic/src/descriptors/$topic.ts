@@ -1,10 +1,6 @@
-import {
-	type DurationLike,
-	OPTIONS,
-	type Static,
-	type TSchema,
-} from "@alepha/core";
-import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
+import { OPTIONS, type Static, type TSchema } from "@alepha/core";
+import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import type { DurationLike } from "@alepha/datetime";
 import type {
 	TopicProvider,
 	UnSubscribeFn,

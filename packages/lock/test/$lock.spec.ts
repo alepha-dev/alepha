@@ -1,4 +1,5 @@
-import { $inject, Alepha, DateTimeProvider } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import type { SubscribeCallback } from "@alepha/topic";
 import { MemoryTopicProvider, RedisTopicProvider } from "@alepha/topic";
 import { expect, test } from "vitest";

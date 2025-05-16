@@ -1,5 +1,6 @@
-import { type DurationLike, KIND, __descriptor, OPTIONS } from "@alepha/core";
+import { KIND, OPTIONS, __descriptor } from "@alepha/core";
 import { NotImplementedError } from "@alepha/core";
+import type { DurationLike } from "@alepha/datetime";
 
 const KEY = "SERVE";
 

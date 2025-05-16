@@ -8,6 +8,7 @@
 	"files": ["dist", "src"],
 	"dependencies": {
 		"@alepha/core": "0.6.4",
+		"@alepha/datetime": "0.6.4",
 		"@alepha/server": "0.6.4",
 		"mime": "^4.0.7"
 	},

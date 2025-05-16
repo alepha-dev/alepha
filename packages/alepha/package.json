@@ -9,6 +9,7 @@
 		"@alepha/cache": "0.6.4",
 		"@alepha/cli": "0.6.4",
 		"@alepha/core": "0.6.4",
+		"@alepha/datetime": "0.6.4",
 		"@alepha/lock": "0.6.4",
 		"@alepha/postgres": "0.6.4",
 		"@alepha/queue": "0.6.4",
@@ -67,6 +68,11 @@
 			"import": "./vite.js",
 			"require": "./vite.cjs",
 			"types": "./vite.d.ts"
+		},
+		"./datetime": {
+			"import": "./datetime.js",
+			"require": "./datetime.cjs",
+			"types": "./datetime.d.ts"
 		},
 		"./react": {
 			"import": "./react.js",
