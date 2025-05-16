@@ -5,6 +5,7 @@ const targets = [
 	{ name: "Raw", url: "http://localhost:3004/ping" },
 	{ name: "Express", url: "http://localhost:3001/ping" },
 	{ name: "Fastify", url: "http://localhost:3002/ping" },
+	{ name: "Alepha", url: "http://localhost:3003/ping" },
 ];
 
 for (const { name, url } of targets) {

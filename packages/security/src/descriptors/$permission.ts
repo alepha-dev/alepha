@@ -1,4 +1,4 @@
-import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
+import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 
@@ -33,7 +33,7 @@ export interface PermissionDescriptorOptions {
 
 export interface PermissionDescriptor {
 	[KIND]: typeof KEY;
-	options: PermissionDescriptorOptions;
+	[OPTIONS]: PermissionDescriptorOptions;
 
 	/**
 	 * Get the permission object.
@@ -56,7 +56,7 @@ export const $permission = (
 	};
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 	$.can = () => {
 		throw new NotImplementedError(KEY);
 	};

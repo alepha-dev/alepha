@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { TObject } from "@sinclair/typebox";
 import type { PgTableWithColumns, TableConfig } from "drizzle-orm/pg-core";
 import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
@@ -92,7 +92,7 @@ export class RepositoryDescriptorProvider {
 		const repositories = this.alepha.getDescriptorValues($repository);
 
 		for (const { value, instance, key } of repositories) {
-			const options = value.options as RepositoryDescriptorOptions<
+			const options = value[OPTIONS] as RepositoryDescriptorOptions<
 				TableConfig,
 				TObject
 			>;

@@ -4,6 +4,7 @@ import { __descriptor } from "../helpers/descriptor.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { Class } from "../interfaces/Class.ts";
 import { $cursor } from "./$cursor.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
 
 const KEY = "HOOK";
 
@@ -65,7 +66,7 @@ export interface Hook<T extends keyof Hooks = any> {
 
 export interface HookDescriptor<T extends keyof Hooks> {
 	[KIND]: typeof KEY;
-	options: HookOptions<T>;
+	[OPTIONS]: HookOptions<T>;
 	(app: Hooks[T]): Async<any>;
 
 	//TODO:
@@ -122,7 +123,7 @@ export const $hook = <T extends keyof Hooks>(
 	const $: HookDescriptor<T> = (arg: Hooks[T]) => options.handler(arg);
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 
 	return $;
 };

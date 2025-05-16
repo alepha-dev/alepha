@@ -1,4 +1,4 @@
-import { type DurationLike, KIND, __descriptor } from "@alepha/core";
+import { type DurationLike, KIND, __descriptor, OPTIONS } from "@alepha/core";
 import { NotImplementedError } from "@alepha/core";
 
 const KEY = "SERVE";
@@ -80,7 +80,7 @@ export interface CacheControlOptions {
 
 export interface ServeDescriptor {
 	[KIND]: typeof KEY;
-	options: ServeDescriptorOptions;
+	[OPTIONS]: ServeDescriptorOptions;
 	list(): string[];
 }
 
@@ -90,7 +90,7 @@ export const $serve = (
 	__descriptor(KEY);
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		list: () => {
 			throw new NotImplementedError(KEY);
 		},

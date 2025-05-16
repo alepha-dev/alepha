@@ -1,4 +1,4 @@
-import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
+import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 import type { Role } from "../schemas/roleSchema.ts";
 
 const KEY = "ROLE";
@@ -28,7 +28,7 @@ export interface RoleDescriptorOptions {
 
 export interface RoleDescriptor {
 	[KIND]: typeof KEY;
-	options: RoleDescriptorOptions;
+	[OPTIONS]: RoleDescriptorOptions;
 
 	/**
 	 * Get the role object.
@@ -44,7 +44,7 @@ export const $role = (options: RoleDescriptorOptions = {}): RoleDescriptor => {
 	};
 
 	role[KIND] = KEY;
-	role.options = options;
+	role[OPTIONS] = options;
 
 	return role;
 };

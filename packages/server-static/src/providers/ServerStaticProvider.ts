@@ -8,6 +8,7 @@ import {
 	$logger,
 	Alepha,
 	DateTimeProvider,
+	OPTIONS,
 } from "@alepha/core";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import mime from "mime";
@@ -26,13 +27,13 @@ export class ServerStaticProvider {
 		handler: async () => {
 			const serves = this.alepha.getDescriptorValues($serve);
 			for (const { value, instance, key } of serves) {
-				if (value.options.disabled) {
+				if (value[OPTIONS].disabled) {
 					continue;
 				}
 
-				const name = value.options.name ?? key;
+				const name = value[OPTIONS].name ?? key;
 
-				await this.serve(value.options);
+				await this.serve(value[OPTIONS]);
 
 				instance[key].list = () => {
 					return this.list(name);

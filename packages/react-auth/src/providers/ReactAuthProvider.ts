@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS, t } from "@alepha/core";
 import { $route, BadRequestError } from "@alepha/server";
 import {
 	$cookie,
@@ -71,7 +71,7 @@ export class ReactAuthProvider {
 		handler: async () => {
 			const auths = this.alepha.getDescriptorValues($auth);
 			for (const { value, key, instance } of auths) {
-				const options = value.options;
+				const options = value[OPTIONS];
 
 				if (options.oidc) {
 					this.log.debug(

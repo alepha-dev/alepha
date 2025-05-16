@@ -1,4 +1,4 @@
-import { $inject, Alepha, KIND } from "@alepha/core";
+import { $inject, Alepha, KIND, OPTIONS } from "@alepha/core";
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { TObject } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
@@ -120,12 +120,18 @@ export class Repository<
 		col: PgColumn;
 	};
 
+	[OPTIONS]: {
+		table: TTable;
+		schema: TTableSchema;
+	};
+
 	constructor(
 		readonly options: {
 			table: TTable;
 			schema: TTableSchema;
 		},
 	) {
+		this[OPTIONS] = options;
 		this.id = this.getPrimaryKey(this.schema);
 	}
 

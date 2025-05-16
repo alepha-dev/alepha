@@ -1,4 +1,4 @@
-import type { DurationLike, Static, TSchema } from "@alepha/core";
+import { type DurationLike, OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 import type {
 	TopicProvider,
@@ -26,7 +26,7 @@ export interface TopicDescriptor<
 	T extends TopicMessageSchema = TopicMessageSchema,
 > {
 	[KIND]: typeof KEY;
-	options: TopicDescriptorOptions<T>;
+	[OPTIONS]: TopicDescriptorOptions<T>;
 	name(): string;
 	provider(): TopicProvider;
 	publish(payload: Static<T["payload"]>): Promise<void>;
@@ -51,7 +51,7 @@ export const $topic = <T extends TopicMessageSchema>(
 	__descriptor(KEY);
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		name: () => {
 			throw new NotImplementedError(KEY);
 		},

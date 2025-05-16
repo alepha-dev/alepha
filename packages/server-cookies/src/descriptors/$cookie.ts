@@ -4,6 +4,7 @@ import {
 	DateTimeProvider,
 	type DurationLike,
 	KIND,
+	OPTIONS,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
@@ -35,7 +36,7 @@ export interface CookieDescriptorOptions<T extends TSchema> {
 export interface CookieDescriptor<T extends TSchema> {
 	[KIND]: "COOKIE";
 
-	options: CookieDescriptorOptions<T>;
+	[OPTIONS]: CookieDescriptorOptions<T>;
 
 	set: (cookies: Cookies, value: Static<T>) => void;
 
@@ -51,7 +52,7 @@ export const $cookie = <T extends TSchema>(
 
 	return {
 		[KIND]: "COOKIE",
-		options,
+		[OPTIONS]: options,
 		get: (cookies: Cookies) => {
 			try {
 				if (cookies.req[options.name]) {

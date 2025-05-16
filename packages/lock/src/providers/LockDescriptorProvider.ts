@@ -1,4 +1,4 @@
-import type { AsyncFn, DateTime, DurationLike, Static } from "@alepha/core";
+import { type AsyncFn, type DateTime, type DurationLike, OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -40,7 +40,7 @@ export class LockDescriptorProvider {
 		handler: (alepha: Alepha) => {
 			const descriptors = alepha.getDescriptorValues($lock);
 			for (const { instance, key, value } of descriptors) {
-				const { options } = value;
+				const { [OPTIONS]: options } = value;
 
 				const lockKey = `${instance.constructor.name}.${key}`;
 				this.locks.set(lockKey, {
@@ -63,7 +63,7 @@ export class LockDescriptorProvider {
 					this.run(this.locks.get(lockKey)!, ...args);
 
 				$[KIND] = value[KIND];
-				$.options = value.options;
+				$[OPTIONS] = value[OPTIONS];
 
 				instance[key] = $;
 			}

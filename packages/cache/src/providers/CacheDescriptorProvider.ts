@@ -1,4 +1,4 @@
-import type { DurationLike, Static } from "@alepha/core";
+import { type DurationLike, OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -50,7 +50,7 @@ export class CacheDescriptorProvider {
 	public processDescriptors() {
 		const caches = this.alepha.getDescriptorValues($cache);
 		for (const { value, key, instance } of caches) {
-			const { options } = value;
+			const { [OPTIONS]: options } = value;
 			const group = options.group ?? `${instance.constructor.name}:${key}`;
 			const cache = { options, group };
 
@@ -59,7 +59,7 @@ export class CacheDescriptorProvider {
 			const $: CacheDescriptor = (...args) => this.run(cache, ...args);
 
 			$[KIND] = value[KIND];
-			$.options = value.options;
+			$[OPTIONS] = value[OPTIONS];
 
 			$.key = (...args) => this.key(cache, ...args);
 			$.invalidate = (...keys) => this.invalidate(cache, ...keys);

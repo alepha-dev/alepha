@@ -1,4 +1,4 @@
-import { KIND } from "@alepha/core";
+import { KIND, OPTIONS } from "@alepha/core";
 
 export const REMOTE_DESCRIPTOR_KEY = "REMOTE";
 
@@ -24,13 +24,13 @@ export interface RemoteDescriptorOptions {
 
 export interface RemoteDescriptor {
 	[KIND]: typeof REMOTE_DESCRIPTOR_KEY;
-	options: RemoteDescriptorOptions;
+	[OPTIONS]: RemoteDescriptorOptions;
 }
 
 export const $remote = (options: RemoteDescriptorOptions) => {
 	return {
 		[KIND]: REMOTE_DESCRIPTOR_KEY,
-		options,
+		[OPTIONS]: options,
 	} as RemoteDescriptor;
 };
 

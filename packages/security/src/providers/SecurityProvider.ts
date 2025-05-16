@@ -1,4 +1,4 @@
-import type { Static } from "@alepha/core";
+import { OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -99,14 +99,14 @@ export class SecurityProvider {
 		const permissions = this.alepha.getDescriptorValues($permission);
 		for (const { value, key, instance } of permissions) {
 			const permission = this.createPermission({
-				...value.options,
-				name: value.options.name ?? key,
-				group: value.options.group ?? instance.constructor.name,
+				...value[OPTIONS],
+				name: value[OPTIONS].name ?? key,
+				group: value[OPTIONS].group ?? instance.constructor.name,
 			});
 
 			const $ = () => permission;
 
-			$.options = value.options;
+			$.options = value[OPTIONS];
 			$[KIND] = value[KIND];
 			$.can = (user: UserAccountInfo) => {
 				if (!user.roles) {
@@ -131,14 +131,14 @@ export class SecurityProvider {
 
 		for (const { value, key, instance } of realms) {
 			const realm: Realm = {
-				name: value.options.name ?? key,
-				secret: value.options.secret,
+				name: value[OPTIONS].name ?? key,
+				secret: value[OPTIONS].secret,
 				userAccountProvider:
-					typeof value.options.userAccountProvider === "function"
-						? value.options.userAccountProvider()
-						: value.options.userAccountProvider,
+					typeof value[OPTIONS].userAccountProvider === "function"
+						? value[OPTIONS].userAccountProvider()
+						: value[OPTIONS].userAccountProvider,
 				roles:
-					value.options.roles?.map((it) => {
+					value[OPTIONS].roles?.map((it) => {
 						if (typeof it === "string") {
 							const role = this.getRoles().find((role) => role.name === it);
 							if (!role) {
@@ -155,7 +155,7 @@ export class SecurityProvider {
 
 			instance[key] = {
 				[KIND]: value[KIND],
-				options: value.options,
+				[OPTIONS]: value[OPTIONS],
 				getRoles: () => {
 					return this.getRoles(realm.name);
 				},
@@ -196,10 +196,10 @@ export class SecurityProvider {
 		const roles = this.alepha.getDescriptorValues($role);
 		for (const { value, key, instance } of roles) {
 			const role = this.createRole({
-				...value.options,
-				name: value.options.name ?? key,
+				...value[OPTIONS],
+				name: value[OPTIONS].name ?? key,
 				permissions:
-					value.options.permissions?.map((it) => {
+					value[OPTIONS].permissions?.map((it) => {
 						if (typeof it === "string") {
 							return {
 								name: it,
@@ -211,7 +211,7 @@ export class SecurityProvider {
 			});
 
 			const $ = () => role;
-			$.options = value.options;
+			$[OPTIONS] = value[OPTIONS];
 			$[KIND] = value[KIND];
 			instance[key] = $;
 		}

@@ -1,4 +1,4 @@
-import type { Static, TSchema } from "@alepha/core";
+import { OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -41,7 +41,7 @@ export interface RouteDescriptorOptions<
 	/**
 	 * Inherit options from another route.
 	 */
-	use?: { options: RouteDescriptorOptions<TConfig> };
+	use?: { [OPTIONS]: RouteDescriptorOptions<TConfig> };
 
 	/**
 	 * The route method.
@@ -89,7 +89,7 @@ export interface RouteDescriptor<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > {
 	[KIND]: "ROUTE";
-	options: RouteDescriptorOptions<TConfig>;
+	[OPTIONS]: RouteDescriptorOptions<TConfig>;
 
 	/**
 	 * Fetch or just call local route when available.
@@ -134,7 +134,7 @@ export const $route = <TConfig extends RequestConfigSchema>(
 	__descriptor("ROUTE");
 
 	const routeDescriptorOptions = {
-		...options.use?.options,
+		...options.use?.[OPTIONS],
 		...options,
 	};
 
@@ -143,7 +143,7 @@ export const $route = <TConfig extends RequestConfigSchema>(
 	};
 
 	route[KIND] = "ROUTE" as const;
-	route.options = routeDescriptorOptions;
+	route[OPTIONS] = routeDescriptorOptions;
 
 	route.fetch = async () => {
 		throw new NotImplementedError("ROUTE");

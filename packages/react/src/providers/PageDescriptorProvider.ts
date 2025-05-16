@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { HttpClientLink } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
 import NestedView from "../components/NestedView.tsx";
@@ -354,10 +354,10 @@ export class PageDescriptorProvider {
 		handler: () => {
 			const pages = this.alepha.getDescriptorValues($page);
 			for (const { value, key } of pages) {
-				value.options.name ??= key;
+				value[OPTIONS].name ??= key;
 
 				// skip children, we only want root pages
-				if (value.options.parent) {
+				if (value[OPTIONS].parent) {
 					continue;
 				}
 
@@ -367,19 +367,19 @@ export class PageDescriptorProvider {
 	});
 
 	protected map(
-		pages: Array<{ value: { options: PageDescriptorOptions } }>,
-		target: { options: PageDescriptorOptions },
+		pages: Array<{ value: { [OPTIONS]: PageDescriptorOptions } }>,
+		target: { [OPTIONS]: PageDescriptorOptions },
 	): PageRouteEntry {
-		const children = target.options.children ?? [];
+		const children = target[OPTIONS].children ?? [];
 
 		for (const it of pages) {
-			if (it.value.options.parent === target) {
+			if (it.value[OPTIONS].parent === target) {
 				children.push(it.value);
 			}
 		}
 
 		return {
-			...target.options,
+			...target[OPTIONS],
 			parent: undefined,
 			children: children.map((it) => this.map(pages, it)),
 		} as PageRoute;

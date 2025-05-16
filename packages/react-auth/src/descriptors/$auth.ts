@@ -1,4 +1,4 @@
-import { KIND, __descriptor } from "@alepha/core";
+import { KIND, __descriptor, OPTIONS } from "@alepha/core";
 
 const KEY = "AUTH";
 
@@ -14,7 +14,7 @@ export interface AuthDescriptorOptions {
 
 export interface AuthDescriptor {
 	[KIND]: typeof KEY;
-	options: AuthDescriptorOptions;
+	[OPTIONS]: AuthDescriptorOptions;
 	jwks: () => string;
 }
 
@@ -22,7 +22,7 @@ export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
 	__descriptor(KEY);
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		jwks: () => {
 			return options.oidc?.issuer ?? "";
 		},

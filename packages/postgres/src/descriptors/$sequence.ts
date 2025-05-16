@@ -1,4 +1,4 @@
-import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
+import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 
 const KEY = "SEQUENCE";
 
@@ -36,7 +36,7 @@ export interface SequenceDescriptorOptions {
 
 export interface SequenceDescriptor {
 	[KIND]: typeof KEY;
-	options: SequenceDescriptorOptions;
+	[OPTIONS]: SequenceDescriptorOptions;
 
 	/**
 	 *
@@ -68,7 +68,7 @@ export const $sequence = (
 	};
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 	$.next = async () => {
 		throw new NotImplementedError(KEY);
 	};

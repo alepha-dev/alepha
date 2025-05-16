@@ -1,4 +1,4 @@
-import { $hook, $inject, KIND } from "@alepha/core";
+import { $hook, $inject, KIND, OPTIONS } from "@alepha/core";
 import { sql } from "drizzle-orm";
 import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
 import { $sequence } from "../descriptors/$sequence.ts";
@@ -14,14 +14,14 @@ export class SequenceProvider {
 		handler: async (app) => {
 			const sequences = app.getDescriptorValues($sequence);
 			for (const { value, instance, key } of sequences) {
-				const options = value.options;
+				const options = value[OPTIONS];
 				const name = options.name ?? key;
 				await this.create(name, options);
 
 				const $: SequenceDescriptor = () => this.next(name);
 
 				$[KIND] = value[KIND];
-				$.options = options;
+				$[OPTIONS] = options;
 				$.next = () => this.next(name);
 				$.current = () => this.current(name);
 

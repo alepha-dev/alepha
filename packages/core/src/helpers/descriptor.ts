@@ -1,8 +1,8 @@
 import { KIND } from "../constants/KIND.ts";
-import type { STARTED } from "../constants/STARTED.ts";
 import type { CursorDescriptor } from "../descriptors/$cursor.ts";
 import { $cursor } from "../descriptors/$cursor.ts";
 import type { Class } from "../interfaces/Class.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -91,7 +91,7 @@ export const __bind = (descriptor: { [KIND]: string }, ...to: Class[]) => {
 export const isDescriptorValue = (
 	value: any,
 ): value is DescriptorIdentifier => {
-	return value?.[KIND] != null;
+	return value?.[KIND] != null && typeof value[OPTIONS] === "object";
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -109,7 +109,7 @@ export interface Descriptor<T extends object = any> {
  */
 export interface DescriptorIdentifier<T = object> {
 	[KIND]: string; // this is required to be able to use `isDescriptorValue` during processing.
-	options: T;
+	[OPTIONS]: T;
 }
 
 /**
@@ -118,7 +118,5 @@ export interface DescriptorIdentifier<T = object> {
 export interface DescriptorItem<T extends Descriptor> {
 	value: ReturnType<T>;
 	key: string;
-	instance: Record<string, any> & {
-		[STARTED]?: boolean;
-	};
+	instance: Record<string, any>;
 }

@@ -1,4 +1,4 @@
-import type { Static } from "@alepha/core";
+import { OPTIONS, type Static } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 import type { QueueDescriptor, QueueMessageSchema } from "./$queue.ts";
 
@@ -15,7 +15,7 @@ export interface ConsumerDescriptor<
 	T extends QueueMessageSchema = QueueMessageSchema,
 > {
 	[KIND]: typeof KEY;
-	options: ConsumerDescriptorOptions<T>;
+	[OPTIONS]: ConsumerDescriptorOptions<T>;
 
 	queue(): QueueDescriptor<T>;
 	stop(): Promise<void>;
@@ -34,7 +34,7 @@ export const $consumer = <T extends QueueMessageSchema>(
 
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		queue: () => {
 			throw new NotImplementedError(KEY);
 		},

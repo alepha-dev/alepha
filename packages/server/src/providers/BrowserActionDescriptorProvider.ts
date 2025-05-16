@@ -1,4 +1,4 @@
-import type { Static } from "@alepha/core";
+import { OPTIONS, type Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, KIND, t } from "@alepha/core";
 import {
 	$route,
@@ -38,7 +38,7 @@ export class BrowserActionDescriptorProvider {
 
 	public registerAction(value: RouteDescriptor, instance: any, key: string) {
 		const fetcher = this.client.createFetchFunction(
-			this.helper.link(value.options, instance, key),
+			this.helper.link(value[OPTIONS], instance, key),
 			{
 				host: this.env.SERVER_API_URL,
 			},
@@ -48,12 +48,12 @@ export class BrowserActionDescriptorProvider {
 			fetcher(config, opts);
 
 		$[KIND] = "ROUTE";
-		$.options = value.options;
+		$[OPTIONS] = value[OPTIONS];
 
 		$.fetch = (config: ClientRequestEntry, opts: ClientRequestOptions = {}) =>
 			fetcher(config, opts);
 
-		$.permission = () => this.helper.permission(value.options, instance, key);
+		$.permission = () => this.helper.permission(value[OPTIONS], instance, key);
 
 		instance[key] = $;
 	}

@@ -1,4 +1,4 @@
-import type { Static } from "@alepha/core";
+import { OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -127,9 +127,9 @@ export class QueueDescriptorProvider {
 
 			const $: QueueDescriptor = {
 				[KIND]: value[KIND],
-				options: value.options,
-				name: () => value.options.name ?? key,
-				provider: () => this.provider(value.options),
+				[OPTIONS]: value[OPTIONS],
+				name: () => value[OPTIONS].name ?? key,
+				provider: () => this.provider(value[OPTIONS]),
 				push(...payloads: any[]) {
 					return push(this, ...payloads);
 				},
@@ -137,10 +137,10 @@ export class QueueDescriptorProvider {
 
 			this.state.queues.push($);
 
-			if (value.options.handler) {
+			if (value[OPTIONS].handler) {
 				this.state.consumers.push({
 					queue: $,
-					handler: value.options.handler,
+					handler: value[OPTIONS].handler,
 				});
 			}
 
@@ -158,10 +158,10 @@ export class QueueDescriptorProvider {
 
 		for (const { value } of consumerDescriptors) {
 			for (const queue of this.state.queues) {
-				if (value.options.queue.options === queue.options) {
+				if (value[OPTIONS].queue[OPTIONS] === queue[OPTIONS]) {
 					this.state.consumers.push({
 						queue,
-						handler: value.options.handler,
+						handler: value[OPTIONS].handler,
 					});
 				}
 			}
@@ -266,7 +266,7 @@ export class QueueDescriptorProvider {
 		try {
 			const json = JSON.parse(message);
 			const payload = this.alepha.parse(
-				consumer.queue.options.schema.payload,
+				consumer.queue[OPTIONS].schema.payload,
 				json.payload,
 			);
 			await consumer.handler({ payload });
@@ -323,7 +323,7 @@ export class QueueDescriptorProvider {
 					queue.name(),
 					JSON.stringify({
 						headers: {},
-						payload: this.alepha.parse(queue.options.schema.payload, payload),
+						payload: this.alepha.parse(queue[OPTIONS].schema.payload, payload),
 					}),
 				),
 			),

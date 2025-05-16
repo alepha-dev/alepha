@@ -1,7 +1,15 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	OPTIONS,
+	type Static,
+	t,
+} from "@alepha/core";
 import {
 	type ServerHandler,
 	ServerLinksProvider,
@@ -54,7 +62,7 @@ export class ReactServerProvider {
 			}
 
 			for (const { key, instance, value } of pages) {
-				const name = value.options.name ?? key;
+				const name = value[OPTIONS].name ?? key;
 
 				if (this.alepha.isTest()) {
 					instance[key].render = this.createRenderFunction(name);

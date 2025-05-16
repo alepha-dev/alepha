@@ -2,8 +2,8 @@ import type {
 	IncomingMessage,
 	ServerResponse as NodeServerResponse,
 } from "node:http";
-import type { Readable as NodeStream } from "node:stream";
-import type { ReadableStream as WebStream } from "node:stream/web";
+import type {Readable as NodeStream} from "node:stream";
+import type {ReadableStream as WebStream} from "node:stream/web";
 import {
 	$inject,
 	Alepha,
@@ -13,12 +13,12 @@ import {
 	TypeGuard,
 	isTypeFile,
 } from "@alepha/core";
-import { type Route, RouterProvider } from "@alepha/router";
-import type { UserAccountToken } from "@alepha/security";
-import type { RouteMethod } from "../constants/routeMethods.ts";
-import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { isFileLike } from "./features/ServerMultipartProvider.ts";
+import {type Route, RouterProvider} from "@alepha/router";
+import type {UserAccountToken} from "@alepha/security";
+import type {RouteMethod} from "../constants/routeMethods.ts";
+import {HttpError, errorNameByStatus} from "../errors/HttpError.ts";
+import {ValidationError} from "../errors/ValidationError.ts";
+import {isFileLike} from "./features/ServerMultipartProvider.ts";
 
 // Router used in Server (action, proxy, ssr, etc...)
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
@@ -47,7 +47,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		return this.push({
 			path,
-			handler: (request) => this.handle(route, request, responseType),
+			handler: (request) =>
+				this.handle(route, request, responseType, false),
 		});
 	}
 
@@ -55,98 +56,113 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		route: ServerRoute,
 		rawRequest: ServerRawRequest,
 		responseType: ResponseType,
+		als = false
 	): Promise<ServerResponse> {
+		// create request
+		const request = {
+			...rawRequest,
+			body: null,
+			metadata: {},
+			reply: {
+				headers: {},
+				redirect: (url: string) => {
+					request.reply.status = 302;
+					request.reply.headers.location = url;
+				},
+			},
+		} as ServerRequest;
+
+		if (!als) {
+			return this.processRequest(request, route, responseType);
+		}
+
 		const requestId = this.createRequestId();
 
 		return await this.alepha.als.run(
 			{
 				context: requestId, // for logging
 			},
-			async () => {
-				// create request
-				const request = {
-					...rawRequest,
-					body: null,
-					metadata: {},
-					reply: {
-						headers: {},
-						redirect: (url: string) => {
-							request.reply.status = 302;
-							request.reply.headers.location = url;
-						},
-					},
-				} as ServerRequest;
+			() => this.processRequest(request, route, responseType, true)
+		);
+	}
 
-				try {
-					// there are some built-in hooks that are called before the request is handled
-					// - ServerBodyParserProvider (parse body)
-					// - ServerSecurityProvider (build user from headers)
-					// - ServerLoggerProvider (log request)
+	protected async processRequest(request: ServerRequest,
+																 route: ServerRoute,
+																 responseType: ResponseType, als = false) {
+		await this.doRequestHandler(route, request, responseType, als).catch(error =>
+			this.errorHandler(route, request, error as Error)
+		)
 
-					await this.alepha.emit(
-						"server:onRequest", // this hook will fill request.user and request.cookies
-						{
-							request,
-							route,
-						},
-						{
-							log: false,
-						},
-					);
-
-					// validate
-					this.validateRequest(route, request);
-
-					// request is ready to be used
-					this.alepha.als.set<ServerRequest>(
-						"request",
-						request as ServerRequest,
-					);
-
-					// call the handler
-					const result = await route.handler(request);
-					if (result) {
-						request.reply.body = result;
-					}
-
-					this.serializeResponse(route, request.reply, responseType);
-				} catch (error) {
-					await this.errorHandler(route, request, error as Error);
-				}
-
-				await this.alepha.emit(
-					"server:onSend",
-					{
-						request,
-						route,
-					},
-					{
-						log: false,
-					},
-				);
-
-				// create response
-				const response = {
-					status: request.reply.status ?? (request.reply.body ? 200 : 204),
-					headers: request.reply.headers,
-					body: request.reply.body as any,
-				};
-
-				await this.alepha.emit(
-					"server:onResponse",
-					{
-						request,
-						route,
-						response,
-					},
-					{
-						log: false,
-					},
-				);
-
-				return response;
+		await this.alepha.emit(
+			"server:onSend",
+			{
+				request,
+				route,
+			},
+			{
+				log: false,
 			},
 		);
+
+		// create response
+		const response = {
+			status: request.reply.status ?? (request.reply.body ? 200 : 204),
+			headers: request.reply.headers,
+			body: request.reply.body as any,
+		};
+
+		await this.alepha.emit(
+			"server:onResponse",
+			{
+				request,
+				route,
+				response,
+			},
+			{
+				log: false,
+			},
+		);
+
+		return response;
+	}
+
+	protected async doRequestHandler(route: ServerRoute, request: ServerRequest,
+																	 responseType: ResponseType,
+																	 als = false) {
+		// there are some built-in hooks that are called before the request is handled
+		// - ServerBodyParserProvider (parse body)
+		// - ServerSecurityProvider (build user from headers)
+		// - ServerLoggerProvider (log request)
+
+		await this.alepha.emit(
+			"server:onRequest", // this hook will fill request.user and request.cookies
+			{
+				request,
+				route,
+			},
+			{
+				log: false,
+			},
+		);
+
+		// validate
+		this.validateRequest(route, request);
+
+		// request is ready to be used
+		if (als) {
+			this.alepha.als.set<ServerRequest>(
+				"request",
+				request as ServerRequest,
+			);
+		}
+
+		// call the handler
+		const result = await route.handler(request);
+		if (result) {
+			request.reply.body = result;
+		}
+
+		this.serializeResponse(route, request.reply, responseType);
 	}
 
 	protected getResponseType(schema?: RequestConfigSchema): ResponseType {

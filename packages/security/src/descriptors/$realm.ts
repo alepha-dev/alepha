@@ -1,4 +1,4 @@
-import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import { KIND, NotImplementedError, __descriptor, OPTIONS } from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
 import type { SecurityUserAccountProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
@@ -42,7 +42,7 @@ export interface RealmDescriptorOptions {
 
 export interface RealmDescriptor {
 	[KIND]: typeof KEY;
-	options: RealmDescriptorOptions;
+	[OPTIONS]: RealmDescriptorOptions;
 
 	/**
 	 * Get all roles in the realm.
@@ -70,7 +70,7 @@ export const $realm = (
 	};
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 
 	$.getRoles = () => {
 		throw new NotImplementedError(KEY);

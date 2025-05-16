@@ -1,4 +1,4 @@
-import type { Timeout } from "@alepha/core";
+import { OPTIONS, type Timeout } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -77,15 +77,15 @@ export class TopicDescriptorProvider {
 			const self = this;
 			const $: TopicDescriptor = {
 				[KIND]: value[KIND],
-				options: value.options,
-				name: () => value.options.name ?? key,
-				provider: () => this.provider(value.options),
+				[OPTIONS]: value[OPTIONS],
+				name: () => value[OPTIONS].name ?? key,
+				provider: () => this.provider(value[OPTIONS]),
 				async publish(payload: any) {
 					await self.publish(this, { payload });
 				},
 				subscribe(handler) {
 					return this.provider().subscribe(this.name(), (message) => {
-						handler(self.parseMessage(this.options.schema.payload, message));
+						handler(self.parseMessage(this[OPTIONS].schema.payload, message));
 					});
 				},
 				wait(options) {
@@ -95,10 +95,10 @@ export class TopicDescriptorProvider {
 
 			this.topics.push($);
 
-			if (value.options.handler) {
+			if (value[OPTIONS].handler) {
 				this.subscribers.push({
 					topic: $,
-					handler: value.options.handler,
+					handler: value[OPTIONS].handler,
 				});
 			}
 
@@ -124,7 +124,7 @@ export class TopicDescriptorProvider {
 					.provider()
 					.subscribe(topic.name(), (message) => {
 						if (
-							!filter(this.parseMessage(topic.options.schema.payload, message))
+							!filter(this.parseMessage(topic[OPTIONS].schema.payload, message))
 						) {
 							return;
 						}
@@ -159,10 +159,10 @@ export class TopicDescriptorProvider {
 
 		for (const { value } of consumerDescriptors) {
 			for (const topic of this.topics) {
-				if (value.options.topic.options === topic.options) {
+				if (value[OPTIONS].topic[OPTIONS] === topic[OPTIONS]) {
 					this.subscribers.push({
 						topic,
-						handler: value.options.handler,
+						handler: value[OPTIONS].handler,
 					});
 				}
 			}
@@ -204,7 +204,7 @@ export class TopicDescriptorProvider {
 			topic.name(),
 			JSON.stringify({
 				payload: this.alepha.parse(
-					topic.options.schema.payload,
+					topic[OPTIONS].schema.payload,
 					message.payload,
 				),
 			}),
@@ -224,7 +224,7 @@ export class TopicDescriptorProvider {
 	) {
 		try {
 			await subscriber.handler(
-				this.parseMessage(subscriber.topic.options.schema.payload, message),
+				this.parseMessage(subscriber.topic[OPTIONS].schema.payload, message),
 			);
 		} catch (error) {
 			this.log.error(error);

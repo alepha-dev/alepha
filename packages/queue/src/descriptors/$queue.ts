@@ -1,4 +1,4 @@
-import type { Static, TSchema } from "@alepha/core";
+import { OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 import type { QueueProvider } from "../providers/QueueProvider.ts";
 
@@ -21,7 +21,7 @@ export interface QueueDescriptor<
 	T extends QueueMessageSchema = QueueMessageSchema,
 > {
 	[KIND]: typeof KEY;
-	options: QueueDescriptorOptions<T>;
+	[OPTIONS]: QueueDescriptorOptions<T>;
 
 	name(): string;
 	provider(): QueueProvider;
@@ -41,7 +41,7 @@ export const $queue = <T extends QueueMessageSchema>(
 
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		name: () => {
 			throw new NotImplementedError(KEY);
 		},

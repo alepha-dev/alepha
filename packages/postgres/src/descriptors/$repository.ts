@@ -1,4 +1,4 @@
-import { __descriptor, KIND, type TObject } from "@alepha/core";
+import { __descriptor, KIND, OPTIONS, type TObject } from "@alepha/core";
 import type { TableConfig } from "drizzle-orm";
 import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
@@ -42,7 +42,7 @@ export const $repository = <
 
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		table,
 		schema,
 	} as any;

@@ -1,4 +1,4 @@
-import type { AsyncFn, DurationLike } from "@alepha/core";
+import { type AsyncFn, type DurationLike, OPTIONS } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 
 const KEY = "LOCK";
@@ -36,7 +36,7 @@ export interface LockDescriptorOptions<TFunc extends AsyncFn> {
 
 export interface LockDescriptor<TFunc extends AsyncFn> {
 	[KIND]: typeof KEY;
-	options: LockDescriptorOptions<TFunc>;
+	[OPTIONS]: LockDescriptorOptions<TFunc>;
 
 	/**
 	 * Apply the lock.
@@ -65,7 +65,7 @@ export const $lock = <TFunc extends AsyncFn>(
 	};
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 
 	return $;
 };

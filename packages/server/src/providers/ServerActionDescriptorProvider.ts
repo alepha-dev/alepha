@@ -7,6 +7,7 @@ import {
 	type Static,
 	TypeGuard,
 	t,
+	OPTIONS,
 } from "@alepha/core";
 import {
 	type Permission,
@@ -83,13 +84,13 @@ export class ServerActionDescriptorProvider {
 	public registerRemote(value: RemoteDescriptor, key: string) {
 		this.remotes.push({
 			url:
-				typeof value.options.url === "string"
-					? value.options.url
-					: value.options.url(),
-			name: value.options.name ?? key,
-			services: Array.isArray(value.options.services)
-				? value.options.services
-				: [value.options.services],
+				typeof value[OPTIONS].url === "string"
+					? value[OPTIONS].url
+					: value[OPTIONS].url(),
+			name: value[OPTIONS].name ?? key,
+			services: Array.isArray(value[OPTIONS].services)
+				? value[OPTIONS].services
+				: [value[OPTIONS].services],
 		});
 	}
 
@@ -99,7 +100,7 @@ export class ServerActionDescriptorProvider {
 		instance: any,
 		prefix = this.env.SERVER_API_PREFIX,
 	) {
-		const options = value.options as RouteDescriptorOptions;
+		const options = value[OPTIONS] as RouteDescriptorOptions;
 		const path = this.helper.path(options, instance, key, prefix);
 
 		if (options.disabled) {
@@ -107,7 +108,7 @@ export class ServerActionDescriptorProvider {
 			return;
 		}
 
-		const handler = value.options.handler;
+		const handler = value[OPTIONS].handler;
 		if (!handler) {
 			this.registerActionApi(value, instance, key);
 			return;
@@ -217,11 +218,11 @@ export class ServerActionDescriptorProvider {
 			const { value, instance: parentInstance, key: parentKey } = it;
 
 			// find controller
-			if (value.options.use === routeDescriptor && value.options.handler) {
+			if (value[OPTIONS].use === routeDescriptor && value[OPTIONS].handler) {
 				const localFunction = this.createLocalFunction(
 					value,
 					this.helper.permission(
-						value.options,
+						value[OPTIONS],
 						instance,
 						key,
 						this.env.SERVER_API_PREFIX,
@@ -242,7 +243,7 @@ export class ServerActionDescriptorProvider {
 				};
 
 				$[KIND] = "ROUTE";
-				$.options = routeDescriptor.options;
+				$.options = routeDescriptor[OPTIONS];
 
 				$.fetch = (
 					config: Partial<ClientRequestEntry> = {},
@@ -264,7 +265,7 @@ export class ServerActionDescriptorProvider {
 				// Fetcher is shared with BrowserActionDescriptorProvider, both make http calls with 'fetch()'
 				const remoteFunction = this.client.createFetchFunction(
 					this.helper.link(
-						routeDescriptor.options,
+						routeDescriptor[OPTIONS],
 						instance,
 						key,
 						this.env.SERVER_API_PREFIX,
@@ -280,7 +281,7 @@ export class ServerActionDescriptorProvider {
 				) => remoteFunction(config, opts);
 
 				$[KIND] = "ROUTE";
-				$.options = routeDescriptor.options;
+				$.options = routeDescriptor[OPTIONS];
 				$.fetch = (
 					config: Partial<ClientRequestEntry> = {},
 					opts: ClientRequestOptions = {},
@@ -323,7 +324,7 @@ export class ServerActionDescriptorProvider {
 
 			// TODO: hook - "local:onRequest" ?
 
-			const handler = value.options.handler;
+			const handler = value[OPTIONS].handler;
 			if (!handler) {
 				throw new Error("No handler found for the route");
 			}
@@ -331,14 +332,14 @@ export class ServerActionDescriptorProvider {
 			const user = this.getUserFromLocalFunctionContext(
 				options,
 				permission,
-				value.options.security !== false,
+				value[OPTIONS].security !== false,
 			);
 
 			const serverActionRequest: Partial<ServerRequest> = {
 				...request,
 				...options,
-				method: value.options.method ?? "GET",
-				url: new URL(`http://localhost${value.options.path ?? ""}`),
+				method: value[OPTIONS].method ?? "GET",
+				url: new URL(`http://localhost${value[OPTIONS].path ?? ""}`),
 				body: config.body,
 				params: config.params ?? {},
 				query: config.query ?? {},
@@ -353,7 +354,7 @@ export class ServerActionDescriptorProvider {
 			};
 
 			this.routerProvider.validateRequest(
-				value.options,
+				value[OPTIONS],
 				serverActionRequest as ServerRequest,
 			);
 
@@ -362,12 +363,12 @@ export class ServerActionDescriptorProvider {
 				return;
 			}
 
-			if (TypeGuard.IsVoid(value.options.schema?.response)) {
+			if (TypeGuard.IsVoid(value[OPTIONS].schema?.response)) {
 				return;
 			}
 
-			return value.options.schema?.response
-				? this.alepha.parse(value.options.schema.response, response)
+			return value[OPTIONS].schema?.response
+				? this.alepha.parse(value[OPTIONS].schema.response, response)
 				: response;
 		};
 	}

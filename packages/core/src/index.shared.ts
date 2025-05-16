@@ -9,7 +9,6 @@ export * from "./descriptors/$hook.ts";
 export * from "./descriptors/$inject.ts";
 export * from "./descriptors/$interval.ts";
 export * from "./descriptors/$logger.ts";
-export * from "./descriptors/$module.ts";
 export * from "./descriptors/$retry.ts";
 
 export * from "./errors/AppNotStartedError.ts";

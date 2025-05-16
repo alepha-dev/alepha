@@ -1,4 +1,4 @@
-import type { DurationLike } from "@alepha/core";
+import { type DurationLike, OPTIONS } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { CacheProvider } from "../providers/CacheProvider.ts";
 
@@ -55,7 +55,7 @@ export interface CacheDescriptor<
 	TParameter extends any[] = any[],
 > {
 	[KIND]: typeof KEY;
-	options: CacheDescriptorOptions<TReturn, TParameter>;
+	[OPTIONS]: CacheDescriptorOptions<TReturn, TParameter>;
 
 	/**
 	 * Cache handler.
@@ -110,7 +110,7 @@ export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
 	};
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 
 	$.key = (): string => {
 		throw new NotImplementedError(KEY);

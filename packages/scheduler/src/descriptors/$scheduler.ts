@@ -1,4 +1,4 @@
-import type { Async, DurationLike } from "@alepha/core";
+import { type Async, type DurationLike, OPTIONS } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 
 const KEY = "SCHEDULER";
@@ -38,7 +38,7 @@ export type SchedulerDescriptorOptions = {
 
 export interface SchedulerDescriptor {
 	[KIND]: typeof KEY;
-	options: SchedulerDescriptorOptions;
+	[OPTIONS]: SchedulerDescriptorOptions;
 	(): Promise<void>;
 }
 
@@ -57,7 +57,7 @@ export const $scheduler = (
 	};
 
 	$[KIND] = KEY;
-	$.options = options;
+	$[OPTIONS] = options;
 
 	return $;
 };

@@ -1,4 +1,4 @@
-import type { Interval, Static } from "@alepha/core";
+import { type Interval, OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -34,27 +34,6 @@ export class SchedulerDescriptorProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly schedulers: Scheduler[] = [];
-
-	// protected readonly new = $hook({
-	// 	name: "new",
-	// 	handler: ({ instance, key, value }) => {
-	// 		if (isScheduler(value)) {
-	// 			const name =
-	// 				value.options.name ?? `${instance.constructor.name}.${key}`;
-	//
-	// 			const $: SchedulerDescriptor = async () => {
-	// 				await this.schedulers
-	// 					.find((scheduler) => scheduler.name === name)
-	// 					?.trigger();
-	// 			};
-	//
-	// 			$[KIND] = value[KIND];
-	// 			$.options = value.options;
-	//
-	// 			instance[key] = $;
-	// 		}
-	// 	},
-	// });
 
 	protected readonly configure = $hook({
 		name: "configure",
@@ -106,7 +85,7 @@ export class SchedulerDescriptorProvider {
 	protected processSchedulerDescriptors() {
 		const descriptors = this.alepha.getDescriptorValues($scheduler);
 		for (const { value, instance, key } of descriptors) {
-			const scheduler = this.createScheduler(value.options, instance, key);
+			const scheduler = this.createScheduler(value[OPTIONS], instance, key);
 
 			this.schedulers.push(scheduler);
 
@@ -115,7 +94,7 @@ export class SchedulerDescriptorProvider {
 			};
 
 			$[KIND] = value[KIND];
-			$.options = value.options;
+			$[OPTIONS] = value[OPTIONS];
 
 			instance[key] = $;
 		}

@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha, OPTIONS } from "@alepha/core";
 import {
 	type ServerHandler,
 	type ServerRequest,
@@ -16,11 +16,11 @@ export class ServerProxyProvider {
 		handler: async () => {
 			const proxies = this.alepha.getDescriptorValues($proxy);
 			for (const { value } of proxies) {
-				if (value.options.disabled) {
+				if (value[OPTIONS].disabled) {
 					continue;
 				}
 
-				await this.proxy(value.options);
+				await this.proxy(value[OPTIONS]);
 			}
 		},
 	});

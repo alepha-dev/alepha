@@ -1,4 +1,4 @@
-import type { Static } from "@alepha/core";
+import { OPTIONS, type Static } from "@alepha/core";
 import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
 import type { TopicDescriptor, TopicMessageSchema } from "./$topic.ts";
 
@@ -29,7 +29,7 @@ export interface SubscriberDescriptor<
 	T extends TopicMessageSchema = TopicMessageSchema,
 > {
 	[KIND]: typeof KEY;
-	options: SubscriberDescriptorOptions<T>;
+	[OPTIONS]: SubscriberDescriptorOptions<T>;
 
 	/**
 	 *
@@ -49,7 +49,7 @@ export const $subscriber = <T extends TopicMessageSchema>(
 	__descriptor(KEY);
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		topic: () => {
 			throw new NotImplementedError(KEY);
 		},

@@ -1,4 +1,4 @@
-import type { Async, Static, TSchema } from "@alepha/core";
+import { type Async, OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { FC } from "react";
 import type { RouterHookApi } from "../hooks/RouterHookApi.ts";
@@ -31,15 +31,13 @@ export interface PageDescriptorOptions<
 
 	lazy?: () => Promise<{ default: FC<TProps & TPropsParent> }>;
 
-	children?: Array<{ options: PageDescriptorOptions }>;
+	children?: Array<{ [OPTIONS]: PageDescriptorOptions }>;
 
-	parent?: { options: PageDescriptorOptions<any, TPropsParent> };
+	parent?: { [OPTIONS]: PageDescriptorOptions<any, TPropsParent> };
 
 	can?: () => boolean;
 
 	head?: Head | ((props: TProps, previous?: Head) => Head);
-
-	notFoundHandler?: FC<{ url: string }>;
 
 	errorHandler?: FC<{ error: Error; url: string }>;
 }
@@ -50,6 +48,8 @@ export interface PageDescriptor<
 	TPropsParent extends object = TPropsParentDefault,
 > {
 	[KIND]: typeof KEY;
+	[OPTIONS]: PageDescriptorOptions<TConfig, TProps, TPropsParent>;
+
 	render: (options?: {
 		params?: Record<string, string>;
 		query?: Record<string, string>;
@@ -59,7 +59,6 @@ export interface PageDescriptor<
 		href: string;
 		onClick: () => void;
 	};
-	options: PageDescriptorOptions<TConfig, TProps, TPropsParent>;
 	can: () => boolean;
 }
 
@@ -74,22 +73,22 @@ export const $page = <
 
 	if (options.children) {
 		for (const child of options.children) {
-			child.options.parent = {
-				options: options as PageDescriptorOptions<any, any, any>,
+			child[OPTIONS].parent = {
+				[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
 			};
 		}
 	}
 
 	if (options.parent) {
-		options.parent.options.children ??= [];
-		options.parent.options.children.push({
-			options: options as PageDescriptorOptions<any, any, any>,
+		options.parent[OPTIONS].children ??= [];
+		options.parent[OPTIONS].children.push({
+			[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
 		});
 	}
 
 	return {
 		[KIND]: KEY,
-		options,
+		[OPTIONS]: options,
 		render: () => {
 			throw new NotImplementedError(KEY);
 		},
