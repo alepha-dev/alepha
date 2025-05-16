@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-proxy",
-	"version": "0.6.5",
+	"version": "0.6.6",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -10,8 +10,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.5",
-		"@alepha/server": "0.6.5"
+		"@alepha/core": "0.6.6",
+		"@alepha/server": "0.6.6"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",
