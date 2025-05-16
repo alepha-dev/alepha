@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/react-auth",
-	"version": "0.6.6",
+	"version": "0.6.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,11 +11,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.6",
-		"@alepha/react": "0.6.6",
-		"@alepha/security": "0.6.6",
-		"@alepha/server": "0.6.6",
-		"@alepha/server-cookies": "0.6.6",
+		"@alepha/core": "0.6.7",
+		"@alepha/react": "0.6.7",
+		"@alepha/security": "0.6.7",
+		"@alepha/server": "0.6.7",
+		"@alepha/server-cookies": "0.6.7",
 		"openid-client": "^6.5.0"
 	},
 	"devDependencies": {

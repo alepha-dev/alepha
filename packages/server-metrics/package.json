@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-metrics",
-	"version": "0.6.6",
+	"version": "0.6.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -10,7 +10,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/server": "0.6.6",
+		"@alepha/server": "0.6.7",
 		"prom-client": "^15.1.3"
 	},
 	"devDependencies": {

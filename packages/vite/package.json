@@ -1,12 +1,12 @@
 {
 	"name": "@alepha/vite",
-	"version": "0.6.6",
+	"version": "0.6.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"dependencies": {
-		"@alepha/core": "0.6.6",
+		"@alepha/core": "0.6.7",
 		"@vitejs/plugin-react": "^4.4.1",
 		"rollup": "^4.40.2",
 		"rollup-plugin-gzip": "^4.0.1"

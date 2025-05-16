@@ -1,31 +1,31 @@
 {
 	"name": "alepha",
-	"version": "0.6.6",
+	"version": "0.6.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./core.js",
 	"types": "./core.d.ts",
 	"dependencies": {
-		"@alepha/cache": "0.6.6",
-		"@alepha/core": "0.6.6",
-		"@alepha/datetime": "0.6.6",
-		"@alepha/lock": "0.6.6",
-		"@alepha/postgres": "0.6.6",
-		"@alepha/queue": "0.6.6",
-		"@alepha/react": "0.6.6",
-		"@alepha/react-auth": "0.6.6",
-		"@alepha/redis": "0.6.6",
-		"@alepha/scheduler": "0.6.6",
-		"@alepha/security": "0.6.6",
-		"@alepha/server": "0.6.6",
-		"@alepha/server-cookies": "0.6.6",
-		"@alepha/server-metrics": "0.6.6",
-		"@alepha/server-proxy": "0.6.6",
-		"@alepha/server-static": "0.6.6",
-		"@alepha/server-swagger": "0.6.6",
-		"@alepha/testing": "0.6.6",
-		"@alepha/topic": "0.6.6",
-		"@alepha/vite": "0.6.6"
+		"@alepha/cache": "0.6.7",
+		"@alepha/core": "0.6.7",
+		"@alepha/datetime": "0.6.7",
+		"@alepha/lock": "0.6.7",
+		"@alepha/postgres": "0.6.7",
+		"@alepha/queue": "0.6.7",
+		"@alepha/react": "0.6.7",
+		"@alepha/react-auth": "0.6.7",
+		"@alepha/redis": "0.6.7",
+		"@alepha/scheduler": "0.6.7",
+		"@alepha/security": "0.6.7",
+		"@alepha/server": "0.6.7",
+		"@alepha/server-cookies": "0.6.7",
+		"@alepha/server-metrics": "0.6.7",
+		"@alepha/server-proxy": "0.6.7",
+		"@alepha/server-static": "0.6.7",
+		"@alepha/server-swagger": "0.6.7",
+		"@alepha/testing": "0.6.7",
+		"@alepha/topic": "0.6.7",
+		"@alepha/vite": "0.6.7"
 	},
 	"peerDependencies": {
 		"@types/react": "^19",
@@ -51,7 +51,13 @@
 	"scripts": {
 		"build": "pkgroll --sourcemap --dist ./"
 	},
-	"files": ["src", "**/*.js", "**/*.cjs", "**/*.d.ts", "**/*.map"],
+	"files": [
+		"src",
+		"**/*.js",
+		"**/*.cjs",
+		"**/*.d.ts",
+		"**/*.map"
+	],
 	"exports": {
 		".": {
 			"import": "./core.js",

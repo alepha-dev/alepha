@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/router",
-	"version": "0.6.6",
+	"version": "0.6.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",

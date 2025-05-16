@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/security",
-	"version": "0.6.6",
+	"version": "0.6.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,7 +11,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.6",
+		"@alepha/core": "0.6.7",
 		"jose": "^6.0.11"
 	},
 	"devDependencies": {
