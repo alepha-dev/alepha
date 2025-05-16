@@ -48,6 +48,7 @@
 	"scripts": {
 		"build": "pkgroll --sourcemap --dist ./"
 	},
+	"files": ["src", "**/*.js", "**/*.cjs", "**/*.d.ts", "**/*.map"],
 	"exports": {
 		".": {
 			"import": "./core.js",
