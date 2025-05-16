@@ -3,12 +3,11 @@ import {
 	$hook,
 	$inject,
 	Alepha,
-	type Static,
+	isTypeFile,
+	t,
 	type TObject,
 	type TSchema,
 	TypeGuard,
-	isTypeFile,
-	t,
 } from "@alepha/core";
 import { SecurityModule } from "@alepha/security";
 import {
@@ -21,26 +20,12 @@ import type { OpenAPIV3 } from "openapi-types";
 import {
 	$swagger,
 	type SwaggerDescriptorOptions,
-} from "../descriptors/$swagger.ts";
-
-const envSchema = t.object({
-	SERVER_OPENAPI_PREFIX: t.string({ default: "/docs" }),
-	SERVER_OPENAPI_EXCLUDE_TAGS: t.string({
-		description:
-			"Comma-separated list of tags to exclude from the OpenAPI document.",
-		default: "",
-	}),
-});
-
-declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
-}
+} from "./descriptors/$swagger.ts";
 
 export class ServerSwaggerProvider {
 	protected readonly serverActionProvider = $inject(
 		ServerActionDescriptorProvider,
 	);
-	protected readonly env = $inject(envSchema);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly alepha = $inject(Alepha);
@@ -64,10 +49,12 @@ export class ServerSwaggerProvider {
 
 			doc.instance[doc.key].json = () => json;
 
-			await this.configureSwaggerApi(json);
+			const prefix = options.prefix ?? "/docs";
+
+			await this.configureSwaggerApi(prefix, json);
 
 			if (options.ui !== false) {
-				await this.configureSwaggerUi(options);
+				await this.configureSwaggerUi(prefix, options);
 			}
 		},
 	});
@@ -91,8 +78,7 @@ export class ServerSwaggerProvider {
 			};
 		}
 
-		const excludeTags = this.env.SERVER_OPENAPI_EXCLUDE_TAGS.split(",");
-
+		const excludeTags = doc.excludeTags ?? [];
 		const schemas: Record<string, any> = {};
 		const schema = (source: TSchema) => {
 			if (source.title) {
@@ -236,13 +222,27 @@ export class ServerSwaggerProvider {
 			};
 		}
 
-		if (TypeGuard.IsObject(schema) || isTypeFile(schema)) {
+		if (TypeGuard.IsObject(schema)) {
 			return {
 				schema,
 				status: 200,
-				type: TypeGuard.IsObject(schema)
-					? "application/json"
-					: "application/octet-stream",
+				type: "application/json",
+			};
+		}
+
+		if (TypeGuard.IsString(schema)) {
+			return {
+				schema,
+				status: 200,
+				type: "text/plain",
+			};
+		}
+
+		if (isTypeFile(schema)) {
+			return {
+				schema,
+				status: 200,
+				type: "application/octet-stream",
 			};
 		}
 
@@ -258,10 +258,13 @@ export class ServerSwaggerProvider {
 		}
 	}
 
-	protected async configureSwaggerApi(json: OpenAPIV3.Document) {
+	protected async configureSwaggerApi(
+		prefix: string,
+		json: OpenAPIV3.Document,
+	) {
 		await this.serverRouterProvider.route({
 			method: "GET",
-			path: `${this.env.SERVER_OPENAPI_PREFIX}/json`,
+			path: `${prefix}/json`,
 			schema: {
 				response: t.json(),
 			},
@@ -269,9 +272,11 @@ export class ServerSwaggerProvider {
 		});
 	}
 
-	protected async configureSwaggerUi(options: SwaggerDescriptorOptions) {
+	protected async configureSwaggerUi(
+		prefix: string,
+		options: SwaggerDescriptorOptions,
+	) {
 		const ui = typeof options.ui === "object" ? options.ui : {};
-		const prefix = options.prefix ?? this.env.SERVER_OPENAPI_PREFIX;
 		const initializer = `
 window.onload = function() {
 	window.ui = SwaggerUIBundle({
@@ -298,7 +303,7 @@ window.onload = function() {
 };
 		`.trim();
 
-		const root = join(import.meta.filename, "../../../assets/swagger-ui");
+		const root = join(import.meta.filename, "../../assets/swagger-ui");
 
 		await this.serverStaticProvider.serve({
 			path: prefix,

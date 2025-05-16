@@ -14,6 +14,8 @@ export interface SwaggerDescriptorOptions {
 	 */
 	disabled?: boolean;
 
+	excludeTags?: string[];
+
 	ui?: boolean | SwaggerUiOptions;
 
 	rewrite?: (doc: OpenAPIV3.Document) => void;

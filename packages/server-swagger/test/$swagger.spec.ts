@@ -27,6 +27,15 @@ class App {
 		},
 	});
 
+	text = $action({
+		schema: {
+			response: t.string(),
+		},
+		handler: async () => {
+			return "Hello world";
+		},
+	});
+
 	hello = $action({
 		path: "/hello/:name",
 		name: "hello",
@@ -135,6 +144,25 @@ test("$swagger", () => {
 							},
 						},
 					},
+				},
+			},
+			"/api/text": {
+				get: {
+					operationId: "text",
+					responses: {
+						"200": {
+							content: {
+								"text/plain": {
+									schema: {
+										maxLength: 255,
+										type: "string",
+									},
+								},
+							},
+							description: "",
+						},
+					},
+					tags: ["app"],
 				},
 			},
 		},
