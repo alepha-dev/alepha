@@ -1,11 +1,14 @@
 {
 	"name": "@alepha/cli",
-	"version": "0.6.4",
+	"version": "0.6.5",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"files": ["dist", "src"],
+	"files": [
+		"dist",
+		"src"
+	],
 	"dependencies": {
 		"@sinclair/typebox": "^0.34.33",
 		"dotenv": "^16.5.0",

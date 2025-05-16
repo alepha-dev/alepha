@@ -1,17 +1,20 @@
 {
 	"name": "@alepha/react",
-	"version": "0.6.4",
+	"version": "0.6.5",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"browser": "./src/index.browser.ts",
-	"files": ["dist", "src"],
+	"files": [
+		"dist",
+		"src"
+	],
 	"dependencies": {
-		"@alepha/core": "0.6.4",
-		"@alepha/router": "0.6.4",
-		"@alepha/server": "0.6.4",
-		"@alepha/server-static": "0.6.4",
+		"@alepha/core": "0.6.5",
+		"@alepha/router": "0.6.5",
+		"@alepha/server": "0.6.5",
+		"@alepha/server-static": "0.6.5",
 		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {
