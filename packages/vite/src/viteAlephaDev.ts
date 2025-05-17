@@ -100,6 +100,10 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 				console.clear();
 			}
 
+			console.log(
+				"-----------------------------------------------------------",
+			);
+
 			const imported = await server.ssrLoadModule(fileUrl);
 
 			state.app = undefined;
