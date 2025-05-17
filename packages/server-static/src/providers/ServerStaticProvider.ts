@@ -53,7 +53,7 @@ export class ServerStaticProvider {
 			root = join(process.cwd(), root);
 		}
 
-		this.log.info("Serve static files", { prefix, root });
+		this.log.debug("Serve static files", { prefix, root });
 		const files = await this.getAllFiles(root, options.ignoreDotEnvFiles);
 
 		const routes = await Promise.all(
