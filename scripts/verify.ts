@@ -13,5 +13,6 @@ export const verify = $command({
 		await run("yarn test");
 		await run("yarn alepha build");
 		await run("yarn alepha clean");
+		await run("yarn");
 	},
 })
