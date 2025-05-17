@@ -1,6 +1,6 @@
 import { $command } from "@alepha/cli";
 import { join } from "node:path";
-import { copyFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 export const build = $command({
@@ -22,13 +22,19 @@ async function improveTypingsIndex() {
 	const packages = await readdir(root);
 	for (const name of packages) {
 		const dist = join(root, name, "dist/index.d.ts");
-		const alephaIndex =
+		const index =
 			name.includes("-")
 				? join(root, "alepha", `${name.replace("-", "/")}.d.ts`)
 				: join(root, "alepha", `${name}.d.ts`);
 
-		if (existsSync(dist) && existsSync(alephaIndex)) {
-			await copyFile(dist, alephaIndex);
+		if (existsSync(dist) && existsSync(index)) {
+			let content = await readFile(dist, "utf-8");
+			// replace 'declare module "@alepha/core" { ... }'
+			// with 'declare module "alepha" { ... }'
+			// in order to have Env typings when working with alepha
+			content = content.replace("module \"@alepha/core\"", "module \"alepha\"");
+			content = content.replace("module \"@alepha/", "module \"alepha/");
+			await writeFile(index, content);
 		}
 	}
 }
