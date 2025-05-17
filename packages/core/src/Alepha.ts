@@ -267,7 +267,7 @@ export class Alepha {
 
 		await this.als.configure();
 
-		await this.emit("configure", this);
+		await this.emit("configure", this, { log: true });
 
 		this.configured = true;
 	}
@@ -298,11 +298,11 @@ export class Alepha {
 
 		await this.configure();
 
-		await this.emit("start", this);
+		await this.emit("start", this, { log: true });
 
 		this.started = true;
 
-		await this.emit("ready", this);
+		await this.emit("ready", this, { log: true });
 
 		this.log.info(`App is now ready [${Date.now() - now}ms]`);
 
@@ -327,7 +327,7 @@ export class Alepha {
 		}
 
 		this.log.info("Stopping App...");
-		await this.emit("stop", this, { reverse: true });
+		await this.emit("stop", this, { reverse: true, log: true });
 		this.log.info("App is now off");
 
 		this.started = false;
@@ -556,7 +556,7 @@ export class Alepha {
 
 		for (const hook of events) {
 			const name = hook.caller?.name ?? "unknown";
-			if (options.log !== false) {
+			if (options.log) {
 				ctx.now2 = Date.now();
 				this.log.trace(`${func}(${name}) ...`);
 			}

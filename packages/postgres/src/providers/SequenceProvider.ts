@@ -10,7 +10,7 @@ export class SequenceProvider {
 
 	protected readonly start = $hook({
 		name: "start",
-		//	priority: "last",
+		priority: "last",
 		handler: async (app) => {
 			const sequences = app.getDescriptorValues($sequence);
 			for (const { value, instance, key } of sequences) {

@@ -11,6 +11,7 @@ export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
 export * from "./constants/PG_SCHEMA.ts";
 export * from "./constants/PG_SYMBOLS.ts";
+export * from "./descriptors/$entity.ts";
 export * from "./descriptors/$repository.ts";
 export * from "./descriptors/$sequence.ts";
 export * from "./descriptors/$transaction.ts";

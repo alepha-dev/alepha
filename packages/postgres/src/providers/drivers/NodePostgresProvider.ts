@@ -96,8 +96,10 @@ export class NodePostgresProvider implements PostgresProvider {
 		handler: async () => {
 			await this.connect();
 
-			// never migrate in serverless mode
-			if (!this.alepha.isServerless()) {
+			// never migrate in serverless mode (vercel, netlify, ...)
+			const provider = this.alepha.isServerless();
+			// except for vite
+			if (!provider || provider === "vite") {
 				await this.migrate();
 			}
 		},
@@ -158,7 +160,7 @@ export class NodePostgresProvider implements PostgresProvider {
 	 */
 	protected migrate = $lock({
 		handler: async () => {
-			const schema = this.env.POSTGRES_SCHEMA;
+			const schema = this.env.POSTGRES_SCHEMA ?? "public";
 
 			if (this.env.POSTGRES_SYNCHRONIZE) {
 				await this.kit.synchronize(this, schema);
