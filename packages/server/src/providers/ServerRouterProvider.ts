@@ -22,7 +22,7 @@ import { ValidationError } from "../errors/ValidationError.ts";
 import { isFileLike } from "./features/ServerMultipartProvider.ts";
 
 const envSchema = t.object({
-	SERVER_USE_ALS: t.boolean({
+	SERVER_ALS_ENABLED: t.boolean({
 		default: true,
 		description:
 			"Enable ALS (Async Local Storage) for request context. Disable for performance.",
@@ -62,7 +62,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		return this.push({
 			path,
 			handler: (request) =>
-				this.handle(route, request, responseType, this.env.SERVER_USE_ALS),
+				this.handle(route, request, responseType, this.env.SERVER_ALS_ENABLED),
 		});
 	}
 
