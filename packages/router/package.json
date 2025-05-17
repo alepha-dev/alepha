@@ -15,13 +15,5 @@
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist --sourcemap"
-	},
-	"module": "./src/index.ts",
-	"exports": {
-		".": {
-			"import": "./src/index.ts",
-			"require": "./src/index.ts",
-			"types": "./src/index.ts"
-		}
 	}
 }

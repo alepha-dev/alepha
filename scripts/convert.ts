@@ -49,18 +49,11 @@ async function main(to?: string) {
 			const action = to ?? (pkg.exports ? "ts" : "js");
 			if (action === "ts") {
 				pkg.main = "./src/index.ts";
-				pkg.module = "./src/index.ts";
 				pkg.types = "./src/index.ts";
-				pkg.exports = {
-					".": {
-						import: "./src/index.ts",
-						require: "./src/index.ts",
-						types: "./src/index.ts",
-					},
-				};
+				pkg.module = undefined;
+				pkg.exports = undefined;
 				if (pkg.browser) {
 					pkg.browser = "./src/index.browser.ts";
-					pkg.exports["."].browser = "./src/index.browser.ts";
 				}
 			} else {
 				pkg.main = "./dist/index.js";
@@ -68,9 +61,9 @@ async function main(to?: string) {
 				pkg.types = "./dist/index.d.ts";
 				pkg.exports = {
 					".": {
+						types: "./dist/index.d.ts",
 						import: "./dist/index.js",
 						require: "./dist/index.cjs",
-						types: "./dist/index.d.ts",
 					},
 				};
 				if (pkg.browser) {

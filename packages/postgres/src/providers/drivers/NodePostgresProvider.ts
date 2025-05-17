@@ -160,10 +160,10 @@ export class NodePostgresProvider implements PostgresProvider {
 	 */
 	protected migrate = $lock({
 		handler: async () => {
-			const schema = this.env.POSTGRES_SCHEMA ?? "public";
+			const schema = this.env.POSTGRES_SCHEMA;
 
 			if (this.env.POSTGRES_SYNCHRONIZE) {
-				await this.kit.synchronize(this, schema);
+				await this.kit.synchronize(this, schema ?? "public");
 				return;
 			}
 
