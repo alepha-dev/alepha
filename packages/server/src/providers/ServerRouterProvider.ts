@@ -12,6 +12,7 @@ import {
 	type TSchema,
 	TypeGuard,
 	isTypeFile,
+	t,
 } from "@alepha/core";
 import { type Route, RouterProvider } from "@alepha/router";
 import type { UserAccountToken } from "@alepha/security";
@@ -20,9 +21,22 @@ import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { isFileLike } from "./features/ServerMultipartProvider.ts";
 
+const envSchema = t.object({
+	SERVER_USE_ALS: t.boolean({
+		default: true,
+		description:
+			"Enable ALS (Async Local Storage) for request context. Disable for performance.",
+	}),
+});
+
+declare module "@alepha/core" {
+	interface Env extends Partial<Static<typeof envSchema>> {}
+}
+
 // Router used in Server (action, proxy, ssr, etc...)
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
 	protected readonly alepha = $inject(Alepha);
+	protected readonly env = $inject(envSchema);
 
 	public createRequestId() {
 		return Math.random().toString(36).substring(2, 15);
@@ -47,7 +61,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		return this.push({
 			path,
-			handler: (request) => this.handle(route, request, responseType, false),
+			handler: (request) =>
+				this.handle(route, request, responseType, this.env.SERVER_USE_ALS),
 		});
 	}
 
@@ -55,7 +70,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		route: ServerRoute,
 		rawRequest: ServerRawRequest,
 		responseType: ResponseType,
-		als = false,
+		withAls: boolean,
 	): Promise<ServerResponse> {
 		// create request
 		const request = {
@@ -71,8 +86,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			},
 		} as ServerRequest;
 
-		if (!als) {
-			return this.processRequest(request, route, responseType);
+		if (!withAls) {
+			return this.processRequest(request, route, responseType, withAls);
 		}
 
 		const requestId = this.createRequestId();
@@ -81,7 +96,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			{
 				context: requestId, // for logging
 			},
-			() => this.processRequest(request, route, responseType, true),
+			() => this.processRequest(request, route, responseType, withAls),
 		);
 	}
 
@@ -89,9 +104,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		request: ServerRequest,
 		route: ServerRoute,
 		responseType: ResponseType,
-		als = false,
+		withAls: boolean,
 	) {
-		await this.doRequestHandler(route, request, responseType, als).catch(
+		await this.doRequestHandler(route, request, responseType, withAls).catch(
 			(error) => this.errorHandler(route, request, error as Error),
 		);
 
@@ -132,7 +147,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		route: ServerRoute,
 		request: ServerRequest,
 		responseType: ResponseType,
-		als = false,
+		withAls: boolean,
 	) {
 		// there are some built-in hooks that are called before the request is handled
 		// - ServerBodyParserProvider (parse body)
@@ -154,7 +169,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		this.validateRequest(route, request);
 
 		// request is ready to be used
-		if (als) {
+		if (withAls) {
 			this.alepha.als.set<ServerRequest>("request", request as ServerRequest);
 		}
 
