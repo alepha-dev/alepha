@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/react",
-	"version": "0.6.7",
+	"version": "0.6.8",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,10 +11,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.7",
-		"@alepha/router": "0.6.7",
-		"@alepha/server": "0.6.7",
-		"@alepha/server-static": "0.6.7",
+		"@alepha/core": "0.6.8",
+		"@alepha/router": "0.6.8",
+		"@alepha/server": "0.6.8",
+		"@alepha/server-static": "0.6.8",
 		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {

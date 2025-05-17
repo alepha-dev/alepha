@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/queue",
-	"version": "0.6.7",
+	"version": "0.6.8",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,9 +11,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.7",
-		"@alepha/datetime": "0.6.7",
-		"@alepha/redis": "0.6.7"
+		"@alepha/core": "0.6.8",
+		"@alepha/datetime": "0.6.8",
+		"@alepha/redis": "0.6.8"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",
