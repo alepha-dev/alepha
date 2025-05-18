@@ -16,12 +16,14 @@ import type {
 } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
+import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
 import type {
 	RequestConfigSchema,
 	ServerHandler,
 	ServerRequest,
 	ServerRequestConfigEntry,
 } from "../providers/ServerRouterProvider.ts";
+import { isFileLike } from "../providers/features/ServerMultipartProvider.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 const envSchema = t.object({
@@ -33,6 +35,7 @@ const envSchema = t.object({
 export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly env = $inject(envSchema);
+	protected readonly helper = $inject(RouteDescriptorHelper);
 
 	public readonly URL_LINKS = "/_links";
 	public readonly cache = $cache<any>();
@@ -55,27 +58,28 @@ export class HttpClient {
 	) {
 		return (
 			config: Partial<ClientRequestEntry> = {},
-			fetchOptions: ClientRequestOptions = {},
+			request: ClientRequestOptions = {},
 		) => {
 			const host =
 				typeof options?.host === "function" ? options.host() : options?.host;
+
 			return this.request({
 				config,
-				fetch: fetchOptions,
+				request,
 				link,
-				host: host ?? this.host,
+				host: host || this.host,
 			});
 		};
 	}
 
 	public async request(args: {
-		link: HttpClientLink;
-		fetch?: ClientRequestOptions;
 		config?: ServerRequestConfigEntry;
+		link: HttpClientLink;
+		request?: ClientRequestOptions;
 		host?: string;
 	}) {
 		const route = args.link;
-		const options = args.fetch ?? {};
+		const options = args.request ?? {};
 		const config = args.config ?? {};
 		const host = args.host ?? "";
 
@@ -151,10 +155,14 @@ export class HttpClient {
 			typeof init.headers === "object" &&
 			"content-type" in init.headers &&
 			init.headers["content-type"] === "multipart/form-data";
-		if (link.contentType === "multipart/form-data" || hasHeader) {
-			if (hasHeader) {
-				// @ts-ignore
-				delete init.headers["content-type"];
+
+		if (
+			link.contentType === "multipart/form-data" ||
+			hasHeader ||
+			this.helper.isMultipart(link)
+		) {
+			if (typeof init.headers === "object" && "content-type" in init.headers) {
+				delete init.headers["content-type"]; // fetch() will fill this for us
 			}
 
 			const formData = new FormData();
@@ -166,6 +174,16 @@ export class HttpClient {
 				}
 				if (value instanceof Blob) {
 					formData.append(key, value);
+					continue;
+				}
+				if (isFileLike(value)) {
+					// FileLike must be transformed to WebFile
+					formData.append(
+						key,
+						new File([await value.arrayBuffer()], value.name, {
+							type: value.type,
+						}),
+					);
 				}
 			}
 
@@ -329,61 +347,13 @@ export class HttpClient {
 					return;
 				}
 
-				const $ = async (config: any = {}, args: ClientRequestOptions = {}) => {
-					const host: string | undefined =
-						typeof options.host === "function" ? options.host() : options.host;
-
-					const links = await this.getLinks({
-						host,
-					});
-
-					const link = links.find((a) => a.name === prop);
-
-					if (!link) {
-						const error = new UnauthorizedError(`Action ${prop} not found.`);
-
-						await this.alepha.emit("client:onError", {
-							route: link,
-							error,
-						});
-
-						throw error;
-					}
-
-					// if a handler is defined, use it (ssr)
-					if (link.handler) {
-						const request = {
-							method: link.method,
-							url: new URL(`http://localhost${link.path}`),
-							query: config.query ?? {},
-							body: config.body ?? {},
-							params: config.params ?? {},
-							headers: config.headers ?? {},
-							metadata: {},
-							raw: {},
-							reply: {
-								headers: {},
-								redirect: () => {},
-							},
-						} as Partial<ServerRequest>;
-
-						return link.handler(request as ServerRequest);
-					}
-
-					// else, make a request
-					return this.request({
-						host,
-						config,
-						link: {
-							...link,
-							schema: {
-								body: t.any(),
-								query: t.any(),
-								params: t.any(),
-								response: t.any(),
-							},
-						},
-						fetch: args,
+				const $ = async (
+					config: any = {},
+					request: ClientRequestOptions = {},
+				) => {
+					return this.follow(prop, config, {
+						...options,
+						request,
 					});
 				};
 
@@ -400,6 +370,74 @@ export class HttpClient {
 				};
 
 				return $;
+			},
+		});
+	}
+
+	public async follow(
+		name: string,
+		config: any = {},
+		options: {
+			request?: ClientRequestOptions;
+			group?: string;
+			host?: string | (() => string);
+		} = {},
+	) {
+		const request = options.request ?? {};
+		const host: string | undefined =
+			typeof options.host === "function" ? options.host() : options.host;
+
+		const links = await this.getLinks({
+			host,
+		});
+
+		const link = links.find((a) => a.name === name);
+
+		if (!link) {
+			const error = new UnauthorizedError(`Action ${name} not found.`);
+
+			await this.alepha.emit("client:onError", {
+				route: link,
+				error,
+			});
+
+			throw error;
+		}
+
+		// if a handler is defined, use it (ssr)
+		if (link.handler) {
+			const request = {
+				method: link.method,
+				url: new URL(`http://localhost${link.path}`),
+				query: config.query ?? {},
+				body: config.body ?? {},
+				params: config.params ?? {},
+				headers: config.headers ?? {},
+				metadata: {},
+				raw: {},
+				reply: {
+					headers: {},
+					redirect: () => {},
+				},
+			} as Partial<ServerRequest>;
+
+			return link.handler(request as ServerRequest);
+		}
+
+		// else, make a request
+		return this.request({
+			host,
+			config,
+			request,
+			link: {
+				...link,
+				// schema is not used in the client, just mock it
+				schema: {
+					body: t.any(),
+					query: t.any(),
+					params: t.any(),
+					response: t.any(),
+				},
 			},
 		});
 	}

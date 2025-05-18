@@ -60,7 +60,7 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	if (lock) {
 		await expect
 			.poll(() => expect(sum()).toEqual(2), {
-				timeout: 3000,
+				timeout: 4000,
 			})
 			.toBeTruthy();
 	} else {

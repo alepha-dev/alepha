@@ -330,7 +330,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		if (responseType === "json") {
 			reply.headers["content-type"] = "application/json";
 			reply.body = JSON.stringify(
-				this.alepha.parse<any>(route.schema.response, reply.body),
+				this.alepha.parse<any>(route.schema.response, reply.body, {
+					clone: false,
+				}),
 			);
 			return;
 		}

@@ -6,6 +6,7 @@ import {
 	KIND,
 	OPTIONS,
 	type Static,
+	isTypeFile,
 	t,
 } from "@alepha/core";
 import {
@@ -33,6 +34,7 @@ import {
 	type ServerRoute,
 	ServerRouterProvider,
 } from "./ServerRouterProvider.ts";
+import { isFileLike } from "./features/ServerMultipartProvider.ts";
 import { ServerProvider } from "./platforms/ServerProvider.ts";
 
 const envSchema = t.object({
@@ -316,6 +318,7 @@ export class ServerActionDescriptorProvider {
 			config: ServerRequestConfigEntry = {},
 			options: ClientRequestOptions = {},
 		): Promise<any> => {
+			const action = value[OPTIONS];
 			const request = this.alepha.als.get<ServerRequest>("request");
 			if (request) {
 				options.user ??= request?.user;
@@ -331,14 +334,14 @@ export class ServerActionDescriptorProvider {
 			const user = this.getUserFromLocalFunctionContext(
 				options,
 				permission,
-				value[OPTIONS].security !== false,
+				action.security !== false,
 			);
 
 			const serverActionRequest: Partial<ServerRequest> = {
 				...request,
 				...options,
-				method: value[OPTIONS].method ?? "GET",
-				url: new URL(`http://localhost${value[OPTIONS].path ?? ""}`),
+				method: action.method ?? "GET",
+				url: new URL(`http://localhost${action.path ?? ""}`),
 				body: config.body,
 				params: config.params ?? {},
 				query: config.query ?? {},
@@ -353,11 +356,20 @@ export class ServerActionDescriptorProvider {
 			};
 
 			this.routerProvider.validateRequest(
-				value[OPTIONS],
+				action,
 				serverActionRequest as ServerRequest,
 			);
 
-			return await handler(serverActionRequest as ServerRequest);
+			const response = await handler(serverActionRequest as ServerRequest);
+
+			if (action.schema?.response) {
+				if (isTypeFile(action.schema.response) && isFileLike(response)) {
+					return response;
+				}
+				return this.alepha.parse<any>(action.schema?.response, response);
+			}
+
+			return response;
 		};
 	}
 

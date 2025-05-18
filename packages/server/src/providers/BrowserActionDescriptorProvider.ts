@@ -41,12 +41,13 @@ export class BrowserActionDescriptorProvider {
 	}
 
 	public registerAction(value: RouteDescriptor, instance: any, key: string) {
-		const fetcher = this.client.createFetchFunction(
-			this.helper.link(value[OPTIONS], instance, key),
-			{
-				host: this.env.SERVER_API_URL,
-			},
-		);
+		const options = {
+			host: this.env.SERVER_API_URL,
+		};
+
+		const link = this.helper.link(value[OPTIONS], instance, key);
+
+		const fetcher = this.client.createFetchFunction(link, options);
 
 		const $ = (config: ClientRequestEntry, opts: ClientRequestOptions = {}) =>
 			fetcher(config, opts);
