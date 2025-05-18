@@ -175,6 +175,7 @@ export class ServerMultipartProvider {
 					name: filename,
 					type: mimeType,
 					lastModified: Date.now(),
+					filepath: tmpPath,
 					get size() {
 						return this._state.size;
 					},

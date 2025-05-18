@@ -376,6 +376,7 @@ export interface FileLike {
 	stream(): StreamLike;
 	arrayBuffer(): Promise<ArrayBuffer>;
 	text(): Promise<string>;
+	filepath?: string;
 }
 export type TFile = TUnsafe<FileLike>;
 
