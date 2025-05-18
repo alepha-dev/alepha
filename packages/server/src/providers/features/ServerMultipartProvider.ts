@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { readFile, stat, unlink } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
+import * as os from "node:os";
 import { Readable } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
@@ -155,7 +156,7 @@ export class ServerMultipartProvider {
 				_: string,
 				mimeType: string,
 			) => {
-				const tmpPath = `${randomUUID()}`;
+				const tmpPath = `${os.tmpdir()}/${randomUUID()}`;
 				const writer = createWriteStream(tmpPath);
 
 				pending.push(
@@ -180,10 +181,11 @@ export class ServerMultipartProvider {
 						return this._state.size;
 					},
 					stream() {
-						return NodeWebStream.from(createReadStream(tmpPath));
+						return createReadStream(tmpPath);
 					},
 					async arrayBuffer() {
-						return Buffer.from(await readFile(tmpPath)).buffer as ArrayBuffer;
+						const content = await readFile(tmpPath);
+						return bufferToArrayBuffer(content);
 					},
 					text: async () => {
 						return await readFile(tmpPath, "utf-8");
@@ -240,29 +242,7 @@ export const file = (
 	} = {},
 ): FileLike => {
 	if (source instanceof ReadableStream || source instanceof NodeWebStream) {
-		return {
-			name: options.name ?? "file",
-			type: options.type ?? getContentType(options.name ?? "file"),
-			size: 0,
-			lastModified: Date.now(),
-			stream: () => source,
-			arrayBuffer: async () => {
-				const reader = source.getReader();
-				const { done, value } = await reader.read();
-				if (done) {
-					throw new Error("Stream is empty");
-				}
-				return value.buffer as ArrayBuffer;
-			},
-			text: async () => {
-				const reader = source.getReader();
-				const { done, value } = await reader.read();
-				if (done) {
-					throw new Error("Stream is empty");
-				}
-				return new TextDecoder().decode(value);
-			},
-		};
+		source = Readable.from(source);
 	}
 
 	if (source instanceof Readable) {
@@ -271,20 +251,14 @@ export const file = (
 			type: options.type ?? getContentType(options.name ?? "file"),
 			size: 0,
 			lastModified: Date.now(),
-			stream: () => NodeWebStream.from(source),
+			stream: () => source,
 			arrayBuffer: async () => {
-				const chunks: Buffer[] = [];
-				for await (const chunk of source) {
-					chunks.push(chunk);
-				}
-				return Buffer.concat(chunks).buffer as ArrayBuffer;
+				const buffer = await streamToBuffer(source);
+				return bufferToArrayBuffer(buffer);
 			},
 			text: async () => {
-				const chunks: Buffer[] = [];
-				for await (const chunk of source) {
-					chunks.push(chunk);
-				}
-				return Buffer.concat(chunks).toString("utf-8");
+				const buffer = await streamToBuffer(source);
+				return buffer.toString("utf-8");
 			},
 		};
 	}
@@ -300,23 +274,41 @@ export const file = (
 		type: options.type ?? getContentType(options.name ?? name),
 		size: buffer.byteLength,
 		lastModified: Date.now(),
-		stream: () =>
-			new ReadableStream({
-				start(it) {
-					it.enqueue(buffer);
-					it.close();
-				},
-			}),
+		stream: () => bufferToStream(buffer),
 		arrayBuffer: async () => {
-			return buffer.buffer.slice(
-				buffer.byteOffset,
-				buffer.byteOffset + buffer.byteLength,
-			) as ArrayBuffer;
+			return bufferToArrayBuffer(buffer);
 		},
 		text: async () => {
 			return buffer.toString("utf-8");
 		},
 	};
+};
+
+export const bufferToStream = (buffer: Buffer): Readable => {
+	return new Readable({
+		read() {
+			this.push(buffer);
+			this.push(null);
+		},
+	});
+};
+
+export const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+	return new Promise<Buffer>((resolve, reject) => {
+		const buffer = Array<any>();
+		stream.on("data", (chunk) => buffer.push(chunk));
+		stream.on("end", () => resolve(Buffer.concat(buffer)));
+		stream.on("error", (err) =>
+			reject(new Error("Error converting stream", { cause: err })),
+		);
+	});
+};
+
+export const bufferToArrayBuffer = (buffer: Buffer): ArrayBuffer => {
+	return buffer.buffer.slice(
+		buffer.byteOffset,
+		buffer.byteOffset + buffer.byteLength,
+	) as ArrayBuffer;
 };
 
 export const isFileLike = (value: any): value is FileLike => {

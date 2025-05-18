@@ -4,10 +4,9 @@ import {
 	$logger,
 	Alepha,
 	KIND,
-	type Static,
-	TypeGuard,
-	t,
 	OPTIONS,
+	type Static,
+	t,
 } from "@alepha/core";
 import {
 	type Permission,
@@ -358,18 +357,7 @@ export class ServerActionDescriptorProvider {
 				serverActionRequest as ServerRequest,
 			);
 
-			const response = await handler(serverActionRequest as ServerRequest);
-			if (!response) {
-				return;
-			}
-
-			if (TypeGuard.IsVoid(value[OPTIONS].schema?.response)) {
-				return;
-			}
-
-			return value[OPTIONS].schema?.response
-				? this.alepha.parse(value[OPTIONS].schema.response, response)
-				: response;
+			return await handler(serverActionRequest as ServerRequest);
 		};
 	}
 
