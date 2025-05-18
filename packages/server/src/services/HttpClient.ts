@@ -112,7 +112,7 @@ export class HttpClient {
 
 		request.headers = {
 			...config.headers,
-			...request.headers,
+			...Object.fromEntries(new Headers(request.headers).entries()),
 			...headers,
 		};
 
