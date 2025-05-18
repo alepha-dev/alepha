@@ -20,7 +20,7 @@ test("$permission - can", async () => {
 
 	const user = {
 		id: "1",
-		roles: [app.user()],
+		roles: ["user"],
 	};
 
 	expect(app.world.can(user)).toEqual(false);

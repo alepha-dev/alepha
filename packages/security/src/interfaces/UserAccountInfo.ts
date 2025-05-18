@@ -1,5 +1,3 @@
-import type { Role } from "../schemas/roleSchema.ts";
-
 /**
  * Represents a User Account extracted from JWT.
  */
@@ -12,7 +10,7 @@ export interface UserAccountInfo {
 	/**
 	 * Represents the roles assigned to a user.
 	 */
-	roles?: Role[];
+	roles?: string[];
 
 	/**
 	 * User full name, if available.

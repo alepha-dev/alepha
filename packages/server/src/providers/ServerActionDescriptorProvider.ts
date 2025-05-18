@@ -420,14 +420,6 @@ export class ServerActionDescriptorProvider {
 			};
 		}
 
-		/// during testing, security is disabled by default -> we create a fake user
-		if (this.alepha.isTest()) {
-			return {
-				...this.createSystemUser(),
-				...options.user,
-			};
-		}
-
 		// here, we assume that route is not secured or security is ignored
 
 		// if route is not protected, user=undefined is fine
@@ -444,14 +436,9 @@ export class ServerActionDescriptorProvider {
 	 */
 	protected createSystemUser(): UserAccountToken {
 		return {
-			id: "00000000-0000-0000-0000-000000000000",
+			id: "3b07c364-707d-46e9-ad5b-d6f455eb3207",
 			name: "System",
-			roles: [
-				{
-					name: "system",
-					permissions: [{ name: "*" }],
-				},
-			],
+			roles: ["admin"],
 		};
 	}
 }

@@ -166,22 +166,22 @@ test("SecurityProvider#checkPermission - ownership", async () => {
 	sec.createRole(user);
 	sec.createRole(superuser);
 
-	expect(sec.checkPermission("hello:hey", user)).toEqual({
+	expect(sec.checkPermission("hello:hey", "user")).toEqual({
 		ownership: true,
 		isAuthorized: true,
 	});
 
-	expect(sec.checkPermission("hello:hey", user, superuser)).toEqual({
+	expect(sec.checkPermission("hello:hey", "user", "superuser")).toEqual({
 		ownership: false,
 		isAuthorized: true,
 	});
 
-	expect(sec.checkPermission("hello:hey", superuser, user)).toEqual({
+	expect(sec.checkPermission("hello:hey", "superuser", "user")).toEqual({
 		ownership: false,
 		isAuthorized: true,
 	});
 
-	expect(sec.checkPermission("hello:hey", superuser)).toEqual({
+	expect(sec.checkPermission("hello:hey", "superuser")).toEqual({
 		ownership: false,
 		isAuthorized: true,
 	});
@@ -211,7 +211,7 @@ test("SecurityProvider#jwt - default", async () => {
 	const user = await sec.createUserFromToken(token, userPermission);
 
 	expect(user.id).toEqual("123");
-	expect(user.roles).toEqual([userRole]);
+	expect(user.roles).toEqual([userRole.name]);
 	expect(user.token).toEqual(token);
 	expect(user.realm).toEqual("default");
 	expect(user.ownership).toEqual(false);

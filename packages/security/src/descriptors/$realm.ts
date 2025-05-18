@@ -1,4 +1,4 @@
-import { KIND, NotImplementedError, __descriptor, OPTIONS } from "@alepha/core";
+import { KIND, NotImplementedError, OPTIONS, __descriptor } from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
 import type { SecurityUserAccountProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
@@ -55,6 +55,11 @@ export interface RealmDescriptor {
 	setRoles(roles: Role[]): Promise<void>;
 
 	/**
+	 * Get a role by name, throws an error if not found.
+	 */
+	getRoleByName(name: string): Role;
+
+	/**
 	 * Create a token for the subject.
 	 */
 	createToken(subject: string, roles?: string[]): Promise<string>;
@@ -73,6 +78,10 @@ export const $realm = (
 	$[OPTIONS] = options;
 
 	$.getRoles = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.getRoleByName = () => {
 		throw new NotImplementedError(KEY);
 	};
 

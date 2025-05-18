@@ -159,6 +159,13 @@ export class SecurityProvider {
 				getRoles: () => {
 					return this.getRoles(realm.name);
 				},
+				getRoleByName: (name: string) => {
+					const role = this.getRoles(realm.name).find((it) => it.name === name);
+					if (!role) {
+						throw new SecurityError(`Role '${name}' not found`);
+					}
+					return role;
+				},
 				setRoles: async (roles: Role[]) => {
 					if (!this.alepha.isStarted()) {
 						throw new AppNotStartedError();
@@ -377,7 +384,7 @@ export class SecurityProvider {
 
 		return {
 			id,
-			roles,
+			roles: roles.map((it) => it.name),
 			name,
 			organization,
 		};
@@ -389,12 +396,20 @@ export class SecurityProvider {
 	 * Bonus: we check also if the user has "ownership" flag.
 	 *
 	 * @param permissionLike - The permission to check for.
-	 * @param roles - The roles to check for the permission.
+	 * @param roleEntries - The roles to check for the permission.
 	 */
 	public checkPermission(
 		permissionLike: string | Permission,
-		...roles: Role[]
+		...roleEntries: string[]
 	): SecurityCheckResult {
+		const roles: Role[] = roleEntries.map((it) => {
+			const role = this.getRoles().find((role) => role.name === it);
+			if (!role) {
+				throw new SecurityError(`Role '${it}' not found`);
+			}
+			return role;
+		});
+
 		const permission = this.permissionToString(permissionLike);
 		const isAdmin = roles.find((it) =>
 			it.permissions.find((it) => it.name === "*"),
@@ -493,15 +508,8 @@ export class SecurityProvider {
 	 * @param permission - The permission to check for.
 	 * @returns True if the user has the role, false otherwise.
 	 */
-	public can(roleName: string, permission: string | Permission): boolean {
-		const role = this.getRoles().find((it) => it.name === roleName);
-		if (!role) {
-			throw new SecurityError(`Role '${roleName}' not found`);
-		}
-
-		const permissionString = this.permissionToString(permission);
-
-		return this.checkPermission(permissionString, role).isAuthorized;
+	public can(role: string, permission: string | Permission): boolean {
+		return this.checkPermission(permission, role).isAuthorized;
 	}
 
 	/**

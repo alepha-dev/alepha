@@ -1,11 +1,41 @@
+import { randomUUID } from "node:crypto";
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
-import { SecurityProvider } from "@alepha/security";
+import { JwtProvider, SecurityProvider } from "@alepha/security";
 import { isServerAction } from "../ServerActionDescriptorProvider.ts";
 
 export class ServerSecurityProvider {
 	protected readonly log = $logger();
 	protected readonly securityProvider = $inject(SecurityProvider);
+	protected readonly jwtProvider = $inject(JwtProvider);
 	protected readonly alepha = $inject(Alepha);
+
+	public readonly onClientRequest = $hook({
+		name: "client:onRequest",
+		handler: async ({ request, options }) => {
+			const realms = this.securityProvider.getRealms();
+			if (!this.alepha.isTest()) {
+				return;
+			}
+			if (realms.length !== 1 || realms[0].name !== "default") {
+				return;
+			}
+			request.headers = new Headers(request.headers);
+			if (!request.headers.has("authorization")) {
+				const sub = options?.user?.id ?? randomUUID();
+				const roles = options?.user?.roles ?? ["admin"];
+				request.headers.set(
+					"authorization",
+					`Bearer ${await this.jwtProvider.create(
+						{
+							sub,
+							roles,
+						},
+						"default",
+					)}`,
+				);
+			}
+		},
+	});
 
 	protected readonly onRequest = $hook({
 		name: "server:onRequest",

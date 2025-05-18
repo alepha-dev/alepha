@@ -1,10 +1,17 @@
 export class HttpError extends Error {
 	static toJSON(error: HttpError) {
+		if (error.reason) {
+			return {
+				status: error.status,
+				error: error.error,
+				message: error.message,
+				cause: error.reason,
+			};
+		}
 		return {
 			status: error.status,
 			error: error.error,
 			message: error.message,
-			cause: error.reason,
 		};
 	}
 
