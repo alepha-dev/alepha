@@ -141,7 +141,6 @@ __metadata:
     openid-client: "npm:^6.5.0"
     pkgroll: "npm:^2.12.2"
     react: "npm:^19.1.0"
-    vitest: "npm:^3.1.3"
   peerDependencies:
     "@types/react": ^19
     react: ^19
@@ -219,7 +218,6 @@ __metadata:
     "@alepha/datetime": "npm:0.6.8"
     "@alepha/server": "npm:0.6.8"
     pkgroll: "npm:^2.12.2"
-    vitest: "npm:^3.1.3"
   languageName: unknown
   linkType: soft
 
@@ -254,7 +252,6 @@ __metadata:
     "@alepha/server": "npm:0.6.8"
     mime: "npm:^4.0.7"
     pkgroll: "npm:^2.12.2"
-    vitest: "npm:^3.1.3"
   languageName: unknown
   linkType: soft
 
