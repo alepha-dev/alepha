@@ -16,12 +16,14 @@ import type {
 } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
+import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
 import type {
 	RequestConfigSchema,
 	ServerHandler,
 	ServerRequest,
 	ServerRequestConfigEntry,
 } from "../providers/ServerRouterProvider.ts";
+import { isFileLike } from "../providers/features/ServerMultipartProvider.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 const envSchema = t.object({
@@ -33,6 +35,7 @@ const envSchema = t.object({
 export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly env = $inject(envSchema);
+	protected readonly helper = $inject(RouteDescriptorHelper);
 
 	public readonly URL_LINKS = "/_links";
 	public readonly cache = $cache<any>();
@@ -151,10 +154,14 @@ export class HttpClient {
 			typeof init.headers === "object" &&
 			"content-type" in init.headers &&
 			init.headers["content-type"] === "multipart/form-data";
-		if (link.contentType === "multipart/form-data" || hasHeader) {
+
+		if (
+			link.contentType === "multipart/form-data" ||
+			hasHeader ||
+			this.helper.isMultipart(link)
+		) {
 			if (hasHeader) {
-				// @ts-ignore
-				delete init.headers["content-type"];
+				delete (init.headers as Record<string, string>)["content-type"];
 			}
 
 			const formData = new FormData();
@@ -166,6 +173,16 @@ export class HttpClient {
 				}
 				if (value instanceof Blob) {
 					formData.append(key, value);
+					continue;
+				}
+				if (isFileLike(value)) {
+					// FileLike must be transformed to WebFile
+					formData.append(
+						key,
+						new File([await value.arrayBuffer()], value.name, {
+							type: value.type,
+						}),
+					);
 				}
 			}
 
