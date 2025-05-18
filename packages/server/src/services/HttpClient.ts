@@ -1,5 +1,12 @@
 import { $cache } from "@alepha/cache";
-import { $inject, Alepha, type TSchema, t } from "@alepha/core";
+import {
+	$inject,
+	Alepha,
+	type FileLike,
+	type TSchema,
+	isTypeFile,
+	t,
+} from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
@@ -228,6 +235,10 @@ export class HttpClient {
 				return;
 			}
 
+			if (isTypeFile(options.schema)) {
+				return this.getFileLike(response);
+			}
+
 			const text = await response.text();
 
 			const json = JSON.parse(text);
@@ -247,6 +258,27 @@ export class HttpClient {
 		}
 
 		return response;
+	}
+
+	protected getFileLike(response: Response, defaultFileName = ""): FileLike {
+		const match = (response.headers.get("Content-Disposition") ?? "").match(
+			/filename="(.+)"/,
+		);
+		return {
+			name: match?.[1] ? match[1] : defaultFileName,
+			type: response.headers.get("Content-Type") ?? "application/octet-stream",
+			size: Number(response.headers.get("Content-Length") ?? 0),
+			lastModified: Date.now(),
+			stream: () => {
+				throw new Error("Not implemented");
+			},
+			arrayBuffer: async () => {
+				return await response.arrayBuffer();
+			},
+			text: async () => {
+				return await response.text();
+			},
+		};
 	}
 
 	protected pathVariables(
