@@ -29,12 +29,16 @@ export class BrowserActionDescriptorProvider {
 	public readonly configure = $hook({
 		name: "configure",
 		handler: () => {
-			const descriptors = this.alepha.getDescriptorValues($route);
-			for (const { value, instance, key } of descriptors) {
-				this.registerAction(value, instance, key);
-			}
+			this.configureActions();
 		},
 	});
+
+	public configureActions() {
+		const descriptors = this.alepha.getDescriptorValues($route);
+		for (const { value, instance, key } of descriptors) {
+			this.registerAction(value, instance, key);
+		}
+	}
 
 	public registerAction(value: RouteDescriptor, instance: any, key: string) {
 		const fetcher = this.client.createFetchFunction(
