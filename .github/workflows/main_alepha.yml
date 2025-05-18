@@ -39,6 +39,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Prepare Node.js
         uses: actions/setup-node@v4
         with:

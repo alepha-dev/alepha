@@ -2,19 +2,21 @@ import type {
 	IncomingMessage,
 	ServerResponse as NodeServerResponse,
 } from "node:http";
-import type { Readable as NodeStream } from "node:stream";
-import type { ReadableStream as WebStream } from "node:stream/web";
+import { Readable as NodeStream } from "node:stream";
+import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
 	$inject,
 	Alepha,
 	type Async,
 	type Static,
+	type StreamLike,
 	type TSchema,
 	TypeGuard,
 	isFileLike,
 	isTypeFile,
 	t,
 } from "@alepha/core";
+import type { TObject } from "@alepha/core";
 import { type Route, RouterProvider } from "@alepha/router";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -186,38 +188,36 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 	}
 
 	protected getResponseType(schema?: RequestConfigSchema): ResponseType {
-		if (!schema?.response) {
-			return "buffer";
+		if (schema?.response) {
+			if (
+				TypeGuard.IsObject(schema.response) ||
+				TypeGuard.IsIntersect(schema.response) ||
+				TypeGuard.IsRecord(schema.response) ||
+				TypeGuard.IsArray(schema.response)
+			) {
+				return "json";
+			}
+
+			if (
+				TypeGuard.IsString(schema.response) ||
+				TypeGuard.IsInteger(schema.response) ||
+				TypeGuard.IsNumber(schema.response) ||
+				TypeGuard.IsBoolean(schema.response) ||
+				TypeGuard.IsDate(schema.response)
+			) {
+				return "text";
+			}
+
+			if (isTypeFile(schema.response)) {
+				return "file";
+			}
+
+			if (TypeGuard.IsVoid(schema.response)) {
+				return "void";
+			}
 		}
 
-		if (
-			TypeGuard.IsObject(schema.response) ||
-			TypeGuard.IsIntersect(schema.response) ||
-			TypeGuard.IsRecord(schema.response) ||
-			TypeGuard.IsArray(schema.response)
-		) {
-			return "json";
-		}
-
-		if (
-			TypeGuard.IsString(schema.response) ||
-			TypeGuard.IsInteger(schema.response) ||
-			TypeGuard.IsNumber(schema.response) ||
-			TypeGuard.IsBoolean(schema.response) ||
-			TypeGuard.IsDate(schema.response)
-		) {
-			return "text";
-		}
-
-		if (isTypeFile(schema.response)) {
-			return "file";
-		}
-
-		if (TypeGuard.IsVoid(schema.response)) {
-			return "void";
-		}
-
-		return "buffer";
+		return "any";
 	}
 
 	protected async errorHandler(
@@ -321,13 +321,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		reply: ServerReply,
 		responseType: ResponseType,
 	): void {
-		// TODO: hook preSerialize ?
-
-		if (!route.schema?.response) {
-			return;
-		}
-
-		if (responseType === "json") {
+		if (responseType === "json" && route.schema?.response) {
 			reply.headers["content-type"] = "application/json";
 			reply.body = JSON.stringify(
 				this.alepha.parse<any>(route.schema.response, reply.body, {
@@ -337,21 +331,17 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			return;
 		}
 
-		if (responseType === "buffer") {
-			reply.headers["content-type"] = "application/octet-stream";
-			return;
-		}
-
 		if (responseType === "file") {
-			if (isFileLike(reply.body)) {
-				reply.headers["content-type"] = reply.body.type;
-				reply.headers["content-disposition"] =
-					`attachment; filename="${reply.body.name}"`;
-				reply.body = reply.body.stream() as WebStream;
-				return;
+			if (!isFileLike(reply.body)) {
+				throw new HttpError({
+					status: 500,
+					message: "Invalid response body - not a file",
+				});
 			}
-
-			reply.headers["content-type"] = "application/octet-stream";
+			reply.headers["content-type"] = reply.body.type;
+			reply.headers["content-disposition"] =
+				`attachment; filename="${reply.body.name}"`;
+			reply.body = reply.body.stream() as NodeWebStream;
 			return;
 		}
 
@@ -361,11 +351,28 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			return;
 		}
 
-		if (responseType === "void") {
+		if (reply.body == null || responseType === "void") {
 			delete reply.headers["content-type"];
 			reply.body = undefined;
 			return;
 		}
+
+		if (Buffer.isBuffer(reply.body)) {
+			reply.headers["content-type"] = "application/octet-stream";
+			return;
+		}
+
+		if (
+			reply.body instanceof NodeWebStream ||
+			reply.body instanceof NodeStream
+		) {
+			reply.headers["content-type"] = "application/octet-stream";
+			return;
+		}
+
+		reply.headers["content-type"] = "text/plain";
+		reply.body = String(reply.body);
+		return;
 	}
 }
 
@@ -373,9 +380,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 export interface RequestConfigSchema {
 	body?: TSchema;
-	params?: TSchema;
-	query?: TSchema;
-	headers?: TSchema;
+	params?: TObject;
+	query?: TObject;
+	headers?: TObject;
 	response?: TSchema;
 }
 
@@ -384,15 +391,15 @@ export interface ServerRequestConfig<
 > {
 	body: TConfig["body"] extends TSchema ? Static<TConfig["body"]> : any;
 
-	headers: TConfig["headers"] extends TSchema
+	headers: TConfig["headers"] extends TObject
 		? Static<TConfig["headers"]>
 		: Record<string, string>;
 
-	params: TConfig["params"] extends TSchema
+	params: TConfig["params"] extends TObject
 		? Static<TConfig["params"]>
 		: Record<string, string>;
 
-	query: TConfig["query"] extends TSchema
+	query: TConfig["query"] extends TObject
 		? Static<TConfig["query"]>
 		: Record<string, string>;
 }
@@ -440,23 +447,15 @@ export type ServerResponseBody<
 	? Static<TConfig["response"]>
 	: ResponseBodyType;
 
-export type ResponseType =
-	| "json"
-	| "text"
-	| "void"
-	| "stream"
-	| "buffer"
-	| "file";
+export type ResponseType = "json" | "text" | "void" | "file" | "any";
 
 export type ResponseBodyType =
 	| string
-	| ArrayBuffer //
-	| NodeStream // Node stream Readable (stream)
-	| WebStream // Web stream Readable (stream)
-	| ReadableStream // Web stream Readable (stream)
-	| undefined // undefined response (no response)
-	| null // null response (no response)
-	| void; // void response (no response)
+	| Buffer
+	| StreamLike
+	| undefined
+	| null
+	| void;
 
 export type ServerHandler<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
@@ -465,13 +464,12 @@ export type ServerHandler<
 export interface ServerReply {
 	headers: Record<string, string> & { "set-cookie"?: string[] };
 	status?: number; // default 200, or 204 (no content)
-	body?: ResponseBodyType;
-
+	body?: any;
 	redirect(url: string): void;
 }
 
 export interface ServerResponse {
-	body: string | ArrayBuffer | NodeStream | WebStream;
+	body: string | ArrayBuffer | NodeStream | NodeWebStream;
 	headers: Record<string, string>;
 	status: number;
 }

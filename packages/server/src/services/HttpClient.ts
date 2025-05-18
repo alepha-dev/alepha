@@ -195,13 +195,10 @@ export class HttpClient {
 		}
 
 		if (!init.body && link.schema?.body) {
+			headers["content-type"] = "application/json";
 			init.body = JSON.stringify(
 				this.alepha.parse(link.schema?.body, args.body),
 			);
-		}
-
-		if (init.body) {
-			headers["content-type"] = "application/json";
 		}
 	}
 
@@ -312,11 +309,13 @@ export class HttpClient {
 		action: HttpClientLink,
 		args: ServerRequestConfigEntry = {},
 	): string {
-		if (action.schema?.params && typeof args.params === "object") {
-			const params = this.alepha.parse(
-				action.schema.params,
-				args.params,
-			) as Record<string, any>;
+		if (typeof args.params === "object") {
+			const params = action.schema?.params
+				? (this.alepha.parse(action.schema.params, args.params) as Record<
+						string,
+						any
+					>)
+				: args.params;
 
 			for (const key of Object.keys(params)) {
 				url = url.replace(`:${key}`, params[key]);
@@ -332,12 +331,12 @@ export class HttpClient {
 		action: HttpClientLink,
 		args: ServerRequestConfigEntry = {},
 	): string {
-		if (action.schema?.query && typeof args.query === "object") {
+		if (typeof args.query === "object") {
+			const query = action.schema?.query
+				? this.alepha.parse(action.schema.query, args.query ?? {})
+				: args.query;
 			return `${url}?${new URLSearchParams(
-				this.alepha.parse(action.schema.query, args.query ?? {}) as Record<
-					string,
-					string
-				>,
+				query as Record<string, string>,
 			).toString()}`;
 		}
 		return url;
@@ -442,8 +441,6 @@ export class HttpClient {
 				// schema is not used in the client, just mock it
 				schema: {
 					body: t.any(),
-					query: t.any(),
-					params: t.any(),
 					response: t.any(),
 				},
 			},

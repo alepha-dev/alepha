@@ -52,24 +52,26 @@ Alepha.create({
 
 const alephaProxy = Alepha.create().with(AppProxy);
 
-test("$proxy", { repeats: 10 }, async () => {
-	const hostname = alephaProxy.get(ServerProvider).hostname;
+test("$proxy", async () => {
+	for (let i = 0; i < 10; i++) {
+		const hostname = alephaProxy.get(ServerProvider).hostname;
 
-	const response = await fetch(`${hostname}/api/hello?transform=uppercase`, {
-		method: "POST",
-		body: JSON.stringify({ name: "Jack" }),
-		headers: {
-			"Content-Type": "application/json",
-			prefix: "Mr.",
-		},
-	});
+		const response = await fetch(`${hostname}/api/hello?transform=uppercase`, {
+			method: "POST",
+			body: JSON.stringify({ name: "Jack" }),
+			headers: {
+				"Content-Type": "application/json",
+				prefix: "Mr.",
+			},
+		});
 
-	expect(response.status).toBe(200);
+		expect(response.status).toBe(200);
 
-	const json = await response.json();
+		const json = await response.json();
 
-	expect(response.headers.get("x-hello")).toBe("world");
-	expect(json).toEqual({
-		message: "Hello Mr.JACK!",
-	});
+		expect(response.headers.get("x-hello")).toBe("world");
+		expect(json).toEqual({
+			message: "Hello Mr.JACK!",
+		});
+	}
 });
