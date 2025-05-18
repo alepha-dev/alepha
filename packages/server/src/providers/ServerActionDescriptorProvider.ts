@@ -6,6 +6,7 @@ import {
 	KIND,
 	OPTIONS,
 	type Static,
+	isFileLike,
 	isTypeFile,
 	t,
 } from "@alepha/core";
@@ -34,7 +35,6 @@ import {
 	type ServerRoute,
 	ServerRouterProvider,
 } from "./ServerRouterProvider.ts";
-import { isFileLike } from "./features/ServerMultipartProvider.ts";
 import { ServerProvider } from "./platforms/ServerProvider.ts";
 
 const envSchema = t.object({

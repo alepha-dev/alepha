@@ -4,6 +4,7 @@ import {
 	Alepha,
 	type FileLike,
 	type TSchema,
+	isFileLike,
 	isTypeFile,
 	t,
 } from "@alepha/core";
@@ -23,7 +24,6 @@ import type {
 	ServerRequest,
 	ServerRequestConfigEntry,
 } from "../providers/ServerRouterProvider.ts";
-import { isFileLike } from "../providers/features/ServerMultipartProvider.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 const envSchema = t.object({

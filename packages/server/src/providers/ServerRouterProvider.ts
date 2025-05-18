@@ -11,6 +11,7 @@ import {
 	type Static,
 	type TSchema,
 	TypeGuard,
+	isFileLike,
 	isTypeFile,
 	t,
 } from "@alepha/core";
@@ -19,7 +20,6 @@ import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { HttpError, errorNameByStatus } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
-import { isFileLike } from "./features/ServerMultipartProvider.ts";
 
 const envSchema = t.object({
 	SERVER_ALS_ENABLED: t.boolean({

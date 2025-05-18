@@ -394,6 +394,18 @@ export const isTypeFile = (value: TSchema): value is TFile => {
 	);
 };
 
+export const isFileLike = (value: any): value is FileLike => {
+	return (
+		!!value &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		typeof value.name === "string" &&
+		typeof value.type === "string" &&
+		typeof value.size === "number" &&
+		typeof value.stream === "function"
+	);
+};
+
 export const isTypeStream = (value: TSchema): value is TStream => {
 	return (
 		value &&

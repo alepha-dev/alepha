@@ -311,18 +311,6 @@ export const bufferToArrayBuffer = (buffer: Buffer): ArrayBuffer => {
 	) as ArrayBuffer;
 };
 
-export const isFileLike = (value: any): value is FileLike => {
-	return (
-		!!value &&
-		typeof value === "object" &&
-		!Array.isArray(value) &&
-		typeof value.name === "string" &&
-		typeof value.type === "string" &&
-		typeof value.size === "number" &&
-		typeof value.stream === "function"
-	);
-};
-
 export const getContentType = (filename: string): string => {
 	if (filename.endsWith(".json")) {
 		return "application/json";
