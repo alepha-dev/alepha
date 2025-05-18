@@ -27,6 +27,7 @@ import * as TypeBoxValue from "@sinclair/typebox/value";
 
 export { TypeBox, TypeBoxValue };
 
+import type { Readable } from "node:stream";
 import { Value } from "@sinclair/typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
@@ -359,6 +360,12 @@ export class TypeProvider {
 			format: "binary",
 			type: "string",
 		});
+
+	stream = (): TStream =>
+		t.unsafe<StreamLike>("Any", {
+			format: "stream",
+			type: "string",
+		});
 }
 
 export interface FileLike {
@@ -366,14 +373,16 @@ export interface FileLike {
 	type: string;
 	size: number;
 	lastModified: number;
-	stream(): ReadableStream | NodeWebStream;
+	stream(): StreamLike;
 	arrayBuffer(): Promise<ArrayBuffer>;
 	text(): Promise<string>;
 }
+export type TFile = TUnsafe<FileLike>;
+
+export type StreamLike = ReadableStream | NodeWebStream | Readable;
+export type TStream = TUnsafe<StreamLike>;
 
 export const t = new TypeProvider();
-
-export type TFile = TUnsafe<FileLike>;
 
 export const isTypeFile = (value: TSchema): value is TFile => {
 	return (
@@ -381,6 +390,15 @@ export const isTypeFile = (value: TSchema): value is TFile => {
 		value[Kind] === "Any" &&
 		value.type === "string" &&
 		value.format === "binary"
+	);
+};
+
+export const isTypeStream = (value: TSchema): value is TStream => {
+	return (
+		value &&
+		value[Kind] === "Any" &&
+		value.type === "string" &&
+		value.format === "stream"
 	);
 };
 

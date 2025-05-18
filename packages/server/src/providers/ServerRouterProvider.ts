@@ -106,9 +106,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		responseType: ResponseType,
 		withAls: boolean,
 	) {
-		await this.doRequestHandler(route, request, responseType, withAls).catch(
-			(error) => this.errorHandler(route, request, error as Error),
-		);
+		await this.tryRequestProcessing(
+			route,
+			request,
+			responseType,
+			withAls,
+		).catch((error) => this.errorHandler(route, request, error as Error));
 
 		await this.alepha.emit(
 			"server:onSend",
@@ -143,7 +146,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		return response;
 	}
 
-	protected async doRequestHandler(
+	protected async tryRequestProcessing(
 		route: ServerRoute,
 		request: ServerRequest,
 		responseType: ResponseType,

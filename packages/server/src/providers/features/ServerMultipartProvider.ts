@@ -2,13 +2,14 @@ import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { readFile, stat, unlink } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
-import { ReadableStream } from "node:stream/web";
-import {} from "node:zlib";
+import { Readable } from "node:stream";
+import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
 	$hook,
 	$inject,
 	Alepha,
 	type FileLike,
+	type StreamLike,
 	TypeGuard,
 	isTypeFile,
 } from "@alepha/core";
@@ -178,7 +179,7 @@ export class ServerMultipartProvider {
 						return this._state.size;
 					},
 					stream() {
-						return ReadableStream.from(createReadStream(tmpPath));
+						return NodeWebStream.from(createReadStream(tmpPath));
 					},
 					async arrayBuffer() {
 						return Buffer.from(await readFile(tmpPath)).buffer as ArrayBuffer;
@@ -231,12 +232,62 @@ interface HybridFile extends FileLike {
  * Create a file-like object from various sources.
  */
 export const file = async (
-	source: string | Buffer | ArrayBuffer, // TODO: FileLike, Blob, WebStream, NodeStream
+	source: string | Buffer | ArrayBuffer | StreamLike, // TODO: FileLike, Blob, WebStream, NodeStream
 	options: {
 		type?: string;
 		name?: string;
 	} = {},
 ): Promise<FileLike> => {
+	if (source instanceof ReadableStream || source instanceof NodeWebStream) {
+		return {
+			name: options.name ?? "file",
+			type: options.type ?? getContentType(options.name ?? "file"),
+			size: 0,
+			lastModified: Date.now(),
+			stream: () => source,
+			arrayBuffer: async () => {
+				const reader = source.getReader();
+				const { done, value } = await reader.read();
+				if (done) {
+					throw new Error("Stream is empty");
+				}
+				return value.buffer as ArrayBuffer;
+			},
+			text: async () => {
+				const reader = source.getReader();
+				const { done, value } = await reader.read();
+				if (done) {
+					throw new Error("Stream is empty");
+				}
+				return new TextDecoder().decode(value);
+			},
+		};
+	}
+
+	if (source instanceof Readable) {
+		return {
+			name: options.name ?? "file",
+			type: options.type ?? getContentType(options.name ?? "file"),
+			size: 0,
+			lastModified: Date.now(),
+			stream: () => NodeWebStream.from(source),
+			arrayBuffer: async () => {
+				const chunks: Buffer[] = [];
+				for await (const chunk of source) {
+					chunks.push(chunk);
+				}
+				return Buffer.concat(chunks).buffer as ArrayBuffer;
+			},
+			text: async () => {
+				const chunks: Buffer[] = [];
+				for await (const chunk of source) {
+					chunks.push(chunk);
+				}
+				return Buffer.concat(chunks).toString("utf-8");
+			},
+		};
+	}
+
 	if (typeof source === "string") {
 		const path = source;
 		const stats = await stat(path);
@@ -251,7 +302,7 @@ export const file = async (
 			type: options.type ?? getContentType(options.name ?? path),
 			size: stats.size,
 			lastModified: stats.mtimeMs,
-			stream: () => ReadableStream.from(stream),
+			stream: () => NodeWebStream.from(stream),
 			arrayBuffer: async () => {
 				return Buffer.from(await readFile(path)).buffer as ArrayBuffer;
 			},
