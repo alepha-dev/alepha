@@ -30,6 +30,9 @@ const envSchema = t.object({
 	SERVER_API_URL: t.string({
 		default: "/api",
 	}),
+	CLIENT_API_PREFIX: t.string({
+		default: "",
+	}),
 });
 
 export class HttpClient {
@@ -42,7 +45,6 @@ export class HttpClient {
 	public links?: Array<HttpClientLink>;
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
-	protected host = "";
 
 	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
 		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
@@ -67,7 +69,7 @@ export class HttpClient {
 				config,
 				request,
 				link,
-				host: host || this.host,
+				host,
 			});
 		};
 	}
@@ -136,7 +138,7 @@ export class HttpClient {
 		link: HttpClientLink,
 		args: ServerRequestConfigEntry,
 	) {
-		let url = host + link.path;
+		let url = host + this.env.CLIENT_API_PREFIX + link.path;
 
 		url = this.pathVariables(url, link, args);
 
@@ -208,6 +210,12 @@ export class HttpClient {
 		request: RequestInit,
 		options: FetchRunOptions = {},
 	): Promise<T> {
+		await this.alepha.emit("client:beforeFetch", {
+			url,
+			options,
+			request,
+		});
+
 		// make a key for the request
 		// this will be used to check if the request is already pending
 		const key = JSON.stringify({

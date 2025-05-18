@@ -125,12 +125,16 @@ export class Repository<
 		schema: TTableSchema;
 	};
 
-	constructor(
-		readonly options: {
-			table: TTable;
-			schema: TTableSchema;
-		},
-	) {
+	readonly options: {
+		table: TTable;
+		schema: TTableSchema;
+	};
+
+	constructor(options: {
+		table: TTable;
+		schema: TTableSchema;
+	}) {
+		this.options = options;
 		this[OPTIONS] = options;
 		this.id = this.getPrimaryKey(this.schema);
 	}

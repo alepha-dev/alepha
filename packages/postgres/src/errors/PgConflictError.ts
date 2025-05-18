@@ -1,11 +1,11 @@
 export class PgConflictError extends Error {
-	readonly code = "ERR_RESOURCE_EXISTS";
+	readonly error = "ConflictError";
 	readonly status = 409;
-	constructor(
-		message: string,
-		public readonly cause: Error,
-	) {
+	readonly cause: Error;
+
+	constructor(message: string, cause: Error) {
 		super(message);
+		this.cause = cause;
 		this.name = "DuplicateError";
 	}
 }

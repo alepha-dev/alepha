@@ -21,7 +21,7 @@ import { ServerMultipartProvider } from "./providers/features/ServerMultipartPro
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
 import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
 import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
-import type { HttpClientLink } from "./services/HttpClient.ts";
+import type { FetchRunOptions, HttpClientLink } from "./services/HttpClient.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
@@ -53,6 +53,11 @@ declare module "@alepha/core" {
 			config: ServerRequestConfigEntry;
 			options: ClientRequestOptions;
 			headers: Record<string, string>;
+			request: RequestInit;
+		};
+		"client:beforeFetch": {
+			url: string;
+			options: FetchRunOptions;
 			request: RequestInit;
 		};
 		"client:onError": {

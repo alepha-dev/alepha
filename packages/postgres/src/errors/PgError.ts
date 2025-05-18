@@ -1,9 +1,9 @@
 export class PgError extends Error {
-	constructor(
-		message: string,
-		public readonly cause?: Error,
-	) {
+	readonly cause?: Error;
+
+	constructor(message: string, cause?: Error) {
 		super(message);
+		this.cause = cause;
 		this.name = "PgError";
 	}
 }
