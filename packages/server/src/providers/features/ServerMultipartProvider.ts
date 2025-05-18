@@ -308,7 +308,10 @@ export const file = (
 				},
 			}),
 		arrayBuffer: async () => {
-			return buffer.buffer as ArrayBuffer;
+			return buffer.buffer.slice(
+				buffer.byteOffset,
+				buffer.byteOffset + buffer.byteLength,
+			) as ArrayBuffer;
 		},
 		text: async () => {
 			return buffer.toString("utf-8");
