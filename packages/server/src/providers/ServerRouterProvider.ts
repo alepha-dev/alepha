@@ -420,7 +420,7 @@ export interface ServerRequest<
 	};
 
 	// user from SecurityModule
-	user?: UserAccountToken;
+	user: UserAccountToken;
 }
 
 export interface ServerRoute<

@@ -231,13 +231,13 @@ interface HybridFile extends FileLike {
 /**
  * Create a file-like object from various sources.
  */
-export const file = async (
-	source: string | Buffer | ArrayBuffer | StreamLike, // TODO: FileLike, Blob, WebStream, NodeStream
+export const file = (
+	source: string | Buffer | ArrayBuffer | StreamLike,
 	options: {
 		type?: string;
 		name?: string;
 	} = {},
-): Promise<FileLike> => {
+): FileLike => {
 	if (source instanceof ReadableStream || source instanceof NodeWebStream) {
 		return {
 			name: options.name ?? "file",
@@ -288,32 +288,12 @@ export const file = async (
 		};
 	}
 
-	if (typeof source === "string") {
-		const path = source;
-		const stats = await stat(path);
-		if (!stats.isFile()) {
-			throw new Error(`File not found: ${path}`);
-		}
-
-		const stream = createReadStream(path);
-
-		return {
-			name: options.name ?? (path.split("/").pop() || ""),
-			type: options.type ?? getContentType(options.name ?? path),
-			size: stats.size,
-			lastModified: stats.mtimeMs,
-			stream: () => NodeWebStream.from(stream),
-			arrayBuffer: async () => {
-				return Buffer.from(await readFile(path)).buffer as ArrayBuffer;
-			},
-			text: async () => {
-				return await readFile(path, "utf-8");
-			},
-		};
-	}
-
 	const name = options.name ?? "file";
-	const buffer = Buffer.isBuffer(source) ? source : Buffer.from(source);
+	const buffer = Buffer.isBuffer(source)
+		? source
+		: typeof source === "string"
+			? Buffer.from(source, "utf-8")
+			: Buffer.from(source);
 	return {
 		name,
 		type: options.type ?? getContentType(options.name ?? name),
