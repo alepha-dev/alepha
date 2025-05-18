@@ -6,6 +6,7 @@ import type {
 	TInteger,
 	TIntersect,
 	TObject,
+	TRecord,
 } from "@sinclair/typebox";
 
 /**
@@ -14,7 +15,7 @@ import type {
  * @param objectSchema
  * @param options
  */
-export const pageSchema = <T extends TObject | TIntersect>(
+export const pageSchema = <T extends TObject | TIntersect | TRecord>(
 	objectSchema: T,
 	options?: ObjectOptions,
 ): TPage<T> =>
@@ -39,7 +40,7 @@ export const pageSchema = <T extends TObject | TIntersect>(
 /**
  *
  */
-export type TPage<T extends TObject | TIntersect> = TObject<{
+export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
 	content: TArray<T>;
 	can: TObject<{ next: TBoolean; previous: TBoolean }>;
 	page: TObject<{ number: TInteger; size: TInteger }>;
