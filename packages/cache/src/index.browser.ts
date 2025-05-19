@@ -13,11 +13,12 @@ export class CacheModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		this.alepha.register(CacheDescriptorProvider);
 		this.alepha.register({
 			provide: CacheProvider,
 			use: MemoryCacheProvider,
 		});
+
+		this.alepha.register(CacheDescriptorProvider);
 	}
 }
 
