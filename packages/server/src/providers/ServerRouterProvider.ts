@@ -366,7 +366,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			reply.body instanceof NodeWebStream ||
 			reply.body instanceof NodeStream
 		) {
-			reply.headers["content-type"] = "application/octet-stream";
+			// set content-type to application/octet-stream if not set
+			reply.headers["content-type"] ??= "application/octet-stream";
 			return;
 		}
 

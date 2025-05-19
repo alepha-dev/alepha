@@ -1,4 +1,4 @@
-import { type Async, KIND, __descriptor, OPTIONS } from "@alepha/core";
+import { type Async, KIND, OPTIONS, __descriptor } from "@alepha/core";
 import type { ServerRequest } from "@alepha/server";
 
 export type ProxyDescriptorOptions = {
@@ -13,6 +13,7 @@ export type ProxyDescriptorOptions = {
 		proxyResponse: Response,
 	) => Async<void>;
 	disabled?: boolean;
+	rewrite?: (url: URL) => void;
 };
 
 export interface ProxyDescriptor {

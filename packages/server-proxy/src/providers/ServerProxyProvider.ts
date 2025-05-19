@@ -34,6 +34,8 @@ export class ServerProxyProvider {
 				url.search = request.url.search;
 			}
 
+			options.rewrite?.(url);
+
 			const requestInit = {
 				url: url.toString(),
 				method: request.method,
@@ -52,15 +54,7 @@ export class ServerProxyProvider {
 			const response = await fetch(requestInit.url, requestInit);
 
 			request.reply.status = response.status;
-
-			for (const [header, value] of response.headers.entries()) {
-				if (header === "content-length") {
-					continue;
-				}
-
-				request.reply.headers[header] = value;
-			}
-
+			request.reply.headers = Object.fromEntries(response.headers.entries());
 			request.reply.body = response.body;
 
 			if (options.afterResponse) {
