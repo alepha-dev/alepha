@@ -29,5 +29,13 @@
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist --sourcemap"
-	}
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha"
+	]
 }

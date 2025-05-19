@@ -51,13 +51,7 @@
 	"scripts": {
 		"build": "pkgroll --sourcemap --dist ./"
 	},
-	"files": [
-		"src",
-		"**/*.js",
-		"**/*.cjs",
-		"**/*.d.ts",
-		"**/*.map"
-	],
+	"files": ["src", "**/*.js", "**/*.cjs", "**/*.d.ts", "**/*.map"],
 	"exports": {
 		".": {
 			"import": "./core.js",
@@ -159,5 +153,19 @@
 			"require": "./server/swagger.cjs",
 			"types": "./server/swagger.d.ts"
 		}
-	}
+	},
+	"keywords": [
+		"alepha",
+		"cache",
+		"datetime",
+		"lock",
+		"postgres",
+		"queue",
+		"react",
+		"redis",
+		"scheduler",
+		"security",
+		"server",
+		"topic"
+	]
 }

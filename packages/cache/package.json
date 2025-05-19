@@ -32,6 +32,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/feunard/alepha"
-	}
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"homepage": "https://github.com/feunard/alepha"
 }

@@ -5,10 +5,7 @@
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"files": [
-		"dist",
-		"src"
-	],
+	"files": ["dist", "src"],
 	"dependencies": {
 		"@alepha/core": "0.6.8",
 		"@alepha/datetime": "0.6.8",
@@ -19,5 +16,11 @@
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist --sourcemap"
-	}
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": ["alepha", "server", "cookies"]
 }

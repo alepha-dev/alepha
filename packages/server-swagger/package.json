@@ -5,11 +5,7 @@
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"files": [
-		"dist",
-		"src",
-		"assets"
-	],
+	"files": ["dist", "src", "assets"],
 	"dependencies": {
 		"@alepha/core": "0.6.8",
 		"@alepha/security": "0.6.8",
@@ -29,5 +25,11 @@
 	},
 	"scarfSettings": {
 		"enabled": false
-	}
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": ["alepha", "server", "swagger", "openapi"]
 }
