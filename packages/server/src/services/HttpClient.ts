@@ -258,7 +258,7 @@ export class HttpClient {
 				return;
 			}
 
-			if (isTypeFile(options.schema)) {
+			if (isTypeFile(options.schema) || this.isMaybeFile(response)) {
 				return this.getFileLike(response);
 			}
 
@@ -281,6 +281,20 @@ export class HttpClient {
 		}
 
 		return response;
+	}
+
+	protected isMaybeFile(response: Response): boolean {
+		const contentType = response.headers.get("Content-Type");
+		if (!contentType) {
+			return false;
+		}
+
+		return (
+			contentType.startsWith("application/octet-stream") ||
+			contentType.startsWith("image/") ||
+			contentType.startsWith("video/") ||
+			contentType.startsWith("audio/")
+		);
 	}
 
 	protected getFileLike(response: Response, defaultFileName = ""): FileLike {
