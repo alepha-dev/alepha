@@ -173,7 +173,13 @@ export class ServerStaticProvider {
 		dir: string,
 		ignoreDotEnvFiles = true,
 	): Promise<string[]> {
-		const entries = await readdir(dir, { withFileTypes: true });
+		const entries = await readdir(dir, { withFileTypes: true }).catch(
+			(error) => {
+				this.log.error("Error reading directory", { dir, error });
+				return [];
+			},
+		);
+
 		const files = await Promise.all(
 			entries.map((dirent) => {
 				// skip .env & other dot files
