@@ -40,12 +40,7 @@ export function $inject<T extends object>(type: Class<T> | TObject): T {
 		parent: definition ?? (context.constructor as Class),
 	});
 
-	// clone the value to prevent accidental modifications
-	const clone = Object.create(value);
+	(value as any)[PROVIDER] = type;
 
-	// mark the clone as a provider and keep the original type
-	// - this is mandatory for class swapping
-	clone[PROVIDER] = type;
-
-	return clone;
+	return value;
 }

@@ -98,7 +98,7 @@ const testLockWait = async (provider?: string) => {
 	}
 
 	const createApp = async () => {
-		const app = Alepha.create().with(TestLockWait);
+		const app = Alepha.create();
 		app.with({
 			provide: LockTopicProvider,
 			use: provider === "redis" ? RedisTopicProvider : SharedTopicProvider,
@@ -107,6 +107,7 @@ const testLockWait = async (provider?: string) => {
 			provide: LockProvider,
 			use: provider === "redis" ? RedisLockProvider : SharedLockProvider,
 		});
+		app.with(TestLockWait);
 		return app.start().then(() => app.get(TestLockWait));
 	};
 

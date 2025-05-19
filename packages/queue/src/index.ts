@@ -26,7 +26,6 @@ export class QueueModule {
 	protected readonly env = $inject(envSchema);
 
 	constructor() {
-		this.alepha.register(QueueDescriptorProvider);
 		this.alepha.register({
 			default: true,
 			provide: QueueProvider,
@@ -35,6 +34,7 @@ export class QueueModule {
 				redis: RedisQueueProvider,
 			}[this.env.QUEUE_PROVIDER],
 		});
+		this.alepha.register(QueueDescriptorProvider);
 	}
 }
 

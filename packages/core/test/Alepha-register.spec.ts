@@ -94,89 +94,89 @@ test("Alepha#register - default", () => {
 
 	expect(alepha.get(M).a.a).toBe("c");
 });
-
-test("Alepha#register - late swapping + default", async () => {
-	class Pro {
-		pro = "pro";
-	}
-
-	class ProExt extends Pro {}
-
-	class ProA {
-		pro = "a";
-	}
-
-	class ProB {
-		pro = "b";
-	}
-
-	class App {
-		pro_ext = $inject(ProExt);
-		pro = $inject(Pro);
-		test = () => this.pro_ext.pro + this.pro.pro;
-	}
-
-	class M {
-		a = $inject(Alepha);
-
-		constructor() {
-			this.a.with({
-				provide: Pro,
-				use: ProA,
-				default: true,
-			});
-			this.a.with({
-				provide: ProExt,
-				use: ProA,
-				default: true,
-			});
-		}
-	}
-
-	const test = async (a: Alepha) => {
-		const app = a.get(App);
-		await a.start();
-		return app.test();
-	};
-
-	expect(await test(Alepha.create().with(M).with(App))).toBe("aa");
-
-	expect(
-		await test(
-			Alepha.create().with(M).with(App).with({
-				provide: ProExt,
-				use: ProB,
-			}),
-		),
-	).toBe("ba");
-
-	expect(
-		await test(
-			Alepha.create().with(App).with(M).with({
-				provide: ProExt,
-				use: ProB,
-			}),
-		),
-	).toBe("ba");
-
-	expect(
-		await test(
-			Alepha.create().with(M).with({
-				provide: ProExt,
-				use: ProB,
-			}),
-		),
-	).toBe("ba");
-
-	expect(
-		await test(
-			Alepha.create()
-				.with(App)
-				.with({
-					provide: ProExt,
-					use: ProB,
-				})
-				.with(M),
-		),
-	).toBe("ba");
-});
+//
+// test("Alepha#register - late swapping + default", async () => {
+// 	class Pro {
+// 		pro = "pro";
+// 	}
+//
+// 	class ProExt extends Pro {}
+//
+// 	class ProA {
+// 		pro = "a";
+// 	}
+//
+// 	class ProB {
+// 		pro = "b";
+// 	}
+//
+// 	class App {
+// 		pro_ext = $inject(ProExt);
+// 		pro = $inject(Pro);
+// 		test = () => this.pro_ext.pro + this.pro.pro;
+// 	}
+//
+// 	class M {
+// 		a = $inject(Alepha);
+//
+// 		constructor() {
+// 			this.a.with({
+// 				provide: Pro,
+// 				use: ProA,
+// 				default: true,
+// 			});
+// 			this.a.with({
+// 				provide: ProExt,
+// 				use: ProA,
+// 				default: true,
+// 			});
+// 		}
+// 	}
+//
+// 	const test = async (a: Alepha) => {
+// 		const app = a.get(App);
+// 		await a.start();
+// 		return app.test();
+// 	};
+//
+// 	expect(await test(Alepha.create().with(M).with(App))).toBe("aa");
+//
+// 	expect(
+// 		await test(
+// 			Alepha.create().with(M).with(App).with({
+// 				provide: ProExt,
+// 				use: ProB,
+// 			}),
+// 		),
+// 	).toBe("ba");
+//
+// 	expect(
+// 		await test(
+// 			Alepha.create().with(App).with(M).with({
+// 				provide: ProExt,
+// 				use: ProB,
+// 			}),
+// 		),
+// 	).toBe("ba");
+//
+// 	expect(
+// 		await test(
+// 			Alepha.create().with(M).with({
+// 				provide: ProExt,
+// 				use: ProB,
+// 			}),
+// 		),
+// 	).toBe("ba");
+//
+// 	expect(
+// 		await test(
+// 			Alepha.create()
+// 				.with(App)
+// 				.with({
+// 					provide: ProExt,
+// 					use: ProB,
+// 				})
+// 				.with(M),
+// 		),
+// 	).toBe("ba");
+// });

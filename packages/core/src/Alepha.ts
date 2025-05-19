@@ -459,6 +459,10 @@ export class Alepha {
 		const it = this.registry.get(classProvider.provide);
 		if (it && !opts.skipCache) {
 			if ("use" in entry && entry.use && it.use !== entry.use) {
+				this.log.warn(
+					`Late swapping is deprecated. Swap ${it.provide.name} with ${entry.use.name} before using it.`,
+				);
+
 				if (this.started) {
 					throw new ContainerLockedError();
 				}
@@ -789,6 +793,7 @@ export class Alepha {
 			}
 			const provider = obj[key]?.[PROVIDER];
 			if (provider) {
+				//delete obj[key][PROVIDER];
 				Object.defineProperty(instance, key, {
 					get: () => {
 						return this.get(provider, { parent: definition });

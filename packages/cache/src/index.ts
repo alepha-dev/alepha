@@ -27,7 +27,6 @@ export class CacheModule {
 	protected readonly env = $inject(envSchema);
 
 	constructor() {
-		this.alepha.register(CacheDescriptorProvider);
 		this.alepha.register({
 			default: true,
 			provide: CacheProvider,
@@ -37,6 +36,7 @@ export class CacheModule {
 				redis: RedisCacheProvider,
 			}[this.env.CACHE_PROVIDER],
 		});
+		this.alepha.register(CacheDescriptorProvider);
 	}
 }
 
