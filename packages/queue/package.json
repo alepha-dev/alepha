@@ -3,6 +3,7 @@
 	"version": "0.6.9",
 	"type": "module",
 	"license": "MIT",
+	"description": "Queue module for Alepha that enables type-safe, background task processing with zero-runtime overhead and full TypeScript inference.",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"browser": "./src/index.browser.ts",
