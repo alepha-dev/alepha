@@ -291,6 +291,7 @@ export class HttpClient {
 
 		return (
 			contentType.startsWith("application/octet-stream") ||
+			contentType.startsWith("application/pdf") ||
 			contentType.startsWith("image/") ||
 			contentType.startsWith("video/") ||
 			contentType.startsWith("audio/")
@@ -349,6 +350,13 @@ export class HttpClient {
 			const query = action.schema?.query
 				? this.alepha.parse(action.schema.query, args.query ?? {})
 				: args.query;
+
+			for (const key of Object.keys(query)) {
+				if (query[key] === undefined) {
+					delete query[key];
+				}
+			}
+
 			return `${url}?${new URLSearchParams(
 				query as Record<string, string>,
 			).toString()}`;
