@@ -3,12 +3,16 @@
  */
 export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
 	/**
+	 * Maximum number of attempts.
 	 *
+	 * @default 3
 	 */
 	max?: number;
 
 	/**
+	 * Delay in milliseconds.
 	 *
+	 * @default 0
 	 */
 	delay?: number;
 

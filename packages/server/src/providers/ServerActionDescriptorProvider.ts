@@ -2,7 +2,9 @@ import {
 	$hook,
 	$inject,
 	$logger,
+	$retry,
 	Alepha,
+	type Async,
 	KIND,
 	OPTIONS,
 	type Static,
@@ -23,7 +25,11 @@ import type {
 	RouteDescriptorOptions,
 } from "../descriptors/$action.ts";
 import { $route } from "../descriptors/$action.ts";
-import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
+import {
+	$remote,
+	type RemoteDescriptor,
+	type RemoteDescriptorOptions,
+} from "../descriptors/$remote.ts";
 import { ForbiddenError } from "../errors/ForbiddenError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
@@ -86,7 +92,6 @@ export class ServerActionDescriptorProvider {
 	public async registerRemote(value: RemoteDescriptor, key: string) {
 		const options = value[OPTIONS];
 		const url = typeof options.url === "string" ? options.url : options.url();
-
 		this.remotes.push({
 			url,
 			name: options.name ?? key,
@@ -94,32 +99,55 @@ export class ServerActionDescriptorProvider {
 				(Array.isArray(options.services)
 					? options.services
 					: [options.services]) ?? [],
-			proxy: options.proxy ?? false,
+			proxy: !!options.proxy,
 		});
 
-		await fetch(`${url}/api/_links`, {})
-			.then(async (response) => {
+		await this.loadRemoteLinks(options);
+	}
+
+	public loadRemoteLinks = $retry({
+		delay: 2000,
+		max: 5,
+		handler: async (options: RemoteDescriptorOptions) => {
+			const host =
+				typeof options.url === "string" ? options.url : options.url();
+			const linkPath = options.linkPath ?? "/api/_links";
+			await fetch(`${host}${linkPath}`, {}).then(async (response) => {
 				this.client.links ??= [];
 				const json = await response.json();
 				for (const it of json) {
 					this.client.links.push({
 						...it,
-						host: url,
+						host: host,
 						proxy: !!options.proxy,
 					});
+					const proxyOptions =
+						typeof options.proxy === "object" ? options.proxy : {};
 					if (options.proxy) {
-						await this.proxy(url, it);
+						await this.proxy(host, it, proxyOptions);
 					}
 				}
-			})
-			.catch((error) => {
-				this.log.error(error);
 			});
-	}
+		},
+	});
 
-	public async proxy(url: string, options: HttpClientLink) {
-		const path = options.path;
-		const method = options.method ?? "GET";
+	public async proxy(
+		url: string,
+		link: HttpClientLink,
+		options: {
+			beforeRequest?: (
+				request: ServerRequest,
+				proxyRequest: RequestInit,
+			) => Async<void>;
+			afterResponse?: (
+				request: ServerRequest,
+				proxyResponse: Response,
+			) => Async<void>;
+			rewrite?: (url: URL) => void;
+		},
+	) {
+		const path = link.path;
+		const method = link.method ?? "GET";
 		const target = url;
 
 		const handler: ServerHandler = async (request) => {
@@ -128,7 +156,7 @@ export class ServerActionDescriptorProvider {
 				url.search = request.url.search;
 			}
 
-			// options.rewrite?.(url);
+			options.rewrite?.(url);
 
 			const requestInit = {
 				url: url.toString(),
@@ -141,9 +169,9 @@ export class ServerActionDescriptorProvider {
 				(requestInit as any).duplex = "half";
 			}
 
-			// if (options.beforeRequest) {
-			// 	await options.beforeRequest(request, requestInit);
-			// }
+			if (options.beforeRequest) {
+				await options.beforeRequest(request, requestInit);
+			}
 
 			const response = await fetch(requestInit.url, requestInit);
 
@@ -151,9 +179,9 @@ export class ServerActionDescriptorProvider {
 			request.reply.headers = Object.fromEntries(response.headers.entries());
 			request.reply.body = response.body;
 
-			// if (options.afterResponse) {
-			// 	await options.afterResponse(request, response);
-			// }
+			if (options.afterResponse) {
+				await options.afterResponse(request, response);
+			}
 		};
 
 		await this.routerProvider.route({

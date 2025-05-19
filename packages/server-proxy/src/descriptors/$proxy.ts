@@ -4,6 +4,7 @@ import type { ServerRequest } from "@alepha/server";
 export type ProxyDescriptorOptions = {
 	path: string;
 	target: string;
+	disabled?: boolean;
 	beforeRequest?: (
 		request: ServerRequest,
 		proxyRequest: RequestInit,
@@ -12,7 +13,6 @@ export type ProxyDescriptorOptions = {
 		request: ServerRequest,
 		proxyResponse: Response,
 	) => Async<void>;
-	disabled?: boolean;
 	rewrite?: (url: URL) => void;
 };
 

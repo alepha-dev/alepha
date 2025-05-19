@@ -1,4 +1,5 @@
-import { KIND, OPTIONS } from "@alepha/core";
+import { type Async, KIND, OPTIONS } from "@alepha/core";
+import type { ServerRequest } from "../providers/ServerRouterProvider.ts";
 
 export const REMOTE_DESCRIPTOR_KEY = "REMOTE";
 
@@ -9,9 +10,28 @@ export interface RemoteDescriptorOptions {
 	url: string | (() => string);
 
 	/**
+	 * @default "/api/_links"
+	 */
+	linkPath?: string;
+
+	/**
 	 * If true, all methods of the remote service will be exposed as actions.
 	 */
-	proxy?: boolean;
+	proxy?:
+		| boolean
+		| {
+				beforeRequest?: (
+					request: ServerRequest,
+					proxyRequest: RequestInit,
+				) => Async<void>;
+
+				afterResponse?: (
+					request: ServerRequest,
+					proxyResponse: Response,
+				) => Async<void>;
+
+				rewrite?: (url: URL) => void;
+		  };
 
 	/**
 	 * One or many instance of classes to be registered as remote services.
