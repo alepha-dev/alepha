@@ -5,6 +5,10 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 export type SQLLike = SQLWrapper | string;
 
 export class PostgresProvider {
+	constructor() {
+		throw new NotImplementedError(this.constructor.name);
+	}
+
 	/**
 	 * Get the database instance
 	 */

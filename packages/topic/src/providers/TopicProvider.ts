@@ -1,6 +1,10 @@
 import { NotImplementedError } from "@alepha/core";
 
 export class TopicProvider {
+	constructor() {
+		throw new NotImplementedError(this.constructor.name);
+	}
+
 	/**
 	 * Publish a message to a topic.
 	 *

@@ -1,6 +1,6 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $repository, pg, Repository, table } from "../src";
+import { $repository, PostgresModule, Repository, pg, table } from "../src";
 import { legacyIdSchema } from "../src/schemas/legacyIdSchema.ts";
 
 const testSchema = pg.entity({
@@ -84,7 +84,7 @@ test("Repository - inject", async () => {
 		repository = $inject(MyRepository);
 	}
 
-	const alepha = Alepha.create();
+	const alepha = Alepha.create().with(PostgresModule);
 	const app = alepha.get(App);
 	await alepha.start();
 

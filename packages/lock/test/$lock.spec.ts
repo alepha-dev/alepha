@@ -36,11 +36,11 @@ const testLockBasic = async (provider?: string) => {
 				LOCK_PROVIDER: provider === "redis" ? "redis" : "memory",
 			},
 		})
-			.with(TestLock)
 			.with({
 				provide: LockProvider,
 				use: provider === "redis" ? RedisLockProvider : SharedLockProvider,
 			})
+			.with(TestLock)
 			.start()
 			.then((a) => a.get(TestLock));
 	};

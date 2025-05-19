@@ -1,12 +1,12 @@
 import { $inject, $logger } from "@alepha/core";
 import type { RedisClient } from "@alepha/redis";
 import { RedisProvider } from "@alepha/redis";
-import { LockProvider } from "./LockProvider.ts";
+import type { LockProvider } from "./LockProvider.ts";
 
 /**
  * A store provider that uses Redis.
  */
-export class RedisLockProvider extends LockProvider {
+export class RedisLockProvider implements LockProvider {
 	protected readonly log = $logger();
 	protected readonly redisProvider = $inject(RedisProvider);
 

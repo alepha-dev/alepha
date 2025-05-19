@@ -1,6 +1,10 @@
 import { NotImplementedError } from "@alepha/core";
 
 export class QueueProvider {
+	constructor() {
+		throw new NotImplementedError(this.constructor.name);
+	}
+
 	/**
 	 * Push a message to the queue.
 	 *

@@ -4,6 +4,10 @@ import { NotImplementedError } from "@alepha/core";
  * Store Provider Interface
  */
 export class LockProvider {
+	constructor() {
+		throw new NotImplementedError(this.constructor.name);
+	}
+
 	/**
 	 * Set the string value of a key.
 	 *

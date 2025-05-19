@@ -1,6 +1,10 @@
 import { NotImplementedError } from "@alepha/core";
 
 export class CacheProvider {
+	constructor() {
+		throw new NotImplementedError(this.constructor.name);
+	}
+
 	/**
 	 * Get the value of a key.
 	 *
