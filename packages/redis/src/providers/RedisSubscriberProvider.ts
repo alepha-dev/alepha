@@ -9,6 +9,9 @@ export class RedisSubscriberProvider {
 	protected readonly client = this.createClient();
 
 	public get subscriber(): RedisClient {
+		if (this.client.status !== "ready") {
+			throw new Error("Redis client is not ready");
+		}
 		return this.client;
 	}
 
@@ -24,7 +27,7 @@ export class RedisSubscriberProvider {
 
 	public async connect(): Promise<void> {
 		this.log.debug("Connecting...");
-		await this.subscriber.connect();
+		await this.client.connect();
 		this.log.info("Connection OK");
 	}
 
@@ -36,7 +39,7 @@ export class RedisSubscriberProvider {
 	 * Redis subscriber client factory method.
 	 */
 	protected createClient(): RedisClient {
-		const client = this.redisProvider.publisher.duplicate({
+		const client = this.redisProvider.duplicate({
 			autoResubscribe: true,
 		});
 

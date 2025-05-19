@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
-import Redis from "ioredis";
+import Redis, { type RedisOptions } from "ioredis";
 
 const envSchema = t.object({
 	REDIS_PORT: t.uint({
@@ -25,6 +25,9 @@ export class RedisProvider {
 	protected readonly client = this.createClient();
 
 	public get publisher(): RedisClient {
+		if (this.client.status !== "ready") {
+			throw new Error("Redis client is not ready");
+		}
 		return this.client;
 	}
 
@@ -61,6 +64,10 @@ export class RedisProvider {
 				resolve();
 			});
 		});
+	}
+
+	public duplicate(options?: Partial<RedisOptions>): RedisClient {
+		return this.client.duplicate(options);
 	}
 
 	/**
