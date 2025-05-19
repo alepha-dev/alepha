@@ -1,4 +1,5 @@
 import { $cache } from "@alepha/cache";
+import type { TObject } from "@alepha/core";
 import {
 	$inject,
 	Alepha,
@@ -341,9 +342,9 @@ export class HttpClient {
 		return url;
 	}
 
-	protected queryParams(
+	public queryParams(
 		url: string,
-		action: HttpClientLink,
+		action: { schema?: { query?: TObject } },
 		args: ServerRequestConfigEntry = {},
 	): string {
 		if (typeof args.query === "object") {
