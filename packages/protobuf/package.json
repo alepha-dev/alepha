@@ -1,13 +1,16 @@
 {
 	"name": "@alepha/protobuf",
-	"version": "0.6.8",
+	"version": "0.6.9",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"files": ["dist", "src"],
+	"files": [
+		"dist",
+		"src"
+	],
 	"dependencies": {
-		"@alepha/core": "0.6.8",
+		"@alepha/core": "0.6.9",
 		"protobufjs": "^7.5.2"
 	},
 	"devDependencies": {
@@ -22,5 +25,9 @@
 		"type": "git",
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
-	"keywords": ["alepha", "protobuf", "typebox"]
+	"keywords": [
+		"alepha",
+		"protobuf",
+		"typebox"
+	]
 }

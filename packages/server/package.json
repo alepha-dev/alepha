@@ -1,18 +1,21 @@
 {
 	"name": "@alepha/server",
-	"version": "0.6.8",
+	"version": "0.6.9",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"browser": "./src/index.browser.ts",
-	"files": ["dist", "src"],
+	"files": [
+		"dist",
+		"src"
+	],
 	"dependencies": {
-		"@alepha/cache": "0.6.8",
-		"@alepha/core": "0.6.8",
-		"@alepha/datetime": "0.6.8",
-		"@alepha/router": "0.6.8",
-		"@alepha/security": "0.6.8",
+		"@alepha/cache": "0.6.9",
+		"@alepha/core": "0.6.9",
+		"@alepha/datetime": "0.6.9",
+		"@alepha/router": "0.6.9",
+		"@alepha/security": "0.6.9",
 		"@fastify/busboy": "^3.1.1"
 	},
 	"devDependencies": {
@@ -27,5 +30,10 @@
 		"type": "git",
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
-	"keywords": ["alepha", "server", "http", "client"]
+	"keywords": [
+		"alepha",
+		"server",
+		"http",
+		"client"
+	]
 }
