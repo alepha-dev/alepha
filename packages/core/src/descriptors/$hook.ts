@@ -1,44 +1,12 @@
-import type { Alepha } from "../Alepha.ts";
+import type { Hooks } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
 import { __descriptor } from "../helpers/descriptor.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { Class } from "../interfaces/Class.ts";
 import { $cursor } from "./$cursor.ts";
-import { OPTIONS } from "../constants/OPTIONS.ts";
 
 const KEY = "HOOK";
-
-export interface Hooks {
-	/**
-	 * Triggered during the configuration phase. Before the start phase.
-	 *
-	 * - Configuration should technically be called many times without any side effects.
-	 * - Spamming Alepha#configure() should not cause any issues.
-	 */
-	configure: Alepha;
-
-	/**
-	 * Triggered during the start phase. When `Alepha#start()` is called.
-	 *
-	 * - Start is called only once. It should not be called multiple times.
-	 */
-	start: Alepha;
-
-	/**
-	 * Triggered during the ready phase. After the start phase.
-	 *
-	 * - Ready is called only once. It should not be called multiple times.
-	 */
-	ready: Alepha;
-
-	/**
-	 * Triggered during the stop phase.
-	 *
-	 * - Stop is called only once. It should not be called multiple times.
-	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application.
-	 */
-	stop: Alepha;
-}
 
 export interface HookOptions<T extends keyof Hooks> {
 	/**

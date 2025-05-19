@@ -70,7 +70,7 @@ export class ServerMultipartProvider {
 	});
 
 	public readonly onSend = $hook({
-		name: "server:onSend",
+		name: "server:onResponse",
 		handler: async ({ request }) => {
 			const cleanup = request.metadata.multipart?.cleanup;
 			if (typeof cleanup === "function") {

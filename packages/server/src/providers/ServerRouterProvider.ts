@@ -122,7 +122,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 				route,
 			},
 			{
-				log: false,
+				catch: true, // avoid unhandled rejection
 			},
 		);
 
@@ -141,7 +141,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 				response,
 			},
 			{
-				log: false,
+				catch: true, // avoid unhandled rejection
 			},
 		);
 

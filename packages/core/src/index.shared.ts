@@ -16,7 +16,6 @@ export * from "./errors/ContainerLockedError.ts";
 export * from "./errors/NotImplementedError.ts";
 export * from "./errors/TypeBoxError.ts";
 
-export * from "./helpers/EventEmitter.ts";
 export * from "./helpers/descriptor.ts";
 
 export * from "./interfaces/Async.ts";

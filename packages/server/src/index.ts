@@ -37,7 +37,7 @@ declare module "@alepha/core" {
 			request: ServerRequest;
 			error: Error;
 		};
-		// last chance to modify the response
+		// last chance to modify the response - TODO: probably not really needed, we can also update the response in the onResponse hook...
 		"server:onSend": {
 			route: ServerRoute;
 			request: ServerRequest;

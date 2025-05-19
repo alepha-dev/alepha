@@ -5,13 +5,14 @@ import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
 import { PROVIDER } from "./constants/PROVIDER.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
-import type { Hook, Hooks } from "./descriptors/$hook.ts";
+import type { Hook } from "./descriptors/$hook.ts";
 import { AppNotStartedError } from "./errors/AppNotStartedError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import type { Descriptor, DescriptorItem } from "./helpers/descriptor.ts";
 import { isDescriptorValue } from "./helpers/descriptor.ts";
+import type { Async } from "./interfaces/Async.ts";
 import type { Class, ClassEntry, ClassProvider } from "./interfaces/Class.ts";
 import { AsyncLocalStorageProvider } from "./providers/AsyncLocalStorageProvider.ts";
 import { Logger, type LoggerEnv } from "./services/Logger.ts";
@@ -45,6 +46,40 @@ export interface State {
 	afterAll?: (run: any) => any;
 	afterEach?: (run: any) => any;
 	onTestFinished?: (run: any) => any;
+}
+
+export interface Hooks {
+	echo: any; // for testing purposes
+
+	/**
+	 * Triggered during the configuration phase. Before the start phase.
+	 *
+	 * - Configuration should technically be called many times without any side effects.
+	 * - Spamming Alepha#configure() should not cause any issues.
+	 */
+	configure: Alepha;
+
+	/**
+	 * Triggered during the start phase. When `Alepha#start()` is called.
+	 *
+	 * - Start is called only once. It should not be called multiple times.
+	 */
+	start: Alepha;
+
+	/**
+	 * Triggered during the ready phase. After the start phase.
+	 *
+	 * - Ready is called only once. It should not be called multiple times.
+	 */
+	ready: Alepha;
+
+	/**
+	 * Triggered during the stop phase.
+	 *
+	 * - Stop is called only once. It should not be called multiple times.
+	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application.
+	 */
+	stop: Alepha;
 }
 
 /**
@@ -506,10 +541,16 @@ export class Alepha {
 		return instance;
 	}
 
-	public on<T extends keyof Hooks>(event: T, hook: Hook<T>) {
+	public on<T extends keyof Hooks>(
+		event: T,
+		hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
+	) {
 		if (!this._events[event]) {
 			this._events[event] = [];
 		}
+
+		const hook =
+			typeof hookOrFunc === "function" ? { callback: hookOrFunc } : hookOrFunc;
 
 		if (hook.priority === "first") {
 			this._events[event].unshift(hook);
@@ -539,6 +580,7 @@ export class Alepha {
 		options: {
 			reverse?: boolean;
 			log?: boolean;
+			catch?: boolean;
 		} = {},
 	): Promise<void> {
 		if (!this.locked) {
@@ -565,7 +607,16 @@ export class Alepha {
 				this.log.trace(`${func}(${name}) ...`);
 			}
 
-			await hook.callback(payload);
+			if (options.catch) {
+				try {
+					await hook.callback(payload);
+				} catch (error) {
+					this.log.error(`${func}(${name}) ERROR`, error);
+					continue;
+				}
+			} else {
+				await hook.callback(payload);
+			}
 
 			if (options.log) {
 				this.log.debug(`${func}(${name}) OK [${Date.now() - ctx.now2}ms]`);
