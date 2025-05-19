@@ -265,6 +265,10 @@ export class HttpClient {
 
 			const text = await response.text();
 
+			if (response.headers.get("Content-Type") !== "application/json") {
+				return text;
+			}
+
 			const json = JSON.parse(text);
 
 			if (response.status >= 400) {
@@ -456,7 +460,7 @@ export class HttpClient {
 
 		// else, make a request
 		return this.request({
-			host,
+			host: link.host ?? host,
 			config,
 			request,
 			link: {
@@ -519,6 +523,8 @@ export interface HttpClientLink {
 	// only for server actions, not for client actions
 	schema?: RequestConfigSchema;
 	handler?: ServerHandler;
+	host?: string;
+	proxy?: boolean;
 }
 
 export type HttpVirtualClient<T> = {

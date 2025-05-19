@@ -9,10 +9,15 @@ export interface RemoteDescriptorOptions {
 	url: string | (() => string);
 
 	/**
+	 * If true, all methods of the remote service will be exposed as actions.
+	 */
+	proxy?: boolean;
+
+	/**
 	 * One or many instance of classes to be registered as remote services.
 	 * Services must contain some $action() descriptors.
 	 */
-	services: object | Array<object>;
+	services?: object | Array<object>;
 
 	/**
 	 * The name of the remote service.

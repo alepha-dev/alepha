@@ -1,7 +1,7 @@
 import { $inject, Alepha, t } from "@alepha/core";
-import { SecurityProvider } from "@alepha/security";
+import { type Permission, SecurityProvider } from "@alepha/security";
 import { $action } from "../../descriptors/$action.ts";
-import { httpLinkSchema } from "../../schemas/httpLinkSchema.ts";
+import { type HttpLink, httpLinkSchema } from "../../schemas/httpLinkSchema.ts";
 import { HttpClient } from "../../services/HttpClient.ts";
 
 export class ServerLinksProvider {
@@ -19,17 +19,36 @@ export class ServerLinksProvider {
 		internal: true,
 		security: false,
 		handler: async ({ user }) => {
-			if (this.alepha.has(SecurityProvider)) {
+			let permissions: Permission[] | undefined;
+			const hasSecurity = this.alepha.has(SecurityProvider);
+			if (hasSecurity) {
 				const security = this.alepha.get(SecurityProvider);
-
-				if (user) {
-					return security.getPermissions(user);
-				}
-
-				return this.client.links?.filter((link) => !link.protected) ?? [];
+				permissions = security.getPermissions(user);
 			}
 
-			return this.client.links ?? [];
+			const appLinks = await this.client.getLinks();
+			const userLinks: HttpLink[] = [];
+
+			for (const link of appLinks) {
+				if (link.proxy === false) continue;
+				if (hasSecurity && link.protected && permissions) {
+					if (
+						!permissions.some(
+							(permission) =>
+								permission.name === link.name &&
+								permission.group === link.group,
+						)
+					) {
+						continue;
+					}
+				}
+
+				const { proxy, ...rest } = link;
+
+				userLinks.push(rest);
+			}
+
+			return userLinks;
 		},
 	});
 }

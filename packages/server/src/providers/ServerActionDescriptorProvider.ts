@@ -27,9 +27,10 @@ import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
 import { ForbiddenError } from "../errors/ForbiddenError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
-import { HttpClient } from "../services/HttpClient.ts";
+import { HttpClient, type HttpClientLink } from "../services/HttpClient.ts";
 import {
 	type RequestConfigSchema,
+	type ServerHandler,
 	type ServerRequest,
 	type ServerRequestConfigEntry,
 	type ServerRoute,
@@ -73,7 +74,7 @@ export class ServerActionDescriptorProvider {
 		handler: async () => {
 			const remotes = this.alepha.getDescriptorValues($remote);
 			for (const { value, key } of remotes) {
-				this.registerRemote(value, key);
+				await this.registerRemote(value, key);
 			}
 			const routes = this.alepha.getDescriptorValues($route);
 			for (const { value, key, instance } of routes) {
@@ -82,17 +83,97 @@ export class ServerActionDescriptorProvider {
 		},
 	});
 
-	public registerRemote(value: RemoteDescriptor, key: string) {
+	public async registerRemote(value: RemoteDescriptor, key: string) {
+		const options = value[OPTIONS];
+		const url = typeof options.url === "string" ? options.url : options.url();
+
 		this.remotes.push({
-			url:
-				typeof value[OPTIONS].url === "string"
-					? value[OPTIONS].url
-					: value[OPTIONS].url(),
-			name: value[OPTIONS].name ?? key,
-			services: Array.isArray(value[OPTIONS].services)
-				? value[OPTIONS].services
-				: [value[OPTIONS].services],
+			url,
+			name: options.name ?? key,
+			services:
+				(Array.isArray(options.services)
+					? options.services
+					: [options.services]) ?? [],
+			proxy: options.proxy ?? false,
 		});
+
+		await fetch(`${url}/api/_links`, {})
+			.then(async (response) => {
+				this.client.links ??= [];
+				const json = await response.json();
+				for (const it of json) {
+					this.client.links.push({
+						...it,
+						host: url,
+						proxy: !!options.proxy,
+					});
+					if (options.proxy) {
+						await this.proxy(url, it);
+					}
+				}
+			})
+			.catch((error) => {
+				this.log.error(error);
+			});
+	}
+
+	public async proxy(url: string, options: HttpClientLink) {
+		const path = options.path;
+		const method = options.method ?? "GET";
+		const target = url;
+
+		const handler: ServerHandler = async (request) => {
+			const url = new URL(request.url.pathname, target);
+			if (request.url.search) {
+				url.search = request.url.search;
+			}
+
+			// options.rewrite?.(url);
+
+			const requestInit = {
+				url: url.toString(),
+				method: request.method,
+				headers: request.headers,
+				body: this.getRawRequestBody(request),
+			};
+
+			if (requestInit.body) {
+				(requestInit as any).duplex = "half";
+			}
+
+			// if (options.beforeRequest) {
+			// 	await options.beforeRequest(request, requestInit);
+			// }
+
+			const response = await fetch(requestInit.url, requestInit);
+
+			request.reply.status = response.status;
+			request.reply.headers = Object.fromEntries(response.headers.entries());
+			request.reply.body = response.body;
+
+			// if (options.afterResponse) {
+			// 	await options.afterResponse(request, response);
+			// }
+		};
+
+		await this.routerProvider.route({
+			method,
+			path,
+			handler,
+		});
+	}
+
+	private getRawRequestBody(req: ServerRequest): any {
+		const { method } = req;
+
+		if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+			return;
+		}
+
+		// Node.js request
+		if (req.raw.node?.req) {
+			return req.raw.node.req;
+		}
 	}
 
 	public async registerAction(
@@ -169,6 +250,10 @@ export class ServerActionDescriptorProvider {
 		instance[key] = $;
 
 		// -- Links
+
+		if (action.options.internal) {
+			return;
+		}
 
 		this.client.links ??= [];
 		this.client.links.push({
@@ -459,6 +544,7 @@ export interface ServerRemote {
 	url: string;
 	services: object[];
 	name: string;
+	proxy: boolean;
 }
 
 export interface ServerRouteAction<
