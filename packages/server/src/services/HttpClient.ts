@@ -4,10 +4,10 @@ import {
 	$inject,
 	Alepha,
 	type FileLike,
-	type TSchema,
 	isFileLike,
 	isTypeFile,
 	t,
+	type TSchema,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -485,14 +485,13 @@ export class HttpClient {
 	public async getLinks(
 		opts: { force?: boolean; host?: string } = {},
 	): Promise<HttpClientLink[]> {
-		if (!this.links || opts.force) {
-			const host = opts.host ?? "";
+		if (opts.host && (!this.links || opts.force)) {
 			this.links = await this.json<any[]>(
-				`${host}${this.env.SERVER_API_URL}${this.URL_LINKS}`,
+				`${opts.host}${this.env.SERVER_API_URL}${this.URL_LINKS}`,
 			);
 		}
 
-		return this.links;
+		return this.links ?? [];
 	}
 }
 

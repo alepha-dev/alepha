@@ -358,7 +358,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		}
 
 		if (Buffer.isBuffer(reply.body)) {
-			reply.headers["content-type"] = "application/octet-stream";
+			reply.headers["content-type"] ??= "application/octet-stream";
 			return;
 		}
 
@@ -371,7 +371,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			return;
 		}
 
-		reply.headers["content-type"] = "text/plain";
+		reply.headers["content-type"] ??= "text/plain";
 		reply.body = String(reply.body);
 		return;
 	}
