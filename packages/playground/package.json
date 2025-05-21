@@ -12,12 +12,12 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.9",
-		"@alepha/postgres": "0.6.9",
-		"@alepha/react": "0.6.9",
-		"@alepha/react-auth": "0.6.9",
-		"@alepha/server": "0.6.9",
-		"@alepha/server-swagger": "0.6.9",
+		"@alepha/core": "0.6.10",
+		"@alepha/postgres": "0.6.10",
+		"@alepha/react": "0.6.10",
+		"@alepha/react-auth": "0.6.10",
+		"@alepha/server": "0.6.10",
+		"@alepha/server-swagger": "0.6.10",
 		"@mantine/core": "^8.0.1",
 		"@mantine/hooks": "^8.0.1",
 		"@mantine/nprogress": "^8.0.1",
@@ -26,8 +26,8 @@
 		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {
-		"@alepha/cli": "0.6.9",
-		"@alepha/vite": "0.6.9",
+		"@alepha/cli": "0.6.10",
+		"@alepha/vite": "0.6.10",
 		"@types/react": "^19.1.4",
 		"@types/react-dom": "^19.1.5",
 		"tsx": "^4.19.4",

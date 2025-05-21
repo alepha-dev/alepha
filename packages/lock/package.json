@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/lock",
-	"version": "0.6.9",
+	"version": "0.6.10",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,10 +11,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.9",
-		"@alepha/datetime": "0.6.9",
-		"@alepha/redis": "0.6.9",
-		"@alepha/topic": "0.6.9"
+		"@alepha/core": "0.6.10",
+		"@alepha/datetime": "0.6.10",
+		"@alepha/redis": "0.6.10",
+		"@alepha/topic": "0.6.10"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",

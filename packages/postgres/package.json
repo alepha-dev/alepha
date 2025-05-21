@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/postgres",
-	"version": "0.6.9",
+	"version": "0.6.10",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,9 +11,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.9",
-		"@alepha/datetime": "0.6.9",
-		"@alepha/lock": "0.6.9",
+		"@alepha/core": "0.6.10",
+		"@alepha/datetime": "0.6.10",
+		"@alepha/lock": "0.6.10",
 		"@sinclair/typebox": "^0.34.33",
 		"drizzle-orm": "^0.43.1",
 		"pg": "^8.16.0"
