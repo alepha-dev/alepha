@@ -2,7 +2,7 @@ import type { TObject } from "@sinclair/typebox";
 import type { BuildColumns } from "drizzle-orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm/column-builder";
 import { pgTable } from "drizzle-orm/pg-core";
-import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core/table";
+import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
 import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type {
 	FromSchema,
@@ -45,43 +45,6 @@ export const pgTableSchema = <
 	return table;
 };
 
-/**
- * @alias pgTableSchema
- */
-export const table = pgTableSchema; // for convenience
-export const $table = pgTableSchema; // for convenience
-
-export const table2 = <
-	TTableName extends string,
-	TSchema extends TObject,
-	TColumnsMap extends FromSchema<TSchema>,
->(
-	name: TTableName,
-	schema: TSchema,
-	extraConfig?: (
-		self: BuildExtraConfigColumns<TTableName, TColumnsMap, "pg">,
-	) => PgTableExtraConfigValue[],
-): PgTableWithColumnsAndSchema<
-	PgTableConfig<TTableName, TSchema, TColumnsMap>,
-	TSchema
-> => {
-	const table = pgTable(
-		name,
-		schemaToColumns(schema) as TColumnsMap,
-		extraConfig,
-	) as PgTableWithColumnsAndSchema<
-		PgTableConfig<TTableName, TSchema, TColumnsMap>,
-		TSchema
-	>;
-
-	table[PG_SCHEMA] = schema;
-
-	return table;
-};
-
-/**
- *
- */
 export type PgTableConfig<
 	TTableName extends string,
 	TSchema extends TObject,

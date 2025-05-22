@@ -1,14 +1,14 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
-import { $repository, $transaction, pg, table } from "../src";
+import { $repository, $transaction, pg, pgTableSchema } from "../src";
 import { PgConflictError } from "../src/errors/PgConflictError.ts";
 
 class App {
 	dt = $inject(DateTimeProvider);
 
 	repository = $repository(
-		table(
+		pgTableSchema(
 			"a",
 			pg.entity({
 				v: pg.version(),

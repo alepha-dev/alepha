@@ -1,5 +1,5 @@
 import { t } from "@alepha/core";
-import { $repository, pg, table } from "../../src";
+import { $repository, pg, pgTableSchema } from "../../src";
 
 export const commentEntitySchema = t.object({
 	id: pg.identityPrimaryKey(),
@@ -8,7 +8,7 @@ export const commentEntitySchema = t.object({
 	message: t.string(),
 });
 
-export const comments = table("comments", commentEntitySchema);
+export const comments = pgTableSchema("comments", commentEntitySchema);
 
 export const postEntitySchema = t.object({
 	id: pg.identityPrimaryKey(),
@@ -17,7 +17,7 @@ export const postEntitySchema = t.object({
 	comments: pg.many(comments, "postId"),
 });
 
-export const posts = table("posts", postEntitySchema);
+export const posts = pgTableSchema("posts", postEntitySchema);
 
 export const userEntitySchema = t.object({
 	id: pg.identityPrimaryKey(),
@@ -26,7 +26,7 @@ export const userEntitySchema = t.object({
 	comments: pg.many(comments, "userId"),
 });
 
-export const users = table("users", userEntitySchema);
+export const users = pgTableSchema("users", userEntitySchema);
 
 export class Blog {
 	users = $repository(users);

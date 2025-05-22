@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
-import { pg, table, uniqueIndex } from "../../src";
+import { pg, pgTableSchema, uniqueIndex } from "../../src";
 
 export const userEntitySchema = pg.entity({
 	name: t.string(),
@@ -14,6 +14,6 @@ export const insertUserEntitySchema = t.pg.insert(userEntitySchema);
 export type UserEntity = Static<typeof userEntitySchema>;
 export type InsertUserEntity = Static<typeof insertUserEntitySchema>;
 
-export const userEntity = table("user", userEntitySchema, (table) => [
+export const userEntity = pgTableSchema("user", userEntitySchema, (table) => [
 	uniqueIndex("name").on(table.name),
 ]);

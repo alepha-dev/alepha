@@ -1,11 +1,18 @@
 import type { Static } from "@alepha/core";
 import { $inject, Alepha, __bind, t } from "@alepha/core";
+import * as drizzleOrm from "drizzle-orm";
+import * as drizzleOrmPg from "drizzle-orm/pg-core";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
 import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
 import { SequenceProvider } from "./providers/SequenceProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
+
+export const dzl = {
+	...drizzleOrm,
+	pg: drizzleOrmPg,
+};
 
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";

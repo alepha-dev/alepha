@@ -1,7 +1,7 @@
-import { Alepha, t, TypeBoxError } from "@alepha/core";
+import { Alepha, TypeBoxError, t } from "@alepha/core";
 import { eq } from "drizzle-orm";
 import { expect, test } from "vitest";
-import { $repository, pg, sql, table } from "../src";
+import { $repository, pg, pgTableSchema, sql } from "../src";
 
 const userSchema = t.object({
 	id: pg.id(),
@@ -10,7 +10,7 @@ const userSchema = t.object({
 });
 
 class App {
-	users = $repository(table("users", userSchema));
+	users = $repository(pgTableSchema("users", userSchema));
 }
 
 const alepha = Alepha.create();

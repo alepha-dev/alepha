@@ -1,10 +1,10 @@
 import { Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $repository, pg, table } from "../src";
+import { $repository, pg, pgTableSchema } from "../src";
 
 class App {
 	repository = $repository(
-		table(
+		pgTableSchema(
 			"test",
 			t.object({
 				id: pg.primaryKey(pg.identity()),

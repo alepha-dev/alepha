@@ -1,8 +1,8 @@
 import { Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $repository, pg, table } from "../src";
+import { $repository, pg, pgTableSchema } from "../src";
 
-const users = table(
+const users = pgTableSchema(
 	"users",
 	t.object({
 		id: pg.identityPrimaryKey(),
@@ -14,7 +14,7 @@ const users = table(
 	}),
 );
 
-const posts = table(
+const posts = pgTableSchema(
 	"posts",
 	t.object({
 		id: pg.identityPrimaryKey(),

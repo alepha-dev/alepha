@@ -1,13 +1,19 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $repository, PostgresModule, Repository, pg, table } from "../src";
+import {
+	$repository,
+	PostgresModule,
+	Repository,
+	pg,
+	pgTableSchema,
+} from "../src";
 import { legacyIdSchema } from "../src/schemas/legacyIdSchema.ts";
 
 const testSchema = pg.entity({
 	name: t.string(),
 });
 
-const testEntity = table("test", testSchema);
+const testEntity = pgTableSchema("test", testSchema);
 
 test("Repository - id serial", async () => {
 	class App {
@@ -42,7 +48,7 @@ test("Repository - id uuid (pglite)", async () => {
 		uuid: pg.primaryKey(t.uuid()),
 		name: t.string(),
 	});
-	const entity = table("test", schema);
+	const entity = pgTableSchema("test", schema);
 	class App {
 		repository = $repository(entity);
 	}

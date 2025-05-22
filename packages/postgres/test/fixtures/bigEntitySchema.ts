@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
-import { pg, table } from "../../src";
+import { pg, pgTableSchema } from "../../src";
 import type { userEntitySchema } from "./userEntitySchema.ts";
 
 export const bigEntitySchema = t.object({
@@ -60,4 +60,4 @@ export const bigEntitySchema = t.object({
 
 export type BigEntity = Static<typeof userEntitySchema>;
 
-export const bigEntity = table("big", bigEntitySchema);
+export const bigEntity = pgTableSchema("big", bigEntitySchema);
