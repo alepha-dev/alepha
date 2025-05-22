@@ -7,6 +7,7 @@ export const httpLinkSchema = t.object({
 	group: t.optional(t.string()),
 	protected: t.optional(t.boolean()),
 	contentType: t.optional(t.string()),
+	service: t.optional(t.string()),
 });
 
 export type HttpLink = Static<typeof httpLinkSchema>;

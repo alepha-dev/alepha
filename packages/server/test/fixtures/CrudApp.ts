@@ -1,4 +1,4 @@
-import { $inject, type Static, t } from "@alepha/core";
+import { type Static, t } from "@alepha/core";
 import { $action, NotFoundError } from "../../src";
 
 export const userSchema = t.object({
@@ -8,7 +8,15 @@ export const userSchema = t.object({
 
 export type User = Static<typeof userSchema>;
 
-export class CrudApi {
+export class CrudApp {
+	seq = 1;
+	users: User[] = [];
+
+	clear() {
+		this.seq = 1;
+		this.users = [];
+	}
+
 	findById = $action({
 		path: "/users/:id",
 		schema: {
@@ -20,6 +28,16 @@ export class CrudApi {
 			}),
 			response: userSchema,
 		},
+		handler: ({ params, headers }) => {
+			const user = this.users.find((u) => u.id === params.id);
+			if (!user) {
+				throw new NotFoundError("User not found");
+			}
+			if (headers.uppercase) {
+				user.name = user.name.toUpperCase();
+			}
+			return user;
+		},
 	});
 
 	findAll = $action({
@@ -29,6 +47,13 @@ export class CrudApi {
 				name: t.optional(t.string()),
 			}),
 			response: t.array(userSchema),
+		},
+		handler: ({ query }) => {
+			const name = query.name;
+			if (name) {
+				return this.users.filter((u) => u.name.includes(name));
+			}
+			return this.users;
 		},
 	});
 
@@ -40,6 +65,10 @@ export class CrudApi {
 				id: t.int(),
 			}),
 			response: t.void(),
+		},
+		handler: async ({ params }) => {
+			const user = await this.findById({ params });
+			this.users = this.users.filter((u) => u.id !== user.id);
 		},
 	});
 
@@ -55,6 +84,12 @@ export class CrudApi {
 			}),
 			response: userSchema,
 		},
+		handler: async ({ params, body }) => {
+			const user = await this.findById({ params });
+			user.name = body.name;
+			this.users = this.users.map((u) => (u.id === user.id ? user : u));
+			return user;
+		},
 	});
 
 	create = $action({
@@ -65,71 +100,6 @@ export class CrudApi {
 			}),
 			response: userSchema,
 		},
-	});
-
-	internalError = $action({
-		schema: {
-			response: t.void(),
-		},
-	});
-}
-
-export class CrudApp {
-	api = $inject(CrudApi);
-
-	seq = 1;
-	users: User[] = [];
-
-	clear() {
-		this.seq = 1;
-		this.users = [];
-	}
-
-	findById = $action({
-		use: this.api.findById,
-		handler: ({ params, headers }) => {
-			const user = this.users.find((u) => u.id === params.id);
-			if (!user) {
-				throw new NotFoundError("User not found");
-			}
-			if (headers.uppercase) {
-				user.name = user.name.toUpperCase();
-			}
-			return user;
-		},
-	});
-
-	findAll = $action({
-		use: this.api.findAll,
-		handler: ({ query }) => {
-			const name = query.name;
-			if (name) {
-				return this.users.filter((u) => u.name.includes(name));
-			}
-			return this.users;
-		},
-	});
-
-	delete = $action({
-		use: this.api.delete,
-		handler: async ({ params }) => {
-			const user = await this.findById({ params });
-			this.users = this.users.filter((u) => u.id !== user.id);
-		},
-	});
-
-	update = $action({
-		use: this.api.update,
-		handler: async ({ params, body }) => {
-			const user = await this.findById({ params });
-			user.name = body.name;
-			this.users = this.users.map((u) => (u.id === user.id ? user : u));
-			return user;
-		},
-	});
-
-	create = $action({
-		use: this.api.create,
 		handler: ({ body }) => {
 			const id = this.seq++;
 			const user = {
@@ -142,7 +112,9 @@ export class CrudApp {
 	});
 
 	internalError = $action({
-		use: this.api.internalError,
+		schema: {
+			response: t.void(),
+		},
 		handler: () => {
 			throw new Error("Oops");
 		},

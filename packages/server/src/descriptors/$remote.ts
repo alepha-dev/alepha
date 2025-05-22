@@ -1,7 +1,7 @@
-import { type Async, KIND, OPTIONS } from "@alepha/core";
-import type { ServerRequest } from "../providers/ServerRouterProvider.ts";
+import { type Async, KIND, OPTIONS, __descriptor } from "@alepha/core";
+import type { ProxyDescriptorOptions } from "./$proxy.ts";
 
-export const REMOTE_DESCRIPTOR_KEY = "REMOTE";
+const KEY = "REMOTE";
 
 export interface RemoteDescriptorOptions {
 	/**
@@ -10,53 +10,36 @@ export interface RemoteDescriptorOptions {
 	url: string | (() => string);
 
 	/**
-	 * @default "/api/_links"
-	 */
-	linkPath?: string;
-
-	/**
-	 * If true, all methods of the remote service will be exposed as actions.
-	 */
-	proxy?:
-		| boolean
-		| {
-				beforeRequest?: (
-					request: ServerRequest,
-					proxyRequest: RequestInit,
-				) => Async<void>;
-
-				afterResponse?: (
-					request: ServerRequest,
-					proxyResponse: Response,
-				) => Async<void>;
-
-				rewrite?: (url: URL) => void;
-		  };
-
-	/**
-	 * One or many instance of classes to be registered as remote services.
-	 * Services must contain some $action() descriptors.
-	 */
-	services?: object | Array<object>;
-
-	/**
 	 * The name of the remote service.
 	 *
 	 * @default Member of the class containing the remote service.
 	 */
 	name?: string;
+
+	/**
+	 * If true, all methods of the remote service will be exposed as actions.
+	 */
+	proxy?: boolean | ProxyDescriptorOptions;
+
+	token?: () => Async<string>;
+
+	/**
+	 * @default "/api/_links"
+	 */
+	linkPath?: string;
 }
 
 export interface RemoteDescriptor {
-	[KIND]: typeof REMOTE_DESCRIPTOR_KEY;
+	[KIND]: typeof KEY;
 	[OPTIONS]: RemoteDescriptorOptions;
 }
 
 export const $remote = (options: RemoteDescriptorOptions) => {
+	__descriptor(KEY);
 	return {
-		[KIND]: REMOTE_DESCRIPTOR_KEY,
+		[KIND]: KEY,
 		[OPTIONS]: options,
 	} as RemoteDescriptor;
 };
 
-$remote[KIND] = REMOTE_DESCRIPTOR_KEY;
+$remote[KIND] = KEY;

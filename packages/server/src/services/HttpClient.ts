@@ -4,10 +4,10 @@ import {
 	$inject,
 	Alepha,
 	type FileLike,
+	type TSchema,
 	isFileLike,
 	isTypeFile,
 	t,
-	type TSchema,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -18,7 +18,7 @@ import type {
 } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
-import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
+import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
 import type {
 	RequestConfigSchema,
 	ServerHandler,
@@ -39,16 +39,23 @@ const envSchema = t.object({
 export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly env = $inject(envSchema);
-	protected readonly helper = $inject(RouteDescriptorHelper);
+	protected readonly helper = $inject(ActionDescriptorHelper);
 
 	public readonly URL_LINKS = "/_links";
 	public readonly cache = $cache<any>();
-	public links?: Array<HttpClientLink>;
+	protected links?: Array<HttpClientLink>;
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
 
-	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
-		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
+	public pushLink(link: HttpClientLink) {
+		if (!this.links) {
+			this.links = [];
+		}
+		if (!link.handler && !link.host) {
+			throw new Error("Link handler or host is required");
+		}
+
+		this.links.push(link);
 	}
 
 	public async clear() {
@@ -57,18 +64,16 @@ export class HttpClient {
 
 	public createFetchFunction(
 		link: HttpClientLink,
-		options?: FetchFactoryAdditionalOptions,
+		args?: FetchFactoryAdditionalOptions,
 	) {
 		return (
 			config: Partial<ClientRequestEntry> = {},
-			request: ClientRequestOptions = {},
+			options: ClientRequestOptions = {},
 		) => {
-			const host =
-				typeof options?.host === "function" ? options.host() : options?.host;
-
+			const host = typeof args?.host === "function" ? args.host() : args?.host;
 			return this.request({
 				config,
-				request,
+				options,
 				link,
 				host,
 			});
@@ -78,11 +83,11 @@ export class HttpClient {
 	public async request(args: {
 		config?: ServerRequestConfigEntry;
 		link: HttpClientLink;
-		request?: ClientRequestOptions;
+		options?: ClientRequestOptions;
 		host?: string;
 	}) {
 		const route = args.link;
-		const options = args.request ?? {};
+		const options = args.options ?? {};
 		const config = args.config ?? {};
 		const host = args.host ?? "";
 
@@ -370,9 +375,8 @@ export class HttpClient {
 	}
 
 	public of<T extends object>(
-		options: {
+		link: {
 			group?: string;
-			host?: string | (() => string);
 		} = {},
 	): HttpVirtualClient<T> {
 		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
@@ -383,11 +387,11 @@ export class HttpClient {
 
 				const $ = async (
 					config: any = {},
-					request: ClientRequestOptions = {},
+					options: ClientRequestOptions = {},
 				) => {
 					return this.follow(prop, config, {
+						...link,
 						...options,
-						request,
 					});
 				};
 
@@ -410,37 +414,30 @@ export class HttpClient {
 
 	public async follow(
 		name: string,
-		config: any = {},
-		options: {
-			request?: ClientRequestOptions;
+		config: Partial<ServerRequestConfigEntry> = {},
+		options: ClientRequestOptions & {
 			group?: string;
-			host?: string | (() => string);
 		} = {},
 	) {
-		const request = options.request ?? {};
-		const host: string | undefined =
-			typeof options.host === "function" ? options.host() : options.host;
-
-		const links = await this.getLinks({
-			host,
-		});
-
-		const link = links.find((a) => a.name === name);
+		const als = this.alepha.als.get<ServerRequest>("request");
+		const user = options?.user ?? als?.user;
+		const links = await this.getLinks();
+		const link = links.find(
+			(a) => a.name === name && (!options.group || a.group === options.group),
+		);
 
 		if (!link) {
 			const error = new UnauthorizedError(`Action ${name} not found.`);
-
 			await this.alepha.emit("client:onError", {
 				route: link,
 				error,
 			});
-
 			throw error;
 		}
 
 		// if a handler is defined, use it (ssr)
 		if (link.handler) {
-			const request = {
+			return link.handler({
 				method: link.method,
 				url: new URL(`http://localhost${link.path}`),
 				query: config.query ?? {},
@@ -453,19 +450,25 @@ export class HttpClient {
 					headers: {},
 					redirect: () => {},
 				},
-			} as Partial<ServerRequest>;
+				user,
+			} as Partial<ServerRequest> as ServerRequest);
+		}
 
-			return link.handler(request as ServerRequest);
+		if (als?.headers.authorization) {
+			options.request ??= {};
+			options.request.headers = new Headers(options.request.headers);
+			options.request.headers.set("authorization", als.headers.authorization);
 		}
 
 		// else, make a request
 		return this.request({
-			host: link.host ?? host,
+			host: link.host,
 			config,
-			request,
+			options,
 			link: {
 				...link,
-				// schema is not used in the client, just mock it
+				// schema is not used in the client,
+				// we assume that typescript will check
 				schema: {
 					body: t.any(),
 					response: t.any(),
@@ -482,16 +485,18 @@ export class HttpClient {
 		return !!links?.some((link) => link.name === name);
 	}
 
-	public async getLinks(
-		opts: { force?: boolean; host?: string } = {},
-	): Promise<HttpClientLink[]> {
-		if (opts.host && (!this.links || opts.force)) {
+	public async getLinks(): Promise<HttpClientLink[]> {
+		if (!this.links && this.alepha.isBrowser()) {
 			this.links = await this.json<any[]>(
-				`${opts.host}${this.env.SERVER_API_URL}${this.URL_LINKS}`,
+				`${this.env.SERVER_API_URL}${this.URL_LINKS}`,
 			);
 		}
 
 		return this.links ?? [];
+	}
+
+	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
+		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
 	}
 }
 
@@ -517,13 +522,14 @@ export interface HttpClientLink {
 	path: string;
 	name: string;
 	group?: string;
-	contentType?: string; // application/json or multipart/form-data
+	contentType?: string; // body content type
 	protected?: boolean;
-	// only for server actions, not for client actions
+	// -- server only --
+	// only for remote actions
+	host?: string;
+	// used only for local actions, not for remote actions
 	schema?: RequestConfigSchema;
 	handler?: ServerHandler;
-	host?: string;
-	proxy?: boolean;
 }
 
 export type HttpVirtualClient<T> = {

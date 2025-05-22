@@ -173,7 +173,9 @@ export class ReactBrowserProvider {
 			const previous = hydration?.layers ?? [];
 
 			if (hydration?.links) {
-				this.client.links = hydration.links as HttpClientLink[];
+				for (const link of hydration.links) {
+					this.client.pushLink(link);
+				}
 			}
 
 			const { head } = await this.render({ previous });

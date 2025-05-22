@@ -1,6 +1,8 @@
-import { KIND, __descriptor, OPTIONS } from "@alepha/core";
+import { type Async, KIND, OPTIONS, __descriptor } from "@alepha/core";
 
 const KEY = "AUTH";
+
+export type AccessToken = string;
 
 export interface AuthDescriptorOptions {
 	name?: string;
@@ -10,6 +12,7 @@ export interface AuthDescriptorOptions {
 		clientSecret?: string;
 		redirectUri?: string;
 	};
+	fallback?: () => Async<AccessToken>;
 }
 
 export interface AuthDescriptor {

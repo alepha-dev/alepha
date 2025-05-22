@@ -6,7 +6,7 @@ import {
 	type ClientRequestOptions,
 	type RouteDescriptor,
 } from "../descriptors/$action.ts";
-import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
+import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
 import { HttpClient } from "../services/HttpClient.ts";
 
 const envSchema = t.object({
@@ -24,7 +24,7 @@ export class BrowserActionDescriptorProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client = $inject(HttpClient);
 	protected readonly env = $inject(envSchema);
-	protected readonly helper = $inject(RouteDescriptorHelper);
+	protected readonly helper = $inject(ActionDescriptorHelper);
 
 	public readonly configure = $hook({
 		name: "configure",

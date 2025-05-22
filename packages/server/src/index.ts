@@ -5,8 +5,11 @@ import {
 	$route,
 	type ClientRequestOptions,
 } from "./descriptors/$action.ts";
+import { $proxy } from "./descriptors/$proxy.ts";
 import { $remote } from "./descriptors/$remote.ts";
 import type { HttpError } from "./errors/HttpError.ts";
+import { ProxyDescriptorProvider } from "./providers/ProxyDescriptorProvider.ts";
+import { RemoteDescriptorProvider } from "./providers/RemoteDescriptorProvider.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
 import type {
 	ServerRequest,
@@ -71,8 +74,12 @@ export { KIND } from "@alepha/core";
 export * from "./constants/routeMethods.ts";
 export * from "./descriptors/$remote.ts";
 export * from "./descriptors/$action.ts";
+export * from "./descriptors/$client.ts";
+export * from "./descriptors/$proxy.ts";
 export * from "./providers/ServerRouterProvider.ts";
 export * from "./providers/ServerActionDescriptorProvider.ts";
+export * from "./providers/RemoteDescriptorProvider.ts";
+export * from "./providers/ProxyDescriptorProvider.ts";
 export * from "./providers/BrowserActionDescriptorProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
@@ -115,6 +122,8 @@ export class ServerModule {
 		});
 
 		this.alepha.with(ServerActionDescriptorProvider);
+		this.alepha.with(RemoteDescriptorProvider);
+		this.alepha.with(ProxyDescriptorProvider);
 
 		this.alepha.with(ServerLoggerProvider);
 		this.alepha.with(ServerBodyParserProvider);
@@ -129,5 +138,6 @@ export class ServerModule {
 __bind($route, ServerModule);
 __bind($action, ServerModule);
 __bind($remote, ServerModule);
+__bind($proxy, ServerModule);
 __bind($realm, ServerSecurityProvider);
 __bind($role, ServerSecurityProvider);

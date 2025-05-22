@@ -20,11 +20,11 @@ import Busboy, {
 	type BusboyHeaders,
 } from "@fastify/busboy";
 import { HttpError } from "../../errors/HttpError.ts";
-import { RouteDescriptorHelper } from "../../helpers/RouteDescriptorHelper.ts";
+import { ActionDescriptorHelper } from "../../helpers/ActionDescriptorHelper.ts";
 import type { ServerRoute } from "../ServerRouterProvider.ts";
 
 export class ServerMultipartProvider {
-	protected readonly helper = $inject(RouteDescriptorHelper);
+	protected readonly helper = $inject(ActionDescriptorHelper);
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({

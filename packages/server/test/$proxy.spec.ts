@@ -1,7 +1,6 @@
 import { Alepha, t } from "@alepha/core";
-import { $action, ServerProvider } from "@alepha/server";
 import { expect, test } from "vitest";
-import { $proxy } from "../src";
+import { $action, $proxy, ServerProvider } from "../src";
 
 const randomPort = Math.floor(Math.random() * 10000) + 1000;
 

@@ -13,15 +13,6 @@ export class ReactAuth {
 		logout: "/api/_oauth/logout",
 	};
 
-	public readonly start = $hook({
-		name: "client:onError",
-		handler: async ({ error }) => {
-			if (error.status === 401) {
-				this.login();
-			}
-		},
-	});
-
 	public readonly onRender = $hook({
 		name: "react:browser:render",
 		handler: async ({ context, hydration }) => {

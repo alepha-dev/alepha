@@ -2,9 +2,7 @@ import {
 	$hook,
 	$inject,
 	$logger,
-	$retry,
 	Alepha,
-	type Async,
 	KIND,
 	OPTIONS,
 	type Static,
@@ -18,25 +16,19 @@ import {
 	type UserAccountToken,
 } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
-import type {
-	ClientRequestEntry,
-	ClientRequestOptions,
-	RouteDescriptor,
-	RouteDescriptorOptions,
-} from "../descriptors/$action.ts";
-import { $route } from "../descriptors/$action.ts";
 import {
-	$remote,
-	type RemoteDescriptor,
-	type RemoteDescriptorOptions,
-} from "../descriptors/$remote.ts";
+	$route,
+	type ClientRequestEntry,
+	type ClientRequestOptions,
+	type RouteDescriptor,
+	type RouteDescriptorOptions,
+} from "../descriptors/$action.ts";
 import { ForbiddenError } from "../errors/ForbiddenError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
-import { RouteDescriptorHelper } from "../helpers/RouteDescriptorHelper.ts";
+import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
 import { HttpClient, type HttpClientLink } from "../services/HttpClient.ts";
 import {
 	type RequestConfigSchema,
-	type ServerHandler,
 	type ServerRequest,
 	type ServerRequestConfigEntry,
 	type ServerRoute,
@@ -65,10 +57,8 @@ export class ServerActionDescriptorProvider {
 	protected readonly env = $inject(envSchema);
 	protected readonly client = $inject(HttpClient);
 	protected readonly serverProvider = $inject(ServerProvider);
-	protected readonly helper = $inject(RouteDescriptorHelper);
+	protected readonly helper = $inject(ActionDescriptorHelper);
 	protected readonly routerProvider = $inject(ServerRouterProvider);
-
-	protected readonly remotes: Array<ServerRemote> = [];
 	protected readonly actions: ServerRouteAction[] = [];
 
 	public getActions() {
@@ -78,131 +68,12 @@ export class ServerActionDescriptorProvider {
 	public readonly configure = $hook({
 		name: "configure",
 		handler: async () => {
-			const remotes = this.alepha.getDescriptorValues($remote);
-			for (const { value, key } of remotes) {
-				await this.registerRemote(value, key);
-			}
 			const routes = this.alepha.getDescriptorValues($route);
 			for (const { value, key, instance } of routes) {
 				await this.registerAction(value, key, instance);
 			}
 		},
 	});
-
-	public async registerRemote(value: RemoteDescriptor, key: string) {
-		const options = value[OPTIONS];
-		const url = typeof options.url === "string" ? options.url : options.url();
-		this.remotes.push({
-			url,
-			name: options.name ?? key,
-			services:
-				(Array.isArray(options.services)
-					? options.services
-					: [options.services]) ?? [],
-			proxy: !!options.proxy,
-		});
-
-		await this.loadRemoteLinks(options);
-	}
-
-	public loadRemoteLinks = $retry({
-		delay: 2000,
-		max: 5,
-		handler: async (options: RemoteDescriptorOptions) => {
-			const host =
-				typeof options.url === "string" ? options.url : options.url();
-			const linkPath = options.linkPath ?? "/api/_links";
-			await fetch(`${host}${linkPath}`, {}).then(async (response) => {
-				this.client.links ??= [];
-				const json = await response.json();
-				for (const it of json) {
-					this.client.links.push({
-						...it,
-						host: host,
-						proxy: !!options.proxy,
-					});
-					const proxyOptions =
-						typeof options.proxy === "object" ? options.proxy : {};
-					if (options.proxy) {
-						await this.proxy(host, it, proxyOptions);
-					}
-				}
-			});
-		},
-	});
-
-	public async proxy(
-		url: string,
-		link: HttpClientLink,
-		options: {
-			beforeRequest?: (
-				request: ServerRequest,
-				proxyRequest: RequestInit,
-			) => Async<void>;
-			afterResponse?: (
-				request: ServerRequest,
-				proxyResponse: Response,
-			) => Async<void>;
-			rewrite?: (url: URL) => void;
-		},
-	) {
-		const path = link.path;
-		const method = link.method ?? "GET";
-		const target = url;
-
-		const handler: ServerHandler = async (request) => {
-			const url = new URL(request.url.pathname, target);
-			if (request.url.search) {
-				url.search = request.url.search;
-			}
-
-			options.rewrite?.(url);
-
-			const requestInit = {
-				url: url.toString(),
-				method: request.method,
-				headers: request.headers,
-				body: this.getRawRequestBody(request),
-			};
-
-			if (requestInit.body) {
-				(requestInit as any).duplex = "half";
-			}
-
-			if (options.beforeRequest) {
-				await options.beforeRequest(request, requestInit);
-			}
-
-			const response = await fetch(requestInit.url, requestInit);
-
-			request.reply.status = response.status;
-			request.reply.headers = Object.fromEntries(response.headers.entries());
-			request.reply.body = response.body;
-
-			if (options.afterResponse) {
-				await options.afterResponse(request, response);
-			}
-		};
-
-		await this.routerProvider.route({
-			method,
-			path,
-			handler,
-		});
-	}
-
-	private getRawRequestBody(req: ServerRequest): any {
-		const { method } = req;
-
-		if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
-			return;
-		}
-
-		// Node.js request
-		if (req.raw.node?.req) {
-			return req.raw.node.req;
-		}
-	}
 
 	public async registerAction(
 		value: RouteDescriptor,
@@ -283,8 +154,7 @@ export class ServerActionDescriptorProvider {
 			return;
 		}
 
-		this.client.links ??= [];
-		this.client.links.push({
+		this.client.pushLink({
 			...action,
 			schema: action.options.schema,
 			contentType: this.helper.bodyContentType(action.options),
@@ -363,45 +233,6 @@ export class ServerActionDescriptorProvider {
 					config: Partial<ClientRequestEntry> = {},
 					opts: ClientRequestOptions = {},
 				) => localFunction(config, opts);
-
-				instance[key] = $;
-
-				return;
-			}
-		}
-
-		for (const resolver of this.remotes) {
-			if (resolver.services.includes(instance)) {
-				this.log.debug(
-					`${instance.constructor.name}#${key} will be a remote client to ${resolver.url}`,
-				);
-
-				// Fetcher is shared with BrowserActionDescriptorProvider, both make http calls with 'fetch()'
-				const remoteFunction = this.client.createFetchFunction(
-					this.helper.link(
-						routeDescriptor[OPTIONS],
-						instance,
-						key,
-						this.env.SERVER_API_PREFIX,
-					),
-					{
-						host: resolver.url,
-					},
-				);
-
-				const $ = (
-					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestOptions = {},
-				) => remoteFunction(config, opts);
-
-				$[KIND] = "ROUTE";
-				$.options = routeDescriptor[OPTIONS];
-				$.fetch = (
-					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestOptions = {},
-				) => {
-					return remoteFunction(config, opts);
-				};
 
 				instance[key] = $;
 
@@ -570,9 +401,9 @@ export const isServerAction = (value: any): value is ServerRouteAction => {
 
 export interface ServerRemote {
 	url: string;
-	services: object[];
 	name: string;
 	proxy: boolean;
+	links: (authorization?: string) => Promise<HttpClientLink[]>;
 }
 
 export interface ServerRouteAction<

@@ -1,44 +1,40 @@
 import { Alepha } from "@alepha/core";
 import { afterEach, expect, test } from "vitest";
-import { $remote, HttpClient } from "../src";
-import { ServerProvider } from "../src/providers/platforms/ServerProvider.ts";
-import { CrudApi, CrudApp } from "./fixtures/CrudApp.ts";
+import {
+	$client,
+	$remote,
+	type HttpVirtualClient,
+	ServerProvider,
+} from "../src";
+import { CrudApp } from "./fixtures/CrudApp.ts";
 
 const ctx = Alepha.create({
-	env: {
-		SERVER_LINKS_ENABLED: true,
-	},
+	env: {},
 });
+
 const app = ctx.get(CrudApp);
-const api = ctx.get(CrudApi);
+const linkLocal = ctx.get(
+	class Client {
+		client = $client<CrudApp>();
+	},
+).client;
 
-const ctxRemote = Alepha.create();
-const apiRemote = ctxRemote.get(CrudApi);
-
-ctxRemote.with(
-	class RemoteServices {
-		crud = $remote({
+const linkRemote = Alepha.create().get(
+	class Client {
+		client = $client<CrudApp>();
+		app = $remote({
 			url: () => ctx.get(ServerProvider).hostname,
-			services: apiRemote,
 		});
 	},
-);
-
-const ctxClientLocal = Alepha.create();
-const apiClientLocal = ctxClientLocal.get(HttpClient).of<CrudApp>({
-	host: () => `${ctx.get(ServerProvider).hostname}`,
-});
-
-const ctxClientRemote = Alepha.create();
-const apiClientRemote = ctxClientRemote.get(HttpClient).of<CrudApp>({
-	host: () => `${ctx.get(ServerProvider).hostname}`,
-});
+).client;
 
 afterEach(() => {
 	app.clear();
 });
 
-const testActionBasicCrud = async (app: CrudApi) => {
+const testActionBasicCrud = async (
+	app: CrudApp | HttpVirtualClient<CrudApp>,
+) => {
 	expect(await app.findAll()).toEqual([]);
 	expect(await app.findAll.fetch({})).toEqual([]);
 
@@ -148,23 +144,15 @@ test("$action - basic crud (app)", async () => {
 	await testActionBasicCrud(app);
 });
 
-test("$action - basic crud (api)", async () => {
-	await testActionBasicCrud(api);
+test("$action - basic crud (linkLocal)", async () => {
+	await testActionBasicCrud(linkLocal);
 });
 
-test("$action - basic crud (remote)", async () => {
-	await testActionBasicCrud(apiRemote);
+test("$action - basic crud (linkRemote)", async () => {
+	await testActionBasicCrud(linkRemote);
 });
 
-test("$action - basic crud (client-remote)", async () => {
-	await testActionBasicCrud(apiClientRemote);
-});
-
-test("$action - basic crud (client-local)", async () => {
-	await testActionBasicCrud(apiClientLocal);
-});
-
-const testActionHeader = async (app: CrudApi) => {
+const testActionHeader = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 	expect(await app.findAll()).toEqual([]);
 	expect(await app.create({ body: { name: "Jean" } })).toEqual({
 		id: 1,
@@ -211,23 +199,15 @@ test("$action - headers (app)", async () => {
 	await testActionHeader(app);
 });
 
-test("$action - headers (api)", async () => {
-	await testActionHeader(api);
+test("$action - headers (linkLocal)", async () => {
+	await testActionHeader(linkLocal);
 });
 
-test("$action - headers (remote)", async () => {
-	await testActionHeader(apiRemote);
+test("$action - headers (linkRemote)", async () => {
+	await testActionHeader(linkRemote);
 });
 
-test("$action - headers (client-remote)", async () => {
-	await testActionHeader(apiClientRemote);
-});
-
-test("$action - headers (client-local)", async () => {
-	await testActionHeader(apiClientLocal);
-});
-
-const testActionErrors = async (app: CrudApi) => {
+const testActionErrors = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 	await expect(app.findById({ params: { id: 2 } })).rejects.toThrowError(
 		"User not found",
 	);
@@ -246,20 +226,12 @@ test("$action - errors (app)", async () => {
 	await testActionErrors(app);
 });
 
-test("$action - errors (api)", async () => {
-	await testActionErrors(api);
+test("$action - errors (linkLocal)", async () => {
+	await testActionErrors(linkLocal);
 });
 
-test("$action - errors (remote)", async () => {
-	await testActionErrors(apiRemote);
-});
-
-test("$action - errors (client-remote)", async () => {
-	await testActionErrors(apiClientRemote);
-});
-
-test("$action - errors (client-local)", async () => {
-	await testActionErrors(apiClientLocal);
+test("$action - errors (linkRemote)", async () => {
+	await testActionErrors(linkRemote);
 });
 
 // TODO - with security (on/off) + forward

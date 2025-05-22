@@ -1,4 +1,12 @@
-import { $hook, $inject, $logger, Alepha, OPTIONS, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type Async,
+	OPTIONS,
+	t,
+} from "@alepha/core";
 import { $route, BadRequestError } from "@alepha/server";
 import {
 	$cookie,
@@ -16,7 +24,7 @@ import {
 	randomPKCECodeVerifier,
 	refreshTokenGrant,
 } from "openid-client";
-import { $auth } from "../descriptors/$auth.ts";
+import { $auth, type AccessToken } from "../descriptors/$auth.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();
@@ -114,6 +122,7 @@ export class ReactAuthProvider {
 						name: options.name ?? key,
 						redirectUri: options.oidc.redirectUri ?? "/api/_oauth/callback",
 						client,
+						fallback: options.fallback,
 					});
 				}
 			}
@@ -148,6 +157,18 @@ export class ReactAuthProvider {
 				if (user) {
 					request.user = user;
 					request.user.roles = []; // user from cookie is not trusted
+				}
+			}
+
+			if (!request.headers.authorization) {
+				for (const provider of this.authProviders) {
+					if (provider.fallback) {
+						const token = await provider.fallback();
+						if (token) {
+							request.headers.authorization = `Bearer ${token}`;
+							break;
+						}
+					}
 				}
 			}
 		},
@@ -438,6 +459,7 @@ export interface AuthProvider {
 	client: {
 		get: () => Promise<Configuration>;
 	};
+	fallback?: () => Async<AccessToken>;
 }
 
 export interface ReactUser {

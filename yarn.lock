@@ -232,16 +232,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-proxy@npm:0.6.10, @alepha/server-proxy@workspace:packages/server-proxy":
-  version: 0.0.0-use.local
-  resolution: "@alepha/server-proxy@workspace:packages/server-proxy"
+"@alepha/server-proxy@npm:0.6.10":
+  version: 0.6.10
+  resolution: "@alepha/server-proxy@npm:0.6.10"
   dependencies:
     "@alepha/core": "npm:0.6.10"
     "@alepha/server": "npm:0.6.10"
-    pkgroll: "npm:^2.12.2"
-    vitest: "npm:^3.1.3"
-  languageName: unknown
-  linkType: soft
+  checksum: 10c0/a40e9d440cbf158e728ca6e11b013464c4f849a760e27aa7b30ff0b0c0855b92b12d035d15b048569745ad72f0bfad02ace4f6de50c607cde66c12a835d59dd9
+  languageName: node
+  linkType: hard
 
 "@alepha/server-static@npm:0.6.10, @alepha/server-static@workspace:packages/server-static":
   version: 0.0.0-use.local

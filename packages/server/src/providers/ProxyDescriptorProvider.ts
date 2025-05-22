@@ -1,13 +1,13 @@
 import { $hook, $inject, Alepha, OPTIONS } from "@alepha/core";
+import { routeMethods } from "../constants/routeMethods.ts";
+import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
 import {
 	type ServerHandler,
 	type ServerRequest,
 	ServerRouterProvider,
-} from "@alepha/server";
-import { routeMethods } from "@alepha/server";
-import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
+} from "./ServerRouterProvider.ts";
 
-export class ServerProxyProvider {
+export class ProxyDescriptorProvider {
 	protected readonly routerProvider = $inject(ServerRouterProvider);
 	protected readonly alepha = $inject(Alepha);
 
