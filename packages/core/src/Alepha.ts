@@ -835,6 +835,11 @@ export class Alepha {
 		__alephaRef.context = this;
 		__alephaRef.definition = definition;
 
+		if (typeof definition !== "function") {
+			console.warn("definition is not a function", definition);
+			return definition as T;
+		}
+
 		const instance: T = new definition(...args);
 
 		const obj = instance as unknown as Record<string, any>;

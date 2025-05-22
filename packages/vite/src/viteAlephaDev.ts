@@ -41,6 +41,8 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 	// let started = false;
 	// let lock: PromiseWithResolvers<void> | null = null;
 
+	const root = process.cwd().replace(/\\/g, "/");
+
 	const state: {
 		started: boolean;
 		app?: Alepha;
@@ -135,7 +137,7 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 	/**
 	 *
 	 */
-	const restart = async (server: ViteDevServer) => {
+	const restart = async (server: ViteDevServer, invalidate?: boolean) => {
 		if (state.lock) {
 			return state.lock.promise;
 		}
@@ -146,6 +148,10 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 		log("[DEBUG] RESTART");
 		await stop();
 		log(`[DEBUG] RESTART (stop) in ${Date.now() - now}ms`);
+
+		if (invalidate) {
+			server.moduleGraph.invalidateAll();
+		}
 
 		await start(server);
 		log(`[DEBUG] RESTART OK in ${Date.now() - now}ms`);
@@ -204,13 +210,18 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 				return;
 			}
 
+			const invalidate = !ctx.file.startsWith(root);
+			if (invalidate) {
+				log("[DEBUG] HMR - outside root - invalidate all");
+			}
+
 			if (!isSsrEnabled && isServerOnly) {
-				await restart(ctx.server);
+				await restart(ctx.server, invalidate);
 				return [];
 			}
 
 			if (isSsrEnabled && ctx.modules[0]) {
-				await restart(ctx.server);
+				await restart(ctx.server, invalidate);
 
 				if (!state.started) {
 					log("[DEBUG] HMR - abort due to app not started");

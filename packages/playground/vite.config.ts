@@ -6,6 +6,7 @@ export default defineConfig({
 		viteReact(),
 		viteAlepha({
 			entry: "./src/index.server.ts",
+			// debug: true,
 			// vercel: true,
 		}),
 	],

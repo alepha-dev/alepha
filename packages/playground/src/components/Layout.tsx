@@ -1,10 +1,9 @@
-import { Link, NestedView, useInject, useRouterEvents } from "@alepha/react";
+import { Link, NestedView, useRouterEvents } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { AppShell, Burger, MantineProvider } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { StrictMode } from "react";
-import { App } from "../App.ts";
 
 const Layout = () => {
 	useRouterEvents({
@@ -13,7 +12,6 @@ const Layout = () => {
 	});
 	const [opened, { toggle }] = useDisclosure();
 	const auth = useAuth();
-	const routes = useInject(App);
 
 	return (
 		<StrictMode>
@@ -48,11 +46,11 @@ const Layout = () => {
 							<li>
 								<Link to="/upload">Upload</Link>
 							</li>
-							{routes.test.can() && (
-								<li>
-									<Link to={routes.test}>Test</Link>
-								</li>
-							)}
+							{/*{routes.test.can() && (*/}
+							{/*	<li>*/}
+							{/*		<Link to={routes.test}>Test</Link>*/}
+							{/*	</li>*/}
+							{/*)}*/}
 							{!auth.user && (
 								<li>
 									<button onClick={() => auth.login()}>login</button>
