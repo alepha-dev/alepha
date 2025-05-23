@@ -52,9 +52,10 @@ export class RemoteDescriptorProvider {
 		}
 
 		const token =
-			typeof options.token === "function"
-				? await options.token()
-				: options.token;
+			typeof options.serviceAccount?.token === "function"
+				? await options.serviceAccount.token()
+				: undefined;
+
 		const links = await this.fetchLinks(`${url}${linkPath}`, token);
 
 		for (const link of links) {
