@@ -62,6 +62,7 @@ export class RemoteDescriptorProvider {
 			this.client.pushLink({
 				...link,
 				host: url,
+				service: name,
 			});
 		}
 	}

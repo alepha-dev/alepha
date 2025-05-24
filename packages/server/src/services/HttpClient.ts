@@ -417,13 +417,17 @@ export class HttpClient {
 		config: Partial<ServerRequestConfigEntry> = {},
 		options: ClientRequestOptions & {
 			group?: string;
+			service?: string;
 		} = {},
 	) {
 		const als = this.alepha.als.get<ServerRequest>("request");
 		const user = options?.user ?? als?.user;
 		const links = await this.getLinks();
 		const link = links.find(
-			(a) => a.name === name && (!options.group || a.group === options.group),
+			(a) =>
+				a.name === name &&
+				(!options.group || a.group === options.group) &&
+				(!options.service || options.service === a.service),
 		);
 
 		if (!link) {
@@ -527,6 +531,7 @@ export interface HttpClientLink {
 	// -- server only --
 	// only for remote actions
 	host?: string;
+	service?: string;
 	// used only for local actions, not for remote actions
 	schema?: RequestConfigSchema;
 	handler?: ServerHandler;
