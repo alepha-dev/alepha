@@ -65,12 +65,13 @@ test("$remote", async ({ expect }) => {
 	expect(links.map((link) => link.path)).toEqual([
 		"/api/ping",
 		"/api/getReport",
-		"/api/br/compute",
 		"/api/cr/print",
 	]);
 
 	expect(await client.of<WebApp>().ping()).toEqual("pong");
 	expect(await client.of<ServiceC>().print()).toEqual("TADA!");
 	expect(await client.of<ServiceA>().getReport()).toEqual("B: 42, C: TADA!");
-	expect(await client.of<ServiceB>().compute()).toEqual("Not Found");
+	await expect(() => client.of<ServiceB>().compute()).rejects.toThrow(
+		"Action compute not found",
+	);
 });

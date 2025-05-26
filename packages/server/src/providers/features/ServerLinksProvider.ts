@@ -56,15 +56,18 @@ export class ServerLinksProvider {
 			userLinks.push(
 				...(
 					await Promise.all(
-						this.remoteProvider.getRemotes().map(async (remote) => {
-							const links = await remote.links(headers.authorization);
-							return links.map((link) => ({
-								...link,
-								path: link.path.replace("/api", `/api/${remote.name}`),
-								proxy: true,
-								service: remote.name,
-							}));
-						}),
+						this.remoteProvider
+							.getRemotes()
+							.filter((it) => it.proxy) // add only "proxy" remotes
+							.map(async (remote) => {
+								const links = await remote.links(headers.authorization);
+								return links.map((link) => ({
+									...link,
+									path: link.path.replace("/api", `/api/${remote.name}`),
+									proxy: true,
+									service: link.service ?? remote.name,
+								}));
+							}),
 					)
 				).flat(),
 			);
