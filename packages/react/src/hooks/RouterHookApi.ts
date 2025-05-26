@@ -1,3 +1,4 @@
+import type { PageDescriptor } from "../descriptors/$page.ts";
 import type {
 	AnchorProps,
 	RouterState,
@@ -83,23 +84,16 @@ export class RouterHookApi {
 			: `${layer.path}/${pathname}`.replace(/\/\/+/g, "/");
 	}
 
-	/**
-	 *
-	 * @param path
-	 * @param options
-	 */
-	public async go(
-		path: HrefLike,
-		options: RouterGoOptions = {},
-	): Promise<void> {
-		return await this.browser?.go(this.createHref(path, this.layer), options);
+	public async go(path: string, options?: RouterGoOptions): Promise<void>;
+	public async go<T extends object>(
+		path: keyof VirtualRouter<T>,
+		options?: RouterGoOptions,
+	): Promise<void>;
+	public async go(path: string, options?: RouterGoOptions): Promise<void> {
+		await this.browser?.go(this.createHref(path, this.layer), options);
 	}
 
-	/**
-	 *
-	 * @param path
-	 */
-	public createAnchorProps(path: string): AnchorProps {
+	public anchor(path: string): AnchorProps {
 		const href = this.createHref(path, this.layer);
 		return {
 			href,
@@ -119,30 +113,18 @@ export class RouterHookApi {
 	 * @param options
 	 */
 	public setQueryParams(
-		record: Record<string, any>,
+		record:
+			| Record<string, any>
+			| ((queryParams: Record<string, any>) => Record<string, any>),
 		options: {
-			/**
-			 * If true, this will merge current query params with the new ones.
-			 */
-			merge?: boolean;
-
 			/**
 			 * If true, this will add a new entry to the history stack.
 			 */
 			push?: boolean;
 		} = {},
 	) {
-		const search = new URLSearchParams(
-			options.merge
-				? {
-						...this.query,
-						...record,
-					}
-				: {
-						...record,
-					},
-		).toString();
-
+		const func = typeof record === "function" ? record : () => record;
+		const search = new URLSearchParams(func(this.query)).toString();
 		const state = search ? `${this.pathname}?${search}` : this.pathname;
 
 		if (options.push) {
@@ -154,3 +136,7 @@ export class RouterHookApi {
 }
 
 export type HrefLike = string | { options: { path?: string; name?: string } };
+
+export type VirtualRouter<T> = {
+	[K in keyof T as T[K] extends PageDescriptor ? K : never]: T[K];
+};

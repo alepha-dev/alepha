@@ -471,8 +471,8 @@ export interface Layer {
 export type PreviousLayerData = Omit<Layer, "element">;
 
 export interface AnchorProps {
-	href?: string;
-	onClick?: (ev: any) => any;
+	href: string;
+	onClick: (ev: any) => any;
 }
 
 export interface RouterState {

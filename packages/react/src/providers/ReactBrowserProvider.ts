@@ -226,6 +226,7 @@ export class ReactBrowserProvider {
 export interface RouterGoOptions {
 	replace?: boolean;
 	match?: TransitionOptions;
+	params?: Record<string, string>;
 }
 
 export interface ReactHydrationState {

@@ -34,12 +34,9 @@ export const useQueryParams = <T extends TObject>(
 		queryParams,
 		(queryParams: Static<T>) => {
 			setQueryParams(queryParams);
-			router.setQueryParams(
-				{ [key]: encode(ctx.alepha, schema, queryParams) },
-				{
-					merge: true,
-				},
-			);
+			router.setQueryParams((data) => {
+				return { ...data, [key]: encode(ctx.alepha, schema, queryParams) };
+			});
 		},
 	];
 };

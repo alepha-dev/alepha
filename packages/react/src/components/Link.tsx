@@ -1,9 +1,9 @@
+import { OPTIONS } from "@alepha/core";
 import React from "react";
 import type { AnchorHTMLAttributes } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import type { PageDescriptor } from "../descriptors/$page.ts";
 import { useRouter } from "../hooks/useRouter.ts";
-import { OPTIONS } from "@alepha/core";
 
 export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 	to: string | PageDescriptor;
@@ -28,7 +28,7 @@ const Link = (props: LinkProps) => {
 
 	const router = useRouter();
 	return (
-		<a {...router.createAnchorProps(to)} {...props}>
+		<a {...router.anchor(to)} {...props}>
 			{props.children ?? name}
 		</a>
 	);
