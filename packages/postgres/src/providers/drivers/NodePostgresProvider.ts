@@ -150,7 +150,7 @@ export class NodePostgresProvider implements PostgresProvider {
 			this.log.debug("Close...");
 			await this.state.client.end();
 			this.state = undefined;
-			this.log.info("Close OK");
+			this.log.info("Connection closed");
 		}
 	}
 
