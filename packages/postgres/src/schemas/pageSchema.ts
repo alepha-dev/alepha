@@ -7,6 +7,7 @@ import type {
 	TIntersect,
 	TObject,
 	TRecord,
+	TOptionalWithFlag,
 } from "@sinclair/typebox";
 
 /**
@@ -29,6 +30,9 @@ export const pageSchema = <T extends TObject | TIntersect | TRecord>(
 			page: t.object({
 				number: t.int(),
 				size: t.int(),
+				totalElements: t.optional(t.int()),
+				queryDuration: t.optional(t.int()),
+				countDuration: t.optional(t.int()),
 			}),
 		},
 		{
@@ -43,7 +47,13 @@ export const pageSchema = <T extends TObject | TIntersect | TRecord>(
 export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
 	content: TArray<T>;
 	can: TObject<{ next: TBoolean; previous: TBoolean }>;
-	page: TObject<{ number: TInteger; size: TInteger }>;
+	page: TObject<{
+		number: TInteger;
+		size: TInteger;
+		totalElements: TOptionalWithFlag<TInteger, true>;
+		queryDuration: TOptionalWithFlag<TInteger, true>;
+		countDuration: TOptionalWithFlag<TInteger, true>;
+	}>;
 }>;
 
 /**
@@ -52,5 +62,11 @@ export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
 export type Page<T> = {
 	content: T[];
 	can: { next: boolean; previous: boolean };
-	page: { number: number; size: number };
+	page: {
+		number: number;
+		size: number;
+		totalElements?: number;
+		queryDuration?: number;
+		countDuration?: number;
+	};
 };

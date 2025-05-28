@@ -3,8 +3,7 @@ import { t } from "@alepha/core";
 
 export const pageQuerySchema = t.object({
 	page: t.optional(
-		t.uchar({
-			maximum: 100,
+		t.uint({
 			description: "The page number to retrieve.",
 		}),
 	),

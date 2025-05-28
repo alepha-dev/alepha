@@ -1,3 +1,4 @@
+import { t } from "@alepha/core";
 import { $inject, Alepha, KIND, OPTIONS } from "@alepha/core";
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { TObject } from "@sinclair/typebox";
@@ -81,6 +82,11 @@ export class Repository<
 > {
 	public readonly provider = $inject(PostgresProvider);
 	protected readonly alepha = $inject(Alepha);
+	protected readonly env = $inject(
+		t.object({
+			POSTGRES_PAGINATION_COUNT_ENABLED: t.boolean({ default: true }),
+		}),
+	);
 
 	public static of = <TEntity extends TableConfig, TSchema extends TObject>(
 		table: PgTableWithColumnsAndSchema<TEntity, TSchema>,
@@ -408,17 +414,53 @@ export class Repository<
 			}
 		}
 
-		const entities = await this.find(
-			{
-				where: findQuery.where,
-				offset,
-				limit: limit + 1,
-				sort,
-			},
-			opts,
+		const now = Date.now();
+		const timers = {
+			query: now,
+			count: now,
+		};
+
+		const tasks: Promise<any>[] = [];
+
+		tasks.push(
+			this.find(
+				{
+					where: findQuery.where,
+					offset,
+					limit: limit + 1,
+					sort,
+				},
+				opts,
+			).then((it) => {
+				timers.query = Date.now() - timers.query;
+				return it;
+			}),
 		);
 
-		return this.createPagination(entities, limit, offset);
+		if (this.env.POSTGRES_PAGINATION_COUNT_ENABLED) {
+			const where = isSQLWrapper(findQuery.where)
+				? findQuery.where
+				: findQuery.where
+					? this.jsonQueryToSql(findQuery.where)
+					: undefined;
+
+			tasks.push(
+				this.db.$count(this.table, where as SQL).then((it) => {
+					timers.count = Date.now() - timers.count;
+					return it;
+				}),
+			);
+		}
+
+		const [entities, countResult] = await Promise.all(tasks);
+
+		const response = this.createPagination(entities, limit, offset);
+
+		response.page.totalElements = countResult;
+		response.page.countDuration = timers.count;
+		response.page.queryDuration = timers.query;
+
+		return response;
 	}
 
 	/**
