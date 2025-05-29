@@ -7,8 +7,8 @@ import {
 import { $page } from "./descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
-	type PageReactContext,
 	type PageRequest,
+	type RouterRenderResult,
 	type RouterState,
 } from "./providers/PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
@@ -24,7 +24,7 @@ export * from "./errors/RedirectionError.ts";
 declare module "@alepha/core" {
 	interface Hooks {
 		"react:browser:render": {
-			context: PageReactContext;
+			result: RouterRenderResult;
 			hydration?: ReactHydrationState;
 		};
 		"react:server:render": {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
 	PageDescriptorProvider,
 	type PageReactContext,
+	type PageRequest,
 	type PageRoute,
 	type PageRouteEntry,
 	type RouterRenderResult,
@@ -54,6 +55,15 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
 		await this.alepha.emit("react:transition:begin", { state });
 
+		const request: PageRequest = {
+			url,
+			query: {},
+			params: {},
+			...state,
+			head: state.head,
+			...(options.context ?? {}),
+		};
+
 		try {
 			const previous = options.previous;
 			const { route, params } = this.match(pathname);
@@ -65,26 +75,22 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				}
 			}
 
+			request.query = query;
+			request.params = params ?? {};
+			request.previous = previous;
+
 			if (isPageRoute(route)) {
 				const result = await this.pageDescriptorProvider.createLayers(
 					route.page,
-					{
-						url,
-						params: params ?? {},
-						query,
-						previous,
-						...state,
-						head: state.head,
-						...(options.context ?? {}),
-					},
+					request,
 				);
 
 				if (result.redirect) {
 					return {
-						element: null,
 						layers: [],
 						redirect: result.redirect,
 						head: state.head,
+						context: request,
 					};
 				}
 
@@ -124,7 +130,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				state,
 			});
 			return {
-				element: this.root(state, options.context),
+				context: request,
 				layers: state.layers,
 				head: state.head,
 			};
@@ -140,13 +146,13 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 		});
 
 		return {
-			element: this.root(state, options.context),
+			context: request,
 			layers: options.state.layers,
 			head: state.head,
 		};
 	}
 
-	public root(state: RouterState, context: PageReactContext = {}): ReactNode {
+	public root(state: RouterState, context: PageReactContext): ReactNode {
 		return this.pageDescriptorProvider.root(state, context);
 	}
 }

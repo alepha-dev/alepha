@@ -2,11 +2,11 @@ import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import { HttpClient, type HttpClientLink } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
-import type { Head } from "../descriptors/$page.ts";
 import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {
 	PreviousLayerData,
+	RouterRenderResult,
 	RouterState,
 	TransitionOptions,
 } from "./PageDescriptorProvider.ts";
@@ -86,8 +86,10 @@ export class ReactBrowserProvider {
 			url,
 		});
 
-		if (result.url !== url) {
-			this.history.replaceState({}, "", result.url);
+		// when redirecting in browser
+		if (result.context.url.pathname !== url) {
+			// TODO: check if losing search params is acceptable?
+			this.history.replaceState({}, "", result.context.url.pathname);
 			return;
 		}
 
@@ -104,7 +106,7 @@ export class ReactBrowserProvider {
 			url?: string;
 			previous?: PreviousLayerData[];
 		} = {},
-	): Promise<{ url: string; head: Head }> {
+	): Promise<RouterRenderResult> {
 		const previous = options.previous ?? this.state.layers;
 		const url = options.url ?? this.url;
 
@@ -124,7 +126,7 @@ export class ReactBrowserProvider {
 
 		this.transitioning = undefined;
 
-		return { url, head: result.head };
+		return result;
 	}
 
 	/**
@@ -178,19 +180,17 @@ export class ReactBrowserProvider {
 				}
 			}
 
-			const { head } = await this.render({ previous });
-			if (head) {
-				this.headProvider.renderHead(this.document, head);
+			const result = await this.render({ previous });
+			if (result.head) {
+				this.headProvider.renderHead(this.document, result.head);
 			}
 
-			const context = {};
-
 			await this.alepha.emit("react:browser:render", {
-				context,
+				result,
 				hydration,
 			});
 
-			const element = this.router.root(this.state, context);
+			const element = this.router.root(this.state, result.context);
 
 			if (previous.length > 0) {
 				this.root = hydrateRoot(this.getRootElement(), element);

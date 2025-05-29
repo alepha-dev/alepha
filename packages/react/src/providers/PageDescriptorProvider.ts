@@ -30,7 +30,8 @@ export class PageDescriptorProvider {
 		throw new Error(`Page ${name} not found`);
 	}
 
-	public root(state: RouterState, context: PageReactContext = {}): ReactNode {
+	public root(state: RouterState, context: PageReactContext): ReactNode {
+		context.onError ??= (err) => this.renderError(err);
 		return createElement(
 			RouterContext.Provider,
 			{
@@ -52,6 +53,7 @@ export class PageDescriptorProvider {
 		const layers: Layer[] = []; // result layers
 		let context: Record<string, any> = {}; // all props
 		const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
+		request.onError = this.renderError;
 
 		let parent = route.parent;
 		while (parent) {
@@ -180,17 +182,14 @@ export class PageDescriptorProvider {
 			acc += "/";
 			acc += it.route.path ? this.compile(it.route.path, params) : "";
 			const path = acc.replace(/\/+/, "/");
+			const localErrorHandler = this.getErrorHandler(it.route);
+			if (localErrorHandler) {
+				request.onError = localErrorHandler;
+			}
 
 			// handler has thrown an error, render an error view
 			if (it.error) {
-				const errorHandler = this.getErrorHandler(it.route);
-				const element = await (errorHandler
-					? errorHandler({
-							...it.config,
-							error: it.error,
-							url: "",
-						})
-					: this.renderError(it.error));
+				const element = await request.onError(it.error);
 
 				layers.push({
 					props,
@@ -499,11 +498,10 @@ export interface RouterRenderResult {
 	redirect?: string;
 	layers: Layer[];
 	head: Head;
-	element: ReactNode;
+	context: PageReactContext;
 }
 
 export interface PageRequest extends PageReactContext {
-	url: URL;
 	params: Record<string, any>;
 	query: Record<string, string>;
 	head: Head;
@@ -518,5 +516,7 @@ export interface CreateLayersResult extends RouterState {
 
 // will be passed to ReactContext
 export interface PageReactContext {
+	url: URL;
 	links?: HttpClientLink[];
+	onError?: (error: Error) => ReactNode;
 }

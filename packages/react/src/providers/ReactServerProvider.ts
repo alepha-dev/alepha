@@ -144,6 +144,9 @@ export class ReactServerProvider {
 		);
 	}
 
+	/**
+	 * For testing purposes, creates a render function that can be used.
+	 */
 	protected createRenderFunction(name: string) {
 		return async (
 			options: {
@@ -153,6 +156,7 @@ export class ReactServerProvider {
 		) => {
 			const page = this.pageDescriptorProvider.page(name);
 
+			// for testing
 			const state = await this.pageDescriptorProvider.createLayers(page, {
 				url: new URL("http://localhost"),
 				params: options.params ?? {},

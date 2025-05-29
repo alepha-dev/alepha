@@ -3,6 +3,7 @@ import { useContext, useState } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { useRouterEvents } from "../hooks/useRouterEvents.ts";
+import ErrorBoundary from "./ErrorBoundary.tsx";
 
 export interface NestedViewProps {
 	children?: ReactNode;
@@ -32,7 +33,15 @@ const NestedView = (props: NestedViewProps) => {
 		[app],
 	);
 
-	return view ?? props.children ?? null;
+	if (!app) {
+		throw new Error("NestedView must be used within a RouterContext.");
+	}
+
+	const element = view ?? props.children ?? null;
+
+	return (
+		<ErrorBoundary fallback={app.context.onError!}>{element}</ErrorBoundary>
+	);
 };
 
 export default NestedView;

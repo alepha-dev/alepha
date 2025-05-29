@@ -1,6 +1,6 @@
 import { type Async, OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import type { RouterHookApi } from "../hooks/RouterHookApi.ts";
 
 const KEY = "PAGE";
@@ -39,7 +39,7 @@ export interface PageDescriptorOptions<
 
 	head?: Head | ((props: TProps, previous?: Head) => Head);
 
-	errorHandler?: FC<{ error: Error; url: string }>;
+	errorHandler?: (error: Error) => ReactNode;
 }
 
 export interface PageDescriptor<
