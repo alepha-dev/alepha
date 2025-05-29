@@ -35,6 +35,7 @@ declare module "@alepha/core" {
 
 		"react:transition:begin": {
 			state: RouterState;
+			context: PageReactContext;
 		};
 		"react:transition:success": {
 			state: RouterState;

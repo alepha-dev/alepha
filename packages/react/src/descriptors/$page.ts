@@ -2,6 +2,7 @@ import { type Async, OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
 import type { FC, ReactNode } from "react";
 import type { RouterHookApi } from "../hooks/RouterHookApi.ts";
+import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
 
 const KEY = "PAGE";
 
@@ -134,9 +135,4 @@ export interface PageRequestConfig<
 export type PageResolve<
 	TConfig extends PageConfigSchema = PageConfigSchema,
 	TPropsParent extends object = TPropsParentDefault,
-> = PageRequestConfig<TConfig> & TPropsParent & PageResolveContext;
-
-export interface PageResolveContext {
-	url: URL;
-	head: Head;
-}
+> = PageRequestConfig<TConfig> & TPropsParent & PageReactContext;

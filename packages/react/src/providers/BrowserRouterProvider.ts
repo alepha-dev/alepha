@@ -52,8 +52,6 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			layers: [],
 		};
 
-		await this.alepha.emit("react:transition:begin", { state });
-
 		const context: PageRequest = {
 			url,
 			query: {},
@@ -62,6 +60,8 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			onError: () => null,
 			...(options.context ?? {}),
 		};
+
+		await this.alepha.emit("react:transition:begin", { state, context });
 
 		try {
 			const previous = options.previous;

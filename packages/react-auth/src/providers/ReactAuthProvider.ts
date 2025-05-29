@@ -241,7 +241,7 @@ export class ReactAuthProvider {
 		method: "GET",
 		schema: {
 			query: t.object({
-				redirect: t.optional(t.string()),
+				redirect: t.optional(t.string({ size: "rich" })),
 				provider: t.optional(t.string()),
 			}),
 		},
