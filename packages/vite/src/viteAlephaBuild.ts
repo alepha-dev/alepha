@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
 import gzipPlugin from "rollup-plugin-gzip";
-import { type Plugin, build as viteBuild } from "vite";
+import { type Plugin, type UserConfig, build as viteBuild } from "vite";
 import { viteAlephaBuildVercel } from "./viteAlephaBuildVercel.ts";
 
 const brotliPromise = promisify(brotliCompress);
@@ -20,6 +20,8 @@ export interface ViteAlephaBuildOptions {
 	 *
 	 */
 	vercel?: boolean | { projectId: string; orgId: string; settings: any };
+
+	server?: UserConfig;
 }
 
 /**
@@ -85,6 +87,7 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 				},
 			},
 			plugins,
+			...options.server,
 		});
 	};
 

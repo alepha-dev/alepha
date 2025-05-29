@@ -1,4 +1,4 @@
-import { $hook, $inject, $retry, Alepha, OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, $retry, Alepha, OPTIONS } from "@alepha/core";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
 import { HttpClient } from "../services/HttpClient.ts";
 import { ProxyDescriptorProvider } from "./ProxyDescriptorProvider.ts";
@@ -9,6 +9,7 @@ export class RemoteDescriptorProvider {
 	protected readonly client = $inject(HttpClient);
 	protected readonly proxyProvider = $inject(ProxyDescriptorProvider);
 	protected readonly remotes: Array<ServerRemote> = [];
+	protected readonly log = $logger();
 
 	public getRemotes() {
 		return this.remotes;
@@ -70,6 +71,9 @@ export class RemoteDescriptorProvider {
 	fetchLinks = $retry({
 		max: 20,
 		delay: 1000,
+		onError: (error) => {
+			this.log.warn(error);
+		},
 		handler: async (url: string, authorization?: string) => {
 			const response = await fetch(url, {
 				headers: new Headers(
@@ -80,6 +84,7 @@ export class RemoteDescriptorProvider {
 						: {},
 				),
 			});
+
 			if (!response.ok) {
 				throw new Error(`Failed to fetch links from ${url}`);
 			}

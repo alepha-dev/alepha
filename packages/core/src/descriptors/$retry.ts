@@ -25,6 +25,15 @@ export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
 	 *
 	 */
 	handler: T;
+
+	/**
+	 * Optional error handler.
+	 *
+	 * This will be called when an error occurs.
+	 *
+	 * @default undefined
+	 */
+	onError?: (error: Error, attempt: number) => void;
 }
 
 /**
@@ -60,6 +69,10 @@ export const $retry = <T extends (...args: any[]) => any>(
 
 				if (counter >= attempts - 1) {
 					throw err;
+				}
+
+				if (opts.onError) {
+					opts.onError(err, counter + 1);
 				}
 
 				if (delay) {
