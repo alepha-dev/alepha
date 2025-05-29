@@ -39,6 +39,13 @@ export interface RouteDescriptorOptions<
 	path?: string;
 
 	/**
+	 * Base URL of the route.
+	 *
+	 * @default "/api"
+	 */
+	base?: string;
+
+	/**
 	 * Inherit options from another route.
 	 */
 	use?: { [OPTIONS]: RouteDescriptorOptions<TConfig> };

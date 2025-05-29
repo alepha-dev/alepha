@@ -84,6 +84,20 @@ export class ServerStaticProvider {
 			options,
 			files: files.map((file) => file.replace(root, "").replace(/\\/g, "/")),
 		});
+
+		if (options.historyApiFallback) {
+			await this.routerProvider.route({
+				path: join(prefix, "*").replace(/\\/g, "/"),
+				handler: async (request) => {
+					const { reply } = request;
+					reply.headers["content-type"] = "text/html";
+					reply.status = 200;
+
+					// Serve index.html for all unmatched routes
+					return createReadStream(join(root, "index.html"));
+				},
+			});
+		}
 	}
 
 	public async createFileHandler(

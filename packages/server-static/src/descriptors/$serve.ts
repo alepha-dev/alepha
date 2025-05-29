@@ -41,6 +41,12 @@ export interface ServeDescriptorOptions {
 	indexFallback?: boolean;
 
 	/**
+	 * Force all requests "not found" to be served with the index.html file.
+	 * This is useful for single-page applications (SPAs) that use client-side only routing.
+	 */
+	historyApiFallback?: boolean;
+
+	/**
 	 * Optional name of the descriptor.
 	 * This is used for logging and debugging purposes.
 	 *

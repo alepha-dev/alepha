@@ -23,7 +23,7 @@ export class ActionDescriptorHelper {
 		key: string,
 		prefix = "",
 	) {
-		return prefix + (options.path ?? `/${key}`);
+		return (options.base ?? prefix) + (options.path ?? `/${key}`);
 	}
 
 	public link(
