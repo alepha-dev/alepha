@@ -155,16 +155,21 @@ export class ReactServerProvider {
 			} = {},
 		) => {
 			const page = this.pageDescriptorProvider.page(name);
-
-			// for testing
-			const state = await this.pageDescriptorProvider.createLayers(page, {
+			const context: PageRequest = {
 				url: new URL("http://localhost"),
 				params: options.params ?? {},
 				query: options.query ?? {},
 				head: {},
-			});
+				onError: () => null,
+			};
 
-			return renderToString(this.pageDescriptorProvider.root(state));
+			// for testing
+			const state = await this.pageDescriptorProvider.createLayers(
+				page,
+				context,
+			);
+
+			return renderToString(this.pageDescriptorProvider.root(state, context));
 		};
 	}
 
@@ -179,25 +184,27 @@ export class ReactServerProvider {
 				throw new Error("Template not found");
 			}
 
-			const request: PageRequest = {
+			const context: PageRequest = {
 				url,
 				params,
 				query,
+				// plugins
 				head: {},
+				onError: () => null,
 			};
 
 			// -- links
 			if (this.alepha.has(ServerLinksProvider)) {
 				const srv = this.alepha.get(ServerLinksProvider);
-				request.links = (await srv.links()) as any;
-				this.alepha.als.set("links", request.links);
+				context.links = (await srv.links()) as any;
+				this.alepha.als.set("links", context.links);
 			}
 
 			await this.alepha.emit(
 				"react:server:render",
 				{
 					request: serverRequest,
-					pageRequest: request,
+					pageRequest: context,
 				},
 				{
 					log: false,
@@ -206,19 +213,18 @@ export class ReactServerProvider {
 
 			const state = await this.pageDescriptorProvider.createLayers(
 				page,
-				request,
+				context,
 			);
 
 			if (state.redirect) {
 				return reply.redirect(state.redirect);
 			}
 
-			const element = this.pageDescriptorProvider.root(state, request);
+			const element = this.pageDescriptorProvider.root(state, context);
 			const app = renderToString(element);
 
-			// create hydration data
-			const script = `<script>window.__ssr=${JSON.stringify({
-				links: request.links,
+			const hydrationData = {
+				links: context.links,
 				layers: state.layers.map((it) => ({
 					...it,
 					error: it.error
@@ -233,7 +239,10 @@ export class ReactServerProvider {
 					path: undefined,
 					element: undefined,
 				})),
-			})}</script>`;
+			};
+
+			// create hydration data
+			const script = `<script>window.__ssr=${JSON.stringify(hydrationData)}</script>`;
 
 			const response = {
 				html: template,
@@ -250,8 +259,11 @@ export class ReactServerProvider {
 			this.fillTemplate(response, app, script);
 
 			// inject head meta
-			if (state.head) {
-				response.html = this.headProvider.renderHead(response.html, state.head);
+			if (context.head) {
+				response.html = this.headProvider.renderHead(
+					response.html,
+					context.head,
+				);
 			}
 
 			// TODO: hook for plugins "react:server:template"

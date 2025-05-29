@@ -31,7 +31,6 @@ export class PageDescriptorProvider {
 	}
 
 	public root(state: RouterState, context: PageReactContext): ReactNode {
-		context.onError ??= (err) => this.renderError(err);
 		return createElement(
 			RouterContext.Provider,
 			{
@@ -53,7 +52,7 @@ export class PageDescriptorProvider {
 		const layers: Layer[] = []; // result layers
 		let context: Record<string, any> = {}; // all props
 		const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
-		request.onError = this.renderError;
+		let onError = this.renderError; // error handler
 
 		let parent = route.parent;
 		while (parent) {
@@ -149,7 +148,6 @@ export class PageDescriptorProvider {
 					return {
 						layers: [],
 						redirect: typeof e.page === "string" ? e.page : this.href(e.page),
-						head: request.head,
 						pathname,
 						search,
 					};
@@ -184,12 +182,12 @@ export class PageDescriptorProvider {
 			const path = acc.replace(/\/+/, "/");
 			const localErrorHandler = this.getErrorHandler(it.route);
 			if (localErrorHandler) {
-				request.onError = localErrorHandler;
+				onError = localErrorHandler;
 			}
 
 			// handler has thrown an error, render an error view
 			if (it.error) {
-				const element = await request.onError(it.error);
+				const element = await onError(it.error);
 
 				layers.push({
 					props,
@@ -222,7 +220,7 @@ export class PageDescriptorProvider {
 			});
 		}
 
-		return { layers, head: request.head, pathname, search };
+		return { layers, pathname, search };
 	}
 
 	protected getErrorHandler(route: PageRoute) {
@@ -478,7 +476,6 @@ export interface RouterState {
 	pathname: string;
 	search: string;
 	layers: Array<Layer>;
-	head: Head;
 }
 
 export interface TransitionOptions {
@@ -495,16 +492,14 @@ export interface RouterStackItem {
 }
 
 export interface RouterRenderResult {
-	redirect?: string;
-	layers: Layer[];
-	head: Head;
+	state: RouterState;
 	context: PageReactContext;
+	redirect?: string;
 }
 
 export interface PageRequest extends PageReactContext {
 	params: Record<string, any>;
 	query: Record<string, string>;
-	head: Head;
 
 	// previous layers (browser history or browser hydration, always null on server)
 	previous?: PreviousLayerData[];
@@ -514,9 +509,13 @@ export interface CreateLayersResult extends RouterState {
 	redirect?: string;
 }
 
-// will be passed to ReactContext
+/**
+ * It's like RouterState, but publicly available in React context.
+ * This is where we store all plugin data!
+ */
 export interface PageReactContext {
 	url: URL;
+	head: Head;
+	onError: (error: Error) => ReactNode;
 	links?: HttpClientLink[];
-	onError?: (error: Error) => ReactNode;
 }

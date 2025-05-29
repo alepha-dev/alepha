@@ -9,9 +9,10 @@ const setup = () => {
 	const router = alepha.get(BrowserRouterProvider);
 
 	const render = async (path: string): Promise<string> => {
-		const { element } = await router.transition(
+		const { state, context } = await router.transition(
 			new URL(`http://localhost${path}`),
 		);
+		const element = router.root(state, context);
 		return renderToString(element).replaceAll("<!-- -->", "");
 	};
 
@@ -131,7 +132,7 @@ test("Router - All routes", async ({ expect }) => {
 						],
 					},
 				],
-				errorHandler: ({ error }) => {
+				errorHandler: (error) => {
 					return `Error: ${error.message}`;
 				},
 			},

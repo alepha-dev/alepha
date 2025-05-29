@@ -36,7 +36,6 @@ export class ReactBrowserProvider {
 		layers: [],
 		pathname: "",
 		search: "",
-		head: {},
 	};
 
 	public get document() {
@@ -180,17 +179,18 @@ export class ReactBrowserProvider {
 				}
 			}
 
-			const result = await this.render({ previous });
-			if (result.head) {
-				this.headProvider.renderHead(this.document, result.head);
+			const { context } = await this.render({ previous });
+			if (context.head) {
+				this.headProvider.renderHead(this.document, context.head);
 			}
 
 			await this.alepha.emit("react:browser:render", {
-				result,
+				state: this.state,
+				context,
 				hydration,
 			});
 
-			const element = this.router.root(this.state, result.context);
+			const element = this.router.root(this.state, context);
 
 			if (previous.length > 0) {
 				this.root = hydrateRoot(this.getRootElement(), element);
@@ -204,19 +204,13 @@ export class ReactBrowserProvider {
 			window.addEventListener("popstate", () => {
 				this.render();
 			});
-
-			this.alepha.on("react:transition:end", {
-				callback: ({ state }) => {
-					this.headProvider.renderHead(this.document, state.head);
-				},
-			});
 		},
 	});
 
 	public readonly onTransitionEnd = $hook({
 		name: "react:transition:end",
-		handler: async ({ state }) => {
-			this.headProvider.renderHead(this.document, state.head);
+		handler: async ({ context }) => {
+			this.headProvider.renderHead(this.document, context.head);
 		},
 	});
 }

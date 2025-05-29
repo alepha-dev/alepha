@@ -50,17 +50,16 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			pathname,
 			search,
 			layers: [],
-			head: {},
 		};
 
 		await this.alepha.emit("react:transition:begin", { state });
 
-		const request: PageRequest = {
+		const context: PageRequest = {
 			url,
 			query: {},
 			params: {},
-			...state,
-			head: state.head,
+			head: {},
+			onError: () => null,
 			...(options.context ?? {}),
 		};
 
@@ -75,27 +74,25 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				}
 			}
 
-			request.query = query;
-			request.params = params ?? {};
-			request.previous = previous;
+			context.query = query;
+			context.params = params ?? {};
+			context.previous = previous;
 
 			if (isPageRoute(route)) {
 				const result = await this.pageDescriptorProvider.createLayers(
 					route.page,
-					request,
+					context,
 				);
 
 				if (result.redirect) {
 					return {
-						layers: [],
 						redirect: result.redirect,
-						head: state.head,
-						context: request,
+						state,
+						context,
 					};
 				}
 
 				state.layers = result.layers;
-				state.head = result.head;
 			}
 
 			if (state.layers.length === 0) {
@@ -122,33 +119,24 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			await this.alepha.emit("react:transition:error", {
 				error: e as Error,
 				state,
+				context,
 			});
 		}
 
-		if (!options.state) {
-			await this.alepha.emit("react:transition:end", {
-				state,
-			});
-			return {
-				context: request,
-				layers: state.layers,
-				head: state.head,
-			};
+		if (options.state) {
+			options.state.layers = state.layers;
+			options.state.pathname = state.pathname;
+			options.state.search = state.search;
 		}
-
-		options.state.layers = state.layers;
-		options.state.pathname = state.pathname;
-		options.state.search = state.search;
-		options.state.head = state.head;
 
 		await this.alepha.emit("react:transition:end", {
 			state: options.state,
+			context,
 		});
 
 		return {
-			context: request,
-			layers: options.state.layers,
-			head: state.head,
+			context,
+			state,
 		};
 	}
 
