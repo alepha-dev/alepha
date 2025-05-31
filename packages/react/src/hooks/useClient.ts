@@ -1,10 +1,12 @@
-import { HttpClient } from "@alepha/server";
+import {
+	type ClientScope,
+	HttpClient,
+	type HttpVirtualClient,
+} from "@alepha/server";
 import { useInject } from "./useInject.ts";
 
-export const useClient = (): HttpClient => {
-	return useInject(HttpClient);
-};
-
-export const useApi = <T extends object>() => {
+export const useClient = <T extends object>(
+	scope?: ClientScope,
+): HttpVirtualClient<T> => {
 	return useInject(HttpClient).of<T>();
 };

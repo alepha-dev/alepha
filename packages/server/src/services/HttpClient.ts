@@ -377,11 +377,7 @@ export class HttpClient {
 		return url;
 	}
 
-	public of<T extends object>(
-		link: {
-			group?: string;
-		} = {},
-	): HttpVirtualClient<T> {
+	public of<T extends object>(scope: ClientScope = {}): HttpVirtualClient<T> {
 		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
 			get: (_, prop) => {
 				if (typeof prop !== "string") {
@@ -393,7 +389,7 @@ export class HttpClient {
 					options: ClientRequestOptions = {},
 				) => {
 					return this.follow(prop, config, {
-						...link,
+						...scope,
 						...options,
 					});
 				};
@@ -418,10 +414,7 @@ export class HttpClient {
 	public async follow(
 		name: string,
 		config: Partial<ServerRequestConfigEntry> = {},
-		options: ClientRequestOptions & {
-			group?: string;
-			service?: string;
-		} = {},
+		options: ClientRequestOptions & ClientScope = {},
 	) {
 		const als = this.alepha.als.get<ServerRequest>("request");
 		const user = options?.user ?? als?.user;
@@ -545,6 +538,11 @@ export interface HttpClientLink extends ApiLink {
 	// used only for local actions, not for remote actions
 	schema?: RequestConfigSchema;
 	handler?: ServerHandler;
+}
+
+export interface ClientScope {
+	group?: string;
+	service?: string;
 }
 
 export type HttpVirtualClient<T> = {
