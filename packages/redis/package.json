@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/redis",
-	"version": "0.6.10",
+	"version": "0.7.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,7 +11,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.10",
+		"@alepha/core": "0.7.0",
 		"ioredis": "^5.6.1"
 	},
 	"devDependencies": {

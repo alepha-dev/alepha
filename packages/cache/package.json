@@ -8,7 +8,7 @@
 		"in-memory"
 	],
 	"author": "Feunard",
-	"version": "0.6.10",
+	"version": "0.7.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -19,9 +19,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.10",
-		"@alepha/datetime": "0.6.10",
-		"@alepha/redis": "0.6.10"
+		"@alepha/core": "0.7.0",
+		"@alepha/datetime": "0.7.0",
+		"@alepha/redis": "0.7.0"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",

@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-static",
-	"version": "0.6.10",
+	"version": "0.7.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -10,9 +10,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.6.10",
-		"@alepha/datetime": "0.6.10",
-		"@alepha/server": "0.6.10",
+		"@alepha/core": "0.7.0",
+		"@alepha/datetime": "0.7.0",
+		"@alepha/server": "0.7.0",
 		"mime": "^4.0.7"
 	},
 	"devDependencies": {
