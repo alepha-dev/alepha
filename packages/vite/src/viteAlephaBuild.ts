@@ -21,6 +21,16 @@ export interface ViteAlephaBuildOptions {
 	 */
 	vercel?: boolean | { projectId: string; orgId: string; settings: any };
 
+	/**
+	 * A list of modules that should not be externalized in the build process.
+	 *
+	 * @default true
+	 */
+	noExternal?: string | RegExp | (string | RegExp)[] | true;
+
+	/**
+	 * Vite server options to override the default server configuration.
+	 */
 	server?: UserConfig;
 }
 
@@ -73,7 +83,7 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 
 		await viteBuild({
 			ssr: {
-				//	noExternal: true,
+				noExternal: options.noExternal ?? true,
 			},
 			publicDir: false,
 			build: {

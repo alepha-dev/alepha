@@ -4,6 +4,7 @@ export * from "./constants/KIND.ts";
 export * from "./constants/OPTIONS.ts";
 export * from "./constants/PROVIDER.ts";
 
+export * from "./descriptors/$module.ts";
 export * from "./descriptors/$cursor.ts";
 export * from "./descriptors/$hook.ts";
 export * from "./descriptors/$inject.ts";

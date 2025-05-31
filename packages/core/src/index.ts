@@ -1,3 +1,4 @@
+import "dotenv/config";
 import type { Env } from "./Alepha.ts";
 import { Alepha } from "./Alepha.ts";
 import type { Async } from "./interfaces/Async.ts";

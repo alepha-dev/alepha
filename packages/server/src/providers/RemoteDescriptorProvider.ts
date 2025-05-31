@@ -25,6 +25,28 @@ export class RemoteDescriptorProvider {
 		},
 	});
 
+	public readonly start = $hook({
+		name: "start",
+		handler: async () => {
+			for (const remote of this.remotes) {
+				const token =
+					typeof remote.serviceAccount?.token === "function"
+						? await remote.serviceAccount.token()
+						: undefined;
+
+				const links = await remote.links(token);
+
+				for (const link of links) {
+					this.client.pushLink({
+						...link,
+						host: remote.url,
+						service: remote.name,
+					});
+				}
+			}
+		},
+	});
+
 	public async registerRemote(value: RemoteDescriptor, key: string) {
 		const options = value[OPTIONS];
 		const url = typeof options.url === "string" ? options.url : options.url();
@@ -35,6 +57,7 @@ export class RemoteDescriptorProvider {
 		this.remotes.push({
 			url,
 			name,
+			serviceAccount: options.serviceAccount,
 			proxy: !!options.proxy,
 			links: async (authorization) => {
 				return await this.fetchLinks(`${url}${linkPath}`, authorization);
@@ -51,28 +74,13 @@ export class RemoteDescriptorProvider {
 				...proxy,
 			});
 		}
-
-		const token =
-			typeof options.serviceAccount?.token === "function"
-				? await options.serviceAccount.token()
-				: undefined;
-
-		const links = await this.fetchLinks(`${url}${linkPath}`, token);
-
-		for (const link of links) {
-			this.client.pushLink({
-				...link,
-				host: url,
-				service: name,
-			});
-		}
 	}
 
-	fetchLinks = $retry({
-		max: 20,
-		delay: 1000,
-		onError: (error) => {
-			this.log.warn(error);
+	protected readonly fetchLinks = $retry({
+		max: 10,
+		delay: 2000,
+		onError: (_, attempt) => {
+			this.log.warn(`Failed to fetch links, retry (${attempt})...`);
 		},
 		handler: async (url: string, authorization?: string) => {
 			const response = await fetch(url, {

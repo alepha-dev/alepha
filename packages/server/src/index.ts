@@ -18,9 +18,11 @@ import type {
 	ServerRoute,
 } from "./providers/ServerRouterProvider.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
+import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
 import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
+import { ServerNotReadyProvider } from "./providers/features/ServerNotReadyProvider.ts";
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
 import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
 import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
@@ -84,6 +86,8 @@ export * from "./providers/BrowserActionDescriptorProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
+export * from "./providers/features/ServerHealthProvider.ts";
+export * from "./providers/features/ServerNotReadyProvider.ts";
 export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/platforms/ServerProvider.ts";
 export * from "./providers/platforms/NodeHttpServerProvider.ts";
@@ -103,6 +107,15 @@ const envSchema = t.object({
 	SERVER_LINKS_ENABLED: t.boolean({
 		default: true,
 		description: "Enable links-provider, which expose APIs on /api/_links.",
+	}),
+	SERVER_HEALTH_ENABLED: t.boolean({
+		default: true,
+		description: "Enable health-provider, which expose APIs on /health.",
+	}),
+	SERVER_NOT_READY_ENABLED: t.boolean({
+		default: true,
+		description:
+			"Enable not-ready-provider, which return 503 if alepha is not ready.",
 	}),
 });
 
@@ -131,6 +144,14 @@ export class ServerModule {
 
 		if (this.env.SERVER_LINKS_ENABLED) {
 			this.alepha.with(ServerLinksProvider);
+		}
+
+		if (this.env.SERVER_HEALTH_ENABLED) {
+			this.alepha.with(ServerHealthProvider);
+		}
+
+		if (this.env.SERVER_NOT_READY_ENABLED) {
+			this.alepha.with(ServerNotReadyProvider);
 		}
 	}
 }

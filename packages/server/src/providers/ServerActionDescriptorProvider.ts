@@ -13,6 +13,7 @@ import {
 import {
 	type Permission,
 	SecurityProvider,
+	type ServiceAccountDescriptor,
 	type UserAccountToken,
 } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -404,6 +405,7 @@ export interface ServerRemote {
 	name: string;
 	proxy: boolean;
 	links: (authorization?: string) => Promise<HttpClientLink[]>;
+	serviceAccount?: ServiceAccountDescriptor;
 }
 
 export interface ServerRouteAction<

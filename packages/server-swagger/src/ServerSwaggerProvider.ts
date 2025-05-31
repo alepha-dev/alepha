@@ -304,7 +304,8 @@ window.onload = function() {
 };
 		`.trim();
 
-		const root = join(import.meta.filename, "../../assets/swagger-ui");
+		const root =
+			ui.root ?? join(import.meta.filename, "../../assets/swagger-ui");
 
 		await this.serverStaticProvider.serve({
 			path: prefix,

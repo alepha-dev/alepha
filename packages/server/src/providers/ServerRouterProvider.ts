@@ -178,10 +178,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			this.alepha.als.set<ServerRequest>("request", request as ServerRequest);
 		}
 
-		// call the handler
-		const result = await route.handler(request);
-		if (result) {
-			request.reply.body = result;
+		if (request.reply.body == null) {
+			// call the handler
+			const result = await route.handler(request);
+			if (result) {
+				request.reply.body = result;
+			}
 		}
 
 		this.serializeResponse(route, request.reply, responseType);

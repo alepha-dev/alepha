@@ -1,4 +1,4 @@
-import { KIND, __descriptor, OPTIONS } from "@alepha/core";
+import { KIND, OPTIONS, __descriptor } from "@alepha/core";
 import type { OpenAPIV3 } from "openapi-types";
 
 export interface SwaggerDescriptorOptions {
@@ -22,6 +22,8 @@ export interface SwaggerDescriptorOptions {
 }
 
 export interface SwaggerUiOptions {
+	root?: string;
+
 	initOAuth?: {
 		/**
 		 * Default clientId.

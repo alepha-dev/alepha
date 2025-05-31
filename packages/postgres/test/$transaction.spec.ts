@@ -2,7 +2,7 @@ import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
 import { $repository, $transaction, pg, pgTableSchema } from "../src";
-import { PgConflictError } from "../src/errors/PgConflictError.ts";
+import { PgError } from "../src/errors/PgError.ts";
 
 class App {
 	dt = $inject(DateTimeProvider);
@@ -58,7 +58,7 @@ test("$transaction - mismatch", { timeout: 10000 }, async () => {
 test("$transaction - rollback", { timeout: 10000 }, async () => {
 	await app.repository.create({ counter: 0 });
 
-	await expect(() => app.run()).rejects.toThrow(PgConflictError);
+	await expect(() => app.run()).rejects.toThrow(PgError);
 
 	expect(await app.repository.count()).toBe(1);
 });

@@ -111,8 +111,8 @@ export class Logger {
 		this.name = options.name ?? "App";
 		this.caller = options.caller ?? "";
 		this.context = options.context ?? "";
-		this.color = options.color ?? true;
 		this.json = options.json ?? false;
+		this.color = options.color ?? !this.json;
 		this.als = options.als;
 	}
 

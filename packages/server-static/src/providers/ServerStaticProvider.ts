@@ -90,6 +90,15 @@ export class ServerStaticProvider {
 				path: join(prefix, "*").replace(/\\/g, "/"),
 				handler: async (request) => {
 					const { reply } = request;
+
+					if (request.url.pathname.includes(".")) {
+						// If the request is for a file (e.g., /style.css), do not fallback
+						reply.headers["content-type"] = "text/plain";
+						reply.body = "Not Found";
+						reply.status = 404;
+						return;
+					}
+
 					reply.headers["content-type"] = "text/html";
 					reply.status = 200;
 
@@ -187,12 +196,7 @@ export class ServerStaticProvider {
 		dir: string,
 		ignoreDotEnvFiles = true,
 	): Promise<string[]> {
-		const entries = await readdir(dir, { withFileTypes: true }).catch(
-			(error) => {
-				this.log.error("Error reading directory", { dir, error });
-				return [];
-			},
-		);
+		const entries = await readdir(dir, { withFileTypes: true });
 
 		const files = await Promise.all(
 			entries.map((dirent) => {

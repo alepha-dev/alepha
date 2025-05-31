@@ -7,7 +7,7 @@ export class ServerCookiesProvider {
 		name: "server:onRequest",
 		handler: async ({ request }) => {
 			request.cookies = {
-				req: this.fromHeader(request.headers.cookie),
+				req: this.fromHeader(request.headers.cookie ?? ""),
 				res: {},
 			};
 		},
