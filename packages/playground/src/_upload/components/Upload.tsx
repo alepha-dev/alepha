@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { FileCtrl } from "../controllers/FileController.ts";
 
 const Upload = () => {
-	const client = useClient().of<FileCtrl>();
+	const client = useClient<FileCtrl>();
 	const [file, setFile] = useState<File | null>(null);
 
 	return (

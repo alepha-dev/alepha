@@ -4,7 +4,7 @@ import type Api from "../controllers/Api.ts";
 import type { IncResponse } from "../controllers/Api.ts";
 
 const Test = (props: { inc: IncResponse }) => {
-	const cli = useClient().of<Api>();
+	const cli = useClient<Api>();
 	const [state, setState] = useState<IncResponse>(props.inc);
 
 	return (
