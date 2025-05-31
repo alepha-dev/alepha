@@ -121,7 +121,7 @@ export class ReactAuthProvider {
 
 					this.authProviders.push({
 						name: options.name ?? key,
-						redirectUri: options.oidc.redirectUri ?? "/api/_oauth/callback",
+						redirectUri: options.oidc.redirectUri ?? ReactAuth.path.callback,
 						client,
 						fallback: options.fallback,
 					});
