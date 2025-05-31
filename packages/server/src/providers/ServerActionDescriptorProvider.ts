@@ -18,16 +18,17 @@ import {
 } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import {
-	$route,
+	$action,
+	type ActionDescriptor,
+	type ActionDescriptorOptions,
 	type ClientRequestEntry,
 	type ClientRequestOptions,
-	type RouteDescriptor,
-	type RouteDescriptorOptions,
 } from "../descriptors/$action.ts";
 import { ForbiddenError } from "../errors/ForbiddenError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
-import { HttpClient, type HttpClientLink } from "../services/HttpClient.ts";
+import type { ApiLinksResponse } from "../schemas/apiLinksResponseSchema.ts";
+import { HttpClient } from "../services/HttpClient.ts";
 import {
 	type RequestConfigSchema,
 	type ServerRequest,
@@ -66,10 +67,14 @@ export class ServerActionDescriptorProvider {
 		return this.actions;
 	}
 
+	public getPrefix() {
+		return this.env.SERVER_API_PREFIX;
+	}
+
 	public readonly configure = $hook({
 		name: "configure",
 		handler: async () => {
-			const routes = this.alepha.getDescriptorValues($route);
+			const routes = this.alepha.getDescriptorValues($action);
 			for (const { value, key, instance } of routes) {
 				await this.registerAction(value, key, instance);
 			}
@@ -77,13 +82,13 @@ export class ServerActionDescriptorProvider {
 	});
 
 	public async registerAction(
-		value: RouteDescriptor,
+		value: ActionDescriptor,
 		key: string,
 		instance: any,
 		prefix = this.env.SERVER_API_PREFIX,
 	) {
-		const options = value[OPTIONS] as RouteDescriptorOptions;
-		const path = this.helper.path(options, instance, key, prefix);
+		const options = value[OPTIONS] as ActionDescriptorOptions;
+		const path = this.helper.path(options, instance, key);
 
 		if (options.disabled) {
 			this.log.trace(`'${instance.constructor.name}#${key}' is disabled`);
@@ -98,16 +103,12 @@ export class ServerActionDescriptorProvider {
 
 		const action: ServerRouteAction = {
 			...options,
+			prefix,
 			method: this.helper.method(options),
 			path,
 			name: this.helper.name(options, instance, key),
 			group: this.helper.group(options, instance),
-			permission: this.helper.permission(
-				options,
-				instance,
-				key,
-				this.env.SERVER_API_PREFIX,
-			),
+			permission: this.helper.permission(options, instance, key),
 			schema: options.schema,
 			handler,
 			options,
@@ -117,7 +118,10 @@ export class ServerActionDescriptorProvider {
 
 		// --- Routing
 
-		await this.routerProvider.route(action);
+		await this.routerProvider.route({
+			...action,
+			path: `${action.prefix}${action.path}`,
+		});
 
 		// --- Log
 
@@ -158,47 +162,24 @@ export class ServerActionDescriptorProvider {
 		this.client.pushLink({
 			...action,
 			schema: action.options.schema,
-			contentType: this.helper.bodyContentType(action.options),
+			requestBodyType: this.helper.bodyContentType(action.options),
 			handler: functions.local,
-			protected: options.security !== false,
+			secured: options.security !== false,
+			method: action.method === "GET" ? undefined : action.method,
+			prefix: this.env.SERVER_API_PREFIX,
+			path: action.path.replace(this.env.SERVER_API_PREFIX, ""),
 		});
 	}
 
 	/**
-	 * When your action has no handler, it's considered as an 'API'.
-	 * Instead of creating an http route, create a bridge to a local or remote function.
-	 *
-	 * ```ts
-	 * class Api {
-	 *   hello = $action(); // <- route 'Api'
-	 * }
-	 *
-	 * class Controller {
-	 *   api = $inject(Api);
-	 *   hello = $action({ // <-- route
-	 *     use: this.api.hello,
-	 *     handler: () => new Response("Hello world"),
-	 *   })
-	 * }
-	 *
-	 * const api = alepha.get(Api);
-	 *
-	 * api.hello(); // <-- call the local controller function if available
-	 *
-	 * // or with $remote
-	 * class Remotes {
-	 *   api = $remote({ url: "http://localhost:8080", services: [Api] });
-	 * }
-	 *
-	 * // or with future auto-discovery
-	 * ```
+	 * @deprecated
 	 */
 	public registerActionApi(
-		routeDescriptor: RouteDescriptor,
+		routeDescriptor: ActionDescriptor,
 		instance: any,
 		key: string,
 	) {
-		const routes = this.alepha.getDescriptorValues($route);
+		const routes = this.alepha.getDescriptorValues($action);
 		for (const it of routes) {
 			const { value, instance: parentInstance, key: parentKey } = it;
 
@@ -206,12 +187,7 @@ export class ServerActionDescriptorProvider {
 			if (value[OPTIONS].use === routeDescriptor && value[OPTIONS].handler) {
 				const localFunction = this.createLocalFunction(
 					value,
-					this.helper.permission(
-						value[OPTIONS],
-						instance,
-						key,
-						this.env.SERVER_API_PREFIX,
-					),
+					this.helper.permission(value[OPTIONS], instance, key),
 				);
 
 				this.log.trace(
@@ -256,7 +232,7 @@ export class ServerActionDescriptorProvider {
 	 * @protected
 	 */
 	protected createLocalFunction(
-		value: RouteDescriptor,
+		value: ActionDescriptor,
 		permission: Permission,
 	) {
 		return async (
@@ -404,16 +380,18 @@ export interface ServerRemote {
 	url: string;
 	name: string;
 	proxy: boolean;
-	links: (authorization?: string) => Promise<HttpClientLink[]>;
+	links: (authorization?: string) => Promise<ApiLinksResponse>;
 	serviceAccount?: ServiceAccountDescriptor;
+	prefix: string;
 }
 
 export interface ServerRouteAction<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends ServerRoute<TConfig> {
+	prefix: string;
 	method: RouteMethod;
 	name: string;
 	group: string;
 	permission: Permission;
-	options: RouteDescriptorOptions;
+	options: ActionDescriptorOptions;
 }

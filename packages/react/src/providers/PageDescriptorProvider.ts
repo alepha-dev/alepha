@@ -1,5 +1,5 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
-import type { HttpClientLink } from "@alepha/server";
+import type { ApiLinksResponse } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
 import NestedView from "../components/NestedView.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
@@ -517,5 +517,5 @@ export interface PageReactContext {
 	url: URL;
 	head: Head;
 	onError: (error: Error) => ReactNode;
-	links?: HttpClientLink[];
+	links?: ApiLinksResponse;
 }

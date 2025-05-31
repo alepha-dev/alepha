@@ -8,9 +8,10 @@ export class ReactAuth {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client = $inject(HttpClient);
 
-	public readonly slugs = {
-		login: "/api/_oauth/login",
-		logout: "/api/_oauth/logout",
+	static path = {
+		login: "/oauth/login",
+		callback: "/oauth/callback",
+		logout: "/oauth/logout",
 	};
 
 	public readonly onRender = $hook({
@@ -45,7 +46,7 @@ export class ReactAuth {
 				? window.location.origin + browser.transitioning.to
 				: window.location.href;
 
-			window.location.href = `${this.slugs.login}?redirect=${redirect}`;
+			window.location.href = `${ReactAuth.path.login}?redirect=${redirect}`;
 
 			if (browser.transitioning) {
 				throw new RedirectionError(browser.state.pathname);
@@ -54,10 +55,10 @@ export class ReactAuth {
 			return;
 		}
 
-		throw new RedirectionError(this.slugs.login);
+		throw new RedirectionError(ReactAuth.path.login);
 	}
 
 	public logout() {
-		window.location.href = `${this.slugs.logout}?redirect=${encodeURIComponent(window.location.origin)}`;
+		window.location.href = `${ReactAuth.path.logout}?redirect=${encodeURIComponent(window.location.origin)}`;
 	}
 }

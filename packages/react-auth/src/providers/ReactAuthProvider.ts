@@ -25,6 +25,7 @@ import {
 	refreshTokenGrant,
 } from "openid-client";
 import { $auth, type AccessToken } from "../descriptors/$auth.ts";
+import { ReactAuth } from "../services/ReactAuth.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();
@@ -234,11 +235,7 @@ export class ReactAuthProvider {
 	 *
 	 */
 	public readonly login = $route({
-		security: false,
-		internal: true,
-		path: "/_oauth/login",
-		group: "auth",
-		method: "GET",
+		path: ReactAuth.path.login,
 		schema: {
 			query: t.object({
 				redirect: t.optional(t.string({ size: "rich" })),
@@ -277,11 +274,7 @@ export class ReactAuthProvider {
 	 *
 	 */
 	public readonly callback = $route({
-		security: false,
-		internal: true,
-		path: "/_oauth/callback",
-		group: "auth",
-		method: "GET",
+		path: ReactAuth.path.callback,
 		schema: {
 			query: t.object({
 				provider: t.optional(t.string()),
@@ -345,14 +338,8 @@ export class ReactAuthProvider {
 		}
 	}
 
-	/**
-	 *
-	 */
 	public readonly logout = $route({
-		security: false,
-		internal: true,
-		path: "/_oauth/logout",
-		group: "auth",
+		path: ReactAuth.path.logout,
 		method: "GET",
 		schema: {
 			query: t.object({

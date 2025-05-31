@@ -10,11 +10,10 @@ import {
 	t,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
-import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
+	ActionDescriptor,
 	ClientRequestEntry,
 	ClientRequestOptions,
-	RouteDescriptor,
 } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
@@ -25,23 +24,18 @@ import type {
 	ServerRequest,
 	ServerRequestConfigEntry,
 } from "../providers/ServerRouterProvider.ts";
+import {
+	type ApiLink,
+	type ApiLinksResponse,
+	apiLinksResponseSchema,
+} from "../schemas/apiLinksResponseSchema.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
-
-const envSchema = t.object({
-	SERVER_API_URL: t.string({
-		default: "/api",
-	}),
-	CLIENT_API_PREFIX: t.string({
-		default: "",
-	}),
-});
 
 export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly env = $inject(envSchema);
 	protected readonly helper = $inject(ActionDescriptorHelper);
 
-	public readonly URL_LINKS = "/_links";
+	public readonly URL_LINKS = "/api/_links";
 	public readonly cache = $cache<any>();
 	protected links?: Array<HttpClientLink>;
 
@@ -144,7 +138,16 @@ export class HttpClient {
 		link: HttpClientLink,
 		args: ServerRequestConfigEntry,
 	) {
-		let url = host + this.env.CLIENT_API_PREFIX + link.path;
+		let url = host;
+
+		url += link.prefix ?? "/api";
+
+		// prefix with service when host is not defined (e.g. browser)
+		if (!link.host) {
+			url += link.service ? `/${link.service}` : "";
+		}
+
+		url += link.path;
 
 		url = this.pathVariables(url, link, args);
 
@@ -165,7 +168,7 @@ export class HttpClient {
 			init.headers["content-type"] === "multipart/form-data";
 
 		if (
-			link.contentType === "multipart/form-data" ||
+			link.requestBodyType === "multipart/form-data" ||
 			hasHeader ||
 			this.helper.isMultipart(link)
 		) {
@@ -491,9 +494,20 @@ export class HttpClient {
 
 	public async getLinks(): Promise<HttpClientLink[]> {
 		if (!this.links && this.alepha.isBrowser()) {
-			this.links = await this.json<any[]>(
-				`${this.env.SERVER_API_URL}${this.URL_LINKS}`,
+			const { links } = await this.fetch<ApiLinksResponse>(
+				`${this.URL_LINKS}`,
+				{
+					method: "GET",
+				},
+				{
+					schema: apiLinksResponseSchema,
+				},
 			);
+
+			this.links = links.map((it) => ({
+				...it,
+				method: it.method ?? "GET",
+			}));
 		}
 
 		return this.links ?? [];
@@ -521,13 +535,9 @@ export interface FetchRunOptions {
 	cache?: boolean | DurationLike;
 }
 
-export interface HttpClientLink {
-	method: RouteMethod;
-	path: string;
-	name: string;
-	group?: string;
-	contentType?: string; // body content type
-	protected?: boolean;
+export interface HttpClientLink extends ApiLink {
+	secured?: boolean;
+	prefix?: string;
 	// -- server only --
 	// only for remote actions
 	host?: string;
@@ -538,7 +548,7 @@ export interface HttpClientLink {
 }
 
 export type HttpVirtualClient<T> = {
-	[K in keyof T as T[K] extends RouteDescriptor ? K : never]: T[K] & {
+	[K in keyof T as T[K] extends ActionDescriptor ? K : never]: T[K] & {
 		can: () => boolean;
 	};
 };

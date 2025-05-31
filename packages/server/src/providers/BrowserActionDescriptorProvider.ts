@@ -1,10 +1,10 @@
 import { OPTIONS, type Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, KIND, t } from "@alepha/core";
 import {
-	$route,
+	$action,
+	type ActionDescriptor,
 	type ClientRequestEntry,
 	type ClientRequestOptions,
-	type RouteDescriptor,
 } from "../descriptors/$action.ts";
 import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
 import { HttpClient } from "../services/HttpClient.ts";
@@ -34,13 +34,13 @@ export class BrowserActionDescriptorProvider {
 	});
 
 	public configureActions() {
-		const descriptors = this.alepha.getDescriptorValues($route);
+		const descriptors = this.alepha.getDescriptorValues($action);
 		for (const { value, instance, key } of descriptors) {
 			this.registerAction(value, instance, key);
 		}
 	}
 
-	public registerAction(value: RouteDescriptor, instance: any, key: string) {
+	public registerAction(value: ActionDescriptor, instance: any, key: string) {
 		const options = {
 			host: this.env.SERVER_API_URL,
 		};

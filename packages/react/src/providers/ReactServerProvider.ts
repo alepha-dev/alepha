@@ -196,7 +196,12 @@ export class ReactServerProvider {
 			// -- links
 			if (this.alepha.has(ServerLinksProvider)) {
 				const srv = this.alepha.get(ServerLinksProvider);
-				context.links = (await srv.links()) as any;
+
+				context.links = await srv.getLinks({
+					user: serverRequest.user,
+					authorization: serverRequest.headers.authorization,
+				});
+
 				this.alepha.als.set("links", context.links);
 			}
 

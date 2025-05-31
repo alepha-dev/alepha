@@ -502,10 +502,10 @@ export class Repository<
 			.then(([it]) => this.clean(it))
 			.catch((error) => {
 				if (error instanceof Error) {
+					const msg = "duplicate key value violates unique constraint";
 					if (
-						error.message.includes(
-							"duplicate key value violates unique constraint",
-						)
+						(error.cause as Error)?.message.includes(msg) ||
+						error.message.includes(msg)
 					) {
 						throw new PgConflictError(
 							`Failed to create entity - ${error.message}`,

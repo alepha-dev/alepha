@@ -1,16 +1,14 @@
 import { $inject, Alepha, type Static, __bind, t } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
-import {
-	$action,
-	$route,
-	type ClientRequestOptions,
-} from "./descriptors/$action.ts";
+import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
 import { $proxy } from "./descriptors/$proxy.ts";
 import { $remote } from "./descriptors/$remote.ts";
+import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import { ProxyDescriptorProvider } from "./providers/ProxyDescriptorProvider.ts";
 import { RemoteDescriptorProvider } from "./providers/RemoteDescriptorProvider.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
+import { ServerRouteDescriptorProvider } from "./providers/ServerRouteDescriptorProvider.ts";
 import type {
 	ServerRequest,
 	ServerRequestConfigEntry,
@@ -78,6 +76,7 @@ export * from "./descriptors/$remote.ts";
 export * from "./descriptors/$action.ts";
 export * from "./descriptors/$client.ts";
 export * from "./descriptors/$proxy.ts";
+export * from "./descriptors/$route.ts";
 export * from "./providers/ServerRouterProvider.ts";
 export * from "./providers/ServerActionDescriptorProvider.ts";
 export * from "./providers/RemoteDescriptorProvider.ts";
@@ -92,6 +91,7 @@ export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/platforms/ServerProvider.ts";
 export * from "./providers/platforms/NodeHttpServerProvider.ts";
 export * from "./schemas/errorSchema.ts";
+export * from "./schemas/apiLinksResponseSchema.ts";
 export * from "./schemas/okSchema.ts";
 export * from "./services/HttpClient.ts";
 
@@ -106,7 +106,7 @@ export * from "./errors/ValidationError.ts";
 const envSchema = t.object({
 	SERVER_LINKS_ENABLED: t.boolean({
 		default: true,
-		description: "Enable links-provider, which expose APIs on /api/_links.",
+		description: "Enable links-provider, which expose APIs on /_links.",
 	}),
 	SERVER_HEALTH_ENABLED: t.boolean({
 		default: true,
@@ -135,6 +135,7 @@ export class ServerModule {
 		});
 
 		this.alepha.with(ServerActionDescriptorProvider);
+		this.alepha.with(ServerRouteDescriptorProvider);
 		this.alepha.with(RemoteDescriptorProvider);
 		this.alepha.with(ProxyDescriptorProvider);
 

@@ -1,4 +1,5 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
+import { HttpError } from "../../errors/HttpError.ts";
 
 /**
  * On every request, this provider checks if the server is ready.
@@ -18,10 +19,12 @@ export class ServerNotReadyProvider {
 				return;
 			}
 
-			reply.status = 503;
-			reply.body = "Server is not ready yet. Please try again later.";
 			reply.headers["Retry-After"] = "5"; // Retry after 5 seconds
-			reply.headers["Content-Type"] = "text/plain";
+
+			throw new HttpError({
+				status: 503,
+				message: "Server is not ready yet. Please try again later.",
+			});
 		},
 	});
 }

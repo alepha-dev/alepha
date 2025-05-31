@@ -1,78 +1,105 @@
-import { $inject, Alepha, t } from "@alepha/core";
-import { type Permission, SecurityProvider } from "@alepha/security";
-import { $action } from "../../descriptors/$action.ts";
-import { type HttpLink, httpLinkSchema } from "../../schemas/httpLinkSchema.ts";
+import { $inject, Alepha } from "@alepha/core";
+import {
+	type Permission,
+	SecurityProvider,
+	type UserAccountToken,
+} from "@alepha/security";
+import { $route } from "../../descriptors/$route.ts";
+import {
+	type ApiLink,
+	apiLinksResponseSchema,
+} from "../../schemas/apiLinksResponseSchema.ts";
 import { HttpClient } from "../../services/HttpClient.ts";
 import { RemoteDescriptorProvider } from "../RemoteDescriptorProvider.ts";
+import { ServerActionDescriptorProvider } from "../ServerActionDescriptorProvider.ts";
 
 export class ServerLinksProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client = $inject(HttpClient);
 	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
+	protected readonly serverActionDescriptorProvider = $inject(
+		ServerActionDescriptorProvider,
+	);
 
-	public readonly links = $action({
-		path: "/_links",
-		group: "system",
+	public readonly links = $route({
+		path: "/api/_links",
 		schema: {
-			response: t.array(httpLinkSchema, {
-				maxItems: 1000,
-			}),
+			response: apiLinksResponseSchema,
 		},
-		internal: true,
-		security: false,
 		handler: async ({ user, headers }) => {
-			let permissions: Permission[] | undefined;
-			const hasSecurity = this.alepha.has(SecurityProvider);
-			if (hasSecurity && user) {
-				permissions = this.alepha.get(SecurityProvider).getPermissions(user);
-			}
-
-			const appLinks = await this.client.getLinks();
-			const userLinks: HttpLink[] = [];
-
-			for (const link of appLinks) {
-				if (link.host) continue;
-				if (hasSecurity && link.protected) {
-					if (!user) {
-						continue;
-					}
-
-					if (permissions) {
-						if (
-							!permissions.some(
-								(permission) =>
-									permission.name === link.name &&
-									permission.group === link.group,
-							)
-						) {
-							continue;
-						}
-					}
-				}
-
-				userLinks.push(link);
-			}
-
-			userLinks.push(
-				...(
-					await Promise.all(
-						this.remoteProvider
-							.getRemotes()
-							.filter((it) => it.proxy) // add only "proxy" remotes
-							.map(async (remote) => {
-								const links = await remote.links(headers.authorization);
-								return links.map((link) => ({
-									...link,
-									path: link.path.replace("/api", `/api/${remote.name}`),
-									proxy: true,
-									service: link.service ?? remote.name,
-								}));
-							}),
-					)
-				).flat(),
-			);
-
-			return userLinks;
+			return this.getLinks({
+				user,
+				authorization: headers.authorization,
+			});
 		},
 	});
+
+	public async getLinks(options: {
+		user?: UserAccountToken;
+		authorization?: string;
+	}) {
+		const { user, authorization } = options;
+		let permissions: Permission[] | undefined;
+		const hasSecurity = this.alepha.has(SecurityProvider);
+		if (hasSecurity && user) {
+			permissions = this.alepha.get(SecurityProvider).getPermissions(user);
+		}
+
+		const appLinks = await this.client.getLinks();
+		const userLinks: ApiLink[] = [];
+
+		for (const link of appLinks) {
+			if (link.host) continue;
+			if (hasSecurity && link.secured) {
+				if (!user) {
+					continue;
+				}
+
+				if (permissions) {
+					if (
+						!permissions.some(
+							(permission) =>
+								permission.name === link.name &&
+								permission.group === link.group,
+						)
+					) {
+						continue;
+					}
+				}
+			}
+
+			userLinks.push(link);
+		}
+
+		userLinks.push(
+			...(
+				await Promise.all(
+					this.remoteProvider
+						.getRemotes()
+						.filter((it) => it.proxy) // add only "proxy" remotes
+						.map(async (remote) => {
+							const { links, prefix } = await remote.links(authorization);
+							return links.map((link) => {
+								let path = link.path.replace(prefix ?? "/api", "");
+								if (link.service) {
+									path = `/${link.service}${path}`;
+								}
+								return {
+									...link,
+									path,
+									proxy: true,
+									service: remote.name,
+								};
+							});
+						}),
+				)
+			).flat(),
+		);
+
+		return {
+			userId: user?.id,
+			prefix: this.serverActionDescriptorProvider.getPrefix(),
+			links: userLinks,
+		};
+	}
 }

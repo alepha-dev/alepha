@@ -8,10 +8,9 @@ import type {
 	ServerRoute,
 } from "../providers/ServerRouterProvider.ts";
 
-/**
- * Route descriptor options.
- */
-export interface RouteDescriptorOptions<
+const KEY = "ACTION";
+
+export interface ActionDescriptorOptions<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends Omit<ServerRoute, "handler" | "path" | "schema"> {
 	/**
@@ -30,8 +29,16 @@ export interface RouteDescriptorOptions<
 	 * If false, disabled the security check for this route.
 	 *
 	 * @default true when SecurityModule is enabled, false otherwise.
+	 * @deprecated
 	 */
 	security?: boolean;
+
+	/**
+	 * If true, the route is secure.
+	 *
+	 * Can be a string or an array of strings to specify required roles or permissions.
+	 */
+	secure?: boolean | string | string[];
 
 	/**
 	 * Pathname of the route.
@@ -39,16 +46,9 @@ export interface RouteDescriptorOptions<
 	path?: string;
 
 	/**
-	 * Base URL of the route.
-	 *
-	 * @default "/api"
-	 */
-	base?: string;
-
-	/**
 	 * Inherit options from another route.
 	 */
-	use?: { [OPTIONS]: RouteDescriptorOptions<TConfig> };
+	use?: { [OPTIONS]: ActionDescriptorOptions<TConfig> };
 
 	/**
 	 * The route method.
@@ -82,7 +82,9 @@ export interface RouteDescriptorOptions<
 	disabled?: boolean;
 
 	/**
-	 * Mark the route as private. It will not be exposed in the API documentation.
+	 * Mark the route as private.
+	 * - It won't be exposed in the API documentation.
+	 * - It won't be exposed in _links.
 	 */
 	internal?: boolean;
 
@@ -92,11 +94,11 @@ export interface RouteDescriptorOptions<
 	handler?: ServerHandler<TConfig>;
 }
 
-export interface RouteDescriptor<
+export interface ActionDescriptor<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > {
-	[KIND]: "ROUTE";
-	[OPTIONS]: RouteDescriptorOptions<TConfig>;
+	[KIND]: typeof KEY;
+	[OPTIONS]: ActionDescriptorOptions<TConfig>;
 
 	/**
 	 * Fetch or just call local route when available.
@@ -120,52 +122,35 @@ export interface RouteDescriptor<
 	permission: () => string;
 }
 
-/**
- * Declare a new route.
- *
- * ```ts
- * class A {
- *   hello = $route({
- *     url: "/hello",
- *     handler: () => "Hello, World!",
- *   });
- * }
- * ```
- *
- * @param options The route options.
- * @returns The route.
- */
-export const $route = <TConfig extends RequestConfigSchema>(
-	options: RouteDescriptorOptions<TConfig>,
-): RouteDescriptor<TConfig> => {
-	__descriptor("ROUTE");
+export const $action = <TConfig extends RequestConfigSchema>(
+	options: ActionDescriptorOptions<TConfig>,
+): ActionDescriptor<TConfig> => {
+	__descriptor(KEY);
 
 	const routeDescriptorOptions = {
 		...options.use?.[OPTIONS],
 		...options,
 	};
 
-	const route = () => {
-		throw new NotImplementedError("ROUTE");
+	const action: ActionDescriptor<TConfig> = () => {
+		throw new NotImplementedError(KEY);
 	};
 
-	route[KIND] = "ROUTE" as const;
-	route[OPTIONS] = routeDescriptorOptions;
+	action[KIND] = KEY;
+	action[OPTIONS] = routeDescriptorOptions;
 
-	route.fetch = async () => {
-		throw new NotImplementedError("ROUTE");
+	action.fetch = async () => {
+		throw new NotImplementedError(KEY);
 	};
 
-	route.permission = () => {
-		throw new NotImplementedError("ROUTE");
+	action.permission = () => {
+		throw new NotImplementedError(KEY);
 	};
 
-	return route;
+	return action;
 };
 
-$route[KIND] = "ROUTE";
-
-export const $action = $route;
+$action[KIND] = KEY;
 
 // ----------------------------------------------------------------------------------------------------------
 

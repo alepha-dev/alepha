@@ -223,7 +223,7 @@ export class ServerSwaggerProvider {
 			};
 		}
 
-		if (TypeGuard.IsObject(schema)) {
+		if (TypeGuard.IsObject(schema) || TypeGuard.IsArray(schema)) {
 			return {
 				schema,
 				status: 200,

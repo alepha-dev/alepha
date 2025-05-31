@@ -40,12 +40,12 @@ export class NodeHttpServerProvider implements ServerProvider {
 	): Promise<number | void> {
 		const { route, params } = this.router.match(`/${req.method}${req.url}`);
 
-		if (!route) {
-			if (this.alepha.isServerless() === "vite") {
-				// if vite is running, let it handle the request
-				return;
-			}
+		if (!route && this.alepha.isServerless() === "vite") {
+			// if vite is running, let it handle the request
+			return;
+		}
 
+		if (!route) {
 			// if no route is found, return basic 404
 			// note: you should not use this in production, use a custom 404 page instead by adding a route /*
 			res.writeHead(404, { "content-type": "text/plain" });

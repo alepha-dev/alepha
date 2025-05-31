@@ -46,7 +46,7 @@ export class TypeProvider {
 	static DEFAULT_STRING_MAX_LENGTH = 255;
 	static DEFAULT_LONG_STRING_MAX_LENGTH = 1024;
 	static DEFAULT_RICH_STRING_MAX_LENGTH = 16384;
-	static DEFAULT_ARRAY_MAX_ITEMS = 100;
+	static DEFAULT_ARRAY_MAX_ITEMS = 1000;
 	static FormatRegistry = FormatRegistry;
 
 	public Type = Type;

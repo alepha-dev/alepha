@@ -90,7 +90,7 @@ test("$swagger", () => {
 			version: "1.0.0",
 		},
 		paths: {
-			"/api/hello/{name}": {
+			"/hello/{name}": {
 				post: {
 					operationId: "hello",
 					parameters: [
@@ -146,7 +146,7 @@ test("$swagger", () => {
 					},
 				},
 			},
-			"/api/text": {
+			"/text": {
 				get: {
 					operationId: "text",
 					responses: {

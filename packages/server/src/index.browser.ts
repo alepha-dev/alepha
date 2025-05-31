@@ -1,5 +1,5 @@
 import { $inject, Alepha, __bind } from "@alepha/core";
-import { $route } from "./descriptors/$action.ts";
+import { $action } from "./descriptors/$action.ts";
 import { BrowserActionDescriptorProvider } from "./providers/BrowserActionDescriptorProvider.ts";
 
 export * from "./constants/routeMethods.ts";
@@ -18,4 +18,4 @@ export class ServerModule {
 	}
 }
 
-__bind($route, ServerModule);
+__bind($action, ServerModule);

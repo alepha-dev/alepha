@@ -16,10 +16,13 @@ export class ServerSecurityProvider {
 			if (!this.alepha.isTest()) {
 				return;
 			}
+
 			if (realms.length !== 1 || realms[0].name !== "default") {
 				return;
 			}
+
 			request.headers = new Headers(request.headers);
+
 			if (!request.headers.has("authorization")) {
 				const sub = options?.user?.id ?? randomUUID();
 				const roles = options?.user?.roles ?? ["admin"];

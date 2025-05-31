@@ -46,6 +46,12 @@ export const $serviceAccount = (
 				at: Date.now(),
 			};
 
+			if (!json.access_token) {
+				throw new Error(
+					`Failed to fetch access token: ${JSON.stringify(json)}`,
+				);
+			}
+
 			return json.access_token;
 		};
 

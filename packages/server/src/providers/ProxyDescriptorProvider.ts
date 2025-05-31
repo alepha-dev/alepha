@@ -25,10 +25,11 @@ export class ProxyDescriptorProvider {
 		},
 	});
 
-	public async proxy(options: ProxyDescriptorOptions) {
-		const path = options.path;
+	public createProxyHandler(
+		options: Omit<ProxyDescriptorOptions, "path">,
+	): ServerHandler {
 		const target = options.target;
-		const handler: ServerHandler = async (request) => {
+		return async (request) => {
 			const url = new URL(request.url.pathname, target);
 			if (request.url.search) {
 				url.search = request.url.search;
@@ -61,6 +62,12 @@ export class ProxyDescriptorProvider {
 				await options.afterResponse(request, response);
 			}
 		};
+	}
+
+	public async proxy(options: ProxyDescriptorOptions) {
+		const path = options.path;
+		const target = options.target;
+		const handler: ServerHandler = this.createProxyHandler(options);
 
 		for (const method of routeMethods) {
 			await this.routerProvider.route({

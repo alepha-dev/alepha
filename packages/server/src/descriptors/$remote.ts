@@ -45,13 +45,6 @@ export interface RemoteDescriptorOptions {
 	 * This will be used for internal communication and will not be exposed to the client.
 	 */
 	serviceAccount?: ServiceAccountDescriptor;
-
-	/**
-	 * You shouldn't touch this option.
-	 *
-	 * @default "/api/_links"
-	 */
-	linkPath?: string;
 }
 
 export interface RemoteDescriptor {

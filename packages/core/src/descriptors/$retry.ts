@@ -33,8 +33,14 @@ export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
 	 *
 	 * @default undefined
 	 */
-	onError?: (error: Error, attempt: number) => void;
+	onError?: (
+		error: Error,
+		attempt: number,
+		...parameters: Parameters<T>
+	) => void;
 }
+
+export type MaybePromise<T> = T extends Promise<any> ? T : Promise<T>;
 
 /**
  * Retry descriptor.
@@ -44,7 +50,7 @@ export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
  */
 export const $retry = <T extends (...args: any[]) => any>(
 	opts: RetryDescriptorOptions<T>,
-): ((...parameters: Parameters<T>) => Promise<ReturnType<T>>) => {
+): ((...parameters: Parameters<T>) => MaybePromise<ReturnType<T>>) => {
 	const attempts = opts.max ?? 3;
 	const delay = opts.delay ?? 0;
 	const when = opts.when;
@@ -72,7 +78,7 @@ export const $retry = <T extends (...args: any[]) => any>(
 				}
 
 				if (opts.onError) {
-					opts.onError(err, counter + 1);
+					opts.onError(err, counter + 1, ...args);
 				}
 
 				if (delay) {

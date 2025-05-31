@@ -6,10 +6,14 @@ export const errorSchema = t.object(
 		status: t.uint({
 			description: "HTTP status code",
 		}),
-		message: t.string({ description: "Short text which describe the error" }),
+		message: t.string({
+			description: "Short text which describe the error",
+			size: "rich",
+		}),
 		details: t.optional(
 			t.string({
 				description: "Detailed description of the error",
+				size: "rich",
 			}),
 		),
 		cause: t.optional(

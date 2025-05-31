@@ -57,21 +57,82 @@ class WebApp {
 	});
 }
 
-const webApp = Alepha.create().with(WebApp);
+const front = Alepha.create().with(WebApp);
 
 test("$remote", async ({ expect }) => {
-	const client = webApp.get(HttpClient);
-	const links = await client.getLinks();
-	expect(links.map((link) => link.path)).toEqual([
-		"/api/ping",
-		"/api/getReport",
-		"/api/cr/print",
-	]);
+	const client = front.get(HttpClient);
+
+	expect(await getLinks(c)).toEqual({
+		links: [
+			{
+				group: "service-c",
+				name: "print",
+				path: "/print",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await getLinks(b)).toEqual({
+		links: [
+			{
+				group: "service-b",
+				name: "compute",
+				path: "/compute",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await getLinks(a)).toEqual({
+		links: [
+			{
+				group: "service-a",
+				name: "getReport",
+				path: "/getReport",
+			},
+			{
+				group: "service-c",
+				name: "print",
+				path: "/print",
+				service: "cr",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await getLinks(front)).toEqual({
+		links: [
+			{
+				group: "web-app",
+				name: "ping",
+				path: "/ping",
+			},
+			{
+				group: "service-a",
+				name: "getReport",
+				path: "/getReport",
+				service: "a",
+			},
+			{
+				group: "service-c",
+				name: "print",
+				path: "/cr/print",
+				service: "a",
+			},
+		],
+		prefix: "/api",
+	});
 
 	expect(await client.of<WebApp>().ping()).toEqual("pong");
-	expect(await client.of<ServiceC>().print()).toEqual("TADA!");
 	expect(await client.of<ServiceA>().getReport()).toEqual("B: 42, C: TADA!");
+	expect(await client.of<ServiceC>().print()).toEqual("TADA!");
 	await expect(() => client.of<ServiceB>().compute()).rejects.toThrow(
 		"Action compute not found",
 	);
 });
+
+const getLinks = (a: Alepha) =>
+	fetch(`${a.get(ServerProvider).hostname}/api/_links`).then((res) =>
+		res.json(),
+	);

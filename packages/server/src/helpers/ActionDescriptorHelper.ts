@@ -1,12 +1,12 @@
 import type { Permission } from "@alepha/security";
 import { type RouteMethod, routeMethods } from "../constants/routeMethods.ts";
-import type { RouteDescriptorOptions } from "../descriptors/$action.ts";
+import type { ActionDescriptorOptions } from "../descriptors/$action.ts";
 import type { RequestConfigSchema } from "../providers/ServerRouterProvider.ts";
 import type { HttpClientLink } from "../services/HttpClient.ts";
 
 export class ActionDescriptorHelper {
 	public name(
-		options: RouteDescriptorOptions,
+		options: ActionDescriptorOptions,
 		instance: any,
 		key: string,
 	): string {
@@ -17,24 +17,20 @@ export class ActionDescriptorHelper {
 		return key;
 	}
 
-	public path(
-		options: RouteDescriptorOptions,
-		instance: any,
-		key: string,
-		prefix = "",
-	) {
-		return (options.base ?? prefix) + (options.path ?? `/${key}`);
+	public path(options: ActionDescriptorOptions, instance: any, key: string) {
+		return options.path ?? `/${key}`;
 	}
 
 	public link(
-		options: RouteDescriptorOptions,
+		options: ActionDescriptorOptions,
 		instance: any,
 		key: string,
-		prefix = "",
+		prefix = "/api",
 	): HttpClientLink {
 		return {
+			prefix,
 			method: this.method(options),
-			path: this.path(options, instance, key, prefix),
+			path: this.path(options, instance, key),
 			name: this.name(options, instance, key),
 			group: this.group(options, instance),
 			schema: options.schema,
@@ -56,22 +52,21 @@ export class ActionDescriptorHelper {
 	}
 
 	public permission(
-		options: RouteDescriptorOptions,
+		options: ActionDescriptorOptions,
 		instance: any,
 		key: string,
-		prefix = "",
 	): Permission {
 		return {
 			group: this.group(options, instance),
 			name: options.name ?? key,
-			path: this.path(options, instance, key, prefix),
+			path: this.path(options, instance, key),
 			method: this.method(options),
 			description: options.description,
 			contentType: this.bodyContentType(options),
 		};
 	}
 
-	public group(options: RouteDescriptorOptions, instance: any): string {
+	public group(options: ActionDescriptorOptions, instance: any): string {
 		if (options.group) {
 			return options.group;
 		}
@@ -93,17 +88,12 @@ export class ActionDescriptorHelper {
 		return false;
 	}
 
-	public bodyContentType(options: RouteDescriptorOptions): string | undefined {
+	public bodyContentType(options: ActionDescriptorOptions): string | undefined {
 		const method = this.method(options);
 		const hasBody = method === "POST" || method === "PATCH" || method === "PUT";
 
-		if (hasBody) {
-			if (this.isMultipart(options)) {
-				return "multipart/form-data";
-			}
-			if (options.schema?.body) {
-				return "application/json";
-			}
+		if (hasBody && this.isMultipart(options)) {
+			return "multipart/form-data";
 		}
 	}
 
@@ -118,4 +108,6 @@ export class ActionDescriptorHelper {
 				.toLowerCase()
 		);
 	}
+
+	public fetchLinks(url: string) {}
 }
