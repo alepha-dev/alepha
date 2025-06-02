@@ -261,37 +261,49 @@ export class Logger {
 
 		let output = "";
 
-		if (this.color) {
-			output += `${COLORS.grey}[${date}]${COLORS.reset} `;
-			output += `${LEVEL_COLORS[level]}${levelStr}${COLORS.reset} `;
-			if (this.context) {
-				output += `(${this.name}/${this.context})`;
-			} else {
-				output += `(${this.name})`;
-			}
-			if (this.caller) {
-				output += ` <${this.caller}>`;
-			}
-			output += `: ${COLORS.cyan}${message}${COLORS.reset}`;
-			if (dataStr) {
-				if (isError) {
-					output += ` \n${dataStr}`;
-				} else {
-					output += ` ${COLORS.darkGrey}${dataStr}${COLORS.reset}`;
-				}
-			}
+		output += this.colorize(COLORS.grey, `[${date}]`);
+		output += " ";
+
+		output += this.colorize(LEVEL_COLORS[level], levelStr);
+		output += " ";
+
+		if (this.context) {
+			output += `(${this.name}/${this.context})`;
 		} else {
-			output += `[${date}] ${levelStr} (${this.name})`;
-			if (this.caller) {
-				output += ` <${this.caller}>`;
-			}
-			output += `: ${message}`;
-			if (dataStr) {
-				output += ` ${dataStr}`;
+			output += `(${this.name})`;
+		}
+
+		if (this.caller) {
+			output += ` <${this.caller}>`;
+		}
+
+		if (message) {
+			output += `: ${this.colorize(COLORS.cyan, message)}`;
+		} else {
+			output += ":";
+		}
+
+		if (dataStr) {
+			if (isError) {
+				output += ` \n${dataStr}`;
+			} else {
+				output += ` ${this.colorize(COLORS.darkGrey, dataStr)}`;
 			}
 		}
 
 		return output;
+	}
+
+	protected colorize(
+		color: string,
+		text: string,
+		reset = COLORS.reset,
+	): string {
+		if (!this.color) {
+			return text;
+		}
+
+		return `${color}${text}${reset}`;
 	}
 
 	/**

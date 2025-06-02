@@ -1,5 +1,6 @@
 import type { Static } from "@alepha/core";
 import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { RedisProvider, RedisSubscriberProvider } from "@alepha/redis";
 import { MemoryTopicProvider, RedisTopicProvider } from "@alepha/topic";
 import { $lock } from "./descriptors/$lock.ts";
 import { LockDescriptorProvider } from "./providers/LockDescriptorProvider.ts";
@@ -28,6 +29,11 @@ export class LockModule {
 	protected readonly env = $inject(envSchema);
 
 	constructor() {
+		if (this.env.LOCK_PROVIDER === "redis") {
+			this.alepha.with(RedisProvider);
+			this.alepha.with(RedisSubscriberProvider);
+		}
+
 		this.alepha.register({
 			default: true,
 			provide: LockTopicProvider,

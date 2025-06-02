@@ -37,6 +37,7 @@ export class SchedulerDescriptorProvider {
 
 	protected readonly start = $hook({
 		name: "start",
+		priority: "last",
 		handler: async () => {
 			for (const job of this.schedulers) {
 				if (job.cronJob) {
