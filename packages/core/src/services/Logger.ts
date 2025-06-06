@@ -215,8 +215,20 @@ export class Logger {
 			context: this.context ? this.context : undefined,
 			level,
 			msg: message,
-			data,
+			data: data instanceof Error ? this.formatJsonError(data) : data,
 		});
+	}
+
+	protected formatJsonError(error: Error): object {
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			cause:
+				error.cause instanceof Error
+					? this.formatJsonError(error.cause)
+					: undefined,
+		};
 	}
 
 	/**
