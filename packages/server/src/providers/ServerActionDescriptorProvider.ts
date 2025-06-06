@@ -380,6 +380,7 @@ export interface ServerRemote {
 	url: string;
 	name: string;
 	proxy: boolean;
+	internal: boolean;
 	links: (authorization?: string) => Promise<ApiLinksResponse>;
 	serviceAccount?: ServiceAccountDescriptor;
 	prefix: string;

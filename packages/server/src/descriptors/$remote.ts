@@ -38,7 +38,16 @@ export interface RemoteDescriptorOptions {
 	 * If true, all methods of the remote service will be exposed as actions in this context.
 	 * > Note: Proxy will never use the service account, it just... proxies the request.
 	 */
-	proxy?: boolean | Partial<ProxyDescriptorOptions>;
+	proxy?:
+		| boolean
+		| Partial<
+				ProxyDescriptorOptions & {
+					/**
+					 * If true, the remote service won't be available internally, only through the proxy.
+					 */
+					noInternal: boolean;
+				}
+		  >;
 
 	/**
 	 * For communication between the server and the remote service with a security layer.

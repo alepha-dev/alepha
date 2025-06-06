@@ -32,6 +32,11 @@ export const apiLinkSchema = t.object({
 				"Service name associated with the API link, used for service discovery.",
 		}),
 	),
+	schema: t.optional(
+		t.object({
+			body: t.optional(t.any()),
+		}),
+	),
 });
 
 export const apiLinksResponseSchema = t.object({

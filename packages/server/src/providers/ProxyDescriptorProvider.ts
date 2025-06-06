@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import { routeMethods } from "../constants/routeMethods.ts";
 import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
 import {
@@ -8,6 +8,7 @@ import {
 } from "./ServerRouterProvider.ts";
 
 export class ProxyDescriptorProvider {
+	protected readonly log = $logger();
 	protected readonly routerProvider = $inject(ServerRouterProvider);
 	protected readonly alepha = $inject(Alepha);
 
@@ -30,7 +31,7 @@ export class ProxyDescriptorProvider {
 	): ServerHandler {
 		const target = options.target;
 		return async (request) => {
-			const url = new URL(request.url.pathname, target);
+			const url = new URL(target + request.url.pathname);
 			if (request.url.search) {
 				url.search = request.url.search;
 			}
@@ -52,11 +53,22 @@ export class ProxyDescriptorProvider {
 				await options.beforeRequest(request, requestInit);
 			}
 
+			this.log.debug("Proxying request", {
+				url: url.toString(),
+				method: request.method,
+				headers: request.headers,
+			});
+
 			const response = await fetch(requestInit.url, requestInit);
 
 			request.reply.status = response.status;
 			request.reply.headers = Object.fromEntries(response.headers.entries());
 			request.reply.body = response.body;
+
+			this.log.debug("Received response", {
+				status: request.reply.status,
+				headers: request.reply.headers,
+			});
 
 			if (options.afterResponse) {
 				await options.afterResponse(request, response);

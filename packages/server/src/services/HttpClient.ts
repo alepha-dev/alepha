@@ -37,7 +37,7 @@ export class HttpClient {
 
 	public readonly URL_LINKS = "/api/_links";
 	public readonly cache = $cache<any>();
-	protected links?: Array<HttpClientLink>;
+	public links?: Array<HttpClientLink>;
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
 
@@ -546,7 +546,12 @@ export interface ClientScope {
 }
 
 export type HttpVirtualClient<T> = {
-	[K in keyof T as T[K] extends ActionDescriptor ? K : never]: T[K] & {
-		can: () => boolean;
-	};
+	[K in keyof T as T[K] extends ActionDescriptor
+		? K
+		: never]: T[K] extends ActionDescriptor<infer Schema>
+		? T[K] & {
+				can: () => boolean;
+				schema: Schema;
+			}
+		: never;
 };

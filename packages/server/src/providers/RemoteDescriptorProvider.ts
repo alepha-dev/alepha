@@ -35,10 +35,11 @@ export class RemoteDescriptorProvider {
 						? await remote.serviceAccount.token()
 						: undefined;
 
-				const { links, prefix } = await remote.links(token);
-				if (prefix != null) {
-					remote.prefix = prefix;
+				if (!remote.internal) {
+					continue; // skip download links for remotes that are not internal
 				}
+
+				const { links } = await remote.links(token);
 
 				for (const link of links) {
 					let path = link.path.replace(remote.prefix, "");
@@ -72,12 +73,20 @@ export class RemoteDescriptorProvider {
 			prefix: "/api",
 			serviceAccount: options.serviceAccount,
 			proxy: !!options.proxy,
-			links: (authorization) =>
-				this.fetchLinks({
+			internal: !proxy.noInternal,
+			links: async (authorization) => {
+				const response = await this.fetchLinks({
 					service: name,
 					url: `${url}${linkPath}`,
 					authorization,
-				}),
+				});
+
+				if (response.prefix != null) {
+					remote.prefix = response.prefix;
+				}
+
+				return response;
+			},
 		};
 
 		this.remotes.push(remote);
