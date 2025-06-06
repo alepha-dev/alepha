@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
 import { Table, sql } from "drizzle-orm";
@@ -82,11 +82,17 @@ export class DrizzleKitProvider {
 						),
 					);
 				} catch (error) {
-					this.log.warn(error, "Invalid statement");
+					this.log.warn(`Invalid statement - ${(error as Error).message}`);
 				}
 			}
 
 			if (!this.alepha.isTest() && !this.alepha.isProduction()) {
+				// create node_modules if not exists
+				try {
+					await mkdir("node_modules");
+				} catch (e) {
+					// ignore error
+				}
 				await writeFile(
 					`node_modules/drizzle_${schema}.json`,
 					JSON.stringify(curr, null, 2),

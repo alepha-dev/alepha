@@ -45,8 +45,6 @@ export const schemaToColumns = <T extends TObject>(
 		}, {}) as FromSchema<T>;
 };
 
-export const fromSchema = schemaToColumns;
-
 /**
  * Convert a schema to columns.
  */
@@ -64,4 +62,4 @@ export type FromSchema<T extends TObject> = {
 export type PgTableWithColumnsAndSchema<
 	T extends TableConfig,
 	R extends TObject,
-> = PgTableWithColumns<T> & { [PG_SCHEMA]: R };
+> = PgTableWithColumns<T> & { [PG_SCHEMA]: R; get $schema(): R };

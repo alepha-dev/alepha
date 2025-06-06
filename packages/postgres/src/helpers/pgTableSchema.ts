@@ -41,6 +41,9 @@ export const pgTableSchema = <
 	>;
 
 	table[PG_SCHEMA] = schema;
+	Object.defineProperty(table, "$schema", {
+		get: () => schema,
+	});
 
 	return table;
 };

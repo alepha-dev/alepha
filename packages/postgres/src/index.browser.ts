@@ -7,5 +7,6 @@ export * from "./providers/PostgresTypeProvider.ts";
 export * from "./schemas/entitySchema.ts";
 export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
+export * from "./descriptors/$entity.ts";
 
 export class PostgresModule {}

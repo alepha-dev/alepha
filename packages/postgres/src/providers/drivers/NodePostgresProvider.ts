@@ -162,7 +162,7 @@ export class NodePostgresProvider implements PostgresProvider {
 		handler: async () => {
 			const schema = this.env.POSTGRES_SCHEMA;
 
-			if (this.env.POSTGRES_SYNCHRONIZE) {
+			if (this.env.POSTGRES_SYNCHRONIZE && !this.alepha.isProduction()) {
 				await this.kit.synchronize(this, schema ?? "public");
 				return;
 			}
