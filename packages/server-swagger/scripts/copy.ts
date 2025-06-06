@@ -1,8 +1,23 @@
-import { $, glob } from "zx";
+import { join } from "node:path";
+import { fs, $, glob } from "zx";
 
-await $`rm -rf assets/swagger-ui`;
-await $`mkdir -p assets/swagger-ui`;
-await $`cp -r ../../node_modules/swagger-ui-dist/* ./assets/swagger-ui`;
+$.shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
+
+const dirname = new URL(".", import.meta.url).pathname;
+const normalizedDirname =
+	process.platform === "win32" && dirname.startsWith("/")
+		? dirname.slice(1)
+		: dirname;
+
+const assets = join(normalizedDirname, "../assets/swagger-ui");
+const dist = join(
+	normalizedDirname,
+	"../../../../node_modules/swagger-ui-dist",
+);
+
+await fs.rm(assets, { recursive: true, force: true });
+await fs.mkdir(assets, { recursive: true });
+await fs.cp(dist, assets, { recursive: true });
 
 const filesToRemove = [
 	"NOTICE",
@@ -14,7 +29,15 @@ const filesToRemove = [
 	"README.md",
 	"swagger-ui-es-bundle.js",
 	"swagger-ui-es-bundle-core.js",
-].map((item) => `assets/swagger-ui/${item}`);
+].map((item) => join(assets, item));
 
-$`rm -f ${filesToRemove}`;
-$`rm -f ${await glob("assets/swagger-ui/*.map")}`;
+// Remove specified files
+for (const file of filesToRemove) {
+	await fs.rm(file, { force: true });
+}
+
+// Remove .map files
+const mapFiles = await glob(join(assets, "*.map"));
+for (const file of mapFiles) {
+	await fs.rm(file, { force: true });
+}
