@@ -64,11 +64,16 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		return this.push({
 			path,
 			handler: (request) =>
-				this.handle(route, request, responseType, this.env.SERVER_ALS_ENABLED),
+				this.onRequest(
+					route,
+					request,
+					responseType,
+					this.env.SERVER_ALS_ENABLED,
+				),
 		});
 	}
 
-	public async handle(
+	public async onRequest(
 		route: ServerRoute,
 		rawRequest: ServerRawRequest,
 		responseType: ResponseType,
@@ -108,12 +113,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		responseType: ResponseType,
 		withAls: boolean,
 	) {
-		await this.tryRequestProcessing(
-			route,
-			request,
-			responseType,
-			withAls,
-		).catch((error) => this.errorHandler(route, request, error as Error));
+		await this.runRouteHandler(route, request, responseType, withAls).catch(
+			(error) => this.errorHandler(route, request, error as Error),
+		);
 
 		await this.alepha.emit(
 			"server:onSend",
@@ -148,7 +150,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		return response;
 	}
 
-	protected async tryRequestProcessing(
+	protected async runRouteHandler(
 		route: ServerRoute,
 		request: ServerRequest,
 		responseType: ResponseType,
@@ -472,7 +474,7 @@ export interface ServerReply {
 }
 
 export interface ServerResponse {
-	body: string | ArrayBuffer | NodeStream | NodeWebStream;
+	body: string | Buffer | ArrayBuffer | NodeStream | NodeWebStream;
 	headers: Record<string, string>;
 	status: number;
 }

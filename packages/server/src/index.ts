@@ -16,12 +16,14 @@ import type {
 	ServerRoute,
 } from "./providers/ServerRouterProvider.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
+import { ServerCompressProvider } from "./providers/features/ServerCompressProvider.ts";
 import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
 import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
 import { ServerNotReadyProvider } from "./providers/features/ServerNotReadyProvider.ts";
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
+import { ServerTimingProvider } from "./providers/features/ServerTimingProvider.ts";
 import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
 import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
 import type { FetchRunOptions, HttpClientLink } from "./services/HttpClient.ts";
@@ -142,6 +144,11 @@ export class ServerModule {
 		this.alepha.with(ServerLoggerProvider);
 		this.alepha.with(ServerBodyParserProvider);
 		this.alepha.with(ServerMultipartProvider);
+		this.alepha.with(ServerCompressProvider);
+
+		if (!this.alepha.isProduction()) {
+			this.alepha.with(ServerTimingProvider);
+		}
 
 		if (this.env.SERVER_LINKS_ENABLED) {
 			this.alepha.with(ServerLinksProvider);

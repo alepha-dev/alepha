@@ -1,19 +1,21 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fs, $, glob } from "zx";
 
 $.shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
 
 const dirname = new URL(".", import.meta.url).pathname;
-const normalizedDirname =
+const root =
 	process.platform === "win32" && dirname.startsWith("/")
 		? dirname.slice(1)
 		: dirname;
 
-const assets = join(normalizedDirname, "../assets/swagger-ui");
-const dist = join(
-	normalizedDirname,
-	"../../../../node_modules/swagger-ui-dist",
-);
+const assets = join(root, "../assets/swagger-ui");
+let dist = join(root, "../../../../node_modules/swagger-ui-dist");
+
+if (!existsSync(dist)) {
+	dist = join(root, "../../../node_modules/swagger-ui-dist");
+}
 
 await fs.rm(assets, { recursive: true, force: true });
 await fs.mkdir(assets, { recursive: true });

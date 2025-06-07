@@ -6,6 +6,7 @@ export const verify = $command({
 	handler: async ({ run }) => {
 		await run("yarn");
 		await run("yarn alepha clean");
+		await run("yarn workspaces foreach --all run copy");
 		await run("yarn format");
 		await run("yarn lint");
 		await run("yarn check");

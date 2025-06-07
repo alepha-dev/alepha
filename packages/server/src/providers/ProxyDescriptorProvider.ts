@@ -41,7 +41,10 @@ export class ProxyDescriptorProvider {
 			const requestInit = {
 				url: url.toString(),
 				method: request.method,
-				headers: request.headers,
+				headers: {
+					...request.headers,
+					"accept-encoding": "identity", // ignore compression
+				},
 				body: this.getRawRequestBody(request),
 			};
 
