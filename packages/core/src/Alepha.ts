@@ -96,6 +96,13 @@ export class Alepha {
 	 * Equivalent to `Alepha.create()`.
 	 */
 	public static create(state: Partial<State> = {}): Alepha {
+		if (typeof process === "object" && process.env.NODE_ENV !== "test") {
+			state.env = {
+				...process.env,
+				...state.env,
+			};
+		}
+
 		const alepha = new Alepha(state);
 
 		if (alepha.isTest()) {

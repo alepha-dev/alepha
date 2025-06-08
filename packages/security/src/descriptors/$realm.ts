@@ -29,7 +29,7 @@ export interface RealmDescriptorOptions {
 	 *
 	 * Note: You can skip this if you are using a user account provider with JWKS.
 	 */
-	secret?: string | JSONWebKeySet;
+	secret?: string | JSONWebKeySet | (() => string);
 
 	/**
 	 * Attach a user account provider to the realm to manage roles.

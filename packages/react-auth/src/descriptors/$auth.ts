@@ -1,4 +1,10 @@
-import { type Async, KIND, OPTIONS, __descriptor } from "@alepha/core";
+import {
+	type Async,
+	KIND,
+	NotImplementedError,
+	OPTIONS,
+	__descriptor,
+} from "@alepha/core";
 
 const KEY = "AUTH";
 
@@ -27,7 +33,7 @@ export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
 		[KIND]: KEY,
 		[OPTIONS]: options,
 		jwks: () => {
-			return options.oidc?.issuer ?? "";
+			throw new NotImplementedError(KEY);
 		},
 	};
 };

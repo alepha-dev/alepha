@@ -1,5 +1,5 @@
 import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
-import { HttpClient, type HttpClientLink } from "@alepha/server";
+import { type ApiLinksResponse, HttpClient } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
@@ -174,7 +174,7 @@ export class ReactBrowserProvider {
 			const previous = hydration?.layers ?? [];
 
 			if (hydration?.links) {
-				for (const link of hydration.links) {
+				for (const link of hydration.links.links) {
 					this.client.pushLink(link);
 				}
 			}
@@ -224,6 +224,6 @@ export interface RouterGoOptions {
 }
 
 export interface ReactHydrationState {
-	layers?: PreviousLayerData[];
-	links?: HttpClientLink[];
+	layers?: Array<PreviousLayerData>;
+	links?: ApiLinksResponse;
 }

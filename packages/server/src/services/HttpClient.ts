@@ -1,5 +1,5 @@
 import { $cache } from "@alepha/cache";
-import type { TObject } from "@alepha/core";
+import { $logger, type TObject } from "@alepha/core";
 import {
 	$inject,
 	Alepha,
@@ -32,6 +32,7 @@ import {
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 export class HttpClient {
+	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly helper = $inject(ActionDescriptorHelper);
 
@@ -45,7 +46,7 @@ export class HttpClient {
 		if (!this.links) {
 			this.links = [];
 		}
-		if (!link.handler && !link.host) {
+		if (!link.handler && !link.host && !this.alepha.isBrowser()) {
 			throw new Error("Link handler or host is required");
 		}
 
@@ -418,6 +419,7 @@ export class HttpClient {
 	) {
 		const als = this.alepha.als.get<ServerRequest>("request");
 		const user = options?.user ?? als?.user;
+
 		const links = await this.getLinks();
 		const link = links.find(
 			(a) =>
@@ -477,10 +479,14 @@ export class HttpClient {
 		});
 	}
 
-	public can(name: string) {
+	public can(name: string): boolean {
 		const links = this.alepha.isBrowser()
 			? this.links
-			: this.alepha.als.get<HttpClientLink[]>("links");
+			: this.alepha.als.get<{ links: HttpClientLink[] }>("links")?.links;
+
+		if (!links) {
+			return false;
+		}
 
 		return !!links?.some((link) => link.name === name);
 	}

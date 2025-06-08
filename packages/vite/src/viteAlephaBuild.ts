@@ -12,7 +12,7 @@ export interface ViteAlephaBuildOptions {
 	/**
 	 * The entry point for the application. This is the file that will be executed when the application is run.
 	 *
-	 * @default 'src/index.ts'
+	 * @default 'src/index.server.ts'
 	 */
 	entry?: string;
 
@@ -38,7 +38,7 @@ export interface ViteAlephaBuildOptions {
  *
  */
 export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
-	const entry = options.entry || "src/index.ts";
+	const entry = options.entry || "src/index.server.ts";
 	const filename = entry.split("/").at(-1)?.split(".").slice(0, -1).join(".");
 
 	const viteBuildClient = async () => {
@@ -82,16 +82,18 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 		}
 
 		await viteBuild({
+			publicDir: false,
 			ssr: {
 				noExternal: options.noExternal ?? true,
 			},
-			publicDir: false,
 			build: {
 				ssr: entry,
 				outDir: "dist/server",
 				rollupOptions: {
 					output: {
-						entryFileNames: `${filename}.mjs`,
+						entryFileNames: "[name].mjs",
+						chunkFileNames: "[name]-[hash].mjs",
+						assetFileNames: "[name]-[hash][extname]",
 						format: "esm",
 					},
 				},
@@ -114,13 +116,13 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 				.then(() => true)
 				.catch(() => false);
 
-			await viteBuildServer({
-				client: hasClient ? "client" : undefined,
-			});
-
 			if (hasClient) {
 				await viteBuildClient();
 			}
+
+			await viteBuildServer({
+				client: hasClient ? "client" : undefined,
+			});
 
 			// Prevent the default build from running again
 			process.exit(0);

@@ -2,6 +2,7 @@ import { $inject, Alepha, __bind } from "@alepha/core";
 import { $permission } from "./descriptors/$permission.ts";
 import { $realm } from "./descriptors/$realm.ts";
 import { $role } from "./descriptors/$role.ts";
+import type { UserAccountInfo } from "./interfaces/UserAccountInfo.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
 
 export * from "./descriptors/$permission.ts";
@@ -16,6 +17,15 @@ export * from "./providers/JwtProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
+
+declare module "@alepha/core" {
+	interface Hooks {
+		"security:user:created": {
+			realm: string;
+			user: UserAccountInfo;
+		};
+	}
+}
 
 export class SecurityModule {
 	protected readonly alepha = $inject(Alepha);

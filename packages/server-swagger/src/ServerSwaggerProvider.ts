@@ -180,7 +180,7 @@ export class ServerSwaggerProvider {
 				}
 			}
 
-			const url = this.replacePathParams(route.path);
+			const url = route.prefix + this.replacePathParams(route.path);
 
 			openApi.paths[url] = {
 				...openApi.paths[url],

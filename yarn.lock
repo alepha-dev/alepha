@@ -28,7 +28,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cli@npm:0.7.0, @alepha/cli@workspace:packages/cli":
+"@alepha/cli@workspace:packages/cli":
   version: 0.0.0-use.local
   resolution: "@alepha/cli@workspace:packages/cli"
   dependencies:
@@ -90,32 +90,6 @@ __metadata:
     "@alepha/topic": "npm:0.7.0"
     pkgroll: "npm:^2.12.2"
     vitest: "npm:^3.1.4"
-  languageName: unknown
-  linkType: soft
-
-"@alepha/playground@workspace:packages/playground":
-  version: 0.0.0-use.local
-  resolution: "@alepha/playground@workspace:packages/playground"
-  dependencies:
-    "@alepha/cli": "npm:0.7.0"
-    "@alepha/core": "npm:0.7.0"
-    "@alepha/postgres": "npm:0.7.0"
-    "@alepha/react": "npm:0.7.0"
-    "@alepha/react-auth": "npm:0.7.0"
-    "@alepha/server": "npm:0.7.0"
-    "@alepha/server-swagger": "npm:0.7.0"
-    "@alepha/vite": "npm:0.7.0"
-    "@mantine/core": "npm:^8.0.1"
-    "@mantine/hooks": "npm:^8.0.1"
-    "@mantine/nprogress": "npm:^8.0.1"
-    "@types/react": "npm:^19.1.4"
-    "@types/react-dom": "npm:^19.1.5"
-    drizzle-kit: "npm:0.31.1"
-    react: "npm:^19.1.0"
-    react-dom: "npm:^19.1.0"
-    tsx: "npm:^4.19.4"
-    vercel: "npm:^41.7.8"
-    vite: "npm:^6.3.5"
   languageName: unknown
   linkType: soft
 
@@ -1337,9 +1311,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mantine/core@npm:^8.0.1":
-  version: 8.0.1
-  resolution: "@mantine/core@npm:8.0.1"
+"@mantine/core@npm:^8.0.2":
+  version: 8.0.2
+  resolution: "@mantine/core@npm:8.0.2"
   dependencies:
     "@floating-ui/react": "npm:^0.26.28"
     clsx: "npm:^2.1.1"
@@ -1348,42 +1322,19 @@ __metadata:
     react-textarea-autosize: "npm:8.5.9"
     type-fest: "npm:^4.27.0"
   peerDependencies:
-    "@mantine/hooks": 8.0.1
+    "@mantine/hooks": 8.0.2
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/cb07af8fa3221de2b6e2ebf4742ca13207b118ad76bf3a4bba662a7f51625fae5aebf91f7f46bb3af00d5adf1f5155bb92846593aef34811d543585582321b09
+  checksum: 10c0/10ca6258bcc4e475fbb213724ad6e654396434d7345a315c60880c7fc639ffaa5b42b85d3e768364fcb869042357a52cfd6532dfc6daf1b5ba5370a9ca15936d
   languageName: node
   linkType: hard
 
-"@mantine/hooks@npm:^8.0.1":
-  version: 8.0.1
-  resolution: "@mantine/hooks@npm:8.0.1"
+"@mantine/hooks@npm:^8.0.2":
+  version: 8.0.2
+  resolution: "@mantine/hooks@npm:8.0.2"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/5ee0459d5b393e8e512f1a10c6e8a28235f10f0930503b05477daf3404f6266015e20806e20005c7458a9f66efe310fc85be448be7409bb541e782ed7586bb91
-  languageName: node
-  linkType: hard
-
-"@mantine/nprogress@npm:^8.0.1":
-  version: 8.0.1
-  resolution: "@mantine/nprogress@npm:8.0.1"
-  dependencies:
-    "@mantine/store": "npm:8.0.1"
-  peerDependencies:
-    "@mantine/core": 8.0.1
-    "@mantine/hooks": 8.0.1
-    react: ^18.x || ^19.x
-    react-dom: ^18.x || ^19.x
-  checksum: 10c0/a091317b3100094c94ec33155c807e7a81be6efa5f34015b006237131685c39a0e603af6a054a1a94ef65c2c5fc956b16bf9f4d6360f19d0491da80bfc317939
-  languageName: node
-  linkType: hard
-
-"@mantine/store@npm:8.0.1":
-  version: 8.0.1
-  resolution: "@mantine/store@npm:8.0.1"
-  peerDependencies:
-    react: ^18.x || ^19.x
-  checksum: 10c0/47732419be618a9e8a72acc6f11311756df284e28f71db9f489493aa0dc7a31f88e39d0fd76e282277a48b377ede2ec930bd0b01ee5bf83e5c4be1717bf41063
+  checksum: 10c0/1c68325ee0093923c7bbbde7f1b39600ae72751f254bd336989afe50d08a9c14810465ddfdb62e261e83711d334c292d6ac789a546a8df0e14a2f4f51812efda
   languageName: node
   linkType: hard
 
@@ -1975,6 +1926,24 @@ __metadata:
   version: 0.34.33
   resolution: "@sinclair/typebox@npm:0.34.33"
   checksum: 10c0/88ab4f7afc7514d576602dce5c892462a89f9082d77dde0e8e21342b3a5c8891ddfc51a65e7dbd5b3f5cbd8f5cb76aded0c0edcfcfb5730f189c2819de9583a7
+  languageName: node
+  linkType: hard
+
+"@tabler/icons-react@npm:3.17.0":
+  version: 3.17.0
+  resolution: "@tabler/icons-react@npm:3.17.0"
+  dependencies:
+    "@tabler/icons": "npm:3.17.0"
+  peerDependencies:
+    react: ">= 16"
+  checksum: 10c0/08cb76738b7a8c802f140c40c7fbe57eb0e2e46872fe7563574f653300cd0d719f3e2842b727e4bf0e33eabccdbecf6f8e2a20a7a6459fec7d0f7a3a3d897da6
+  languageName: node
+  linkType: hard
+
+"@tabler/icons@npm:3.17.0":
+  version: 3.17.0
+  resolution: "@tabler/icons@npm:3.17.0"
+  checksum: 10c0/262ffe9b78260f9e4ffd13c9ef441afb29169cf73750bf5395458e1d6ac5ef61c4214fd4586b36710f3194088cc04cf55a4dd9a9c5acc7e23210af7d83ed022f
   languageName: node
   linkType: hard
 
@@ -3073,6 +3042,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"blog-0cb386@workspace:apps/blog":
+  version: 0.0.0-use.local
+  resolution: "blog-0cb386@workspace:apps/blog"
+  dependencies:
+    "@mantine/core": "npm:^8.0.2"
+    "@mantine/hooks": "npm:^8.0.2"
+    "@tabler/icons-react": "npm:3.17.0"
+    "@types/react": "npm:^19.1.6"
+    drizzle-kit: "npm:^0.31.1"
+    react: "npm:^19.1.0"
+    vercel: "npm:^41.7.8"
+    vite: "npm:^6.3.5"
+  languageName: unknown
+  linkType: soft
+
 "body-parser@npm:^2.2.0":
   version: 2.2.0
   resolution: "body-parser@npm:2.2.0"
@@ -3780,7 +3764,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"drizzle-kit@npm:0.31.1":
+"drizzle-kit@npm:0.31.1, drizzle-kit@npm:^0.31.1":
   version: 0.31.1
   resolution: "drizzle-kit@npm:0.31.1"
   dependencies:
@@ -4359,7 +4343,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:^0.25.0, esbuild@npm:^0.25.1, esbuild@npm:^0.25.2, esbuild@npm:~0.25.0":
+"esbuild@npm:^0.25.0, esbuild@npm:^0.25.1, esbuild@npm:^0.25.2":
   version: 0.25.3
   resolution: "esbuild@npm:0.25.3"
   dependencies:
@@ -5044,7 +5028,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-tsconfig@npm:^4.7.0, get-tsconfig@npm:^4.7.5":
+"get-tsconfig@npm:^4.7.0":
   version: 4.10.0
   resolution: "get-tsconfig@npm:4.10.0"
   dependencies:
@@ -8791,22 +8775,6 @@ __metadata:
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62
-  languageName: node
-  linkType: hard
-
-"tsx@npm:^4.19.4":
-  version: 4.19.4
-  resolution: "tsx@npm:4.19.4"
-  dependencies:
-    esbuild: "npm:~0.25.0"
-    fsevents: "npm:~2.3.3"
-    get-tsconfig: "npm:^4.7.5"
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  bin:
-    tsx: dist/cli.mjs
-  checksum: 10c0/f7b8d44362343fbde1f2ecc9832d243a450e1168dd09702a545ebe5f699aa6912e45b431a54b885466db414cceda48e5067b36d182027c43b2c02a4f99d8721e
   languageName: node
   linkType: hard
 

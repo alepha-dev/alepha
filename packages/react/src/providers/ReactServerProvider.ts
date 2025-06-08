@@ -23,6 +23,7 @@ import {
 	type PageRequest,
 	type PageRoute,
 } from "./PageDescriptorProvider.ts";
+import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
 import { ServerHeadProvider } from "./ServerHeadProvider.ts";
 
 export const envSchema = t.object({
@@ -193,7 +194,6 @@ export class ReactServerProvider {
 				onError: () => null,
 			};
 
-			// -- links
 			if (this.alepha.has(ServerLinksProvider)) {
 				const srv = this.alepha.get(ServerLinksProvider);
 
@@ -228,7 +228,7 @@ export class ReactServerProvider {
 			const element = this.pageDescriptorProvider.root(state, context);
 			const app = renderToString(element);
 
-			const hydrationData = {
+			const hydrationData: ReactHydrationState = {
 				links: context.links,
 				layers: state.layers.map((it) => ({
 					...it,

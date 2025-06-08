@@ -45,6 +45,15 @@ export interface EntityDescriptorOptions<
 		  }
 	)[];
 
+	relations?: Record<
+		string,
+		{
+			type: "one" | "many";
+			table: () => any;
+			foreignColumn?: keyof Static<T>;
+		}
+	>;
+
 	// foreignKeys?: Array<{
 	// 	name?: string;
 	// 	columns: Array<keyof Static<T>>;

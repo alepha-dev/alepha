@@ -7,6 +7,7 @@ import {
 import { $route } from "../../descriptors/$route.ts";
 import {
 	type ApiLink,
+	type ApiLinksResponse,
 	apiLinksResponseSchema,
 } from "../../schemas/apiLinksResponseSchema.ts";
 import { HttpClient } from "../../services/HttpClient.ts";
@@ -37,7 +38,7 @@ export class ServerLinksProvider {
 	public async getLinks(options: {
 		user?: UserAccountToken;
 		authorization?: string;
-	}) {
+	}): Promise<ApiLinksResponse> {
 		const { user, authorization } = options;
 		let permissions: Permission[] | undefined;
 		const hasSecurity = this.alepha.has(SecurityProvider);
@@ -45,7 +46,7 @@ export class ServerLinksProvider {
 			permissions = this.alepha.get(SecurityProvider).getPermissions(user);
 		}
 
-		const appLinks = await this.client.getLinks();
+		const appLinks = this.client.links ?? [];
 		const userLinks: ApiLink[] = [];
 
 		for (const link of appLinks) {

@@ -34,13 +34,6 @@ export interface ActionDescriptorOptions<
 	security?: boolean;
 
 	/**
-	 * If true, the route is secure.
-	 *
-	 * Can be a string or an array of strings to specify required roles or permissions.
-	 */
-	secure?: boolean | string | string[];
-
-	/**
 	 * Pathname of the route.
 	 */
 	path?: string;

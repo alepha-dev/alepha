@@ -23,6 +23,7 @@ import {
 	discovery,
 	randomPKCECodeVerifier,
 	refreshTokenGrant,
+	tokenRevocation,
 } from "openid-client";
 import { $auth, type AccessToken } from "../descriptors/$auth.ts";
 import { ReactAuth } from "../services/ReactAuth.ts";
@@ -65,6 +66,7 @@ export class ReactAuthProvider {
 			id: t.string(),
 			name: t.optional(t.string()),
 			email: t.optional(t.string()),
+			picture: t.optional(t.string()),
 		}),
 	});
 
@@ -111,12 +113,17 @@ export class ReactAuthProvider {
 						},
 					};
 
-					if (this.alepha.isProduction() && !this.alepha.isServerless()) {
-						await client.get(); // preload discovery on production, if not serverless
-					}
+					// TODO: remove cache
+					const config = await client.get();
 
 					instance[key].jwks = () => {
-						//return client.serverMetadata().jwks_uri;
+						const jwksUri = config.serverMetadata().jwks_uri;
+						if (!jwksUri) {
+							throw new BadRequestError(
+								"JWKS URI is not available in OIDC configuration",
+							);
+						}
+						return jwksUri;
 					};
 
 					this.authProviders.push({
@@ -144,7 +151,7 @@ export class ReactAuthProvider {
 			) {
 				const tokens = await this.refresh(request.cookies);
 				if (tokens) {
-					request.headers.authorization = `Bearer ${tokens.access_token}`;
+					request.headers.authorization = `Bearer ${tokens.id_token ?? tokens.access_token}`;
 				}
 
 				if (
@@ -299,7 +306,9 @@ export class ReactAuthProvider {
 				issued_at: Date.now(),
 			});
 
-			const user = this.userFromAccessToken(tokens.access_token);
+			const user = this.userFromAccessToken(
+				tokens.id_token ?? tokens.access_token,
+			);
 			if (user) {
 				this.user.set(cookies, user);
 			}
@@ -330,6 +339,7 @@ export class ReactAuthProvider {
 				id: decoded.sub,
 				name: decoded.name,
 				email: decoded.email,
+				picture: decoded.picture,
 				// organization
 				// ...
 			};
@@ -348,11 +358,28 @@ export class ReactAuthProvider {
 			}),
 		},
 		handler: async ({ query, cookies, reply }) => {
+			const redirect = query.redirect ?? "/";
 			const { client } = await this.provider(query.provider);
 			const tokens = this.tokens.get(cookies);
+			if (!tokens?.access_token) {
+				reply.redirect(redirect);
+				return;
+			}
+
 			const idToken = tokens?.id_token;
 
-			const redirect = query.redirect ?? "/";
+			this.tokens.del(cookies);
+			this.user.del(cookies);
+
+			if (!client.serverMetadata().end_session_endpoint) {
+				await tokenRevocation(
+					client,
+					tokens?.refresh_token ?? tokens.access_token,
+				);
+				reply.redirect(redirect);
+				return;
+			}
+
 			const params = new URLSearchParams();
 
 			params.set("post_logout_redirect_uri", redirect);
@@ -360,13 +387,7 @@ export class ReactAuthProvider {
 				params.set("id_token_hint", idToken);
 			}
 
-			this.tokens.del(cookies);
-			this.user.del(cookies);
-
 			reply.redirect(buildEndSessionUrl(client, params).toString());
-
-			reply.headers.location = buildEndSessionUrl(client, params).toString();
-			reply.status = 302;
 		},
 	});
 

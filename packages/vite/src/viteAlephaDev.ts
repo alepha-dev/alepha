@@ -7,7 +7,7 @@ export interface ViteAlephaDevOptions {
 	/**
 	 * The entry point for the application. This is the file that will be executed when the application is run.
 	 *
-	 * @default 'src/index.ts'
+	 * @default 'src/index.server.ts'
 	 */
 	entry?: string;
 
@@ -34,7 +34,7 @@ export interface ViteAlephaDevOptions {
  *
  */
 export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
-	const entry = options.entry || "src/index.ts";
+	const entry = options.entry || "src/index.server.ts";
 
 	// let app: Alepha | null = null;
 	// let config: ResolvedConfig | null = null;
@@ -99,7 +99,7 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 
 		try {
 			if (!options.debug) {
-				console.clear();
+				//	console.clear();
 			}
 
 			const imported = await server.ssrLoadModule(fileUrl);

@@ -465,7 +465,7 @@ export interface Layer {
 	path: string;
 }
 
-export type PreviousLayerData = Omit<Layer, "element">;
+export type PreviousLayerData = Omit<Layer, "element" | "index" | "path">;
 
 export interface AnchorProps {
 	href: string;

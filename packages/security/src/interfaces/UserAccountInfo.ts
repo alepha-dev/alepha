@@ -18,6 +18,16 @@ export interface UserAccountInfo {
 	name?: string;
 
 	/**
+	 * User email, if available.
+	 */
+	email?: string;
+
+	/**
+	 * User profile picture URL, if available.
+	 */
+	picture?: string;
+
+	/**
 	 * Organization ID, if available.
 	 */
 	organization?: string;

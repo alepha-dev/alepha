@@ -441,9 +441,14 @@ export interface ServerRoute<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends Route {
 	method?: RouteMethod; // undefined = all
-	silent?: boolean;
 	handler: ServerHandler<TConfig>;
 	schema?: TConfig;
+
+	// feature: ServerLoggerProvider
+	silent?: boolean;
+
+	// feature: ServerSecurityProvider
+	secure?: boolean | string | string[];
 }
 
 export type ServerResponseBody<

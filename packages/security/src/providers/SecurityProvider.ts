@@ -132,7 +132,10 @@ export class SecurityProvider {
 		for (const { value, key, instance } of realms) {
 			const realm: Realm = {
 				name: value[OPTIONS].name ?? key,
-				secret: value[OPTIONS].secret,
+				secret:
+					typeof value[OPTIONS].secret === "function"
+						? value[OPTIONS].secret()
+						: value[OPTIONS].secret,
 				userAccountProvider:
 					typeof value[OPTIONS].userAccountProvider === "function"
 						? value[OPTIONS].userAccountProvider()
@@ -363,19 +366,21 @@ export class SecurityProvider {
 	 * Creates a user account from the provided payload.
 	 *
 	 * @param payload - The payload to create the user account from.
-	 * @param [realm] - The realm containing the roles. Default is all.
+	 * @param [realmName] - The realm containing the roles. Default is all.
 	 *
 	 * @returns The user info created from the payload.
 	 */
 	public createInfoFromPayload(
 		payload: JWTPayload,
-		realm?: string,
+		realmName?: string,
 	): UserAccountInfo {
 		const id = this.getIdFromPayload(payload);
 		const rolesFromPayload = this.getRolesFromPayload(payload);
+		const email = this.getEmailFromPayload(payload);
+		const picture = this.getPictureFromPayload(payload);
 		const name = this.getNameFromPayload(payload);
 		const organization = this.getOrganizationFromPayload(payload);
-		const rolesFromSystem = this.getRoles(realm);
+		const rolesFromSystem = this.getRoles(realmName);
 		const roles = rolesFromPayload.reduce<Role[]>(
 			(arr, roleName) =>
 				arr.concat(rolesFromSystem.filter((it) => it.name === roleName)),
@@ -386,6 +391,8 @@ export class SecurityProvider {
 			id,
 			roles: roles.map((it) => it.name),
 			name,
+			email,
+			picture,
 			organization,
 		};
 	}
@@ -476,7 +483,13 @@ export class SecurityProvider {
 		}
 
 		const { result, keyName: realm } = await this.jwt.parse(token);
-		const info = this.createInfoFromPayload(result.payload);
+		const info = this.createInfoFromPayload(result.payload, realm);
+
+		await this.alepha.emit("security:user:created", {
+			realm,
+			user: info,
+		});
+
 		const roles = info.roles ?? [];
 
 		let ownership: string | boolean | undefined;
@@ -642,6 +655,48 @@ export class SecurityProvider {
 		return payload?.realm_access?.roles ?? payload?.roles ?? [];
 	}
 
+	public getPictureFromPayload(
+		payload: Record<string, any>,
+	): string | undefined {
+		if (!payload) {
+			return;
+		}
+
+		if (payload.picture) {
+			return payload.picture;
+		}
+
+		if (payload.avatar_url) {
+			return payload.avatar_url;
+		}
+
+		if (payload.user_picture) {
+			return payload.user_picture;
+		}
+
+		return undefined;
+	}
+
+	public getEmailFromPayload(payload: Record<string, any>): string | undefined {
+		if (!payload) {
+			return;
+		}
+
+		if (payload.email) {
+			return payload.email;
+		}
+
+		if (payload.email_verified) {
+			return payload.email_verified;
+		}
+
+		if (payload.user_email) {
+			return payload.user_email;
+		}
+
+		return undefined;
+	}
+
 	/**
 	 * Returns the name from the given payload.
 	 *
@@ -714,6 +769,8 @@ export interface Realm {
 	 * This is useful when you want to use a custom user provider for a specific realm.
 	 */
 	userAccountProvider?: SecurityUserAccountProvider;
+
+	onLoadUser?: (user: UserAccountInfo) => Promise<void> | void;
 }
 
 export interface SecurityUserAccountProvider {

@@ -6,6 +6,7 @@ import type {
 } from "drizzle-orm/pg-core";
 import type { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import { PG_MANY, PG_PRIMARY_KEY, PG_REF } from "../constants/PG_SYMBOLS.ts";
+import type { TInsertObject } from "../interfaces/TInsertObject.ts";
 import { mapFieldToColumn } from "./mapFieldToColumn.ts";
 
 /**
@@ -62,4 +63,8 @@ export type FromSchema<T extends TObject> = {
 export type PgTableWithColumnsAndSchema<
 	T extends TableConfig,
 	R extends TObject,
-> = PgTableWithColumns<T> & { [PG_SCHEMA]: R; get $schema(): R };
+> = PgTableWithColumns<T> & {
+	[PG_SCHEMA]: R;
+	get $schema(): R;
+	get $insertSchema(): TInsertObject<R>;
+};

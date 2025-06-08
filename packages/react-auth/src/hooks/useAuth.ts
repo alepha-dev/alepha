@@ -1,5 +1,6 @@
 import { RouterContext } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
+import { HttpClient, type HttpVirtualClient } from "@alepha/server";
 import { useContext } from "react";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
@@ -19,8 +20,9 @@ export const useAuth = (): AuthHook => {
 		login: (provider?: string) => {
 			ctx.alepha.get(ReactAuth).login();
 		},
-		can: (something: { can: () => boolean }) => {
-			return something.can();
+		can: (name: string) => {
+			const client = ctx.alepha.get(HttpClient);
+			return client.can(name);
 		},
 	};
 };
@@ -29,5 +31,5 @@ export interface AuthHook {
 	user?: UserAccountToken;
 	logout: () => void;
 	login: (provider?: string) => void;
-	can: (something: { can: () => boolean }) => boolean;
+	can: <T extends object>(name: keyof HttpVirtualClient<T>) => boolean;
 }

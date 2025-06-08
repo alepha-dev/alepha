@@ -90,7 +90,7 @@ export class JwtProvider {
 			}
 		}
 
-		this.log.error("No valid key loader found to verify the token");
+		this.log.warn("No valid key loader found to verify the token");
 
 		throw new SecurityError("Invalid token");
 	}

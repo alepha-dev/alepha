@@ -191,6 +191,7 @@ export class PostgresTypeProvider {
 			actions,
 		});
 	};
+	references = this.ref;
 
 	/**
 	 *

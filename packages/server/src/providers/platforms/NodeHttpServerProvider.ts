@@ -92,7 +92,9 @@ export class NodeHttpServerProvider implements ServerProvider {
 		res: ServerResponse,
 		params: Record<string, string> = {},
 	): ServerRawRequest {
-		const url = new URL(`http://${req.headers.host}${req.url}`);
+		const url = new URL(
+			`${this.getProtocol(req)}://${req.headers.host}${req.url}`,
+		);
 		const query = Object.fromEntries(url.searchParams.entries());
 		const headers = req.headers as Record<string, string>;
 		const method = (req.method?.toUpperCase() ?? "GET") as RouteMethod;
@@ -110,6 +112,13 @@ export class NodeHttpServerProvider implements ServerProvider {
 				},
 			},
 		};
+	}
+
+	public getProtocol(req: IncomingMessage): "http" | "https" {
+		if (req.headers["x-forwarded-proto"] === "https") {
+			return "https";
+		}
+		return "http";
 	}
 
 	public shouldHaveBody(method: string): boolean {
