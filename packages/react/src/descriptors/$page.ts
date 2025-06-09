@@ -13,7 +13,7 @@ export interface PageConfigSchema {
 
 export type TPropsDefault = any;
 
-export type TPropsParentDefault = object;
+export type TPropsParentDefault = {};
 
 export interface PageDescriptorOptions<
 	TConfig extends PageConfigSchema = PageConfigSchema,
@@ -34,7 +34,7 @@ export interface PageDescriptorOptions<
 
 	children?: Array<{ [OPTIONS]: PageDescriptorOptions }>;
 
-	parent?: { [OPTIONS]: PageDescriptorOptions<any, TPropsParent> };
+	parent?: { [OPTIONS]: PageDescriptorOptions<PageConfigSchema, TPropsParent> };
 
 	can?: () => boolean;
 

@@ -29,6 +29,7 @@ export * from "./helpers/schemaToColumns.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";
+export * from "./interfaces/TInsertObject.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";

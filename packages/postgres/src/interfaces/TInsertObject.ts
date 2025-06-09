@@ -22,7 +22,16 @@ export interface TInsertObject<T extends TObject>
 	extends TSchema,
 		ObjectOptions {
 	[Kind]: "Object";
-	static: ObjectStatic<T["properties"], this["params"]>;
+	static: ObjectStatic<
+		{
+			[K in keyof T["properties"] as T["properties"][K] extends {
+				[PG_DEFAULT]: any;
+			}
+				? never
+				: K]: T["properties"][K];
+		},
+		this["params"]
+	>;
 	additionalProperties?: TAdditionalProperties;
 	type: "object";
 	required?: string[];

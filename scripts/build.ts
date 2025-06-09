@@ -10,7 +10,7 @@ export const build = $command({
 	handler: async ({ run }) => {
 		await run("yarn convert js");
 		await run(
-			`yarn workspaces foreach -Apt run build`,
+			`yarn workspaces foreach -Apt --no-private run build`,
 		);
 
 		await improveTypingsIndex();

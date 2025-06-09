@@ -381,7 +381,10 @@ export interface ServerRemote {
 	name: string;
 	proxy: boolean;
 	internal: boolean;
-	links: (authorization?: string) => Promise<ApiLinksResponse>;
+	links: (args: {
+		authorization?: string;
+		withSchema?: boolean;
+	}) => Promise<ApiLinksResponse>;
 	serviceAccount?: ServiceAccountDescriptor;
 	prefix: string;
 }

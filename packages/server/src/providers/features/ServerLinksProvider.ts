@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "@alepha/core";
+import { $inject, Alepha, t } from "@alepha/core";
 import {
 	type Permission,
 	SecurityProvider,
@@ -25,12 +25,16 @@ export class ServerLinksProvider {
 	public readonly links = $route({
 		path: "/api/_links",
 		schema: {
+			query: t.object({
+				withSchema: t.optional(t.boolean()),
+			}),
 			response: apiLinksResponseSchema,
 		},
-		handler: async ({ user, headers }) => {
+		handler: async ({ user, headers, query }) => {
 			return this.getLinks({
 				user,
 				authorization: headers.authorization,
+				withSchema: query.withSchema,
 			});
 		},
 	});
@@ -38,8 +42,9 @@ export class ServerLinksProvider {
 	public async getLinks(options: {
 		user?: UserAccountToken;
 		authorization?: string;
+		withSchema?: boolean;
 	}): Promise<ApiLinksResponse> {
-		const { user, authorization } = options;
+		const { user } = options;
 		let permissions: Permission[] | undefined;
 		const hasSecurity = this.alepha.has(SecurityProvider);
 		if (hasSecurity && user) {
@@ -69,7 +74,10 @@ export class ServerLinksProvider {
 				}
 			}
 
-			userLinks.push(link);
+			userLinks.push({
+				...link,
+				schema: options.withSchema ? link.schema : undefined,
+			});
 		}
 
 		userLinks.push(
@@ -79,12 +87,13 @@ export class ServerLinksProvider {
 						.getRemotes()
 						.filter((it) => it.proxy) // add only "proxy" remotes
 						.map(async (remote) => {
-							const { links, prefix } = await remote.links(authorization);
+							const { links, prefix } = await remote.links(options);
 							return links.map((link) => {
 								let path = link.path.replace(prefix ?? "/api", "");
 								if (link.service) {
 									path = `/${link.service}${path}`;
 								}
+
 								return {
 									...link,
 									path,
@@ -98,7 +107,7 @@ export class ServerLinksProvider {
 		);
 
 		return {
-			userId: user?.id,
+			// userId: user?.id, why? this is not needed and not secure
 			prefix: this.serverActionDescriptorProvider.getPrefix(),
 			links: userLinks,
 		};

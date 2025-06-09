@@ -1,10 +1,11 @@
 import { Alepha, run } from "@alepha/core";
 import { Blog } from "./Blog";
-import { PostController } from "./api/PostController.ts";
-import { Security } from "./config/Security.ts";
+import { PostController } from "./controllers/PostController.ts";
+import { Security } from "./providers/Security.ts";
 
 const alepha = Alepha.create({
 	env: {
+		LOG_LEVEL: "trace",
 		POSTGRES_SYNCHRONIZE: true,
 		POSTGRES_SCHEMA: "blog",
 	},

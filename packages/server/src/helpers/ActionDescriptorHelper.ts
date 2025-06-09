@@ -18,7 +18,17 @@ export class ActionDescriptorHelper {
 	}
 
 	public path(options: ActionDescriptorOptions, instance: any, key: string) {
-		return options.path ?? `/${key}`;
+		if (options.path != null) {
+			return options.path;
+		}
+		let path = `/${key}`;
+
+		const params = options.schema?.params?.properties ?? {};
+		for (const part of Object.keys(params)) {
+			path += `/:${part.toLowerCase()}`;
+		}
+
+		return path;
 	}
 
 	public link(

@@ -352,7 +352,8 @@ export class PageDescriptorProvider {
 			const pages = this.alepha.getDescriptorValues($page);
 			for (const { value, key } of pages) {
 				value[OPTIONS].name ??= key;
-
+			}
+			for (const { value } of pages) {
 				// skip children, we only want root pages
 				if (value[OPTIONS].parent) {
 					continue;
@@ -368,12 +369,6 @@ export class PageDescriptorProvider {
 		target: { [OPTIONS]: PageDescriptorOptions },
 	): PageRouteEntry {
 		const children = target[OPTIONS].children ?? [];
-
-		for (const it of pages) {
-			if (it.value[OPTIONS].parent === target) {
-				children.push(it.value);
-			}
-		}
 
 		return {
 			...target[OPTIONS],

@@ -1,12 +1,13 @@
 import { $inject, t } from "@alepha/core";
 import { $action } from "@alepha/server";
-import { Db } from "../config/Db.ts";
 import { post } from "../entities.ts";
+import { Db } from "../providers/Db.ts";
 
 export class PostController {
 	db = $inject(Db);
 
 	getLastPosts = $action({
+		security: false,
 		schema: {
 			response: t.array(post.$schema),
 		},
@@ -17,6 +18,27 @@ export class PostController {
 			});
 
 			return posts;
+		},
+	});
+
+	getPostBySlug = $action({
+		security: false,
+		schema: {
+			params: t.object({
+				slug: t.string(),
+			}),
+			response: post.$schema,
+		},
+		handler: async ({ params }) => {
+			const postBySlug = await this.db.posts.findOne({
+				slug: { eq: params.slug },
+			});
+
+			if (!postBySlug) {
+				throw new Error("Post not found");
+			}
+
+			return postBySlug;
 		},
 	});
 

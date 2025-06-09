@@ -4,6 +4,7 @@ import { BrowserActionDescriptorProvider } from "./providers/BrowserActionDescri
 
 export * from "./constants/routeMethods.ts";
 export * from "./descriptors/$action.ts";
+export * from "./descriptors/$client.ts";
 export * from "./providers/BrowserActionDescriptorProvider.ts";
 export * from "./services/HttpClient.ts";
 export * from "./schemas/errorSchema.ts";

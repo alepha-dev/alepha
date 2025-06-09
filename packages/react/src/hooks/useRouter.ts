@@ -1,6 +1,7 @@
 import { useContext, useMemo } from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import { PageDescriptorProvider } from "../providers/PageDescriptorProvider.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import { RouterHookApi } from "./RouterHookApi.ts";
 
@@ -11,9 +12,14 @@ export const useRouter = (): RouterHookApi => {
 		throw new Error("useRouter must be used within a RouterProvider");
 	}
 
+	const pages = useMemo(() => {
+		return ctx.alepha.get(PageDescriptorProvider).getPages();
+	}, []);
+
 	return useMemo(
 		() =>
 			new RouterHookApi(
+				pages,
 				ctx.state,
 				layer,
 				ctx.alepha.isBrowser()

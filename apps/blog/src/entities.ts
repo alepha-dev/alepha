@@ -4,7 +4,7 @@ import { $entity, pg } from "@alepha/postgres";
 export const post = $entity({
 	name: "post",
 	schema: t.object({
-		id: pg.primaryKey(t.int()),
+		id: pg.primaryKey(),
 		createdAt: pg.createdAt(),
 		title: t.string(),
 		slug: t.string(),
@@ -15,7 +15,7 @@ export const post = $entity({
 export const user = $entity({
 	name: "user",
 	schema: t.object({
-		id: pg.primaryKey(t.int()),
+		id: pg.primaryKey(),
 		createdAt: pg.createdAt(),
 		name: t.string(),
 		email: t.string(),
@@ -26,7 +26,7 @@ export const user = $entity({
 export const comment = $entity({
 	name: "comment",
 	schema: t.object({
-		id: pg.primaryKey(t.int()),
+		id: pg.primaryKey(),
 		createdAt: pg.createdAt(),
 		postId: pg.references(t.int(), () => post.id),
 		userId: pg.references(t.int(), () => user.id),

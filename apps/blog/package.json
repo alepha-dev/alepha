@@ -3,6 +3,7 @@
 	"type": "module",
 	"dependencies": {
 		"@mantine/core": "^8.0.2",
+		"@mantine/form": "^8.0.2",
 		"@mantine/hooks": "^8.0.2",
 		"@tabler/icons-react": "3.17.0",
 		"react": "^19.1.0"
@@ -14,11 +15,11 @@
 		"vite": "^6.3.5"
 	},
 	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
 		"kit": "drizzle-kit push",
 		"vercel:dev": "cd dist && yarn vercel dev",
 		"vercel:deploy": "cd dist && yarn vercel deploy",
-		"vercel:deploy:prod": "cd dist && yarn vercel deploy --prod",
-		"dev": "vite",
-		"build": "vite build"
+		"vercel:deploy:prod": "cd dist && yarn vercel deploy --prod"
 	}
 }

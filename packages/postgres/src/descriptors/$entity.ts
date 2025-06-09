@@ -5,10 +5,14 @@ import {
 	index,
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { pgTableSchema } from "../helpers/pgTableSchema.ts";
-import type { FromSchema } from "../helpers/schemaToColumns.ts";
+import { type PgTableConfig, pgTableSchema } from "../helpers/pgTableSchema.ts";
+import type {
+	FromSchema,
+	PgTableWithColumnsAndSchema,
+} from "../helpers/schemaToColumns.ts";
 
 export interface EntityDescriptorOptions<
+	TTableName extends string,
 	T extends TObject,
 	Keys = keyof Static<T>,
 > {
@@ -17,7 +21,7 @@ export interface EntityDescriptorOptions<
 	 * @example
 	 * name: "user"
 	 */
-	name: string;
+	name: TTableName;
 
 	/**
 	 * The schema of the table. This is a TypeBox schema that describes the columns and their types.
@@ -81,30 +85,42 @@ export interface EntityDescriptorOptions<
 /**
  * Creates a table descriptor for drizzle-orm.
  */
-export const $entity = <T extends TObject>(
-	options: EntityDescriptorOptions<T>,
-) => {
-	return pgTableSchema(options.name, options.schema, (t) => {
-		const config: PgTableExtraConfigValue[] = [];
+export const $entity = <
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+>(
+	options: EntityDescriptorOptions<TTableName, TSchema>,
+): PgTableWithColumnsAndSchema<
+	PgTableConfig<TTableName, TSchema, TColumnsMap>,
+	TSchema
+> => {
+	return pgTableSchema<TTableName, TSchema, TColumnsMap>(
+		options.name,
+		options.schema,
+		(t) => {
+			const config: PgTableExtraConfigValue[] = [];
 
-		if (options.config) {
-			config.push(...options.config(t));
-		}
+			if (options.config) {
+				config.push(...options.config(t));
+			}
 
-		if (options.indexes) {
-			for (const idx of options.indexes) {
-				if (typeof idx === "string") {
-					const name = `${options.name}_${idx}_idx`;
-					config.push(index(name).on(t[idx]));
-				} else if (typeof idx === "object") {
-					const name = idx.name ?? `${options.name}_${String(idx.column)}_idx`;
-					config.push(
-						(idx.unique ? uniqueIndex(name) : index(name)).on(t[idx.column]),
-					);
+			if (options.indexes) {
+				for (const idx of options.indexes) {
+					if (typeof idx === "string") {
+						const name = `${options.name}_${idx}_idx`;
+						config.push(index(name).on(t[idx]));
+					} else if (typeof idx === "object") {
+						const name =
+							idx.name ?? `${options.name}_${String(idx.column)}_idx`;
+						config.push(
+							(idx.unique ? uniqueIndex(name) : index(name)).on(t[idx.column]),
+						);
+					}
 				}
 			}
-		}
 
-		return config;
-	});
+			return config;
+		},
+	);
 };

@@ -13,12 +13,7 @@ import type {
 import type { TableConfig } from "drizzle-orm/pg-core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
-import type {
-	PgDefault,
-	PgMany,
-	PgPrimaryKey,
-	PgRef,
-} from "../constants/PG_SYMBOLS.ts";
+import type { PgDefault, PgMany, PgRef } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_CREATED_AT,
 	PG_DEFAULT,
@@ -62,10 +57,10 @@ export class PostgresTypeProvider {
 			PG_DEFAULT,
 		);
 
-	public readonly primaryKey = <T extends TSchema>(
-		type: T,
-	): PgAttr<PgAttr<T, PgDefault>, PgPrimaryKey> =>
-		this.default(pgAttr(type, PG_PRIMARY_KEY));
+	public readonly uuidPrimaryKey = () =>
+		pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+
+	public readonly primaryKey = this.identityPrimaryKey;
 
 	/**
 	 *

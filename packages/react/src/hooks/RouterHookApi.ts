@@ -1,6 +1,7 @@
 import type { PageDescriptor } from "../descriptors/$page.ts";
 import type {
 	AnchorProps,
+	PageRoute,
 	RouterState,
 } from "../providers/PageDescriptorProvider.ts";
 import type {
@@ -10,6 +11,7 @@ import type {
 
 export class RouterHookApi {
 	constructor(
+		private readonly pages: PageRoute[],
 		private readonly state: RouterState,
 		private readonly layer: {
 			path: string;
@@ -74,9 +76,19 @@ export class RouterHookApi {
 	 * @param pathname
 	 * @param layer
 	 */
-	public createHref(pathname: HrefLike, layer: { path: string } = this.layer) {
+	public createHref(
+		pathname: HrefLike,
+		layer: { path: string } = this.layer,
+		options: { params?: Record<string, any> } = {},
+	) {
 		if (typeof pathname === "object") {
 			pathname = pathname.options.path ?? "";
+		}
+
+		if (options.params) {
+			for (const [key, value] of Object.entries(options.params)) {
+				pathname = pathname.replace(`:${key}`, String(value));
+			}
 		}
 
 		return pathname.startsWith("/")
@@ -90,18 +102,43 @@ export class RouterHookApi {
 		options?: RouterGoOptions,
 	): Promise<void>;
 	public async go(path: string, options?: RouterGoOptions): Promise<void> {
-		await this.browser?.go(this.createHref(path, this.layer), options);
+		for (const page of this.pages) {
+			if (page.name === path) {
+				path = page.path ?? "";
+				break;
+			}
+		}
+
+		await this.browser?.go(this.createHref(path, this.layer, options), options);
 	}
 
-	public anchor(path: string): AnchorProps {
-		const href = this.createHref(path, this.layer);
+	public anchor(
+		path: string,
+		options?: { params?: Record<string, any> },
+	): AnchorProps;
+	public anchor<T extends object>(
+		path: keyof VirtualRouter<T>,
+		options?: { params?: Record<string, any> },
+	): AnchorProps;
+	public anchor(
+		path: string,
+		options: { params?: Record<string, any> } = {},
+	): AnchorProps {
+		for (const page of this.pages) {
+			if (page.name === path) {
+				path = page.path ?? "";
+				break;
+			}
+		}
+
+		const href = this.createHref(path, this.layer, options);
 		return {
 			href,
 			onClick: (ev: any) => {
 				ev.stopPropagation();
 				ev.preventDefault();
 
-				this.go(path).catch(console.error);
+				this.go(path, options).catch(console.error);
 			},
 		};
 	}

@@ -39,7 +39,7 @@ export class RemoteDescriptorProvider {
 					continue; // skip download links for remotes that are not internal
 				}
 
-				const { links } = await remote.links(token);
+				const { links } = await remote.links({ authorization: token });
 
 				for (const link of links) {
 					let path = link.path.replace(remote.prefix, "");
@@ -74,10 +74,10 @@ export class RemoteDescriptorProvider {
 			serviceAccount: options.serviceAccount,
 			proxy: !!options.proxy,
 			internal: !proxy.noInternal,
-			links: async (authorization) => {
+			links: async ({ authorization, withSchema }) => {
 				const response = await this.fetchLinks({
 					service: name,
-					url: `${url}${linkPath}`,
+					url: `${url}${linkPath}${withSchema ? "?withSchema=true" : ""}`,
 					authorization,
 				});
 

@@ -14,6 +14,7 @@ import {
 	type ServerHandler,
 	ServerLinksProvider,
 	ServerRouterProvider,
+	apiLinksResponseSchema,
 } from "@alepha/server";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
@@ -197,12 +198,26 @@ export class ReactServerProvider {
 			if (this.alepha.has(ServerLinksProvider)) {
 				const srv = this.alepha.get(ServerLinksProvider);
 
-				context.links = await srv.getLinks({
-					user: serverRequest.user,
-					authorization: serverRequest.headers.authorization,
-				});
+				context.links = this.alepha.parse(
+					apiLinksResponseSchema,
+					await srv.getLinks({
+						user: serverRequest.user,
+						authorization: serverRequest.headers.authorization,
+					}),
+				);
 
 				this.alepha.als.set("links", context.links);
+			}
+
+			let target: PageRoute | undefined = page; // TODO: move to PageDescriptorProvider
+			while (target) {
+				if (page.can && !page.can()) {
+					// if the page is not accessible, return 403
+					reply.status = 403;
+					reply.headers["content-type"] = "text/plain";
+					return "Forbidden";
+				}
+				target = target.parent;
 			}
 
 			await this.alepha.emit(
