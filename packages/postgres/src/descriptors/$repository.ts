@@ -1,6 +1,5 @@
 import { __descriptor, KIND, OPTIONS, type TObject } from "@alepha/core";
 import type { TableConfig } from "drizzle-orm";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
 import type { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 import type { Repository } from "../services/Repository.ts";
@@ -38,7 +37,7 @@ export const $repository = <
 	const options =
 		"table" in optionsOrTable ? optionsOrTable : { table: optionsOrTable };
 	const table = options.table as PgTableWithColumnsAndSchema<TEntity, TSchema>;
-	const schema = table[PG_SCHEMA] as TObject;
+	const schema = table.$schema as TSchema;
 
 	return {
 		[KIND]: KEY,

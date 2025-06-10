@@ -3,7 +3,6 @@ import type { BuildColumns } from "drizzle-orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm/column-builder";
 import { pgTable } from "drizzle-orm/pg-core";
 import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import { pg } from "../providers/PostgresTypeProvider.ts";
 import type {
 	FromSchema,
@@ -41,7 +40,9 @@ export const pgTableSchema = <
 		TSchema
 	>;
 
-	table[PG_SCHEMA] = schema;
+	Object.defineProperty(table, "$table", {
+		get: () => table,
+	});
 	Object.defineProperty(table, "$schema", {
 		get: () => schema,
 	});

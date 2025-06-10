@@ -46,7 +46,6 @@ import type {
 	TableConfig,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type { PgSymbolKeys } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_MANY,
@@ -89,20 +88,16 @@ export class Repository<
 	);
 
 	public static of = <TEntity extends TableConfig, TSchema extends TObject>(
-		table: PgTableWithColumnsAndSchema<TEntity, TSchema>,
-	): (new () => Repository<
-		PgTableWithColumnsAndSchema<TEntity, TSchema>,
-		TSchema
-	>) => {
-		return class _ extends Repository<
-			PgTableWithColumnsAndSchema<TEntity, TSchema>,
-			TSchema
-		> {
+		opts: PgTableWithColumnsAndSchema<TEntity, TSchema>,
+	): (new () => Repository<PgTableWithColumns<TEntity>, TSchema>) => {
+		const table = opts.$table;
+		const schema = opts.$schema;
+		return class _ extends Repository<PgTableWithColumns<TEntity>, TSchema> {
 			[KIND] = ""; // ignore
-			private _ = $repository(table); // trigger $repository
+			private _ = $repository(opts); // trigger $repository
 
 			constructor() {
-				super({ table, schema: table[PG_SCHEMA] as TSchema });
+				super({ table, schema });
 			}
 		};
 	};

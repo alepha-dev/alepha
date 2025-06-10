@@ -161,25 +161,32 @@ export class NodePostgresProvider implements PostgresProvider {
 	protected migrate = $lock({
 		handler: async () => {
 			const schema = this.env.POSTGRES_SCHEMA;
+			const migration = this.getMigrationOptions();
 
 			if (this.env.POSTGRES_SYNCHRONIZE && !this.alepha.isProduction()) {
+				// silently run migrations
+				try {
+					await migrate(this.db, migration);
+				} catch (ignore) {
+					// ignore errors
+				}
+
 				await this.kit.synchronize(this, schema ?? "public");
 				return;
 			}
 
 			if (this.alepha.isTest() && !this.alepha.isProduction()) {
+				// when you are testing with a specific schema
 				if (schema) {
 					await this.kit.synchronize(this, schema);
 					return;
 				}
 
+				// when you are testing without a specific schema, just create a random schema
 				this.testingSchemaName = `test_${Date.now()}_${Math.floor(Math.random() * 100)}`;
-
 				await this.kit.synchronize(this, this.testingSchemaName);
 				return;
 			}
-
-			const migration = this.getMigrationOptions();
 
 			this.log.debug(
 				`Migrate from '${migration.migrationsFolder}' directory ...`,
