@@ -5,7 +5,6 @@ import { Security } from "./providers/Security.ts";
 
 const alepha = Alepha.create({
 	env: {
-		LOG_LEVEL: "trace",
 		POSTGRES_SYNCHRONIZE: true,
 		POSTGRES_SCHEMA: "blog",
 	},

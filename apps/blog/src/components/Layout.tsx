@@ -9,7 +9,6 @@ import Header from "./Header.tsx";
 
 const theme = createTheme({
 	fontFamily: "Open Sans, sans-serif",
-	primaryColor: "violet",
 });
 
 const Layout = () => {

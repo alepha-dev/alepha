@@ -2,6 +2,7 @@ import {} from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { ActionIcon, Avatar, Button, Flex, Menu, Tooltip } from "@mantine/core";
 import {
+	IconBrandGoogleFilled,
 	IconChevronDown,
 	IconHome,
 	IconLogout,
@@ -25,7 +26,16 @@ const Header = () => {
 				</Go>
 			</Flex>
 			<Flex gap={"sm"} align={"center"}>
-				{!auth.user && <Button onClick={() => auth.login()}>Login</Button>}
+				{!auth.user && (
+					<Button
+						variant={"outline"}
+						leftSection={<IconBrandGoogleFilled />}
+						radius={"xl"}
+						onClick={() => auth.login()}
+					>
+						Sign in with Google
+					</Button>
+				)}
 				{auth.can<PostController>("createPost") && (
 					<Go<Blog>
 						to={"newPost"}

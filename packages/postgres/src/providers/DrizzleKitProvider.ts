@@ -47,30 +47,88 @@ export class DrizzleKitProvider {
 				const prev = kit.generateDrizzleJson({});
 				const curr = kit.generateDrizzleJson(tables);
 				const statements = await kit.generateMigration(prev, curr);
-
-				for (const statement of statements) {
-					await provider.db.execute(
-						sql.raw(
-							schema
-								? // TODO: improve this
-									statement.replaceAll('"public"', `"${schema}"`)
-								: statement,
-						),
-					);
-				}
+				await this.executeStatements(statements, provider, schema);
 			} else if (!this.alepha.isProduction()) {
-				// development area, push schema directly using Drizzle Kit API
-				const resp = await kit.pushSchema(tables, provider.db);
-
-				for (const warning of resp.warnings) {
-					this.log.warn(warning);
-				}
-
-				await resp.apply();
+				// development area, generate migrations based on the current state
+				const entry = await this.loadMigrationSnapshot(provider);
+				const prev = entry
+					? JSON.parse(entry.snapshot)
+					: kit.generateDrizzleJson({});
+				const curr = kit.generateDrizzleJson(tables);
+				const statements = await kit.generateMigration(prev, curr);
+				await this.executeStatements(statements, provider, schema, true);
+				await this.saveMigrationSnapshot(provider, curr, entry);
 			}
 		}
 
 		this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
+	}
+
+	protected async loadMigrationSnapshot(provider: PostgresProvider) {
+		const app = this.alepha.env.APP_NAME ?? "app";
+		await provider.execute(sql`
+					CREATE SCHEMA IF NOT EXISTS alepha;
+					CREATE TABLE IF NOT EXISTS alepha.migrations (
+						"id" SERIAL PRIMARY KEY,
+						"name" TEXT NOT NULL,
+						"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+						"snapshot" TEXT NOT NULL
+					);
+				`);
+
+		const [entry] = await provider.execute(sql`
+			SELECT * FROM alepha.migrations WHERE "name" = ${app} LIMIT 1;
+		`);
+
+		return entry;
+	}
+
+	protected async saveMigrationSnapshot(
+		provider: PostgresProvider,
+		curr: Record<string, any>,
+		entry?: { id: number; snapshot: string },
+	) {
+		const app = this.alepha.env.APP_NAME ?? "app";
+		if (!entry) {
+			await provider.execute(
+				sql`INSERT INTO alepha.migrations ("name", "snapshot") VALUES (${app}, ${JSON.stringify(curr)})`,
+			);
+		} else {
+			const newSnapshot = JSON.stringify(curr);
+			if (entry.snapshot !== newSnapshot) {
+				await provider.execute(
+					sql`UPDATE alepha.migrations SET "snapshot" = ${newSnapshot} WHERE "id" = ${entry.id}`,
+				);
+			}
+		}
+	}
+
+	protected async executeStatements(
+		statements: string[],
+		provider: PostgresProvider,
+		schema?: string,
+		catchErrors = false,
+	) {
+		for (const statement of statements) {
+			try {
+				await provider.db.execute(
+					sql.raw(
+						schema
+							? // TODO: improve this
+								statement.replaceAll('"public"', `"${schema}"`)
+							: statement,
+					),
+				);
+			} catch (error) {
+				if (catchErrors) {
+					this.log.warn(`Error executing statement: ${statement}`);
+				} else {
+					throw new Error(`Error executing statement: ${statement}`, {
+						cause: error,
+					});
+				}
+			}
+		}
 	}
 
 	protected async prepareSchema(
