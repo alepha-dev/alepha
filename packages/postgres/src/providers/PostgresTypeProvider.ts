@@ -12,7 +12,6 @@ import type {
 } from "@sinclair/typebox";
 import type { TableConfig } from "drizzle-orm/pg-core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type { PgDefault, PgMany, PgRef } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_CREATED_AT,
@@ -197,13 +196,12 @@ export class PostgresTypeProvider {
 		table: PgTableWithColumnsAndSchema<Config, T>,
 		foreignKey: keyof T["properties"],
 	): TOptionalWithFlag<PgAttr<PgAttr<TArray<T>, PgMany>, PgDefault>, true> => {
-		const schema: any = table[PG_SCHEMA];
 		return this.attr(
-			this.attr(t.optional(t.array(schema)), PG_DEFAULT),
+			this.attr(t.optional(t.array(table.$schema)), PG_DEFAULT),
 			PG_MANY,
 			{
 				table,
-				schema,
+				schema: table.$schema,
 				foreignKey: foreignKey as string,
 			},
 		);

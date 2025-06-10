@@ -1,7 +1,6 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { TObject } from "@sinclair/typebox";
 import type { PgTableWithColumns, TableConfig } from "drizzle-orm/pg-core";
-import { PG_SCHEMA } from "../constants/PG_SCHEMA.ts";
 import type { RepositoryDescriptorOptions } from "../descriptors/$repository.ts";
 import { $repository } from "../descriptors/$repository.ts";
 import { Repository } from "../services/Repository.ts";
@@ -110,16 +109,13 @@ export class RepositoryDescriptorProvider {
 				continue;
 			}
 
-			const table = options.table;
-			const schema = table[PG_SCHEMA];
-
 			const repository = this.alepha.get(Repository, {
 				skipRegistration: true,
 				args: [
 					{
 						provider,
-						table,
-						schema,
+						table: options.table.$table,
+						schema: options.table.$schema,
 					},
 				],
 			});

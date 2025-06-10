@@ -1,6 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
+import type * as DrizzleKit from "drizzle-kit/api";
 import { Table, sql } from "drizzle-orm";
 import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
@@ -34,73 +34,63 @@ export class DrizzleKitProvider {
 			this.repositoryDescriptorProvider.getRepositories(provider);
 
 		if (schema) {
-			const sqlSchema = sql.raw(schema);
-
-			if (schema.startsWith("test_")) {
-				await provider.execute(sql`DROP SCHEMA IF EXISTS ${sqlSchema} CASCADE`);
-			}
-
-			await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sqlSchema}`);
-
-			for (const repository of repositories) {
-				const table = (repository as any).options.table;
-				table[(Table as any).Symbol.Schema] = schema;
-			}
+			await this.prepareSchema(schema, provider, repositories);
 		}
 
-		const tables = repositories.map((it) => it.table);
+		const tables: Record<string, any> = repositories.map((it) => it.table);
 
 		if (Object.keys(tables).length > 0) {
 			const kit = this.importDrizzleKit();
-			const curr = kit.generateDrizzleJson(tables);
 
-			const loadPrevious = async () => {
-				if (this.alepha.isTest()) {
-					return kit.generateDrizzleJson({});
-				}
+			if (this.alepha.isTest()) {
+				// testing area, generate migrations from scratch - no need to push schema
+				const prev = await kit.generateDrizzleJson({});
+				const curr = await kit.generateDrizzleJson(tables);
+				const statements = await kit.generateMigration(prev, curr);
 
-				try {
-					return JSON.parse(
-						await readFile(`node_modules/drizzle_${schema}.json`, "utf-8"),
-					);
-				} catch (e) {
-					return kit.generateDrizzleJson({});
-				}
-			};
-
-			const prev = await loadPrevious();
-
-			const statements = await kit.generateMigration(prev, curr);
-
-			for (const statement of statements) {
-				try {
+				for (const statement of statements) {
 					await provider.db.execute(
 						sql.raw(
 							schema
-								? statement.replaceAll('"public"', `"${schema}"`) // TODO: Fix this
+								? // TODO: improve this
+									statement.replaceAll('"public"', `"${schema}"`)
 								: statement,
 						),
 					);
-				} catch (error) {
-					this.log.warn(`Invalid statement - ${(error as Error).message}`);
 				}
-			}
+			} else if (!this.alepha.isProduction()) {
+				// development area, push schema directly using Drizzle Kit API
+				const resp = await kit.pushSchema(tables, provider.db);
 
-			if (!this.alepha.isTest() && !this.alepha.isProduction()) {
-				// create node_modules if not exists
-				try {
-					await mkdir("node_modules");
-				} catch (e) {
-					// ignore error
+				for (const warning of resp.warnings) {
+					this.log.warn(warning);
 				}
-				await writeFile(
-					`node_modules/drizzle_${schema}.json`,
-					JSON.stringify(curr, null, 2),
-				);
+
+				await resp.apply();
 			}
 		}
 
 		this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
+	}
+
+	protected async prepareSchema(
+		schemaName: string,
+		provider: PostgresProvider,
+		repositories: any[],
+	) {
+		const sqlSchema = sql.raw(schemaName);
+
+		if (schemaName.startsWith("test_")) {
+			await provider.execute(sql`DROP SCHEMA IF EXISTS ${sqlSchema} CASCADE`);
+		}
+
+		// create schema if not exists
+		await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sqlSchema}`);
+
+		for (const repository of repositories) {
+			const table = (repository as any).options.table;
+			table[(Table as any).Symbol.Schema] = schemaName; // set pgSchema manually
+		}
 	}
 
 	/**
@@ -108,7 +98,7 @@ export class DrizzleKitProvider {
 	 *
 	 * @protected
 	 */
-	protected importDrizzleKit() {
+	protected importDrizzleKit(): typeof DrizzleKit {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
 		} catch (error) {
