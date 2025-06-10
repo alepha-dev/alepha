@@ -40,7 +40,6 @@ export const apiLinkSchema = t.object({
 });
 
 export const apiLinksResponseSchema = t.object({
-	userId: t.optional(t.string()),
 	prefix: t.optional(t.string()),
 	links: t.array(apiLinkSchema),
 });

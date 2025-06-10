@@ -50,6 +50,7 @@ export class ReactAuthProvider {
 		httpOnly: true,
 		compress: true,
 		schema: t.object({
+			provider: t.optional(t.string()),
 			access_token: t.optional(t.string({ size: "rich" })),
 			expires_in: t.optional(t.number()),
 			refresh_token: t.optional(t.string({ size: "rich" })),
@@ -131,11 +132,20 @@ export class ReactAuthProvider {
 						redirectUri: options.oidc.redirectUri ?? ReactAuth.path.callback,
 						client,
 						fallback: options.fallback,
+						useIdToken: options.oidc.useIdToken,
 					});
 				}
 			}
 		},
 	});
+
+	protected async getAccessTokenFromCookies(tokens: SessionTokens) {
+		const { useIdToken } = await this.provider(tokens.provider);
+		if (useIdToken && tokens.id_token) {
+			return tokens.id_token;
+		}
+		return tokens.access_token;
+	}
 
 	/**
 	 * Configure Fastify to forward Session Access Token to Header Authorization.
@@ -151,7 +161,7 @@ export class ReactAuthProvider {
 			) {
 				const tokens = await this.refresh(request.cookies);
 				if (tokens) {
-					request.headers.authorization = `Bearer ${tokens.id_token ?? tokens.access_token}`;
+					request.headers.authorization = `Bearer ${tokens.access_token}`;
 				}
 
 				if (
@@ -288,7 +298,7 @@ export class ReactAuthProvider {
 			}),
 		},
 		handler: async ({ url, cookies, query, reply }) => {
-			const { client } = await this.provider(query.provider);
+			const { client, name } = await this.provider(query.provider);
 
 			const authorizationCode = this.authorizationCode.get(cookies);
 			if (!authorizationCode) {
@@ -304,11 +314,13 @@ export class ReactAuthProvider {
 			this.tokens.set(cookies, {
 				...tokens,
 				issued_at: Date.now(),
+				provider: name,
 			});
 
 			const user = this.userFromAccessToken(
 				tokens.id_token ?? tokens.access_token,
 			);
+
 			if (user) {
 				this.user.set(cookies, user);
 			}
@@ -459,6 +471,7 @@ export interface SessionTokens {
 	id_token?: string;
 	scope?: string;
 	issued_at?: number;
+	provider?: string;
 }
 
 export interface AuthProvider {
@@ -468,6 +481,7 @@ export interface AuthProvider {
 		get: () => Promise<Configuration>;
 	};
 	fallback?: () => Async<AccessToken>;
+	useIdToken?: boolean;
 }
 
 export interface ReactUser {

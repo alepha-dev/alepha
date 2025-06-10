@@ -12,13 +12,14 @@ export type AccessToken = string;
 
 export interface AuthDescriptorOptions {
 	name?: string;
+	fallback?: () => Async<AccessToken>;
 	oidc?: {
 		issuer: string;
 		clientId: string;
 		clientSecret?: string;
 		redirectUri?: string;
+		useIdToken?: boolean;
 	};
-	fallback?: () => Async<AccessToken>;
 }
 
 export interface AuthDescriptor {

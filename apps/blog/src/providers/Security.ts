@@ -16,6 +16,7 @@ export class Security {
 			issuer: "https://accounts.google.com",
 			clientId: this.env.GOOGLE_CLIENT_ID,
 			clientSecret: this.env.GOOGLE_CLIENT_SECRET,
+			useIdToken: true,
 		},
 	});
 

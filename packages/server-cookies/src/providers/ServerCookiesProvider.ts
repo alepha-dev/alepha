@@ -20,6 +20,7 @@ export class ServerCookiesProvider {
 				if (Object.keys(request.cookies.res).length > 0) {
 					request.reply.headers["set-cookie"] = this.toHeader(
 						request.cookies.res,
+						request.url.protocol === "https",
 					);
 				}
 			}
@@ -41,7 +42,10 @@ export class ServerCookiesProvider {
 		return cookies;
 	}
 
-	public toHeader(cookies: Record<string, Cookie | null>): string[] {
+	public toHeader(
+		cookies: Record<string, Cookie | null>,
+		isHttps = false,
+	): string[] {
 		const headers = [];
 
 		for (const [name, cookie] of Object.entries(cookies)) {
@@ -66,7 +70,7 @@ export class ServerCookiesProvider {
 			if (cookie.maxAge) {
 				parts.push(`Max-Age=${cookie.maxAge}`);
 			}
-			if (cookie.secure) {
+			if (cookie.secure !== false && isHttps) {
 				parts.push("Secure");
 			}
 			if (cookie.httpOnly) {
