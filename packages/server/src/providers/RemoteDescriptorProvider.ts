@@ -74,7 +74,9 @@ export class RemoteDescriptorProvider {
 			serviceAccount: options.serviceAccount,
 			proxy: !!options.proxy,
 			internal: !proxy.noInternal,
-			links: async ({ authorization, withSchema }) => {
+			links: async (opts) => {
+				const { authorization } = opts;
+				const withSchema = options.withSchema ?? options.withSchema ?? false;
 				const response = await this.fetchLinks({
 					service: name,
 					url: `${url}${linkPath}${withSchema ? "?withSchema=true" : ""}`,
