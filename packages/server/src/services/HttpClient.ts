@@ -491,8 +491,8 @@ export class HttpClient {
 		return !!links?.some((link) => link.name === name);
 	}
 
-	public async getLinks(): Promise<HttpClientLink[]> {
-		if (!this.links && this.alepha.isBrowser()) {
+	public async getLinks(force = false): Promise<HttpClientLink[]> {
+		if ((force || !this.links) && this.alepha.isBrowser()) {
 			const { links } = await this.fetch<ApiLinksResponse>(
 				`${this.URL_LINKS}`,
 				{
