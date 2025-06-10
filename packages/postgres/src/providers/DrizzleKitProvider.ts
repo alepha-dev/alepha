@@ -33,7 +33,7 @@ export class DrizzleKitProvider {
 		const repositories =
 			this.repositoryDescriptorProvider.getRepositories(provider);
 
-		if (schema) {
+		if (schema && schema !== "public") {
 			await this.prepareSchema(schema, provider, repositories);
 		}
 
@@ -44,8 +44,8 @@ export class DrizzleKitProvider {
 
 			if (this.alepha.isTest()) {
 				// testing area, generate migrations from scratch - no need to push schema
-				const prev = await kit.generateDrizzleJson({});
-				const curr = await kit.generateDrizzleJson(tables);
+				const prev = kit.generateDrizzleJson({});
+				const curr = kit.generateDrizzleJson(tables);
 				const statements = await kit.generateMigration(prev, curr);
 
 				for (const statement of statements) {
