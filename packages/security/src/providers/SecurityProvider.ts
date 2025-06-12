@@ -419,7 +419,9 @@ export class SecurityProvider {
 
 		const permission = this.permissionToString(permissionLike);
 		const isAdmin = roles.find((it) =>
-			it.permissions.find((it) => it.name === "*"),
+			it.permissions.find(
+				(it) => it.name === "*" && !it.exclude && !it.ownership,
+			),
 		);
 
 		// if the user is an admin, we can return early
@@ -444,9 +446,17 @@ export class SecurityProvider {
 			for (const rolePermission of role.permissions) {
 				// for each permission in the role
 				if (
+					rolePermission.name === "*" || // if permission is * (wildcard)
 					rolePermission.name === groupWildcard || // if permission is group:* (wildcard)
 					rolePermission.name === permission // or if permission is the exact permission
 				) {
+					// [feature]: exclude permissions
+					// TODO: exclude ["group:*"]
+					if (rolePermission.exclude?.includes(permission)) {
+						// if permission is excluded, we can skip it
+						continue;
+					}
+
 					result.isAuthorized = true; // OK !
 
 					// but we also need to check if the user has ownership
@@ -521,8 +531,18 @@ export class SecurityProvider {
 	 * @param permission - The permission to check for.
 	 * @returns True if the user has the role, false otherwise.
 	 */
-	public can(role: string, permission: string | Permission): boolean {
-		return this.checkPermission(permission, role).isAuthorized;
+	public can(roleName: string, permission: string | Permission): boolean {
+		return this.checkPermission(permission, roleName).isAuthorized;
+	}
+
+	/**
+	 * Checks if a user has ownership of a specific permission.
+	 */
+	public ownership(
+		roleName: string,
+		permission: string | Permission,
+	): string | boolean | undefined {
+		return this.checkPermission(permission, roleName).ownership;
 	}
 
 	/**
@@ -586,22 +606,23 @@ export class SecurityProvider {
 					throw new SecurityError(`Role '${roleOrString}' not found`);
 				}
 
-				if (role.permissions.some((it) => it.name === "*")) {
+				if (role.permissions.some((it) => it.name === "*" && !it.exclude)) {
 					return this.getPermissions();
 				}
 
 				for (const permission of role.permissions) {
-					if (permission.name.includes(":")) {
+					let ref: Permission[] = [];
+					if (permission.name === "*") {
+						ref.push(...this.permissions);
+					} else if (permission.name.includes(":")) {
 						const [group, name] = permission.name.split(":");
 
 						// all permissions in the group
 						if (name === "*") {
-							permissions.push(
-								...this.permissions.filter((it) => it.group === group),
-							);
+							ref.push(...this.permissions.filter((it) => it.group === group));
 						} else {
 							// specific permission
-							permissions.push(
+							ref.push(
 								...this.permissions.filter(
 									(it) => it.name === name && it.group === group,
 								),
@@ -609,12 +630,20 @@ export class SecurityProvider {
 						}
 					} else {
 						// all permissions without a group
-						permissions.push(
+						ref.push(
 							...this.permissions.filter(
 								(it) => it.name === permission.name && !it.group,
 							),
 						);
 					}
+					const exclude = permission.exclude;
+					if (exclude) {
+						// exclude permissions
+						ref = ref.filter(
+							(it) => !exclude.includes(this.permissionToString(it)),
+						);
+					}
+					permissions.push(...ref);
 				}
 			}
 

@@ -323,3 +323,36 @@ test("SecurityProvider#jwt - realms", async () => {
 		),
 	).toThrow(Error);
 });
+
+test("SecurityProvider#can - exclude", () => {
+	const sec = Alepha.create().get(SecurityProvider);
+	const group = "message";
+	sec.createPermission({ name: "new", group });
+	sec.createPermission({ name: "edit", group });
+	sec.createPermission({ name: "delete", group });
+
+	sec.createRole({
+		name: "admin",
+		permissions: [{ name: "*" }],
+	});
+
+	sec.createRole({
+		name: "admin low tier",
+		permissions: [{ name: "*", exclude: [`${group}:delete`] }],
+	});
+
+	sec.createRole({
+		name: "moderator",
+		permissions: [{ name: `${group}:*` }],
+	});
+
+	sec.createRole({
+		name: "user",
+		permissions: [{ name: `${group}:*`, exclude: [`${group}:delete`] }],
+	});
+
+	expect(sec.can("admin", "message:delete")).toEqual(true);
+	expect(sec.can("admin low tier", "message:delete")).toEqual(false);
+	expect(sec.can("moderator", "message:delete")).toEqual(true);
+	expect(sec.can("user", "message:delete")).toEqual(false);
+});

@@ -30,6 +30,12 @@ export const roleSchema = t.object({
 						"If true, user will only have access to it's own resources.",
 				}),
 			),
+			exclude: t.optional(
+				t.array(t.string(), {
+					description:
+						"Exclude some permissions. Useful when 'name' is a wildcard.",
+				}),
+			),
 		}),
 	),
 });

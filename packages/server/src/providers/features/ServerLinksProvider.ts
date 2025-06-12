@@ -54,6 +54,15 @@ export class ServerLinksProvider {
 		const appLinks = this.client.links ?? [];
 		const userLinks: ApiLink[] = [];
 
+		for (const permission of permissions ?? []) {
+			if (!permission.path && !permission.method) {
+				userLinks.push({
+					path: "", // this is a placeholder for links without specific path
+					...permission,
+				});
+			}
+		}
+
 		for (const link of appLinks) {
 			if (link.host) continue;
 			if (hasSecurity && link.secured) {
