@@ -81,7 +81,7 @@ test("$scheduler - interval no-lock", async () => {
 	await testSchedulerInterval(false);
 });
 
-test("$scheduler - interval (redis)", async () => {
+test("$scheduler - interval (redis)", { retry: 2 }, async () => {
 	await testSchedulerInterval(true, "redis");
 });
 

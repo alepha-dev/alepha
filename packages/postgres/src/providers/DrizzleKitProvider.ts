@@ -109,6 +109,7 @@ export class DrizzleKitProvider {
 		schema?: string,
 		catchErrors = false,
 	) {
+		let nErrors = 0;
 		for (const statement of statements) {
 			try {
 				await provider.db.execute(
@@ -121,13 +122,19 @@ export class DrizzleKitProvider {
 				);
 			} catch (error) {
 				if (catchErrors) {
-					this.log.warn(`Error executing statement: ${statement}`);
+					nErrors++;
+					this.log.trace(`Error executing statement: ${statement}`);
 				} else {
 					throw new Error(`Error executing statement: ${statement}`, {
 						cause: error,
 					});
 				}
 			}
+		}
+		if (nErrors > 0) {
+			this.log.warn(
+				`Executed ${statements.length} statements with ${nErrors} errors.`,
+			);
 		}
 	}
 
