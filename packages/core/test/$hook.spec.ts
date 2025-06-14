@@ -14,7 +14,7 @@ test("$hook - with swapping", async () => {
 		});
 	}
 
-	const app = new Alepha().with(Interface);
+	const app = new Alepha();
 
 	expect(count).toBe(0);
 

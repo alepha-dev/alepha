@@ -20,14 +20,9 @@ export interface ClassSwap<T extends object = any> {
 	use: Class<T>;
 
 	/**
-	 * If true, "use" only if class is not already registered.
+	 * If true, will not throw an error if the class already exists.
 	 */
 	default?: boolean;
-
-	/**
-	 * If true, class will be removed if nobody is using it.
-	 */
-	optional?: boolean;
 }
 
 /**

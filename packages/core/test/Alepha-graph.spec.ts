@@ -19,10 +19,6 @@ test("Alepha#graph - basic ", async () => {
 		c = $inject(C);
 	}
 
-	class A2 {
-		value = "a2";
-	}
-
 	class A3X {
 		value = "a3bis";
 	}
@@ -50,16 +46,7 @@ test("Alepha#graph - basic ", async () => {
 		y = "y";
 	}
 
-	class X3 extends A {
-		y = $inject(Y);
-	}
-
-	const a = Alepha.create().with(M);
-
-	a.register({
-		provide: A,
-		use: A2,
-	});
+	const a = Alepha.create();
 
 	a.register({
 		provide: A,
@@ -68,33 +55,13 @@ test("Alepha#graph - basic ", async () => {
 
 	a.register({
 		provide: X,
-		use: X3,
-	});
-
-	a.register({
-		provide: X,
 		use: X2,
 	});
 
-	expect(a.graph()).toEqual({
-		A: { from: ["B", "C", "Alepha", "Z"], as: "A3" },
-		B: { from: ["M"] },
-		C: { from: ["M"] },
-		M: { from: ["Alepha"] },
-		A2: { from: [] },
-		A3X: { from: ["A3"] },
-		A3: { from: [] },
-		Z: { from: ["Y"] },
-		Y: { from: ["X3"] },
-		X3: { from: [] },
-		X: { from: ["Alepha"], as: "X2" },
-		X2: { from: [] },
-	});
-
-	await a.start();
+	a.with(M);
 
 	expect(a.graph()).toEqual({
-		A: { from: ["B", "C", "Alepha"], as: "A3" },
+		A: { from: ["Alepha", "B", "C"], as: "A3" },
 		B: { from: ["M"] },
 		C: { from: ["M"] },
 		M: { from: ["Alepha"] },

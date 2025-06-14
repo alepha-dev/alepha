@@ -33,16 +33,6 @@ test("Alepha#start - lock", async () => {
 
 	// you can't get after start.
 	expect(() => app.get(class {})).toThrow(ContainerLockedError);
-
-	// you can't swap after start.
-	expect(() =>
-		app.get({
-			provide: A,
-			use: class extends A {
-				a = "z";
-			},
-		}),
-	).toThrow(ContainerLockedError);
 });
 
 /**

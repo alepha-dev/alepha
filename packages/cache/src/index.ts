@@ -28,7 +28,6 @@ export class CacheModule {
 
 	constructor() {
 		this.alepha.register({
-			default: true,
 			provide: CacheProvider,
 			use: {
 				memory: MemoryCacheProvider,

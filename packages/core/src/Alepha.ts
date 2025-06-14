@@ -3,9 +3,9 @@ import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
-import { PROVIDER } from "./constants/PROVIDER.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { Hook } from "./descriptors/$hook.ts";
+import { AlephaError } from "./errors/AlephaError.ts";
 import { AppNotStartedError } from "./errors/AppNotStartedError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
@@ -162,7 +162,6 @@ export class Alepha {
 	protected _starting?: PromiseWithResolvers<this>;
 	protected _state: State;
 	protected _dependencyStack: Class[] = [];
-	protected _lazyRegistrations: Array<Promise<{ default: Class<object> }>> = [];
 	protected _cacheEnv = new Map<TSchema, any>();
 	protected _cacheTypeCheck = new Map<TSchema, TypeCheck<TSchema>>();
 	protected _events: Record<string, Array<Hook>> = {};
@@ -305,8 +304,6 @@ export class Alepha {
 
 		this.locked = true;
 
-		this.removeUselessDependencies();
-
 		await this.als.configure();
 
 		await this.emit("configure", this, { log: true });
@@ -377,31 +374,36 @@ export class Alepha {
 	}
 
 	/**
-	 * Returns whether the specified class or type is registered in the container.
-	 *
-	 * @param injectable - The class or type definition to check.
-	 * @param opts - Additional options for the check.
-	 * @return True if the class or type is registered in the container, false otherwise.
+	 * Check if entry is registered in the container.
 	 */
 	public has(
-		injectable: ClassEntry,
-		opts: { overridden?: boolean; pending?: boolean } = {},
+		entry: ClassEntry,
+		opts?: {
+			inStack?: boolean;
+			inRegistry?: boolean;
+		},
 	): boolean {
-		if (injectable === Alepha) {
+		if (entry === Alepha) {
 			return true;
 		}
 
-		const classProvider =
-			"provide" in injectable ? injectable : { provide: injectable };
+		const { provide } =
+			typeof entry === "object" && "provide" in entry
+				? entry
+				: { provide: entry };
 
-		if (!opts.pending) {
-			const find = this.registry.get(injectable as Class);
-			if (find) {
-				return opts.overridden ? !!find.use : true;
+		if (!opts || opts.inRegistry === true) {
+			const match = this.registry.get(provide);
+			if (match) {
+				return true;
 			}
 		}
 
-		return this._dependencyStack.includes(classProvider.provide);
+		if (!opts || opts.inStack === true) {
+			return this._dependencyStack.includes(provide);
+		}
+
+		return false;
 	}
 
 	/**
@@ -424,34 +426,24 @@ export class Alepha {
 	 * > Swapping is an advanced feature that allows you to replace a class with another class.
 	 * > It's useful for testing or for providing different implementations of a class.
 	 *
-	 * @param it - The class or type definitions to register in the container.
+	 * @param entry - The class or type definitions to register in the container.
 	 * @return The current instance of the container.
 	 */
-	public register<T extends object>(
-		it: ClassEntry<T> | Promise<{ default: Class<object> }>,
-	): this {
+	public register<T extends object>(entry: ClassEntry<T>): this {
 		if (this.started) {
 			throw new ContainerLockedError();
 		}
 
-		if (it instanceof Promise) {
-			this._lazyRegistrations.push(it);
+		const { provide } =
+			typeof entry === "object" && "provide" in entry
+				? entry
+				: { provide: entry };
+
+		if (this.has(entry, { inStack: true })) {
 			return this;
 		}
 
-		const isSwap = typeof it === "object";
-		const isDefault = isSwap && it.default;
-		const isOptional = isSwap && it.optional;
-
-		if (isDefault) {
-			if (!this.has(it.provide, { overridden: true })) {
-				this.get(it);
-			}
-		} else {
-			if (!this.has(it)) {
-				this.get(it, isOptional ? { parent: null } : {});
-			}
-		}
+		this.get(entry);
 
 		return this;
 	}
@@ -497,34 +489,33 @@ export class Alepha {
 			);
 		}
 
-		// The requested type is searched in the container.
-		const it = this.registry.get(classProvider.provide);
-		if (it && !opts.skipCache) {
-			if ("use" in entry && entry.use && it.use !== entry.use) {
-				this.log.warn(
-					`Late swapping is deprecated. Swap ${it.provide.name} with ${entry.use.name} before using it.`,
+		// the requested type is searched in the container
+		const match = this.registry.get(classProvider.provide);
+
+		if (match && !opts.skipCache) {
+			if (
+				"use" in entry &&
+				entry.use &&
+				match.use !== entry.use &&
+				entry.default !== true
+			) {
+				throw new AlephaError(
+					`Late swapping is forbidden. Swap ${match.provide.name} with ${entry.use.name} before using it.`,
 				);
-
-				if (this.started) {
-					throw new ContainerLockedError();
-				}
-
-				it.use = entry.use;
-				it.instance = this.get(entry.use, { parent: null });
 			}
 
-			if (!it.parents.includes(parent)) {
-				it.parents.push(parent);
+			if (!match.parents.includes(parent)) {
+				match.parents.push(parent);
 			}
 
-			if (it.instance === undefined) {
-				it.instance = this.new(it.use ?? it.provide, opts.args);
+			if (match.instance === undefined) {
+				match.instance = this.new(match.use ?? match.provide, opts.args);
 			}
 
-			return it.instance;
+			return match.instance;
 		}
 
-		if (this.started && !opts.skipRegistration) {
+		if (this.started) {
 			throw new ContainerLockedError(
 				`Container is locked. No more services can be added. ${parent?.name} -> ${classProvider.provide.name}`,
 			);
@@ -856,15 +847,6 @@ export class Alepha {
 			if (obj[key]?.[KIND] && obj[key].options) {
 				obj[key].options.name ??= key;
 			}
-			const provider = obj[key]?.[PROVIDER];
-			if (provider) {
-				//delete obj[key][PROVIDER];
-				Object.defineProperty(instance, key, {
-					get: () => {
-						return this.get(provider, { parent: definition });
-					},
-				});
-			}
 		}
 
 		this._dependencyStack.pop();
@@ -878,71 +860,5 @@ export class Alepha {
 			this._dependencyStack[this._dependencyStack.length - 1];
 
 		return instance;
-	}
-
-	/**
-	 * Removes all useless dependencies.
-	 *
-	 * @protected
-	 */
-	protected removeUselessDependencies() {
-		let repeat = true;
-		while (repeat) {
-			repeat = false;
-
-			const registry: Map<Class, ClassProvider> = new Map();
-
-			for (const item of this.registry.values()) {
-				let ok = false;
-
-				for (const parent of item.parents) {
-					if (parent === Alepha) {
-						ok = true;
-						break;
-					}
-
-					item.parents = item.parents.filter(
-						(it) => it === Alepha || (!!it && !!this.registry.get(it)),
-					);
-
-					if (item.parents.length > 0) {
-						ok = true;
-						break;
-					}
-				}
-
-				if (ok) {
-					registry.set(item.provide, item);
-					continue;
-				}
-
-				const isUsedBySwap = !!this.registry
-					.values()
-					.find((it) => it.use === item.provide);
-
-				if (isUsedBySwap) {
-					registry.set(item.provide, item);
-					continue;
-				}
-
-				repeat = true;
-			}
-
-			this.registry = registry;
-		}
-
-		// purge also events
-		for (const type in this._events) {
-			this._events[type] = this._events[type].filter((it) => {
-				if (!it.caller) {
-					return true;
-				}
-				for (const { instance } of this.registry.values()) {
-					if (it.caller === instance.constructor) {
-						return true;
-					}
-				}
-			});
-		}
 	}
 }

@@ -127,7 +127,10 @@ test("$queue - kill worker sleep", async () => {
 			QUEUE_WORKER_INTERVAL: 20000,
 		},
 	})
-		.with(A)
+		.with({
+			provide: QueueProvider,
+			use: MemoryQueueProvider,
+		})
 		.with({
 			provide: QueueDescriptorProvider,
 			use: class extends QueueDescriptorProvider {
@@ -136,7 +139,8 @@ test("$queue - kill worker sleep", async () => {
 					count += 123;
 				}
 			},
-		});
+		})
+		.with(A);
 
 	expect(count).toBe(0);
 	await app.start();

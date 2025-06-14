@@ -1,5 +1,4 @@
 import type { Static, TObject } from "@sinclair/typebox";
-import { PROVIDER } from "../constants/PROVIDER.ts";
 import type { Class } from "../interfaces/Class.ts";
 import { TypeGuard } from "../providers/TypeProvider.ts";
 import { $cursor } from "./$cursor.ts";
@@ -35,12 +34,8 @@ export function $inject<T extends object>(type: Class<T> | TObject): T {
 		return context as T;
 	}
 
-	const value = context.get(type, {
-		// keep the parent for better error messages
+	return context.get(type, {
+		// keep the parent for better error messages and circular dependencies detection
 		parent: definition ?? (context.constructor as Class),
 	});
-
-	(value as any)[PROVIDER] = type;
-
-	return value;
 }
