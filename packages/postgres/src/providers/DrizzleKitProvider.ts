@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
 import type * as DrizzleKit from "drizzle-kit/api";
@@ -11,32 +10,22 @@ export class DrizzleKitProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly repositoryProvider = $inject(RepositoryDescriptorProvider);
 
-	public async push(provider: PostgresProvider) {
+	public async push(
+		provider: PostgresProvider,
+		schema: string = provider.schema,
+	): Promise<void> {
 		const kit = this.importDrizzleKit();
-		const repositories = this.repositoryProvider.getRepositories();
-		const tables: Record<string, any> = repositories.map((it) => it.table);
-		const result = await kit.pushSchema(tables, provider.db);
-		await result.apply();
-	}
-
-	public async generate(provider: PostgresProvider): Promise<void> {
-		const kit = this.importDrizzleKit();
-		const repositories = this.repositoryProvider.getRepositories(provider);
-		const tables: Record<string, any> = repositories.map((it) => it.table);
-
-		if (Object.keys(tables).length === 0) {
-			return;
-		}
-
-		const journal = JSON.parse(
-			await readFile("migrations/_journal.json", "utf-8").catch(() =>
-				JSON.stringify({}),
-			),
+		const tables = await this.getTables(provider, schema);
+		const result = await kit.pushSchema(tables, provider.db, [
+			"public",
+			schema,
+		]);
+		await this.executeStatements(
+			result.statementsToExecute,
+			provider,
+			schema,
+			false,
 		);
-		const entries = journal.entries ?? [];
-		const prev = entries.length > 0 ? entries[entries.length - 1].snapshot : {};
-		const curr = kit.generateDrizzleJson(tables);
-		const statements = await kit.generateMigration(prev, curr);
 	}
 
 	/**
@@ -56,14 +45,7 @@ export class DrizzleKitProvider {
 		schema?: string,
 	): Promise<void> {
 		const now = Date.now();
-
-		const repositories = this.repositoryProvider.getRepositories(provider);
-
-		if (schema && schema !== "public") {
-			await this.prepareSchema(schema, provider, repositories);
-		}
-
-		const tables: Record<string, any> = repositories.map((it) => it.table);
+		const tables = await this.getTables(provider, schema);
 
 		if (Object.keys(tables).length > 0) {
 			const kit = this.importDrizzleKit();
@@ -90,6 +72,21 @@ export class DrizzleKitProvider {
 		this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
 	}
 
+	protected async getTables(
+		provider: PostgresProvider,
+		schema?: string,
+	): Promise<Record<string, any>> {
+		const repositories = this.repositoryProvider.getRepositories(provider);
+
+		if (schema && schema !== "public") {
+			await this.prepareSchema(schema, provider, repositories);
+		}
+
+		const tables: Record<string, any> = repositories.map((it) => it.table);
+
+		return tables;
+	}
+
 	protected async loadMigrationSnapshot(provider: PostgresProvider) {
 		const app = this.alepha.env.APP_NAME ?? "app";
 		await provider.execute(sql`
@@ -103,7 +100,7 @@ export class DrizzleKitProvider {
 				`);
 
 		const [entry] = await provider.execute(sql`
-			SELECT * FROM alepha.migrations WHERE "name" = ${app} LIMIT 1;
+			SELECT * FROM "drizzle"."__drizzle_dev_migrations" WHERE "name" = ${app} LIMIT 1;
 		`);
 
 		return entry;
@@ -117,13 +114,13 @@ export class DrizzleKitProvider {
 		const app = this.alepha.env.APP_NAME ?? "app";
 		if (!entry) {
 			await provider.execute(
-				sql`INSERT INTO alepha.migrations ("name", "snapshot") VALUES (${app}, ${JSON.stringify(curr)})`,
+				sql`INSERT INTO "drizzle"."__drizzle_dev_migrations" ("name", "snapshot") VALUES (${app}, ${JSON.stringify(curr)})`,
 			);
 		} else {
 			const newSnapshot = JSON.stringify(curr);
 			if (entry.snapshot !== newSnapshot) {
 				await provider.execute(
-					sql`UPDATE alepha.migrations SET "snapshot" = ${newSnapshot} WHERE "id" = ${entry.id}`,
+					sql`UPDATE "drizzle"."__drizzle_dev_migrations" SET "snapshot" = ${newSnapshot} WHERE "id" = ${entry.id}`,
 				);
 			}
 		}
@@ -137,21 +134,18 @@ export class DrizzleKitProvider {
 	) {
 		let nErrors = 0;
 		for (const statement of statements) {
+			if (statement.startsWith("DROP SCHEMA")) {
+				continue; // skip dropping schema statements
+			}
 			try {
-				await provider.db.execute(
-					sql.raw(
-						schema
-							? // TODO: improve this
-								statement.replaceAll('"public"', `"${schema}"`)
-							: statement,
-					),
-				);
+				await provider.db.execute(sql.raw(statement));
 			} catch (error) {
+				const errorMessage = `Error executing statement: ${statement}`;
 				if (catchErrors) {
 					nErrors++;
-					this.log.trace(`Error executing statement: ${statement}`);
+					this.log.trace(errorMessage);
 				} else {
-					throw new Error(`Error executing statement: ${statement}`, {
+					throw new Error(errorMessage, {
 						cause: error,
 					});
 				}

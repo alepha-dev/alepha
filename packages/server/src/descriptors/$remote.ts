@@ -54,11 +54,6 @@ export interface RemoteDescriptorOptions {
 	 * This will be used for internal communication and will not be exposed to the client.
 	 */
 	serviceAccount?: ServiceAccountDescriptor;
-
-	/**
-	 * If true, all actions will come with body / response schemas by default.
-	 */
-	withSchema?: boolean;
 }
 
 export interface RemoteDescriptor {

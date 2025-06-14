@@ -31,15 +31,3 @@ class App {
 
 run(App);
 ```
-
-## Modules
-
-- [@alepha/core](packages/core/README.md)
-- [@alepha/server](packages/server/README.md)
-- [@alepha/react](packages/react/README.md)
-- [@alepha/postgres](packages/postgres/README.md)
-- [@alepha/scheduler](packages/scheduler/README.md)
-- [@alepha/queue](packages/queue/README.md)
-- [@alepha/topic](packages/topic/README.md)
-- [@alepha/cache](packages/cache/README.md)
-- [@alepha/lock](packages/lock/README.md)

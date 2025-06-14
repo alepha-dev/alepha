@@ -448,7 +448,14 @@ export interface ServerRoute<
 	silent?: boolean;
 
 	// feature: ServerSecurityProvider
-	secure?: boolean | string | string[];
+	secure?:
+		| boolean
+		| {
+				permissions?: string[];
+				roles?: string[];
+				realms?: string[];
+				organizations?: string[];
+		  };
 }
 
 export type ServerResponseBody<

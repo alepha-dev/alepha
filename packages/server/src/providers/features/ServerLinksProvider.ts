@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
 import {
 	type Permission,
 	SecurityProvider,
@@ -23,18 +23,14 @@ export class ServerLinksProvider {
 	);
 
 	public readonly links = $route({
-		path: "/api/_links",
+		path: RemoteDescriptorProvider.path.apiLinks,
 		schema: {
-			query: t.object({
-				withSchema: t.optional(t.boolean()),
-			}),
 			response: apiLinksResponseSchema,
 		},
-		handler: async ({ user, headers, query }) => {
+		handler: async ({ user, headers }) => {
 			return this.getLinks({
 				user,
 				authorization: headers.authorization,
-				withSchema: query.withSchema,
 			});
 		},
 	});
@@ -42,7 +38,6 @@ export class ServerLinksProvider {
 	public async getLinks(options: {
 		user?: UserAccountToken;
 		authorization?: string;
-		withSchema?: boolean;
 	}): Promise<ApiLinksResponse> {
 		const { user } = options;
 		let permissions: Permission[] | undefined;
@@ -83,10 +78,8 @@ export class ServerLinksProvider {
 				}
 			}
 
-			userLinks.push({
-				...link,
-				schema: options.withSchema ? link.schema : undefined,
-			});
+			const { schema, ...copy } = link;
+			userLinks.push(copy);
 		}
 
 		userLinks.push(
@@ -116,7 +109,6 @@ export class ServerLinksProvider {
 		);
 
 		return {
-			// userId: user?.id, why? this is not needed and not secure
 			prefix: this.serverActionDescriptorProvider.getPrefix(),
 			links: userLinks,
 		};

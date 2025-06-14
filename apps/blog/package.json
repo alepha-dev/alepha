@@ -18,7 +18,7 @@
 		"dev": "vite",
 		"build": "vite build",
 		"start": "node --env-file=.env dist/index.mjs",
-		"db:push": "node scripts/db.ts --push",
+		"db:push": "node --env-file=.env scripts/db.ts --push",
 		"db:push:prod": "node --env-file=.env.production scripts/db.ts --push",
 		"db:generate": "drizzle-kit generate",
 		"vercel:dev": "yarn vercel dev --cwd dist",

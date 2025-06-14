@@ -43,6 +43,7 @@ export class PostController {
 	});
 
 	createPost = $action({
+		secure: true,
 		schema: {
 			body: post.$insertSchema,
 			response: post.$schema,

@@ -6,6 +6,10 @@ import { ProxyDescriptorProvider } from "./ProxyDescriptorProvider.ts";
 import type { ServerRemote } from "./ServerActionDescriptorProvider.ts";
 
 export class RemoteDescriptorProvider {
+	static path = {
+		apiLinks: "/api/_links",
+	};
+
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client = $inject(HttpClient);
 	protected readonly proxyProvider = $inject(ProxyDescriptorProvider);
@@ -63,7 +67,7 @@ export class RemoteDescriptorProvider {
 	public async registerRemote(value: RemoteDescriptor, key: string) {
 		const options = value[OPTIONS];
 		const url = typeof options.url === "string" ? options.url : options.url();
-		const linkPath = "/api/_links";
+		const linkPath = RemoteDescriptorProvider.path.apiLinks;
 		const name = options.name ?? key;
 		const proxy = typeof options.proxy === "object" ? options.proxy : {};
 
@@ -76,10 +80,9 @@ export class RemoteDescriptorProvider {
 			internal: !proxy.noInternal,
 			links: async (opts) => {
 				const { authorization } = opts;
-				const withSchema = options.withSchema ?? options.withSchema ?? false;
 				const response = await this.fetchLinks({
 					service: name,
-					url: `${url}${linkPath}${withSchema ? "?withSchema=true" : ""}`,
+					url: `${url}${linkPath}`,
 					authorization,
 				});
 
