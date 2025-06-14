@@ -97,7 +97,9 @@ export class ServerActionDescriptorProvider {
 
 		const handler = value[OPTIONS].handler;
 		if (!handler) {
-			this.registerActionApi(value, instance, key);
+			this.log.warn(
+				`No handler found for the route ${instance.constructor.name}#${key}`,
+			);
 			return;
 		}
 
@@ -169,57 +171,6 @@ export class ServerActionDescriptorProvider {
 			prefix: this.env.SERVER_API_PREFIX,
 			path: action.path.replace(this.env.SERVER_API_PREFIX, ""),
 		});
-	}
-
-	/**
-	 * @deprecated
-	 */
-	public registerActionApi(
-		routeDescriptor: ActionDescriptor,
-		instance: any,
-		key: string,
-	) {
-		const routes = this.alepha.getDescriptorValues($action);
-		for (const it of routes) {
-			const { value, instance: parentInstance, key: parentKey } = it;
-
-			// find controller
-			if (value[OPTIONS].use === routeDescriptor && value[OPTIONS].handler) {
-				const localFunction = this.createLocalFunction(
-					value,
-					this.helper.permission(value[OPTIONS], instance, key),
-				);
-
-				this.log.trace(
-					`${instance.constructor.name}#${key} will be a client of ${parentInstance?.constructor?.name}#${parentKey}`,
-				);
-
-				// ---
-
-				const $ = (
-					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestOptions = {},
-				) => {
-					return localFunction(config, opts);
-				};
-
-				$[KIND] = "ROUTE";
-				$.options = routeDescriptor[OPTIONS];
-
-				$.fetch = (
-					config: Partial<ClientRequestEntry> = {},
-					opts: ClientRequestOptions = {},
-				) => localFunction(config, opts);
-
-				instance[key] = $;
-
-				return;
-			}
-		}
-
-		this.log.warn(
-			`No handler found for the route ${instance.constructor.name}#${key}`,
-		);
 	}
 
 	/**

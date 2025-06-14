@@ -42,7 +42,8 @@ declare module "@alepha/core" {
 			request: ServerRequest;
 			error: Error;
 		};
-		// last chance to modify the response - TODO: probably not really needed, we can also update the response in the onResponse hook...
+		// last chance to modify the response -
+		// TODO: probably not really needed, we can also update the response in the onResponse hook...
 		"server:onSend": {
 			route: ServerRoute;
 			request: ServerRequest;
@@ -83,7 +84,6 @@ export * from "./providers/ServerRouterProvider.ts";
 export * from "./providers/ServerActionDescriptorProvider.ts";
 export * from "./providers/RemoteDescriptorProvider.ts";
 export * from "./providers/ProxyDescriptorProvider.ts";
-export * from "./providers/BrowserActionDescriptorProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
