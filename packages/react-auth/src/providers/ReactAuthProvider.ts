@@ -161,7 +161,7 @@ export class ReactAuthProvider {
 			) {
 				const tokens = await this.refresh(request.cookies);
 				if (tokens) {
-					request.headers.authorization = `Bearer ${tokens.access_token}`;
+					request.headers.authorization = `Bearer ${await this.getAccessTokenFromCookies(tokens)}`;
 				}
 
 				if (
