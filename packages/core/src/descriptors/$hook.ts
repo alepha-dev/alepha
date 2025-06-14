@@ -65,11 +65,26 @@ export interface HookDescriptor<T extends keyof Hooks> {
  *
  * Hooks are used to run async functions from all registered providers/services.
  *
- * - You can't unregister a hook once it has been registered.
- * - You can't register a hook after the App has started.
+ * You can't register a hook after the App has started.
  *
  * It's used under the hood by the `configure`, `start`, and `stop` methods.
- * Some modules also use hooks to run their own logic.
+ * Some modules also use hooks to run their own logic. (e.g. `@alepha/server`).
+ *
+ * You can create your own hooks by using module augmentation:
+ *
+ * ```ts
+ * declare module "@alepha/core" {
+ *
+ *   interface Hooks {
+ *     "my:custom:hook": {
+ *       arg1: string;
+ *     }
+ *   }
+ * }
+ *
+ * await alepha.emit("my:custom:hook", { arg1: "value" });
+ * ```
+ *
  */
 export const $hook = <T extends keyof Hooks>(
 	options: HookOptions<T>,

@@ -3,7 +3,9 @@ import { MissingContextError } from "../errors/MissingContextError.ts";
 import type { Class } from "../interfaces/Class.ts";
 
 /**
- * Used to store the current context and definition during injections.
+ * Global variable!
+ *
+ * Store the current context and definition during injection phase.
  *
  * @internal
  */
@@ -22,8 +24,22 @@ export interface CursorDescriptor {
 
 /**
  * Get Alepha instance and Class definition from the current context.
- *
  * This should be used inside a descriptor only.
+ *
+ * ```ts
+ * import { $cursor } from "@alepha/core";
+ *
+ * const $ = () => {
+ *
+ *   const { context, definition } = $cursor();
+ *
+ *   // context - alepha instance
+ *   // definition - class which is creating this descriptor
+ *
+ *   return {};
+ * }
+ *
+ * ```
  *
  * @internal
  */
