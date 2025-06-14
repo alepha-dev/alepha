@@ -2,9 +2,9 @@ import { Alepha, run } from "@alepha/core";
 import { ReactAuthModule } from "@alepha/react-auth";
 import { Blog } from "./Blog";
 
-const alepha = Alepha.create();
+const app = Alepha.create();
 
-alepha.with(Blog);
-alepha.with(ReactAuthModule);
+app.with(Blog);
+app.with(ReactAuthModule);
 
-run(alepha);
+run(app);

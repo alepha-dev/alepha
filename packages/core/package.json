@@ -11,12 +11,12 @@
 		"src"
 	],
 	"dependencies": {
-		"@sinclair/typebox": "^0.34.33",
+		"@sinclair/typebox": "^0.34.35",
 		"dotenv": "^16.5.0"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",
-		"vitest": "^3.1.4"
+		"vitest": "^3.2.3"
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist --sourcemap"

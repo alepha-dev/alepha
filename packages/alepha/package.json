@@ -50,7 +50,7 @@
 		}
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.4",
+		"@types/react": "^19.1.8",
 		"pkgroll": "^2.12.2",
 		"react": "^19.1.0"
 	},

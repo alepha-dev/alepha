@@ -14,15 +14,15 @@
 		"@alepha/core": "0.7.0",
 		"@alepha/datetime": "0.7.0",
 		"@alepha/lock": "0.7.0",
-		"@sinclair/typebox": "^0.34.33",
-		"drizzle-orm": "^0.44.1",
+		"@sinclair/typebox": "^0.34.35",
+		"drizzle-orm": "^0.44.2",
 		"pg": "^8.16.0"
 	},
 	"devDependencies": {
-		"@types/pg": "8.15.2",
+		"@types/pg": "8.15.4",
 		"drizzle-kit": "0.31.1",
 		"pkgroll": "^2.12.2",
-		"vitest": "^3.1.4"
+		"vitest": "^3.2.3"
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist --sourcemap"

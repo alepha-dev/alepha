@@ -16,10 +16,10 @@
 		"@alepha/security": "0.7.0",
 		"@alepha/server": "0.7.0",
 		"@alepha/server-cookies": "0.7.0",
-		"openid-client": "^6.5.0"
+		"openid-client": "^6.5.1"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.6",
+		"@types/react": "^19.1.8",
 		"pkgroll": "^2.12.2",
 		"react": "^19.1.0"
 	},
