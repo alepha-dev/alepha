@@ -28,7 +28,7 @@ import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
 import { ServerHeadProvider } from "./ServerHeadProvider.ts";
 
 export const envSchema = t.object({
-	REACT_SERVER_DIST: t.string({ default: "client" }),
+	REACT_SERVER_DIST: t.string({ default: "public" }),
 	REACT_SERVER_PREFIX: t.string({ default: "" }),
 	REACT_SSR_ENABLED: t.boolean({ default: false }),
 	REACT_ROOT_ID: t.string({ default: "root" }),
@@ -85,6 +85,8 @@ export class ReactServerProvider {
 					return;
 				}
 
+				this.log.debug(`Using static files from: ${root}`);
+
 				await this.configureStaticServer(root);
 			}
 
@@ -113,8 +115,8 @@ export class ReactServerProvider {
 
 	protected getPublicDirectory(): string {
 		const maybe = [
+			join(process.cwd(), `dist/${this.env.REACT_SERVER_DIST}`),
 			join(process.cwd(), this.env.REACT_SERVER_DIST),
-			join(process.cwd(), "..", this.env.REACT_SERVER_DIST),
 		];
 
 		for (const it of maybe) {

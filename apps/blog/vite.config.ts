@@ -1,15 +1,10 @@
-import { viteAlepha, viteReact } from "@alepha/vite";
+import { viteAlepha } from "@alepha/vite";
+import { defineConfig } from "rolldown-vite";
 
-export default {
+export default defineConfig({
 	plugins: [
-		viteReact(),
 		viteAlepha({
 			vercel: true,
 		}),
 	],
-	resolve: {
-		alias: {
-			"pg-cloudflare": "pg",
-		},
-	},
-};
+});

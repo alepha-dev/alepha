@@ -9,6 +9,7 @@ export const post = $entity({
 		title: t.string(),
 		slug: t.string(),
 		content: t.string(),
+		tags: t.optional(t.array(t.string())),
 	}),
 });
 

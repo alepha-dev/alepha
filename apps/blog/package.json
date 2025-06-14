@@ -5,21 +5,25 @@
 		"@mantine/core": "^8.1.0",
 		"@mantine/form": "^8.1.0",
 		"@mantine/hooks": "^8.1.0",
-		"@tabler/icons-react": "3.34.0",
+		"@tabler/icons-react": "3.17.0",
 		"react": "^19.1.0"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
 		"drizzle-kit": "^0.31.1",
-		"vercel": "^43.1.0",
-		"vite": "^6.3.5"
+		"rolldown-vite": "^6.3.19",
+		"vercel": "^43.1.0"
 	},
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
-		"kit": "drizzle-kit push",
-		"vercel:dev": "cd dist && yarn vercel dev",
-		"vercel:deploy": "cd dist && yarn vercel deploy",
-		"vercel:deploy:prod": "cd dist && yarn vercel deploy --prod"
+		"start": "node --env-file=.env dist/index.mjs",
+		"db:push": "node scripts/db.ts --push",
+		"db:push:prod": "node --env-file=.env.production scripts/db.ts --push",
+		"db:generate": "drizzle-kit generate",
+		"vercel:dev": "yarn vercel dev --cwd dist",
+		"vercel:deploy": "yarn build && yarn vercel deploy --cwd dist",
+		"vercel:deploy:prod": "yarn build && yarn vercel deploy --cwd dist --prod",
+		"docker:build": "yarn build && docker compose build"
 	}
 }

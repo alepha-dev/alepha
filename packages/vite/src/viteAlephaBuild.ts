@@ -1,9 +1,12 @@
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { access } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
 import gzipPlugin from "rollup-plugin-gzip";
-import { type Plugin, type UserConfig, build as viteBuild } from "vite";
+import type { Plugin, UserConfig } from "vite";
+import type * as vite from "vite";
 import { viteAlephaBuildVercel } from "./viteAlephaBuildVercel.ts";
 
 const brotliPromise = promisify(brotliCompress);
@@ -19,7 +22,7 @@ export interface ViteAlephaBuildOptions {
 	/**
 	 *
 	 */
-	vercel?: boolean | { projectId: string; orgId: string; settings: any };
+	vercel?: boolean;
 
 	/**
 	 * A list of modules that should not be externalized in the build process.
@@ -37,9 +40,13 @@ export interface ViteAlephaBuildOptions {
 /**
  *
  */
-export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
+export async function viteAlephaBuild(
+	options: ViteAlephaBuildOptions = {},
+): Promise<Plugin> {
 	const entry = options.entry || "src/index.server.ts";
-	const filename = entry.split("/").at(-1)?.split(".").slice(0, -1).join(".");
+	const distDir = "dist";
+	const clientDir = "public";
+	const { build: viteBuild } = await importVite();
 
 	const viteBuildClient = async () => {
 		const plugins: any[] = [];
@@ -63,20 +70,27 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 
 		await viteBuild({
 			build: {
-				outDir: "dist/client",
+				outDir: `${distDir}/${clientDir}`,
+				rollupOptions: {
+					output: {
+						entryFileNames: "[hash].js",
+						chunkFileNames: "[hash].js",
+						assetFileNames: "[hash][extname]",
+					},
+				},
 			},
 			plugins,
 		});
 	};
 
-	const viteBuildServer = async (opts: { client?: string }) => {
+	const viteBuildServer = async (opts: { clientDir?: string }) => {
 		const plugins: any[] = [];
 
 		if (options.vercel) {
 			plugins.push(
 				viteAlephaBuildVercel({
-					filename: filename,
-					client: opts.client,
+					clientDir: opts.clientDir,
+					distDir: distDir,
 				}),
 			);
 		}
@@ -86,14 +100,21 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 			ssr: {
 				noExternal: options.noExternal ?? true,
 			},
+			resolve: {
+				alias: {
+					"pg-cloudflare": "pg",
+				},
+			},
 			build: {
 				ssr: entry,
-				outDir: "dist/server",
+				copyPublicDir: false,
+				ssrManifest: true,
+				outDir: `${distDir}/server`,
 				rollupOptions: {
 					output: {
-						entryFileNames: "[name].mjs",
-						chunkFileNames: "[name]-[hash].mjs",
-						assetFileNames: "[name]-[hash][extname]",
+						entryFileNames: "index.mjs",
+						chunkFileNames: "[hash].mjs",
+						assetFileNames: "[hash][extname]",
 						format: "esm",
 					},
 				},
@@ -101,6 +122,24 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 			plugins,
 			...options.server,
 		});
+
+		const templateState = clientDir
+			? `__alepha.state(\n\t"ReactServerProvider.template", \n\t\`${readFileSync(`${distDir}/${clientDir}/index.html`, "utf-8").replace(/>\s*</g, "><").trim()}\`\n);`
+			: "";
+
+		writeFileSync(
+			`${distDir}/index.mjs`,
+			`
+			import'./server/index.mjs';
+
+${templateState}
+
+		`.trim(),
+		);
+
+		if (clientDir) {
+			unlinkSync(`${distDir}/${clientDir}/index.html`);
+		}
 	};
 
 	return {
@@ -121,7 +160,7 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 			}
 
 			await viteBuildServer({
-				client: hasClient ? "client" : undefined,
+				clientDir: hasClient ? clientDir : undefined,
 			});
 
 			// Prevent the default build from running again
@@ -129,3 +168,21 @@ export function viteAlephaBuild(options: ViteAlephaBuildOptions = {}): Plugin {
 		},
 	};
 }
+
+const importVite = async (): Promise<typeof vite> => {
+	try {
+		// Try to import rolldown-vite first, as it is a more optimized version of Vite
+		return createRequire(import.meta.url)("rolldown-vite");
+	} catch (error) {
+		console.warn(
+			"Using Vite instead of rolldown-vite. Please install rolldown-vite for better performance.",
+		);
+		try {
+			return createRequire(import.meta.url)("vite");
+		} catch (error) {
+			throw new Error(
+				"Vite is not installed. Please install it with `npm install vite` or `npm install rolldown-vite`.",
+			);
+		}
+	}
+};

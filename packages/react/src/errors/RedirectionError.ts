@@ -1,7 +1,10 @@
 import type { HrefLike } from "../hooks/RouterHookApi.ts";
 
 export class RedirectionError extends Error {
-	constructor(public readonly page: HrefLike) {
+	public readonly page: HrefLike;
+
+	constructor(page: HrefLike) {
 		super("Redirection");
+		this.page = page;
 	}
 }

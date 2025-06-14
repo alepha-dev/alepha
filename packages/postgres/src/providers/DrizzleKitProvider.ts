@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
 import type * as DrizzleKit from "drizzle-kit/api";
@@ -8,9 +9,35 @@ import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 export class DrizzleKitProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly repositoryDescriptorProvider = $inject(
-		RepositoryDescriptorProvider,
-	);
+	protected readonly repositoryProvider = $inject(RepositoryDescriptorProvider);
+
+	public async push(provider: PostgresProvider) {
+		const kit = this.importDrizzleKit();
+		const repositories = this.repositoryProvider.getRepositories();
+		const tables: Record<string, any> = repositories.map((it) => it.table);
+		const result = await kit.pushSchema(tables, provider.db);
+		await result.apply();
+	}
+
+	public async generate(provider: PostgresProvider): Promise<void> {
+		const kit = this.importDrizzleKit();
+		const repositories = this.repositoryProvider.getRepositories(provider);
+		const tables: Record<string, any> = repositories.map((it) => it.table);
+
+		if (Object.keys(tables).length === 0) {
+			return;
+		}
+
+		const journal = JSON.parse(
+			await readFile("migrations/_journal.json", "utf-8").catch(() =>
+				JSON.stringify({}),
+			),
+		);
+		const entries = journal.entries ?? [];
+		const prev = entries.length > 0 ? entries[entries.length - 1].snapshot : {};
+		const curr = kit.generateDrizzleJson(tables);
+		const statements = await kit.generateMigration(prev, curr);
+	}
 
 	/**
 	 * Try to generate migrations from scratch based on the models.
@@ -30,8 +57,7 @@ export class DrizzleKitProvider {
 	): Promise<void> {
 		const now = Date.now();
 
-		const repositories =
-			this.repositoryDescriptorProvider.getRepositories(provider);
+		const repositories = this.repositoryProvider.getRepositories(provider);
 
 		if (schema && schema !== "public") {
 			await this.prepareSchema(schema, provider, repositories);

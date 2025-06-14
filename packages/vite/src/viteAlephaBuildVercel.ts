@@ -1,61 +1,48 @@
-import {
-	existsSync,
-	mkdirSync,
-	readFileSync,
-	unlinkSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { loadEnv } from "vite";
 
 export interface ViteAlephaBuildVercelOptions {
 	/**
-	 * The name of the output file.
-	 *
-	 * @default 'index'
+	 * The name of the client directory.
 	 */
-	filename?: string;
+	clientDir?: string;
 
 	/**
-	 * The name of the client directory.
-	 *
-	 * @default 'client'
+	 * The directory where the build output will be placed.
 	 */
-	client?: string;
+	distDir?: string;
 }
 
 /**
  *
  */
 export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
-	const outputFile = opts.filename;
-	const client = opts.client;
+	const clientDir = opts.clientDir ?? "public";
+	const distDir = opts.distDir ?? "dist";
 
 	return {
 		name: "vite-plugin-alepha-build-vercel",
 		apply: "build",
 		writeBundle() {
-			if (!existsSync("dist/api")) {
-				mkdirSync("dist/api");
+			const env = loadEnv("production", process.cwd(), "");
+
+			if (!existsSync(`${distDir}/api`)) {
+				mkdirSync(`${distDir}/api`);
 			}
 
-			const templateState = client
-				? `alepha.state("ReactServerProvider.template", \`${readFileSync(`dist/${client}/index.html`, "utf-8")}\`);`
-				: "";
-
 			writeFileSync(
-				"dist/api/index.mjs",
-				`import "../server/${outputFile}.mjs";
-
-${templateState}
+				`${distDir}/api/index.mjs`,
+				`import "../index.mjs";
 
 export default async function (req, res) {
-\tawait alepha.start();
-\talepha.handle(req, res);
+\tawait __alepha.start();
+\t__alepha.handle(req, res);
 }
 `,
 			);
 
 			writeFileSync(
-				"dist/vercel.json",
+				`${distDir}/vercel.json`,
 				JSON.stringify(
 					{
 						env: {
@@ -69,16 +56,33 @@ export default async function (req, res) {
 						],
 						buildCommand: "",
 						installCommand: "",
-						outputDirectory: client,
+						outputDirectory: clientDir,
 					},
 					null,
 					"  ",
 				),
 			);
 
-			// for now, I don't know how to override /index.html by / on vercel, so we delete it
-			if (client) {
-				unlinkSync("dist/client/index.html");
+			const projectId = env.VERCEL_PROJECT_ID;
+			const orgId = env.VERCEL_ORG_ID;
+			if (projectId && orgId) {
+				try {
+					mkdirSync(`${distDir}/.vercel`, { recursive: true });
+				} catch (e) {
+					// ignore error if directory already exists
+				}
+
+				writeFileSync(
+					`${distDir}/.vercel/project.json`,
+					JSON.stringify(
+						{
+							projectId,
+							orgId,
+						},
+						null,
+						"  ",
+					),
+				);
 			}
 		},
 	};

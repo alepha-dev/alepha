@@ -32,18 +32,8 @@ const envSchema = t.object({
 	 *
 	 */
 	DATABASE_MIGRATIONS_FOLDER: t.string({
-		default: "migrations",
+		default: "drizzle",
 	}),
-
-	/**
-	 *
-	 */
-	DATABASE_MIGRATIONS_SCHEMA: t.optional(t.string()),
-
-	/**
-	 *
-	 */
-	DATABASE_MIGRATIONS_TABLE: t.optional(t.string()),
 
 	/**
 	 * The schema to use.
@@ -60,7 +50,16 @@ const envSchema = t.object({
 	POSTGRES_SYNCHRONIZE: t.optional(t.boolean()),
 
 	/**
+	 * Push the schema to the database.
 	 *
+	 * @default false
+	 */
+	POSTGRES_PUSH_SCHEMA: t.optional(t.boolean()),
+
+	/**
+	 * Reject unauthorized SSL connections.
+	 *
+	 * @default false
 	 */
 	POSTGRES_REJECT_UNAUTHORIZED: t.boolean({ default: false }),
 });
@@ -95,6 +94,12 @@ export class NodePostgresProvider implements PostgresProvider {
 		name: "start",
 		handler: async () => {
 			await this.connect();
+
+			if (this.env.POSTGRES_PUSH_SCHEMA) {
+				// push schema to the database
+				await this.kit.push(this);
+				return;
+			}
 
 			// never migrate in serverless mode (vercel, netlify, ...)
 			const provider = this.alepha.isServerless();
@@ -163,29 +168,33 @@ export class NodePostgresProvider implements PostgresProvider {
 			const schema = this.env.POSTGRES_SCHEMA;
 			const migration = this.getMigrationOptions();
 
-			if (this.env.POSTGRES_SYNCHRONIZE && !this.alepha.isProduction()) {
-				// silently run migrations
-				try {
-					await migrate(this.db, migration);
-				} catch (ignore) {
-					// ignore errors
-				}
+			if (!this.alepha.isProduction()) {
+				// unit testing mode
+				if (this.alepha.isTest()) {
+					// when you are testing with a specific schema
+					if (schema) {
+						await this.kit.synchronize(this, schema);
+						return;
+					}
 
-				await this.kit.synchronize(this, schema ?? "public");
-				return;
-			}
-
-			if (this.alepha.isTest() && !this.alepha.isProduction()) {
-				// when you are testing with a specific schema
-				if (schema) {
-					await this.kit.synchronize(this, schema);
+					// when you are testing without a specific schema, just create a random schema
+					this.testingSchemaName = `test_${Date.now()}_${Math.floor(Math.random() * 100)}`;
+					await this.kit.synchronize(this, this.testingSchemaName);
 					return;
 				}
 
-				// when you are testing without a specific schema, just create a random schema
-				this.testingSchemaName = `test_${Date.now()}_${Math.floor(Math.random() * 100)}`;
-				await this.kit.synchronize(this, this.testingSchemaName);
-				return;
+				// development mode
+				if (this.env.POSTGRES_SYNCHRONIZE !== false) {
+					try {
+						// silently run migrations
+						await migrate(this.db, migration);
+					} catch (ignore) {
+						// ignore errors
+					}
+
+					await this.kit.synchronize(this, schema ?? "public");
+					return;
+				}
 			}
 
 			this.log.debug(
@@ -215,8 +224,6 @@ export class NodePostgresProvider implements PostgresProvider {
 	protected getMigrationOptions(): MigrationConfig {
 		return {
 			migrationsFolder: this.env.DATABASE_MIGRATIONS_FOLDER,
-			migrationsSchema: this.env.DATABASE_MIGRATIONS_SCHEMA,
-			migrationsTable: this.env.DATABASE_MIGRATIONS_TABLE,
 		};
 	}
 

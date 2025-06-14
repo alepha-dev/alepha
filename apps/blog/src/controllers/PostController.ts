@@ -1,10 +1,10 @@
 import { $inject, t } from "@alepha/core";
 import { $action } from "@alepha/server";
 import { post } from "../entities.ts";
-import { Db } from "../providers/Db.ts";
+import { Database } from "../providers/Database.ts";
 
 export class PostController {
-	db = $inject(Db);
+	db = $inject(Database);
 
 	getLastPosts = $action({
 		security: false,

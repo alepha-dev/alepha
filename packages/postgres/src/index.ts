@@ -26,6 +26,7 @@ export * from "./interfaces/TInsertObject.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
+export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/RepositoryDescriptorProvider.ts";
 export * from "./schemas/entitySchema.ts";
 export * from "./schemas/pageQuerySchema.ts";

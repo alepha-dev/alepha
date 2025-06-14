@@ -2,17 +2,14 @@
 
 import type { Env } from "./Alepha.ts";
 import { Alepha } from "./Alepha.ts";
-import type { Async } from "./interfaces/Async.ts";
 import type { Class } from "./interfaces/Class.ts";
+import type { RunOptions } from "./run.ts";
 
 export * from "./index.shared.ts";
 
 export const run = (
 	arg: Alepha | Class | ((env?: Env) => Alepha),
-	opts?: {
-		env?: Env;
-		ready?: (alepha: Alepha) => Async<void>;
-	},
+	opts?: RunOptions,
 ): Alepha => {
 	const alepha =
 		typeof arg === "function" && !arg.prototype
@@ -29,6 +26,8 @@ export const run = (
 
 	(async () => {
 		try {
+			await opts?.configure?.(alepha);
+
 			await alepha.start();
 
 			if (opts?.ready) {

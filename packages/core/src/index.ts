@@ -1,18 +1,13 @@
-import "dotenv/config";
 import type { Env } from "./Alepha.ts";
 import { Alepha } from "./Alepha.ts";
-import type { Async } from "./interfaces/Async.ts";
 import type { Class } from "./interfaces/Class.ts";
+import type { RunOptions } from "./run.ts";
 
 export * from "./index.shared.ts";
 
 export const run = (
 	arg: Alepha | Class | ((env?: Env) => Alepha),
-	opts?: {
-		env?: Env;
-		configure?: (alepha: Alepha) => Async<void>;
-		ready?: (alepha: Alepha) => Async<void>;
-	},
+	opts?: RunOptions,
 ): Alepha => {
 	const alepha =
 		typeof arg === "function" && !arg.prototype
@@ -23,8 +18,9 @@ export const run = (
 						arg as Class,
 					);
 
+	(globalThis as any).__alepha = alepha;
+
 	if (alepha.isServerless()) {
-		(globalThis as any).alepha = alepha;
 		return alepha;
 	}
 
@@ -37,6 +33,11 @@ export const run = (
 
 			if (opts?.ready) {
 				await opts.ready(alepha);
+			}
+
+			if (opts?.once) {
+				await alepha.stop();
+				return alepha;
 			}
 
 			if (typeof process === "object") {

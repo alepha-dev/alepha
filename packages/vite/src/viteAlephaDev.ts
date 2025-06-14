@@ -1,7 +1,12 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Alepha, State } from "@alepha/core";
-import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import {
+	type Plugin,
+	type ResolvedConfig,
+	type ViteDevServer,
+	loadEnv,
+} from "vite";
 
 export interface ViteAlephaDevOptions {
 	/**
@@ -17,17 +22,6 @@ export interface ViteAlephaDevOptions {
 	 * @default false
 	 */
 	debug?: boolean;
-
-	/**
-	 * Enable or disable Vercel support
-	 */
-	vercel?:
-		| boolean
-		| {
-				projectId: string;
-				orgId: string;
-				settings: any;
-		  };
 }
 
 /**
@@ -35,14 +29,7 @@ export interface ViteAlephaDevOptions {
  */
 export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 	const entry = options.entry || "src/index.server.ts";
-
-	// let app: Alepha | null = null;
-	// let config: ResolvedConfig | null = null;
-	// let started = false;
-	// let lock: PromiseWithResolvers<void> | null = null;
-
 	const root = process.cwd().replace(/\\/g, "/");
-
 	const state: {
 		started: boolean;
 		app?: Alepha;
@@ -82,6 +69,12 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 
 		log("[DEBUG] Starting Alepha app...");
 
+		const env = loadEnv("development", state.config.root, "");
+
+		for (const key in env) {
+			process.env[key] = env[key];
+		}
+
 		process.env.NODE_ENV = "development";
 		process.env.SSR = "true";
 		process.env.SERVER = "true";
@@ -105,7 +98,7 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 			const imported = await server.ssrLoadModule(fileUrl);
 
 			state.app = undefined;
-			state.app = (globalThis as any).alepha ?? imported.default;
+			state.app = (globalThis as any).__alepha ?? imported.default;
 			if (!state.app) {
 				log("[DEBUG] No app found - skip starting");
 				return;
