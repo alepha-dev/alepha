@@ -169,8 +169,6 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for an unsigned 32-bit integer.
-	 *
-	 * @param options
 	 */
 	public uint = (options?: IntegerOptions): TNumber =>
 		Type.Number({
@@ -183,14 +181,25 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for a signed 32-bit integer.
-	 *
-	 * @param options
 	 */
 	public int = (options?: IntegerOptions): TInteger =>
 		Type.Integer({
 			[PRIMITIVE]: "int32",
 			minimum: -2147483647,
 			maximum: 2147483647,
+			...options,
+		});
+
+	/**
+	 * Create a schema for a bigint. Bigint is a 64-bit integer.
+	 * This is a workaround for TypeBox, which does not support bigint natively.
+	 */
+	public bigint = (options?: IntegerOptions): TNumber =>
+		Type.Number({
+			[PRIMITIVE]: "bigint",
+			multipleOf: 1,
+			minimum: -9007199254740991,
+			maximum: 9007199254740991,
 			...options,
 		});
 

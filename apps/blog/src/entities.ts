@@ -29,8 +29,8 @@ export const comment = $entity({
 	schema: t.object({
 		id: pg.primaryKey(),
 		createdAt: pg.createdAt(),
-		postId: pg.references(t.int(), () => post.id),
-		userId: pg.references(t.int(), () => user.id),
+		postId: pg.references(t.uint(), () => post.id),
+		userId: pg.references(t.uint(), () => user.id),
 		content: t.string(),
 	}),
 });

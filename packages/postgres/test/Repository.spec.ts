@@ -43,9 +43,9 @@ test("Repository - id serial", async () => {
 	expect(await app.repository.count()).toBe(0);
 });
 
-test("Repository - id uuid (pglite)", async () => {
+test("Repository - id uuid", async () => {
 	const schema = t.object({
-		uuid: pg.primaryKey(t.uuid()),
+		uuid: pg.uuidPrimaryKey(),
 		name: t.string(),
 	});
 	const entity = pgTableSchema("test", schema);
@@ -60,7 +60,7 @@ test("Repository - id uuid (pglite)", async () => {
 	await alepha.start();
 
 	expect(app.repository.id.key).toEqual("uuid");
-	expect(app.repository.id.type).toEqual(pg.primaryKey(t.uuid()));
+	expect(app.repository.id.type).toEqual(pg.uuidPrimaryKey());
 
 	const it = await app.repository.create({ name: "test" });
 

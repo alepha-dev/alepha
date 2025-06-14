@@ -1,8 +1,9 @@
-import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 import type {
 	IntegerOptions,
+	NumberOptions,
 	ObjectOptions,
+	Static,
 	StringOptions,
 	TArray,
 	TObject,
@@ -12,7 +13,6 @@ import type {
 } from "@sinclair/typebox";
 import type { TableConfig } from "drizzle-orm/pg-core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
-import type { PgDefault, PgMany, PgRef } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_CREATED_AT,
 	PG_DEFAULT,
@@ -20,9 +20,12 @@ import {
 	PG_MANY,
 	PG_PRIMARY_KEY,
 	PG_REF,
-	PG_SERIAL,
 	PG_UPDATED_AT,
 	PG_VERSION,
+	type PgDefault,
+	type PgIdentityOptions,
+	type PgMany,
+	type PgRef,
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
 import type { TInsertObject } from "../interfaces/TInsertObject.ts";
@@ -42,24 +45,28 @@ declare module "@alepha/core" {
 export class PostgresTypeProvider {
 	public readonly attr = pgAttr;
 
-	public readonly serial = () => pgAttr(t.int(), PG_SERIAL);
-
-	public readonly identity = (options?: IntegerOptions) =>
-		pgAttr(t.int(options), PG_IDENTITY);
-
-	public readonly id = (options?: IntegerOptions) =>
-		this.primaryKey(this.identity(options));
-
-	public readonly identityPrimaryKey = (options?: IntegerOptions) =>
+	public readonly identityPrimaryKey = (
+		identity?: PgIdentityOptions,
+		options?: IntegerOptions,
+	) =>
 		pgAttr(
-			pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY),
+			pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+			PG_DEFAULT,
+		);
+
+	public readonly bigIdentityPrimaryKey = (
+		identity?: PgIdentityOptions,
+		options?: NumberOptions,
+	) =>
+		pgAttr(
+			pgAttr(pgAttr(t.number(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
 			PG_DEFAULT,
 		);
 
 	public readonly uuidPrimaryKey = () =>
 		pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 
-	public readonly primaryKey = this.identityPrimaryKey;
+	public readonly primaryKey = this.bigIdentityPrimaryKey;
 
 	/**
 	 *
@@ -98,9 +105,7 @@ export class PostgresTypeProvider {
 		pgAttr(pgAttr(t.datetime(options), PG_UPDATED_AT), PG_DEFAULT);
 
 	/**
-	 *
-	 * @param properties
-	 * @param options
+	 * @deprecated Build your own entity schema.
 	 */
 	public readonly entity = <T extends TProperties>(
 		properties: T,
@@ -118,8 +123,7 @@ export class PostgresTypeProvider {
 	};
 
 	/**
-	 *
-	 * @param obj
+	 * Creates an insert schema for a given object schema.
 	 */
 	public readonly insert = <T extends TObject>(obj: T): TInsertObject<T> => {
 		const properties: Record<string, TSchema> = {};
@@ -155,9 +159,7 @@ export class PostgresTypeProvider {
 	public readonly input = this.insert;
 
 	/**
-	 *
-	 * @param resource
-	 * @param options
+	 * Creates a page schema for a given object schema.
 	 */
 	public readonly page = <T extends TObject>(
 		resource: T,
@@ -167,10 +169,7 @@ export class PostgresTypeProvider {
 	};
 
 	/**
-	 *
-	 * @param type
-	 * @param ref
-	 * @param actions
+	 * Creates a reference to another table or schema.
 	 */
 	public readonly ref = <T extends TSchema>(
 		type: T,
@@ -188,9 +187,7 @@ export class PostgresTypeProvider {
 	references = this.ref;
 
 	/**
-	 *
-	 * @param table
-	 * @param foreignKey
+	 * Creates a reference to another table or schema with a foreign key.
 	 */
 	public readonly many = <T extends TObject, Config extends TableConfig>(
 		table: PgTableWithColumnsAndSchema<Config, T>,
@@ -206,20 +203,6 @@ export class PostgresTypeProvider {
 			},
 		);
 	};
-
-	// public readonly many2 = <T extends TObject, Config extends TableConfig>(
-	// 	schema: T,
-	// 	ref: () => any,
-	// ): TOptionalWithFlag<PgAttr<PgAttr<TArray<T>, PgMany>, PgDefault>, true> => {
-	// 	return this.attr(
-	// 		this.attr(t.optional(t.array(schema)), PG_DEFAULT),
-	// 		PG_MANY,
-	// 		{
-	// 			ref,
-	// 			schema,
-	// 		},
-	// 	);
-	// };
 }
 
 export const pg = new PostgresTypeProvider();

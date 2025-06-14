@@ -1,12 +1,11 @@
 import type { TSchema } from "@alepha/core";
 import { TypeGuard } from "@alepha/core";
 import * as pg from "drizzle-orm/pg-core";
-import type { PgIdentityOptions } from "../constants/PG_SYMBOLS.ts";
+import { PG_SERIAL, type PgIdentityOptions } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_CREATED_AT,
 	PG_IDENTITY,
 	PG_PRIMARY_KEY,
-	PG_SERIAL,
 	PG_UPDATED_AT,
 } from "../constants/PG_SYMBOLS.ts";
 import { byte } from "../types/byte.ts";
@@ -45,8 +44,10 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 	}
 
 	if (TypeGuard.IsNumber(value)) {
-		if (PG_SERIAL in value) {
-			return pg.serial(key);
+		if (PG_IDENTITY in value) {
+			return pg
+				.bigint({ mode: "number" })
+				.generatedAlwaysAsIdentity(value[PG_IDENTITY] as PgIdentityOptions);
 		}
 
 		return pg.numeric(key);
@@ -93,14 +94,14 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 		}
 	}
 
-	if (Array.isArray(value.anyOf)) {
-		if (value.anyOf.every((it) => it.type === "number")) {
-			return pg.integer(key);
-		}
-		if (value.anyOf.every((it) => it.type === "string")) {
-			return pg.text(key).array();
-		}
-	}
+	// if (Array.isArray(value.anyOf)) {
+	// 	if (value.anyOf.every((it) => it.type === "number")) {
+	// 		return pg.integer(key);
+	// 	}
+	// 	if (value.anyOf.every((it) => it.type === "string")) {
+	// 		return pg.text(key).array();
+	// 	}
+	// }
 
 	if (TypeGuard.IsUnsafe(value)) {
 		if (value.type === "string") {

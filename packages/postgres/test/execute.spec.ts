@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { $repository, pg, pgTableSchema, sql } from "../src";
 
 const userSchema = t.object({
-	id: pg.id(),
+	id: pg.primaryKey(),
 	name: t.string(),
 	guildId: t.optional(t.int()),
 });
