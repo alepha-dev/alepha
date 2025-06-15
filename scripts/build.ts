@@ -1,6 +1,6 @@
 import { $command } from "@alepha/cli";
 import { join } from "node:path";
-import { copyFile, readdir, readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 export const build = $command({

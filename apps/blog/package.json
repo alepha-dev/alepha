@@ -6,7 +6,8 @@
 		"@mantine/form": "^8.1.0",
 		"@mantine/hooks": "^8.1.0",
 		"@tabler/icons-react": "3.17.0",
-		"react": "^19.1.0"
+		"react": "^19.1.0",
+		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",

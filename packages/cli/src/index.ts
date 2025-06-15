@@ -210,10 +210,7 @@ export function isShxCommand(cmd: string) {
  * @param cmd
  * @param opts
  */
-export async function run(
-	cmd: RunCommand,
-	opts: RunOptions = {},
-): Promise<string> {
+async function run(cmd: RunCommand, opts: RunOptions = {}): Promise<string> {
 	if (Array.isArray(cmd)) {
 		if (opts.parallel) {
 			await Promise.all(

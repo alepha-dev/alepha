@@ -3267,6 +3267,7 @@ __metadata:
     "@types/react": "npm:^19.1.8"
     drizzle-kit: "npm:^0.31.1"
     react: "npm:^19.1.0"
+    react-dom: "npm:^19.1.0"
     rolldown-vite: "npm:^6.3.19"
     vercel: "npm:^43.1.0"
   languageName: unknown
@@ -7411,6 +7412,12 @@ __metadata:
   checksum: 10c0/47e01243e2c8ea7ee2e512e215d3fdcb50198a57b4737d54ca1566b7ecdd427c5813ae3696523bbb91dc7682404ce8baeb76855148c81591cced2014e7f8ae9c
   languageName: node
   linkType: hard
+
+"playground-a3fba9@workspace:apps/playground":
+  version: 0.0.0-use.local
+  resolution: "playground-a3fba9@workspace:apps/playground"
+  languageName: unknown
+  linkType: soft
 
 "please-upgrade-node@npm:^3.2.0":
   version: 3.2.0
