@@ -1,22 +1,14 @@
-/// <reference types="vite/client" />
-
-import type { Env } from "./Alepha.ts";
 import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./index.shared.ts";
 import type { Service } from "./interfaces/Service.ts";
 
 export * from "./index.shared.ts";
 
-export const run = (
-	arg: Alepha | Service | ((env?: Env) => Alepha),
-	opts?: RunOptions,
-): Alepha => {
+export const run = (entry: Alepha | Service, opts?: RunOptions): Alepha => {
 	const alepha =
-		typeof arg === "function" && !arg.prototype
-			? (arg as (env?: Env) => Alepha)()
-			: arg instanceof Alepha
-				? arg
-				: Alepha.create({ env: { ...opts?.env } }).with(arg as Service);
+		entry instanceof Alepha
+			? entry
+			: Alepha.create({ env: { ...opts?.env } }).with(entry as Service);
 
 	if (import.meta?.hot) {
 		import.meta.hot.on("alepha:reload", async () => {

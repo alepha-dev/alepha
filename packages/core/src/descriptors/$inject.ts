@@ -1,4 +1,5 @@
 import type { Static, TObject } from "@sinclair/typebox";
+import { AlephaError } from "../errors/AlephaError.ts";
 import type { Service } from "../interfaces/Service.ts";
 import { TypeGuard } from "../providers/TypeProvider.ts";
 import { $cursor } from "./$cursor.ts";
@@ -22,7 +23,7 @@ import { $cursor } from "./$cursor.ts";
 export function $inject<T extends TObject>(type: T): Static<T>;
 export function $inject<T extends object>(type: Service<T>): T;
 export function $inject<T extends object>(type: Service<T> | TObject): T {
-	const { context, definition } = $cursor();
+	const { context, definition, module } = $cursor();
 
 	// allow to inject TypeBox schemas
 	if (TypeGuard.IsSchema(type)) {
@@ -32,6 +33,14 @@ export function $inject<T extends object>(type: Service<T> | TObject): T {
 	// _ = $inject(Alepha)
 	if (type === context.constructor) {
 		return context as T;
+	}
+
+	const moduleOfType = context.moduleOf(type);
+
+	if (module && moduleOfType && moduleOfType !== module) {
+		throw new AlephaError(
+			`Cannot inject '${moduleOfType.name}/${type.name}' into '${module.name}/${definition?.name}'. Service does not belong to the module.`,
+		);
 	}
 
 	return context.get(type, {

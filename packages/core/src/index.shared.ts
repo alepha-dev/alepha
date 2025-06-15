@@ -10,6 +10,7 @@ export * from "./descriptors/$cursor.ts";
 export * from "./descriptors/$hook.ts";
 export * from "./descriptors/$inject.ts";
 export * from "./descriptors/$logger.ts";
+export * from "./descriptors/$module.ts";
 
 export * from "./errors/AppNotStartedError.ts";
 export * from "./errors/CircularDependencyError.ts";

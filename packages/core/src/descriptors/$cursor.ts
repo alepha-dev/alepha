@@ -1,6 +1,7 @@
 import type { Alepha } from "../Alepha.ts";
 import { MissingContextError } from "../errors/MissingContextError.ts";
 import type { Service } from "../interfaces/Service.ts";
+import type { Module } from "./$module.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -14,6 +15,7 @@ import type { Service } from "../interfaces/Service.ts";
 export const __alephaRef: {
 	context?: Alepha;
 	definition?: Service;
+	module?: Module;
 } = {};
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -24,6 +26,7 @@ export const __alephaRef: {
 export interface CursorDescriptor {
 	context: Alepha;
 	definition?: Service;
+	module?: Module;
 }
 
 /**
@@ -55,5 +58,6 @@ export const $cursor = (): CursorDescriptor => {
 	return {
 		context: __alephaRef.context,
 		definition: __alephaRef.definition,
+		module: __alephaRef.module,
 	};
 };

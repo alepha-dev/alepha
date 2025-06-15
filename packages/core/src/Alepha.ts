@@ -3,8 +3,10 @@ import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
+import { OPTIONS } from "./constants/OPTIONS.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { Hook } from "./descriptors/$hook.ts";
+import type { Module, ModuleDescriptor } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { AppNotStartedError } from "./errors/AppNotStartedError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
@@ -48,11 +50,6 @@ export interface State {
 	log: Logger;
 	env?: Readonly<Env>;
 
-	name?: string; // name of the application
-	version?: string; // version of the application
-	description?: string; // description of the application
-	services?: ServiceEntry[]; // list of services to register
-
 	// test hooks
 	beforeAll?: (run: any) => any;
 	afterAll?: (run: any) => any;
@@ -87,6 +84,26 @@ export interface Hooks {
 	 *
 	 */
 	stop: Alepha;
+
+	/**
+	 * Triggered when a state value is mutated.
+	 */
+	"state:mutate": {
+		/**
+		 * The key of the state that was mutated.
+		 */
+		key: keyof State;
+
+		/**
+		 * The new value of the state.
+		 */
+		value: any;
+
+		/**
+		 * The previous value of the state.
+		 */
+		prevValue: any;
+	};
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -246,6 +263,13 @@ export class Alepha {
 	protected events: Record<string, Array<Hook>> = {};
 
 	/**
+	 * List of modules that are registered in the container.
+	 *
+	 * Modules are used to group services and provide a way to register them in the container.
+	 */
+	protected modules: Array<Module> = [];
+
+	/**
 	 * Node.js feature that allows to store context across asynchronous calls.
 	 *
 	 * This is used for logging, tracing, and other context-related features.
@@ -292,8 +316,18 @@ export class Alepha {
 		value?: State[Key],
 	): State[Key] {
 		if (value !== undefined) {
+			if (this.isReady()) {
+				this.emit(
+					"state:mutate",
+					{
+						key,
+						value,
+						prevValue: this.store[key],
+					},
+					{ catch: true },
+				);
+			}
 			this.store[key] = value;
-			// TODO: async event "state:mutate"
 		}
 
 		return this.store[key];
@@ -556,18 +590,46 @@ export class Alepha {
 	 * @param entry - The service to register in the container.
 	 * @return Current instance of Alepha.
 	 */
-	public register<T extends object>(entry: ServiceEntry<T>): this {
+	public register(...entries: Array<ServiceEntry | ModuleDescriptor>): this {
 		if (this.started) {
 			throw new ContainerLockedError();
 		}
 
-		// just check if the entry is not present in the pending instantiation stack
-		// Alepha#get will handle the rest
-		if (this.has(entry, { inStack: true })) {
-			return this;
-		}
+		for (const entry of entries) {
+			if (isDescriptorValue(entry)) {
+				const options = entry[OPTIONS];
+				const services =
+					typeof options.services === "function"
+						? options.services(this.env)
+						: options.services;
 
-		this.get(entry);
+				const module: Module = {
+					...options,
+					services: [],
+				};
+
+				this.modules.push(module);
+
+				if (Array.isArray(services)) {
+					for (const service of services) {
+						module.services.push("use" in service ? service.provide : service);
+					}
+					for (const service of services) {
+						this.register(service);
+					}
+				}
+
+				continue;
+			}
+
+			// just check if the entry is not present in the pending instantiation stack
+			// Alepha#get will handle the rest
+			if (this.has(entry, { inStack: true })) {
+				continue;
+			}
+
+			this.get(entry);
+		}
 
 		return this;
 	}
@@ -983,6 +1045,7 @@ export class Alepha {
 		//
 		__alephaRef.context = this;
 		__alephaRef.definition = definition;
+		__alephaRef.module = this.moduleOf(definition);
 
 		if (typeof definition !== "function") {
 			console.warn("definition is not a function", definition);
@@ -1007,8 +1070,22 @@ export class Alepha {
 
 		__alephaRef.definition =
 			this.pendingInstantiations[this.pendingInstantiations.length - 1];
+		__alephaRef.module = this.moduleOf(__alephaRef.definition);
 
 		return instance;
+	}
+
+	/**
+	 * @interface
+	 */
+	public moduleOf(service: Service): Module | undefined {
+		for (const module of this.modules) {
+			for (const it of module.services) {
+				if (it === service) {
+					return module;
+				}
+			}
+		}
 	}
 }
 

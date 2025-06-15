@@ -22,10 +22,11 @@ import { $cursor } from "./$cursor.ts";
  * ```
  */
 export const $logger = (name?: string) => {
-	const { context, definition } = $cursor();
+	const { context, definition, module } = $cursor();
 
 	return context.log.child({
 		caller: name ?? definition?.name,
+		name: module?.name,
 	});
 };
 
