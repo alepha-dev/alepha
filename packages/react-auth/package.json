@@ -28,7 +28,7 @@
 		"react": "^19"
 	},
 	"scripts": {
-		"build": "pkgroll --clean-dist --sourcemap"
+		"build": "pkgroll --clean-dist"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

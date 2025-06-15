@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, $retry, Alepha, OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import { $retry } from "@alepha/retry";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
 import { apiLinksResponseSchema } from "../schemas/apiLinksResponseSchema.ts";
 import { HttpClient } from "../services/HttpClient.ts";

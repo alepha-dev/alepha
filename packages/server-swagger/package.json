@@ -25,7 +25,8 @@
 	},
 	"scripts": {
 		"copy": "node scripts/copy.ts",
-		"build": "pkgroll --clean-dist --sourcemap && yarn copy"
+		"test": "vitest run",
+		"build": "pkgroll --clean-dist && yarn copy"
 	},
 	"scarfSettings": {
 		"enabled": false

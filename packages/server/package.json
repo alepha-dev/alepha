@@ -14,6 +14,7 @@
 		"@alepha/cache": "0.7.0",
 		"@alepha/core": "0.7.0",
 		"@alepha/datetime": "0.7.0",
+		"@alepha/retry": "0.7.0",
 		"@alepha/router": "0.7.0",
 		"@alepha/security": "0.7.0",
 		"@fastify/busboy": "^3.1.1"
@@ -23,7 +24,8 @@
 		"vitest": "^3.2.3"
 	},
 	"scripts": {
-		"build": "pkgroll --clean-dist --sourcemap"
+		"test": "vitest run",
+		"build": "pkgroll --clean-dist"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

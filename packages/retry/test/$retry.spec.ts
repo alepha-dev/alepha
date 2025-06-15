@@ -1,5 +1,6 @@
+import { Alepha } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $retry, Alepha } from "../src";
+import { $retry } from "../src";
 
 test("$retry - basic", async () => {
 	class Dummy {

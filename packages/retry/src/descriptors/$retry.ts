@@ -1,4 +1,4 @@
-import type { MaybePromise } from "../interfaces/Async.ts";
+import type { MaybePromise } from "@alepha/core";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

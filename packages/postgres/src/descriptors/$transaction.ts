@@ -1,4 +1,5 @@
-import { $cursor, $retry } from "@alepha/core";
+import { $cursor } from "@alepha/core";
+import { $retry } from "@alepha/retry";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 import { VersionMismatchError } from "../errors/VersionMismatchError.ts";

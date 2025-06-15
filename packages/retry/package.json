@@ -1,5 +1,5 @@
 {
-	"name": "@alepha/router",
+	"name": "@alepha/retry",
 	"version": "0.7.0",
 	"type": "module",
 	"license": "MIT",
@@ -9,6 +9,9 @@
 		"dist",
 		"src"
 	],
+	"dependencies": {
+		"@alepha/core": "0.7.0"
+	},
 	"devDependencies": {
 		"pkgroll": "^2.12.2",
 		"vitest": "^3.2.3"
@@ -23,6 +26,7 @@
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
 	"keywords": [
-		"alepha"
+		"alepha",
+		"retry"
 	]
 }
