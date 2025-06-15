@@ -46,7 +46,7 @@ export class Blog {
 		head: {
 			title: "Alepha Blog",
 		},
-		lazy: () => import("./components/Layout"),
+		lazy: () => import("./components/layout/Layout.tsx"),
 		children: [this.home, this.newPost, this.viewPost],
 	});
 }

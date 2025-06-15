@@ -1321,13 +1321,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fontsource/inter@npm:^5.2.6":
-  version: 5.2.6
-  resolution: "@fontsource/inter@npm:5.2.6"
-  checksum: 10c0/7a1347608aab06e53665272ed41fd906ffa96c57b004e8aae91b98177bba97c54b60305d956254c4771387c383f9bdbd917006fb34c9721c020e6017d33e9a5c
-  languageName: node
-  linkType: hard
-
 "@ioredis/commands@npm:^1.1.1":
   version: 1.2.0
   resolution: "@ioredis/commands@npm:1.2.0"
@@ -3290,7 +3283,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "blog-0cb386@workspace:apps/blog"
   dependencies:
-    "@fontsource/inter": "npm:^5.2.6"
     "@mantine/core": "npm:^8.1.0"
     "@mantine/form": "npm:^8.1.0"
     "@mantine/hooks": "npm:^8.1.0"

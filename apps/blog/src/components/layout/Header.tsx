@@ -17,11 +17,10 @@ import {
 	IconPlus,
 	IconSun,
 } from "@tabler/icons-react";
-import type { Blog } from "../Blog.ts";
-import type { PostController } from "../controllers/PostController.ts";
-import Go from "./Go.tsx";
-import SearchBar from "./SearchBar.tsx";
-import { GoogleIcon } from "./icons/GoogleIcon.tsx";
+import type { Blog } from "../../Blog.ts";
+import type { PostController } from "../../controllers/PostController.ts";
+import { GoogleIcon } from "../icons/GoogleIcon.tsx";
+import Go from "../shared/Go.tsx";
 
 const Header = () => {
 	const auth = useAuth();
@@ -39,8 +38,8 @@ const Header = () => {
 					</Flex>
 				</Go>
 			</Flex>
+
 			<Flex gap={"sm"} align={"center"}>
-				<SearchBar />
 				{auth.can<PostController>("createPost") && (
 					<Go<Blog>
 						to={"newPost"}
