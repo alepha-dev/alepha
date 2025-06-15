@@ -20,21 +20,36 @@ import {
 import type { Blog } from "../Blog.ts";
 import type { PostController } from "../controllers/PostController.ts";
 import Go from "./Go.tsx";
+import SearchBar from "./SearchBar.tsx";
 import { GoogleIcon } from "./icons/GoogleIcon.tsx";
 
 const Header = () => {
 	const auth = useAuth();
-
 	return (
 		<Flex h={"100%"} align="center" justify="center">
 			<Flex flex={1}>
-				<Go<Blog> to={"home"} variant={"transparent"} skipActiveCheck>
-					<Text size={"xl"} c={"orange"}>
-						Alepha Blog
-					</Text>
+				<Go<Blog> to={"home"} skipActiveCheck variant={"transparent"}>
+					<Flex direction={"column"}>
+						<Text fw={"bold"} size={"xl"}>
+							Alepha Blog
+						</Text>
+						<Text c={"dimmed"} size={"xs"} mt={-10}>
+							or something like that
+						</Text>
+					</Flex>
 				</Go>
 			</Flex>
 			<Flex gap={"sm"} align={"center"}>
+				<SearchBar />
+				{auth.can<PostController>("createPost") && (
+					<Go<Blog>
+						to={"newPost"}
+						leftSection={<IconPlus size={16} />}
+						variant={"default"}
+					>
+						New Post
+					</Go>
+				)}
 				{!auth.user && (
 					<Button
 						variant={"default"}
@@ -44,30 +59,19 @@ const Header = () => {
 						Sign in with Google
 					</Button>
 				)}
-				{auth.can<PostController>("createPost") && (
-					<Go<Blog>
-						to={"newPost"}
-						leftSection={<IconPlus size={16} />}
-						variant={"subtle"}
-					>
-						New Post
-					</Go>
-				)}
 				{auth.user && (
 					<Menu width={200}>
 						<Menu.Target>
 							<Button
 								leftSection={
-									<Avatar
-										size={24}
-										color={"cyan"}
-										alt={"avatar"}
-										src={auth.user.picture}
-									>
-										NF
+									<Avatar size={24} color={"orange"} alt={"avatar"}>
+										{auth.user.name
+											?.split(" ")
+											.map((it) => it.charAt(0).toUpperCase())
+											.join("")}
 									</Avatar>
 								}
-								variant={"outline"}
+								variant={"default"}
 								rightSection={<IconChevronDown size={16} />}
 							>
 								{auth.user.name}
@@ -95,9 +99,9 @@ export default Header;
 const ToggleDarkMode = () => {
 	const { colorScheme, setColorScheme } = useMantineColorScheme();
 	return (
-		<Menu>
+		<Menu position={"bottom-end"}>
 			<Menu.Target>
-				<ActionIcon color={"dark"} size={"lg"} variant={"transparent"}>
+				<ActionIcon size={"lg"} variant={"default"}>
 					{<IconMoon />}
 				</ActionIcon>
 			</Menu.Target>

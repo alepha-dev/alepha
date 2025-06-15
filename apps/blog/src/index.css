@@ -1,11 +1,2 @@
 @import "@mantine/core/styles.css";
-
-body {
-	background-color: var(--mantine-color-gray-1);
-}
-
-html[data-mantine-color-scheme="dark"] {
-	body {
-		background-color: var(--mantine-color-dark-8);
-	}
-}
+@import "@mantine/nprogress/styles.css";

@@ -1,6 +1,7 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
+import { ErrorViewer, ErrorViewerProd } from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
@@ -52,7 +53,7 @@ export class PageDescriptorProvider {
 		const layers: Layer[] = []; // result layers
 		let context: Record<string, any> = {}; // all props
 		const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
-		let onError = this.renderError; // error handler
+		request.onError = (error) => this.renderError(error); // error handler
 
 		let parent = route.parent;
 		while (parent) {
@@ -182,12 +183,12 @@ export class PageDescriptorProvider {
 			const path = acc.replace(/\/+/, "/");
 			const localErrorHandler = this.getErrorHandler(it.route);
 			if (localErrorHandler) {
-				onError = localErrorHandler;
+				request.onError = localErrorHandler;
 			}
 
 			// handler has thrown an error, render an error view
 			if (it.error) {
-				const element = await onError(it.error);
+				const element = await request.onError(it.error);
 
 				layers.push({
 					props,
@@ -293,8 +294,11 @@ export class PageDescriptorProvider {
 		}
 	}
 
-	public renderError(e: Error): ReactNode {
-		return createElement("pre", { style: { overflow: "auto" } }, `${e.stack}`);
+	public renderError(error: Error): ReactNode {
+		if (this.alepha.isProduction()) {
+			return createElement(ErrorViewerProd, { error });
+		}
+		return createElement(ErrorViewer, { error });
 	}
 
 	public renderEmptyView(): ReactNode {

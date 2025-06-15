@@ -1321,6 +1321,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource/inter@npm:^5.2.6":
+  version: 5.2.6
+  resolution: "@fontsource/inter@npm:5.2.6"
+  checksum: 10c0/7a1347608aab06e53665272ed41fd906ffa96c57b004e8aae91b98177bba97c54b60305d956254c4771387c383f9bdbd917006fb34c9721c020e6017d33e9a5c
+  languageName: node
+  linkType: hard
+
 "@ioredis/commands@npm:^1.1.1":
   version: 1.2.0
   resolution: "@ioredis/commands@npm:1.2.0"
@@ -1446,6 +1453,29 @@ __metadata:
   peerDependencies:
     react: ^18.x || ^19.x
   checksum: 10c0/65c0f7c04b5019aafe5a924971b8706ecb1e73df786c5368ab59cd78f9258778bfd3bb880d7288d10e6ac2ecdef273bfbc8ce7ff080dfd4644be829321967fe2
+  languageName: node
+  linkType: hard
+
+"@mantine/nprogress@npm:^8.1.0":
+  version: 8.1.0
+  resolution: "@mantine/nprogress@npm:8.1.0"
+  dependencies:
+    "@mantine/store": "npm:8.1.0"
+  peerDependencies:
+    "@mantine/core": 8.1.0
+    "@mantine/hooks": 8.1.0
+    react: ^18.x || ^19.x
+    react-dom: ^18.x || ^19.x
+  checksum: 10c0/48ca1781398312e48ba57fcef93eb7d042f110e97ef0d5bda65a5192315a5e55369a34aeb323fab7959561b47721aa00e21d27add62146ac5fb03d75b6ba5ea8
+  languageName: node
+  linkType: hard
+
+"@mantine/store@npm:8.1.0":
+  version: 8.1.0
+  resolution: "@mantine/store@npm:8.1.0"
+  peerDependencies:
+    react: ^18.x || ^19.x
+  checksum: 10c0/232772171fd9dcb2911d4fccb91c9981e4a62ad1fb623dee6a626cbc17a83dc3e8eef1ae90e63e44117e97e872e2ce4e6dc5dd425bcda59aca134db392103081
   languageName: node
   linkType: hard
 
@@ -3260,9 +3290,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "blog-0cb386@workspace:apps/blog"
   dependencies:
+    "@fontsource/inter": "npm:^5.2.6"
     "@mantine/core": "npm:^8.1.0"
     "@mantine/form": "npm:^8.1.0"
     "@mantine/hooks": "npm:^8.1.0"
+    "@mantine/nprogress": "npm:^8.1.0"
     "@tabler/icons-react": "npm:3.17.0"
     "@types/react": "npm:^19.1.8"
     drizzle-kit: "npm:^0.31.1"

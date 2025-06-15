@@ -1,4 +1,4 @@
-import { NestedView } from "@alepha/react";
+import { NestedView, useRouterEvents } from "@alepha/react";
 import {
 	AppShell,
 	ColorSchemeScript,
@@ -6,26 +6,39 @@ import {
 	MantineProvider,
 	createTheme,
 } from "@mantine/core";
+import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { useMemo } from "react";
 import Header from "./Header.tsx";
 
 const Layout = () => {
 	const theme = useMemo(() => {
-		return createTheme({});
+		return createTheme({
+			primaryColor: "orange",
+		});
 	}, []);
+
+	useRouterEvents({
+		onBegin: () => {
+			nprogress.start();
+		},
+		onEnd: () => {
+			nprogress.complete();
+		},
+	});
 
 	return (
 		<>
 			<ColorSchemeScript defaultColorScheme="auto" />
 			<MantineProvider theme={theme} defaultColorScheme="auto">
-				<AppShell header={{ height: 60 }}>
+				<NavigationProgress />
+				<AppShell header={{ height: 64 }}>
 					<AppShell.Header>
-						<Container h={"100%"}>
+						<Container size={"xl"} h={"100%"}>
 							<Header />
 						</Container>
 					</AppShell.Header>
 					<AppShell.Main>
-						<Container className="main-container">
+						<Container size={"xl"}>
 							<NestedView />
 						</Container>
 					</AppShell.Main>

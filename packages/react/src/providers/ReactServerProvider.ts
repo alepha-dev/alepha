@@ -276,7 +276,14 @@ export class ReactServerProvider {
 			}
 
 			const element = this.pageDescriptorProvider.root(state, context);
-			const app = renderToString(element);
+
+			let app = "";
+			try {
+				app = renderToString(element);
+			} catch (error) {
+				this.log.error("Error during SSR", error);
+				app = renderToString(context.onError(error as Error));
+			}
 
 			const hydrationData: ReactHydrationState = {
 				links: context.links,

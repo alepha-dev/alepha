@@ -23,9 +23,6 @@ export class Blog {
 		path: "/new",
 		can: () => this.posts.createPost.can(),
 		lazy: () => import("./components/NewPost"),
-		resolve: async () => {
-			return {};
-		},
 	});
 
 	viewPost = $page({
