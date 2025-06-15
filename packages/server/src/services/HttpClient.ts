@@ -417,7 +417,7 @@ export class HttpClient {
 		config: Partial<ServerRequestConfigEntry> = {},
 		options: ClientRequestOptions & ClientScope = {},
 	) {
-		const als = this.alepha.als.get<ServerRequest>("request");
+		const als = this.alepha.context.get<ServerRequest>("request");
 		const user = options?.user ?? als?.user;
 
 		const links = await this.getLinks();
@@ -482,7 +482,7 @@ export class HttpClient {
 	public can(name: string): boolean {
 		const links = this.alepha.isBrowser()
 			? this.links
-			: this.alepha.als.get<{ links: HttpClientLink[] }>("links")?.links;
+			: this.alepha.context.get<{ links: HttpClientLink[] }>("links")?.links;
 
 		if (!links) {
 			return false;

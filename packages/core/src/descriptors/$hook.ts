@@ -3,7 +3,7 @@ import { KIND } from "../constants/KIND.ts";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { __descriptor } from "../helpers/descriptor.ts";
 import type { Async } from "../interfaces/Async.ts";
-import type { Class } from "../interfaces/Class.ts";
+import type { Service } from "../interfaces/Service.ts";
 import { $cursor } from "./$cursor.ts";
 
 const KEY = "HOOK";
@@ -19,15 +19,24 @@ export interface HookOptions<T extends keyof Hooks> {
 	 */
 	handler: (app: Hooks[T]) => Async<any>;
 
+	/**
+	 * Force the hook to run first or last on the list of hooks.
+	 */
+	priority?: "first" | "last";
+
+	/**
+	 * Empty placeholder, not working yet. :-)
+	 */
 	before?: object | Array<object>;
 
+	/**
+	 * Empty placeholder, not working yet. :-)
+	 */
 	after?: object | Array<object>;
-
-	priority?: "first" | "last";
 }
 
 export interface Hook<T extends keyof Hooks = any> {
-	caller?: Class;
+	caller?: Service;
 	priority?: "first" | "last";
 	callback: (payload: Hooks[T]) => Async<void>;
 }

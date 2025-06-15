@@ -1,12 +1,12 @@
 import type { Env } from "./Alepha.ts";
 import { Alepha } from "./Alepha.ts";
-import type { Class } from "./interfaces/Class.ts";
-import type { RunOptions } from "./run.ts";
+import type { RunOptions } from "./index.shared.ts";
+import type { Service } from "./interfaces/Service.ts";
 
 export * from "./index.shared.ts";
 
 export const run = (
-	arg: Alepha | Class | ((env?: Env) => Alepha),
+	arg: Alepha | Service | ((env?: Env) => Alepha),
 	opts?: RunOptions,
 ): Alepha => {
 	const alepha =
@@ -15,7 +15,7 @@ export const run = (
 			: arg instanceof Alepha
 				? arg
 				: Alepha.create({ env: { ...process.env, ...opts?.env } }).with(
-						arg as Class,
+						arg as Service,
 					);
 
 	(globalThis as any).__alepha = alepha;

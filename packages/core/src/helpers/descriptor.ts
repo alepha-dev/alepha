@@ -1,40 +1,9 @@
 import { KIND } from "../constants/KIND.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
 import type { CursorDescriptor } from "../descriptors/$cursor.ts";
 import { $cursor } from "../descriptors/$cursor.ts";
-import type { Class } from "../interfaces/Class.ts";
-import { OPTIONS } from "../constants/OPTIONS.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Light-weight event emitter like.
- */
-export class EventEmitterLike<TEvents extends { [key: string]: any }> {
-	private hooks: {
-		[key in keyof TEvents]?: ((data: TEvents[key]) => void)[];
-	} = {};
-
-	on<T extends keyof TEvents>(
-		event: T,
-		callback: (data: TEvents[T]) => void,
-	): void {
-		if (!this.hooks[event]) {
-			this.hooks[event] = [];
-		}
-
-		this.hooks[event].push(callback);
-	}
-
-	emit<T extends keyof TEvents>(event: T, data: TEvents[T]): void {
-		if (!this.hooks[event]) {
-			return;
-		}
-
-		for (const callback of this.hooks[event]) {
-			callback(data);
-		}
-	}
-}
+import type { Service } from "../interfaces/Service.ts";
+import { EventEmitterLike } from "./EventEmitterLike.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -46,6 +15,8 @@ export class EventEmitterLike<TEvents extends { [key: string]: any }> {
 export const descriptorEvents = new EventEmitterLike<{
 	create: CursorDescriptor & { [KIND]: string };
 }>();
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Register a descriptor.
@@ -62,6 +33,8 @@ export const __descriptor = (kind: string) => {
 	});
 };
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Auto-inject a class/module when a descriptor is created.
  *
@@ -70,7 +43,7 @@ export const __descriptor = (kind: string) => {
  * @param descriptor
  * @param to
  */
-export const __bind = (descriptor: { [KIND]: string }, ...to: Class[]) => {
+export const __bind = (descriptor: { [KIND]: string }, ...to: Service[]) => {
 	descriptorEvents.on("create", (ctx) => {
 		if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
 			if (ctx[KIND] === descriptor[KIND]) {
@@ -81,6 +54,8 @@ export const __bind = (descriptor: { [KIND]: string }, ...to: Class[]) => {
 		}
 	});
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Check if the value is a descriptor value.
@@ -104,6 +79,8 @@ export interface Descriptor<T extends object = any> {
 	(options: T): DescriptorIdentifier<T>;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Class member descriptor.
  */
@@ -111,6 +88,8 @@ export interface DescriptorIdentifier<T = object> {
 	[KIND]: string; // this is required to be able to use `isDescriptorValue` during processing.
 	[OPTIONS]: T;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Descriptor identifier + his instance + his key.

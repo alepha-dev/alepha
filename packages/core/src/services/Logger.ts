@@ -1,6 +1,10 @@
 import type { AsyncLocalStorageProvider } from "../providers/AsyncLocalStorageProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export type LogLevel = "error" | "warn" | "info" | "debug" | "trace" | "silent";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface LoggerEnv {
 	/**
@@ -29,6 +33,8 @@ export interface LoggerEnv {
 	 */
 	LOG_FORMAT?: "json" | "text";
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface LoggerOptions {
 	/**
@@ -67,6 +73,8 @@ export interface LoggerOptions {
 	als?: AsyncLocalStorageProvider;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export const COLORS = {
 	reset: "\x1b[0m",
 	grey: "\x1b[90m",
@@ -87,6 +95,8 @@ export const LEVEL_COLORS: Record<LogLevel, string> = {
 	debug: COLORS.blue,
 	trace: COLORS.grey,
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class Logger {
 	protected levelOrder: Record<LogLevel, number> = {
@@ -337,7 +347,7 @@ export class Logger {
 	}
 }
 
-// ---
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class MockLogger extends Logger {
 	store: MockLoggerStore;
@@ -378,6 +388,8 @@ export class MockLogger extends Logger {
 		});
 	}
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface MockLoggerStore {
 	stack: Array<{ date: string; level: string; msg: string; data?: object }>;

@@ -90,8 +90,8 @@ export class DrizzleKitProvider {
 	protected async loadMigrationSnapshot(provider: PostgresProvider) {
 		const app = this.alepha.env.APP_NAME ?? "app";
 		await provider.execute(sql`
-					CREATE SCHEMA IF NOT EXISTS alepha;
-					CREATE TABLE IF NOT EXISTS alepha.migrations (
+					CREATE SCHEMA IF NOT EXISTS "drizzle";
+					CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_dev_migrations" (
 						"id" SERIAL PRIMARY KEY,
 						"name" TEXT NOT NULL,
 						"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),

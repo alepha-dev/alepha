@@ -191,7 +191,7 @@ export class ServerActionDescriptorProvider {
 			options: ClientRequestOptions = {},
 		): Promise<any> => {
 			const action = value[OPTIONS];
-			const request = this.alepha.als.get<ServerRequest>("request");
+			const request = this.alepha.context.get<ServerRequest>("request");
 			if (request) {
 				options.user ??= request?.user;
 			}

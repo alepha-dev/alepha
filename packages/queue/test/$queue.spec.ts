@@ -1,4 +1,4 @@
-import type { ClassEntry } from "@alepha/core";
+import type { ServiceEntry } from "@alepha/core";
 import { $inject, Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
 import {
@@ -43,7 +43,7 @@ const testQueueBasic = async (provider?: "redis") => {
 	}
 
 	const createApp = async <T extends object>(
-		testClass: ClassEntry<T>,
+		testClass: ServiceEntry<T>,
 		provider?: "redis",
 	): Promise<{ app: Alepha; test: T }> => {
 		const app = Alepha.create({

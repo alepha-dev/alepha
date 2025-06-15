@@ -1,12 +1,12 @@
 import { expect, test } from "vitest";
-import type { Class } from "../src";
+import type { Service } from "../src";
 import {
 	$cursor,
 	$inject,
 	Alepha,
 	CircularDependencyError,
-	t,
 	TypeBoxError,
+	t,
 } from "../src";
 import { MissingContextError } from "../src/errors/MissingContextError.ts";
 
@@ -80,7 +80,7 @@ test("$inject - env", () => {
 });
 
 test("$inject - circular", () => {
-	const superInject = (type: Class) => {
+	const superInject = (type: Service) => {
 		const { context } = $cursor();
 		context.get(Module); // <- trying to "#get" during a tree walk is bad
 
@@ -106,7 +106,7 @@ test("$inject - circular", () => {
 });
 
 test("$inject - circular fix", () => {
-	const superInject = <T extends object>(type: Class<T>): T => {
+	const superInject = <T extends object>(type: Service<T>): T => {
 		const { context } = $cursor();
 		context.register(Module); // <- replace .get by .register to fix circular dependency
 		return context.get(type);

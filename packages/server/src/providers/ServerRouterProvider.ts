@@ -99,7 +99,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		const requestId = this.createRequestId();
 
-		return await this.alepha.als.run(
+		return await this.alepha.context.run(
 			{
 				context: requestId, // for logging
 			},
@@ -177,7 +177,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 		// request is ready to be used
 		if (withAls) {
-			this.alepha.als.set<ServerRequest>("request", request as ServerRequest);
+			this.alepha.context.set<ServerRequest>(
+				"request",
+				request as ServerRequest,
+			);
 		}
 
 		if (request.reply.body == null) {

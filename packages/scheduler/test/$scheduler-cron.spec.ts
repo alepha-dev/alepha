@@ -1,4 +1,4 @@
-import type { ClassEntry } from "@alepha/core";
+import type { ServiceEntry } from "@alepha/core";
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import {
@@ -32,7 +32,7 @@ class TestSchedulerCron {
 }
 
 const createApp = <T extends object>(
-	testClass: ClassEntry<T>,
+	testClass: ServiceEntry<T>,
 	LOCK: boolean,
 	provider?: "redis",
 ): Alepha => {

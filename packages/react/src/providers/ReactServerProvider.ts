@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
 	$hook,
@@ -30,7 +29,7 @@ import { ServerHeadProvider } from "./ServerHeadProvider.ts";
 export const envSchema = t.object({
 	REACT_SERVER_DIST: t.string({ default: "public" }),
 	REACT_SERVER_PREFIX: t.string({ default: "" }),
-	REACT_SSR_ENABLED: t.boolean({ default: false }),
+	REACT_SSR_ENABLED: t.optional(t.boolean()),
 	REACT_ROOT_ID: t.string({ default: "root" }),
 });
 
@@ -59,9 +58,11 @@ export class ReactServerProvider {
 		name: "configure",
 		handler: async () => {
 			const pages = this.alepha.getDescriptorValues($page);
-			if (pages.length === 0) {
-				return;
-			}
+
+			const ssrEnabled =
+				pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
+
+			this.alepha.state("ReactServerProvider.ssr", ssrEnabled);
 
 			for (const { key, instance, value } of pages) {
 				const name = value[OPTIONS].name ?? key;
@@ -71,44 +72,71 @@ export class ReactServerProvider {
 				}
 			}
 
+			// development mode
 			if (this.alepha.isServerless() === "vite") {
-				await this.configureVite();
+				await this.configureVite(ssrEnabled);
 				return;
 			}
 
+			// production mode
 			let root = "";
+
+			// non-serverless mode only -> serve static files
 			if (!this.alepha.isServerless()) {
 				root = this.getPublicDirectory();
-
 				if (!root) {
-					this.log.warn("Missing static files, SSR will be disabled");
-					return;
+					this.log.warn(
+						"Missing static files, static file server will be disabled",
+					);
+				} else {
+					this.log.debug(`Using static files from: ${root}`);
+					await this.configureStaticServer(root);
 				}
-
-				this.log.debug(`Using static files from: ${root}`);
-
-				await this.configureStaticServer(root);
 			}
 
-			const template =
-				this.alepha.state("ReactServerProvider.template") ??
-				(await readFile(join(root, "index.html"), "utf-8"));
+			if (ssrEnabled) {
+				await this.registerPages(async () => this.template);
+				this.log.info("SSR OK");
+				return;
+			}
 
-			await this.registerPages(async () => template);
+			// no SSR enabled, serve index.html for all unmatched routes
+			this.log.info("SSR is disabled, use History API fallback");
+			await this.serverRouterProvider.route({
+				path: "*",
+				handler: async ({ url, reply }) => {
+					if (url.pathname.includes(".")) {
+						// If the request is for a file (e.g., /style.css), do not fallback
+						reply.headers["content-type"] = "text/plain";
+						reply.body = "Not Found";
+						reply.status = 404;
+						return;
+					}
 
-			this.alepha.state("ReactServerProvider.ssr", true);
+					reply.headers["content-type"] = "text/html";
+					reply.status = 200;
+
+					// serve index.html for all unmatched routes
+					return this.template;
+				},
+			});
 		},
 	});
+
+	public get template() {
+		return this.alepha.state("ReactServerProvider.template");
+	}
 
 	protected async registerPages(
 		templateLoader: () => Promise<string | undefined>,
 	) {
 		for (const page of this.pageDescriptorProvider.getPages()) {
 			this.log.debug(`+ ${page.match} -> ${page.name}`);
+
 			await this.serverRouterProvider.route({
 				method: "GET",
 				path: page.match,
-				handler: this.createHandler(page, templateLoader),
+				handler: this.createSsrHandler(page, templateLoader),
 			});
 		}
 	}
@@ -135,14 +163,18 @@ export class ReactServerProvider {
 		});
 	}
 
-	protected async configureVite() {
-		const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
+	protected async configureVite(ssrEnabled: boolean) {
+		if (!ssrEnabled) {
+			// do nothing, vite will handle everything for us
+			return;
+		}
+
 		this.log.info("SSR (vite) OK");
-		this.alepha.state("ReactServerProvider.ssr", true);
-		const templateUrl = `${url}/index.html`;
+
+		const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
 
 		await this.registerPages(() =>
-			fetch(templateUrl)
+			fetch(`${url}/index.html`)
 				.then((it) => it.text())
 				.catch(() => undefined),
 		);
@@ -177,7 +209,7 @@ export class ReactServerProvider {
 		};
 	}
 
-	protected createHandler(
+	protected createSsrHandler(
 		page: PageRoute,
 		templateLoader: () => Promise<string | undefined>,
 	): ServerHandler {
@@ -209,7 +241,7 @@ export class ReactServerProvider {
 					}),
 				) as any;
 
-				this.alepha.als.set("links", context.links);
+				this.alepha.context.set("links", context.links);
 			}
 
 			let target: PageRoute | undefined = page; // TODO: move to PageDescriptorProvider

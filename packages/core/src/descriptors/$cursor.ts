@@ -1,9 +1,11 @@
 import type { Alepha } from "../Alepha.ts";
 import { MissingContextError } from "../errors/MissingContextError.ts";
-import type { Class } from "../interfaces/Class.ts";
+import type { Service } from "../interfaces/Service.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Global variable!
+ * /!\ Global variable /!\
  *
  * Store the current context and definition during injection phase.
  *
@@ -11,15 +13,17 @@ import type { Class } from "../interfaces/Class.ts";
  */
 export const __alephaRef: {
 	context?: Alepha;
-	definition?: Class;
+	definition?: Service;
 } = {};
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Cursor descriptor.
  */
 export interface CursorDescriptor {
 	context: Alepha;
-	definition?: Class;
+	definition?: Service;
 }
 
 /**

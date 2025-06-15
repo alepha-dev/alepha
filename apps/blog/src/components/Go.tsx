@@ -5,14 +5,22 @@ const Go = <T extends object>(
 	props: ButtonProps & {
 		to: keyof VirtualRouter<T>;
 		params?: Record<string, any>;
+		skipActiveCheck?: boolean;
 	},
 ) => {
+	const { to, params, skipActiveCheck, ...restProps } = props;
+
 	const router = useRouter();
-	const anchorProps = router.anchor<T>(props.to, props);
+	const anchorProps = router.anchor<T>(to, props);
 	const { isActive } = useActive(anchorProps.href);
 
 	return (
-		<Button component="a" disabled={isActive} {...props} {...anchorProps} />
+		<Button
+			component="a"
+			disabled={!skipActiveCheck && isActive}
+			{...restProps}
+			{...anchorProps}
+		/>
 	);
 };
 

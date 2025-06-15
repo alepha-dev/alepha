@@ -1,18 +1,26 @@
 import { useAuth } from "@alepha/react-auth";
-import { ActionIcon, Avatar, Button, Flex, Menu, Tooltip } from "@mantine/core";
 import {
-	IconBrandGoogleFilled,
+	ActionIcon,
+	Avatar,
+	Button,
+	Flex,
+	Menu,
+	Text,
+	useMantineColorScheme,
+} from "@mantine/core";
+import {
+	IconCheck,
 	IconChevronDown,
-	IconHome,
+	IconDeviceLaptop,
 	IconLogout,
 	IconMoon,
 	IconPlus,
 	IconSun,
 } from "@tabler/icons-react";
-import { useState } from "react";
 import type { Blog } from "../Blog.ts";
 import type { PostController } from "../controllers/PostController.ts";
 import Go from "./Go.tsx";
+import { GoogleIcon } from "./icons/GoogleIcon.tsx";
 
 const Header = () => {
 	const auth = useAuth();
@@ -20,16 +28,17 @@ const Header = () => {
 	return (
 		<Flex h={"100%"} align="center" justify="center">
 			<Flex flex={1}>
-				<Go<Blog> to={"home"} leftSection={<IconHome />} variant={"subtle"}>
-					Home
+				<Go<Blog> to={"home"} variant={"transparent"} skipActiveCheck>
+					<Text size={"xl"} c={"orange"}>
+						Alepha Blog
+					</Text>
 				</Go>
 			</Flex>
 			<Flex gap={"sm"} align={"center"}>
 				{!auth.user && (
 					<Button
-						variant={"outline"}
-						leftSection={<IconBrandGoogleFilled />}
-						radius={"xl"}
+						variant={"default"}
+						leftSection={<GoogleIcon />}
 						onClick={() => auth.login()}
 					>
 						Sign in with Google
@@ -84,23 +93,37 @@ const Header = () => {
 export default Header;
 
 const ToggleDarkMode = () => {
-	const [dark, setDark] = useState(false);
-
+	const { colorScheme, setColorScheme } = useMantineColorScheme();
 	return (
-		<Tooltip label={dark ? "Light mode" : "Dark mode"}>
-			<ActionIcon
-				size={"lg"}
-				onClick={() => {
-					setDark(!dark);
-					document.documentElement.setAttribute(
-						"data-mantine-color-scheme",
-						dark ? "light" : "dark",
-					);
-				}}
-				variant={"subtle"}
-			>
-				{dark ? <IconSun /> : <IconMoon />}
-			</ActionIcon>
-		</Tooltip>
+		<Menu>
+			<Menu.Target>
+				<ActionIcon color={"dark"} size={"lg"} variant={"transparent"}>
+					{<IconMoon />}
+				</ActionIcon>
+			</Menu.Target>
+			<Menu.Dropdown>
+				<Menu.Item
+					leftSection={<IconSun size={16} />}
+					rightSection={colorScheme === "light" && <IconCheck size={16} />}
+					onClick={() => setColorScheme("light")}
+				>
+					Light
+				</Menu.Item>
+				<Menu.Item
+					leftSection={<IconMoon size={16} />}
+					rightSection={colorScheme === "dark" && <IconCheck size={16} />}
+					onClick={() => setColorScheme("dark")}
+				>
+					Dark
+				</Menu.Item>
+				<Menu.Item
+					leftSection={<IconDeviceLaptop size={16} />}
+					rightSection={colorScheme === "auto" && <IconCheck size={16} />}
+					onClick={() => setColorScheme("auto")}
+				>
+					System
+				</Menu.Item>
+			</Menu.Dropdown>
+		</Menu>
 	);
 };

@@ -42,6 +42,8 @@ export type {
 	TSchema,
 } from "@sinclair/typebox";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class TypeProvider {
 	static DEFAULT_STRING_MAX_LENGTH = 255;
 	static DEFAULT_LONG_STRING_MAX_LENGTH = 1024;
@@ -363,19 +365,21 @@ export class TypeProvider {
 			...options,
 		});
 
-	file = (options?: { max?: number }): TFile =>
+	public file = (options?: { max?: number }): TFile =>
 		t.unsafe<FileLike>("Any", {
 			[OPTIONS]: options,
 			format: "binary",
 			type: "string",
 		});
 
-	stream = (): TStream =>
+	public stream = (): TStream =>
 		t.unsafe<StreamLike>("Any", {
 			format: "stream",
 			type: "string",
 		});
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface FileLike {
 	name: string;
@@ -387,12 +391,10 @@ export interface FileLike {
 	text(): Promise<string>;
 	filepath?: string;
 }
-export type TFile = TUnsafe<FileLike>;
 
+export type TFile = TUnsafe<FileLike>;
 export type StreamLike = ReadableStream | NodeWebStream | Readable;
 export type TStream = TUnsafe<StreamLike>;
-
-export const t = new TypeProvider();
 
 export const isTypeFile = (value: TSchema): value is TFile => {
 	return (
@@ -424,11 +426,19 @@ export const isTypeStream = (value: TSchema): value is TStream => {
 	);
 };
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export type TextLength = "short" | "long" | "rich";
 
 export interface AlephaStringOptions extends StringOptions {
 	size?: TextLength;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const t = new TypeProvider();
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 for (const [formatName, formatValue] of Object.entries(fullFormats)) {
 	if (!FormatRegistry.Has(formatName)) {
@@ -440,6 +450,7 @@ for (const [formatName, formatValue] of Object.entries(fullFormats)) {
 			FormatRegistry.Set(formatName, formatValue);
 	}
 }
+// ---------------------------------------------------------------------------------------------------------------------
 
 export const isUUID = (value: string): boolean => {
 	return fullFormats.uuid.test(value);

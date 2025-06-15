@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { basename } from "node:path";
 import { loadEnv } from "vite";
 
 export interface ViteAlephaBuildVercelOptions {
@@ -11,6 +12,11 @@ export interface ViteAlephaBuildVercelOptions {
 	 * The directory where the build output will be placed.
 	 */
 	distDir?: string;
+
+	/**
+	 * The name of the project.
+	 */
+	projectName?: string;
 }
 
 /**
@@ -20,19 +26,29 @@ export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
 	const clientDir = opts.clientDir ?? "public";
 	const distDir = opts.distDir ?? "dist";
 
+	// project name is "dist" by default, we use the current working directory name if not specified
+	const projectName = opts.projectName ?? basename(process.cwd());
+
+	const warning =
+		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
+		"\n" +
+		"// Changes to this file will be lost when the code is regenerated.\n";
+
 	return {
 		name: "vite-plugin-alepha-build-vercel",
 		apply: "build",
 		writeBundle() {
 			const env = loadEnv("production", process.cwd(), "");
 
+			// ensure the api directory exists
 			if (!existsSync(`${distDir}/api`)) {
 				mkdirSync(`${distDir}/api`);
 			}
 
+			// add the only one entry point for Vercel
 			writeFileSync(
 				`${distDir}/api/index.mjs`,
-				`import "../index.mjs";
+				`${warning}\nimport "../index.mjs";
 
 export default async function (req, res) {
 \tawait __alepha.start();
@@ -41,13 +57,12 @@ export default async function (req, res) {
 `,
 			);
 
+			// always generate a vercel.json file
 			writeFileSync(
 				`${distDir}/vercel.json`,
 				JSON.stringify(
 					{
-						env: {
-							RUNTIME: "vercel",
-						},
+						name: projectName,
 						rewrites: [
 							{
 								source: "/(.*)",
@@ -63,6 +78,7 @@ export default async function (req, res) {
 				),
 			);
 
+			// generate .vercel/project.json if VERCEL_PROJECT_ID and VERCEL_ORG_ID are set
 			const projectId = env.VERCEL_PROJECT_ID;
 			const orgId = env.VERCEL_ORG_ID;
 			if (projectId && orgId) {

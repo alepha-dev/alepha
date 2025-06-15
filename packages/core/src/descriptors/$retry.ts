@@ -1,3 +1,7 @@
+import type { MaybePromise } from "../interfaces/Async.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Retry Descriptor options.
  */
@@ -17,12 +21,12 @@ export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
 	delay?: number;
 
 	/**
-	 *
+	 * Optional condition to determine when to retry.
 	 */
 	when?: (error: Error) => boolean;
 
 	/**
-	 *
+	 * The function to retry.
 	 */
 	handler: T;
 
@@ -40,17 +44,46 @@ export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
 	) => void;
 }
 
-export type MaybePromise<T> = T extends Promise<any> ? T : Promise<T>;
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type RetryDescriptor<T extends (...args: any[]) => any> = (
+	...parameters: Parameters<T>
+) => MaybePromise<ReturnType<T>>;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Retry descriptor.
+ * `$retry` creates a retry descriptor.
  *
- * @param opts - Retry descriptor options.
- * @returns A function that will retry the handler.
+ * It will retry the given function up to `max` times with a delay of `delay` milliseconds between attempts.
+ *
+ * @example
+ * ```ts
+ * import { $retry } from "@alepha/core";
+ *
+ * class MyService {
+ * 	fetchData = $retry({
+ * 		max: 5, // maximum number of attempts
+ * 		delay: 1000, // ms
+ * 		when: (error) => error.message.includes("Network Error"),
+ * 		handler: async (url: string) => {
+ * 			const response = await fetch(url);
+ * 			if (!response.ok) {
+ * 				throw new Error(`Failed to fetch: ${response.statusText}`);
+ * 			}
+ * 			return response.json();
+ * 		},
+ * 		onError: (error, attempt, url) => {
+ * 	    // error happened, log it or handle it
+ * 			console.error(`Attempt ${attempt} failed for ${url}:`, error);
+ * 		},
+ * 	});
+ * }
+ * ```
  */
 export const $retry = <T extends (...args: any[]) => any>(
 	opts: RetryDescriptorOptions<T>,
-): ((...parameters: Parameters<T>) => MaybePromise<ReturnType<T>>) => {
+): RetryDescriptor<T> => {
 	const attempts = opts.max ?? 3;
 	const delay = opts.delay ?? 0;
 	const when = opts.when;
@@ -92,3 +125,5 @@ export const $retry = <T extends (...args: any[]) => any>(
 
 	return func as T;
 };
+
+// ---------------------------------------------------------------------------------------------------------------------

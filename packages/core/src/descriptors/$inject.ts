@@ -1,5 +1,5 @@
 import type { Static, TObject } from "@sinclair/typebox";
-import type { Class } from "../interfaces/Class.ts";
+import type { Service } from "../interfaces/Service.ts";
 import { TypeGuard } from "../providers/TypeProvider.ts";
 import { $cursor } from "./$cursor.ts";
 
@@ -20,8 +20,8 @@ import { $cursor } from "./$cursor.ts";
  * @returns Instance of the specified type
  */
 export function $inject<T extends TObject>(type: T): Static<T>;
-export function $inject<T extends object>(type: Class<T>): T;
-export function $inject<T extends object>(type: Class<T> | TObject): T {
+export function $inject<T extends object>(type: Service<T>): T;
+export function $inject<T extends object>(type: Service<T> | TObject): T {
 	const { context, definition } = $cursor();
 
 	// allow to inject TypeBox schemas
@@ -36,6 +36,6 @@ export function $inject<T extends object>(type: Class<T> | TObject): T {
 
 	return context.get(type, {
 		// keep the parent for better error messages and circular dependencies detection
-		parent: definition ?? (context.constructor as Class),
+		parent: definition ?? (context.constructor as Service),
 	});
 }

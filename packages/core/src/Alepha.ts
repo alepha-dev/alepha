@@ -1,4 +1,4 @@
-import type { Record, Static, TObject, TSchema } from "@sinclair/typebox";
+import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
@@ -13,33 +13,45 @@ import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import type { Descriptor, DescriptorItem } from "./helpers/descriptor.ts";
 import { isDescriptorValue } from "./helpers/descriptor.ts";
 import type { Async } from "./interfaces/Async.ts";
-import type { Class, ClassEntry, ClassProvider } from "./interfaces/Class.ts";
+import type { Service, ServiceEntry } from "./interfaces/Service.ts";
 import { AsyncLocalStorageProvider } from "./providers/AsyncLocalStorageProvider.ts";
 import { Logger, type LoggerEnv } from "./services/Logger.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface Env extends LoggerEnv {
 	[key: string]: string | boolean | number | undefined;
 
 	/**
-	 *
+	 * Optional environment variable that indicates the current environment.
 	 */
 	NODE_ENV?: "dev" | "test" | "production";
 
 	/**
-	 * Optional name of the application.
+	 * Optional name of the application. Same as `state.name`.
 	 */
 	APP_NAME?: string;
 
 	/**
-	 * If true, the container will not automatically register the default providers.
-	 * Default is false.
+	 * If true, the container will not automatically register the default providers based on the descriptors.
+	 *
+	 * It means that you have to alepha.with(ServiceModule) manually. No magic.
+	 *
+	 * @default false
 	 */
 	EXPLICIT_PROVIDERS?: boolean;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface State {
 	log: Logger;
 	env?: Readonly<Env>;
+
+	name?: string; // name of the application
+	version?: string; // version of the application
+	description?: string; // description of the application
+	services?: ServiceEntry[]; // list of services to register
 
 	// test hooks
 	beforeAll?: (run: any) => any;
@@ -48,47 +60,65 @@ export interface State {
 	onTestFinished?: (run: any) => any;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface Hooks {
 	echo: any; // for testing purposes
 
 	/**
 	 * Triggered during the configuration phase. Before the start phase.
-	 *
-	 * - Configuration should technically be called many times without any side effects.
-	 * - Spamming Alepha#configure() should not cause any issues.
 	 */
 	configure: Alepha;
 
 	/**
 	 * Triggered during the start phase. When `Alepha#start()` is called.
-	 *
-	 * - Start is called only once. It should not be called multiple times.
 	 */
 	start: Alepha;
 
 	/**
 	 * Triggered during the ready phase. After the start phase.
-	 *
-	 * - Ready is called only once. It should not be called multiple times.
 	 */
 	ready: Alepha;
 
 	/**
 	 * Triggered during the stop phase.
 	 *
-	 * - Stop is called only once. It should not be called multiple times.
-	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application.
+	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application. (@see `run()` method)
+	 *
 	 */
 	stop: Alepha;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
+ * Core container of the Alepha framework.
  *
+ * It is responsible for managing the lifecycle of services,
+ * handling dependency injection,
+ * and providing a unified interface for the application.
  *
  * @example
  * ```ts
- * const app = Alepha.create();
+ * import { Alepha, run } from "@alepha/core";
+ *
+ * class MyService {
+ *   // business logic here
+ * }
+ *
+ * const alepha = Alepha.create({
+ *   // state, env, and other properties
+ * })
+ *
+ * alepha.register(MyService);
+ *
+ * run(alepha); // trigger .start (and .stop) automatically
  * ```
+ *
+ * > Some alepha methods are not intended to be used directly, use descriptors instead.
+ *
+ * - $hook -> alepha.on()
+ * - $inject -> alepha.get(), alepha.parseEnv()
  */
 export class Alepha {
 	/**
@@ -106,6 +136,8 @@ export class Alepha {
 		const alepha = new Alepha(state);
 
 		if (alepha.isTest()) {
+			// inject global hooks for testing purposes
+			// > for vitest, { globals: true } is required in the config
 			const g = globalThis as any;
 			const beforeAll = state.beforeAll ?? g.beforeAll;
 			const afterAll = state.afterAll ?? g.afterAll;
@@ -133,7 +165,7 @@ export class Alepha {
 	/**
 	 *  List of all services + how they are provided.
 	 */
-	protected registry: Map<Class, ClassProvider> = new Map();
+	protected registry: Map<Service, Definition> = new Map();
 
 	/**
 	 * Flag indicating whether the App won't accept any further changes.
@@ -157,34 +189,89 @@ export class Alepha {
 	protected ready = false;
 
 	/**
-	 * The state of the App.
+	 * A promise that resolves when the App has started.
 	 */
-	protected _starting?: PromiseWithResolvers<this>;
-	protected _state: State;
-	protected _dependencyStack: Class[] = [];
-	protected _cacheEnv = new Map<TSchema, any>();
-	protected _cacheTypeCheck = new Map<TSchema, TypeCheck<TSchema>>();
-	protected _events: Record<string, Array<Hook>> = {};
+	protected starting?: PromiseWithResolvers<this>;
 
-	public readonly als = new AsyncLocalStorageProvider();
+	/**
+	 * The current state of the App.
+	 *
+	 * It contains the environment variables, logger, and other state-related properties.
+	 *
+	 * You can declare your own state properties by extending the `State` interface.
+	 *
+	 * ```ts
+	 * declare module "@alepha/core" {
+	 *   interface State {
+	 *     myCustomValue: string;
+	 *   }
+	 * }
+	 * ```
+	 *
+	 * Same story for the `Env` interface.
+	 * ```ts
+	 * declare module "@alepha/core" {
+	 *   interface Env {
+	 *     readonly myCustomValue: string;
+	 *   }
+	 * }
+	 * ```
+	 *
+	 * State values can be function or primitive values.
+	 * However, all .env variables must serializable to JSON.
+	 */
+	protected store: State;
 
+	/**
+	 * During the instantiation process, we keep a list of pending instantiations.
+	 * > It allows us to detect circular dependencies.
+	 */
+	protected pendingInstantiations: Service[] = [];
+
+	/**
+	 * Cache for environment variables.
+	 * > It allows us to avoid parsing the same schema multiple times.
+	 */
+	protected cacheEnv = new Map<TSchema, any>();
+
+	/**
+	 * Cache for TypeBox type checks.
+	 * > It allows us to avoid compiling the same schema multiple times.
+	 */
+	protected cacheTypeCheck = new Map<TSchema, TypeCheck<TSchema>>();
+
+	/**
+	 * List of events that can be triggered. Powered by $hook().
+	 */
+	protected events: Record<string, Array<Hook>> = {};
+
+	/**
+	 * Node.js feature that allows to store context across asynchronous calls.
+	 *
+	 * This is used for logging, tracing, and other context-related features.
+	 *
+	 * Mocked for browser environments.
+	 */
+	public readonly context = new AsyncLocalStorageProvider();
+
+	/**
+	 * Get logger instance.
+	 */
 	public get log(): Logger {
-		return this._state.log;
+		return this.store.log;
 	}
-
-	public handle?: (req: any, res: any) => Promise<any>;
 
 	/**
 	 * The environment variables for the App.
 	 */
 	public get env(): Readonly<Env> {
-		return this._state?.env ?? {};
+		return this.store?.env ?? {};
 	}
 
 	constructor(state: Partial<State> = {}) {
 		const env = state.env ?? {};
 		const log = state.log ?? this.createLogger(env);
-		this._state = {
+		this.store = {
 			...state,
 			env,
 			log,
@@ -192,20 +279,30 @@ export class Alepha {
 	}
 
 	/**
-	 * State accessor.
+	 * Generic handle function used as generic interface for serverless functions.
+	 * You should not use this property directly.
+	 */
+	public handle?: (req: any, res: any) => Promise<any>;
+
+	/**
+	 * State accessor and mutator.
 	 */
 	public state<Key extends keyof State>(
 		key: Key,
 		value?: State[Key],
 	): State[Key] {
 		if (value !== undefined) {
-			this._state[key] = value;
+			this.store[key] = value;
+			// TODO: async event "state:mutate"
 		}
-		return this._state[key];
+
+		return this.store[key];
 	}
 
 	/**
+	 * Dump the current dependency graph of the App.
 	 *
+	 * This method returns a record where the keys are the names of the services.
 	 */
 	public graph() {
 		const graph: Record<string, { from: string[]; as?: string }> = {};
@@ -226,7 +323,7 @@ export class Alepha {
 	 * True if the App is running in a browser environment.
 	 */
 	public isBrowser() {
-		return typeof window !== "undefined";
+		return typeof window !== "undefined"; // pretty cheap check
 	}
 
 	/**
@@ -246,25 +343,36 @@ export class Alepha {
 	}
 
 	/**
-	 * True when start() is called. No more services can be added.
+	 * True when start() is called.
+	 *
+	 * -> No more services can be added, it's over, bye!
 	 */
 	public isLocked(): boolean {
 		return this.locked;
 	}
 
+	/**
+	 * Returns whether the App is configured.
+	 *
+	 * It means that Alepha#configure() has been called.
+	 *
+	 * > By default, configure() is called automatically when start() is called, but you can also call it manually.
+	 */
 	public isConfigured(): boolean {
 		return this.configured;
 	}
 
 	/**
 	 * Returns whether the App is running in a serverless environment.
+	 *
+	 * > Vite developer mode is also considered serverless.
 	 */
 	public isServerless(): boolean | "vite" | "vercel" {
 		if (this.isBrowser()) {
 			return false;
 		}
 
-		if (process.env.RUNTIME === "vercel") {
+		if (process.env.VERCEL === "1") {
 			return "vercel";
 		}
 
@@ -277,6 +385,8 @@ export class Alepha {
 
 	/**
 	 * Returns whether the App is in test mode. (Running in a test environment)
+	 *
+	 * > This is automatically set when running tests with Jest or Vitest.
 	 */
 	public isTest() {
 		const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
@@ -285,6 +395,8 @@ export class Alepha {
 
 	/**
 	 * Returns whether the App is in production mode. (Running in a production environment)
+	 *
+	 * > This is automatically set by Vite or Vercel. However, you have to set it manually when running Docker apps.
 	 */
 	public isProduction() {
 		const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
@@ -292,10 +404,9 @@ export class Alepha {
 	}
 
 	/**
-	 * > configure() is automatically called by start().
-	 * Use this method only if you need to configure the App without starting it.
+	 * Trigger configuration of the App manually.
 	 *
-	 * @internal
+	 * > configure() is called automatically when start() is called, you should not need to call it manually.
 	 */
 	public async configure() {
 		if (this.configured) {
@@ -304,7 +415,7 @@ export class Alepha {
 
 		this.locked = true;
 
-		await this.als.configure();
+		await this.context.configure();
 
 		await this.emit("configure", this, { log: true });
 
@@ -315,8 +426,9 @@ export class Alepha {
 	 * Starts the App.
 	 *
 	 * - Lock any further changes to the container.
-	 * - Run "configure" hook for all services.
-	 * - Run "start" hook for all services.
+	 * - Run "configure" hook for all services. Descriptors will be processed.
+	 * - Run "start" hook for all services. Providers will connect/listen/...
+	 * - Run "ready" hook for all services. This is the point where the App is ready to serve requests.
 	 *
 	 * @return A promise that resolves when the App has started.
 	 */
@@ -326,10 +438,10 @@ export class Alepha {
 		}
 
 		// make sure that start is called only once
-		if (this._starting) {
-			return this._starting.promise;
+		if (this.starting) {
+			return this.starting.promise;
 		}
-		this._starting = Promise.withResolvers();
+		this.starting = Promise.withResolvers();
 
 		const now = Date.now();
 
@@ -347,8 +459,8 @@ export class Alepha {
 
 		this.ready = true;
 
-		this._starting.resolve(this);
-		this._starting = undefined;
+		this.starting.resolve(this);
+		this.starting = undefined;
 
 		return this;
 	}
@@ -357,6 +469,11 @@ export class Alepha {
 	 * Stops the App.
 	 *
 	 * - Run "stop" hook for all services.
+	 *
+	 * Stop will NOT reset the container.
+	 * Stop will NOT unlock the container.
+	 *
+	 * > Stop is used to gracefully shut down the application, nothing more. There is no "restart".
 	 *
 	 * @return A promise that resolves when the App has stopped.
 	 */
@@ -377,9 +494,19 @@ export class Alepha {
 	 * Check if entry is registered in the container.
 	 */
 	public has(
-		entry: ClassEntry,
+		entry: ServiceEntry,
 		opts?: {
+			/**
+			 * Check if the entry is registered in the pending instantiation stack.
+			 *
+			 * Default: true
+			 */
 			inStack?: boolean;
+			/**
+			 * Check if the entry is registered in the container registry.
+			 *
+			 * Default: true
+			 */
 			inRegistry?: boolean;
 		},
 	): boolean {
@@ -400,19 +527,19 @@ export class Alepha {
 		}
 
 		if (!opts || opts.inStack === true) {
-			return this._dependencyStack.includes(provide);
+			return this.pendingInstantiations.includes(provide);
 		}
 
 		return false;
 	}
 
 	/**
-	 * Registers the specified class or type in the container.
+	 * Registers the specified service in the container.
 	 *
-	 * - If the class or type is already registered, the method does nothing.
-	 * - If the class or type is not registered, a new instance is created and registered.
+	 * - If the service is already registered, the method does nothing.
+	 * - If the service is not registered, a new instance is created and registered.
 	 *
-	 * ClassEntry allows to provide a class swapping feature.
+	 * > ServiceEntry allows to provide a service substitution feature.
 	 *
 	 * @example
 	 * ```ts
@@ -423,22 +550,19 @@ export class Alepha {
 	 * Alepha.create().register({ provide: A, use: B }).get(M).a.value; // "b"
 	 * ```
 	 *
-	 * > Swapping is an advanced feature that allows you to replace a class with another class.
-	 * > It's useful for testing or for providing different implementations of a class.
+	 * > Substitution is an advanced feature that allows you to replace a service with another service.
+	 * > It's useful for testing or for providing different implementations of a service.
 	 *
-	 * @param entry - The class or type definitions to register in the container.
-	 * @return The current instance of the container.
+	 * @param entry - The service to register in the container.
+	 * @return Current instance of Alepha.
 	 */
-	public register<T extends object>(entry: ClassEntry<T>): this {
+	public register<T extends object>(entry: ServiceEntry<T>): this {
 		if (this.started) {
 			throw new ContainerLockedError();
 		}
 
-		const { provide } =
-			typeof entry === "object" && "provide" in entry
-				? entry
-				: { provide: entry };
-
+		// just check if the entry is not present in the pending instantiation stack
+		// Alepha#get will handle the rest
 		if (this.has(entry, { inStack: true })) {
 			return this;
 		}
@@ -456,51 +580,63 @@ export class Alepha {
 	public with = this.register;
 
 	/**
-	 * Works like 'Alepha#register' but it must return the instance.
+	 * Works like 'Alepha#register' but it will return the instance.
 	 *
-	 * @param entry - The class or type definition to retrieve or create.
-	 * @param opts
-	 * @param opts.parent - The parent class that requested the instance.
+	 * > This method is used by $inject() under the hood.
+	 *
 	 * @return The instance of the specified class or type.
 	 */
 	public get<T extends object>(
-		entry: ClassEntry<T>,
+		serviceEntry: ServiceEntry<T>,
 		opts: {
-			parent?: Class | null;
+			/**
+			 * Parent service that requested the instance.
+			 */
+			parent?: Service | null;
+			/**
+			 * Ignore current existing instance.
+			 */
 			skipCache?: boolean;
+			/**
+			 * Don't store the instance in the registry.
+			 */
 			skipRegistration?: boolean;
+			/**
+			 * Constructor arguments to pass when creating a new instance.
+			 */
 			args?: any[];
 		} = {},
 	): T {
 		const parent = opts.parent !== undefined ? opts.parent : Alepha;
 
 		// If the requested type is the container, the current instance is returned.
-		if ((entry as any) === Alepha) {
+		if ((serviceEntry as any) === Alepha) {
 			return this as any;
 		}
 
-		const classProvider = "provide" in entry ? entry : { provide: entry };
+		const definition =
+			"provide" in serviceEntry ? serviceEntry : { provide: serviceEntry };
 
-		const index = this._dependencyStack.indexOf(classProvider.provide);
+		const index = this.pendingInstantiations.indexOf(definition.provide);
 		if (index !== -1) {
 			throw new CircularDependencyError(
-				classProvider.provide.name,
-				this._dependencyStack.slice(0, index).map((it) => it.name),
+				definition.provide.name,
+				this.pendingInstantiations.slice(0, index).map((it) => it.name),
 			);
 		}
 
 		// the requested type is searched in the container
-		const match = this.registry.get(classProvider.provide);
+		const match = this.registry.get(definition.provide);
 
 		if (match && !opts.skipCache) {
 			if (
-				"use" in entry &&
-				entry.use &&
-				match.use !== entry.use &&
-				entry.default !== true
+				"use" in definition &&
+				definition.use &&
+				match.use !== definition.use &&
+				definition.default !== true
 			) {
 				throw new AlephaError(
-					`Late swapping is forbidden. Swap ${match.provide.name} with ${entry.use.name} before using it.`,
+					`Late substitution is forbidden. Please, substitute Service '${match.provide.name}' with Service '${definition.use.name}' before using it.`,
 				);
 			}
 
@@ -517,20 +653,18 @@ export class Alepha {
 
 		if (this.started) {
 			throw new ContainerLockedError(
-				`Container is locked. No more services can be added. ${parent?.name} -> ${classProvider.provide.name}`,
+				`Container is locked. No more services can be added. ${parent?.name} -> ${definition.provide.name}`,
 			);
 		}
 
-		// If the requested type is not found in the container, a new instance is created
 		const instance: T =
-			"use" in entry && entry.use
-				? // -> Alepha#get instead of Alepha#new in order to allow swap-redirection
-					this.get(entry.use, { parent: null })
-				: this.new(classProvider.provide, opts.args);
+			"use" in definition && definition.use
+				? this.get(definition.use, { parent: null })
+				: this.new(definition.provide, opts.args);
 
 		if (!opts.skipRegistration) {
-			this.registry.set(classProvider.provide, {
-				...classProvider,
+			this.registry.set(definition.provide, {
+				...definition,
 				instance,
 				parents: [parent],
 			});
@@ -539,45 +673,67 @@ export class Alepha {
 		return instance;
 	}
 
+	/**
+	 * Registers a hook for the specified event.
+	 */
 	public on<T extends keyof Hooks>(
 		event: T,
 		hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
 	) {
-		if (!this._events[event]) {
-			this._events[event] = [];
+		if (!this.events[event]) {
+			this.events[event] = [];
 		}
 
 		const hook =
 			typeof hookOrFunc === "function" ? { callback: hookOrFunc } : hookOrFunc;
 
 		if (hook.priority === "first") {
-			this._events[event].unshift(hook);
+			this.events[event].unshift(hook);
 		} else if (hook.priority === "last") {
-			this._events[event].push(hook);
+			this.events[event].push(hook);
 		} else {
-			const index = this._events[event].findIndex(
+			const index = this.events[event].findIndex(
 				(it) => it.priority === "last",
 			);
 			if (index !== -1) {
-				this._events[event].splice(index, 0, hook);
+				this.events[event].splice(index, 0, hook);
 			} else {
-				this._events[event].push(hook);
+				this.events[event].push(hook);
 			}
 		}
 
 		return () => {
-			this._events[event] = this._events[event].filter(
+			this.events[event] = this.events[event].filter(
 				(it) => it.callback !== hook.callback,
 			);
 		};
 	}
 
+	/**
+	 * Emits the specified event with the given payload.
+	 */
 	public async emit<T extends keyof Hooks>(
 		func: keyof Hooks,
 		payload: Hooks[T],
 		options: {
+			/**
+			 * If true, the hooks will be executed in reverse order.
+			 * This is useful for "stop" hooks that should be executed in reverse order.
+			 *
+			 * @default false
+			 */
 			reverse?: boolean;
+			/**
+			 * If true, the hooks will be logged with their execution time.
+			 *
+			 * @default false
+			 */
 			log?: boolean;
+			/**
+			 * If true, errors will be caught and logged instead of throwing.
+			 *
+			 * @default false
+			 */
 			catch?: boolean;
 		} = {},
 	): Promise<void> {
@@ -592,7 +748,7 @@ export class Alepha {
 			this.log.trace(`${func} ...`);
 		}
 
-		let events = this._events[func] ?? [];
+		let events = this.events[func] ?? [];
 
 		if (options.reverse) {
 			events = events.toReversed();
@@ -630,10 +786,6 @@ export class Alepha {
 	 * Casts the given value to the specified schema.
 	 *
 	 * It uses the TypeBox library to validate the value against the schema.
-	 *
-	 * @param schema - The schema to cast the value to.
-	 * @param value - The value to cast.
-	 * @param opts - default: true, clean: true, convert: true, decode: true, encode: false
 	 */
 	public parse<T extends TSchema>(
 		schema: T,
@@ -666,10 +818,10 @@ export class Alepha {
 			check?: boolean;
 		} = {},
 	): Static<T> {
-		const exists = this._cacheTypeCheck.get(schema);
+		const exists = this.cacheTypeCheck.get(schema);
 		const check = exists ?? TypeCompiler.Compile(schema);
 		if (!exists) {
-			this._cacheTypeCheck.set(schema, check);
+			this.cacheTypeCheck.set(schema, check);
 		}
 
 		const actions = [];
@@ -709,8 +861,9 @@ export class Alepha {
 			typeof value === "object" && opts.clone !== false && !alreadyParsed
 				? // we clone simple objects to avoid mutation - most of the time...
 					// -> Why not using structuredClone()?
-					// "structuredClone()" will fail when the object contains functions to remove - which is the case for ER project.
+					// "structuredClone()" will fail when the object contains functions to remove - which is the case for some internal projects.
 					// so, keep using JSON.stringify/parse or make an option to use structuredClone
+					// > it's kinda slow for huge JSON objects, but it's a trade-off
 					JSON.parse(JSON.stringify(value))
 				: value;
 
@@ -738,8 +891,8 @@ export class Alepha {
 	 * @return The schema object with environment variables applied.
 	 */
 	public parseEnv<T extends TObject>(schema: T): Static<T> {
-		if (this._cacheEnv.has(schema)) {
-			return this._cacheEnv.get(schema) as Static<T>;
+		if (this.cacheEnv.has(schema)) {
+			return this.cacheEnv.get(schema) as Static<T>;
 		}
 
 		const config = this.parse(schema, this.env) as Record<string, any>;
@@ -755,15 +908,36 @@ export class Alepha {
 			}
 		}
 
-		this._cacheEnv.set(schema, config);
+		this.cacheEnv.set(schema, config);
 
 		return config;
 	}
 
 	/**
-	 * Returns all registered services that match the specified descriptor.
+	 * Create a new instance of a logger.
 	 *
-	 * @param descriptor
+	 * @returns The newly created logger instance.
+	 */
+	protected createLogger(env: Env): Logger {
+		return new Logger({
+			als: this.context,
+			level: env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info"),
+			name: env.APP_NAME,
+			json: env.LOG_FORMAT
+				? env.LOG_FORMAT === "json"
+				: env.NODE_ENV === "production",
+			caller: "Alepha",
+			color:
+				!env.NO_COLOR &&
+				env.FORCE_COLOR !== "0" &&
+				env.NODE_ENV !== "production",
+		});
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * @internal
 	 */
 	public getDescriptorValues<T extends Descriptor>(
 		descriptor: T,
@@ -796,37 +970,12 @@ export class Alepha {
 	}
 
 	/**
-	 * Create a new instance of a logger.
-	 *
-	 * @returns The newly created logger instance.
+	 * @internal
 	 */
-	protected createLogger(env: Env): Logger {
-		return new Logger({
-			als: this.als,
-			level: env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info"),
-			name: env.APP_NAME,
-			json: env.LOG_FORMAT
-				? env.LOG_FORMAT === "json"
-				: env.NODE_ENV === "production",
-			caller: "Alepha",
-			color:
-				!env.NO_COLOR &&
-				env.FORCE_COLOR !== "0" &&
-				env.NODE_ENV !== "production",
-		});
-	}
-
-	/**
-	 * Creates a new instance of a given class with dependency injection.
-	 *
-	 * @param definition - The class for which to create a new instance.
-	 * @param args - The arguments to pass to the class constructor
-	 * @returns The newly created instance of the given class.
-	 */
-	protected new<T extends object>(definition: Class<T>, args: any[] = []): T {
+	protected new<T extends object>(definition: Service<T>, args: any[] = []): T {
 		// we keep a tree of dependencies to detect circular dependencies
 		// it's also useful for cleaning are global cursor
-		this._dependencyStack.push(definition);
+		this.pendingInstantiations.push(definition);
 
 		//
 		// we use a global cursor to store the current context and definition
@@ -849,16 +998,44 @@ export class Alepha {
 			}
 		}
 
-		this._dependencyStack.pop();
+		this.pendingInstantiations.pop();
 
 		// tree is empty, now we can clean the global cursor
-		if (this._dependencyStack.length === 0) {
+		if (this.pendingInstantiations.length === 0) {
 			__alephaRef.context = undefined;
 		}
 
 		__alephaRef.definition =
-			this._dependencyStack[this._dependencyStack.length - 1];
+			this.pendingInstantiations[this.pendingInstantiations.length - 1];
 
 		return instance;
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * This is how we store services in the Alepha container.
+ */
+interface Definition<T extends object = any> {
+	/**
+	 * The class or type definition to provide.
+	 */
+	provide: Service<T>;
+
+	/**
+	 * The class or type definition to use. This will override the 'provide' property.
+	 */
+	use?: Service<T>;
+
+	/**
+	 * The instance of the class or type definition.
+	 * Mostly used for caching / singleton but can be used for other purposes like forcing the instance.
+	 */
+	instance: T;
+
+	/**
+	 * List of classes which use this class.
+	 */
+	parents: Array<Service | null>;
 }

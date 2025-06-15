@@ -3,10 +3,22 @@ import { Blog } from "./Blog.ts";
 import { PostController } from "./controllers/PostController.ts";
 import { Security } from "./providers/Security.ts";
 
-const app = Alepha.create();
+const substitute = <T extends object>(provide: T, use: T) => {
+	return {
+		provide,
+		use,
+	};
+};
 
-app.with(Blog);
-app.with(PostController);
-app.with(Security);
+class MySecurity extends Security {
+	a() {}
+}
 
-run(app);
+run(
+	Alepha.create({
+		name: "BlogServer",
+		description: "Blog server module",
+		version: "1.0.0",
+		services: [Blog, PostController, substitute(Security, MySecurity)],
+	}),
+);

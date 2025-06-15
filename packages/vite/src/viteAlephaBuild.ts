@@ -1,11 +1,10 @@
-import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, readFile, unlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
 import gzipPlugin from "rollup-plugin-gzip";
-import type { Plugin, UserConfig } from "vite";
+import { type Plugin, type UserConfig, mergeConfig } from "vite";
 import type * as vite from "vite";
 import { viteAlephaBuildVercel } from "./viteAlephaBuildVercel.ts";
 
@@ -20,16 +19,17 @@ export interface ViteAlephaBuildOptions {
 	entry?: string;
 
 	/**
+	 * If true, the build will be optimized for Vercel deployment.
 	 *
-	 */
-	vercel?: boolean;
-
-	/**
-	 * A list of modules that should not be externalized in the build process.
+	 * If `VERCEL_PROJECT_ID` and `VERCEL_ORG_ID` environment variables are set, .vercel will be generated with the correct configuration.
 	 *
-	 * @default true
+	 * @default false
 	 */
-	noExternal?: string | RegExp | (string | RegExp)[] | true;
+	vercel?:
+		| boolean
+		| {
+				name?: string; // The name of the Vercel project
+		  };
 
 	/**
 	 * Vite server options to override the default server configuration.
@@ -68,7 +68,8 @@ export async function viteAlephaBuild(
 			}),
 		);
 
-		await viteBuild({
+		const viteBuildClientConfig: UserConfig = {
+			publicDir: "public",
 			build: {
 				outDir: `${distDir}/${clientDir}`,
 				rollupOptions: {
@@ -80,35 +81,32 @@ export async function viteAlephaBuild(
 				},
 			},
 			plugins,
-		});
+		};
+
+		await viteBuild(viteBuildClientConfig);
 	};
 
 	const viteBuildServer = async (opts: { clientDir?: string }) => {
 		const plugins: any[] = [];
 
 		if (options.vercel) {
+			const vercel = typeof options.vercel === "boolean" ? {} : options.vercel;
 			plugins.push(
 				viteAlephaBuildVercel({
 					clientDir: opts.clientDir,
 					distDir: distDir,
+					...vercel,
 				}),
 			);
 		}
 
-		await viteBuild({
+		const viteBuildServerConfig: UserConfig = {
 			publicDir: false,
 			ssr: {
-				noExternal: options.noExternal ?? true,
-			},
-			resolve: {
-				alias: {
-					"pg-cloudflare": "pg",
-				},
+				noExternal: true,
 			},
 			build: {
 				ssr: entry,
-				copyPublicDir: false,
-				ssrManifest: true,
 				outDir: `${distDir}/server`,
 				rollupOptions: {
 					output: {
@@ -119,38 +117,63 @@ export async function viteAlephaBuild(
 					},
 				},
 			},
+			resolve: {
+				alias: {
+					"pg-cloudflare": "pg", // skip pg-cloudflare for now, not supported in noExternal mode
+				},
+			},
 			plugins,
-			...options.server,
-		});
+		};
 
-		const templateState = clientDir
-			? `__alepha.state(\n\t"ReactServerProvider.template", \n\t\`${readFileSync(`${distDir}/${clientDir}/index.html`, "utf-8").replace(/>\s*</g, "><").trim()}\`\n);`
-			: "";
+		await viteBuild(mergeConfig(viteBuildServerConfig, options.server || {}));
 
-		writeFileSync(
-			`${distDir}/index.mjs`,
-			`
-			import'./server/index.mjs';
-
-${templateState}
-
-		`.trim(),
-		);
+		let state = "";
 
 		if (clientDir) {
-			unlinkSync(`${distDir}/${clientDir}/index.html`);
+			const index = await readFile(
+				`${distDir}/${clientDir}/index.html`,
+				"utf-8",
+			);
+
+			state = `__alepha.state(\n\t"ReactServerProvider.template", \n\t\`${index.replace(/>\s*</g, "><").trim()}\`\n);`;
+
+			await unlink(`${distDir}/${clientDir}/index.html`);
 		}
+
+		const warning =
+			"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
+			"\n" +
+			"// Changes to this file will be lost when the code is regenerated.\n";
+
+		await writeFile(
+			`${distDir}/index.mjs`,
+			`${warning}\nimport'./server/index.mjs';\n\n${state}`.trim(),
+		);
 	};
 
 	return {
 		name: "vite-plugin-alepha-build",
 		apply: "build",
+		config(config, ctx) {
+			if (ctx.isSsrBuild || !process.env.VITE_DOUBLE_BUILD_DONE) {
+				// this is a server build, so we don't need the public directory
+				config.publicDir = false;
+			} else {
+				// this is a client build, so we need the public directory
+				config.publicDir = "public";
+			}
+		},
 		async buildStart() {
 			if (process.env.VITE_DOUBLE_BUILD_DONE === "true") {
 				return;
 			}
 
 			process.env.VITE_DOUBLE_BUILD_DONE = "true";
+
+			const hasServer = await access(join(process.cwd(), entry))
+				.then(() => true)
+				.catch(() => false);
+
 			const hasClient = await access(join(process.cwd(), "index.html"))
 				.then(() => true)
 				.catch(() => false);
@@ -159,11 +182,13 @@ ${templateState}
 				await viteBuildClient();
 			}
 
-			await viteBuildServer({
-				clientDir: hasClient ? clientDir : undefined,
-			});
+			if (hasServer) {
+				await viteBuildServer({
+					clientDir: hasClient ? clientDir : undefined,
+				});
+			}
 
-			// Prevent the default build from running again
+			// prevent the default build from running again
 			process.exit(0);
 		},
 	};
@@ -171,7 +196,7 @@ ${templateState}
 
 const importVite = async (): Promise<typeof vite> => {
 	try {
-		// Try to import rolldown-vite first, as it is a more optimized version of Vite
+		// try to import rolldown-vite first, as it is a more optimized version of Vite
 		return createRequire(import.meta.url)("rolldown-vite");
 	} catch (error) {
 		console.warn(
