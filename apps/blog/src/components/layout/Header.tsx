@@ -29,14 +29,31 @@ const Header = () => {
 			<Flex flex={1}>
 				<Go<Blog> to={"home"} skipActiveCheck variant={"transparent"}>
 					<Flex direction={"column"}>
-						<Text fw={"bold"} size={"xl"}>
-							Alepha Blog
+						<Text fw={"bold"} size={"xl"} ff={"monospace"}>
+							Alepha.js
 						</Text>
 						<Text c={"dimmed"} size={"xs"} mt={-10}>
 							or something like that
 						</Text>
 					</Flex>
 				</Go>
+				<Flex
+					style={{
+						position: "relative",
+					}}
+				>
+					<img
+						src={"/alepha.png"}
+						style={{
+							height: 50,
+							width: 50,
+							top: 10,
+							left: -20,
+							position: "absolute",
+						}}
+						alt={"logo"}
+					/>
+				</Flex>
 			</Flex>
 
 			<Flex gap={"sm"} align={"center"}>
@@ -44,7 +61,7 @@ const Header = () => {
 					<Go<Blog>
 						to={"newPost"}
 						leftSection={<IconPlus size={16} />}
-						variant={"default"}
+						variant={"filled"}
 					>
 						New Post
 					</Go>
@@ -100,7 +117,7 @@ const ToggleDarkMode = () => {
 	return (
 		<Menu position={"bottom-end"}>
 			<Menu.Target>
-				<ActionIcon size={"lg"} variant={"default"}>
+				<ActionIcon size={"lg"} variant={"transparent"}>
 					{<IconMoon />}
 				</ActionIcon>
 			</Menu.Target>

@@ -62,7 +62,7 @@ export default async function (req, res) {
 				`${distDir}/vercel.json`,
 				JSON.stringify(
 					{
-						name: projectName,
+						// name: projectName,
 						rewrites: [
 							{
 								source: "/(.*)",

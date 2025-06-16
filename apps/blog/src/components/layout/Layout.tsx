@@ -13,7 +13,8 @@ import Header from "./Header.tsx";
 const Layout = () => {
 	const theme = useMemo(() => {
 		return createTheme({
-			primaryColor: "orange",
+			primaryColor: "gray",
+			primaryShade: 9,
 		});
 	}, []);
 
@@ -31,13 +32,13 @@ const Layout = () => {
 			<ColorSchemeScript defaultColorScheme="auto" />
 			<MantineProvider theme={theme} defaultColorScheme="auto">
 				<NavigationProgress />
-				<AppShell header={{ height: 64 }}>
+				<AppShell className={"graph-paper"} header={{ height: 64 }}>
 					<AppShell.Header>
 						<Container size={"xl"} h={"100%"}>
 							<Header />
 						</Container>
 					</AppShell.Header>
-					<AppShell.Main>
+					<AppShell.Main mih={"auto"}>
 						<Container size={"xl"}>
 							<NestedView />
 						</Container>

@@ -1,6 +1,6 @@
 import { Card, Divider, Flex, SimpleGrid, Text, Title } from "@mantine/core";
 import type { Static } from "@sinclair/typebox";
-import { IconRocket } from "@tabler/icons-react";
+import { IconBrandVercel } from "@tabler/icons-react";
 import type { Blog } from "../Blog.ts";
 import type { post } from "../entities.ts";
 import Go from "./shared/Go.tsx";
@@ -16,12 +16,12 @@ const Home = (props: Props) => {
 				<Flex flex={1} direction="column" gap={"lg"}>
 					<Flex h={64} />
 					<Flex align="center" gap={10}>
-						<IconRocket size={20} />
+						<IconBrandVercel size={20} />
 						<Text size="sm" fw={"bold"}>
 							HOSTED ON VERCEL{" "}
 						</Text>
 						<Text c={"dimmed"} size={"xs"}>
-							(Please, don't spam, I only got the free tier.)
+							(because it's free)
 						</Text>
 					</Flex>
 					<Title>Extremely Complicated Spaghetti Bowl</Title>
