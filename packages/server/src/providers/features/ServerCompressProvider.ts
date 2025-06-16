@@ -40,10 +40,6 @@ export class ServerCompressProvider {
 				: undefined,
 	};
 
-	params = {
-		[zlib.constants.ZSTD_c_compressionLevel]: 3, // default compression level for zstd
-	};
-
 	public readonly onResponse = $hook({
 		name: "server:onResponse",
 		handler: async ({ request, response }) => {
@@ -95,13 +91,15 @@ export class ServerCompressProvider {
 			return;
 		}
 
+		const params = this.getParams(encoding);
+
 		if (
 			typeof body === "string" ||
 			Buffer.isBuffer(body) ||
 			body instanceof ArrayBuffer
 		) {
 			const compressed = await compressor.compress(body, {
-				params: this.params,
+				params,
 			});
 			this.setHeaders(response, encoding);
 			response.headers["content-length"] = compressed.length.toString();
@@ -110,15 +108,30 @@ export class ServerCompressProvider {
 
 		if (typeof body === "object" && body instanceof Readable) {
 			this.setHeaders(response, encoding);
-			response.body = body.pipe(compressor.stream({ params: this.params }));
+			response.body = body.pipe(compressor.stream({ params }));
 		}
 
 		if (typeof body === "object" && body instanceof ReadableStream) {
 			this.setHeaders(response, encoding);
 			response.body = Readable.fromWeb(body).pipe(
-				compressor.stream({ params: this.params }),
+				compressor.stream({ params }),
 			);
 		}
+	}
+
+	protected getParams(encoding: keyof typeof this.compressors) {
+		if (encoding === "zstd") {
+			return {
+				[zlib.constants.ZSTD_c_compressionLevel]: 3, // default compression level for zstd
+			};
+		}
+		if (encoding === "br") {
+			return {};
+		}
+		if (encoding === "gzip") {
+			return {};
+		}
+		return {};
 	}
 
 	protected setHeaders(
