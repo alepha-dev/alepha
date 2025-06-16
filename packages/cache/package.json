@@ -24,7 +24,7 @@
 		"@alepha/redis": "0.7.0"
 	},
 	"devDependencies": {
-		"pkgroll": "^2.12.2",
+		"pkgroll": "^2.13.1",
 		"vitest": "^3.2.3"
 	},
 	"scripts": {

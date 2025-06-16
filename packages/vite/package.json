@@ -9,10 +9,10 @@
 		"@alepha/core": "0.7.0",
 		"@vitejs/plugin-react": "^4.5.2",
 		"rollup": "^4.43.0",
-		"rollup-plugin-gzip": "^4.1.0"
+		"rollup-plugin-gzip": "^4.1.1"
 	},
 	"devDependencies": {
-		"pkgroll": "^2.12.2",
+		"pkgroll": "^2.13.1",
 		"vite": "^6.3.5"
 	},
 	"peerDependencies": {

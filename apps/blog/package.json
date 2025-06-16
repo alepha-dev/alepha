@@ -2,19 +2,19 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
-		"@mantine/core": "^8.1.0",
-		"@mantine/form": "^8.1.0",
-		"@mantine/hooks": "^8.1.0",
-		"@mantine/nprogress": "^8.1.0",
-		"@tabler/icons-react": "3.17.0",
+		"@mantine/core": "^8.1.1",
+		"@mantine/form": "^8.1.1",
+		"@mantine/hooks": "^8.1.1",
+		"@mantine/nprogress": "^8.1.1",
+		"@tabler/icons-react": "3.34.0",
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
 		"drizzle-kit": "^0.31.1",
-		"rolldown-vite": "^6.3.19",
-		"vercel": "^43.1.0"
+		"rolldown-vite": "^6.3.21",
+		"vercel": "^43.2.0"
 	},
 	"scripts": {
 		"dev": "vite",

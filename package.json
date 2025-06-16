@@ -10,7 +10,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@types/node": "^24.0.1",
+		"@types/node": "^24.0.3",
 		"@vitest/coverage-v8": "^3.2.3",
 		"@vitest/ui": "^3.2.3",
 		"depcheck": "^1.4.7",
