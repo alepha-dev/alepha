@@ -278,6 +278,10 @@ export class HttpClient {
 			return this.getFileLike(response);
 		}
 
+		if (response.headers.get("Content-Type") === "text/plain") {
+			return await response.text();
+		}
+
 		if (response.headers.get("Content-Type") === "application/json") {
 			const json = await response.json();
 

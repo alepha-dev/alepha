@@ -1,11 +1,4 @@
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Async,
-	OPTIONS,
-} from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
 import { ErrorViewer, ErrorViewerProd } from "../components/ErrorViewer.tsx";
@@ -525,6 +518,6 @@ export interface CreateLayersResult extends RouterState {
 export interface PageReactContext {
 	url: URL;
 	head: Head;
-	onError: (error: Error) => Async<ReactNode>;
+	onError: (error: Error) => ReactNode;
 	links?: ApiLinksResponse;
 }

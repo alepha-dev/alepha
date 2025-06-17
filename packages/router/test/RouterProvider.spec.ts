@@ -102,13 +102,16 @@ test("RouterProvider - basic", ({ expect }) => {
 	expect(match("/users/jack/x/abc/def")).toEqual({
 		name: "users-by-name-x-not-found",
 		params: {
+			"*": "abc/def",
 			name: "jack",
 		},
 	});
 
 	expect(match("/weird")).toEqual({
 		name: "not-found",
-		params: {},
+		params: {
+			"*": "weird",
+		},
 	});
 });
 
@@ -135,7 +138,9 @@ test("RouterProvider - only wildcard", ({ expect }) => {
 	add("/*", "wildcard");
 	expect(match("/")).toEqual({
 		name: "wildcard",
-		params: {},
+		params: {
+			"*": "",
+		},
 	});
 });
 
@@ -152,6 +157,7 @@ test("RouterProvider - params + wildcard", ({ expect }) => {
 		name: "users-by-name-x-not-found",
 		params: {
 			name: "jack",
+			"*": "y/z",
 		},
 	});
 });

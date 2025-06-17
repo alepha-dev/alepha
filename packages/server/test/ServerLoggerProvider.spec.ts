@@ -40,7 +40,7 @@ const app = Alepha.create({
 
 test("ServerLoggerProvider - ok", async ({ expect }) => {
 	expect(log.store.stack.length).toBe(0);
-	const response = await app.ping.fetch().then((res) => res.text());
+	const response = await app.ping.fetch();
 	expect(response).toBe("pong");
 	expect(log.store.stack[0].msg).toBe("Incoming request");
 	expect(log.store.stack[1].msg).toBe("!!");
@@ -49,7 +49,7 @@ test("ServerLoggerProvider - ok", async ({ expect }) => {
 
 test("ServerLoggerProvider - error", async ({ expect }) => {
 	expect(log.store.stack.length).toBe(0);
-	const response = await app.error.fetch().then((res) => res.json());
+	const response = await app.error.fetch().catch((e) => HttpError.toJSON(e));
 	expect(response).toEqual({
 		message: "Sorry",
 		status: 400,
@@ -62,7 +62,7 @@ test("ServerLoggerProvider - error", async ({ expect }) => {
 
 test("ServerLoggerProvider - silent", async ({ expect }) => {
 	expect(log.store.stack.length).toBe(0);
-	const response = await app.silent.fetch().then((res) => res.text());
+	const response = await app.silent.fetch();
 	expect(response).toBe("silent");
 	expect(log.store.stack[0].msg).toBe("this message should be logged");
 	expect(log.store.stack.length).toBe(1);

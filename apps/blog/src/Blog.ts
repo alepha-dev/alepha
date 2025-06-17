@@ -2,6 +2,7 @@ import { t } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { $client, isHttpError } from "@alepha/server";
 import { createElement } from "react";
+import NotFound from "./components/layout/NotFound.tsx";
 import type { PostController } from "./controllers/PostController.ts";
 
 export class Blog {
@@ -55,11 +56,9 @@ export class Blog {
 		},
 		lazy: () => import("./components/layout/Layout.tsx"),
 		children: [this.home, this.newPost, this.viewPost, this.notFound],
-		errorHandler: async (error) => {
+		errorHandler: (error) => {
 			if (isHttpError(error) && error.status === 404) {
-				return import("./components/layout/NotFound.tsx").then((it) =>
-					createElement(it.default),
-				);
+				return createElement(NotFound);
 			}
 		},
 	});

@@ -40,7 +40,7 @@ export interface PageDescriptorOptions<
 
 	head?: Head | ((props: TProps, previous?: Head) => Head);
 
-	errorHandler?: (error: Error) => Async<ReactNode>;
+	errorHandler?: (error: Error) => ReactNode;
 }
 
 export interface PageDescriptor<
