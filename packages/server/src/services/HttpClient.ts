@@ -6,7 +6,6 @@ import {
 	type FileLike,
 	type TSchema,
 	isFileLike,
-	isTypeFile,
 	t,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
@@ -76,10 +75,10 @@ export class HttpClient {
 	}
 
 	public async request(args: {
-		config?: ServerRequestConfigEntry;
 		link: HttpClientLink;
-		options?: ClientRequestOptions;
 		host?: string;
+		config?: ServerRequestConfigEntry;
+		options?: ClientRequestOptions;
 	}) {
 		const route = args.link;
 		const options = args.options ?? {};
@@ -94,9 +93,8 @@ export class HttpClient {
 		const headers: Record<string, string> = {};
 
 		const url = this.url(host, route, config);
-		const cacheKey = url.replace(host, "");
 
-		const data = await this.cache.get(cacheKey);
+		const data = await this.cache.get(url);
 		if (data && method === "GET") {
 			return data;
 		}
@@ -119,19 +117,9 @@ export class HttpClient {
 			...headers,
 		};
 
-		const response = await this.fetch(url, request, {
+		return await this.fetch(url, request, {
 			schema: route.schema?.response,
 		});
-
-		if (options.cache !== undefined && method === "GET") {
-			await this.cache.set(
-				cacheKey,
-				response,
-				typeof options.cache === "boolean" ? undefined : options.cache,
-			);
-		}
-
-		return response;
 	}
 
 	protected url(
@@ -214,9 +202,16 @@ export class HttpClient {
 
 	public async fetch<T>(
 		url: string,
-		request: RequestInit,
+		request: RequestInit = {},
 		options: FetchRunOptions = {},
 	): Promise<T> {
+		request.method ??= "GET";
+
+		const data = await this.cache.get(url);
+		if (data && request.method === "GET") {
+			return data;
+		}
+
 		await this.alepha.emit("client:beforeFetch", {
 			url,
 			options,
@@ -237,7 +232,19 @@ export class HttpClient {
 		}
 
 		const pendingRequest = fetch(url, request)
-			.then((response) => this.response(response, options))
+			.then(async (response) => {
+				const data = await this.response(response, options);
+
+				if (options.cache !== undefined && request.method === "GET") {
+					await this.cache.set(
+						url,
+						data,
+						typeof options.cache === "boolean" ? undefined : options.cache,
+					);
+				}
+
+				return data;
+			})
 			.finally(() => {
 				delete this.pendingRequests[key];
 			});
@@ -263,22 +270,16 @@ export class HttpClient {
 		response: Response,
 		options: FetchRunOptions,
 	): Promise<Response | any> {
-		if (options.schema) {
-			if (response.status === 204) {
-				return;
-			}
+		if (response.status === 204) {
+			return;
+		}
 
-			if (isTypeFile(options.schema) || this.isMaybeFile(response)) {
-				return this.getFileLike(response);
-			}
+		if (this.isMaybeFile(response)) {
+			return this.getFileLike(response);
+		}
 
-			const text = await response.text();
-
-			if (response.headers.get("Content-Type") !== "application/json") {
-				return text;
-			}
-
-			const json = JSON.parse(text);
+		if (response.headers.get("Content-Type") === "application/json") {
+			const json = await response.json();
 
 			if (response.status >= 400) {
 				const jsonError = this.alepha.parse(errorSchema, json);
@@ -291,7 +292,11 @@ export class HttpClient {
 				throw error;
 			}
 
-			return this.alepha.parse(options.schema, json);
+			if (options.schema) {
+				return this.alepha.parse(options.schema, json);
+			}
+
+			return json;
 		}
 
 		return response;

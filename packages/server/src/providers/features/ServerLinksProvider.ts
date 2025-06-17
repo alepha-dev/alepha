@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "@alepha/core";
+import { $inject, Alepha, t } from "@alepha/core";
 import {
 	type Permission,
 	SecurityProvider,
@@ -32,6 +32,42 @@ export class ServerLinksProvider {
 				user,
 				authorization: headers.authorization,
 			});
+		},
+	});
+
+	public readonly schema = $route({
+		path: `${RemoteDescriptorProvider.path.apiLinks}/:name/schema`,
+		schema: {
+			params: t.object({
+				name: t.string(),
+			}),
+			response: t.json(),
+		},
+		handler: async ({ params, user, headers }) => {
+			const authorization = headers.authorization;
+			const links = await this.getLinks({
+				user,
+				authorization,
+			});
+
+			for (const link of links.links) {
+				if (link.name === params.name) {
+					if (link.service) {
+						// remote
+						return this.remoteProvider
+							.getRemotes()
+							.find((it) => it.name === link.service)
+							?.schema({ name: params.name, authorization });
+					}
+					// local
+					return (
+						this.client.links?.find((it) => it.name === params.name)?.schema ??
+						{}
+					);
+				}
+			}
+
+			return {};
 		},
 	});
 

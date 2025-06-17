@@ -394,6 +394,10 @@ export interface ServerRemote {
 	links: (args: {
 		authorization?: string;
 	}) => Promise<ApiLinksResponse>;
+	schema: (args: {
+		name: string;
+		authorization?: string;
+	}) => Promise<any>;
 	serviceAccount?: ServiceAccountDescriptor;
 	prefix: string;
 }
