@@ -1,4 +1,11 @@
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type Async,
+	OPTIONS,
+} from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { type ReactNode, createElement } from "react";
 import { ErrorViewer, ErrorViewerProd } from "../components/ErrorViewer.tsx";
@@ -188,7 +195,10 @@ export class PageDescriptorProvider {
 
 			// handler has thrown an error, render an error view
 			if (it.error) {
-				const element = await request.onError(it.error);
+				let element: ReactNode = await request.onError(it.error);
+				if (element === null) {
+					element = this.renderError(it.error);
+				}
 
 				layers.push({
 					props,
@@ -515,6 +525,6 @@ export interface CreateLayersResult extends RouterState {
 export interface PageReactContext {
 	url: URL;
 	head: Head;
-	onError: (error: Error) => ReactNode;
+	onError: (error: Error) => Async<ReactNode>;
 	links?: ApiLinksResponse;
 }

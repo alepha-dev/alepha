@@ -131,7 +131,11 @@ export class ReactServerProvider {
 		templateLoader: () => Promise<string | undefined>,
 	) {
 		for (const page of this.pageDescriptorProvider.getPages()) {
-			this.log.debug(`+ ${page.match} -> ${page.name}`);
+			if (page.children?.length) {
+				continue;
+			}
+
+			this.log.info(`+ ${page.match} -> ${page.name}`);
 
 			await this.serverRouterProvider.route({
 				method: "GET",

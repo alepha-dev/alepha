@@ -81,3 +81,18 @@ export const errorNameByStatus: Record<number, string> = {
 	503: "ServiceUnavailableError",
 	504: "GatewayTimeoutError",
 };
+
+export const isHttpError = (error: unknown): error is HttpErrorLike => {
+	return (
+		!!error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof error.message === "string" &&
+		"status" in error &&
+		typeof error.status === "number"
+	);
+};
+
+export interface HttpErrorLike extends Error {
+	status: number;
+}

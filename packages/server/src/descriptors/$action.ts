@@ -1,5 +1,7 @@
+import type { CacheDescriptorOptions } from "@alepha/cache";
 import { OPTIONS, type Static, type TSchema } from "@alepha/core";
 import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import type { DurationLike } from "@alepha/datetime";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
@@ -85,6 +87,15 @@ export interface ActionDescriptorOptions<
 	 * Main route handler. This is where the route logic is implemented.
 	 */
 	handler?: ServerHandler<TConfig>;
+
+	/**
+	 * If true, the route will be cached.
+	 * - Number as seconds or boolean to enable cache.
+	 */
+	cache?:
+		| boolean
+		| DurationLike
+		| Omit<CacheDescriptorOptions<any>, "handler" | "key">;
 }
 
 export interface ActionDescriptor<
@@ -113,6 +124,12 @@ export interface ActionDescriptor<
 	 * Name of the permission required to access this route.
 	 */
 	permission: () => string;
+
+	/**
+	 * Invalidate the cache for this action.
+	 * This is only available if the action has cache enabled.
+	 */
+	invalidate: () => Promise<void>;
 }
 
 export const $action = <TConfig extends RequestConfigSchema>(
@@ -137,6 +154,10 @@ export const $action = <TConfig extends RequestConfigSchema>(
 	};
 
 	action.permission = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	action.invalidate = async () => {
 		throw new NotImplementedError(KEY);
 	};
 

@@ -40,7 +40,7 @@ export class NodeHttpServerProvider implements ServerProvider {
 	): Promise<number | void> {
 		const { route, params } = this.router.match(`/${req.method}${req.url}`);
 
-		if (!route && this.alepha.isServerless() === "vite") {
+		if (this.alepha.isServerless() === "vite" && (!route || params?.["*"])) {
 			// if vite is running, let it handle the request
 			return;
 		}

@@ -40,7 +40,7 @@ export interface PageDescriptorOptions<
 
 	head?: Head | ((props: TProps, previous?: Head) => Head);
 
-	errorHandler?: (error: Error) => ReactNode;
+	errorHandler?: (error: Error) => Async<ReactNode>;
 }
 
 export interface PageDescriptor<
@@ -55,11 +55,14 @@ export interface PageDescriptor<
 		params?: Record<string, string>;
 		query?: Record<string, string>;
 	}) => Promise<string>;
+
 	go: () => void;
+
 	createAnchorProps: (routerHook: RouterHookApi) => {
 		href: string;
 		onClick: () => void;
 	};
+
 	can: () => boolean;
 }
 

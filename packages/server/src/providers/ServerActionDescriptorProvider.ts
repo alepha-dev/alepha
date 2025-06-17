@@ -1,3 +1,4 @@
+import { type Cache, CacheDescriptorProvider } from "@alepha/cache";
 import {
 	$hook,
 	$inject,
@@ -10,6 +11,7 @@ import {
 	isTypeFile,
 	t,
 } from "@alepha/core";
+import { isDurationLike } from "@alepha/datetime";
 import {
 	type Permission,
 	SecurityProvider,
@@ -61,6 +63,7 @@ export class ServerActionDescriptorProvider {
 	protected readonly serverProvider = $inject(ServerProvider);
 	protected readonly helper = $inject(ActionDescriptorHelper);
 	protected readonly routerProvider = $inject(ServerRouterProvider);
+	protected readonly caches = $inject(CacheDescriptorProvider);
 	protected readonly actions: ServerRouteAction[] = [];
 
 	public getActions() {
@@ -95,13 +98,14 @@ export class ServerActionDescriptorProvider {
 			return;
 		}
 
-		const handler = value[OPTIONS].handler;
-		if (!handler) {
+		if (!options.handler) {
 			this.log.warn(
 				`No handler found for the route ${instance.constructor.name}#${key}`,
 			);
 			return;
 		}
+
+		const cache = this.useActionCache(options, instance, key);
 
 		const action: ServerRouteAction = {
 			...options,
@@ -112,7 +116,7 @@ export class ServerActionDescriptorProvider {
 			group: this.helper.group(options, instance),
 			permission: this.helper.permission(options, instance, key),
 			schema: options.schema,
-			handler,
+			handler: options.handler,
 			options,
 		};
 
@@ -122,6 +126,7 @@ export class ServerActionDescriptorProvider {
 
 		await this.routerProvider.route({
 			...action,
+			handler: options.handler,
 			path: `${action.prefix}${action.path}`,
 		});
 
@@ -138,7 +143,7 @@ export class ServerActionDescriptorProvider {
 			fetch: this.client.createFetchFunction(action, {
 				host: () => this.serverProvider.hostname,
 			}),
-			local: this.createLocalFunction(value, action.permission),
+			local: this.createLocalFunction(options, action.permission),
 		};
 
 		const $ = (
@@ -152,6 +157,15 @@ export class ServerActionDescriptorProvider {
 		$.options = action.options;
 		$.fetch = functions.fetch;
 		$.permission = functions.permission;
+		$.invalidate = async () => {
+			if (cache) {
+				await this.caches.invalidate(cache);
+			} else {
+				this.log.warn(
+					`Action '${instance.constructor.name}#${key}' has no cache enabled, cannot invalidate.`,
+				);
+			}
+		};
 
 		instance[key] = $;
 
@@ -173,6 +187,52 @@ export class ServerActionDescriptorProvider {
 		});
 	}
 
+	protected useActionCache(
+		options: ActionDescriptorOptions,
+		instance: any,
+		key: string,
+	) {
+		if (!options.cache) {
+			return;
+		}
+
+		const cache: Cache = {
+			group: `${instance.constructor.name}:${key}`,
+			options:
+				typeof options.cache === "boolean"
+					? {
+							ttl: { minutes: 5 },
+						}
+					: isDurationLike(options.cache)
+						? {
+								ttl: options.cache,
+							}
+						: {
+								...options.cache,
+							},
+		};
+
+		const ref = options.handler;
+		if (!ref) {
+			return;
+		}
+
+		cache.options.key = (args: any) =>
+			JSON.stringify({
+				query: args.query ?? {},
+				params: args.params ?? {},
+				body: args.body ?? {},
+			});
+
+		cache.options.handler = ref;
+
+		options.handler = (args: any) => {
+			return this.caches.run(cache, args);
+		};
+
+		return cache;
+	}
+
 	/**
 	 * Check a mock function for the specified route.
 	 *
@@ -183,14 +243,13 @@ export class ServerActionDescriptorProvider {
 	 * @protected
 	 */
 	protected createLocalFunction(
-		value: ActionDescriptor,
+		action: ActionDescriptorOptions,
 		permission: Permission,
 	) {
 		return async (
 			config: ServerRequestConfigEntry = {},
 			options: ClientRequestOptions = {},
 		): Promise<any> => {
-			const action = value[OPTIONS];
 			const request = this.alepha.context.get<ServerRequest>("request");
 			if (request) {
 				options.user ??= request?.user;
@@ -198,7 +257,7 @@ export class ServerActionDescriptorProvider {
 
 			// TODO: hook - "local:onRequest" ?
 
-			const handler = value[OPTIONS].handler;
+			const handler = action.handler;
 			if (!handler) {
 				throw new Error("No handler found for the route");
 			}

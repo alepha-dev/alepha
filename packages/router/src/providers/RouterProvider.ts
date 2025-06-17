@@ -1,4 +1,7 @@
+import { $logger } from "@alepha/core";
+
 export class RouterProvider<T extends Route = Route> {
+	protected readonly log = $logger();
 	protected routePathRegex = /^(\/[:*]?[.\-_a-zA-Z0-9]*)*$/;
 	protected tree: Tree<T> = { children: {} };
 	public readonly routes: T[] = [];
@@ -47,9 +50,11 @@ export class RouterProvider<T extends Route = Route> {
 	}
 
 	public match(path: string): RouteMatch<T> {
+		this.log.trace(`Matching path "${path}"`);
 		if (path[0] !== "/") {
 			throw new Error(`Path "${path}" must start with "/"`);
 		}
+
 		const parts = this.createParts(path);
 
 		let cursor = this.tree;
@@ -70,6 +75,7 @@ export class RouterProvider<T extends Route = Route> {
 				params[cursor.param.name] = parts[i];
 				cursor = cursor.param;
 			} else if (cursor.wildcard) {
+				params["*"] = parts.slice(i).join("/");
 				return { route: cursor.wildcard.route, params };
 			} else {
 				return { route: wildcard?.route, params };

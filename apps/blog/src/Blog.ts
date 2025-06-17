@@ -1,6 +1,7 @@
 import { t } from "@alepha/core";
 import { $page } from "@alepha/react";
-import { $client } from "@alepha/server";
+import { $client, isHttpError } from "@alepha/server";
+import { createElement } from "react";
 import type { PostController } from "./controllers/PostController.ts";
 
 export class Blog {
@@ -33,13 +34,19 @@ export class Blog {
 			}),
 		},
 		resolve: async ({ params }) => {
-			const post = await this.posts.getPostBySlug({ params });
-			if (!post) {
-				throw new Error("Post not found");
-			}
-			return { post };
+			return {
+				post: await this.posts.getPostBySlug({ params }),
+			};
 		},
 		lazy: () => import("./components/ViewPost"),
+	});
+
+	notFound = $page({
+		path: "/*",
+		head: {
+			title: "Not Found",
+		},
+		lazy: () => import("./components/layout/NotFound.tsx"),
 	});
 
 	root = $page({
@@ -47,6 +54,13 @@ export class Blog {
 			title: "Alepha Blog",
 		},
 		lazy: () => import("./components/layout/Layout.tsx"),
-		children: [this.home, this.newPost, this.viewPost],
+		children: [this.home, this.newPost, this.viewPost, this.notFound],
+		errorHandler: async (error) => {
+			if (isHttpError(error) && error.status === 404) {
+				return import("./components/layout/NotFound.tsx").then((it) =>
+					createElement(it.default),
+				);
+			}
+		},
 	});
 }

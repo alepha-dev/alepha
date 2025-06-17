@@ -49,6 +49,10 @@ export class CacheDescriptorProvider {
 		},
 	});
 
+	public push(cache: Cache) {
+		this.caches.push(cache);
+	}
+
 	public processDescriptors() {
 		const caches = this.alepha.getDescriptorValues($cache);
 		for (const { value, key, instance } of caches) {
@@ -56,7 +60,7 @@ export class CacheDescriptorProvider {
 			const group = options.group ?? `${instance.constructor.name}:${key}`;
 			const cache = { options, group };
 
-			this.caches.push({ options, group });
+			this.caches.push(cache);
 
 			const $: CacheDescriptor = (...args) => this.run(cache, ...args);
 
@@ -122,7 +126,7 @@ export class CacheDescriptorProvider {
 	/**
 	 *
 	 */
-	protected async run<TReturn, TParameter extends any[]>(
+	public async run<TReturn, TParameter extends any[]>(
 		cache: Cache<TReturn, TParameter>,
 		...args: TParameter
 	): Promise<TReturn> {
