@@ -1,5 +1,10 @@
-import { OPTIONS, type Static } from "@alepha/core";
-import { __descriptor, KIND, NotImplementedError } from "@alepha/core";
+import {
+	__descriptor,
+	KIND,
+	NotImplementedError,
+	OPTIONS,
+	type Static,
+} from "@alepha/core";
 import type { QueueDescriptor, QueueMessageSchema } from "./$queue.ts";
 
 const KEY = "CONSUMER";

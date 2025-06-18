@@ -1,5 +1,5 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { __bind, $inject, Alepha, t } from "@alepha/core";
 import { RedisProvider, RedisSubscriberProvider } from "@alepha/redis";
 import { MemoryTopicProvider, RedisTopicProvider } from "@alepha/topic";
 import { $lock } from "./descriptors/$lock.ts";

@@ -21,8 +21,8 @@ import type {
 	Union,
 	UnsafeOptions,
 } from "@sinclair/typebox";
-import { FormatRegistry, Kind, Type } from "@sinclair/typebox";
 import * as TypeBox from "@sinclair/typebox";
+import { FormatRegistry, Kind, Type } from "@sinclair/typebox";
 import * as TypeBoxValue from "@sinclair/typebox/value";
 
 export { TypeBox, TypeBoxValue };
@@ -33,7 +33,6 @@ import { OPTIONS } from "../constants/OPTIONS.ts";
 import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
 import { fullFormats } from "../helpers/formats.ts";
 
-export { TypeGuard } from "@sinclair/typebox";
 export type {
 	Static,
 	StaticDecode,
@@ -41,6 +40,7 @@ export type {
 	TObject,
 	TSchema,
 } from "@sinclair/typebox";
+export { TypeGuard } from "@sinclair/typebox";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

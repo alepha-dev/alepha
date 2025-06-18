@@ -1,12 +1,13 @@
 import type { TSchema } from "@alepha/core";
 import { TypeGuard } from "@alepha/core";
 import * as pg from "drizzle-orm/pg-core";
-import { PG_SERIAL, type PgIdentityOptions } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_CREATED_AT,
 	PG_IDENTITY,
 	PG_PRIMARY_KEY,
+	PG_SERIAL,
 	PG_UPDATED_AT,
+	type PgIdentityOptions,
 } from "../constants/PG_SYMBOLS.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";

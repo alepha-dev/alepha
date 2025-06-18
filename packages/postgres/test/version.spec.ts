@@ -1,8 +1,12 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
-import { type TransactionContext, pgTableSchema } from "../src";
-import { $repository, pg } from "../src";
+import {
+	$repository,
+	pg,
+	pgTableSchema,
+	type TransactionContext,
+} from "../src";
 import { VersionMismatchError } from "../src/errors/VersionMismatchError.ts";
 
 class A {

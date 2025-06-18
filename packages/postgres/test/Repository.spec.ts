@@ -3,9 +3,9 @@ import { expect, test } from "vitest";
 import {
 	$repository,
 	PostgresModule,
-	Repository,
 	pg,
 	pgTableSchema,
+	Repository,
 } from "../src";
 import { legacyIdSchema } from "../src/schemas/legacyIdSchema.ts";
 

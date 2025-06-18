@@ -1,6 +1,6 @@
 import { $inject, $logger } from "@alepha/core";
 import { DateTimeProvider, type Timeout } from "@alepha/datetime";
-import type { CacheProvider } from "./CacheProvider.ts";
+import type { CacheProvider } from "./DefaultCacheProvider.ts";
 
 /**
  * A simple in-memory store provider.

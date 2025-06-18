@@ -1,5 +1,5 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { __bind, $inject, Alepha, t } from "@alepha/core";
 import { $queue } from "./descriptors/$queue.ts";
 import { MemoryQueueProvider } from "./providers/MemoryQueueProvider.ts";
 import { QueueDescriptorProvider } from "./providers/QueueDescriptorProvider.ts";

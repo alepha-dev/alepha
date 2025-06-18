@@ -10,10 +10,10 @@ import {
 	t,
 } from "@alepha/core";
 import {
+	apiLinksResponseSchema,
 	type ServerHandler,
 	ServerLinksProvider,
 	ServerRouterProvider,
-	apiLinksResponseSchema,
 } from "@alepha/server";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";

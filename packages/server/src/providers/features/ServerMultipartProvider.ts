@@ -10,9 +10,9 @@ import {
 	$inject,
 	Alepha,
 	type FileLike,
+	isTypeFile,
 	type StreamLike,
 	TypeGuard,
-	isTypeFile,
 } from "@alepha/core";
 import Busboy, {
 	type BusboyConfig,
@@ -295,7 +295,7 @@ export const bufferToStream = (buffer: Buffer): Readable => {
 
 export const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
 	return new Promise<Buffer>((resolve, reject) => {
-		const buffer = Array<any>();
+		const buffer: any[] = [];
 		stream.on("data", (chunk) => buffer.push(chunk));
 		stream.on("end", () => resolve(Buffer.concat(buffer)));
 		stream.on("error", (err) =>

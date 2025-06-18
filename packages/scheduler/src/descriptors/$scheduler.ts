@@ -1,5 +1,10 @@
-import { type Async, OPTIONS } from "@alepha/core";
-import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import {
+	__descriptor,
+	type Async,
+	KIND,
+	NotImplementedError,
+	OPTIONS,
+} from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
 
 const KEY = "SCHEDULER";

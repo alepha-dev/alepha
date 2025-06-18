@@ -14,7 +14,7 @@ import type {
 	CacheDescriptorOptions,
 } from "../descriptors/$cache.ts";
 import { $cache } from "../descriptors/$cache.ts";
-import { CacheProvider } from "./CacheProvider.ts";
+import { type CacheProvider, DefaultCacheProvider } from "./DefaultCacheProvider.ts";
 import { MemoryCacheProvider } from "./MemoryCacheProvider.ts";
 
 const envSchema = t.object({
@@ -36,7 +36,7 @@ declare module "@alepha/core" {
 
 export class CacheDescriptorProvider {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly cacheProvider = $inject(CacheProvider);
+	protected readonly cacheProvider = $inject(DefaultCacheProvider);
 	protected readonly memoryCacheProvider = $inject(MemoryCacheProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly env = $inject(envSchema);

@@ -1,5 +1,5 @@
 import type { IncomingMessage } from "node:http";
-import { type ServerResponse, createServer } from "node:http";
+import { createServer, type ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import type { RouteMethod } from "../../constants/routeMethods.ts";

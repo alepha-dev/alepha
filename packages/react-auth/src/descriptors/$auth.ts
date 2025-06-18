@@ -1,9 +1,9 @@
 import {
+	__descriptor,
 	type Async,
 	KIND,
 	NotImplementedError,
 	OPTIONS,
-	__descriptor,
 } from "@alepha/core";
 
 const KEY = "AUTH";

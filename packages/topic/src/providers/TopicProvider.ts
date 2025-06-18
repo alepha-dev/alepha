@@ -11,7 +11,7 @@ export class TopicProvider {
 	 * @param topic - The topic to publish to.
 	 * @param message - The message to publish.
 	 */
-	public async publish(topic: string, message: string): Promise<void> {
+	public async publish(_topic: string, _message: string): Promise<void> {
 		throw new NotImplementedError(this.constructor.name);
 	}
 
@@ -22,8 +22,8 @@ export class TopicProvider {
 	 * @param callback - The callback to call when a message is received.
 	 */
 	public async subscribe(
-		topic: string,
-		callback: SubscribeCallback,
+		_topic: string,
+		_callback: SubscribeCallback,
 	): Promise<UnSubscribeFn> {
 		throw new NotImplementedError(this.constructor.name);
 	}
@@ -33,7 +33,7 @@ export class TopicProvider {
 	 *
 	 * @param topic - The topic to unsubscribe from.
 	 */
-	public async unsubscribe(topic: string): Promise<void> {
+	public async unsubscribe(_topic: string): Promise<void> {
 		throw new NotImplementedError(this.constructor.name);
 	}
 }

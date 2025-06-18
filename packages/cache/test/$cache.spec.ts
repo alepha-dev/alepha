@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import {
 	$cache,
 	CacheDescriptorProvider,
-	CacheProvider,
+	DefaultCacheProvider,
 	MemoryCacheProvider,
 	RedisCacheProvider,
 } from "../src";
@@ -44,7 +44,7 @@ test("$cache - basic", async () => {
 	expect(await test.a({ name: "B" })).toBe("B:1");
 	expect(await test.a({ name: "B" })).toBe("B:1");
 
-	if (app.get(CacheProvider) instanceof RedisCacheProvider) {
+	if (app.get(DefaultCacheProvider) instanceof RedisCacheProvider) {
 		return; // we can't mock redis time
 	}
 

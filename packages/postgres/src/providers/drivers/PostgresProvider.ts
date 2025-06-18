@@ -24,7 +24,7 @@ export class PostgresProvider {
 		throw new NotImplementedError(this.constructor.name);
 	}
 
-	public execute(query: SQLLike): Promise<any[]> {
+	public execute(_query: SQLLike): Promise<any[]> {
 		throw new NotImplementedError(this.constructor.name);
 	}
 }

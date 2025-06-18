@@ -1,4 +1,4 @@
-import { type VirtualRouter, useActive, useRouter } from "@alepha/react";
+import { useActive, useRouter, type VirtualRouter } from "@alepha/react";
 import { Button, type ButtonProps } from "@mantine/core";
 
 const Go = <T extends object>(
@@ -8,7 +8,7 @@ const Go = <T extends object>(
 		skipActiveCheck?: boolean;
 	},
 ) => {
-	const { to, params, skipActiveCheck, ...restProps } = props;
+	const { to, params: _params, skipActiveCheck, ...restProps } = props;
 
 	const router = useRouter();
 	const anchorProps = router.anchor<T>(to, props);

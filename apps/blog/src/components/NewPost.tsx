@@ -1,5 +1,5 @@
 import { useClient, useRouter } from "@alepha/react";
-import { Button, Flex, Group, TextInput, Textarea } from "@mantine/core";
+import { Button, Flex, Group, Textarea, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import type { Blog } from "../Blog.ts";
 import type { PostController } from "../controllers/PostController.ts";

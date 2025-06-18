@@ -1,4 +1,4 @@
-import { $inject, Alepha, __bind } from "@alepha/core";
+import { __bind, $inject, Alepha } from "@alepha/core";
 import { $permission } from "./descriptors/$permission.ts";
 import { $realm } from "./descriptors/$realm.ts";
 import { $role } from "./descriptors/$role.ts";

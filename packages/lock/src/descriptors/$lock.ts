@@ -1,5 +1,10 @@
-import { type AsyncFn, OPTIONS } from "@alepha/core";
-import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import {
+	__descriptor,
+	type AsyncFn,
+	KIND,
+	NotImplementedError,
+	OPTIONS,
+} from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
 
 const KEY = "LOCK";

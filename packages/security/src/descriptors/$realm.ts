@@ -1,4 +1,4 @@
-import { KIND, NotImplementedError, OPTIONS, __descriptor } from "@alepha/core";
+import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
 import type { SecurityUserAccountProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";

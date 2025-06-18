@@ -17,7 +17,7 @@ export const useAuth = (): AuthHook => {
 		logout: () => {
 			ctx.alepha.get(ReactAuth).logout();
 		},
-		login: (provider?: string) => {
+		login: (_provider?: string) => {
 			ctx.alepha.get(ReactAuth).login();
 		},
 		can: (name: string) => {

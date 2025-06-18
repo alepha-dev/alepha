@@ -1,4 +1,4 @@
-import { $inject, Alepha, __bind } from "@alepha/core";
+import { __bind, $inject, Alepha } from "@alepha/core";
 import { $page } from "./descriptors/$page.ts";
 import { BrowserRouterProvider } from "./providers/BrowserRouterProvider.ts";
 import { PageDescriptorProvider } from "./providers/PageDescriptorProvider.ts";

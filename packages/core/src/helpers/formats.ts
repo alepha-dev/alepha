@@ -162,7 +162,7 @@ function regex(str: string): boolean {
 	try {
 		new RegExp(str);
 		return true;
-	} catch (e) {
+	} catch (_e) {
 		return false;
 	}
 }

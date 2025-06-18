@@ -36,16 +36,6 @@ test("Alepha#graph - basic ", async () => {
 		value = "x2";
 	}
 
-	class Z {
-		a = $inject(A);
-		z = "z";
-	}
-
-	class Y {
-		z = $inject(Z);
-		y = "y";
-	}
-
 	const a = Alepha.create();
 
 	a.register({

@@ -14,11 +14,11 @@ import {
 	ServerCookiesProvider,
 } from "@alepha/server-cookies";
 import {
-	type Configuration,
 	allowInsecureRequests,
 	authorizationCodeGrant,
 	buildAuthorizationUrl,
 	buildEndSessionUrl,
+	type Configuration,
 	calculatePKCECodeChallenge,
 	discovery,
 	randomPKCECodeVerifier,

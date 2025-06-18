@@ -1,4 +1,4 @@
-import { $inject, Alepha, __bind } from "@alepha/core";
+import { __bind, $inject, Alepha } from "@alepha/core";
 import {
 	ServerLinksProvider,
 	ServerModule,
@@ -13,13 +13,13 @@ import {
 } from "./providers/PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
-export { default as NestedView } from "./components/NestedView.tsx";
 
+export { default as NestedView } from "./components/NestedView.tsx";
+export * from "./errors/RedirectionError.ts";
 export * from "./index.shared.ts";
 export * from "./providers/PageDescriptorProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
-export * from "./errors/RedirectionError.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {

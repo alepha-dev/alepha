@@ -1,7 +1,6 @@
-import { OPTIONS } from "@alepha/core";
-import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
-import type { CacheProvider } from "../providers/CacheProvider.ts";
+import type { DefaultCacheProvider } from "../providers/DefaultCacheProvider.ts";
 
 const KEY = "CACHE";
 
@@ -25,7 +24,7 @@ export interface CacheDescriptorOptions<
 	 * The store provider for the cache.
 	 * If not provided, the default store provider will be used.
 	 */
-	provider?: (() => CacheProvider) | "memory";
+	provider?: (() => DefaultCacheProvider) | "memory";
 
 	/**
 	 * The cache group. This is useful for invalidating multiple caches at once.

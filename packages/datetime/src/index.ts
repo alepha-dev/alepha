@@ -1,8 +1,9 @@
-export * from "./descriptors/$interval.ts";
-export * from "./helpers/Timeout.ts";
-export * from "./helpers/Interval.ts";
-export * from "./providers/DateTimeProvider.ts";
 export { DateTime } from "luxon";
+export * from "./descriptors/$interval.ts";
+export * from "./helpers/Interval.ts";
+export * from "./helpers/Timeout.ts";
+export * from "./providers/DateTimeProvider.ts";
+
 import type {
 	Duration as LuxonDuration,
 	DurationLike as LuxonDurationLike,

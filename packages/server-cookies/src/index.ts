@@ -8,7 +8,7 @@ declare module "@alepha/server" {
 	}
 }
 
-export * from "./providers/ServerCookiesProvider";
 export * from "./descriptors/$cookie";
+export * from "./providers/ServerCookiesProvider";
 
 __bind($cookie, ServerCookiesProvider);

@@ -1,6 +1,6 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
-import { type ReactNode, createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import { ErrorViewer, ErrorViewerProd } from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Alepha, t, TypeBoxError } from "../src";
+import { Alepha, TypeBoxError, t } from "../src";
 
 test("TypeProvider#map", () => {
 	const user = t.object({

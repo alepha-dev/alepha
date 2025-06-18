@@ -3,10 +3,10 @@ import {
 	AppShell,
 	ColorSchemeScript,
 	Container,
+	createTheme,
 	Flex,
 	MantineProvider,
 	Text,
-	createTheme,
 } from "@mantine/core";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { useMemo } from "react";

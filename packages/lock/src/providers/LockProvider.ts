@@ -17,10 +17,10 @@ export class LockProvider {
 	 * @param px Set the specified expire time, in milliseconds.
 	 */
 	public async set(
-		key: string,
-		value: string,
-		nx?: boolean,
-		px?: number,
+		_key: string,
+		_value: string,
+		_nx?: boolean,
+		_px?: number,
 	): Promise<string> {
 		throw new NotImplementedError(this.constructor.name);
 	}
@@ -30,7 +30,7 @@ export class LockProvider {
 	 *
 	 * @param keys The keys to delete.
 	 */
-	public async del(...keys: string[]): Promise<void> {
+	public async del(..._keys: string[]): Promise<void> {
 		throw new NotImplementedError(this.constructor.name);
 	}
 }

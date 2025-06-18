@@ -6,7 +6,7 @@ import {
 import { useInject } from "./useInject.ts";
 
 export const useClient = <T extends object>(
-	scope?: ClientScope,
+	_scope?: ClientScope,
 ): HttpVirtualClient<T> => {
 	return useInject(HttpClient).of<T>();
 };

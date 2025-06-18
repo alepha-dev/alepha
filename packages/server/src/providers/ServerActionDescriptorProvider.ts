@@ -4,11 +4,11 @@ import {
 	$inject,
 	$logger,
 	Alepha,
+	isFileLike,
+	isTypeFile,
 	KIND,
 	OPTIONS,
 	type Static,
-	isFileLike,
-	isTypeFile,
 	t,
 } from "@alepha/core";
 import { isDurationLike } from "@alepha/datetime";
@@ -31,6 +31,7 @@ import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
 import type { ApiLinksResponse } from "../schemas/apiLinksResponseSchema.ts";
 import { HttpClient } from "../services/HttpClient.ts";
+import { ServerProvider } from "./platforms/ServerProvider.ts";
 import {
 	type RequestConfigSchema,
 	type ServerRequest,
@@ -38,7 +39,6 @@ import {
 	type ServerRoute,
 	ServerRouterProvider,
 } from "./ServerRouterProvider.ts";
-import { ServerProvider } from "./platforms/ServerProvider.ts";
 
 const envSchema = t.object({
 	SERVER_API_PREFIX: t.string({
@@ -391,13 +391,8 @@ export interface ServerRemote {
 	name: string;
 	proxy: boolean;
 	internal: boolean;
-	links: (args: {
-		authorization?: string;
-	}) => Promise<ApiLinksResponse>;
-	schema: (args: {
-		name: string;
-		authorization?: string;
-	}) => Promise<any>;
+	links: (args: { authorization?: string }) => Promise<ApiLinksResponse>;
+	schema: (args: { name: string; authorization?: string }) => Promise<any>;
 	serviceAccount?: ServiceAccountDescriptor;
 	prefix: string;
 }

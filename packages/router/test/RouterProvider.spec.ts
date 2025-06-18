@@ -145,7 +145,7 @@ test("RouterProvider - only wildcard", ({ expect }) => {
 });
 
 test("RouterProvider - invalid path", ({ expect }) => {
-	const { add, match } = playground();
+	const { add } = playground();
 	expect(() => add("*", "wildcard")).toThrowError();
 });
 

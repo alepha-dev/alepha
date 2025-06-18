@@ -27,7 +27,7 @@ export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
 	const distDir = opts.distDir ?? "dist";
 
 	// project name is "dist" by default, we use the current working directory name if not specified
-	const projectName = opts.projectName ?? basename(process.cwd());
+	const _projectName = opts.projectName ?? basename(process.cwd());
 
 	const warning =
 		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
@@ -84,7 +84,7 @@ export default async function (req, res) {
 			if (projectId && orgId) {
 				try {
 					mkdirSync(`${distDir}/.vercel`, { recursive: true });
-				} catch (e) {
+				} catch (_e) {
 					// ignore error if directory already exists
 				}
 

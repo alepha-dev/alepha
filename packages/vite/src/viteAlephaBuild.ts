@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
 import gzipPlugin from "rollup-plugin-gzip";
-import { type Plugin, type UserConfig, mergeConfig } from "vite";
 import type * as vite from "vite";
+import { mergeConfig, type Plugin, type UserConfig } from "vite";
 import { viteAlephaBuildVercel } from "./viteAlephaBuildVercel.ts";
 
 const brotliPromise = promisify(brotliCompress);
@@ -198,13 +198,13 @@ const importVite = async (): Promise<typeof vite> => {
 	try {
 		// try to import rolldown-vite first, as it is a more optimized version of Vite
 		return createRequire(import.meta.url)("rolldown-vite");
-	} catch (error) {
+	} catch (_error) {
 		console.warn(
 			"Using Vite instead of rolldown-vite. Please install rolldown-vite for better performance.",
 		);
 		try {
 			return createRequire(import.meta.url)("vite");
-		} catch (error) {
+		} catch (_error) {
 			throw new Error(
 				"Vite is not installed. Please install it with `npm install vite` or `npm install rolldown-vite`.",
 			);

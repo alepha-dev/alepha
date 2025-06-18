@@ -2,6 +2,7 @@ import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { type Route, RouterProvider } from "@alepha/router";
 import type { ReactNode } from "react";
 import {
+	isPageRoute,
 	PageDescriptorProvider,
 	type PageReactContext,
 	type PageRequest,
@@ -10,7 +11,6 @@ import {
 	type RouterRenderResult,
 	type RouterState,
 	type TransitionOptions,
-	isPageRoute,
 } from "./PageDescriptorProvider.ts";
 
 export interface BrowserRoute extends Route {

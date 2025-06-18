@@ -1,5 +1,12 @@
-import { type Async, OPTIONS, type Static, type TSchema } from "@alepha/core";
-import { KIND, NotImplementedError, __descriptor } from "@alepha/core";
+import {
+	__descriptor,
+	type Async,
+	KIND,
+	NotImplementedError,
+	OPTIONS,
+	type Static,
+	type TSchema,
+} from "@alepha/core";
 import type { FC, ReactNode } from "react";
 import type { RouterHookApi } from "../hooks/RouterHookApi.ts";
 import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";

@@ -50,7 +50,7 @@ const encode = (alepha: Alepha, schema: TObject, data: any) => {
 const decode = (alepha: Alepha, schema: TObject, data: any) => {
 	try {
 		return alepha.parse(schema, JSON.parse(atob(decodeURIComponent(data))));
-	} catch (error) {
+	} catch (_error) {
 		return {};
 	}
 };

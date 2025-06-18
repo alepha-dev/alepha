@@ -7,7 +7,7 @@ import type { HttpClientLink } from "../services/HttpClient.ts";
 export class ActionDescriptorHelper {
 	public name(
 		options: ActionDescriptorOptions,
-		instance: any,
+		_instance: any,
 		key: string,
 	): string {
 		if (options.name) {
@@ -17,7 +17,7 @@ export class ActionDescriptorHelper {
 		return key;
 	}
 
-	public path(options: ActionDescriptorOptions, instance: any, key: string) {
+	public path(options: ActionDescriptorOptions, _instance: any, key: string) {
 		if (options.path != null) {
 			return options.path;
 		}
@@ -47,10 +47,7 @@ export class ActionDescriptorHelper {
 		};
 	}
 
-	public method(options: {
-		method?: string;
-		schema?: any;
-	}): RouteMethod {
+	public method(options: { method?: string; schema?: any }): RouteMethod {
 		if (options.method) {
 			if (routeMethods.includes(options.method as RouteMethod)) {
 				return options.method.toUpperCase() as RouteMethod;
@@ -119,5 +116,5 @@ export class ActionDescriptorHelper {
 		);
 	}
 
-	public fetchLinks(url: string) {}
+	public fetchLinks(_url: string) {}
 }

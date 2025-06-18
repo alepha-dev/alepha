@@ -1,8 +1,8 @@
 import type { Static, TObject } from "@sinclair/typebox";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import {
-	type PgTableExtraConfigValue,
 	index,
+	type PgTableExtraConfigValue,
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { type PgTableConfig, pgTableSchema } from "../helpers/pgTableSchema.ts";

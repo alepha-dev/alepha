@@ -22,7 +22,7 @@
 		"@types/react-dom": "^19.1.6",
 		"pkgroll": "^2.13.1",
 		"react": "^19.1.0",
-		"vitest": "^3.2.3"
+		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
 		"@types/react": "^19",

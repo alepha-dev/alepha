@@ -101,10 +101,7 @@ export class ReactBrowserProvider {
 	}
 
 	protected async render(
-		options: {
-			url?: string;
-			previous?: PreviousLayerData[];
-		} = {},
+		options: { url?: string; previous?: PreviousLayerData[] } = {},
 	): Promise<RouterRenderResult> {
 		const previous = options.previous ?? this.state.layers;
 		const url = options.url ?? this.url;

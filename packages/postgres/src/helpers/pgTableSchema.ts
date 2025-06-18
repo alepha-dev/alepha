@@ -1,8 +1,8 @@
 import type { TObject } from "@sinclair/typebox";
 import type { BuildColumns } from "drizzle-orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm/column-builder";
-import { pgTable } from "drizzle-orm/pg-core";
 import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
+import { pgTable } from "drizzle-orm/pg-core";
 import { pg } from "../providers/PostgresTypeProvider.ts";
 import type {
 	FromSchema,

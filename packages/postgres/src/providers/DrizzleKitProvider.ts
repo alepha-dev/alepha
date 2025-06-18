@@ -1,9 +1,9 @@
 import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
 import type * as DrizzleKit from "drizzle-kit/api";
-import { Table, sql } from "drizzle-orm";
-import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider.ts";
+import { sql, Table } from "drizzle-orm";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
+import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider.ts";
 
 export class DrizzleKitProvider {
 	protected readonly log = $logger();
@@ -129,7 +129,7 @@ export class DrizzleKitProvider {
 	protected async executeStatements(
 		statements: string[],
 		provider: PostgresProvider,
-		schema?: string,
+		_schema?: string,
 		catchErrors = false,
 	) {
 		let nErrors = 0;
@@ -186,7 +186,7 @@ export class DrizzleKitProvider {
 	protected importDrizzleKit(): typeof DrizzleKit {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
-		} catch (error) {
+		} catch (_error) {
 			throw new Error(
 				"Drizzle Kit is not installed. Please install it with `npm i -D drizzle-kit`.",
 			);

@@ -2,16 +2,18 @@ import { createSecretKey } from "node:crypto";
 import { $logger } from "@alepha/core";
 import {
 	type CryptoKey,
+	createLocalJWKSet,
+	createRemoteJWKSet,
 	type FlattenedJWSInput,
 	type JSONWebKeySet,
 	type JWSHeaderParameters,
 	type JWTHeaderParameters,
 	type JWTPayload,
 	type JWTVerifyResult,
+	jwtVerify,
 	type KeyObject,
-	createLocalJWKSet,
+	SignJWT,
 } from "jose";
-import { SignJWT, createRemoteJWKSet, jwtVerify } from "jose";
 import { SecurityError } from "../errors/SecurityError.ts";
 
 /**
@@ -195,7 +197,7 @@ export class JwtProvider {
 				const realmAsKeyName = iss.split("/realms/")[1];
 				return this.keystore.find((it) => it.name === realmAsKeyName);
 			}
-		} catch (error) {
+		} catch (_error) {
 			// ignore
 		}
 	}

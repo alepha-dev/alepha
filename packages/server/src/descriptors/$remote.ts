@@ -1,4 +1,4 @@
-import { KIND, OPTIONS, __descriptor } from "@alepha/core";
+import { __descriptor, KIND, OPTIONS } from "@alepha/core";
 import type { ServiceAccountDescriptor } from "../../../security";
 import type { ProxyDescriptorOptions } from "./$proxy.ts";
 

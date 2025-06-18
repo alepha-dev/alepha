@@ -1,4 +1,4 @@
-import { KIND, OPTIONS, __descriptor } from "@alepha/core";
+import { __descriptor, KIND, OPTIONS } from "@alepha/core";
 import type {
 	RequestConfigSchema,
 	ServerRoute,

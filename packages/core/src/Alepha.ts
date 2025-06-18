@@ -166,7 +166,7 @@ export class Alepha {
 
 			try {
 				onTestFinished?.(() => alepha.stop());
-			} catch (error) {
+			} catch (_error) {
 				// ignore
 			}
 
@@ -914,7 +914,7 @@ export class Alepha {
 			try {
 				value = JSON.parse(value);
 				alreadyParsed = true;
-			} catch (error) {
+			} catch (_error) {
 				// ignore json parsing and let typebox handle it
 			}
 		}

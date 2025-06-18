@@ -1,12 +1,12 @@
-import { $inject, Alepha, __bind } from "@alepha/core";
+import { __bind, $inject, Alepha } from "@alepha/core";
 import { $cache } from "./descriptors/$cache.ts";
 import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider.ts";
-import { CacheProvider } from "./providers/CacheProvider.ts";
+import { DefaultCacheProvider } from "./providers/DefaultCacheProvider.ts";
 import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
 
 export * from "./descriptors/$cache.ts";
 export * from "./providers/CacheDescriptorProvider.ts";
-export * from "./providers/CacheProvider.ts";
+export * from "./providers/DefaultCacheProvider.ts";
 export * from "./providers/MemoryCacheProvider.ts";
 
 export class CacheModule {
@@ -14,7 +14,7 @@ export class CacheModule {
 
 	constructor() {
 		this.alepha.register({
-			provide: CacheProvider,
+			provide: DefaultCacheProvider,
 			use: MemoryCacheProvider,
 		});
 

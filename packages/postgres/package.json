@@ -23,7 +23,7 @@
 		"@types/pg": "8.15.4",
 		"drizzle-kit": "0.31.1",
 		"pkgroll": "^2.13.1",
-		"vitest": "^3.2.3"
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",

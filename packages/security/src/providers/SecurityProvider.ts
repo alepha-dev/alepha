@@ -1,4 +1,3 @@
-import { OPTIONS, type Static } from "@alepha/core";
 import {
 	$hook,
 	$inject,
@@ -7,6 +6,8 @@ import {
 	AppNotStartedError,
 	ContainerLockedError,
 	KIND,
+	OPTIONS,
+	type Static,
 	t,
 } from "@alepha/core";
 import type { JSONWebKeySet, JWTPayload } from "jose";

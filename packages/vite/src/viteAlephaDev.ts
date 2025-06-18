@@ -2,10 +2,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Alepha, State } from "@alepha/core";
 import {
+	loadEnv,
 	type Plugin,
 	type ResolvedConfig,
 	type ViteDevServer,
-	loadEnv,
 } from "vite";
 
 export interface ViteAlephaDevOptions {

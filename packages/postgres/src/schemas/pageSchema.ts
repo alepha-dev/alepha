@@ -6,8 +6,8 @@ import type {
 	TInteger,
 	TIntersect,
 	TObject,
-	TRecord,
 	TOptionalWithFlag,
+	TRecord,
 } from "@sinclair/typebox";
 
 /**

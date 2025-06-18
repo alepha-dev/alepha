@@ -114,7 +114,7 @@ export class ServerLinksProvider {
 				}
 			}
 
-			const { schema, ...copy } = link;
+			const { schema: _unused, ...copy } = link;
 			userLinks.push(copy);
 		}
 

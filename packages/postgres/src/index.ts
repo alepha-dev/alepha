@@ -1,11 +1,11 @@
 import type { Static } from "@alepha/core";
-import { $inject, Alepha, __bind, t } from "@alepha/core";
+import { __bind, $inject, Alepha, t } from "@alepha/core";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
-import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
-import { SequenceProvider } from "./providers/SequenceProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
+import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
+import { SequenceProvider } from "./providers/SequenceProvider.ts";
 
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
@@ -23,10 +23,10 @@ export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";
 export * from "./interfaces/TInsertObject.ts";
+export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
-export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/RepositoryDescriptorProvider.ts";
 export * from "./schemas/entitySchema.ts";
 export * from "./schemas/pageQuerySchema.ts";

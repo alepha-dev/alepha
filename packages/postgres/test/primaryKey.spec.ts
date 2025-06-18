@@ -3,35 +3,6 @@ import { expect, test } from "vitest";
 import { $entity, $repository, pg } from "../src";
 import { PgError } from "../src/errors/PgError.ts";
 
-class App {
-	identity = $repository(
-		$entity({
-			name: "identity",
-			schema: t.object({
-				id: pg.primaryKey(),
-			}),
-		}),
-	);
-
-	big = $repository(
-		$entity({
-			name: "big",
-			schema: t.object({
-				id: pg.bigIdentityPrimaryKey(),
-			}),
-		}),
-	);
-
-	uuid = $repository(
-		$entity({
-			name: "uuid",
-			schema: t.object({
-				id: pg.uuidPrimaryKey(),
-			}),
-		}),
-	);
-}
-
 test("primaryKey - identity", async () => {
 	class App {
 		identity = $repository(

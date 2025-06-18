@@ -188,7 +188,7 @@ export class NodePostgresProvider implements PostgresProvider {
 					try {
 						// silently run migrations
 						await migrate(this.db, migration);
-					} catch (ignore) {
+					} catch (_ignore) {
 						// ignore errors
 					}
 

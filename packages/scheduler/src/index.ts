@@ -1,4 +1,4 @@
-import { $inject, Alepha, __bind } from "@alepha/core";
+import { __bind, $inject, Alepha } from "@alepha/core";
 import { $scheduler } from "./descriptors/$scheduler.ts";
 import { SchedulerDescriptorProvider } from "./providers/SchedulerDescriptorProvider.ts";
 

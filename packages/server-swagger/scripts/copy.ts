@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { fs, $, glob } from "zx";
+import { $, fs, glob } from "zx";
 
 $.shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
 

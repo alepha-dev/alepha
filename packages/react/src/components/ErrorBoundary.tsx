@@ -1,7 +1,7 @@
 import React, {
-	type ReactNode,
 	type ErrorInfo,
 	type PropsWithChildren,
+	type ReactNode,
 } from "react";
 
 /**

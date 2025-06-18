@@ -1,4 +1,4 @@
-import { $inject, Alepha, __bind } from "@alepha/core";
+import { __bind, $inject, Alepha } from "@alepha/core";
 import { MemoryTopicProvider } from "@alepha/topic";
 import { $lock } from "./descriptors/$lock.ts";
 import { LockDescriptorProvider } from "./providers/LockDescriptorProvider.ts";

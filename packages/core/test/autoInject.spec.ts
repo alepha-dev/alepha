@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Alepha, KIND, __bind, __descriptor } from "../src";
+import { __bind, __descriptor, Alepha, KIND } from "../src";
 
 test("autoInject", () => {
 	class A {}
