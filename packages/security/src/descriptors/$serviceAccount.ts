@@ -1,30 +1,71 @@
 import { randomUUID } from "node:crypto";
 import { $cursor } from "@alepha/core";
-import { JwtProvider } from "../providers/JwtProvider.ts";
+import { DateTimeProvider } from "@alepha/datetime";
+import { JwtProvider, type JwtSignOptions } from "../providers/JwtProvider.ts";
 
 /**
- * Create a service account that can be used to authenticate with a OAUTH2 server.
+ * Allow to get an access token for a service account.
  *
- * @param options
+ * You have some options to configure the service account:
+ * - a OAUTH2 URL using client credentials grant type
+ * - a JWT secret shared between the services
+ *
+ * @example
+ * ```ts
+ * import { $serviceAccount } from "@alepha/security";
+ *
+ * class MyService {
+ *   serviceAccount = $serviceAccount({
+ *     oauth2: {
+ *       url: "https://example.com/oauth2/token",
+ *       clientId: "your-client-id",
+ *       clientSecret: "your-client-secret",
+ *     }
+ *   });
+ *
+ *   async fetchData() {
+ *     const token = await this.serviceAccount.token();
+ *     // or
+ *     const response = await this.serviceAccount.fetch("https://api.example.com/data");
+ *   }
+ * }
+ * ```
  */
 export const $serviceAccount = (
 	options: ServiceAccountDescriptorOptions,
 ): ServiceAccountDescriptor => {
+	const { context } = $cursor();
+	const store: {
+		cache?: AccessTokenResponse;
+	} = {};
+	const dateTimeProvider = context.get(DateTimeProvider);
+	const gracePeriod = options.gracePeriod ?? 30000;
+
+	const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
+		store.cache = {
+			...response,
+			at: dateTimeProvider.now().toMillis(),
+		};
+	};
+
+	const getTokenFromCache = () => {
+		if (store.cache) {
+			const { access_token, expires_in, at } = store.cache;
+			const now = dateTimeProvider.now().toMillis();
+			const expires = at + expires_in * 1000;
+			if (expires + gracePeriod > now) {
+				return access_token;
+			}
+		}
+	};
+
 	if ("oauth2" in options) {
 		const { url, clientId, clientSecret } = options.oauth2;
-		const store: {
-			response?: AccessTokenResponse;
-		} = {};
 
 		const token = async () => {
-			if (store.response) {
-				const { access_token, expires_in, at } = store.response;
-				const now = Date.now();
-				const expires = at + expires_in * 1000;
-
-				if (expires - 5000 > now) {
-					return access_token;
-				}
+			const tokenFromCache = getTokenFromCache();
+			if (tokenFromCache) {
+				return tokenFromCache;
 			}
 
 			const response = await fetch(url, {
@@ -41,105 +82,89 @@ export const $serviceAccount = (
 
 			const json = await response.json();
 
-			store.response = {
-				...json,
-				at: Date.now(),
-			};
-
-			if (!json.access_token) {
+			if (!json.access_token || !json.expires_in) {
 				throw new Error(
 					`Failed to fetch access token: ${JSON.stringify(json)}`,
 				);
 			}
 
+			cacheToken(json);
+
 			return json.access_token;
 		};
 
 		return {
-			options,
-			store,
 			token,
-			fetch: async (url, options) => {
-				const headers = new Headers(options?.headers);
-
-				headers.set("Authorization", `Bearer ${await token()}`);
-
-				return fetch(url, {
-					...options,
-					headers,
-				});
-			},
 		};
 	}
 
-	const { secret } = options.jwt;
-	const { context } = $cursor();
+	const { secret, signOptions } = options.jwt;
 
 	const jwt = context.get(JwtProvider);
 	const sub = randomUUID();
 	const roles = options.jwt.roles ?? [];
 
-	//TODO: add jwt options (expiresIn, audience, issuer, etc.)
-
 	jwt.setKeyLoader(secret, secret);
 
-	const token = async () => {
-		return context.get(JwtProvider).create({ sub, roles }, secret);
-	};
-
 	return {
-		options,
-		store: {},
-		token,
-		fetch: async (url, options) => {
-			const headers = new Headers(options?.headers);
+		token: async () => {
+			const tokenFromCache = getTokenFromCache();
+			if (tokenFromCache) {
+				return tokenFromCache;
+			}
 
-			headers.set("Authorization", `Bearer ${await token()}`);
+			const options = signOptions ?? {};
 
-			return fetch(url, {
-				...options,
-				headers,
+			options.expiresIn ??= 300; // default to 5 minutes
+
+			const token = await jwt.create({ sub, roles }, secret, options);
+
+			cacheToken({
+				access_token: token,
+				expires_in: options.expiresIn,
 			});
+
+			return token;
 		},
 	};
 };
 
-export type ServiceAccountDescriptorOptions =
+export type ServiceAccountDescriptorOptions = {
+	gracePeriod?: number; // Grace period in milliseconds before token expiration
+} & (
 	| {
-			oauth2: {
-				/**
-				 * Get Token URL.
-				 */
-				url: string;
-
-				/**
-				 * Client ID.
-				 */
-				clientId: string;
-
-				/**
-				 * Client Secret.
-				 */
-				clientSecret: string;
-
-				/**
-				 * Scopes to request.
-				 */
-				scope?: string;
-			};
+			oauth2: Oauth2ServiceAccountDescriptorOptions;
 	  }
 	| {
-			jwt: {
-				secret: string;
-				roles?: string[];
-			};
-	  };
+			jwt: JwtServiceAccountDescriptorOptions;
+	  }
+);
+
+export interface JwtServiceAccountDescriptorOptions {
+	secret: string;
+	roles?: string[];
+	signOptions?: JwtSignOptions;
+}
+
+export interface Oauth2ServiceAccountDescriptorOptions {
+	/**
+	 * Get Token URL.
+	 */
+	url: string;
+
+	/**
+	 * Client ID.
+	 */
+	clientId: string;
+
+	/**
+	 * Client Secret.
+	 */
+	clientSecret: string;
+}
 
 export interface ServiceAccountDescriptor {
-	options: ServiceAccountDescriptorOptions;
-	store: ServiceAccountStore;
 	token: () => Promise<string>;
-	fetch(url: string, options?: RequestInit): Promise<Response>;
 }
 
 export interface AccessTokenResponse {

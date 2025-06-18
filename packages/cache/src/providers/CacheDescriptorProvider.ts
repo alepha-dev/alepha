@@ -14,7 +14,10 @@ import type {
 	CacheDescriptorOptions,
 } from "../descriptors/$cache.ts";
 import { $cache } from "../descriptors/$cache.ts";
-import { type CacheProvider, DefaultCacheProvider } from "./DefaultCacheProvider.ts";
+import {
+	type CacheProvider,
+	DefaultCacheProvider,
+} from "./DefaultCacheProvider.ts";
 import { MemoryCacheProvider } from "./MemoryCacheProvider.ts";
 
 const envSchema = t.object({
@@ -76,6 +79,10 @@ export class CacheDescriptorProvider {
 		}
 	}
 
+	public getCaches(): Cache[] {
+		return this.caches;
+	}
+
 	/**
 	 * Clear all cache entries.
 	 */
@@ -115,16 +122,14 @@ export class CacheDescriptorProvider {
 
 	/**
 	 * Invalidate the cache for the given state and arguments.
-	 *
-	 * @param cache
-	 * @param keys
 	 */
 	public async invalidate(cache: Cache, ...keys: string[]): Promise<void> {
 		await this.provider(cache.options).del(cache.group, ...keys);
 	}
 
 	/**
-	 *
+	 * Run the cache handler with the given state and arguments.
+	 * You must run on a $cache with a handler defined.
 	 */
 	public async run<TReturn, TParameter extends any[]>(
 		cache: Cache<TReturn, TParameter>,
@@ -136,7 +141,7 @@ export class CacheDescriptorProvider {
 		}
 
 		if (
-			!this.alepha.isStarted() ||
+			!this.alepha.isReady() ||
 			cache.options.disabled ||
 			!this.env.CACHE_ENABLED
 		) {
@@ -145,13 +150,13 @@ export class CacheDescriptorProvider {
 
 		const key = this.key(cache, ...args);
 
-		const data = await this.get(cache, key);
-		if (data) {
-			return data;
+		const cached = await this.get(cache, key);
+		if (cached) {
+			return cached;
 		}
 
 		const result = await handler(...args);
-		// when exception occurs, we don't cache the result
+		// note: when exception occurs, don't cache the result
 
 		await this.set(cache, key, result, cache.options.ttl);
 
@@ -166,7 +171,7 @@ export class CacheDescriptorProvider {
 
 		const data = await provider.get(cache.group, key);
 		if (data) {
-			return JSON.parse(data);
+			return this.deserialize<TReturn>(data);
 		}
 
 		return undefined;
@@ -178,22 +183,31 @@ export class CacheDescriptorProvider {
 		value: TReturn,
 		ttl?: DurationLike,
 	): Promise<void> {
+		const provider = this.provider(cache.options);
 		const px = this.dateTimeProvider
 			.duration(
 				ttl ?? cache.options.ttl ?? { seconds: this.env.CACHE_DEFAULT_TTL },
 			)
 			.as("milliseconds");
 
-		await this.provider(cache.options).set(
+		await provider.set(
 			cache.group,
 			key,
-			JSON.stringify(value),
+			this.serialize(value),
 			px > 0 ? px : undefined,
 		);
+	}
+
+	protected serialize<TReturn>(value: TReturn): string {
+		return JSON.stringify(value);
+	}
+
+	protected deserialize<TReturn>(value: string): TReturn {
+		return JSON.parse(value) as TReturn;
 	}
 }
 
 export interface Cache<TReturn = any, TParameter extends any[] = any[]> {
-	options: CacheDescriptorOptions<TReturn, TParameter>;
 	group: string;
+	options: CacheDescriptorOptions<TReturn, TParameter>;
 }

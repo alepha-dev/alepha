@@ -12,6 +12,7 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.7.0",
+		"@alepha/datetime": "0.7.0",
 		"jose": "^6.0.11"
 	},
 	"devDependencies": {

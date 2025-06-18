@@ -1,5 +1,6 @@
 import { createSecretKey } from "node:crypto";
-import { $logger } from "@alepha/core";
+import { $inject, $logger } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import {
 	type CryptoKey,
 	createLocalJWKSet,
@@ -14,6 +15,7 @@ import {
 	type KeyObject,
 	SignJWT,
 } from "jose";
+import { JWTExpired } from "jose/errors";
 import { SecurityError } from "../errors/SecurityError.ts";
 
 /**
@@ -22,6 +24,7 @@ import { SecurityError } from "../errors/SecurityError.ts";
 export class JwtProvider {
 	protected readonly log = $logger();
 	protected readonly keystore: KeyLoaderHolder[] = [];
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
 	/**
 	 * Adds a key loader to the embedded keystore.
@@ -84,10 +87,15 @@ export class JwtProvider {
 
 			try {
 				return {
-					result: await jwtVerify(token, it.keyLoader),
+					result: await jwtVerify(token, it.keyLoader, {
+						currentDate: this.dateTimeProvider.now().toJSDate(),
+					}),
 					keyName: it.name,
 				};
 			} catch (error) {
+				if (error instanceof JWTExpired) {
+					throw new SecurityError("Token expired", { cause: error });
+				}
 				this.log.trace(error);
 			}
 		}
@@ -152,7 +160,7 @@ export class JwtProvider {
 		return {
 			issuedAt: true,
 			protectedHeader: { alg: "HS256" },
-			expiresIn: "2h",
+			expiresIn: this.dateTimeProvider.now().plus({ hour: 2 }).toSeconds(),
 		};
 	}
 
@@ -217,7 +225,7 @@ export interface KeyLoaderHolder {
 export interface JwtSignOptions {
 	issuedAt?: boolean;
 	protectedHeader?: JWTHeaderParameters;
-	expiresIn?: string | number;
+	expiresIn?: number;
 }
 
 export interface ExtendedJWTPayload extends JWTPayload {
