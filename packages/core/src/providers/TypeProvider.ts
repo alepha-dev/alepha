@@ -382,19 +382,72 @@ export class TypeProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface FileLike {
+	/**
+	 * Filename.
+	 * @default "file"
+	 */
 	name: string;
+
+	/**
+	 * Mandatory MIME type of the file.
+	 * @default "application/octet-stream"
+	 */
 	type: string;
+
+	/**
+	 * Size of the file in bytes.
+	 *
+	 * Always 0 for streams, as the size is not known until the stream is fully read.
+	 *
+	 * @default 0
+	 */
 	size: number;
+
+	/**
+	 * Last modified timestamp in milliseconds since epoch.
+	 *
+	 * Always the current timestamp for streams, as the last modified time is not known.
+	 * We use this field to ensure compatibility with File API.
+	 *
+	 * @default Date.now()
+	 */
 	lastModified: number;
+
+	/**
+	 * Returns a ReadableStream or Node.js Readable stream of the file content.
+	 *
+	 * For streams, this is the original stream.
+	 */
 	stream(): StreamLike;
+
+	/**
+	 * Returns the file content as an ArrayBuffer.
+	 *
+	 * For streams, this reads the entire stream into memory.
+	 */
 	arrayBuffer(): Promise<ArrayBuffer>;
+
+	/**
+	 * Returns the file content as a string.
+	 *
+	 * For streams, this reads the entire stream into memory and converts it to a string.
+	 */
 	text(): Promise<string>;
+
+	// -- node specific fields --
+
+	/**
+	 * Optional file path, if the file is stored on disk.
+	 *
+	 * This is not from the File API, but rather a custom field to indicate where the file is stored.
+	 */
 	filepath?: string;
 }
 
+/**
+ * TypeBox view of FileLike.
+ */
 export type TFile = TUnsafe<FileLike>;
-export type StreamLike = ReadableStream | NodeWebStream | Readable;
-export type TStream = TUnsafe<StreamLike>;
 
 export const isTypeFile = (value: TSchema): value is TFile => {
 	return (
@@ -416,6 +469,12 @@ export const isFileLike = (value: any): value is FileLike => {
 		typeof value.stream === "function"
 	);
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type StreamLike = ReadableStream | NodeWebStream | Readable;
+
+export type TStream = TUnsafe<StreamLike>;
 
 export const isTypeStream = (value: TSchema): value is TStream => {
 	return (

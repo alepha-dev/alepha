@@ -2,6 +2,7 @@ import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./index.shared.ts";
 import type { Service } from "./interfaces/Service.ts";
 
+export * from "./helpers/file.ts";
 export * from "./index.shared.ts";
 
 export const run = (entry: Alepha | Service, opts?: RunOptions): Alepha => {

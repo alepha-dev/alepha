@@ -3,15 +3,13 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { readFile, stat, unlink } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
 import * as os from "node:os";
-import { Readable } from "node:stream";
-import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
 	$hook,
 	$inject,
 	Alepha,
+	bufferToArrayBuffer,
 	type FileLike,
 	isTypeFile,
-	type StreamLike,
 	TypeGuard,
 } from "@alepha/core";
 import Busboy, {
@@ -230,117 +228,3 @@ interface HybridFile extends FileLike {
 		tmpPath: string;
 	};
 }
-
-/**
- * Create a file-like object from various sources.
- */
-export const file = (
-	source: string | Buffer | ArrayBuffer | StreamLike,
-	options: {
-		type?: string;
-		name?: string;
-	} = {},
-): FileLike => {
-	if (source instanceof ReadableStream || source instanceof NodeWebStream) {
-		source = Readable.from(source);
-	}
-
-	if (source instanceof Readable) {
-		return {
-			name: options.name ?? "file",
-			type: options.type ?? getContentType(options.name ?? "file"),
-			size: 0,
-			lastModified: Date.now(),
-			stream: () => source,
-			arrayBuffer: async () => {
-				const buffer = await streamToBuffer(source);
-				return bufferToArrayBuffer(buffer);
-			},
-			text: async () => {
-				const buffer = await streamToBuffer(source);
-				return buffer.toString("utf-8");
-			},
-		};
-	}
-
-	const name = options.name ?? "file";
-	const buffer = Buffer.isBuffer(source)
-		? source
-		: typeof source === "string"
-			? Buffer.from(source, "utf-8")
-			: Buffer.from(source);
-	return {
-		name,
-		type: options.type ?? getContentType(options.name ?? name),
-		size: buffer.byteLength,
-		lastModified: Date.now(),
-		stream: () => bufferToStream(buffer),
-		arrayBuffer: async () => {
-			return bufferToArrayBuffer(buffer);
-		},
-		text: async () => {
-			return buffer.toString("utf-8");
-		},
-	};
-};
-
-export const bufferToStream = (buffer: Buffer): Readable => {
-	return new Readable({
-		read() {
-			this.push(buffer);
-			this.push(null);
-		},
-	});
-};
-
-export const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
-	return new Promise<Buffer>((resolve, reject) => {
-		const buffer: any[] = [];
-		stream.on("data", (chunk) => buffer.push(chunk));
-		stream.on("end", () => resolve(Buffer.concat(buffer)));
-		stream.on("error", (err) =>
-			reject(new Error("Error converting stream", { cause: err })),
-		);
-	});
-};
-
-export const bufferToArrayBuffer = (buffer: Buffer): ArrayBuffer => {
-	return buffer.buffer.slice(
-		buffer.byteOffset,
-		buffer.byteOffset + buffer.byteLength,
-	) as ArrayBuffer;
-};
-
-export const getContentType = (filename: string): string => {
-	if (filename.endsWith(".json")) {
-		return "application/json";
-	}
-	if (filename.endsWith(".txt")) {
-		return "text/plain";
-	}
-	if (filename.endsWith(".html")) {
-		return "text/html";
-	}
-	if (filename.endsWith(".xml")) {
-		return "application/xml";
-	}
-	if (filename.endsWith(".csv")) {
-		return "text/csv";
-	}
-	if (filename.endsWith(".pdf")) {
-		return "application/pdf";
-	}
-	if (filename.endsWith(".zip")) {
-		return "application/zip";
-	}
-	if (filename.endsWith(".png")) {
-		return "image/png";
-	}
-	if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
-		return "image/jpeg";
-	}
-	if (filename.endsWith(".gif")) {
-		return "image/gif";
-	}
-	return "application/octet-stream";
-};

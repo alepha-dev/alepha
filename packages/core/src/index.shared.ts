@@ -19,6 +19,7 @@ export * from "./errors/NotImplementedError.ts";
 export * from "./errors/TypeBoxError.ts";
 
 export * from "./helpers/descriptor.ts";
+export * from "./helpers/getContentType.ts";
 
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/Service.ts";
