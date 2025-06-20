@@ -7856,6 +7856,8 @@ __metadata:
 "playground-a3fba9@workspace:apps/playground":
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
+  dependencies:
+    rolldown-vite: "npm:^6.3.21"
   languageName: unknown
   linkType: soft
 

@@ -43,7 +43,7 @@ export interface ViteAlephaBuildOptions {
 export async function viteAlephaBuild(
 	options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
-	const entry = options.entry || "src/index.server.ts";
+	const entry = options.entry || "src/index.ts";
 	const distDir = "dist";
 	const clientDir = "public";
 	const { build: viteBuild } = await importVite();
@@ -110,7 +110,7 @@ export async function viteAlephaBuild(
 				outDir: `${distDir}/server`,
 				rollupOptions: {
 					output: {
-						entryFileNames: "index.mjs",
+						entryFileNames: "[hash].mjs",
 						chunkFileNames: "[hash].mjs",
 						assetFileNames: "[hash][extname]",
 						format: "esm",
@@ -125,19 +125,30 @@ export async function viteAlephaBuild(
 			plugins,
 		};
 
-		await viteBuild(mergeConfig(viteBuildServerConfig, options.server || {}));
+		const result = await viteBuild(
+			mergeConfig(viteBuildServerConfig, options.server || {}),
+		);
+
+		const rollupOutput = (
+			Array.isArray(result) ? result[0] : result
+		) as vite.Rollup.RollupOutput;
+
+		const entryFilePath = join(process.cwd(), entry);
+		const indexFileName = rollupOutput.output.find(
+			(it) => "facadeModuleId" in it && it.facadeModuleId === entryFilePath,
+		)?.fileName;
 
 		let state = "";
 
-		if (clientDir) {
+		if (opts.clientDir) {
 			const index = await readFile(
-				`${distDir}/${clientDir}/index.html`,
+				`${distDir}/${opts.clientDir}/index.html`,
 				"utf-8",
 			);
 
 			state = `__alepha.state(\n\t"ReactServerProvider.template", \n\t\`${index.replace(/>\s*</g, "><").trim()}\`\n);`;
 
-			await unlink(`${distDir}/${clientDir}/index.html`);
+			await unlink(`${distDir}/${opts.clientDir}/index.html`);
 		}
 
 		const warning =
@@ -147,7 +158,7 @@ export async function viteAlephaBuild(
 
 		await writeFile(
 			`${distDir}/index.mjs`,
-			`${warning}\nimport'./server/index.mjs';\n\n${state}`.trim(),
+			`${warning}\nimport'./server/${indexFileName}';\n\n${state}`.trim(),
 		);
 	};
 
