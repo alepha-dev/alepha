@@ -31,6 +31,30 @@ export class PageDescriptorProvider {
 		throw new Error(`Page ${name} not found`);
 	}
 
+	public url(
+		name: string,
+		options: { params?: Record<string, string>; base?: string } = {},
+	): URL {
+		const page = this.page(name);
+		if (!page) {
+			throw new Error(`Page ${name} not found`);
+		}
+
+		let url = page.path ?? "";
+		let parent = page.parent;
+		while (parent) {
+			url = `${parent.path ?? ""}/${url}`;
+			parent = parent.parent;
+		}
+
+		url = this.compile(url, options.params ?? {});
+
+		return new URL(
+			url.replace(/\/\/+/g, "/") || "/",
+			options.base ?? `http://localhost`,
+		);
+	}
+
 	public root(state: RouterState, context: PageReactContext): ReactNode {
 		return createElement(
 			RouterContext.Provider,

@@ -7,11 +7,11 @@ import {
 	$hook,
 	$inject,
 	Alepha,
-	bufferToArrayBuffer,
 	type FileLike,
 	isTypeFile,
 	TypeGuard,
 } from "@alepha/core";
+import { bufferToArrayBuffer } from "@alepha/file";
 import Busboy, {
 	type BusboyConfig,
 	type BusboyFileStream,

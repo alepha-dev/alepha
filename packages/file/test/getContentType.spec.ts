@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getContentType } from "../src/helpers/getContentType";
+import { getContentType } from "../src/helpers/getContentType.ts";
 
 describe("getContentType", () => {
 	it("should return correct MIME type for known extensions", () => {

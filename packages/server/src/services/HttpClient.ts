@@ -304,6 +304,19 @@ export class HttpClient {
 			return json;
 		}
 
+		if (response.status >= 400) {
+			const error = new HttpError({
+				status: response.status,
+				message: `An error occurred while fetching the resource. (${response.statusText})`,
+			});
+
+			await this.alepha.emit("client:onError", {
+				error,
+			});
+
+			throw error;
+		}
+
 		return response;
 	}
 

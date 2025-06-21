@@ -20,8 +20,10 @@ import { renderToString } from "react-dom/server";
 import { $page } from "../descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
+	type PageReactContext,
 	type PageRequest,
 	type PageRoute,
+	type RouterState,
 } from "./PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
 import { ServerHeadProvider } from "./ServerHeadProvider.ts";
@@ -66,6 +68,8 @@ export class ReactServerProvider {
 
 			for (const { key, instance, value } of pages) {
 				const name = value[OPTIONS].name ?? key;
+
+				instance[key].prerender = this.createRenderFunction(name, true);
 
 				if (this.alepha.isTest()) {
 					instance[key].render = this.createRenderFunction(name);
@@ -187,7 +191,7 @@ export class ReactServerProvider {
 	/**
 	 * For testing purposes, creates a render function that can be used.
 	 */
-	protected createRenderFunction(name: string) {
+	protected createRenderFunction(name: string, withIndex = false) {
 		return async (
 			options: {
 				params?: Record<string, string>;
@@ -195,21 +199,33 @@ export class ReactServerProvider {
 			} = {},
 		) => {
 			const page = this.pageDescriptorProvider.page(name);
+			const url = new URL(this.pageDescriptorProvider.url(name, options));
 			const context: PageRequest = {
-				url: new URL("http://localhost"),
+				url,
 				params: options.params ?? {},
 				query: options.query ?? {},
 				head: {},
 				onError: () => null,
 			};
 
-			// for testing
 			const state = await this.pageDescriptorProvider.createLayers(
 				page,
 				context,
 			);
 
-			return renderToString(this.pageDescriptorProvider.root(state, context));
+			if (!withIndex) {
+				return {
+					context,
+					html: renderToString(
+						this.pageDescriptorProvider.root(state, context),
+					),
+				};
+			}
+
+			return {
+				context,
+				html: this.renderToHtml(this.template ?? "", state, context),
+			};
 		};
 	}
 
@@ -279,41 +295,6 @@ export class ReactServerProvider {
 				return reply.redirect(state.redirect);
 			}
 
-			const element = this.pageDescriptorProvider.root(state, context);
-
-			let app = "";
-			try {
-				app = renderToString(element);
-			} catch (error) {
-				this.log.error("Error during SSR", error);
-				app = renderToString(context.onError(error as Error));
-			}
-
-			const hydrationData: ReactHydrationState = {
-				links: context.links,
-				layers: state.layers.map((it) => ({
-					...it,
-					error: it.error
-						? {
-								...it.error,
-								name: it.error.name,
-								message: it.error.message,
-								stack: it.error.stack, // TODO: Hide stack in production ?
-							}
-						: undefined,
-					index: undefined,
-					path: undefined,
-					element: undefined,
-				})),
-			};
-
-			// create hydration data
-			const script = `<script>window.__ssr=${JSON.stringify(hydrationData)}</script>`;
-
-			const response = {
-				html: template,
-			};
-
 			reply.status = 200;
 			reply.headers["content-type"] = "text/html";
 			reply.headers["cache-control"] =
@@ -321,22 +302,62 @@ export class ReactServerProvider {
 			reply.headers.pragma = "no-cache";
 			reply.headers.expires = "0";
 
-			// inject app into template
-			this.fillTemplate(response, app, script);
-
-			// inject head meta
-			if (context.head) {
-				response.html = this.headProvider.renderHead(
-					response.html,
-					context.head,
-				);
-			}
-
-			// TODO: hook for plugins "react:server:template"
-			// { response: { html: string }, request, state }
-
-			return response.html;
+			return this.renderToHtml(template, state, context);
 		};
+	}
+
+	public renderToHtml(
+		template: string,
+		state: RouterState,
+		context: PageReactContext,
+	) {
+		const element = this.pageDescriptorProvider.root(state, context);
+
+		let app = "";
+		try {
+			app = renderToString(element);
+		} catch (error) {
+			this.log.error("Error during SSR", error);
+			app = renderToString(context.onError(error as Error));
+		}
+
+		const hydrationData: ReactHydrationState = {
+			links: context.links,
+			layers: state.layers.map((it) => ({
+				...it,
+				error: it.error
+					? {
+							...it.error,
+							name: it.error.name,
+							message: it.error.message,
+							stack: it.error.stack, // TODO: Hide stack in production ?
+						}
+					: undefined,
+				index: undefined,
+				path: undefined,
+				element: undefined,
+			})),
+		};
+
+		// create hydration data
+		const script = `<script>window.__ssr=${JSON.stringify(hydrationData)}</script>`;
+
+		const response = {
+			html: template,
+		};
+
+		// inject app into template
+		this.fillTemplate(response, app, script);
+
+		// inject head meta
+		if (context.head) {
+			response.html = this.headProvider.renderHead(response.html, context.head);
+		}
+
+		// TODO: hook for plugins "react:server:template"
+		// { response: { html: string }, request, state }
+
+		return response.html;
 	}
 
 	fillTemplate(response: { html: string }, app: string, script: string) {

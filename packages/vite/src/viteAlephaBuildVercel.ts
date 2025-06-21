@@ -1,33 +1,25 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { basename } from "node:path";
 import { loadEnv } from "vite";
 
 export interface ViteAlephaBuildVercelOptions {
 	/**
-	 * The name of the client directory.
-	 */
-	clientDir?: string;
-
-	/**
 	 * The directory where the build output will be placed.
+	 *
+	 * @default "dist"
 	 */
 	distDir?: string;
 
 	/**
-	 * The name of the project.
+	 * The name of the client directory.
+	 *
+	 * @default "public"
 	 */
-	projectName?: string;
+	clientDir?: string;
 }
 
-/**
- *
- */
 export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
-	const clientDir = opts.clientDir ?? "public";
 	const distDir = opts.distDir ?? "dist";
-
-	// project name is "dist" by default, we use the current working directory name if not specified
-	const _projectName = opts.projectName ?? basename(process.cwd());
+	const clientDir = opts.clientDir ?? "public";
 
 	const warning =
 		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
@@ -50,6 +42,7 @@ export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
 				`${distDir}/api/index.mjs`,
 				`${warning}\nimport "../index.mjs";
 
+// This file is the entry point for Vercel serverless functions.
 export default async function (req, res) {
 \tawait __alepha.start();
 \t__alepha.handle(req, res);

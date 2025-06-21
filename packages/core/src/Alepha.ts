@@ -410,7 +410,7 @@ export class Alepha {
 			return "vercel";
 		}
 
-		if (process.env.VITE_ALEPHA_DEV) {
+		if (process.env.VITE_ALEPHA_DEV || process.env.VITE_ALEPHA_BUILD) {
 			return "vite";
 		}
 
@@ -449,8 +449,6 @@ export class Alepha {
 
 		this.locked = true;
 
-		await this.context.configure();
-
 		await this.emit("configure", this, { log: true });
 
 		this.configured = true;
@@ -486,6 +484,8 @@ export class Alepha {
 		await this.emit("start", this, { log: true });
 
 		this.started = true;
+
+		await this.context.init();
 
 		await this.emit("ready", this, { log: true });
 

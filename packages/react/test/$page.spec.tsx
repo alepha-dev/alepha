@@ -32,11 +32,13 @@ class App {
 const app = Alepha.create().get(App);
 
 test("$page - Basic", async ({ expect }) => {
-	expect(await app.root.render()).toEqual("root");
-	expect(await app.home.render()).toEqual("home");
-	expect(await app.test.render()).toEqual("<div>test</div>");
-	expect(await app.hello.render()).toEqual("hello world");
-	expect(await app.hello.render({ params: { name: "jack" } })).toEqual(
-		"hello jack",
+	expect(await app.root.render().then((it) => it.html)).toEqual("root");
+	expect(await app.home.render().then((it) => it.html)).toEqual("home");
+	expect(await app.test.render().then((it) => it.html)).toEqual(
+		"<div>test</div>",
 	);
+	expect(await app.hello.render().then((it) => it.html)).toEqual("hello world");
+	expect(
+		await app.hello.render({ params: { name: "jack" } }).then((it) => it.html),
+	).toEqual("hello jack");
 });

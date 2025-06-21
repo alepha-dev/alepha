@@ -2,15 +2,17 @@ import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./index.shared.ts";
 import type { Service } from "./interfaces/Service.ts";
 
-export * from "./helpers/file.ts";
 export * from "./index.shared.ts";
 
-export const run = (entry: Alepha | Service, opts?: RunOptions): Alepha => {
+export const run = (
+	entry: Alepha | Service | Array<Service>,
+	opts?: RunOptions,
+): Alepha => {
 	const alepha =
 		entry instanceof Alepha
 			? entry
 			: Alepha.create({ env: { ...process.env, ...opts?.env } }).with(
-					entry as Service,
+					...(Array.isArray(entry) ? entry : [entry]),
 				);
 
 	(globalThis as any).__alepha = alepha;

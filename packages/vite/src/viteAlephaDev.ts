@@ -7,6 +7,7 @@ import {
 	type ResolvedConfig,
 	type ViteDevServer,
 } from "vite";
+import { getDefaultEntryFile } from "./helpers/getDefaultEntryFile.ts";
 
 export interface ViteAlephaDevOptions {
 	/**
@@ -27,8 +28,10 @@ export interface ViteAlephaDevOptions {
 /**
  *
  */
-export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
-	const entry = options.entry || "src/index.server.ts";
+export async function viteAlephaDev(
+	options: ViteAlephaDevOptions = {},
+): Promise<Plugin> {
+	const entry = await getDefaultEntryFile(options.entry);
 	const root = process.cwd().replace(/\\/g, "/");
 	const state: {
 		started: boolean;
@@ -70,7 +73,6 @@ export function viteAlephaDev(options: ViteAlephaDevOptions = {}): Plugin {
 		log("[DEBUG] Starting Alepha app...");
 
 		const env = loadEnv("development", state.config.root, "");
-
 		for (const key in env) {
 			process.env[key] = env[key];
 		}

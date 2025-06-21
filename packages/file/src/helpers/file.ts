@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { PassThrough, Readable } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
-import type { FileLike, StreamLike } from "../providers/TypeProvider.ts";
+import type { FileLike, StreamLike } from "@alepha/core";
 import { getContentType } from "./getContentType.ts";
 
 export const file = (

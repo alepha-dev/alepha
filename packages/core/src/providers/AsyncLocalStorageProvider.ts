@@ -6,7 +6,7 @@ export type AsyncLocalStorageData = any;
 export class AsyncLocalStorageProvider {
 	protected als?: AsyncLocalStorage<AsyncLocalStorageData>;
 
-	public async configure() {
+	public async init() {
 		if (import.meta.env?.SSR !== false) {
 			const { AsyncLocalStorage } = await import("node:async_hooks");
 			this.als = new AsyncLocalStorage<AsyncLocalStorageData>();

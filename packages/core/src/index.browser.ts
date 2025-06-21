@@ -4,11 +4,16 @@ import type { Service } from "./interfaces/Service.ts";
 
 export * from "./index.shared.ts";
 
-export const run = (entry: Alepha | Service, opts?: RunOptions): Alepha => {
+export const run = (
+	entry: Alepha | Service | Array<Service>,
+	opts?: RunOptions,
+): Alepha => {
 	const alepha =
 		entry instanceof Alepha
 			? entry
-			: Alepha.create({ env: { ...opts?.env } }).with(entry as Service);
+			: Alepha.create({ env: { ...opts?.env } }).with(
+					...(Array.isArray(entry) ? entry : [entry]),
+				);
 
 	if (import.meta?.hot) {
 		import.meta.hot.on("alepha:reload", async () => {

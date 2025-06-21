@@ -28,8 +28,13 @@ const Link = (props: LinkProps) => {
 	const name =
 		typeof props.to === "string" ? undefined : props.to[OPTIONS].name;
 
+	const anchorProps = {
+		...props,
+		to: undefined,
+	};
+
 	return (
-		<a {...router.anchor(to)} {...props}>
+		<a {...router.anchor(to)} {...anchorProps}>
 			{props.children ?? name}
 		</a>
 	);

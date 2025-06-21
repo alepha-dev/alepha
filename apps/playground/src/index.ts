@@ -1,17 +1,4 @@
-import { run, t } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { run } from "@alepha/core";
+import { App } from "./App.tsx";
 
-class HelloController {
-	hello = $action({
-		schema: {
-			response: t.object({
-				message: t.string(),
-			}),
-		},
-		handler: async () => {
-			return { message: "Hello, world!" };
-		},
-	});
-}
-
-run(HelloController);
+run(App);

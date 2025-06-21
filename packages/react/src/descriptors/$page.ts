@@ -48,6 +48,12 @@ export interface PageDescriptorOptions<
 	head?: Head | ((props: TProps, previous?: Head) => Head);
 
 	errorHandler?: (error: Error) => ReactNode;
+
+	prerender?:
+		| boolean
+		| {
+				entries?: Array<Partial<PageRequestConfig<TConfig>>>;
+		  };
 }
 
 export interface PageDescriptor<
@@ -61,7 +67,12 @@ export interface PageDescriptor<
 	render: (options?: {
 		params?: Record<string, string>;
 		query?: Record<string, string>;
-	}) => Promise<string>;
+	}) => Promise<{ html: string; context: PageReactContext }>;
+
+	prerender: (options?: {
+		params?: Record<string, string>;
+		query?: Record<string, string>;
+	}) => Promise<{ html: string; context: PageReactContext }>;
 
 	go: () => void;
 
@@ -101,6 +112,9 @@ export const $page = <
 		[KIND]: KEY,
 		[OPTIONS]: options,
 		render: () => {
+			throw new NotImplementedError(KEY);
+		},
+		prerender: () => {
 			throw new NotImplementedError(KEY);
 		},
 		go: () => {

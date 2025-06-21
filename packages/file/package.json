@@ -1,24 +1,16 @@
 {
-	"name": "@alepha/server",
+	"name": "@alepha/file",
 	"version": "0.7.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.7.0",
-		"@alepha/core": "0.7.0",
-		"@alepha/datetime": "0.7.0",
-		"@alepha/file": "0.7.0",
-		"@alepha/retry": "0.7.0",
-		"@alepha/router": "0.7.0",
-		"@alepha/security": "0.7.0",
-		"@fastify/busboy": "^3.1.1"
+		"@alepha/core": "0.7.0"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",
@@ -35,8 +27,6 @@
 	},
 	"keywords": [
 		"alepha",
-		"server",
-		"http",
-		"client"
+		"file"
 	]
 }
