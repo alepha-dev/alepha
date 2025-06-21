@@ -15,6 +15,7 @@ import {
 	ServerLinksProvider,
 	ServerRouterProvider,
 } from "@alepha/server";
+import { ServerTimingProvider } from "@alepha/server/src/providers/features/ServerTimingProvider.ts";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import { $page } from "../descriptors/$page.ts";
@@ -50,6 +51,7 @@ export class ReactServerProvider {
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly headProvider = $inject(ServerHeadProvider);
+	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 	protected readonly env = $inject(envSchema);
 	protected readonly ROOT_DIV_REGEX = new RegExp(
 		`<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
@@ -286,10 +288,14 @@ export class ReactServerProvider {
 				},
 			);
 
+			this.serverTimingProvider.beginTiming("createLayers");
+
 			const state = await this.pageDescriptorProvider.createLayers(
 				page,
 				context,
 			);
+
+			this.serverTimingProvider.endTiming("createLayers");
 
 			if (state.redirect) {
 				return reply.redirect(state.redirect);
@@ -305,6 +311,11 @@ export class ReactServerProvider {
 			reply.headers.pragma = "no-cache";
 			reply.headers.expires = "0";
 
+			// don't cache user links
+			if (page.cache && serverRequest.user) {
+				delete context.links;
+			}
+
 			return this.renderToHtml(template, state, context);
 		};
 	}
@@ -316,6 +327,8 @@ export class ReactServerProvider {
 	) {
 		const element = this.pageDescriptorProvider.root(state, context);
 
+		this.serverTimingProvider.beginTiming("renderToString");
+
 		let app = "";
 		try {
 			app = renderToString(element);
@@ -323,6 +336,8 @@ export class ReactServerProvider {
 			this.log.error("Error during SSR", error);
 			app = renderToString(context.onError(error as Error));
 		}
+
+		this.serverTimingProvider.endTiming("renderToString");
 
 		const hydrationData: ReactHydrationState = {
 			links: context.links,

@@ -9,7 +9,7 @@ export interface BuildServerOptions {
 	entry: string;
 	distDir: string;
 	clientDir?: string;
-	vercel?: boolean | Record<string, any>;
+	vercel?: boolean;
 	config?: UserConfig;
 }
 

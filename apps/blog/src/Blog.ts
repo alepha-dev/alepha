@@ -1,12 +1,29 @@
-import { t } from "@alepha/core";
+import { $hook, $inject, t } from "@alepha/core";
 import { $page } from "@alepha/react";
-import { $client, isHttpError } from "@alepha/server";
+import { ReactAuth } from "@alepha/react-auth";
+import { $client, HttpClient, isHttpError } from "@alepha/server";
 import { createElement } from "react";
 import NotFound from "./components/layout/NotFound.tsx";
 import type { PostController } from "./controllers/PostController.ts";
 
 export class Blog {
 	posts = $client<PostController>();
+	client = $inject(HttpClient);
+	auth = $inject(ReactAuth);
+
+	blank = $page({
+		path: "/blank",
+		component: () => createElement("div", null, "Blank Page"),
+	});
+
+	onReady = $hook({
+		name: "ready",
+		handler: async () => {
+			if (this.auth.user) {
+				await this.client.getLinks();
+			}
+		},
+	});
 
 	home = $page({
 		path: "/",
@@ -14,7 +31,6 @@ export class Blog {
 			title: "Home",
 		},
 		lazy: () => import("./components/Home"),
-		cache: true,
 		resolve: async () => {
 			return {
 				posts: await this.posts.getLastPosts(),
@@ -48,7 +64,7 @@ export class Blog {
 		head: {
 			title: "Not Found",
 		},
-		lazy: () => import("./components/layout/NotFound.tsx"),
+		component: NotFound,
 	});
 
 	root = $page({

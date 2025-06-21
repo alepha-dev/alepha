@@ -21,6 +21,10 @@ export class ReactAuth {
 		},
 	});
 
+	public get user(): UserAccountToken | undefined {
+		return this.getUserFromCookies();
+	}
+
 	protected getUserFromCookies(): UserAccountToken | undefined {
 		if (this.alepha.isBrowser()) {
 			const browser = this.alepha.get(ReactBrowserProvider);

@@ -126,6 +126,12 @@ const envSchema = t.object({
 		description:
 			"Enable not-ready-provider, which return 503 if alepha is not ready.",
 	}),
+	SERVER_TIMING_ENABLED: t.optional(
+		t.boolean({
+			description:
+				"Enable server timing provider. True by default in development, false in production.",
+		}),
+	),
 });
 
 declare module "@alepha/core" {
@@ -156,7 +162,7 @@ export class ServerModule {
 		this.alepha.with(ServerCompressProvider);
 		this.alepha.with(ServerCacheProvider);
 
-		if (!this.alepha.isProduction()) {
+		if (this.env.SERVER_TIMING_ENABLED ?? !this.alepha.isProduction()) {
 			this.alepha.with(ServerTimingProvider);
 		}
 

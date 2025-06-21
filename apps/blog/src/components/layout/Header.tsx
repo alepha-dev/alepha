@@ -1,3 +1,4 @@
+import { ClientOnly } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import {
 	ActionIcon,
@@ -5,6 +6,7 @@ import {
 	Button,
 	Flex,
 	Menu,
+	Skeleton,
 	Text,
 	useMantineColorScheme,
 } from "@mantine/core";
@@ -57,53 +59,62 @@ const Header = () => {
 			</Flex>
 
 			<Flex gap={"sm"} align={"center"}>
-				{auth.can<PostController>("createPost") && (
-					<Go<Blog>
-						to={"newPost"}
-						leftSection={<IconPlus size={16} />}
-						variant={"filled"}
-					>
-						New Post
-					</Go>
-				)}
-				{!auth.user && (
-					<Button
-						variant={"default"}
-						leftSection={<GoogleIcon />}
-						onClick={() => auth.login()}
-					>
-						Sign in with Google
-					</Button>
-				)}
-				{auth.user && (
-					<Menu width={200}>
-						<Menu.Target>
-							<Button
-								leftSection={
-									<Avatar size={24} color={"orange"} alt={"avatar"}>
-										{auth.user.name
-											?.split(" ")
-											.map((it) => it.charAt(0).toUpperCase())
-											.join("")}
-									</Avatar>
-								}
-								variant={"default"}
-								rightSection={<IconChevronDown size={16} />}
-							>
-								{auth.user.name}
-							</Button>
-						</Menu.Target>
-						<Menu.Dropdown>
-							<Menu.Label>Application</Menu.Label>
-							<Menu.Item
-								onClick={() => auth.logout()}
-								leftSection={<IconLogout size={14} />}
-							>
-								Logout
-							</Menu.Item>
-						</Menu.Dropdown>
-					</Menu>
-				)}
+				<ClientOnly
+					disabled={!auth.user}
+					fallback={
+						<Button variant={"default"}>
+							<Skeleton height={24} width={143} />
+						</Button>
+					}
+				>
+					{auth.can<PostController>("createPost") && (
+						<Go<Blog>
+							to={"newPost"}
+							leftSection={<IconPlus size={16} />}
+							variant={"filled"}
+						>
+							New Post
+						</Go>
+					)}
+					{!auth.user && (
+						<Button
+							variant={"default"}
+							leftSection={<GoogleIcon />}
+							onClick={() => auth.login()}
+						>
+							Sign in with Google
+						</Button>
+					)}
+					{auth.user && (
+						<Menu width={200}>
+							<Menu.Target>
+								<Button
+									leftSection={
+										<Avatar size={24} color={"orange"} alt={"avatar"}>
+											{auth.user.name
+												?.split(" ")
+												.map((it) => it.charAt(0).toUpperCase())
+												.join("")}
+										</Avatar>
+									}
+									variant={"default"}
+									rightSection={<IconChevronDown size={16} />}
+								>
+									{auth.user.name}
+								</Button>
+							</Menu.Target>
+							<Menu.Dropdown>
+								<Menu.Label>Application</Menu.Label>
+								<Menu.Item
+									onClick={() => auth.logout()}
+									leftSection={<IconLogout size={14} />}
+								>
+									Logout
+								</Menu.Item>
+							</Menu.Dropdown>
+						</Menu>
+					)}
+				</ClientOnly>
 				<ToggleDarkMode />
 			</Flex>
 		</Flex>

@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 export interface ClientOnlyProps {
 	children: ReactNode;
 	fallback?: ReactNode;
+	disabled?: boolean;
 }
 
 /**
@@ -19,6 +20,10 @@ const ClientOnly = (props: ClientOnlyProps) => {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => setMounted(true), []);
+
+	if (props.disabled) {
+		return props.children;
+	}
 
 	return mounted ? props.children : props.fallback;
 };

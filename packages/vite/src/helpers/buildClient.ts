@@ -1,5 +1,6 @@
 import { promisify } from "node:util";
 import { brotliCompress } from "node:zlib";
+import { parse } from "node-html-parser";
 import gzipPlugin from "rollup-plugin-gzip";
 import type { UserConfig } from "vite";
 import { importVite } from "./importVite.ts";
@@ -9,6 +10,7 @@ const brotliPromise = promisify(brotliCompress);
 
 export interface BuildClientOptions {
 	dist: string;
+	html: string;
 	prerender?: boolean;
 }
 
@@ -50,9 +52,14 @@ export const buildClient = async (opts: BuildClientOptions) => {
 
 	await viteBuild(viteBuildClientConfig);
 
-	await prerender({
-		entry: "src/index.ts",
-		dist: opts.dist,
-		all: !!opts.prerender,
-	});
+	const root = parse(opts.html);
+	const script = root.querySelector('script[type="module"]');
+	const entry = script?.getAttribute("src");
+	if (entry) {
+		await prerender({
+			entry,
+			dist: opts.dist,
+			all: !!opts.prerender,
+		});
+	}
 };

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { Plugin, UserConfig } from "vite";
 import { buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
@@ -65,6 +66,7 @@ export async function viteAlephaBuild(
 			const hasClient = await fileExists("index.html");
 			if (hasClient) {
 				await buildClient({
+					html: await readFile("index.html", "utf-8"),
 					dist: `${distDir}/${clientDir}`,
 					prerender: options.prerender ?? false,
 				});
@@ -75,6 +77,7 @@ export async function viteAlephaBuild(
 					entry,
 					distDir: `${distDir}`,
 					clientDir: hasClient ? clientDir : undefined,
+					vercel: options.vercel,
 				});
 			}
 
