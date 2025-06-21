@@ -12,7 +12,6 @@ import {
 import type { DurationLike } from "@alepha/datetime";
 import type {
 	ActionDescriptor,
-	ClientRequestEntry,
 	ClientRequestOptions,
 } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
@@ -36,12 +35,12 @@ export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly helper = $inject(ActionDescriptorHelper);
 
-	public readonly URL_LINKS = "/api/_links";
 	public readonly cache = $cache<any>();
-	public links?: Array<HttpClientLink>;
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
 
+	public readonly URL_LINKS = "/api/_links";
+	public links?: Array<HttpClientLink>;
 	public pushLink(link: HttpClientLink) {
 		if (!this.links) {
 			this.links = [];
@@ -57,70 +56,67 @@ export class HttpClient {
 		await this.cache.invalidate();
 	}
 
-	public createFetchFunction(
-		link: HttpClientLink,
-		args?: FetchFactoryAdditionalOptions,
-	) {
-		return (
-			config: Partial<ClientRequestEntry> = {},
-			options: ClientRequestOptions = {},
-		) => {
-			const host = typeof args?.host === "function" ? args.host() : args?.host;
-			return this.request({
-				config,
-				options,
-				link,
-				host,
-			});
-		};
-	}
-
-	public async request(args: {
-		link: HttpClientLink;
-		host?: string;
-		config?: ServerRequestConfigEntry;
-		options?: ClientRequestOptions;
-	}) {
-		const route = args.link;
-		const options = args.options ?? {};
-		const config = args.config ?? {};
-		const host = args.host ?? "";
-
-		const request: RequestInit = {
-			...options.request,
-		};
-
-		const method = route.method;
-		const headers: Record<string, string> = {};
-
-		const url = this.url(host, route, config);
+	public async fetch<T>(
+		url: string,
+		request: RequestInit = {},
+		options: FetchRunOptions = {},
+	): Promise<T> {
+		request.method ??= "GET";
 
 		const data = await this.cache.get(url);
-		if (data && method === "GET") {
+		if (data && request.method === "GET") {
 			return data;
 		}
 
-		await this.alepha.emit("client:onRequest", {
-			route,
-			config,
+		await this.alepha.emit("client:beforeFetch", {
+			url,
 			options,
-			headers,
 			request,
 		});
 
-		request.method = method;
-
-		await this.body(request, headers, route, config);
-
-		request.headers = {
-			...config.headers,
-			...Object.fromEntries(new Headers(request.headers).entries()),
-			...headers,
-		};
-
-		return await this.fetch(url, request, {
-			schema: route.schema?.response,
+		// make a key for the request
+		// this will be used to check if the request is already pending
+		const key = JSON.stringify({
+			url,
+			method: request.method,
+			body: request.body,
 		});
+
+		const existing = this.pendingRequests[key];
+		if (existing) {
+			return existing;
+		}
+
+		const pendingRequest = fetch(url, request)
+			.then(async (response) => {
+				const data = await this.response(response, options);
+
+				if (options.cache !== undefined && request.method === "GET") {
+					await this.cache.set(
+						url,
+						data,
+						typeof options.cache === "boolean" ? undefined : options.cache,
+					);
+				}
+
+				return data;
+			})
+			.finally(() => {
+				delete this.pendingRequests[key];
+			});
+
+		// If the request is a POST request, we won't reuse the promise.
+		if (request.method === "POST") {
+			return pendingRequest;
+		}
+
+		this.pendingRequests[key] = pendingRequest;
+
+		return this.pendingRequests[key];
+	}
+
+	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
+		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
 	}
 
 	protected url(
@@ -201,72 +197,6 @@ export class HttpClient {
 		}
 	}
 
-	public async fetch<T>(
-		url: string,
-		request: RequestInit = {},
-		options: FetchRunOptions = {},
-	): Promise<T> {
-		request.method ??= "GET";
-
-		const data = await this.cache.get(url);
-		if (data && request.method === "GET") {
-			return data;
-		}
-
-		await this.alepha.emit("client:beforeFetch", {
-			url,
-			options,
-			request,
-		});
-
-		// make a key for the request
-		// this will be used to check if the request is already pending
-		const key = JSON.stringify({
-			url,
-			method: request.method,
-			body: request.body,
-		});
-
-		const existing = this.pendingRequests[key];
-		if (existing) {
-			return existing;
-		}
-
-		const pendingRequest = fetch(url, request)
-			.then(async (response) => {
-				const data = await this.response(response, options);
-
-				if (options.cache !== undefined && request.method === "GET") {
-					await this.cache.set(
-						url,
-						data,
-						typeof options.cache === "boolean" ? undefined : options.cache,
-					);
-				}
-
-				return data;
-			})
-			.finally(() => {
-				delete this.pendingRequests[key];
-			});
-
-		// If the request is a POST request, we won't reuse the promise.
-		if (request.method === "POST") {
-			return pendingRequest;
-		}
-
-		this.pendingRequests[key] = pendingRequest;
-
-		return this.pendingRequests[key];
-	}
-
-	/**
-	 * Parse the response.
-	 *
-	 * @param response
-	 * @param options
-	 * @protected
-	 */
 	protected async response(
 		response: Response,
 		options: FetchRunOptions,
@@ -276,7 +206,7 @@ export class HttpClient {
 		}
 
 		if (this.isMaybeFile(response)) {
-			return this.getFileLike(response);
+			return this.createFileLike(response);
 		}
 
 		if (response.headers.get("Content-Type") === "text/plain") {
@@ -335,7 +265,7 @@ export class HttpClient {
 		);
 	}
 
-	protected getFileLike(response: Response, defaultFileName = ""): FileLike {
+	protected createFileLike(response: Response, defaultFileName = ""): FileLike {
 		const match = (response.headers.get("Content-Disposition") ?? "").match(
 			/filename="(.+)"/,
 		);
@@ -378,7 +308,7 @@ export class HttpClient {
 		return url;
 	}
 
-	public queryParams(
+	protected queryParams(
 		url: string,
 		action: { schema?: { query?: TObject } },
 		args: ServerRequestConfigEntry = {},
@@ -399,6 +329,56 @@ export class HttpClient {
 			).toString()}`;
 		}
 		return url;
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	public async fetchLink(args: {
+		link: HttpClientLink;
+		host?: string;
+		config?: ServerRequestConfigEntry;
+		options?: ClientRequestOptions;
+	}) {
+		const route = args.link;
+		const options = args.options ?? {};
+		const config = args.config ?? {};
+		const host = args.host ?? "";
+
+		const request: RequestInit = {
+			...options.request,
+		};
+
+		const method = route.method;
+		const headers: Record<string, string> = {};
+
+		const url = this.url(host, route, config);
+
+		const data = await this.cache.get(url);
+		if (data && method === "GET") {
+			return data;
+		}
+
+		await this.alepha.emit("client:onRequest", {
+			route,
+			config,
+			options,
+			headers,
+			request,
+		});
+
+		request.method = method;
+
+		await this.body(request, headers, route, config);
+
+		request.headers = {
+			...config.headers,
+			...Object.fromEntries(new Headers(request.headers).entries()),
+			...headers,
+		};
+
+		return await this.fetch(url, request, {
+			schema: route.schema?.response,
+		});
 	}
 
 	public of<T extends object>(scope: ClientScope = {}): HttpVirtualClient<T> {
@@ -424,10 +404,6 @@ export class HttpClient {
 
 				$.can = () => {
 					return this.can(prop);
-				};
-
-				$.permissions = () => {
-					return prop;
 				};
 
 				return $;
@@ -486,7 +462,7 @@ export class HttpClient {
 		}
 
 		// else, make a request
-		return this.request({
+		return this.fetchLink({
 			host: link.host,
 			config,
 			options,
@@ -533,10 +509,6 @@ export class HttpClient {
 		}
 
 		return this.links ?? [];
-	}
-
-	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
-		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
 	}
 }
 

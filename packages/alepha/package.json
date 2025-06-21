@@ -21,6 +21,7 @@
 		"@alepha/react": "0.7.0",
 		"@alepha/react-auth": "0.7.0",
 		"@alepha/redis": "0.7.0",
+		"@alepha/retry": "0.7.0",
 		"@alepha/scheduler": "0.7.0",
 		"@alepha/security": "0.7.0",
 		"@alepha/server": "0.7.0",
@@ -70,20 +71,30 @@
 			"require": "./core.cjs",
 			"types": "./core.d.ts"
 		},
+		"./cache": {
+			"import": "./cache.js",
+			"require": "./cache.cjs",
+			"types": "./cache.d.ts"
+		},
 		"./core": {
 			"import": "./core.js",
 			"require": "./core.cjs",
 			"types": "./core.d.ts"
 		},
-		"./vite": {
-			"import": "./vite.js",
-			"require": "./vite.cjs",
-			"types": "./vite.d.ts"
-		},
 		"./datetime": {
 			"import": "./datetime.js",
 			"require": "./datetime.cjs",
 			"types": "./datetime.d.ts"
+		},
+		"./lock": {
+			"import": "./lock.js",
+			"require": "./lock.cjs",
+			"types": "./lock.d.ts"
+		},
+		"./postgres": {
+			"import": "./postgres.js",
+			"require": "./postgres.cjs",
+			"types": "./postgres.d.ts"
 		},
 		"./react": {
 			"import": "./react.js",
@@ -95,30 +106,15 @@
 			"require": "./react/auth.cjs",
 			"types": "./react/auth.d.ts"
 		},
-		"./cache": {
-			"import": "./cache.js",
-			"require": "./cache.cjs",
-			"types": "./cache.d.ts"
-		},
-		"./postgres": {
-			"import": "./postgres.js",
-			"require": "./postgres.cjs",
-			"types": "./postgres.d.ts"
-		},
 		"./redis": {
 			"import": "./redis.js",
 			"require": "./redis.cjs",
 			"types": "./redis.d.ts"
 		},
-		"./lock": {
-			"import": "./lock.js",
-			"require": "./lock.cjs",
-			"types": "./lock.d.ts"
-		},
-		"./topic": {
-			"import": "./topic.js",
-			"require": "./topic.cjs",
-			"types": "./topic.d.ts"
+		"./retry": {
+			"import": "./retry.js",
+			"require": "./retry.cjs",
+			"types": "./retry.d.ts"
 		},
 		"./queue": {
 			"import": "./queue.js",
@@ -164,6 +160,16 @@
 			"import": "./server/swagger.js",
 			"require": "./server/swagger.cjs",
 			"types": "./server/swagger.d.ts"
+		},
+		"./topic": {
+			"import": "./topic.js",
+			"require": "./topic.cjs",
+			"types": "./topic.d.ts"
+		},
+		"./vite": {
+			"import": "./vite.js",
+			"require": "./vite.cjs",
+			"types": "./vite.d.ts"
 		}
 	},
 	"keywords": [

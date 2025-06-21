@@ -135,9 +135,16 @@ export class ServerActionDescriptorProvider {
 
 		const functions = {
 			permission: () => action.permission,
-			fetch: this.client.createFetchFunction(action, {
-				host: () => this.serverProvider.hostname,
-			}),
+			fetch: (
+				config: Partial<ClientRequestEntry> = {},
+				options: ClientRequestOptions = {},
+			) =>
+				this.client.fetchLink({
+					config,
+					options,
+					link: action,
+					host: this.serverProvider.hostname,
+				}),
 			local: this.createLocalFunction(options, action.permission),
 		};
 
@@ -177,10 +184,6 @@ export class ServerActionDescriptorProvider {
 	 * Check a mock function for the specified route.
 	 *
 	 * This is mostly used for testing purposes.
-	 *
-	 * @param value
-	 * @param permission
-	 * @protected
 	 */
 	protected createLocalFunction(
 		action: ActionDescriptorOptions,

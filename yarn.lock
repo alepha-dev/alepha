@@ -3282,6 +3282,7 @@ __metadata:
     "@alepha/react": "npm:0.7.0"
     "@alepha/react-auth": "npm:0.7.0"
     "@alepha/redis": "npm:0.7.0"
+    "@alepha/retry": "npm:0.7.0"
     "@alepha/scheduler": "npm:0.7.0"
     "@alepha/security": "npm:0.7.0"
     "@alepha/server": "npm:0.7.0"
