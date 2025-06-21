@@ -17,7 +17,7 @@
 		"@alepha/retry": "0.7.0",
 		"@sinclair/typebox": "^0.34.35",
 		"drizzle-orm": "^0.44.2",
-		"pg": "^8.16.1"
+		"pg": "^8.16.2"
 	},
 	"devDependencies": {
 		"@types/pg": "8.15.4",

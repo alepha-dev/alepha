@@ -114,7 +114,7 @@ __metadata:
     "@types/pg": "npm:8.15.4"
     drizzle-kit: "npm:0.31.1"
     drizzle-orm: "npm:^0.44.2"
-    pg: "npm:^8.16.1"
+    pg: "npm:^8.16.2"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -153,7 +153,7 @@ __metadata:
     "@alepha/server": "npm:0.7.0"
     "@alepha/server-cookies": "npm:0.7.0"
     "@types/react": "npm:^19.1.8"
-    openid-client: "npm:^6.5.3"
+    openid-client: "npm:^6.6.0"
     pkgroll: "npm:^2.13.1"
     react: "npm:^19.1.0"
   peerDependencies:
@@ -679,18 +679,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@biomejs/biome@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/biome@npm:2.0.0"
+"@biomejs/biome@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/biome@npm:2.0.4"
   dependencies:
-    "@biomejs/cli-darwin-arm64": "npm:2.0.0"
-    "@biomejs/cli-darwin-x64": "npm:2.0.0"
-    "@biomejs/cli-linux-arm64": "npm:2.0.0"
-    "@biomejs/cli-linux-arm64-musl": "npm:2.0.0"
-    "@biomejs/cli-linux-x64": "npm:2.0.0"
-    "@biomejs/cli-linux-x64-musl": "npm:2.0.0"
-    "@biomejs/cli-win32-arm64": "npm:2.0.0"
-    "@biomejs/cli-win32-x64": "npm:2.0.0"
+    "@biomejs/cli-darwin-arm64": "npm:2.0.4"
+    "@biomejs/cli-darwin-x64": "npm:2.0.4"
+    "@biomejs/cli-linux-arm64": "npm:2.0.4"
+    "@biomejs/cli-linux-arm64-musl": "npm:2.0.4"
+    "@biomejs/cli-linux-x64": "npm:2.0.4"
+    "@biomejs/cli-linux-x64-musl": "npm:2.0.4"
+    "@biomejs/cli-win32-arm64": "npm:2.0.4"
+    "@biomejs/cli-win32-x64": "npm:2.0.4"
   dependenciesMeta:
     "@biomejs/cli-darwin-arm64":
       optional: true
@@ -710,62 +710,62 @@ __metadata:
       optional: true
   bin:
     biome: bin/biome
-  checksum: 10c0/a255d2e84e303c6b1bd841877463f358415a35fb39dc4051dec80d9dd44e4f2f546e7e13804f7cd9f0932ca11664600f819e0b0dd75c55c2c0571ed771d86cb5
+  checksum: 10c0/8ca201a4ac2dc008fc4ecdf96f6bb6004c8b09e7c3121af56a050be67694367ad5e2902762dde9282dc5954930676e786f29d15f12433e269bd404306996f93c
   languageName: node
   linkType: hard
 
-"@biomejs/cli-darwin-arm64@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-darwin-arm64@npm:2.0.0"
+"@biomejs/cli-darwin-arm64@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-darwin-arm64@npm:2.0.4"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@biomejs/cli-darwin-x64@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-darwin-x64@npm:2.0.0"
+"@biomejs/cli-darwin-x64@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-darwin-x64@npm:2.0.4"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-arm64-musl@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-linux-arm64-musl@npm:2.0.0"
+"@biomejs/cli-linux-arm64-musl@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-linux-arm64-musl@npm:2.0.4"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-arm64@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-linux-arm64@npm:2.0.0"
+"@biomejs/cli-linux-arm64@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-linux-arm64@npm:2.0.4"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-x64-musl@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-linux-x64-musl@npm:2.0.0"
+"@biomejs/cli-linux-x64-musl@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-linux-x64-musl@npm:2.0.4"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-x64@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-linux-x64@npm:2.0.0"
+"@biomejs/cli-linux-x64@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-linux-x64@npm:2.0.4"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@biomejs/cli-win32-arm64@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-win32-arm64@npm:2.0.0"
+"@biomejs/cli-win32-arm64@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-win32-arm64@npm:2.0.4"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@biomejs/cli-win32-x64@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@biomejs/cli-win32-x64@npm:2.0.0"
+"@biomejs/cli-win32-x64@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@biomejs/cli-win32-x64@npm:2.0.4"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -7556,13 +7556,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openid-client@npm:^6.5.3":
-  version: 6.5.3
-  resolution: "openid-client@npm:6.5.3"
+"openid-client@npm:^6.6.0":
+  version: 6.6.0
+  resolution: "openid-client@npm:6.6.0"
   dependencies:
     jose: "npm:^6.0.11"
     oauth4webapi: "npm:^3.5.3"
-  checksum: 10c0/1977c87d058d3a21624acefb75cb615b2b0e9f205d21be7a2f80d16e2f13be7eb9e3d088005a6ba1438afcd056f6af1362663f133d2fef745f6fc1ff7c6f6328
+  checksum: 10c0/92cc6cac08597e529811acd1990f981806363e9bdb9b089cb482ea44f90d3bb1f5ae70c9561d0193f89e78fe5b5bfe39642659041f62866554d285e926631495
   languageName: node
   linkType: hard
 
@@ -7816,10 +7816,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg-protocol@npm:^1.10.1":
-  version: 1.10.1
-  resolution: "pg-protocol@npm:1.10.1"
-  checksum: 10c0/f684e4aaae52b296139b5ee573819e5eedbdd09c5dc4616a139da2034716f0bd83e30ab478ad688415e4bc77b5e59335f4e1b41b4890472541b12e217c375adb
+"pg-protocol@npm:^1.10.2":
+  version: 1.10.2
+  resolution: "pg-protocol@npm:1.10.2"
+  checksum: 10c0/3f9b5aba3f356190738ea25ecded3cd033cd2218789acf9c67b75788932c4b594eeb7043481822b69eaae4d84401e00142a2ef156297a8347987a78a52afd50e
   languageName: node
   linkType: hard
 
@@ -7836,14 +7836,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg@npm:^8.16.1":
-  version: 8.16.1
-  resolution: "pg@npm:8.16.1"
+"pg@npm:^8.16.2":
+  version: 8.16.2
+  resolution: "pg@npm:8.16.2"
   dependencies:
     pg-cloudflare: "npm:^1.2.6"
     pg-connection-string: "npm:^2.9.1"
     pg-pool: "npm:^3.10.1"
-    pg-protocol: "npm:^1.10.1"
+    pg-protocol: "npm:^1.10.2"
     pg-types: "npm:2.2.0"
     pgpass: "npm:1.0.5"
   peerDependencies:
@@ -7854,7 +7854,7 @@ __metadata:
   peerDependenciesMeta:
     pg-native:
       optional: true
-  checksum: 10c0/f5053a37074a01cb889085b6242659784c0345bb10ca9d0e6d7ea1bbbd0d0e63b3e212c7fa3fc66d6838ce9f03eed3b9aff44dd3ffc5f1cbb1eee6468c2e2b15
+  checksum: 10c0/e444103fda2fa236bb7951e534bbce52d81df8f0ca43b36cdd32da2e558946ae011fa6a0fcfea2e48d935addba821868e76d3f4f670b313f639a3d24fcd420af
   languageName: node
   linkType: hard
 
@@ -8909,7 +8909,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@biomejs/biome": "npm:^2.0.0"
+    "@biomejs/biome": "npm:^2.0.4"
     "@types/node": "npm:^24.0.3"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
