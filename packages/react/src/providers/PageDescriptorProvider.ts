@@ -1,7 +1,7 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { createElement, type ReactNode } from "react";
-import { ErrorViewer, ErrorViewerProd } from "../components/ErrorViewer.tsx";
+import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
@@ -322,9 +322,6 @@ export class PageDescriptorProvider {
 	}
 
 	public renderError(error: Error): ReactNode {
-		if (this.alepha.isProduction()) {
-			return createElement(ErrorViewerProd, { error });
-		}
 		return createElement(ErrorViewer, { error });
 	}
 

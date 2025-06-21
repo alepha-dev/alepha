@@ -22,6 +22,7 @@ import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
+import type { ServiceRouteCache } from "./features/ServerCacheProvider.ts";
 
 const envSchema = t.object({
 	SERVER_ALS_ENABLED: t.boolean({
@@ -35,7 +36,14 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-// Router used in Server (action, proxy, ssr, etc...)
+/**
+ * Main router for all routes on the server side.
+ *
+ * Remember:
+ * - $route => generic route
+ * - $action => action route (for API calls)
+ * - $page => React route (for SSR)
+ */
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly env = $inject(envSchema);
@@ -46,9 +54,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 
 	public async route<TConfig extends RequestConfigSchema = RequestConfigSchema>(
 		route: ServerRoute<TConfig>,
-	) {
-		const method = (route.method ?? "GET").toUpperCase();
-		const path = `/${method}/${route.path}`.replace(/\/+/g, "/");
+	): Promise<void> {
+		route.method ??= "GET";
+		route.method = route.method.toUpperCase() as RouteMethod;
+
+		const path = `/${route.method}/${route.path}`.replace(/\/+/g, "/");
 		const responseType = this.getResponseType(route.schema);
 
 		await this.alepha.emit(
@@ -172,6 +182,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			},
 		);
 
+		if (request.reply.body) {
+			// if the body is already set, we can skip the handler
+			// this is useful for middlewares that set the body
+			return;
+		}
+
 		// validate
 		this.validateRequest(route, request);
 
@@ -183,12 +199,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			);
 		}
 
-		if (request.reply.body == null) {
-			// call the handler
-			const result = await route.handler(request);
-			if (result) {
-				request.reply.body = result;
-			}
+		// call the handler only if the body is not set yet
+		const result = await route.handler(request);
+		if (result) {
+			request.reply.body = result;
 		}
 
 		this.serializeResponse(route, request.reply, responseType);
@@ -447,19 +461,23 @@ export interface ServerRoute<
 	handler: ServerHandler<TConfig>;
 	schema?: TConfig;
 
-	// feature: ServerLoggerProvider
+	/**
+	 * @see ServerLoggerProvider
+	 */
 	silent?: boolean;
 
-	// feature: ServerSecurityProvider
-	secure?:
-		| boolean
-		| {
-				permissions?: string[];
-				roles?: string[];
-				realms?: string[];
-				organizations?: string[];
-		  };
+	/**
+	 * @see ServerSecurityProvider
+	 */
+	secure?: ServerRouteSecure;
+
+	/**
+	 * @see ServerCacheProvider
+	 */
+	cache?: ServiceRouteCache;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export type ServerResponseBody<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
@@ -480,6 +498,12 @@ export type ResponseBodyType =
 export type ServerHandler<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > = (request: ServerRequest<TConfig>) => Async<ServerResponseBody<TConfig>>;
+
+export type ServerMiddlewareHandler<
+	TConfig extends RequestConfigSchema = RequestConfigSchema,
+> = (
+	request: ServerRequest<TConfig>,
+) => Async<ServerResponseBody<TConfig> | undefined>;
 
 export interface ServerReply {
 	headers: Record<string, string> & { "set-cookie"?: string[] };
@@ -511,3 +535,14 @@ export interface ServerRawRequest {
 		};
 	};
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type ServerRouteSecure =
+	| boolean
+	| {
+			permissions?: string[];
+			roles?: string[];
+			realms?: string[];
+			organizations?: string[];
+	  };

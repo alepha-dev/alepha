@@ -1,4 +1,11 @@
-import { __bind, $inject, Alepha, type Static, t } from "@alepha/core";
+import {
+	__bind,
+	$inject,
+	Alepha,
+	type Service,
+	type Static,
+	t,
+} from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
 import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
 import { $proxy } from "./descriptors/$proxy.ts";
@@ -6,6 +13,7 @@ import { $remote } from "./descriptors/$remote.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
+import { ServerCacheProvider } from "./providers/features/ServerCacheProvider.ts";
 import { ServerCompressProvider } from "./providers/features/ServerCompressProvider.ts";
 import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
@@ -125,6 +133,8 @@ declare module "@alepha/core" {
 }
 
 export class ServerModule {
+	static plugins: Array<Service> = [];
+
 	protected readonly env = $inject(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
@@ -144,6 +154,7 @@ export class ServerModule {
 		this.alepha.with(ServerBodyParserProvider);
 		this.alepha.with(ServerMultipartProvider);
 		this.alepha.with(ServerCompressProvider);
+		this.alepha.with(ServerCacheProvider);
 
 		if (!this.alepha.isProduction()) {
 			this.alepha.with(ServerTimingProvider);

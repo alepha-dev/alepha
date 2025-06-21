@@ -56,7 +56,7 @@ export class ReactServerProvider {
 		"is",
 	);
 
-	protected readonly configure = $hook({
+	public readonly onConfigure = $hook({
 		name: "configure",
 		handler: async () => {
 			const pages = this.alepha.getDescriptorValues($page);
@@ -131,9 +131,7 @@ export class ReactServerProvider {
 		return this.alepha.state("ReactServerProvider.template");
 	}
 
-	protected async registerPages(
-		templateLoader: () => Promise<string | undefined>,
-	) {
+	protected async registerPages(templateLoader: TemplateLoader) {
 		for (const page of this.pageDescriptorProvider.getPages()) {
 			if (page.children?.length) {
 				continue;
@@ -142,6 +140,8 @@ export class ReactServerProvider {
 			this.log.info(`+ ${page.match} -> ${page.name}`);
 
 			await this.serverRouterProvider.route({
+				...page,
+				schema: undefined, // schema is handled by the page descriptor provider for now (shared by browser and server)
 				method: "GET",
 				path: page.match,
 				handler: this.createSsrHandler(page, templateLoader),
@@ -231,7 +231,7 @@ export class ReactServerProvider {
 
 	protected createSsrHandler(
 		page: PageRoute,
-		templateLoader: () => Promise<string | undefined>,
+		templateLoader: TemplateLoader,
 	): ServerHandler {
 		return async (serverRequest) => {
 			const { url, reply, query, params } = serverRequest;
@@ -297,6 +297,9 @@ export class ReactServerProvider {
 
 			reply.status = 200;
 			reply.headers["content-type"] = "text/html";
+
+			// by default, disable caching for SSR responses
+			// some plugins may override this
 			reply.headers["cache-control"] =
 				"no-store, no-cache, must-revalidate, proxy-revalidate";
 			reply.headers.pragma = "no-cache";
@@ -360,7 +363,11 @@ export class ReactServerProvider {
 		return response.html;
 	}
 
-	fillTemplate(response: { html: string }, app: string, script: string) {
+	protected fillTemplate(
+		response: { html: string },
+		app: string,
+		script: string,
+	) {
 		if (this.ROOT_DIV_REGEX.test(response.html)) {
 			// replace contents of the existing <div id="root">
 			response.html = response.html.replace(
@@ -387,3 +394,5 @@ export class ReactServerProvider {
 		}
 	}
 }
+
+type TemplateLoader = () => Promise<string | undefined>;

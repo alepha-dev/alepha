@@ -1,6 +1,6 @@
 import { $logger, Alepha, MockLogger } from "@alepha/core";
 import { beforeEach, test } from "vitest";
-import { $action, HttpError, ServerLoggerProvider } from "../src";
+import { $action, HttpError, ServerLoggerProvider } from "../../src";
 
 class App {
 	log = $logger();

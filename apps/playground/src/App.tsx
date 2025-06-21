@@ -1,5 +1,5 @@
 import { t } from "@alepha/core";
-import { $page, Link, NestedView } from "@alepha/react";
+import { $page, ClientOnly, Link, NestedView } from "@alepha/react";
 
 export class App {
 	hello = $page({
@@ -22,6 +22,9 @@ export class App {
 				<div>
 					<h1>Test Page</h1>
 					<Link to={"/sub/test"}>Sub Test</Link>
+					<ClientOnly>
+						<p>This content is only visible on the client side.</p>
+					</ClientOnly>
 				</div>
 			);
 		},

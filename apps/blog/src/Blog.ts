@@ -14,6 +14,7 @@ export class Blog {
 			title: "Home",
 		},
 		lazy: () => import("./components/Home"),
+		cache: true,
 		resolve: async () => {
 			return {
 				posts: await this.posts.getLastPosts(),

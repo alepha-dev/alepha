@@ -10,10 +10,25 @@ export interface NestedViewProps {
 }
 
 /**
- * Nested view component
+ * A component that renders the current view of the nested router layer.
  *
- * @param props
- * @constructor
+ * To be simple, it renders the `element` of the current child page of a parent page.
+ *
+ * @example
+ * ```tsx
+ * import { NestedView } from "@alepha/react";
+ *
+ * class App {
+ *   parent = $page({
+ *     component: () => <NestedView />,
+ *   });
+ *
+ *   child = $page({
+ *     parent: this.root,
+ *     component: () => <div>Child Page</div>,
+ *   });
+ * }
+ * ```
  */
 const NestedView = (props: NestedViewProps) => {
 	const app = useContext(RouterContext);

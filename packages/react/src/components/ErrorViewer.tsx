@@ -1,11 +1,20 @@
 import { useState } from "react";
+import { useAlepha } from "../hooks/useAlepha.ts";
 
-type Props = {
+interface ErrorViewerProps {
 	error: Error;
-};
+}
 
-export function ErrorViewer({ error }: Props) {
+// TODO: design this better
+
+const ErrorViewer = ({ error }: ErrorViewerProps) => {
 	const [expanded, setExpanded] = useState(false);
+	const isProduction = useAlepha().isProduction();
+	// const status = isHttpError(error) ? error.status : 500;
+
+	if (isProduction) {
+		return <ErrorViewerProduction />;
+	}
 
 	const stackLines = error.stack?.split("\n") ?? [];
 	const previewLines = stackLines.slice(0, 5);
@@ -107,9 +116,11 @@ export function ErrorViewer({ error }: Props) {
 			)}
 		</div>
 	);
-}
+};
 
-export function ErrorViewerProd() {
+export default ErrorViewer;
+
+const ErrorViewerProduction = () => {
 	const styles = {
 		container: {
 			padding: "24px",
@@ -147,4 +158,4 @@ export function ErrorViewerProd() {
 			</div>
 		</div>
 	);
-}
+};

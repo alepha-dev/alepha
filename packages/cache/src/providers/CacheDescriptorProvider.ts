@@ -52,8 +52,9 @@ export class CacheDescriptorProvider {
 		},
 	});
 
-	public push(cache: Cache) {
+	public register(cache: Cache) {
 		this.caches.push(cache);
+		return cache;
 	}
 
 	public processDescriptors() {
@@ -140,16 +141,7 @@ export class CacheDescriptorProvider {
 			throw new Error("Cache handler is not defined.");
 		}
 
-		if (
-			!this.alepha.isReady() ||
-			cache.options.disabled ||
-			!this.env.CACHE_ENABLED
-		) {
-			return handler(...args);
-		}
-
 		const key = this.key(cache, ...args);
-
 		const cached = await this.get(cache, key);
 		if (cached) {
 			return cached;
@@ -167,8 +159,15 @@ export class CacheDescriptorProvider {
 		cache: Cache<TReturn>,
 		key: string,
 	): Promise<TReturn | undefined> {
-		const provider = this.provider(cache.options);
+		if (
+			!this.alepha.isReady() ||
+			cache.options.disabled ||
+			!this.env.CACHE_ENABLED
+		) {
+			return undefined;
+		}
 
+		const provider = this.provider(cache.options);
 		const data = await provider.get(cache.group, key);
 		if (data) {
 			return this.deserialize<TReturn>(data);
@@ -177,6 +176,15 @@ export class CacheDescriptorProvider {
 		return undefined;
 	}
 
+	/**
+	 * Manually set a value in the cache.
+	 * It's used by .run() method, but you will need it when you don't have cache handler defined.
+	 *
+	 * @param cache Cache object with all configuration and options (even TTL).
+	 * @param key Cache key, build with .key() method or manually.
+	 * @param value Value to store in cache.
+	 * @param ttl Override cache.ttl option.
+	 */
 	public async set<TReturn>(
 		cache: Cache<TReturn>,
 		key: string,

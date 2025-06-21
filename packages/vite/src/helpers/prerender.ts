@@ -35,7 +35,11 @@ export const prerender = async (options: PrerenderOptions): Promise<void> => {
 
 			const print = async (config: any) => {
 				try {
-					const { html, context } = await page.prerender(config);
+					const { html, context } = await page.render({
+						withLayout: true,
+						...config,
+					});
+
 					const pathname = context.url.pathname;
 					const filepath = `${dist}${pathname === "/" ? "/index" : pathname}.html`;
 
