@@ -144,8 +144,6 @@ export class ServerStaticProvider {
 				}
 			}
 
-			const stream = createReadStream(path);
-
 			reply.headers["content-type"] = contentType;
 			reply.headers["accept-ranges"] = "bytes";
 			reply.headers["last-modified"] = lastModified;
@@ -167,8 +165,12 @@ export class ServerStaticProvider {
 				return;
 			}
 
-			return stream;
+			return createReadStream(path);
 		};
+	}
+
+	protected getCacheFileTypes() {
+		return [".js", ".css"];
 	}
 
 	protected getCacheControl(
@@ -179,7 +181,8 @@ export class ServerStaticProvider {
 			return;
 		}
 
-		const fileTypes = options.cacheControl.fileTypes ?? [".js", ".css"];
+		const fileTypes =
+			options.cacheControl.fileTypes ?? this.getCacheFileTypes();
 		for (const type of fileTypes) {
 			if (filename.endsWith(type)) {
 				return {

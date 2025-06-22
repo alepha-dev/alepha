@@ -101,6 +101,7 @@ export * from "./providers/features/ServerLoggerProvider.ts";
 export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/features/ServerNotReadyProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
+export * from "./providers/features/ServerTimingProvider.ts";
 export * from "./providers/ProxyDescriptorProvider.ts";
 export * from "./providers/platforms/NodeHttpServerProvider.ts";
 export * from "./providers/platforms/ServerProvider.ts";

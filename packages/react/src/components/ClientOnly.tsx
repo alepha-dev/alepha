@@ -1,7 +1,11 @@
-import { type ReactNode, useEffect, useState } from "react";
+import {
+	type PropsWithChildren,
+	type ReactNode,
+	useEffect,
+	useState,
+} from "react";
 
 export interface ClientOnlyProps {
-	children: ReactNode;
 	fallback?: ReactNode;
 	disabled?: boolean;
 }
@@ -16,7 +20,7 @@ export interface ClientOnlyProps {
  * - you want to avoid server-side rendering for a specific part of your application
  * - you want to prevent pre-rendering of a component
  */
-const ClientOnly = (props: ClientOnlyProps) => {
+const ClientOnly = (props: PropsWithChildren<ClientOnlyProps>) => {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => setMounted(true), []);

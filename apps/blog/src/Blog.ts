@@ -51,6 +51,7 @@ export class Blog {
 				slug: t.string(),
 			}),
 		},
+		client: true,
 		resolve: async ({ params }) => {
 			return {
 				post: await this.posts.getPostBySlug({ params }),

@@ -14,8 +14,8 @@ import {
 	type ServerHandler,
 	ServerLinksProvider,
 	ServerRouterProvider,
+	ServerTimingProvider,
 } from "@alepha/server";
-import { ServerTimingProvider } from "@alepha/server/src/providers/features/ServerTimingProvider.ts";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import { $page } from "../descriptors/$page.ts";
@@ -139,14 +139,14 @@ export class ReactServerProvider {
 				continue;
 			}
 
-			this.log.info(`+ ${page.match} -> ${page.name}`);
+			this.log.debug(`+ ${page.match} -> ${page.name}`);
 
 			await this.serverRouterProvider.route({
 				...page,
 				schema: undefined, // schema is handled by the page descriptor provider for now (shared by browser and server)
 				method: "GET",
 				path: page.match,
-				handler: this.createSsrHandler(page, templateLoader),
+				handler: this.createHandler(page, templateLoader),
 			});
 		}
 	}
@@ -231,7 +231,7 @@ export class ReactServerProvider {
 		};
 	}
 
-	protected createSsrHandler(
+	protected createHandler(
 		page: PageRoute,
 		templateLoader: TemplateLoader,
 	): ServerHandler {
@@ -276,6 +276,17 @@ export class ReactServerProvider {
 				}
 				target = target.parent;
 			}
+
+			// TODO: SSR strategies
+			// - only when googlebot
+			// - only child pages
+			// if (page.client) {
+			// 	// if the page is a client-only page, return 404
+			// 	reply.status = 200;
+			// 	reply.headers["content-type"] = "text/html";
+			// 	reply.body = template;
+			// 	return;
+			// }
 
 			await this.alepha.emit(
 				"react:server:render",

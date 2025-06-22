@@ -1,6 +1,8 @@
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS, t } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
-import { createElement, type ReactNode } from "react";
+import type { Static } from "@sinclair/typebox";
+import { createElement, type ReactNode, StrictMode } from "react";
+import ClientOnly from "../components/ClientOnly.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
@@ -12,8 +14,17 @@ import {
 } from "../descriptors/$page.ts";
 import { RedirectionError } from "../errors/RedirectionError.ts";
 
+const envSchema = t.object({
+	REACT_STRICT_MODE: t.boolean({ default: true }),
+});
+
+declare module "@alepha/core" {
+	export interface Env extends Partial<Static<typeof envSchema>> {}
+}
+
 export class PageDescriptorProvider {
 	protected readonly log = $logger();
+	protected readonly env = $inject(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly pages: PageRoute[] = [];
 
@@ -56,7 +67,7 @@ export class PageDescriptorProvider {
 	}
 
 	public root(state: RouterState, context: PageReactContext): ReactNode {
-		return createElement(
+		const root = createElement(
 			RouterContext.Provider,
 			{
 				value: {
@@ -67,6 +78,12 @@ export class PageDescriptorProvider {
 			},
 			createElement(NestedView, {}, state.layers[0]?.element),
 		);
+
+		if (this.env.REACT_STRICT_MODE) {
+			return createElement(StrictMode, {}, root);
+		}
+
+		return root;
 	}
 
 	public async createLayers(
@@ -223,7 +240,7 @@ export class PageDescriptorProvider {
 					name: it.route.name,
 					part: it.route.path,
 					config: it.config,
-					element: this.renderView(i + 1, path, element),
+					element: this.renderView(i + 1, path, element, it.route),
 					index: i + 1,
 					path,
 				});
@@ -242,7 +259,7 @@ export class PageDescriptorProvider {
 				props,
 				part: it.route.path,
 				config: it.config,
-				element: this.renderView(i + 1, path, layer),
+				element: this.renderView(i + 1, path, layer, it.route),
 				index: i + 1,
 				path,
 			});
@@ -360,7 +377,8 @@ export class PageDescriptorProvider {
 	protected renderView(
 		index: number,
 		path: string,
-		view: ReactNode = this.renderEmptyView(),
+		view: ReactNode,
+		page: PageRoute,
 	): ReactNode {
 		return createElement(
 			RouterLayerContext.Provider,
@@ -370,7 +388,13 @@ export class PageDescriptorProvider {
 					path,
 				},
 			},
-			view,
+			page.client
+				? createElement(
+						ClientOnly,
+						typeof page.client === "object" ? page.client : {},
+						view,
+					)
+				: view,
 		);
 	}
 

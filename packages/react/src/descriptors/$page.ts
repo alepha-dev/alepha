@@ -9,6 +9,7 @@ import {
 } from "@alepha/core";
 import type { ServerRoute } from "@alepha/server";
 import type { FC, ReactNode } from "react";
+import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
 
 const KEY = "PAGE";
@@ -109,6 +110,11 @@ export interface PageDescriptorOptions<
 		| {
 				entries?: Array<Partial<PageRequestConfig<TConfig>>>;
 		  };
+
+	/**
+	 * If true, the page will be rendered on the client-side.
+	 */
+	client?: boolean | ClientOnlyProps;
 }
 
 export interface PageDescriptor<

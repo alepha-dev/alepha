@@ -24,7 +24,6 @@ interface Props {
 }
 
 const Home = (props: Props) => {
-	console.log("Home component rendered with posts");
 	return (
 		<Flex direction={"column"}>
 			<Flex>
