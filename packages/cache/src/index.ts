@@ -7,13 +7,14 @@ import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
 import { RedisCacheProvider } from "./providers/RedisCacheProvider.ts";
 
 export * from "./descriptors/$cache.ts";
+export * from "./interfaces/CacheProvider.ts";
 export * from "./providers/CacheDescriptorProvider.ts";
 export * from "./providers/DefaultCacheProvider.ts";
 export * from "./providers/MemoryCacheProvider.ts";
 export * from "./providers/RedisCacheProvider.ts";
 
 const envSchema = t.object({
-	CACHE_PROVIDER: t.enum(["memory", "redis", "sqlite"], {
+	CACHE_PROVIDER: t.enum(["memory", "redis"], {
 		default: "memory",
 	}),
 });

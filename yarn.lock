@@ -5,6 +5,16 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
+"@alepha/bucket@workspace:packages/bucket":
+  version: 0.0.0-use.local
+  resolution: "@alepha/bucket@workspace:packages/bucket"
+  dependencies:
+    "@alepha/core": "npm:0.7.0"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/cache@npm:0.6.10":
   version: 0.6.10
   resolution: "@alepha/cache@npm:0.6.10"

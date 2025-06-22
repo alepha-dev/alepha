@@ -2,7 +2,7 @@ import type { Static } from "@alepha/core";
 import { $inject, $logger, t } from "@alepha/core";
 import type { RedisClient } from "@alepha/redis";
 import { RedisProvider } from "@alepha/redis";
-import type { CacheProvider } from "./DefaultCacheProvider.ts";
+import type { CacheProvider } from "../interfaces/CacheProvider.ts";
 
 const envSchema = t.object({
 	REDIS_CACHE_PREFIX: t.optional(

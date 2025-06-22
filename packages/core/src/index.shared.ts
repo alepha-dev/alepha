@@ -28,16 +28,15 @@ export * from "./providers/TypeProvider.ts";
 
 export * from "./services/Logger.ts";
 
-export const substitute = <T extends object>(
-	provide: T,
-	use: T,
-): {
+export const substitute = <T extends object>(rule: {
+	provide: T;
+	use: T;
+	default?: boolean;
+}): {
 	use: T;
 	provide: T;
-} => ({
-	provide,
-	use,
-});
+	default?: boolean;
+} => rule;
 
 export interface RunOptions {
 	/**

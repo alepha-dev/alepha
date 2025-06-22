@@ -14,10 +14,8 @@ import type {
 	CacheDescriptorOptions,
 } from "../descriptors/$cache.ts";
 import { $cache } from "../descriptors/$cache.ts";
-import {
-	type CacheProvider,
-	DefaultCacheProvider,
-} from "./DefaultCacheProvider.ts";
+import type { CacheProvider } from "../interfaces/CacheProvider.ts";
+import { DefaultCacheProvider } from "./DefaultCacheProvider.ts";
 import { MemoryCacheProvider } from "./MemoryCacheProvider.ts";
 
 const envSchema = t.object({
