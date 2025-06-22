@@ -1,4 +1,4 @@
-import { $command } from "@alepha/cli";
+import { $command } from "../packages/cli/src/index.ts";
 
 export const verify = $command({
 	when: ["verify", "v"],
@@ -6,7 +6,6 @@ export const verify = $command({
 	handler: async ({ run }) => {
 		await run("yarn");
 		await run("yarn alepha clean");
-		await run("yarn workspaces foreach --all run copy");
 		await run("yarn format");
 		await run("yarn lint");
 		await run("yarn check");

@@ -1,4 +1,4 @@
-import { $command } from "@alepha/cli";
+import { $command } from "../packages/cli/src/index.ts";
 
 export const up = $command({
 	when: ["up"],

@@ -10,7 +10,7 @@ export const userEntitySchema = pg.entity({
 	role: pg.default(t.string(), "user"),
 });
 
-export const insertUserEntitySchema = t.pg.insert(userEntitySchema);
+export const insertUserEntitySchema = pg.insert(userEntitySchema);
 export type UserEntity = Static<typeof userEntitySchema>;
 export type InsertUserEntity = Static<typeof insertUserEntitySchema>;
 

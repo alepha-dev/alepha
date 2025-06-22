@@ -1,1 +1,1 @@
-# @alepha/datetime
+# alepha/datetime

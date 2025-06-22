@@ -1,3 +1,3 @@
-# @alepha/server-metrics
+# alepha/server/metrics
 
 

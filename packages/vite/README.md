@@ -1,7 +1,16 @@
-# @alepha/vite
+# alepha/vite
 
-## Installation
+Vite plugin for building Alepha applications.
 
-```bash
-npm install -D @alepha/vite
+```ts
+// vite.config.ts
+import { defineConfig } from "vite"; // or rolldown-vite
+import { viteAlepha } from "alepha/vite";
+
+export default defineConfig({
+	// ...
+	plugins: [
+		viteAlepha({}),
+	],
+});
 ```

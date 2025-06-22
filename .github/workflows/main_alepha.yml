@@ -51,9 +51,6 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
-      - name: Copy Files
-        run: yarn workspaces foreach --all run copy
-
       - name: TypeScript Check
         run: yarn check
 

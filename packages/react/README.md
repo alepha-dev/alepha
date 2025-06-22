@@ -1,1 +1,1 @@
-# @alepha/react
+# alepha/react

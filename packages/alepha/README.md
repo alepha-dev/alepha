@@ -1,7 +1,18 @@
-# Alepha
+<div align="center">
 
-Alepha is a collection of packages designed to provide a powerful and flexible framework for building applications.
-It includes a variety of tools and utilities to help developers create robust and maintainable code.
+<img src="./assets/logo.png" alt="Logo" style="width: 256px"/>
+
+<h1>Alepha</h1>
+
+<p style="max-width: 512px">
+🚧
+</p>
+
+</div>
+
+[![npm](https://img.shields.io/npm/v/alepha.svg)](https://www.npmjs.com/package/alepha)
+[![license](https://img.shields.io/npm/l/alepha.svg)](https://www.npmjs.com/package/alepha)
+[![downloads](https://img.shields.io/npm/dt/alepha.svg)](https://www.npmjs.com/package/alepha)
 
 ## Installation
 

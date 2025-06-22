@@ -1,15 +1,4 @@
-# @alepha/protobuf
-
-Alepha Protobuf is a simple protobuf adapter for Alepha.
-It uses TypeBox Schema to define the protobuf schema and serialize/deserialize the data.
-
-## Installation
-
-```bash
-npm install @alepha/protobuf
-```
-
-## Usage
+# alepha/protobuf
 
 ```ts
 import { Alepha, t } from "@alepha/core";

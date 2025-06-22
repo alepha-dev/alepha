@@ -1,16 +1,20 @@
 import { Alepha, TypeBoxError, t } from "@alepha/core";
 import { eq } from "drizzle-orm";
 import { expect, test } from "vitest";
-import { $repository, pg, pgTableSchema, sql } from "../src";
+import { $entity, $repository, pg, sql } from "../src";
 
-const userSchema = t.object({
-	id: pg.primaryKey(),
-	name: t.string(),
-	guildId: t.optional(t.int()),
+const userEntity = $entity({
+	name: "users",
+	schema: t.object({
+		id: pg.primaryKey(),
+		name: t.string(),
+		guildId: t.optional(t.int()),
+	}),
+	indexes: [{ column: "name", unique: true }],
 });
 
 class App {
-	users = $repository(pgTableSchema("users", userSchema));
+	users = $repository(userEntity);
 }
 
 const alepha = Alepha.create();
@@ -25,7 +29,7 @@ test("execute - basic", async () => {
 	expect(
 		await app.users.execute(
 			(u) => sql`SELECT * FROM ${u} WHERE ${u.name} = ${name}`,
-			t.pick(userSchema, ["name"]),
+			t.pick(userEntity.$schema, ["name"]),
 		),
 	).toEqual([
 		{
@@ -36,7 +40,7 @@ test("execute - basic", async () => {
 	expect(
 		await app.users.execute(
 			(u, db) => db.select({ name: u.name }).from(u).where(eq(u.name, name)),
-			t.pick(userSchema, ["name"]),
+			t.pick(userEntity.$schema, ["name"]),
 		),
 	).toEqual([
 		{
@@ -47,7 +51,7 @@ test("execute - basic", async () => {
 	expect(
 		await app.users.execute(
 			(u) => sql`SELECT ${u.name} FROM ${u} WHERE ${u.name} = ${name}`,
-			t.pick(userSchema, ["name"]),
+			t.pick(userEntity.$schema, ["name"]),
 		),
 	).toEqual([
 		{

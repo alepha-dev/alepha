@@ -1,4 +1,4 @@
-import { $command } from "@alepha/cli";
+import { $command } from "../packages/cli/src/index.ts";
 import { join } from "node:path";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";

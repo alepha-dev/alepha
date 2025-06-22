@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $, fs, glob } from "zx";
 
@@ -10,17 +10,18 @@ const root =
 		? dirname.slice(1)
 		: dirname;
 
-const assets = join(root, "../assets/swagger-ui");
-let dist = join(root, "../../../../node_modules/swagger-ui-dist");
+const assets = join(root, "../assets/swagger-ui").replace(/\\/g, "/");
+const dist = createRequire(import.meta.url)
+	.resolve("swagger-ui-dist")
+	.replace("index.js", "");
 
-if (!existsSync(dist)) {
-	dist = join(root, "../../../node_modules/swagger-ui-dist");
-}
+// ---------------------------------------------------------------------------------------------------------------------
 
 await fs.rm(assets, { recursive: true, force: true });
 await fs.mkdir(assets, { recursive: true });
 await fs.cp(dist, assets, { recursive: true });
 
+// clean up unnecessary files
 const filesToRemove = [
 	"NOTICE",
 	"package.json",
@@ -29,17 +30,13 @@ const filesToRemove = [
 	"swagger-initializer.js",
 	"absolute-path.js",
 	"README.md",
+	"swagger-ui.js",
 	"swagger-ui-es-bundle.js",
 	"swagger-ui-es-bundle-core.js",
+	...(await glob("*.map", { cwd: assets })),
+	...(await glob("*.txt", { cwd: assets })),
 ].map((item) => join(assets, item));
 
-// Remove specified files
 for (const file of filesToRemove) {
-	await fs.rm(file, { force: true });
-}
-
-// Remove .map files
-const mapFiles = await glob(join(assets, "*.map"));
-for (const file of mapFiles) {
 	await fs.rm(file, { force: true });
 }

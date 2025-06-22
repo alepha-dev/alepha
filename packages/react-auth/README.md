@@ -1,1 +1,1 @@
-# @alepha/react-auth
+# alepha/react/auth

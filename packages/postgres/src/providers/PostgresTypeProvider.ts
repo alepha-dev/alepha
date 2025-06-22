@@ -45,6 +45,9 @@ declare module "@alepha/core" {
 export class PostgresTypeProvider {
 	public readonly attr = pgAttr;
 
+	/**
+	 * Creates a primary key with an identity column.
+	 */
 	public readonly identityPrimaryKey = (
 		identity?: PgIdentityOptions,
 		options?: IntegerOptions,
@@ -54,6 +57,9 @@ export class PostgresTypeProvider {
 			PG_DEFAULT,
 		);
 
+	/**
+	 * Creates a primary key with a big identity column. (default)
+	 */
 	public readonly bigIdentityPrimaryKey = (
 		identity?: PgIdentityOptions,
 		options?: NumberOptions,
@@ -63,15 +69,21 @@ export class PostgresTypeProvider {
 			PG_DEFAULT,
 		);
 
+	/**
+	 * Creates a primary key with a UUID column.
+	 */
 	public readonly uuidPrimaryKey = () =>
 		pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 
+	/**
+	 *
+	 * @alias bigIdentityPrimaryKey
+	 */
 	public readonly primaryKey = this.bigIdentityPrimaryKey;
 
 	/**
-	 *
-	 * @param type
-	 * @param value
+	 * Wrap a schema with "default" attribute.
+	 * This is used to set a default value for a column in the database.
 	 */
 	public readonly default = <T extends TSchema>(
 		type: T,
@@ -84,22 +96,21 @@ export class PostgresTypeProvider {
 	};
 
 	/**
-	 *
-	 * @param options
+	 * Creates a column version.
+	 * This is used to track the version of a row in the database.
+	 * You can use it for optimistic concurrency control.
 	 */
 	public readonly version = (options: IntegerOptions = {}) =>
 		this.default(pgAttr(t.int(options), PG_VERSION), 0);
 
 	/**
-	 *
-	 * @param options
+	 * Creates a column Created At. So just a datetime column with a default value of the current timestamp.
 	 */
 	public readonly createdAt = (options?: StringOptions) =>
 		pgAttr(pgAttr(t.datetime(options), PG_CREATED_AT), PG_DEFAULT);
 
 	/**
-	 *
-	 * @param options
+	 * Creates a column Updated At. Like createdAt, but it is updated on every update of the row.
 	 */
 	public readonly updatedAt = (options?: StringOptions) =>
 		pgAttr(pgAttr(t.datetime(options), PG_UPDATED_AT), PG_DEFAULT);
@@ -124,6 +135,7 @@ export class PostgresTypeProvider {
 
 	/**
 	 * Creates an insert schema for a given object schema.
+	 * - pg.default will be optional
 	 */
 	public readonly insert = <T extends TObject>(obj: T): TInsertObject<T> => {
 		const properties: Record<string, TSchema> = {};
@@ -184,10 +196,16 @@ export class PostgresTypeProvider {
 			actions,
 		});
 	};
-	references = this.ref;
+
+	/**
+	 * @alias ref
+	 */
+	public references = this.ref;
 
 	/**
 	 * Creates a reference to another table or schema with a foreign key.
+	 *
+	 * @experimental
 	 */
 	public readonly many = <T extends TObject, Config extends TableConfig>(
 		table: PgTableWithColumnsAndSchema<Config, T>,
@@ -206,5 +224,3 @@ export class PostgresTypeProvider {
 }
 
 export const pg = new PostgresTypeProvider();
-
-Object.assign(t, { pg });

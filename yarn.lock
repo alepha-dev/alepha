@@ -359,7 +359,6 @@ __metadata:
   resolution: "@alepha/testing@workspace:packages/testing"
   dependencies:
     "@faker-js/faker": "npm:^9.8.0"
-    drizzle-kit: "npm:0.31.1"
     pkgroll: "npm:^2.13.1"
   languageName: unknown
   linkType: soft
@@ -3296,6 +3295,7 @@ __metadata:
     "@alepha/topic": "npm:0.7.0"
     "@alepha/vite": "npm:0.7.0"
     "@types/react": "npm:^19.1.8"
+    drizzle-kit: "npm:0.31.1"
     pkgroll: "npm:^2.13.1"
     react: "npm:^19.1.0"
   peerDependencies:

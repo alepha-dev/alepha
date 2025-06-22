@@ -32,7 +32,8 @@
 		"@alepha/server-swagger": "0.7.0",
 		"@alepha/testing": "0.7.0",
 		"@alepha/topic": "0.7.0",
-		"@alepha/vite": "0.7.0"
+		"@alepha/vite": "0.7.0",
+		"drizzle-kit": "0.31.1"
 	},
 	"peerDependencies": {
 		"@types/react": "^19",
@@ -60,6 +61,7 @@
 	},
 	"files": [
 		"src",
+		"assets",
 		"**/*.js",
 		"**/*.cjs",
 		"**/*.d.ts",
