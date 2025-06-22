@@ -1,10 +1,15 @@
+import { createHash } from "node:crypto";
 import {
 	type Cache,
 	type CacheDescriptorOptions,
 	CacheDescriptorProvider,
 } from "@alepha/cache";
 import { $hook, $inject, $logger, OPTIONS } from "@alepha/core";
-import { type DurationLike, isDurationLike } from "@alepha/datetime";
+import {
+	DateTimeProvider,
+	type DurationLike,
+	isDurationLike,
+} from "@alepha/datetime";
 import type {
 	ServerHandler,
 	ServerRequestConfig,
@@ -13,7 +18,8 @@ import type {
 export class ServerCacheProvider {
 	protected readonly log = $logger();
 	protected readonly cacheProvider = $inject(CacheDescriptorProvider);
-	protected readonly caches = new Map<any, RouteCache>();
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly caches = new Map<ServerHandler, RouteCache>();
 
 	public readonly onRoute = $hook({
 		name: "server:onRoute",
@@ -56,6 +62,15 @@ export class ServerCacheProvider {
 			const key = this.createCacheKey(request);
 			const cached = await this.cacheProvider.get(cache, key);
 			if (cached) {
+				// if user has already the resource cached, just return 304 Not Modified
+				if (
+					request.headers["if-none-match"] === cached.hash ||
+					request.headers["if-modified-since"] === cached.lastModified
+				) {
+					request.reply.status = 304;
+					return;
+				}
+
 				// if the cache is found, we can skip the request processing
 				// and return the cached response
 				request.reply.body = cached.body;
@@ -83,10 +98,15 @@ export class ServerCacheProvider {
 			// - caching binary data like images can be problematic (memory usage, etc.)
 
 			if (typeof response.body === "string") {
+				const etag = this.generateETag(response.body);
 				await this.cacheProvider.set(cache, key, {
 					body: response.body,
 					contentType: response.headers?.["content-type"],
+					lastModified: this.dateTimeProvider.toISOString(),
+					hash: etag,
 				});
+				response.headers ??= {};
+				response.headers.etag = etag;
 			} else {
 				this.log.warn(
 					`Response body for route ${route.method} ${route.path} is not a string, caching skipped.`,
@@ -94,6 +114,10 @@ export class ServerCacheProvider {
 			}
 		},
 	});
+
+	public generateETag(content: string): string {
+		return `"${createHash("md5").update(content).digest("hex")}"`;
+	}
 
 	public async invalidate(route: RouteLike) {
 		const cache = this.getCacheByRoute(route);
@@ -104,8 +128,12 @@ export class ServerCacheProvider {
 		await this.cacheProvider.invalidate(cache);
 	}
 
-	protected getCacheByRoute(route: RouteLike): Cache | undefined {
+	protected getCacheByRoute(route: RouteLike): RouteCache | undefined {
 		const options = OPTIONS in route ? route[OPTIONS] : route;
+		if (!options.handler) {
+			return;
+		}
+
 		return this.caches.get(options.handler);
 	}
 
@@ -123,7 +151,12 @@ export type ServiceRouteCache =
 	| DurationLike
 	| Omit<CacheDescriptorOptions<any>, "handler" | "key">;
 
-type RouteCache = Cache<{ contentType?: string; body: string }>;
+type RouteCache = Cache<{
+	contentType?: string;
+	body: string;
+	lastModified: string;
+	hash: string;
+}>;
 
 type RouteLike =
 	| {

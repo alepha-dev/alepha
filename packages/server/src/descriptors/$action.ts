@@ -15,6 +15,7 @@ import type {
 	ServerHandler,
 	ServerRoute,
 } from "../providers/ServerRouterProvider.ts";
+import type { FetchResponse, FetchRunOptions } from "../services/HttpClient.ts";
 
 const KEY = "ACTION";
 
@@ -116,7 +117,7 @@ export interface ActionDescriptor<
 	(
 		config?: ClientRequestEntry<TConfig>,
 		opts?: ClientRequestOptions,
-	): ClientRequestResponse<TConfig>;
+	): Promise<ClientRequestResponse<TConfig>>;
 
 	/**
 	 * Just fetch the route. Skip any local route.
@@ -124,7 +125,7 @@ export interface ActionDescriptor<
 	fetch: (
 		config?: ClientRequestEntry<TConfig>,
 		opts?: ClientRequestOptions,
-	) => ClientRequestResponse<TConfig>;
+	) => Promise<FetchResponse<ClientRequestResponse<TConfig>>>;
 
 	/**
 	 * Name of the permission required to access this route.
@@ -199,13 +200,7 @@ export type ClientRequestEntryContainer<
 		: undefined;
 };
 
-export interface ClientRequestOptions {
-	/**
-	 * Built-in cache options.
-	 * Number as seconds or boolean to enable cache.
-	 */
-	cache?: number | boolean;
-
+export interface ClientRequestOptions extends FetchRunOptions {
 	/**
 	 * Forward user from the previous request.
 	 *
@@ -220,6 +215,4 @@ export interface ClientRequestOptions {
 }
 
 export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
-	Promise<
-		TConfig["response"] extends TSchema ? Static<TConfig["response"]> : Response
-	>;
+	TConfig["response"] extends TSchema ? Static<TConfig["response"]> : any;

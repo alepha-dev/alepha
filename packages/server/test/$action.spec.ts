@@ -36,9 +36,9 @@ const testActionBasicCrud = async (
 	app: CrudApp | HttpVirtualClient<CrudApp>,
 ) => {
 	expect(await app.findAll()).toEqual([]);
-	expect(await app.findAll.fetch({})).toEqual([]);
+	expect(await app.findAll()).toEqual([]);
 
-	expect(await app.create.fetch({ body: { name: "John" } })).toEqual({
+	expect(await app.create({ body: { name: "John" } })).toEqual({
 		id: 1,
 		name: "John",
 	});
@@ -85,7 +85,7 @@ const testActionBasicCrud = async (
 		},
 	]);
 
-	expect(await app.findAll.fetch()).toEqual([
+	expect(await app.findAll()).toEqual([
 		{
 			id: 1,
 			name: "John",
@@ -96,7 +96,7 @@ const testActionBasicCrud = async (
 		},
 	]);
 
-	expect(await app.findById.fetch({ params: { id: 1 } })).toEqual({
+	expect(await app.findById({ params: { id: 1 } })).toEqual({
 		id: 1,
 		name: "John",
 	});
@@ -107,7 +107,7 @@ const testActionBasicCrud = async (
 	});
 
 	expect(
-		await app.update.fetch({ params: { id: 1 }, body: { name: "John Doe" } }),
+		await app.update({ params: { id: 1 }, body: { name: "John Doe" } }),
 	).toEqual({
 		id: 1,
 		name: "John Doe",
@@ -132,7 +132,7 @@ const testActionBasicCrud = async (
 
 	expect(await app.delete({ params: { id: 1 } })).toEqual(undefined);
 
-	expect(await app.findAll.fetch()).toEqual([
+	expect(await app.findAll()).toEqual([
 		{
 			id: 2,
 			name: "Jean",
@@ -160,7 +160,7 @@ const testActionHeader = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 	});
 
 	expect(
-		await app.findById.fetch({
+		await app.findById({
 			params: { id: 1 },
 			headers: { uppercase: true },
 		}),
@@ -177,18 +177,10 @@ const testActionHeader = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 	});
 
 	expect(
-		await app.findById.fetch(
-			{
-				params: { id: 1 },
-			},
-			{
-				request: {
-					headers: {
-						uppercase: "true",
-					},
-				},
-			},
-		),
+		await app.findById({
+			params: { id: 1 },
+			headers: { uppercase: true },
+		}),
 	).toEqual({
 		id: 1,
 		name: "JEAN",
@@ -211,15 +203,10 @@ const testActionErrors = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 	await expect(app.findById({ params: { id: 2 } })).rejects.toThrowError(
 		"User not found",
 	);
-	await expect(app.findById.fetch({ params: { id: 2 } })).rejects.toThrowError(
-		"User not found",
-	);
 
 	// as local function, we go the real error
-	await expect(app.internalError()).rejects.toThrowError("Oops");
 	// as remove function, we go the http error wrapper
-	await expect(app.internalError.fetch()).rejects.toThrowError("Oops");
-	// but message is always the same
+	await expect(app.internalError()).rejects.toThrowError("Oops");
 };
 
 test("$action - errors (app)", async () => {

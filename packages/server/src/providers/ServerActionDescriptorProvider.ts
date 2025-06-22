@@ -133,32 +133,26 @@ export class ServerActionDescriptorProvider {
 
 		// --- Descriptor $action
 
-		const functions = {
-			permission: () => action.permission,
-			fetch: (
-				config: Partial<ClientRequestEntry> = {},
-				options: ClientRequestOptions = {},
-			) =>
-				this.client.fetchLink({
-					config,
-					options,
-					link: action,
-					host: this.serverProvider.hostname,
-				}),
-			local: this.createLocalFunction(options, action.permission),
-		};
+		const handler = this.createLocalFunction(options, action.permission);
 
 		const $ = (
 			config: Partial<ClientRequestEntry> = {},
 			opts: ClientRequestOptions = {},
-		) => {
-			return functions.local(config, opts);
-		};
+		) => handler(config, opts);
 
-		$[KIND] = "ROUTE";
+		$[KIND] = "ACTION";
 		$[OPTIONS] = action.options;
-		$.fetch = functions.fetch;
-		$.permission = functions.permission;
+		$.fetch = (
+			config: Partial<ClientRequestEntry> = {},
+			options: ClientRequestOptions = {},
+		) =>
+			this.client.fetchLink({
+				config,
+				options,
+				link: action,
+				host: this.serverProvider.hostname,
+			});
+		$.permission = () => action.permission;
 
 		instance[key] = $;
 
@@ -172,7 +166,7 @@ export class ServerActionDescriptorProvider {
 			...action,
 			schema: action.options.schema,
 			requestBodyType: this.helper.bodyContentType(action.options),
-			handler: functions.local,
+			handler,
 			secured: options.security !== false,
 			method: action.method === "GET" ? undefined : action.method,
 			prefix: this.env.SERVER_API_PREFIX,

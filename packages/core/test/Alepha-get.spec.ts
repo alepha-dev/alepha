@@ -34,3 +34,9 @@ test("Alepha#get - args", () => {
 	expect(alepha.get(Logger, { args: ["a"] }).a).toBe("a");
 	expect(alepha.get(Logger).a).toBe("a");
 });
+
+test("Alepha#get - alepha", () => {
+	const alepha = new Alepha();
+
+	expect(alepha.get(Alepha)).toBe(alepha);
+});

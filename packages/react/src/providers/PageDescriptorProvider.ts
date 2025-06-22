@@ -1,6 +1,6 @@
+import type { Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, OPTIONS, t } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
-import type { Static } from "@sinclair/typebox";
 import { createElement, type ReactNode, StrictMode } from "react";
 import ClientOnly from "../components/ClientOnly.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
@@ -249,7 +249,7 @@ export class PageDescriptorProvider {
 
 			// normal use case
 
-			const layer = await this.createElement(it.route, {
+			const element = await this.createElement(it.route, {
 				...props,
 				...context,
 			});
@@ -259,7 +259,7 @@ export class PageDescriptorProvider {
 				props,
 				part: it.route.path,
 				config: it.config,
-				element: this.renderView(i + 1, path, layer, it.route),
+				element: this.renderView(i + 1, path, element, it.route),
 				index: i + 1,
 				path,
 			});
@@ -377,9 +377,19 @@ export class PageDescriptorProvider {
 	protected renderView(
 		index: number,
 		path: string,
-		view: ReactNode,
+		view: ReactNode | undefined,
 		page: PageRoute,
 	): ReactNode {
+		view ??= this.renderEmptyView();
+
+		const element = page.client
+			? createElement(
+					ClientOnly,
+					typeof page.client === "object" ? page.client : {},
+					view,
+				)
+			: view;
+
 		return createElement(
 			RouterLayerContext.Provider,
 			{
@@ -388,13 +398,7 @@ export class PageDescriptorProvider {
 					path,
 				},
 			},
-			page.client
-				? createElement(
-						ClientOnly,
-						typeof page.client === "object" ? page.client : {},
-						view,
-					)
-				: view,
+			element,
 		);
 	}
 

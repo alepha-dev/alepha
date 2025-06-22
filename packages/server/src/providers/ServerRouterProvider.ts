@@ -182,7 +182,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			},
 		);
 
-		if (request.reply.body) {
+		if (
+			request.reply.body ||
+			(request.reply.status && request.reply.status >= 200)
+		) {
 			// if the body is already set, we can skip the handler
 			// this is useful for middlewares that set the body
 			return;

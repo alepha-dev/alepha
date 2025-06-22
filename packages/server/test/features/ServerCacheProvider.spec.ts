@@ -21,20 +21,23 @@ const alepha = Alepha.create();
 const app = alepha.get(App);
 
 test("ServerCacheProvider - default", async ({ expect }) => {
-	expect(await app.cache.fetch()).toBe(await app.cache.fetch());
-	expect(await app.noCache.fetch()).not.toBe(await app.noCache.fetch());
-	expect(await app.cache.fetch()).toBe(await app.cache.fetch());
-	expect(await app.noCache.fetch()).not.toBe(await app.noCache.fetch());
-	expect(await app.cache.fetch()).toBe(await app.cache.fetch());
+	for (let i = 0; i < 10; i++) {
+		expect(await app.cache.fetch().then((r) => r.data)).toBe(
+			await app.cache.fetch().then((r) => r.data),
+		);
+		expect(await app.noCache.fetch().then((r) => r.data)).not.toBe(
+			await app.noCache.fetch().then((r) => r.data),
+		);
+	}
 });
 
 test("ServerCacheProvider - invalidate", async ({ expect }) => {
-	const count = await app.cache.fetch();
+	const count = await app.cache.fetch().then((r) => r.data);
 
-	expect(count).toBe(await app.cache.fetch());
+	expect(count).toBe(await app.cache.fetch().then((r) => r.data));
 
 	const serverCacheProvider = alepha.get(ServerCacheProvider);
 	await serverCacheProvider.invalidate(app.cache);
 
-	expect(count).not.toBe(await app.cache.fetch());
+	expect(count).not.toBe(await app.cache.fetch().then((r) => r.data));
 });

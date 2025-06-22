@@ -35,7 +35,7 @@ export class HttpClient {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly helper = $inject(ActionDescriptorHelper);
 
-	public readonly cache = $cache<any>();
+	public readonly cache = $cache<HttpClientCache>();
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
 
@@ -60,12 +60,22 @@ export class HttpClient {
 		url: string,
 		request: RequestInit = {},
 		options: FetchRunOptions = {},
-	): Promise<T> {
+	): Promise<FetchResponse<T>> {
 		request.method ??= "GET";
 
-		const data = await this.cache.get(url);
-		if (data && request.method === "GET") {
-			return data;
+		const cached = await this.cache.get(url);
+		if (cached && request.method === "GET") {
+			if (cached.etag) {
+				request.headers = new Headers(request.headers);
+				request.headers.set("if-none-match", cached.etag);
+			} else {
+				return {
+					data: cached.data as T,
+					status: 200,
+					statusText: "OK",
+					headers: new Headers(),
+				};
+			}
 		}
 
 		await this.alepha.emit("client:beforeFetch", {
@@ -76,11 +86,13 @@ export class HttpClient {
 
 		// make a key for the request
 		// this will be used to check if the request is already pending
-		const key = JSON.stringify({
-			url,
-			method: request.method,
-			body: request.body,
-		});
+		const key =
+			options.key ??
+			JSON.stringify({
+				url,
+				method: request.method,
+				body: request.body,
+			});
 
 		const existing = this.pendingRequests[key];
 		if (existing) {
@@ -89,34 +101,44 @@ export class HttpClient {
 
 		const pendingRequest = fetch(url, request)
 			.then(async (response) => {
-				const data = await this.response(response, options);
+				const fetchResponse: FetchResponse = {
+					data: await this.responseData(response, options),
+					status: response.status,
+					statusText: response.statusText,
+					headers: response.headers,
+					raw: response,
+				};
 
-				if (options.cache !== undefined && request.method === "GET") {
-					await this.cache.set(
-						url,
-						data,
-						typeof options.cache === "boolean" ? undefined : options.cache,
-					);
+				if (request.method === "GET") {
+					const etag = response.headers.get("etag") ?? undefined;
+
+					if (options.cache != null || etag) {
+						await this.cache.set(
+							url,
+							{ data: fetchResponse.data, etag },
+							typeof options.cache === "boolean" ? undefined : options.cache,
+						);
+					}
 				}
 
-				return data;
+				return fetchResponse;
 			})
 			.finally(() => {
 				delete this.pendingRequests[key];
 			});
-
-		// If the request is a POST request, we won't reuse the promise.
-		if (request.method === "POST") {
-			return pendingRequest;
-		}
 
 		this.pendingRequests[key] = pendingRequest;
 
 		return this.pendingRequests[key];
 	}
 
-	public json<T = any>(url: string, options?: RequestInit): Promise<T> {
-		return this.fetch(url, { method: "GET", ...options }, { schema: t.any() });
+	public async json<T = any>(url: string, options?: RequestInit): Promise<T> {
+		const it = await this.fetch<T>(
+			url,
+			{ method: "GET", ...options },
+			{ schema: t.any() },
+		);
+		return it.data;
 	}
 
 	protected url(
@@ -197,10 +219,17 @@ export class HttpClient {
 		}
 	}
 
-	protected async response(
+	protected async responseData(
 		response: Response,
 		options: FetchRunOptions,
-	): Promise<Response | any> {
+	): Promise<any> {
+		if (response.status === 304) {
+			const cached = await this.cache.get(response.url);
+			if (cached) {
+				return cached.data;
+			}
+		}
+
 		if (response.status === 204) {
 			return;
 		}
@@ -333,16 +362,14 @@ export class HttpClient {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	public async fetchLink(args: {
-		link: HttpClientLink;
-		host?: string;
-		config?: ServerRequestConfigEntry;
-		options?: ClientRequestOptions;
-	}) {
-		const route = args.link;
-		const options = args.options ?? {};
-		const config = args.config ?? {};
-		const host = args.host ?? "";
+	/**
+	 * Transform a link into a fetch-request then call fetch().
+	 */
+	public async fetchLink(args: FetchLinkArgs): Promise<FetchResponse> {
+		const route = args.link; // our link to fetch
+		const options = args.options ?? {}; // fetch standard options, cache, etc.
+		const config = args.config ?? {}; // params, query, body, etc.
+		const host = args.host ?? ""; // remote host, e.g. "https://api.example.com" or empty (for browser)
 
 		const request: RequestInit = {
 			...options.request,
@@ -352,11 +379,6 @@ export class HttpClient {
 		const headers: Record<string, string> = {};
 
 		const url = this.url(host, route, config);
-
-		const data = await this.cache.get(url);
-		if (data && method === "GET") {
-			return data;
-		}
 
 		await this.alepha.emit("client:onRequest", {
 			route,
@@ -378,9 +400,14 @@ export class HttpClient {
 
 		return await this.fetch(url, request, {
 			schema: route.schema?.response,
+			...options,
 		});
 	}
 
+	/**
+	 * Create a proxy client.
+	 * This allows to call actions as methods, e.g. `client.actionName()`.
+	 */
 	public of<T extends object>(scope: ClientScope = {}): HttpVirtualClient<T> {
 		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
 			get: (_, prop) => {
@@ -398,8 +425,12 @@ export class HttpClient {
 					});
 				};
 
-				$.fetch = (config: any, args: ClientRequestOptions = {}) => {
-					return $(config, args);
+				$.fetch = async (
+					config: any = {},
+					options: ClientRequestOptions = {},
+				) => {
+					const link = await this.getLinkByName(prop, scope);
+					return this.followRemote(link, config, options);
 				};
 
 				$.can = () => {
@@ -411,14 +442,10 @@ export class HttpClient {
 		});
 	}
 
-	public async follow(
+	protected async getLinkByName(
 		name: string,
-		config: Partial<ServerRequestConfigEntry> = {},
-		options: ClientRequestOptions & ClientScope = {},
-	) {
-		const als = this.alepha.context.get<ServerRequest>("request");
-		const user = options?.user ?? als?.user;
-
+		options: ClientScope = {},
+	): Promise<HttpClientLink> {
 		const links = await this.getLinks();
 		const link = links.find(
 			(a) =>
@@ -436,8 +463,26 @@ export class HttpClient {
 			throw error;
 		}
 
+		return link;
+	}
+
+	/**
+	 * Resolve a link by its name and call it.
+	 * - If link is local, it will call the local handler.
+	 * - If link is remote, it will make a fetch request to the remote server.
+	 */
+	public async follow(
+		name: string,
+		config: Partial<ServerRequestConfigEntry> = {},
+		options: ClientRequestOptions & ClientScope = {},
+	) {
+		const link = await this.getLinkByName(name, options);
+
+		const als = this.alepha.context.get<ServerRequest>("request");
+		const user = options?.user ?? als?.user;
+
 		// if a handler is defined, use it (ssr)
-		if (link.handler) {
+		if (link.handler && !options.request) {
 			return link.handler({
 				method: link.method,
 				url: new URL(`http://localhost${link.path}`),
@@ -455,6 +500,17 @@ export class HttpClient {
 			} as Partial<ServerRequest> as ServerRequest);
 		}
 
+		return this.followRemote(link, config, options).then(
+			(response) => response.data,
+		);
+	}
+
+	protected async followRemote(
+		link: HttpClientLink,
+		config: Partial<ServerRequestConfigEntry> = {},
+		options: ClientRequestOptions = {},
+	): Promise<FetchResponse> {
+		const als = this.alepha.context.get<ServerRequest>("request");
 		if (als?.headers.authorization) {
 			options.request ??= {};
 			options.request.headers = new Headers(options.request.headers);
@@ -492,7 +548,7 @@ export class HttpClient {
 
 	public async getLinks(force = false): Promise<HttpClientLink[]> {
 		if ((force || !this.links) && this.alepha.isBrowser()) {
-			const { links } = await this.fetch<ApiLinksResponse>(
+			const { data } = await this.fetch<ApiLinksResponse>(
 				`${this.URL_LINKS}`,
 				{
 					method: "GET",
@@ -502,7 +558,7 @@ export class HttpClient {
 				},
 			);
 
-			this.links = links.map((it) => ({
+			this.links = data.links.map((it) => ({
 				...it,
 				method: it.method ?? "GET",
 			}));
@@ -524,9 +580,20 @@ export interface FetchFactoryAdditionalOptions {
 }
 
 export interface FetchRunOptions {
+	/**
+	 * Key to identify the request in the pending requests.
+	 */
+	key?: string;
+
+	/**
+	 * The schema to validate the response against.
+	 */
 	schema?: TSchema;
-	raw?: boolean;
-	cache?: boolean | DurationLike;
+
+	/**
+	 * Built-in cache options.
+	 */
+	cache?: boolean | number | DurationLike;
 }
 
 export interface HttpClientLink extends ApiLink {
@@ -556,3 +623,23 @@ export type HttpVirtualClient<T> = {
 			}
 		: never;
 };
+
+interface HttpClientCache {
+	data: any;
+	etag?: string;
+}
+
+export interface FetchResponse<T = any> {
+	data: T;
+	status: number;
+	statusText: string;
+	headers: Headers;
+	raw?: Response;
+}
+
+export interface FetchLinkArgs {
+	link: HttpClientLink;
+	host?: string;
+	config?: ServerRequestConfigEntry;
+	options?: ClientRequestOptions;
+}

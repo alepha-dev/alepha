@@ -8,10 +8,10 @@ export default defineConfig({
 				"packages/*/src/**/*.ts",
 			],
 			exclude: [
+				"apps/**",
 				"scripts/**",
 				"packages/alepha/**",
 				"packages/cli/**",
-				"packages/playground/**",
 				"packages/testing/**",
 				"packages/vite/**",
 			],
