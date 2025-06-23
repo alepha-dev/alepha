@@ -11,12 +11,9 @@ class App {
 
 const alepha = Alepha.create( {
 	env: {
-		AZURE_STORAGE_CONNECTION_STRING: "",
+		AZ_STORAGE_CONNECTION_STRING: "",
 	},
 })
-	// substitute DefaultBucketProvider with Azure if
-	// - AZURE_STORAGE_CONNECTION_STRING is set
-	// - not substituted by another provider (memory, local, s3, etc.)
 	.with(AzureBucketModule)
 	.with(App);
 

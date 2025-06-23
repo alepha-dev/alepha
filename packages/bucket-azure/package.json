@@ -21,6 +21,8 @@
 	"dependencies": {
 		"@alepha/bucket": "0.7.0",
 		"@alepha/core": "0.7.0",
+		"@alepha/datetime": "0.7.0",
+		"@alepha/file": "0.7.0",
 		"@azure/storage-blob": "^12.27.0"
 	},
 	"devDependencies": {

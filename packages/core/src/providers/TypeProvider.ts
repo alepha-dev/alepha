@@ -472,7 +472,11 @@ export const isFileLike = (value: any): value is FileLike => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type StreamLike = ReadableStream | NodeWebStream | Readable;
+export type StreamLike =
+	| ReadableStream
+	| NodeWebStream
+	| Readable
+	| NodeJS.ReadableStream;
 
 export type TStream = TUnsafe<StreamLike>;
 

@@ -1,6 +1,8 @@
 import { KIND, OPTIONS } from "@alepha/core";
 
-export type BucketDescriptorOptions = {};
+export type BucketDescriptorOptions = {
+	name?: string;
+};
 
 export interface BucketDescriptor {
 	[KIND]: "BUCKET";

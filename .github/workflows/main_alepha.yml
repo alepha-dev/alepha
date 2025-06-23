@@ -35,9 +35,18 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
+
+      - name: Install Azurite
+        id: azuright
+        uses: potatoqualitee/azuright@v1.1
 
       - name: Enable Corepack
         run: corepack enable

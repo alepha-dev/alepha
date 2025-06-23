@@ -27,9 +27,11 @@ export const file = (
 		return createFileFromStream(Readable.from(source), options);
 	}
 
-	if (source instanceof Readable) {
+	if (isReadableStream(source) || source instanceof Readable) {
 		return createFileFromStream(source, options);
 	}
+
+	Readable.isReadable;
 
 	return createFileFromBuffer(
 		Buffer.isBuffer(source)
@@ -201,3 +203,10 @@ export const bufferToArrayBuffer = (buffer: Buffer): ArrayBuffer => {
 		buffer.byteOffset + buffer.byteLength,
 	) as ArrayBuffer;
 };
+
+export const isReadableStream = (obj: unknown): obj is NodeJS.ReadableStream =>
+	obj instanceof Readable ||
+	(obj != null &&
+		typeof obj === "object" &&
+		typeof (obj as NodeJS.ReadableStream).pipe === "function" &&
+		typeof (obj as NodeJS.ReadableStream).read === "function");
