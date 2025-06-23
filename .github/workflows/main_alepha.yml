@@ -44,10 +44,6 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
 
-      - name: Install Azurite
-        id: azuright
-        uses: potatoqualitee/azuright@v1.1
-
       - name: Enable Corepack
         run: corepack enable
 
