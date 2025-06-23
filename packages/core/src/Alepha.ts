@@ -15,7 +15,11 @@ import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import type { Descriptor, DescriptorItem } from "./helpers/descriptor.ts";
 import { isDescriptorValue } from "./helpers/descriptor.ts";
 import type { Async } from "./interfaces/Async.ts";
-import type { Service, ServiceEntry } from "./interfaces/Service.ts";
+import type {
+	InstantiableService,
+	Service,
+	ServiceEntry,
+} from "./interfaces/Service.ts";
 import { AsyncLocalStorageProvider } from "./providers/AsyncLocalStorageProvider.ts";
 import { Logger, type LoggerEnv } from "./services/Logger.ts";
 
@@ -596,11 +600,12 @@ export class Alepha {
 		}
 
 		for (const entry of entries) {
+			// $module descriptor
 			if (isDescriptorValue(entry)) {
 				const options = entry[OPTIONS];
 				const services =
 					typeof options.services === "function"
-						? options.services(this.env)
+						? options.services(this)
 						: options.services;
 
 				const module: Module = {
@@ -612,7 +617,7 @@ export class Alepha {
 
 				if (Array.isArray(services)) {
 					for (const service of services) {
-						module.services.push("use" in service ? service.provide : service);
+						module.services?.push("use" in service ? service.provide : service);
 					}
 					for (const service of services) {
 						this.register(service);
@@ -1052,7 +1057,7 @@ export class Alepha {
 			return definition as T;
 		}
 
-		const instance: T = new definition(...args);
+		const instance: T = new (definition as InstantiableService<any>)(...args);
 
 		const obj = instance as unknown as Record<string, any>;
 		for (const key of Object.keys(obj)) {
@@ -1080,7 +1085,7 @@ export class Alepha {
 	 */
 	public moduleOf(service: Service): Module | undefined {
 		for (const module of this.modules) {
-			for (const it of module.services) {
+			for (const it of module.services ?? []) {
 				if (it === service) {
 					return module;
 				}

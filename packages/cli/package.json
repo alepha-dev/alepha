@@ -10,7 +10,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@sinclair/typebox": "^0.34.35",
+		"@sinclair/typebox": "^0.34.36",
 		"dotenv": "^16.5.0",
 		"shx": "^0.4.0"
 	},

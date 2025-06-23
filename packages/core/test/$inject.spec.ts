@@ -126,3 +126,39 @@ test("$inject - circular fix", () => {
 
 	expect(Alepha.create().get(Test).hi.hello).toBe("world");
 });
+
+test("$inject - with extends", () => {
+	const logs: string[] = [];
+	class P1 {
+		constructor() {
+			logs.push("P1");
+		}
+	}
+	class P2 {
+		constructor() {
+			logs.push("P2");
+		}
+	}
+
+	class R1 {
+		p1 = $inject(P1);
+	}
+
+	class R2 extends R1 {}
+
+	class R3 extends R1 {
+		p2 = $inject(P2);
+	}
+
+	const ctx = Alepha.create();
+
+	const r2 = ctx.get(R2);
+	expect(r2.p1).toBeInstanceOf(P1);
+	expect(logs).toEqual(["P1"]);
+
+	const r3 = ctx.get(R3);
+	expect(r3.p2).toBeInstanceOf(P2);
+
+	// just be to ensure that P1 is not created again (because R3 extends R1)
+	expect(logs).toEqual(["P1", "P2"]);
+});

@@ -11,7 +11,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@sinclair/typebox": "^0.34.35"
+		"@sinclair/typebox": "^0.34.36"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

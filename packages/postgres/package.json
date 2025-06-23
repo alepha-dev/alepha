@@ -15,13 +15,13 @@
 		"@alepha/datetime": "0.7.0",
 		"@alepha/lock": "0.7.0",
 		"@alepha/retry": "0.7.0",
-		"@sinclair/typebox": "^0.34.35",
+		"@sinclair/typebox": "^0.34.36",
 		"drizzle-orm": "^0.44.2",
 		"pg": "^8.16.2"
 	},
 	"devDependencies": {
 		"@types/pg": "8.15.4",
-		"drizzle-kit": "0.31.1",
+		"drizzle-kit": "0.31.2",
 		"pkgroll": "^2.13.1",
 		"vitest": "^3.2.4"
 	},

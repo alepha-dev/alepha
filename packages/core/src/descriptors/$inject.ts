@@ -35,8 +35,8 @@ export function $inject<T extends object>(type: Service<T> | TObject): T {
 		return context as T;
 	}
 
+	// $module descriptor
 	const moduleOfType = context.moduleOf(type);
-
 	if (module && moduleOfType && moduleOfType !== module) {
 		throw new AlephaError(
 			`Cannot inject '${moduleOfType.name}/${type.name}' into '${module.name}/${definition?.name}'. Service does not belong to the module.`,
@@ -48,3 +48,8 @@ export function $inject<T extends object>(type: Service<T> | TObject): T {
 		parent: definition ?? (context.constructor as Service),
 	});
 }
+
+/**
+ * @alias $inject
+ */
+export const $env = $inject;

@@ -124,3 +124,8 @@ export const $entity = <
 		},
 	);
 };
+
+export type Entity<T extends TObject> = PgTableWithColumnsAndSchema<
+	PgTableConfig<string, T, FromSchema<T>>,
+	T
+>;

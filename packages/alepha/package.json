@@ -33,7 +33,7 @@
 		"@alepha/testing": "0.7.0",
 		"@alepha/topic": "0.7.0",
 		"@alepha/vite": "0.7.0",
-		"drizzle-kit": "0.31.1"
+		"drizzle-kit": "0.31.2"
 	},
 	"peerDependencies": {
 		"@types/react": "^19",

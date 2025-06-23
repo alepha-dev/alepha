@@ -1,20 +1,20 @@
-import { NotImplementedError, type StreamLike } from "@alepha/core";
-import type { FileStorageProvider } from "../interfaces/FileStorageProvider.ts";
+import type { FileLike } from "@alepha/core";
+import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 export class MemoryFileStorageProvider implements FileStorageProvider {
-	upload(): Promise<string> {
-		throw new NotImplementedError(this.constructor.name);
+	upload(bucketName: string, file: FileLike, fileId?: string): Promise<string> {
+		throw new Error("Method not implemented.");
 	}
 
-	exists(): Promise<boolean> {
-		throw new NotImplementedError(this.constructor.name);
+	download(bucketName: string, fileId: string): Promise<FileLike> {
+		throw new Error("Method not implemented.");
 	}
 
-	stream(): Promise<StreamLike> {
-		throw new NotImplementedError(this.constructor.name);
+	exists(bucketName: string, fileId: string): Promise<boolean> {
+		throw new Error("Method not implemented.");
 	}
 
-	delete(): Promise<void> {
-		throw new NotImplementedError(this.constructor.name);
+	delete(bucketName: string, fileId: string): Promise<void> {
+		throw new Error("Method not implemented.");
 	}
 }

@@ -1,12 +1,16 @@
-import type { Static } from "@sinclair/typebox";
-import { KIND, OPTIONS, type Service, type TSchema } from "../index.ts";
-import type { ServiceEntry } from "../interfaces/Service.ts";
+import type { Static, TSchema } from "@sinclair/typebox";
+import type { Alepha } from "../Alepha.ts";
+import { KIND } from "../constants/KIND.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
+import type { Service, ServiceEntry } from "../interfaces/Service.ts";
 
 export interface ModuleDescriptorOptions<T extends TSchema> {
 	name: string; // name of the application
 	version?: string; // version of the application
 	description?: string; // description of the application
-	services?: ServiceEntry[] | ((env: Static<T>) => ServiceEntry[]); // list of services to register
+	services?:
+		| ServiceEntry[]
+		| ((args: Alepha & { env: Static<T> }) => ServiceEntry[]); // list of services to register
 	env?: T;
 }
 
@@ -48,7 +52,7 @@ export interface Module {
 	/**
 	 * The services provided by the module.
 	 */
-	services: Service[];
+	services?: Service[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

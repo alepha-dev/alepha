@@ -3,11 +3,17 @@
 /**
  * In Alepha, a service is a class that can be instantiated. Nothing more, nothing less.
  */
-export interface Service<T extends object = any> {
-	// generic is used for convenience, but not required
-	// new constructor is mandatory, to enforce the ""class"" type
-	new (...args: any[]): T;
-}
+export type Service<T extends object = any> =
+	| InstantiableService<T>
+	| AbstractService<T>;
+
+export type InstantiableService<T extends object = any> = new (
+	...args: any[]
+) => T;
+
+export type AbstractService<T extends object = any> = abstract new (
+	...args: any[]
+) => T;
 
 // ---------------------------------------------------------------------------------------------------------------------
 

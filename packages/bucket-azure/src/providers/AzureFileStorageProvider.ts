@@ -1,7 +1,10 @@
+import type { FileStorageProvider } from "@alepha/bucket";
 import type { FileLike } from "@alepha/core";
-import type { FileStorageProvider } from "./FileStorageProvider.ts";
+import type { ContainerClient } from "@azure/storage-blob";
 
-export class LocalFileStorageProvider implements FileStorageProvider {
+export class AzureFileStorageProvider implements FileStorageProvider {
+	protected readonly containers: Record<string, ContainerClient> = {};
+
 	upload(bucketName: string, file: FileLike, fileId?: string): Promise<string> {
 		throw new Error("Method not implemented.");
 	}
