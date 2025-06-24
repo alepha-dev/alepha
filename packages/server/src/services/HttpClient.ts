@@ -288,6 +288,7 @@ export class HttpClient {
 		return (
 			contentType.startsWith("application/octet-stream") ||
 			contentType.startsWith("application/pdf") ||
+			contentType.startsWith("application/zip") ||
 			contentType.startsWith("image/") ||
 			contentType.startsWith("video/") ||
 			contentType.startsWith("audio/")
