@@ -47,6 +47,11 @@ export interface EntityDescriptorOptions<
 				unique?: boolean;
 				name?: string;
 		  }
+		| {
+				columns: Keys[];
+				unique?: boolean;
+				name?: string;
+		  }
 	)[];
 
 	relations?: Record<
@@ -111,11 +116,25 @@ export const $entity = <
 						const name = `${options.name}_${idx}_idx`;
 						config.push(index(name).on(t[idx]));
 					} else if (typeof idx === "object") {
-						const name =
-							idx.name ?? `${options.name}_${String(idx.column)}_idx`;
-						config.push(
-							(idx.unique ? uniqueIndex(name) : index(name)).on(t[idx.column]),
-						);
+						if ("columns" in idx) {
+							const columnsName = idx.columns.join("_");
+							const columns = idx.columns.map((col) => t[col]);
+							const name = idx.name ?? `${options.name}_${columnsName}_idx`;
+							config.push(
+								(idx.unique ? uniqueIndex(name) : index(name)).on(
+									columns[0],
+									...columns.slice(1), // nice one, drizzle
+								),
+							);
+						} else {
+							const name =
+								idx.name ?? `${options.name}_${String(idx.column)}_idx`;
+							config.push(
+								(idx.unique ? uniqueIndex(name) : index(name)).on(
+									t[idx.column],
+								),
+							);
+						}
 					}
 				}
 			}

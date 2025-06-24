@@ -12,6 +12,8 @@ export class RepositoryDescriptorProvider {
 	protected readonly repositories: Array<Repository<any, TObject>> = [];
 
 	constructor() {
+		// TODO: it's time to remove it and use it manually in tests
+
 		// during testing only,
 		if (this.alepha.isTest()) {
 			const afterEach = this.alepha.state("afterEach");
@@ -19,10 +21,14 @@ export class RepositoryDescriptorProvider {
 			if (afterEach) {
 				// -> clear all repositories after each test
 				afterEach(() => {
-					return Promise.all(this.repositories.map((it) => it.clear()));
+					return this.clearRepositories();
 				});
 			}
 		}
+	}
+
+	public async clearRepositories() {
+		await Promise.all(this.repositories.map((it) => it.clear()));
 	}
 
 	protected readonly configure = $hook({
