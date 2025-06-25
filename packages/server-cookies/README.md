@@ -1,3 +1,3 @@
-# @alepha/server-cookies
+# alepha/server/cookies
 
 
