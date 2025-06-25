@@ -325,8 +325,8 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.7.1"
     "@alepha/datetime": "npm:0.7.1"
+    "@alepha/file": "npm:0.7.1"
     "@alepha/server": "npm:0.7.1"
-    mime: "npm:^4.0.7"
     pkgroll: "npm:^2.13.1"
   languageName: unknown
   linkType: soft
@@ -7702,15 +7702,6 @@ __metadata:
   bin:
     mime: cli.js
   checksum: 10c0/b92cd0adc44888c7135a185bfd0dddc42c32606401c72896a842ae15da71eb88858f17669af41e498b463cd7eb998f7b48939a25b08374c7924a9c8a6f8a81b0
-  languageName: node
-  linkType: hard
-
-"mime@npm:^4.0.7":
-  version: 4.0.7
-  resolution: "mime@npm:4.0.7"
-  bin:
-    mime: bin/cli.js
-  checksum: 10c0/2fd22ee2012a3f1dcac7dd06b7dc314dd677ebcefb14355b7c9453f0092af6eabbe9d754d9849d2a1f346ddd53d716a851379be05386f7a6ccb40af4bd61f32b
   languageName: node
   linkType: hard
 

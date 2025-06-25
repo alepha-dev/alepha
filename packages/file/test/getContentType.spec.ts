@@ -93,9 +93,4 @@ describe("getContentType", () => {
 		expect(getContentType("test.backup.json")).toBe("application/json");
 		expect(getContentType("my.file.name.txt")).toBe("text/plain");
 	});
-
-	it("should be case sensitive", () => {
-		expect(getContentType("test.JSON")).toBe("application/octet-stream");
-		expect(getContentType("test.TXT")).toBe("application/octet-stream");
-	});
 });

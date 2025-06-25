@@ -12,8 +12,8 @@
 	"dependencies": {
 		"@alepha/core": "0.7.1",
 		"@alepha/datetime": "0.7.1",
-		"@alepha/server": "0.7.1",
-		"mime": "^4.0.7"
+		"@alepha/file": "0.7.1",
+		"@alepha/server": "0.7.1"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1"

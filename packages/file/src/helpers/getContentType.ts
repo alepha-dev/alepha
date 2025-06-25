@@ -1,86 +1,87 @@
 /**
- * Returns the content type based on the file extension.
- * Supports a wide range of common file types used in web applications.
+ * Can be used to get the content type of file based on its extension.
+ *
+ * Feel free to add more mime types in your project!
+ */
+export const mimeMap: Record<string, string> = {
+	// Documents
+	json: "application/json",
+	txt: "text/plain",
+	html: "text/html",
+	htm: "text/html",
+	xml: "application/xml",
+	csv: "text/csv",
+	pdf: "application/pdf",
+	md: "text/markdown",
+	markdown: "text/markdown",
+	rtf: "application/rtf",
+
+	// Styles and scripts
+	css: "text/css",
+	js: "application/javascript",
+	mjs: "application/javascript",
+	ts: "application/typescript",
+	jsx: "text/jsx",
+	tsx: "text/tsx",
+
+	// Archives
+	zip: "application/zip",
+	rar: "application/vnd.rar",
+	"7z": "application/x-7z-compressed",
+	tar: "application/x-tar",
+	gz: "application/gzip",
+	tgz: "application/gzip",
+
+	// Images
+	png: "image/png",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	gif: "image/gif",
+	webp: "image/webp",
+	svg: "image/svg+xml",
+	bmp: "image/bmp",
+	ico: "image/x-icon",
+	tiff: "image/tiff",
+	tif: "image/tiff",
+
+	// Audio
+	mp3: "audio/mpeg",
+	wav: "audio/wav",
+	ogg: "audio/ogg",
+	m4a: "audio/mp4",
+	aac: "audio/aac",
+	flac: "audio/flac",
+
+	// Video
+	mp4: "video/mp4",
+	webm: "video/webm",
+	avi: "video/x-msvideo",
+	mov: "video/quicktime",
+	wmv: "video/x-ms-wmv",
+	flv: "video/x-flv",
+	mkv: "video/x-matroska",
+
+	// Office
+	doc: "application/msword",
+	docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	xls: "application/vnd.ms-excel",
+	xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	ppt: "application/vnd.ms-powerpoint",
+	pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+
+	// Fonts
+	woff: "font/woff",
+	woff2: "font/woff2",
+	ttf: "font/ttf",
+	otf: "font/otf",
+	eot: "application/vnd.ms-fontobject",
+};
+
+/**
+ * Returns the content type of file based on its filename.
+ * @see {mimeMap}
  */
 export const getContentType = (filename: string): string => {
-	// Document types
-	if (filename.endsWith(".json")) return "application/json";
-	if (filename.endsWith(".txt")) return "text/plain";
-	if (filename.endsWith(".html") || filename.endsWith(".htm"))
-		return "text/html";
-	if (filename.endsWith(".xml")) return "application/xml";
-	if (filename.endsWith(".csv")) return "text/csv";
-	if (filename.endsWith(".pdf")) return "application/pdf";
-	if (filename.endsWith(".md") || filename.endsWith(".markdown"))
-		return "text/markdown";
-	if (filename.endsWith(".rtf")) return "application/rtf";
-
-	// Stylesheet and scripts
-	if (filename.endsWith(".css")) return "text/css";
-	if (filename.endsWith(".js") || filename.endsWith(".mjs"))
-		return "application/javascript";
-	if (filename.endsWith(".ts")) return "application/typescript";
-	if (filename.endsWith(".jsx")) return "text/jsx";
-	if (filename.endsWith(".tsx")) return "text/tsx";
-
-	// Archive formats
-	if (filename.endsWith(".zip")) return "application/zip";
-	if (filename.endsWith(".rar")) return "application/vnd.rar";
-	if (filename.endsWith(".7z")) return "application/x-7z-compressed";
-	if (filename.endsWith(".tar")) return "application/x-tar";
-	if (
-		filename.endsWith(".gz") ||
-		filename.endsWith(".tar.gz") ||
-		filename.endsWith(".tgz")
-	)
-		return "application/gzip";
-
-	// Image formats
-	if (filename.endsWith(".png")) return "image/png";
-	if (filename.endsWith(".jpg") || filename.endsWith(".jpeg"))
-		return "image/jpeg";
-	if (filename.endsWith(".gif")) return "image/gif";
-	if (filename.endsWith(".webp")) return "image/webp";
-	if (filename.endsWith(".svg")) return "image/svg+xml";
-	if (filename.endsWith(".bmp")) return "image/bmp";
-	if (filename.endsWith(".ico")) return "image/x-icon";
-	if (filename.endsWith(".tiff") || filename.endsWith(".tif"))
-		return "image/tiff";
-
-	// Audio formats
-	if (filename.endsWith(".mp3")) return "audio/mpeg";
-	if (filename.endsWith(".wav")) return "audio/wav";
-	if (filename.endsWith(".ogg")) return "audio/ogg";
-	if (filename.endsWith(".m4a")) return "audio/mp4";
-	if (filename.endsWith(".aac")) return "audio/aac";
-	if (filename.endsWith(".flac")) return "audio/flac";
-
-	// Video formats
-	if (filename.endsWith(".mp4")) return "video/mp4";
-	if (filename.endsWith(".webm")) return "video/webm";
-	if (filename.endsWith(".avi")) return "video/x-msvideo";
-	if (filename.endsWith(".mov")) return "video/quicktime";
-	if (filename.endsWith(".wmv")) return "video/x-ms-wmv";
-	if (filename.endsWith(".flv")) return "video/x-flv";
-	if (filename.endsWith(".mkv")) return "video/x-matroska";
-
-	// Office documents
-	if (filename.endsWith(".doc")) return "application/msword";
-	if (filename.endsWith(".docx"))
-		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-	if (filename.endsWith(".xls")) return "application/vnd.ms-excel";
-	if (filename.endsWith(".xlsx"))
-		return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-	if (filename.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
-	if (filename.endsWith(".pptx"))
-		return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-
-	// Font formats
-	if (filename.endsWith(".woff")) return "font/woff";
-	if (filename.endsWith(".woff2")) return "font/woff2";
-	if (filename.endsWith(".ttf")) return "font/ttf";
-	if (filename.endsWith(".otf")) return "font/otf";
-	if (filename.endsWith(".eot")) return "application/vnd.ms-fontobject";
-
-	return "application/octet-stream";
+	const ext = filename.toLowerCase().split(".").pop() || "";
+	return mimeMap[ext] || "application/octet-stream";
 };

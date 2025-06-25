@@ -4,8 +4,8 @@ import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { getContentType } from "@alepha/file";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
-import mime from "mime";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
 export class ServerStaticProvider {
@@ -126,7 +126,7 @@ export class ServerStaticProvider {
 		const fileStat = await stat(filepath);
 		const lastModified = fileStat.mtime.toUTCString();
 		const etag = `"${fileStat.size}-${fileStat.mtime.getTime()}"`;
-		const contentType = mime.getType(filename) ?? "application/octet-stream";
+		const contentType = getContentType(filename);
 		const cacheControl = this.getCacheControl(filename, options);
 
 		return async (request): Promise<NodeStream | undefined> => {

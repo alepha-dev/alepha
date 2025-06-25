@@ -84,6 +84,10 @@ export class ProxyDescriptorProvider {
 		const target = options.target;
 		const handler: ServerHandler = this.createProxyHandler(options);
 
+		if (!path.endsWith("/*")) {
+			throw new Error("Proxy path should end with '/*'");
+		}
+
 		for (const method of routeMethods) {
 			await this.routerProvider.route({
 				method,

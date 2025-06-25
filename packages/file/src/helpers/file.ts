@@ -31,8 +31,6 @@ export const file = (
 		return createFileFromStream(source, options);
 	}
 
-	Readable.isReadable;
-
 	return createFileFromBuffer(
 		Buffer.isBuffer(source)
 			? source

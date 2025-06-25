@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	$hook,
 	$inject,
@@ -305,7 +306,8 @@ window.onload = function() {
 		`.trim();
 
 		const root =
-			ui.root ?? join(import.meta.filename, "../../assets/swagger-ui");
+			ui.root ??
+			join(fileURLToPath(import.meta.url), "../../assets/swagger-ui");
 
 		await this.serverStaticProvider.serve({
 			path: prefix,
