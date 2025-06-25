@@ -9,7 +9,7 @@
 		"storage-blob"
 	],
 	"author": "Feunard",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -19,10 +19,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.7.0",
-		"@alepha/core": "0.7.0",
-		"@alepha/datetime": "0.7.0",
-		"@alepha/file": "0.7.0",
+		"@alepha/bucket": "0.7.1",
+		"@alepha/core": "0.7.1",
+		"@alepha/datetime": "0.7.1",
+		"@alepha/file": "0.7.1",
 		"@azure/storage-blob": "^12.27.0"
 	},
 	"devDependencies": {
