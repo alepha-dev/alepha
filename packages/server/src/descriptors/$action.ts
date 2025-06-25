@@ -203,10 +203,12 @@ export type ClientRequestEntryContainer<
 export interface ClientRequestOptions extends FetchRunOptions {
 	/**
 	 * Forward user from the previous request.
+	 * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
+	 * If "context", use the user from the current context (e.g. request).
 	 *
-	 * In testing environments, you can pass a partial user token.
+	 * @default "system" is provided, else "context" is used.
 	 */
-	user?: Partial<UserAccountToken>;
+	user?: UserAccountToken | "system" | "context";
 
 	/**
 	 * Standard request fetch options.

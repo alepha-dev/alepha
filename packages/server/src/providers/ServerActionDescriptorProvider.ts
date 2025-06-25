@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
 	$hook,
 	$inject,
@@ -51,6 +52,15 @@ const envSchema = t.object({
 
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
+
+	interface State {
+		/**
+		 * Real (or fake) user account, used for internal actions.
+		 * If you define this, you assume that all actions are executed by this user by default.
+		 * And to force a different user, you need to pass it explicitly in the options.
+		 */
+		"ServerSecurityProvider.localSystemUser"?: UserAccountToken;
+	}
 }
 
 export class ServerActionDescriptorProvider {
@@ -188,9 +198,6 @@ export class ServerActionDescriptorProvider {
 			options: ClientRequestOptions = {},
 		): Promise<any> => {
 			const request = this.alepha.context.get<ServerRequest>("request");
-			if (request) {
-				options.user ??= request?.user;
-			}
 
 			// TODO: hook - "local:onRequest" ?
 
@@ -242,71 +249,73 @@ export class ServerActionDescriptorProvider {
 	}
 
 	/**
-	 * Security adapted for local function.
+	 * Get the user account token for a local action call.
+	 * It will check the options, context, and system user.
 	 */
 	protected getUserFromLocalFunctionContext(
-		options: { user?: Partial<UserAccountToken> },
+		options: { user?: UserAccountToken | "system" | "context" },
 		permission: Permission,
-		security: boolean,
+		isRouteSecure: boolean,
 	): UserAccountToken | undefined {
-		const id = options.user?.id;
 		const hasSecurity = this.alepha.has(SecurityProvider);
+		const fromOptions =
+			typeof options.user === "object" ? options.user : undefined;
 
-		if (security && hasSecurity && "user" in options) {
-			if (options.user === undefined) {
-				throw new UnauthorizedError("User is required for this route");
-			}
+		if (!hasSecurity) {
+			// system has no security, so we don't need to check it
+			return fromOptions;
+		}
 
-			if (!id) {
-				throw new UnauthorizedError("Invalid user id");
-			}
+		const type = typeof options.user === "string" ? options.user : undefined;
 
-			const roles = options.user?.roles ?? [];
-			const securityProvider = this.alepha.get(SecurityProvider);
+		let user: UserAccountToken | undefined;
 
-			// Note: we don't check JWT here, it's just a simple role check.
-			const result = securityProvider.checkPermission(permission, ...roles);
-			if (!result.isAuthorized) {
-				throw new ForbiddenError(
-					`Permission '${securityProvider.permissionToString(permission)}' is required for this route`,
+		const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
+		const fromSystem = this.alepha.state(
+			"ServerSecurityProvider.localSystemUser",
+		);
+
+		if (type === "system") {
+			user = fromSystem;
+		} else if (type === "context") {
+			user = fromContext;
+		} else {
+			user = fromOptions ?? fromSystem ?? fromContext;
+		}
+
+		if (!user) {
+			if (isRouteSecure) {
+				if (this.alepha.isTest()) {
+					// in tests, we can return undefined user if route is not secured for now
+					return {
+						id: randomUUID(),
+						name: "Test",
+						roles: ["admin"],
+					};
+				}
+
+				throw new UnauthorizedError(
+					"User is required for calling this route locally",
 				);
+			} else {
+				// if route is not secured, we can return undefined user
+				return;
 			}
-
-			// new user from security layer (with new permission/ownership)
-			return {
-				...options.user,
-				id,
-				ownership: result.ownership,
-			};
 		}
 
-		// current user from request
-		if (id) {
-			return {
-				...options.user,
-				id,
-			};
+		const roles = user.roles ?? [];
+		const securityProvider = this.alepha.get(SecurityProvider);
+		const result = securityProvider.checkPermission(permission, ...roles);
+		if (!result.isAuthorized) {
+			throw new ForbiddenError(
+				`Permission '${securityProvider.permissionToString(permission)}' is required for this route`,
+			);
 		}
 
-		// here, we assume that route is not secured or security is ignored
-
-		// if route is not protected, user=undefined is fine
-		if (!security) {
-			return undefined;
-		}
-
-		// if route is really secured, we create a system user
-		return this.createSystemUser();
-	}
-
-	/**
-	 * TODO: remove it, this is a hack for testing purposes
-	 */
-	protected createSystemUser(): UserAccountToken {
+		// create a new user object with ownership if needed
 		return {
-			id: "3b07c364-707d-46e9-ad5b-d6f455eb3207",
-			name: "System",
-			roles: ["admin"],
+			...user,
+			ownership: result.ownership,
 		};
 	}
 }

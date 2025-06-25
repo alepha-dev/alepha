@@ -24,8 +24,10 @@ export class ServerSecurityProvider {
 			request.headers = new Headers(request.headers);
 
 			if (!request.headers.has("authorization")) {
-				const sub = options?.user?.id ?? randomUUID();
-				const roles = options?.user?.roles ?? ["admin"];
+				const user =
+					typeof options?.user === "object" ? options.user : undefined;
+				const sub = user?.id ?? randomUUID();
+				const roles = user?.roles ?? ["admin"];
 				request.headers.set(
 					"authorization",
 					`Bearer ${await this.jwtProvider.create(
