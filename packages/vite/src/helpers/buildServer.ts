@@ -45,11 +45,6 @@ export const buildServer = async (opts: BuildServerOptions) => {
 				},
 			},
 		},
-		resolve: {
-			alias: {
-				"pg-cloudflare": "pg", // skip pg-cloudflare for now, not supported in noExternal mode
-			},
-		},
 		plugins,
 	};
 

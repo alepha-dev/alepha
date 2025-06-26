@@ -3,11 +3,10 @@ import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { $lock } from "@alepha/lock";
 import { sql } from "drizzle-orm";
 import type { MigrationConfig } from "drizzle-orm/migrator";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import type { ClientConfig } from "pg";
-import pg from "pg";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import postgres from "postgres";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import type { PostgresProvider, SQLLike } from "./PostgresProvider.ts";
 
@@ -20,6 +19,7 @@ const envSchema = t.object({
 	PG_USERNAME: t.optional(t.string()),
 	PG_DATABASE: t.optional(t.string()),
 	PG_PASSWORD: t.optional(t.string()),
+	PG_PORT: t.optional(t.number()),
 
 	/**
 	 *
@@ -65,8 +65,8 @@ const envSchema = t.object({
 });
 
 export interface NodePostgresProviderState {
-	client: pg.Client;
-	db: NodePgDatabase;
+	client: postgres.Sql;
+	db: PostgresJsDatabase;
 }
 
 export class NodePostgresProvider implements PostgresProvider {
@@ -83,7 +83,7 @@ export class NodePostgresProvider implements PostgresProvider {
 	 */
 	protected testingSchemaName?: string;
 
-	public get db(): NodePgDatabase {
+	public get db(): PostgresJsDatabase {
 		if (!this.state?.db) {
 			throw new Error("Database not initialized");
 		}
@@ -139,13 +139,13 @@ export class NodePostgresProvider implements PostgresProvider {
 	}
 
 	public async execute(query: SQLLike): Promise<any[]> {
-		return this.db.execute(query).then((result) => result.rows);
+		return this.db.execute(query);
 	}
 
 	public async connect(): Promise<void> {
 		this.log.debug("Connect ..");
 		const state = this.createClient();
-		await state.client.connect();
+		await state.client`SELECT 1`; // test connection
 		this.state = state;
 		this.log.info("Connection OK");
 	}
@@ -159,10 +159,6 @@ export class NodePostgresProvider implements PostgresProvider {
 		}
 	}
 
-	/**
-	 *
-	 * @protected
-	 */
 	protected migrate = $lock({
 		handler: async () => {
 			const schema = this.env.POSTGRES_SCHEMA;
@@ -208,7 +204,7 @@ export class NodePostgresProvider implements PostgresProvider {
 	});
 
 	protected createClient(): NodePostgresProviderState {
-		const client = new pg.Client(this.getClientOptions());
+		const client = postgres(this.getClientOptions());
 		const db = drizzle(client, {
 			logger: {
 				// forward logs
@@ -227,27 +223,26 @@ export class NodePostgresProvider implements PostgresProvider {
 		};
 	}
 
-	protected getClientOptions(): ClientConfig {
-		if (this.env.PG_HOST) {
-			return {
-				host: this.env.PG_HOST,
-				user: this.env.PG_USERNAME,
-				database: this.env.PG_DATABASE,
-				password: this.env.PG_PASSWORD,
-				ssl: this.env.POSTGRES_REJECT_UNAUTHORIZED
-					? {
-							rejectUnauthorized: false,
-						}
-					: undefined,
-			};
-		}
-
+	protected getClientOptions(): postgres.Options<any> {
+		let url: URL | undefined;
 		if (this.env.DATABASE_URL) {
-			return {
-				connectionString: this.env.DATABASE_URL,
-			};
+			url = new URL(this.env.DATABASE_URL);
 		}
 
-		return {};
+		return {
+			host: url?.host ?? this.env.PG_HOST,
+			user: url?.username ?? this.env.PG_USERNAME,
+			database: url?.pathname.replace("/", "") ?? this.env.PG_DATABASE,
+			password: url?.password ?? this.env.PG_PASSWORD,
+			port: Number(url?.port ?? this.env.PG_PORT ?? 5432),
+			ssl: this.env.POSTGRES_REJECT_UNAUTHORIZED
+				? {
+						rejectUnauthorized: false,
+					}
+				: undefined,
+			onnotice: () => {
+				// let drizzle handle logs
+			},
+		};
 	}
 }
