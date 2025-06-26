@@ -8,7 +8,8 @@
 	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
-		"src"
+		"src",
+		"libs"
 	],
 	"dependencies": {
 		"@alepha/core": "0.7.1",
@@ -23,11 +24,13 @@
 		"@types/pg": "8.15.4",
 		"drizzle-kit": "0.31.2",
 		"pkgroll": "^2.13.1",
-		"vitest": "^3.2.4"
+		"vitest": "^3.2.4",
+		"zx": "^8.6.0"
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll --clean-dist"
+		"build": "pkgroll --clean-dist",
+		"copy": "node scripts/copy.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

@@ -14,7 +14,7 @@ export class DrizzleKitProvider {
 		provider: PostgresProvider,
 		schema: string = provider.schema,
 	): Promise<void> {
-		const kit = this.importDrizzleKit();
+		const kit = await this.importDrizzleKit();
 		const tables = await this.getTables(provider, schema);
 		const result = await kit.pushSchema(tables, provider.db, [
 			"public",
@@ -48,8 +48,7 @@ export class DrizzleKitProvider {
 		const tables = await this.getTables(provider, schema);
 
 		if (Object.keys(tables).length > 0) {
-			const kit = this.importDrizzleKit();
-
+			const kit = await this.importDrizzleKit();
 			if (this.alepha.isTest()) {
 				// testing area, generate migrations from scratch - no need to push schema
 				const prev = kit.generateDrizzleJson({});
@@ -179,17 +178,14 @@ export class DrizzleKitProvider {
 	}
 
 	/**
-	 * Get the Drizzle Kit API.
-	 *
-	 * @protected
+	 * Try to load the official Drizzle Kit API.
+	 * If not available, fallback to the local kit import.
 	 */
-	protected importDrizzleKit(): typeof DrizzleKit {
+	protected async importDrizzleKit(): Promise<typeof DrizzleKit> {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
-		} catch (_error) {
-			throw new Error(
-				"Drizzle Kit is not installed. Please install it with `npm i -D drizzle-kit`.",
-			);
+		} catch (_ignore) {
+			return import("../../libs/drizzle-kit/api.mjs");
 		}
 	}
 }
