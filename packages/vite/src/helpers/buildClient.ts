@@ -1,4 +1,3 @@
-import { parse } from "node-html-parser";
 import type { UserConfig } from "vite";
 import { viteCompress } from "../viteCompress.ts";
 import { importVite } from "./importVite.ts";
@@ -33,9 +32,7 @@ export const buildClient = async (opts: BuildClientOptions) => {
 
 	await viteBuild(viteBuildClientConfig);
 
-	const root = parse(opts.html);
-	const script = root.querySelector('script[type="module"]');
-	const entry = script?.getAttribute("src");
+	const entry = extractFirstModuleScriptSrc(opts.html);
 	if (entry) {
 		await prerender({
 			entry,
@@ -44,3 +41,23 @@ export const buildClient = async (opts: BuildClientOptions) => {
 		});
 	}
 };
+
+function extractFirstModuleScriptSrc(html: string): string | null {
+	const scriptRegex = /<script\b[^>]*>[\s\S]*?<\/script>/gi;
+	let match: RegExpExecArray | null = scriptRegex.exec(html);
+
+	while (match) {
+		const tag = match[0];
+
+		// Check for type="module"
+		if (/type=["']module["']/i.test(tag)) {
+			// Extract the src value
+			const srcMatch = tag.match(/\bsrc=["']([^"']+)["']/i);
+			return srcMatch?.[1] ?? null;
+		}
+
+		match = scriptRegex.exec(html);
+	}
+
+	return null;
+}
