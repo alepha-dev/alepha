@@ -5,6 +5,7 @@ import { createElement, type ReactNode, StrictMode } from "react";
 import ClientOnly from "../components/ClientOnly.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
+import NotFoundPage from "../components/NotFound.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import {
@@ -405,17 +406,36 @@ export class PageDescriptorProvider {
 	protected readonly configure = $hook({
 		name: "configure",
 		handler: () => {
+			let hasNotFoundHandler = false;
 			const pages = this.alepha.getDescriptorValues($page);
 			for (const { value, key } of pages) {
 				value[OPTIONS].name ??= key;
 			}
+
 			for (const { value } of pages) {
 				// skip children, we only want root pages
 				if (value[OPTIONS].parent) {
 					continue;
 				}
 
+				if (value[OPTIONS].path === "/*") {
+					hasNotFoundHandler = true;
+				}
+
 				this.add(this.map(pages, value));
+			}
+
+			if (!hasNotFoundHandler && pages.length > 0) {
+				// add a default 404 page if not already defined
+				this.add({
+					path: "/*",
+					name: "notFound",
+					cache: true,
+					component: NotFoundPage,
+					afterHandler: ({ reply }) => {
+						reply.status = 404;
+					},
+				});
 			}
 		},
 	});

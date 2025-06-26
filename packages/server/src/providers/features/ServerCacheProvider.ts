@@ -74,6 +74,7 @@ export class ServerCacheProvider {
 				// if the cache is found, we can skip the request processing
 				// and return the cached response
 				request.reply.body = cached.body;
+				request.reply.status = cached.status ?? 200;
 				if (cached.contentType) {
 					request.reply.headers ??= {};
 					request.reply.headers["content-type"] = cached.contentType;
@@ -101,6 +102,7 @@ export class ServerCacheProvider {
 				const etag = this.generateETag(response.body);
 				await this.cacheProvider.set(cache, key, {
 					body: response.body,
+					status: response.status,
 					contentType: response.headers?.["content-type"],
 					lastModified: this.dateTimeProvider.toISOString(),
 					hash: etag,
@@ -154,6 +156,7 @@ export type ServiceRouteCache =
 type RouteCache = Cache<{
 	contentType?: string;
 	body: string;
+	status?: number;
 	lastModified: string;
 	hash: string;
 }>;

@@ -1,12 +1,8 @@
-import { promisify } from "node:util";
-import { brotliCompress } from "node:zlib";
 import { parse } from "node-html-parser";
-import gzipPlugin from "rollup-plugin-gzip";
 import type { UserConfig } from "vite";
+import { viteCompress } from "../viteCompress.ts";
 import { importVite } from "./importVite.ts";
 import { prerender } from "./prerender.ts";
-
-const brotliPromise = promisify(brotliCompress);
 
 export interface BuildClientOptions {
 	dist: string;
@@ -18,22 +14,7 @@ export const buildClient = async (opts: BuildClientOptions) => {
 	const { build: viteBuild } = await importVite();
 	const plugins: any[] = [];
 
-	plugins.push(
-		gzipPlugin({
-			filter: /\.(js|mjs|cjs|css|wasm|svg)$/,
-		}),
-	);
-
-	plugins.push(
-		gzipPlugin({
-			filter: /\.(js|mjs|cjs|css|wasm|svg)$/,
-			customCompression: (content) =>
-				brotliPromise(
-					Buffer.isBuffer(content) ? content : Buffer.from(content),
-				),
-			fileName: ".br",
-		}),
-	);
+	plugins.push(viteCompress());
 
 	const viteBuildClientConfig: UserConfig = {
 		publicDir: "public",

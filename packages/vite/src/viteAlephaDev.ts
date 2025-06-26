@@ -93,10 +93,6 @@ export async function viteAlephaDev(
 		const fileUrl = pathToFileURL(`${serverEntryPath}`).href;
 
 		try {
-			if (!options.debug) {
-				//	console.clear();
-			}
-
 			const imported = await server.ssrLoadModule(fileUrl);
 
 			state.app = undefined;
@@ -166,6 +162,7 @@ export async function viteAlephaDev(
 		// vite internal files
 		if (
 			pathname.startsWith("/@") ||
+			pathname.startsWith("/src") ||
 			pathname.includes("/node_modules/.vite/")
 		) {
 			return true;

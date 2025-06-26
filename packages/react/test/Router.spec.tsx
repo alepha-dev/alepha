@@ -32,6 +32,12 @@ test("Router - Basic", async ({ expect }) => {
 		component: () => "Hey",
 	});
 
+	router.add({
+		name: "NotFound",
+		path: "/*",
+		component: () => "Not Found",
+	});
+
 	await alepha.start();
 
 	expect(await render("/")).toEqual("Hey");

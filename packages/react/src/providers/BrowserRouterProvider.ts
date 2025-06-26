@@ -1,6 +1,7 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { type Route, RouterProvider } from "@alepha/router";
-import type { ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
+import NotFoundPage from "../components/NotFound.tsx";
 import {
 	isPageRoute,
 	PageDescriptorProvider,
@@ -98,7 +99,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			if (state.layers.length === 0) {
 				state.layers.push({
 					name: "not-found",
-					element: "Not Found",
+					element: createElement(NotFoundPage),
 					index: 0,
 					path: "/",
 				});

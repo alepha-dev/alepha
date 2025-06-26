@@ -39,12 +39,16 @@ export class NodeHttpServerProvider implements ServerProvider {
 		res: ServerResponse,
 	): Promise<number | void> {
 		const { route, params } = this.router.match(`/${req.method}${req.url}`);
+		const isNotFound =
+			!route || (params?.["*"] && `/${params?.["*"]}` === req.url);
 
 		if (
 			// if vite is running
+			// and if no route or root-not-found-handler is matched
+			// and if the request is for a static file (e.g. .js, .css, etc.)
 			this.alepha.isServerless() === "vite" &&
-			// if no route or root notFoundHandler is defined
-			(!route || (params?.["*"] && `/${params?.["*"]}` === req.url))
+			isNotFound &&
+			req.url?.includes(".")
 		) {
 			// let vite handle the request
 			return;
@@ -89,6 +93,7 @@ export class NodeHttpServerProvider implements ServerProvider {
 
 		// else
 		res.end(response.body);
+
 		return response.status;
 	}
 

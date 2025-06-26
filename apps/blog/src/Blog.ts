@@ -60,20 +60,12 @@ export class Blog {
 		lazy: () => import("./components/ViewPost"),
 	});
 
-	notFound = $page({
-		path: "/*",
-		head: {
-			title: "Not Found",
-		},
-		component: NotFound,
-	});
-
 	root = $page({
 		head: {
 			title: "Alepha Blog",
 		},
 		lazy: () => import("./components/layout/Layout.tsx"),
-		children: [this.home, this.newPost, this.viewPost, this.notFound],
+		children: [this.home, this.newPost, this.viewPost],
 		errorHandler: (error) => {
 			if (isHttpError(error) && error.status === 404) {
 				return createElement(NotFound);

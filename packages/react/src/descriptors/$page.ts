@@ -7,7 +7,7 @@ import {
 	type Static,
 	type TSchema,
 } from "@alepha/core";
-import type { ServerRoute } from "@alepha/server";
+import type { ServerRequest, ServerRoute } from "@alepha/server";
 import type { FC, ReactNode } from "react";
 import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
@@ -115,6 +115,8 @@ export interface PageDescriptorOptions<
 	 * If true, the page will be rendered on the client-side.
 	 */
 	client?: boolean | ClientOnlyProps;
+
+	afterHandler?: (request: ServerRequest) => any;
 }
 
 export interface PageDescriptor<

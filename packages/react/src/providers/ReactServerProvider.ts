@@ -120,7 +120,6 @@ export class ReactServerProvider {
 					}
 
 					reply.headers["content-type"] = "text/html";
-					reply.status = 200;
 
 					// serve index.html for all unmatched routes
 					return this.template;
@@ -312,7 +311,6 @@ export class ReactServerProvider {
 				return reply.redirect(state.redirect);
 			}
 
-			reply.status = 200;
 			reply.headers["content-type"] = "text/html";
 
 			// by default, disable caching for SSR responses
@@ -327,7 +325,11 @@ export class ReactServerProvider {
 				delete context.links;
 			}
 
-			return this.renderToHtml(template, state, context);
+			const html = this.renderToHtml(template, state, context);
+
+			page.afterHandler?.(serverRequest);
+
+			return html;
 		};
 	}
 
