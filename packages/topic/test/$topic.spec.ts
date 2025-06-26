@@ -87,7 +87,7 @@ test("$topic - basic (redis)", async () => {
 	await testTopicBasic("redis");
 });
 
-test("$topic - topic as sub", async () => {
+const testTopicAsSub = async (provider?: "redis") => {
 	let count = 0;
 	class A {
 		t = $topic({
@@ -101,7 +101,12 @@ test("$topic - topic as sub", async () => {
 		});
 	}
 
-	const app = Alepha.create().with(A);
+	const app = Alepha.create({})
+		.with({
+			provide: TopicProvider,
+			use: provider === "redis" ? RedisTopicProvider : MemoryTopicProvider,
+		})
+		.with(A);
 	await app.start();
 
 	const a = app.get(A);
@@ -109,4 +114,12 @@ test("$topic - topic as sub", async () => {
 	await a.t.publish({ n: 123 });
 
 	await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
+};
+
+test("$topic - topic as sub", async () => {
+	await testTopicAsSub();
+});
+
+test("$topic - topic as sub (redis)", async () => {
+	await testTopicAsSub("redis");
 });

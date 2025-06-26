@@ -52,10 +52,14 @@ export class RedisCacheProvider implements CacheProvider {
 		const prefix = this.prefix(group, key);
 
 		if (ttl) {
-			return this.publisher.set(prefix, value, "PX", ttl);
+			await this.publisher.set(prefix, value, {
+				expiration: { type: "PX", value: ttl },
+			});
+		} else {
+			this.publisher.set(prefix, value);
 		}
 
-		return this.publisher.set(prefix, value);
+		return value;
 	}
 
 	/**
@@ -69,12 +73,12 @@ export class RedisCacheProvider implements CacheProvider {
 
 		if (keys.length === 0) {
 			const keys = await this.publisher.keys(`${groupKey}:*`);
-			await this.publisher.del(...keys);
+			await this.publisher.del(keys);
 			return;
 		}
 
 		await this.publisher.del(
-			...keys.map((key) =>
+			keys.map((key) =>
 				key.startsWith(groupKey) ? key : this.prefix(group, key),
 			),
 		);

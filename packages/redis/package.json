@@ -12,7 +12,7 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.7.1",
-		"ioredis": "^5.6.1"
+		"@redis/client": "^5.5.6"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1"

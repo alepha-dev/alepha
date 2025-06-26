@@ -1,6 +1,9 @@
 import { $inject, $logger } from "@alepha/core";
-import type { RedisClient } from "@alepha/redis";
-import { RedisProvider } from "@alepha/redis";
+import {
+	type RedisClient,
+	RedisProvider,
+	type RedisSetOptions,
+} from "@alepha/redis";
 import type { LockProvider } from "./LockProvider.ts";
 
 /**
@@ -31,31 +34,28 @@ export class RedisLockProvider implements LockProvider {
 		nx?: boolean,
 		px?: number,
 	): Promise<string> {
-		const args: (string | number)[] = [key, value];
+		const options: RedisSetOptions = {
+			GET: true, // all the secrets of $lock is based on this
+		};
 
 		if (px) {
-			args.push("PX", px);
+			options.expiration = {
+				type: "PX",
+				value: px,
+			};
 		}
 
 		if (nx) {
-			args.push("NX");
+			options.condition = "NX";
 		}
 
-		args.push("GET");
-
-		return (
-			(await this.publisher.set(
-				...(args as Parameters<typeof this.publisher.set>),
-			)) ?? value
-		);
+		return ((await this.publisher.set(key, value, options)) ?? value) as string;
 	}
 
 	/**
 	 * Remove the specified keys.
-	 *
-	 * @param keys The keys to delete.
 	 */
 	public async del(...keys: string[]): Promise<void> {
-		await this.publisher.del(...keys);
+		await this.publisher.del(keys);
 	}
 }

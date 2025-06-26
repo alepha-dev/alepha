@@ -9,9 +9,10 @@ export class RedisSubscriberProvider {
 	protected readonly client = this.createClient();
 
 	public get subscriber(): RedisClient {
-		if (this.client.status !== "ready") {
+		if (!this.client.isReady) {
 			throw new Error("Redis client is not ready");
 		}
+
 		return this.client;
 	}
 
@@ -31,17 +32,16 @@ export class RedisSubscriberProvider {
 		this.log.info("Connection OK");
 	}
 
-	public close(): void {
-		this.subscriber.disconnect();
+	public async close(): Promise<void> {
+		this.subscriber.close();
+		this.log.info("Connection closed");
 	}
 
 	/**
 	 * Redis subscriber client factory method.
 	 */
 	protected createClient(): RedisClient {
-		const client = this.redisProvider.duplicate({
-			autoResubscribe: true,
-		});
+		const client = this.redisProvider.duplicate();
 
 		client.on("error", (error) => {
 			if (this.alepha.isStarted()) {

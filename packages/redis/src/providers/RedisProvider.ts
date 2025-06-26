@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
-import Redis, { type RedisOptions } from "ioredis";
+import { createClient, type SetOptions } from "@redis/client";
 
 const envSchema = t.object({
 	REDIS_PORT: t.uint({
@@ -16,7 +16,9 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export type RedisClient = Redis;
+export type RedisClient = ReturnType<typeof createClient>;
+export type RedisClientOptions = Parameters<typeof createClient>[0];
+export type RedisSetOptions = SetOptions;
 
 export class RedisProvider {
 	protected readonly log = $logger();
@@ -25,9 +27,10 @@ export class RedisProvider {
 	protected readonly client = this.createClient();
 
 	public get publisher(): RedisClient {
-		if (this.client.status !== "ready") {
+		if (!this.client.isReady) {
 			throw new Error("Redis client is not ready");
 		}
+
 		return this.client;
 	}
 
@@ -53,20 +56,12 @@ export class RedisProvider {
 	/**
 	 * Close the connection to the Redis server.
 	 */
-	public close(): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
-			this.client.quit((error) => {
-				if (error) {
-					return reject(error);
-				}
-
-				this.log.info("Connection closed");
-				resolve();
-			});
-		});
+	public async close(): Promise<void> {
+		await this.client.close();
+		this.log.info("Connection closed");
 	}
 
-	public duplicate(options?: Partial<RedisOptions>): RedisClient {
+	public duplicate(options?: Partial<RedisClientOptions>): RedisClient {
 		return this.client.duplicate(options);
 	}
 
@@ -74,11 +69,22 @@ export class RedisProvider {
 	 * Redis subscriber client factory method.
 	 */
 	protected createClient(): RedisClient {
-		const client = new Redis({
-			port: this.env.REDIS_PORT,
-			host: this.env.REDIS_HOST,
-			password: this.env.REDIS_PASSWORD,
-			lazyConnect: true,
+		const url = new URL("redis://127.0.0.1:6379");
+
+		if (this.env.REDIS_PASSWORD) {
+			url.password = this.env.REDIS_PASSWORD;
+		}
+
+		if (this.env.REDIS_HOST) {
+			url.hostname = this.env.REDIS_HOST;
+		}
+
+		if (this.env.REDIS_PORT) {
+			url.port = String(this.env.REDIS_PORT);
+		}
+
+		const client = createClient({
+			url: url.toString(),
 		});
 
 		client.on("error", (error) => {
@@ -87,6 +93,6 @@ export class RedisProvider {
 			}
 		});
 
-		return client;
+		return client as RedisClient;
 	}
 }
