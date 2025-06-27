@@ -1,13 +1,27 @@
 import { $command } from "../packages/cli/src/index.ts";
-import { up } from "./up.ts";
 import { readFile } from "node:fs/promises";
-import { verify } from "./verify.ts";
 
 export const release = $command({
 	when: ["release"],
 	description: "Release packages version (default: minor)",
 	flags: {
-		...up.flags,
+		registry: {
+			when: ["--registry"],
+			description: "NPM registry URL.",
+		},
+		dryRun: {
+			when: ["--dry-run"],
+			description:
+				"Dry run. Do not publish anything. Just print what would be published.",
+		},
+		major: {
+			when: ["--major"],
+			description: "Bump major version.",
+		},
+		patch: {
+			when: ["--patch"],
+			description: "Bump patch version.",
+		},
 	},
 	handler: async ({ run, flags }) => {
 		const diff = await run("git diff");
@@ -16,21 +30,37 @@ export const release = $command({
 			return;
 		}
 
-		await verify.handler({ run, flags });
-		await up.handler({ run, flags });
+		await run("yarn");
+		await run("yarn alepha clean");
+		await run("yarn format");
+		await run("yarn lint");
+		await run("yarn check");
+		await run("yarn check-dependencies");
+		await run("yarn test");
+		await run("yarn alepha build");
+
+		const arg = Object.keys(flags).find(
+			(it) => it in { major: true, patch: true },
+		);
+
+		await run(
+			`yarn workspaces foreach --no-private --all version ${arg || "minor"}`,
+		);
+
+		const registry = flags.registry ? `--registry ${flags.registry}` : "";
+		const dryRunArg = flags.dryRun ? "--dry-run" : "";
+		await run(
+			`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${dryRunArg} ${registry}`
+		);
+
+		await run("yarn alepha clean");
+		await run("yarn");
 
 		const version = await getVersion();
 
 		await run(`git commit -am "release: ${version}"`);
 		await run(`git tag -a ${version} -m "release: ${version}"`);
-
-		console.log("");
-		console.log("Release project successfully.");
-		console.log(
-			"- Run `yarn alepha publish` to push packages to npm registry.",
-		);
-		console.log("- Run `git push --follow-tags` to push commit to remote repository.");
-		console.log("");
+		await run(`git push --follow-tags`);
 	},
 })
 

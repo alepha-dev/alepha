@@ -10,12 +10,12 @@ import {
 } from "@alepha/core";
 import { DateTimeProvider, type Interval } from "@alepha/datetime";
 import { $lock } from "@alepha/lock";
-import { CronJob } from "cron";
-import type {
-	SchedulerDescriptor,
-	SchedulerDescriptorOptions,
+import cron, { type ScheduledTask } from "node-cron";
+import {
+	$scheduler,
+	type SchedulerDescriptor,
+	type SchedulerDescriptorOptions,
 } from "../descriptors/$scheduler.ts";
-import { $scheduler } from "../descriptors/$scheduler.ts";
 
 const envSchema = t.object({
 	SCHEDULER_PREFIX: t.optional(
@@ -48,8 +48,8 @@ export class SchedulerDescriptorProvider {
 		priority: "last",
 		handler: async () => {
 			for (const job of this.schedulers) {
-				if (job.cronJob) {
-					job.cronJob.start();
+				if (job.cron) {
+					job.cron.start();
 				}
 				if (job.interval) {
 					await job.interval.start();
@@ -62,8 +62,8 @@ export class SchedulerDescriptorProvider {
 		name: "stop",
 		handler: () => {
 			for (const job of this.schedulers) {
-				if (job.cronJob) {
-					job.cronJob.stop();
+				if (job.cron) {
+					job.cron.stop();
 				}
 				if (job.interval) {
 					job.interval.clear();
@@ -129,12 +129,7 @@ export class SchedulerDescriptorProvider {
 		};
 
 		if (options.cron) {
-			scheduler.cronJob = new CronJob(
-				options.cron,
-				scheduler.trigger,
-				null,
-				false,
-			);
+			scheduler.cron = cron.createTask(options.cron, scheduler.trigger);
 		}
 
 		if (options.interval) {
@@ -209,6 +204,6 @@ export interface Scheduler {
 	name: string;
 	options: SchedulerDescriptorOptions;
 	trigger: () => Promise<void>;
-	cronJob?: CronJob;
+	cron?: ScheduledTask;
 	interval?: Interval;
 }

@@ -22,8 +22,6 @@ main(process.argv[2]).catch((err) => {
  * - convert to js
  * - build project
  * - convert to ts
- *
- * @param to
  */
 async function main(to?: string) {
 	const root = join(process.cwd(), "packages");

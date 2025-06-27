@@ -213,7 +213,7 @@ __metadata:
     "@alepha/core": "npm:0.7.2"
     "@alepha/datetime": "npm:0.7.2"
     "@alepha/lock": "npm:0.7.2"
-    cron: "npm:^4.3.1"
+    node-cron: "npm:^4.1.1"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -242,7 +242,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-metrics@npm:0.7.2, @alepha/server-metrics@workspace:packages/server-metrics":
+"@alepha/server-metrics@workspace:packages/server-metrics":
   version: 0.0.0-use.local
   resolution: "@alepha/server-metrics@workspace:packages/server-metrics"
   dependencies:
@@ -327,7 +327,7 @@ __metadata:
     pkgroll: "npm:^2.13.1"
     vite: "npm:^7.0.0"
   peerDependencies:
-    vite: ^6
+    vite: "*"
   languageName: unknown
   linkType: soft
 
@@ -2386,13 +2386,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/luxon@npm:~3.6.0":
-  version: 3.6.2
-  resolution: "@types/luxon@npm:3.6.2"
-  checksum: 10c0/7572ee52b3d3e9dd10464b90561a728b90f34b9a257751cc3ce23762693dd1d14fa98b7f103e2efe2c6f49033331f91de5681ffd65cca88618cefe555be326db
-  languageName: node
-  linkType: hard
-
 "@types/minimatch@npm:^3.0.3":
   version: 3.0.5
   resolution: "@types/minimatch@npm:3.0.5"
@@ -3114,7 +3107,6 @@ __metadata:
     "@alepha/security": "npm:0.7.2"
     "@alepha/server": "npm:0.7.2"
     "@alepha/server-cookies": "npm:0.7.2"
-    "@alepha/server-metrics": "npm:0.7.2"
     "@alepha/server-static": "npm:0.7.2"
     "@alepha/server-swagger": "npm:0.7.2"
     "@alepha/testing": "npm:0.7.2"
@@ -3935,16 +3927,6 @@ __metadata:
   version: 1.1.1
   resolution: "create-require@npm:1.1.1"
   checksum: 10c0/157cbc59b2430ae9a90034a5f3a1b398b6738bf510f713edc4d4e45e169bc514d3d99dd34d8d01ca7ae7830b5b8b537e46ae8f3c8f932371b0875c0151d7ec91
-  languageName: node
-  linkType: hard
-
-"cron@npm:^4.3.1":
-  version: 4.3.1
-  resolution: "cron@npm:4.3.1"
-  dependencies:
-    "@types/luxon": "npm:~3.6.0"
-    luxon: "npm:~3.6.0"
-  checksum: 10c0/057cfc3a18747b1c9733e84227c841358a99f4582fb11e926259362c24fdabdbd48dc25072e675b6846b6b0c581d0f96d37f84c794ad84b2f717d0e7dd2c7126
   languageName: node
   linkType: hard
 
@@ -6787,13 +6769,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:~3.6.0":
-  version: 3.6.1
-  resolution: "luxon@npm:3.6.1"
-  checksum: 10c0/906d57a9dc4d1de9383f2e9223e378c298607c1b4d17b6657b836a3cd120feb1c1de3b5d06d846a3417e1ca764de8476e8c23b3cd4083b5cdb870adcb06a99d5
-  languageName: node
-  linkType: hard
-
 "magic-string@npm:^0.30.11, magic-string@npm:^0.30.17, magic-string@npm:^0.30.3":
   version: 0.30.17
   resolution: "magic-string@npm:0.30.17"
@@ -7196,6 +7171,13 @@ __metadata:
   version: 1.0.5
   resolution: "nice-try@npm:1.0.5"
   checksum: 10c0/95568c1b73e1d0d4069a3e3061a2102d854513d37bcfda73300015b7ba4868d3b27c198d1dbbd8ebdef4112fc2ed9e895d4a0f2e1cce0bd334f2a1346dc9205f
+  languageName: node
+  linkType: hard
+
+"node-cron@npm:^4.1.1":
+  version: 4.1.1
+  resolution: "node-cron@npm:4.1.1"
+  checksum: 10c0/4798e3bc4a234512eae22e4a69dd24f82b5516e92011bfdeedb09270ab47a982c991c7fa5c4a9e22167123a1f01350dd041485560be1fd4abf174be15910b91c
   languageName: node
   linkType: hard
 

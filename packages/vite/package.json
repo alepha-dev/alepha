@@ -13,7 +13,7 @@
 		"vite": "^7.0.0"
 	},
 	"peerDependencies": {
-		"vite": "^6"
+		"vite": "*"
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist"
