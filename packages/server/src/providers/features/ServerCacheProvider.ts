@@ -5,11 +5,7 @@ import {
 	CacheDescriptorProvider,
 } from "@alepha/cache";
 import { $hook, $inject, $logger, OPTIONS } from "@alepha/core";
-import {
-	DateTimeProvider,
-	type DurationLike,
-	isDurationLike,
-} from "@alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import type {
 	ServerHandler,
 	ServerRequestConfig,
@@ -18,7 +14,7 @@ import type {
 export class ServerCacheProvider {
 	protected readonly log = $logger();
 	protected readonly cacheProvider = $inject(CacheDescriptorProvider);
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly time = $inject(DateTimeProvider);
 	protected readonly caches = new Map<ServerHandler, RouteCache>();
 
 	public readonly onRoute = $hook({
@@ -35,9 +31,9 @@ export class ServerCacheProvider {
 					key: (args: any) => this.createCacheKey(args),
 					...(typeof route.cache === "boolean"
 						? {
-								ttl: { minutes: 5 },
+								ttl: this.time.duration(5, "minutes"),
 							}
-						: isDurationLike(route.cache)
+						: this.time.isDurationLike(route.cache)
 							? {
 									ttl: route.cache,
 								}
@@ -104,7 +100,7 @@ export class ServerCacheProvider {
 					body: response.body,
 					status: response.status,
 					contentType: response.headers?.["content-type"],
-					lastModified: this.dateTimeProvider.toISOString(),
+					lastModified: this.time.toISOString(),
 					hash: etag,
 				});
 				response.headers ??= {};

@@ -33,7 +33,7 @@ class A {
 		});
 
 		if (waitMs) {
-			await this.dt.wait({ milliseconds: waitMs });
+			await this.dt.wait(waitMs);
 		}
 
 		return await this.repository.updateById(

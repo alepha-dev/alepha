@@ -1,15 +1,26 @@
 import { $hook, $logger } from "@alepha/core";
-import type { DurationLike, DurationLikeObject } from "luxon";
-import { DateTime, Duration } from "luxon";
+import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
+import dayjsDuration from "dayjs/plugin/duration";
 import type { IntervalDescriptorOptions } from "../descriptors/$interval.ts";
 import { Interval } from "../helpers/Interval.ts";
 import { Timeout } from "../helpers/Timeout.ts";
+
+export type DateTime = dayjs.Dayjs;
+export type Duration = dayjsDuration.Duration;
+export type DurationLike =
+	| number
+	| dayjsDuration.Duration
+	| [number, ManipulateType];
 
 export class DateTimeProvider {
 	protected log = $logger();
 	protected ref: DateTime | null = null;
 	protected readonly timeouts: Timeout[] = [];
 	protected readonly intervals: Interval[] = [];
+
+	constructor() {
+		dayjs.extend(dayjsDuration);
+	}
 
 	protected readonly start = $hook({
 		name: "start",
@@ -35,25 +46,15 @@ export class DateTimeProvider {
 
 	/**
 	 * Create a new DateTime instance.
-	 *
-	 * @param date
 	 */
-	public of(date: Date | string | DateTime): DateTime<true> {
-		if (date instanceof DateTime) {
-			return date;
-		}
-
-		if (date instanceof Date) {
-			return DateTime.fromJSDate(date) as DateTime<true>;
-		}
-
-		return DateTime.fromISO(date) as DateTime<true>;
+	public of(date: string | number | Date | Dayjs | null | undefined): DateTime {
+		return dayjs(date);
 	}
 
 	/**
 	 * Get the current date.
 	 */
-	public now(): DateTime<true> {
+	public now(): DateTime {
 		return this.of(this.getCurrentDate());
 	}
 
@@ -63,7 +64,7 @@ export class DateTimeProvider {
 	 * @param date
 	 */
 	public toISOString(date: Date | string | DateTime = this.now()): string {
-		return this.of(date).toISO()!;
+		return this.of(date).toISOString();
 	}
 
 	/**
@@ -78,51 +79,32 @@ export class DateTimeProvider {
 	 *
 	 * @protected
 	 */
-	protected getCurrentDate(): DateTime<true> {
+	protected getCurrentDate(): DateTime {
 		if (this.ref) {
 			return this.ref;
 		}
 
-		return DateTime.now();
+		return dayjs();
 	}
 
 	/**
 	 * Create a new Duration instance.
-	 *
-	 * @param duration
 	 */
-	public duration(duration: DurationLike | string): Duration {
+	public duration = (
+		duration: DurationLike,
+		unit?: ManipulateType,
+	): Duration => {
+		if (Array.isArray(duration)) {
+			return dayjs.duration(duration[0], duration[1]);
+		}
 		if (typeof duration === "number") {
-			return Duration.fromMillis(duration);
+			return dayjs.duration(duration, unit || "milliseconds");
 		}
-		if (typeof duration === "string") {
-			return Duration.fromISO(duration);
-		}
-		if (duration instanceof Duration) {
-			return duration;
-		}
-		return Duration.fromObject(duration);
-	}
+		return duration;
+	};
 
-	// Testing
-
-	/**
-	 * Add time to the current date.
-	 */
-	public async add(duration: DurationLikeObject): Promise<void> {
-		this.ref = this.ref || this.now();
-		this.ref = this.ref.plus(duration);
-		const ms = Duration.fromObject(duration).as("milliseconds");
-
-		for (const timeout of this.timeouts) {
-			timeout.add(ms);
-		}
-
-		for (const interval of this.intervals) {
-			await interval.add(ms);
-		}
-
-		await this.tick();
+	public isDurationLike(value: unknown): value is DurationLike {
+		return dayjs.isDuration(this.duration(value as DurationLike));
 	}
 
 	/**
@@ -134,25 +116,7 @@ export class DateTimeProvider {
 	}
 
 	/**
-	 * Stop the time.
-	 */
-	public pause() {
-		this.ref = this.ref || this.now();
-		return this.ref;
-	}
-
-	/**
-	 * Reset the reference date.
-	 */
-	public reset() {
-		this.ref = null;
-	}
-
-	/**
 	 * Wait for a certain duration.
-	 *
-	 * @param duration
-	 * @param signal
 	 */
 	public wait(duration: DurationLike, signal?: AbortSignal): Promise<void> {
 		return new Promise((resolve) => {
@@ -163,7 +127,7 @@ export class DateTimeProvider {
 					signal.removeEventListener("abort", callback);
 				}
 				resolve();
-			}, this.duration(duration));
+			}, duration);
 
 			if (signal) {
 				clearTimeout = () => timeout.clear();
@@ -178,14 +142,11 @@ export class DateTimeProvider {
 
 	/**
 	 * Run a callback after a certain duration.
-	 *
-	 * @param callback
-	 * @param duration
 	 */
 	public timeout(callback: () => void, duration: DurationLike): Timeout {
 		const timeout = new Timeout(
 			this.now().valueOf(),
-			this.duration(duration).as("milliseconds"),
+			this.duration(duration).asMilliseconds(),
 			callback,
 		);
 
@@ -218,9 +179,6 @@ export class DateTimeProvider {
 
 	/**
 	 * Run a function with a deadline.
-	 *
-	 * @param fn
-	 * @param duration
 	 */
 	public async deadline<T>(
 		fn: (signal: AbortSignal) => Promise<T>,
@@ -233,5 +191,41 @@ export class DateTimeProvider {
 		} finally {
 			timeout.clear();
 		}
+	}
+
+	// Testing
+
+	/**
+	 * Add time to the current date.
+	 */
+	public async travel(duration: DurationLike): Promise<void> {
+		this.ref = this.ref || this.now();
+		this.ref = this.ref.add(this.duration(duration));
+		const ms = this.duration(duration).asMilliseconds();
+
+		for (const timeout of this.timeouts) {
+			timeout.add(ms);
+		}
+
+		for (const interval of this.intervals) {
+			await interval.add(ms);
+		}
+
+		await this.tick();
+	}
+
+	/**
+	 * Stop the time.
+	 */
+	public pause() {
+		this.ref = this.ref || this.now();
+		return this.ref;
+	}
+
+	/**
+	 * Reset the reference date.
+	 */
+	public reset() {
+		this.ref = null;
 	}
 }

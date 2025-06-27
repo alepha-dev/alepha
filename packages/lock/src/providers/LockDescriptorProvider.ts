@@ -138,15 +138,13 @@ export class LockDescriptorProvider {
 			});
 
 			const gracePeriod = value.options.gracePeriod
-				? typeof value.options.gracePeriod === "function"
-					? value.options.gracePeriod(...args)
-					: value.options.gracePeriod
+				? value.options.gracePeriod(...args)
 				: undefined;
 
 			if (gracePeriod) {
 				await this.lockProvider.set(
 					key,
-					`${this.id},${lock.createdAt.toISO()},${this.dateTimeProvider.nowISOString()}`,
+					`${this.id},${lock.createdAt.toISOString()},${this.dateTimeProvider.nowISOString()}`,
 					false,
 					this.dateTimeProvider.duration(gracePeriod).as("milliseconds"),
 				);

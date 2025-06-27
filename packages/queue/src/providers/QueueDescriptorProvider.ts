@@ -216,7 +216,7 @@ export class QueueDescriptorProvider {
 		this.log.trace(`Worker n-${n} is waiting for ${milliseconds}ms.`);
 
 		await this.dateTimeProvider.wait(
-			{ milliseconds },
+			milliseconds,
 			this.state.abortController.signal,
 		);
 

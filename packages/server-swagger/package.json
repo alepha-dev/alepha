@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",
-		"swagger-ui-dist": "^5.25.2",
+		"swagger-ui-dist": "^5.25.3",
 		"vitest": "^3.2.4",
 		"zx": "^8.6.0"
 	},

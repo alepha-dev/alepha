@@ -88,7 +88,7 @@ export class JwtProvider {
 			try {
 				return {
 					result: await jwtVerify(token, it.keyLoader, {
-						currentDate: this.dateTimeProvider.now().toJSDate(),
+						currentDate: this.dateTimeProvider.now().toDate(),
 					}),
 					keyName: it.name,
 				};
@@ -160,7 +160,7 @@ export class JwtProvider {
 		return {
 			issuedAt: true,
 			protectedHeader: { alg: "HS256" },
-			expiresIn: this.dateTimeProvider.now().plus({ hour: 2 }).toSeconds(),
+			expiresIn: this.dateTimeProvider.now().add(2, "hour").unix(),
 		};
 	}
 

@@ -17,7 +17,7 @@ class TestCache {
 
 	a = $cache({
 		key: (args) => args.name,
-		ttl: { seconds: 5 },
+		ttl: [5, "seconds"],
 		handler: async (user: { name: string }) => {
 			return `${user.name}:${this.cursor_a++}`;
 		},
@@ -48,12 +48,12 @@ test("$cache - basic", async () => {
 		return; // we can't mock redis time
 	}
 
-	await time.add({ seconds: 2 });
+	await time.travel([2, "seconds"]);
 	expect(await test.a({ name: "A" })).toBe("A:0");
 	expect(await test.a({ name: "A" })).toBe("A:0");
 	expect(await test.a({ name: "B" })).toBe("B:1");
 
-	await time.add({ seconds: 4 });
+	await time.travel([4, "seconds"]);
 	expect(await test.a({ name: "A" })).toBe("A:2");
 	expect(await test.a({ name: "A" })).toBe("A:2");
 	expect(await test.a({ name: "B" })).toBe("B:3");
@@ -124,7 +124,7 @@ test("$cache - infinite", async () => {
 
 	expect(await test.b({ name: "A" })).toBe("A:0");
 	expect(await test.b({ name: "A" })).toBe("A:0");
-	await time.add({ day: 1 });
+	await time.travel([1, "day"]);
 	expect(await test.b({ name: "A" })).toBe("A:0");
 });
 

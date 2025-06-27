@@ -188,7 +188,7 @@ export class ServerStaticProvider {
 				return {
 					immutable: options.cacheControl.immutable ?? true,
 					maxAge: this.dateTimeProvider
-						.duration(options.cacheControl.maxAge ?? { days: 2 })
+						.duration(options.cacheControl.maxAge ?? [2, "days"])
 						.as("seconds"),
 				};
 			}

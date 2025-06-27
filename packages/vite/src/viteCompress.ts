@@ -54,7 +54,7 @@ export function viteCompress(options: ViteCompressOptions = {}): Plugin {
 	} = options;
 
 	return {
-		name: "vite-plugin-compress",
+		name: "compress",
 		apply: "build",
 		async writeBundle(outputOptions, bundle) {
 			if (disabled) {

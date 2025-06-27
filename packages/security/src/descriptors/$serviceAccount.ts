@@ -44,14 +44,14 @@ export const $serviceAccount = (
 	const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
 		store.cache = {
 			...response,
-			at: dateTimeProvider.now().toMillis(),
+			at: dateTimeProvider.now().valueOf(),
 		};
 	};
 
 	const getTokenFromCache = () => {
 		if (store.cache) {
 			const { access_token, expires_in, at } = store.cache;
-			const now = dateTimeProvider.now().toMillis();
+			const now = dateTimeProvider.now().valueOf();
 			const expires = at + expires_in * 1000;
 			if (expires + gracePeriod > now) {
 				return access_token;

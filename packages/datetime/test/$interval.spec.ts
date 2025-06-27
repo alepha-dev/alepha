@@ -6,7 +6,7 @@ test("$interval - basic", async () => {
 	let count = 0;
 	class Dummy {
 		loop = $interval({
-			duration: { seconds: 10 },
+			duration: [10, "seconds"],
 			handler: () => {
 				count += 1;
 			},
@@ -20,7 +20,7 @@ test("$interval - basic", async () => {
 	await app.start();
 	expect(count).toBe(1);
 
-	await dt.add({ seconds: 50 });
+	await dt.travel([50, "seconds"]);
 	expect(count).toBe(6);
 });
 
@@ -28,7 +28,7 @@ test("$interval - abort", async () => {
 	let count = 0;
 	class Dummy {
 		loop = $interval({
-			duration: { seconds: 10 },
+			duration: [10, "seconds"],
 			handler: () => {
 				count += 1;
 			},
@@ -66,7 +66,7 @@ test("Alepha#start - flags", async () => {
 			name: "start",
 			handler: async () => {
 				blocker.release();
-				await dt.wait({ minute: 1 });
+				await dt.wait([1, "minute"]);
 			},
 		});
 	}
@@ -78,7 +78,7 @@ test("Alepha#start - flags", async () => {
 	expect(app.isLocked()).toBe(true);
 	expect(app.isStarted()).toBe(false);
 
-	await dt.add({ minute: 1 });
+	await dt.travel([1, "minute"]);
 	await startEnd;
 
 	expect(app.isStarted()).toBe(true);

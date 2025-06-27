@@ -410,7 +410,7 @@ export class Alepha {
 			return false;
 		}
 
-		if (process.env.VERCEL === "1") {
+		if (process.env.VERCEL_REGION) {
 			return "vercel";
 		}
 

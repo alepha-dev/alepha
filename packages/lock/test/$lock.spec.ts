@@ -24,7 +24,7 @@ const testLockBasic = async (provider?: string) => {
 		stack = () => store.stack;
 		migrate = $lock({
 			handler: async () => {
-				await this.dt.wait({ milliseconds: 50 });
+				await this.dt.wait([50, "milliseconds"]);
 				store.stack = store.stack ? `${store.stack}A` : "A";
 			},
 		});
@@ -86,7 +86,7 @@ const testLockWait = async (provider?: string) => {
 			wait: true,
 			handler: async () => {
 				count++;
-				await this.dt.wait({ milliseconds: 500 });
+				await this.dt.wait([500, "milliseconds"]);
 			},
 		});
 

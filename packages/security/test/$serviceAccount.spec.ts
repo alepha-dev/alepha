@@ -44,7 +44,7 @@ test("$serviceAccount - jwt", async () => {
 	const tk2 = await app.jwt.token();
 	expect(tk2).toBe(tk); // should return the same token if not expired
 
-	await time.add({ minutes: 6 });
+	await time.travel([6, "minutes"]);
 
 	app.signOptions.expiresIn += 1; // ensure token won't be the same
 	const tk3 = await app.jwt.token();

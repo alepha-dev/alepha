@@ -23,7 +23,7 @@ class App {
 				tx,
 			});
 			if (waitMs) {
-				await this.dt.wait({ milliseconds: waitMs });
+				await this.dt.wait(waitMs);
 			}
 			e.counter += val;
 			return await this.repository.save(e, { tx });

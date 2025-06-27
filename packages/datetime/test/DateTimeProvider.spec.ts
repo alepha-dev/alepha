@@ -31,16 +31,16 @@ test("DateTimeProvider#add", async () => {
 
 	stack.push("A");
 
-	dt.wait({ minutes: 10 }).then(() => stack.push("B"));
-	dt.wait({ minutes: 20 }).then(() => stack.push("C"));
+	dt.wait([10, "minutes"]).then(() => stack.push("B"));
+	dt.wait([20, "minutes"]).then(() => stack.push("C"));
 
 	expect(stack).toEqual(["A"]);
 
-	await dt.add({ minutes: 5 });
+	await dt.travel([5, "minutes"]);
 
 	expect(stack).toEqual(["A"]);
 
-	await dt.add({ minutes: 30 });
+	await dt.travel([30, "minutes"]);
 
 	expect(stack).toEqual(["A", "B", "C"]);
 });
@@ -50,16 +50,16 @@ test("DateTimeProvider#timeout", async () => {
 	const dt = app.get(DateTimeProvider);
 	const stack: string[] = [];
 
-	dt.timeout(() => stack.push("A"), { minutes: 10 });
-	const n2 = dt.timeout(() => stack.push("B"), { minutes: 10 });
+	dt.timeout(() => stack.push("A"), [10, "minutes"]);
+	const n2 = dt.timeout(() => stack.push("B"), [10, "minutes"]);
 
 	expect(stack).toEqual([]);
 
-	await dt.add({ minutes: 5 });
+	await dt.travel([5, "minutes"]);
 	expect(stack).toEqual([]);
 
 	n2.clear();
 
-	await dt.add({ minutes: 5 });
+	await dt.travel([5, "minutes"]);
 	expect(stack).toEqual(["A"]);
 });

@@ -162,7 +162,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 
 		await this.dateTimeProvider.deadline(
 			(abortSignal) => container.createIfNotExists({ abortSignal }),
-			{ seconds: 5 },
+			[5, "seconds"],
 		);
 
 		return container;

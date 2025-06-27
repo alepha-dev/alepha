@@ -127,14 +127,14 @@ export class TopicDescriptorProvider {
 						resolve(message);
 					});
 
-				const timeoutDuration = options.timeout ?? { seconds: 10 };
+				const timeoutDuration = options.timeout ?? [10, "seconds"];
 
 				ref.timeout = this.dateTimeProvider.timeout(() => {
 					clear();
 					reject(
 						new TopicTimeoutError(
 							topic.name(),
-							this.dateTimeProvider.duration(timeoutDuration).milliseconds,
+							this.dateTimeProvider.duration(timeoutDuration).asMilliseconds(),
 						),
 					);
 				}, timeoutDuration);

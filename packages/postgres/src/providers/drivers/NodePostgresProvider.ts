@@ -235,14 +235,29 @@ export class NodePostgresProvider implements PostgresProvider {
 			database: url?.pathname.replace("/", "") ?? this.env.PG_DATABASE,
 			password: url?.password ?? this.env.PG_PASSWORD,
 			port: Number(url?.port ?? this.env.PG_PORT ?? 5432),
-			ssl: this.env.POSTGRES_REJECT_UNAUTHORIZED
-				? {
-						rejectUnauthorized: false,
-					}
-				: undefined,
+			ssl:
+				this.ssl(url) ??
+				(this.env.POSTGRES_REJECT_UNAUTHORIZED
+					? {
+							rejectUnauthorized: false,
+						}
+					: undefined),
 			onnotice: () => {
 				// let drizzle handle logs
 			},
 		};
+	}
+
+	protected sslModes = ["require", "allow", "prefer", "verify-full"] as const;
+
+	protected ssl(
+		url: URL | undefined,
+	): "require" | "allow" | "prefer" | "verify-full" | undefined {
+		const mode = url?.searchParams.get("sslmode");
+		for (const m of this.sslModes) {
+			if (mode === m) {
+				return m;
+			}
+		}
 	}
 }

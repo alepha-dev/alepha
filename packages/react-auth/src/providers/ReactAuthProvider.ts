@@ -36,7 +36,7 @@ export class ReactAuthProvider {
 
 	protected readonly authorizationCode = $cookie({
 		name: "authorizationCode",
-		ttl: { minutes: 15 },
+		ttl: [15, "minutes"],
 		httpOnly: true,
 		schema: t.object({
 			codeVerifier: t.optional(t.string({ size: "long" })),
@@ -46,7 +46,7 @@ export class ReactAuthProvider {
 
 	protected readonly tokens = $cookie({
 		name: "tokens",
-		ttl: { days: 1 },
+		ttl: [1, "days"],
 		httpOnly: true,
 		compress: true,
 		schema: t.object({
@@ -62,7 +62,7 @@ export class ReactAuthProvider {
 
 	public readonly user = $cookie({
 		name: "user",
-		ttl: { days: 1 },
+		ttl: [1, "days"],
 		schema: t.object({
 			id: t.string(),
 			name: t.optional(t.string()),

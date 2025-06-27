@@ -22,22 +22,11 @@ export interface LockDescriptorOptions<TFunc extends AsyncFn> {
 	 */
 	wait?: boolean;
 
-	/**
-	 *
-	 */
 	key?: string | ((...args: Parameters<TFunc>) => string);
 
-	/**
-	 *
-	 */
 	maxDuration?: DurationLike;
 
-	/**
-	 *
-	 */
-	gracePeriod?:
-		| DurationLike
-		| ((...args: Parameters<TFunc>) => DurationLike | undefined);
+	gracePeriod?: (...args: Parameters<TFunc>) => DurationLike | undefined;
 }
 
 export interface LockDescriptor<TFunc extends AsyncFn> {

@@ -16,12 +16,12 @@
 		"@alepha/datetime": "0.7.1",
 		"@alepha/lock": "0.7.1",
 		"@alepha/retry": "0.7.1",
-		"@sinclair/typebox": "^0.34.36",
+		"@sinclair/typebox": "^0.34.37",
 		"drizzle-orm": "^0.44.2",
 		"postgres": "^3.4.7"
 	},
 	"devDependencies": {
-		"drizzle-kit": "0.31.2",
+		"drizzle-kit": "0.31.4",
 		"pkgroll": "^2.13.1",
 		"vitest": "^3.2.4",
 		"zx": "^8.6.0"

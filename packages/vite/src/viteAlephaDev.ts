@@ -173,7 +173,7 @@ export async function viteAlephaDev(
 	};
 
 	return {
-		name: "vite-plugin-alepha-dev",
+		name: "alepha-dev",
 		apply: "serve",
 
 		/**

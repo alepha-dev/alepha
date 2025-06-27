@@ -25,7 +25,7 @@ class TestSchedulerInterval {
 	env = $inject(env);
 	tick = 0;
 	t = $scheduler({
-		interval: { milliseconds: intervalDurationMs },
+		interval: intervalDurationMs,
 		lock: this.env.LOCK,
 		handler: async () => {
 			this.tick += 1;

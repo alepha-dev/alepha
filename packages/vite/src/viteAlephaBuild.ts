@@ -47,7 +47,7 @@ export async function viteAlephaBuild(
 	const clientDir = "public";
 
 	return {
-		name: "vite-plugin-alepha-build",
+		name: "alepha-build",
 		apply: "build",
 		config(config, ctx) {
 			if (ctx.isSsrBuild || !process.env.VITE_DOUBLE_BUILD_DONE) {

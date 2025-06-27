@@ -8,7 +8,7 @@ import { ServerCacheProvider } from "./ServerCacheProvider.ts";
 class App {
 	counter = 0;
 	cache = $action({
-		cache: { minutes: 2 },
+		cache: [2, "minutes"],
 		handler: () => `${this.counter++}`,
 	});
 }

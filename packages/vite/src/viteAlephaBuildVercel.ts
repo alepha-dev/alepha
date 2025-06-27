@@ -27,7 +27,7 @@ export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
 		"// Changes to this file will be lost when the code is regenerated.\n";
 
 	return {
-		name: "vite-plugin-alepha-build-vercel",
+		name: "alepha-vercel",
 		apply: "build",
 		writeBundle() {
 			const env = loadEnv("production", process.cwd(), "");

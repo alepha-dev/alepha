@@ -192,7 +192,7 @@ export class CacheDescriptorProvider {
 		const provider = this.provider(cache.options);
 		const px = this.dateTimeProvider
 			.duration(
-				ttl ?? cache.options.ttl ?? { seconds: this.env.CACHE_DEFAULT_TTL },
+				ttl ?? cache.options.ttl ?? [this.env.CACHE_DEFAULT_TTL, "seconds"],
 			)
 			.as("milliseconds");
 

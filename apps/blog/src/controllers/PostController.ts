@@ -11,7 +11,7 @@ export class PostController {
 		schema: {
 			response: t.array(post.$schema),
 		},
-		cache: { minutes: 5 },
+		cache: [5, "minutes"],
 		handler: async () => {
 			const posts = await this.db.posts.find({
 				sort: { createdAt: "desc" },
@@ -30,7 +30,7 @@ export class PostController {
 			}),
 			response: post.$schema,
 		},
-		cache: { minutes: 15 },
+		cache: [15, "minutes"],
 		handler: async ({ params }) => {
 			const postBySlug = await this.db.posts.findOne({
 				slug: { eq: params.slug },
