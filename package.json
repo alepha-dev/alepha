@@ -27,6 +27,6 @@
 		"lint": "biome check --write --formatter-enabled=false ",
 		"check": "tsc --noEmit",
 		"test": "vitest run",
-		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=@alepha/testing,shx,vitest,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets"
+		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=@alepha/testing,shx,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets"
 	}
 }

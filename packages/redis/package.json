@@ -15,7 +15,8 @@
 		"@redis/client": "^5.5.6"
 	},
 	"devDependencies": {
-		"pkgroll": "^2.13.1"
+		"pkgroll": "^2.13.1",
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"build": "pkgroll --clean-dist"

@@ -183,6 +183,7 @@ __metadata:
     "@alepha/core": "npm:0.7.1"
     "@redis/client": "npm:^5.5.6"
     pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
 
@@ -3617,6 +3618,7 @@ __metadata:
     react-dom: "npm:^19.1.0"
     rolldown-vite: "npm:^6.3.21"
     vercel: "npm:^44.1.0"
+    vite-bundle-analyzer: "npm:^0.23.0"
   languageName: unknown
   linkType: soft
 
@@ -10114,6 +10116,15 @@ __metadata:
     vc: dist/vc.js
     vercel: dist/vc.js
   checksum: 10c0/a04bc7dc4c4a2c38d7c0e7ab7c5e40ff7daf687aa2f47164da2e05aedc14649dc33ef48a93b94a38daf1652d40b49b6bcadd85043492bc94d54700907554835d
+  languageName: node
+  linkType: hard
+
+"vite-bundle-analyzer@npm:^0.23.0":
+  version: 0.23.0
+  resolution: "vite-bundle-analyzer@npm:0.23.0"
+  bin:
+    analyze: dist/bin.js
+  checksum: 10c0/584e3f82558a699ddd3028140d3cbb18735d702ba57bbd26b108ef43727eb2b25445a7954a392692580f6d83c8b39af03697cfbae9a1654b948f1064e5f24fcf
   languageName: node
   linkType: hard
 

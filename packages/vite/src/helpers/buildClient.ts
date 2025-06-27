@@ -16,6 +16,10 @@ export const buildClient = async (opts: BuildClientOptions) => {
 	plugins.push(viteCompress());
 
 	const viteBuildClientConfig: UserConfig = {
+		mode: "production",
+		define: {
+			"process.env.NODE_ENV": '"production"',
+		},
 		publicDir: "public",
 		build: {
 			outDir: opts.dist,

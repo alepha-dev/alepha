@@ -1,7 +1,6 @@
-import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { type ApiLinksResponse, HttpClient } from "@alepha/server";
 import type { Root } from "react-dom/client";
-import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {
@@ -11,21 +10,12 @@ import type {
 	TransitionOptions,
 } from "./PageDescriptorProvider.ts";
 
-const envSchema = t.object({
-	REACT_ROOT_ID: t.string({ default: "root" }),
-});
-
-declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
-}
-
 export class ReactBrowserProvider {
 	protected readonly log = $logger();
 	protected readonly client = $inject(HttpClient);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(BrowserRouterProvider);
 	protected readonly headProvider = $inject(BrowserHeadProvider);
-	protected readonly env = $inject(envSchema);
 	protected root!: Root;
 
 	public transitioning?: {
@@ -75,11 +65,6 @@ export class ReactBrowserProvider {
 		await this.render({ previous });
 	}
 
-	/**
-	 *
-	 * @param url
-	 * @param options
-	 */
 	public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
 		const result = await this.render({
 			url,
@@ -127,8 +112,6 @@ export class ReactBrowserProvider {
 
 	/**
 	 * Get embedded layers from the server.
-	 *
-	 * @protected
 	 */
 	protected getHydrationState(): ReactHydrationState | undefined {
 		try {
@@ -140,30 +123,8 @@ export class ReactBrowserProvider {
 		}
 	}
 
-	/**
-	 *
-	 * @protected
-	 */
-	protected getRootElement() {
-		const root = this.document.getElementById(this.env.REACT_ROOT_ID);
-		if (root) {
-			return root;
-		}
-
-		const div = this.document.createElement("div");
-		div.id = this.env.REACT_ROOT_ID;
-
-		this.document.body.prepend(div);
-
-		return div;
-	}
-
 	// -------------------------------------------------------------------------------------------------------------------
 
-	/**
-	 *
-	 * @protected
-	 */
 	public readonly ready = $hook({
 		name: "ready",
 		handler: async () => {
@@ -186,17 +147,6 @@ export class ReactBrowserProvider {
 				context,
 				hydration,
 			});
-
-			const element = this.router.root(this.state, context);
-
-			if (previous.length > 0) {
-				this.root = hydrateRoot(this.getRootElement(), element);
-				this.log.info("Hydrated root element");
-			} else {
-				this.root ??= createRoot(this.getRootElement());
-				this.root.render(element);
-				this.log.info("Created root element");
-			}
 
 			window.addEventListener("popstate", () => {
 				this.render();

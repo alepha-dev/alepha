@@ -185,7 +185,9 @@ export class DrizzleKitProvider {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
 		} catch (_ignore) {
-			return import("../../libs/drizzle-kit/api.mjs");
+			throw new Error(
+				"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
+			);
 		}
 	}
 }

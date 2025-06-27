@@ -29,6 +29,10 @@ export const buildServer = async (opts: BuildServerOptions) => {
 	}
 
 	const viteBuildServerConfig: UserConfig = {
+		mode: "production",
+		define: {
+			"process.env.NODE_ENV": '"production"',
+		},
 		publicDir: false,
 		ssr: {
 			noExternal: true,

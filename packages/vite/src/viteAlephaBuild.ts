@@ -27,6 +27,8 @@ export interface ViteAlephaBuildOptions {
 	 */
 	server?: false | UserConfig;
 
+	client?: false;
+
 	/**
 	 * If true, all compatible pages will be pre-rendered.
 	 */
@@ -63,7 +65,8 @@ export async function viteAlephaBuild(
 
 			process.env.VITE_DOUBLE_BUILD_DONE = "true";
 
-			const hasClient = await fileExists("index.html");
+			const hasClient =
+				options.client !== false && (await fileExists("index.html"));
 			if (hasClient) {
 				await buildClient({
 					html: await readFile("index.html", "utf-8"),

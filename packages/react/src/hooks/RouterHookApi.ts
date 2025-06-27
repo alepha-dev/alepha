@@ -19,23 +19,14 @@ export class RouterHookApi {
 		private readonly browser?: ReactBrowserProvider,
 	) {}
 
-	/**
-	 *
-	 */
 	public get current(): RouterState {
 		return this.state;
 	}
 
-	/**
-	 *
-	 */
 	public get pathname(): string {
 		return this.state.pathname;
 	}
 
-	/**
-	 *
-	 */
 	public get query(): Record<string, string> {
 		const query: Record<string, string> = {};
 
@@ -48,24 +39,14 @@ export class RouterHookApi {
 		return query;
 	}
 
-	/**
-	 *
-	 */
 	public async back() {
 		this.browser?.history.back();
 	}
 
-	/**
-	 *
-	 */
 	public async forward() {
 		this.browser?.history.forward();
 	}
 
-	/**
-	 *
-	 * @param props
-	 */
 	public async invalidate(props?: Record<string, any>) {
 		await this.browser?.invalidate(props);
 	}
