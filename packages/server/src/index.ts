@@ -13,7 +13,6 @@ import { $remote } from "./descriptors/$remote.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
-import { ServerCacheProvider } from "./providers/features/ServerCacheProvider.ts";
 import { ServerCompressProvider } from "./providers/features/ServerCompressProvider.ts";
 import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
@@ -95,7 +94,6 @@ export * from "./errors/HttpError.ts";
 export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
-export * from "./providers/features/ServerCacheProvider.ts";
 export * from "./providers/features/ServerHealthProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
@@ -162,7 +160,6 @@ export class ServerModule {
 		this.alepha.with(ServerBodyParserProvider);
 		this.alepha.with(ServerMultipartProvider);
 		this.alepha.with(ServerCompressProvider);
-		this.alepha.with(ServerCacheProvider);
 
 		if (this.env.SERVER_TIMING_ENABLED ?? !this.alepha.isProduction()) {
 			this.alepha.with(ServerTimingProvider);

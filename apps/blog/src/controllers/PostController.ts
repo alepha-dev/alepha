@@ -1,11 +1,10 @@
 import { $inject, t } from "@alepha/core";
-import { $action, ServerCacheProvider } from "@alepha/server";
+import { $action } from "@alepha/server";
 import { post } from "../entities.ts";
 import { Database } from "../providers/Database.ts";
 
 export class PostController {
 	db = $inject(Database);
-	serverCacheProvider = $inject(ServerCacheProvider);
 
 	getLastPosts = $action({
 		security: false,
@@ -53,7 +52,7 @@ export class PostController {
 		},
 		handler: async ({ body }) => {
 			const newPost = await this.db.posts.create(body);
-			await this.serverCacheProvider.invalidate(this.getLastPosts);
+			await this.getLastPosts.invalidate();
 			return newPost;
 		},
 	});

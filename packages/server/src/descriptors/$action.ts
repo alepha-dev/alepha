@@ -1,4 +1,3 @@
-import type { CacheDescriptorOptions } from "@alepha/cache";
 import {
 	__descriptor,
 	KIND,
@@ -7,7 +6,6 @@ import {
 	type Static,
 	type TSchema,
 } from "@alepha/core";
-import type { DurationLike } from "@alepha/datetime";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
@@ -94,15 +92,6 @@ export interface ActionDescriptorOptions<
 	 * Main route handler. This is where the route logic is implemented.
 	 */
 	handler?: ServerHandler<TConfig>;
-
-	/**
-	 * If true, the route will be cached.
-	 * - Number as seconds or boolean to enable cache.
-	 */
-	cache?:
-		| boolean
-		| DurationLike
-		| Omit<CacheDescriptorOptions<any>, "handler" | "key">;
 }
 
 export interface ActionDescriptor<
@@ -143,7 +132,7 @@ export const $action = <TConfig extends RequestConfigSchema>(
 		...options,
 	};
 
-	const action: ActionDescriptor<TConfig> = () => {
+	const action: Partial<ActionDescriptor<TConfig>> = () => {
 		throw new NotImplementedError(KEY);
 	};
 
@@ -158,7 +147,7 @@ export const $action = <TConfig extends RequestConfigSchema>(
 		throw new NotImplementedError(KEY);
 	};
 
-	return action;
+	return action as ActionDescriptor<TConfig>;
 };
 
 $action[KIND] = KEY;

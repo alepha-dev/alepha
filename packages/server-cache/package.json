@@ -1,33 +1,23 @@
 {
-	"name": "@alepha/react",
+	"name": "@alepha/server-cache",
 	"version": "0.7.2",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
+		"@alepha/cache": "0.7.2",
 		"@alepha/core": "0.7.2",
-		"@alepha/router": "0.7.2",
-		"@alepha/server": "0.7.2",
-		"@alepha/server-cache": "0.7.2",
-		"@alepha/server-static": "0.7.2",
-		"react-dom": "^19.1.0"
+		"@alepha/datetime": "0.7.2",
+		"@alepha/server": "0.7.2"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.8",
-		"@types/react-dom": "^19.1.6",
 		"pkgroll": "^2.13.1",
-		"react": "^19.1.0",
 		"vitest": "^3.2.4"
-	},
-	"peerDependencies": {
-		"@types/react": "^19",
-		"react": "^19"
 	},
 	"scripts": {
 		"test": "vitest run",
@@ -40,7 +30,8 @@
 	},
 	"keywords": [
 		"alepha",
-		"react",
-		"router"
+		"server",
+		"cache",
+		"etag"
 	]
 }

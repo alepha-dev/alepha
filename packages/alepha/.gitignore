@@ -4,3 +4,5 @@
 *.js
 react
 server
+!src/server
+!src/react

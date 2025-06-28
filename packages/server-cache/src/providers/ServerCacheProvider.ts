@@ -4,18 +4,42 @@ import {
 	type CacheDescriptorOptions,
 	CacheDescriptorProvider,
 } from "@alepha/cache";
-import { $hook, $inject, $logger, OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
-import type {
-	ServerHandler,
-	ServerRequestConfig,
-} from "../ServerRouterProvider.ts";
+import {
+	$action,
+	type ServerHandler,
+	type ServerRequestConfig,
+} from "@alepha/server";
+
+declare module "@alepha/server" {
+	interface ServerRoute {
+		cache?: ServiceRouteCache;
+	}
+	interface ActionDescriptor {
+		invalidate: () => Promise<void>;
+	}
+}
 
 export class ServerCacheProvider {
 	protected readonly log = $logger();
+	protected readonly alepha = $inject(Alepha);
 	protected readonly cacheProvider = $inject(CacheDescriptorProvider);
 	protected readonly time = $inject(DateTimeProvider);
 	protected readonly caches = new Map<ServerHandler, RouteCache>();
+
+	public readonly onConfigure = $hook({
+		priority: "last",
+		name: "configure",
+		handler: async () => {
+			const actions = this.alepha.getDescriptorValues($action);
+			for (const { value: action } of actions) {
+				action.invalidate = async () => {
+					await this.invalidate(action);
+				};
+			}
+		},
+	});
 
 	public readonly onRoute = $hook({
 		name: "server:onRoute",

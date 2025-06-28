@@ -22,7 +22,6 @@ import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
-import type { ServiceRouteCache } from "./features/ServerCacheProvider.ts";
 
 const envSchema = t.object({
 	SERVER_ALS_ENABLED: t.boolean({
@@ -473,11 +472,6 @@ export interface ServerRoute<
 	 * @see ServerSecurityProvider
 	 */
 	secure?: ServerRouteSecure;
-
-	/**
-	 * @see ServerCacheProvider
-	 */
-	cache?: ServiceRouteCache;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

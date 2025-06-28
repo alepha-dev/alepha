@@ -4,6 +4,7 @@ import {
 	ServerModule,
 	type ServerRequest,
 } from "@alepha/server";
+import { ServerCacheModule } from "@alepha/server-cache";
 import { $page } from "./descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
@@ -57,6 +58,7 @@ export class ReactModule {
 	constructor() {
 		this.alepha //
 			.with(ServerModule)
+			.with(ServerCacheModule)
 			.with(ServerLinksProvider)
 			.with(PageDescriptorProvider)
 			.with(ReactServerProvider);

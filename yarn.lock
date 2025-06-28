@@ -163,6 +163,7 @@ __metadata:
     "@alepha/core": "npm:0.7.2"
     "@alepha/router": "npm:0.7.2"
     "@alepha/server": "npm:0.7.2"
+    "@alepha/server-cache": "npm:0.7.2"
     "@alepha/server-static": "npm:0.7.2"
     "@types/react": "npm:^19.1.8"
     "@types/react-dom": "npm:^19.1.6"
@@ -226,6 +227,19 @@ __metadata:
     "@alepha/core": "npm:0.7.2"
     "@alepha/datetime": "npm:0.7.2"
     jose: "npm:^6.0.11"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
+"@alepha/server-cache@npm:0.7.2, @alepha/server-cache@workspace:packages/server-cache":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-cache@workspace:packages/server-cache"
+  dependencies:
+    "@alepha/cache": "npm:0.7.2"
+    "@alepha/core": "npm:0.7.2"
+    "@alepha/datetime": "npm:0.7.2"
+    "@alepha/server": "npm:0.7.2"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -3106,6 +3120,7 @@ __metadata:
     "@alepha/scheduler": "npm:0.7.2"
     "@alepha/security": "npm:0.7.2"
     "@alepha/server": "npm:0.7.2"
+    "@alepha/server-cache": "npm:0.7.2"
     "@alepha/server-cookies": "npm:0.7.2"
     "@alepha/server-static": "npm:0.7.2"
     "@alepha/server-swagger": "npm:0.7.2"

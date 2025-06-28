@@ -1,6 +1,9 @@
 import { $logger, Alepha, MockLogger } from "@alepha/core";
 import { beforeEach, test } from "vitest";
-import { $action, HttpError, ServerLoggerProvider } from "../../src";
+import { $action } from "../../descriptors/$action.ts";
+import { HttpError } from "../../errors/HttpError.ts";
+import { ServerModule } from "../../index";
+import { ServerLoggerProvider } from "./ServerLoggerProvider.ts";
 
 class App {
 	log = $logger();
@@ -35,6 +38,7 @@ const log = new MockLogger();
 const app = Alepha.create({
 	log,
 })
+	.with(ServerModule)
 	.with(ServerLoggerProvider)
 	.get(App);
 

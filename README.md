@@ -13,7 +13,7 @@
 [![npm](https://img.shields.io/npm/v/alepha.svg)](https://www.npmjs.com/package/alepha)
 [![license](https://img.shields.io/npm/l/alepha.svg)](https://www.npmjs.com/package/alepha)
 [![downloads](https://img.shields.io/npm/dt/alepha.svg)](https://www.npmjs.com/package/alepha)
-
+[![codecov](https://codecov.io/gh/feunard/alepha/graph/badge.svg?token=ZDLWI514CP)](https://codecov.io/gh/feunard/alepha)
 ## Installation
 
 ```bash
