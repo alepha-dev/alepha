@@ -185,9 +185,15 @@ export class DrizzleKitProvider {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
 		} catch (_ignore) {
-			throw new Error(
-				"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
-			);
+			try {
+				return createRequire(import.meta.url)(
+					"@alepha/postgres/libs/drizzle-kit/api.cjs",
+				);
+			} catch (_ignore) {
+				throw new Error(
+					"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
+				);
+			}
 		}
 	}
 }

@@ -6,7 +6,6 @@ import { prerender } from "./prerender.ts";
 export interface BuildClientOptions {
 	dist: string;
 	html: string;
-	prerender?: boolean;
 }
 
 export const buildClient = async (opts: BuildClientOptions) => {
@@ -36,15 +35,20 @@ export const buildClient = async (opts: BuildClientOptions) => {
 
 	await viteBuild(viteBuildClientConfig);
 
-	const entry = extractFirstModuleScriptSrc(opts.html);
-	if (entry) {
-		await prerender({
-			entry,
-			dist: opts.dist,
-			all: !!opts.prerender,
-		});
+	try {
+		const entry = extractFirstModuleScriptSrc(opts.html);
+		if (entry) {
+			await prerender({
+				entry,
+				dist: opts.dist,
+			});
+		}
+	} catch (error) {
+		console.warn(new Error("Prerendering has failed", { cause: error }));
 	}
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 function extractFirstModuleScriptSrc(html: string): string | null {
 	const scriptRegex = /<script\b[^>]*>[\s\S]*?<\/script>/gi;

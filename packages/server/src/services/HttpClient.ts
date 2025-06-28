@@ -109,10 +109,14 @@ export class HttpClient {
 					raw: response,
 				};
 
+				console.log("fetchResponse", fetchResponse);
+
 				if (request.method === "GET") {
 					const etag = response.headers.get("etag") ?? undefined;
 
 					if (options.cache != null || etag) {
+						console.log("caching", url, etag);
+						console.log("caching data", fetchResponse.data);
 						await this.cache.set(
 							url,
 							{ data: fetchResponse.data, etag },
@@ -224,7 +228,11 @@ export class HttpClient {
 		options: FetchRunOptions,
 	): Promise<any> {
 		if (response.status === 304) {
-			const cached = await this.cache.get(response.url);
+			let cacheKey = response.url;
+			if (typeof window !== "undefined") {
+				cacheKey = cacheKey.replace(window.location.origin, "");
+			}
+			const cached = await this.cache.get(cacheKey);
 			if (cached) {
 				return cached.data;
 			}

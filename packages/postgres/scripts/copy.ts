@@ -20,8 +20,19 @@ const dist = createRequire(import.meta.url)
 await fs.rm(libs, { recursive: true, force: true });
 await fs.mkdir(libs, { recursive: true });
 
-const files = ["api.mjs", "api.d.mts"];
+const files = ["api.js", "api.d.ts"];
 
 for (const file of files) {
 	await fs.cp(`${dist}/${file}`, `${libs}/${file}`);
 }
+
+await fs.rename(`${libs}/api.js`, `${libs}/api.cjs`);
+
+const content = await fs.readFile(`${libs}/api.cjs`, "utf-8");
+await fs.writeFile(
+	`${libs}/api.cjs`,
+	content.replace(
+		'require("esbuild-register/dist/node")',
+		"{ register: () => {} }",
+	),
+);

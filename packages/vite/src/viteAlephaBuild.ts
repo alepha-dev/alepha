@@ -1,17 +1,21 @@
 import { readFile } from "node:fs/promises";
-import type { Plugin, UserConfig } from "vite";
+import type { Plugin } from "vite";
 import { buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
-import { getDefaultEntryFile } from "./helpers/getDefaultEntryFile.ts";
 
 export interface ViteAlephaBuildOptions {
 	/**
-	 * The entry point for the application. This is the file that will be executed when the application is run.
-	 *
-	 * @default 'src/index.server.ts'
+	 * Path to the entry file for the server build.
+	 * If empty, SSR build will be skipped.
 	 */
-	entry?: string;
+	serverEntry?: string;
+
+	/**
+	 * Set false to skip the client build.
+	 * This is useful if you only want to build the server-side application.
+	 */
+	client?: false;
 
 	/**
 	 * If true, the build will be optimized for Vercel deployment.
@@ -21,27 +25,12 @@ export interface ViteAlephaBuildOptions {
 	 * @default false
 	 */
 	vercel?: boolean;
-
-	/**
-	 * Vite server options to override the default server configuration.
-	 */
-	server?: false | UserConfig;
-
-	client?: false;
-
-	/**
-	 * If true, all compatible pages will be pre-rendered.
-	 */
-	prerender?: boolean;
 }
 
 export async function viteAlephaBuild(
 	options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
-	const entry =
-		options.server === false
-			? undefined
-			: await getDefaultEntryFile(options.entry);
+	const entry = options.serverEntry;
 
 	const distDir = "dist";
 	const clientDir = "public";
@@ -67,11 +56,11 @@ export async function viteAlephaBuild(
 
 			const hasClient =
 				options.client !== false && (await fileExists("index.html"));
+
 			if (hasClient) {
 				await buildClient({
 					html: await readFile("index.html", "utf-8"),
 					dist: `${distDir}/${clientDir}`,
-					prerender: options.prerender ?? false,
 				});
 			}
 

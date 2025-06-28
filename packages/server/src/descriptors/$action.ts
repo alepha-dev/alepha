@@ -131,12 +131,6 @@ export interface ActionDescriptor<
 	 * Name of the permission required to access this route.
 	 */
 	permission: () => string;
-
-	/**
-	 * Invalidate the cache for this action.
-	 * This is only available if the action has cache enabled.
-	 */
-	invalidate: () => Promise<void>;
 }
 
 export const $action = <TConfig extends RequestConfigSchema>(
@@ -161,10 +155,6 @@ export const $action = <TConfig extends RequestConfigSchema>(
 	};
 
 	action.permission = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	action.invalidate = async () => {
 		throw new NotImplementedError(KEY);
 	};
 

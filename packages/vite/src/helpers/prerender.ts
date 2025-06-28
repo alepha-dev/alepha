@@ -5,11 +5,10 @@ import { importAlepha } from "./importAlepha.ts";
 export interface PrerenderOptions {
 	entry: string;
 	dist: string;
-	all: boolean;
 }
 
 export const prerender = async (options: PrerenderOptions): Promise<void> => {
-	const { entry, dist, all } = options;
+	const { entry, dist } = options;
 	const alepha = await importAlepha(entry);
 
 	const template = await readFile(`${dist}/index.html`, "utf-8").catch(
@@ -27,7 +26,7 @@ export const prerender = async (options: PrerenderOptions): Promise<void> => {
 			continue;
 		}
 
-		if (!!pageOptions.prerender || all) {
+		if (pageOptions.prerender) {
 			const prerenderOptions =
 				typeof page[OPTIONS].prerender === "object"
 					? page[OPTIONS].prerender

@@ -95,6 +95,7 @@ export * from "./errors/HttpError.ts";
 export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
+export * from "./providers/features/ServerCacheProvider.ts";
 export * from "./providers/features/ServerHealthProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";

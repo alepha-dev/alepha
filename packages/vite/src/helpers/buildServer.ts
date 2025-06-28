@@ -40,6 +40,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
 		build: {
 			ssr: opts.entry,
 			outDir: `${opts.distDir}/server`,
+			minify: true,
 			rollupOptions: {
 				output: {
 					entryFileNames: "[hash].mjs",
