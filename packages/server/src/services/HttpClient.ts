@@ -109,14 +109,10 @@ export class HttpClient {
 					raw: response,
 				};
 
-				console.log("fetchResponse", fetchResponse);
-
 				if (request.method === "GET") {
 					const etag = response.headers.get("etag") ?? undefined;
 
 					if (options.cache != null || etag) {
-						console.log("caching", url, etag);
-						console.log("caching data", fetchResponse.data);
 						await this.cache.set(
 							url,
 							{ data: fetchResponse.data, etag },
