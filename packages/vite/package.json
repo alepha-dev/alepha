@@ -1,12 +1,12 @@
 {
 	"name": "@alepha/vite",
-	"version": "0.7.2",
+	"version": "0.7.3",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"dependencies": {
-		"@alepha/core": "0.7.2"
+		"@alepha/core": "0.7.3"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

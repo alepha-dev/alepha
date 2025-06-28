@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/queue",
-	"version": "0.7.2",
+	"version": "0.7.3",
 	"type": "module",
 	"license": "MIT",
 	"description": "Queue module for Alepha that enables type-safe, background task processing with zero-runtime overhead and full TypeScript inference.",
@@ -12,9 +12,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.2",
-		"@alepha/datetime": "0.7.2",
-		"@alepha/redis": "0.7.2"
+		"@alepha/core": "0.7.3",
+		"@alepha/datetime": "0.7.3",
+		"@alepha/redis": "0.7.3"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",
