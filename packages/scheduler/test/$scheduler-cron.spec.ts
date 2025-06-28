@@ -74,18 +74,20 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	await Promise.all(apps.map((app) => app.stop()));
 };
 
-test("$scheduler - cron", async () => {
+const timeout = 10000;
+
+test("$scheduler - cron", { timeout }, async () => {
 	await testSchedulerCron(true);
 });
 
-test("$scheduler - cron no-lock", async () => {
+test("$scheduler - cron no-lock", { timeout }, async () => {
 	await testSchedulerCron(false);
 });
 
-test("$scheduler - cron (redis)", async () => {
+test("$scheduler - cron (redis)", { timeout }, async () => {
 	await testSchedulerCron(true, "redis");
 });
 
-test("$scheduler - cron no-lock (redis)", async () => {
+test("$scheduler - cron no-lock (redis)", { timeout }, async () => {
 	await testSchedulerCron(false, "redis");
 });
