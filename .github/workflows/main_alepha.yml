@@ -63,7 +63,12 @@ jobs:
         run: yarn check-dependencies
 
       - name: Test Project
-        run: yarn test
+        run: yarn test --coverage
 
       - name: Build Project
         run: yarn alepha build
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
