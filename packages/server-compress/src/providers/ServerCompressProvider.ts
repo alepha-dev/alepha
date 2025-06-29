@@ -2,8 +2,8 @@ import { Readable } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $hook, $inject, t } from "@alepha/core";
-import type { ServerResponse } from "../ServerRouterProvider.ts";
+import { $hook } from "@alepha/core";
+import type { ServerResponse } from "@alepha/server";
 
 const gzip = promisify(zlib.gzip);
 const createGzip = zlib.createGzip;
@@ -12,16 +12,7 @@ const createBrotliCompress = zlib.createBrotliCompress;
 const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
 
-const envSchema = t.object({
-	SERVER_COMPRESS_ENABLED: t.boolean({
-		default: true,
-		description: "Enable response compression.",
-	}),
-});
-
 export class ServerCompressProvider {
-	protected readonly env = $inject(envSchema);
-
 	compressors = {
 		gzip: {
 			compress: gzip,
@@ -43,10 +34,6 @@ export class ServerCompressProvider {
 	public readonly onResponse = $hook({
 		name: "server:onResponse",
 		handler: async ({ request, response }) => {
-			if (!this.env.SERVER_COMPRESS_ENABLED) {
-				return;
-			}
-
 			// skip if already compressed
 			if (response.headers["content-encoding"]) {
 				return;
@@ -76,6 +63,7 @@ export class ServerCompressProvider {
 			contentType === "application/json" ||
 			contentType === "text/html" ||
 			contentType === "application/javascript" ||
+			contentType === "text/plain" ||
 			contentType === "text/css"
 		);
 	}

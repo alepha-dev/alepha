@@ -279,6 +279,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-compress@workspace:packages/server-compress":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-compress@workspace:packages/server-compress"
+  dependencies:
+    "@alepha/core": "npm:0.7.3"
+    "@alepha/server": "npm:0.7.3"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-cookies@npm:0.7.3, @alepha/server-cookies@workspace:packages/server-cookies":
   version: 0.0.0-use.local
   resolution: "@alepha/server-cookies@workspace:packages/server-cookies"

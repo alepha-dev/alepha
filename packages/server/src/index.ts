@@ -13,7 +13,6 @@ import { $remote } from "./descriptors/$remote.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
-import { ServerCompressProvider } from "./providers/features/ServerCompressProvider.ts";
 import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
@@ -148,7 +147,6 @@ export class AlephaServer implements Module {
 
 		alepha.with(ServerLoggerProvider);
 		alepha.with(ServerMultipartProvider);
-		alepha.with(ServerCompressProvider);
 		alepha.with(ServerNotReadyProvider);
 
 		if (!alepha.isProduction()) {

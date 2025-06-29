@@ -84,6 +84,11 @@
 			"require": "./lock.cjs",
 			"types": "./lock.d.ts"
 		},
+		"./lock/redis": {
+			"import": "./lock/redis.js",
+			"require": "./lock/redis.cjs",
+			"types": "./lock/redis.d.ts"
+		},
 		"./postgres": {
 			"import": "./postgres.js",
 			"require": "./postgres.cjs",
