@@ -124,6 +124,7 @@ export async function viteAlephaDev(
 				state.app?.log
 					.child({
 						name: "alepha.vite",
+						caller: "Builder",
 					})
 					.info(msg.trim());
 			};

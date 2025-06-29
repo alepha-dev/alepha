@@ -218,15 +218,22 @@ export class Logger {
 		message: unknown,
 		data?: object | Error | string,
 	): string {
-		return JSON.stringify({
+		const json: Record<string, any> = {
 			date: new Date().toISOString(),
-			name: this.name,
+			module: this.name,
 			caller: this.caller,
 			context: this.context ? this.context : undefined,
 			level,
-			msg: message,
-			data: data instanceof Error ? this.formatJsonError(data) : data,
-		});
+			message: message,
+		};
+
+		if (data instanceof Error) {
+			json.error = this.formatJsonError(data);
+		} else {
+			Object.assign(json, data);
+		}
+
+		return JSON.stringify(json);
 	}
 
 	protected formatJsonError(error: Error): object {
@@ -295,7 +302,7 @@ export class Logger {
 		}
 
 		if (this.caller) {
-			output += `<${this.name}/${this.caller}>`;
+			output += `<${this.colorize(COLORS.reset, `${this.name}.`)}${this.colorize(COLORS.reset, this.caller)}>`;
 		}
 
 		if (message) {
@@ -391,5 +398,7 @@ export class MockLogger extends Logger {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface MockLoggerStore {
-	stack: Array<{ date: string; level: string; msg: string; data?: object }>;
+	stack: Array<
+		{ date: string; level: string; message: string } & Record<string, any>
+	>;
 }
