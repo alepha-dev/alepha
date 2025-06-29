@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="packages/alepha/assets/logo.png" alt="Logo" style="width: 256px"/>
+<img src="./assets/logo.png" alt="Logo" style="width: 256px"/>
 
 <h1>Alepha</h1>
 
