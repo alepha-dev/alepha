@@ -15,7 +15,7 @@ const alepha = App.create({
 });
 
 alepha
-	.with(RedisQueueModule)
+	.with(AlepheRedisQueue)
 	.with(App);
 
 run(alepha);

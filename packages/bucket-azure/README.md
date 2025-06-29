@@ -2,7 +2,7 @@
 
 ```ts
 import { $bucket } from "alepha/bucket";
-import { AzureBucketModule } from "alepha/bucket/azure";
+import { AlephaAzureBucket } from "alepha/bucket/azure";
 import { Alepha, run } from "alepha";
 
 class App {
@@ -14,7 +14,7 @@ const alepha = Alepha.create( {
 		AZ_STORAGE_CONNECTION_STRING: "",
 	},
 })
-	.with(AzureBucketModule)
+	.with(AlephaAzureBucket)
 	.with(App);
 
 run(alepha);

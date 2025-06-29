@@ -39,3 +39,14 @@ test("Redis - buffer", async ({ expect }) => {
 	expect(buf2?.byteLength).toBe(16);
 	expect(buf2?.toString("hex")).toBe(uuid);
 });
+
+test("Redis - stop", async () => {
+	const alepha = Alepha.create();
+	const redis = alepha.get(RedisProvider);
+	const sub = alepha.get(RedisSubscriberProvider);
+	await alepha.start();
+	sub.subscriber.subscribe("test", (message) => {});
+	redis.publisher.publish("test:a", "a");
+	redis.publisher.LPUSH("test:b", "b");
+	await alepha.stop();
+});

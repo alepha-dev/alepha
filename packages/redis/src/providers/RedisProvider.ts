@@ -68,6 +68,7 @@ export class RedisProvider {
 	 * Close the connection to the Redis server.
 	 */
 	public async close(): Promise<void> {
+		this.log.debug("Closing connection...");
 		await this.client.close();
 		this.log.info("Connection closed");
 	}

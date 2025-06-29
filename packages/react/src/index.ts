@@ -11,12 +11,16 @@ import {
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export { default as NestedView } from "./components/NestedView.tsx";
 export * from "./errors/RedirectionError.ts";
 export * from "./index.shared.ts";
 export * from "./providers/PageDescriptorProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
 	interface Hooks {
@@ -50,6 +54,15 @@ declare module "@alepha/core" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Alepha React Module
+ *
+ * Alepha React Module contains a router for client-side navigation and server-side rendering.
+ * Routes can be defined using the `$page` descriptor.
+ *
+ * @see {@link $page}
+ * @module alepha.react
+ */
 export class AlephaReact implements Module {
 	public readonly name = "alepha.react";
 	public readonly $services = (alepha: Alepha) =>

@@ -2,6 +2,7 @@
 
 ```ts
 import { $cache } from 'alepha/cache';
+import { AlephaRedisCache } from 'alepha/cache/redis';
 import { run } from 'alepha';
 
 class App {
@@ -15,7 +16,7 @@ const alepha = App.create({
 });
 
 alepha
-	.with(RedisCacheModule)
+	.with(AlephaRedisCache)
 	.with(App);
 
 run(alepha);

@@ -1,4 +1,4 @@
-import { __bind, $inject, Alepha } from "@alepha/core";
+import { __bind, type Alepha, type Module } from "@alepha/core";
 import type { UserAccountToken } from "@alepha/security";
 import { $auth } from "./descriptors/$auth.ts";
 import {
@@ -7,8 +7,12 @@ import {
 } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export * from "./index.shared.ts";
 export * from "./providers/ReactAuthProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/react" {
 	interface PageReactContext {
@@ -19,13 +23,22 @@ declare module "@alepha/react" {
 	}
 }
 
-export class ReactAuthModule {
-	protected readonly alepha = $inject(Alepha);
+// ---------------------------------------------------------------------------------------------------------------------
 
-	constructor() {
-		this.alepha.with(ReactAuthProvider);
-		this.alepha.with(ReactAuth);
-	}
+/**
+ * Alepha React Authentication Module
+ *
+ * The ReactAuthModule provides authentication services for React applications.
+ *
+ * @see {@link ReactAuthProvider}
+ * @module alepha.react.auth
+ */
+export class AlephaReactAuth implements Module {
+	public readonly name = "alepha.react.auth";
+	public readonly $services = (alepha: Alepha) => {
+		alepha.with(ReactAuthProvider);
+		alepha.with(ReactAuth);
+	};
 }
 
-__bind($auth, ReactAuthModule);
+__bind($auth, AlephaReactAuth);

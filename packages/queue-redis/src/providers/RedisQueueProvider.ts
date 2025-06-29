@@ -1,6 +1,6 @@
 import { $inject, t } from "@alepha/core";
+import type { QueueProvider } from "@alepha/queue";
 import { RedisProvider } from "@alepha/redis";
-import type { QueueProvider } from "./QueueProvider.ts";
 
 const envSchema = t.object({
 	REDIS_QUEUE_PREFIX: t.string({

@@ -1,27 +1,23 @@
-import { NotImplementedError } from "@alepha/core";
-
-export class QueueProvider {
-	constructor() {
-		throw new NotImplementedError(this.constructor.name);
-	}
-
+/**
+ * Minimalist Queue interface.
+ *
+ * Will be probably enhanced in the future to support more advanced features. But for now, it's enough!
+ */
+export abstract class QueueProvider {
 	/**
 	 * Push a message to the queue.
 	 *
-	 * @param queue - The queue name.
-	 * @param message - The message to push.
+	 * @param queue Name of the queue to push the message to.
+	 * @param message String message to be pushed to the queue. Buffer messages are not supported for now.
 	 */
-	public async push(_queue: string, _message: string): Promise<void> {
-		throw new NotImplementedError(this.constructor.name);
-	}
+	public abstract push(queue: string, message: string): Promise<void>;
 
 	/**
 	 * Pop a message from the queue.
 	 *
-	 * @param queue - The queue name.
-	 * @returns The message popped.
+	 * @param queue Name of the queue to pop the message from.
+	 *
+	 * @returns The message popped or `undefined` if the queue is empty.
 	 */
-	public async pop(_queue: string): Promise<string | undefined> {
-		throw new NotImplementedError(this.constructor.name);
-	}
+	public abstract pop(queue: string): Promise<string | undefined>;
 }

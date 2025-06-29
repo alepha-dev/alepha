@@ -17,6 +17,7 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
+// TODO: move to ReactBrowserProvider when it will be removed from server-side imports
 export class ReactBrowserRenderer {
 	protected readonly browserProvider = $inject(ReactBrowserProvider);
 	protected readonly browserRouterProvider = $inject(BrowserRouterProvider);

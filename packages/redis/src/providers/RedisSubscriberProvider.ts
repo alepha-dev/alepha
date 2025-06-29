@@ -33,6 +33,7 @@ export class RedisSubscriberProvider {
 	}
 
 	public async close(): Promise<void> {
+		this.log.debug("Closing connection...");
 		this.subscriber.close();
 		this.log.info("Connection closed");
 	}

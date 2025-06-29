@@ -1,9 +1,9 @@
 {
-	"name": "@alepha/queue",
+	"name": "@alepha/queue-redis",
 	"version": "0.7.3",
 	"type": "module",
 	"license": "MIT",
-	"description": "Queue interface of Alepha Queue, with a in-memory implementation.",
+	"description": "Redis queue implementation of Alepha Queue.",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"files": [
@@ -12,7 +12,8 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.7.3",
-		"@alepha/datetime": "0.7.3"
+		"@alepha/queue": "0.7.3",
+		"@alepha/redis": "0.7.3"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

@@ -10,6 +10,33 @@ import type { QueueProvider } from "../providers/QueueProvider.ts";
 
 const KEY = "QUEUE";
 
+/**
+ * Queue descriptor.
+ */
+export const $queue = <T extends QueueMessageSchema>(
+	options: QueueDescriptorOptions<T>,
+): QueueDescriptor<T> => {
+	__descriptor(KEY);
+
+	return {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+		name: () => {
+			throw new NotImplementedError(KEY);
+		},
+		provider: () => {
+			throw new NotImplementedError(KEY);
+		},
+		push: async () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+};
+
+$queue[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface QueueMessageSchema {
 	headers?: TSchema;
 	payload: TSchema;
@@ -33,31 +60,3 @@ export interface QueueDescriptor<
 	provider(): QueueProvider;
 	push(...payload: Array<Static<T["payload"]>>): Promise<void>;
 }
-
-/**
- * Queue descriptor.
- *
- * @param options - The queue options.
- * @returns The descriptor value.
- */
-export const $queue = <T extends QueueMessageSchema>(
-	options: QueueDescriptorOptions<T>,
-): QueueDescriptor<T> => {
-	__descriptor(KEY);
-
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		name: () => {
-			throw new NotImplementedError(KEY);
-		},
-		provider: () => {
-			throw new NotImplementedError(KEY);
-		},
-		push: async () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-};
-
-$queue[KIND] = KEY;

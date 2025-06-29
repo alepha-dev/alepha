@@ -135,13 +135,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/queue-redis@workspace:packages/queue-redis":
+  version: 0.0.0-use.local
+  resolution: "@alepha/queue-redis@workspace:packages/queue-redis"
+  dependencies:
+    "@alepha/core": "npm:0.7.3"
+    "@alepha/queue": "npm:0.7.3"
+    "@alepha/redis": "npm:0.7.3"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/queue@npm:0.7.3, @alepha/queue@workspace:packages/queue":
   version: 0.0.0-use.local
   resolution: "@alepha/queue@workspace:packages/queue"
   dependencies:
     "@alepha/core": "npm:0.7.3"
     "@alepha/datetime": "npm:0.7.3"
-    "@alepha/redis": "npm:0.7.3"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown

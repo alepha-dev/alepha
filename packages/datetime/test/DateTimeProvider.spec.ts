@@ -63,3 +63,20 @@ test("DateTimeProvider#timeout", async () => {
 	await dt.travel([5, "minutes"]);
 	expect(stack).toEqual(["A"]);
 });
+
+test("DateTimeProvider#wait", async () => {
+	const app = Alepha.create();
+	const dt = app.get(DateTimeProvider);
+	const stack: string[] = [];
+
+	const abortController = new AbortController();
+	dt.wait([10, "minutes"], abortController.signal).then(() => stack.push("A"));
+
+	expect(stack).toEqual([]);
+
+	abortController.abort();
+
+	await new Promise((resolve) => setTimeout(resolve, 10));
+
+	expect(stack).toEqual(["A"]);
+});

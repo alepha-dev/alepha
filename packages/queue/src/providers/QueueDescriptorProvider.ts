@@ -152,8 +152,6 @@ export class QueueDescriptorProvider {
 
 	/**
 	 * Process the consumer descriptors.
-	 *
-	 * @protected
 	 */
 	protected processConsumerDescriptors() {
 		const consumerDescriptors = this.alepha.getDescriptorValues($consumer);
@@ -171,12 +169,57 @@ export class QueueDescriptorProvider {
 	}
 
 	/**
-	 * Start the workers.
-	 *
-	 * @param consumers
-	 * @protected
+	 * Get the provider for the queue.
 	 */
-	protected startWorkers(consumers: Array<ConsumerDescriptorOptions>) {
+	protected provider(options: QueueDescriptorOptions<any>): QueueProvider {
+		if (options.provider === "memory") {
+			return this.memoryQueueProvider;
+		}
+
+		if (typeof options.provider === "function") {
+			return options.provider();
+		}
+
+		return this.queueProvider;
+	}
+
+	/**
+	 * Push an item to the queue.
+	 */
+	protected async push<T extends QueueMessageSchema>(
+		queue: QueueDescriptor<T>,
+		...payloads: Array<Static<T["payload"]>>
+	): Promise<void> {
+		const provider = queue.provider();
+
+		await Promise.all(
+			payloads.map((payload) =>
+				provider.push(
+					queue.name(),
+					JSON.stringify({
+						headers: {},
+						payload: this.alepha.parse(queue[OPTIONS].schema.payload, payload),
+					}),
+				),
+			),
+		);
+
+		this.log.debug(`Pushed to queue ${queue.name()}`, payloads);
+
+		// wake up workers!
+		this.state.abortController.abort();
+		this.state.abortController = new AbortController();
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	// Engine part - this is the part that will run the workers and process the messages
+
+	/**
+	 * Start the workers.
+	 * This method will create an endless loop that will check for new messages!
+	 */
+	protected startWorkers(consumers: Array<ConsumerDescriptorOptions>): void {
 		if (this.state.isWorkersRunning) {
 			return;
 		}
@@ -204,16 +247,20 @@ export class QueueDescriptorProvider {
 	}
 
 	/**
-	 * Wait for the next message.
+	 * Wait for the next message, where `n` is the worker number.
 	 *
-	 * @param n
-	 * @protected
+	 * This method will wait for a certain amount of time, increasing the wait time again if no message is found.
 	 */
-	protected async waitForNextMessage(n: number) {
+	protected async waitForNextMessage(n: number): Promise<void> {
 		const intervals = this.state.workerIntervals;
 		const milliseconds = intervals[n] || this.env.QUEUE_WORKER_INTERVAL;
 
 		this.log.trace(`Worker n-${n} is waiting for ${milliseconds}ms.`);
+
+		if (this.state.abortController.signal.aborted) {
+			this.log.warn(`Worker n-${n} aborted.`);
+			return;
+		}
 
 		await this.dateTimeProvider.wait(
 			milliseconds,
@@ -231,17 +278,14 @@ export class QueueDescriptorProvider {
 
 	/**
 	 * Get the next message.
-	 *
-	 * @param consumers
-	 * @protected
 	 */
 	protected async getNextMessage(
 		consumers: Array<ConsumerDescriptorOptions>,
 	): Promise<
 		| undefined
 		| {
-				message: any;
 				consumer: ConsumerDescriptorOptions;
+				message: string;
 		  }
 	> {
 		for (const consumer of consumers) {
@@ -255,9 +299,6 @@ export class QueueDescriptorProvider {
 
 	/**
 	 * Process a message from a queue.
-	 *
-	 * @param response
-	 * @protected
 	 */
 	protected async processMessage(response: {
 		message: any;
@@ -278,63 +319,17 @@ export class QueueDescriptorProvider {
 	}
 
 	/**
-	 * Stop the workers
+	 * Stop the workers.
 	 *
-	 * @protected
+	 * This method will stop the workers and wait for them to finish processing.
 	 */
 	protected async stopWorkers() {
 		this.state.isWorkersRunning = false;
+
+		this.log.trace("Stopping workers...");
 		this.state.abortController.abort();
+
+		this.log.trace("Waiting for workers to finish...");
 		await Promise.all(this.state.workerPromises);
-	}
-
-	/**
-	 * Get the provider for the queue.
-	 *
-	 * @param options - The queue options.
-	 * @protected
-	 */
-	protected provider(options: QueueDescriptorOptions<any>): QueueProvider {
-		if (options.provider === "memory") {
-			return this.memoryQueueProvider;
-		}
-
-		if (typeof options.provider === "function") {
-			return options.provider();
-		}
-
-		return this.queueProvider;
-	}
-
-	/**
-	 * Push an item to the queue.
-	 *
-	 * @param queue
-	 * @param payloads
-	 * @protected
-	 */
-	protected async push<T extends QueueMessageSchema>(
-		queue: QueueDescriptor<T>,
-		...payloads: Array<Static<T["payload"]>>
-	): Promise<void> {
-		const provider = queue.provider();
-
-		await Promise.all(
-			payloads.map((payload) =>
-				provider.push(
-					queue.name(),
-					JSON.stringify({
-						headers: {},
-						payload: this.alepha.parse(queue[OPTIONS].schema.payload, payload),
-					}),
-				),
-			),
-		);
-
-		this.log.debug(`Pushed to queue ${queue.name()}`, payloads);
-
-		// wake up workers
-		this.state.abortController.abort();
-		this.state.abortController = new AbortController();
 	}
 }

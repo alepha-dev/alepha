@@ -1,57 +1,5 @@
 import type { MaybePromise } from "@alepha/core";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Retry Descriptor options.
- */
-export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
-	/**
-	 * Maximum number of attempts.
-	 *
-	 * @default 3
-	 */
-	max?: number;
-
-	/**
-	 * Delay in milliseconds.
-	 *
-	 * @default 0
-	 */
-	delay?: number;
-
-	/**
-	 * Optional condition to determine when to retry.
-	 */
-	when?: (error: Error) => boolean;
-
-	/**
-	 * The function to retry.
-	 */
-	handler: T;
-
-	/**
-	 * Optional error handler.
-	 *
-	 * This will be called when an error occurs.
-	 *
-	 * @default undefined
-	 */
-	onError?: (
-		error: Error,
-		attempt: number,
-		...parameters: Parameters<T>
-	) => void;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export type RetryDescriptor<T extends (...args: any[]) => any> = (
-	...parameters: Parameters<T>
-) => MaybePromise<ReturnType<T>>;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * `$retry` creates a retry descriptor.
  *
@@ -127,3 +75,49 @@ export const $retry = <T extends (...args: any[]) => any>(
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Retry Descriptor options.
+ */
+export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
+	/**
+	 * Maximum number of attempts.
+	 *
+	 * @default 3
+	 */
+	max?: number;
+
+	/**
+	 * Delay in milliseconds.
+	 *
+	 * @default 0
+	 */
+	delay?: number;
+
+	/**
+	 * Optional condition to determine when to retry.
+	 */
+	when?: (error: Error) => boolean;
+
+	/**
+	 * The function to retry.
+	 */
+	handler: T;
+
+	/**
+	 * Optional error handler.
+	 *
+	 * This will be called when an error occurs.
+	 *
+	 * @default undefined
+	 */
+	onError?: (
+		error: Error,
+		attempt: number,
+		...parameters: Parameters<T>
+	) => void;
+}
+
+export type RetryDescriptor<T extends (...args: any[]) => any> = (
+	...parameters: Parameters<T>
+) => MaybePromise<ReturnType<T>>;

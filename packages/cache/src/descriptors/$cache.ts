@@ -4,6 +4,50 @@ import type { CacheProvider } from "../providers/CacheProvider.ts";
 
 const KEY = "CACHE";
 
+/**
+ * Cache Descriptor
+ */
+export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
+	options: CacheDescriptorOptions<TReturn, TParameter> = {},
+): CacheDescriptor<TReturn, TParameter> => {
+	__descriptor(KEY);
+
+	const $: CacheDescriptor<TReturn, TParameter> = async (
+		...args: TParameter
+	): Promise<TReturn> => {
+		if (!options.handler) {
+			throw new NotImplementedError(KEY);
+		}
+
+		return options.handler(...args);
+	};
+
+	$[KIND] = KEY;
+	$[OPTIONS] = options;
+
+	$.key = (): string => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.invalidate = async (): Promise<void> => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.set = async (): Promise<void> => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.get = async (): Promise<TReturn> => {
+		throw new NotImplementedError(KEY);
+	};
+
+	return $;
+};
+
+$cache[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface CacheDescriptorOptions<
 	TReturn,
 	TParameter extends any[] = any[],
@@ -87,47 +131,3 @@ export interface CacheDescriptor<
 	 */
 	get: (key: string) => Promise<TReturn | undefined>;
 }
-
-/**
- * Cache Descriptor
- *
- * @param options
- */
-export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
-	options: CacheDescriptorOptions<TReturn, TParameter> = {},
-): CacheDescriptor<TReturn, TParameter> => {
-	__descriptor(KEY);
-
-	const $: CacheDescriptor<TReturn, TParameter> = async (
-		...args: TParameter
-	): Promise<TReturn> => {
-		if (!options.handler) {
-			throw new NotImplementedError(KEY);
-		}
-
-		return options.handler(...args);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	$.key = (): string => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.invalidate = async (): Promise<void> => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.set = async (): Promise<void> => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.get = async (): Promise<TReturn> => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $;
-};
-
-$cache[KIND] = KEY;
