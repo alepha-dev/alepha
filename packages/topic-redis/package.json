@@ -1,5 +1,5 @@
 {
-	"name": "@alepha/topic",
+	"name": "@alepha/topic-redis",
 	"version": "0.7.3",
 	"type": "module",
 	"license": "MIT",
@@ -7,7 +7,8 @@
 	"types": "./src/index.ts",
 	"dependencies": {
 		"@alepha/core": "0.7.3",
-		"@alepha/datetime": "0.7.3"
+		"@alepha/redis": "0.7.3",
+		"@alepha/topic": "0.7.3"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

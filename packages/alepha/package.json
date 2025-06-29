@@ -3,7 +3,7 @@
 	"version": "0.7.3",
 	"type": "module",
 	"license": "MIT",
-	"description": "TypeScript framework for building full-stack apps with strict conventions, custom schemas, and React-based SPA or SSR without filesystem-based routing.",
+	"description": "TypeScript framework for building full-stack apps with strict conventions, and React-based SPA or SSR without filesystem-based routing.",
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {
 		"type": "git",
@@ -13,6 +13,7 @@
 	"types": "./core.d.ts",
 	"dependencies": {
 		"@alepha/cache": "0.7.3",
+		"@alepha/cache-redis": "0.7.3",
 		"@alepha/core": "0.7.3",
 		"@alepha/datetime": "0.7.3",
 		"@alepha/lock": "0.7.3",
@@ -31,6 +32,7 @@
 		"@alepha/server-swagger": "0.7.3",
 		"@alepha/testing": "0.7.3",
 		"@alepha/topic": "0.7.3",
+		"@alepha/topic-redis": "0.7.3",
 		"@alepha/vite": "0.7.3",
 		"@types/react": "^19.1.8",
 		"react": "^19.1.0"

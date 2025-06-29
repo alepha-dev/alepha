@@ -2,11 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { ServiceEntry } from "@alepha/core";
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import {
-	LockProvider,
-	MemoryLockProvider,
-	RedisLockProvider,
-} from "@alepha/lock";
+import { LockProvider, MemoryLockProvider } from "@alepha/lock";
+import { RedisLockProvider } from "@alepha/lock-redis";
 import { expect, test } from "vitest";
 import { $scheduler } from "../src";
 

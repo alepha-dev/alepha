@@ -1,22 +1,11 @@
 import { $inject, $logger } from "@alepha/core";
+import type { LockProvider } from "@alepha/lock";
 import { RedisProvider, type RedisSetOptions } from "@alepha/redis";
-import type { LockProvider } from "./LockProvider.ts";
 
-/**
- * A store provider that uses Redis.
- */
 export class RedisLockProvider implements LockProvider {
 	protected readonly log = $logger();
 	protected readonly redisProvider = $inject(RedisProvider);
 
-	/**
-	 * Set the string value of a key.
-	 *
-	 * @param key The key of the value to set.
-	 * @param value The value to set.
-	 * @param nx If set to true, the key will only be set if it does not already exist.
-	 * @param px Set the specified expire time, in milliseconds.
-	 */
 	public async set(
 		key: string,
 		value: string,
@@ -47,9 +36,6 @@ export class RedisLockProvider implements LockProvider {
 		return resp.toString("utf-8");
 	}
 
-	/**
-	 * Remove the specified keys.
-	 */
 	public async del(...keys: string[]): Promise<void> {
 		await this.redisProvider.del(keys);
 	}

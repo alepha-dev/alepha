@@ -29,7 +29,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cache-redis@workspace:packages/cache-redis":
+"@alepha/cache-redis@npm:0.7.3, @alepha/cache-redis@workspace:packages/cache-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/cache-redis@workspace:packages/cache-redis"
   dependencies:
@@ -93,13 +93,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/lock-redis@npm:0.7.3, @alepha/lock-redis@workspace:packages/lock-redis":
+  version: 0.0.0-use.local
+  resolution: "@alepha/lock-redis@workspace:packages/lock-redis"
+  dependencies:
+    "@alepha/core": "npm:0.7.3"
+    "@alepha/lock": "npm:0.7.3"
+    "@alepha/redis": "npm:0.7.3"
+    "@alepha/topic-redis": "npm:0.7.3"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/lock@npm:0.7.3, @alepha/lock@workspace:packages/lock":
   version: 0.0.0-use.local
   resolution: "@alepha/lock@workspace:packages/lock"
   dependencies:
     "@alepha/core": "npm:0.7.3"
     "@alepha/datetime": "npm:0.7.3"
-    "@alepha/redis": "npm:0.7.3"
     "@alepha/topic": "npm:0.7.3"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
@@ -235,6 +247,7 @@ __metadata:
     "@alepha/core": "npm:0.7.3"
     "@alepha/datetime": "npm:0.7.3"
     "@alepha/lock": "npm:0.7.3"
+    "@alepha/lock-redis": "npm:0.7.3"
     node-cron: "npm:^4.1.1"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
@@ -342,13 +355,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/topic-redis@npm:0.7.3, @alepha/topic-redis@workspace:packages/topic-redis":
+  version: 0.0.0-use.local
+  resolution: "@alepha/topic-redis@workspace:packages/topic-redis"
+  dependencies:
+    "@alepha/core": "npm:0.7.3"
+    "@alepha/redis": "npm:0.7.3"
+    "@alepha/topic": "npm:0.7.3"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/topic@npm:0.7.3, @alepha/topic@workspace:packages/topic":
   version: 0.0.0-use.local
   resolution: "@alepha/topic@workspace:packages/topic"
   dependencies:
     "@alepha/core": "npm:0.7.3"
     "@alepha/datetime": "npm:0.7.3"
-    "@alepha/redis": "npm:0.7.3"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -3132,6 +3156,7 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@alepha/cache": "npm:0.7.3"
+    "@alepha/cache-redis": "npm:0.7.3"
     "@alepha/core": "npm:0.7.3"
     "@alepha/datetime": "npm:0.7.3"
     "@alepha/lock": "npm:0.7.3"
@@ -3150,6 +3175,7 @@ __metadata:
     "@alepha/server-swagger": "npm:0.7.3"
     "@alepha/testing": "npm:0.7.3"
     "@alepha/topic": "npm:0.7.3"
+    "@alepha/topic-redis": "npm:0.7.3"
     "@alepha/vite": "npm:0.7.3"
     "@types/react": "npm:^19.1.8"
     pkgroll: "npm:^2.13.1"

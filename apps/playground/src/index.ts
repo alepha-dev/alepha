@@ -1,10 +1,5 @@
 import { $hook, $inject, type Alepha, type Module, run, t } from "@alepha/core";
-import {
-	$entity,
-	AlephaPostgresModule,
-	pg,
-	Repository,
-} from "@alepha/postgres";
+import { $entity, AlephaPostgres, pg, Repository } from "@alepha/postgres";
 
 const users = $entity({
 	name: "users",
@@ -29,7 +24,7 @@ class App {
 
 class AppModule implements Module {
 	$services(alepha: Alepha) {
-		alepha.with(AlephaPostgresModule);
+		alepha.with(AlephaPostgres);
 		alepha.with(App);
 	}
 }

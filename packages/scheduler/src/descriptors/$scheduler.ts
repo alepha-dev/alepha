@@ -9,6 +9,30 @@ import type { DurationLike } from "@alepha/datetime";
 
 const KEY = "SCHEDULER";
 
+/**
+ * Scheduler descriptor.
+ */
+export const $scheduler = (
+	options: SchedulerDescriptorOptions,
+): SchedulerDescriptor => {
+	__descriptor(KEY);
+	const $: SchedulerDescriptor = async () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$[KIND] = KEY;
+	$[OPTIONS] = options;
+
+	return $;
+};
+
+$scheduler[KIND] = KEY;
+
+export const isScheduler = (value: any): value is SchedulerDescriptor =>
+	value && value[KIND] === KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export type SchedulerDescriptorOptions = {
 	/**
 	 * Function to run on schedule.
@@ -47,28 +71,3 @@ export interface SchedulerDescriptor {
 	[OPTIONS]: SchedulerDescriptorOptions;
 	(): Promise<void>;
 }
-
-/**
- * Scheduler descriptor.
- *
- * @param options - The scheduler options.
- * @returns The descriptor value.
- */
-export const $scheduler = (
-	options: SchedulerDescriptorOptions,
-): SchedulerDescriptor => {
-	__descriptor(KEY);
-	const $: SchedulerDescriptor = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	return $;
-};
-
-$scheduler[KIND] = KEY;
-
-export const isScheduler = (value: any): value is SchedulerDescriptor =>
-	value && value[KIND] === KEY;

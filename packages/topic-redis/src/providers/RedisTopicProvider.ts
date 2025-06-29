@@ -4,7 +4,7 @@ import type {
 	SubscribeCallback,
 	TopicProvider,
 	UnSubscribeFn,
-} from "./TopicProvider.ts";
+} from "@alepha/topic";
 
 const envSchema = t.object({
 	REDIS_TOPIC_PREFIX: t.string({

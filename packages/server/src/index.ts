@@ -1,7 +1,7 @@
 import {
 	__bind,
 	$inject,
-	Alepha,
+	type Alepha,
 	type Module,
 	type Static,
 	t,
@@ -121,17 +121,6 @@ const envSchema = t.object({
 		default: true,
 		description: "Enable health-provider, which expose APIs on /health.",
 	}),
-	SERVER_NOT_READY_ENABLED: t.boolean({
-		default: true,
-		description:
-			"Enable not-ready-provider, which return 503 if alepha is not ready.",
-	}),
-	SERVER_TIMING_ENABLED: t.optional(
-		t.boolean({
-			description:
-				"Enable server timing provider. True by default in development, false in production.",
-		}),
-	),
 });
 
 declare module "@alepha/core" {
@@ -140,7 +129,6 @@ declare module "@alepha/core" {
 
 export class AlephaServer implements Module {
 	protected readonly env = $inject(envSchema);
-	protected readonly alepha = $inject(Alepha);
 
 	public readonly name = "alepha.server";
 	public readonly $services = (alepha: Alepha) => {
@@ -152,15 +140,18 @@ export class AlephaServer implements Module {
 
 		alepha.with(ServerActionDescriptorProvider);
 		alepha.with(ServerRouteDescriptorProvider);
+
 		alepha.with(RemoteDescriptorProvider);
 		alepha.with(ProxyDescriptorProvider);
 
-		alepha.with(ServerLoggerProvider);
 		alepha.with(ServerBodyParserProvider);
+
+		alepha.with(ServerLoggerProvider);
 		alepha.with(ServerMultipartProvider);
 		alepha.with(ServerCompressProvider);
+		alepha.with(ServerNotReadyProvider);
 
-		if (this.env.SERVER_TIMING_ENABLED ?? !this.alepha.isProduction()) {
+		if (!alepha.isProduction()) {
 			alepha.with(ServerTimingProvider);
 		}
 
@@ -170,10 +161,6 @@ export class AlephaServer implements Module {
 
 		if (this.env.SERVER_HEALTH_ENABLED) {
 			alepha.with(ServerHealthProvider);
-		}
-
-		if (this.env.SERVER_NOT_READY_ENABLED) {
-			alepha.with(ServerNotReadyProvider);
 		}
 	};
 }

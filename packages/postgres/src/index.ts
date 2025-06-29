@@ -33,8 +33,8 @@ export * from "./schemas/pageSchema.ts";
 export * from "./services/Repository.ts";
 export * from "./types/schema.ts";
 
-export class AlephaPostgresModule implements Module {
-	public readonly name = "alepha.orm.postgres";
+export class AlephaPostgres implements Module {
+	public readonly name = "alepha.postgres";
 	public readonly $services = (alepha: Alepha) =>
 		alepha
 			.with(RepositoryDescriptorProvider)
@@ -46,5 +46,5 @@ export class AlephaPostgresModule implements Module {
 			.with(SequenceProvider);
 }
 
-__bind($repository, AlephaPostgresModule);
-__bind($sequence, AlephaPostgresModule);
+__bind($repository, AlephaPostgres);
+__bind($sequence, AlephaPostgres);

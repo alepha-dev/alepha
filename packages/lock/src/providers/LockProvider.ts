@@ -1,13 +1,7 @@
-import { NotImplementedError } from "@alepha/core";
-
 /**
  * Store Provider Interface
  */
-export class LockProvider {
-	constructor() {
-		throw new NotImplementedError(this.constructor.name);
-	}
-
+export abstract class LockProvider {
 	/**
 	 * Set the string value of a key.
 	 *
@@ -16,21 +10,17 @@ export class LockProvider {
 	 * @param nx If set to true, the key will only be set if it does not already exist.
 	 * @param px Set the specified expire time, in milliseconds.
 	 */
-	public async set(
-		_key: string,
-		_value: string,
-		_nx?: boolean,
-		_px?: number,
-	): Promise<string> {
-		throw new NotImplementedError(this.constructor.name);
-	}
+	public abstract set(
+		key: string,
+		value: string,
+		nx?: boolean,
+		px?: number,
+	): Promise<string>;
 
 	/**
 	 * Remove the specified keys.
 	 *
 	 * @param keys The keys to delete.
 	 */
-	public async del(..._keys: string[]): Promise<void> {
-		throw new NotImplementedError(this.constructor.name);
-	}
+	public abstract del(...keys: string[]): Promise<void>;
 }
