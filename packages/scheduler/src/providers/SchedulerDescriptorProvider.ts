@@ -174,9 +174,6 @@ export class SchedulerDescriptorProvider {
 
 	/**
 	 * Prefix the scheduler key.
-	 *
-	 * @param key
-	 * @protected
 	 */
 	protected prefix(key: string) {
 		const parts = ["scheduler", key];

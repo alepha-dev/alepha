@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { ServiceEntry } from "@alepha/core";
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
@@ -35,8 +36,9 @@ const createApp = <T extends object>(
 	testClass: ServiceEntry<T>,
 	LOCK: boolean,
 	provider?: "redis",
+	prefix?: string,
 ): Alepha => {
-	return Alepha.create({ env: { LOCK } })
+	return Alepha.create({ env: { LOCK, CACHE_PREFIX: prefix } })
 		.with({
 			provide: LockProvider,
 			use: provider === "redis" ? RedisLockProvider : SharedLockProvider,
@@ -46,10 +48,11 @@ const createApp = <T extends object>(
 };
 
 const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
+	const prefix = randomUUID();
 	const apps = [
-		createApp(TestSchedulerCron, lock, provider),
-		createApp(TestSchedulerCron, lock, provider),
-		createApp(TestSchedulerCron, lock, provider),
+		createApp(TestSchedulerCron, lock, provider, prefix),
+		createApp(TestSchedulerCron, lock, provider, prefix),
+		createApp(TestSchedulerCron, lock, provider, prefix),
 	];
 
 	await Promise.all(apps.map((app) => app.start()));
@@ -60,13 +63,13 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	if (lock) {
 		await expect
 			.poll(() => expect(sum()).toEqual(2), {
-				timeout: 10000,
+				timeout: 5000,
 			})
 			.toBeTruthy();
 	} else {
 		await expect
 			.poll(() => expect(sum()).toEqual(2 * apps.length), {
-				timeout: 10000,
+				timeout: 5000,
 			})
 			.toBeTruthy();
 	}
@@ -74,7 +77,7 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	await Promise.all(apps.map((app) => app.stop()));
 };
 
-const timeout = 20000;
+const timeout = 10000;
 
 test("$scheduler - cron", { timeout }, async () => {
 	await testSchedulerCron(true);
