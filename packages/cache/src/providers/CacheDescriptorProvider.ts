@@ -14,8 +14,8 @@ import type {
 	CacheDescriptorOptions,
 } from "../descriptors/$cache.ts";
 import { $cache } from "../descriptors/$cache.ts";
-import type { CacheProvider } from "../interfaces/CacheProvider.ts";
-import { DefaultCacheProvider } from "./DefaultCacheProvider.ts";
+import { CacheError } from "../errors/CacheError.ts";
+import { CacheProvider } from "./CacheProvider.ts";
 import { MemoryCacheProvider } from "./MemoryCacheProvider.ts";
 
 const envSchema = t.object({
@@ -37,7 +37,7 @@ declare module "@alepha/core" {
 
 export class CacheDescriptorProvider {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly cacheProvider = $inject(DefaultCacheProvider);
+	protected readonly cacheProvider = $inject(CacheProvider);
 	protected readonly memoryCacheProvider = $inject(MemoryCacheProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly env = $inject(envSchema);
@@ -59,8 +59,8 @@ export class CacheDescriptorProvider {
 		const caches = this.alepha.getDescriptorValues($cache);
 		for (const { value, key, instance } of caches) {
 			const { [OPTIONS]: options } = value;
-			const group = options.group ?? `${instance.constructor.name}:${key}`;
-			const cache = { options, group };
+			const name = options.name ?? `${instance.constructor.name}:${key}`;
+			const cache = { options, name };
 
 			this.caches.push(cache);
 
@@ -100,14 +100,18 @@ export class CacheDescriptorProvider {
 		options: Pick<CacheDescriptorOptions<any[], any>, "provider">,
 	): CacheProvider {
 		if (!options.provider) {
-			return this.cacheProvider;
+			return this.cacheProvider; // use default provider
 		}
 
 		if (options.provider === "memory") {
-			return this.memoryCacheProvider;
+			return this.memoryCacheProvider; // force to use memory cache
 		}
 
-		return options.provider();
+		if (typeof options.provider === "object") {
+			return options.provider; // use custom provider instance
+		}
+
+		return options.provider(); // use provider factory function
 	}
 
 	/**
@@ -123,7 +127,7 @@ export class CacheDescriptorProvider {
 	 * Invalidate the cache for the given state and arguments.
 	 */
 	public async invalidate(cache: Cache, ...keys: string[]): Promise<void> {
-		await this.provider(cache.options).del(cache.group, ...keys);
+		await this.provider(cache.options).del(cache.name, ...keys);
 	}
 
 	/**
@@ -166,7 +170,7 @@ export class CacheDescriptorProvider {
 		}
 
 		const provider = this.provider(cache.options);
-		const data = await provider.get(cache.group, key);
+		const data = await provider.get(cache.name, key);
 		if (data) {
 			return this.deserialize<TReturn>(data);
 		}
@@ -197,23 +201,35 @@ export class CacheDescriptorProvider {
 			.as("milliseconds");
 
 		await provider.set(
-			cache.group,
+			cache.name,
 			key,
 			this.serialize(value),
 			px > 0 ? px : undefined,
 		);
 	}
 
-	protected serialize<TReturn>(value: TReturn): string {
-		return JSON.stringify(value);
+	protected serialize<TReturn>(value: TReturn): Buffer {
+		if (Buffer.isBuffer(value)) {
+			return Buffer.concat([Buffer.from([0x01]), value]);
+		}
+		return Buffer.concat([
+			Buffer.from([0x02]),
+			Buffer.from(JSON.stringify(value), "utf-8"),
+		]);
 	}
 
-	protected deserialize<TReturn>(value: string): TReturn {
-		return JSON.parse(value) as TReturn;
+	protected deserialize<TReturn>(buffer: Buffer): TReturn {
+		const type = buffer[0];
+		const payload = buffer.subarray(1); // skip header
+
+		if (type === 0x01) return payload as TReturn;
+		if (type === 0x02) return JSON.parse(payload.toString("utf8"));
+
+		throw new CacheError(`Unknown serialization type: ${type}`);
 	}
 }
 
 export interface Cache<TReturn = any, TParameter extends any[] = any[]> {
-	group: string;
+	name: string;
 	options: CacheDescriptorOptions<TReturn, TParameter>;
 }

@@ -38,12 +38,12 @@ test("Alepha#graph - basic ", async () => {
 
 	const a = Alepha.create();
 
-	a.register({
+	a.with({
 		provide: A,
 		use: A3,
 	});
 
-	a.register({
+	a.with({
 		provide: X,
 		use: X2,
 	});

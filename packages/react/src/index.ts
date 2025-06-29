@@ -1,10 +1,6 @@
-import { __bind, $inject, Alepha } from "@alepha/core";
-import {
-	ServerLinksProvider,
-	ServerModule,
-	type ServerRequest,
-} from "@alepha/server";
-import { ServerCacheModule } from "@alepha/server-cache";
+import { __bind, type Alepha, type Module } from "@alepha/core";
+import { AlephaServer, type ServerRequest } from "@alepha/server";
+import { AlephaServerCache } from "@alepha/server-cache";
 import { $page } from "./descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
@@ -52,17 +48,16 @@ declare module "@alepha/core" {
 	}
 }
 
-export class ReactModule {
-	protected readonly alepha = $inject(Alepha);
+// ---------------------------------------------------------------------------------------------------------------------
 
-	constructor() {
-		this.alepha //
-			.with(ServerModule)
-			.with(ServerCacheModule)
-			.with(ServerLinksProvider)
-			.with(PageDescriptorProvider)
-			.with(ReactServerProvider);
-	}
+export class AlephaReact implements Module {
+	public readonly name = "alepha.react";
+	public readonly $services = (alepha: Alepha) =>
+		alepha
+			.with(AlephaServer)
+			.with(AlephaServerCache)
+			.with(ReactServerProvider)
+			.with(PageDescriptorProvider);
 }
 
-__bind($page, ReactModule);
+__bind($page, AlephaReact);

@@ -34,10 +34,10 @@ export interface ServiceSubstitution<T extends object = any> {
 	use: Service<T>;
 
 	/**
-	 * If true, will not throw an error if the service already exists.
+	 * If true and the service already exists, just ignore the substitution and do not throw an error.
 	 * Mostly used for plugins to enforce a substitution without throwing an error.
 	 */
-	default?: boolean;
+	optional?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

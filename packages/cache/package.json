@@ -1,10 +1,9 @@
 {
 	"name": "@alepha/cache",
-	"description": "Cache module for Alepha - supports Redis and in-memory cache",
+	"description": "Cache module for Alepha - supports in-memory cache",
 	"keywords": [
 		"alepha",
 		"cache",
-		"redis",
 		"in-memory"
 	],
 	"author": "Feunard",
@@ -13,15 +12,13 @@
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
 		"@alepha/core": "0.7.3",
-		"@alepha/datetime": "0.7.3",
-		"@alepha/redis": "0.7.3"
+		"@alepha/datetime": "0.7.3"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

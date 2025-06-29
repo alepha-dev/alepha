@@ -1,5 +1,4 @@
-import type { Static } from "@alepha/core";
-import { __bind, $inject, Alepha, t } from "@alepha/core";
+import { __bind, type Alepha, type Module } from "@alepha/core";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
@@ -34,42 +33,18 @@ export * from "./schemas/pageSchema.ts";
 export * from "./services/Repository.ts";
 export * from "./types/schema.ts";
 
-const envSchema = t.object({
-	POSTGRES_PROVIDER: t.optional(t.enum(["pg"])),
-});
-
-declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
+export class AlephaPostgresModule implements Module {
+	public readonly name = "alepha.orm.postgres";
+	public readonly $services = (alepha: Alepha) =>
+		alepha
+			.with(RepositoryDescriptorProvider)
+			.with({
+				optional: true,
+				provide: PostgresProvider,
+				use: NodePostgresProvider,
+			})
+			.with(SequenceProvider);
 }
 
-export class PostgresModule {
-	protected readonly alepha = $inject(Alepha);
-	protected readonly env = $inject(envSchema);
-
-	constructor() {
-		this.alepha.register(RepositoryDescriptorProvider);
-
-		const name = this.getDefaultProviderName();
-
-		this.alepha.register({
-			default: true,
-			provide: PostgresProvider,
-			use: {
-				pg: NodePostgresProvider,
-			}[name],
-		});
-
-		this.alepha.register(SequenceProvider);
-	}
-
-	protected getDefaultProviderName() {
-		if (this.env.POSTGRES_PROVIDER) {
-			return this.env.POSTGRES_PROVIDER;
-		}
-
-		return "pg";
-	}
-}
-
-__bind($repository, PostgresModule);
-__bind($sequence, PostgresModule);
+__bind($repository, AlephaPostgresModule);
+__bind($sequence, AlephaPostgresModule);

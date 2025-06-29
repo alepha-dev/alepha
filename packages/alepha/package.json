@@ -31,23 +31,9 @@
 		"@alepha/server-swagger": "0.7.3",
 		"@alepha/testing": "0.7.3",
 		"@alepha/topic": "0.7.3",
-		"@alepha/vite": "0.7.3"
-	},
-	"peerDependencies": {
-		"@types/react": "^19",
-		"react": "^19",
-		"vite": "^6"
-	},
-	"peerDependenciesMeta": {
-		"@types/react": {
-			"optional": true
-		},
-		"react": {
-			"optional": true
-		},
-		"vite": {
-			"optional": true
-		}
+		"@alepha/vite": "0.7.3",
+		"@types/react": "^19.1.8",
+		"react": "^19.1.0"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
@@ -75,6 +61,11 @@
 			"import": "./cache.js",
 			"require": "./cache.cjs",
 			"types": "./cache.d.ts"
+		},
+		"./cache/redis": {
+			"import": "./cache/redis.js",
+			"require": "./cache/redis.cjs",
+			"types": "./cache/redis.d.ts"
 		},
 		"./core": {
 			"import": "./core.js",

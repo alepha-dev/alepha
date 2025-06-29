@@ -2,7 +2,7 @@ import { $logger, Alepha, MockLogger } from "@alepha/core";
 import { beforeEach, test } from "vitest";
 import { $action } from "../../descriptors/$action.ts";
 import { HttpError } from "../../errors/HttpError.ts";
-import { ServerModule } from "../../index";
+import { AlephaServer } from "../../index";
 import { ServerLoggerProvider } from "./ServerLoggerProvider.ts";
 
 class App {
@@ -38,7 +38,7 @@ const log = new MockLogger();
 const app = Alepha.create({
 	log,
 })
-	.with(ServerModule)
+	.with(AlephaServer)
 	.with(ServerLoggerProvider)
 	.get(App);
 

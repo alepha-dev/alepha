@@ -23,7 +23,7 @@ export const importAlepha = async (entry: string): Promise<Alepha> => {
 		throw new Error("Alepha instance not found. Ensure Alepha is initialized.");
 	}
 
-	await alepha.configure();
+	await alepha.emit("configure", alepha);
 
 	return alepha;
 };

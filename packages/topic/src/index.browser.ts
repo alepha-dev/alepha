@@ -15,13 +15,13 @@ export class TopicModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: TopicProvider,
 			use: MemoryTopicProvider,
 		});
 
-		this.alepha.register(TopicDescriptorProvider);
+		this.alepha.with(TopicDescriptorProvider);
 	}
 }
 

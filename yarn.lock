@@ -29,13 +29,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/cache-redis@workspace:packages/cache-redis":
+  version: 0.0.0-use.local
+  resolution: "@alepha/cache-redis@workspace:packages/cache-redis"
+  dependencies:
+    "@alepha/cache": "npm:0.7.3"
+    "@alepha/core": "npm:0.7.3"
+    "@alepha/redis": "npm:0.7.3"
+    pkgroll: "npm:^2.13.1"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/cache@npm:0.7.3, @alepha/cache@workspace:packages/cache":
   version: 0.0.0-use.local
   resolution: "@alepha/cache@workspace:packages/cache"
   dependencies:
     "@alepha/core": "npm:0.7.3"
     "@alepha/datetime": "npm:0.7.3"
-    "@alepha/redis": "npm:0.7.3"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -46,7 +57,6 @@ __metadata:
   resolution: "@alepha/cli@workspace:packages/cli"
   dependencies:
     "@sinclair/typebox": "npm:^0.34.37"
-    dotenv: "npm:^16.6.1"
     pkgroll: "npm:^2.13.1"
     shx: "npm:^0.4.0"
   languageName: unknown
@@ -342,6 +352,9 @@ __metadata:
     vite: "npm:^7.0.0"
   peerDependencies:
     vite: "*"
+  peerDependenciesMeta:
+    vite:
+      optional: true
   languageName: unknown
   linkType: soft
 
@@ -2423,12 +2436,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.0.6":
-  version: 24.0.6
-  resolution: "@types/node@npm:24.0.6"
+"@types/node@npm:^24.0.7":
+  version: 24.0.7
+  resolution: "@types/node@npm:24.0.7"
   dependencies:
     undici-types: "npm:~7.8.0"
-  checksum: 10c0/17f976364358f85294912e04f0de147da6ba5ce3fe495b758df58458241f110475905cd0bb4ace373e9c44a0a7927202043bf0501cc1f7644306bde310c62650
+  checksum: 10c0/be3849816dafc54ec79e6be6dafcf60bdb6466beaf0081b941142d260e2b2864855210dfe5b4395c59b276468528695aefcf4f060ac95cc433b2968e80a311f9
   languageName: node
   linkType: hard
 
@@ -3130,17 +3143,6 @@ __metadata:
     "@types/react": "npm:^19.1.8"
     pkgroll: "npm:^2.13.1"
     react: "npm:^19.1.0"
-  peerDependencies:
-    "@types/react": ^19
-    react: ^19
-    vite: ^6
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-    react:
-      optional: true
-    vite:
-      optional: true
   languageName: unknown
   linkType: soft
 
@@ -4195,13 +4197,6 @@ __metadata:
   version: 4.0.2
   resolution: "diff@npm:4.0.2"
   checksum: 10c0/81b91f9d39c4eaca068eb0c1eb0e4afbdc5bb2941d197f513dd596b820b956fef43485876226d65d497bebc15666aa2aa82c679e84f65d5f2bfbf14ee46e32c1
-  languageName: node
-  linkType: hard
-
-"dotenv@npm:^16.6.1":
-  version: 16.6.1
-  resolution: "dotenv@npm:16.6.1"
-  checksum: 10c0/15ce56608326ea0d1d9414a5c8ee6dcf0fffc79d2c16422b4ac2268e7e2d76ff5a572d37ffe747c377de12005f14b3cc22361e79fc7f1061cce81f77d2c973dc
   languageName: node
   linkType: hard
 
@@ -8515,7 +8510,7 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.0.6"
-    "@types/node": "npm:^24.0.6"
+    "@types/node": "npm:^24.0.7"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
     depcheck: "npm:^1.4.7"

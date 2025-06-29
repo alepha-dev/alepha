@@ -1,105 +1,90 @@
 import { $inject, $logger } from "@alepha/core";
 import { DateTimeProvider, type Timeout } from "@alepha/datetime";
-import type { CacheProvider } from "../interfaces/CacheProvider.ts";
+import type { CacheProvider } from "./CacheProvider.ts";
 
-/**
- * A simple in-memory store provider.
- */
+type CacheName = string;
+type CacheKey = string;
+type CacheValue = {
+	data?: Buffer;
+	timeout?: Timeout;
+};
+
 export class MemoryCacheProvider implements CacheProvider {
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly log = $logger();
 
-	/**
-	 * The in-memory store.
-	 */
-	protected store: Record<string, Record<string, string>> = {};
+	protected store: Record<CacheName, Record<CacheKey, CacheValue>> = {};
 
-	/**
-	 * Timeouts used to expire keys.
-	 */
-	protected storeTimeout: Record<string, Record<string, Timeout>> = {};
-
-	/**
-	 * Get the value of a key.
-	 *
-	 * @param group The group of the value to get.
-	 * @param key The key of the value to get.
-	 */
-	public async get(group: string, key: string): Promise<string | undefined> {
-		return this.store[group]?.[key];
+	public async get(name: string, key: string): Promise<Buffer | undefined> {
+		return this.store[name]?.[key]?.data;
 	}
 
-	/**
-	 * Set the string value of a key.
-	 *
-	 * @param group The group of the value to get.
-	 * @param key The key of the value to set.
-	 * @param value The value to set.
-	 * @param ttl The time-to-live of the key, in milliseconds.
-	 */
 	public async set(
-		group: string,
+		name: string,
 		key: string,
-		value: string,
+		value: Buffer,
 		ttl?: number,
-	): Promise<string> {
+	): Promise<Buffer> {
+		if (this.store[name] == null) {
+			this.store[name] = {};
+		}
+
+		this.store[name][key] ??= {};
+		this.store[name][key].data = value;
+
+		this.log.debug(`Setting cache for name`, { name, key, ttl });
+
+		// clear previous timeout if exists
+		if (this.store[name][key].timeout) {
+			this.store[name][key].timeout.clear();
+			this.store[name][key].timeout = undefined;
+		}
+
 		if (ttl) {
-			this.ttl(group, key, ttl);
+			this.store[name][key].timeout = this.dateTimeProvider.timeout(
+				() => this.del(name, key),
+				ttl,
+			);
 		}
 
-		if (this.store[group] == null) {
-			this.store[group] = {};
-		}
-
-		this.store[group][key] = value;
-
-		return this.store[group][key];
+		return this.store[name][key].data;
 	}
 
-	/**
-	 * Remove the specified keys.
-	 *
-	 * @param group The group of the value to get.
-	 * @param keys The keys to delete.
-	 */
-	public async del(group: string, ...keys: string[]): Promise<void> {
+	public async del(name: string, ...keys: string[]): Promise<void> {
+		// delete all keys in name
 		if (keys.length === 0) {
-			delete this.store[group];
+			this.log.debug(`Deleting all cache for name`, { name });
 
-			if (this.storeTimeout[group] != null) {
-				for (const timeout of Object.values(this.storeTimeout[group])) {
-					timeout.clear();
+			if (this.store[name]) {
+				for (const key of Object.keys(this.store[name])) {
+					this.store[name][key]?.timeout?.clear();
 				}
 			}
-
-			delete this.storeTimeout[group];
-
+			delete this.store[name];
 			return;
 		}
 
+		this.log.debug(`Deleting cache for name`, { name, keys });
+
+		// delete specific keys in name
 		for (const key of keys) {
-			if (this.store[group] == null) break;
+			if (this.store[name] == null) break;
 
-			delete this.store[group][key];
+			this.store[name][key]?.timeout?.clear();
+			delete this.store[name][key];
+		}
 
-			const timeout = this.storeTimeout[group]?.[key];
-			if (timeout) {
-				timeout.clear();
-				delete this.storeTimeout[group][key];
-			}
+		if (Object.keys(this.store[name] ?? {}).length === 0) {
+			// if name is empty, delete it
+			delete this.store[name];
 		}
 	}
 
-	private ttl(group: string, key: string, ms: number): void {
-		if (this.storeTimeout[group]?.[key]) {
-			this.storeTimeout[group][key].clear();
-			delete this.storeTimeout[group][key];
-		}
+	public async has(name: string, key: string): Promise<boolean> {
+		return this.store[name]?.[key]?.data != null;
+	}
 
-		this.storeTimeout[group] ??= {};
-		this.storeTimeout[group][key] = this.dateTimeProvider.timeout(() => {
-			delete this.store[group]?.[key];
-			delete this.storeTimeout[group]?.[key];
-		}, ms);
+	public async keys(name: string): Promise<string[]> {
+		return Object.keys(this.store[name] ?? {});
 	}
 }

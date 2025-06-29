@@ -123,7 +123,7 @@ export async function viteAlephaDev(
 			server.config.logger.info = (msg: string) => {
 				state.app?.log
 					.child({
-						caller: "Vite",
+						name: "alepha.vite",
 					})
 					.info(msg.trim());
 			};

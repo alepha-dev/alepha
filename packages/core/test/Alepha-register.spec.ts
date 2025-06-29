@@ -19,7 +19,7 @@ test("Alepha#register - basic swapping", () => {
 
 	expect(
 		Alepha.create()
-			.register({
+			.with({
 				provide: A,
 				use: class extends A {
 					value = "z";
@@ -29,7 +29,7 @@ test("Alepha#register - basic swapping", () => {
 	).toBe("z");
 });
 
-test("Alepha#register - default", () => {
+test("Alepha#register - optional", () => {
 	class A {
 		a = "a";
 	}
@@ -47,36 +47,36 @@ test("Alepha#register - default", () => {
 	const T1 = Alepha.create().with(M);
 	expect(T1.get(M).a.a).toBe("a");
 
-	const T2 = Alepha.create().register({
+	const T2 = Alepha.create().with({
 		provide: A,
 		use: B,
 	});
 	expect(T2.get(M).a.a).toBe("b");
 
 	const T3 = Alepha.create();
-	T3.register({
+	T3.with({
 		provide: A,
 		use: C,
-		default: true,
+		optional: true,
 	});
 	expect(T3.get(M).a.a).toBe("c");
 
 	const T4 = Alepha.create();
 	T4.with(M);
-	T4.register({
+	T4.with({
 		provide: A,
 		use: C,
-		default: true,
+		optional: true,
 	});
 	expect(T1.get(M).a.a).toBe("a");
 
 	const T5 = Alepha.create();
 	T5.with(M);
 	expect(() =>
-		T5.register({
+		T5.with({
 			provide: A,
 			use: C,
-			default: false, // should throw, because the default is already set
+			optional: false, // should throw, because the default is already set
 		}),
 	).toThrow(AlephaError);
 });

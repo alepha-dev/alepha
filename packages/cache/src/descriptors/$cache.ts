@@ -1,6 +1,6 @@
 import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
-import type { DefaultCacheProvider } from "../providers/DefaultCacheProvider.ts";
+import type { CacheProvider } from "../providers/CacheProvider.ts";
 
 const KEY = "CACHE";
 
@@ -8,6 +8,15 @@ export interface CacheDescriptorOptions<
 	TReturn,
 	TParameter extends any[] = any[],
 > {
+	/**
+	 * The cache name. This is useful for invalidating multiple caches at once.
+	 *
+	 * Store key as `cache:$name:$key`.
+	 *
+	 * @default ClassName:methodName
+	 */
+	name?: string;
+
 	/**
 	 * Function which returns cached data.
 	 * @param args Arguments for handler.
@@ -24,17 +33,7 @@ export interface CacheDescriptorOptions<
 	 * The store provider for the cache.
 	 * If not provided, the default store provider will be used.
 	 */
-	provider?: (() => DefaultCacheProvider) | "memory";
-
-	/**
-	 * The cache group. This is useful for invalidating multiple caches at once.
-	 * Key is used as the group if not provided.
-	 *
-	 * Store key as `cache:$group:$key`.
-	 *
-	 * @default ClassName:methodName
-	 */
-	group?: string;
+	provider?: CacheProvider | (() => CacheProvider) | "memory";
 
 	/**
 	 * The time-to-live for the cache in seconds.

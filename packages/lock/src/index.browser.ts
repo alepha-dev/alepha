@@ -16,19 +16,19 @@ export class LockModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: LockTopicProvider,
 			use: MemoryTopicProvider,
 		});
 
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: LockProvider,
 			use: MemoryLockProvider,
 		});
 
-		this.alepha.register(LockDescriptorProvider);
+		this.alepha.with(LockDescriptorProvider);
 	}
 }
 

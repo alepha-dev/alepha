@@ -48,7 +48,7 @@ export const __bind = (descriptor: { [KIND]: string }, ...to: Service[]) => {
 		if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
 			if (ctx[KIND] === descriptor[KIND]) {
 				for (const injectedClass of to) {
-					ctx.context.register(injectedClass);
+					ctx.context.with(injectedClass);
 				}
 			}
 		}

@@ -49,7 +49,7 @@ export class ServerCacheProvider {
 			}
 
 			const cache = this.cacheProvider.register({
-				group: `${route.method}:${route.path}`,
+				name: `${route.method}:${route.path}`,
 				options: {
 					provider: "memory",
 					key: (args: any) => this.createCacheKey(args),
@@ -115,8 +115,7 @@ export class ServerCacheProvider {
 			const key = this.createCacheKey(request);
 
 			// we only cache string responses (text, html, json, etc.)
-			// - buffer is not supported by @alepha/cache
-			// - caching binary data like images can be problematic (memory usage, etc.)
+			// - buffer is not supported by @alepha/cache, for now!
 
 			if (typeof response.body === "string") {
 				const etag = this.generateETag(response.body);
@@ -129,10 +128,6 @@ export class ServerCacheProvider {
 				});
 				response.headers ??= {};
 				response.headers.etag = etag;
-			} else {
-				this.log.warn(
-					`Response body for route ${route.method} ${route.path} is not a string, caching skipped.`,
-				);
 			}
 		},
 	});

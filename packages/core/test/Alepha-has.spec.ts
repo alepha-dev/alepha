@@ -13,7 +13,7 @@ class D {
 	alepha = $inject(Alepha);
 	constructor() {
 		if (this.alepha.has(A)) {
-			this.alepha.register(B);
+			this.alepha.with(B);
 		}
 	}
 }
@@ -23,7 +23,7 @@ test("Alepha#has", () => {
 	expect(container.has(A)).toBe(false);
 	expect(container.has(B)).toBe(false);
 	expect(container.has(C)).toBe(false);
-	container.register(C);
+	container.with(C);
 	expect(container.has(A)).toBe(true);
 	expect(container.has(B)).toBe(false);
 	expect(container.has(C)).toBe(true);

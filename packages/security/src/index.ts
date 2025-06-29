@@ -1,8 +1,9 @@
-import { __bind, $inject, Alepha } from "@alepha/core";
+import { __bind, type Alepha } from "@alepha/core";
 import { $permission } from "./descriptors/$permission.ts";
 import { $realm } from "./descriptors/$realm.ts";
 import { $role } from "./descriptors/$role.ts";
 import type { UserAccountInfo } from "./interfaces/UserAccountInfo.ts";
+import { JwtProvider } from "./providers/JwtProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
 
 export * from "./descriptors/$permission.ts";
@@ -27,14 +28,12 @@ declare module "@alepha/core" {
 	}
 }
 
-export class SecurityModule {
-	protected readonly alepha = $inject(Alepha);
-
-	constructor() {
-		this.alepha.register(SecurityProvider);
-	}
+export class AlephaSecurity {
+	public readonly name = "alepha.security";
+	public readonly $services = (alepha: Alepha) =>
+		alepha.with(SecurityProvider).with(JwtProvider);
 }
 
-__bind($realm, SecurityModule);
-__bind($role, SecurityModule);
-__bind($permission, SecurityModule);
+__bind($realm, AlephaSecurity);
+__bind($role, AlephaSecurity);
+__bind($permission, AlephaSecurity);

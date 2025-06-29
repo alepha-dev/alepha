@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { exec } from "node:child_process";
 import { join } from "node:path";
 import type { Static, TSchema } from "@sinclair/typebox";

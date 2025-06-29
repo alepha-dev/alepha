@@ -2,7 +2,7 @@ import {
 	__bind,
 	$inject,
 	Alepha,
-	type Service,
+	type Module,
 	type Static,
 	t,
 } from "@alepha/core";
@@ -138,50 +138,49 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export class ServerModule {
-	static plugins: Array<Service> = [];
-
+export class AlephaServer implements Module {
 	protected readonly env = $inject(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
-	constructor() {
-		this.alepha.with({
-			default: true,
+	public readonly name = "alepha.server";
+	public readonly $services = (alepha: Alepha) => {
+		alepha.with({
+			optional: true,
 			provide: ServerProvider,
 			use: NodeHttpServerProvider,
 		});
 
-		this.alepha.with(ServerActionDescriptorProvider);
-		this.alepha.with(ServerRouteDescriptorProvider);
-		this.alepha.with(RemoteDescriptorProvider);
-		this.alepha.with(ProxyDescriptorProvider);
+		alepha.with(ServerActionDescriptorProvider);
+		alepha.with(ServerRouteDescriptorProvider);
+		alepha.with(RemoteDescriptorProvider);
+		alepha.with(ProxyDescriptorProvider);
 
-		this.alepha.with(ServerLoggerProvider);
-		this.alepha.with(ServerBodyParserProvider);
-		this.alepha.with(ServerMultipartProvider);
-		this.alepha.with(ServerCompressProvider);
+		alepha.with(ServerLoggerProvider);
+		alepha.with(ServerBodyParserProvider);
+		alepha.with(ServerMultipartProvider);
+		alepha.with(ServerCompressProvider);
 
 		if (this.env.SERVER_TIMING_ENABLED ?? !this.alepha.isProduction()) {
-			this.alepha.with(ServerTimingProvider);
+			alepha.with(ServerTimingProvider);
 		}
 
 		if (this.env.SERVER_LINKS_ENABLED) {
-			this.alepha.with(ServerLinksProvider);
+			alepha.with(ServerLinksProvider);
 		}
 
 		if (this.env.SERVER_HEALTH_ENABLED) {
-			this.alepha.with(ServerHealthProvider);
+			alepha.with(ServerHealthProvider);
 		}
 
 		if (this.env.SERVER_NOT_READY_ENABLED) {
-			this.alepha.with(ServerNotReadyProvider);
+			alepha.with(ServerNotReadyProvider);
 		}
-	}
+	};
 }
 
-__bind($route, ServerModule);
-__bind($action, ServerModule);
-__bind($remote, ServerModule);
-__bind($proxy, ServerModule);
+__bind($route, AlephaServer);
+__bind($action, AlephaServer);
+__bind($remote, AlephaServer);
+__bind($proxy, AlephaServer);
 __bind($realm, ServerSecurityProvider);
 __bind($role, ServerSecurityProvider);

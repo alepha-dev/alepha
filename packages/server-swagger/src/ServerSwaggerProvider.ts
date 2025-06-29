@@ -11,7 +11,7 @@ import {
 	TypeGuard,
 	t,
 } from "@alepha/core";
-import { SecurityModule } from "@alepha/security";
+import { AlephaSecurity } from "@alepha/security";
 import {
 	ServerActionDescriptorProvider,
 	type ServerRouteAction,
@@ -69,7 +69,7 @@ export class ServerSwaggerProvider {
 			components: {},
 		};
 
-		const hasSecurity = this.alepha.has(SecurityModule);
+		const hasSecurity = this.alepha.has(AlephaSecurity);
 		if (hasSecurity && openApi.components) {
 			openApi.components.securitySchemes = {
 				bearerAuth: {

@@ -290,13 +290,12 @@ export class Logger {
 		output += " ";
 
 		if (this.context) {
-			output += `(${this.name}/${this.context})`;
-		} else {
-			output += `(${this.name})`;
+			output += this.colorize(COLORS.grey, `(${this.context})`);
+			output += " ";
 		}
 
 		if (this.caller) {
-			output += ` <${this.caller}>`;
+			output += `<${this.name}/${this.caller}>`;
 		}
 
 		if (message) {

@@ -1,6 +1,6 @@
 import { $hook, $logger } from "@alepha/core";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
-import dayjsDuration from "dayjs/plugin/duration";
+import dayjsDuration from "dayjs/plugin/duration.js";
 import type { IntervalDescriptorOptions } from "../descriptors/$interval.ts";
 import { Interval } from "../helpers/Interval.ts";
 import { Timeout } from "../helpers/Timeout.ts";

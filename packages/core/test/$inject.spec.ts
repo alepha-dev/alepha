@@ -108,7 +108,7 @@ test("$inject - circular", () => {
 test("$inject - circular fix", () => {
 	const superInject = <T extends object>(type: Service<T>): T => {
 		const { context } = $cursor();
-		context.register(Module); // <- replace .get by .register to fix circular dependency
+		context.with(Module); // <- replace .get by .with to fix circular dependency
 		return context.get(type);
 	};
 

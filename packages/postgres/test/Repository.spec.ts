@@ -2,7 +2,7 @@ import { $inject, Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
 import {
 	$repository,
-	PostgresModule,
+	AlephaPostgresModule,
 	pg,
 	pgTableSchema,
 	Repository,
@@ -90,7 +90,7 @@ test("Repository - inject", async () => {
 		repository = $inject(MyRepository);
 	}
 
-	const alepha = Alepha.create().with(PostgresModule);
+	const alepha = Alepha.create().with(AlephaPostgresModule);
 	const app = alepha.get(App);
 	await alepha.start();
 

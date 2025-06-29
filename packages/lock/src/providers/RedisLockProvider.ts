@@ -1,9 +1,5 @@
 import { $inject, $logger } from "@alepha/core";
-import {
-	type RedisClient,
-	RedisProvider,
-	type RedisSetOptions,
-} from "@alepha/redis";
+import { RedisProvider, type RedisSetOptions } from "@alepha/redis";
 import type { LockProvider } from "./LockProvider.ts";
 
 /**
@@ -12,13 +8,6 @@ import type { LockProvider } from "./LockProvider.ts";
 export class RedisLockProvider implements LockProvider {
 	protected readonly log = $logger();
 	protected readonly redisProvider = $inject(RedisProvider);
-
-	/**
-	 * Get the Redis publisher.
-	 */
-	protected get publisher(): RedisClient {
-		return this.redisProvider.publisher;
-	}
 
 	/**
 	 * Set the string value of a key.
@@ -49,13 +38,19 @@ export class RedisLockProvider implements LockProvider {
 			options.condition = "NX";
 		}
 
-		return ((await this.publisher.set(key, value, options)) ?? value) as string;
+		const resp = await this.redisProvider.set(key, value, options);
+		if (resp === null) {
+			this.log.debug(`Lock already exists`, { key, value });
+			return value;
+		}
+
+		return resp.toString("utf-8");
 	}
 
 	/**
 	 * Remove the specified keys.
 	 */
 	public async del(...keys: string[]): Promise<void> {
-		await this.publisher.del(keys);
+		await this.redisProvider.del(keys);
 	}
 }

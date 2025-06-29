@@ -15,6 +15,11 @@
 	"peerDependencies": {
 		"vite": "*"
 	},
+	"peerDependenciesMeta": {
+		"vite": {
+			"optional": true
+		}
+	},
 	"scripts": {
 		"build": "pkgroll --clean-dist"
 	},

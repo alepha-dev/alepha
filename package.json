@@ -10,7 +10,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.6",
-		"@types/node": "^24.0.6",
+		"@types/node": "^24.0.7",
 		"@vitest/coverage-v8": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
 		"depcheck": "^1.4.7",
@@ -27,6 +27,7 @@
 		"lint": "biome check --write --formatter-enabled=false ",
 		"check": "tsc --noEmit",
 		"test": "vitest run",
+		"build": "yarn alepha build",
 		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=@alepha/testing,shx,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets"
 	}
 }

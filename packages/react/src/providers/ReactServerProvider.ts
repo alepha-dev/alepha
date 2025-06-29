@@ -29,7 +29,7 @@ import {
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
 import { ServerHeadProvider } from "./ServerHeadProvider.ts";
 
-export const envSchema = t.object({
+const envSchema = t.object({
 	REACT_SERVER_DIST: t.string({ default: "public" }),
 	REACT_SERVER_PREFIX: t.string({ default: "" }),
 	REACT_SSR_ENABLED: t.optional(t.boolean()),

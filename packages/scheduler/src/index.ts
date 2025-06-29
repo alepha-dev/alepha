@@ -9,7 +9,7 @@ export class SchedulerModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		this.alepha.register(SchedulerDescriptorProvider);
+		this.alepha.with(SchedulerDescriptorProvider);
 	}
 }
 

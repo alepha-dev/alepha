@@ -1,5 +1,10 @@
-import { $hook, $inject, run, t } from "@alepha/core";
-import { $entity, PostgresModule, pg, Repository } from "@alepha/postgres";
+import { $hook, $inject, type Alepha, type Module, run, t } from "@alepha/core";
+import {
+	$entity,
+	AlephaPostgresModule,
+	pg,
+	Repository,
+} from "@alepha/postgres";
 
 const users = $entity({
 	name: "users",
@@ -22,4 +27,15 @@ class App {
 	});
 }
 
-run([PostgresModule, App]);
+class AppModule implements Module {
+	$services(alepha: Alepha) {
+		alepha.with(AlephaPostgresModule);
+		alepha.with(App);
+	}
+}
+
+run(AppModule, {
+	env: {
+		POSTGRES_SCHEMA: "playground",
+	},
+});

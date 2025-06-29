@@ -1,7 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { $action } from "@alepha/server";
 import { describe, test } from "vitest";
-import { ServerCacheModule, ServerCacheProvider } from "../src";
+import { AlephaServerCache, ServerCacheProvider } from "../src";
 
 class App {
 	counter = 0;
@@ -17,7 +17,7 @@ class App {
 
 describe("ServerCacheProvider", () => {
 	test("etag", async ({ expect }) => {
-		const alepha = Alepha.create().with(ServerCacheModule);
+		const alepha = Alepha.create().with(AlephaServerCache);
 		const app = alepha.get(App);
 		await alepha.start();
 
@@ -34,7 +34,7 @@ describe("ServerCacheProvider", () => {
 	});
 
 	test("default", async ({ expect }) => {
-		const alepha = Alepha.create().with(ServerCacheModule);
+		const alepha = Alepha.create().with(AlephaServerCache);
 		const app = alepha.get(App);
 		await alepha.start();
 
@@ -49,7 +49,7 @@ describe("ServerCacheProvider", () => {
 	});
 
 	test("invalidate", async ({ expect }) => {
-		const alepha = Alepha.create().with(ServerCacheModule);
+		const alepha = Alepha.create().with(AlephaServerCache);
 		const app = alepha.get(App);
 		await alepha.start();
 
@@ -64,7 +64,7 @@ describe("ServerCacheProvider", () => {
 	});
 
 	test("invalidate - $action", async ({ expect }) => {
-		const alepha = Alepha.create().with(ServerCacheModule);
+		const alepha = Alepha.create().with(AlephaServerCache);
 		const app = alepha.get(App);
 		await alepha.start();
 

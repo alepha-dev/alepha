@@ -1,15 +1,12 @@
-import { CacheModule } from "@alepha/cache";
-import { $inject, Alepha } from "@alepha/core";
-import { ServerModule } from "@alepha/server";
+import { AlephaCache } from "@alepha/cache";
+import type { Alepha, Module } from "@alepha/core";
+import { AlephaServer } from "@alepha/server";
 import { ServerCacheProvider } from "./providers/ServerCacheProvider.ts";
 
 export * from "./providers/ServerCacheProvider.ts";
 
-export class ServerCacheModule {
-	protected readonly alepha = $inject(Alepha);
-	constructor() {
-		this.alepha.with(ServerModule);
-		this.alepha.with(CacheModule);
-		this.alepha.with(ServerCacheProvider);
-	}
+export class AlephaServerCache implements Module {
+	public readonly name = "alepha.server.cache";
+	public readonly $services = (alepha: Alepha) =>
+		alepha.with(AlephaServer).with(AlephaCache).with(ServerCacheProvider);
 }

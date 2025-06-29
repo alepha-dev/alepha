@@ -27,15 +27,15 @@ export class TopicModule {
 	protected readonly env = $inject(envSchema);
 
 	constructor() {
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: TopicProvider,
 			use: {
 				memory: MemoryTopicProvider,
 				redis: RedisTopicProvider,
 			}[this.env.TOPIC_PROVIDER],
 		});
-		this.alepha.register(TopicDescriptorProvider);
+		this.alepha.with(TopicDescriptorProvider);
 	}
 }
 

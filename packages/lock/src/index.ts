@@ -34,8 +34,8 @@ export class LockModule {
 			this.alepha.with(RedisSubscriberProvider);
 		}
 
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: LockTopicProvider,
 			use: {
 				redis: RedisTopicProvider,
@@ -43,8 +43,8 @@ export class LockModule {
 			}[this.env.LOCK_PROVIDER],
 		});
 
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: LockProvider,
 			use: {
 				redis: RedisLockProvider,
@@ -52,7 +52,7 @@ export class LockModule {
 			}[this.env.LOCK_PROVIDER],
 		});
 
-		this.alepha.register(LockDescriptorProvider);
+		this.alepha.with(LockDescriptorProvider);
 	}
 }
 

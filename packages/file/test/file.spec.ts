@@ -161,7 +161,7 @@ describe("file", () => {
 		let testFileUrl: string;
 
 		beforeEach(async () => {
-			tempDir = join(tmpdir(), "file-utils-test-" + Date.now());
+			tempDir = join(tmpdir(), `file-utils-test-${Date.now()}`);
 			await mkdir(tempDir, { recursive: true });
 			testFilePath = join(tempDir, "test.txt");
 			testFileUrl = `file://${testFilePath}`;

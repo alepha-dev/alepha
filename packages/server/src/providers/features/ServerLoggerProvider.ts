@@ -1,7 +1,7 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 
 export class ServerLoggerProvider {
-	protected readonly log = $logger("Server");
+	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({

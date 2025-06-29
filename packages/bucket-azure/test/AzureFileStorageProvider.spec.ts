@@ -2,9 +2,9 @@ import { FileStorageProvider } from "@alepha/bucket";
 import { Alepha } from "@alepha/core";
 import { file } from "@alepha/file";
 import { describe, test } from "vitest";
-import { AzureBucketModule, AzureFileStorageProvider } from "../src";
+import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
 
-const alepha = Alepha.create().with(AzureBucketModule);
+const alepha = Alepha.create().with(AlephaBucketAzure);
 
 describe("AzureFileStorageProvider", () => {
 	test("upload", async ({ expect }) => {

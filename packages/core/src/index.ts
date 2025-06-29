@@ -1,5 +1,5 @@
 import { Alepha } from "./Alepha.ts";
-import type { RunOptions } from "./index.shared.ts";
+import type { RunOptions } from "./interfaces/Run.ts";
 import type { Service } from "./interfaces/Service.ts";
 
 export * from "./index.shared.ts";
@@ -11,9 +11,14 @@ export const run = (
 	const alepha =
 		entry instanceof Alepha
 			? entry
-			: Alepha.create({ env: { ...process.env, ...opts?.env } }).with(
-					...(Array.isArray(entry) ? entry : [entry]),
-				);
+			: Alepha.create({ env: { ...process.env, ...opts?.env } });
+
+	if (!(entry instanceof Alepha)) {
+		const entries = Array.isArray(entry) ? entry : [entry];
+		for (const e of entries) {
+			alepha.with(e);
+		}
+	}
 
 	(globalThis as any).__alepha = alepha;
 

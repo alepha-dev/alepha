@@ -7,12 +7,12 @@ export class QueueModule {
 	protected readonly alepha = $inject(Alepha);
 
 	constructor() {
-		this.alepha.register({
-			default: true,
+		this.alepha.with({
+			optional: true,
 			provide: QueueProvider,
 			use: MemoryQueueProvider,
 		});
 
-		this.alepha.register(QueueDescriptorProvider);
+		this.alepha.with(QueueDescriptorProvider);
 	}
 }

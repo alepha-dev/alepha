@@ -1,6 +1,11 @@
 import type { Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
-import { createClient, type SetOptions } from "@redis/client";
+import {
+	createClient,
+	RESP_TYPES,
+	type RedisClientType,
+	type SetOptions,
+} from "@redis/client";
 
 const envSchema = t.object({
 	REDIS_PORT: t.uint({
@@ -16,7 +21,13 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export type RedisClient = ReturnType<typeof createClient>;
+export type RedisClient = RedisClientType<
+	{},
+	{},
+	{},
+	3,
+	{ 36: BufferConstructor }
+>;
 export type RedisClientOptions = Parameters<typeof createClient>[0];
 export type RedisSetOptions = SetOptions;
 
@@ -62,7 +73,57 @@ export class RedisProvider {
 	}
 
 	public duplicate(options?: Partial<RedisClientOptions>): RedisClient {
-		return this.client.duplicate(options);
+		return this.client
+			.duplicate({
+				...options,
+				RESP: 3,
+			})
+			.withTypeMapping({
+				[RESP_TYPES.BLOB_STRING]: Buffer,
+			});
+	}
+
+	public async get(key: string): Promise<Buffer | undefined> {
+		const resp = await this.publisher.get(key);
+
+		if (resp === null) {
+			return undefined;
+		}
+
+		return Buffer.from(resp);
+	}
+
+	public async set(
+		key: string,
+		value: Buffer | string,
+		options?: RedisSetOptions,
+	): Promise<Buffer> {
+		const buf = Buffer.isBuffer(value) ? value : Buffer.from(value, "utf-8");
+		const resp = await this.publisher.set(key, buf, options);
+
+		if (resp === "OK" || !resp) {
+			return buf;
+		}
+
+		return Buffer.from(resp);
+	}
+
+	public async has(key: string): Promise<boolean> {
+		const resp = await this.publisher.exists(key);
+		return resp > 0;
+	}
+
+	public async keys(pattern: string): Promise<string[]> {
+		const keys = await this.publisher.keys(pattern);
+		return keys.map((key) => key.toString());
+	}
+
+	public async del(keys: string[]): Promise<void> {
+		if (keys.length === 0) {
+			return;
+		}
+
+		await this.publisher.del(keys);
 	}
 
 	/**
@@ -85,6 +146,9 @@ export class RedisProvider {
 
 		const client = createClient({
 			url: url.toString(),
+			RESP: 3,
+		}).withTypeMapping({
+			[RESP_TYPES.BLOB_STRING]: Buffer,
 		});
 
 		client.on("error", (error) => {
@@ -93,6 +157,6 @@ export class RedisProvider {
 			}
 		});
 
-		return client as RedisClient;
+		return client;
 	}
 }

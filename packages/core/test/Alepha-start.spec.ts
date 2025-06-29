@@ -29,7 +29,7 @@ test("Alepha#start - lock", async () => {
 		.start();
 
 	// you can't register after start.
-	expect(() => app.register(class {})).toThrow(ContainerLockedError);
+	expect(() => app.with(class {})).toThrow(ContainerLockedError);
 
 	// you can't get after start.
 	expect(() => app.get(class {})).toThrow(ContainerLockedError);
@@ -125,46 +125,6 @@ test("Alepha#start - hooks", async () => {
 	]);
 });
 
-// Not sure if this is a good idea. Disabled for now
-//
-// test("Alepha#start - clean up when failure", async () => {
-// 	let count = 0;
-//
-// 	class A {
-// 		start = $hook({ name: "start", handler: () => (count += 10) });
-// 		stop = $hook({ name: "stop", handler: () => (count -= 1) });
-// 	}
-//
-// 	class B extends A {}
-//
-// 	class C extends A {
-// 		start = $hook({
-// 			name: "start",
-// 			handler: () => {
-// 				throw new Error("BOOM");
-// 			},
-// 		});
-// 	}
-//
-// 	class D extends A {}
-//
-// 	expect(count).toBe(0);
-//
-// 	const app = Alepha.create({ env: {
-// 		LOG_LEVEL: "silent",
-// 	}})
-// 		.with(A)
-// 		.with(B)
-// 		.with(C)
-// 		.with(D);
-//
-// 	expect(count).toBe(0);
-//
-// 	await expect(app.start()).rejects.toThrow("BOOM");
-//
-// 	expect(count).toBe(10 + 10 - 1 - 1);
-// });
-
 test("Alepha#start - restart", async () => {
 	let count = 0;
 
@@ -217,5 +177,5 @@ test("Alepha#start - restart", async () => {
 	expect(alepha.isConfigured()).toBe(true);
 	expect(alepha.isLocked()).toBe(true);
 	expect(alepha.isStarted()).toBe(true);
-	expect(count).toBe(1210);
+	expect(count).toBe(1220);
 });
