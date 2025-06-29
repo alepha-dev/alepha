@@ -1,12 +1,8 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Alepha, State } from "@alepha/core";
-import {
-	loadEnv,
-	type Plugin,
-	type ResolvedConfig,
-	type ViteDevServer,
-} from "vite";
+import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import { importVite } from "./helpers/importVite.ts";
 
 export interface ViteAlephaDevOptions {
 	/**
@@ -162,6 +158,8 @@ const ssr = (state: ViteAlephaDevState) => {
 };
 
 const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
+	const { loadEnv } = await importVite();
+
 	if (state.started) {
 		state.log("[DEBUG] Already started - skip starting");
 		return;

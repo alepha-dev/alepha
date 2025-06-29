@@ -7,7 +7,8 @@ import {
 	type Static,
 	type TSchema,
 } from "@alepha/core";
-import type { ServerRequest, ServerRoute } from "@alepha/server";
+import type { ServerRequest } from "@alepha/server";
+import type { ServerRouteCache } from "@alepha/server-cache";
 import type { FC, ReactNode } from "react";
 import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
@@ -27,7 +28,7 @@ export interface PageDescriptorOptions<
 	TConfig extends PageConfigSchema = PageConfigSchema,
 	TProps extends object = TPropsDefault,
 	TPropsParent extends object = TPropsParentDefault,
-> extends Pick<ServerRoute, "cache"> {
+> {
 	/**
 	 * Name your page.
 	 *
@@ -117,6 +118,8 @@ export interface PageDescriptorOptions<
 	client?: boolean | ClientOnlyProps;
 
 	afterHandler?: (request: ServerRequest) => any;
+
+	cache?: ServerRouteCache;
 }
 
 export interface PageDescriptor<

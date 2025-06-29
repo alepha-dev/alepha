@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { loadEnv } from "vite";
+import { importVite } from "./helpers/importVite.ts";
 
 export interface ViteAlephaBuildVercelOptions {
 	/**
@@ -17,9 +17,12 @@ export interface ViteAlephaBuildVercelOptions {
 	clientDir?: string;
 }
 
-export function viteAlephaBuildVercel(opts: ViteAlephaBuildVercelOptions = {}) {
+export async function viteAlephaBuildVercel(
+	opts: ViteAlephaBuildVercelOptions = {},
+) {
 	const distDir = opts.distDir ?? "dist";
 	const clientDir = opts.clientDir ?? "public";
+	const { loadEnv } = await importVite();
 
 	const warning =
 		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +

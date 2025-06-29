@@ -10,6 +10,7 @@ import { ReactBrowserRenderer } from "./providers/ReactBrowserRenderer.ts";
 export * from "./providers/BrowserRouterProvider.ts";
 export * from "./providers/PageDescriptorProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
+export * from "./index.shared.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

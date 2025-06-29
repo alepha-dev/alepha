@@ -14,7 +14,7 @@ import {
 
 declare module "@alepha/server" {
 	interface ServerRoute {
-		cache?: ServiceRouteCache;
+		cache?: ServerRouteCache;
 	}
 	interface ActionDescriptor {
 		invalidate: () => Promise<void>;
@@ -163,7 +163,7 @@ export class ServerCacheProvider {
 	}
 }
 
-export type ServiceRouteCache =
+export type ServerRouteCache =
 	| boolean
 	| DurationLike
 	| Omit<CacheDescriptorOptions<any>, "handler" | "key">;

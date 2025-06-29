@@ -1,7 +1,7 @@
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type * as vite from "vite";
-import { mergeConfig, type UserConfig } from "vite";
+import type { UserConfig } from "vite";
 import { viteAlephaBuildVercel } from "../viteAlephaBuildVercel.ts";
 import { importVite } from "./importVite.ts";
 
@@ -14,7 +14,7 @@ export interface BuildServerOptions {
 }
 
 export const buildServer = async (opts: BuildServerOptions) => {
-	const { build: viteBuild } = await importVite();
+	const { build: viteBuild, mergeConfig } = await importVite();
 	const plugins: any[] = [];
 
 	if (opts.vercel) {
@@ -40,7 +40,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
 		build: {
 			ssr: opts.entry,
 			outDir: `${opts.distDir}/server`,
-			minify: true,
+			minify: false, // for now, we don't need to minify the server build
 			rollupOptions: {
 				output: {
 					entryFileNames: "[hash].mjs",
