@@ -13,10 +13,10 @@ import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./index.shared.ts";
 export * from "./providers/PageDescriptorProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
-export * from "./index.shared.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
