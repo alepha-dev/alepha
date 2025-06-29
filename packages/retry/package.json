@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/retry",
-	"version": "0.7.3",
+	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -10,7 +10,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.3"
+		"@alepha/core": "0.7.4"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

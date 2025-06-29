@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/scheduler",
-	"version": "0.7.3",
+	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -10,13 +10,13 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.3",
-		"@alepha/datetime": "0.7.3",
-		"@alepha/lock": "0.7.3",
+		"@alepha/core": "0.7.4",
+		"@alepha/datetime": "0.7.4",
+		"@alepha/lock": "0.7.4",
 		"node-cron": "^4.1.1"
 	},
 	"devDependencies": {
-		"@alepha/lock-redis": "0.7.3",
+		"@alepha/lock-redis": "0.7.4",
 		"pkgroll": "^2.13.1",
 		"vitest": "^3.2.4"
 	},

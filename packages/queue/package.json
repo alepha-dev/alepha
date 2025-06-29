@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/queue",
-	"version": "0.7.3",
+	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
 	"description": "Queue interface of Alepha Queue, with a in-memory implementation.",
@@ -11,8 +11,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.3",
-		"@alepha/datetime": "0.7.3"
+		"@alepha/core": "0.7.4",
+		"@alepha/datetime": "0.7.4"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

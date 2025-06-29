@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/queue-redis",
-	"version": "0.7.3",
+	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
 	"description": "Redis queue implementation of Alepha Queue.",
@@ -11,9 +11,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.3",
-		"@alepha/queue": "0.7.3",
-		"@alepha/redis": "0.7.3"
+		"@alepha/core": "0.7.4",
+		"@alepha/queue": "0.7.4",
+		"@alepha/redis": "0.7.4"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",

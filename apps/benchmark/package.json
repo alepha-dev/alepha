@@ -2,8 +2,8 @@
 	"type": "module",
 	"private": true,
 	"devDependencies": {
-		"@alepha/core": "0.7.3",
-		"@alepha/server": "0.7.3",
+		"@alepha/core": "0.7.4",
+		"@alepha/server": "0.7.4",
 		"@types/autocannon": "^7.12.7",
 		"autocannon": "^8.0.0",
 		"express": "^5.1.0",
