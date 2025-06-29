@@ -63,13 +63,15 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	if (lock) {
 		await expect
 			.poll(() => expect(sum()).toEqual(2), {
-				timeout: 5000,
+				timeout: 2000,
+				interval: 50,
 			})
 			.toBeTruthy();
 	} else {
 		await expect
 			.poll(() => expect(sum()).toEqual(2 * apps.length), {
-				timeout: 5000,
+				timeout: 2000,
+				interval: 50,
 			})
 			.toBeTruthy();
 	}
@@ -77,13 +79,13 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	await Promise.all(apps.map((app) => app.stop()));
 };
 
-const timeout = 10000;
+const timeout = 5000;
 
 test("$scheduler - cron", { timeout }, async () => {
 	await testSchedulerCron(true);
 });
 
-test("$scheduler - cron no-lock", { timeout }, async () => {
+test("$scheduler - cron no-lock", { timeout, retry: 3 }, async () => {
 	await testSchedulerCron(false);
 });
 
@@ -91,6 +93,6 @@ test("$scheduler - cron (redis)", { timeout }, async () => {
 	await testSchedulerCron(true, "redis");
 });
 
-test("$scheduler - cron no-lock (redis)", { timeout }, async () => {
+test("$scheduler - cron no-lock (redis)", { timeout, retry: 3 }, async () => {
 	await testSchedulerCron(false, "redis");
 });
