@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/feunard/alepha/refs/heads/main/assets/logo.png" alt="Logo" style="width: 256px"/>
+<img src="https://raw.githubusercontent.com/feunard/alepha/main/assets/logo.png" alt="Logo" style="width: 256px"/>
 
 <h1>Alepha</h1>
 
