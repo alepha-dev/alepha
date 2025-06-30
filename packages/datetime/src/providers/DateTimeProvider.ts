@@ -198,10 +198,10 @@ export class DateTimeProvider {
 	/**
 	 * Add time to the current date.
 	 */
-	public async travel(duration: DurationLike): Promise<void> {
+	public async travel(duration: DurationLike, unit?: ManipulateType): Promise<void> {
 		this.ref = this.ref || this.now();
-		this.ref = this.ref.add(this.duration(duration));
-		const ms = this.duration(duration).asMilliseconds();
+		this.ref = this.ref.add(this.duration(duration, unit));
+		const ms = this.duration(duration, unit).asMilliseconds();
 
 		for (const timeout of this.timeouts) {
 			timeout.add(ms);
