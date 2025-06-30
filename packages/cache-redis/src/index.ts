@@ -16,7 +16,7 @@ export * from "./providers/RedisCacheProvider.ts";
  * @see {@link RedisCacheProvider}
  * @module alepha.cache.redis
  */
-export class AlephaRedisCache implements Module {
+export class AlephaCacheRedis implements Module {
 	public readonly name = "alepha.cache.redis";
 	public readonly $services = (alepha: Alepha) =>
 		alepha

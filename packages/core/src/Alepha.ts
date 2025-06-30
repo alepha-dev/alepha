@@ -6,7 +6,6 @@ import { KIND } from "./constants/KIND.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { Hook } from "./descriptors/$hook.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
-import { AppNotStartedError } from "./errors/AppNotStartedError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
@@ -820,10 +819,6 @@ export class Alepha {
 			catch?: boolean;
 		} = {},
 	): Promise<void> {
-		if (!this.locked) {
-			throw new AppNotStartedError();
-		}
-
 		const ctx: any = {};
 
 		if (options.log) {

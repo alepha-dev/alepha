@@ -1,5 +1,5 @@
 import type { Alepha } from "@alepha/core";
-import { LockProvider, LockTopicProvider } from "@alepha/lock";
+import { AlephaLock, LockProvider, LockTopicProvider } from "@alepha/lock";
 import { RedisTopicProvider } from "@alepha/topic-redis";
 import { RedisLockProvider } from "./providers/RedisLockProvider.ts";
 
@@ -17,7 +17,7 @@ export * from "./providers/RedisLockProvider.ts";
  * @see {@link RedisLockProvider}
  * @module alepha.lock.redis
  */
-export class AlephaLock {
+export class AlephaLockRedis {
 	public readonly name = "alepha.lock.redis";
 	public readonly $services = (alepha: Alepha) =>
 		alepha
