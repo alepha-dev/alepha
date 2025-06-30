@@ -2,7 +2,7 @@
  * Cache provider interface.
  *
  * All methods are asynchronous and return promises.
- * Values are stored as Buffer.
+ * Values are stored as Uint8Array.
  */
 export abstract class CacheProvider {
 	/**
@@ -13,7 +13,10 @@ export abstract class CacheProvider {
 	 *
 	 * @return The value of the key, or undefined if the key does not exist.
 	 */
-	public abstract get(name: string, key: string): Promise<Buffer | undefined>;
+	public abstract get(
+		name: string,
+		key: string,
+	): Promise<Uint8Array | undefined>;
 
 	/**
 	 * Set the string value of a key.
@@ -28,9 +31,9 @@ export abstract class CacheProvider {
 	public abstract set(
 		name: string,
 		key: string,
-		value: Buffer,
+		value: Uint8Array,
 		ttl?: number,
-	): Promise<Buffer>;
+	): Promise<Uint8Array>;
 
 	/**
 	 * Remove the specified keys.

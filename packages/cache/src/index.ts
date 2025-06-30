@@ -4,6 +4,8 @@ import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider.ts"
 import { CacheProvider } from "./providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export * from "./descriptors/$cache.ts";
 export * from "./providers/CacheDescriptorProvider.ts";
 export * from "./providers/CacheProvider.ts";

@@ -5,7 +5,7 @@ import type { CacheProvider } from "./CacheProvider.ts";
 type CacheName = string;
 type CacheKey = string;
 type CacheValue = {
-	data?: Buffer;
+	data?: Uint8Array;
 	timeout?: Timeout;
 };
 
@@ -15,16 +15,16 @@ export class MemoryCacheProvider implements CacheProvider {
 
 	protected store: Record<CacheName, Record<CacheKey, CacheValue>> = {};
 
-	public async get(name: string, key: string): Promise<Buffer | undefined> {
+	public async get(name: string, key: string): Promise<Uint8Array | undefined> {
 		return this.store[name]?.[key]?.data;
 	}
 
 	public async set(
 		name: string,
 		key: string,
-		value: Buffer,
+		value: Uint8Array,
 		ttl?: number,
-	): Promise<Buffer> {
+	): Promise<Uint8Array> {
 		if (this.store[name] == null) {
 			this.store[name] = {};
 		}

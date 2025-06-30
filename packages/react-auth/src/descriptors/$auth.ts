@@ -19,6 +19,7 @@ export interface AuthDescriptorOptions {
 		clientSecret?: string;
 		redirectUri?: string;
 		useIdToken?: boolean;
+		logoutUri?: string;
 	};
 }
 

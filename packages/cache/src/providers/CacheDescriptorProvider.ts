@@ -172,7 +172,7 @@ export class CacheDescriptorProvider {
 		const provider = this.provider(cache.options);
 		const data = await provider.get(cache.name, key);
 		if (data) {
-			return this.deserialize<TReturn>(data);
+			return await this.deserialize<TReturn>(data);
 		}
 
 		return undefined;
@@ -208,22 +208,44 @@ export class CacheDescriptorProvider {
 		);
 	}
 
-	protected serialize<TReturn>(value: TReturn): Buffer {
-		if (Buffer.isBuffer(value)) {
-			return Buffer.concat([Buffer.from([0x01]), value]);
+	protected encoder = new TextEncoder();
+	protected decoder = new TextDecoder();
+	protected codes = {
+		BINARY: 0x01,
+		JSON: 0x02,
+		STRING: 0x03,
+	};
+
+	protected serialize<TReturn>(value: TReturn): Uint8Array {
+		if (value instanceof Uint8Array) {
+			return new Uint8Array([this.codes.BINARY, ...value]); // TODO: check if copy is ok?
 		}
-		return Buffer.concat([
-			Buffer.from([0x02]),
-			Buffer.from(JSON.stringify(value), "utf-8"),
+
+		if (typeof value === "string") {
+			return new Uint8Array([this.codes.STRING, ...this.encoder.encode(value)]);
+		}
+
+		return new Uint8Array([
+			this.codes.JSON,
+			...this.encoder.encode(JSON.stringify(value)),
 		]);
 	}
 
-	protected deserialize<TReturn>(buffer: Buffer): TReturn {
-		const type = buffer[0];
-		const payload = buffer.subarray(1); // skip header
+	protected async deserialize<TReturn>(
+		uint8Array: Uint8Array,
+	): Promise<TReturn> {
+		const type = uint8Array[0];
+		const payload = uint8Array.slice(1);
 
-		if (type === 0x01) return payload as TReturn;
-		if (type === 0x02) return JSON.parse(payload.toString("utf8"));
+		if (type === this.codes.BINARY) {
+			return payload as TReturn;
+		}
+		if (type === this.codes.JSON) {
+			return JSON.parse(this.decoder.decode(payload)) as TReturn;
+		}
+		if (type === this.codes.STRING) {
+			return this.decoder.decode(payload) as TReturn;
+		}
 
 		throw new CacheError(`Unknown serialization type: ${type}`);
 	}

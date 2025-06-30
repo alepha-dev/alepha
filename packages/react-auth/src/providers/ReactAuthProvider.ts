@@ -133,6 +133,7 @@ export class ReactAuthProvider {
 						client,
 						fallback: options.fallback,
 						useIdToken: options.oidc.useIdToken,
+						logoutUri: options.oidc.logoutUri,
 					});
 				}
 			}
@@ -371,7 +372,7 @@ export class ReactAuthProvider {
 		},
 		handler: async ({ query, cookies, reply }) => {
 			const redirect = query.redirect ?? "/";
-			const { client } = await this.provider(query.provider);
+			const { client, logoutUri } = await this.provider(query.provider);
 			const tokens = this.tokens.get(cookies);
 			if (!tokens?.access_token) {
 				reply.redirect(redirect);
@@ -397,6 +398,11 @@ export class ReactAuthProvider {
 			params.set("post_logout_redirect_uri", redirect);
 			if (idToken) {
 				params.set("id_token_hint", idToken);
+			}
+
+			if (logoutUri) {
+				reply.redirect(`${logoutUri}?${params}`);
+				return;
 			}
 
 			reply.redirect(buildEndSessionUrl(client, params).toString());
@@ -482,6 +488,7 @@ export interface AuthProvider {
 	};
 	fallback?: () => Async<AccessToken>;
 	useIdToken?: boolean;
+	logoutUri?: string;
 }
 
 export interface ReactUser {

@@ -98,5 +98,5 @@ test("$cache - unique key", async () => {
 
 	// [] means no args, it's JSON.stringify([])
 	const obj = await app.get(MemoryCacheProvider).get("A:task", "[]");
-	expect(obj?.subarray(1)?.toString()).toEqual('"DONE"');
+	expect(new TextDecoder().decode(obj?.slice(1))).toEqual('"DONE"');
 });

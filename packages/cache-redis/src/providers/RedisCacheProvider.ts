@@ -21,33 +21,42 @@ export class RedisCacheProvider implements CacheProvider {
 	protected readonly env = $inject(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
-	public async get(name: string, key: string): Promise<Buffer | undefined> {
+	public async get(name: string, key: string): Promise<Uint8Array | undefined> {
 		if (!this.alepha.isReady()) {
 			return;
 		}
 
-		return await this.redisProvider.get(this.prefix(name, key));
+		const buffer = await this.redisProvider.get(this.prefix(name, key));
+		if (!buffer) {
+			return;
+		}
+
+		this.log.debug(`Cache hit for ${name}:${key}`, { size: buffer.byteLength });
+		return new Uint8Array(buffer);
 	}
 
 	public async set(
 		name: string,
 		key: string,
-		value: Buffer | string,
+		value: Uint8Array | string,
 		ttl?: number,
-	): Promise<Buffer> {
+	): Promise<Uint8Array> {
 		if (!this.alepha.isReady()) {
-			return Buffer.from(value);
+			return new Uint8Array(Buffer.from(value));
 		}
 
+		const buffer = Buffer.from(value);
 		const prefix = this.prefix(name, key);
 
 		if (ttl) {
-			return await this.redisProvider.set(prefix, value, {
-				expiration: { type: "PX", value: ttl },
-			});
+			return new Uint8Array(
+				await this.redisProvider.set(prefix, buffer, {
+					expiration: { type: "PX", value: ttl },
+				}),
+			);
 		}
 
-		return this.redisProvider.set(prefix, value);
+		return new Uint8Array(await this.redisProvider.set(prefix, buffer));
 	}
 
 	public async del(name: string, ...keys: string[]): Promise<void> {
