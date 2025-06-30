@@ -302,7 +302,7 @@ export class Logger {
 		}
 
 		if (this.caller) {
-			output += `<${this.colorize(COLORS.reset, `${this.name}.`)}${this.colorize(COLORS.reset, this.caller)}>`;
+			output += `<${this.colorize(COLORS.white, `${this.name}.`)}${this.colorize(COLORS.reset, this.caller)}>`;
 		}
 
 		if (message) {

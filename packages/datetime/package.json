@@ -29,7 +29,7 @@
 	"keywords": [
 		"alepha",
 		"datetime",
-		"luxon",
+		"dayjs",
 		"duration",
 		"interval"
 	]

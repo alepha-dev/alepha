@@ -48,7 +48,7 @@ export class NodeHttpServerProvider implements ServerProvider {
 			// and if the request is for a static file (e.g. .js, .css, etc.)
 			this.alepha.isServerless() === "vite" &&
 			isNotFound &&
-			req.url?.includes(".")
+			(!route || req.url?.includes("."))
 		) {
 			// let vite handle the request
 			return;
