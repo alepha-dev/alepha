@@ -155,7 +155,7 @@ export class Alepha {
 	 */
 	public static create(state: Partial<State> = {}): Alepha {
 		// merge process.env with the state.env
-		if (typeof process?.env === "object") {
+		if (typeof process === "object" && typeof process.env === "object") {
 			state.env = {
 				...process.env,
 				...state.env,
