@@ -262,10 +262,9 @@ export class QueueDescriptorProvider {
 			return;
 		}
 
-		await this.dateTimeProvider.wait(
-			milliseconds,
-			this.state.abortController.signal,
-		);
+		await this.dateTimeProvider.wait(milliseconds, {
+			signal: this.state.abortController.signal,
+		});
 
 		if (intervals[n]) {
 			if (intervals[n] < this.env.QUEUE_WORKER_MAX_INTERVAL) {

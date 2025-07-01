@@ -5,7 +5,7 @@ import {
 	NotImplementedError,
 	OPTIONS,
 } from "@alepha/core";
-import type { DurationLike } from "@alepha/datetime";
+import type { DateTime, DurationLike } from "@alepha/datetime";
 
 const KEY = "SCHEDULER";
 
@@ -37,7 +37,7 @@ export type SchedulerDescriptorOptions = {
 	/**
 	 * Function to run on schedule.
 	 */
-	handler: () => Async<void>;
+	handler: (args: SchedulerHandlerArguments) => Async<void>;
 
 	/**
 	 * Name of the scheduler. Defaults to the function name.
@@ -61,7 +61,9 @@ export type SchedulerDescriptorOptions = {
 
 	/**
 	 * If true, the scheduler will be locked and only one instance will run at a time.
-	 * Defaults to true.
+	 * You probably need to import {@link AlephaLockRedis} for distributed locking.
+	 *
+	 * @default true
 	 */
 	lock?: boolean;
 };
@@ -70,4 +72,8 @@ export interface SchedulerDescriptor {
 	[KIND]: typeof KEY;
 	[OPTIONS]: SchedulerDescriptorOptions;
 	(): Promise<void>;
+}
+
+export interface SchedulerHandlerArguments {
+	now: DateTime;
 }

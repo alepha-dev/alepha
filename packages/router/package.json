@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/router",
+	"description": "Internal router used by Alepha Server and Alepha React.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

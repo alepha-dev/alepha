@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/security",
+	"description": "Manage realms, roles and permissions in Alepha. Supports JWT generation and verification.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
@@ -29,6 +30,10 @@
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
 	"keywords": [
-		"alepha"
+		"alepha",
+		"security",
+		"jwt",
+		"roles",
+		"permissions"
 	]
 }

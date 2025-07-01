@@ -21,7 +21,7 @@ class TestSchedulerCron {
 	env = $inject(env);
 	tick = 0;
 	t = $scheduler({
-		cron: "* * * * * *",
+		cron: "0 * * * *", // Every hour at minute 0
 		lock: this.env.LOCK,
 		handler: async () => {
 			this.tick += 1;
@@ -52,28 +52,25 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 		createApp(TestSchedulerCron, lock, provider, prefix),
 		createApp(TestSchedulerCron, lock, provider, prefix),
 	];
+
 	const sum = () =>
 		apps.reduce((acc, app) => acc + app.get(TestSchedulerCron).tick, 0);
 
-	const now = Date.now();
 	await Promise.all(apps.map((app) => app.start()));
 
-	// force one tick
-	await new Promise((resolve) => setTimeout(resolve, 1100));
+	// 🕒 simulate time travel to trigger the cron job 🕒
+	await Promise.all(
+		apps.map((app) => app.get(DateTimeProvider).travel(1, "hour")),
+	);
 
-	// /!\ cron will be triggered 1 or 2 times, depending on the clock and cpu
-	// so we expect 1 ou 2 ticks for Lock and count(apps) * (1 or 2) for no-lock
-	const elapsed = Date.now() - now;
-	// skip test if it took too long
-	if (elapsed > 1500) {
-		console.warn("Scheduler cron test took too long:", elapsed, "ms");
-		return;
-	}
+	// note: for now $timeout API is synchronous, so we must use a polling mechanism
+	// as it's not guaranteed that the job will run immediately :-(
+	// we will remove .poll() when $timeout API will be asynchronous
 
 	if (lock) {
-		expect(sum()).toBeOneOf([1, 2, 3]);
+		await expect.poll(() => sum()).toBe(1); // only one app should run the job due to the lock
 	} else {
-		expect(sum()).toBeGreaterThanOrEqual(4);
+		await expect.poll(() => sum()).toBe(apps.length);
 	}
 
 	await Promise.all(apps.map((app) => app.stop()));

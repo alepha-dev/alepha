@@ -1,6 +1,7 @@
 import { $hook, $logger } from "@alepha/core";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
+import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
 import type { IntervalDescriptorOptions } from "../descriptors/$interval.ts";
 import { Interval } from "../helpers/Interval.ts";
 import { Timeout } from "../helpers/Timeout.ts";
@@ -20,6 +21,7 @@ export class DateTimeProvider {
 
 	constructor() {
 		dayjs.extend(dayjsDuration);
+		dayjs.extend(dayjsRelativeTime);
 	}
 
 	protected readonly start = $hook({
@@ -117,25 +119,39 @@ export class DateTimeProvider {
 
 	/**
 	 * Wait for a certain duration.
+	 *
+	 * You can clear the timeout by using the `AbortSignal` API.
+	 * Aborted signal will resolve the promise immediately, it does not reject it.
 	 */
-	public wait(duration: DurationLike, signal?: AbortSignal): Promise<void> {
+	public wait(
+		duration: DurationLike,
+		options: {
+			signal?: AbortSignal;
+			now?: number;
+		} = {},
+	): Promise<void> {
 		return new Promise((resolve) => {
 			let clearTimeout: any;
 			let callback: any;
-			const timeout = this.timeout(() => {
-				if (signal && clearTimeout) {
-					signal.removeEventListener("abort", callback);
-				}
-				resolve();
-			}, duration);
 
-			if (signal) {
+			const timeout = this.timeout(
+				() => {
+					if (options.signal && clearTimeout) {
+						options.signal.removeEventListener("abort", callback);
+					}
+					resolve();
+				},
+				duration,
+				options.now,
+			);
+
+			if (options.signal) {
 				clearTimeout = () => timeout.clear();
 				callback = () => {
 					clearTimeout();
 					resolve();
 				};
-				signal.addEventListener("abort", callback);
+				options.signal.addEventListener("abort", callback);
 			}
 		});
 	}
@@ -143,9 +159,21 @@ export class DateTimeProvider {
 	/**
 	 * Run a callback after a certain duration.
 	 */
-	public timeout(callback: () => void, duration: DurationLike): Timeout {
+	public timeout(
+		callback: () => void,
+		duration: DurationLike,
+		now?: number,
+	): Timeout {
+		if (this.ref && now) {
+			const next = this.of(now).add(this.duration(duration));
+			if (next < this.now()) {
+				callback();
+			}
+			return new Timeout(now, 0, () => {});
+		}
+
 		const timeout = new Timeout(
-			this.now().valueOf(),
+			now ?? this.now().valueOf(),
 			this.duration(duration).asMilliseconds(),
 			callback,
 		);

@@ -10,12 +10,13 @@ import {
 } from "@alepha/core";
 import { DateTimeProvider, type Interval } from "@alepha/datetime";
 import { $lock } from "@alepha/lock";
-import cron, { type ScheduledTask } from "node-cron";
 import {
 	$scheduler,
 	type SchedulerDescriptor,
 	type SchedulerDescriptorOptions,
+	type SchedulerHandlerArguments,
 } from "../descriptors/$scheduler.ts";
+import { type CronJob, CronProvider } from "./CronScheduler.ts";
 
 const envSchema = t.object({
 	SCHEDULER_PREFIX: t.optional(
@@ -34,6 +35,7 @@ export class SchedulerDescriptorProvider {
 	protected readonly env = $inject(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly cronProvider = $inject(CronProvider);
 	protected readonly schedulers: Scheduler[] = [];
 
 	protected readonly configure = $hook({
@@ -48,11 +50,11 @@ export class SchedulerDescriptorProvider {
 		priority: "last",
 		handler: async () => {
 			for (const job of this.schedulers) {
-				if (job.cron) {
-					job.cron.start();
-				}
 				if (job.interval) {
 					await job.interval.start();
+				}
+				if (job.cron) {
+					this.cronProvider.start(job.cron);
 				}
 			}
 		},
@@ -62,15 +64,33 @@ export class SchedulerDescriptorProvider {
 		name: "stop",
 		handler: () => {
 			for (const job of this.schedulers) {
-				if (job.cron) {
-					job.cron.stop();
-				}
 				if (job.interval) {
 					job.interval.clear();
+				}
+				if (job.cron) {
+					this.cronProvider.stop(job.cron);
 				}
 			}
 		},
 	});
+
+	protected createContextId(): string {
+		const t = Date.now().toString(36);
+		const r = Math.random().toString(36).slice(2, 8);
+
+		let id = "";
+		for (let i = 0; i < 10; i++) {
+			id += (i % 2 === 0 ? t : r)[Math.floor(i / 2)] || "";
+		}
+
+		return (
+			"c" +
+			id
+				.split("")
+				.sort(() => 0.5 - Math.random())
+				.join("")
+		);
+	}
 
 	/**
 	 * Get the schedulers.
@@ -92,7 +112,9 @@ export class SchedulerDescriptorProvider {
 			this.schedulers.push(scheduler);
 
 			const $: SchedulerDescriptor = async () => {
-				await scheduler.trigger();
+				await scheduler.trigger({
+					now: this.dateTimeProvider.now(),
+				});
 			};
 
 			$[KIND] = value[KIND];
@@ -117,29 +139,58 @@ export class SchedulerDescriptorProvider {
 	): Scheduler {
 		const name = options.name ?? `${instance.constructor.name}.${key}`;
 		const scheduler: Scheduler = {
-			options: options,
 			name,
-			trigger: async () => {
-				if (options.lock !== false) {
-					await this.runLock({ ...options, name });
-				} else {
-					await this.run(options);
-				}
-			},
+			options: options,
+			trigger: this.createHandler(name, options),
 		};
 
 		if (options.cron) {
-			scheduler.cron = cron.createTask(options.cron, scheduler.trigger);
+			this.log.debug(`+ Cron "${options.cron}" -> "${name}"`);
+			scheduler.cron = this.cronProvider.create(
+				options.cron,
+				scheduler.trigger,
+			);
 		}
 
 		if (options.interval) {
+			this.log.debug(
+				`+ Interval "${this.dateTimeProvider.duration(options.interval).humanize()}" -> "${name}"`,
+			);
 			scheduler.interval = this.dateTimeProvider.interval({
 				duration: options.interval,
-				handler: scheduler.trigger,
+				handler: () =>
+					scheduler.trigger({
+						now: this.dateTimeProvider.now(),
+					}),
 			});
 		}
 
 		return scheduler;
+	}
+
+	protected createHandler(name: string, options: SchedulerDescriptorOptions) {
+		return async (args: SchedulerHandlerArguments) => {
+			if (!this.alepha.isStarted()) {
+				return;
+			}
+
+			this.alepha.context.run(
+				{
+					context: this.createContextId(),
+				},
+				async () => {
+					try {
+						if (options.lock !== false) {
+							await this.runLock({ ...options, name, args });
+						} else {
+							await options.handler(args);
+						}
+					} catch (error) {
+						this.log.error("Error running scheduler:", error);
+					}
+				},
+			);
+		};
 	}
 
 	public async trigger(name: string): Promise<void> {
@@ -148,29 +199,24 @@ export class SchedulerDescriptorProvider {
 		);
 
 		if (scheduler) {
-			await scheduler.trigger();
+			await scheduler.trigger({
+				now: this.dateTimeProvider.now(),
+			});
 		}
 	}
 
 	protected runLock = $lock({
 		gracePeriod: (options) => this.getLockGracePeriod(options),
 		key: (options) => this.prefix(options.name),
-		handler: async (options: SchedulerDescriptorOptions & { name: string }) => {
-			await this.run(options);
+		handler: async (
+			options: SchedulerDescriptorOptions & {
+				name: string;
+				args: SchedulerHandlerArguments;
+			},
+		) => {
+			await options.handler(options.args);
 		},
 	});
-
-	protected async run(options: SchedulerDescriptorOptions) {
-		if (!this.alepha.isStarted()) {
-			return;
-		}
-
-		try {
-			await options.handler();
-		} catch (error) {
-			this.log.error(error);
-		}
-	}
 
 	/**
 	 * Prefix the scheduler key.
@@ -200,7 +246,7 @@ export class SchedulerDescriptorProvider {
 export interface Scheduler {
 	name: string;
 	options: SchedulerDescriptorOptions;
-	trigger: () => Promise<void>;
-	cron?: ScheduledTask;
+	trigger: (args: SchedulerHandlerArguments) => Promise<void>;
+	cron?: CronJob;
 	interval?: Interval;
 }

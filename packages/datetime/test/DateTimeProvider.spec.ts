@@ -70,7 +70,9 @@ test("DateTimeProvider#wait", async () => {
 	const stack: string[] = [];
 
 	const abortController = new AbortController();
-	dt.wait([10, "minutes"], abortController.signal).then(() => stack.push("A"));
+	dt.wait([10, "minutes"], { signal: abortController.signal }).then(() =>
+		stack.push("A"),
+	);
 
 	expect(stack).toEqual([]);
 

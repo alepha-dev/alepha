@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/retry",
+	"description": "Simple retry function for Alepha.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

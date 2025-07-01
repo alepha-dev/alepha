@@ -1,9 +1,9 @@
 {
 	"name": "@alepha/queue",
+	"description": "Alepha queue module - queue interface with in-memory implementation.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
-	"description": "Alepha queue module - queue interface with in-memory implementation.",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"files": [
