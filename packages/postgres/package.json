@@ -24,7 +24,7 @@
 		"drizzle-kit": "0.31.4",
 		"pkgroll": "^2.13.1",
 		"vitest": "^3.2.4",
-		"zx": "^8.6.0"
+		"zx": "^8.6.1"
 	},
 	"scripts": {
 		"test": "vitest run",

@@ -15,7 +15,7 @@
 		"drizzle-kit": "^0.31.4",
 		"rolldown-vite": "^7.0.3",
 		"vercel": "^44.2.7",
-		"vite-bundle-analyzer": "^0.23.0"
+		"vite-bundle-analyzer": "^1.0.0"
 	},
 	"scripts": {
 		"dev": "vite",

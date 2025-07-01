@@ -132,7 +132,7 @@ __metadata:
     pkgroll: "npm:^2.13.1"
     postgres: "npm:^3.4.7"
     vitest: "npm:^3.2.4"
-    zx: "npm:^8.6.0"
+    zx: "npm:^8.6.1"
   languageName: unknown
   linkType: soft
 
@@ -248,7 +248,7 @@ __metadata:
     "@alepha/datetime": "npm:0.7.4"
     "@alepha/lock": "npm:0.7.4"
     "@alepha/lock-redis": "npm:0.7.4"
-    node-cron: "npm:^4.1.1"
+    node-cron: "npm:^4.2.0"
     pkgroll: "npm:^2.13.1"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -336,7 +336,7 @@ __metadata:
     pkgroll: "npm:^2.13.1"
     swagger-ui-dist: "npm:^5.25.3"
     vitest: "npm:^3.2.4"
-    zx: "npm:^8.6.0"
+    zx: "npm:^8.6.1"
   languageName: unknown
   linkType: soft
 
@@ -2482,12 +2482,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.0.7":
-  version: 24.0.7
-  resolution: "@types/node@npm:24.0.7"
+"@types/node@npm:^24.0.8":
+  version: 24.0.8
+  resolution: "@types/node@npm:24.0.8"
   dependencies:
     undici-types: "npm:~7.8.0"
-  checksum: 10c0/be3849816dafc54ec79e6be6dafcf60bdb6466beaf0081b941142d260e2b2864855210dfe5b4395c59b276468528695aefcf4f060ac95cc433b2968e80a311f9
+  checksum: 10c0/afc014193a1a58f545be023bd63a47639f09fddcaaf1ce271ae1b0f700d422aae425f453a8f428d98f772e08cc9bc54815da2b46ace2d1d4362f657c4172065f
   languageName: node
   linkType: hard
 
@@ -3535,7 +3535,7 @@ __metadata:
     react-dom: "npm:^19.1.0"
     rolldown-vite: "npm:^7.0.3"
     vercel: "npm:^44.2.7"
-    vite-bundle-analyzer: "npm:^0.23.0"
+    vite-bundle-analyzer: "npm:^1.0.0"
   languageName: unknown
   linkType: soft
 
@@ -7232,10 +7232,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-cron@npm:^4.1.1":
-  version: 4.1.1
-  resolution: "node-cron@npm:4.1.1"
-  checksum: 10c0/4798e3bc4a234512eae22e4a69dd24f82b5516e92011bfdeedb09270ab47a982c991c7fa5c4a9e22167123a1f01350dd041485560be1fd4abf174be15910b91c
+"node-cron@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "node-cron@npm:4.2.0"
+  checksum: 10c0/a1f886049df95c2331d4ed6c8b2045ab6552e8858c243d46eff71017eee7ae5714ff505a7aab38cb0275b3a0f049f19a0c5b762e2de9977b08d62bcabeccfc86
   languageName: node
   linkType: hard
 
@@ -8558,7 +8558,7 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.0.6"
-    "@types/node": "npm:^24.0.7"
+    "@types/node": "npm:^24.0.8"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
     depcheck: "npm:^1.4.7"
@@ -9962,12 +9962,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite-bundle-analyzer@npm:^0.23.0":
-  version: 0.23.0
-  resolution: "vite-bundle-analyzer@npm:0.23.0"
+"vite-bundle-analyzer@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "vite-bundle-analyzer@npm:1.0.0"
   bin:
     analyze: dist/bin.js
-  checksum: 10c0/584e3f82558a699ddd3028140d3cbb18735d702ba57bbd26b108ef43727eb2b25445a7954a392692580f6d83c8b39af03697cfbae9a1654b948f1064e5f24fcf
+  checksum: 10c0/9ad4ef7dd621e2e9bc4a3ea0063ef0f3748ff49174dd6fca3f6a97ddb0095c6a6f646fa8e71fcd1536963f5770199589db0c8041b855a03fd5dde67b82c65559
   languageName: node
   linkType: hard
 
@@ -10454,11 +10454,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zx@npm:^8.6.0":
-  version: 8.6.0
-  resolution: "zx@npm:8.6.0"
+"zx@npm:^8.6.1":
+  version: 8.6.1
+  resolution: "zx@npm:8.6.1"
   bin:
     zx: build/cli.js
-  checksum: 10c0/e43f0acb6572455c47c0ed4c402f73ed66ced2a8d3565adbdffaf0b5c6a7728e2f6aae271b9ebe7f480d6e63b75c8288575a7aa642508320bfc1dd8ef33e9a80
+  checksum: 10c0/ab22dd803e064a3bc3b96ee89049b473df8d1399f72681da6faf55590d68d155f2fbdfe752520ccd5e82f7cb6c3e52810818d4f75ae38aff7bba6898752d96ca
   languageName: node
   linkType: hard
