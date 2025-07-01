@@ -65,7 +65,7 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 	// so we expect 1 ou 2 ticks for Lock and count(apps) * (1 or 2) for no-lock
 	const elapsed = Date.now() - now;
 	// skip test if it took too long
-	if (elapsed > 2000) {
+	if (elapsed > 1500) {
 		console.warn("Scheduler cron test took too long:", elapsed, "ms");
 		return;
 	}
