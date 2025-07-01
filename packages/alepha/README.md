@@ -1,12 +1,15 @@
 <div align="center">
+
+<h1 >
 <img
-  src="https://raw.githubusercontent.com/feunard/alepha/main/assets/logo.png"
-  width="256"
-  height="256"
-  alt="Logo"
-  style="width: 256px; height: 256px"
+	src="https://raw.githubusercontent.com/feunard/alepha/main/assets/logo.png"
+	width="128"
+	height="128"
+	alt="Logo"
+  valign="middle"
 />
-<h1>Alepha</h1>
+Alepha
+</h1>
 <p style="max-width: 512px">
 🚧
 </p>
@@ -22,7 +25,6 @@
 ```bash
 npm install alepha
 ```
-
 
 ## Usage
 
