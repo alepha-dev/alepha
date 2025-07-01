@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-cache",
+	"description": "Server cache plugin for Alepha Server. Built on top of Alepha Cache. Supports ETag generation and cache control.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-swagger",
+	"description": "Server Swagger plugin for Alepha Server. Provides OpenAPIv3 documentation generation and Swagger UI integration.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/topic",
+	"description": "Alepha topic module - pub/sub interface with in-memory implementation.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

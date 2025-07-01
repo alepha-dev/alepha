@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/lock-redis",
+	"description": "Redis lock implementation for Alepha Lock.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

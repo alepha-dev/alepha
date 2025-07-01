@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cache",
-	"description": "Cache module for Alepha - supports in-memory cache",
+	"description": "Alepha cache module - cache interface with in-memory implementation.",
 	"keywords": [
 		"alepha",
 		"cache",

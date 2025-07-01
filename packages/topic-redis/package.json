@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/topic-redis",
+	"description": "Redis pub/sub implementation for Alepha Topic.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
@@ -26,6 +27,7 @@
 	"keywords": [
 		"alepha",
 		"topic",
+		"redis",
 		"pubsub"
 	]
 }

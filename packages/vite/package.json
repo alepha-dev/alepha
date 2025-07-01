@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/vite",
+	"description": "Vite plugin for Alepha.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/lock",
+	"description": "Alepha lock module - distributed mutex and semaphore interface with in-memory implementation.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

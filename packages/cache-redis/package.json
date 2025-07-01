@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cache-redis",
-	"description": "Add Redis provider to Alepha cache.",
+	"description": "Redis cache implementation for Alepha Cache.",
 	"keywords": [
 		"alepha",
 		"cache",

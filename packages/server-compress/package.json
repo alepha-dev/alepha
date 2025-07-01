@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-compress",
+	"description": "Server compression plugin for Alepha Server. Provides gzip and brotli compression support.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",

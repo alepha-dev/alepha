@@ -1,9 +1,9 @@
 {
 	"name": "@alepha/queue-redis",
+	"description": "Redis queue implementation for Alepha Queue.",
 	"version": "0.7.4",
-	"type": "module",
 	"license": "MIT",
-	"description": "Redis queue implementation of Alepha Queue.",
+	"type": "module",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"files": [

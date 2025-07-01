@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server",
+	"description": "Alepha server module - HTTP server provider.",
 	"version": "0.7.4",
 	"type": "module",
 	"license": "MIT",
