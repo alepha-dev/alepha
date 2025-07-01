@@ -63,18 +63,12 @@ jobs:
         run: yarn check-dependencies
 
       - name: Test Project
-        run: yarn test --coverage --reporter=junit --outputFile=test-report.junit.xml
+        run: yarn test --coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-
-      - name: Upload test results to Codecov
-        uses: codecov/test-results-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Build Project
-        run: yarn alepha build
+      #- name: Build Project
+      #  run: yarn alepha build
