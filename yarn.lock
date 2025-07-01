@@ -334,7 +334,7 @@ __metadata:
     "@alepha/server-static": "npm:0.7.4"
     openapi-types: "npm:^12.1.3"
     pkgroll: "npm:^2.13.1"
-    swagger-ui-dist: "npm:^5.25.3"
+    swagger-ui-dist: "npm:^5.25.4"
     vitest: "npm:^3.2.4"
     zx: "npm:^8.6.1"
   languageName: unknown
@@ -9316,12 +9316,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:^5.25.3":
-  version: 5.25.3
-  resolution: "swagger-ui-dist@npm:5.25.3"
+"swagger-ui-dist@npm:^5.25.4":
+  version: 5.25.4
+  resolution: "swagger-ui-dist@npm:5.25.4"
   dependencies:
     "@scarf/scarf": "npm:=1.4.0"
-  checksum: 10c0/3e37b0411c1b825dfba321654648c837d2eef6e0690ef027cb306c977210a523e2ac33dc5b5287fdd5b12892b495433c89fff6138f7d3377342e3f9ab77f5fa5
+  checksum: 10c0/7fe91850edb86e92394bdea14939e47cf33c205bdd561d2a04f04624fa0124a513b2d97f9259f301b851ac3e4f7e1374e95d8fa2a7bf0f9c84ed3950f0d78944
   languageName: node
   linkType: hard
 

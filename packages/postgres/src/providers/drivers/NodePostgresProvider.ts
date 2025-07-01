@@ -21,14 +21,7 @@ const envSchema = t.object({
 	PG_PASSWORD: t.optional(t.string()),
 	PG_PORT: t.optional(t.number()),
 
-	/**
-	 *
-	 */
 	DATABASE_URL: t.optional(t.string()),
-
-	/**
-	 *
-	 */
 	DATABASE_MIGRATIONS_FOLDER: t.string({
 		default: "drizzle",
 	}),
@@ -228,11 +221,11 @@ export class NodePostgresProvider implements PostgresProvider {
 		}
 
 		return {
-			host: url?.host ?? this.env.PG_HOST,
-			user: url?.username ?? this.env.PG_USERNAME,
-			database: url?.pathname.replace("/", "") ?? this.env.PG_DATABASE,
-			password: url?.password ?? this.env.PG_PASSWORD,
-			port: Number(url?.port ?? this.env.PG_PORT ?? 5432),
+			host: this.env.PG_HOST || url?.hostname,
+			user: this.env.PG_USERNAME || url?.username,
+			database: this.env.PG_DATABASE || url?.pathname.replace("/", ""),
+			password: this.env.PG_PASSWORD || url?.password,
+			port: Number(this.env.PG_PORT || url?.port || 5432),
 			ssl:
 				this.ssl(url) ??
 				(this.env.POSTGRES_REJECT_UNAUTHORIZED
