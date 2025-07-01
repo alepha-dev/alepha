@@ -1,17 +1,28 @@
-import type { Static, TArray, TObject } from "@sinclair/typebox";
+import type { Static, TArray, TObject, TPick } from "@sinclair/typebox";
 import type { SQLWrapper } from "drizzle-orm";
 import type { PG_MANY } from "../constants/PG_SYMBOLS.ts";
 import type { PgQueryWhere } from "./PgQueryWhere.ts";
 
-export interface PgQuery<T extends TObject> {
+export interface PgQuery<
+	T extends TObject,
+	Select extends (keyof Static<T>)[] = [],
+> {
+	columns?: Select;
+	distinct?: boolean;
 	where?: PgQueryWhereWithMany<T> | SQLWrapper;
 	limit?: number;
 	offset?: number;
 	sort?: {
 		[key in keyof Static<T>]?: "asc" | "desc";
 	};
+	groupBy?: (keyof Static<T>)[];
 	relations?: PgQueryWithMap<T>;
 }
+
+export type PgQueryResult<
+	T extends TObject,
+	Select extends (keyof Static<T>)[],
+> = TPick<T, Select>;
 
 export type PgQueryWhereWithMany<T extends TObject> = PgQueryWhere<
 	Static<RemoveManyRelations<T>>
@@ -55,6 +66,8 @@ export type PgQueryWith<T extends TObject | TArray> =
 	| {
 			// limit?: number;
 			// offset?: number;
+			// sort?:
+			// columns?: (keyof Static<T>)[];
 			relations?: {
 				[key: string]: PgQueryWith<T>;
 			};

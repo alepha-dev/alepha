@@ -41,6 +41,7 @@ import type {
 	PgTransaction,
 	PgTransactionConfig,
 	PgUpdateSetSource,
+	SelectedFields,
 	TableConfig,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -62,7 +63,7 @@ import { aggregateRowsByRelation } from "../helpers/relations.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { InferInsert } from "../interfaces/InferInsert.ts";
-import type { PgQuery } from "../interfaces/PgQuery.ts";
+import type { PgQuery, PgQueryResult } from "../interfaces/PgQuery.ts";
 import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
 import type { SQLLike } from "../providers/drivers/PostgresProvider.ts";
 import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
@@ -283,11 +284,31 @@ export class Repository<
 	 * @param opts The statement options.
 	 * @returns The found entities.
 	 */
-	public async find(
-		query: PgQuery<TTableSchema> = {},
+	public async find<Select extends (keyof Static<TTableSchema>)[]>(
+		query: PgQuery<TTableSchema, Select> = {},
 		opts: StatementOptions = {},
-	): Promise<Static<TTableSchema>[]> {
-		const builder = this.select(opts);
+	): Promise<Static<PgQueryResult<TTableSchema, Select>>[]> {
+		let schema: TObject | undefined;
+
+		if (typeof query.columns === "object") {
+			schema = t.pick(this.schema, query.columns) as TObject;
+		}
+
+		const builder = query.distinct
+			? (opts.tx ?? this.db)
+					.selectDistinct(
+						typeof query.columns === "undefined"
+							? {}
+							: query.columns.reduce((acc, key) => {
+									const col = this.col(key);
+									return {
+										...acc,
+										[col.name]: col,
+									};
+								}, {} as SelectedFields),
+					)
+					.from(this.table as PgTable)
+			: this.select(opts);
 
 		if (query.where) {
 			if (isSQLWrapper(query.where)) {
@@ -314,6 +335,10 @@ export class Repository<
 			);
 		}
 
+		if (query.groupBy) {
+			builder.groupBy(...query.groupBy.map((key) => this.col(key)));
+		}
+
 		if (opts.for) {
 			if (typeof opts.for === "string") {
 				builder.for(opts.for);
@@ -331,7 +356,7 @@ export class Repository<
 
 		const pgManyFields = this.withJoins(
 			builder,
-			query,
+			query as any,
 			this.schema,
 			this.id.col,
 		);
@@ -340,11 +365,11 @@ export class Repository<
 			.execute()
 			.then((rows) => {
 				if (pgManyFields.length) {
-					return this.aggregateRows(rows, pgManyFields, query);
+					return this.aggregateRows(rows, pgManyFields, query as any);
 				}
 				return rows;
 			})
-			.then((rows) => rows.map((row) => this.clean(row)));
+			.then((rows) => rows.map((row) => this.clean(row, schema)));
 	}
 
 	/**
