@@ -54,23 +54,18 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 
 	await Promise.all(apps.map((app) => app.start()));
 
+	// /!\ cron will be triggered 1 or 2 times, depending on the clock and cpu
+	// so we expect 1 ou 2 ticks for Lock and count(apps) * (1 or 2) for no-lock
+	await new Promise((resolve) => setTimeout(resolve, 1100));
+
 	const sum = () =>
 		apps.reduce((acc, app) => acc + app.get(TestSchedulerCron).tick, 0);
 
 	if (lock) {
-		await expect
-			.poll(() => expect(sum()).toEqual(2), {
-				timeout: 2000,
-				interval: 100,
-			})
-			.toBeTruthy();
+		expect(sum()).toBeOneOf([1, 2]);
 	} else {
-		await expect
-			.poll(() => expect(sum()).toBeGreaterThanOrEqual(2 * apps.length), {
-				timeout: 2000,
-				interval: 100,
-			})
-			.toBeTruthy();
+		expect(sum()).toBeGreaterThanOrEqual(apps.length);
+		expect(sum()).toBeLessThanOrEqual(apps.length * 2);
 	}
 
 	await Promise.all(apps.map((app) => app.stop()));
