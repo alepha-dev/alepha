@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/core",
 	"description": "Core library for Alepha, providing dependency injection and basic utilities.",
-	"version": "0.7.4",
+	"version": "0.7.5",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",

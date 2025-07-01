@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/lock-redis",
 	"description": "Redis lock implementation for Alepha Lock.",
-	"version": "0.7.4",
+	"version": "0.7.5",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,10 +11,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.4",
-		"@alepha/lock": "0.7.4",
-		"@alepha/redis": "0.7.4",
-		"@alepha/topic-redis": "0.7.4"
+		"@alepha/core": "0.7.5",
+		"@alepha/lock": "0.7.5",
+		"@alepha/redis": "0.7.5",
+		"@alepha/topic-redis": "0.7.5"
 	},
 	"devDependencies": {
 		"pkgroll": "^2.13.1",
