@@ -237,8 +237,8 @@ export class NodePostgresProvider implements PostgresProvider {
 				this.ssl(url) ??
 				(this.env.POSTGRES_REJECT_UNAUTHORIZED
 					? {
-						rejectUnauthorized: false,
-					}
+							rejectUnauthorized: false,
+						}
 					: undefined),
 			onnotice: () => {
 				// let drizzle handle logs

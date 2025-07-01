@@ -146,11 +146,16 @@ export interface Hooks {
  */
 export class Alepha {
 	/**
-	 * Syntactic sugar for creating a new instance of the container.
-	 * Equivalent to `Alepha.create()`.
+	 * Creates a new instance of the Alepha container with some helpers:
+	 *
+	 * - merges `process.env` with the provided state.env when available.
+	 * - populates the test hooks for Vitest or Jest environments when available.
+	 *
+	 * If you are not interested about these helpers, you can use the constructor directly.
 	 */
 	public static create(state: Partial<State> = {}): Alepha {
-		if (typeof process === "object" && process.env.NODE_ENV !== "test") {
+		// merge process.env with the state.env
+		if (typeof process?.env === "object") {
 			state.env = {
 				...process.env,
 				...state.env,
