@@ -16,7 +16,7 @@
 		"@alepha/security": "0.7.5",
 		"@alepha/server": "0.7.5",
 		"@alepha/server-cookies": "0.7.5",
-		"openid-client": "^6.6.1"
+		"openid-client": "^6.6.2"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
@@ -28,7 +28,7 @@
 		"react": "^19"
 	},
 	"scripts": {
-		"build": "pkgroll --clean-dist"
+		"build": "pkgroll"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

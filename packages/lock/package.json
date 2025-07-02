@@ -21,7 +21,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll --clean-dist"
+		"build": "pkgroll"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

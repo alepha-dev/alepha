@@ -118,6 +118,11 @@
 			"require": "./queue.cjs",
 			"types": "./queue.d.ts"
 		},
+		"./queue/redis": {
+			"import": "./queue/redis.js",
+			"require": "./queue/redis.cjs",
+			"types": "./queue/redis.d.ts"
+		},
 		"./scheduler": {
 			"import": "./scheduler.js",
 			"require": "./scheduler.cjs",
@@ -157,6 +162,11 @@
 			"import": "./topic.js",
 			"require": "./topic.cjs",
 			"types": "./topic.d.ts"
+		},
+		"./topic/redis": {
+			"import": "./topic/redis.js",
+			"require": "./topic/redis.cjs",
+			"types": "./topic/redis.d.ts"
 		},
 		"./vite": {
 			"import": "./vite.js",

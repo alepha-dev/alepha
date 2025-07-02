@@ -26,7 +26,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll --clean-dist"
+		"build": "pkgroll"
 	},
 	"repository": {
 		"type": "git",

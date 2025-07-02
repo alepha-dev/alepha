@@ -2,7 +2,3 @@
 *.map
 *.d.ts
 *.js
-react
-server
-!src/server
-!src/react

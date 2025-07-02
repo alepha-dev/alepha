@@ -1,19 +1,18 @@
 import { $command } from "../packages/cli/src/index.ts";
+import { readdir } from "node:fs/promises";
 
 export const clean = $command({
 	when: ["clean", "c"],
 	description: "Clean the project",
 	handler: async ({ run }) => {
 		await run("yarn convert ts");
-		await run("rm -rf packages/**/dist");
-		await run("rm -rf packages/**/node_modules");
-		await run("rm -rf packages/**/coverage");
-		await run("rm -rf packages/alepha/react");
-		await run("rm -rf packages/alepha/server");
-		await run("rm -rf packages/alepha/*.js");
-		await run("rm -rf packages/alepha/*.cjs");
-		await run("rm -rf packages/alepha/*.map");
-		await run("rm -rf packages/alepha/*.d.ts");
+		const p = "packages";
+		const a = `${p}/alepha`;
 		await run("rm -rf coverage");
+		await run(`rm -rf ${p}/**/dist ${p}/**/node_modules ${p}/**/coverage`);
+		const dirs = (await readdir(a)).filter((f) => f !== "src").map((f) => `${a}/${f}`).join(" ");
+		await run(`rm -rf ${dirs}`);
+		await run(`rm -rf ${a}/*.js ${a}/*.cjs ${a}/*.map ${a}/*.d.ts`);
+		await run("yarn");
 	},
 })

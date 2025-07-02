@@ -24,19 +24,23 @@ export const release = $command({
 		},
 	},
 	handler: async ({ run, flags }) => {
-		const diff = await run("git diff");
-		if (!!diff) {
+		if (await run("git diff")) {
 			console.log("Error - You must commit file(s) before running the release script.");
 			return;
 		}
 
-		await run("yarn");
 		await run("yarn alepha clean");
 		await run("yarn format");
 		await run("yarn lint");
 		await run("yarn check");
 		await run("yarn check-dependencies");
 		await run("yarn test");
+
+		if (await run("git diff")) {
+			console.log("Error - You must commit file(s) before running the release script.");
+			return;
+		}
+
 		await run("yarn alepha build");
 
 		const arg = Object.keys(flags).find(
@@ -54,7 +58,6 @@ export const release = $command({
 		);
 
 		await run("yarn alepha clean");
-		await run("yarn");
 
 		const version = await getVersion();
 
