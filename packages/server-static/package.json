@@ -2,6 +2,9 @@
 	"name": "@alepha/server-static",
 	"version": "0.7.5",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
@@ -16,11 +19,11 @@
 		"@alepha/server": "0.7.5"
 	},
 	"devDependencies": {
-		"pkgroll": "^2.13.1"
+		"tsdown": "^0.12.9"
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll"
+		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

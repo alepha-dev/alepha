@@ -12,6 +12,12 @@ import { $proxy } from "./descriptors/$proxy.ts";
 import { $remote } from "./descriptors/$remote.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
+import type {
+	ServerRequest,
+	ServerRequestConfigEntry,
+	ServerResponse,
+	ServerRoute,
+} from "./interfaces/index.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
 import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
@@ -26,12 +32,6 @@ import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
 import { RemoteDescriptorProvider } from "./providers/RemoteDescriptorProvider.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
 import { ServerRouteDescriptorProvider } from "./providers/ServerRouteDescriptorProvider.ts";
-import type {
-	ServerRequest,
-	ServerRequestConfigEntry,
-	ServerResponse,
-	ServerRoute,
-} from "./providers/ServerRouterProvider.ts";
 import type { FetchRunOptions, HttpClientLink } from "./services/HttpClient.ts";
 
 declare module "@alepha/core" {
@@ -93,6 +93,7 @@ export * from "./errors/HttpError.ts";
 export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
+export * from "./interfaces/index.ts";
 export * from "./providers/features/ServerHealthProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";

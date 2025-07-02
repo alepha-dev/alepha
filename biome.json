@@ -32,6 +32,7 @@
 			"correctness": {
 				"noUnusedImports": "error",
 				"noUnusedFunctionParameters": "off",
+				"noUnusedVariables": "off",
 				"noEmptyPattern": "off",
 				"useExhaustiveDependencies": "off"
 			},

@@ -1,5 +1,5 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
-import type { ServerRequest } from "../ServerRouterProvider.ts";
+import type { ServerRequest } from "../../interfaces/index.ts";
 
 type TimingMap = Record<string, [number, number]>;
 

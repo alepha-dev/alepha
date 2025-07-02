@@ -7,16 +7,19 @@ export const clean = $command({
 	handler: async ({ run }) => {
 		await run("yarn convert ts");
 		const p = "packages";
-		const a = `${p}/alepha`;
 		await run("rm -rf coverage");
 		await run(`rm -rf ${p}/**/dist ${p}/**/node_modules ${p}/**/coverage`);
-		const dirs = (await readdir(a))
-			.filter((f) => f !== "src" && !f.includes(".") && f !== "LICENSE")
-			.map((f) => `${a}/${f}`).join(" ");
-		if (dirs.trim()) {
-			await run(`rm -rf ${dirs}`);
+
+		const a = `${p}/alepha`;
+		await run(`rm -rf ${a}/*.js ${a}/*.cjs ${a}/*.d.ts`);
+		await run(`rm -rf ${a}/**/*.js ${a}/**/*.cjs ${a}/**/*.d.ts`);
+		const dirs = (await readdir(a, { withFileTypes: true }))
+			.filter((d) => d.isDirectory())
+			.map((d) => `${a}/${d.name}`)
+		if (dirs.length) {
+			await run(`rm -rf ${dirs.join(" ")}`);
 		}
-		await run(`rm -rf ${a}/*.js ${a}/*.cjs ${a}/*.map ${a}/*.d.ts`);
+
 		await run("yarn");
 	},
 })

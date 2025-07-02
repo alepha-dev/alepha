@@ -28,16 +28,16 @@ import {
 import { ForbiddenError } from "../errors/ForbiddenError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
+import type {
+	RequestConfigSchema,
+	ServerRequest,
+	ServerRequestConfigEntry,
+	ServerRoute,
+} from "../interfaces/index.ts";
 import type { ApiLinksResponse } from "../schemas/apiLinksResponseSchema.ts";
 import { HttpClient } from "../services/HttpClient.ts";
 import { ServerProvider } from "./platforms/ServerProvider.ts";
-import {
-	type RequestConfigSchema,
-	type ServerRequest,
-	type ServerRequestConfigEntry,
-	type ServerRoute,
-	ServerRouterProvider,
-} from "./ServerRouterProvider.ts";
+import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
 const envSchema = t.object({
 	SERVER_API_PREFIX: t.string({

@@ -2,6 +2,9 @@
 	"name": "alepha",
 	"version": "0.7.5",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"license": "MIT",
 	"description": "TypeScript framework for building full-stack apps with strict conventions, and React-based SPA or SSR without filesystem-based routing.",
 	"homepage": "https://github.com/feunard/alepha",
@@ -17,8 +20,10 @@
 		"@alepha/core": "0.7.5",
 		"@alepha/datetime": "0.7.5",
 		"@alepha/lock": "0.7.5",
+		"@alepha/lock-redis": "0.7.5",
 		"@alepha/postgres": "0.7.5",
 		"@alepha/queue": "0.7.5",
+		"@alepha/queue-redis": "0.7.5",
 		"@alepha/react": "0.7.5",
 		"@alepha/react-auth": "0.7.5",
 		"@alepha/redis": "0.7.5",
@@ -39,18 +44,16 @@
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
-		"pkgroll": "^2.13.1",
-		"react": "^19.1.0"
+		"react": "^19.1.0",
+		"tsdown": "^0.12.9"
 	},
 	"scripts": {
-		"build": "pkgroll --dist ./"
+		"build": "node build.ts"
 	},
 	"files": [
-		"src",
 		"**/*.js",
 		"**/*.cjs",
-		"**/*.d.ts",
-		"**/*.map"
+		"**/*.d.ts"
 	],
 	"exports": {
 		".": {
@@ -93,6 +96,16 @@
 			"require": "./postgres.cjs",
 			"types": "./postgres.d.ts"
 		},
+		"./queue": {
+			"import": "./queue.js",
+			"require": "./queue.cjs",
+			"types": "./queue.d.ts"
+		},
+		"./queue/redis": {
+			"import": "./queue/redis.js",
+			"require": "./queue/redis.cjs",
+			"types": "./queue/redis.d.ts"
+		},
 		"./react": {
 			"import": "./react.js",
 			"require": "./react.cjs",
@@ -113,16 +126,6 @@
 			"require": "./retry.cjs",
 			"types": "./retry.d.ts"
 		},
-		"./queue": {
-			"import": "./queue.js",
-			"require": "./queue.cjs",
-			"types": "./queue.d.ts"
-		},
-		"./queue/redis": {
-			"import": "./queue/redis.js",
-			"require": "./queue/redis.cjs",
-			"types": "./queue/redis.d.ts"
-		},
 		"./scheduler": {
 			"import": "./scheduler.js",
 			"require": "./scheduler.cjs",
@@ -137,6 +140,11 @@
 			"import": "./server.js",
 			"require": "./server.cjs",
 			"types": "./server.d.ts"
+		},
+		"./server/cache": {
+			"import": "./server/cache.js",
+			"require": "./server/cache.cjs",
+			"types": "./server/cache.d.ts"
 		},
 		"./server/cookies": {
 			"import": "./server/cookies.js",
@@ -153,10 +161,10 @@
 			"require": "./server/swagger.cjs",
 			"types": "./server/swagger.d.ts"
 		},
-		"./server/cache": {
-			"import": "./server/cache.js",
-			"require": "./server/cache.cjs",
-			"types": "./server/cache.d.ts"
+		"./testing": {
+			"import": "./testing.js",
+			"require": "./testing.cjs",
+			"types": "./testing.d.ts"
 		},
 		"./topic": {
 			"import": "./topic.js",
@@ -177,15 +185,28 @@
 	"keywords": [
 		"alepha",
 		"cache",
+		"cache-redis",
+		"core",
 		"datetime",
 		"lock",
+		"lock-redis",
 		"postgres",
 		"queue",
+		"queue-redis",
 		"react",
+		"react-auth",
 		"redis",
+		"retry",
 		"scheduler",
 		"security",
 		"server",
-		"topic"
+		"server-cache",
+		"server-cookies",
+		"server-static",
+		"server-swagger",
+		"testing",
+		"topic",
+		"topic-redis",
+		"vite"
 	]
 }

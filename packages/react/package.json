@@ -2,6 +2,9 @@
 	"name": "@alepha/react",
 	"version": "0.7.5",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
@@ -21,8 +24,8 @@
 	"devDependencies": {
 		"@types/react": "^19.1.8",
 		"@types/react-dom": "^19.1.6",
-		"pkgroll": "^2.13.1",
 		"react": "^19.1.0",
+		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
@@ -31,7 +34,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll"
+		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

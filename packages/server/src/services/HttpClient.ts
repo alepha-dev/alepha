@@ -22,7 +22,7 @@ import type {
 	ServerHandler,
 	ServerRequest,
 	ServerRequestConfigEntry,
-} from "../providers/ServerRouterProvider.ts";
+} from "../interfaces/index.ts";
 import {
 	type ApiLink,
 	type ApiLinksResponse,

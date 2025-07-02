@@ -1,7 +1,7 @@
 import type { Permission } from "@alepha/security";
 import { type RouteMethod, routeMethods } from "../constants/routeMethods.ts";
 import type { ActionDescriptorOptions } from "../descriptors/$action.ts";
-import type { RequestConfigSchema } from "../providers/ServerRouterProvider.ts";
+import type { RequestConfigSchema } from "../interfaces/index.ts";
 import type { HttpClientLink } from "../services/HttpClient.ts";
 
 export class ActionDescriptorHelper {

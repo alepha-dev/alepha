@@ -3,6 +3,9 @@
 	"description": "Manage realms, roles and permissions in Alepha. Supports JWT generation and verification.",
 	"version": "0.7.5",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
@@ -17,12 +20,12 @@
 		"jose": "^6.0.11"
 	},
 	"devDependencies": {
-		"pkgroll": "^2.13.1",
+		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll"
+		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

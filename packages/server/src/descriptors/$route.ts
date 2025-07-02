@@ -1,8 +1,5 @@
 import { __descriptor, KIND, OPTIONS } from "@alepha/core";
-import type {
-	RequestConfigSchema,
-	ServerRoute,
-} from "../providers/ServerRouterProvider.ts";
+import type { RequestConfigSchema, ServerRoute } from "../interfaces/index.ts";
 
 const KEY = "ROUTE";
 

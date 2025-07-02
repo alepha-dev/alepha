@@ -2,6 +2,9 @@
 	"name": "@alepha/postgres",
 	"version": "0.7.5",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
@@ -22,13 +25,13 @@
 	},
 	"devDependencies": {
 		"drizzle-kit": "0.31.4",
-		"pkgroll": "^2.13.1",
+		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4",
 		"zx": "^8.6.1"
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll",
+		"build": "tsdown -c ../../tsdown.config.ts",
 		"copy": "node scripts/copy.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",

@@ -15,12 +15,12 @@
 		"dayjs": "^1.11.13"
 	},
 	"devDependencies": {
-		"pkgroll": "^2.13.1",
+		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "pkgroll"
+		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

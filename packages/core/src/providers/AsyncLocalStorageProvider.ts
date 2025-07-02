@@ -1,16 +1,16 @@
-/// <reference types="vite/client" />
 import type { AsyncLocalStorage } from "node:async_hooks";
 
 export type AsyncLocalStorageData = any;
 
 export class AsyncLocalStorageProvider {
+	static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
+		return undefined;
+	};
+
 	protected als?: AsyncLocalStorage<AsyncLocalStorageData>;
 
-	public async init() {
-		if (import.meta.env?.SSR !== false) {
-			const { AsyncLocalStorage } = await import("node:async_hooks");
-			this.als = new AsyncLocalStorage<AsyncLocalStorageData>();
-		}
+	constructor() {
+		this.als = AsyncLocalStorageProvider.create();
 	}
 
 	public run<R>(data: AsyncLocalStorageData, callback: () => R) {

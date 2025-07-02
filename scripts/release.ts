@@ -29,19 +29,18 @@ export const release = $command({
 			return;
 		}
 
-		await run("yarn alepha clean");
+		await run("yarn clean");
 		await run("yarn format");
 		await run("yarn lint");
 		await run("yarn check");
 		await run("yarn check-dependencies");
 		await run("yarn test");
+		await run("yarn build");
 
 		if (await run("git diff")) {
 			console.log("Error - You must commit file(s) before running the release script.");
 			return;
 		}
-
-		await run("yarn alepha build");
 
 		const arg = Object.keys(flags).find(
 			(it) => it in { major: true, patch: true },
@@ -51,12 +50,12 @@ export const release = $command({
 			`yarn workspaces foreach --no-private --all version ${arg || "minor"}`,
 		);
 
+		await run("yarn convert js");
 		const registry = flags.registry ? `--registry ${flags.registry}` : "";
 		const dryRunArg = flags.dryRun ? "--dry-run" : "";
 		await run(
 			`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${dryRunArg} ${registry}`
 		);
-
 		await run("yarn alepha clean");
 
 		const version = await getVersion();

@@ -469,8 +469,6 @@ export class Alepha {
 
 		this.started = true;
 
-		await this.context.init();
-
 		await this.emit("ready", this, { log: true });
 
 		this.log.info(`App is now ready [${Date.now() - now}ms]`);

@@ -12,7 +12,7 @@ import type {
 	RequestConfigSchema,
 	ServerHandler,
 	ServerRoute,
-} from "../providers/ServerRouterProvider.ts";
+} from "../interfaces/index.ts";
 import type { FetchResponse, FetchRunOptions } from "../services/HttpClient.ts";
 
 const KEY = "ACTION";

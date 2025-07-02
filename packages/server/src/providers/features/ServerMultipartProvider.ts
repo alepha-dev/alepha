@@ -19,7 +19,7 @@ import Busboy, {
 } from "@fastify/busboy";
 import { HttpError } from "../../errors/HttpError.ts";
 import { ActionDescriptorHelper } from "../../helpers/ActionDescriptorHelper.ts";
-import type { ServerRoute } from "../ServerRouterProvider.ts";
+import type { ServerRoute } from "../../interfaces/index.ts";
 
 export class ServerMultipartProvider {
 	protected readonly helper = $inject(ActionDescriptorHelper);
