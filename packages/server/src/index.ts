@@ -34,6 +34,10 @@ import { ServerActionDescriptorProvider } from "./providers/ServerActionDescript
 import { ServerRouteDescriptorProvider } from "./providers/ServerRouteDescriptorProvider.ts";
 import type { FetchRunOptions, HttpClientLink } from "./services/HttpClient.ts";
 
+export const SERVER_ON_ROUTE = "server:onRequest" as const;
+export const SERVER_ON_REQUEST = "server:onRequest" as const;
+export const SERVER_ON_SEND = "server:onSend" as const;
+
 declare module "@alepha/core" {
 	interface Hooks {
 		"server:onRoute": {

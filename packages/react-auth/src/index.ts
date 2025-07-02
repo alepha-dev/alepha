@@ -1,5 +1,6 @@
 import { __bind, type Alepha, type Module } from "@alepha/core";
 import type { UserAccountToken } from "@alepha/security";
+import { AlephaServerCookies } from "@alepha/server-cookies";
 import { $auth } from "./descriptors/$auth.ts";
 import {
 	ReactAuthProvider,
@@ -36,6 +37,7 @@ declare module "@alepha/react" {
 export class AlephaReactAuth implements Module {
 	public readonly name = "alepha.react.auth";
 	public readonly $services = (alepha: Alepha) => {
+		alepha.with(AlephaServerCookies);
 		alepha.with(ReactAuthProvider);
 		alepha.with(ReactAuth);
 	};
