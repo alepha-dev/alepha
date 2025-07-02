@@ -40,7 +40,9 @@ export * from "./types/schema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-	DATABASE_URL: t.optional(t.string()),
+	DATABASE_URL: t.string({
+		default: ":memory:",
+	}),
 });
 
 export class AlephaPostgres implements Module {
