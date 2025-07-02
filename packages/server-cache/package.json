@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-cache",
 	"description": "Server cache plugin for Alepha Server. Built on top of Alepha Cache. Supports ETag generation and cache control.",
-	"version": "0.7.5",
+	"version": "0.7.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,10 +14,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.7.5",
-		"@alepha/core": "0.7.5",
-		"@alepha/datetime": "0.7.5",
-		"@alepha/server": "0.7.5"
+		"@alepha/cache": "0.7.6",
+		"@alepha/core": "0.7.6",
+		"@alepha/datetime": "0.7.6",
+		"@alepha/server": "0.7.6"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",

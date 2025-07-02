@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/react-auth",
-	"version": "0.7.5",
+	"version": "0.7.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,11 +14,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.5",
-		"@alepha/react": "0.7.5",
-		"@alepha/security": "0.7.5",
-		"@alepha/server": "0.7.5",
-		"@alepha/server-cookies": "0.7.5",
+		"@alepha/core": "0.7.6",
+		"@alepha/react": "0.7.6",
+		"@alepha/security": "0.7.6",
+		"@alepha/server": "0.7.6",
+		"@alepha/server-cookies": "0.7.6",
 		"openid-client": "^6.6.2"
 	},
 	"devDependencies": {

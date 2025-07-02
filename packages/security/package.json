@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/security",
 	"description": "Manage realms, roles and permissions in Alepha. Supports JWT generation and verification.",
-	"version": "0.7.5",
+	"version": "0.7.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,8 +15,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.5",
-		"@alepha/datetime": "0.7.5",
+		"@alepha/core": "0.7.6",
+		"@alepha/datetime": "0.7.6",
 		"jose": "^6.0.11"
 	},
 	"devDependencies": {
