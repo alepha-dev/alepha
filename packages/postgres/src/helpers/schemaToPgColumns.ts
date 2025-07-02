@@ -1,16 +1,59 @@
-import type { TSchema } from "@alepha/core";
-import { TypeGuard } from "@alepha/core";
+import { type TObject, type TSchema, TypeGuard } from "@alepha/core";
+import type { TableConfig } from "drizzle-orm";
+import type {
+	PgColumnBuilderBase,
+	PgTableWithColumns,
+} from "drizzle-orm/pg-core";
 import * as pg from "drizzle-orm/pg-core";
 import {
 	PG_CREATED_AT,
 	PG_IDENTITY,
+	PG_MANY,
 	PG_PRIMARY_KEY,
+	PG_REF,
 	PG_SERIAL,
 	PG_UPDATED_AT,
 	type PgIdentityOptions,
 } from "../constants/PG_SYMBOLS.ts";
+import type { TInsertObject } from "../interfaces/TInsertObject.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";
+
+/**
+ * Convert a Typebox Schema to Drizzle ORM Postgres columns (yes)
+ */
+export const schemaToPgColumns = <T extends TObject>(
+	schema: T,
+): FromSchema<T> => {
+	return Object.entries(schema.properties)
+		.filter(([, value]) => !(PG_MANY in value))
+		.reduce<Partial<FromSchema<T>>>((columns, [key, value]) => {
+			let col = mapFieldToColumn(key, value);
+
+			if (value.default != null) {
+				col = col.default(value.default);
+			}
+
+			if (PG_PRIMARY_KEY in value) {
+				col = col.primaryKey();
+			}
+
+			if (PG_REF in value) {
+				const config = value[PG_REF] as any;
+				col = col.references(config.ref, config.actions);
+			}
+
+			if (schema.required?.includes(key)) {
+				col = col.notNull();
+			}
+
+			return {
+				...columns,
+				[key]: col,
+			};
+		}, {}) as FromSchema<T>;
+};
+
 /**
  * Map a Typebox field to a PG column.
  *
@@ -95,15 +138,6 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 		}
 	}
 
-	// if (Array.isArray(value.anyOf)) {
-	// 	if (value.anyOf.every((it) => it.type === "number")) {
-	// 		return pg.integer(key);
-	// 	}
-	// 	if (value.anyOf.every((it) => it.type === "string")) {
-	// 		return pg.text(key).array();
-	// 	}
-	// }
-
 	if (TypeGuard.IsUnsafe(value)) {
 		if (value.type === "string") {
 			// t.enum()
@@ -161,4 +195,25 @@ export const camelToSnakeCase = (str: string) => {
 		str[0].toLowerCase() +
 		str.slice(1).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 	);
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Convert a schema to columns.
+ */
+export type FromSchema<T extends TObject> = {
+	[key in keyof T["properties"]]: PgColumnBuilderBase;
+};
+
+/**
+ * A table with columns and schema.
+ */
+export type PgTableWithColumnsAndSchema<
+	T extends TableConfig,
+	R extends TObject,
+> = PgTableWithColumns<T> & {
+	get $table(): PgTableWithColumns<T>;
+	get $schema(): R;
+	get $insertSchema(): TInsertObject<R>;
 };

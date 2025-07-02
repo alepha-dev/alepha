@@ -1,4 +1,4 @@
-import type { TSchema } from "@sinclair/typebox";
+import type { TObject, TSchema } from "@alepha/core";
 import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
 
 /**
@@ -25,9 +25,36 @@ export const pgAttr = <T extends TSchema, Attr extends PgSymbolKeys>(
 	return type as PgAttr<T, Attr>;
 };
 
+export const getAttrFields = (
+	schema: TObject,
+	name: PgSymbolKeys,
+): PgAttrField[] => {
+	const fields: Array<PgAttrField> = [];
+
+	for (const key of Object.keys(schema.properties)) {
+		const value = schema.properties[key];
+		if (name in value) {
+			fields.push({
+				type: value as TSchema,
+				key: key,
+				data: (value as any)[name],
+			});
+		}
+	}
+
+	return fields;
+};
+
 /**
  * Type representation.
  */
 export type PgAttr<T extends TSchema, TAttr extends PgSymbolKeys> = T & {
 	[K in TAttr]: PgSymbols[K];
 };
+
+export interface PgAttrField {
+	key: string;
+	type: TSchema;
+	data: any;
+	nested?: any[];
+}

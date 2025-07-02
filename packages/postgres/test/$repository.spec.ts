@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { $repository } from "../src";
 import { bigEntity } from "./fixtures/bigEntitySchema.ts";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
@@ -11,10 +11,10 @@ class App {
 	create = (data: InsertUserEntity) => this.users.create(data);
 }
 
-const alepha = Alepha.create({ beforeAll, afterAll });
-const app = alepha.get(App);
+const testPgAttr = async (alepha: Alepha) => {
+	const app = alepha.get(App);
+	await alepha.start();
 
-test("$repository - pg.attr", async () => {
 	const entity = await app.users.create({
 		suspect: "hey",
 		name: "John",
@@ -26,9 +26,26 @@ test("$repository - pg.attr", async () => {
 	expect((entity as any).suspect).toBeUndefined();
 	expect(entity.name).toEqual("John");
 	expect(entity.profile.age).toEqual(30);
+};
+
+test("$repository - pg.attr", async () => {
+	await testPgAttr(Alepha.create());
 });
 
-test("$repository - all types", async () => {
+test("$repository - pg.attr (sqlite)", async () => {
+	await testPgAttr(
+		Alepha.create({
+			env: {
+				DATABASE_URL: ":memory:",
+			},
+		}),
+	);
+});
+
+const testAllTypes = async (alepha: Alepha) => {
+	const app = alepha.get(App);
+	await alepha.start();
+
 	const data = {
 		a: "a",
 		b: 1.111,
@@ -88,4 +105,18 @@ test("$repository - all types", async () => {
 		id: entity.id,
 		...data,
 	});
+};
+
+test("$repository - all types", async () => {
+	await testAllTypes(Alepha.create());
+});
+
+test("$repository - all types (sqlite)", async () => {
+	await testAllTypes(
+		Alepha.create({
+			env: {
+				DATABASE_URL: ":memory:",
+			},
+		}),
+	);
 });

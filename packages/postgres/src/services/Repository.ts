@@ -35,7 +35,6 @@ import type {
 	PgColumn,
 	PgDatabase,
 	PgInsertValue,
-	PgSelectJoinFn,
 	PgTable,
 	PgTableWithColumns,
 	PgTransaction,
@@ -45,7 +44,6 @@ import type {
 	TableConfig,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
-import type { PgSymbolKeys } from "../constants/PG_SYMBOLS.ts";
 import {
 	PG_MANY,
 	PG_PRIMARY_KEY,
@@ -59,8 +57,9 @@ import { PgError } from "../errors/PgError.ts";
 import { VersionMismatchError } from "../errors/VersionMismatchError.ts";
 import type { NullifyIfOptional } from "../helpers/nullToUndefined.ts";
 import { nullToUndefined } from "../helpers/nullToUndefined.ts";
-import { aggregateRowsByRelation } from "../helpers/relations.ts";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
+import { getAttrFields } from "../helpers/pgAttr.ts";
+import { aggregateRowsByRelation, withJoins } from "../helpers/relations.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { InferInsert } from "../interfaces/InferInsert.ts";
 import type { PgQuery, PgQueryResult } from "../interfaces/PgQuery.ts";
@@ -120,6 +119,7 @@ export class Repository<
 		col: PgColumn;
 	};
 
+	// to be "descriptor compliant", will be deleted after Repository<Schema> refactoring
 	[OPTIONS]: {
 		table: TTable;
 		schema: TTableSchema;
@@ -354,7 +354,7 @@ export class Repository<
 			}
 		}
 
-		const pgManyFields = this.withJoins(
+		const pgManyFields = withJoins(
 			builder,
 			query as any,
 			this.schema,
@@ -363,12 +363,15 @@ export class Repository<
 
 		return builder
 			.execute()
-			.then((rows) => {
-				if (pgManyFields.length) {
-					return this.aggregateRows(rows, pgManyFields, query as any);
-				}
-				return rows;
-			})
+			.then((rows) =>
+				aggregateRowsByRelation(
+					rows,
+					pgManyFields,
+					query as any,
+					this.tableName,
+					this.id.key as string,
+				),
+			)
 			.then((rows) => rows.map((row) => this.clean(row, schema)));
 	}
 
@@ -573,12 +576,12 @@ export class Repository<
 	): Promise<Static<TTableSchema>> {
 		const set = data as any;
 
-		const updatedAtFields = this.getAttrFields(this.schema, PG_UPDATED_AT);
+		const updatedAtFields = getAttrFields(this.schema, PG_UPDATED_AT);
 		for (const updatedAtField of updatedAtFields) {
 			set[updatedAtField.key] = new Date().toISOString();
 		}
 
-		const versionFields = this.getAttrFields(this.schema, PG_VERSION);
+		const versionFields = getAttrFields(this.schema, PG_VERSION);
 		for (const versionField of versionFields) {
 			if (set[versionField.key] != null) {
 				set[versionField.key] = set[versionField.key] + 1;
@@ -742,7 +745,7 @@ export class Repository<
 		col: (key: string) => PgColumn = (key) => this.col(key),
 	): SQL | undefined {
 		const conditions: SQL[] = [];
-		const pgManyRelationFields = this.getAttrFields(schema, PG_MANY);
+		const pgManyRelationFields = getAttrFields(schema, PG_MANY);
 		const keys = Object.keys(query) as Array<
 			keyof PgQueryWhere<Static<TTableSchema>> & string
 		>;
@@ -945,7 +948,7 @@ export class Repository<
 	protected cast(data: any, insert: boolean): PgInsertValue<TTable> {
 		const schema = insert ? this.insertSchema : this.schema;
 
-		const versionFields = this.getAttrFields(this.schema, PG_VERSION);
+		const versionFields = getAttrFields(this.schema, PG_VERSION);
 		for (const versionField of versionFields) {
 			if (insert) {
 				(data as any)[versionField.key] = 0;
@@ -1010,37 +1013,13 @@ export class Repository<
 	}
 
 	/**
-	 * Get all fields with a specific attribute.
-	 *
-	 * @param schema
-	 * @param name
-	 * @protected
-	 */
-	protected getAttrFields(schema: TObject, name: PgSymbolKeys): PgAttrField[] {
-		const fields: Array<PgAttrField> = [];
-
-		for (const key of Object.keys(schema.properties)) {
-			const value = schema.properties[key];
-			if (name in value) {
-				fields.push({
-					type: value as TSchema,
-					key: key,
-					data: (value as any)[name],
-				});
-			}
-		}
-
-		return fields;
-	}
-
-	/**
 	 * Find a primary key in the schema.
 	 *
 	 * @param schema
 	 * @protected
 	 */
 	protected getPrimaryKey(schema: TObject) {
-		const primaryKeys = this.getAttrFields(schema, PG_PRIMARY_KEY);
+		const primaryKeys = getAttrFields(schema, PG_PRIMARY_KEY);
 		if (primaryKeys.length === 0) {
 			throw new Error("Primary key not found in schema");
 		}
@@ -1056,96 +1035,6 @@ export class Repository<
 			col: this.col(primaryKeys[0].key),
 			type: primaryKeys[0].type,
 		};
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-	// Relations
-
-	/**
-	 * Try to aggregate the rows after a select JOIN.
-	 *
-	 * @param rows
-	 * @param pgManyFields
-	 * @param query
-	 * @protected
-	 */
-	protected aggregateRows(
-		rows: any[],
-		pgManyFields: PgAttrField[],
-		query: PgQuery<any>,
-	) {
-		return aggregateRowsByRelation(
-			rows,
-			pgManyFields,
-			query,
-			this.tableName,
-			this.id.key as string,
-		);
-	}
-
-	/**
-	 * Populate the JOINs in the query.
-	 *
-	 * @param builder
-	 * @param query
-	 * @param schema
-	 * @param id
-	 * @protected
-	 */
-	protected withJoins(
-		builder: {
-			leftJoin: PgSelectJoinFn<any, any, "left", true>;
-			innerJoin: PgSelectJoinFn<any, any, "inner", true>;
-		},
-		query: PgQuery<any>,
-		schema: TObject,
-		id: PgColumn,
-	) {
-		if (isSQLWrapper(query.where)) {
-			return [];
-		}
-
-		const pgManyFields = this.getAttrFields(schema, PG_MANY);
-
-		for (const pgManyField of pgManyFields) {
-			const withQuery = query.relations?.[pgManyField.key];
-			if (withQuery) {
-				builder.leftJoin(
-					pgManyField.data.table,
-					eq(id, pgManyField.data.table[pgManyField.data.foreignKey]),
-				);
-
-				const fields = this.getAttrFields(pgManyField.data.schema, PG_MANY);
-				const isNested = typeof withQuery === "object";
-
-				if (fields && isNested) {
-					pgManyField.nested = this.withJoins(
-						builder,
-						withQuery,
-						pgManyField.data.schema,
-						pgManyField.data.table[
-							this.getPrimaryKey(pgManyField.data.schema).key
-						],
-					);
-				}
-
-				continue;
-			}
-
-			const whereQuery = query.where?.[pgManyField.key];
-			if (whereQuery) {
-				builder.innerJoin(
-					pgManyField.data.table,
-					eq(pgManyField.data.table[pgManyField.data.foreignKey], id),
-				);
-				continue;
-			}
-
-			// remove the field from the list
-			pgManyFields.splice(pgManyFields.indexOf(pgManyField), 1);
-		}
-
-		return pgManyFields;
 	}
 }
 

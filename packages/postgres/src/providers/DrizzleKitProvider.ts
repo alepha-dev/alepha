@@ -2,6 +2,8 @@ import { createRequire } from "node:module";
 import { $inject, $logger, Alepha } from "@alepha/core";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql, Table } from "drizzle-orm";
+import { sqliteTable } from "drizzle-orm/sqlite-core";
+import { schemaToSqliteColumns } from "../helpers/schemaToSqliteColumns.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider.ts";
 
@@ -71,6 +73,37 @@ export class DrizzleKitProvider {
 		this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
 	}
 
+	public async synchronizeSqlite(provider: PostgresProvider): Promise<void> {
+		const repositories = this.repositoryProvider.getRepositories(provider);
+		const tables: Record<string, any> = {};
+
+		for (const repository of repositories) {
+			const table = sqliteTable(
+				repository.tableName,
+				schemaToSqliteColumns(repository.schema) as any,
+			);
+			(repository as any).options.table = table;
+			tables[repository.tableName] = table;
+		}
+
+		if (Object.keys(tables).length > 0) {
+			const kit = await this.importDrizzleKit();
+			const curr = await kit.generateSQLiteDrizzleJson(tables);
+			const prev = await kit.generateSQLiteDrizzleJson({});
+			const statements = await kit.generateSQLiteMigration(prev, curr);
+
+			for (const statement of statements) {
+				if ("run" in provider.db && typeof provider.db.run === "function") {
+					await provider.db.run(
+						sql.raw(
+							statement.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"),
+						),
+					);
+				}
+			}
+		}
+	}
+
 	protected async getTables(
 		provider: PostgresProvider,
 		schema?: string,
@@ -81,9 +114,10 @@ export class DrizzleKitProvider {
 			await this.prepareSchema(schema, provider, repositories);
 		}
 
-		const tables: Record<string, any> = repositories.map((it) => it.table);
-
-		return tables;
+		return repositories.reduce<Record<string, any>>((tables, it) => {
+			tables[it.tableName] = it.options.table;
+			return tables;
+		}, {});
 	}
 
 	protected async loadMigrationSnapshot(provider: PostgresProvider) {

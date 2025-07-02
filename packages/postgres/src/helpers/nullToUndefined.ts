@@ -23,6 +23,8 @@ export const nullToUndefined = <T extends object>(
 	return obj as NullToUndefined<T>;
 };
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Replaces all null values in an object with undefined.
  */
@@ -51,9 +53,6 @@ export type NullToUndefined<T> = T extends null
 						? { [K in keyof T]: NullToUndefined<T[K]> }
 						: unknown;
 
-/**
- *
- */
 export type NullifyIfOptional<T> = {
 	[K in keyof T]: undefined extends T[K] ? T[K] | null : T[K];
 };

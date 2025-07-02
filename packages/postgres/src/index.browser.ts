@@ -1,6 +1,10 @@
 import type { Alepha, Module } from "@alepha/core";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+// TODO: check if this is needed
 export * from "./descriptors/$entity.ts";
+//
 export * from "./errors/EntityNotFoundError.ts";
 export * from "./helpers/nullToUndefined.ts";
 export * from "./interfaces/FilterOperators.ts";
@@ -10,6 +14,8 @@ export * from "./providers/PostgresTypeProvider.ts";
 export * from "./schemas/entitySchema.ts";
 export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class AlephaPostgres implements Module {
 	public readonly name = "alepha.postgres";

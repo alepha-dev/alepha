@@ -27,14 +27,14 @@ import {
 	type PgMany,
 	type PgRef,
 } from "../constants/PG_SYMBOLS.ts";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
+import type { PgAttr } from "../helpers/pgAttr.ts";
+import { pgAttr } from "../helpers/pgAttr.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { TInsertObject } from "../interfaces/TInsertObject.ts";
 import type { TEntity } from "../schemas/entitySchema.ts";
 import { legacyIdSchema } from "../schemas/legacyIdSchema.ts";
 import type { TPage } from "../schemas/pageSchema.ts";
 import { pageSchema } from "../schemas/pageSchema.ts";
-import type { PgAttr } from "../schemas/pgAttr.ts";
-import { pgAttr } from "../schemas/pgAttr.ts";
 
 declare module "@alepha/core" {
 	interface TypeProvider {

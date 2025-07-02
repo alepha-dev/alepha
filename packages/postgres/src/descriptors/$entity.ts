@@ -1,15 +1,18 @@
 import type { Static, TObject } from "@sinclair/typebox";
-import type { BuildExtraConfigColumns } from "drizzle-orm";
+import type { BuildColumns, BuildExtraConfigColumns, SQL } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	index,
 	type PgTableExtraConfigValue,
+	pgTable,
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { type PgTableConfig, pgTableSchema } from "../helpers/pgTableSchema.ts";
-import type {
-	FromSchema,
-	PgTableWithColumnsAndSchema,
-} from "../helpers/schemaToColumns.ts";
+import {
+	type FromSchema,
+	type PgTableWithColumnsAndSchema,
+	schemaToPgColumns,
+} from "../helpers/schemaToPgColumns.ts";
+import { pg } from "../providers/PostgresTypeProvider.ts";
 
 export interface EntityDescriptorOptions<
 	TTableName extends string,
@@ -63,18 +66,18 @@ export interface EntityDescriptorOptions<
 		}
 	>;
 
-	// foreignKeys?: Array<{
-	// 	name?: string;
-	// 	columns: Array<keyof Static<T>>;
-	// 	foreignColumns: Array<AnyPgColumn>;
-	// }>;
-	//
-	// constraints?: Array<{
-	// 	columns: Array<keyof Static<T>>;
-	// 	name?: string;
-	// 	unique?: boolean | {} /* options */;
-	// 	check?: SQL;
-	// }>;
+	foreignKeys?: Array<{
+		name?: string;
+		columns: Array<keyof Static<T>>;
+		foreignColumns: Array<AnyPgColumn>;
+	}>;
+
+	constraints?: Array<{
+		columns: Array<keyof Static<T>>;
+		name?: string;
+		unique?: boolean | {} /* options */;
+		check?: SQL;
+	}>;
 
 	/**
 	 * Extra configuration for the table. See drizzle-orm documentation for more details.
@@ -148,3 +151,59 @@ export type Entity<T extends TObject> = PgTableWithColumnsAndSchema<
 	PgTableConfig<string, T, FromSchema<T>>,
 	T
 >;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Create a table with a json schema.
+ *
+ * @param name The name of the table.
+ * @param schema The json schema of the table.
+ * @param extraConfig Extra configuration for the table.
+ */
+export const pgTableSchema = <
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+>(
+	name: TTableName,
+	schema: TSchema,
+	extraConfig?: (
+		self: BuildExtraConfigColumns<TTableName, TColumnsMap, "pg">,
+	) => PgTableExtraConfigValue[],
+): PgTableWithColumnsAndSchema<
+	PgTableConfig<TTableName, TSchema, TColumnsMap>,
+	TSchema
+> => {
+	const table = pgTable(
+		name,
+		schemaToPgColumns(schema) as TColumnsMap,
+		extraConfig,
+	) as PgTableWithColumnsAndSchema<
+		PgTableConfig<TTableName, TSchema, TColumnsMap>,
+		TSchema
+	>;
+
+	Object.defineProperty(table, "$table", {
+		get: () => table,
+	});
+	Object.defineProperty(table, "$schema", {
+		get: () => schema,
+	});
+	Object.defineProperty(table, "$insertSchema", {
+		get: () => pg.insert(schema),
+	});
+
+	return table;
+};
+
+export type PgTableConfig<
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+> = {
+	name: TTableName;
+	schema: any;
+	columns: BuildColumns<TTableName, TColumnsMap, "pg">;
+	dialect: "pg";
+};

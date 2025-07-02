@@ -14,10 +14,7 @@ import type { PG_DEFAULT } from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Fork of the original typebox schema "TObject".
- *
- * Expect some breaking changes in the future...
  */
-
 export interface TInsertObject<T extends TObject>
 	extends TSchema,
 		ObjectOptions {

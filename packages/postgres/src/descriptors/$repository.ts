@@ -1,6 +1,6 @@
 import { __descriptor, KIND, OPTIONS, type TObject } from "@alepha/core";
 import type { TableConfig } from "drizzle-orm";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToColumns.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 import type { Repository } from "../services/Repository.ts";
 

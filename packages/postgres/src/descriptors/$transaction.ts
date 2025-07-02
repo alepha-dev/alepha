@@ -6,24 +6,12 @@ import { VersionMismatchError } from "../errors/VersionMismatchError.ts";
 import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 
 export interface TransactionDescriptorOptions<T extends any[], R> {
-	/**
-	 *
-	 * @param tx
-	 * @param args
-	 */
 	handler: (tx: PgTransaction<any, any, any>, ...args: T) => Promise<R>;
-
-	/**
-	 *
-	 */
 	config?: PgTransactionConfig;
 }
 
 export type TransactionContext = PgTransaction<any, any, any>;
 
-/**
- * Creates a transaction descriptor.
- */
 export const $transaction = <T extends any[], R>(
 	opts: TransactionDescriptorOptions<T, R>,
 ) => {
