@@ -1,5 +1,5 @@
-import { $command } from "../packages/cli/src/index.ts";
 import { readdir } from "node:fs/promises";
+import { $command } from "../packages/cli/src/index.ts";
 
 export const clean = $command({
 	when: ["clean", "c"],
@@ -15,11 +15,11 @@ export const clean = $command({
 		await run(`rm -rf ${a}/**/*.js ${a}/**/*.cjs ${a}/**/*.d.ts`);
 		const dirs = (await readdir(a, { withFileTypes: true }))
 			.filter((d) => d.isDirectory())
-			.map((d) => `${a}/${d.name}`)
+			.map((d) => `${a}/${d.name}`);
 		if (dirs.length) {
 			await run(`rm -rf ${dirs.join(" ")}`);
 		}
 
 		await run("yarn");
 	},
-})
+});

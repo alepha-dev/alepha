@@ -1,5 +1,5 @@
-import { $command } from "../packages/cli/src/index.ts";
 import { readFile } from "node:fs/promises";
+import { $command } from "../packages/cli/src/index.ts";
 
 export const release = $command({
 	when: ["release"],
@@ -25,7 +25,9 @@ export const release = $command({
 	},
 	handler: async ({ run, flags }) => {
 		if (await run("git diff")) {
-			console.log("Error - You must commit file(s) before running the release script.");
+			console.log(
+				"Error - You must commit file(s) before running the release script.",
+			);
 			return;
 		}
 
@@ -38,7 +40,9 @@ export const release = $command({
 		await run("yarn build");
 
 		if (await run("git diff")) {
-			console.log("Error - You must commit file(s) before running the release script.");
+			console.log(
+				"Error - You must commit file(s) before running the release script.",
+			);
 			return;
 		}
 
@@ -54,7 +58,7 @@ export const release = $command({
 		const registry = flags.registry ? `--registry ${flags.registry}` : "";
 		const dryRunArg = flags.dryRun ? "--dry-run" : "";
 		await run(
-			`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${dryRunArg} ${registry}`
+			`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${dryRunArg} ${registry}`,
 		);
 		await run("yarn alepha clean");
 
@@ -64,7 +68,7 @@ export const release = $command({
 		await run(`git tag -a ${version} -m "release: ${version}"`);
 		await run(`git push --follow-tags`);
 	},
-})
+});
 
 export async function getVersion() {
 	const { version } = JSON.parse(

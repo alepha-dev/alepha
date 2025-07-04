@@ -211,7 +211,7 @@ export function isShxCommand(cmd: string) {
  */
 async function run(cmd: RunCommand, opts: RunOptions = {}): Promise<string> {
 	if (Array.isArray(cmd)) {
-		if (opts.parallel) {
+		if (opts.parallel !== false) {
 			await Promise.all(
 				cmd.map((it) =>
 					typeof it === "string" ? run(it) : run(it.command, it),
