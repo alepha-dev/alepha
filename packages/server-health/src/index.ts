@@ -1,0 +1,24 @@
+import { AlephaServer } from "@alepha/server";
+import { ServerHealthProvider } from "./providers/ServerHealthProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./providers/ServerHealthProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Alepha Server Health Module
+ *
+ * @description
+ * Plugin for Alepha Server that provides health-check endpoints.
+ *
+ * @see {@link ServerHealthProvider}
+ * @module alepha.server.health
+ */
+export class AlephaServerHealth {
+	public readonly name = "alepha.server.health";
+	public readonly $services = (alepha: any) => {
+		alepha.with(AlephaServer).with(ServerHealthProvider);
+	};
+}

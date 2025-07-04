@@ -1,6 +1,6 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $route } from "../../descriptors/$route.ts";
+import { $route } from "@alepha/server";
 
 /**
  * Register `/health` endpoint.

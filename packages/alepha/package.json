@@ -33,6 +33,7 @@
 		"@alepha/server": "0.7.6",
 		"@alepha/server-cache": "0.7.6",
 		"@alepha/server-cookies": "0.7.6",
+		"@alepha/server-health": "0.7.6",
 		"@alepha/server-static": "0.7.6",
 		"@alepha/server-swagger": "0.7.6",
 		"@alepha/testing": "0.7.6",
@@ -151,6 +152,11 @@
 			"require": "./server/cookies.cjs",
 			"types": "./server/cookies.d.ts"
 		},
+		"./server/health": {
+			"import": "./server/health.js",
+			"require": "./server/health.cjs",
+			"types": "./server/health.d.ts"
+		},
 		"./server/static": {
 			"import": "./server/static.js",
 			"require": "./server/static.cjs",
@@ -202,6 +208,7 @@
 		"server",
 		"server-cache",
 		"server-cookies",
+		"server-health",
 		"server-static",
 		"server-swagger",
 		"testing",

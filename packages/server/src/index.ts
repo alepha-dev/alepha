@@ -7,6 +7,7 @@ import {
 	t,
 } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
+import { ServerHealthProvider } from "../../server-health/src/providers/ServerHealthProvider.ts";
 import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
 import { $proxy } from "./descriptors/$proxy.ts";
 import { $remote } from "./descriptors/$remote.ts";
@@ -19,7 +20,6 @@ import type {
 	ServerRoute,
 } from "./interfaces/index.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
-import { ServerHealthProvider } from "./providers/features/ServerHealthProvider.ts";
 import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
 import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
@@ -98,7 +98,6 @@ export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
 export * from "./interfaces/index.ts";
-export * from "./providers/features/ServerHealthProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
 export * from "./providers/features/ServerMultipartProvider.ts";

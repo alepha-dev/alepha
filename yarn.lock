@@ -301,6 +301,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-health@npm:0.7.6, @alepha/server-health@workspace:packages/server-health":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-health@workspace:packages/server-health"
+  dependencies:
+    "@alepha/core": "npm:0.7.6"
+    "@alepha/datetime": "npm:0.7.6"
+    "@alepha/server": "npm:0.7.6"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-metrics@workspace:packages/server-metrics":
   version: 0.0.0-use.local
   resolution: "@alepha/server-metrics@workspace:packages/server-metrics"
@@ -3249,6 +3261,7 @@ __metadata:
     "@alepha/server": "npm:0.7.6"
     "@alepha/server-cache": "npm:0.7.6"
     "@alepha/server-cookies": "npm:0.7.6"
+    "@alepha/server-health": "npm:0.7.6"
     "@alepha/server-static": "npm:0.7.6"
     "@alepha/server-swagger": "npm:0.7.6"
     "@alepha/testing": "npm:0.7.6"

@@ -19,8 +19,8 @@ export * from "./providers/ServerCacheProvider.ts";
  *
  * @example
  * ```ts
- * import { Alepha } from "@alepha/core";
- * import { $action } from "@alepha/server";
+ * import { Alepha } from "alepha";
+ * import { $action } from "alepha/server";
  * import { AlephaServerCache } from "alepha/server/cache";
  *
  * class ApiServer {
