@@ -2,9 +2,9 @@ import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import { $retry } from "@alepha/retry";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
 import { apiLinksResponseSchema } from "../schemas/apiLinksResponseSchema.ts";
-import { HttpClient } from "../services/HttpClient.ts";
 import { ProxyDescriptorProvider } from "./ProxyDescriptorProvider.ts";
 import type { ServerRemote } from "./ServerActionDescriptorProvider.ts";
+import { LinkProvider } from "./features/LinkProvider.ts";
 
 export class RemoteDescriptorProvider {
 	static path = {
@@ -12,7 +12,7 @@ export class RemoteDescriptorProvider {
 	};
 
 	protected readonly alepha = $inject(Alepha);
-	protected readonly client = $inject(HttpClient);
+	protected readonly client = $inject(LinkProvider);
 	protected readonly proxyProvider = $inject(ProxyDescriptorProvider);
 	protected readonly remotes: Array<ServerRemote> = [];
 	protected readonly log = $logger();

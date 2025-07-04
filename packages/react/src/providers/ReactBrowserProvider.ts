@@ -9,10 +9,11 @@ import type {
 	RouterState,
 	TransitionOptions,
 } from "./PageDescriptorProvider.ts";
+import { LinkProvider } from "@alepha/server";
 
 export class ReactBrowserProvider {
 	protected readonly log = $logger();
-	protected readonly client = $inject(HttpClient);
+	protected readonly client = $inject(LinkProvider);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(BrowserRouterProvider);
 	protected readonly headProvider = $inject(BrowserHeadProvider);

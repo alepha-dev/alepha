@@ -90,6 +90,7 @@ export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
 export * from "./interfaces/index.ts";
+export * from "./providers/features/LinkProvider.ts";
 export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
 export * from "./providers/features/ServerMultipartProvider.ts";

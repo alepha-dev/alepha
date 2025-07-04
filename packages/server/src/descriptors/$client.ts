@@ -1,12 +1,12 @@
 import { $inject } from "@alepha/core";
 import {
 	type ClientScope,
-	HttpClient,
 	type HttpVirtualClient,
-} from "../services/HttpClient.ts";
+	LinkProvider,
+} from "../providers/features/LinkProvider.ts";
 
 export const $client = <T extends object>(
 	scope?: ClientScope,
 ): HttpVirtualClient<T> => {
-	return $inject(HttpClient).of<T>(scope);
+	return $inject(LinkProvider).client<T>(scope);
 };

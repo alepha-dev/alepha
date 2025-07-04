@@ -58,7 +58,9 @@ export class LinkProvider {
 		return this.links ?? [];
 	}
 
-	public of<T extends object>(scope: ClientScope = {}): HttpVirtualClient<T> {
+	public client<T extends object>(
+		scope: ClientScope = {},
+	): HttpVirtualClient<T> {
 		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
 			get: (_, prop) => {
 				if (typeof prop !== "string") {

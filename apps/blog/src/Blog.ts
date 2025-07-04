@@ -1,14 +1,14 @@
 import { $hook, $inject, t } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { ReactAuth } from "@alepha/react-auth";
-import { $client, HttpClient, isHttpError } from "@alepha/server";
+import { $client, isHttpError, LinkProvider } from "@alepha/server";
 import { createElement } from "react";
 import NotFound from "./components/layout/NotFound.tsx";
 import type { PostController } from "./controllers/PostController.ts";
 
 export class Blog {
 	posts = $client<PostController>();
-	client = $inject(HttpClient);
+	client = $inject(LinkProvider);
 	auth = $inject(ReactAuth);
 
 	blank = $page({

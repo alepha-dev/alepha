@@ -1,6 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { test } from "vitest";
-import { $action, $client, $remote, HttpClient, ServerProvider } from "../src";
+import { $action, $client, $remote, ServerProvider } from "../src";
+import { LinkProvider } from "../src/providers/features/LinkProvider.ts";
 
 class ServiceC {
 	print = $action({
@@ -60,7 +61,7 @@ class WebApp {
 const front = Alepha.create().with(WebApp);
 
 test("$remote", async ({ expect }) => {
-	const client = front.get(HttpClient);
+	const linkProvider = front.get(LinkProvider);
 
 	expect(await getLinks(c)).toEqual({
 		links: [
@@ -124,10 +125,12 @@ test("$remote", async ({ expect }) => {
 		prefix: "/api",
 	});
 
-	expect(await client.of<WebApp>().ping()).toEqual("pong");
-	expect(await client.of<ServiceA>().getReport()).toEqual("B: 42, C: TADA!");
-	expect(await client.of<ServiceC>().print()).toEqual("TADA!");
-	await expect(() => client.of<ServiceB>().compute()).rejects.toThrow(
+	expect(await linkProvider.client<WebApp>().ping()).toEqual("pong");
+	expect(await linkProvider.client<ServiceA>().getReport()).toEqual(
+		"B: 42, C: TADA!",
+	);
+	expect(await linkProvider.client<ServiceC>().print()).toEqual("TADA!");
+	await expect(() => linkProvider.client<ServiceB>().compute()).rejects.toThrow(
 		"Action compute not found",
 	);
 });
