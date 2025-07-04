@@ -1,11 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { afterEach, expect, test } from "vitest";
-import {
-	$client,
-	$remote,
-	type HttpVirtualClient,
-	ServerProvider,
-} from "../src";
+import { $client, $remote, ServerProvider } from "../src";
+import type { HttpVirtualClient } from "../src/providers/features/LinkProvider.ts";
 import { CrudApp } from "./fixtures/CrudApp.ts";
 
 const ctx = Alepha.create({

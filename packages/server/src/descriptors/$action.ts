@@ -13,7 +13,7 @@ import type {
 	ServerHandler,
 	ServerRoute,
 } from "../interfaces/index.ts";
-import type { FetchResponse, FetchRunOptions } from "../services/HttpClient.ts";
+import type { FetchOptions, FetchResponse } from "../services/HttpClient.ts";
 
 const KEY = "ACTION";
 
@@ -179,7 +179,7 @@ export type ClientRequestEntryContainer<
 		: undefined;
 };
 
-export interface ClientRequestOptions extends FetchRunOptions {
+export interface ClientRequestOptions extends FetchOptions {
 	/**
 	 * Forward user from the previous request.
 	 * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}

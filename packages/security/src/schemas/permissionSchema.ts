@@ -31,8 +31,6 @@ export const permissionSchema = t.object({
 			description: "Pathname of the permission. When available.",
 		}),
 	),
-
-	contentType: t.optional(t.string()),
 });
 
 export type Permission = Static<typeof permissionSchema>;

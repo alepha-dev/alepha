@@ -1,26 +1,55 @@
-import { $inject, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
 import {
 	type Permission,
 	SecurityProvider,
 	type UserAccountToken,
 } from "@alepha/security";
 import { $route } from "../../descriptors/$route.ts";
+import { ActionDescriptorHelper } from "../../helpers/ActionDescriptorHelper.ts";
 import {
 	type ApiLink,
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
 } from "../../schemas/apiLinksResponseSchema.ts";
-import { HttpClient } from "../../services/HttpClient.ts";
 import { RemoteDescriptorProvider } from "../RemoteDescriptorProvider.ts";
-import { ServerActionDescriptorProvider } from "../ServerActionDescriptorProvider.ts";
+import {
+	isServerAction,
+	ServerActionDescriptorProvider,
+} from "../ServerActionDescriptorProvider.ts";
+import { LinkProvider } from "./LinkProvider.ts";
 
 export class ServerLinksProvider {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly client = $inject(HttpClient);
+	protected readonly client = $inject(LinkProvider);
+	protected readonly helper = $inject(ActionDescriptorHelper);
 	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
 	protected readonly serverActionDescriptorProvider = $inject(
 		ServerActionDescriptorProvider,
 	);
+
+	public readonly onRoute = $hook({
+		name: "server:onRoute",
+		handler: ({ route }) => {
+			if (!isServerAction(route)) {
+				return;
+			}
+
+			if (route.options.internal) {
+				return;
+			}
+
+			this.client.pushLink({
+				...route,
+				schema: route.options.schema,
+				requestBodyType: this.helper.bodyContentType(route.options),
+				handler: route.localHandler,
+				secured: route.options.security !== false,
+				method: route.method === "GET" ? undefined : route.method,
+				prefix: route.prefix,
+				path: route.path.replace(route.prefix, ""),
+			});
+		},
+	});
 
 	public readonly links = $route({
 		path: RemoteDescriptorProvider.path.apiLinks,
@@ -71,10 +100,7 @@ export class ServerLinksProvider {
 		},
 	});
 
-	public async getLinks(options: {
-		user?: UserAccountToken;
-		authorization?: string;
-	}): Promise<ApiLinksResponse> {
+	public async getLinks(options: GetLinksOptions): Promise<ApiLinksResponse> {
 		const { user } = options;
 		let permissions: Permission[] | undefined;
 		const hasSecurity = this.alepha.has(SecurityProvider);
@@ -149,4 +175,9 @@ export class ServerLinksProvider {
 			links: userLinks,
 		};
 	}
+}
+
+export interface GetLinksOptions {
+	user?: UserAccountToken;
+	authorization?: string;
 }

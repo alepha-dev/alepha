@@ -1,13 +1,5 @@
-import {
-	__bind,
-	$inject,
-	type Alepha,
-	type Module,
-	type Static,
-	t,
-} from "@alepha/core";
+import { __bind, type Alepha, type Module } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
-import { ServerHealthProvider } from "../../server-health/src/providers/ServerHealthProvider.ts";
 import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
 import { $proxy } from "./descriptors/$proxy.ts";
 import { $remote } from "./descriptors/$remote.ts";
@@ -19,8 +11,8 @@ import type {
 	ServerResponse,
 	ServerRoute,
 } from "./interfaces/index.ts";
+import type { HttpClientLink } from "./providers/features/LinkProvider.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
-import { ServerLinksProvider } from "./providers/features/ServerLinksProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
 import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
 import { ServerNotReadyProvider } from "./providers/features/ServerNotReadyProvider.ts";
@@ -32,11 +24,9 @@ import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
 import { RemoteDescriptorProvider } from "./providers/RemoteDescriptorProvider.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
 import { ServerRouteDescriptorProvider } from "./providers/ServerRouteDescriptorProvider.ts";
-import type { FetchRunOptions, HttpClientLink } from "./services/HttpClient.ts";
+import type { FetchOptions } from "./services/HttpClient.ts";
 
-export const SERVER_ON_ROUTE = "server:onRequest" as const;
-export const SERVER_ON_REQUEST = "server:onRequest" as const;
-export const SERVER_ON_SEND = "server:onSend" as const;
+// ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
 	interface Hooks {
@@ -73,7 +63,7 @@ declare module "@alepha/core" {
 		};
 		"client:beforeFetch": {
 			url: string;
-			options: FetchRunOptions;
+			options: FetchOptions;
 			request: RequestInit;
 		};
 		"client:onError": {
@@ -82,6 +72,8 @@ declare module "@alepha/core" {
 		};
 	}
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export { KIND } from "@alepha/core";
 export * from "./constants/routeMethods.ts";
@@ -115,24 +107,9 @@ export * from "./schemas/errorSchema.ts";
 export * from "./schemas/okSchema.ts";
 export * from "./services/HttpClient.ts";
 
-const envSchema = t.object({
-	SERVER_LINKS_ENABLED: t.boolean({
-		default: true,
-		description: "Enable links-provider, which expose APIs on /_links.",
-	}),
-	SERVER_HEALTH_ENABLED: t.boolean({
-		default: true,
-		description: "Enable health-provider, which expose APIs on /health.",
-	}),
-});
-
-declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
-}
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class AlephaServer implements Module {
-	protected readonly env = $inject(envSchema);
-
 	public readonly name = "alepha.server";
 	public readonly $services = (alepha: Alepha) => {
 		alepha.with({
@@ -155,14 +132,6 @@ export class AlephaServer implements Module {
 
 		if (!alepha.isProduction()) {
 			alepha.with(ServerTimingProvider);
-		}
-
-		if (this.env.SERVER_LINKS_ENABLED) {
-			alepha.with(ServerLinksProvider);
-		}
-
-		if (this.env.SERVER_HEALTH_ENABLED) {
-			alepha.with(ServerHealthProvider);
 		}
 	};
 }

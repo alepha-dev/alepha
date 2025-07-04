@@ -2,12 +2,11 @@ import type { Permission } from "@alepha/security";
 import { type RouteMethod, routeMethods } from "../constants/routeMethods.ts";
 import type { ActionDescriptorOptions } from "../descriptors/$action.ts";
 import type { RequestConfigSchema } from "../interfaces/index.ts";
-import type { HttpClientLink } from "../services/HttpClient.ts";
 
 export class ActionDescriptorHelper {
 	public name(
 		options: ActionDescriptorOptions,
-		_instance: any,
+		instance: any,
 		key: string,
 	): string {
 		if (options.name) {
@@ -31,22 +30,6 @@ export class ActionDescriptorHelper {
 		return path;
 	}
 
-	public link(
-		options: ActionDescriptorOptions,
-		instance: any,
-		key: string,
-		prefix = "/api",
-	): HttpClientLink {
-		return {
-			prefix,
-			method: this.method(options),
-			path: this.path(options, instance, key),
-			name: this.name(options, instance, key),
-			group: this.group(options, instance),
-			schema: options.schema,
-		};
-	}
-
 	public method(options: { method?: string; schema?: any }): RouteMethod {
 		if (options.method) {
 			if (routeMethods.includes(options.method as RouteMethod)) {
@@ -66,10 +49,7 @@ export class ActionDescriptorHelper {
 		return {
 			group: this.group(options, instance),
 			name: options.name ?? key,
-			path: this.path(options, instance, key),
-			method: this.method(options),
 			description: options.description,
-			contentType: this.bodyContentType(options),
 		};
 	}
 
@@ -92,6 +72,7 @@ export class ActionDescriptorHelper {
 				}
 			}
 		}
+
 		return false;
 	}
 

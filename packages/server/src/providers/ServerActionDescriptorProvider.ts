@@ -112,6 +112,7 @@ export class ServerActionDescriptorProvider {
 			return;
 		}
 
+		const permission = this.helper.permission(options, instance, key);
 		const action: ServerRouteAction = {
 			...options,
 			prefix,
@@ -123,6 +124,7 @@ export class ServerActionDescriptorProvider {
 			schema: options.schema,
 			handler: options.handler,
 			options,
+			localHandler: this.createLocalHandler(options, permission),
 		};
 
 		this.actions.push(action);
@@ -143,12 +145,10 @@ export class ServerActionDescriptorProvider {
 
 		// --- Descriptor $action
 
-		const handler = this.createLocalFunction(options, action.permission);
-
 		const $ = (
 			config: Partial<ClientRequestEntry> = {},
 			opts: ClientRequestOptions = {},
-		) => handler(config, opts);
+		) => action.localHandler(config, opts);
 
 		$[KIND] = "ACTION";
 		$[OPTIONS] = action.options;
@@ -156,32 +156,15 @@ export class ServerActionDescriptorProvider {
 			config: Partial<ClientRequestEntry> = {},
 			options: ClientRequestOptions = {},
 		) =>
-			this.client.fetchLink({
+			this.client.fetchAction({
+				action,
+				host: this.serverProvider.hostname,
 				config,
 				options,
-				link: action,
-				host: this.serverProvider.hostname,
 			});
 		$.permission = () => action.permission;
 
 		instance[key] = $;
-
-		// -- Links
-
-		if (action.options.internal) {
-			return;
-		}
-
-		this.client.pushLink({
-			...action,
-			schema: action.options.schema,
-			requestBodyType: this.helper.bodyContentType(action.options),
-			handler,
-			secured: options.security !== false,
-			method: action.method === "GET" ? undefined : action.method,
-			prefix: this.env.SERVER_API_PREFIX,
-			path: action.path.replace(this.env.SERVER_API_PREFIX, ""),
-		});
 	}
 
 	/**
@@ -189,7 +172,7 @@ export class ServerActionDescriptorProvider {
 	 *
 	 * This is mostly used for testing purposes.
 	 */
-	protected createLocalFunction(
+	protected createLocalHandler(
 		action: ActionDescriptorOptions,
 		permission: Permission,
 	) {
@@ -352,4 +335,13 @@ export interface ServerRouteAction<
 	group: string;
 	permission: Permission;
 	options: ActionDescriptorOptions;
+	// testing
+	localHandler: LocalHandler;
 }
+
+export type LocalHandler<
+	TConfig extends RequestConfigSchema = RequestConfigSchema,
+> = (
+	config?: ServerRequestConfigEntry<TConfig>,
+	options?: ClientRequestOptions,
+) => Promise<any>;
