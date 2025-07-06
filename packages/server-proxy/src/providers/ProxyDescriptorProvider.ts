@@ -1,8 +1,11 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
-import { routeMethods } from "../constants/routeMethods.ts";
+import {
+	routeMethods,
+	type ServerHandler,
+	type ServerRequest,
+	ServerRouterProvider,
+} from "@alepha/server";
 import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
-import type { ServerHandler, ServerRequest } from "../interfaces/index.ts";
-import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
 export class ProxyDescriptorProvider {
 	protected readonly log = $logger();

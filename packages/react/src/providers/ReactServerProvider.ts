@@ -12,10 +12,10 @@ import {
 import {
 	apiLinksResponseSchema,
 	type ServerHandler,
-	ServerLinksProvider,
 	ServerRouterProvider,
 	ServerTimingProvider,
 } from "@alepha/server";
+import { ServerLinksProvider } from "@alepha/server-links";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import { $page } from "../descriptors/$page.ts";

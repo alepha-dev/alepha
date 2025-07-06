@@ -1,12 +1,17 @@
 import { Alepha } from "@alepha/core";
+import { ServerProvider } from "@alepha/server";
 import { afterEach, expect, test } from "vitest";
-import { $client, $remote, ServerProvider } from "../src";
-import type { HttpVirtualClient } from "../src/providers/features/LinkProvider.ts";
+import {
+	$client,
+	$remote,
+	AlephaServerLinks,
+	type HttpVirtualClient,
+} from "../src";
 import { CrudApp } from "./fixtures/CrudApp.ts";
 
 const ctx = Alepha.create({
 	env: {},
-});
+}).with(AlephaServerLinks);
 
 const app = ctx.get(CrudApp);
 const linkLocal = ctx.get(
@@ -15,14 +20,16 @@ const linkLocal = ctx.get(
 	},
 ).client;
 
-const linkRemote = Alepha.create().get(
-	class Client {
-		client = $client<CrudApp>();
-		app = $remote({
-			url: () => ctx.get(ServerProvider).hostname,
-		});
-	},
-).client;
+const linkRemote = Alepha.create()
+	.with(AlephaServerLinks)
+	.get(
+		class Client {
+			client = $client<CrudApp>();
+			app = $remote({
+				url: () => ctx.get(ServerProvider).hostname,
+			});
+		},
+	).client;
 
 afterEach(() => {
 	app.clear();

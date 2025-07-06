@@ -1,6 +1,6 @@
 import { RouterContext } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
-import { type HttpVirtualClient, LinkProvider } from "@alepha/server";
+import { type HttpVirtualClient, LinkProvider } from "@alepha/server-links";
 import { useContext } from "react";
 import { ReactAuth } from "../services/ReactAuth.ts";
 

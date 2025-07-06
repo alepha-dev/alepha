@@ -3,7 +3,7 @@ import {
 	type ClientScope,
 	type HttpVirtualClient,
 	LinkProvider,
-} from "../providers/features/LinkProvider.ts";
+} from "../providers/LinkProvider.ts";
 
 export const $client = <T extends object>(
 	scope?: ClientScope,

@@ -4,19 +4,17 @@ import {
 	SecurityProvider,
 	type UserAccountToken,
 } from "@alepha/security";
-import { $route } from "../../descriptors/$route.ts";
-import { ActionDescriptorHelper } from "../../helpers/ActionDescriptorHelper.ts";
 import {
+	$route,
+	ActionDescriptorHelper,
 	type ApiLink,
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
-} from "../../schemas/apiLinksResponseSchema.ts";
-import { RemoteDescriptorProvider } from "../RemoteDescriptorProvider.ts";
-import {
 	isServerAction,
 	ServerActionDescriptorProvider,
-} from "../ServerActionDescriptorProvider.ts";
+} from "@alepha/server";
 import { LinkProvider } from "./LinkProvider.ts";
+import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
 
 export class ServerLinksProvider {
 	protected readonly alepha = $inject(Alepha);

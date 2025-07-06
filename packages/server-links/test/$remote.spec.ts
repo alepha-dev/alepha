@@ -1,0 +1,194 @@
+import { Alepha, t } from "@alepha/core";
+import { $action, ServerProvider } from "@alepha/server";
+import { test } from "vitest";
+import {
+	$client,
+	$remote,
+	AlephaServerLinks,
+	LinkProvider,
+	ServerLinksProvider,
+} from "../src";
+
+test("$remote - basic", async ({ expect }) => {
+	class App {
+		ping = $action({
+			schema: {
+				response: t.object({
+					pong: t.boolean(),
+				}),
+			},
+			handler: () => {
+				return { pong: true };
+			},
+		});
+	}
+
+	const alepha1 = Alepha.create().with(AlephaServerLinks).with(App);
+
+	// --
+
+	class Config {
+		alepha1 = $remote({
+			url: () => alepha1.get(ServerProvider).hostname,
+		});
+	}
+
+	const alepha2 = Alepha.create({ env: {} })
+		.with(AlephaServerLinks)
+		.with(Config);
+
+	// --
+
+	await alepha1.start();
+	await alepha2.start();
+
+	const app = alepha2.get(LinkProvider).client<App>();
+	const ping = () => alepha2.context.run(() => app.ping());
+	expect(await ping()).toStrictEqual({ pong: true });
+});
+
+test("$remote - complex", async ({ expect }) => {
+	const env = {
+		LOG_LEVEL: "warn" as const,
+	};
+
+	class ServiceC {
+		print = $action({
+			handler: () => "TADA!",
+		});
+	}
+
+	const c = Alepha.create({ env }).with(ServiceC).with(ServerLinksProvider);
+
+	class ServiceB {
+		compute = $action({
+			handler: () => {
+				return "42";
+			},
+		});
+	}
+
+	const b = Alepha.create({ env }).with(ServiceB).with(ServerLinksProvider);
+
+	class ServiceA {
+		br = $remote({
+			url: () => b.get(ServerProvider).hostname,
+		});
+
+		cr = $remote({
+			url: () => c.get(ServerProvider).hostname,
+			proxy: true,
+		});
+
+		sb = $client<ServiceB>();
+		sc = $client<ServiceC>();
+
+		getReport = $action({
+			handler: async () => {
+				const b = await this.sb.compute();
+				const c = await this.sc.print();
+				return `B: ${b}, C: ${c}`;
+			},
+		});
+	}
+
+	const a = Alepha.create({ env }).with(ServiceA).with(ServerLinksProvider);
+
+	class WebApp {
+		a = $remote({
+			url: () => a.get(ServerProvider).hostname,
+			proxy: true,
+		});
+
+		ping = $action({
+			handler: async () => {
+				return "pong";
+			},
+		});
+	}
+
+	const front = Alepha.create({ env }).with(WebApp).with(ServerLinksProvider);
+
+	await c.start();
+	await b.start();
+	await a.start();
+	await front.start();
+
+	const linkProvider = front.get(LinkProvider);
+
+	expect(await getLinks(c)).toEqual({
+		links: [
+			{
+				group: "service-c",
+				name: "print",
+				path: "/print",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await getLinks(b)).toEqual({
+		links: [
+			{
+				group: "service-b",
+				name: "compute",
+				path: "/compute",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await getLinks(a)).toEqual({
+		links: [
+			{
+				group: "service-a",
+				name: "getReport",
+				path: "/getReport",
+			},
+			{
+				group: "service-c",
+				name: "print",
+				path: "/print",
+				service: "cr",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await getLinks(front)).toEqual({
+		links: [
+			{
+				group: "web-app",
+				name: "ping",
+				path: "/ping",
+			},
+			{
+				group: "service-a",
+				name: "getReport",
+				path: "/getReport",
+				service: "a",
+			},
+			{
+				group: "service-c",
+				name: "print",
+				path: "/cr/print",
+				service: "a",
+			},
+		],
+		prefix: "/api",
+	});
+
+	expect(await linkProvider.client<WebApp>().ping()).toEqual("pong");
+	expect(await linkProvider.client<ServiceA>().getReport()).toEqual(
+		"B: 42, C: TADA!",
+	);
+	expect(await linkProvider.client<ServiceC>().print()).toEqual("TADA!");
+	await expect(() => linkProvider.client<ServiceB>().compute()).rejects.toThrow(
+		"Action compute not found",
+	);
+});
+
+const getLinks = (a: Alepha) =>
+	fetch(`${a.get(ServerProvider).hostname}/api/_links`).then((res) =>
+		res.json(),
+	);

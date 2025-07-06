@@ -74,24 +74,6 @@ export class SchedulerDescriptorProvider {
 		},
 	});
 
-	protected createContextId(): string {
-		const t = Date.now().toString(36);
-		const r = Math.random().toString(36).slice(2, 8);
-
-		let id = "";
-		for (let i = 0; i < 10; i++) {
-			id += (i % 2 === 0 ? t : r)[Math.floor(i / 2)] || "";
-		}
-
-		return (
-			"c" +
-			id
-				.split("")
-				.sort(() => 0.5 - Math.random())
-				.join("")
-		);
-	}
-
 	/**
 	 * Get the schedulers.
 	 */
@@ -174,22 +156,17 @@ export class SchedulerDescriptorProvider {
 				return;
 			}
 
-			this.alepha.context.run(
-				{
-					context: this.createContextId(),
-				},
-				async () => {
-					try {
-						if (options.lock !== false) {
-							await this.runLock({ ...options, name, args });
-						} else {
-							await options.handler(args);
-						}
-					} catch (error) {
-						this.log.error("Error running scheduler:", error);
+			await this.alepha.context.run(async () => {
+				try {
+					if (options.lock !== false) {
+						await this.runLock({ ...options, name, args });
+					} else {
+						await options.handler(args);
 					}
-				},
-			);
+				} catch (error) {
+					this.log.error("Error running scheduler:", error);
+				}
+			});
 		};
 	}
 

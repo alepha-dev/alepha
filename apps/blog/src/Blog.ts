@@ -1,7 +1,8 @@
 import { $hook, $inject, t } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { ReactAuth } from "@alepha/react-auth";
-import { $client, isHttpError, LinkProvider } from "@alepha/server";
+import { isHttpError } from "@alepha/server";
+import { $client, LinkProvider } from "@alepha/server-links";
 import { createElement } from "react";
 import NotFound from "./components/layout/NotFound.tsx";
 import type { PostController } from "./controllers/PostController.ts";

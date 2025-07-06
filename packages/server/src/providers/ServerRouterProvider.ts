@@ -33,24 +33,6 @@ import type {
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
 	protected readonly alepha = $inject(Alepha);
 
-	public createRequestId(): string {
-		const t = Date.now().toString(36);
-		const r = Math.random().toString(36).slice(2, 8);
-
-		let id = "";
-		for (let i = 0; i < 10; i++) {
-			id += (i % 2 === 0 ? t : r)[Math.floor(i / 2)] || "";
-		}
-
-		return (
-			"r" +
-			id
-				.split("")
-				.sort(() => 0.5 - Math.random())
-				.join("")
-		);
-	}
-
 	public async route<TConfig extends RequestConfigSchema = RequestConfigSchema>(
 		route: ServerRoute<TConfig>,
 	): Promise<void> {
@@ -95,13 +77,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			},
 		} as ServerRequest;
 
-		const requestId = this.createRequestId();
-
-		return await this.alepha.context.run(
-			{
-				context: requestId, // for logging
-			},
-			() => this.processRequest(request, route, responseKind),
+		return await this.alepha.context.run(() =>
+			this.processRequest(request, route, responseKind),
 		);
 	}
 

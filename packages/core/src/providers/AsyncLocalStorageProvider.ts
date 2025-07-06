@@ -13,12 +13,36 @@ export class AsyncLocalStorageProvider {
 		this.als = AsyncLocalStorageProvider.create();
 	}
 
-	public run<R>(data: AsyncLocalStorageData, callback: () => R) {
+	public createContextId(): string {
+		const t = Date.now().toString(36);
+		const r = Math.random().toString(36).slice(2, 8);
+
+		let id = "";
+		for (let i = 0; i < 10; i++) {
+			id += (i % 2 === 0 ? t : r)[Math.floor(i / 2)] || "";
+		}
+
+		return (
+			"r" +
+			id
+				.split("")
+				.sort(() => 0.5 - Math.random())
+				.join("")
+		);
+	}
+
+	public run<R>(callback: () => R, data: Record<string, any> = {}) {
 		if (!this.als) {
 			return callback();
 		}
 
-		return this.als.run(data, callback);
+		return this.als.run(
+			{
+				context: this.createContextId(),
+				...data,
+			},
+			callback,
+		);
 	}
 
 	public get<T>(key: string): T | undefined {

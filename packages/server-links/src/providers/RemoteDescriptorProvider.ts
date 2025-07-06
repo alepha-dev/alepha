@@ -1,10 +1,9 @@
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import { $retry } from "@alepha/retry";
+import { apiLinksResponseSchema, type ServerRemote } from "@alepha/server";
+import { ProxyDescriptorProvider } from "@alepha/server-proxy";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
-import { apiLinksResponseSchema } from "../schemas/apiLinksResponseSchema.ts";
-import { ProxyDescriptorProvider } from "./ProxyDescriptorProvider.ts";
-import type { ServerRemote } from "./ServerActionDescriptorProvider.ts";
-import { LinkProvider } from "./features/LinkProvider.ts";
+import { LinkProvider } from "./LinkProvider.ts";
 
 export class RemoteDescriptorProvider {
 	static path = {
@@ -61,6 +60,12 @@ export class RemoteDescriptorProvider {
 						service: remote.name,
 					});
 				}
+
+				this.log.info("Remote links OK", {
+					service: remote.name,
+					links: remote.links,
+					prefix: remote.prefix,
+				});
 			}
 		},
 	});

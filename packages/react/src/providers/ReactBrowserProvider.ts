@@ -1,5 +1,6 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
-import { type ApiLinksResponse, HttpClient } from "@alepha/server";
+import type { ApiLinksResponse } from "@alepha/server";
+import { LinkProvider } from "@alepha/server-links";
 import type { Root } from "react-dom/client";
 import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
@@ -9,7 +10,6 @@ import type {
 	RouterState,
 	TransitionOptions,
 } from "./PageDescriptorProvider.ts";
-import { LinkProvider } from "@alepha/server";
 
 export class ReactBrowserProvider {
 	protected readonly log = $logger();

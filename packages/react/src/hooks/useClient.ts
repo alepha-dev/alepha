@@ -2,7 +2,7 @@ import {
 	type ClientScope,
 	type HttpVirtualClient,
 	LinkProvider,
-} from "@alepha/server";
+} from "@alepha/server-links";
 import { useInject } from "./useInject.ts";
 
 export const useClient = <T extends object>(

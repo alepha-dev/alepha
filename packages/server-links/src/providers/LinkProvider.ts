@@ -1,21 +1,18 @@
 import { $inject, $logger, Alepha, t } from "@alepha/core";
-import type {
-	ActionDescriptor,
-	ClientRequestOptions,
-} from "../../descriptors/$action.ts";
-import { UnauthorizedError } from "../../errors/UnauthorizedError.ts";
-import type {
-	RequestConfigSchema,
-	ServerHandler,
-	ServerRequest,
-	ServerRequestConfigEntry,
-} from "../../interfaces";
 import {
+	type ActionDescriptor,
 	type ApiLink,
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
-} from "../../schemas/apiLinksResponseSchema.ts";
-import { type FetchResponse, HttpClient } from "../../services/HttpClient.ts";
+	type ClientRequestOptions,
+	type FetchResponse,
+	HttpClient,
+	type RequestConfigSchema,
+	type ServerHandler,
+	type ServerRequest,
+	type ServerRequestConfigEntry,
+	UnauthorizedError,
+} from "@alepha/server";
 
 export class LinkProvider {
 	public readonly URL_LINKS = "/api/_links";
@@ -61,6 +58,7 @@ export class LinkProvider {
 	public client<T extends object>(
 		scope: ClientScope = {},
 	): HttpVirtualClient<T> {
+		this.log.trace("Creating virtual client for scope", scope);
 		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
 			get: (_, prop) => {
 				if (typeof prop !== "string") {
@@ -104,6 +102,7 @@ export class LinkProvider {
 		config: Partial<ServerRequestConfigEntry> = {},
 		options: ClientRequestOptions & ClientScope = {},
 	) {
+		this.log.trace("Following link", { name, config, options });
 		const link = await this.getLinkByName(name, options);
 
 		const als = this.alepha.context.get<ServerRequest>("request");
@@ -111,6 +110,7 @@ export class LinkProvider {
 
 		// if a handler is defined, use it (ssr)
 		if (link.handler && !options.request) {
+			this.log.trace("Local link found", { name });
 			return link.handler({
 				method: link.method,
 				url: new URL(`http://localhost${link.path}`),
@@ -127,6 +127,12 @@ export class LinkProvider {
 				user,
 			} as Partial<ServerRequest> as ServerRequest);
 		}
+
+		this.log.trace("Remote link found", {
+			name,
+			host: link.host,
+			service: link.service,
+		});
 
 		return this.followRemote(link, config, options).then(
 			(response) => response.data,
@@ -157,6 +163,7 @@ export class LinkProvider {
 		};
 
 		action.path = `${action.prefix ?? "/api"}${action.path}`;
+		action.prefix = undefined; // prefix is not used in the client
 
 		// prefix with service when host is not defined (e.g. browser)
 		if (!link.host && link.service) {

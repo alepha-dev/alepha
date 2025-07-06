@@ -30,6 +30,8 @@ export class HttpClient {
 	}
 
 	public async fetchAction(args: FetchActionArgs): Promise<FetchResponse> {
+		this.log.trace("Fetch action", args);
+
 		const route = args.action; // our link to fetch
 		const options = args.options ?? {}; // fetch standard options, cache, etc.
 		const config = args.config ?? {}; // params, query, body, etc.
@@ -73,6 +75,14 @@ export class HttpClient {
 		options: FetchOptions = {}, // alepha options
 	): Promise<FetchResponse<T>> {
 		request.method ??= "GET";
+
+		this.log.trace("Fetch request", {
+			url,
+			method: request.method,
+			body: request.body,
+			headers: request.headers,
+			options,
+		});
 
 		const cached = await this.cache.get(url);
 		if (cached && request.method === "GET") {

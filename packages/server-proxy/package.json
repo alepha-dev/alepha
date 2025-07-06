@@ -1,5 +1,5 @@
 {
-	"name": "@alepha/react-auth",
+	"name": "@alepha/server-proxy",
 	"version": "0.7.6",
 	"type": "module",
 	"engines": {
@@ -8,30 +8,20 @@
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
 		"@alepha/core": "0.7.6",
-		"@alepha/react": "0.7.6",
-		"@alepha/security": "0.7.6",
-		"@alepha/server": "0.7.6",
-		"@alepha/server-cookies": "0.7.6",
-		"@alepha/server-links": "0.7.6",
-		"openid-client": "^6.6.2"
+		"@alepha/server": "0.7.6"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.8",
-		"react": "^19.1.0",
-		"tsdown": "^0.12.9"
-	},
-	"peerDependencies": {
-		"@types/react": "^19",
-		"react": "^19"
+		"tsdown": "^0.12.9",
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
+		"test": "vitest run",
 		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
@@ -40,6 +30,8 @@
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
 	"keywords": [
-		"alepha"
+		"alepha",
+		"server",
+		"proxy"
 	]
 }

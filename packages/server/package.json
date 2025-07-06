@@ -19,7 +19,6 @@
 		"@alepha/core": "0.7.6",
 		"@alepha/datetime": "0.7.6",
 		"@alepha/file": "0.7.6",
-		"@alepha/retry": "0.7.6",
 		"@alepha/router": "0.7.6",
 		"@alepha/security": "0.7.6",
 		"@fastify/busboy": "^3.1.1"

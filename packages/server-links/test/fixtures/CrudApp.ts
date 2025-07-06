@@ -1,5 +1,5 @@
 import { type Static, t } from "@alepha/core";
-import { $action, NotFoundError } from "../../src";
+import { $action, NotFoundError } from "@alepha/server";
 
 export const userSchema = t.object({
 	id: t.int(),

@@ -1,8 +1,6 @@
 import { __bind, type Alepha, type Module } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
 import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
-import { $proxy } from "./descriptors/$proxy.ts";
-import { $remote } from "./descriptors/$remote.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import type {
@@ -11,20 +9,17 @@ import type {
 	ServerResponse,
 	ServerRoute,
 } from "./interfaces/index.ts";
-import type { HttpClientLink } from "./providers/features/LinkProvider.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
 import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
 import { ServerNotReadyProvider } from "./providers/features/ServerNotReadyProvider.ts";
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
 import { ServerTimingProvider } from "./providers/features/ServerTimingProvider.ts";
-import { ProxyDescriptorProvider } from "./providers/ProxyDescriptorProvider.ts";
 import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
 import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
-import { RemoteDescriptorProvider } from "./providers/RemoteDescriptorProvider.ts";
 import { ServerActionDescriptorProvider } from "./providers/ServerActionDescriptorProvider.ts";
 import { ServerRouteDescriptorProvider } from "./providers/ServerRouteDescriptorProvider.ts";
-import type { FetchOptions } from "./services/HttpClient.ts";
+import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -55,7 +50,7 @@ declare module "@alepha/core" {
 			response: ServerResponse;
 		};
 		"client:onRequest": {
-			route: HttpClientLink;
+			route: HttpAction;
 			config: ServerRequestConfigEntry;
 			options: ClientRequestOptions;
 			headers: Record<string, string>;
@@ -67,7 +62,7 @@ declare module "@alepha/core" {
 			request: RequestInit;
 		};
 		"client:onError": {
-			route?: HttpClientLink;
+			route?: HttpAction;
 			error: HttpError;
 		};
 	}
@@ -78,9 +73,6 @@ declare module "@alepha/core" {
 export { KIND } from "@alepha/core";
 export * from "./constants/routeMethods.ts";
 export * from "./descriptors/$action.ts";
-export * from "./descriptors/$client.ts";
-export * from "./descriptors/$proxy.ts";
-export * from "./descriptors/$remote.ts";
 export * from "./descriptors/$route.ts";
 export * from "./errors/BadRequestError.ts";
 export * from "./errors/ConflictError.ts";
@@ -89,18 +81,15 @@ export * from "./errors/HttpError.ts";
 export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
+export * from "./helpers/ActionDescriptorHelper.ts";
 export * from "./interfaces/index.ts";
-export * from "./providers/features/LinkProvider.ts";
-export * from "./providers/features/ServerLinksProvider.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
 export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/features/ServerNotReadyProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
 export * from "./providers/features/ServerTimingProvider.ts";
-export * from "./providers/ProxyDescriptorProvider.ts";
 export * from "./providers/platforms/NodeHttpServerProvider.ts";
 export * from "./providers/platforms/ServerProvider.ts";
-export * from "./providers/RemoteDescriptorProvider.ts";
 export * from "./providers/ServerActionDescriptorProvider.ts";
 export * from "./providers/ServerRouterProvider.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
@@ -121,12 +110,7 @@ export class AlephaServer implements Module {
 
 		alepha.with(ServerActionDescriptorProvider);
 		alepha.with(ServerRouteDescriptorProvider);
-
-		alepha.with(RemoteDescriptorProvider);
-		alepha.with(ProxyDescriptorProvider);
-
 		alepha.with(ServerBodyParserProvider);
-
 		alepha.with(ServerLoggerProvider);
 		alepha.with(ServerMultipartProvider);
 		alepha.with(ServerNotReadyProvider);
@@ -139,7 +123,5 @@ export class AlephaServer implements Module {
 
 __bind($route, AlephaServer);
 __bind($action, AlephaServer);
-__bind($remote, AlephaServer);
-__bind($proxy, AlephaServer);
 __bind($realm, ServerSecurityProvider);
 __bind($role, ServerSecurityProvider);

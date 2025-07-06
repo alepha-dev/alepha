@@ -1,6 +1,6 @@
 import { __descriptor, KIND, OPTIONS } from "@alepha/core";
 import type { ServiceAccountDescriptor } from "@alepha/security";
-import type { ProxyDescriptorOptions } from "./$proxy.ts";
+import type { ProxyDescriptorOptions } from "@alepha/server-proxy";
 
 const KEY = "REMOTE";
 

@@ -18,6 +18,7 @@
 		"@alepha/router": "0.7.6",
 		"@alepha/server": "0.7.6",
 		"@alepha/server-cache": "0.7.6",
+		"@alepha/server-links": "0.7.6",
 		"@alepha/server-static": "0.7.6",
 		"react-dom": "^19.1.0"
 	},
