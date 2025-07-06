@@ -47,18 +47,18 @@ export const createFileFromBuffer = (
 		type?: string;
 		name?: string;
 	} = {},
-) => {
-	const name = options.name ?? "file";
+): FileLike => {
+	const name: string = options.name ?? "file";
 	return {
 		name,
 		type: options.type ?? getContentType(options.name ?? name),
 		size: source.byteLength,
 		lastModified: Date.now(),
-		stream: () => Readable.from(source),
-		arrayBuffer: async () => {
+		stream: (): Readable => Readable.from(source),
+		arrayBuffer: async (): Promise<ArrayBuffer> => {
 			return bufferToArrayBuffer(source);
 		},
-		text: async () => {
+		text: async (): Promise<string> => {
 			return source.toString("utf-8");
 		},
 	};
@@ -70,7 +70,9 @@ export const createFileFromStream = (
 		type?: string;
 		name?: string;
 	} = {},
-) => {
+): FileLike & { _buffer: null | Buffer } => {
+	let buffer: Buffer | null = null;
+
 	return {
 		name: options.name ?? "file",
 		type: options.type ?? getContentType(options.name ?? "file"),
@@ -79,12 +81,12 @@ export const createFileFromStream = (
 		stream: () => source,
 		_buffer: null as Buffer | null,
 		async arrayBuffer() {
-			this._buffer ??= await streamToBuffer(source);
-			return bufferToArrayBuffer(this._buffer);
+			buffer ??= await streamToBuffer(source);
+			return bufferToArrayBuffer(buffer);
 		},
 		async text() {
-			this._buffer ??= await streamToBuffer(source);
-			return this._buffer.toString("utf-8");
+			buffer ??= await streamToBuffer(source);
+			return buffer.toString("utf-8");
 		},
 	};
 };
@@ -95,10 +97,11 @@ export const createFileFromUrl = (
 		type?: string;
 		name?: string;
 	} = {},
-) => {
+): FileLike => {
 	const parsedUrl = new URL(url);
 	const filename =
 		options.name || parsedUrl.pathname.split("/").pop() || "file";
+	let buffer: Buffer | null = null;
 
 	return {
 		name: filename,
@@ -106,14 +109,13 @@ export const createFileFromUrl = (
 		size: 0, // Unknown size until loaded
 		lastModified: Date.now(),
 		stream: () => createStreamFromUrl(url),
-		_buffer: null as Buffer | null,
 		async arrayBuffer() {
-			this._buffer ??= await loadFromUrl(url);
-			return bufferToArrayBuffer(this._buffer);
+			buffer ??= await loadFromUrl(url);
+			return bufferToArrayBuffer(buffer);
 		},
 		async text() {
-			this._buffer ??= await loadFromUrl(url);
-			return this._buffer.toString("utf-8");
+			buffer ??= await loadFromUrl(url);
+			return buffer.toString("utf-8");
 		},
 		filepath: url,
 	};

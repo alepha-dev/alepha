@@ -1,4 +1,16 @@
-import { $hook, $inject, Alepha, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	Alepha,
+	type HookDescriptor,
+	type TAny,
+	type TArray,
+	type TObject,
+	type TOptional,
+	type TRecord,
+	type TString,
+	t,
+} from "@alepha/core";
 import {
 	type Permission,
 	SecurityProvider,
@@ -11,21 +23,25 @@ import {
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
 	isServerAction,
+	type RouteDescriptor,
 	ServerActionDescriptorProvider,
 } from "@alepha/server";
 import { LinkProvider } from "./LinkProvider.ts";
 import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
 
 export class ServerLinksProvider {
-	protected readonly alepha = $inject(Alepha);
-	protected readonly client = $inject(LinkProvider);
-	protected readonly helper = $inject(ActionDescriptorHelper);
-	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
-	protected readonly serverActionDescriptorProvider = $inject(
-		ServerActionDescriptorProvider,
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly client: LinkProvider = $inject(LinkProvider);
+	protected readonly helper: ActionDescriptorHelper = $inject(
+		ActionDescriptorHelper,
 	);
+	protected readonly remoteProvider: RemoteDescriptorProvider = $inject(
+		RemoteDescriptorProvider,
+	);
+	protected readonly serverActionDescriptorProvider: ServerActionDescriptorProvider =
+		$inject(ServerActionDescriptorProvider);
 
-	public readonly onRoute = $hook({
+	public readonly onRoute: HookDescriptor<"server:onRoute"> = $hook({
 		name: "server:onRoute",
 		handler: ({ route }) => {
 			if (!isServerAction(route)) {
@@ -49,7 +65,21 @@ export class ServerLinksProvider {
 		},
 	});
 
-	public readonly links = $route({
+	public readonly links: RouteDescriptor<{
+		response: TObject<{
+			prefix: TOptional<TString>;
+			links: TArray<
+				TObject<{
+					name: TString;
+					path: TString;
+					method: TOptional<TString>;
+					group: TOptional<TString>;
+					requestBodyType: TOptional<TString>;
+					service: TOptional<TString>;
+				}>
+			>;
+		}>;
+	}> = $route({
 		path: RemoteDescriptorProvider.path.apiLinks,
 		schema: {
 			response: apiLinksResponseSchema,
@@ -62,7 +92,12 @@ export class ServerLinksProvider {
 		},
 	});
 
-	public readonly schema = $route({
+	public readonly schema: RouteDescriptor<{
+		params: TObject<{
+			name: TString;
+		}>;
+		response: TRecord<TString, TAny>;
+	}> = $route({
 		path: `${RemoteDescriptorProvider.path.apiLinks}/:name/schema`,
 		schema: {
 			params: t.object({

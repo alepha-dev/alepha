@@ -12,9 +12,9 @@ import { EventEmitterLike } from "./EventEmitterLike.ts";
  *
  * - `create` - Emitted when a descriptor is created.
  */
-export const descriptorEvents = new EventEmitterLike<{
+export const descriptorEvents: EventEmitterLike<{
 	create: CursorDescriptor & { [KIND]: string };
-}>();
+}> = new EventEmitterLike();
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ export const descriptorEvents = new EventEmitterLike<{
  * @internal
  * @param kind
  */
-export const __descriptor = (kind: string) => {
+export const __descriptor = (kind: string): void => {
 	descriptorEvents.emit("create", {
 		...$cursor(),
 		[KIND]: kind,
@@ -43,7 +43,10 @@ export const __descriptor = (kind: string) => {
  * @param descriptor
  * @param to
  */
-export const __bind = (descriptor: { [KIND]: string }, ...to: Service[]) => {
+export const __bind = (
+	descriptor: { [KIND]: string },
+	...to: Service[]
+): void => {
 	descriptorEvents.on("create", (ctx) => {
 		if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
 			if (ctx[KIND] === descriptor[KIND]) {

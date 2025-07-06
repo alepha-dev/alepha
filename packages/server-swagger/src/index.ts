@@ -22,7 +22,7 @@ export * from "./ServerSwaggerProvider.ts";
  */
 export class AlephaServerSwagger implements Module {
 	public readonly name = "alepha.server.swagger";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): Alepha =>
 		alepha.with(AlephaServer).with(ServerSwaggerProvider);
 }
 

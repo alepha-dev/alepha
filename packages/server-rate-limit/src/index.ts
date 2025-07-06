@@ -10,7 +10,7 @@ export * from "./providers/ServerRateLimitProvider.ts";
 
 export class AlephaServerRateLimit implements Module {
 	public readonly name = "alepha.server.rate-limit";
-	public readonly $services = (alepha: Alepha) => {
+	public readonly $services = (alepha: Alepha): void => {
 		alepha.with(AlephaServer).with(ServerRateLimitProvider);
 	};
 }

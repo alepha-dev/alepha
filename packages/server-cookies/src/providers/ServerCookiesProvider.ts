@@ -1,8 +1,8 @@
-import { $hook } from "@alepha/core";
+import { $hook, type HookDescriptor } from "@alepha/core";
 import type { Cookie } from "../descriptors/$cookie.ts";
 
 export class ServerCookiesProvider {
-	public readonly onRequest = $hook({
+	public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
 		name: "server:onRequest",
 		handler: async ({ request }) => {
 			request.cookies = {
@@ -12,7 +12,7 @@ export class ServerCookiesProvider {
 		},
 	});
 
-	public readonly onSend = $hook({
+	public readonly onSend: HookDescriptor<"server:onSend"> = $hook({
 		name: "server:onSend",
 		handler: async ({ request }) => {
 			if (request.cookies) {

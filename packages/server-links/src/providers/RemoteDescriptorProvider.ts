@@ -1,6 +1,18 @@
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
-import { $retry } from "@alepha/retry";
-import { apiLinksResponseSchema, type ServerRemote } from "@alepha/server";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type HookDescriptor,
+	type Logger,
+	OPTIONS,
+} from "@alepha/core";
+import { $retry, type RetryDescriptor } from "@alepha/retry";
+import {
+	type ApiLinksResponse,
+	apiLinksResponseSchema,
+	type ServerRemote,
+} from "@alepha/server";
 import { ProxyDescriptorProvider } from "@alepha/server-proxy";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
 import { LinkProvider } from "./LinkProvider.ts";
@@ -10,17 +22,19 @@ export class RemoteDescriptorProvider {
 		apiLinks: "/api/_links",
 	};
 
-	protected readonly alepha = $inject(Alepha);
-	protected readonly client = $inject(LinkProvider);
-	protected readonly proxyProvider = $inject(ProxyDescriptorProvider);
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly client: LinkProvider = $inject(LinkProvider);
+	protected readonly proxyProvider: ProxyDescriptorProvider = $inject(
+		ProxyDescriptorProvider,
+	);
 	protected readonly remotes: Array<ServerRemote> = [];
-	protected readonly log = $logger();
+	protected readonly log: Logger = $logger();
 
-	public getRemotes() {
+	public getRemotes(): ServerRemote[] {
 		return this.remotes;
 	}
 
-	public readonly configure = $hook({
+	public readonly configure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		handler: async () => {
 			const remotes = this.alepha.getDescriptorValues($remote);
@@ -30,7 +44,7 @@ export class RemoteDescriptorProvider {
 		},
 	});
 
-	public readonly start = $hook({
+	public readonly start: HookDescriptor<"start"> = $hook({
 		name: "start",
 		handler: async () => {
 			for (const remote of this.remotes) {
@@ -70,7 +84,10 @@ export class RemoteDescriptorProvider {
 		},
 	});
 
-	public async registerRemote(value: RemoteDescriptor, key: string) {
+	public async registerRemote(
+		value: RemoteDescriptor,
+		key: string,
+	): Promise<void> {
 		const options = value[OPTIONS];
 		const url = typeof options.url === "string" ? options.url : options.url();
 		const linkPath = RemoteDescriptorProvider.path.apiLinks;
@@ -126,7 +143,9 @@ export class RemoteDescriptorProvider {
 		}
 	}
 
-	protected readonly fetchLinks = $retry({
+	protected readonly fetchLinks: RetryDescriptor<
+		(opts: FetchLinksOptions) => Promise<ApiLinksResponse>
+	> = $retry({
 		max: 10,
 		delay: 2000,
 		onError: (_, attempt, { service, url }) => {
@@ -135,11 +154,7 @@ export class RemoteDescriptorProvider {
 				url,
 			});
 		},
-		handler: async (opts: {
-			service: string;
-			url: string;
-			authorization?: string;
-		}) => {
+		handler: async (opts: FetchLinksOptions): Promise<ApiLinksResponse> => {
 			const { url, authorization } = opts;
 			const response = await fetch(url, {
 				headers: new Headers(
@@ -158,4 +173,10 @@ export class RemoteDescriptorProvider {
 			return this.alepha.parse(apiLinksResponseSchema, await response.json());
 		},
 	});
+}
+
+export interface FetchLinksOptions {
+	service: string;
+	url: string;
+	authorization?: string;
 }

@@ -18,7 +18,7 @@ export * from "./providers/RedisQueueProvider.ts";
  */
 export class AlephaQueueRedis implements Module {
 	public readonly name = "alepha.queue.redis";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): Alepha =>
 		alepha
 			.with({
 				provide: QueueProvider,

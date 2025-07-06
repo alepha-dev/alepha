@@ -17,6 +17,6 @@ export * from "./helpers/descriptor.ts";
 export * from "./helpers/Module.ts";
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/Service.ts";
-export * from "./providers/AsyncLocalStorageProvider.ts";
+export * from "./providers/AlsProvider.ts";
 export * from "./providers/TypeProvider.ts";
 export * from "./services/Logger.ts";

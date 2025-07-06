@@ -23,7 +23,7 @@ import type {
 	Service,
 	ServiceEntry,
 } from "./interfaces/Service.ts";
-import { AsyncLocalStorageProvider } from "./providers/AsyncLocalStorageProvider.ts";
+import { AlsProvider } from "./providers/AlsProvider.ts";
 import { Logger, type LoggerEnv } from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -261,13 +261,13 @@ export class Alepha {
 	 * Cache for environment variables.
 	 * > It allows us to avoid parsing the same schema multiple times.
 	 */
-	protected cacheEnv = new Map<TSchema, any>();
+	protected cacheEnv: Map<TSchema, any> = new Map();
 
 	/**
 	 * Cache for TypeBox type checks.
 	 * > It allows us to avoid compiling the same schema multiple times.
 	 */
-	protected cacheTypeCheck = new Map<TSchema, TypeCheck<TSchema>>();
+	protected cacheTypeCheck: Map<TSchema, TypeCheck<TSchema>> = new Map();
 
 	/**
 	 * List of events that can be triggered. Powered by $hook().
@@ -288,7 +288,7 @@ export class Alepha {
 	 *
 	 * Mocked for browser environments.
 	 */
-	public readonly context = new AsyncLocalStorageProvider();
+	public readonly context: AlsProvider = new AlsProvider();
 
 	/**
 	 * Get logger instance.
@@ -386,7 +386,7 @@ export class Alepha {
 	/**
 	 * True if the App is running in a browser environment.
 	 */
-	public isBrowser() {
+	public isBrowser(): boolean {
 		return typeof window !== "undefined"; // pretty cheap check
 	}
 
@@ -416,7 +416,7 @@ export class Alepha {
 	 *
 	 * > This is automatically set when running tests with Jest or Vitest.
 	 */
-	public isTest() {
+	public isTest(): boolean {
 		const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
 		return env === "test";
 	}
@@ -426,7 +426,7 @@ export class Alepha {
 	 *
 	 * > This is automatically set by Vite or Vercel. However, you have to set it manually when running Docker apps.
 	 */
-	public isProduction() {
+	public isProduction(): boolean {
 		const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
 		return env === "prod" || env === "production";
 	}
@@ -493,7 +493,7 @@ export class Alepha {
 	 *
 	 * @return A promise that resolves when the App has stopped.
 	 */
-	public async stop() {
+	public async stop(): Promise<void> {
 		if (!this.started) {
 			return;
 		}
@@ -746,7 +746,10 @@ export class Alepha {
 	 * }
 	 * ```
 	 */
-	public configure<T extends object>(service: Service<T>, state: Partial<T>) {
+	public configure<T extends object>(
+		service: Service<T>,
+		state: Partial<T>,
+	): void {
 		if (this.has(service)) {
 			Object.assign(this.get(service), state);
 		} else {
@@ -764,7 +767,7 @@ export class Alepha {
 	public on<T extends keyof Hooks>(
 		event: T,
 		hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
-	) {
+	): () => void {
 		if (!this.events[event]) {
 			this.events[event] = [];
 		}
@@ -1003,7 +1006,10 @@ export class Alepha {
 	 *
 	 * This method returns a record where the keys are the names of the services.
 	 */
-	public graph() {
+	public graph(): Record<
+		string,
+		{ from: string[]; as?: string; module?: string }
+	> {
 		const graph: Record<
 			string,
 			{ from: string[]; as?: string; module?: string }

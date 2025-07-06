@@ -36,20 +36,6 @@ test("TypeProvider#optional", () => {
 	expect(() => a.parse(m, { a: null })).toThrow(TypeBoxError);
 });
 
-test("TypeProvider#nullable", () => {
-	const a = Alepha.create();
-	const m = t.nullify(
-		t.object({
-			a: t.string(),
-		}),
-	);
-
-	expect(() => a.parse(m, {})).toThrow(TypeBoxError);
-	expect(a.parse(m, { a: 1 })).toEqual({ a: "1" });
-	expect(a.parse(m, { a: null })).toEqual({ a: null });
-	expect(() => a.parse(m, { a: undefined })).toThrow(TypeBoxError);
-});
-
 test("TypeProvider#snake_case", () => {
 	const a = Alepha.create();
 	const m = t.object({

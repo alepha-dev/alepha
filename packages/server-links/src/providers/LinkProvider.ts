@@ -1,4 +1,4 @@
-import { $inject, $logger, Alepha, t } from "@alepha/core";
+import { $inject, $logger, Alepha, type Logger, t } from "@alepha/core";
 import {
 	type ActionDescriptor,
 	type ApiLink,
@@ -18,13 +18,13 @@ import {
 export class LinkProvider {
 	public readonly URL_LINKS = "/api/_links";
 
-	protected readonly log = $logger();
-	protected readonly alepha = $inject(Alepha);
-	protected readonly httpClient = $inject(HttpClient);
+	protected readonly log: Logger = $logger();
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly httpClient: HttpClient = $inject(HttpClient);
 
 	public links?: Array<HttpClientLink>;
 
-	public pushLink(link: HttpClientLink) {
+	public pushLink(link: HttpClientLink): void {
 		if (!this.links) {
 			this.links = [];
 		}
@@ -102,7 +102,7 @@ export class LinkProvider {
 		name: string,
 		config: Partial<ServerRequestConfigEntry> = {},
 		options: ClientRequestOptions & ClientScope = {},
-	) {
+	): Promise<any> {
 		this.log.trace("Following link", { name, config, options });
 		const link = await this.getLinkByName(name, options);
 

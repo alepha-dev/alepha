@@ -45,7 +45,10 @@ export interface CookieDescriptor<T extends TSchema> {
 	del: (cookies: Cookies) => void;
 }
 
-export const $cookie = <T extends TSchema>(
+export const $cookie: {
+	<T extends TSchema>(options: CookieDescriptorOptions<T>): CookieDescriptor<T>;
+	[KIND]: string;
+} = <T extends TSchema>(
 	options: CookieDescriptorOptions<T>,
 ): CookieDescriptor<T> => {
 	__descriptor("COOKIE");

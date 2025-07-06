@@ -25,7 +25,7 @@ export * from "./providers/MemoryFileStorageProvider.ts";
  */
 export class AlephaBucket implements Module {
 	public readonly name = "alepha.bucket";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): void => {
 		alepha
 			.with({
 				provide: FileStorageProvider,
@@ -35,4 +35,5 @@ export class AlephaBucket implements Module {
 				optional: true,
 			})
 			.with(BucketDescriptorProvider);
+	};
 }

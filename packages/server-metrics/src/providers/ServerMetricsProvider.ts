@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import { PerformanceObserver } from "node:perf_hooks";
-import { $action } from "@alepha/server";
+import { $action, type ActionDescriptor } from "@alepha/server";
 import { Gauge, Histogram, Registry } from "prom-client";
 
 export class ServerMetricsProvider {
@@ -10,7 +10,7 @@ export class ServerMetricsProvider {
 	private gcDuration: Histogram;
 	private heapUsage: Gauge;
 
-	public readonly metrics = $action({
+	public readonly metrics: ActionDescriptor = $action({
 		method: "GET",
 		path: "/metrics",
 		silent: true,

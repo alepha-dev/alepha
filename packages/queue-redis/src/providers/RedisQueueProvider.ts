@@ -1,16 +1,24 @@
-import { $inject, t } from "@alepha/core";
+import {
+	$inject,
+	type Static,
+	type TObject,
+	type TString,
+	t,
+} from "@alepha/core";
 import type { QueueProvider } from "@alepha/queue";
 import { RedisProvider } from "@alepha/redis";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	REDIS_QUEUE_PREFIX: TString;
+}> = t.object({
 	REDIS_QUEUE_PREFIX: t.string({
 		default: "queue",
 	}),
 });
 
 export class RedisQueueProvider implements QueueProvider {
-	protected readonly env = $inject(envSchema);
-	protected readonly redisProvider = $inject(RedisProvider);
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 
 	public prefix(queue: string): string {
 		return `${this.env.REDIS_QUEUE_PREFIX}:${queue}`;

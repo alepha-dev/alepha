@@ -1,4 +1,4 @@
-import { $hook } from "@alepha/core";
+import { $hook, type HookDescriptor } from "@alepha/core";
 
 export class ServerCorsProvider {
 	public options: CorsOptions = {
@@ -8,7 +8,7 @@ export class ServerCorsProvider {
 		credentials: true,
 	};
 
-	protected readonly onRequest = $hook({
+	protected readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
 		name: "server:onRequest",
 		handler: ({ request }) => {
 			const reqOrigin = request.headers.origin;
@@ -45,7 +45,7 @@ export class ServerCorsProvider {
 	public isOriginAllowed(
 		origin: string | undefined,
 		allowed: CorsOptions["origin"],
-	) {
+	): boolean {
 		if (typeof allowed === "function") return allowed(origin);
 		if (typeof allowed === "string") return origin === allowed;
 		if (Array.isArray(allowed)) return allowed.includes(origin ?? "");

@@ -1,4 +1,14 @@
-import { $hook, $inject, $logger, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	type HookDescriptor,
+	type Logger,
+	type Static,
+	type TObject,
+	type TString,
+	t,
+} from "@alepha/core";
 import { RedisProvider, RedisSubscriberProvider } from "@alepha/redis";
 import type {
 	SubscribeCallback,
@@ -6,20 +16,24 @@ import type {
 	UnSubscribeFn,
 } from "@alepha/topic";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	REDIS_TOPIC_PREFIX: TString;
+}> = t.object({
 	REDIS_TOPIC_PREFIX: t.string({
 		default: "topic",
 	}),
 });
 
 export class RedisTopicProvider implements TopicProvider {
-	protected readonly env = $inject(envSchema);
-	protected readonly redisProvider = $inject(RedisProvider);
-	protected readonly redisSubscriberProvider = $inject(RedisSubscriberProvider);
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
+	protected readonly redisSubscriberProvider: RedisSubscriberProvider = $inject(
+		RedisSubscriberProvider,
+	);
 
-	protected readonly log = $logger();
+	protected readonly log: Logger = $logger();
 
-	protected readonly stop = $hook({
+	protected readonly stop: HookDescriptor<"stop"> = $hook({
 		name: "stop",
 		handler: async () => {
 			this.redisSubscriberProvider.subscriber.removeAllListeners();

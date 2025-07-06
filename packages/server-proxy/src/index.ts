@@ -12,7 +12,7 @@ export * from "./providers/ProxyDescriptorProvider.ts";
 
 export class AlephaServerProxy implements Module {
 	public readonly name = "alepha.server.proxy";
-	public readonly $services = (alepha: Alepha) => {
+	public readonly $services = (alepha: Alepha): void => {
 		alepha.with(AlephaServer);
 		alepha.with(ProxyDescriptorProvider);
 	};

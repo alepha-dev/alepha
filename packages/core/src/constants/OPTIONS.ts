@@ -3,4 +3,4 @@
  *
  * @internal
  */
-export const OPTIONS = Symbol.for("Alepha.Options");
+export const OPTIONS: unique symbol = Symbol.for("Alepha.Options");

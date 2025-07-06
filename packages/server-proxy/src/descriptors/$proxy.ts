@@ -30,7 +30,10 @@ export interface ProxyDescriptor {
 	[OPTIONS]: ProxyDescriptorOptions;
 }
 
-export const $proxy = (options: ProxyDescriptorOptions): ProxyDescriptor => {
+export const $proxy: {
+	(options: ProxyDescriptorOptions): ProxyDescriptor;
+	[KIND]: string;
+} = (options: ProxyDescriptorOptions): ProxyDescriptor => {
 	__descriptor("PROXY");
 	return {
 		[KIND]: "PROXY",

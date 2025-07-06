@@ -1,3 +1,4 @@
+import type { Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type {
 	ArrayOptions,
@@ -6,39 +7,56 @@ import type {
 	ObjectOptions,
 	SchemaOptions,
 	StringOptions,
+	TAny,
 	TArray,
 	TBoolean,
+	TComposite,
 	TInteger,
 	TIntersect,
+	TMappedResult,
 	TNull,
 	TNumber,
 	TObject,
+	TOmit,
 	TOptionalWithFlag,
+	TPartial,
+	TPartialFromMappedResult,
+	TPick,
 	TProperties,
+	TRecord,
+	TRecordOrObject,
 	TSchema,
 	TString,
+	TUndefined,
+	TUnion,
 	TUnsafe,
+	TVoid,
 	Union,
 	UnsafeOptions,
 } from "@sinclair/typebox";
 import * as TypeBox from "@sinclair/typebox";
 import { FormatRegistry, Kind, Type } from "@sinclair/typebox";
 import * as TypeBoxValue from "@sinclair/typebox/value";
-
-export { TypeBox, TypeBoxValue };
-
-import type { Readable } from "node:stream";
-import { Value } from "@sinclair/typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
 import { fullFormats } from "../helpers/formats.ts";
+
+export { TypeBox, TypeBoxValue };
 
 export type {
 	Static,
 	StaticDecode,
 	StaticEncode,
+	TAny,
+	TArray,
+	TBoolean,
+	TNumber,
 	TObject,
+	TOptional,
+	TProperties,
+	TRecord,
 	TSchema,
+	TString,
 } from "@sinclair/typebox";
 export { TypeGuard } from "@sinclair/typebox";
 
@@ -49,29 +67,82 @@ export class TypeProvider {
 	static DEFAULT_LONG_STRING_MAX_LENGTH = 1024;
 	static DEFAULT_RICH_STRING_MAX_LENGTH = 16384;
 	static DEFAULT_ARRAY_MAX_ITEMS = 1000;
-	static FormatRegistry = FormatRegistry;
+	static FormatRegistry: typeof FormatRegistry = FormatRegistry;
 
-	public Type = Type;
+	public raw: typeof Type = Type;
 
-	public any = Type.Any;
+	public any(options?: SchemaOptions): TAny {
+		return Type.Any(options);
+	}
 
-	public void = Type.Void;
+	public void(options?: SchemaOptions): TVoid {
+		return Type.Void(options);
+	}
 
-	public undefined = Type.Undefined;
+	public undefined(options?: SchemaOptions): TUndefined {
+		return Type.Undefined(options);
+	}
 
-	public record = Type.Record;
+	public record<Key extends TSchema, Value extends TSchema>(
+		key: Key,
+		value: Value,
+		options?: ObjectOptions,
+	): TRecordOrObject<Key, Value> {
+		return Type.Record(key, value, {
+			...options,
+		});
+	}
 
-	public omit = Type.Omit;
+	public omit<Type extends TSchema, Key extends TSchema>(
+		type: Type,
+		key: Key,
+		options?: SchemaOptions,
+	): TOmit<Type, Key>;
+	public omit<Type extends TSchema, Key extends PropertyKey[]>(
+		type: Type,
+		key: readonly [...Key],
+		options?: SchemaOptions,
+	): TOmit<Type, Key> {
+		return Type.Omit(type, key, options);
+	}
 
-	public union = Type.Union;
+	public partial<MappedResult extends TMappedResult>(
+		type: MappedResult,
+		options?: SchemaOptions,
+	): TPartialFromMappedResult<MappedResult>;
+	public partial<Type extends TSchema>(
+		type: Type,
+		options?: SchemaOptions,
+	): TPartial<Type> {
+		return Type.Partial(type, options);
+	}
 
-	public partial = Type.Partial;
+	public union<Types extends TSchema[]>(
+		types: [...Types],
+		options?: SchemaOptions,
+	): Union<Types> {
+		return Type.Union(types, options);
+	}
 
-	public composite = Type.Composite;
+	public composite<T extends TSchema[]>(
+		schemas: [...T],
+		options?: ObjectOptions,
+	): TComposite<T> {
+		return Type.Composite(schemas, options);
+	}
 
-	public pick = Type.Pick;
-
-	public clean = Value.Clean;
+	public pick<Type extends TSchema, Key extends PropertyKey[]>(
+		type: Type,
+		key: readonly [...Key],
+		options?: SchemaOptions,
+	): TPick<Type, Key>;
+	public pick<Type extends TSchema, Key extends TSchema>(
+		type: Type,
+		key: Key,
+		options?: SchemaOptions,
+	): TPick<Type, Key> {
+		return Type.Pick(type, key, options);
+	}
 
 	/**
 	 * Create a schema for an object.
@@ -79,14 +150,15 @@ export class TypeProvider {
 	 * @param properties The properties of the object.
 	 * @param options The options for the object.
 	 */
-	public object = <T extends TProperties>(
+	public object<T extends TProperties>(
 		properties: T,
 		options?: ObjectOptions,
-	): TObject<T> =>
-		Type.Object(properties, {
+	): TObject<T> {
+		return Type.Object(properties, {
 			additionalProperties: false,
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for an array.
@@ -94,21 +166,22 @@ export class TypeProvider {
 	 * @param schema
 	 * @param options
 	 */
-	public array = <T extends TSchema>(
+	public array<T extends TSchema>(
 		schema: T,
 		options?: ArrayOptions,
-	): TArray<T> =>
-		Type.Array(schema, {
+	): TArray<T> {
+		return Type.Array(schema, {
 			maxItems: TypeProvider.DEFAULT_ARRAY_MAX_ITEMS,
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for a string.
 	 *
 	 * @param options
 	 */
-	public string = (options?: AlephaStringOptions): TString => {
+	public string(options?: AlephaStringOptions): TString {
 		const size = options?.size;
 		const maxLength =
 			size === "long"
@@ -124,108 +197,102 @@ export class TypeProvider {
 			maxLength,
 			...options,
 		});
-	};
+	}
 
 	/**
 	 * Create a schema for a JSON object.
 	 *
 	 * @param options
 	 */
-	public json = (options?: SchemaOptions) =>
-		t.record(t.string(), t.any(), options);
+	public json(options?: SchemaOptions): TRecord<TString, TAny> {
+		return t.record(t.string(), t.any(), options);
+	}
 
 	/**
 	 * Create a schema for a boolean.
 	 *
 	 * @param options
 	 */
-	public boolean = (options?: SchemaOptions): TBoolean =>
-		Type.Boolean({
+	public boolean(options?: SchemaOptions): TBoolean {
+		return Type.Boolean({
 			[PRIMITIVE]: "bool",
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for a number.
 	 *
 	 * @param options
 	 */
-	public number = (options?: NumberOptions): TNumber =>
-		Type.Number({
+	public number(options?: NumberOptions): TNumber {
+		return Type.Number({
 			[PRIMITIVE]: "float",
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for an unsigned 8-bit integer.
 	 *
 	 * @param options
 	 */
-	public uchar = (options?: IntegerOptions): TInteger =>
-		Type.Integer({
+	public uchar(options?: IntegerOptions): TInteger {
+		return Type.Integer({
 			[PRIMITIVE]: "uchar",
 			minimum: 0,
 			maximum: 255,
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for an unsigned 32-bit integer.
 	 */
-	public uint = (options?: IntegerOptions): TNumber =>
-		Type.Number({
+	public uint(options?: IntegerOptions): TNumber {
+		return Type.Number({
 			[PRIMITIVE]: "uint32",
 			multipleOf: 1,
 			minimum: 0,
 			maximum: 4294967296,
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for a signed 32-bit integer.
 	 */
-	public int = (options?: IntegerOptions): TInteger =>
-		Type.Integer({
+	public int(options?: IntegerOptions): TInteger {
+		return Type.Integer({
 			[PRIMITIVE]: "int32",
 			minimum: -2147483647,
 			maximum: 2147483647,
 			...options,
 		});
+	}
 
 	/**
 	 * Create a schema for a bigint. Bigint is a 64-bit integer.
 	 * This is a workaround for TypeBox, which does not support bigint natively.
 	 */
-	public bigint = (options?: IntegerOptions): TNumber =>
-		Type.Number({
+	public bigint(options?: IntegerOptions): TNumber {
+		return Type.Number({
 			[PRIMITIVE]: "bigint",
 			multipleOf: 1,
 			minimum: -9007199254740991,
 			maximum: 9007199254740991,
 			...options,
 		});
+	}
 
 	/**
 	 * Make a schema optional.
 	 *
 	 * @param schema The schema to make optional.
 	 */
-	public optional = <T extends TSchema>(
-		schema: T,
-	): TOptionalWithFlag<T, true> => Type.Optional(schema);
-
-	/**
-	 * Nullify all properties of a schema.
-	 *
-	 * @param schema The schema to nullify.
-	 * @param options The options for the schema.
-	 */
-	public nullify = <T extends TSchema>(schema: T, options?: ObjectOptions) =>
-		Type.Mapped(
-			Type.KeyOf(schema),
-			(K) => this.nullable(Type.Index(schema, K), options),
-			options,
-		);
+	public optional<T extends TSchema>(schema: T): TOptionalWithFlag<T, true> {
+		return Type.Optional(schema);
+	}
 
 	/**
 	 * Make a schema nullable.
@@ -233,10 +300,12 @@ export class TypeProvider {
 	 * @param schema The schema to make nullable.
 	 * @param options The options for the schema.
 	 */
-	public nullable = <T extends TSchema>(
+	public nullable<T extends TSchema>(
 		schema: T,
 		options?: ObjectOptions,
-	): Union<[TNull, T]> => Type.Union([Type.Null(), schema], options);
+	): TUnion<[TNull, T]> {
+		return Type.Union([Type.Null(), schema], options);
+	}
 
 	/**
 	 * Map a schema to another schema.
@@ -246,7 +315,7 @@ export class TypeProvider {
 	 * @param options The options for the schema.
 	 * @returns The mapped schema.
 	 */
-	public map = <
+	public map<
 		T extends TObject | TIntersect,
 		Omit extends (keyof T["properties"])[],
 		Optional extends (keyof T["properties"])[],
@@ -257,7 +326,9 @@ export class TypeProvider {
 			optional: [...Optional];
 		},
 		options?: ObjectOptions,
-	) => {
+	): TComposite<
+		[TOmit<T, [...Omit, ...Optional]>, TPartial<TPick<T, Optional>>]
+	> {
 		const omit: readonly [...Omit] = operations.omit;
 		const optional: [...Optional] = operations.optional;
 		return Type.Composite(
@@ -267,7 +338,7 @@ export class TypeProvider {
 			],
 			options,
 		);
-	};
+	}
 
 	/**
 	 * Create a schema for a string enum.
@@ -275,8 +346,11 @@ export class TypeProvider {
 	 * @param values
 	 * @param options
 	 */
-	public enum = <T extends string[]>(values: [...T], options?: StringOptions) =>
-		this.Type.Unsafe<T[number]>({
+	public enum<T extends string[]>(
+		values: [...T],
+		options?: StringOptions,
+	): TUnsafe<T[number]> {
+		return Type.Unsafe<T[number]>({
 			[PRIMITIVE]: "string",
 			[Kind]: "String",
 			type: "string",
@@ -284,99 +358,65 @@ export class TypeProvider {
 			pattern: values.map((v) => `^${v}$`).join("|"),
 			...options,
 		});
-
-	/**
-	 * Create a schema for a string enum e.g. LIKE_THIS.
-	 *
-	 * @param options
-	 */
-	public snakeCase = (options?: StringOptions) =>
-		this.string({
-			pattern: "^[A-Z_-]+$",
-			...options,
-		});
-
-	/**
-	 * Create a schema for an object with a value and label.
-	 *
-	 * @param options
-	 */
-	public valueLabel = (options?: ObjectOptions) =>
-		this.object(
-			{
-				value: this.snakeCase({
-					description: "Machine-readable value.",
-				}),
-				label: this.string({
-					description: "Human-readable label.",
-				}),
-				description: this.optional(
-					this.string({
-						description: "Description of the value.",
-						maxLength: 1024,
-					}),
-				),
-			},
-			options,
-		);
+	}
 
 	/**
 	 * Create a schema for a datetime.
 	 *
 	 * @param options The options for the date.
 	 */
-	public datetime = (options?: StringOptions): TString =>
-		this.string({
+	public datetime(options?: StringOptions): TString {
+		return this.string({
 			...options,
 			format: "date-time",
 		});
+	}
 
 	/**
 	 * Create a schema for a date.
 	 *
 	 * @param options
 	 */
-	public date = (options?: StringOptions): TString =>
-		this.string({
+	public date(options?: StringOptions): TString {
+		return this.string({
 			...options,
 			format: "date",
 		});
+	}
 
 	/**
 	 * Create a schema for uuid.
 	 *
 	 * @param options The options for the duration.
 	 */
-	public uuid = (options?: StringOptions): TString =>
-		this.string({
+	public uuid(options?: StringOptions): TString {
+		return this.string({
 			...options,
 			format: "uuid",
 		});
+	}
 
-	/**
-	 *
-	 *
-	 * @param kind
-	 * @param options
-	 */
-	public unsafe = <T>(kind: string, options: UnsafeOptions = {}) =>
-		Type.Unsafe<T>({
+	public unsafe<T>(kind: string, options: UnsafeOptions = {}): TUnsafe<T> {
+		return Type.Unsafe<T>({
 			[Kind]: kind,
 			...options,
 		});
+	}
 
-	public file = (options?: { max?: number }): TFile =>
-		t.unsafe<FileLike>("Any", {
+	public file(options?: { max?: number }): TFile {
+		return t.unsafe<FileLike>("Any", {
 			[OPTIONS]: options,
 			format: "binary",
 			type: "string",
 		});
+	}
 
-	public stream = (): TStream =>
-		t.unsafe<StreamLike>("Any", {
+	public stream(): TStream {
+		return t.unsafe<StreamLike>("Any", {
 			format: "stream",
 			type: "string",
 		});
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -466,7 +506,7 @@ export const isFileLike = (value: any): value is FileLike => {
 		typeof value.name === "string" &&
 		typeof value.type === "string" &&
 		typeof value.size === "number" &&
-		typeof value.stream === "function"
+		typeof value.stream.bind(value) === "function"
 	);
 };
 
@@ -499,7 +539,7 @@ export interface AlephaStringOptions extends StringOptions {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const t = new TypeProvider();
+export const t: TypeProvider = new TypeProvider();
 
 // ---------------------------------------------------------------------------------------------------------------------
 

@@ -1,4 +1,5 @@
 import { $cursor, type Async } from "@alepha/core";
+import type { Interval } from "../helpers/Interval.ts";
 import {
 	DateTimeProvider,
 	type DurationLike,
@@ -35,7 +36,7 @@ export interface IntervalDescriptorOptions {
 /**
  * Registers a new interval.
  */
-export const $interval = (options: IntervalDescriptorOptions) => {
+export const $interval = (options: IntervalDescriptorOptions): Interval => {
 	const { context } = $cursor();
 	const dt = context.get(DateTimeProvider);
 

@@ -10,7 +10,7 @@ export * from "./providers/ServerCorsProvider.ts";
 
 export class AlephaServerCors implements Module {
 	public readonly name = "alepha.server.cors";
-	public readonly $services = (alepha: Alepha) => {
+	public readonly $services = (alepha: Alepha): void => {
 		alepha.with(AlephaServer).with(ServerCorsProvider);
 	};
 }

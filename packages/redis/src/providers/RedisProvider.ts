@@ -1,5 +1,17 @@
-import type { Static } from "@alepha/core";
-import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type HookDescriptor,
+	type Logger,
+	type Static,
+	type TNumber,
+	type TObject,
+	type TOptional,
+	type TString,
+	t,
+} from "@alepha/core";
 import {
 	createClient,
 	RESP_TYPES,
@@ -7,7 +19,11 @@ import {
 	type SetOptions,
 } from "@redis/client";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	REDIS_PORT: TNumber;
+	REDIS_HOST: TString;
+	REDIS_PASSWORD: TOptional<TString>;
+}> = t.object({
 	REDIS_PORT: t.uint({
 		default: "6379",
 	}),
@@ -32,10 +48,10 @@ export type RedisClientOptions = Parameters<typeof createClient>[0];
 export type RedisSetOptions = SetOptions;
 
 export class RedisProvider {
-	protected readonly log = $logger();
-	protected readonly alepha = $inject(Alepha);
-	protected readonly env = $inject(envSchema);
-	protected readonly client = this.createClient();
+	protected readonly log: Logger = $logger();
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly client: RedisClient = this.createClient();
 
 	public get publisher(): RedisClient {
 		if (!this.client.isReady) {
@@ -45,12 +61,12 @@ export class RedisProvider {
 		return this.client;
 	}
 
-	protected readonly start = $hook({
+	protected readonly start: HookDescriptor<"start"> = $hook({
 		name: "start",
 		handler: () => this.connect(),
 	});
 
-	protected readonly stop = $hook({
+	protected readonly stop: HookDescriptor<"stop"> = $hook({
 		name: "stop",
 		handler: () => this.close(),
 	});

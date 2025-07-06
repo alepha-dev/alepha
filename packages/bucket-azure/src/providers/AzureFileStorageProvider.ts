@@ -4,8 +4,18 @@ import {
 	FileNotFoundError,
 	type FileStorageProvider,
 } from "@alepha/bucket";
-import type { Static } from "@alepha/core";
-import { $env, $hook, $inject, $logger, type FileLike, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	type FileLike,
+	type HookDescriptor,
+	type Logger,
+	type Static,
+	type TObject,
+	type TString,
+	t,
+} from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { file } from "@alepha/file";
 import {
@@ -15,14 +25,11 @@ import {
 	type StoragePipelineOptions,
 } from "@azure/storage-blob";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	AZ_STORAGE_CONNECTION_STRING: TString;
+}> = t.object({
 	AZ_STORAGE_CONNECTION_STRING: t.string({
 		size: "long",
-		default:
-			"DefaultEndpointsProtocol=http;" +
-			"AccountName=devstoreaccount1;" +
-			"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
-			"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",
 	}),
 });
 
@@ -31,10 +38,12 @@ declare module "@alepha/core" {
 }
 
 export class AzureFileStorageProvider implements FileStorageProvider {
-	protected readonly log = $logger();
-	protected readonly env = $env(envSchema);
-	protected readonly bucketProvider = $inject(BucketDescriptorProvider);
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly log: Logger = $logger();
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly bucket: BucketDescriptorProvider = $inject(
+		BucketDescriptorProvider,
+	);
+	protected readonly time: DateTimeProvider = $inject(DateTimeProvider);
 	protected readonly containers: Record<string, ContainerClient> = {};
 	protected readonly blobServiceClient: BlobServiceClient;
 	protected readonly options: StoragePipelineOptions = {};
@@ -138,10 +147,10 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 		return this.containers[container].getBlockBlobClient(fileId);
 	}
 
-	public readonly onStart = $hook({
+	public readonly onStart: HookDescriptor<"start"> = $hook({
 		name: "start",
 		handler: async () => {
-			for (const bucket of this.bucketProvider.getBuckets()) {
+			for (const bucket of this.bucket.getBuckets()) {
 				const containerName = bucket.name.replaceAll("/", "-").toLowerCase();
 				this.log.debug(`Prepare container ${containerName}...`);
 
@@ -160,7 +169,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 	): Promise<ContainerClient> {
 		const container = this.blobServiceClient.getContainerClient(name);
 
-		await this.dateTimeProvider.deadline(
+		await this.time.deadline(
 			(abortSignal) => container.createIfNotExists({ abortSignal }),
 			[5, "seconds"],
 		);

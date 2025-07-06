@@ -1,3 +1,4 @@
+import type { Alepha } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
 import { ServerHealthProvider } from "./providers/ServerHealthProvider.ts";
 
@@ -18,7 +19,7 @@ export * from "./providers/ServerHealthProvider.ts";
  */
 export class AlephaServerHealth {
 	public readonly name = "alepha.server.health";
-	public readonly $services = (alepha: any) => {
+	public readonly $services = (alepha: Alepha): void => {
 		alepha.with(AlephaServer).with(ServerHealthProvider);
 	};
 }

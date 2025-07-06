@@ -4,7 +4,10 @@ import type { FileStorageProvider } from "../providers/FileStorageProvider.ts";
 /**
  * Store files in a bucket. WIP
  */
-export const $bucket = (options: BucketDescriptorOptions): BucketDescriptor => {
+export const $bucket: {
+	(options: BucketDescriptorOptions): BucketDescriptor;
+	[KIND]: "BUCKET";
+} = (options: BucketDescriptorOptions): BucketDescriptor => {
 	return {
 		[KIND]: "BUCKET",
 		[OPTIONS]: options,

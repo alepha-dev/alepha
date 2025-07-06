@@ -2,11 +2,11 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./interfaces/Run.ts";
 import type { Service } from "./interfaces/Service.ts";
-import { AsyncLocalStorageProvider } from "./providers/AsyncLocalStorageProvider.ts";
+import { AlsProvider } from "./providers/AlsProvider.ts";
 
 export * from "./index.shared.ts";
 
-AsyncLocalStorageProvider.create = () => new AsyncLocalStorage();
+AlsProvider.create = () => new AsyncLocalStorage();
 
 export const run = (
 	entry: Alepha | Service | Array<Service>,

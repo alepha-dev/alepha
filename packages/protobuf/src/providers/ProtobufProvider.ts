@@ -1,12 +1,13 @@
-import type { Static, TObject, TSchema } from "@alepha/core";
+import type { Static, TObject, TProperties, TSchema } from "@alepha/core";
 import { $inject, Alepha, TypeGuard } from "@alepha/core";
 import type { Type } from "protobufjs";
 import protobufjs from "protobufjs";
 
 export class ProtobufProvider {
-	protected readonly alepha = $inject(Alepha);
-	protected readonly schemas = new Map<TObject | string, Type>();
-	protected readonly protobuf = protobufjs;
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly schemas: Map<string | TObject<TProperties>, Type> =
+		new Map();
+	protected readonly protobuf: typeof protobufjs = protobufjs;
 
 	/**
 	 * Encode an object to a Uint8Array.

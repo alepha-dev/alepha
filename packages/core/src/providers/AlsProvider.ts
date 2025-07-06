@@ -2,7 +2,7 @@ import type { AsyncLocalStorage } from "node:async_hooks";
 
 export type AsyncLocalStorageData = any;
 
-export class AsyncLocalStorageProvider {
+export class AlsProvider {
 	static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
 		return undefined;
 	};
@@ -10,7 +10,7 @@ export class AsyncLocalStorageProvider {
 	protected als?: AsyncLocalStorage<AsyncLocalStorageData>;
 
 	constructor() {
-		this.als = AsyncLocalStorageProvider.create();
+		this.als = AlsProvider.create();
 	}
 
 	public createContextId(): string {
@@ -31,7 +31,7 @@ export class AsyncLocalStorageProvider {
 		);
 	}
 
-	public run<R>(callback: () => R, data: Record<string, any> = {}) {
+	public run<R>(callback: () => R, data: Record<string, any> = {}): R {
 		if (!this.als) {
 			return callback();
 		}
@@ -59,7 +59,7 @@ export class AsyncLocalStorageProvider {
 		return undefined;
 	}
 
-	public set<T>(key: string, value: T) {
+	public set<T>(key: string, value: T): void {
 		if (!this.als) {
 			return;
 		}

@@ -88,9 +88,10 @@ export interface SwaggerDescriptor {
 	json(): OpenAPIV3.Document;
 }
 
-export const $swagger = (
-	options: SwaggerDescriptorOptions,
-): SwaggerDescriptor => {
+export const $swagger: {
+	(options: SwaggerDescriptorOptions): SwaggerDescriptor;
+	[KIND]: string;
+} = (options: SwaggerDescriptorOptions): SwaggerDescriptor => {
 	__descriptor("SWAGGER");
 	return {
 		[KIND]: "SWAGGER",

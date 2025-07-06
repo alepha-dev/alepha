@@ -90,9 +90,10 @@ export interface ServeDescriptor {
 	list(): string[];
 }
 
-export const $serve = (
-	options: ServeDescriptorOptions = {},
-): ServeDescriptor => {
+export const $serve: {
+	(options?: ServeDescriptorOptions): ServeDescriptor;
+	[KIND]: string;
+} = (options: ServeDescriptorOptions = {}): ServeDescriptor => {
 	__descriptor(KEY);
 	return {
 		[KIND]: KEY,

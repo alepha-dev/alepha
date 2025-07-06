@@ -3,4 +3,4 @@
  *
  * @internal
  */
-export const KIND = Symbol.for("Alepha.Kind");
+export const KIND: unique symbol = Symbol.for("Alepha.Kind");

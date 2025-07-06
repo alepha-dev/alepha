@@ -95,9 +95,10 @@ export interface HookDescriptor<T extends keyof Hooks> {
  * ```
  *
  */
-export const $hook = <T extends keyof Hooks>(
-	options: HookOptions<T>,
-): HookDescriptor<T> => {
+export const $hook: {
+	<T extends keyof Hooks>(options: HookOptions<T>): HookDescriptor<T>;
+	[KIND]: string;
+} = <T extends keyof Hooks>(options: HookOptions<T>): HookDescriptor<T> => {
 	__descriptor(KEY);
 
 	const { context, definition } = $cursor();

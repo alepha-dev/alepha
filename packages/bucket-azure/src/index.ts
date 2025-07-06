@@ -16,7 +16,7 @@ export * from "./providers/AzureFileStorageProvider.ts";
  */
 export class AlephaBucketAzure implements Module {
 	public readonly name = "alepha.bucket.azure";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): void => {
 		alepha
 			.with({
 				provide: FileStorageProvider,
@@ -24,4 +24,5 @@ export class AlephaBucketAzure implements Module {
 				optional: true,
 			})
 			.with(AlephaBucket);
+	};
 }

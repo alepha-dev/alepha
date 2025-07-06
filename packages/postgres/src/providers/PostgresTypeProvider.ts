@@ -76,7 +76,6 @@ export class PostgresTypeProvider {
 		pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 
 	/**
-	 *
 	 * @alias bigIdentityPrimaryKey
 	 */
 	public readonly primaryKey = this.bigIdentityPrimaryKey;

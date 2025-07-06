@@ -1,3 +1,4 @@
+import type { Logger } from "../services/Logger.ts";
 import { $cursor } from "./$cursor.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -21,7 +22,7 @@ import { $cursor } from "./$cursor.ts";
  * }
  * ```
  */
-export const $logger = (name?: string) => {
+export const $logger = (name?: string): Logger => {
 	const { context, definition, module } = $cursor();
 
 	return context.log.child({

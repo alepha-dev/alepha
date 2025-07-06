@@ -19,7 +19,7 @@ export * from "./providers/RedisLockProvider.ts";
  */
 export class AlephaLockRedis {
 	public readonly name = "alepha.lock.redis";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): Alepha =>
 		alepha
 			.with({
 				provide: LockTopicProvider,

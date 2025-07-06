@@ -1,6 +1,14 @@
-import { $inject, Alepha, t } from "@alepha/core";
+import {
+	$inject,
+	Alepha,
+	type TBoolean,
+	type TNumber,
+	type TObject,
+	type TString,
+	t,
+} from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $route } from "@alepha/server";
+import { $route, type RouteDescriptor } from "@alepha/server";
 
 /**
  * Register `/health` endpoint.
@@ -8,10 +16,17 @@ import { $route } from "@alepha/server";
  * - Provides basic health information about the server.
  */
 export class ServerHealthProvider {
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly alepha = $inject(Alepha);
+	protected readonly time: DateTimeProvider = $inject(DateTimeProvider);
+	protected readonly alepha: Alepha = $inject(Alepha);
 
-	public readonly health = $route({
+	public readonly health: RouteDescriptor<{
+		response: TObject<{
+			message: TString;
+			uptime: TNumber;
+			date: TString;
+			ready: TBoolean;
+		}>;
+	}> = $route({
 		path: "/health",
 		schema: {
 			response: t.object({
@@ -25,7 +40,7 @@ export class ServerHealthProvider {
 		handler: () => ({
 			message: "OK",
 			uptime: Math.floor(process.uptime()),
-			date: this.dateTimeProvider.nowISOString(),
+			date: this.time.nowISOString(),
 			ready: this.alepha.isReady(),
 		}),
 	});

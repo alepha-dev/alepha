@@ -1,4 +1,4 @@
-import type { AsyncLocalStorageProvider } from "../providers/AsyncLocalStorageProvider.ts";
+import type { AlsProvider } from "../providers/AlsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -70,7 +70,7 @@ export interface LoggerOptions {
 	/**
 	 * An optional async local storage provider to use for storing context information.
 	 */
-	als?: AsyncLocalStorageProvider;
+	als?: AlsProvider;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ export class Logger {
 	protected context: string;
 	protected color: boolean;
 	protected json: boolean;
-	protected als?: AsyncLocalStorageProvider;
+	protected als?: AlsProvider;
 
 	constructor(options: LoggerOptions = {}) {
 		this.level = options.level ?? "info";
@@ -126,7 +126,7 @@ export class Logger {
 		this.als = options.als;
 	}
 
-	public child(options: LoggerOptions) {
+	public child(options: LoggerOptions): Logger {
 		return new Logger({
 			...options,
 			level: options.level ?? this.level,
@@ -139,23 +139,26 @@ export class Logger {
 		});
 	}
 
-	public error(message: unknown, data?: object | Error | string | unknown) {
+	public error(
+		message: unknown,
+		data?: object | Error | string | unknown,
+	): void {
 		this.log("error", message, data as object | Error | string);
 	}
 
-	public warn(message: unknown, data?: object | Error | string) {
+	public warn(message: unknown, data?: object | Error | string): void {
 		this.log("warn", message, data);
 	}
 
-	public info(message: unknown, data?: object | Error | string) {
+	public info(message: unknown, data?: object | Error | string): void {
 		this.log("info", message, data);
 	}
 
-	public debug(message: unknown, data?: object | Error | string) {
+	public debug(message: unknown, data?: object | Error | string): void {
 		this.log("debug", message, data);
 	}
 
-	public trace(message: unknown, data?: object | Error | string) {
+	public trace(message: unknown, data?: object | Error | string): void {
 		this.log("trace", message, data);
 	}
 
@@ -171,7 +174,7 @@ export class Logger {
 		level: LogLevel,
 		message: unknown,
 		data?: object | Error | string,
-	) {
+	): void {
 		if (this.levelOrder[level] > this.levelOrder[this.level]) {
 			return;
 		}
@@ -201,7 +204,7 @@ export class Logger {
 	 * @param formatted
 	 * @protected
 	 */
-	protected print(formatted: string) {
+	protected print(formatted: string): void {
 		console.log(formatted);
 	}
 
@@ -325,7 +328,7 @@ export class Logger {
 	protected colorize(
 		color: string,
 		text: string,
-		reset = COLORS.reset,
+		reset: string = COLORS.reset,
 	): string {
 		if (!this.color) {
 			return text;
@@ -376,11 +379,11 @@ export class MockLogger extends Logger {
 		this.store = options.store;
 	}
 
-	print(msg: string) {
+	print(msg: string): void {
 		this.store.stack.push(JSON.parse(msg));
 	}
 
-	child(options: LoggerOptions) {
+	child(options: LoggerOptions): MockLogger {
 		return new MockLogger({
 			...options,
 			level: options.level ?? this.level,

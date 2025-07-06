@@ -2,21 +2,31 @@ import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type HookDescriptor,
+	type Logger,
+	OPTIONS,
+} from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { getContentType } from "@alepha/file";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
 export class ServerStaticProvider {
-	protected readonly alepha = $inject(Alepha);
-	protected readonly routerProvider = $inject(ServerRouterProvider);
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly log = $logger();
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly routerProvider: ServerRouterProvider =
+		$inject(ServerRouterProvider);
+	protected readonly dateTimeProvider: DateTimeProvider =
+		$inject(DateTimeProvider);
+	protected readonly log: Logger = $logger();
 
 	protected readonly directories: ServeDirectory[] = [];
 
-	protected readonly configure = $hook({
+	protected readonly configure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		handler: async () => {
 			const serves = this.alepha.getDescriptorValues($serve);
@@ -45,7 +55,7 @@ export class ServerStaticProvider {
 		return directory.files;
 	}
 
-	public async serve(options: ServeDescriptorOptions) {
+	public async serve(options: ServeDescriptorOptions): Promise<void> {
 		const prefix = options.path ?? "/";
 
 		let root = options.root ?? process.cwd();
@@ -169,7 +179,7 @@ export class ServerStaticProvider {
 		};
 	}
 
-	protected getCacheFileTypes() {
+	protected getCacheFileTypes(): string[] {
 		return [".js", ".css"];
 	}
 

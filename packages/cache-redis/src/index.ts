@@ -18,7 +18,7 @@ export * from "./providers/RedisCacheProvider.ts";
  */
 export class AlephaCacheRedis implements Module {
 	public readonly name = "alepha.cache.redis";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): Alepha =>
 		alepha
 			.with({
 				provide: CacheProvider,

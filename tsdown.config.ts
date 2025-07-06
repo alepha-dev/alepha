@@ -13,6 +13,7 @@ export default async () => {
 				entry: "src/index.browser.ts",
 				platform: "browser",
 				sourcemap: true,
+				dts: false,
 			},
 		];
 	}

@@ -4,6 +4,7 @@ import {
 	$hook,
 	$inject,
 	Alepha,
+	type HookDescriptor,
 	isTypeFile,
 	OPTIONS,
 	type TObject,
@@ -25,14 +26,15 @@ import {
 } from "./descriptors/$swagger.ts";
 
 export class ServerSwaggerProvider {
-	protected readonly serverActionProvider = $inject(
-		ServerActionDescriptorProvider,
-	);
-	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
-	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-	protected readonly alepha = $inject(Alepha);
+	protected readonly serverActionProvider: ServerActionDescriptorProvider =
+		$inject(ServerActionDescriptorProvider);
+	protected readonly serverStaticProvider: ServerStaticProvider =
+		$inject(ServerStaticProvider);
+	protected readonly serverRouterProvider: ServerRouterProvider =
+		$inject(ServerRouterProvider);
+	protected readonly alepha: Alepha = $inject(Alepha);
 
-	protected readonly configure = $hook({
+	protected readonly configure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		after: this.serverActionProvider,
 		handler: async (alepha) => {
@@ -61,7 +63,9 @@ export class ServerSwaggerProvider {
 		},
 	});
 
-	protected configureOpenApi(doc: SwaggerDescriptorOptions) {
+	protected configureOpenApi(
+		doc: SwaggerDescriptorOptions,
+	): OpenAPIV3.Document {
 		const openApi: OpenAPIV3.Document = {
 			openapi: "3.0.0",
 			info: doc.info,
@@ -203,7 +207,7 @@ export class ServerSwaggerProvider {
 		return false;
 	}
 
-	public replacePathParams(url: string) {
+	public replacePathParams(url: string): string {
 		return url.replace(/:\w+/g, (match) => {
 			const paramName = match.slice(1);
 			return `{${paramName}}`;
@@ -263,7 +267,7 @@ export class ServerSwaggerProvider {
 	protected async configureSwaggerApi(
 		prefix: string,
 		json: OpenAPIV3.Document,
-	) {
+	): Promise<void> {
 		await this.serverRouterProvider.route({
 			method: "GET",
 			path: `${prefix}/json`,
@@ -277,7 +281,7 @@ export class ServerSwaggerProvider {
 	protected async configureSwaggerUi(
 		prefix: string,
 		options: SwaggerDescriptorOptions,
-	) {
+	): Promise<void> {
 		const ui = typeof options.ui === "object" ? options.ui : {};
 		const initializer = `
 window.onload = function() {

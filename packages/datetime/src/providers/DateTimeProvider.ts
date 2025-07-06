@@ -1,4 +1,4 @@
-import { $hook, $logger } from "@alepha/core";
+import { $hook, $logger, type HookDescriptor, type Logger } from "@alepha/core";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
@@ -14,7 +14,7 @@ export type DurationLike =
 	| [number, ManipulateType];
 
 export class DateTimeProvider {
-	protected log = $logger();
+	protected log: Logger = $logger();
 	protected ref: DateTime | null = null;
 	protected readonly timeouts: Timeout[] = [];
 	protected readonly intervals: Interval[] = [];
@@ -24,7 +24,7 @@ export class DateTimeProvider {
 		dayjs.extend(dayjsRelativeTime);
 	}
 
-	protected readonly start = $hook({
+	protected readonly start: HookDescriptor<"start"> = $hook({
 		name: "start",
 		handler: async () => {
 			for (const interval of this.intervals) {
@@ -33,7 +33,7 @@ export class DateTimeProvider {
 		},
 	});
 
-	protected readonly stop = $hook({
+	protected readonly stop: HookDescriptor<"stop"> = $hook({
 		name: "stop",
 		handler: () => {
 			for (const timeout of this.timeouts) {
@@ -113,7 +113,7 @@ export class DateTimeProvider {
 	 * Return a promise that resolves after a next tick.
 	 * It uses `setTimeout` with 0ms delay.
 	 */
-	public async tick() {
+	public async tick(): Promise<void> {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 	}
 
@@ -248,7 +248,7 @@ export class DateTimeProvider {
 	/**
 	 * Stop the time.
 	 */
-	public pause() {
+	public pause(): DateTime {
 		this.ref = this.ref || this.now();
 		return this.ref;
 	}
@@ -256,7 +256,7 @@ export class DateTimeProvider {
 	/**
 	 * Reset the reference date.
 	 */
-	public reset() {
+	public reset(): void {
 		this.ref = null;
 	}
 }

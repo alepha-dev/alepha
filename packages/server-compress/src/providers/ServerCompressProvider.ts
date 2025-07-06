@@ -1,8 +1,8 @@
-import { Readable } from "node:stream";
+import { Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $hook } from "@alepha/core";
+import { $hook, type HookDescriptor } from "@alepha/core";
 import type { ServerResponse } from "@alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -13,7 +13,14 @@ const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
 
 export class ServerCompressProvider {
-	compressors = {
+	compressors: Record<
+		string,
+		| {
+				compress: (...args: any[]) => Promise<Buffer>;
+				stream: (options?: any) => Transform;
+		  }
+		| undefined
+	> = {
 		gzip: {
 			compress: gzip,
 			stream: createGzip,
@@ -31,7 +38,7 @@ export class ServerCompressProvider {
 				: undefined,
 	};
 
-	public readonly onResponse = $hook({
+	public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
 		name: "server:onResponse",
 		handler: async ({ request, response }) => {
 			// skip if already compressed
@@ -71,7 +78,7 @@ export class ServerCompressProvider {
 	protected async compress(
 		encoding: keyof typeof this.compressors,
 		response: ServerResponse,
-	) {
+	): Promise<void> {
 		const body = response.body; // can be string or Buffer or ArrayBuffer or Readable
 
 		const compressor = this.compressors[encoding];
@@ -107,7 +114,9 @@ export class ServerCompressProvider {
 		}
 	}
 
-	protected getParams(encoding: keyof typeof this.compressors) {
+	protected getParams(
+		encoding: keyof typeof this.compressors,
+	): Record<number, any> {
 		if (encoding === "zstd") {
 			return {
 				[zlib.constants.ZSTD_c_compressionLevel]: 3, // default compression level for zstd
@@ -125,7 +134,7 @@ export class ServerCompressProvider {
 	protected setHeaders(
 		response: ServerResponse,
 		encoding: keyof typeof this.compressors,
-	) {
+	): void {
 		response.headers.vary = "content-encoding";
 		response.headers["content-encoding"] = encoding;
 		response.headers["cache-control"] = "no-cache";

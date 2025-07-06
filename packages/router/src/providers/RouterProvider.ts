@@ -1,9 +1,9 @@
 export class RouterProvider<T extends Route = Route> {
-	protected routePathRegex = /^(\/[:*]?[.\-_a-zA-Z0-9]*)*$/;
+	protected routePathRegex: RegExp = /^(\/[:*]?[.\-_a-zA-Z0-9]*)*$/;
 	protected tree: Tree<T> = { children: {} };
 	public readonly routes: T[] = [];
 
-	public push(route: T) {
+	public push(route: T): void {
 		if (!this.routePathRegex.test(route.path)) {
 			throw new Error(`Route "${route.path}" is not valid`);
 		}
@@ -90,7 +90,7 @@ export class RouterProvider<T extends Route = Route> {
 		return { route: cursor.route, params };
 	}
 
-	protected createParts(path: string) {
+	protected createParts(path: string): string[] {
 		let pathname = path.split("?")[0];
 
 		// remove trailing slash

@@ -9,7 +9,7 @@ export const timers: Array<{
 	name: string;
 }> = [];
 
-export const log = (...args: string[]) => {
+export const log = (...args: string[]): void => {
 	if (logOptions.verbose) {
 		console.log(
 			`[${new Date().toISOString().split("T")[1].slice(0, -1)}]`,
@@ -24,7 +24,7 @@ export const logOptions = {
 	verbose: false,
 };
 
-export const now = Date.now();
+export const now: number = Date.now();
 
 export interface Flag {
 	when: string[];
@@ -100,7 +100,7 @@ const parseFlags = <T extends Flags>(
 	return acc as InferFlags<T>;
 };
 
-export const builtInFlags = {
+export const builtInFlags: Record<string, Flag> = {
 	help: {
 		when: ["-h", "--help"],
 		description: "Show this help message",
@@ -119,7 +119,7 @@ export function cli(opts: {
 	description: string;
 	commands: Command<any>[];
 	flags?: Flags;
-}) {
+}): void {
 	const commands = opts.commands || [];
 	const flags = {
 		...opts.flags,
@@ -191,7 +191,7 @@ export type RunCommand =
 export type Runner = (cmd: RunCommand, opts?: RunOptions) => Promise<string>;
 
 const shxCommands = ["rm", "cp", "mv", "mkdir", "touch", "cat", "echo", "ls"];
-export function isShxCommand(cmd: string) {
+export function isShxCommand(cmd: string): boolean {
 	for (const it of shxCommands) {
 		if (cmd.startsWith(it)) {
 			return true;
@@ -289,7 +289,7 @@ async function run(cmd: RunCommand, opts: RunOptions = {}): Promise<string> {
 /**
  * Log the summary of the commands.
  */
-export function summary() {
+export function summary(): void {
 	log("");
 	renderTable(timers.map(({ time, name }) => [name, `${time} s`]));
 	log("Total time:", ((Date.now() - now) / 1000).toFixed(2), "s\n");
@@ -323,7 +323,7 @@ export function help(
 	commands: Array<Command<Flags>>,
 	flags: Flags,
 	opts: HelpOptions,
-) {
+): void {
 	if (opts.description) {
 		log("");
 		log(opts.description);

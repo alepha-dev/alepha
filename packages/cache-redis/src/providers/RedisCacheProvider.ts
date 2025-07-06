@@ -1,8 +1,20 @@
 import type { CacheProvider } from "@alepha/cache";
-import { $inject, $logger, Alepha, type Static, t } from "@alepha/core";
+import {
+	$inject,
+	$logger,
+	Alepha,
+	type Logger,
+	type Static,
+	type TObject,
+	type TOptional,
+	type TString,
+	t,
+} from "@alepha/core";
 import { RedisProvider } from "@alepha/redis";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	REDIS_CACHE_PREFIX: TOptional<TString>;
+}> = t.object({
 	REDIS_CACHE_PREFIX: t.optional(
 		t.string({
 			description:
@@ -16,10 +28,10 @@ declare module "@alepha/core" {
 }
 
 export class RedisCacheProvider implements CacheProvider {
-	protected readonly log = $logger();
-	protected readonly redisProvider = $inject(RedisProvider);
-	protected readonly env = $inject(envSchema);
-	protected readonly alepha = $inject(Alepha);
+	protected readonly log: Logger = $logger();
+	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly alepha: Alepha = $inject(Alepha);
 
 	public async get(name: string, key: string): Promise<Uint8Array | undefined> {
 		if (!this.alepha.isReady()) {
@@ -83,7 +95,7 @@ export class RedisCacheProvider implements CacheProvider {
 		return this.redisProvider.keys(`${this.prefix(name)}:*`);
 	}
 
-	protected prefix(...path: string[]) {
+	protected prefix(...path: string[]): string {
 		const parts = ["cache", ...path];
 
 		if (this.env.REDIS_CACHE_PREFIX) {

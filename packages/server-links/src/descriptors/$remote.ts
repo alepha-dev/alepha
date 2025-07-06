@@ -70,7 +70,10 @@ export interface RemoteDescriptor {
  *
  * You can add a service account if you want to use a security layer.
  */
-export const $remote = (options: RemoteDescriptorOptions) => {
+export const $remote: {
+	(options: RemoteDescriptorOptions): RemoteDescriptor;
+	[KIND]: string;
+} = (options: RemoteDescriptorOptions) => {
 	__descriptor(KEY);
 	return {
 		[KIND]: KEY,

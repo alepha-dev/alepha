@@ -1,14 +1,20 @@
-import { $hook, $inject, Alepha, OPTIONS } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	Alepha,
+	type HookDescriptor,
+	OPTIONS,
+} from "@alepha/core";
 import {
 	$bucket,
 	type BucketDescriptorOptions,
 } from "../descriptors/$bucket.ts";
 
 export class BucketDescriptorProvider {
-	protected readonly alepha = $inject(Alepha);
+	protected readonly alepha: Alepha = $inject(Alepha);
 	protected readonly buckets: Array<Bucket> = [];
 
-	public readonly onConfigure = $hook({
+	public readonly onConfigure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		handler: () => {
 			const buckets = this.alepha.getDescriptorValues($bucket);

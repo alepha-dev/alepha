@@ -1,4 +1,12 @@
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type HookDescriptor,
+	type Logger,
+	OPTIONS,
+} from "@alepha/core";
 import {
 	routeMethods,
 	type ServerHandler,
@@ -8,11 +16,12 @@ import {
 import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
 
 export class ProxyDescriptorProvider {
-	protected readonly log = $logger();
-	protected readonly routerProvider = $inject(ServerRouterProvider);
-	protected readonly alepha = $inject(Alepha);
+	protected readonly log: Logger = $logger();
+	protected readonly routerProvider: ServerRouterProvider =
+		$inject(ServerRouterProvider);
+	protected readonly alepha: Alepha = $inject(Alepha);
 
-	public readonly configure = $hook({
+	public readonly configure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		handler: async () => {
 			const proxies = this.alepha.getDescriptorValues($proxy);
@@ -79,7 +88,7 @@ export class ProxyDescriptorProvider {
 		};
 	}
 
-	public async proxy(options: ProxyDescriptorOptions) {
+	public async proxy(options: ProxyDescriptorOptions): Promise<void> {
 		const path = options.path;
 		const target = options.target;
 		const handler: ServerHandler = this.createProxyHandler(options);

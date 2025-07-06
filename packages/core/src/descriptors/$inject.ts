@@ -49,8 +49,3 @@ export function $inject<T extends object>(type: Service<T> | TObject): T {
 		module,
 	});
 }
-
-/**
- * @alias $inject
- */
-export const $env = $inject;

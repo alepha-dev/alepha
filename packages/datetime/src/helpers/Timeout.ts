@@ -14,7 +14,7 @@ export class Timeout {
 	/**
 	 * Add time to the timeout.
 	 */
-	public add(amountMs: number) {
+	public add(amountMs: number): void {
 		if (this.timer == null) {
 			return;
 		}
@@ -36,7 +36,7 @@ export class Timeout {
 	/**
 	 * Clear the timeout.
 	 */
-	public clear() {
+	public clear(): void {
 		clearTimeout(this.timer);
 		this.duration = 0;
 		this.timer = null;

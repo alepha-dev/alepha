@@ -21,7 +21,7 @@ export class Interval {
 	/**
 	 * Start the interval.
 	 */
-	public async start() {
+	public async start(): Promise<void> {
 		if (this.timer != null) {
 			return;
 		}
@@ -36,7 +36,7 @@ export class Interval {
 	 *
 	 * @param amountMs
 	 */
-	public async add(amountMs: number) {
+	public async add(amountMs: number): Promise<void> {
 		if (this.timer == null) {
 			return;
 		}
@@ -53,7 +53,7 @@ export class Interval {
 	/**
 	 * Clear the interval.
 	 */
-	public clear() {
+	public clear(): void {
 		clearInterval(this.timer);
 		this.duration = 0;
 		this.timer = null;

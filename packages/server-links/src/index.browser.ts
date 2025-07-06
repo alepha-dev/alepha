@@ -13,7 +13,7 @@ export * from "./providers/LinkProvider.ts";
 
 export class AlephaServerLinks implements Module {
 	public readonly name = "alepha.server.links";
-	public readonly $services = (alepha: Alepha) => {
+	public readonly $services = (alepha: Alepha): void => {
 		alepha.with(AlephaServer);
 		alepha.with(LinkProvider);
 	};
