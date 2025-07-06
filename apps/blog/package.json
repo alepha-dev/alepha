@@ -14,7 +14,7 @@
 		"@types/react": "^19.1.8",
 		"drizzle-kit": "^0.31.4",
 		"rolldown-vite": "^7.0.4",
-		"vercel": "^44.2.8",
+		"vercel": "^44.2.12",
 		"vite-bundle-analyzer": "^1.0.0"
 	},
 	"scripts": {
