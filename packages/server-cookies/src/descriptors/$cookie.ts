@@ -8,6 +8,7 @@ import {
 	type TSchema,
 } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import type { ServerRequest } from "@alepha/server";
 
 export interface CookieDescriptorOptions<T extends TSchema> {
 	schema: T;
@@ -38,11 +39,11 @@ export interface CookieDescriptor<T extends TSchema> {
 
 	[OPTIONS]: CookieDescriptorOptions<T>;
 
-	set: (cookies: Cookies, value: Static<T>) => void;
+	set: (value: Static<T>, options?: { cookies?: Cookies }) => void;
 
-	get: (cookies: Cookies) => Static<T> | undefined;
+	get: (options?: { cookies?: Cookies }) => Static<T> | undefined;
 
-	del: (cookies: Cookies) => void;
+	del: (options?: { cookies?: Cookies }) => void;
 }
 
 export const $cookie: {
@@ -58,7 +59,15 @@ export const $cookie: {
 	return {
 		[KIND]: "COOKIE",
 		[OPTIONS]: options,
-		get: (cookies: Cookies) => {
+		get: (opts: { cookies?: Cookies } = {}) => {
+			const cookies =
+				context.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
+			if (!cookies) {
+				throw new Error(
+					"Cookies not found in request context or options.cookies",
+				);
+			}
+
 			try {
 				if (cookies.req[options.name]) {
 					let value: string = decodeURIComponent(cookies.req[options.name]);
@@ -79,11 +88,27 @@ export const $cookie: {
 			return undefined;
 		},
 
-		del: (cookies: Cookies) => {
+		del: (opts: { cookies?: Cookies } = {}) => {
+			const cookies =
+				context.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
+			if (!cookies) {
+				throw new Error(
+					"Cookies not found in request context or options.cookies",
+				);
+			}
+
 			cookies.res[options.name] = null;
 		},
 
-		set: (cookies: Cookies, data: Static<T>) => {
+		set: (data: Static<T>, opts: { cookies?: Cookies } = {}) => {
+			const cookies =
+				context.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
+			if (!cookies) {
+				throw new Error(
+					"Cookies not found in request context or options.cookies",
+				);
+			}
+
 			let value = JSON.stringify(context.parse(options.schema, data));
 
 			if (options.compress) {

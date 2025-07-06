@@ -161,14 +161,11 @@ export class ReactAuthProvider {
 					request.headers.authorization = `Bearer ${await this.getAccessTokenFromCookies(tokens)}`;
 				}
 
-				if (
-					this.user.get(request.cookies) &&
-					!this.tokens.get(request.cookies)
-				) {
-					this.user.del(request.cookies);
+				if (this.user.get() && !this.tokens.get()) {
+					this.user.del();
 				}
 
-				const user = this.user.get(request.cookies);
+				const user = this.user.get();
 				if (user) {
 					request.user = user;
 					request.user.roles = []; // user from cookie is not trusted
@@ -198,7 +195,7 @@ export class ReactAuthProvider {
 		cookies: Cookies,
 	): Promise<SessionTokens | undefined> {
 		const now = Date.now();
-		const tokens = this.tokens.get(cookies);
+		const tokens = this.tokens.get({ cookies });
 		if (!tokens) {
 			return;
 		}
@@ -216,10 +213,13 @@ export class ReactAuthProvider {
 							tokens.refresh_token,
 						);
 
-						this.tokens.set(cookies, {
-							...newTokens,
-							issued_at: Date.now(),
-						});
+						this.tokens.set(
+							{
+								...newTokens,
+								issued_at: Date.now(),
+							},
+							{ cookies },
+						);
 
 						return newTokens;
 					} catch (e) {
@@ -230,15 +230,15 @@ export class ReactAuthProvider {
 				}
 
 				// session expired and no (valid) refresh token
-				this.tokens.del(cookies);
-				this.user.del(cookies);
+				this.tokens.del({ cookies });
+				this.user.del({ cookies });
 				return;
 			}
 		}
 
 		if (!tokens.issued_at && tokens.access_token) {
-			this.tokens.del(cookies);
-			this.user.del(cookies);
+			this.tokens.del({ cookies });
+			this.user.del({ cookies });
 			return;
 		}
 
@@ -272,7 +272,7 @@ export class ReactAuthProvider {
 				code_challenge_method: "S256",
 			};
 
-			this.authorizationCode.set(cookies, {
+			this.authorizationCode.set({
 				codeVerifier,
 				redirectUri: query.redirect ?? "/",
 			});
@@ -291,7 +291,7 @@ export class ReactAuthProvider {
 		handler: async ({ url, cookies, query, reply }) => {
 			const { client, name } = await this.provider(query.provider);
 
-			const authorizationCode = this.authorizationCode.get(cookies);
+			const authorizationCode = this.authorizationCode.get();
 			if (!authorizationCode) {
 				throw new BadRequestError("Missing code verifier");
 			}
@@ -300,9 +300,9 @@ export class ReactAuthProvider {
 				pkceCodeVerifier: authorizationCode.codeVerifier,
 			});
 
-			this.authorizationCode.del(cookies);
+			this.authorizationCode.del();
 
-			this.tokens.set(cookies, {
+			this.tokens.set({
 				...tokens,
 				issued_at: Date.now(),
 				provider: name,
@@ -313,7 +313,7 @@ export class ReactAuthProvider {
 			);
 
 			if (user) {
-				this.user.set(cookies, user);
+				this.user.set(user);
 			}
 
 			reply.redirect(authorizationCode.redirectUri ?? "/");
@@ -360,10 +360,10 @@ export class ReactAuthProvider {
 				provider: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ query, cookies, reply }) => {
+		handler: async ({ query, reply }) => {
 			const redirect = query.redirect ?? "/";
 			const { client, logoutUri } = await this.provider(query.provider);
-			const tokens = this.tokens.get(cookies);
+			const tokens = this.tokens.get();
 			if (!tokens?.access_token) {
 				reply.redirect(redirect);
 				return;
@@ -371,8 +371,8 @@ export class ReactAuthProvider {
 
 			const idToken = tokens?.id_token;
 
-			this.tokens.del(cookies);
-			this.user.del(cookies);
+			this.tokens.del();
+			this.user.del();
 
 			if (!client.serverMetadata().end_session_endpoint) {
 				await tokenRevocation(
