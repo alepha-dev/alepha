@@ -28,6 +28,7 @@ import {
 import { ForbiddenError } from "../errors/ForbiddenError.ts";
 import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
+import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
 	ServerRequest,
@@ -204,10 +205,7 @@ export class ServerActionDescriptorProvider {
 				params: config.params ?? {},
 				query: config.query ?? {},
 				headers: config.headers ?? {},
-				reply: {
-					headers: {},
-					redirect: () => {},
-				},
+				reply: new ServerReply(),
 				metadata: {},
 				raw: {},
 				user,

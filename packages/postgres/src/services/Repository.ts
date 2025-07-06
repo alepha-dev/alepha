@@ -70,9 +70,6 @@ import { pg } from "../providers/PostgresTypeProvider.ts";
 import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
 
-/**
- *
- */
 export class Repository<
 	TTable extends PgTableWithColumns<TableConfig>,
 	TTableSchema extends TObject,
@@ -174,9 +171,6 @@ export class Repository<
 		return this.provider.db;
 	}
 
-	/**
-	 *
-	 */
 	public organization(): PgColumn {
 		throw new Error("Organization not implemented");
 	}
@@ -484,18 +478,12 @@ export class Repository<
 		return response;
 	}
 
-	/**
-	 *
-	 */
 	public createQuery(query: PgQuery<TTableSchema> = {}): PgQuery<TTableSchema> {
 		return {
 			...query,
 		};
 	}
 
-	/**
-	 *
-	 */
 	public createQueryWhere(
 		where: PgQueryWhere<Static<TTableSchema>> = {},
 	): PgQueryWhere<Static<TTableSchema>> {

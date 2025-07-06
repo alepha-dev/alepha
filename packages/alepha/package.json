@@ -26,6 +26,7 @@
 		"@alepha/queue-redis": "0.7.6",
 		"@alepha/react": "0.7.6",
 		"@alepha/react-auth": "0.7.6",
+		"@alepha/react-head": "0.7.6",
 		"@alepha/redis": "0.7.6",
 		"@alepha/retry": "0.7.6",
 		"@alepha/scheduler": "0.7.6",
@@ -33,7 +34,10 @@
 		"@alepha/server": "0.7.6",
 		"@alepha/server-cache": "0.7.6",
 		"@alepha/server-cookies": "0.7.6",
+		"@alepha/server-cors": "0.7.6",
 		"@alepha/server-health": "0.7.6",
+		"@alepha/server-links": "0.7.6",
+		"@alepha/server-proxy": "0.7.6",
 		"@alepha/server-static": "0.7.6",
 		"@alepha/server-swagger": "0.7.6",
 		"@alepha/testing": "0.7.6",
@@ -117,6 +121,11 @@
 			"require": "./react/auth.cjs",
 			"types": "./react/auth.d.ts"
 		},
+		"./react/head": {
+			"import": "./react/head.js",
+			"require": "./react/head.cjs",
+			"types": "./react/head.d.ts"
+		},
 		"./redis": {
 			"import": "./redis.js",
 			"require": "./redis.cjs",
@@ -152,10 +161,25 @@
 			"require": "./server/cookies.cjs",
 			"types": "./server/cookies.d.ts"
 		},
+		"./server/cors": {
+			"import": "./server/cors.js",
+			"require": "./server/cors.cjs",
+			"types": "./server/cors.d.ts"
+		},
 		"./server/health": {
 			"import": "./server/health.js",
 			"require": "./server/health.cjs",
 			"types": "./server/health.d.ts"
+		},
+		"./server/links": {
+			"import": "./server/links.js",
+			"require": "./server/links.cjs",
+			"types": "./server/links.d.ts"
+		},
+		"./server/proxy": {
+			"import": "./server/proxy.js",
+			"require": "./server/proxy.cjs",
+			"types": "./server/proxy.d.ts"
 		},
 		"./server/static": {
 			"import": "./server/static.js",
@@ -201,6 +225,7 @@
 		"queue-redis",
 		"react",
 		"react-auth",
+		"react-head",
 		"redis",
 		"retry",
 		"scheduler",
@@ -208,7 +233,10 @@
 		"server",
 		"server-cache",
 		"server-cookies",
+		"server-cors",
 		"server-health",
+		"server-links",
+		"server-proxy",
 		"server-static",
 		"server-swagger",
 		"testing",

@@ -178,9 +178,6 @@ export function cli(opts: {
 	log(`\nUnknown command: ${command}\n`);
 }
 
-/**
- *
- */
 export interface RunOptions {
 	alias?: string;
 	parallel?: boolean;

@@ -14,9 +14,6 @@ export interface RoleDescriptorOptions {
 	 */
 	description?: string;
 
-	/**
-	 *
-	 */
 	permissions?: Array<
 		| string
 		| {

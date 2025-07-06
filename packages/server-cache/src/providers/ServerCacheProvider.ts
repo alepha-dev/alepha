@@ -96,8 +96,7 @@ export class ServerCacheProvider {
 				request.reply.body = cached.body;
 				request.reply.status = cached.status ?? 200;
 				if (cached.contentType) {
-					request.reply.headers ??= {};
-					request.reply.headers["content-type"] = cached.contentType;
+					request.reply.setHeader("Content-Type", cached.contentType);
 				}
 			}
 		},

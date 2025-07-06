@@ -249,9 +249,6 @@ export class ReactAuthProvider {
 		return tokens;
 	}
 
-	/**
-	 *
-	 */
 	public readonly login = $route({
 		path: ReactAuth.path.login,
 		schema: {
@@ -288,9 +285,6 @@ export class ReactAuthProvider {
 		},
 	});
 
-	/**
-	 *
-	 */
 	public readonly callback = $route({
 		path: ReactAuth.path.callback,
 		schema: {

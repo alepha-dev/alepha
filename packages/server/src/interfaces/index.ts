@@ -8,6 +8,7 @@ import type { Async, Static, StreamLike, TObject, TSchema } from "@alepha/core";
 import type { Route } from "@alepha/router";
 import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
+import type { ServerReply } from "../helpers/ServerReply.ts";
 
 export interface RequestConfigSchema {
 	body?: TSchema;
@@ -108,14 +109,6 @@ export type ServerMiddlewareHandler<
 > = (
 	request: ServerRequest<TConfig>,
 ) => Async<ServerResponseBody<TConfig> | undefined>;
-
-export interface ServerReply {
-	headers: Record<string, string> & { "set-cookie"?: string[] };
-	status?: number; // default 200, or 204 (no content)
-	body?: any;
-
-	redirect(url: string): void;
-}
 
 export interface ServerResponse {
 	body: string | Buffer | ArrayBuffer | NodeStream | NodeWebStream;

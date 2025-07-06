@@ -9,36 +9,20 @@ import type { TopicDescriptor, TopicMessageSchema } from "./$topic.ts";
 
 const KEY = "SUBSCRIBER";
 
-/**
- *
- */
 export interface SubscriberDescriptorOptions<
 	T extends TopicMessageSchema = TopicMessageSchema,
 > {
-	/**
-	 *
-	 */
 	topic: TopicDescriptor<T>;
 
-	/**
-	 *
-	 * @param message
-	 */
 	handler: (message: { payload: Static<T["payload"]> }) => Promise<void>;
 }
 
-/**
- *
- */
 export interface SubscriberDescriptor<
 	T extends TopicMessageSchema = TopicMessageSchema,
 > {
 	[KIND]: typeof KEY;
 	[OPTIONS]: SubscriberDescriptorOptions<T>;
 
-	/**
-	 *
-	 */
 	topic: () => TopicDescriptor<T>;
 }
 

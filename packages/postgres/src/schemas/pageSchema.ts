@@ -41,9 +41,6 @@ export const pageSchema = <T extends TObject | TIntersect | TRecord>(
 		},
 	);
 
-/**
- *
- */
 export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
 	content: TArray<T>;
 	can: TObject<{ next: TBoolean; previous: TBoolean }>;
@@ -56,9 +53,6 @@ export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
 	}>;
 }>;
 
-/**
- *
- */
 export type Page<T> = {
 	content: T[];
 	can: { next: boolean; previous: boolean };

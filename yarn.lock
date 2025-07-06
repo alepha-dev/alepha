@@ -190,7 +190,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-head@workspace:packages/react-head":
+"@alepha/react-head@npm:0.7.6, @alepha/react-head@workspace:packages/react-head":
   version: 0.0.0-use.local
   resolution: "@alepha/react-head@workspace:packages/react-head"
   dependencies:
@@ -314,6 +314,16 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.7.6"
     "@alepha/datetime": "npm:0.7.6"
+    "@alepha/server": "npm:0.7.6"
+    tsdown: "npm:^0.12.9"
+  languageName: unknown
+  linkType: soft
+
+"@alepha/server-cors@npm:0.7.6, @alepha/server-cors@workspace:packages/server-cors":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-cors@workspace:packages/server-cors"
+  dependencies:
+    "@alepha/core": "npm:0.7.6"
     "@alepha/server": "npm:0.7.6"
     tsdown: "npm:^0.12.9"
   languageName: unknown
@@ -3296,6 +3306,7 @@ __metadata:
     "@alepha/queue-redis": "npm:0.7.6"
     "@alepha/react": "npm:0.7.6"
     "@alepha/react-auth": "npm:0.7.6"
+    "@alepha/react-head": "npm:0.7.6"
     "@alepha/redis": "npm:0.7.6"
     "@alepha/retry": "npm:0.7.6"
     "@alepha/scheduler": "npm:0.7.6"
@@ -3303,7 +3314,10 @@ __metadata:
     "@alepha/server": "npm:0.7.6"
     "@alepha/server-cache": "npm:0.7.6"
     "@alepha/server-cookies": "npm:0.7.6"
+    "@alepha/server-cors": "npm:0.7.6"
     "@alepha/server-health": "npm:0.7.6"
+    "@alepha/server-links": "npm:0.7.6"
+    "@alepha/server-proxy": "npm:0.7.6"
     "@alepha/server-static": "npm:0.7.6"
     "@alepha/server-swagger": "npm:0.7.6"
     "@alepha/testing": "npm:0.7.6"

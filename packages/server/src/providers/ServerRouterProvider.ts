@@ -11,11 +11,11 @@ import { RouterProvider } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
+import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
 	ResponseKind,
 	ServerRawRequest,
-	ServerReply,
 	ServerRequest,
 	ServerRequestConfig,
 	ServerResponse,
@@ -68,13 +68,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			...rawRequest,
 			body: null,
 			metadata: {},
-			reply: {
-				headers: {},
-				redirect: (url: string) => {
-					request.reply.status = 302;
-					request.reply.headers.location = url;
-				},
-			},
+			reply: new ServerReply(),
 		} as ServerRequest;
 
 		return await this.alepha.context.run(() =>

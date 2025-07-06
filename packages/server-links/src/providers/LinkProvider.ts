@@ -9,6 +9,7 @@ import {
 	HttpClient,
 	type RequestConfigSchema,
 	type ServerHandler,
+	ServerReply,
 	type ServerRequest,
 	type ServerRequestConfigEntry,
 	UnauthorizedError,
@@ -120,10 +121,7 @@ export class LinkProvider {
 				headers: config.headers ?? {},
 				metadata: {},
 				raw: {},
-				reply: {
-					headers: {},
-					redirect: () => {},
-				},
+				reply: new ServerReply(),
 				user,
 			} as Partial<ServerRequest> as ServerRequest);
 		}

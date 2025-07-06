@@ -776,14 +776,8 @@ export class SecurityProvider {
  * A realm definition.
  */
 export interface Realm {
-	/**
-	 *
-	 */
 	name: string;
 
-	/**
-	 *
-	 */
 	roles: Role[];
 
 	/**

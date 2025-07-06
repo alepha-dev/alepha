@@ -6,9 +6,6 @@ export interface UserAccountToken extends UserAccountInfo {
 	 */
 	token?: string;
 
-	/**
-	 *
-	 */
 	realm?: string;
 
 	/**
