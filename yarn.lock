@@ -190,6 +190,22 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/react-head@workspace:packages/react-head":
+  version: 0.0.0-use.local
+  resolution: "@alepha/react-head@workspace:packages/react-head"
+  dependencies:
+    "@alepha/core": "npm:0.7.6"
+    "@alepha/react": "npm:0.7.6"
+    "@types/react": "npm:^19.1.8"
+    react: "npm:^19.1.0"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  peerDependencies:
+    "@types/react": ^19
+    react: ^19
+  languageName: unknown
+  linkType: soft
+
 "@alepha/react@npm:0.7.6, @alepha/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@alepha/react@workspace:packages/react"

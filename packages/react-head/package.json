@@ -1,0 +1,46 @@
+{
+	"name": "@alepha/react-head",
+	"version": "0.7.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"browser": "./src/index.browser.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.7.6",
+		"@alepha/react": "0.7.6"
+	},
+	"devDependencies": {
+		"@types/react": "^19.1.8",
+		"react": "^19.1.0",
+		"tsdown": "^0.12.9",
+		"vitest": "^3.2.4"
+	},
+	"peerDependencies": {
+		"@types/react": "^19",
+		"react": "^19"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"build": "tsdown -c ../../tsdown.config.ts"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"react",
+		"head",
+		"seo",
+		"meta"
+	]
+}

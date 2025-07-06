@@ -1,7 +1,35 @@
-import type { Head } from "./ServerHeadProvider.ts";
+import { $hook, $inject } from "@alepha/core";
+import type { Head } from "../interfaces/Head";
+import { HeadProvider } from "./HeadProvider.ts";
 
 export class BrowserHeadProvider {
-	renderHead(document: Document, head: Head): void {
+	protected readonly headProvider = $inject(HeadProvider);
+
+	protected get document(): Document {
+		return window.document;
+	}
+
+	protected readonly onBrowserRender = $hook({
+		name: "react:browser:render",
+		handler: async ({ state, context }) => {
+			this.headProvider.fillHead(state, context);
+
+			if (context.head) {
+				this.renderHead(this.document, context.head);
+			}
+		},
+	});
+
+	protected readonly onTransitionEnd = $hook({
+		name: "react:transition:end",
+		handler: async ({ state, context }) => {
+			this.headProvider.fillHead(state, context);
+
+			this.renderHead(this.document, context.head);
+		},
+	});
+
+	public renderHead(document: Document, head: Head): void {
 		if (head.title) {
 			document.title = head.title;
 		}

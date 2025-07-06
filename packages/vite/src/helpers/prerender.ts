@@ -35,7 +35,7 @@ export const prerender = async (options: PrerenderOptions): Promise<void> => {
 			const print = async (config: any) => {
 				try {
 					const { html, context } = await page.render({
-						withLayout: true,
+						html: true,
 						...config,
 					});
 

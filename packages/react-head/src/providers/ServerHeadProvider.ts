@@ -1,12 +1,21 @@
-export interface Head {
-	title?: string;
-	htmlAttributes?: Record<string, string>;
-	bodyAttributes?: Record<string, string>;
-	meta?: Array<{ name: string; content: string }>;
-}
+import { $hook, $inject } from "@alepha/core";
+import type { SimpleHead } from "../interfaces/Head.ts";
+import { HeadProvider } from "./HeadProvider.ts";
 
 export class ServerHeadProvider {
-	renderHead(template: string, head: Head): string {
+	protected readonly headProvider = $inject(HeadProvider);
+
+	protected readonly onServerRenderEnd = $hook({
+		name: "react:server:render:end",
+		handler: async (event) => {
+			this.headProvider.fillHead(event.state, event.context);
+			if (event.context.head) {
+				event.html = this.renderHead(event.html, event.context.head);
+			}
+		},
+	});
+
+	public renderHead(template: string, head: SimpleHead): string {
 		let result = template;
 
 		// Inject htmlAttributes
@@ -59,7 +68,10 @@ export class ServerHeadProvider {
 		return result.trim();
 	}
 
-	mergeAttributes(existing: string, attrs: Record<string, string>): string {
+	protected mergeAttributes(
+		existing: string,
+		attrs: Record<string, string>,
+	): string {
 		const existingAttrs = this.parseAttributes(existing);
 		const merged = { ...existingAttrs, ...attrs };
 		return Object.entries(merged)
@@ -67,7 +79,7 @@ export class ServerHeadProvider {
 			.join("");
 	}
 
-	parseAttributes(attrStr: string): Record<string, string> {
+	protected parseAttributes(attrStr: string): Record<string, string> {
 		const attrs: Record<string, string> = {};
 		const attrRegex = /([^\s=]+)(?:="([^"]*)")?/g;
 		let match: RegExpExecArray | null = attrRegex.exec(attrStr);
@@ -80,7 +92,7 @@ export class ServerHeadProvider {
 		return attrs;
 	}
 
-	escapeHtml(str: string): string {
+	protected escapeHtml(str: string): string {
 		return str
 			.replace(/&/g, "&amp;")
 			.replace(/</g, "&lt;")

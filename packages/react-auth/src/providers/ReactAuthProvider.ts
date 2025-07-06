@@ -72,9 +72,9 @@ export class ReactAuthProvider {
 	});
 
 	public readonly onRender = $hook({
-		name: "react:server:render",
-		handler: async ({ request, pageRequest }) => {
-			pageRequest.user = request.user;
+		name: "react:server:render:begin",
+		handler: async ({ request, context }) => {
+			context.user = request?.user;
 		},
 	});
 

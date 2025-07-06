@@ -53,14 +53,13 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			layers: [],
 		};
 
-		const context: PageRequest = {
+		const context = {
 			url,
 			query: {},
 			params: {},
-			head: {},
 			onError: () => null,
 			...(options.context ?? {}),
-		};
+		} as PageRequest;
 
 		await this.alepha.emit("react:transition:begin", { state, context });
 
@@ -105,7 +104,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				});
 			}
 
-			await this.alepha.emit("react:transition:success", { state });
+			await this.alepha.emit("react:transition:success", { state, context });
 		} catch (e) {
 			this.log.error(e);
 			state.layers = [

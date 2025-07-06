@@ -2,7 +2,6 @@ import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { LinkProvider } from "@alepha/server-links";
 import type { Root } from "react-dom/client";
-import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {
 	PreviousLayerData,
@@ -16,7 +15,6 @@ export class ReactBrowserProvider {
 	protected readonly client = $inject(LinkProvider);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(BrowserRouterProvider);
-	protected readonly headProvider = $inject(BrowserHeadProvider);
 	protected root!: Root;
 
 	public transitioning?: {
@@ -139,9 +137,6 @@ export class ReactBrowserProvider {
 			}
 
 			const { context } = await this.render({ previous });
-			if (context.head) {
-				this.headProvider.renderHead(this.document, context.head);
-			}
 
 			await this.alepha.emit("react:browser:render", {
 				state: this.state,
@@ -152,13 +147,6 @@ export class ReactBrowserProvider {
 			window.addEventListener("popstate", () => {
 				this.render();
 			});
-		},
-	});
-
-	public readonly onTransitionEnd = $hook({
-		name: "react:transition:end",
-		handler: async ({ context }) => {
-			this.headProvider.renderHead(this.document, context.head);
 		},
 	});
 }

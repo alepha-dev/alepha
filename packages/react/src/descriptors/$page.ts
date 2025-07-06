@@ -102,8 +102,6 @@ export interface PageDescriptorOptions<
 
 	can?: () => boolean;
 
-	head?: Head | ((props: TProps, previous?: Head) => Head);
-
 	errorHandler?: (error: Error) => ReactNode;
 
 	prerender?:
@@ -182,56 +180,13 @@ $page[KIND] = KEY;
 export interface PageDescriptorRenderOptions {
 	params?: Record<string, string>;
 	query?: Record<string, string>;
-	withLayout?: boolean;
+	html?: boolean;
+	hydration?: boolean;
 }
 
 export interface PageDescriptorRenderResult {
 	html: string;
 	context: PageReactContext;
-}
-
-export interface Head {
-	title?: string;
-	description?: string;
-	titleSeparator?: string;
-	htmlAttributes?: Record<string, string>;
-	bodyAttributes?: Record<string, string>;
-	meta?: Array<{ name: string; content: string }>;
-
-	// TODO
-	keywords?: string[];
-	author?: string;
-	robots?: string;
-	themeColor?: string;
-	viewport?:
-		| string
-		| {
-				width?: string;
-				height?: string;
-				initialScale?: string;
-				maximumScale?: string;
-				userScalable?: "no" | "yes" | "0" | "1";
-				interactiveWidget?:
-					| "resizes-visual"
-					| "resizes-content"
-					| "overlays-content";
-		  };
-
-	og?: {
-		title?: string;
-		description?: string;
-		image?: string;
-		url?: string;
-		type?: string;
-	};
-
-	twitter?: {
-		card?: string;
-		title?: string;
-		description?: string;
-		image?: string;
-		site?: string;
-	};
 }
 
 export interface PageRequestConfig<

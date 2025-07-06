@@ -22,14 +22,25 @@ export * from "./providers/ReactServerProvider.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
+		"react:router:createLayers": {
+			request: ServerRequest;
+			context: PageRequest;
+			layers: PageRequest[];
+		};
+		"react:server:render:begin": {
+			request?: ServerRequest;
+			context: PageRequest;
+		};
+		"react:server:render:end": {
+			request?: ServerRequest;
+			context: PageRequest;
+			state: RouterState;
+			html: string;
+		};
 		"react:browser:render": {
 			state: RouterState;
 			context: PageReactContext;
 			hydration?: ReactHydrationState;
-		};
-		"react:server:render": {
-			request: ServerRequest;
-			pageRequest: PageRequest;
 		};
 		"react:transition:begin": {
 			state: RouterState;
@@ -37,6 +48,7 @@ declare module "@alepha/core" {
 		};
 		"react:transition:success": {
 			state: RouterState;
+			context: PageReactContext;
 		};
 		"react:transition:error": {
 			error: Error;

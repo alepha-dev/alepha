@@ -18,7 +18,10 @@ import {
 import { ServerLinksProvider } from "@alepha/server-links";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
-import { $page } from "../descriptors/$page.ts";
+import {
+	$page,
+	type PageDescriptorRenderOptions,
+} from "../descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
 	type PageReactContext,
@@ -27,7 +30,6 @@ import {
 	type RouterState,
 } from "./PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
-import { ServerHeadProvider } from "./ServerHeadProvider.ts";
 
 const envSchema = t.object({
 	REACT_SERVER_DIST: t.string({ default: "public" }),
@@ -50,7 +52,6 @@ export class ReactServerProvider {
 	protected readonly pageDescriptorProvider = $inject(PageDescriptorProvider);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-	protected readonly headProvider = $inject(ServerHeadProvider);
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 	protected readonly env = $inject(envSchema);
 	protected readonly ROOT_DIV_REGEX = new RegExp(
@@ -71,11 +72,7 @@ export class ReactServerProvider {
 			for (const { key, instance, value } of pages) {
 				const name = value[OPTIONS].name ?? key;
 
-				instance[key].prerender = this.createRenderFunction(name, true);
-
-				if (this.alepha.isTest()) {
-					instance[key].render = this.createRenderFunction(name);
-				}
+				instance[key].render = this.createRenderFunction(name);
 			}
 
 			// development mode
@@ -129,7 +126,10 @@ export class ReactServerProvider {
 	});
 
 	public get template() {
-		return this.alepha.state("ReactServerProvider.template");
+		return (
+			this.alepha.state("ReactServerProvider.template") ??
+			"<!DOCTYPE html><html lang='en'><head></head><body></body></html>"
+		);
 	}
 
 	protected async registerPages(templateLoader: TemplateLoader) {
@@ -193,12 +193,7 @@ export class ReactServerProvider {
 	 * For testing purposes, creates a render function that can be used.
 	 */
 	protected createRenderFunction(name: string, withIndex = false) {
-		return async (
-			options: {
-				params?: Record<string, string>;
-				query?: Record<string, string>;
-			} = {},
-		) => {
+		return async (options: PageDescriptorRenderOptions = {}) => {
 			const page = this.pageDescriptorProvider.page(name);
 			const url = new URL(this.pageDescriptorProvider.url(name, options));
 			const context: PageRequest = {
@@ -209,12 +204,16 @@ export class ReactServerProvider {
 				onError: () => null,
 			};
 
+			await this.alepha.emit("react:server:render:begin", {
+				context,
+			});
+
 			const state = await this.pageDescriptorProvider.createLayers(
 				page,
 				context,
 			);
 
-			if (!withIndex) {
+			if (!withIndex && !options.html) {
 				return {
 					context,
 					html: renderToString(
@@ -223,10 +222,22 @@ export class ReactServerProvider {
 				};
 			}
 
-			return {
+			const html = this.renderToHtml(
+				this.template ?? "",
+				state,
 				context,
-				html: this.renderToHtml(this.template ?? "", state, context),
+				options.hydration,
+			);
+
+			const result = {
+				context,
+				state,
+				html,
 			};
+
+			await this.alepha.emit("react:server:render:end", result);
+
+			return result;
 		};
 	}
 
@@ -287,16 +298,10 @@ export class ReactServerProvider {
 			// 	return;
 			// }
 
-			await this.alepha.emit(
-				"react:server:render",
-				{
-					request: serverRequest,
-					pageRequest: context,
-				},
-				{
-					log: false,
-				},
-			);
+			await this.alepha.emit("react:server:render:begin", {
+				request: serverRequest,
+				context,
+			});
 
 			this.serverTimingProvider.beginTiming("createLayers");
 
@@ -327,6 +332,13 @@ export class ReactServerProvider {
 
 			const html = this.renderToHtml(template, state, context);
 
+			await this.alepha.emit("react:server:render:end", {
+				request: serverRequest,
+				context,
+				state,
+				html,
+			});
+
 			page.afterHandler?.(serverRequest);
 
 			return html;
@@ -337,6 +349,7 @@ export class ReactServerProvider {
 		template: string,
 		state: RouterState,
 		context: PageReactContext,
+		hydration = true,
 	) {
 		const element = this.pageDescriptorProvider.root(state, context);
 
@@ -352,41 +365,36 @@ export class ReactServerProvider {
 
 		this.serverTimingProvider.endTiming("renderToString");
 
-		const hydrationData: ReactHydrationState = {
-			links: context.links,
-			layers: state.layers.map((it) => ({
-				...it,
-				error: it.error
-					? {
-							...it.error,
-							name: it.error.name,
-							message: it.error.message,
-							stack: it.error.stack, // TODO: Hide stack in production ?
-						}
-					: undefined,
-				index: undefined,
-				path: undefined,
-				element: undefined,
-			})),
-		};
-
-		// create hydration data
-		const script = `<script>window.__ssr=${JSON.stringify(hydrationData)}</script>`;
-
 		const response = {
 			html: template,
 		};
 
-		// inject app into template
-		this.fillTemplate(response, app, script);
+		if (hydration) {
+			const hydrationData: ReactHydrationState = {
+				links: context.links,
+				layers: state.layers.map((it) => ({
+					...it,
+					error: it.error
+						? {
+								...it.error,
+								name: it.error.name,
+								message: it.error.message,
+								stack: it.error.stack, // TODO: Hide stack in production ?
+							}
+						: undefined,
+					index: undefined,
+					path: undefined,
+					element: undefined,
+					route: undefined,
+				})),
+			};
 
-		// inject head meta
-		if (context.head) {
-			response.html = this.headProvider.renderHead(response.html, context.head);
+			// create hydration data
+			const script = `<script>window.__ssr=${JSON.stringify(hydrationData)}</script>`;
+
+			// inject app into template
+			this.fillTemplate(response, app, script);
 		}
-
-		// TODO: hook for plugins "react:server:template"
-		// { response: { html: string }, request, state }
 
 		return response.html;
 	}

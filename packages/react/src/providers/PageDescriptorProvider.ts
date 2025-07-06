@@ -8,11 +8,7 @@ import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import {
-	$page,
-	type Head,
-	type PageDescriptorOptions,
-} from "../descriptors/$page.ts";
+import { $page, type PageDescriptorOptions } from "../descriptors/$page.ts";
 import { RedirectionError } from "../errors/RedirectionError.ts";
 
 const envSchema = t.object({
@@ -213,12 +209,12 @@ export class PageDescriptorProvider {
 				params[key] = String(params[key]);
 			}
 
-			if (it.route.head && !it.error) {
-				this.fillHead(it.route, request, {
-					...props,
-					...context,
-				});
-			}
+			// if (it.route.head && !it.error) {
+			// 	this.fillHead(it.route, request, {
+			// 		...props,
+			// 		...context,
+			// 	});
+			// }
 
 			acc += "/";
 			acc += it.route.path ? this.compile(it.route.path, params) : "";
@@ -244,6 +240,7 @@ export class PageDescriptorProvider {
 					element: this.renderView(i + 1, path, element, it.route),
 					index: i + 1,
 					path,
+					route,
 				});
 				break;
 			}
@@ -263,6 +260,7 @@ export class PageDescriptorProvider {
 				element: this.renderView(i + 1, path, element, it.route),
 				index: i + 1,
 				path,
+				route,
 			});
 		}
 
@@ -292,51 +290,6 @@ export class PageDescriptorProvider {
 		}
 
 		return undefined;
-	}
-
-	protected fillHead(
-		page: PageRoute,
-		ctx: PageRequest,
-		props: Record<string, any>,
-	): void {
-		if (!page.head) {
-			return;
-		}
-
-		ctx.head ??= {};
-
-		const head =
-			typeof page.head === "function" ? page.head(props, ctx.head) : page.head;
-
-		if (head.title) {
-			ctx.head ??= {};
-
-			if (ctx.head.titleSeparator) {
-				ctx.head.title = `${head.title}${ctx.head.titleSeparator}${ctx.head.title}`;
-			} else {
-				ctx.head.title = head.title;
-			}
-
-			ctx.head.titleSeparator = head.titleSeparator;
-		}
-
-		if (head.htmlAttributes) {
-			ctx.head.htmlAttributes = {
-				...ctx.head.htmlAttributes,
-				...head.htmlAttributes,
-			};
-		}
-
-		if (head.bodyAttributes) {
-			ctx.head.bodyAttributes = {
-				...ctx.head.bodyAttributes,
-				...head.bodyAttributes,
-			};
-		}
-
-		if (head.meta) {
-			ctx.head.meta = [...(ctx.head.meta ?? []), ...(head.meta ?? [])];
-		}
 	}
 
 	public renderError(error: Error): ReactNode {
@@ -534,6 +487,7 @@ export interface Layer {
 	element: ReactNode;
 	index: number;
 	path: string;
+	route?: PageRoute;
 }
 
 export type PreviousLayerData = Omit<Layer, "element" | "index" | "path">;
@@ -586,7 +540,6 @@ export interface CreateLayersResult extends RouterState {
  */
 export interface PageReactContext {
 	url: URL;
-	head: Head;
 	onError: (error: Error) => ReactNode;
 	links?: ApiLinksResponse;
 }
