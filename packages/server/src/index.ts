@@ -70,20 +70,10 @@ declare module "@alepha/core" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { KIND } from "@alepha/core";
-export * from "./constants/routeMethods.ts";
 export * from "./descriptors/$action.ts";
 export * from "./descriptors/$route.ts";
-export * from "./errors/BadRequestError.ts";
-export * from "./errors/ConflictError.ts";
-export * from "./errors/ForbiddenError.ts";
-export * from "./errors/HttpError.ts";
-export * from "./errors/NotFoundError.ts";
-export * from "./errors/UnauthorizedError.ts";
-export * from "./errors/ValidationError.ts";
 export * from "./helpers/ActionDescriptorHelper.ts";
-export * from "./helpers/ServerReply.ts";
-export * from "./interfaces/index.ts";
+export * from "./index.shared.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
 export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/features/ServerNotReadyProvider.ts";
@@ -93,10 +83,6 @@ export * from "./providers/platforms/NodeHttpServerProvider.ts";
 export * from "./providers/platforms/ServerProvider.ts";
 export * from "./providers/ServerActionDescriptorProvider.ts";
 export * from "./providers/ServerRouterProvider.ts";
-export * from "./schemas/apiLinksResponseSchema.ts";
-export * from "./schemas/errorSchema.ts";
-export * from "./schemas/okSchema.ts";
-export * from "./services/HttpClient.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

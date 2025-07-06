@@ -43,13 +43,9 @@
 		"@alepha/testing": "0.7.7",
 		"@alepha/topic": "0.7.7",
 		"@alepha/topic-redis": "0.7.7",
-		"@alepha/vite": "0.7.7",
-		"@types/react": "^19.1.8",
-		"react": "^19.1.0"
+		"@alepha/vite": "0.7.7"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.8",
-		"react": "^19.1.0",
 		"tsdown": "^0.12.9"
 	},
 	"scripts": {

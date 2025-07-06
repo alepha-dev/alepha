@@ -1,6 +1,15 @@
-export * from "./constants/routeMethods.ts";
-export * from "./descriptors/$action.ts";
-export * from "./errors/HttpError.ts";
-export * from "./schemas/errorSchema.ts";
-export * from "./schemas/okSchema.ts";
-export * from "./services/HttpClient.ts";
+import type { Alepha, Module } from "@alepha/core";
+import { HttpClient } from "./services/HttpClient.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./index.shared.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class AlephaServer implements Module {
+	public readonly name = "alepha.server";
+	public readonly $services = (alepha: Alepha) => {
+		alepha.with(HttpClient);
+	};
+}
