@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-static",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -13,10 +13,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.6",
-		"@alepha/datetime": "0.7.6",
-		"@alepha/file": "0.7.6",
-		"@alepha/server": "0.7.6"
+		"@alepha/core": "0.7.7",
+		"@alepha/datetime": "0.7.7",
+		"@alepha/file": "0.7.7",
+		"@alepha/server": "0.7.7"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9"

@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/lock",
 	"description": "Alepha lock module - distributed mutex and semaphore interface with in-memory implementation.",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,9 +14,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.6",
-		"@alepha/datetime": "0.7.6",
-		"@alepha/topic": "0.7.6"
+		"@alepha/core": "0.7.7",
+		"@alepha/datetime": "0.7.7",
+		"@alepha/topic": "0.7.7"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",

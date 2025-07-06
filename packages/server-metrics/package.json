@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-metrics",
 	"description": "Server metrics plugin for Alepha Server. Prometheus metrics exporter.",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,7 +14,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/server": "0.7.6",
+		"@alepha/server": "0.7.7",
 		"prom-client": "^15.1.3"
 	},
 	"devDependencies": {

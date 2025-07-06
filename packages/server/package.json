@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server",
 	"description": "Alepha server module - HTTP server provider.",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,12 +15,12 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.7.6",
-		"@alepha/core": "0.7.6",
-		"@alepha/datetime": "0.7.6",
-		"@alepha/file": "0.7.6",
-		"@alepha/router": "0.7.6",
-		"@alepha/security": "0.7.6",
+		"@alepha/cache": "0.7.7",
+		"@alepha/core": "0.7.7",
+		"@alepha/datetime": "0.7.7",
+		"@alepha/file": "0.7.7",
+		"@alepha/router": "0.7.7",
+		"@alepha/security": "0.7.7",
 		"@fastify/busboy": "^3.1.1"
 	},
 	"devDependencies": {

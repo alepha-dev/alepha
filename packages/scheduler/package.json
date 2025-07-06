@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/scheduler",
 	"description": "Alepha scheduler module. It allows scheduling tasks with cron expressions or intervals.",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,13 +14,13 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.6",
-		"@alepha/datetime": "0.7.6",
-		"@alepha/lock": "0.7.6",
+		"@alepha/core": "0.7.7",
+		"@alepha/datetime": "0.7.7",
+		"@alepha/lock": "0.7.7",
 		"cron-schedule": "^5.0.4"
 	},
 	"devDependencies": {
-		"@alepha/lock-redis": "0.7.6",
+		"@alepha/lock-redis": "0.7.7",
 		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4"
 	},
