@@ -1,5 +1,6 @@
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
+	__descriptor,
 	$cursor,
 	KIND,
 	OPTIONS,
@@ -47,6 +48,8 @@ export interface CookieDescriptor<T extends TSchema> {
 export const $cookie = <T extends TSchema>(
 	options: CookieDescriptorOptions<T>,
 ): CookieDescriptor<T> => {
+	__descriptor("COOKIE");
+
 	const { context } = $cursor();
 
 	return {

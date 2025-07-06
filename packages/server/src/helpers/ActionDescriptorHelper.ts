@@ -50,6 +50,8 @@ export class ActionDescriptorHelper {
 			group: this.group(options, instance),
 			name: options.name ?? key,
 			description: options.description,
+			method: this.method(options),
+			path: this.path(options, instance, key),
 		};
 	}
 

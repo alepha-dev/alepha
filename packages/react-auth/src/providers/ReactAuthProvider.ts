@@ -44,7 +44,7 @@ export class ReactAuthProvider {
 		}),
 	});
 
-	protected readonly tokens = $cookie({
+	public readonly tokens = $cookie({
 		name: "tokens",
 		ttl: [1, "days"],
 		httpOnly: true,
@@ -155,11 +155,7 @@ export class ReactAuthProvider {
 		name: "server:onRequest",
 		after: this.serverCookiesProvider,
 		handler: async ({ request }) => {
-			if (
-				request.cookies &&
-				!this.isViteFile(request.url.pathname) &&
-				!!this.authProviders.length
-			) {
+			if (request.cookies) {
 				const tokens = await this.refresh(request.cookies);
 				if (tokens) {
 					request.headers.authorization = `Bearer ${await this.getAccessTokenFromCookies(tokens)}`;
@@ -179,7 +175,7 @@ export class ReactAuthProvider {
 				}
 			}
 
-			if (!request.headers.authorization) {
+			if (!request.headers.authorization && !!this.authProviders.length) {
 				for (const provider of this.authProviders) {
 					if (provider.fallback) {
 						const token = await provider.fallback();

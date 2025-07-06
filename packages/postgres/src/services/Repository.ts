@@ -82,12 +82,18 @@ export class Repository<
 		}),
 	);
 
-	public static of = <TEntity extends TableConfig, TSchema extends TObject>(
-		opts: PgTableWithColumnsAndSchema<TEntity, TSchema>,
-	): (new () => Repository<PgTableWithColumns<TEntity>, TSchema>) => {
+	public static of = <
+		TEntity extends TableConfig,
+		TTableSchema extends TObject,
+	>(
+		opts: PgTableWithColumnsAndSchema<TEntity, TTableSchema>,
+	): (new () => Repository<PgTableWithColumns<TEntity>, TTableSchema>) => {
 		const table = opts.$table;
 		const schema = opts.$schema;
-		return class _ extends Repository<PgTableWithColumns<TEntity>, TSchema> {
+		return class _ extends Repository<
+			PgTableWithColumns<TEntity>,
+			TTableSchema
+		> {
 			[KIND] = ""; // ignore
 			private _ = $repository(opts); // trigger $repository
 

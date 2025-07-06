@@ -220,9 +220,7 @@ export class DrizzleKitProvider {
 			return createRequire(import.meta.url)("drizzle-kit/api");
 		} catch (_ignore) {
 			try {
-				return createRequire(import.meta.url)(
-					"@alepha/postgres/libs/drizzle-kit/api.cjs",
-				);
+				return createRequire(import.meta.url)("../libs/drizzle-kit/api.cjs");
 			} catch (_ignore) {
 				throw new Error(
 					"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",

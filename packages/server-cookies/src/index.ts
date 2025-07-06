@@ -23,4 +23,4 @@ export class AlephaServerCookies {
 	};
 }
 
-__bind($cookie, ServerCookiesProvider);
+__bind($cookie, AlephaServerCookies);

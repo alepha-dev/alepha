@@ -1,6 +1,7 @@
 import { __bind, type Alepha, type Module } from "@alepha/core";
 import { AlephaServer, type ServerRequest } from "@alepha/server";
 import { AlephaServerCache } from "@alepha/server-cache";
+import { AlephaServerLinks } from "@alepha/server-links";
 import { $page } from "./descriptors/$page.ts";
 import {
 	PageDescriptorProvider,
@@ -79,6 +80,7 @@ export class AlephaReact implements Module {
 		alepha
 			.with(AlephaServer)
 			.with(AlephaServerCache)
+			.with(AlephaServerLinks)
 			.with(ReactServerProvider)
 			.with(PageDescriptorProvider);
 }

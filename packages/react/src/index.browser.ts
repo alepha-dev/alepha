@@ -1,4 +1,6 @@
 import { __bind, type Alepha, type Module } from "@alepha/core";
+import { AlephaServer } from "@alepha/server";
+import { AlephaServerLinks } from "@alepha/server-links";
 import { $page } from "./descriptors/$page.ts";
 import { BrowserRouterProvider } from "./providers/BrowserRouterProvider.ts";
 import { PageDescriptorProvider } from "./providers/PageDescriptorProvider.ts";
@@ -18,6 +20,8 @@ export class AlephaReact implements Module {
 	public readonly name = "alepha.react";
 	public readonly $services = (alepha: Alepha) =>
 		alepha
+			.with(AlephaServer)
+			.with(AlephaServerLinks)
 			.with(PageDescriptorProvider)
 			.with(ReactBrowserProvider)
 			.with(BrowserRouterProvider)
