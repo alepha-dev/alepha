@@ -1,0 +1,37 @@
+{
+	"name": "@alepha/server-rate-limit",
+	"version": "0.7.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.7.6",
+		"@alepha/server": "0.7.6"
+	},
+	"devDependencies": {
+		"tsdown": "^0.12.9",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"build": "tsdown -c ../../tsdown.config.ts"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"server",
+		"rate-limit"
+	]
+}

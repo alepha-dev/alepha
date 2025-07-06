@@ -377,6 +377,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-rate-limit@workspace:packages/server-rate-limit":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-rate-limit@workspace:packages/server-rate-limit"
+  dependencies:
+    "@alepha/core": "npm:0.7.6"
+    "@alepha/server": "npm:0.7.6"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-static@npm:0.7.6, @alepha/server-static@workspace:packages/server-static":
   version: 0.0.0-use.local
   resolution: "@alepha/server-static@workspace:packages/server-static"
