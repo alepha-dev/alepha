@@ -11,8 +11,8 @@ export const clean = $command({
 		await run(`rm -rf ${p}/**/dist ${p}/**/node_modules ${p}/**/coverage`);
 
 		const a = `${p}/alepha`;
-		await run(`rm -rf ${a}/*.js ${a}/*.cjs ${a}/*.d.ts`);
-		await run(`rm -rf ${a}/**/*.js ${a}/**/*.cjs ${a}/**/*.d.ts`);
+		await run(`rm -rf ${a}/*.js ${a}/*.cjs ${a}/*.d.ts ${a}/*.map`);
+		await run(`rm -rf ${a}/**/*.js ${a}/**/*.cjs ${a}/**/*.d.ts ${a}/**/*.map`);
 		const dirs = (await readdir(a, { withFileTypes: true }))
 			.filter((d) => d.isDirectory())
 			.map((d) => `${a}/${d.name}`);

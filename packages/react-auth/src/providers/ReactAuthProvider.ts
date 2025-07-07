@@ -155,17 +155,18 @@ export class ReactAuthProvider {
 		name: "server:onRequest",
 		after: this.serverCookiesProvider,
 		handler: async ({ request }) => {
-			if (request.cookies) {
-				const tokens = await this.refresh(request.cookies);
+			const cookies = request.cookies;
+			if (cookies) {
+				const tokens = await this.refresh(cookies);
 				if (tokens) {
 					request.headers.authorization = `Bearer ${await this.getAccessTokenFromCookies(tokens)}`;
 				}
 
-				if (this.user.get() && !this.tokens.get()) {
-					this.user.del();
+				if (this.user.get({ cookies }) && !this.tokens.get({ cookies })) {
+					this.user.del({ cookies });
 				}
 
-				const user = this.user.get();
+				const user = this.user.get({ cookies });
 				if (user) {
 					request.user = user;
 					request.user.roles = []; // user from cookie is not trusted

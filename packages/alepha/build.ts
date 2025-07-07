@@ -64,8 +64,10 @@ async function improveTypingsIndex() {
 			// replace 'declare module "@alepha/core" { ... }'
 			// with 'declare module "alepha" { ... }'
 			// in order to have Env typings when working with alepha
-			content = content.replace('module "@alepha/core"', 'module "alepha"');
-			content = content.replace('module "@alepha/', 'module "alepha/');
+			content = content.replaceAll('"@alepha/core"', '"alepha"');
+			content = content.replaceAll(/"@alepha\/(.*)?"/g, (_, args) => {
+				return `"alepha/${args.replaceAll("-", "/")}"`;
+			});
 			await writeFile(index, content);
 		}
 	}

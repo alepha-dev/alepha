@@ -54,14 +54,14 @@ export const $cookie: {
 ): CookieDescriptor<T> => {
 	__descriptor("COOKIE");
 
-	const { context } = $cursor();
+	const { context: alepha } = $cursor();
 
 	return {
 		[KIND]: "COOKIE",
 		[OPTIONS]: options,
 		get: (opts: { cookies?: Cookies } = {}) => {
 			const cookies =
-				context.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
+				alepha.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
 			if (!cookies) {
 				throw new Error(
 					"Cookies not found in request context or options.cookies",
@@ -78,10 +78,10 @@ export const $cookie: {
 						);
 					}
 
-					return context.parse(options.schema, JSON.parse(value));
+					return alepha.parse(options.schema, JSON.parse(value));
 				}
 			} catch (e) {
-				context.log.error(e);
+				alepha.log.error(e);
 				cookies.res[options.name] = null;
 			}
 
@@ -90,7 +90,7 @@ export const $cookie: {
 
 		del: (opts: { cookies?: Cookies } = {}) => {
 			const cookies =
-				context.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
+				alepha.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
 			if (!cookies) {
 				throw new Error(
 					"Cookies not found in request context or options.cookies",
@@ -102,14 +102,14 @@ export const $cookie: {
 
 		set: (data: Static<T>, opts: { cookies?: Cookies } = {}) => {
 			const cookies =
-				context.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
+				alepha.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
 			if (!cookies) {
 				throw new Error(
 					"Cookies not found in request context or options.cookies",
 				);
 			}
 
-			let value = JSON.stringify(context.parse(options.schema, data));
+			let value = JSON.stringify(alepha.parse(options.schema, data));
 
 			if (options.compress) {
 				value = deflateRawSync(value).toString("base64");
@@ -127,7 +127,7 @@ export const $cookie: {
 			};
 
 			if (options.ttl) {
-				const dt = context.get(DateTimeProvider);
+				const dt = alepha.get(DateTimeProvider);
 				cookie.maxAge = dt.duration(options.ttl).as("seconds");
 			}
 
