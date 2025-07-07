@@ -1,7 +1,6 @@
-import {$hook, $inject, Alepha, HookDescriptor} from "@alepha/core";
-import type {ActionDescriptor} from "@alepha/server";
-import {$action} from "@alepha/server";
-import {collectDefaultMetrics, Registry} from "prom-client";
+import { $hook, $inject, Alepha, type HookDescriptor } from "@alepha/core";
+import { $route, type RouteDescriptor } from "@alepha/server";
+import { collectDefaultMetrics, Registry } from "prom-client";
 
 export class ServerMetricsProvider {
 	protected readonly register: Registry = new Registry();
@@ -12,14 +11,12 @@ export class ServerMetricsProvider {
 		gcDurationBuckets?: number[];
 		eventLoopMonitoringPrecision?: number;
 		labels?: object;
-	} = {}
+	} = {};
 
-	public readonly metrics: ActionDescriptor = $action({
+	public readonly metrics: RouteDescriptor = $route({
 		method: "GET",
 		path: "/metrics",
 		silent: true,
-		internal: true,
-		security: false,
 		handler: () => this.register.metrics(),
 	});
 
@@ -28,8 +25,8 @@ export class ServerMetricsProvider {
 		handler: () => {
 			collectDefaultMetrics({
 				register: this.register,
-				...this.options
+				...this.options,
 			});
-		}
-	})
+		},
+	});
 }
