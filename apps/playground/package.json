@@ -2,7 +2,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
+		"dev": "node --watch src/index.ts",
 		"build": "vite build",
 		"start": "node dist/index.mjs",
 		"preview": "yarn build && http-server dist/public -p 9854 -b"

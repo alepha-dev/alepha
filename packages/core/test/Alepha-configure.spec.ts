@@ -3,18 +3,22 @@ import { $inject, Alepha } from "../src";
 
 test("Alepha#tune", () => {
 	class A {
-		name = "A";
+		options = {
+			name: "A",
+		};
 	}
 
 	class B {
 		a = $inject(A);
 		getName() {
-			return this.a.name;
+			return this.a.options.name;
 		}
 	}
 
 	class C {
-		x = "C";
+		options = {
+			x: "C",
+		};
 	}
 
 	const alepha = Alepha.create();
@@ -35,15 +39,21 @@ test("Alepha#tune", () => {
 
 test("Alepsha#tune - substitution", () => {
 	class Abstract {
-		name = "Abstract";
+		options = {
+			name: "Abstract",
+		};
 	}
 
 	class Impl1 implements Abstract {
-		name = "Impl1";
+		options = {
+			name: "Impl1",
+		};
 	}
 
 	class Impl2 implements Abstract {
-		name = "Impl2";
+		options = {
+			name: "Impl2",
+		};
 	}
 
 	const alepha = Alepha.create().with({ provide: Abstract, use: Impl1 });
@@ -51,7 +61,7 @@ test("Alepsha#tune - substitution", () => {
 	alepha.configure(Impl1, { name: "hey" });
 	alepha.configure(Impl2, { name: "hey" });
 
-	expect(alepha.get(Abstract).name).toBe("hey");
+	expect(alepha.get(Abstract).options.name).toBe("hey");
 	expect(alepha.graph()).toEqual({
 		Impl1: { from: ["Alepha"] },
 		Abstract: { from: ["Alepha"], as: "Impl1" },

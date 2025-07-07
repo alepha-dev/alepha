@@ -20,13 +20,13 @@ import { $cursor } from "./$cursor.ts";
  * @param type - Type (or TypeBox schema) to resolve
  * @returns Instance of the specified type
  */
-export function $inject<T extends TObject>(type: T): Static<T>;
-export function $inject<T extends object>(type: Service<T>): T;
-export function $inject<T extends object>(type: Service<T> | TObject): T {
+export function $inject<T extends TObject>(type: T): Static<T>; // env
+export function $inject<T extends object>(type: Service<T>): T; // services
+export function $inject<T extends object>(type: any): any {
 	const { context, definition, module } = $cursor();
 
 	// allow to inject TypeBox schemas
-	if (TypeGuard.IsSchema(type)) {
+	if (TypeGuard.IsObject(type)) {
 		return context.parseEnv(type) as T;
 	}
 
@@ -43,9 +43,32 @@ export function $inject<T extends object>(type: Service<T> | TObject): T {
 		);
 	}
 
+	const value = $injectResolverRegistry.resolve(type);
+	if (value) {
+		return value;
+	}
+
 	return context.get(type, {
 		// keep the parent for better error messages and circular dependencies detection
 		parent: definition ?? (context.constructor as Service),
 		module,
 	});
 }
+
+class InjectResolverRegistry {
+	resolvers: Array<(it: any) => any> = [];
+	register(fn: (it: any) => any): void {
+		this.resolvers.push(fn);
+	}
+	resolve(it: any): any {
+		for (const fn of this.resolvers) {
+			const result = fn(it);
+			if (result) {
+				return result;
+			}
+		}
+	}
+}
+
+export const $injectResolverRegistry: InjectResolverRegistry =
+	new InjectResolverRegistry();

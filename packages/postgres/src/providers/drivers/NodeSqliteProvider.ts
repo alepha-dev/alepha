@@ -1,25 +1,45 @@
 import { DatabaseSync } from "node:sqlite";
 import { $hook, $inject, $logger } from "@alepha/core";
+import type { Static, TObject } from "@sinclair/typebox";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { DrizzleKitProvider } from "../DrizzleKitProvider";
-import type { PostgresProvider } from "./PostgresProvider";
+import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
+import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
+import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
 
-export class NodeSqliteProvider implements PostgresProvider {
+export class NodeSqliteProvider extends PostgresProvider {
 	protected readonly kit = $inject(DrizzleKitProvider);
 	protected readonly log = $logger();
 
 	public readonly dialect = "sqlite";
 	public readonly schema = "public";
 
-	public async execute(query: string): Promise<any[]> {
-		return [];
+	public async execute<T extends TObject = any>(
+		query: SQLLike,
+		schema?: T,
+	): Promise<Array<T extends TObject ? Static<T> : any>> {
+		const all = (this.db as unknown as SqliteRemoteDatabase).all(query);
+		const { sql, params, method } = all.getQuery();
+		this.log.trace(`${sql}`, params);
+
+		const statement = this.sqlite.prepare(sql);
+		if (method === "run") {
+			statement.run(...(params as any[]));
+			return [];
+		}
+		if (method === "get") {
+			const data = statement.get(...(params as any[]));
+			return this.mapResult(data ? [{ ...data }] : []);
+		}
+
+		const rows = statement.all(...(params as any[]));
+		return this.mapResult(rows, schema);
 	}
 
 	public readonly sqlite = new DatabaseSync(":memory:");
 
 	public readonly db = drizzle(async (sql, params, method) => {
 		const statement = this.sqlite.prepare(sql);
+		this.log.trace(`${sql}`, params);
 
 		if (method === "get") {
 			const data = statement.get(...params);

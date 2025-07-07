@@ -1,12 +1,23 @@
-import { __bind, $inject, type Alepha, type Module, t } from "@alepha/core";
+import {
+	__bind,
+	$inject,
+	$injectResolverRegistry,
+	type Alepha,
+	type Module,
+	type TObject,
+	t,
+} from "@alepha/core";
 import * as drizzle from "drizzle-orm";
+import { isTable, type TableConfig } from "drizzle-orm";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
+import type { PgTableWithColumnsAndSchema } from "./helpers/schemaToPgColumns.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
 import { SequenceProvider } from "./providers/SequenceProvider.ts";
+import type { Repository } from "./services/Repository.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -15,6 +26,7 @@ export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
 export * from "./constants/PG_SCHEMA.ts";
 export * from "./constants/PG_SYMBOLS.ts";
+export * from "./descriptors/$db.ts";
 export * from "./descriptors/$entity.ts";
 export * from "./descriptors/$repository.ts";
 export * from "./descriptors/$sequence.ts";
@@ -36,6 +48,20 @@ export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
 export * from "./services/Repository.ts";
 export * from "./types/schema.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+	function $inject<T extends TableConfig, R extends TObject>(
+		type: PgTableWithColumnsAndSchema<T, R>,
+	): Repository<PgTableWithColumnsAndSchema<T, R>, R>;
+}
+
+$injectResolverRegistry.register((it) => {
+	if (isTable(it)) {
+		return $repository(it as any);
+	}
+});
 
 // ---------------------------------------------------------------------------------------------------------------------
 

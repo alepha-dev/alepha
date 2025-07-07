@@ -746,17 +746,18 @@ export class Alepha {
 	 * }
 	 * ```
 	 */
-	public configure<T extends object>(
+	public configure<T extends { options: object }>(
 		service: Service<T>,
-		state: Partial<T>,
-	): void {
+		state: Partial<T["options"]>,
+	): this {
 		if (this.has(service)) {
-			Object.assign(this.get(service), state);
+			Object.assign(this.get(service).options, state);
 		} else {
 			this.log.debug(
 				`Service '${service.constructor.name}' not registered, skipping configuration`,
 			);
 		}
+		return this;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------

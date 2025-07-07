@@ -217,3 +217,7 @@ export type PgTableWithColumnsAndSchema<
 	get $schema(): R;
 	get $insertSchema(): TInsertObject<R>;
 };
+
+export interface TableLike<T extends TObject = TObject> {
+	$schema: T;
+}

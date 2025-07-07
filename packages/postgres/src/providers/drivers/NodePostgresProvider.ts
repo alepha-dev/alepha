@@ -1,6 +1,7 @@
 import type { Static } from "@alepha/core";
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { $lock } from "@alepha/lock";
+import type { TObject } from "@sinclair/typebox";
 import { sql } from "drizzle-orm";
 import type { MigrationConfig } from "drizzle-orm/migrator";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
@@ -8,7 +9,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
-import type { PostgresProvider, SQLLike } from "./PostgresProvider.ts";
+import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
 
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
@@ -60,7 +61,7 @@ export interface NodePostgresProviderState {
 	db: PostgresJsDatabase;
 }
 
-export class NodePostgresProvider implements PostgresProvider {
+export class NodePostgresProvider extends PostgresProvider {
 	public readonly dialect = "postgres";
 
 	protected readonly log = $logger();
@@ -129,8 +130,14 @@ export class NodePostgresProvider implements PostgresProvider {
 		return "public";
 	}
 
-	public async execute(query: SQLLike): Promise<any[]> {
-		return this.db.execute(query);
+	public async execute<T extends TObject = any>(
+		query: SQLLike,
+		schema?: T,
+	): Promise<Array<T extends TObject ? Static<T> : any>> {
+		if (schema) {
+			return this.mapResult(await this.db.execute(query));
+		}
+		return (await this.db.execute(query)) as Array<any>;
 	}
 
 	public async connect(): Promise<void> {

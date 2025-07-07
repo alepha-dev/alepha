@@ -1,7 +1,6 @@
 import { $inject, Alepha, KIND, OPTIONS, t } from "@alepha/core";
 import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { SQL } from "drizzle-orm";
 import {
 	and,
 	arrayContained,
@@ -28,6 +27,7 @@ import {
 	notInArray,
 	notLike,
 	or,
+	type SQL,
 } from "drizzle-orm";
 import type {
 	LockConfig,
@@ -173,11 +173,11 @@ export class Repository<
 	/**
 	 * Getter for the database connection from the database provider.
 	 */
-	public get db() {
+	protected get db() {
 		return this.provider.db;
 	}
 
-	public organization(): PgColumn {
+	protected organization(): PgColumn {
 		throw new Error("Organization not implemented");
 	}
 
@@ -201,6 +201,7 @@ export class Repository<
 		}
 
 		return await this.provider.execute(raw).then((rows) => {
+			console.log(rows);
 			return rows.map((it: any) => this.clean(it, schema) as Static<T>);
 		});
 	}
@@ -733,7 +734,7 @@ export class Repository<
 	 * @param schema The schema to use.
 	 * @param col The column to use.
 	 */
-	public jsonQueryToSql(
+	protected jsonQueryToSql(
 		query: PgQueryWhere<Static<TTableSchema>>,
 		schema: TObject = this.schema,
 		col: (key: string) => PgColumn = (key) => this.col(key),
