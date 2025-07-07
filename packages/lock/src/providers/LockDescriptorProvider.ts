@@ -4,9 +4,13 @@ import {
 	$logger,
 	Alepha,
 	type AsyncFn,
+	type HookDescriptor,
 	KIND,
+	type Logger,
 	OPTIONS,
 	type Static,
+	type TObject,
+	type TString,
 	t,
 } from "@alepha/core";
 import {
@@ -14,7 +18,7 @@ import {
 	DateTimeProvider,
 	type DurationLike,
 } from "@alepha/datetime";
-import { $topic, TopicTimeoutError } from "@alepha/topic";
+import { $topic, type TopicDescriptor, TopicTimeoutError } from "@alepha/topic";
 import type {
 	LockDescriptor,
 	LockDescriptorOptions,
@@ -23,7 +27,9 @@ import { $lock } from "../descriptors/$lock.ts";
 import { LockProvider } from "./LockProvider.ts";
 import { LockTopicProvider } from "./LockTopicProvider.ts";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	LOCK_PREFIX_KEY: TString;
+}> = t.object({
 	LOCK_PREFIX_KEY: t.string({ default: "lock" }),
 });
 
@@ -32,16 +38,21 @@ declare module "@alepha/core" {
 }
 
 export class LockDescriptorProvider {
-	protected readonly alepha = $inject(Alepha);
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly lockProvider = $inject(LockProvider);
-	protected readonly lockTopicProvider = $inject(LockTopicProvider);
-	protected readonly log = $logger();
-	protected readonly env = $inject(envSchema);
-	protected readonly id = Math.random().toString(36).slice(2, 10);
-	protected readonly locks = new Map<string, LockDescriptorValue>();
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly dateTimeProvider: DateTimeProvider =
+		$inject(DateTimeProvider);
+	protected readonly lockProvider: LockProvider = $inject(LockProvider);
+	protected readonly lockTopicProvider: LockTopicProvider =
+		$inject(LockTopicProvider);
+	protected readonly log: Logger = $logger();
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly id: string = Math.random().toString(36).slice(2, 10);
+	protected readonly locks: Map<string, LockDescriptorValue> = new Map<
+		string,
+		LockDescriptorValue
+	>();
 
-	protected readonly configure = $hook({
+	protected readonly configure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		handler: (alepha: Alepha) => {
 			const descriptors = alepha.getDescriptorValues($lock);
@@ -76,7 +87,11 @@ export class LockDescriptorProvider {
 		},
 	});
 
-	protected readonly topicLockEnd = $topic({
+	protected readonly topicLockEnd: TopicDescriptor<{
+		payload: TObject<{
+			name: TString;
+		}>;
+	}> = $topic({
 		provider: () => this.lockTopicProvider,
 		schema: {
 			payload: t.object({
@@ -156,7 +171,7 @@ export class LockDescriptorProvider {
 		}
 	}
 
-	protected async wait(key: string, maxDuration: DurationLike) {
+	protected async wait(key: string, maxDuration: DurationLike): Promise<void> {
 		this.log.debug(`Wait for lock '${key}' ...`);
 
 		await this.topicLockEnd.wait({

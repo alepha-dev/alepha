@@ -24,7 +24,7 @@ export * from "./providers/MemoryCacheProvider.ts";
  */
 export class AlephaCache implements Module {
 	public readonly name = "alepha.cache";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): Alepha =>
 		alepha
 			.with({
 				provide: CacheProvider,

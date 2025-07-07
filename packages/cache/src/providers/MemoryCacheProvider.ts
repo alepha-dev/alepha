@@ -1,4 +1,4 @@
-import { $inject, $logger } from "@alepha/core";
+import { $inject, $logger, type Logger } from "@alepha/core";
 import { DateTimeProvider, type Timeout } from "@alepha/datetime";
 import type { CacheProvider } from "./CacheProvider.ts";
 
@@ -10,8 +10,9 @@ type CacheValue = {
 };
 
 export class MemoryCacheProvider implements CacheProvider {
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly log = $logger();
+	protected readonly dateTimeProvider: DateTimeProvider =
+		$inject(DateTimeProvider);
+	protected readonly log: Logger = $logger();
 
 	protected store: Record<CacheName, Record<CacheKey, CacheValue>> = {};
 

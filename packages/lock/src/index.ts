@@ -29,7 +29,7 @@ export * from "./providers/MemoryLockProvider.ts";
  */
 export class AlephaLock {
 	public readonly name = "alepha.lock";
-	public readonly $services = (alepha: Alepha) =>
+	public readonly $services = (alepha: Alepha): Alepha =>
 		alepha
 			.with({
 				provide: LockTopicProvider,

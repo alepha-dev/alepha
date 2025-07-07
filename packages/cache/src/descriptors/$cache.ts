@@ -7,7 +7,12 @@ const KEY = "CACHE";
 /**
  * Cache Descriptor
  */
-export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
+export const $cache: {
+	<TReturn = string, TParameter extends any[] = any[]>(
+		options?: CacheDescriptorOptions<TReturn, TParameter>,
+	): CacheDescriptor<TReturn, TParameter>;
+	[KIND]: string;
+} = <TReturn = string, TParameter extends any[] = any[]>(
 	options: CacheDescriptorOptions<TReturn, TParameter> = {},
 ): CacheDescriptor<TReturn, TParameter> => {
 	__descriptor(KEY);

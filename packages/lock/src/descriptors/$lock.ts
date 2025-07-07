@@ -50,7 +50,12 @@ export interface LockDescriptor<TFunc extends AsyncFn> {
  *
  * @param options
  */
-export const $lock = <TFunc extends AsyncFn>(
+export const $lock: {
+	<TFunc extends AsyncFn>(
+		options: LockDescriptorOptions<TFunc>,
+	): LockDescriptor<TFunc>;
+	[KIND]: string;
+} = <TFunc extends AsyncFn>(
 	options: LockDescriptorOptions<TFunc>,
 ): LockDescriptor<TFunc> => {
 	__descriptor(KEY);

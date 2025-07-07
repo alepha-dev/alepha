@@ -2,9 +2,15 @@ import {
 	$hook,
 	$inject,
 	Alepha,
+	type HookDescriptor,
 	KIND,
 	OPTIONS,
 	type Static,
+	type TBoolean,
+	type TNumber,
+	type TObject,
+	type TOptional,
+	type TString,
 	t,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
@@ -18,7 +24,11 @@ import { CacheError } from "../errors/CacheError.ts";
 import { CacheProvider } from "./CacheProvider.ts";
 import { MemoryCacheProvider } from "./MemoryCacheProvider.ts";
 
-const envSchema = t.object({
+const envSchema: TObject<{
+	CACHE_DEFAULT_TTL: TNumber;
+	CACHE_PREFIX: TOptional<TString>;
+	CACHE_ENABLED: TBoolean;
+}> = t.object({
 	CACHE_DEFAULT_TTL: t.number({
 		default: 300, // 5 minutes
 		description: "The default time to live for cache entries. In seconds.",
@@ -36,26 +46,36 @@ declare module "@alepha/core" {
 }
 
 export class CacheDescriptorProvider {
-	protected readonly alepha = $inject(Alepha);
-	protected readonly cacheProvider = $inject(CacheProvider);
-	protected readonly memoryCacheProvider = $inject(MemoryCacheProvider);
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly env = $inject(envSchema);
+	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly cacheProvider: CacheProvider = $inject(CacheProvider);
+	protected readonly memoryCacheProvider: MemoryCacheProvider =
+		$inject(MemoryCacheProvider);
+	protected readonly dateTimeProvider: DateTimeProvider =
+		$inject(DateTimeProvider);
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
 	protected readonly caches: Cache[] = [];
 
-	protected readonly configure = $hook({
+	protected encoder: TextEncoder = new TextEncoder();
+	protected decoder: TextDecoder = new TextDecoder();
+	protected codes = {
+		BINARY: 0x01,
+		JSON: 0x02,
+		STRING: 0x03,
+	};
+
+	protected readonly configure: HookDescriptor<"configure"> = $hook({
 		name: "configure",
 		handler: async () => {
 			this.processDescriptors();
 		},
 	});
 
-	public register(cache: Cache) {
+	public register(cache: Cache): Cache {
 		this.caches.push(cache);
 		return cache;
 	}
 
-	public processDescriptors() {
+	public processDescriptors(): void {
 		const caches = this.alepha.getDescriptorValues($cache);
 		for (const { value, key, instance } of caches) {
 			const { [OPTIONS]: options } = value;
@@ -85,7 +105,7 @@ export class CacheDescriptorProvider {
 	/**
 	 * Clear all cache entries.
 	 */
-	public async clear() {
+	public async clear(): Promise<void> {
 		for (const cache of this.caches) {
 			await this.invalidate(cache);
 		}
@@ -117,7 +137,7 @@ export class CacheDescriptorProvider {
 	/**
 	 * Get the cache key for the given state and arguments.
 	 */
-	public key(cache: Cache, ...args: any[]) {
+	public key(cache: Cache, ...args: any[]): string {
 		return cache.options.key
 			? cache.options.key(...args)
 			: JSON.stringify(args);
@@ -207,14 +227,6 @@ export class CacheDescriptorProvider {
 			px > 0 ? px : undefined,
 		);
 	}
-
-	protected encoder = new TextEncoder();
-	protected decoder = new TextDecoder();
-	protected codes = {
-		BINARY: 0x01,
-		JSON: 0x02,
-		STRING: 0x03,
-	};
 
 	protected serialize<TReturn>(value: TReturn): Uint8Array {
 		if (value instanceof Uint8Array) {
