@@ -1,6 +1,5 @@
 import {
 	__descriptor,
-	type Async,
 	KIND,
 	NotImplementedError,
 	OPTIONS,
@@ -12,7 +11,10 @@ import type { RetryDescriptorOptions } from "@alepha/retry";
 
 const KEY = "BATCH";
 
-export interface BatchDescriptorOptions<TItem extends TSchema> {
+export interface BatchDescriptorOptions<
+	TItem extends TSchema,
+	TResponse = any,
+> {
 	/**
 	 * A TypeBox schema to validate each item pushed to the batch.
 	 */
@@ -21,7 +23,7 @@ export interface BatchDescriptorOptions<TItem extends TSchema> {
 	/**
 	 * The handler function that processes a batch of items.
 	 */
-	handler: (items: Static<TItem>[]) => Async<void>;
+	handler: (items: Static<TItem>[]) => TResponse;
 
 	/**
 	 * The maximum number of items in a batch. When this size is reached,
@@ -41,7 +43,7 @@ export interface BatchDescriptorOptions<TItem extends TSchema> {
 	 * A function to determine the partition key for an item. Items with the
 	 * same key are batched together. If not provided, all items are placed in a single, default partition.
 	 */
-	partitionBy?: (item: TItem) => string;
+	partitionBy?: (item: Static<TItem>) => string;
 
 	/**
 	 * The maximum number of concurrent `handler` executions.
@@ -56,21 +58,21 @@ export interface BatchDescriptorOptions<TItem extends TSchema> {
 	retry?: Omit<RetryDescriptorOptions<() => Array<Static<TItem>>>, "handler">;
 }
 
-export interface BatchDescriptor<TItem extends TSchema> {
+export interface BatchDescriptor<TItem extends TSchema, TResponse = any> {
 	[KIND]: typeof KEY;
-	[OPTIONS]: BatchDescriptorOptions<TItem>;
+	[OPTIONS]: BatchDescriptorOptions<TItem, TResponse>;
 
 	/**
 	 * Pushes an item into the batch. The item will be processed
 	 * asynchronously with other items when the batch is flushed.
 	 */
-	push: (item: Static<TItem>) => Promise<void>;
+	push: (item: Static<TItem>) => Promise<TResponse>;
 
 	/**
 	 * Manually triggers a flush for one or all partitions.
 	 * @param partitionKey Optional. If provided, only flushes the specified partition. Otherwise, all partitions are flushed.
 	 */
-	flush: (partitionKey?: string) => Promise<void>;
+	flush: (partitionKey?: string) => Promise<TResponse>;
 }
 
 /**
@@ -78,16 +80,16 @@ export interface BatchDescriptor<TItem extends TSchema> {
  * (like API calls or database writes) into a single one to improve performance.
  */
 export const $batch: {
-	<TItem extends TSchema = any>(
-		options: BatchDescriptorOptions<TItem>,
-	): BatchDescriptor<TItem>;
+	<TItem extends TSchema, TResponse>(
+		options: BatchDescriptorOptions<TItem, TResponse>,
+	): BatchDescriptor<TItem, TResponse>;
 	[KIND]: string;
-} = <TItem extends TSchema>(
-	options: BatchDescriptorOptions<TItem>,
-): BatchDescriptor<TItem> => {
+} = <TItem extends TSchema, TResponse>(
+	options: BatchDescriptorOptions<TItem, TResponse>,
+): BatchDescriptor<TItem, TResponse> => {
 	__descriptor(KEY);
 
-	const $: Partial<BatchDescriptor<TItem>> = {};
+	const $: Partial<BatchDescriptor<TItem, TResponse>> = {};
 	$[KIND] = KEY;
 	$[OPTIONS] = options;
 
@@ -99,7 +101,7 @@ export const $batch: {
 		throw new NotImplementedError(KEY);
 	};
 
-	return $ as BatchDescriptor<TItem>;
+	return $ as BatchDescriptor<TItem, TResponse>;
 };
 
 $batch[KIND] = KEY;

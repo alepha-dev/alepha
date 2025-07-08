@@ -15,6 +15,7 @@
 	"main": "./core.js",
 	"types": "./core.d.ts",
 	"dependencies": {
+		"@alepha/batch": "0.7.7",
 		"@alepha/cache": "0.7.7",
 		"@alepha/cache-redis": "0.7.7",
 		"@alepha/core": "0.7.7",

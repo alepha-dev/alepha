@@ -1,4 +1,4 @@
-import { Alepha, t } from "@alepha/core";
+import { Alepha, NotImplementedError, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { $batch, AlephaBatch } from "../src";
@@ -15,14 +15,34 @@ describe("$batch descriptor", () => {
 	let time: DateTimeProvider;
 
 	beforeEach(() => {
-		alepha = Alepha.create({
-			env: { LOG_LEVEL: "trace" },
-		}).with(AlephaBatch);
+		alepha = Alepha.create().with(AlephaBatch);
 		time = alepha.get(DateTimeProvider);
 	});
 
 	afterEach(async () => {
 		await alepha.stop();
+	});
+
+	test("should not implement push method on descriptor", async () => {
+		class App {
+			b = $batch({
+				schema: t.string(),
+				maxSize: 10,
+				handler: createMockHandler(),
+			});
+		}
+
+		const descriptor = alepha.get(App).b;
+
+		expect(descriptor.push).toBeDefined();
+		expect(descriptor.flush).toBeDefined();
+
+		await expect(() => descriptor.push("test")).rejects.toThrowError(
+			NotImplementedError,
+		);
+		await expect(() => descriptor.flush()).rejects.toThrowError(
+			NotImplementedError,
+		);
 	});
 
 	test("should batch items and flush when maxSize is reached", async () => {
@@ -309,5 +329,93 @@ describe("$batch descriptor", () => {
 		await vi.waitFor(() => {
 			expect(mockHandler).toHaveBeenCalledWith([123]);
 		});
+	});
+
+	test("should handle empty batches gracefully", async () => {
+		const mockHandler = createMockHandler();
+		class TestApp {
+			batcher = $batch({
+				schema: t.string(),
+				maxSize: 5,
+				handler: mockHandler,
+			});
+		}
+
+		const app = alepha.get(TestApp);
+		await alepha.start();
+
+		await app.batcher.flush(); // Should not throw or call handler
+
+		expect(mockHandler).not.toHaveBeenCalled();
+	});
+
+	test("should handle empty partitions gracefully", async () => {
+		const mockHandler = createMockHandler();
+		class TestApp {
+			batcher = $batch({
+				schema: t.string(),
+				maxSize: 5,
+				maxDuration: [1, "second"],
+				partitionBy: (item) => item,
+				handler: mockHandler,
+			});
+		}
+		const app = alepha.get(TestApp);
+		await alepha.start();
+		await app.batcher.push("D");
+		await app.batcher.flush("D");
+	});
+
+	test("should allow to get resolved items", async () => {
+		let tick = 0;
+
+		class TestApp {
+			httpBatch = $batch({
+				schema: t.string(),
+				maxSize: 10,
+				maxDuration: [100, "milliseconds"],
+				handler: async (urls) => {
+					tick += 1;
+
+					if (urls.length === 1) {
+						return { [urls[0]]: `Response for ${urls[0]}` };
+					}
+
+					const response: Record<string, string> = {};
+					for (const url of urls) {
+						response[url] = `(batch) Response for ${url}`;
+					}
+
+					return response;
+				},
+			});
+
+			async fetch(url: string) {
+				const response = await this.httpBatch.push(url);
+				return response[url];
+			}
+		}
+
+		const app = alepha.get(TestApp);
+		await alepha.start();
+
+		const tasks: Promise<any>[] = [];
+
+		tasks.push(app.fetch("https://example.com/A"));
+		tasks.push(app.fetch("https://example.com/B"));
+		await time.wait(200); // Wait for batch to accumulate items
+		tasks.push(app.fetch("https://example.com/C"));
+
+		const result = await Promise.all(tasks);
+
+		expect(tick).toBe(2);
+		expect(result).toEqual([
+			"(batch) Response for https://example.com/A",
+			"(batch) Response for https://example.com/B",
+			"Response for https://example.com/C",
+		]);
+
+		const response = await app.fetch("https://example.com/D");
+		expect(response).toBe("Response for https://example.com/D");
 	});
 });

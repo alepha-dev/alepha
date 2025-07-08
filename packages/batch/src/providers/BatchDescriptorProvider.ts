@@ -19,7 +19,7 @@ interface PartitionState<TItem extends TSchema> {
 	timeout?: Timeout;
 	// Promises to resolve/reject when the batch is processed
 	resolvers: Array<{
-		resolve: () => void;
+		resolve: (result?: any) => void;
 		reject: (reason?: any) => void;
 	}>;
 }
@@ -178,14 +178,17 @@ export class BatchDescriptorProvider {
 
 		const promise = Promise.withResolvers<void>();
 		instance.activeHandlers.push(promise);
+		let result: any;
 		try {
-			await instance.handler(itemsToProcess);
-			resolversToProcess.forEach(({ resolve }) => resolve());
+			result = await this.alepha.context.run(() =>
+				instance.handler(itemsToProcess),
+			);
+			resolversToProcess.forEach(({ resolve }) => resolve(result));
 		} catch (error) {
 			this.log.error(`Batch '${instance.id}' handler failed`, error);
 			resolversToProcess.forEach(({ reject }) => reject(error));
 		} finally {
-			promise.resolve();
+			promise.resolve(result);
 			instance.activeHandlers = instance.activeHandlers.filter(
 				(it) => it !== promise,
 			);
