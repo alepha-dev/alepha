@@ -5,6 +5,18 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
+"@alepha/batch@workspace:packages/batch":
+  version: 0.0.0-use.local
+  resolution: "@alepha/batch@workspace:packages/batch"
+  dependencies:
+    "@alepha/core": "npm:0.7.7"
+    "@alepha/datetime": "npm:0.7.7"
+    "@alepha/retry": "npm:0.7.7"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/bucket-azure@workspace:packages/bucket-azure":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-azure@workspace:packages/bucket-azure"
