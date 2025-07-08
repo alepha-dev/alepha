@@ -5,7 +5,7 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@alepha/batch@workspace:packages/batch":
+"@alepha/batch@npm:0.7.7, @alepha/batch@workspace:packages/batch":
   version: 0.0.0-use.local
   resolution: "@alepha/batch@workspace:packages/batch"
   dependencies:
@@ -3326,6 +3326,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
+    "@alepha/batch": "npm:0.7.7"
     "@alepha/cache": "npm:0.7.7"
     "@alepha/cache-redis": "npm:0.7.7"
     "@alepha/core": "npm:0.7.7"

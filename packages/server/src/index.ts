@@ -1,3 +1,7 @@
+import type {
+	IncomingMessage,
+	ServerResponse as NodeServerResponse,
+} from "node:http";
 import { __bind, type Alepha, type Module } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
 import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
@@ -25,6 +29,10 @@ import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
+		"node:request": {
+			req: IncomingMessage;
+			res: NodeServerResponse;
+		};
 		"server:onRoute": {
 			route: ServerRoute;
 		};
@@ -49,6 +57,7 @@ declare module "@alepha/core" {
 			request: ServerRequest;
 			response: ServerResponse;
 		};
+		// Http Client hooks
 		"client:onRequest": {
 			route: HttpAction;
 			config: ServerRequestConfigEntry;
