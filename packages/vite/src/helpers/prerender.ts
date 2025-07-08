@@ -22,15 +22,13 @@ export const prerender = async (options: PrerenderOptions): Promise<void> => {
 		const pageOptions = it.value[OPTIONS];
 		const page = it.value as any;
 
-		if (pageOptions.children?.length) {
+		if (pageOptions.children) {
 			continue;
 		}
 
-		if (pageOptions.prerender) {
+		if (pageOptions.static) {
 			const prerenderOptions =
-				typeof page[OPTIONS].prerender === "object"
-					? page[OPTIONS].prerender
-					: {};
+				typeof pageOptions.static === "object" ? pageOptions.static : {};
 
 			const print = async (config: any) => {
 				try {

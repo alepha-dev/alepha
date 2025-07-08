@@ -209,13 +209,6 @@ export class PageDescriptorProvider {
 				params[key] = String(params[key]);
 			}
 
-			// if (it.route.head && !it.error) {
-			// 	this.fillHead(it.route, request, {
-			// 		...props,
-			// 		...context,
-			// 	});
-			// }
-
 			acc += "/";
 			acc += it.route.path ? this.compile(it.route.path, params) : "";
 			const path = acc.replace(/\/+/, "/");
@@ -361,13 +354,27 @@ export class PageDescriptorProvider {
 		handler: () => {
 			let hasNotFoundHandler = false;
 			const pages = this.alepha.getDescriptorValues($page);
+
+			const hasParent = (it: { [OPTIONS]: PageDescriptorOptions }) => {
+				for (const page of pages) {
+					const children = page.value[OPTIONS].children
+						? Array.isArray(page.value[OPTIONS].children)
+							? page.value[OPTIONS].children
+							: page.value[OPTIONS].children()
+						: [];
+					if (children.includes(it)) {
+						return true;
+					}
+				}
+			};
+
 			for (const { value, key } of pages) {
 				value[OPTIONS].name ??= key;
 			}
 
 			for (const { value } of pages) {
 				// skip children, we only want root pages
-				if (value[OPTIONS].parent) {
+				if (hasParent(value)) {
 					continue;
 				}
 
@@ -397,7 +404,11 @@ export class PageDescriptorProvider {
 		pages: Array<{ value: { [OPTIONS]: PageDescriptorOptions } }>,
 		target: { [OPTIONS]: PageDescriptorOptions },
 	): PageRouteEntry {
-		const children = target[OPTIONS].children ?? [];
+		const children = target[OPTIONS].children
+			? Array.isArray(target[OPTIONS].children)
+				? target[OPTIONS].children
+				: target[OPTIONS].children()
+			: [];
 
 		return {
 			...target[OPTIONS],

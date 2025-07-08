@@ -96,7 +96,9 @@ export interface PageDescriptorOptions<
 	 *
 	 * If you still want to render at this pathname, add a child page with an empty path.
 	 */
-	children?: Array<{ [OPTIONS]: PageDescriptorOptions }>;
+	children?:
+		| Array<{ [OPTIONS]: PageDescriptorOptions }>
+		| (() => Array<{ [OPTIONS]: PageDescriptorOptions }>);
 
 	parent?: { [OPTIONS]: PageDescriptorOptions<PageConfigSchema, TPropsParent> };
 
@@ -104,7 +106,13 @@ export interface PageDescriptorOptions<
 
 	errorHandler?: (error: Error) => ReactNode;
 
-	prerender?:
+	/**
+	 * If true, the page will be rendered on the build time.
+	 * Works only with viteAlepha plugin.
+	 *
+	 * Replace boolean by an object to define static entries. (e.g. list of params/query)
+	 */
+	static?:
 		| boolean
 		| {
 				entries?: Array<Partial<PageRequestConfig<TConfig>>>;
@@ -149,20 +157,20 @@ export const $page = <
 ): PageDescriptor<TConfig, TProps, TPropsParent> => {
 	__descriptor(KEY);
 
-	if (options.children) {
-		for (const child of options.children) {
-			child[OPTIONS].parent = {
-				[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
-			};
-		}
-	}
+	// if (options.children) {
+	// 	for (const child of options.children) {
+	// 		child[OPTIONS].parent = {
+	// 			[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
+	// 		};
+	// 	}
+	// }
 
-	if (options.parent) {
-		options.parent[OPTIONS].children ??= [];
-		options.parent[OPTIONS].children.push({
-			[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
-		});
-	}
+	// if (options.parent) {
+	// 	options.parent[OPTIONS].children ??= [];
+	// 	options.parent[OPTIONS].children.push({
+	// 		[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
+	// 	});
+	// }
 
 	return {
 		[KIND]: KEY,

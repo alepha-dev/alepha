@@ -1,0 +1,833 @@
+[
+	{
+		"name": "@alepha/batch",
+		"slug": "batch",
+		"description": "Alepha batch module - provides a powerful batch processing utility.",
+		"readmePath": "/batch/README.md",
+		"descriptors": [
+			{
+				"name": "$batch",
+				"slug": "$batch",
+				"path": "/src/descriptors/$batch.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "BatchDescriptorProvider",
+				"slug": "batchdescriptorprovider",
+				"path": "/src/providers/BatchDescriptorProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/bucket",
+		"slug": "bucket",
+		"description": "Alepha bucket module - file storage interface with in-memory and file-system implementations.",
+		"readmePath": "/bucket/README.md",
+		"descriptors": [
+			{
+				"name": "$bucket",
+				"slug": "$bucket",
+				"path": "/src/descriptors/$bucket.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "BucketDescriptorProvider",
+				"slug": "bucketdescriptorprovider",
+				"path": "/src/providers/BucketDescriptorProvider.ts"
+			},
+			{
+				"name": "FileStorageProvider",
+				"slug": "filestorageprovider",
+				"path": "/src/providers/FileStorageProvider.ts"
+			},
+			{
+				"name": "LocalFileStorageProvider",
+				"slug": "localfilestorageprovider",
+				"path": "/src/providers/LocalFileStorageProvider.ts"
+			},
+			{
+				"name": "MemoryFileStorageProvider",
+				"slug": "memoryfilestorageprovider",
+				"path": "/src/providers/MemoryFileStorageProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/bucket-azure",
+		"slug": "bucket-azure",
+		"description": "Azure Blob Storage file storage implementation for Alepha Bucket.",
+		"readmePath": "/bucket-azure/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "AzureFileStorageProvider",
+				"slug": "azurefilestorageprovider",
+				"path": "/src/providers/AzureFileStorageProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/cache",
+		"slug": "cache",
+		"description": "Alepha cache module - cache interface with in-memory implementation.",
+		"readmePath": "/cache/README.md",
+		"descriptors": [
+			{
+				"name": "$cache",
+				"slug": "$cache",
+				"path": "/src/descriptors/$cache.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "CacheDescriptorProvider",
+				"slug": "cachedescriptorprovider",
+				"path": "/src/providers/CacheDescriptorProvider.ts"
+			},
+			{
+				"name": "CacheProvider",
+				"slug": "cacheprovider",
+				"path": "/src/providers/CacheProvider.ts"
+			},
+			{
+				"name": "MemoryCacheProvider",
+				"slug": "memorycacheprovider",
+				"path": "/src/providers/MemoryCacheProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/cache-redis",
+		"slug": "cache-redis",
+		"description": "Redis cache implementation for Alepha Cache.",
+		"readmePath": "/cache-redis/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "RedisCacheProvider",
+				"slug": "rediscacheprovider",
+				"path": "/src/providers/RedisCacheProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/cli",
+		"slug": "cli",
+		"readmePath": "/cli/README.md",
+		"descriptors": [],
+		"providers": []
+	},
+	{
+		"name": "@alepha/core",
+		"slug": "core",
+		"description": "Core library for Alepha, providing dependency injection and basic utilities.",
+		"readmePath": "/core/README.md",
+		"descriptors": [
+			{
+				"name": "$cursor",
+				"slug": "$cursor",
+				"path": "/src/descriptors/$cursor.ts"
+			},
+			{
+				"name": "$hook",
+				"slug": "$hook",
+				"path": "/src/descriptors/$hook.ts"
+			},
+			{
+				"name": "$inject",
+				"slug": "$inject",
+				"path": "/src/descriptors/$inject.ts"
+			},
+			{
+				"name": "$logger",
+				"slug": "$logger",
+				"path": "/src/descriptors/$logger.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "AlsProvider",
+				"slug": "alsprovider",
+				"path": "/src/providers/AlsProvider.ts"
+			},
+			{
+				"name": "TypeProvider",
+				"slug": "typeprovider",
+				"path": "/src/providers/TypeProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/datetime",
+		"slug": "datetime",
+		"description": "Alepha datetime module - Provides date and time utilities. Based on dayjs.",
+		"readmePath": "/datetime/README.md",
+		"descriptors": [
+			{
+				"name": "$interval",
+				"slug": "$interval",
+				"path": "/src/descriptors/$interval.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "DateTimeProvider",
+				"slug": "datetimeprovider",
+				"path": "/src/providers/DateTimeProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/file",
+		"slug": "file",
+		"readmePath": "/file/README.md",
+		"descriptors": [],
+		"providers": []
+	},
+	{
+		"name": "@alepha/lock",
+		"slug": "lock",
+		"description": "Alepha lock module - distributed mutex and semaphore interface with in-memory implementation.",
+		"readmePath": "/lock/README.md",
+		"descriptors": [
+			{
+				"name": "$lock",
+				"slug": "$lock",
+				"path": "/src/descriptors/$lock.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "LockDescriptorProvider",
+				"slug": "lockdescriptorprovider",
+				"path": "/src/providers/LockDescriptorProvider.ts"
+			},
+			{
+				"name": "LockProvider",
+				"slug": "lockprovider",
+				"path": "/src/providers/LockProvider.ts"
+			},
+			{
+				"name": "LockTopicProvider",
+				"slug": "locktopicprovider",
+				"path": "/src/providers/LockTopicProvider.ts"
+			},
+			{
+				"name": "MemoryLockProvider",
+				"slug": "memorylockprovider",
+				"path": "/src/providers/MemoryLockProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/lock-redis",
+		"slug": "lock-redis",
+		"description": "Redis lock implementation for Alepha Lock.",
+		"readmePath": "/lock-redis/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "RedisLockProvider",
+				"slug": "redislockprovider",
+				"path": "/src/providers/RedisLockProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/postgres",
+		"slug": "postgres",
+		"readmePath": "/postgres/README.md",
+		"descriptors": [
+			{
+				"name": "$db",
+				"slug": "$db",
+				"path": "/src/descriptors/$db.ts"
+			},
+			{
+				"name": "$entity",
+				"slug": "$entity",
+				"path": "/src/descriptors/$entity.ts"
+			},
+			{
+				"name": "$repository",
+				"slug": "$repository",
+				"path": "/src/descriptors/$repository.ts"
+			},
+			{
+				"name": "$sequence",
+				"slug": "$sequence",
+				"path": "/src/descriptors/$sequence.ts"
+			},
+			{
+				"name": "$transaction",
+				"slug": "$transaction",
+				"path": "/src/descriptors/$transaction.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "DrizzleKitProvider",
+				"slug": "drizzlekitprovider",
+				"path": "/src/providers/DrizzleKitProvider.ts"
+			},
+			{
+				"name": "PostgresTypeProvider",
+				"slug": "postgrestypeprovider",
+				"path": "/src/providers/PostgresTypeProvider.ts"
+			},
+			{
+				"name": "RepositoryDescriptorProvider",
+				"slug": "repositorydescriptorprovider",
+				"path": "/src/providers/RepositoryDescriptorProvider.ts"
+			},
+			{
+				"name": "SequenceProvider",
+				"slug": "sequenceprovider",
+				"path": "/src/providers/SequenceProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/protobuf",
+		"slug": "protobuf",
+		"readmePath": "/protobuf/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ProtobufProvider",
+				"slug": "protobufprovider",
+				"path": "/src/providers/ProtobufProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/queue",
+		"slug": "queue",
+		"description": "Alepha queue module - queue interface with in-memory implementation.",
+		"readmePath": "/queue/README.md",
+		"descriptors": [
+			{
+				"name": "$consumer",
+				"slug": "$consumer",
+				"path": "/src/descriptors/$consumer.ts"
+			},
+			{
+				"name": "$queue",
+				"slug": "$queue",
+				"path": "/src/descriptors/$queue.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "MemoryQueueProvider",
+				"slug": "memoryqueueprovider",
+				"path": "/src/providers/MemoryQueueProvider.ts"
+			},
+			{
+				"name": "QueueDescriptorProvider",
+				"slug": "queuedescriptorprovider",
+				"path": "/src/providers/QueueDescriptorProvider.ts"
+			},
+			{
+				"name": "QueueProvider",
+				"slug": "queueprovider",
+				"path": "/src/providers/QueueProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/queue-redis",
+		"slug": "queue-redis",
+		"description": "Redis queue implementation for Alepha Queue.",
+		"readmePath": "/queue-redis/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "RedisQueueProvider",
+				"slug": "redisqueueprovider",
+				"path": "/src/providers/RedisQueueProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/react",
+		"slug": "react",
+		"readmePath": "/react/README.md",
+		"descriptors": [
+			{
+				"name": "$page",
+				"slug": "$page",
+				"path": "/src/descriptors/$page.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "BrowserRouterProvider",
+				"slug": "browserrouterprovider",
+				"path": "/src/providers/BrowserRouterProvider.ts"
+			},
+			{
+				"name": "PageDescriptorProvider",
+				"slug": "pagedescriptorprovider",
+				"path": "/src/providers/PageDescriptorProvider.ts"
+			},
+			{
+				"name": "ReactBrowserProvider",
+				"slug": "reactbrowserprovider",
+				"path": "/src/providers/ReactBrowserProvider.ts"
+			},
+			{
+				"name": "ReactBrowserRenderer",
+				"slug": "reactbrowserrenderer",
+				"path": "/src/providers/ReactBrowserRenderer.ts"
+			},
+			{
+				"name": "ReactServerProvider",
+				"slug": "reactserverprovider",
+				"path": "/src/providers/ReactServerProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/react-auth",
+		"slug": "react-auth",
+		"readmePath": "/react-auth/README.md",
+		"descriptors": [
+			{
+				"name": "$auth",
+				"slug": "$auth",
+				"path": "/src/descriptors/$auth.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "ReactAuthProvider",
+				"slug": "reactauthprovider",
+				"path": "/src/providers/ReactAuthProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/react-head",
+		"slug": "react-head",
+		"readmePath": "/react-head/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "BrowserHeadProvider",
+				"slug": "browserheadprovider",
+				"path": "/src/providers/BrowserHeadProvider.ts"
+			},
+			{
+				"name": "HeadProvider",
+				"slug": "headprovider",
+				"path": "/src/providers/HeadProvider.ts"
+			},
+			{
+				"name": "ServerHeadProvider",
+				"slug": "serverheadprovider",
+				"path": "/src/providers/ServerHeadProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/redis",
+		"slug": "redis",
+		"readmePath": "/redis/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "RedisProvider",
+				"slug": "redisprovider",
+				"path": "/src/providers/RedisProvider.ts"
+			},
+			{
+				"name": "RedisSubscriberProvider",
+				"slug": "redissubscriberprovider",
+				"path": "/src/providers/RedisSubscriberProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/retry",
+		"slug": "retry",
+		"description": "Simple retry function for Alepha.",
+		"readmePath": "/retry/README.md",
+		"descriptors": [
+			{
+				"name": "$retry",
+				"slug": "$retry",
+				"path": "/src/descriptors/$retry.ts"
+			}
+		],
+		"providers": []
+	},
+	{
+		"name": "@alepha/router",
+		"slug": "router",
+		"description": "Internal router used by Alepha Server and Alepha React.",
+		"readmePath": "/router/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "RouterProvider",
+				"slug": "routerprovider",
+				"path": "/src/providers/RouterProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/scheduler",
+		"slug": "scheduler",
+		"description": "Alepha scheduler module. It allows scheduling tasks with cron expressions or intervals.",
+		"readmePath": "/scheduler/README.md",
+		"descriptors": [
+			{
+				"name": "$scheduler",
+				"slug": "$scheduler",
+				"path": "/src/descriptors/$scheduler.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "CronScheduler",
+				"slug": "cronscheduler",
+				"path": "/src/providers/CronScheduler.ts"
+			},
+			{
+				"name": "SchedulerDescriptorProvider",
+				"slug": "schedulerdescriptorprovider",
+				"path": "/src/providers/SchedulerDescriptorProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/security",
+		"slug": "security",
+		"description": "Manage realms, roles and permissions in Alepha. Supports JWT generation and verification.",
+		"readmePath": "/security/README.md",
+		"descriptors": [
+			{
+				"name": "$permission",
+				"slug": "$permission",
+				"path": "/src/descriptors/$permission.ts"
+			},
+			{
+				"name": "$realm",
+				"slug": "$realm",
+				"path": "/src/descriptors/$realm.ts"
+			},
+			{
+				"name": "$role",
+				"slug": "$role",
+				"path": "/src/descriptors/$role.ts"
+			},
+			{
+				"name": "$serviceAccount",
+				"slug": "$serviceaccount",
+				"path": "/src/descriptors/$serviceAccount.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "JwtProvider",
+				"slug": "jwtprovider",
+				"path": "/src/providers/JwtProvider.ts"
+			},
+			{
+				"name": "SecurityProvider",
+				"slug": "securityprovider",
+				"path": "/src/providers/SecurityProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server",
+		"slug": "server",
+		"description": "Alepha server module - HTTP server provider.",
+		"readmePath": "/server/README.md",
+		"descriptors": [
+			{
+				"name": "$action",
+				"slug": "$action",
+				"path": "/src/descriptors/$action.ts"
+			},
+			{
+				"name": "$route",
+				"slug": "$route",
+				"path": "/src/descriptors/$route.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "ServerActionDescriptorProvider",
+				"slug": "serveractiondescriptorprovider",
+				"path": "/src/providers/ServerActionDescriptorProvider.ts"
+			},
+			{
+				"name": "ServerRouteDescriptorProvider",
+				"slug": "serverroutedescriptorprovider",
+				"path": "/src/providers/ServerRouteDescriptorProvider.ts"
+			},
+			{
+				"name": "ServerRouterProvider",
+				"slug": "serverrouterprovider",
+				"path": "/src/providers/ServerRouterProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-cache",
+		"slug": "server-cache",
+		"description": "Server cache plugin for Alepha Server. Built on top of Alepha Cache. Supports ETag generation and cache control.",
+		"readmePath": "/server-cache/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ServerCacheProvider",
+				"slug": "servercacheprovider",
+				"path": "/src/providers/ServerCacheProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-compress",
+		"slug": "server-compress",
+		"description": "Server compression plugin for Alepha Server. Provides gzip and brotli compression support.",
+		"readmePath": "/server-compress/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ServerCompressProvider",
+				"slug": "servercompressprovider",
+				"path": "/src/providers/ServerCompressProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-cookies",
+		"slug": "server-cookies",
+		"description": "Server cookies plugin for Alepha Server. Provides cookie parsing and serialization.",
+		"readmePath": "/server-cookies/README.md",
+		"descriptors": [
+			{
+				"name": "$cookie",
+				"slug": "$cookie",
+				"path": "/src/descriptors/$cookie.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "ServerCookiesProvider",
+				"slug": "servercookiesprovider",
+				"path": "/src/providers/ServerCookiesProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-cors",
+		"slug": "server-cors",
+		"readmePath": "/server-cors/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ServerCorsProvider",
+				"slug": "servercorsprovider",
+				"path": "/src/providers/ServerCorsProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-health",
+		"slug": "server-health",
+		"description": "Server health check plugin for Alepha Server. Add health check endpoints to your Alepha server.",
+		"readmePath": "/server-health/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ServerHealthProvider",
+				"slug": "serverhealthprovider",
+				"path": "/src/providers/ServerHealthProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-links",
+		"slug": "server-links",
+		"readmePath": "/server-links/README.md",
+		"descriptors": [
+			{
+				"name": "$client",
+				"slug": "$client",
+				"path": "/src/descriptors/$client.ts"
+			},
+			{
+				"name": "$remote",
+				"slug": "$remote",
+				"path": "/src/descriptors/$remote.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "LinkProvider",
+				"slug": "linkprovider",
+				"path": "/src/providers/LinkProvider.ts"
+			},
+			{
+				"name": "RemoteDescriptorProvider",
+				"slug": "remotedescriptorprovider",
+				"path": "/src/providers/RemoteDescriptorProvider.ts"
+			},
+			{
+				"name": "ServerLinksProvider",
+				"slug": "serverlinksprovider",
+				"path": "/src/providers/ServerLinksProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-metrics",
+		"slug": "server-metrics",
+		"description": "Server metrics plugin for Alepha Server. Prometheus metrics exporter.",
+		"readmePath": "/server-metrics/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ServerMetricsProvider",
+				"slug": "servermetricsprovider",
+				"path": "/src/providers/ServerMetricsProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-proxy",
+		"slug": "server-proxy",
+		"readmePath": "/server-proxy/README.md",
+		"descriptors": [
+			{
+				"name": "$proxy",
+				"slug": "$proxy",
+				"path": "/src/descriptors/$proxy.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "ProxyDescriptorProvider",
+				"slug": "proxydescriptorprovider",
+				"path": "/src/providers/ProxyDescriptorProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-rate-limit",
+		"slug": "server-rate-limit",
+		"readmePath": "/server-rate-limit/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "ServerRateLimitProvider",
+				"slug": "serverratelimitprovider",
+				"path": "/src/providers/ServerRateLimitProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-static",
+		"slug": "server-static",
+		"readmePath": "/server-static/README.md",
+		"descriptors": [
+			{
+				"name": "$serve",
+				"slug": "$serve",
+				"path": "/src/descriptors/$serve.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "ServerStaticProvider",
+				"slug": "serverstaticprovider",
+				"path": "/src/providers/ServerStaticProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/server-swagger",
+		"slug": "server-swagger",
+		"description": "Server Swagger plugin for Alepha Server. Provides OpenAPIv3 documentation generation and Swagger UI integration.",
+		"readmePath": "/server-swagger/README.md",
+		"descriptors": [
+			{
+				"name": "$swagger",
+				"slug": "$swagger",
+				"path": "/src/descriptors/$swagger.ts"
+			}
+		],
+		"providers": []
+	},
+	{
+		"name": "@alepha/testing",
+		"slug": "testing",
+		"readmePath": "/testing/README.md",
+		"descriptors": [],
+		"providers": []
+	},
+	{
+		"name": "@alepha/topic",
+		"slug": "topic",
+		"description": "Alepha topic module - pub/sub interface with in-memory implementation.",
+		"readmePath": "/topic/README.md",
+		"descriptors": [
+			{
+				"name": "$subscriber",
+				"slug": "$subscriber",
+				"path": "/src/descriptors/$subscriber.ts"
+			},
+			{
+				"name": "$topic",
+				"slug": "$topic",
+				"path": "/src/descriptors/$topic.ts"
+			}
+		],
+		"providers": [
+			{
+				"name": "MemoryTopicProvider",
+				"slug": "memorytopicprovider",
+				"path": "/src/providers/MemoryTopicProvider.ts"
+			},
+			{
+				"name": "TopicDescriptorProvider",
+				"slug": "topicdescriptorprovider",
+				"path": "/src/providers/TopicDescriptorProvider.ts"
+			},
+			{
+				"name": "TopicProvider",
+				"slug": "topicprovider",
+				"path": "/src/providers/TopicProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/topic-redis",
+		"slug": "topic-redis",
+		"description": "Redis pub/sub implementation for Alepha Topic.",
+		"readmePath": "/topic-redis/README.md",
+		"descriptors": [],
+		"providers": [
+			{
+				"name": "RedisTopicProvider",
+				"slug": "redistopicprovider",
+				"path": "/src/providers/RedisTopicProvider.ts"
+			}
+		]
+	},
+	{
+		"name": "@alepha/vite",
+		"slug": "vite",
+		"description": "Vite plugin for Alepha.",
+		"readmePath": "/vite/README.md",
+		"descriptors": [],
+		"providers": []
+	}
+]

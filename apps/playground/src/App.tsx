@@ -56,7 +56,7 @@ export class App {
 		head: ({ name }) => ({
 			title: `Params ${name} Page`,
 		}),
-		prerender: {
+		static: {
 			entries: [
 				{ params: { name: "z" } },
 				{ params: { name: "example" } },
