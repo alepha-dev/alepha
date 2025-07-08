@@ -5,7 +5,7 @@ import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
 import type { RouteMethod } from "../../constants/routeMethods.ts";
 import type { ServerRawRequest } from "../../interfaces/index.ts";
 import { ServerRouterProvider } from "../ServerRouterProvider.ts";
-import type { ServerProvider } from "./ServerProvider.ts";
+import { ServerProvider } from "./ServerProvider.ts";
 
 const envSchema = t.object({
 	SERVER_PORT: t.uint({
@@ -24,7 +24,7 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export class NodeHttpServerProvider implements ServerProvider {
+export class NodeHttpServerProvider extends ServerProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
 	protected readonly env = $inject(envSchema);
@@ -32,21 +32,22 @@ export class NodeHttpServerProvider implements ServerProvider {
 
 	protected readonly server = createServer((req, res) => this.handle(req, res));
 
+	protected readonly onNodeRequest = $hook({
+		name: "node:request",
+		handler: ({ req, res }) => this.handle(req, res),
+	});
+
 	public async handle(
 		req: IncomingMessage,
 		res: ServerResponse,
-	): Promise<number | void> {
+	): Promise<void> {
 		const { route, params } = this.router.match(`/${req.method}${req.url}`);
-		const isNotFound =
-			!route || (params?.["*"] && `/${params?.["*"]}` === req.url);
 
 		if (
 			// if vite is running
 			// and if no route or root-not-found-handler is matched
 			// and if the request is for a static file (e.g. .js, .css, etc.)
-			this.alepha.isServerless() === "vite" &&
-			isNotFound &&
-			(!route || req.url?.includes("."))
+			this.isViteNotFound(req.url, route, params)
 		) {
 			// let vite handle the request
 			return;
@@ -57,7 +58,7 @@ export class NodeHttpServerProvider implements ServerProvider {
 			// note: you should not use this in production, use a custom 404 page instead by adding a route /*
 			res.writeHead(404, { "content-type": "text/plain" });
 			res.end("Not Found");
-			return 404;
+			return;
 		}
 
 		const request = this.createRouterRequest(req, res, params);
@@ -74,25 +75,23 @@ export class NodeHttpServerProvider implements ServerProvider {
 		// empty body, just end the response
 		if (!response.body) {
 			res.end();
-			return response.status;
+			return;
 		}
 
 		// if response.body is web stream
 		if (response.body instanceof ReadableStream) {
 			Readable.from(response.body).pipe(res);
-			return response.status;
+			return;
 		}
 
 		// if response.body is stream
 		if (response.body instanceof Readable) {
 			response.body.pipe(res);
-			return response.status;
+			return;
 		}
 
 		// else
 		res.end(response.body);
-
-		return response.status;
 	}
 
 	public createRouterRequest(
@@ -129,10 +128,6 @@ export class NodeHttpServerProvider implements ServerProvider {
 		return "http";
 	}
 
-	public shouldHaveBody(method: string): boolean {
-		return method === "POST" || method === "PUT" || method === "PATCH";
-	}
-
 	public get hostname(): string {
 		if (this.server.listening) {
 			const address = this.server.address();
@@ -146,6 +141,11 @@ export class NodeHttpServerProvider implements ServerProvider {
 	public readonly start = $hook({
 		name: "start",
 		handler: async () => {
+			// do not start the server in serverless mode
+			if (this.alepha.isServerless()) {
+				return;
+			}
+
 			await this.listen();
 		},
 	});
@@ -153,6 +153,7 @@ export class NodeHttpServerProvider implements ServerProvider {
 	protected readonly stop = $hook({
 		name: "stop",
 		handler: async () => {
+			// do not stop the server in serverless mode
 			if (this.alepha.isServerless()) {
 				return;
 			}
@@ -168,13 +169,6 @@ export class NodeHttpServerProvider implements ServerProvider {
 	});
 
 	protected async listen() {
-		if (this.alepha.isServerless()) {
-			// attach handler to the serverless function
-			this.alepha.handle = (req, res) => this.handle(req, res);
-			// and do not start the server, it will be started by the serverless provider
-			return;
-		}
-
 		let port = this.env.SERVER_PORT;
 
 		// for testing, use a random port if port is 3000 (default)

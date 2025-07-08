@@ -315,12 +315,6 @@ export class Alepha {
 	}
 
 	/**
-	 * Generic handle function used as generic interface for serverless functions.
-	 * You should not use this property directly.
-	 */
-	public handle?: (req: any, res: any) => Promise<any>;
-
-	/**
 	 * State accessor and mutator.
 	 */
 	public state<Key extends keyof State>(

@@ -63,6 +63,11 @@
 			"require": "./core.cjs",
 			"types": "./core.d.ts"
 		},
+		"./batch": {
+			"import": "./batch.js",
+			"require": "./batch.cjs",
+			"types": "./batch.d.ts"
+		},
 		"./cache": {
 			"import": "./cache.js",
 			"require": "./cache.cjs",
@@ -211,6 +216,7 @@
 	},
 	"keywords": [
 		"alepha",
+		"batch",
 		"cache",
 		"cache-redis",
 		"core",

@@ -1,11 +1,20 @@
-import { NotImplementedError } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
+import type { Route } from "@alepha/router";
 
-export class ServerProvider {
-	constructor() {
-		throw new NotImplementedError(this.constructor.name);
-	}
+export abstract class ServerProvider {
+	protected readonly alepha = $inject(Alepha);
 
-	public get hostname(): string {
-		throw new NotImplementedError(this.constructor.name);
+	public abstract get hostname(): string;
+
+	protected isViteNotFound(
+		url?: string,
+		route?: Route,
+		params?: Record<string, string>,
+	): boolean {
+		return (
+			this.alepha.isServerless() === "vite" &&
+			(!route || (!!params?.["*"] && `/${params?.["*"]}` === url)) &&
+			(!route || !!url?.includes("."))
+		);
 	}
 }
