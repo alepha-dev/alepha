@@ -13,9 +13,12 @@
 
 A powerful batch processing utility for the Alepha framework. This module allows you to group multiple asynchronous operations into a single "batch," which is then processed together. This is an essential pattern for improving performance, reducing I/O, and interacting efficiently with rate-limited APIs or databases.
 
-<div style="background-color: #5a8147; padding: 10px; margin-bottom: 20px; color: white">
- <span style="text-decoration: underline">Stability: 2</span> - Stable
-</div>
+<img
+	src="https://raw.githubusercontent.com/feunard/alepha/main/assets/stability-2.png"
+	alt="stability"
+  height="48"
+  valign="middle"
+/>
 
 ## Why Use `alepha/batch`?
 
