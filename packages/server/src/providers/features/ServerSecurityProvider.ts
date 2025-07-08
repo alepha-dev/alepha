@@ -10,7 +10,7 @@ export class ServerSecurityProvider {
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onClientRequest = $hook({
-		name: "client:onRequest",
+		on: "client:onRequest",
 		handler: async ({ request, options }) => {
 			const realms = this.securityProvider.getRealms();
 			if (!this.alepha.isTest()) {
@@ -43,7 +43,7 @@ export class ServerSecurityProvider {
 	});
 
 	protected readonly onRequest = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		priority: "last",
 		handler: async ({ request, route }) => {
 			if (!isServerAction(route)) {
@@ -83,7 +83,7 @@ export class ServerSecurityProvider {
 	});
 
 	protected readonly onRoute = $hook({
-		name: "server:onRoute",
+		on: "server:onRoute",
 		handler: async ({ route }) => {
 			if (!isServerAction(route)) {
 				return;

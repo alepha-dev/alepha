@@ -42,7 +42,7 @@ class App {
 	});
 
 	ready = $hook({
-		name: "ready",
+		on: "ready",
 		handler: async () => {
 			const user = await this.users.create({
 				nickname: "John Doe",

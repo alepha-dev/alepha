@@ -83,7 +83,7 @@ export class ServerActionDescriptorProvider {
 	}
 
 	public readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const routes = this.alepha.getDescriptorValues($action);
 			for (const { value, key, instance } of routes) {

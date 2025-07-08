@@ -25,7 +25,7 @@ export class DateTimeProvider {
 	}
 
 	protected readonly start: HookDescriptor<"start"> = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			for (const interval of this.intervals) {
 				await interval.start();
@@ -34,7 +34,7 @@ export class DateTimeProvider {
 	});
 
 	protected readonly stop: HookDescriptor<"stop"> = $hook({
-		name: "stop",
+		on: "stop",
 		handler: () => {
 			for (const timeout of this.timeouts) {
 				timeout.clear();

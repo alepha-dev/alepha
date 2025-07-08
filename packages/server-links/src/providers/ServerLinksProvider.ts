@@ -42,7 +42,7 @@ export class ServerLinksProvider {
 		$inject(ServerActionDescriptorProvider);
 
 	public readonly onRoute: HookDescriptor<"server:onRoute"> = $hook({
-		name: "server:onRoute",
+		on: "server:onRoute",
 		handler: ({ route }) => {
 			if (!isServerAction(route)) {
 				return;

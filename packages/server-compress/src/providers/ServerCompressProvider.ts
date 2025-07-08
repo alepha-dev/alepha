@@ -39,7 +39,7 @@ export class ServerCompressProvider {
 	};
 
 	public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
-		name: "server:onResponse",
+		on: "server:onResponse",
 		handler: async ({ request, response }) => {
 			// skip if already compressed
 			if (response.headers["content-encoding"]) {

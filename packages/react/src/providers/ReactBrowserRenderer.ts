@@ -43,7 +43,7 @@ export class ReactBrowserRenderer {
 	}
 
 	public readonly ready = $hook({
-		name: "react:browser:render",
+		on: "react:browser:render",
 		handler: async ({ state, context, hydration }) => {
 			const element = this.browserRouterProvider.root(state, context);
 

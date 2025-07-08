@@ -148,7 +148,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 	}
 
 	public readonly onStart: HookDescriptor<"start"> = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			for (const bucket of this.bucket.getBuckets()) {
 				const containerName = bucket.name.replaceAll("/", "-").toLowerCase();

@@ -3,7 +3,7 @@ import type { Cookie } from "../descriptors/$cookie.ts";
 
 export class ServerCookiesProvider {
 	public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		handler: async ({ request }) => {
 			request.cookies = {
 				req: this.fromHeader(request.headers.cookie ?? ""),
@@ -13,7 +13,7 @@ export class ServerCookiesProvider {
 	});
 
 	public readonly onSend: HookDescriptor<"server:onSend"> = $hook({
-		name: "server:onSend",
+		on: "server:onSend",
 		handler: async ({ request }) => {
 			if (request.cookies) {
 				if (Object.keys(request.cookies.res).length > 0) {

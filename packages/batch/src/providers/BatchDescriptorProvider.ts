@@ -40,7 +40,7 @@ export class BatchDescriptorProvider {
 	protected readonly instances: Map<string, BatchInstance<any>> = new Map();
 
 	protected readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: () => {
 			const descriptors = this.alepha.getDescriptorValues($batch);
 
@@ -77,7 +77,7 @@ export class BatchDescriptorProvider {
 
 	// On application stop, flush all pending batches gracefully.
 	protected readonly onStop: HookDescriptor<"stop"> = $hook({
-		name: "stop",
+		on: "stop",
 		handler: async () => {
 			const flushPromises: Promise<void>[] = [];
 			for (const id of this.instances.keys()) {

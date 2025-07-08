@@ -125,7 +125,7 @@ export class ReactBrowserProvider {
 	// -------------------------------------------------------------------------------------------------------------------
 
 	public readonly ready = $hook({
-		name: "ready",
+		on: "ready",
 		handler: async () => {
 			const hydration = this.getHydrationState();
 			const previous = hydration?.layers ?? [];

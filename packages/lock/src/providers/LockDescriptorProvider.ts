@@ -53,7 +53,7 @@ export class LockDescriptorProvider {
 	>();
 
 	protected readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: (alepha: Alepha) => {
 			const descriptors = alepha.getDescriptorValues($lock);
 			for (const { instance, key, value } of descriptors) {

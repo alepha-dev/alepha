@@ -10,7 +10,7 @@ export class BrowserHeadProvider {
 	}
 
 	protected readonly onBrowserRender = $hook({
-		name: "react:browser:render",
+		on: "react:browser:render",
 		handler: async ({ state, context }) => {
 			this.headProvider.fillHead(state, context);
 
@@ -21,7 +21,7 @@ export class BrowserHeadProvider {
 	});
 
 	protected readonly onTransitionEnd = $hook({
-		name: "react:transition:end",
+		on: "react:transition:end",
 		handler: async ({ state, context }) => {
 			this.headProvider.fillHead(state, context);
 

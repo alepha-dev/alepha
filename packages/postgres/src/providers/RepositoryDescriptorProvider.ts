@@ -32,7 +32,7 @@ export class RepositoryDescriptorProvider {
 	}
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			await this.processDescriptors();
 		},

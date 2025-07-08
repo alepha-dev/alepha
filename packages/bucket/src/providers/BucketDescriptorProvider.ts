@@ -15,7 +15,7 @@ export class BucketDescriptorProvider {
 	protected readonly buckets: Array<Bucket> = [];
 
 	public readonly onConfigure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: () => {
 			const buckets = this.alepha.getDescriptorValues($bucket);
 			for (const bucket of buckets) {

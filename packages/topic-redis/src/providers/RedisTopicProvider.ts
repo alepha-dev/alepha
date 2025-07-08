@@ -34,7 +34,7 @@ export class RedisTopicProvider implements TopicProvider {
 	protected readonly log: Logger = $logger();
 
 	protected readonly stop: HookDescriptor<"stop"> = $hook({
-		name: "stop",
+		on: "stop",
 		handler: async () => {
 			this.redisSubscriberProvider.subscriber.removeAllListeners();
 		},

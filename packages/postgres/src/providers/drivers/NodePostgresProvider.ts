@@ -83,7 +83,7 @@ export class NodePostgresProvider extends PostgresProvider {
 	}
 
 	protected readonly configure = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			await this.connect();
 
@@ -103,7 +103,7 @@ export class NodePostgresProvider extends PostgresProvider {
 	});
 
 	protected readonly stop = $hook({
-		name: "stop",
+		on: "stop",
 		handler: async () => {
 			if (this.alepha.isTest() && this.testingSchemaName) {
 				await this.execute(

@@ -7,7 +7,7 @@ export class ServerRouteDescriptorProvider {
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
 	public readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const routes = this.alepha.getDescriptorValues($route);
 			for (const { value } of routes) {

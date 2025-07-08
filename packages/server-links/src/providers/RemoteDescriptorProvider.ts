@@ -35,7 +35,7 @@ export class RemoteDescriptorProvider {
 	}
 
 	public readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const remotes = this.alepha.getDescriptorValues($remote);
 			for (const { value, key } of remotes) {
@@ -45,7 +45,7 @@ export class RemoteDescriptorProvider {
 	});
 
 	public readonly start: HookDescriptor<"start"> = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			for (const remote of this.remotes) {
 				const token =

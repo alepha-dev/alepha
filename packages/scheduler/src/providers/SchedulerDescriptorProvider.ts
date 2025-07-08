@@ -39,14 +39,14 @@ export class SchedulerDescriptorProvider {
 	protected readonly schedulers: Scheduler[] = [];
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: () => {
 			this.processSchedulerDescriptors();
 		},
 	});
 
 	protected readonly start = $hook({
-		name: "start",
+		on: "start",
 		priority: "last",
 		handler: async () => {
 			for (const job of this.schedulers) {
@@ -61,7 +61,7 @@ export class SchedulerDescriptorProvider {
 	});
 
 	protected readonly stop = $hook({
-		name: "stop",
+		on: "stop",
 		handler: () => {
 			for (const job of this.schedulers) {
 				if (job.interval) {

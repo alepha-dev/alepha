@@ -30,7 +30,7 @@ export class ServerCacheProvider {
 
 	public readonly onConfigure = $hook({
 		priority: "last",
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const actions = this.alepha.getDescriptorValues($action);
 			for (const { value: action } of actions) {
@@ -42,7 +42,7 @@ export class ServerCacheProvider {
 	});
 
 	public readonly onRoute = $hook({
-		name: "server:onRoute",
+		on: "server:onRoute",
 		handler: async ({ route }) => {
 			if (!route.cache) {
 				return;
@@ -72,7 +72,7 @@ export class ServerCacheProvider {
 	});
 
 	public readonly onRequest = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			const cache = this.getCacheByRoute(route);
 			if (!cache) {
@@ -103,7 +103,7 @@ export class ServerCacheProvider {
 	});
 
 	public readonly onSend = $hook({
-		name: "server:onResponse",
+		on: "server:onResponse",
 		priority: "first",
 		handler: async ({ route, request, response }) => {
 			const cache = this.getCacheByRoute(route);

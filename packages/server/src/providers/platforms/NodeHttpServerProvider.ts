@@ -33,7 +33,7 @@ export class NodeHttpServerProvider extends ServerProvider {
 	protected readonly server = createServer((req, res) => this.handle(req, res));
 
 	protected readonly onNodeRequest = $hook({
-		name: "node:request",
+		on: "node:request",
 		handler: ({ req, res }) => this.handle(req, res),
 	});
 
@@ -139,7 +139,7 @@ export class NodeHttpServerProvider extends ServerProvider {
 	}
 
 	public readonly start = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			// do not start the server in serverless mode
 			if (this.alepha.isServerless()) {
@@ -151,7 +151,7 @@ export class NodeHttpServerProvider extends ServerProvider {
 	});
 
 	protected readonly stop = $hook({
-		name: "stop",
+		on: "stop",
 		handler: async () => {
 			// do not stop the server in serverless mode
 			if (this.alepha.isServerless()) {

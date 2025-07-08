@@ -72,14 +72,14 @@ export class ReactAuthProvider {
 	});
 
 	public readonly onRender = $hook({
-		name: "react:server:render:begin",
+		on: "react:server:render:begin",
 		handler: async ({ request, context }) => {
 			context.user = request?.user;
 		},
 	});
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const auths = this.alepha.getDescriptorValues($auth);
 			for (const { value, key, instance } of auths) {
@@ -152,7 +152,7 @@ export class ReactAuthProvider {
 	 * Configure Fastify to forward Session Access Token to Header Authorization.
 	 */
 	protected readonly onRequest = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		after: this.serverCookiesProvider,
 		handler: async ({ request }) => {
 			const cookies = request.cookies;

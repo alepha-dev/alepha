@@ -1,6 +1,21 @@
-# `alepha/batch`
+<div align="center">
+<h1 >
+<img
+	src="https://raw.githubusercontent.com/feunard/alepha/main/assets/logo.png"
+	width="128"
+	height="128"
+	alt="Logo"
+  valign="middle"
+/>
+<code>alepha/batch</code>
+</h1>
+</div>
 
 A powerful batch processing utility for the Alepha framework. This module allows you to group multiple asynchronous operations into a single "batch," which is then processed together. This is an essential pattern for improving performance, reducing I/O, and interacting efficiently with rate-limited APIs or databases.
+
+<div style="background-color: #5a8147; padding: 10px; margin-bottom: 20px; color: white">
+ <span style="text-decoration: underline">Stability: 2</span> - Stable
+</div>
 
 ## Why Use `alepha/batch`?
 
@@ -33,7 +48,7 @@ import { Alepha, $hook, run, t } from "alepha";
 import { $batch } from "alepha/batch";
 
 class LoggingService {
-  // Define the batch processor
+  // define the batch processor
   logBatch = $batch({
     schema: t.string(),
     maxSize: 10,
@@ -43,9 +58,9 @@ class LoggingService {
     },
   });
 
-  // Example of how to use it
+  // example of how to use it
   onReady = $hook({
-    name: "ready",
+    on: "ready",
     handler: async () => {
       this.logBatch.push("Application started.");
       this.logBatch.push("User authenticated.");
@@ -83,11 +98,7 @@ class UserActivityService {
       const totalViews = items.reduce((sum, item) => sum + item.viewCount, 0);
 
       console.log(`[DB] Updating user ${userId} with ${totalViews} new views.`);
-      // await this.db.users.update({
-      //   where: { id: { eq: userId } },
-      // }, {
-      //   views: { increment: totalViews }
-      // });
+      // ... db.updateUserViews(userId, totalViews);
     },
     // add resilience to the database operation
     retry: {
@@ -106,7 +117,7 @@ class UserActivityService {
 - Neither batch will be flushed yet because they are below `maxSize`.
 - After 10 seconds, both batches will be flushed independently by two separate calls to the `handler`.
 
-_This example doesn't work in a distributed environment, but it demonstrates how to use partitions effectively._
+_This example doesn't work in a distributed environment, `alepha/batch/redis` will be created for that._
 
 ## API Reference (`$batch`)
 

@@ -62,7 +62,7 @@ export class NodeSqliteProvider extends PostgresProvider {
 	}) as unknown as PgDatabase<any>;
 
 	protected readonly start = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			await this.kit.synchronizeSqlite(this);
 			this.log.info("Sqlite OK");

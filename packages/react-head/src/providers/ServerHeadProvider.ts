@@ -6,7 +6,7 @@ export class ServerHeadProvider {
 	protected readonly headProvider = $inject(HeadProvider);
 
 	protected readonly onServerRenderEnd = $hook({
-		name: "react:server:render:end",
+		on: "react:server:render:end",
 		handler: async (event) => {
 			this.headProvider.fillHead(event.state, event.context);
 			if (event.context.head) {

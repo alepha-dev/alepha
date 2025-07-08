@@ -9,7 +9,7 @@ export class SequenceProvider {
 	protected readonly sequences: Sequence[] = [];
 
 	protected readonly start = $hook({
-		name: "start",
+		on: "start",
 		priority: "last",
 		handler: async (app) => {
 			const sequences = app.getDescriptorValues($sequence);

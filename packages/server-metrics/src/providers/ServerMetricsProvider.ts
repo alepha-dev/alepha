@@ -23,7 +23,7 @@ export class ServerMetricsProvider {
 	});
 
 	protected readonly onStart: HookDescriptor<"start"> = $hook({
-		name: "start",
+		on: "start",
 		handler: () => {
 			collectDefaultMetrics({
 				register: this.register,

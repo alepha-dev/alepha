@@ -5,7 +5,7 @@ export class ServerLoggerProvider {
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		priority: "first",
 		handler: ({ route, request }) => {
 			if (!route.silent) {
@@ -35,7 +35,7 @@ export class ServerLoggerProvider {
 	});
 
 	public readonly onError = $hook({
-		name: "server:onError",
+		on: "server:onError",
 		priority: "last",
 		handler: ({ route, error }) => {
 			if (!route.silent) {
@@ -45,7 +45,7 @@ export class ServerLoggerProvider {
 	});
 
 	public readonly onResponse = $hook({
-		name: "server:onResponse",
+		on: "server:onResponse",
 		priority: "last",
 		handler: ({ route, request, response }) => {
 			if (!route.silent) {

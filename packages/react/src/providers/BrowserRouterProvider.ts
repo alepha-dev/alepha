@@ -28,7 +28,7 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 	}
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			for (const page of this.pageDescriptorProvider.getPages()) {
 				// mount only if a view is provided

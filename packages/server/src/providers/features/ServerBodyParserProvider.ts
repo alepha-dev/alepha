@@ -21,7 +21,7 @@ export class ServerBodyParserProvider {
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			if (request.body) {
 				return; // already parsed

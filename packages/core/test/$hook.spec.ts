@@ -7,7 +7,7 @@ test("$hook - with swapping", async () => {
 	class Interface {
 		n = 10;
 		c = $hook({
-			name: "configure",
+			on: "configure",
 			handler: () => {
 				count += this.n;
 			},
@@ -40,7 +40,7 @@ test("$hook - priority/before/after", async () => {
 
 	class A {
 		_ = $hook({
-			name: "configure",
+			on: "configure",
 			handler: () => {
 				stack += "A";
 			},
@@ -50,7 +50,7 @@ test("$hook - priority/before/after", async () => {
 	class B {
 		a = $inject(A);
 		_ = $hook({
-			name: "configure",
+			on: "configure",
 			after: [this.a],
 			handler: () => {
 				stack += "B";
@@ -61,7 +61,7 @@ test("$hook - priority/before/after", async () => {
 	class C {
 		b = $inject(B);
 		_ = $hook({
-			name: "configure",
+			on: "configure",
 			after: [this.b],
 			handler: () => {
 				stack += "C";
@@ -73,7 +73,7 @@ test("$hook - priority/before/after", async () => {
 		b = $inject(B);
 		c = $inject(C);
 		_ = $hook({
-			name: "configure",
+			on: "configure",
 			after: [this.b, this.c],
 			handler: () => {
 				stack += "D";
@@ -85,7 +85,7 @@ test("$hook - priority/before/after", async () => {
 		d = $inject(D);
 		f = $inject(F);
 		_ = $hook({
-			name: "configure",
+			on: "configure",
 			after: [this.d],
 			before: [this.f],
 			handler: () => {
@@ -97,7 +97,7 @@ test("$hook - priority/before/after", async () => {
 	class F {
 		_ = $hook({
 			priority: "last",
-			name: "configure",
+			on: "configure",
 			handler: () => {
 				stack += "F";
 			},

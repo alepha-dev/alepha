@@ -18,7 +18,7 @@ export class Blog {
 	});
 
 	onReady = $hook({
-		name: "ready",
+		on: "ready",
 		handler: async () => {
 			if (this.auth.user) {
 				await this.client.getLinks();

@@ -357,7 +357,7 @@ export class PageDescriptorProvider {
 	}
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: () => {
 			let hasNotFoundHandler = false;
 			const pages = this.alepha.getDescriptorValues($page);

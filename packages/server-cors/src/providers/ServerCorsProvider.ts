@@ -9,7 +9,7 @@ export class ServerCorsProvider {
 	};
 
 	protected readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		handler: ({ request }) => {
 			const reqOrigin = request.headers.origin;
 			const { origin, methods, headers, credentials, maxAge } = this.options;

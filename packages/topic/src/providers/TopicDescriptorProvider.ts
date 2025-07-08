@@ -27,14 +27,14 @@ export class TopicDescriptorProvider {
 	> = [];
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: () => {
 			this.processDescriptors();
 		},
 	});
 
 	protected readonly start = $hook({
-		name: "start",
+		on: "start",
 		handler: async () => {
 			for (const subscriber of this.subscribers) {
 				const topicProvider = subscriber.topic.provider();

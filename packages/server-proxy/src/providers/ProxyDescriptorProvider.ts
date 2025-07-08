@@ -22,7 +22,7 @@ export class ProxyDescriptorProvider {
 	protected readonly alepha: Alepha = $inject(Alepha);
 
 	public readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const proxies = this.alepha.getDescriptorValues($proxy);
 			for (const { value } of proxies) {

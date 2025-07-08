@@ -15,7 +15,7 @@ export class ReactAuth {
 	};
 
 	public readonly onRender = $hook({
-		name: "react:transition:begin",
+		on: "react:transition:begin",
 		handler: async ({ context }) => {
 			context.user = this.getUserFromCookies();
 		},

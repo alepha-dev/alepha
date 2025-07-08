@@ -26,7 +26,7 @@ export class ServerMultipartProvider {
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({
-		name: "server:onRequest",
+		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			if (request.body) {
 				return; // already parsed
@@ -68,7 +68,7 @@ export class ServerMultipartProvider {
 	});
 
 	public readonly onSend = $hook({
-		name: "server:onResponse",
+		on: "server:onResponse",
 		handler: async ({ request }) => {
 			const cleanup = request.metadata.multipart?.cleanup;
 			if (typeof cleanup === "function") {

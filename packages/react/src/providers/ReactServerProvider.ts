@@ -60,7 +60,7 @@ export class ReactServerProvider {
 	);
 
 	public readonly onConfigure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const pages = this.alepha.getDescriptorValues($page);
 

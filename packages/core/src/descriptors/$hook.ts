@@ -12,7 +12,7 @@ export interface HookOptions<T extends keyof Hooks> {
 	/**
 	 * The name of the hook. "configure", "start", "ready", "stop", ...
 	 */
-	name: T;
+	on: T;
 
 	/**
 	 * The handler to run when the hook is triggered.
@@ -107,7 +107,7 @@ export const $hook: {
 		throw new Error("Hook must be called inside a class");
 	}
 
-	context.on(options.name, {
+	context.on(options.on, {
 		caller: definition,
 		priority: options.priority,
 		callback: options.handler,

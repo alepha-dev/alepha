@@ -62,12 +62,12 @@ export class RedisProvider {
 	}
 
 	protected readonly start: HookDescriptor<"start"> = $hook({
-		name: "start",
+		on: "start",
 		handler: () => this.connect(),
 	});
 
 	protected readonly stop: HookDescriptor<"stop"> = $hook({
-		name: "stop",
+		on: "stop",
 		handler: () => this.close(),
 	});
 

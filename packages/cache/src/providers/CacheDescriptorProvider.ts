@@ -64,7 +64,7 @@ export class CacheDescriptorProvider {
 	};
 
 	protected readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			this.processDescriptors();
 		},

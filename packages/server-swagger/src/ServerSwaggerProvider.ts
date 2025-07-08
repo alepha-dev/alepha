@@ -35,7 +35,7 @@ export class ServerSwaggerProvider {
 	protected readonly alepha: Alepha = $inject(Alepha);
 
 	protected readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		after: this.serverActionProvider,
 		handler: async (alepha) => {
 			const doc = alepha.getDescriptorValues($swagger)?.[0];

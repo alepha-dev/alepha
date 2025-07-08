@@ -49,21 +49,21 @@ test("Alepha#start - hooks", async () => {
 
 	class A {
 		onConfigure = $hook({
-			name: "configure",
+			on: "configure",
 			handler: async () => {
 				stack.push("A.configure");
 			},
 		});
 
 		onStart = $hook({
-			name: "start",
+			on: "start",
 			handler: async () => {
 				stack.push("A.start");
 			},
 		});
 
 		onStop = $hook({
-			name: "stop",
+			on: "stop",
 			handler: async () => {
 				stack.push("A.stop");
 			},
@@ -74,21 +74,21 @@ test("Alepha#start - hooks", async () => {
 		a = $inject(A);
 
 		onConfigure = $hook({
-			name: "configure",
+			on: "configure",
 			handler: async () => {
 				stack.push("B.configure");
 			},
 		});
 
 		onStart = $hook({
-			name: "start",
+			on: "start",
 			handler: async () => {
 				stack.push("B.start");
 			},
 		});
 
 		onStop = $hook({
-			name: "stop",
+			on: "stop",
 			handler: async () => {
 				stack.push("B.stop");
 			},
@@ -131,21 +131,21 @@ test("Alepha#start - restart", async () => {
 	const alepha = Alepha.create().with(
 		class App {
 			configure = $hook({
-				name: "configure",
+				on: "configure",
 				handler: () => {
 					count += 10;
 				},
 			});
 
 			start = $hook({
-				name: "start",
+				on: "start",
 				handler: () => {
 					count += 100;
 				},
 			});
 
 			stop = $hook({
-				name: "stop",
+				on: "stop",
 				handler: () => {
 					count += 1000;
 				},

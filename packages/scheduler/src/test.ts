@@ -25,7 +25,7 @@ class App {
 	});
 
 	start = $hook({
-		name: "ready",
+		on: "ready",
 		handler: async () => {
 			console.log("BEGIN", this.dt.now().format("HH:mm:ss"));
 

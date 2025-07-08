@@ -31,7 +31,7 @@ export class Security {
 	});
 
 	onUserLoaded = $hook({
-		name: "security:user:created",
+		on: "security:user:created",
 		handler: ({ user }) => {
 			if (user.id === this.env.ADMIN_USER_ID) {
 				user.roles ??= [];

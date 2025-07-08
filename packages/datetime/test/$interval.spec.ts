@@ -63,7 +63,7 @@ test("Alepha#start - flags", async () => {
 
 	class LongStart {
 		_ = $hook({
-			name: "start",
+			on: "start",
 			handler: async () => {
 				blocker.release();
 				await dt.wait([1, "minute"]);

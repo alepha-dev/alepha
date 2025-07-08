@@ -72,14 +72,14 @@ export class QueueDescriptorProvider {
 	};
 
 	protected readonly configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: () => {
 			this.processDescriptors();
 		},
 	});
 
 	protected readonly start = $hook({
-		name: "start",
+		on: "start",
 		priority: "last",
 		handler: () => {
 			if (this.state.consumers.length > 0) {
@@ -89,7 +89,7 @@ export class QueueDescriptorProvider {
 	});
 
 	protected readonly stop = $hook({
-		name: "stop",
+		on: "stop",
 		handler: async () => {
 			if (this.state.consumers.length > 0) {
 				await this.stopWorkers();

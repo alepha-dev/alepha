@@ -27,7 +27,7 @@ export class ServerStaticProvider {
 	protected readonly directories: ServeDirectory[] = [];
 
 	protected readonly configure: HookDescriptor<"configure"> = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			const serves = this.alepha.getDescriptorValues($serve);
 			for (const { value, instance, key } of serves) {

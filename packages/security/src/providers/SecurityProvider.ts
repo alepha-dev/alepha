@@ -76,7 +76,7 @@ export class SecurityProvider {
 	}
 
 	protected configure = $hook({
-		name: "configure",
+		on: "configure",
 		handler: async () => {
 			this.processPermissionDescriptors();
 			this.processRoleDescriptors();
@@ -229,7 +229,7 @@ export class SecurityProvider {
 	}
 
 	protected ready = $hook({
-		name: "ready",
+		on: "ready",
 		handler: async () => {
 			for (const realm of this.realms) {
 				if (realm.userAccountProvider) {

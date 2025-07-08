@@ -9,7 +9,7 @@ export class ServerTimingProvider {
 
 	public readonly onRequest = $hook({
 		priority: "first",
-		name: "server:onRequest",
+		on: "server:onRequest",
 		handler: async ({ request }) => {
 			request.metadata.timing = {};
 			request.metadata.timing[this.handlerName] = [Date.now()];
@@ -18,7 +18,7 @@ export class ServerTimingProvider {
 
 	public readonly onResponse = $hook({
 		priority: "last",
-		name: "server:onResponse",
+		on: "server:onResponse",
 		handler: async ({ request }) => {
 			if (request.metadata.timing) {
 				this.setDuration(this.handlerName, request.metadata.timing);
