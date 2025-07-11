@@ -3,72 +3,7 @@ import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { RetryCancelError } from "../errors/RetryCancelError.ts";
 import { RetryTimeoutError } from "../errors/RetryTimeoutError.ts";
 
-export interface RetryBackoffOptions {
-	/**
-	 * Initial delay in milliseconds.
-	 *
-	 * @default 200
-	 */
-	initial?: number;
-
-	/**
-	 * Multiplier for each subsequent delay.
-	 *
-	 * @default 2
-	 */
-	factor?: number;
-
-	/** Maximum delay in milliseconds. */
-	max?: number;
-
-	/** If true, adds a random jitter to the delay to prevent thundering herd. @default true */
-	jitter?: boolean;
-}
-
-export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
-	/** The function to retry. */
-	handler: T;
-
-	/**
-	 * The maximum number of attempts.
-	 * @default 3
-	 */
-	max?: number;
-
-	/**
-	 * The backoff strategy for delays between retries.
-	 * Can be a fixed number (in ms) or a configuration object for exponential backoff.
-	 * @default { initial: 200, factor: 2, jitter: true }
-	 */
-	backoff?: number | RetryBackoffOptions;
-
-	/**
-	 * An overall time limit for all retry attempts combined.
-	 * e.g., `[5, 'seconds']`
-	 */
-	maxDuration?: DurationLike;
-
-	/**
-	 * A function that determines if a retry should be attempted based on the error.
-	 * @default (error) => true (retries on any error)
-	 */
-	when?: (error: Error) => boolean;
-
-	/**
-	 * A custom callback for when a retry attempt fails.
-	 * This is called before the delay.
-	 */
-	onError?: (error: Error, attempt: number, ...args: Parameters<T>) => void;
-
-	/**
-	 * An AbortSignal to allow for external cancellation of the retry loop.
-	 */
-	signal?: AbortSignal;
-}
-
-export type RetryDescriptor<T extends (...args: any[]) => any> = (
-	...parameters: Parameters<T>
-) => MaybePromise<ReturnType<T>>;
+// TODO: move to RetryProvider
 
 /**
  * Creates a function that automatically retries a handler upon failure,
@@ -159,6 +94,89 @@ export const createRetryHandler = <T extends (...args: any[]) => any>(
 		throw lastError;
 	}) as T;
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface RetryBackoffOptions {
+	/**
+	 * Initial delay in milliseconds.
+	 *
+	 * @default 200
+	 */
+	initial?: number;
+
+	/**
+	 * Multiplier for each subsequent delay.
+	 *
+	 * @default 2
+	 */
+	factor?: number;
+
+	/**
+	 * Maximum delay in milliseconds.
+	 */
+	max?: number;
+
+	/**
+	 * If true, adds a random jitter to the delay to prevent thundering herd.
+	 *
+	 * @default true
+	 */
+	jitter?: boolean;
+}
+
+export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
+	/**
+	 * The function to retry.
+	 */
+	handler: T;
+
+	/**
+	 * The maximum number of attempts.
+	 *
+	 * @default 3
+	 */
+	max?: number;
+
+	/**
+	 * The backoff strategy for delays between retries.
+	 * Can be a fixed number (in ms) or a configuration object for exponential backoff.
+	 *
+	 * @default { initial: 200, factor: 2, jitter: true }
+	 */
+	backoff?: number | RetryBackoffOptions;
+
+	/**
+	 * An overall time limit for all retry attempts combined.
+	 *
+	 * e.g., `[5, 'seconds']`
+	 */
+	maxDuration?: DurationLike;
+
+	/**
+	 * A function that determines if a retry should be attempted based on the error.
+	 *
+	 * @default (error) => true (retries on any error)
+	 */
+	when?: (error: Error) => boolean;
+
+	/**
+	 * A custom callback for when a retry attempt fails.
+	 * This is called before the delay.
+	 */
+	onError?: (error: Error, attempt: number, ...args: Parameters<T>) => void;
+
+	/**
+	 * An AbortSignal to allow for external cancellation of the retry loop.
+	 */
+	signal?: AbortSignal;
+}
+
+export type RetryDescriptor<T extends (...args: any[]) => any> = (
+	...parameters: Parameters<T>
+) => MaybePromise<ReturnType<T>>;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 function calculateBackoff(
 	attempt: number,
