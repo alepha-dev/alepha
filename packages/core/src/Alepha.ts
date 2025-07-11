@@ -1117,6 +1117,7 @@ export class Alepha {
 			als: this.context,
 			level: env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info"),
 			name: "alepha.core",
+			app: env.APP_NAME,
 			json: env.LOG_FORMAT
 				? env.LOG_FORMAT === "json"
 				: env.NODE_ENV === "production",

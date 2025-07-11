@@ -42,6 +42,8 @@ export interface LoggerOptions {
 	 */
 	level?: LogLevel;
 
+	app?: string;
+
 	/**
 	 * The name of the logger. Like a module name or a service name.
 	 */
@@ -112,6 +114,7 @@ export class Logger {
 	public readonly name: string;
 	protected caller: string;
 	protected context: string;
+	protected app: string;
 	protected color: boolean;
 	protected json: boolean;
 	protected als?: AlsProvider;
@@ -121,6 +124,7 @@ export class Logger {
 		this.name = options.name ?? "App";
 		this.caller = options.caller ?? "";
 		this.context = options.context ?? "";
+		this.app = options.app ?? "";
 		this.json = options.json ?? false;
 		this.color = options.color ?? !this.json;
 		this.als = options.als;
@@ -136,6 +140,7 @@ export class Logger {
 			color: options.color ?? this.color,
 			json: options.json ?? this.json,
 			als: options.als ?? this.als,
+			app: options.app ?? this.app,
 		});
 	}
 
@@ -164,11 +169,6 @@ export class Logger {
 
 	/**
 	 * Log a message to the console.
-	 *
-	 * @param level
-	 * @param message
-	 * @param data
-	 * @protected
 	 */
 	protected log(
 		level: LogLevel,
@@ -200,9 +200,6 @@ export class Logger {
 
 	/**
 	 * Print a log message to the console.
-	 *
-	 * @param formatted
-	 * @protected
 	 */
 	protected print(formatted: string): void {
 		console.log(formatted);
@@ -210,11 +207,6 @@ export class Logger {
 
 	/**
 	 * Format a log message to JSON.
-	 *
-	 * @param level
-	 * @param message
-	 * @param data
-	 * @protected
 	 */
 	protected formatJson(
 		level: LogLevel,
@@ -223,6 +215,7 @@ export class Logger {
 	): string {
 		const json: Record<string, any> = {
 			date: new Date().toISOString(),
+			app: this.app,
 			module: this.name,
 			caller: this.caller,
 			context: this.context ? this.context : undefined,
@@ -253,11 +246,6 @@ export class Logger {
 
 	/**
 	 * Format a log message to a string.
-	 *
-	 * @param level
-	 * @param message
-	 * @param data
-	 * @protected
 	 */
 	protected formatLog(
 		level: LogLevel,
@@ -298,6 +286,11 @@ export class Logger {
 
 		output += this.colorize(LEVEL_COLORS[level], levelStr);
 		output += " ";
+
+		if (this.app) {
+			output += this.colorize(COLORS.grey, `${this.app}`);
+			output += " ";
+		}
 
 		if (this.context) {
 			output += this.colorize(COLORS.grey, `(${this.context})`);
@@ -375,15 +368,16 @@ export class MockLogger extends Logger {
 			color: false,
 			json: true,
 			als: options.als,
+			app: options.app,
 		});
 		this.store = options.store;
 	}
 
-	print(msg: string): void {
+	public print(msg: string): void {
 		this.store.stack.push(JSON.parse(msg));
 	}
 
-	child(options: LoggerOptions): MockLogger {
+	public child(options: LoggerOptions): MockLogger {
 		return new MockLogger({
 			...options,
 			level: options.level ?? this.level,
@@ -393,8 +387,13 @@ export class MockLogger extends Logger {
 			color: options.color ?? this.color,
 			json: options.json ?? this.json,
 			als: options.als ?? this.als,
+			app: options.app ?? this.app,
 			store: this.store,
 		});
+	}
+
+	public reset(): void {
+		this.store.stack = [];
 	}
 }
 
@@ -402,6 +401,12 @@ export class MockLogger extends Logger {
 
 export interface MockLoggerStore {
 	stack: Array<
-		{ date: string; level: string; message: string } & Record<string, any>
+		{
+			date: string;
+			level: string;
+			message: string;
+			context?: string;
+			app?: string;
+		} & Record<string, any>
 	>;
 }

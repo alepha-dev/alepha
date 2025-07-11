@@ -14,21 +14,7 @@ export class AlsProvider {
 	}
 
 	public createContextId(): string {
-		const t = Date.now().toString(36);
-		const r = Math.random().toString(36).slice(2, 8);
-
-		let id = "";
-		for (let i = 0; i < 10; i++) {
-			id += (i % 2 === 0 ? t : r)[Math.floor(i / 2)] || "";
-		}
-
-		return (
-			"r" +
-			id
-				.split("")
-				.sort(() => 0.5 - Math.random())
-				.join("")
-		);
+		return crypto.randomUUID();
 	}
 
 	public run<R>(callback: () => R, data: Record<string, any> = {}): R {
@@ -36,13 +22,9 @@ export class AlsProvider {
 			return callback();
 		}
 
-		return this.als.run(
-			{
-				context: this.createContextId(),
-				...data,
-			},
-			callback,
-		);
+		data.context ??= this.createContextId();
+
+		return this.als.run(data, callback);
 	}
 
 	public get<T>(key: string): T | undefined {

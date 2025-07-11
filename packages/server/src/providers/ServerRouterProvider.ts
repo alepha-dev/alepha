@@ -71,8 +71,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			reply: new ServerReply(),
 		} as ServerRequest;
 
-		return await this.alepha.context.run(() =>
-			this.processRequest(request, route, responseKind),
+		return await this.alepha.context.run(
+			() => this.processRequest(request, route, responseKind),
+			{
+				context: rawRequest.headers["x-request-id"],
+			},
 		);
 	}
 

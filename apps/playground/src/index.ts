@@ -1,93 +1,59 @@
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Module,
-	run,
-	t,
-} from "@alepha/core";
-import { $db, $entity, AlephaPostgres, pg } from "@alepha/postgres";
-import {
-	AlephaServerMetrics,
-	ServerMetricsProvider,
-} from "@alepha/server-metrics";
-import { sql } from "drizzle-orm";
+import { Alepha } from "@alepha/core";
+import { $action, ServerProvider } from "@alepha/server";
+import { $client, $remote, AlephaServerLinks } from "@alepha/server-links";
 
-const users = $entity({
-	name: "users",
-	schema: t.object({
-		id: pg.primaryKey(),
-		nickname: t.string(),
-	}),
-});
-
-const posts = $entity({
-	name: "posts",
-	schema: t.object({
-		id: pg.primaryKey(),
-		userId: pg.ref(t.int(), () => users.id),
-		content: t.string(),
-	}),
-});
-
-class App {
-	log = $logger();
-	users = $inject(users);
-	posts = $inject(posts);
-	alepha = $inject(Alepha);
-
-	db = $db({
-		entities: { users, posts },
-	});
-
-	ready = $hook({
-		on: "ready",
-		handler: async () => {
-			const user = await this.users.create({
-				nickname: "John Doe",
-			});
-
-			await this.posts.create({
-				userId: user.id,
-				content: "Hello, world!",
-			});
-
-			await this.posts.create({
-				userId: user.id,
-				content: "ss, world!",
-			});
-
-			this.log.info(await this.db.users.find());
-
-			const n = await this.db.execute(
-				sql`select ${posts.content}, nickname from ${users} join ${posts} on ${users.id} = ${posts.userId}`,
-				t.composite([
-					t.pick(users.$schema, ["nickname"]),
-					t.pick(posts.$schema, ["content"]),
-				]),
-			);
-
-			this.log.info(await this.db.posts.find());
-
-			this.log.info(n);
-
-			this.log.info("Users:", await this.users.find());
+class Puppeteer {
+	print = $action({
+		handler: () => {
+			return "Puppeteer is not available in this environment.";
 		},
 	});
 }
 
-class Playground implements Module {
-	$services = (alepha: Alepha) =>
-		alepha.with(AlephaPostgres).with(AlephaServerMetrics).with(App);
-}
-
-const alepha = Alepha.create({
-	env: {},
+const p1 = Alepha.create({
+	env: { SERVER_PORT: 0, APP_NAME: "PPT" },
 })
-	.with(Playground)
-	.configure(ServerMetricsProvider, {
-		prefix: "playground_",
+	.with(Puppeteer)
+	.with(AlephaServerLinks);
+
+class Reporting {
+	puppeteer = $remote({
+		url: () => p1.get(ServerProvider).hostname,
 	});
 
-run(alepha);
+	puppeteerApi = $client<Puppeteer>();
+
+	exportPdf = $action({
+		handler: () => {
+			return this.puppeteerApi.print();
+		},
+	});
+}
+
+const p2 = Alepha.create({
+	env: { SERVER_PORT: 0, APP_NAME: "RPM" },
+}).with(Reporting);
+
+class Frontend {
+	reporting = $remote({
+		url: () => p2.get(ServerProvider).hostname,
+	});
+
+	reportingApi = $client<Reporting>();
+
+	download = $action({
+		handler: () => {
+			return this.reportingApi.exportPdf();
+		},
+	});
+}
+
+const p3 = Alepha.create({
+	env: { SERVER_PORT: 3000, APP_NAME: "ADM" },
+}).with(Frontend);
+
+(async () => {
+	await p1.start();
+	await p2.start();
+	await p3.start();
+})();

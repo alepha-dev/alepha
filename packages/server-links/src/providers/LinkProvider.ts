@@ -107,7 +107,7 @@ export class LinkProvider {
 		const link = await this.getLinkByName(name, options);
 
 		const als = this.alepha.context.get<ServerRequest>("request");
-		const user = options?.user ?? als?.user;
+		const user = options.user ?? als?.user;
 
 		// if a handler is defined, use it (ssr)
 		if (link.handler && !options.request) {
@@ -148,6 +148,11 @@ export class LinkProvider {
 		const als = this.alepha.context.get<ServerRequest>("request");
 		if (als?.headers.authorization) {
 			options.request.headers.set("authorization", als.headers.authorization);
+		}
+
+		const context = this.alepha.context.get("context");
+		if (typeof context === "string") {
+			options.request.headers.set("x-request-id", context);
 		}
 
 		const action = {
