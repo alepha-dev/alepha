@@ -96,7 +96,7 @@ const makeRequest = async (incomingCookieHeader = "") => {
 	};
 };
 
-describe("@alepha/server-cookies", () => {
+describe("ServerCookiesProvider", () => {
 	test("should set and get a basic cookie", async () => {
 		const { data, setCookieHeader } = await makeRequest();
 

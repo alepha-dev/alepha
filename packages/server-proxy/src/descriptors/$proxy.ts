@@ -4,7 +4,7 @@ import type { ServerRequest } from "@alepha/server";
 export type ProxyDescriptorOptions = {
 	path: string;
 
-	target: string;
+	target: string | (() => string);
 
 	disabled?: boolean;
 

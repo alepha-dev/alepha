@@ -3,8 +3,6 @@ import { $action, ServerProvider } from "@alepha/server";
 import { expect, test } from "vitest";
 import { $proxy } from "../src";
 
-const randomPort = Math.floor(Math.random() * 10000) + 1000;
-
 class App {
 	hello = $action({
 		schema: {
@@ -37,18 +35,14 @@ class App {
 	});
 }
 
+const a1 = Alepha.create().with(App);
+
 class AppProxy {
 	proxy = $proxy({
 		path: "/api/*",
-		target: `http://localhost:${randomPort}`,
+		target: () => a1.get(ServerProvider).hostname,
 	});
 }
-
-Alepha.create({
-	env: {
-		SERVER_PORT: randomPort,
-	},
-}).with(App);
 
 const alephaProxy = Alepha.create().with(AppProxy);
 

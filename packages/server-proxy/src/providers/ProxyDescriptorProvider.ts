@@ -36,9 +36,9 @@ export class ProxyDescriptorProvider {
 	});
 
 	public createProxyHandler(
+		target: string,
 		options: Omit<ProxyDescriptorOptions, "path">,
 	): ServerHandler {
-		const target = options.target;
 		return async (request) => {
 			const url = new URL(target + request.url.pathname);
 			if (request.url.search) {
@@ -90,8 +90,9 @@ export class ProxyDescriptorProvider {
 
 	public async proxy(options: ProxyDescriptorOptions): Promise<void> {
 		const path = options.path;
-		const target = options.target;
-		const handler: ServerHandler = this.createProxyHandler(options);
+		const target =
+			typeof options.target === "function" ? options.target() : options.target;
+		const handler: ServerHandler = this.createProxyHandler(target, options);
 
 		if (!path.endsWith("/*")) {
 			throw new Error("Proxy path should end with '/*'");
