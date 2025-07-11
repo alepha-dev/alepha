@@ -38,6 +38,7 @@
 		"@alepha/server-cors": "0.7.7",
 		"@alepha/server-health": "0.7.7",
 		"@alepha/server-links": "0.7.7",
+		"@alepha/server-multipart": "0.7.7",
 		"@alepha/server-proxy": "0.7.7",
 		"@alepha/server-static": "0.7.7",
 		"@alepha/server-swagger": "0.7.7",
@@ -178,6 +179,11 @@
 			"require": "./server/links.cjs",
 			"types": "./server/links.d.ts"
 		},
+		"./server/multipart": {
+			"import": "./server/multipart.js",
+			"require": "./server/multipart.cjs",
+			"types": "./server/multipart.d.ts"
+		},
 		"./server/proxy": {
 			"import": "./server/proxy.js",
 			"require": "./server/proxy.cjs",
@@ -239,6 +245,7 @@
 		"server-cors",
 		"server-health",
 		"server-links",
+		"server-multipart",
 		"server-proxy",
 		"server-static",
 		"server-swagger",

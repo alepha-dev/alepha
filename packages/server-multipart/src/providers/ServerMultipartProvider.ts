@@ -8,24 +8,29 @@ import {
 	$inject,
 	Alepha,
 	type FileLike,
+	type HookDescriptor,
 	isTypeFile,
 	TypeGuard,
 } from "@alepha/core";
 import { bufferToArrayBuffer } from "@alepha/file";
+import {
+	ActionDescriptorHelper,
+	HttpError,
+	type ServerRoute,
+} from "@alepha/server";
 import Busboy, {
 	type BusboyConfig,
 	type BusboyFileStream,
 	type BusboyHeaders,
 } from "@fastify/busboy";
-import { HttpError } from "../../errors/HttpError.ts";
-import { ActionDescriptorHelper } from "../../helpers/ActionDescriptorHelper.ts";
-import type { ServerRoute } from "../../interfaces/index.ts";
 
 export class ServerMultipartProvider {
-	protected readonly helper = $inject(ActionDescriptorHelper);
-	protected readonly alepha = $inject(Alepha);
+	protected readonly helper: ActionDescriptorHelper = $inject(
+		ActionDescriptorHelper,
+	);
+	protected readonly alepha: Alepha = $inject(Alepha);
 
-	public readonly onRequest = $hook({
+	public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
 		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			if (request.body) {
@@ -67,7 +72,7 @@ export class ServerMultipartProvider {
 		},
 	});
 
-	public readonly onSend = $hook({
+	public readonly onSend: HookDescriptor<"server:onResponse"> = $hook({
 		on: "server:onResponse",
 		handler: async ({ request }) => {
 			const cleanup = request.metadata.multipart?.cleanup;

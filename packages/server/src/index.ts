@@ -15,7 +15,6 @@ import type {
 } from "./interfaces/index.ts";
 import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
 import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
-import { ServerMultipartProvider } from "./providers/features/ServerMultipartProvider.ts";
 import { ServerNotReadyProvider } from "./providers/features/ServerNotReadyProvider.ts";
 import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
 import { ServerTimingProvider } from "./providers/features/ServerTimingProvider.ts";
@@ -84,7 +83,6 @@ export * from "./descriptors/$route.ts";
 export * from "./helpers/ActionDescriptorHelper.ts";
 export * from "./index.shared.ts";
 export * from "./providers/features/ServerLoggerProvider.ts";
-export * from "./providers/features/ServerMultipartProvider.ts";
 export * from "./providers/features/ServerNotReadyProvider.ts";
 export * from "./providers/features/ServerSecurityProvider.ts";
 export * from "./providers/features/ServerTimingProvider.ts";
@@ -108,7 +106,6 @@ export class AlephaServer implements Module {
 		alepha.with(ServerRouteDescriptorProvider);
 		alepha.with(ServerBodyParserProvider);
 		alepha.with(ServerLoggerProvider);
-		alepha.with(ServerMultipartProvider);
 		alepha.with(ServerNotReadyProvider);
 
 		if (!alepha.isProduction()) {

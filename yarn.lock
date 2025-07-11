@@ -379,6 +379,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-multipart@npm:0.7.7, @alepha/server-multipart@workspace:packages/server-multipart":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-multipart@workspace:packages/server-multipart"
+  dependencies:
+    "@alepha/core": "npm:0.7.7"
+    "@alepha/file": "npm:0.7.7"
+    "@alepha/server": "npm:0.7.7"
+    "@fastify/busboy": "npm:^3.1.1"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-proxy@npm:0.7.7, @alepha/server-proxy@workspace:packages/server-proxy":
   version: 0.0.0-use.local
   resolution: "@alepha/server-proxy@workspace:packages/server-proxy"
@@ -436,10 +449,8 @@ __metadata:
     "@alepha/cache": "npm:0.7.7"
     "@alepha/core": "npm:0.7.7"
     "@alepha/datetime": "npm:0.7.7"
-    "@alepha/file": "npm:0.7.7"
     "@alepha/router": "npm:0.7.7"
     "@alepha/security": "npm:0.7.7"
-    "@fastify/busboy": "npm:^3.1.1"
     tsdown: "npm:^0.12.9"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -3349,6 +3360,7 @@ __metadata:
     "@alepha/server-cors": "npm:0.7.7"
     "@alepha/server-health": "npm:0.7.7"
     "@alepha/server-links": "npm:0.7.7"
+    "@alepha/server-multipart": "npm:0.7.7"
     "@alepha/server-proxy": "npm:0.7.7"
     "@alepha/server-static": "npm:0.7.7"
     "@alepha/server-swagger": "npm:0.7.7"

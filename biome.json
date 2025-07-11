@@ -31,7 +31,6 @@
 				"noConfusingVoidType": "off"
 			},
 			"correctness": {
-				"noUnusedImports": "error",
 				"noUnusedFunctionParameters": "off",
 				"noUnusedVariables": "off",
 				"noEmptyPattern": "off",

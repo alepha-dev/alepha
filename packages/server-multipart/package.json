@@ -1,6 +1,6 @@
 {
-	"name": "@alepha/server",
-	"description": "Alepha server module - HTTP server provider.",
+	"name": "@alepha/server-multipart",
+	"description": "Server metrics plugin for Alepha Server. Prometheus metrics exporter.",
 	"version": "0.7.7",
 	"type": "module",
 	"engines": {
@@ -9,17 +9,15 @@
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.7.7",
 		"@alepha/core": "0.7.7",
-		"@alepha/datetime": "0.7.7",
-		"@alepha/router": "0.7.7",
-		"@alepha/security": "0.7.7"
+		"@alepha/file": "0.7.7",
+		"@alepha/server": "0.7.7",
+		"@fastify/busboy": "^3.1.1"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",
@@ -35,9 +33,6 @@
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
 	"keywords": [
-		"alepha",
-		"server",
-		"http",
-		"client"
+		"alepha"
 	]
 }

@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const packagesDir = path.resolve(process.cwd(), "packages");
 const outputDir = path.resolve(process.cwd(), "apps", "docs");

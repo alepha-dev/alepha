@@ -5,7 +5,6 @@ export const verify = $command({
 	description: "Verify the project",
 	handler: async ({ run }) => {
 		await run("yarn clean");
-		await run("yarn format");
 		await run("yarn lint");
 		await run(["yarn check", "yarn check-dependencies"]);
 		await run(["yarn test", "yarn build"]);

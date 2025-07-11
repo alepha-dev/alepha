@@ -201,7 +201,6 @@ export class Repository<
 		}
 
 		return await this.provider.execute(raw).then((rows) => {
-			console.log(rows);
 			return rows.map((it: any) => this.clean(it, schema) as Static<T>);
 		});
 	}
