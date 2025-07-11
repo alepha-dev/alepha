@@ -156,13 +156,14 @@ export class ServerActionDescriptorProvider {
 		$.fetch = (
 			config: Partial<ClientRequestEntry> = {},
 			options: ClientRequestOptions = {},
-		) =>
-			this.client.fetchAction({
+		) => {
+			return this.client.fetchAction({
 				action,
 				host: this.serverProvider.hostname,
 				config,
 				options,
 			});
+		};
 		$.permission = () => action.permission;
 
 		instance[key] = $;

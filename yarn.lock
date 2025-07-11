@@ -328,6 +328,7 @@ __metadata:
     "@alepha/datetime": "npm:0.7.7"
     "@alepha/server": "npm:0.7.7"
     tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
 

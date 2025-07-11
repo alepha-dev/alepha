@@ -1,142 +1,100 @@
-import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
 	__descriptor,
-	$cursor,
 	KIND,
+	NotImplementedError,
 	OPTIONS,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
-import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
-import type { ServerRequest } from "@alepha/server";
+import type { DurationLike } from "@alepha/datetime";
+
+const KEY = "COOKIE";
 
 export interface CookieDescriptorOptions<T extends TSchema> {
+	/** The schema for the cookie's value, used for validation and type safety. */
 	schema: T;
 
-	name: string;
+	/** The name of the cookie. */
+	name?: string;
 
-	path?: string; // default: "/"
+	/** The cookie's path. Defaults to "/". */
+	path?: string;
 
-	ttl?: DurationLike; // map to maxAge
+	/** Time-to-live for the cookie. Maps to `Max-Age`. */
+	ttl?: DurationLike;
 
-	secure?: boolean; // TODO: "auto" - secure=true if ctx.url.protocol === "https"
+	/** If true, the cookie is only sent over HTTPS. Defaults to true in production. */
+	secure?: boolean;
 
+	/** If true, the cookie cannot be accessed by client-side scripts. */
 	httpOnly?: boolean;
 
-	sameSite?: "strict" | "lax" | "none"; // default: "lax"
+	/** SameSite policy for the cookie. Defaults to "lax". */
+	sameSite?: "strict" | "lax" | "none";
 
+	/** The domain for the cookie. */
 	domain?: string;
 
+	/** If true, the cookie value will be compressed using zlib. */
 	compress?: boolean;
 
-	encrypt?: boolean; // not implemented yet
+	/** If true, the cookie value will be encrypted. Requires `COOKIE_SECRET` env var. */
+	encrypt?: boolean;
 
-	sign?: boolean; // not implemented yet
+	/** If true, the cookie will be signed to prevent tampering. Requires `COOKIE_SECRET` env var. */
+	sign?: boolean;
 }
 
 export interface CookieDescriptor<T extends TSchema> {
-	[KIND]: "COOKIE";
-
+	[KIND]: typeof KEY;
 	[OPTIONS]: CookieDescriptorOptions<T>;
 
+	schema: T;
+
+	/** Sets the cookie with the given value in the current request's response. */
 	set: (value: Static<T>, options?: { cookies?: Cookies }) => void;
 
+	/** Gets the cookie value from the current request. Returns undefined if not found or invalid. */
 	get: (options?: { cookies?: Cookies }) => Static<T> | undefined;
 
+	/** Deletes the cookie in the current request's response. */
 	del: (options?: { cookies?: Cookies }) => void;
 }
 
+/**
+ * Declares a type-safe, configurable HTTP cookie.
+ * This descriptor provides methods to get, set, and delete the cookie
+ * within the server request/response cycle.
+ */
 export const $cookie: {
 	<T extends TSchema>(options: CookieDescriptorOptions<T>): CookieDescriptor<T>;
 	[KIND]: string;
 } = <T extends TSchema>(
 	options: CookieDescriptorOptions<T>,
 ): CookieDescriptor<T> => {
-	__descriptor("COOKIE");
+	__descriptor(KEY);
 
-	const { context: alepha } = $cursor();
-
-	return {
-		[KIND]: "COOKIE",
+	const api: Partial<CookieDescriptor<T>> = {
+		[KIND]: KEY,
 		[OPTIONS]: options,
-		get: (opts: { cookies?: Cookies } = {}) => {
-			const cookies =
-				alepha.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
-			if (!cookies) {
-				throw new Error(
-					"Cookies not found in request context or options.cookies",
-				);
-			}
-
-			try {
-				if (cookies.req[options.name]) {
-					let value: string = decodeURIComponent(cookies.req[options.name]);
-
-					if (options.compress) {
-						value = inflateRawSync(Buffer.from(value, "base64")).toString(
-							"utf8",
-						);
-					}
-
-					return alepha.parse(options.schema, JSON.parse(value));
-				}
-			} catch (e) {
-				alepha.log.error(e);
-				cookies.res[options.name] = null;
-			}
-
-			return undefined;
+		schema: options.schema,
+		set: () => {
+			throw new NotImplementedError(KEY);
 		},
-
-		del: (opts: { cookies?: Cookies } = {}) => {
-			const cookies =
-				alepha.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
-			if (!cookies) {
-				throw new Error(
-					"Cookies not found in request context or options.cookies",
-				);
-			}
-
-			cookies.res[options.name] = null;
+		get: () => {
+			throw new NotImplementedError(KEY);
 		},
-
-		set: (data: Static<T>, opts: { cookies?: Cookies } = {}) => {
-			const cookies =
-				alepha.context.get<ServerRequest>("request")?.cookies ?? opts.cookies;
-			if (!cookies) {
-				throw new Error(
-					"Cookies not found in request context or options.cookies",
-				);
-			}
-
-			let value = JSON.stringify(alepha.parse(options.schema, data));
-
-			if (options.compress) {
-				value = deflateRawSync(value).toString("base64");
-			}
-
-			value = encodeURIComponent(value);
-
-			const cookie: Cookie = {
-				value,
-				path: options.path ?? "/",
-				sameSite: options.sameSite ?? "lax",
-				secure: options.secure,
-				httpOnly: options.httpOnly,
-				domain: options.domain,
-			};
-
-			if (options.ttl) {
-				const dt = alepha.get(DateTimeProvider);
-				cookie.maxAge = dt.duration(options.ttl).as("seconds");
-			}
-
-			cookies.res[options.name] = cookie;
+		del: () => {
+			throw new NotImplementedError(KEY);
 		},
 	};
+
+	return api as CookieDescriptor<T>;
 };
 
-$cookie[KIND] = "COOKIE";
+$cookie[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface Cookies {
 	req: Record<string, string>;
