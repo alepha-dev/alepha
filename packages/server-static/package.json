@@ -19,7 +19,8 @@
 		"@alepha/server": "0.7.7"
 	},
 	"devDependencies": {
-		"tsdown": "^0.12.9"
+		"tsdown": "^0.12.9",
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",
