@@ -311,7 +311,7 @@ export class QueueDescriptorProvider {
 				consumer.queue[OPTIONS].schema.payload,
 				json.payload,
 			);
-			await consumer.handler({ payload });
+			await this.alepha.context.run(() => consumer.handler({ payload }));
 		} catch (e) {
 			this.log.error(e);
 		}

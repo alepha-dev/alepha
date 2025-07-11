@@ -27,7 +27,7 @@
 		"convert": "node scripts/convert.ts",
 		"lint": "biome check --write --unsafe",
 		"check": "tsc --noEmit",
-		"check-dependencies": "yarn workspaces foreach -Ap --exclude alepha --no-private exec depcheck --ignores=@alepha/testing,shx,drizzle-kit --ignore-patterns=dist,assets",
+		"check-dependencies": "yarn workspaces foreach -Ap --exclude alepha --no-private exec depcheck --ignores=@alepha/testing,shx,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets",
 		"test": "vitest run",
 		"build": "yarn workspaces foreach -Apt --no-private run build"
 	}
