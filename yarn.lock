@@ -355,6 +355,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-helmet@npm:0.7.7, @alepha/server-helmet@workspace:packages/server-helmet":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-helmet@workspace:packages/server-helmet"
+  dependencies:
+    "@alepha/core": "npm:0.7.7"
+    "@alepha/server": "npm:0.7.7"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-links@npm:0.7.7, @alepha/server-links@workspace:packages/server-links":
   version: 0.0.0-use.local
   resolution: "@alepha/server-links@workspace:packages/server-links"
@@ -3362,6 +3373,7 @@ __metadata:
     "@alepha/server-cookies": "npm:0.7.7"
     "@alepha/server-cors": "npm:0.7.7"
     "@alepha/server-health": "npm:0.7.7"
+    "@alepha/server-helmet": "npm:0.7.7"
     "@alepha/server-links": "npm:0.7.7"
     "@alepha/server-metrics": "npm:0.7.7"
     "@alepha/server-multipart": "npm:0.7.7"

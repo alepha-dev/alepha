@@ -38,6 +38,7 @@
 		"@alepha/server-cookies": "0.7.7",
 		"@alepha/server-cors": "0.7.7",
 		"@alepha/server-health": "0.7.7",
+		"@alepha/server-helmet": "0.7.7",
 		"@alepha/server-links": "0.7.7",
 		"@alepha/server-metrics": "0.7.7",
 		"@alepha/server-multipart": "0.7.7",
@@ -161,6 +162,11 @@
 			"require": "./server/cache.cjs",
 			"types": "./server/cache.d.ts"
 		},
+		"./server/compress": {
+			"import": "./server/compress.js",
+			"require": "./server/compress.cjs",
+			"types": "./server/compress.d.ts"
+		},
 		"./server/cookies": {
 			"import": "./server/cookies.js",
 			"require": "./server/cookies.cjs",
@@ -176,10 +182,20 @@
 			"require": "./server/health.cjs",
 			"types": "./server/health.d.ts"
 		},
+		"./server/helmet": {
+			"import": "./server/helmet.js",
+			"require": "./server/helmet.cjs",
+			"types": "./server/helmet.d.ts"
+		},
 		"./server/links": {
 			"import": "./server/links.js",
 			"require": "./server/links.cjs",
 			"types": "./server/links.d.ts"
+		},
+		"./server/metrics": {
+			"import": "./server/metrics.js",
+			"require": "./server/metrics.cjs",
+			"types": "./server/metrics.d.ts"
 		},
 		"./server/multipart": {
 			"import": "./server/multipart.js",
@@ -243,10 +259,13 @@
 		"security",
 		"server",
 		"server-cache",
+		"server-compress",
 		"server-cookies",
 		"server-cors",
 		"server-health",
+		"server-helmet",
 		"server-links",
+		"server-metrics",
 		"server-multipart",
 		"server-proxy",
 		"server-static",
