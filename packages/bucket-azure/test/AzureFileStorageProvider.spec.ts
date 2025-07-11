@@ -1,6 +1,6 @@
 import { FileStorageProvider } from "@alepha/bucket";
 import { Alepha } from "@alepha/core";
-import { file } from "@alepha/file";
+import { createFile } from "@alepha/file";
 import { describe, test } from "vitest";
 import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
 
@@ -16,7 +16,7 @@ describe("AzureFileStorageProvider", () => {
 		const name = "hello.txt";
 		const type = "text/plain";
 
-		const f1 = file(message, {
+		const f1 = createFile(message, {
 			name,
 			type,
 		});

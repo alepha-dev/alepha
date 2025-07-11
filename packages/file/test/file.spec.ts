@@ -6,15 +6,18 @@ import { ReadableStream as NodeWebStream } from "node:stream/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	bufferToArrayBuffer,
-	file,
+	createFile,
 	streamToBuffer,
-} from "../src/helpers/file.ts";
+} from "../src/helpers/createFile.ts";
 
 describe("file", () => {
 	describe("with string source", () => {
 		it("should create FileLike object from string", async () => {
 			const content = "hello world";
-			const fileLike = file(content, { name: "test.txt", type: "text/plain" });
+			const fileLike = createFile(content, {
+				name: "test.txt",
+				type: "text/plain",
+			});
 
 			expect(fileLike.name).toBe("test.txt");
 			expect(fileLike.type).toBe("text/plain");
@@ -32,7 +35,7 @@ describe("file", () => {
 
 		it("should use default values when options not provided", async () => {
 			const content = "test content";
-			const fileLike = file(content);
+			const fileLike = createFile(content);
 
 			expect(fileLike.name).toBe("file");
 			expect(fileLike.type).toBe("application/octet-stream");
@@ -40,7 +43,7 @@ describe("file", () => {
 		});
 
 		it("should infer content type from filename", async () => {
-			const fileLike = file('{"key": "value"}', { name: "data.json" });
+			const fileLike = createFile('{"key": "value"}', { name: "data.json" });
 
 			expect(fileLike.type).toBe("application/json");
 			expect(fileLike.name).toBe("data.json");
@@ -50,7 +53,7 @@ describe("file", () => {
 	describe("with Buffer source", () => {
 		it("should create FileLike object from Buffer", async () => {
 			const buffer = Buffer.from("buffer content", "utf-8");
-			const fileLike = file(buffer, {
+			const fileLike = createFile(buffer, {
 				name: "test.bin",
 				type: "application/octet-stream",
 			});
@@ -71,7 +74,7 @@ describe("file", () => {
 		it("should create FileLike object from ArrayBuffer", async () => {
 			const originalBuffer = Buffer.from("arraybuffer content", "utf-8");
 			const arrayBuffer = bufferToArrayBuffer(originalBuffer);
-			const fileLike = file(arrayBuffer, { name: "test.dat" });
+			const fileLike = createFile(arrayBuffer, { name: "test.dat" });
 
 			expect(fileLike.name).toBe("test.dat");
 			expect(fileLike.size).toBe(arrayBuffer.byteLength);
@@ -86,7 +89,10 @@ describe("file", () => {
 			const content = "stream content";
 			const stream = Readable.from([content]);
 
-			const fileLike = file(stream, { name: "stream.txt", type: "text/plain" });
+			const fileLike = createFile(stream, {
+				name: "stream.txt",
+				type: "text/plain",
+			});
 
 			expect(fileLike.name).toBe("stream.txt");
 			expect(fileLike.type).toBe("text/plain");
@@ -100,7 +106,10 @@ describe("file", () => {
 			const content = "stream content";
 			const stream = Readable.from([content]);
 
-			const fileLike = file(stream, { name: "stream.txt", type: "text/plain" });
+			const fileLike = createFile(stream, {
+				name: "stream.txt",
+				type: "text/plain",
+			});
 
 			const arrayBuffer = await fileLike.arrayBuffer();
 			expect(arrayBuffer.byteLength).toBe(
@@ -117,7 +126,7 @@ describe("file", () => {
 				},
 			});
 
-			const fileLike = file(webStream, { name: "webstream.txt" });
+			const fileLike = createFile(webStream, { name: "webstream.txt" });
 
 			expect(fileLike.name).toBe("webstream.txt");
 			expect(fileLike.size).toBe(0);
@@ -130,7 +139,7 @@ describe("file", () => {
 	describe("stream method", () => {
 		it("should return a readable stream for buffer-based FileLike", async () => {
 			const content = "stream test";
-			const fileLike = file(content);
+			const fileLike = createFile(content);
 			const stream = fileLike.stream();
 
 			expect(stream).toBeInstanceOf(Readable);
@@ -148,7 +157,7 @@ describe("file", () => {
 				},
 			});
 
-			const fileLike = file(originalStream);
+			const fileLike = createFile(originalStream);
 			const returnedStream = fileLike.stream();
 
 			expect(returnedStream).toBe(originalStream);
@@ -177,7 +186,7 @@ describe("file", () => {
 		});
 
 		it("should create FileLike object from file:// URL", async () => {
-			const fileLike = file(testFileUrl, { name: "custom.txt" });
+			const fileLike = createFile(testFileUrl, { name: "custom.txt" });
 
 			expect(fileLike.name).toBe("custom.txt");
 			expect(fileLike.type).toBe("text/plain");
@@ -193,14 +202,14 @@ describe("file", () => {
 		});
 
 		it("should infer filename from file:// URL path", async () => {
-			const fileLike = file(testFileUrl);
+			const fileLike = createFile(testFileUrl);
 
 			expect(fileLike.name).toBe("test.txt");
 			expect(fileLike.type).toBe("text/plain");
 		});
 
 		it("should handle file:// URL stream", async () => {
-			const fileLike = file(testFileUrl);
+			const fileLike = createFile(testFileUrl);
 			const stream = fileLike.stream();
 
 			expect(stream).toBeInstanceOf(Readable);
@@ -222,7 +231,7 @@ describe("file", () => {
 			global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
 			const httpUrl = "https://example.com/data.txt";
-			const fileLike = file(httpUrl);
+			const fileLike = createFile(httpUrl);
 
 			expect(fileLike.name).toBe("data.txt");
 			expect(fileLike.type).toBe("text/plain");
@@ -246,7 +255,7 @@ describe("file", () => {
 			global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
 			const httpUrl = "https://example.com/nonexistent.txt";
-			const fileLike = file(httpUrl);
+			const fileLike = createFile(httpUrl);
 
 			await expect(fileLike.text()).rejects.toThrow(
 				"Failed to fetch https://example.com/nonexistent.txt: 404 Not Found",
@@ -266,7 +275,7 @@ describe("file", () => {
 			global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
 			const httpUrl = "https://example.com/";
-			const fileLike = file(httpUrl);
+			const fileLike = createFile(httpUrl);
 
 			expect(fileLike.name).toBe("file"); // Default name when no filename in path
 
@@ -276,7 +285,7 @@ describe("file", () => {
 
 	describe("edge cases", () => {
 		it("should handle empty string", async () => {
-			const fileLike = file("");
+			const fileLike = createFile("");
 
 			expect(fileLike.size).toBe(0);
 			expect(await fileLike.text()).toBe("");
@@ -285,14 +294,14 @@ describe("file", () => {
 
 		it("should handle unicode content", async () => {
 			const content = "Hello 世界 🌍";
-			const fileLike = file(content);
+			const fileLike = createFile(content);
 
 			expect(await fileLike.text()).toBe(content);
 			expect(fileLike.size).toBe(Buffer.from(content, "utf-8").byteLength);
 		});
 
 		it("should override inferred content type with explicit type", () => {
-			const fileLike = file('{"key": "value"}', {
+			const fileLike = createFile('{"key": "value"}', {
 				name: "data.json",
 				type: "text/plain",
 			});

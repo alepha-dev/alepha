@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { FileLike, StreamLike } from "@alepha/core";
 import { getContentType } from "./getContentType.ts";
 
-export const file = (
+export const createFile = (
 	source: string | Buffer | ArrayBuffer | StreamLike,
 	options: {
 		type?: string;

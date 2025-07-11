@@ -17,7 +17,7 @@ import {
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { file } from "@alepha/file";
+import { createFile } from "@alepha/file";
 import {
 	BlobServiceClient,
 	type BlockBlobClient,
@@ -119,7 +119,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 			throw new FileNotFoundError("File not found - empty stream body");
 		}
 
-		return file(blob.readableStreamBody, blob.metadata);
+		return createFile(blob.readableStreamBody, blob.metadata);
 	}
 
 	public async exists(bucketName: string, fileId: string): Promise<boolean> {
