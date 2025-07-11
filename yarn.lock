@@ -309,7 +309,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-compress@workspace:packages/server-compress":
+"@alepha/server-compress@npm:0.7.7, @alepha/server-compress@workspace:packages/server-compress":
   version: 0.0.0-use.local
   resolution: "@alepha/server-compress@workspace:packages/server-compress"
   dependencies:
@@ -369,7 +369,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-metrics@workspace:packages/server-metrics":
+"@alepha/server-metrics@npm:0.7.7, @alepha/server-metrics@workspace:packages/server-metrics":
   version: 0.0.0-use.local
   resolution: "@alepha/server-metrics@workspace:packages/server-metrics"
   dependencies:
@@ -3358,10 +3358,12 @@ __metadata:
     "@alepha/security": "npm:0.7.7"
     "@alepha/server": "npm:0.7.7"
     "@alepha/server-cache": "npm:0.7.7"
+    "@alepha/server-compress": "npm:0.7.7"
     "@alepha/server-cookies": "npm:0.7.7"
     "@alepha/server-cors": "npm:0.7.7"
     "@alepha/server-health": "npm:0.7.7"
     "@alepha/server-links": "npm:0.7.7"
+    "@alepha/server-metrics": "npm:0.7.7"
     "@alepha/server-multipart": "npm:0.7.7"
     "@alepha/server-proxy": "npm:0.7.7"
     "@alepha/server-static": "npm:0.7.7"
