@@ -20,8 +20,14 @@ export class RouterProvider<T extends Route = Route> {
 			}
 
 			if (part.startsWith(":")) {
+				const name = parts[i].slice(1);
 				if (!cursor.param) {
-					cursor.param = { name: parts[i].slice(1), children: {} };
+					cursor.param = { name, children: {} };
+				} else if (cursor.param.name !== name) {
+					// damn, 2 url params with different names
+					// got this case with /customers/:id and /customers/:userId/payments
+					route.mapParams ??= {};
+					route.mapParams[cursor.param.name] = name;
 				}
 
 				if (isLast) {
@@ -47,6 +53,10 @@ export class RouterProvider<T extends Route = Route> {
 	}
 
 	public match(path: string): RouteMatch<T> {
+		return this.mapParams(this.createRouteMatch(path));
+	}
+
+	protected createRouteMatch(path: string): RouteMatch<T> {
 		if (path[0] !== "/") {
 			throw new Error(`Path "${path}" must start with "/"`);
 		}
@@ -90,8 +100,21 @@ export class RouterProvider<T extends Route = Route> {
 		return { route: cursor.route, params };
 	}
 
+	protected mapParams(match: RouteMatch<T>): RouteMatch<T> {
+		if (match.route?.mapParams && match.params) {
+			for (const [key, value] of Object.entries(match.route.mapParams)) {
+				if (match.params[key]) {
+					match.params[value] = match.params[key];
+					delete match.params[key];
+				}
+			}
+		}
+
+		return match;
+	}
+
 	protected createParts(path: string): string[] {
-		let pathname = path.split("?")[0];
+		let pathname = path.split("?")[0].replaceAll("//", "/");
 
 		// remove trailing slash
 		if (pathname.endsWith("/") && pathname.length > 1) {
@@ -109,6 +132,15 @@ export interface RouteMatch<T extends Route> {
 
 export interface Route {
 	path: string;
+
+	/**
+	 * Rename a param in the route.
+	 * This is automatically filled when you have scenarios like:
+	 * `/customers/:id` and `/customers/:userId/payments`
+	 *
+	 * In this case, `:id` will be renamed to `:userId` in the second route.
+	 */
+	mapParams?: Record<string, string>;
 }
 
 export interface Tree<T extends Route> {

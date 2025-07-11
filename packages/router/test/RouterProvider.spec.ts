@@ -21,6 +21,7 @@ const playground = () => {
 	return {
 		add,
 		match,
+		router,
 	};
 };
 
@@ -158,6 +159,24 @@ test("RouterProvider - params + wildcard", ({ expect }) => {
 		params: {
 			name: "jack",
 			"*": "y/z",
+		},
+	});
+});
+
+test("RouterProvider - double params", ({ expect }) => {
+	const { add, match } = playground();
+	add("/users/:id", "home");
+	add("/users/:userId/hello", "hello");
+	expect(match("/users/jack")).toEqual({
+		name: "home",
+		params: {
+			id: "jack",
+		},
+	});
+	expect(match("/users/jack/hello")).toEqual({
+		name: "hello",
+		params: {
+			userId: "jack",
 		},
 	});
 });

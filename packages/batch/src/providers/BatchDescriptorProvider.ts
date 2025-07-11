@@ -10,7 +10,7 @@ import {
 	type TSchema,
 } from "@alepha/core";
 import { DateTimeProvider, type Timeout } from "@alepha/datetime";
-import { $retry } from "@alepha/retry";
+import { createRetryHandler } from "@alepha/retry";
 import type { BatchDescriptorOptions } from "../descriptors/$batch.ts";
 import { $batch } from "../descriptors/$batch.ts";
 
@@ -49,10 +49,13 @@ export class BatchDescriptorProvider {
 				const options = value[OPTIONS] as BatchDescriptorOptions<any>;
 
 				// Create a retry-wrapped handler
-				const handler = $retry({
-					...options.retry,
-					handler: options.handler,
-				});
+				const handler = createRetryHandler(
+					{
+						...options.retry,
+						handler: options.handler,
+					},
+					this.dateTimeProvider,
+				);
 
 				const batchInstance: BatchInstance<any> = {
 					id,

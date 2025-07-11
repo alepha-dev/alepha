@@ -171,7 +171,7 @@ describe("$batch descriptor", () => {
 				schema: t.string(),
 				maxSize: 1,
 				handler: failingHandler,
-				retry: { max: 2, delay: 1 }, // Try a total of 2 times
+				retry: { max: 2 }, // Try a total of 2 times
 			});
 		}
 

@@ -1,123 +1,185 @@
-import type { MaybePromise } from "@alepha/core";
+import { $cursor, type MaybePromise } from "@alepha/core";
+import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import { RetryCancelError } from "../errors/RetryCancelError.ts";
+import { RetryTimeoutError } from "../errors/RetryTimeoutError.ts";
 
-/**
- * `$retry` creates a retry descriptor.
- *
- * It will retry the given function up to `max` times with a delay of `delay` milliseconds between attempts.
- *
- * @example
- * ```ts
- * import { $retry } from "@alepha/core";
- *
- * class MyService {
- * 	fetchData = $retry({
- * 		max: 5, // maximum number of attempts
- * 		delay: 1000, // ms
- * 		when: (error) => error.message.includes("Network Error"),
- * 		handler: async (url: string) => {
- * 			const response = await fetch(url);
- * 			if (!response.ok) {
- * 				throw new Error(`Failed to fetch: ${response.statusText}`);
- * 			}
- * 			return response.json();
- * 		},
- * 		onError: (error, attempt, url) => {
- * 	    // error happened, log it or handle it
- * 			console.error(`Attempt ${attempt} failed for ${url}:`, error);
- * 		},
- * 	});
- * }
- * ```
- */
-export const $retry = <T extends (...args: any[]) => any>(
-	opts: RetryDescriptorOptions<T>,
-): RetryDescriptor<T> => {
-	const attempts = opts.max ?? 3;
-	const delay = opts.delay ?? 0;
-	const when = opts.when;
-	const handler = opts.handler;
-
-	const func = async (...args: Parameters<T>) => {
-		let counter = 0;
-
-		while (counter < attempts) {
-			try {
-				return await handler(...args);
-			} catch (err) {
-				const isError = err instanceof Error;
-
-				if (!isError) {
-					throw err;
-				}
-
-				if (typeof when === "function" && !when(err)) {
-					throw err;
-				}
-
-				if (counter >= attempts - 1) {
-					throw err;
-				}
-
-				if (opts.onError) {
-					opts.onError(err, counter + 1, ...args);
-				}
-
-				if (delay) {
-					await new Promise((resolve) => setTimeout(resolve, delay));
-				}
-			}
-
-			counter += 1;
-		}
-	};
-
-	return func as T;
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Retry Descriptor options.
- */
-export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
+export interface RetryBackoffOptions {
 	/**
-	 * Maximum number of attempts.
+	 * Initial delay in milliseconds.
 	 *
+	 * @default 200
+	 */
+	initial?: number;
+
+	/**
+	 * Multiplier for each subsequent delay.
+	 *
+	 * @default 2
+	 */
+	factor?: number;
+
+	/** Maximum delay in milliseconds. */
+	max?: number;
+
+	/** If true, adds a random jitter to the delay to prevent thundering herd. @default true */
+	jitter?: boolean;
+}
+
+export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
+	/** The function to retry. */
+	handler: T;
+
+	/**
+	 * The maximum number of attempts.
 	 * @default 3
 	 */
 	max?: number;
 
 	/**
-	 * Delay in milliseconds.
-	 *
-	 * @default 0
+	 * The backoff strategy for delays between retries.
+	 * Can be a fixed number (in ms) or a configuration object for exponential backoff.
+	 * @default { initial: 200, factor: 2, jitter: true }
 	 */
-	delay?: number;
+	backoff?: number | RetryBackoffOptions;
 
 	/**
-	 * Optional condition to determine when to retry.
+	 * An overall time limit for all retry attempts combined.
+	 * e.g., `[5, 'seconds']`
+	 */
+	maxDuration?: DurationLike;
+
+	/**
+	 * A function that determines if a retry should be attempted based on the error.
+	 * @default (error) => true (retries on any error)
 	 */
 	when?: (error: Error) => boolean;
 
 	/**
-	 * The function to retry.
+	 * A custom callback for when a retry attempt fails.
+	 * This is called before the delay.
 	 */
-	handler: T;
+	onError?: (error: Error, attempt: number, ...args: Parameters<T>) => void;
 
 	/**
-	 * Optional error handler.
-	 *
-	 * This will be called when an error occurs.
-	 *
-	 * @default undefined
+	 * An AbortSignal to allow for external cancellation of the retry loop.
 	 */
-	onError?: (
-		error: Error,
-		attempt: number,
-		...parameters: Parameters<T>
-	) => void;
+	signal?: AbortSignal;
 }
 
 export type RetryDescriptor<T extends (...args: any[]) => any> = (
 	...parameters: Parameters<T>
 ) => MaybePromise<ReturnType<T>>;
+
+/**
+ * Creates a function that automatically retries a handler upon failure,
+ * with support for exponential backoff, max duration, and cancellation.
+ */
+export const $retry = <T extends (...args: any[]) => any>(
+	opts: RetryDescriptorOptions<T>,
+): RetryDescriptor<T> => {
+	const { context } = $cursor();
+	const dateTimeProvider = context.get(DateTimeProvider);
+	const appAbortController = new AbortController();
+
+	context.on("stop", () => {
+		appAbortController.abort();
+	});
+
+	return createRetryHandler(opts, dateTimeProvider, appAbortController);
+};
+
+export const createRetryHandler = <T extends (...args: any[]) => any>(
+	opts: RetryDescriptorOptions<T>,
+	dateTimeProvider: DateTimeProvider,
+	appAbortController: AbortController = new AbortController(),
+): RetryDescriptor<T> => {
+	const maxAttempts = opts.max ?? 3;
+	const when = opts.when ?? (() => true);
+	const { handler, onError } = opts;
+
+	return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+		let lastError: Error | undefined;
+		const startTime = Date.now();
+
+		const maxDurationMs = opts.maxDuration
+			? dateTimeProvider.duration(opts.maxDuration).asMilliseconds()
+			: Infinity;
+
+		// combine user-provided signal with the app's lifecycle signal
+		const combinedSignal = opts.signal;
+		const onAbort = () => {
+			if (!lastError) {
+				lastError = new RetryCancelError();
+			}
+		};
+
+		appAbortController.signal.addEventListener("abort", onAbort);
+		combinedSignal?.addEventListener("abort", onAbort);
+
+		try {
+			for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+				if (appAbortController.signal.aborted || combinedSignal?.aborted) {
+					throw new RetryCancelError();
+				}
+
+				if (Date.now() - startTime > maxDurationMs) {
+					throw new RetryTimeoutError(maxDurationMs);
+				}
+
+				try {
+					return await handler(...args);
+				} catch (err) {
+					lastError = err as Error;
+
+					if (!(err instanceof Error) || !when(err)) {
+						throw err; // don't retry if it's not an Error or `when` returns false
+					}
+
+					if (attempt >= maxAttempts) {
+						break; // will throw lastError after the loop
+					}
+
+					if (onError) {
+						onError(err, attempt, ...args);
+					}
+
+					// calculate and wait for backoff delay
+					const delay = calculateBackoff(attempt, opts.backoff);
+					if (delay > 0) {
+						await dateTimeProvider.wait(delay, { signal: combinedSignal });
+					}
+				}
+			}
+		} finally {
+			// clean up listeners to prevent memory leaks
+			appAbortController.signal.removeEventListener("abort", onAbort);
+			combinedSignal?.removeEventListener("abort", onAbort);
+		}
+
+		throw lastError;
+	}) as T;
+};
+
+function calculateBackoff(
+	attempt: number,
+	options?: number | RetryBackoffOptions,
+): number {
+	if (typeof options === "number") {
+		return options;
+	}
+
+	const initial = options?.initial ?? 200;
+	const factor = options?.factor ?? 2;
+	const max = options?.max ?? 10000;
+	const useJitter = options?.jitter !== false;
+
+	const exponential = initial * factor ** (attempt - 1);
+	let delay = Math.min(exponential, max);
+
+	if (useJitter) {
+		// Add a random amount of jitter (e.g., up to 50% of the delay)
+		delay = delay * (1 + Math.random() * 0.5);
+	}
+
+	return Math.floor(delay);
+}

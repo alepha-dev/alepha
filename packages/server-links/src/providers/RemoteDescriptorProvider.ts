@@ -147,7 +147,9 @@ export class RemoteDescriptorProvider {
 		(opts: FetchLinksOptions) => Promise<ApiLinksResponse>
 	> = $retry({
 		max: 10,
-		delay: 2000,
+		backoff: {
+			initial: 1000,
+		},
 		onError: (_, attempt, { service, url }) => {
 			this.log.warn(`Failed to fetch links, retry (${attempt})...`, {
 				service,

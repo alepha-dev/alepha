@@ -256,6 +256,7 @@ __metadata:
   resolution: "@alepha/retry@workspace:packages/retry"
   dependencies:
     "@alepha/core": "npm:0.7.7"
+    "@alepha/datetime": "npm:0.7.7"
     tsdown: "npm:^0.12.9"
     vitest: "npm:^3.2.4"
   languageName: unknown
