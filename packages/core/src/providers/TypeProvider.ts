@@ -272,6 +272,13 @@ export class TypeProvider {
 	}
 
 	/**
+	 * Create a schema for a signed 32-bit integer.
+	 */
+	public integer(options?: IntegerOptions): TInteger {
+		return this.int(options);
+	}
+
+	/**
 	 * Create a schema for a bigint. Bigint is a 64-bit integer.
 	 * This is a workaround for TypeBox, which does not support bigint natively.
 	 */

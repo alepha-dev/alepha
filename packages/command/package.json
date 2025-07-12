@@ -1,0 +1,39 @@
+{
+	"name": "@alepha/command",
+	"description": "Alepha command module - for building powerful command-line interfaces.",
+	"keywords": [
+		"alepha",
+		"cli",
+		"command"
+	],
+	"author": "Feunard",
+	"version": "0.7.7",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.7.7",
+		"zx": "^8.7.0-lite"
+	},
+	"devDependencies": {
+		"tsdown": "^0.12.9",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"build": "tsdown -c ../../tsdown.config.ts"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"homepage": "https://github.com/feunard/alepha"
+}

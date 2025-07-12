@@ -11,13 +11,8 @@ export default defineConfig({
 				"apps/**",
 				"scripts/**",
 				"packages/alepha/**",
-				// experimental packages
 				"packages/cli/**",
-				"packages/protobuf/**",
-				"packages/react/**",
-				"packages/react-auth/**",
-				"packages/server-metrics/**",
-				"packages/vite/**",
+				"packages/protobuf/**"
 			],
 			reporter: ["cobertura", "text", "html"],
 		},

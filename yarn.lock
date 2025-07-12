@@ -74,6 +74,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/command@workspace:packages/command":
+  version: 0.0.0-use.local
+  resolution: "@alepha/command@workspace:packages/command"
+  dependencies:
+    "@alepha/core": "npm:0.7.7"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+    zx: "npm:^8.7.0-lite"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/core@npm:0.7.7, @alepha/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@alepha/core@workspace:packages/core"
@@ -10822,5 +10833,14 @@ __metadata:
   bin:
     zx: build/cli.js
   checksum: 10c0/ab22dd803e064a3bc3b96ee89049b473df8d1399f72681da6faf55590d68d155f2fbdfe752520ccd5e82f7cb6c3e52810818d4f75ae38aff7bba6898752d96ca
+  languageName: node
+  linkType: hard
+
+"zx@npm:^8.7.0-lite":
+  version: 8.7.0
+  resolution: "zx@npm:8.7.0"
+  bin:
+    zx: build/cli.js
+  checksum: 10c0/0773448306ef0b5e2fb46723c29048b611781e987aeb89eb153e2ef07ff60cd16bae88666a9d272f4486fee09258ef30775d14dece3599f401dacad965fb30ef
   languageName: node
   linkType: hard

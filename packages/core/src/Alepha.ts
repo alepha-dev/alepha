@@ -42,6 +42,11 @@ export interface Env extends LoggerEnv {
 	APP_NAME?: string;
 
 	/**
+	 * Optional root module name.
+	 */
+	MODULE_NAME?: string;
+
+	/**
 	 * If true, the container will not automatically register the default providers based on the descriptors.
 	 *
 	 * It means that you have to alepha.with(ServiceModule) manually. No magic.
@@ -1118,9 +1123,8 @@ export class Alepha {
 			level: env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info"),
 			name: "alepha.core",
 			app: env.APP_NAME,
-			json: env.LOG_FORMAT
-				? env.LOG_FORMAT === "json"
-				: env.NODE_ENV === "production",
+			format:
+				env.LOG_FORMAT ?? (env.NODE_ENV === "production" ? "json" : "text"),
 			caller: "Alepha",
 			color:
 				!env.NO_COLOR &&
@@ -1129,9 +1133,6 @@ export class Alepha {
 		});
 	}
 
-	/**
-	 * @internal
-	 */
 	public getModuleOf(service: Service): Module | undefined {
 		for (const module of this.modules) {
 			for (const it of module.services ?? []) {

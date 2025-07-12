@@ -13,8 +13,10 @@ export interface LoggerEnv {
 	 * - dev = "debug"
 	 * - test = "error"
 	 * - prod = "info"
+	 *
+	 * "trace" | "debug" | "info" | "warn" | "error" | "silent"
 	 */
-	LOG_LEVEL?: "trace" | "debug" | "info" | "warn" | "error" | "silent";
+	LOG_LEVEL?: string;
 
 	/**
 	 * Disable colors in the console output.
@@ -31,7 +33,7 @@ export interface LoggerEnv {
 	 *
 	 * @default "text"
 	 */
-	LOG_FORMAT?: "json" | "text";
+	LOG_FORMAT?: "json" | "text" | "cli";
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -40,7 +42,7 @@ export interface LoggerOptions {
 	/**
 	 * The logging level. Can be one of "error", "warn", "info", "debug", or "trace".
 	 */
-	level?: LogLevel;
+	level?: string;
 
 	app?: string;
 
@@ -65,9 +67,9 @@ export interface LoggerOptions {
 	color?: boolean;
 
 	/**
-	 * Whether to log in JSON format. Defaults to false.
+	 * Log output format. Can be "json", "text", or "cli".
 	 */
-	json?: boolean;
+	format?: string;
 
 	/**
 	 * An optional async local storage provider to use for storing context information.
@@ -89,7 +91,7 @@ export const COLORS = {
 	darkGrey: "\x1b[90m", // same as grey for terminal standard
 };
 
-export const LEVEL_COLORS: Record<LogLevel, string> = {
+export const LEVEL_COLORS: Record<string, string> = {
 	silent: "",
 	error: COLORS.red,
 	warn: COLORS.orange,
@@ -101,7 +103,7 @@ export const LEVEL_COLORS: Record<LogLevel, string> = {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class Logger {
-	protected levelOrder: Record<LogLevel, number> = {
+	protected levelOrder: Record<string, number> = {
 		silent: -1,
 		error: 0,
 		warn: 1,
@@ -110,35 +112,69 @@ export class Logger {
 		trace: 4,
 	};
 
-	public readonly level: LogLevel;
+	public readonly level: string;
+	public readonly rawLevel: string;
 	public readonly name: string;
+
 	protected caller: string;
 	protected context: string;
 	protected app: string;
 	protected color: boolean;
-	protected json: boolean;
+	protected format: string;
 	protected als?: AlsProvider;
 
 	constructor(options: LoggerOptions = {}) {
-		this.level = options.level ?? "info";
-		this.name = options.name ?? "App";
+		this.rawLevel = options.level ?? "info";
+		this.name = options.name ?? "app";
+
+		this.level = this.parseLevel(this.rawLevel, this.name);
+
 		this.caller = options.caller ?? "";
 		this.context = options.context ?? "";
 		this.app = options.app ?? "";
-		this.json = options.json ?? false;
-		this.color = options.color ?? !this.json;
+		this.format = options.format ?? "text";
+		this.color = options.color ?? this.format !== "json";
 		this.als = options.als;
+	}
+
+	public parseLevel(level: string, app: string): LogLevel {
+		const parts = level.toLowerCase().split(/[,;]/);
+		for (const part of parts) {
+			if (part.includes(":") || part.includes("=")) {
+				const [module, level] = part.split(/[:=]/);
+				if (app.startsWith(module.trim())) {
+					return this.asLogLevel(level);
+				}
+			}
+		}
+
+		for (const part of parts) {
+			if (!part.includes(":") && !part.includes("=")) {
+				return this.asLogLevel(part);
+			}
+		}
+
+		return "info";
+	}
+
+	public asLogLevel(something: string): LogLevel {
+		const level = something.trim();
+		if (this.levelOrder[level] !== undefined) {
+			return level as LogLevel;
+		}
+
+		throw new Error(`Invalid log level: ${something}`);
 	}
 
 	public child(options: LoggerOptions): Logger {
 		return new Logger({
 			...options,
-			level: options.level ?? this.level,
+			level: options.level ?? this.rawLevel,
 			name: options.name ?? this.name,
 			caller: options.caller ?? this.caller,
 			context: options.context ?? this.context,
 			color: options.color ?? this.color,
-			json: options.json ?? this.json,
+			format: options.format ?? this.format,
 			als: options.als ?? this.als,
 			app: options.app ?? this.app,
 		});
@@ -259,15 +295,16 @@ export class Logger {
 			this.context = "";
 		}
 
-		if (this.json) {
+		if (this.format === "json") {
 			return this.formatJson(level, message, data);
 		}
 
 		const now = new Date();
 		const date = now.toISOString().split("T")[1].split("Z")[0];
 		const levelStr = level.toUpperCase();
-
+		let output = "";
 		let dataStr = "";
+
 		const isError = data instanceof Error;
 		if (isError) {
 			dataStr = this.formatError(data);
@@ -279,7 +316,27 @@ export class Logger {
 			}
 		}
 
-		let output = "";
+		if (this.format === "cli") {
+			output += this.colorize(COLORS.grey, `[${date}]`);
+			output += " ";
+
+			output += this.colorize(LEVEL_COLORS[level], levelStr);
+			output += " ";
+
+			if (message) {
+				output += `${message}`;
+			}
+
+			if (dataStr) {
+				if (isError) {
+					output += ` \n${dataStr}`;
+				} else {
+					output += ` ${this.colorize(COLORS.darkGrey, dataStr)}`;
+				}
+			}
+
+			return output;
+		}
 
 		output += this.colorize(COLORS.grey, `[${date}]`);
 		output += " ";
@@ -366,7 +423,7 @@ export class MockLogger extends Logger {
 			caller: options.caller ?? "",
 			context: options.context ?? "",
 			color: false,
-			json: true,
+			format: "json",
 			als: options.als,
 			app: options.app,
 		});
@@ -385,7 +442,7 @@ export class MockLogger extends Logger {
 			caller: options.caller ?? this.caller,
 			context: options.context ?? this.context,
 			color: options.color ?? this.color,
-			json: options.json ?? this.json,
+			format: options.format ?? this.format,
 			als: options.als ?? this.als,
 			app: options.app ?? this.app,
 			store: this.store,
