@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/datetime",
 	"description": "Alepha datetime module - Provides date and time utilities. Based on dayjs.",
-	"version": "0.7.7",
+	"version": "0.8.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,7 +11,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.7",
+		"@alepha/core": "0.8.0",
 		"dayjs": "^1.11.13"
 	},
 	"devDependencies": {
