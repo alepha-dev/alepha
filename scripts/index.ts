@@ -52,25 +52,30 @@ class AlephaDevCli {
 	release = $command({
 		description: "Release packages version (default: minor)",
 		flags: t.object({
-			registry: t.string({
-				when: ["--registry"],
-				description: "NPM registry URL.",
-			}),
-			major: t.boolean({
-				when: ["--major"],
-				description: "Bump major version.",
-			}),
-			patch: t.boolean({
-				when: ["--patch"],
-				description: "Bump patch version.",
-			}),
+			registry: t.optional(
+				t.string({
+					when: ["--registry"],
+					description: "NPM registry URL.",
+				}),
+			),
+			major: t.optional(
+				t.boolean({
+					when: ["--major"],
+					description: "Bump major version.",
+				}),
+			),
+			patch: t.optional(
+				t.boolean({
+					when: ["--patch"],
+					description: "Bump patch version.",
+				}),
+			),
 		}),
 		handler: async ({ flags, run }) => {
 			if (await run(`git diff`)) {
-				console.log(
-					"Error - You must commit file(s) before running the release script.",
+				throw new Error(
+					"You must commit file(s) before running the release script",
 				);
-				return;
 			}
 
 			await run("yarn clean");
@@ -82,10 +87,9 @@ class AlephaDevCli {
 			await run("yarn build");
 
 			if (await run("git diff")) {
-				console.log(
-					"Error - You must commit file(s) before running the release script.",
+				throw new Error(
+					"You must commit file(s) before running the release script",
 				);
-				return;
 			}
 
 			const arg = Object.keys(flags).find(

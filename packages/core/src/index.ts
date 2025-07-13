@@ -64,7 +64,7 @@ export const run = (
 				}
 			}
 		} catch (error) {
-			alepha.log.error(error);
+			alepha.log.error("Failed to start", error);
 			if (typeof process === "object") {
 				process.exit(1);
 			}
