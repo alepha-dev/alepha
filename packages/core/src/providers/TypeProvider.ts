@@ -557,7 +557,7 @@ for (const [formatName, formatValue] of Object.entries(fullFormats)) {
 				value != null ? formatValue.test(value) : true,
 			);
 		else if (typeof formatValue === "function")
-			FormatRegistry.Set(formatName, formatValue);
+			FormatRegistry.Set(formatName, formatValue as any);
 	}
 }
 // ---------------------------------------------------------------------------------------------------------------------

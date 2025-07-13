@@ -80,7 +80,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
 			"utf-8",
 		);
 
-		state = `__alepha.state(\n\t"ReactServerProvider.template", \n\t\`${index.replace(/>\s*</g, "><").trim()}\`\n);`;
+		state = `__alepha.state(\n\t"react.server.template", \n\t\`${index.replace(/>\s*</g, "><").trim()}\`\n);`;
 
 		await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
 	}
@@ -90,8 +90,10 @@ export const buildServer = async (opts: BuildServerOptions) => {
 		"\n" +
 		"// Changes to this file will be lost when the code is regenerated.\n";
 
+	const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
+
 	await writeFile(
-		`${opts.distDir}/index.mjs`,
-		`${warning}\nimport'./server/${indexFileName}';\n\n${state}`.trim(),
+		`${opts.distDir}/index.js`,
+		`${warning}\n${forceProduction}\nimport'./server/${indexFileName}';\n\n${state}`.trim(),
 	);
 };

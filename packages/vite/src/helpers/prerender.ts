@@ -15,7 +15,7 @@ export const prerender = async (options: PrerenderOptions): Promise<void> => {
 		() => "",
 	);
 
-	alepha.state("ReactServerProvider.template", template);
+	alepha.state("react.server.template", template);
 
 	const pages = alepha.getDescriptorValues({ [KIND]: "PAGE" } as any);
 	for (const it of pages) {

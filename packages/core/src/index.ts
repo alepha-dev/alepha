@@ -6,6 +6,7 @@ import { AlsProvider } from "./providers/AlsProvider.ts";
 
 export * from "./index.shared.ts";
 
+// only for node.js environment
 AlsProvider.create = () => new AsyncLocalStorage();
 
 export const run = (

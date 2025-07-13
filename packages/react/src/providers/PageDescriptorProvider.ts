@@ -233,7 +233,7 @@ export class PageDescriptorProvider {
 					element: this.renderView(i + 1, path, element, it.route),
 					index: i + 1,
 					path,
-					route,
+					route: it.route,
 				});
 				break;
 			}
@@ -253,7 +253,7 @@ export class PageDescriptorProvider {
 				element: this.renderView(i + 1, path, element, it.route),
 				index: i + 1,
 				path,
-				route,
+				route: it.route,
 			});
 		}
 

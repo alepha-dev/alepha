@@ -81,7 +81,7 @@ export class App {
 		children: [this.params, this.hello, this.test, this.sub],
 		component: () => {
 			return (
-				<div>
+				<div style={{ padding: "100px", border: "1px solid #ccc" }}>
 					<h1>Layout</h1>
 					<nav>
 						<Link to={"/"}>Home</Link>

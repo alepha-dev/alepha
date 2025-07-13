@@ -41,8 +41,8 @@ const envSchema = t.object({
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 	interface State {
-		"ReactServerProvider.template"?: string;
-		"ReactServerProvider.ssr"?: boolean;
+		"react.server.template"?: string;
+		"react.server.ssr"?: boolean;
 	}
 }
 
@@ -67,7 +67,7 @@ export class ReactServerProvider {
 			const ssrEnabled =
 				pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
-			this.alepha.state("ReactServerProvider.ssr", ssrEnabled);
+			this.alepha.state("react.server.ssr", ssrEnabled);
 
 			for (const { key, instance, value } of pages) {
 				const name = value[OPTIONS].name ?? key;
@@ -127,7 +127,7 @@ export class ReactServerProvider {
 
 	public get template() {
 		return (
-			this.alepha.state("ReactServerProvider.template") ??
+			this.alepha.state("react.server.template") ??
 			"<!DOCTYPE html><html lang='en'><head></head><body></body></html>"
 		);
 	}

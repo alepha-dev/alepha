@@ -4,7 +4,7 @@
 	"scripts": {
 		"dev": "node --watch src/index.ts",
 		"build": "vite build",
-		"start": "node dist/index.mjs",
+		"start": "vite build && node dist",
 		"preview": "yarn build && http-server dist/public -p 9854 -b"
 	},
 	"devDependencies": {
