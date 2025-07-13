@@ -79,7 +79,6 @@ class AlephaDevCli {
 			}
 
 			await run("yarn clean");
-			await run("yarn format");
 			await run("yarn lint");
 			await run("yarn check");
 			await run("yarn check-dependencies");
