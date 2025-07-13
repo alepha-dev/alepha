@@ -83,6 +83,11 @@
 			"require": "./cache/redis.cjs",
 			"types": "./cache/redis.d.ts"
 		},
+		"./command": {
+			"import": "./command.js",
+			"require": "./command.cjs",
+			"types": "./command.d.ts"
+		},
 		"./core": {
 			"import": "./core.js",
 			"require": "./core.cjs",
@@ -244,6 +249,7 @@
 		"batch",
 		"cache",
 		"cache-redis",
+		"command",
 		"core",
 		"datetime",
 		"lock",
