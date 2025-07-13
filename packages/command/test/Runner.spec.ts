@@ -1,6 +1,6 @@
 import { MockLogger } from "@alepha/core";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { fn, Runner, sh } from "../src";
+import { Runner } from "../src";
 
 describe("Runner", () => {
 	let mockLogger: MockLogger;
@@ -17,7 +17,7 @@ describe("Runner", () => {
 	});
 
 	test("should execute a single shell command via run.sh", async () => {
-		await runner.run.sh`echo "hello"`;
+		await runner.run(`echo "hello"`);
 
 		expect(mockLogger.store.stack).toHaveLength(2);
 		const startLog = mockLogger.store.stack[0];
@@ -38,7 +38,7 @@ describe("Runner", () => {
 	});
 
 	test("should execute a single shell command via run(sh`...`)", async () => {
-		await runner.run(sh`echo "world"`);
+		await runner.run(`echo "world"`);
 		expect(mockLogger.store.stack[0].message).toBe(
 			"Starting 'echo \"world\"' ...",
 		);
@@ -47,7 +47,7 @@ describe("Runner", () => {
 
 	test("should execute a single function task via run.fn", async () => {
 		const mockFn = vi.fn();
-		await runner.run.fn("my-test-function", mockFn);
+		await runner.run("my-test-function", mockFn);
 
 		expect(mockFn).toHaveBeenCalledOnce();
 		expect(mockLogger.store.stack).toHaveLength(2);
@@ -61,7 +61,7 @@ describe("Runner", () => {
 
 	test("should execute a single function task via run(fn(...))", async () => {
 		const mockFn = vi.fn();
-		await runner.run(fn("another-function", mockFn));
+		await runner.run("another-function", mockFn);
 		expect(mockFn).toHaveBeenCalledOnce();
 		expect(mockLogger.store.stack).toHaveLength(2);
 	});
@@ -71,9 +71,9 @@ describe("Runner", () => {
 		const fn2 = vi.fn(() => new Promise((res) => setTimeout(res, 20)));
 
 		await runner.run([
-			sh`echo "parallel sh"`,
-			fn("parallel fn 1", fn1),
-			fn("parallel fn 2", fn2),
+			`echo "parallel sh"`,
+			{ name: "parallel fn 1", handler: fn1 },
+			{ name: "parallel fn 2", handler: fn2 },
 		]);
 
 		expect(fn1).toHaveBeenCalledOnce();
@@ -83,9 +83,7 @@ describe("Runner", () => {
 	});
 
 	test("should throw and log an error for a failing shell command", async () => {
-		await expect(runner.run.sh`exit 1`).rejects.toThrow(
-			"Command 'exit 1' failed",
-		);
+		await expect(runner.run(`exit 1`)).rejects.toThrow("Task 'exit 1' failed");
 	});
 
 	test("should throw and log an error for a failing function task", async () => {
@@ -94,14 +92,14 @@ describe("Runner", () => {
 			throw error;
 		};
 
-		await expect(runner.run.fn("failing-task", failingFn)).rejects.toThrow(
-			"Command 'failing-task' failed",
+		await expect(runner.run("failing-task", failingFn)).rejects.toThrow(
+			"Task 'failing-task' failed",
 		);
 	});
 
 	test("summary() should print a formatted table of executed tasks", async () => {
-		await runner.run.sh`echo "Task 1"`;
-		await runner.run.fn("A slightly longer task name", () => {});
+		await runner.run(`echo "Task 1"`);
+		await runner.run("A slightly longer task name", () => {});
 
 		runner.summary();
 

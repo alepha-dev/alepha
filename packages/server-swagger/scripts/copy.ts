@@ -1,8 +1,6 @@
+import * as fs from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { $, fs, glob } from "zx";
-
-$.shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
 
 const dirname = new URL(".", import.meta.url).pathname;
 const root =
@@ -33,10 +31,16 @@ const filesToRemove = [
 	"swagger-ui.js",
 	"swagger-ui-es-bundle.js",
 	"swagger-ui-es-bundle-core.js",
-	...(await glob("*.map", { cwd: assets })),
-	...(await glob("*.txt", { cwd: assets })),
 ].map((item) => join(assets, item));
 
 for (const file of filesToRemove) {
 	await fs.rm(file, { force: true });
+}
+
+for await (const item of fs.glob("*.map", { cwd: assets })) {
+	await fs.rm(join(assets, item), { force: true });
+}
+
+for await (const item of fs.glob("*.txt", { cwd: assets })) {
+	await fs.rm(join(assets, item), { force: true });
 }

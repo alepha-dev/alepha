@@ -6,17 +6,18 @@ import {
 	type HookDescriptor,
 	type Logger,
 	OPTIONS,
+	type Static,
 	type TObject,
 	type TProperties,
 	type TSchema,
+	type TString,
 	TypeBoxError,
 	TypeGuard,
 	t,
 } from "@alepha/core";
-import { $ } from "zx";
 import { $command } from "../descriptors/$command.ts";
 import { CommandError } from "../errors/CommandError.ts";
-import { fn, Runner, sh } from "../helpers/Runner.ts";
+import { Runner } from "../helpers/Runner.ts";
 
 interface Command {
 	key: string;
@@ -27,7 +28,26 @@ interface Command {
 	handler: (flags: any) => Promise<void>;
 }
 
+const envSchema: TObject<{
+	CLI_NAME: TString;
+	CLI_DESCRIPTION: TString;
+}> = t.object({
+	CLI_NAME: t.string({
+		default: "cli",
+		description: "Name of the CLI application.",
+	}),
+	CLI_DESCRIPTION: t.string({
+		default: "",
+		description: "Description of the CLI application.",
+	}),
+});
+
+declare module "@alepha/core" {
+	interface Env extends Partial<Static<typeof envSchema>> {}
+}
+
 export class CommandDescriptorProvider {
+	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
 	protected readonly alepha: Alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();
 	protected commands: Command[] = [];
@@ -37,8 +57,8 @@ export class CommandDescriptorProvider {
 		description: string;
 		argv: string[];
 	} = {
-		name: "",
-		description: "",
+		name: this.env.CLI_NAME,
+		description: this.env.CLI_DESCRIPTION,
 		argv: typeof process !== "undefined" ? process.argv.slice(2) : [],
 	};
 
@@ -75,12 +95,6 @@ export class CommandDescriptorProvider {
 	protected readonly onReady: HookDescriptor<"ready"> = $hook({
 		on: "ready",
 		handler: async () => {
-			$.log = (entry) => {
-				if (entry.kind === "cmd") {
-					this.log.debug(`$ ${entry.cmd}`);
-				}
-			};
-
 			const argv = [...this.options.argv];
 			const commandName = argv.find((arg) => !arg.startsWith("-")) ?? "";
 			const command = this.findCommand(commandName);
@@ -109,20 +123,22 @@ export class CommandDescriptorProvider {
 			const commandFlags = this.parseCommandFlags(argv, command.flags);
 
 			await this.alepha.context.run(async () => {
-				this.log.info(`Executing command '${command.name}'...`, {
+				this.log.debug(`Executing command '${command.name}'...`, {
 					flags: commandFlags,
 				});
 
 				const runner = new Runner(this.log);
 
-				await command.handler({
+				const args = {
 					flags: commandFlags,
-					sh: sh,
-					fn: fn,
 					run: runner.run,
-				});
+				};
+
+				await command.handler(args);
 
 				runner.summary();
+
+				this.log.debug(`Command '${command.name}' executed successfully.`);
 			});
 		},
 	});

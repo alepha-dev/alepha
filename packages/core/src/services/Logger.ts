@@ -33,7 +33,7 @@ export interface LoggerEnv {
 	 *
 	 * @default "text"
 	 */
-	LOG_FORMAT?: "json" | "text" | "cli";
+	LOG_FORMAT?: "json" | "text" | "cli" | "raw";
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -335,6 +335,18 @@ export class Logger {
 				}
 			}
 
+			return output;
+		}
+
+		if (this.format === "raw") {
+			if (message) {
+				output += `${message}`;
+			}
+			if (dataStr) {
+				if (isError) {
+					output += ` \n${dataStr}`;
+				}
+			}
 			return output;
 		}
 

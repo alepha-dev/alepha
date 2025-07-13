@@ -31,6 +31,7 @@ export interface HstsOptions {
 }
 
 export interface HelmetOptions {
+	isSecure?: boolean;
 	strictTransportSecurity?: HstsOptions | false;
 	xContentTypeOptions?: false;
 	xFrameOptions?: "DENY" | "SAMEORIGIN" | false;
@@ -135,6 +136,7 @@ export class ServerHelmetProvider {
 			// this check is important. Only add HSTS on HTTPS requests.
 			const isSecure =
 				response.headers["x-forwarded-proto"] === "https" ||
+				this.options.isSecure ||
 				this.alepha.isProduction();
 
 			const headersToSet = this.buildHeaders();

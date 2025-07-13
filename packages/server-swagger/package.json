@@ -24,8 +24,7 @@
 	"devDependencies": {
 		"swagger-ui-dist": "^5.26.2",
 		"tsdown": "^0.12.9",
-		"vitest": "^3.2.4",
-		"zx": "^8.6.1"
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"copy": "node scripts/copy.ts",

@@ -18,6 +18,7 @@
 		"@alepha/batch": "0.7.7",
 		"@alepha/cache": "0.7.7",
 		"@alepha/cache-redis": "0.7.7",
+		"@alepha/command": "0.7.7",
 		"@alepha/core": "0.7.7",
 		"@alepha/datetime": "0.7.7",
 		"@alepha/lock": "0.7.7",

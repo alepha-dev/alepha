@@ -69,8 +69,6 @@ describe("CommandDescriptorProvider", () => {
 			const [callArgs] = mockHandlers.greet.mock.calls[0];
 			expect(callArgs.flags).toEqual({ name: "Alepha", times: 1 });
 			expect(callArgs.run).toBeDefined();
-			expect(callArgs.sh).toBeDefined();
-			expect(callArgs.fn).toBeDefined();
 		});
 
 		test("should execute a command using its alias", async () => {

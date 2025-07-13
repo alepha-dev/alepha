@@ -1,8 +1,6 @@
+import * as fs from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { $, fs } from "zx";
-
-$.shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
 
 const dirname = new URL(".", import.meta.url).pathname;
 const root =

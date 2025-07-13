@@ -14,7 +14,7 @@ class TestApp {
 describe("ServerHelmetProvider", () => {
 	const setupServer = async (helmetOptions?: HelmetOptions) => {
 		const alepha = Alepha.create({
-			env: { LOG_LEVEL: "error", NODE_ENV: "production", SERVER_PORT: 0 },
+			env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
 		})
 			.with(AlephaServer)
 			.with(AlephaServerHelmet)
@@ -34,7 +34,9 @@ describe("ServerHelmetProvider", () => {
 	};
 
 	test("should add default security headers to the response", async () => {
-		const { hostname, stop } = await setupServer();
+		const { hostname, stop } = await setupServer({
+			isSecure: true, // fake secure context
+		});
 
 		const response = await fetch(`${hostname}/api/ping`);
 
@@ -66,6 +68,7 @@ describe("ServerHelmetProvider", () => {
 
 	test("should allow configuring HSTS", async () => {
 		const { hostname, stop } = await setupServer({
+			isSecure: true, // fake secure context
 			strictTransportSecurity: { maxAge: 31536000, preload: true },
 		});
 

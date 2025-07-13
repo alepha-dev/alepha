@@ -1,42 +1,115 @@
-import { readdir } from "node:fs/promises";
-import { $command, CommandDescriptorProvider } from "@alepha/command";
-import { Alepha, run } from "@alepha/core";
+import { readdir, readFile } from "node:fs/promises";
+import { $command } from "@alepha/command";
+import { Alepha, run, t } from "@alepha/core";
 
 class AlephaDevCli {
 	clean = $command({
 		description: "Will remove all generated files.",
 		handler: async ({ run }) => {
-			await run.sh`yarn convert ts`;
+			await run("yarn convert ts");
 
-			const p = "packages";
-			await run.sh`rm -rf coverage`;
-			await run.sh`rm -rf ${p}/**/dist ${p}/**/node_modules ${p}/**/coverage`;
+			await run.rm([
+				`packages/*/dist`,
+				`packages/*/node_modules`,
+				`packages/*/coverage`,
+			]);
 
-			const a = `${p}/alepha`;
-			await run.sh`rm -rf ${a}/*.js ${a}/*.cjs ${a}/*.d.ts ${a}/*.map`;
-			await run.sh`rm -rf ${a}/**/*.js ${a}/**/*.cjs ${a}/**/*.d.ts ${a}/**/*.map`;
+			await run.rm([
+				`packages/alepha/**/*.js`,
+				`packages/alepha/**/*.cjs`,
+				`packages/alepha/**/*.d.ts`,
+				`packages/alepha/**/*.map`,
+			]);
 
-			const dirs = (await readdir(a, { withFileTypes: true }))
-				.filter((d) => d.isDirectory())
-				.map((d) => `${a}/${d.name}`);
+			const dirs = await readdir("packages/alepha", {
+				withFileTypes: true,
+			}).then((entries) =>
+				entries
+					.filter((d) => d.isDirectory())
+					.map((d) => `packages/alepha/${d.name}`),
+			);
 
 			if (dirs.length) {
-				await run.sh`rm -rf ${dirs.join(" ")}`;
+				await run.rm(dirs);
 			}
 
-			await run.sh`yarn`;
+			await run("yarn");
 		},
 	});
 
 	verify = $command({
 		aliases: ["v"],
 		description: "Run linter, checker and tests.",
-		handler: async ({ run, sh }) => {
-			await run.sh`yarn clean`;
-			await run.sh`yarn lint`;
-			await run([sh`yarn check`, sh`yarn check-dependencies`]);
-			await run([sh`yarn test`, sh`yarn build`]);
-			await run.sh`yarn clean`;
+		handler: async ({ run }) => {
+			await run(`yarn clean`);
+			await run(`yarn lint`);
+			await run([`yarn check`, `yarn check-dependencies`]);
+			await run([`yarn test`, `yarn build`]);
+			await run(`yarn clean`);
+		},
+	});
+
+	release = $command({
+		description: "Release packages version (default: minor)",
+		flags: t.object({
+			registry: t.string({
+				when: ["--registry"],
+				description: "NPM registry URL.",
+			}),
+			major: t.boolean({
+				when: ["--major"],
+				description: "Bump major version.",
+			}),
+			patch: t.boolean({
+				when: ["--patch"],
+				description: "Bump patch version.",
+			}),
+		}),
+		handler: async ({ flags, run }) => {
+			if (await run(`git diff`)) {
+				console.log(
+					"Error - You must commit file(s) before running the release script.",
+				);
+				return;
+			}
+
+			await run("yarn clean");
+			await run("yarn format");
+			await run("yarn lint");
+			await run("yarn check");
+			await run("yarn check-dependencies");
+			await run("yarn test");
+			await run("yarn build");
+
+			if (await run("git diff")) {
+				console.log(
+					"Error - You must commit file(s) before running the release script.",
+				);
+				return;
+			}
+
+			const arg = Object.keys(flags).find(
+				(it) => it in { major: true, patch: true },
+			);
+
+			await run(
+				`yarn workspaces foreach --no-private --all version ${arg || "minor"}`,
+			);
+
+			await run("yarn convert js");
+			const registry = flags.registry ? `--registry ${flags.registry}` : "";
+			await run(
+				`yarn workspaces foreach --no-private -Apt exec npm publish --access=public ${registry}`,
+			);
+			await run("yarn alepha clean");
+
+			const version = await JSON.parse(
+				await readFile("packages/alepha/package.json", "utf8"),
+			).version;
+
+			await run(`git commit -am "release: ${version}"`);
+			await run(`git tag -a ${version} -m "release: ${version}"`);
+			await run("git push --follow-tags");
 		},
 	});
 }
@@ -45,12 +118,11 @@ const alepha = Alepha.create({
 	env: {
 		LOG_FORMAT: "cli",
 		LOG_LEVEL: "alepha.command:info,warn",
+		CLI_NAME: "yarn alepha",
+		CLI_DESCRIPTION: "Alepha development CLI 🛠️",
 	},
-})
-	.with(AlephaDevCli)
-	.configure(CommandDescriptorProvider, {
-		name: "alepha",
-		description: "Alepha development CLI - manage Alepha project",
-	});
+});
+
+alepha.with(AlephaDevCli);
 
 run(alepha);

@@ -1,3 +1,5 @@
+import type * as fs from "node:fs/promises";
+import type { glob } from "node:fs/promises";
 import {
 	__descriptor,
 	type Async,
@@ -7,19 +9,9 @@ import {
 	type Static,
 	type TObject,
 } from "@alepha/core";
-import type { Options, ProcessPromise, Shell } from "zx/core";
-import type { fn, RunnerMethod, sh } from "../helpers/Runner.ts";
+import type { RunnerMethod } from "../helpers/Runner.ts";
 
 const KEY = "COMMAND";
-
-export type Zx = Shell & Options;
-
-export type RunArgs =
-	| ProcessPromise
-	| {
-			name: string;
-			task: ProcessPromise | (() => any);
-	  };
 
 export interface CommandDescriptorOptions<T extends TObject> {
 	/**
@@ -27,9 +19,9 @@ export interface CommandDescriptorOptions<T extends TObject> {
 	 */
 	handler: (args: {
 		flags: Static<T>;
-		sh: typeof sh;
-		fn: typeof fn;
 		run: RunnerMethod;
+		glob: typeof glob;
+		fs: typeof fs;
 	}) => Async<void>;
 
 	/**

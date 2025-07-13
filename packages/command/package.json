@@ -20,8 +20,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.7.7",
-		"zx": "^8.7.0-lite"
+		"@alepha/core": "0.7.7"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",

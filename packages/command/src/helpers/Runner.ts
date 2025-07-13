@@ -1,37 +1,11 @@
+import { exec } from "node:child_process";
+import { glob, rm } from "node:fs/promises";
 import type { Logger } from "@alepha/core";
-import { $ } from "zx";
-import type { ProcessPromise } from "zx/core";
 import { CommandError } from "../errors/CommandError.ts";
 
-export interface ShTask {
-	type: "sh";
-	handler: ProcessPromise;
+export type Task = {
 	name: string;
-}
-
-export interface FnTask {
-	type: "fn";
 	handler: () => any;
-	name: string;
-}
-
-export type Task = ShTask | FnTask;
-
-export const sh = (pieces: TemplateStringsArray, ...args: any[]): ShTask => {
-	const command = $(pieces, ...args);
-	return {
-		type: "sh",
-		handler: command,
-		name: (command as any)._command,
-	};
-};
-
-export const fn = (name: string, handler: () => any): FnTask => {
-	return {
-		type: "fn",
-		name,
-		handler,
-	};
 };
 
 interface Timer {
@@ -40,9 +14,8 @@ interface Timer {
 }
 
 export interface RunnerMethod {
-	(task: Task | Task[]): Promise<void>;
-	sh: (pieces: TemplateStringsArray, ...args: any[]) => Promise<void>;
-	fn: (name: string, handler: () => any) => Promise<void>;
+	(cmd: string | Array<string | Task>, fn?: () => any): Promise<string>;
+	rm: (glob: string | string[]) => Promise<string>;
 }
 
 export class Runner {
@@ -54,29 +27,53 @@ export class Runner {
 	constructor(log: Logger) {
 		this.log = log;
 
-		const runFn: any = (task: Task | Task[]) => this.execute(task);
+		const runFn: RunnerMethod = async (
+			cmd: string | Array<string | Task>,
+			fn?: () => any,
+		) => {
+			if (Array.isArray(cmd)) {
+				return await this.execute(
+					cmd.map((it) =>
+						typeof it === "string"
+							? { name: it, handler: () => this.exec(it) }
+							: it,
+					),
+				);
+			}
 
-		runFn.sh = (
-			pieces: TemplateStringsArray,
-			...args: any[]
-		): Promise<void> => {
-			const command = $(pieces, ...args);
-			return this.execute({
-				type: "sh",
-				handler: command,
-				name: (command as any)._command,
+			return await this.execute({
+				name: cmd,
+				handler: fn ? fn : () => this.exec(cmd),
 			});
 		};
 
-		runFn.fn = (name: string, handler: () => any): Promise<void> => {
-			return this.execute({
-				type: "fn",
-				name,
-				handler,
-			});
+		runFn.rm = async (files: string | string[]): Promise<string> => {
+			if (Array.isArray(files)) {
+				return runFn(files.join(" "), async () => {
+					for await (const file of glob(files)) {
+						this.log.trace(`Removing ${file}`);
+						await rm(file, { recursive: true, force: true });
+					}
+				});
+			}
+			this.log.trace(`Removing ${files}`);
+			return runFn(files, () => rm(files, { recursive: true, force: true }));
 		};
 
 		this.run = runFn;
+	}
+
+	protected async exec(cmd: string): Promise<string> {
+		return await new Promise<string>((resolve, reject) => {
+			exec(cmd, (err, stdout) => {
+				if (err) {
+					err.stdout = stdout;
+					reject(err);
+				} else {
+					resolve(stdout);
+				}
+			});
+		});
 	}
 
 	/**
@@ -84,11 +81,12 @@ export class Runner {
 	 *
 	 * @param task - A single task or an array of tasks to run in parallel.
 	 */
-	protected async execute(task: Task | Task[]): Promise<void> {
+	protected async execute(task: Task | Task[]): Promise<string> {
 		if (Array.isArray(task)) {
 			await Promise.all(task.map((t) => this.executeTask(t)));
+			return ""; // not supported for now
 		} else {
-			await this.executeTask(task);
+			return await this.executeTask(task);
 		}
 	}
 
@@ -103,20 +101,22 @@ export class Runner {
 		this.log.info(``);
 	}
 
-	protected async executeTask(task: Task): Promise<void> {
+	protected async executeTask(task: Task): Promise<string> {
 		this.log.info(`Starting '${task.name}' ...`);
 		const now = Date.now();
 
+		let stdout = "";
+
 		try {
-			// Await the handler, which is either a zx ProcessPromise or a user function.
-			if (typeof task.handler === "function") {
-				await task.handler();
-			} else {
-				await task.handler;
-			}
+			stdout = String((await task.handler()) ?? "");
 		} catch (error) {
-			throw new CommandError(`Command '${task.name}' failed`, { cause: error });
+			if (error instanceof Error && "stdout" in error) {
+				this.log.info(error.stdout);
+			}
+			throw new CommandError(`Task '${task.name}' failed`, { cause: error });
 		}
+
+		this.log.trace(stdout);
 
 		const duration = ((Date.now() - now) / 1000).toFixed(2);
 		this.log.info(`Finished '${task.name}' after ${duration}s`);
@@ -125,6 +125,8 @@ export class Runner {
 			name: task.name,
 			duration: `${duration} s`,
 		});
+
+		return stdout;
 	}
 
 	protected renderTable(data: string[][]): void {
