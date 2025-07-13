@@ -1,9 +1,23 @@
-import fs from "node:fs/promises";
+import fs, { readFile } from "node:fs/promises";
 import path from "node:path";
+import hljs from "highlight.js";
+import { Marked } from "marked";
+import { markedHighlight } from "marked-highlight";
 
-const packagesDir = path.resolve(process.cwd(), "packages");
-const outputDir = path.resolve(process.cwd(), "apps", "docs");
-const outputFile = path.join(outputDir, "sidebar-data.json");
+const marked = new Marked(
+	markedHighlight({
+		emptyLangClass: "hljs",
+		langPrefix: "hljs language-",
+		highlight(code, lang, info) {
+			const language = hljs.getLanguage(lang) ? lang : "plaintext";
+			return hljs.highlight(code, { language }).value;
+		},
+	}),
+);
+
+const packagesDir = path.resolve(process.cwd(), "../../packages");
+const outputDir = path.resolve(process.cwd(), "../../apps", "docs");
+const outputFile = path.join(outputDir, "node_modules/data.ts");
 
 async function getFiles(dir, prefixToRemove) {
 	try {
@@ -31,6 +45,8 @@ async function generateModuleData() {
 	const packageDirs = await fs.readdir(packagesDir, { withFileTypes: true });
 	const modules = [];
 
+	await fs.mkdir(`${outputDir}/node_modules`, { recursive: true });
+
 	for (const dirent of packageDirs) {
 		if (!dirent.isDirectory()) continue;
 		const modulePath = path.join(packagesDir, dirent.name);
@@ -55,10 +71,9 @@ async function generateModuleData() {
 				name: pkgJson.name,
 				slug: dirent.name,
 				description: pkgJson.description,
-				readmePath: path
-					.join(modulePath, "README.md")
-					.replace(packagesDir, "")
-					.replace(/\\/g, "/"),
+				readme: await marked.parse(
+					await readFile(path.join(modulePath, "README.md"), "utf-8"),
+				),
 				descriptors,
 				providers,
 			});
@@ -71,7 +86,10 @@ async function generateModuleData() {
 	modules.sort((a, b) => a.name.localeCompare(b.name));
 
 	await fs.mkdir(outputDir, { recursive: true });
-	await fs.writeFile(outputFile, JSON.stringify(modules, null, 2));
+	await fs.writeFile(
+		outputFile,
+		`export const data = ${JSON.stringify(modules, null, 2)}`,
+	);
 	console.log(
 		`Successfully generated data for ${modules.length} modules to ${outputFile}`,
 	);

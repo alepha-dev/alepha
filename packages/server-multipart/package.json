@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-multipart",
-	"description": "Server metrics plugin for Alepha Server. Prometheus metrics exporter.",
+	"description": "Handles multipart/form-data requests for file uploads.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

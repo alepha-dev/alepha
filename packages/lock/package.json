@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/lock",
-	"description": "Alepha lock module - distributed mutex and semaphore interface with in-memory implementation.",
+	"description": "Distributed mutex and semaphore for resource locking and synchronization.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

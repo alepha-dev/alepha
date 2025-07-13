@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-health",
-	"description": "Server health check plugin for Alepha Server. Add health check endpoints to your Alepha server.",
+	"description": "Adds a /health endpoint for monitoring application status.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

@@ -1,5 +1,6 @@
 {
 	"private": true,
+	"description": "Alepha framework monorepo workspace",
 	"type": "module",
 	"packageManager": "yarn@4.9.2",
 	"workspaces": {
@@ -11,6 +12,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.6",
 		"@types/node": "^24.0.10",
+		"@vitejs/plugin-react": "^4.6.0",
 		"@vitest/coverage-v8": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
 		"depcheck": "^1.4.7",

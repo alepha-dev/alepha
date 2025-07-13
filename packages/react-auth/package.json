@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/react-auth",
+	"description": "Simplifies user authentication flows in React applications.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

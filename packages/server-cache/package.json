@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-cache",
-	"description": "Server cache plugin for Alepha Server. Built on top of Alepha Cache. Supports ETag generation and cache control.",
+	"description": "Adds ETag and Cache-Control headers to server responses.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

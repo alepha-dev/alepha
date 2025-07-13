@@ -1,14 +1,8 @@
 import { NestedView, useRouterEvents } from "@alepha/react";
-import {
-	AppShell,
-	Burger,
-	Flex,
-	Image,
-	MantineProvider,
-	Text,
-} from "@mantine/core";
+import { AppShell, Flex, MantineProvider, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
+import Header from "./Header.tsx";
 import Sidebar from "./Sidebar.tsx";
 
 const Layout = () => {
@@ -20,35 +14,32 @@ const Layout = () => {
 			nprogress.complete();
 		},
 	});
+
 	const [opened, { toggle }] = useDisclosure();
 
 	return (
-		<MantineProvider defaultColorScheme="auto">
+		<MantineProvider
+			defaultColorScheme="dark"
+			theme={{
+				fontFamily: "Inter",
+				primaryColor: "gray",
+			}}
+		>
 			<NavigationProgress />
 			<AppShell
+				padding="md"
+				withBorder={false}
 				className={"graph-paper"}
-				header={{ height: 64 }}
-				footer={{ height: 48 }}
+				header={{ height: { base: 48, sm: 60, lg: 76 } }}
+				footer={{ height: 32 }}
 				navbar={{
-					width: 256,
+					width: 300,
 					breakpoint: "sm",
 					collapsed: { mobile: !opened },
 				}}
 			>
 				<AppShell.Header>
-					<Flex h={"100%"} align={"center"} px={"lg"} gap={"sm"}>
-						<Burger
-							opened={opened}
-							onClick={toggle}
-							size="sm"
-							hiddenFrom={"sm"}
-						/>
-						<Flex>
-							<Image src={"/logo.png"} alt={"logo"} width={64} height={64} />
-						</Flex>
-						<Flex></Flex>
-						<Text size={"xl"}>Alepha Docs</Text>
-					</Flex>
+					<Header opened={opened} toggle={toggle} />
 				</AppShell.Header>
 				<AppShell.Navbar>
 					<Sidebar />
@@ -57,7 +48,7 @@ const Layout = () => {
 					<NestedView />
 				</AppShell.Main>
 				<AppShell.Footer>
-					<Flex p={"md"} justify={"space-between"} align={"center"}>
+					<Flex justify={"space-between"} align={"center"} h={"100%"} px={"xs"}>
 						<Flex flex={1} justify={"flex-start"}>
 							<Text size={"xs"} c={"dimmed"}>
 								Alepha Docs
@@ -65,7 +56,7 @@ const Layout = () => {
 						</Flex>
 						<Flex justify={"flex-end"}>
 							<Text size={"xs"} c={"dimmed"}>
-								Made with ❤️ by Alepha.js
+								Made with ❤️ by Alepha
 							</Text>
 						</Flex>
 					</Flex>

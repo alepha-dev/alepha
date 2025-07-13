@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server",
-	"description": "Alepha server module - HTTP server provider.",
+	"description": "Core HTTP server for creating REST APIs.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

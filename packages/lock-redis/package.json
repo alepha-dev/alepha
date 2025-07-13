@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/lock-redis",
-	"description": "Redis lock implementation for Alepha Lock.",
+	"description": "Redis implementation for the distributed locking mechanism.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

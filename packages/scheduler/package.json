@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/scheduler",
-	"description": "Alepha scheduler module. It allows scheduling tasks with cron expressions or intervals.",
+	"description": "Schedule recurring tasks using cron expressions or fixed intervals.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

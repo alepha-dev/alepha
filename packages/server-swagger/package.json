@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-swagger",
-	"description": "Server Swagger plugin for Alepha Server. Provides OpenAPIv3 documentation generation and Swagger UI integration.",
+	"description": "Generates OpenAPI documentation and a Swagger UI for APIs.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

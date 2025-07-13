@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/bucket-azure",
-	"description": "Azure Blob Storage file storage implementation for Alepha Bucket.",
+	"description": "Azure Blob Storage implementation for the bucket file storage.",
 	"keywords": [
 		"alepha",
 		"bucket",

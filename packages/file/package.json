@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/file",
+	"description": "Helpers for creating and managing file-like objects seamlessly.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

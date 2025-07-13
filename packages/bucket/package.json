@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/bucket",
-	"description": "Alepha bucket module - file storage interface with in-memory and file-system implementations.",
+	"description": "A universal interface for object and file storage providers.",
 	"keywords": [
 		"alepha",
 		"bucket",

@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-cookies",
-	"description": "Server cookies plugin for Alepha Server. Provides cookie parsing and serialization.",
+	"description": "Type-safe HTTP cookie parsing and serialization for servers.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

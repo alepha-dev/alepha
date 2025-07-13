@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/batch",
-	"description": "Alepha batch module - provides a powerful batch processing utility.",
+	"description": "Efficiently process operations in groups by size or time.",
 	"keywords": [
 		"alepha",
 		"bucket",

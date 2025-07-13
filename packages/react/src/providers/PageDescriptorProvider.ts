@@ -373,13 +373,13 @@ export class PageDescriptorProvider {
 			}
 
 			for (const { value } of pages) {
+				if (value[OPTIONS].path === "/*") {
+					hasNotFoundHandler = true;
+				}
+
 				// skip children, we only want root pages
 				if (hasParent(value)) {
 					continue;
-				}
-
-				if (value[OPTIONS].path === "/*") {
-					hasNotFoundHandler = true;
 				}
 
 				this.add(this.map(pages, value));

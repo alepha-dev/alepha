@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/queue-redis",
-	"description": "Redis queue implementation for Alepha Queue.",
+	"description": "Redis implementation for the message queueing system.",
 	"version": "0.8.0",
 	"license": "MIT",
 	"type": "module",

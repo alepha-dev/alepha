@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/datetime",
-	"description": "Alepha datetime module - Provides date and time utilities. Based on dayjs.",
+	"description": "Date, time, and duration utilities based on Day.js.",
 	"version": "0.8.0",
 	"type": "module",
 	"license": "MIT",

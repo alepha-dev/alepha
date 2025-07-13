@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-static",
+	"description": "Serves static files like HTML, CSS, and JavaScript.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

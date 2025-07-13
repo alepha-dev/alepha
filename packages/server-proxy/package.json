@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-proxy",
+	"description": "Reverse-proxies incoming requests to other backend services.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

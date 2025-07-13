@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cache-redis",
-	"description": "Redis cache implementation for Alepha Cache.",
+	"description": "Redis implementation for the caching interface.",
 	"keywords": [
 		"alepha",
 		"cache",

@@ -1,7 +1,7 @@
 import { t } from "@alepha/core";
-import { $page } from "@alepha/react";
+import { $page, NotFound } from "@alepha/react";
 import { NotFoundError } from "@alepha/server";
-import data from "../sidebar-data.json" with { type: "json" };
+import { data } from "../node_modules/data";
 import Home from "./components/Home.tsx";
 import Layout from "./components/Layout.tsx";
 import Module from "./components/Module.tsx";

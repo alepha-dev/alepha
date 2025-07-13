@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/react-head",
+	"description": "Manages the document <head> for SEO and metadata.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/command",
-	"description": "Alepha command module - for building powerful command-line interfaces.",
+	"description": "Build powerful, type-safe command-line interfaces for your application.",
 	"keywords": [
 		"alepha",
 		"cli",

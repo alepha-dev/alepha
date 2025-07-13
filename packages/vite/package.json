@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/vite",
-	"description": "Vite plugin for Alepha.",
+	"description": "Vite plugin for building Alepha applications.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

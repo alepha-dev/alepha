@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/queue",
-	"description": "Alepha queue module - queue interface with in-memory implementation.",
+	"description": "A simple, powerful interface for message queueing systems.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

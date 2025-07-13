@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-links",
+	"description": "Enables type-safe communication between different services.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

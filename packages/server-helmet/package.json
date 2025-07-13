@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-helmet",
-	"description": "Server helmet plugin for Alepha Server. Adds essential, configurable security headers to all Alepha server responses.",
+	"description": "Essential, configurable security headers for all server responses.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

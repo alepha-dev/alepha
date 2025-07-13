@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-metrics",
-	"description": "Server metrics plugin for Alepha Server. Prometheus metrics exporter.",
+	"description": "Exposes application metrics in Prometheus format at /metrics.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

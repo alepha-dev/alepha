@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/core",
-	"description": "Core library for Alepha, providing dependency injection and basic utilities.",
+	"description": "The essential dependency injection and application lifecycle engine.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

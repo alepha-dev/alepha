@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/postgres",
+	"description": "A type-safe SQL query builder and ORM using Drizzle.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

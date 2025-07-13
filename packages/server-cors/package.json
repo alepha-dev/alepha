@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/server-cors",
+	"description": "Configurable Cross-Origin Resource Sharing (CORS) support for servers.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

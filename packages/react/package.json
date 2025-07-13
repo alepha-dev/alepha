@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/react",
+	"description": "Build server-side rendered (SSR) or single-page React applications.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/topic",
-	"description": "Alepha topic module - pub/sub interface with in-memory implementation.",
+	"description": "A publish-subscribe (pub/sub) messaging interface for eventing.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {
