@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { Plugin } from "vite";
+import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
@@ -34,11 +34,16 @@ export async function viteAlephaBuild(
 
 	const distDir = "dist";
 	const clientDir = "public";
+	let rootConfig: UserConfig = {};
 
 	return {
 		name: "alepha-build",
 		apply: "build",
 		config(config, ctx) {
+			if (!process.env.VITE_DOUBLE_BUILD_DONE) {
+				rootConfig = config;
+			}
+
 			if (ctx.isSsrBuild || !process.env.VITE_DOUBLE_BUILD_DONE) {
 				// this is a server build, so we don't need the public directory
 				config.publicDir = false;
@@ -61,6 +66,7 @@ export async function viteAlephaBuild(
 				const buildClientOptions =
 					typeof options.client === "object" ? options.client : {};
 				await buildClient({
+					config: rootConfig,
 					html: await readFile("index.html", "utf-8"),
 					dist: `${distDir}/${clientDir}`,
 					...buildClientOptions,

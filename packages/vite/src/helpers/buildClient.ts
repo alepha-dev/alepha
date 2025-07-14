@@ -8,38 +8,39 @@ export interface BuildClientOptions {
 	html: string;
 
 	/**
-	 * @default {}
+	 * @default false
 	 */
-	compress?: ViteCompressOptions | boolean;
+	precompress?: ViteCompressOptions | boolean;
 
 	/**
-	 * @default true
+	 * @default false
 	 */
 	prerender?: boolean;
+
+	config?: UserConfig;
 }
 
 export const buildClient = async (opts: BuildClientOptions) => {
-	const { build: viteBuild } = await importVite();
+	const { build: viteBuild, mergeConfig } = await importVite();
 	const plugins: any[] = [];
 
-	const compressOptions: ViteCompressOptions | undefined =
-		opts.compress === false
-			? undefined
-			: typeof opts.compress === "object"
-				? opts.compress
-				: {};
+	const compress: ViteCompressOptions | undefined = opts.precompress
+		? typeof opts.precompress === "object"
+			? opts.precompress
+			: {}
+		: undefined;
 
-	if (opts.prerender !== false) {
+	if (opts.prerender) {
 		plugins.push(
 			vitePrerender({
 				...opts,
-				compress: compressOptions,
+				compress,
 			}),
 		);
 	}
 
-	if (compressOptions) {
-		plugins.push(viteCompress(compressOptions));
+	if (opts.precompress && compress) {
+		plugins.push(viteCompress(compress));
 	}
 
 	const viteBuildClientConfig: UserConfig = {
@@ -61,5 +62,5 @@ export const buildClient = async (opts: BuildClientOptions) => {
 		plugins,
 	};
 
-	await viteBuild(viteBuildClientConfig);
+	await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
 };

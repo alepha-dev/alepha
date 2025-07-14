@@ -1,5 +1,11 @@
 import { NestedView, useRouterEvents } from "@alepha/react";
-import { AppShell, Flex, MantineProvider, Text } from "@mantine/core";
+import {
+	AppShell,
+	ColorSchemeScript,
+	Flex,
+	MantineProvider,
+	Text,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { theme } from "../config/theme.ts";
@@ -17,10 +23,13 @@ const Layout = () => {
 	});
 
 	return (
-		<MantineProvider defaultColorScheme="auto" theme={theme.mantine}>
-			<NavigationProgress />
-			<Main />
-		</MantineProvider>
+		<>
+			<ColorSchemeScript defaultColorScheme="auto" />
+			<MantineProvider defaultColorScheme="auto" theme={theme.mantine}>
+				<NavigationProgress />
+				<Main />
+			</MantineProvider>
+		</>
 	);
 };
 

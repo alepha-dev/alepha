@@ -4,7 +4,7 @@ import type {
 	PageDescriptor,
 	PageDescriptorRenderOptions,
 } from "@alepha/react";
-import type { Plugin } from "vite";
+import type { Plugin, UserConfig } from "vite";
 import { importAlepha } from "./helpers/importAlepha.ts";
 import { compressFile, type ViteCompressOptions } from "./viteCompress.ts";
 
@@ -12,6 +12,7 @@ export interface VitePrerenderOptions {
 	dist: string;
 	html: string;
 	compress?: ViteCompressOptions;
+	config?: UserConfig;
 }
 
 export function vitePrerender(opts: VitePrerenderOptions): Plugin {
@@ -23,7 +24,7 @@ export function vitePrerender(opts: VitePrerenderOptions): Plugin {
 			try {
 				const entry = extractFirstModuleScriptSrc(opts.html);
 				if (entry) {
-					const { alepha } = await importAlepha(entry);
+					const { alepha } = await importAlepha(entry, opts.config ?? {});
 
 					alepha.state(
 						"react.server.template",

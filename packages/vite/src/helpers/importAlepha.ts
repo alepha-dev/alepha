@@ -1,9 +1,10 @@
 import type { Alepha } from "@alepha/core";
-import type { ViteDevServer } from "vite";
+import type { UserConfig, ViteDevServer } from "vite";
 import { importVite } from "./importVite.ts";
 
 export const importAlepha = async (
 	entry: string,
+	config: UserConfig,
 ): Promise<{
 	alepha: Alepha;
 	server?: ViteDevServer;
@@ -11,9 +12,9 @@ export const importAlepha = async (
 	const { loadEnv, createServer } = await importVite();
 
 	const server = await createServer({
-		configFile: false,
 		server: { middlewareMode: true },
 		appType: "custom",
+		...config,
 	});
 
 	await server.pluginContainer.buildStart({});
@@ -32,6 +33,7 @@ export const importAlepha = async (
 	process.env.VITE_ALEPHA_DEV = "true";
 	process.env.LOG_LEVEL = "error";
 	process.env.LOG_FORMAT = "text";
+	process.env.NODE_ENV = "production";
 
 	await server.ssrLoadModule(entry);
 

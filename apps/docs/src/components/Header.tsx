@@ -89,7 +89,12 @@ const HomeButton = () => {
 				visibleFrom={"md"}
 			>
 				<Flex>
-					<Image src={"/logo.png"} alt={"logo"} width={64} height={64} />
+					<Image
+						src={`${import.meta.env.BASE_URL}logo.png`}
+						alt={"logo"}
+						width={64}
+						height={64}
+					/>
 				</Flex>
 				<Flex direction={"column"}>
 					<Text fw={"bold"} ff={"monospace"} size={"xl"}>

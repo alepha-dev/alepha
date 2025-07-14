@@ -1,3 +1,4 @@
+import path from "node:path";
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { LinkProvider } from "@alepha/server-links";
@@ -36,7 +37,30 @@ export class ReactBrowserProvider {
 	}
 
 	public get url(): string {
-		return window.location.pathname + window.location.search;
+		let url = window.location.pathname + window.location.search;
+
+		if (import.meta?.env?.BASE_URL) {
+			url = url.replace(import.meta.env?.BASE_URL, "");
+			if (!url.startsWith("/")) {
+				url = `/${url}`;
+			}
+		}
+
+		return url;
+	}
+
+	public pushState(url: string, replace?: boolean) {
+		let path = url;
+
+		if (import.meta?.env?.BASE_URL) {
+			path = (import.meta.env?.BASE_URL + path).replaceAll("//", "/");
+		}
+
+		if (replace) {
+			this.history.replaceState({}, "", path);
+		} else {
+			this.history.pushState({}, "", path);
+		}
 	}
 
 	public async invalidate(props?: Record<string, any>) {
@@ -72,16 +96,16 @@ export class ReactBrowserProvider {
 		// when redirecting in browser
 		if (result.context.url.pathname !== url) {
 			// TODO: check if losing search params is acceptable?
-			this.history.replaceState({}, "", result.context.url.pathname);
+			this.pushState(result.context.url.pathname);
 			return;
 		}
 
 		if (options.replace) {
-			this.history.replaceState({}, "", url);
+			this.pushState(url);
 			return;
 		}
 
-		this.history.pushState({}, "", url);
+		this.pushState(url);
 	}
 
 	protected async render(

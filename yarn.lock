@@ -4404,6 +4404,7 @@ __metadata:
     "@tabler/icons-react": "npm:3.17.0"
     "@types/react": "npm:^19.1.8"
     highlight.js: "npm:^11.11.1"
+    http-server: "npm:^14.1.1"
     marked: "npm:^16.0.0"
     marked-highlight: "npm:^2.2.2"
     react: "npm:^19.1.0"

@@ -3,11 +3,12 @@ import { $page } from "@alepha/react";
 import { NotFoundError } from "@alepha/server";
 import Content from "./components/Content.tsx";
 import Home from "./components/Home.tsx";
+import Layout from "./components/Layout.tsx";
 import { docs } from "./config/docs.ts";
 
 export class App {
 	layout = $page({
-		lazy: () => import("./components/Layout.tsx"),
+		component: Layout,
 		children: () => [this.home, this.m],
 		head: {
 			title: "Alepha",

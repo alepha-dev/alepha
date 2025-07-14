@@ -14,13 +14,15 @@
 	"devDependencies": {
 		"@types/react": "^19.1.8",
 		"highlight.js": "^11.11.1",
+		"http-server": "^14.1.1",
 		"marked": "^16.0.0",
 		"marked-highlight": "^2.2.2",
 		"rolldown-vite": "^7.0.9"
 	},
 	"scripts": {
 		"copy": "node scripts/codegen.ts",
-		"dev": "yarn copy && vite",
-		"build": "yarn copy && vite build"
+		"dev": "vite",
+		"build": "vite build",
+		"test": "vite build --base='/public/' && http-server dist"
 	}
 }
