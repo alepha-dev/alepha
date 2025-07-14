@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { Plugin } from "vite";
-import { buildClient } from "./helpers/buildClient.ts";
+import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
 
@@ -15,7 +15,7 @@ export interface ViteAlephaBuildOptions {
 	 * Set false to skip the client build.
 	 * This is useful if you only want to build the server-side application.
 	 */
-	client?: false;
+	client?: false | Partial<BuildClientOptions>;
 
 	/**
 	 * If true, the build will be optimized for Vercel deployment.
@@ -58,9 +58,12 @@ export async function viteAlephaBuild(
 				options.client !== false && (await fileExists("index.html"));
 
 			if (hasClient) {
+				const buildClientOptions =
+					typeof options.client === "object" ? options.client : {};
 				await buildClient({
 					html: await readFile("index.html", "utf-8"),
 					dist: `${distDir}/${clientDir}`,
+					...buildClientOptions,
 				});
 			}
 

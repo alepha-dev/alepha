@@ -23,8 +23,6 @@ export class ServerCorsProvider {
 				return;
 			}
 
-			console.log("REGISTERING CORS OPTIONS", route);
-
 			await this.serverRouterProvider.route({
 				path: route.path,
 				method: "OPTIONS",

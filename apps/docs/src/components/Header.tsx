@@ -1,12 +1,13 @@
+import { Link } from "@alepha/react";
 import {
 	ActionIcon,
 	Burger,
+	Button,
 	Container,
 	Flex,
 	Image,
 	Menu,
 	Text,
-	TextInput,
 	useMantineColorScheme,
 } from "@mantine/core";
 import {
@@ -14,9 +15,9 @@ import {
 	IconCheck,
 	IconDeviceLaptop,
 	IconMoon,
-	IconSearch,
 	IconSun,
 } from "@tabler/icons-react";
+import { theme } from "../config/theme.ts";
 
 type Props = {
 	opened?: boolean;
@@ -26,32 +27,23 @@ type Props = {
 const Header = (props: Props) => {
 	return (
 		<Container fluid px={0} h={"100%"}>
-			<Flex h={"100%"} align={"center"} px={"lg"} gap={"lg"}>
+			<Flex
+				h={"100%"}
+				align={"center"}
+				px={"lg"}
+				gap={{ base: "xs", md: "lg" }}
+			>
 				<Burger
 					opened={props.opened}
 					onClick={props.toggle}
 					size="sm"
-					hiddenFrom={"sm"}
+					hiddenFrom={theme.sidebarBreakpoint}
 				/>
-				<Flex align={"center"}>
-					<Flex>
-						<Image src={"/logo.png"} alt={"logo"} width={64} height={64} />
-					</Flex>
-					<Flex direction={"column"}>
-						<Text size={"xl"}>Alepha</Text>
-						<Text size={"xs"} c={"dimmed"} mt={-8}>
-							Docs
-						</Text>
-					</Flex>
-				</Flex>
+
+				<HomeButton />
+
 				<Flex flex={1}></Flex>
-				<TextInput
-					visibleFrom={"sm"}
-					leftSection={<IconSearch size={16} />}
-					placeholder={"Search"}
-					size={"xs"}
-					radius={"xl"}
-				/>
+
 				<ActionIcon
 					size={"lg"}
 					variant={"default"}
@@ -60,7 +52,8 @@ const Header = (props: Props) => {
 				>
 					<IconBrandGithub />
 				</ActionIcon>
-				<ToggleDarkMode />
+
+				<DarkModeButton />
 			</Flex>
 		</Container>
 	);
@@ -68,7 +61,50 @@ const Header = (props: Props) => {
 
 export default Header;
 
-const ToggleDarkMode = () => {
+const HomeButton = () => {
+	return (
+		<>
+			<Button
+				size={"xs"}
+				variant={"transparent"}
+				component={Link}
+				to={"/"}
+				hiddenFrom={"md"}
+			>
+				<Flex direction={"column"} align={"start"}>
+					<Text fw={"bold"} ff={"monospace"} size={"md"}>
+						Alepha
+					</Text>
+					<Text size={"xs"} c={"dimmed"} mt={-8} fw={"300"}>
+						Docs
+					</Text>
+				</Flex>
+			</Button>
+
+			<Button
+				size={"xl"}
+				variant={"transparent"}
+				component={Link}
+				to={"/"}
+				visibleFrom={"md"}
+			>
+				<Flex>
+					<Image src={"/logo.png"} alt={"logo"} width={64} height={64} />
+				</Flex>
+				<Flex direction={"column"}>
+					<Text fw={"bold"} ff={"monospace"} size={"xl"}>
+						Alepha
+					</Text>
+					<Text size={"xs"} c={"dimmed"} mt={-8} fw={"300"}>
+						Documentation
+					</Text>
+				</Flex>
+			</Button>
+		</>
+	);
+};
+
+const DarkModeButton = () => {
 	const { colorScheme, setColorScheme } = useMantineColorScheme();
 	return (
 		<Menu position={"bottom-end"}>

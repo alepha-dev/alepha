@@ -13,7 +13,6 @@ export class BrowserHeadProvider {
 		on: "react:browser:render",
 		handler: async ({ state, context }) => {
 			this.headProvider.fillHead(state, context);
-
 			if (context.head) {
 				this.renderHead(this.document, context.head);
 			}
@@ -24,8 +23,9 @@ export class BrowserHeadProvider {
 		on: "react:transition:end",
 		handler: async ({ state, context }) => {
 			this.headProvider.fillHead(state, context);
-
-			this.renderHead(this.document, context.head);
+			if (context.head) {
+				this.renderHead(this.document, context.head);
+			}
 		},
 	});
 

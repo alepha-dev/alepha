@@ -761,6 +761,24 @@ export class Alepha {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
+	protected useCounter = 0;
+	public use<T extends Descriptor>(
+		descriptor: T,
+		options: Parameters<T>[0],
+	): ReturnType<T> {
+		const key = options.name ?? "name";
+		const instanceName = `Auto${this.useCounter++}`;
+		const loader = {
+			[instanceName]: class {
+				[key] = descriptor(options);
+			},
+		};
+
+		return this.get(loader[instanceName]) as ReturnType<T>;
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+
 	/**
 	 * Registers a hook for the specified event.
 	 */

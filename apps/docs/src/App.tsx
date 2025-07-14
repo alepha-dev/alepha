@@ -1,15 +1,18 @@
 import { t } from "@alepha/core";
-import { $page, NotFound } from "@alepha/react";
+import { $page } from "@alepha/react";
 import { NotFoundError } from "@alepha/server";
-import { data } from "../node_modules/data";
+import Content from "./components/Content.tsx";
 import Home from "./components/Home.tsx";
-import Layout from "./components/Layout.tsx";
-import Module from "./components/Module.tsx";
+import { docs } from "./config/docs.ts";
 
 export class App {
 	layout = $page({
-		component: Layout,
+		lazy: () => import("./components/Layout.tsx"),
 		children: () => [this.home, this.m],
+		head: {
+			title: "Alepha",
+			titleSeparator: " | ",
+		},
 	});
 
 	home = $page({
@@ -19,25 +22,30 @@ export class App {
 	});
 
 	m = $page({
-		path: "/m/:module",
-		component: Module,
+		path: "/docs/:slug",
+		component: Content,
 		schema: {
 			params: t.object({
-				module: t.string(),
+				slug: t.string(),
 			}),
 		},
 		static: {
-			entries: data.map((it) => ({
-				params: { module: it.name.replaceAll("@alepha/", "") },
+			entries: docs.map((it) => ({
+				params: { slug: it.slug },
 			})),
 		},
-		resolve: ({ params }) => {
-			for (const module of data) {
-				if (module.name.replaceAll("@alepha/", "") === params.module) {
-					return { data: module };
+		resolve: async ({ params }) => {
+			for (const pkg of docs) {
+				if (pkg.slug === params.slug) {
+					return { name: pkg.name, content: await pkg.content() };
 				}
 			}
 			throw new NotFoundError();
+		},
+		head: ({ name }) => {
+			return {
+				title: name,
+			};
 		},
 	});
 }

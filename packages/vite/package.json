@@ -10,11 +10,12 @@
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"dependencies": {
-		"@alepha/core": "0.8.0"
+		"@alepha/core": "0.8.0",
+		"@alepha/react": "0.8.0"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",
-		"vite": "^7.0.2"
+		"vite": "^7.0.4"
 	},
 	"peerDependencies": {
 		"vite": "*"

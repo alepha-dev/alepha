@@ -1,88 +1,90 @@
 import { useActive } from "@alepha/react";
 import {
 	Flex,
-	NavLink as MantineNavLink,
+	NavLink,
 	type NavLinkProps,
 	ScrollArea,
 	Text,
+	useMantineTheme,
 } from "@mantine/core";
-import {
-	IconHeartHandshake,
-	IconMap2,
-	IconPackage,
-	IconTools,
-} from "@tabler/icons-react";
-import { data } from "../../node_modules/data";
+import { useMediaQuery } from "@mantine/hooks";
+import { useMemo } from "react";
+import { docs } from "../config/docs.ts";
+import { renderIcon } from "../config/icons.ts";
+import { theme } from "../config/theme.ts";
 
-const NavLink = (props: NavLinkProps & { to?: string }) => {
-	const to = props.to ?? "/";
+type Props = {
+	toggle: () => void;
+};
+
+const MyNavLink = (props: NavLinkProps & { to?: string } & Props) => {
+	const { to = "/", toggle, ...rest } = props;
 
 	const active = useActive(to);
+	const mantineTheme = useMantineTheme();
+	const isMobile = useMediaQuery(
+		`(max-width: ${mantineTheme.breakpoints[theme.sidebarBreakpoint]})`,
+	);
 
 	return (
-		<MantineNavLink
-			{...props}
+		<NavLink
+			{...rest}
 			{...active.anchorProps}
 			active={active.isActive}
+			onClick={(ev) => {
+				if (isMobile) {
+					props.toggle();
+				}
+				active.anchorProps.onClick(ev);
+			}}
 		/>
 	);
 };
 
-const Sidebar = () => {
+const Sidebar = (props: Props) => {
+	const navLinks = useMemo(
+		() => [
+			{
+				name: "Guides",
+				icon: renderIcon("IconMap2"),
+				items: docs.filter((it) => it.category === "guides"),
+			},
+			{
+				name: "Core Concepts",
+				icon: renderIcon("IconHeartHandshake"),
+				items: docs.filter((it) => it.category === "concepts"),
+			},
+			{
+				name: "Packages",
+				icon: renderIcon("IconPackage"),
+				items: docs.filter((it) => it.category === "packages"),
+			},
+		],
+		[],
+	);
+
 	return (
 		<ScrollArea>
-			<Flex direction={"column"}>
+			<Flex direction={"column"} p={{ sm: "xs" }}>
 				<Flex direction={"column"}>
-					<MantineNavLink
-						label={"Guide"}
-						leftSection={<IconMap2 />}
-						description={"Explore the Alepha guide"}
-					>
-						<NavLink label={"Getting Started"} to={"/"}></NavLink>
-						<NavLink label={"Installation"} to={"/installation"}></NavLink>
-					</MantineNavLink>
-					<MantineNavLink
-						label={"Core Concepts"}
-						description={"Learn the core concepts of Alepha"}
-						leftSection={<IconHeartHandshake />}
-					>
-						<NavLink
-							label={"Alepha Instance"}
-							to={"/alepha-instance"}
-						></NavLink>
-						<NavLink label={"Descriptors"} to={"/descriptors"}></NavLink>
-						<NavLink
-							label={"Module & Providers"}
-							to={"/module-and-providers"}
-						></NavLink>
-						<NavLink label={"Type Safety"} to={"type-safety"}></NavLink>
-					</MantineNavLink>
-					<MantineNavLink label={"Packages"} leftSection={<IconPackage />}>
-						{data
-							.filter((it) => it.description)
-							.map((module) => (
-								<NavLink
-									key={module.name}
+					{navLinks.map((link) => (
+						<NavLink key={link.name} label={link.name} leftSection={link.icon}>
+							{link.items.map((it) => (
+								<MyNavLink
+									toggle={props.toggle}
+									key={it.name}
 									px={"xs"}
+									description={it.description}
 									label={
-										<Text size={"sm"} fw={"bold"} tt={"capitalize"}>
-											Alepha{" "}
-											{module.name.replace("@alepha/", "").replaceAll("-", " ")}
+										<Text size={"sm"} fw={"light"}>
+											{it.name.replace("@", "").replaceAll("-", "/")}
 										</Text>
 									}
-									description={module.description}
-									to={`/m/${module.name.replaceAll("@alepha/", "")}`}
-									onClick={(ev) => {
-										ev.preventDefault();
-										console.log(`Navigating to ${module.name}`);
-									}}
-								></NavLink>
+									to={`/docs/${it.slug}`}
+								></MyNavLink>
 							))}
-					</MantineNavLink>
-					<MantineNavLink
-						label={"Recipes"}
-						leftSection={<IconTools />}
-					></MantineNavLink>
+						</NavLink>
+					))}
 				</Flex>
 			</Flex>
 		</ScrollArea>

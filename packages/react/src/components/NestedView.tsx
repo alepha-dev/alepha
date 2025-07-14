@@ -42,7 +42,9 @@ const NestedView = (props: NestedViewProps) => {
 	useRouterEvents(
 		{
 			onEnd: ({ state }) => {
-				setView(state.layers[index]?.element);
+				if (!state.layers[index]?.cache) {
+					setView(state.layers[index]?.element);
+				}
 			},
 		},
 		[app],

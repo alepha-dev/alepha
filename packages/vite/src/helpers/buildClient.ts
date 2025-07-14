@@ -1,18 +1,46 @@
 import type { UserConfig } from "vite";
-import { viteCompress } from "../viteCompress.ts";
+import { type ViteCompressOptions, viteCompress } from "../viteCompress.ts";
+import { vitePrerender } from "../vitePrerender.ts";
 import { importVite } from "./importVite.ts";
-import { prerender } from "./prerender.ts";
 
 export interface BuildClientOptions {
 	dist: string;
 	html: string;
+
+	/**
+	 * @default {}
+	 */
+	compress?: ViteCompressOptions | boolean;
+
+	/**
+	 * @default true
+	 */
+	prerender?: boolean;
 }
 
 export const buildClient = async (opts: BuildClientOptions) => {
 	const { build: viteBuild } = await importVite();
 	const plugins: any[] = [];
 
-	plugins.push(viteCompress());
+	const compressOptions: ViteCompressOptions | undefined =
+		opts.compress === false
+			? undefined
+			: typeof opts.compress === "object"
+				? opts.compress
+				: {};
+
+	if (opts.prerender !== false) {
+		plugins.push(
+			vitePrerender({
+				...opts,
+				compress: compressOptions,
+			}),
+		);
+	}
+
+	if (compressOptions) {
+		plugins.push(viteCompress(compressOptions));
+	}
 
 	const viteBuildClientConfig: UserConfig = {
 		mode: "production",
@@ -34,38 +62,4 @@ export const buildClient = async (opts: BuildClientOptions) => {
 	};
 
 	await viteBuild(viteBuildClientConfig);
-
-	try {
-		const entry = extractFirstModuleScriptSrc(opts.html);
-		if (entry) {
-			await prerender({
-				entry,
-				dist: opts.dist,
-			});
-		}
-	} catch (error) {
-		console.warn(new Error("Prerendering has failed", { cause: error }));
-	}
 };
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-function extractFirstModuleScriptSrc(html: string): string | null {
-	const scriptRegex = /<script\b[^>]*>[\s\S]*?<\/script>/gi;
-	let match: RegExpExecArray | null = scriptRegex.exec(html);
-
-	while (match) {
-		const tag = match[0];
-
-		// Check for type="module"
-		if (/type=["']module["']/i.test(tag)) {
-			// Extract the src value
-			const srcMatch = tag.match(/\bsrc=["']([^"']+)["']/i);
-			return srcMatch?.[1] ?? null;
-		}
-
-		match = scriptRegex.exec(html);
-	}
-
-	return null;
-}

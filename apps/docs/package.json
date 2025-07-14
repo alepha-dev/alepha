@@ -16,11 +16,11 @@
 		"highlight.js": "^11.11.1",
 		"marked": "^16.0.0",
 		"marked-highlight": "^2.2.2",
-		"rolldown-vite": "^7.0.5"
+		"rolldown-vite": "^7.0.9"
 	},
 	"scripts": {
-		"codegen": "node scripts/generate-doc-data.js",
-		"dev": "vite",
-		"build": "vite build"
+		"codegen": "node scripts/codegen.ts",
+		"dev": "yarn codegen && vite",
+		"build": "yarn codegen && vite build"
 	}
 }

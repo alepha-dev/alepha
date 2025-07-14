@@ -13,9 +13,9 @@
 	"devDependencies": {
 		"@types/react": "^19.1.8",
 		"drizzle-kit": "^0.31.4",
-		"rolldown-vite": "^7.0.5",
-		"vercel": "^44.2.12",
-		"vite-bundle-analyzer": "^1.0.0"
+		"rolldown-vite": "^7.0.9",
+		"vercel": "^44.4.1",
+		"vite-bundle-analyzer": "^1.1.0"
 	},
 	"scripts": {
 		"dev": "vite",

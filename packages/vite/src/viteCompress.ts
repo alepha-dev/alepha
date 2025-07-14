@@ -40,18 +40,14 @@ export interface ViteCompressOptions {
 	 * A filter to determine which files to compress.
 	 * Can be a RegExp or a function that returns true for files to compress.
 	 *
-	 * @default /\.(js|mjs|cjs|css|wasm|svg)$/
+	 * @default /\.(js|mjs|cjs|css|wasm|svg|html)$/
 	 */
 	filter?: RegExp | ((fileName: string) => boolean);
 }
 
 export function viteCompress(options: ViteCompressOptions = {}): Plugin {
-	const {
-		disabled = false,
-		brotli = true,
-		gzip = true,
-		filter = /\.(js|mjs|cjs|css|wasm|svg)$/,
-	} = options;
+	const { disabled = false, filter = /\.(js|mjs|cjs|css|wasm|svg|html)$/ } =
+		options;
 
 	return {
 		name: "compress",
@@ -82,32 +78,7 @@ export function viteCompress(options: ViteCompressOptions = {}): Plugin {
 			const compressionTasks: Promise<void>[] = [];
 
 			for (const { filePath } of files) {
-				const fileContentPromise = fs.readFile(filePath);
-
-				if (gzip) {
-					const gzipOptions =
-						typeof gzip === "object"
-							? gzip
-							: {
-									level: 9, // default gzip compression level
-								};
-					compressionTasks.push(
-						fileContentPromise.then(async (content) => {
-							const compressed = await gzipCompress(content, gzipOptions);
-							await fs.writeFile(`${filePath}.gz`, compressed);
-						}),
-					);
-				}
-
-				if (brotli) {
-					const brotliOptions = typeof brotli === "object" ? brotli : {};
-					compressionTasks.push(
-						fileContentPromise.then(async (content) => {
-							const compressed = await brotliCompress(content, brotliOptions);
-							await fs.writeFile(`${filePath}.br`, compressed);
-						}),
-					);
-				}
+				compressionTasks.push(compressFile(options, filePath));
 			}
 
 			// Wait for all compression tasks to complete
@@ -118,4 +89,42 @@ export function viteCompress(options: ViteCompressOptions = {}): Plugin {
 			);
 		},
 	};
+}
+
+export async function compressFile(
+	options: ViteCompressOptions = {},
+	filePath: string,
+) {
+	const { brotli = true, gzip = true } = options;
+
+	const compressionTasks: Promise<void>[] = [];
+
+	const fileContentPromise = fs.readFile(filePath);
+
+	if (gzip) {
+		const gzipOptions =
+			typeof gzip === "object"
+				? gzip
+				: {
+						level: 9, // default gzip compression level
+					};
+		compressionTasks.push(
+			fileContentPromise.then(async (content) => {
+				const compressed = await gzipCompress(content, gzipOptions);
+				await fs.writeFile(`${filePath}.gz`, compressed);
+			}),
+		);
+	}
+
+	if (brotli) {
+		const brotliOptions = typeof brotli === "object" ? brotli : {};
+		compressionTasks.push(
+			fileContentPromise.then(async (content) => {
+				const compressed = await brotliCompress(content, brotliOptions);
+				await fs.writeFile(`${filePath}.br`, compressed);
+			}),
+		);
+	}
+
+	await Promise.all(compressionTasks);
 }

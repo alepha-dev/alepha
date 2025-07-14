@@ -109,7 +109,7 @@ export class PageDescriptorProvider {
 			try {
 				config.query = route.schema?.query
 					? this.alepha.parse(route.schema.query, request.query)
-					: request.query;
+					: {};
 			} catch (e) {
 				it.error = e as Error;
 				break;
@@ -118,7 +118,7 @@ export class PageDescriptorProvider {
 			try {
 				config.params = route.schema?.params
 					? this.alepha.parse(route.schema.params, request.params)
-					: request.params;
+					: {};
 			} catch (e) {
 				it.error = e as Error;
 				break;
@@ -153,6 +153,7 @@ export class PageDescriptorProvider {
 					// part is the same, reuse previous layer
 					it.props = previous[i].props;
 					it.error = previous[i].error;
+					it.cache = true;
 					context = {
 						...context,
 						...it.props,
@@ -254,6 +255,7 @@ export class PageDescriptorProvider {
 				index: i + 1,
 				path,
 				route: it.route,
+				cache: it.cache,
 			});
 		}
 
@@ -499,6 +501,7 @@ export interface Layer {
 	index: number;
 	path: string;
 	route?: PageRoute;
+	cache?: boolean;
 }
 
 export type PreviousLayerData = Omit<Layer, "element" | "index" | "path">;
@@ -525,6 +528,7 @@ export interface RouterStackItem {
 	config?: Record<string, any>;
 	props?: Record<string, any>;
 	error?: Error;
+	cache?: boolean;
 }
 
 export interface RouterRenderResult {
