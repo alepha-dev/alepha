@@ -163,6 +163,7 @@ class App {
 
 run(App, {
 	env: {
-		LOG_FORMAT: "cli",
+		LOG_FORMAT: "raw",
+		LOG_LEVEL: "alepha.command:info,warn",
 	},
 });

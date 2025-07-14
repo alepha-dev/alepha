@@ -34,6 +34,8 @@ class AlephaDevCli {
 			}
 
 			await run("yarn");
+
+			await run("yarn copy");
 		},
 	});
 

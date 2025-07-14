@@ -56,6 +56,9 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
+      - name: Clean
+        run: yarn clean
+
       - name: TypeScript Check
         run: yarn check
 
@@ -70,5 +73,37 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      #- name: Build Project
-      #  run: yarn alepha build
+  deploy-docs:
+    needs: verify
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: "yarn"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './apps/docs/dist/public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

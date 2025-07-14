@@ -19,8 +19,8 @@
 		"rolldown-vite": "^7.0.9"
 	},
 	"scripts": {
-		"codegen": "node scripts/codegen.ts",
-		"dev": "yarn codegen && vite",
-		"build": "yarn codegen && vite build"
+		"copy": "node scripts/codegen.ts",
+		"dev": "yarn copy && vite",
+		"build": "yarn copy && vite build"
 	}
 }
