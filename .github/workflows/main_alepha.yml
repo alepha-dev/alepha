@@ -87,14 +87,23 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout repository
+      - name: Git Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.x"
           cache: "yarn"
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build Documentation
+        run: yarn build:docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
