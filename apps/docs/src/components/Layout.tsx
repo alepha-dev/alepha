@@ -68,7 +68,7 @@ const Main = () => {
 					</Flex>
 					<Flex justify={"flex-end"}>
 						<Text size={"xs"} c={"dimmed"}>
-							{`Last update - ${new Date(import.meta.env.VITE_BUILD_DATE).toLocaleString()}`}
+							{`Last update - ${new Date(import.meta.env.VITE_BUILD_DATE).toLocaleDateString()}`}
 						</Text>
 					</Flex>
 				</Flex>

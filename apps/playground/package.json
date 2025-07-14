@@ -5,10 +5,9 @@
 		"dev": "node --watch src/index.ts",
 		"build": "vite build",
 		"start": "vite build && node dist",
-		"preview": "yarn build && http-server dist/public -p 9854 -b"
+		"preview": "yarn build && vite preview --outDit=dist/public"
 	},
 	"devDependencies": {
-		"http-server": "^14.1.1",
 		"rolldown-vite": "^7.0.9"
 	}
 }
