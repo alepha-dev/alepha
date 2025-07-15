@@ -166,7 +166,12 @@ const features = [
 
 const Home = () => {
 	return (
-		<Flex align={"center"} direction={"column"} w={"100%"}>
+		<Flex
+			align={"center"}
+			direction={"column"}
+			w={"100%"}
+			className={"graph-paper"}
+		>
 			<AlphaWarning />
 			<HeroSection />
 			<FeatureGrid />

@@ -12,7 +12,7 @@ class Api {
   });
 }
 
-run(Api); // GET /api/greet?name=John
+run(Api);
 `,
 	react: `
 import { $page } from "alepha/react";

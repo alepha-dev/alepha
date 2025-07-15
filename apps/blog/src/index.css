@@ -3,14 +3,6 @@
 
 /* ------------------------------------------------------------------------------------------------------------------- */
 
-:root {
-	--graph-paper-bg-color: rgb(16, 16, 16);
-	--graph-paper-line-color-1: rgba(51, 102, 102, 0.04);
-	--graph-paper-line-color-2: rgba(169, 169, 169, 0.04);
-}
-
-/* ------------------------------------------------------------------------------------------------------------------- */
-
 .mantine-AppShell-root header {
 	backdrop-filter: blur(1px);
 	background-color: transparent;
@@ -27,6 +19,12 @@ html[data-mantine-color-scheme="dark"] {
 }
 
 /* ------------------------------------------------------------------------------------------------------------------- */
+
+:root {
+	--graph-paper-bg-color: rgb(16, 16, 16);
+	--graph-paper-line-color-1: rgba(51, 102, 102, 0.04);
+	--graph-paper-line-color-2: rgba(169, 169, 169, 0.04);
+}
 
 .graph-paper {
 	width: 100%;
