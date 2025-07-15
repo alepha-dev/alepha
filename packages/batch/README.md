@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/batch
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaBatch } from "alepha/batch";
-
-const alepha = Alepha.create()
-  .with(AlephaBatch);
-
-run(alepha);
-```
-
 This module allows you to group multiple asynchronous operations into a single "batch," which is then processed together.
 This is an essential pattern for improving performance, reducing I/O, and interacting efficiently with rate-limited APIs or databases.
 

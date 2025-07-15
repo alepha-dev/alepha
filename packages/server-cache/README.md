@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/server-cache
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaServerCache } from "alepha/server/cache";
-
-const alepha = Alepha.create()
-  .with(AlephaServerCache);
-
-run(alepha);
-```
-
 # Alepha Server Cache Module
 
 Plugin for Alepha Server that provides server-side caching capabilities.
@@ -51,5 +41,3 @@ const alepha = Alepha.create()
 
 run(alepha);
 ```
-
-## API Reference

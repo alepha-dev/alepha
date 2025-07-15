@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/command
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaCommand } from "alepha/command";
-
-const alepha = Alepha.create()
-  .with(AlephaCommand);
-
-run(alepha);
-```
-
 Alepha Command Module
 
 This module provides a powerful way to build command-line interfaces

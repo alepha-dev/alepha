@@ -206,24 +206,13 @@ async function generateReadmes() {
 
 			if (moduleDescription) {
 				readmeContent += `## Module\n\n`;
-				if (nameSegment !== "core") {
-					readmeContent += `
-\`\`\`ts
-import { Alepha, run } from "alepha";
-import { ${moduleName} } from "alepha/${nameSegment.replaceAll("-", "/")}";
-
-const alepha = Alepha.create()
-  .with(${moduleName});
-
-run(alepha);
-\`\`\`
-				`.trim()
-					readmeContent += "\n\n";
-				}
 				readmeContent += `${moduleDescription}\n`;
 			}
 
-			readmeContent += `\n## API Reference\n`;
+
+			if (descriptors.length > 0 || providers.length > 0) {
+				readmeContent += `\n## API Reference\n`;
+			}
 
 			if (descriptors.length > 0) {
 				readmeContent += `\n### Descriptors\n`;

@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/lock
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaLock } from "alepha/lock";
-
-const alepha = Alepha.create()
-  .with(AlephaLock);
-
-run(alepha);
-```
-
 Alepha Lock Module
 
 Lock a resource for a certain period of time.

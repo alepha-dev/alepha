@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/server-static
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaServerStatic } from "alepha/server/static";
-
-const alepha = Alepha.create()
-  .with(AlephaServerStatic);
-
-run(alepha);
-```
-
 Alepha Server Static Module
 
 ## API Reference

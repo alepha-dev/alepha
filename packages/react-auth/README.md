@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/react-auth
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaReactAuth } from "alepha/react/auth";
-
-const alepha = Alepha.create()
-  .with(AlephaReactAuth);
-
-run(alepha);
-```
-
 Alepha React Authentication Module
 
 The ReactAuthModule provides authentication services for React applications.

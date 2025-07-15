@@ -17,16 +17,4 @@ npm install @alepha/core @alepha/react-head
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaReactHead } from "alepha/react/head";
-
-const alepha = Alepha.create()
-  .with(AlephaReactHead);
-
-run(alepha);
-```
-
 Alepha React Head Module
-
-## API Reference

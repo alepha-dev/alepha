@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/bucket-azure
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaBucketAzure } from "alepha/bucket/azure";
-
-const alepha = Alepha.create()
-  .with(AlephaBucketAzure);
-
-run(alepha);
-```
-
 Alepha Bucket Azure Module
 
 Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.

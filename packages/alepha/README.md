@@ -15,5 +15,3 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core alepha
 ```
-
-## API Reference

@@ -17,16 +17,6 @@ npm install @alepha/core @alepha/scheduler
 ```
 ## Module
 
-```ts
-import { Alepha, run } from "alepha";
-import { AlephaScheduler } from "alepha/scheduler";
-
-const alepha = Alepha.create()
-  .with(AlephaScheduler);
-
-run(alepha);
-```
-
 Alepha Scheduler Module
 
 Generic interface for scheduling tasks.
