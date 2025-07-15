@@ -20,6 +20,9 @@ export class App {
 		path: "/",
 		component: Home,
 		static: true,
+		head: {
+			title: "Home",
+		},
 	});
 
 	m = $page({

@@ -172,7 +172,6 @@ const Home = () => {
 			w={"100%"}
 			className={"graph-paper"}
 		>
-			<AlphaWarning />
 			<HeroSection />
 			<FeatureGrid />
 		</Flex>
