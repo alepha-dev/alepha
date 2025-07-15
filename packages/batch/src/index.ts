@@ -10,10 +10,11 @@ export * from "./providers/BatchDescriptorProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Batch Module
+ * ## Alepha Batch
  *
- * This module provides a powerful batch processing utility that can group
- * multiple operations into a single one based on size, time, or partitions.
+ * A powerful batch processing utility for the Alepha framework.
+ * This module allows you to group multiple asynchronous operations into a single "batch," which is then processed together.
+ * This is an essential pattern for improving performance, reducing I/O, and interacting efficiently with rate-limited APIs or databases.
  *
  * @see {@link $batch}
  * @module alepha.batch

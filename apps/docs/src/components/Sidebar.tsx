@@ -32,7 +32,7 @@ const MyNavLink = (
 		if (isActive) {
 			onActive();
 		}
-	}, []);
+	}, [isActive]);
 
 	return (
 		<NavLink
@@ -96,7 +96,10 @@ const Sidebar = (props: Props) => {
 									description={it.description}
 									label={
 										<Text size={"sm"} fw={"light"}>
-											{it.name.replace("@", "").replaceAll("-", "/")}
+											{it.name
+												.replace("@", "")
+												.replaceAll("-", "/")
+												.replace("Alepha", "")}
 										</Text>
 									}
 									to={`/docs/${it.slug}`}

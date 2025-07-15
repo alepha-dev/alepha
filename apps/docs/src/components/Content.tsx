@@ -75,6 +75,7 @@ const ContentAside = (props: { name: string }) => {
 	const router = useRouter();
 
 	useLayoutEffect(() => {
+		(window as any).go = (url: string) => router.go(url);
 		reinitializeRef.current();
 	}, [props.name]);
 
@@ -176,7 +177,17 @@ const NavButton = (
 	);
 };
 
-export function HtmlContent({ html }: { html: string }) {
+export function HtmlContent(props: { html: string }) {
+	const html = useMemo(() => {
+		const onclick = (url: string) => {
+			return `event.preventDefault();go('${url}')`;
+		};
+		return props.html.replace(/<a href="\/docs\/(.*)">/gim, (_, arg1) => {
+			const pathname = `${import.meta.env.BASE_URL ?? "/"}docs/${arg1}`;
+			return `<a href="${pathname}" onclick="${onclick(`${pathname}`)}">`;
+		});
+	}, [props.html]);
+
 	return (
 		<div
 			id={"html-content"}

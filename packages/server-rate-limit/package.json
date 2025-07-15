@@ -1,6 +1,5 @@
 {
 	"name": "@alepha/server-rate-limit",
-	"description": "Rate limiting for server endpoints to prevent abuse.",
 	"version": "0.8.0",
 	"type": "module",
 	"engines": {

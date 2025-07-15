@@ -100,6 +100,11 @@
 			"require": "./datetime.cjs",
 			"types": "./datetime.d.ts"
 		},
+		"./file": {
+			"import": "./file.js",
+			"require": "./file.cjs",
+			"types": "./file.d.ts"
+		},
 		"./lock": {
 			"import": "./lock.js",
 			"require": "./lock.cjs",
@@ -149,6 +154,11 @@
 			"import": "./retry.js",
 			"require": "./retry.cjs",
 			"types": "./retry.d.ts"
+		},
+		"./router": {
+			"import": "./router.js",
+			"require": "./router.cjs",
+			"types": "./router.d.ts"
 		},
 		"./scheduler": {
 			"import": "./scheduler.js",
@@ -254,6 +264,7 @@
 		"command",
 		"core",
 		"datetime",
+		"file",
 		"lock",
 		"lock-redis",
 		"postgres",
@@ -264,6 +275,7 @@
 		"react-head",
 		"redis",
 		"retry",
+		"router",
 		"scheduler",
 		"security",
 		"server",
