@@ -8,34 +8,42 @@ import {
 	useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useMemo } from "react";
+import { IconHeartHandshake, IconMap2, IconPackage } from "@tabler/icons-react";
+import { useEffect, useMemo, useState } from "react";
 import { docs } from "../config/docs.ts";
-import { renderIcon } from "../config/icons.ts";
 import { theme } from "../config/theme.ts";
 
 type Props = {
 	toggle: () => void;
 };
 
-const MyNavLink = (props: NavLinkProps & { to?: string } & Props) => {
-	const { to = "/", toggle, ...rest } = props;
+const MyNavLink = (
+	props: NavLinkProps & { to?: string; onActive: () => void } & Props,
+) => {
+	const { to = "/", toggle, onActive, ...rest } = props;
 
-	const active = useActive(to);
+	const { isActive, anchorProps } = useActive(to);
 	const mantineTheme = useMantineTheme();
 	const isMobile = useMediaQuery(
 		`(max-width: ${mantineTheme.breakpoints[theme.sidebarBreakpoint]})`,
 	);
 
+	useEffect(() => {
+		if (isActive) {
+			onActive();
+		}
+	}, []);
+
 	return (
 		<NavLink
 			{...rest}
-			{...active.anchorProps}
-			active={active.isActive}
+			{...anchorProps}
+			active={isActive}
 			onClick={(ev) => {
 				if (isMobile) {
 					props.toggle();
 				}
-				active.anchorProps.onClick(ev);
+				anchorProps.onClick(ev);
 			}}
 		/>
 	);
@@ -46,31 +54,42 @@ const Sidebar = (props: Props) => {
 		() => [
 			{
 				name: "Guides",
-				icon: renderIcon("IconMap2"),
+				icon: <IconMap2 />,
 				items: docs.filter((it) => it.category === "guides"),
 			},
 			{
 				name: "Core Concepts",
-				icon: renderIcon("IconHeartHandshake"),
+				icon: <IconHeartHandshake />,
 				items: docs.filter((it) => it.category === "concepts"),
 			},
 			{
 				name: "Packages",
-				icon: renderIcon("IconPackage"),
+				icon: <IconPackage />,
 				items: docs.filter((it) => it.category === "packages"),
 			},
 		],
 		[],
 	);
 
+	const [opened, setOpened] = useState("");
+
 	return (
 		<ScrollArea>
 			<Flex direction={"column"} p={{ sm: "xs" }}>
 				<Flex direction={"column"}>
 					{navLinks.map((link) => (
-						<NavLink key={link.name} label={link.name} leftSection={link.icon}>
+						<NavLink
+							onClick={() => setOpened(link.name === opened ? "" : link.name)}
+							opened={link.name === opened}
+							key={link.name}
+							label={link.name}
+							leftSection={link.icon}
+						>
 							{link.items.map((it) => (
 								<MyNavLink
+									onActive={() => {
+										setOpened(link.name);
+									}}
 									toggle={props.toggle}
 									key={it.name}
 									px={"xs"}

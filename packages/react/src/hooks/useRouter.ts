@@ -20,6 +20,7 @@ export const useRouter = (): RouterHookApi => {
 		() =>
 			new RouterHookApi(
 				pages,
+				ctx.context,
 				ctx.state,
 				layer,
 				ctx.alepha.isBrowser()

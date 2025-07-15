@@ -3,8 +3,9 @@ import path, { basename, join } from "node:path";
 import { $command } from "@alepha/command";
 import { $logger, run } from "@alepha/core";
 import hljs from "highlight.js";
-import { Marked } from "marked";
+import { Marked, type Tokens } from "marked";
 import { markedHighlight } from "marked-highlight";
+import { theme } from "../src/config/theme.ts";
 
 export type Docs = Record<
 	string,
@@ -13,20 +14,51 @@ export type Docs = Record<
 		name: string;
 		description: string;
 		content: string;
+		path: string;
 	}>
 >;
 
 class App {
-	marked = new Marked(
-		markedHighlight({
-			emptyLangClass: "hljs",
-			langPrefix: "hljs language-",
-			highlight(code, lang) {
-				const language = hljs.getLanguage(lang) ? lang : "plaintext";
-				return hljs.highlight(code, { language }).value;
+	marked = this.createMarked();
+
+	createMarked() {
+		const marked = new Marked(
+			markedHighlight({
+				emptyLangClass: "hljs",
+				langPrefix: "hljs language-",
+				highlight(code, lang) {
+					const language = hljs.getLanguage(lang) ? lang : "plaintext";
+					return hljs.highlight(code, { language }).value;
+				},
+			}),
+		);
+
+		const renderer = {
+			heading: ({ text, depth }: Tokens.Heading) => {
+				const slug = text
+					.replace(/\//g, "-")
+					.replace(/[()`$:/@]/g, "")
+					.trim()
+					.replace(/ /g, "-")
+					.toLowerCase();
+
+				// trick I learned by inspecting the mantine.dev website
+				// instead of go-to <h1>, you go-to a <div> with metadata with a position top negative
+				// it's the only way to manage all use-cases of fixed <header>
+				return `
+					<div id="${slug}" data-depth="${depth}" data-heading="${text}" style="position: relative; top: -${theme.headerHeight.lg}px"></div>
+					<h${depth}>${text}</h${depth}>
+				`.trim();
 			},
-		}),
-	);
+		};
+
+		marked.use({ renderer });
+		marked.use({
+			gfm: true,
+		});
+
+		return marked;
+	}
 
 	log = $logger();
 
@@ -62,6 +94,7 @@ class App {
 							name: this.pretty(name),
 							content: await this.render(join(rootDir, file)),
 							description: "",
+							path: file,
 						});
 					}
 				});
@@ -93,6 +126,7 @@ class App {
 						name: this.pretty(name),
 						description,
 						content: await this.render(filepath),
+						path: file,
 					});
 
 					docs.packages = docs.packages.sort((a, b) =>

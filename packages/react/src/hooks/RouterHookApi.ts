@@ -1,6 +1,7 @@
 import type { PageDescriptor } from "../descriptors/$page.ts";
 import type {
 	AnchorProps,
+	PageReactContext,
 	PageRoute,
 	RouterState,
 } from "../providers/PageDescriptorProvider.ts";
@@ -12,12 +13,28 @@ import type {
 export class RouterHookApi {
 	constructor(
 		private readonly pages: PageRoute[],
+		private readonly context: PageReactContext,
 		private readonly state: RouterState,
 		private readonly layer: {
 			path: string;
 		},
 		private readonly browser?: ReactBrowserProvider,
 	) {}
+
+	public getURL(): URL {
+		if (!this.browser) {
+			return this.context.url;
+		}
+		return new URL(this.location.href);
+	}
+
+	public get location(): Location {
+		if (!this.browser) {
+			throw new Error("Browser is required");
+		}
+
+		return this.browser.location;
+	}
 
 	public get current(): RouterState {
 		return this.state;

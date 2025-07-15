@@ -129,11 +129,6 @@ export class PageDescriptorProvider {
 				...config,
 			};
 
-			// no resolve, render a basic view by default
-			if (!route.resolve) {
-				continue;
-			}
-
 			// check if previous layer is the same, reuse if possible
 			const previous = request.previous;
 			if (previous?.[i] && !forceRefresh && previous[i].name === route.name) {
@@ -160,8 +155,14 @@ export class PageDescriptorProvider {
 					};
 					continue;
 				}
+
 				// part is different, force refresh of next layers
 				forceRefresh = true;
+			}
+
+			// no resolve, render a basic view by default
+			if (!route.resolve) {
+				continue;
 			}
 
 			try {

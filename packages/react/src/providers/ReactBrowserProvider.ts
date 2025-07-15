@@ -1,4 +1,3 @@
-import path from "node:path";
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { LinkProvider } from "@alepha/server-links";
@@ -36,8 +35,12 @@ export class ReactBrowserProvider {
 		return window.history;
 	}
 
+	public get location() {
+		return window.location;
+	}
+
 	public get url(): string {
-		let url = window.location.pathname + window.location.search;
+		let url = this.location.pathname + this.location.search;
 
 		if (import.meta?.env?.BASE_URL) {
 			url = url.replace(import.meta.env?.BASE_URL, "");

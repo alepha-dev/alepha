@@ -1,4 +1,4 @@
-import { useActive, useRouterEvents } from "@alepha/react";
+import { useActive, useRouter } from "@alepha/react";
 import {
 	Button,
 	type ButtonProps,
@@ -9,22 +9,27 @@ import {
 	Text,
 	TypographyStylesProvider,
 } from "@mantine/core";
-import { IconCaretLeft, IconCaretRight } from "@tabler/icons-react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { docs } from "../config/docs.ts";
+import { IconCaretLeft, IconCaretRight, IconEdit } from "@tabler/icons-react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { docs, repository } from "../config/docs.ts";
 import { theme } from "../config/theme.ts";
 
 interface ModuleProps {
 	name: string;
 	content: string;
+	path?: string;
 }
 
 const Content = (props: ModuleProps) => {
-	const reinitializeRef = useRef(() => {});
-
-	useLayoutEffect(() => {
-		reinitializeRef.current();
-	}, [props.name]);
+	useEffect(() => {
+		const hash = window.location.hash;
+		if (hash) {
+			const el = document.getElementById(hash.slice(1));
+			if (el) {
+				el.scrollIntoView();
+			}
+		}
+	}, []);
 
 	return (
 		<Flex flex={1} w={"100%"}>
@@ -35,35 +40,27 @@ const Content = (props: ModuleProps) => {
 					direction={"column"}
 					maw={{
 						sm: 800,
-						lg: 1000,
 					}}
-					gap={"md"}
+					gap={{ base: "sm", md: "xl" }}
 				>
 					<TypographyStylesProvider style={{ width: "100%" }}>
 						<HtmlContent html={props.content} />
 					</TypographyStylesProvider>
+					<Flex>
+						<Button
+							leftSection={<IconEdit />}
+							variant={"subtle"}
+							component={"a"}
+							href={`https://github.com/${repository.name}/edit/main/${props.path}`}
+						>
+							Edit page on GitHub
+						</Button>
+					</Flex>
 					<Divider />
 					<BottomNavButton name={props.name} />
 				</Flex>
 			</Flex>
-			<Flex w={theme.sidebarWidth} pos={"relative"} visibleFrom={"xl"}>
-				<Flex pos={"fixed"} right={20}>
-					<Flex p={"xl"} w={theme.sidebarWidth} fw={300}>
-						<TableOfContents
-							reinitializeRef={reinitializeRef}
-							variant="light"
-							size="sm"
-							scrollSpyOptions={{
-								selector: "#mdx :is(h1, h2, h3, h4, h5, h6)",
-							}}
-							getControlProps={({ data }) => ({
-								onClick: () => data.getNode().scrollIntoView(),
-								children: data.value,
-							})}
-						/>
-					</Flex>
-				</Flex>
-			</Flex>
+			<ContentAside name={props.name} />
 		</Flex>
 	);
 };
@@ -71,6 +68,46 @@ const Content = (props: ModuleProps) => {
 export default Content;
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+const ContentAside = (props: { name: string }) => {
+	const reinitializeRef = useRef(() => {});
+	const router = useRouter();
+
+	useLayoutEffect(() => {
+		reinitializeRef.current();
+	}, [props.name]);
+
+	return (
+		<Flex w={theme.sidebarWidth} pos={"relative"} visibleFrom={"xl"}>
+			<Flex pos={"fixed"} right={20}>
+				<Flex p={"xl"} w={theme.sidebarWidth} fw={300}>
+					<TableOfContents
+						reinitializeRef={reinitializeRef}
+						variant="light"
+						size="sm"
+						scrollSpyOptions={{
+							selector: "#html-content [data-heading]",
+							getDepth: (element) => Number(element.getAttribute("data-depth")),
+							getValue: (element) => element.getAttribute("data-heading") || "",
+						}}
+						getControlProps={({ data }) => ({
+							onClick: () => {
+								if (data.id) {
+									const url = router.getURL();
+									url.hash = `#${data.id}`;
+									router.location.replace(url);
+
+									window.document.getElementById(data.id)?.scrollIntoView();
+								}
+							},
+							children: data.value,
+						})}
+					/>
+				</Flex>
+			</Flex>
+		</Flex>
+	);
+};
 
 const BottomNavButton = (props: { name: string }) => {
 	const nav = useMemo(() => {
@@ -92,13 +129,6 @@ const BottomNavButton = (props: { name: string }) => {
 		};
 	}, [props.name]);
 
-	const [isPending, setIsPending] = useState(false);
-
-	useRouterEvents({
-		onBegin: () => setIsPending(true),
-		onEnd: () => setIsPending(false),
-	});
-
 	return (
 		<SimpleGrid cols={{ sm: 1, md: 2 }}>
 			{nav.previous && (
@@ -119,26 +149,27 @@ const NavButton = (
 		isRight?: boolean;
 	},
 ) => {
-	const { to, name, ...rest } = props;
+	const { to, name, isRight, ...rest } = props;
 	const { isPending, anchorProps } = useActive(to);
 	return (
 		<Button
 			flex={1}
-			variant={props.isRight ? "outline" : "subtle"}
+			variant={isRight ? "outline" : "subtle"}
 			size={"xl"}
 			loading={isPending}
+			justify={isRight ? "end" : "start"}
 			{...rest}
 			{...anchorProps}
 		>
 			<Flex gap={"md"} align={"center"}>
-				{!props.isRight && <IconCaretLeft />}
-				<Flex direction={"column"} align={props.isRight ? "end" : "start"}>
+				{!isRight && <IconCaretLeft />}
+				<Flex direction={"column"} align={isRight ? "end" : "start"}>
 					<Text c={"dimmed"} size={"xs"}>
-						{props.isRight ? "Next Page" : "Previous Page"}
+						{isRight ? "Next Page" : "Previous Page"}
 					</Text>
 					<Text>{name}</Text>
 				</Flex>
-				{props.isRight && <IconCaretRight />}
+				{isRight && <IconCaretRight />}
 			</Flex>
 		</Button>
 	);
@@ -147,7 +178,7 @@ const NavButton = (
 export function HtmlContent({ html }: { html: string }) {
 	return (
 		<div
-			id={"mdx"}
+			id={"html-content"}
 			// biome-ignore lint/security/noDangerouslySetInnerHtml: no worry
 			dangerouslySetInnerHTML={{ __html: html }}
 		/>

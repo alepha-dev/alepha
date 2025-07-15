@@ -38,7 +38,7 @@ export class App {
 		resolve: async ({ params }) => {
 			for (const pkg of docs) {
 				if (pkg.slug === params.slug) {
-					return { name: pkg.name, content: await pkg.content() };
+					return { ...pkg, content: await pkg.content() };
 				}
 			}
 			throw new NotFoundError();
