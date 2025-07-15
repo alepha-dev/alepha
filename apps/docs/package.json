@@ -20,7 +20,7 @@
 	},
 	"scripts": {
 		"copy": "node scripts/codegen.ts",
-		"dev": "vite",
+		"dev": "yarn copy && vite",
 		"build": "vite build",
 		"preview": "vite build --base=/alepha/ && vite preview --outDir dist/public --base=/alepha/"
 	}

@@ -1,4 +1,4 @@
-import { NestedView, useRouterEvents } from "@alepha/react";
+import { NestedView, useRouterEvents, useRouterState } from "@alepha/react";
 import {
 	AppShell,
 	ColorSchemeScript,
@@ -37,6 +37,48 @@ export default Layout;
 
 const Main = () => {
 	const [opened, { toggle }] = useDisclosure();
+	const router = useRouterState();
+	const isHome = router.pathname === "/";
+
+	const header = (
+		<AppShell.Header>
+			<Header opened={opened} toggle={toggle} />
+		</AppShell.Header>
+	);
+
+	const footer = (
+		<AppShell.Footer>
+			<Flex justify={"space-between"} align={"center"} h={"100%"} px={"xs"}>
+				<Flex flex={1} justify={"flex-start"}>
+					<Text size={"xs"} c={"dimmed"}>
+						Alepha Docs
+					</Text>
+				</Flex>
+				<Flex justify={"flex-end"}>
+					<Text size={"xs"} c={"dimmed"}>
+						{`Last update - ${new Date(import.meta.env.VITE_BUILD_DATE).toLocaleDateString()}`}
+					</Text>
+				</Flex>
+			</Flex>
+		</AppShell.Footer>
+	);
+
+	if (isHome) {
+		return (
+			<AppShell
+				padding="md"
+				withBorder={false}
+				header={{ height: theme.headerHeight }}
+				footer={{ height: theme.footerHeight }}
+			>
+				{header}
+				<AppShell.Main mih={"auto"}>
+					<NestedView />
+				</AppShell.Main>
+				{footer}
+			</AppShell>
+		);
+	}
 
 	return (
 		<AppShell
@@ -50,29 +92,14 @@ const Main = () => {
 				collapsed: { mobile: !opened },
 			}}
 		>
-			<AppShell.Header>
-				<Header opened={opened} toggle={toggle} />
-			</AppShell.Header>
+			{header}
 			<AppShell.Navbar>
 				<Sidebar toggle={toggle} />
 			</AppShell.Navbar>
 			<AppShell.Main mih={"auto"}>
 				<NestedView />
 			</AppShell.Main>
-			<AppShell.Footer>
-				<Flex justify={"space-between"} align={"center"} h={"100%"} px={"xs"}>
-					<Flex flex={1} justify={"flex-start"}>
-						<Text size={"xs"} c={"dimmed"}>
-							Alepha Docs
-						</Text>
-					</Flex>
-					<Flex justify={"flex-end"}>
-						<Text size={"xs"} c={"dimmed"}>
-							{`Last update - ${new Date(import.meta.env.VITE_BUILD_DATE).toLocaleDateString()}`}
-						</Text>
-					</Flex>
-				</Flex>
-			</AppShell.Footer>
+			{footer}
 		</AppShell>
 	);
 };

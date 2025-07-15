@@ -40,6 +40,7 @@ const Content = (props: ModuleProps) => {
 					direction={"column"}
 					maw={{
 						sm: 800,
+						lg: 800,
 					}}
 					gap={{ base: "sm", md: "xl" }}
 				>

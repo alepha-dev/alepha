@@ -6,6 +6,7 @@ import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
 import { markedHighlight } from "marked-highlight";
 import { theme } from "../src/config/theme.ts";
+import { snippets } from "./snippets.ts";
 
 export type Docs = Record<
 	string,
@@ -92,7 +93,7 @@ class App {
 						docs[category].push({
 							slug: `${this.slug(name)}`,
 							name: this.pretty(name),
-							content: await this.render(join(rootDir, file)),
+							content: await this.renderFile(join(rootDir, file)),
 							description: "",
 							path: file,
 						});
@@ -125,7 +126,7 @@ class App {
 						slug: this.slug(name),
 						name: this.pretty(name),
 						description,
-						content: await this.render(filepath),
+						content: await this.renderFile(filepath),
 						path: file,
 					});
 
@@ -161,8 +162,19 @@ class App {
 					}
 				}
 
+				for (const key of Object.keys(snippets) as Array<
+					keyof typeof snippets
+				>) {
+					snippets[key] = await this.renderContent(
+						`\`\`\`tsx\n${snippets[key].trim()}\n\`\`\``,
+					);
+				}
+
 				const outputFilepath = join(outputDir, "index.ts");
-				const outputFileContent = `export const docs = ${JSON.stringify(result, null, 2)}`;
+				const outputFileContent = `
+					export const docs = ${JSON.stringify(result, null, 2)};
+					export const snippets = ${JSON.stringify(snippets, null, 2)};
+					`.trim();
 
 				await writeFile(
 					outputFilepath,
@@ -189,8 +201,12 @@ class App {
 			.join(" ");
 	}
 
-	async render(filepath: string) {
+	async renderFile(filepath: string) {
 		const content = await readFile(filepath, "utf8");
+		return await this.renderContent(content);
+	}
+
+	async renderContent(content: string) {
 		return await this.marked.parse(content);
 	}
 }

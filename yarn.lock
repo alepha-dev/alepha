@@ -150,7 +150,7 @@ __metadata:
     "@alepha/retry": "npm:0.8.0"
     "@sinclair/typebox": "npm:^0.34.37"
     drizzle-kit: "npm:0.31.4"
-    drizzle-orm: "npm:^0.44.2"
+    drizzle-orm: "npm:^0.44.3"
     postgres: "npm:^3.4.7"
     tsdown: "npm:^0.12.9"
     vitest: "npm:^3.2.4"
@@ -2598,7 +2598,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^24.0.13":
+"@types/node@npm:*, @types/node@npm:>=13.7.0":
   version: 24.0.13
   resolution: "@types/node@npm:24.0.13"
   dependencies:
@@ -2611,6 +2611,15 @@ __metadata:
   version: 16.18.11
   resolution: "@types/node@npm:16.18.11"
   checksum: 10c0/7bdf5e865a7959a72881ede19a882219f9d0baadf9ef8fdf24523291d401a7fc43bf91aa3223b1961ca54e1363f542cc4d60c8b00a70b457b2e9439b82adac70
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^24.0.14":
+  version: 24.0.14
+  resolution: "@types/node@npm:24.0.14"
+  dependencies:
+    undici-types: "npm:~7.8.0"
+  checksum: 10c0/536b5a816554ad1522e9e0c1d517b317f8478798bd76a332d83690aa42b19b5b263eb295ee25f9d0badb430ee6e36412ee9070cb5e3359f6bdcf7e08f94302f1
   languageName: node
   linkType: hard
 
@@ -4403,9 +4412,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"drizzle-orm@npm:^0.44.2":
-  version: 0.44.2
-  resolution: "drizzle-orm@npm:0.44.2"
+"drizzle-orm@npm:^0.44.3":
+  version: 0.44.3
+  resolution: "drizzle-orm@npm:0.44.3"
   peerDependencies:
     "@aws-sdk/client-rds-data": ">=3"
     "@cloudflare/workers-types": ">=4"
@@ -4494,7 +4503,7 @@ __metadata:
       optional: true
     sqlite3:
       optional: true
-  checksum: 10c0/29c88cb32fcd547b668184a7811a8be89f591ac9e53d5d1b8ab791dd5dd9eee991111d237a738545f5e475b83dbba8163c6b2a8231a59ec4e97e4f3356441bf5
+  checksum: 10c0/1bd0005aa4dfcba0e8ffabd5baf0e4d696a9168869c6f519d1a829991dad3d6fdffe8714ede4032564f7bb2e6508dd517d05c205918cee0cda6fec5f844fd882
   languageName: node
   linkType: hard
 
@@ -8599,7 +8608,7 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.1.1"
-    "@types/node": "npm:^24.0.13"
+    "@types/node": "npm:^24.0.14"
     "@vitejs/plugin-react": "npm:^4.6.0"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"

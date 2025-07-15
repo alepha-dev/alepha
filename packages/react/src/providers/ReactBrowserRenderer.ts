@@ -17,6 +17,10 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
+export interface ReactBrowserRendererOptions {
+	scrollRestoration?: "top" | "manual";
+}
+
 // TODO: move to ReactBrowserProvider when it will be removed from server-side imports
 export class ReactBrowserRenderer {
 	protected readonly browserProvider = $inject(ReactBrowserProvider);
@@ -25,6 +29,10 @@ export class ReactBrowserRenderer {
 	protected readonly log = $logger();
 
 	protected root!: Root;
+
+	public options: ReactBrowserRendererOptions = {
+		scrollRestoration: "top",
+	};
 
 	protected getRootElement() {
 		const root = this.browserProvider.document.getElementById(
@@ -54,6 +62,18 @@ export class ReactBrowserRenderer {
 				this.root ??= createRoot(this.getRootElement());
 				this.root.render(element);
 				this.log.info("Created root element");
+			}
+		},
+	});
+
+	protected readonly onTransitionEnd = $hook({
+		on: "react:transition:end",
+		handler: () => {
+			if (
+				this.options.scrollRestoration === "top" &&
+				typeof window !== "undefined"
+			) {
+				window.scrollTo(0, 0);
 			}
 		},
 	});

@@ -4,8 +4,10 @@ import {
 	Burger,
 	Button,
 	Container,
+	Divider,
 	Flex,
 	Image,
+	Kbd,
 	Menu,
 	Text,
 	useMantineColorScheme,
@@ -15,6 +17,7 @@ import {
 	IconCheck,
 	IconDeviceLaptop,
 	IconMoon,
+	IconSearch,
 	IconSun,
 } from "@tabler/icons-react";
 import { theme } from "../config/theme.ts";
@@ -44,6 +47,20 @@ const Header = (props: Props) => {
 
 				<Flex flex={1}></Flex>
 
+				<Button
+					visibleFrom={"md"}
+					variant={"subtle"}
+					component={Link}
+					to={"/docs/introduction"}
+				>
+					Guide
+				</Button>
+				<Divider visibleFrom={"md"} orientation={"vertical"} />
+				<Flex visibleFrom={"md"}>
+					<SearchButton />
+				</Flex>
+				<Divider visibleFrom={"md"} orientation={"vertical"} />
+
 				<ActionIcon
 					size={"lg"}
 					variant={"default"}
@@ -60,6 +77,19 @@ const Header = (props: Props) => {
 };
 
 export default Header;
+
+const SearchButton = () => {
+	return (
+		<Button
+			leftSection={<IconSearch size={16} />}
+			variant={"default"}
+			c={"dimmed"}
+			rightSection={<Kbd>Ctrl K</Kbd>}
+		>
+			Search...
+		</Button>
+	);
+};
 
 const HomeButton = () => {
 	return (
