@@ -8,6 +8,22 @@ import {
 
 const KEY = "AUTH";
 
+/**
+ *
+ */
+export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
+	__descriptor(KEY);
+	return {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+		jwks: () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+};
+
+$auth[KIND] = KEY;
+
 export type AccessToken = string;
 
 export interface AuthDescriptorOptions {
@@ -28,16 +44,3 @@ export interface AuthDescriptor {
 	[OPTIONS]: AuthDescriptorOptions;
 	jwks: () => string;
 }
-
-export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		jwks: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-};
-
-$auth[KIND] = KEY;

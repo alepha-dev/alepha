@@ -9,23 +9,6 @@ import type { TopicDescriptor, TopicMessageSchema } from "./$topic.ts";
 
 const KEY = "SUBSCRIBER";
 
-export interface SubscriberDescriptorOptions<
-	T extends TopicMessageSchema = TopicMessageSchema,
-> {
-	topic: TopicDescriptor<T>;
-
-	handler: (message: { payload: Static<T["payload"]> }) => Promise<void>;
-}
-
-export interface SubscriberDescriptor<
-	T extends TopicMessageSchema = TopicMessageSchema,
-> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: SubscriberDescriptorOptions<T>;
-
-	topic: () => TopicDescriptor<T>;
-}
-
 /**
  * Subscriber descriptor.
  *
@@ -46,3 +29,20 @@ export const $subscriber = <T extends TopicMessageSchema>(
 };
 
 $subscriber[KIND] = KEY;
+
+export interface SubscriberDescriptorOptions<
+	T extends TopicMessageSchema = TopicMessageSchema,
+> {
+	topic: TopicDescriptor<T>;
+
+	handler: (message: { payload: Static<T["payload"]> }) => Promise<void>;
+}
+
+export interface SubscriberDescriptor<
+	T extends TopicMessageSchema = TopicMessageSchema,
+> {
+	[KIND]: typeof KEY;
+	[OPTIONS]: SubscriberDescriptorOptions<T>;
+
+	topic: () => TopicDescriptor<T>;
+}

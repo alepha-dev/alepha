@@ -11,7 +11,7 @@ import type { QueueProvider } from "../providers/QueueProvider.ts";
 const KEY = "QUEUE";
 
 /**
- * Queue descriptor.
+ * Create a new queue.
  */
 export const $queue = <T extends QueueMessageSchema>(
 	options: QueueDescriptorOptions<T>,

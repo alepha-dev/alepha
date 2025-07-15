@@ -1,16 +1,19 @@
-# alepha/vite
+# Alepha Vite
 
 Vite plugin for building Alepha applications.
 
-```ts
-// vite.config.ts
-import { defineConfig } from "vite"; // or rolldown-vite
-import { viteAlepha } from "alepha/vite";
+## Installation
 
-export default defineConfig({
-	// ...
-	plugins: [
-		viteAlepha({}),
-	],
-});
+This package is part of the Alepha framework and can be installed via the all-in-one package:
+
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/vite
+```
+
+## API Reference

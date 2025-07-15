@@ -15,6 +15,46 @@ import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
 
 const KEY = "PAGE";
 
+/**
+ * Main descriptor for defining a React route in the application.
+ */
+export const $page = <
+	TConfig extends PageConfigSchema = PageConfigSchema,
+	TProps extends object = TPropsDefault,
+	TPropsParent extends object = TPropsParentDefault,
+>(
+	options: PageDescriptorOptions<TConfig, TProps, TPropsParent>,
+): PageDescriptor<TConfig, TProps, TPropsParent> => {
+	__descriptor(KEY);
+
+	// if (options.children) {
+	// 	for (const child of options.children) {
+	// 		child[OPTIONS].parent = {
+	// 			[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
+	// 		};
+	// 	}
+	// }
+
+	// if (options.parent) {
+	// 	options.parent[OPTIONS].children ??= [];
+	// 	options.parent[OPTIONS].children.push({
+	// 		[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
+	// 	});
+	// }
+
+	return {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+		render: () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+};
+
+$page[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface PageConfigSchema {
 	query?: TSchema;
 	params?: TSchema;
@@ -144,46 +184,6 @@ export interface PageDescriptor<
 		options?: PageDescriptorRenderOptions,
 	) => Promise<PageDescriptorRenderResult>;
 }
-
-/**
- * Main descriptor for defining a React route in the application.
- */
-export const $page = <
-	TConfig extends PageConfigSchema = PageConfigSchema,
-	TProps extends object = TPropsDefault,
-	TPropsParent extends object = TPropsParentDefault,
->(
-	options: PageDescriptorOptions<TConfig, TProps, TPropsParent>,
-): PageDescriptor<TConfig, TProps, TPropsParent> => {
-	__descriptor(KEY);
-
-	// if (options.children) {
-	// 	for (const child of options.children) {
-	// 		child[OPTIONS].parent = {
-	// 			[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
-	// 		};
-	// 	}
-	// }
-
-	// if (options.parent) {
-	// 	options.parent[OPTIONS].children ??= [];
-	// 	options.parent[OPTIONS].children.push({
-	// 		[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
-	// 	});
-	// }
-
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		render: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-};
-
-$page[KIND] = KEY;
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 export interface PageDescriptorRenderOptions {
 	params?: Record<string, string>;

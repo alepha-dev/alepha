@@ -1,8 +1,6 @@
 import type { Logger } from "../services/Logger.ts";
 import { $cursor } from "./$cursor.ts";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * Create a logger.
  *
@@ -30,5 +28,3 @@ export const $logger = (name?: string): Logger => {
 		name: module?.name ?? context.env.MODULE_NAME ?? "app",
 	});
 };
-
-// ---------------------------------------------------------------------------------------------------------------------

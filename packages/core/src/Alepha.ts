@@ -26,100 +26,6 @@ import type {
 import { AlsProvider } from "./providers/AlsProvider.ts";
 import { Logger, type LoggerEnv } from "./services/Logger.ts";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface Env extends LoggerEnv {
-	[key: string]: string | boolean | number | undefined;
-
-	/**
-	 * Optional environment variable that indicates the current environment.
-	 */
-	NODE_ENV?: "dev" | "test" | "production";
-
-	/**
-	 * Optional name of the application.
-	 */
-	APP_NAME?: string;
-
-	/**
-	 * Optional root module name.
-	 */
-	MODULE_NAME?: string;
-
-	/**
-	 * If true, the container will not automatically register the default providers based on the descriptors.
-	 *
-	 * It means that you have to alepha.with(ServiceModule) manually. No magic.
-	 *
-	 * @default false
-	 */
-	EXPLICIT_PROVIDERS?: boolean;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface State {
-	log: Logger;
-	env?: Readonly<Env>;
-
-	// test hooks
-	beforeAll?: (run: any) => any;
-	afterAll?: (run: any) => any;
-	afterEach?: (run: any) => any;
-	onTestFinished?: (run: any) => any;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface Hooks {
-	echo: any; // for testing purposes
-
-	/**
-	 * Triggered during the configuration phase. Before the start phase.
-	 */
-	configure: Alepha;
-
-	/**
-	 * Triggered during the start phase. When `Alepha#start()` is called.
-	 */
-	start: Alepha;
-
-	/**
-	 * Triggered during the ready phase. After the start phase.
-	 */
-	ready: Alepha;
-
-	/**
-	 * Triggered during the stop phase.
-	 *
-	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application. (@see `run()` method)
-	 *
-	 */
-	stop: Alepha;
-
-	/**
-	 * Triggered when a state value is mutated.
-	 */
-	"state:mutate": {
-		/**
-		 * The key of the state that was mutated.
-		 */
-		key: keyof State;
-
-		/**
-		 * The new value of the state.
-		 */
-		value: any;
-
-		/**
-		 * The previous value of the state.
-		 */
-		prevValue: any;
-	};
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * Core container of the Alepha framework.
  *
@@ -145,9 +51,9 @@ export interface Hooks {
  * ```
  *
  * > Some alepha methods are not intended to be used directly, use descriptors instead.
- *
- * - $hook -> alepha.on()
- * - $inject -> alepha.get(), alepha.parseEnv()
+ * >
+ * > - $hook -> alepha.on()
+ * > - $inject -> alepha.get(), alepha.parseEnv()
  */
 export class Alepha {
 	/**
@@ -1194,3 +1100,97 @@ interface ServiceDefinition<T extends object = any> {
 	 */
 	module?: ModuleDefinition;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface Env extends LoggerEnv {
+	[key: string]: string | boolean | number | undefined;
+
+	/**
+	 * Optional environment variable that indicates the current environment.
+	 */
+	NODE_ENV?: "dev" | "test" | "production";
+
+	/**
+	 * Optional name of the application.
+	 */
+	APP_NAME?: string;
+
+	/**
+	 * Optional root module name.
+	 */
+	MODULE_NAME?: string;
+
+	/**
+	 * If true, the container will not automatically register the default providers based on the descriptors.
+	 *
+	 * It means that you have to alepha.with(ServiceModule) manually. No magic.
+	 *
+	 * @default false
+	 */
+	EXPLICIT_PROVIDERS?: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface State {
+	log: Logger;
+	env?: Readonly<Env>;
+
+	// test hooks
+	beforeAll?: (run: any) => any;
+	afterAll?: (run: any) => any;
+	afterEach?: (run: any) => any;
+	onTestFinished?: (run: any) => any;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface Hooks {
+	echo: any; // for testing purposes
+
+	/**
+	 * Triggered during the configuration phase. Before the start phase.
+	 */
+	configure: Alepha;
+
+	/**
+	 * Triggered during the start phase. When `Alepha#start()` is called.
+	 */
+	start: Alepha;
+
+	/**
+	 * Triggered during the ready phase. After the start phase.
+	 */
+	ready: Alepha;
+
+	/**
+	 * Triggered during the stop phase.
+	 *
+	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application. (@see `run()` method)
+	 *
+	 */
+	stop: Alepha;
+
+	/**
+	 * Triggered when a state value is mutated.
+	 */
+	"state:mutate": {
+		/**
+		 * The key of the state that was mutated.
+		 */
+		key: keyof State;
+
+		/**
+		 * The new value of the state.
+		 */
+		value: any;
+
+		/**
+		 * The previous value of the state.
+		 */
+		prevValue: any;
+	};
+}
+
+// ---------------------------------------------------------------------------------------------------------------------

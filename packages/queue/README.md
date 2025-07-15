@@ -1,23 +1,36 @@
-# alepha/queue
+# Alepha Queue
 
-```ts
-import { run } from '@alepha/core';
-import { $queue, $consumer } from '@alepha/queue';
+A simple, powerful interface for message queueing systems.
 
-class App {
-  q = $queue({
-    schema: {
-      payload: t.object({ id: t.uuid() }),
-    }
-  });
+## Installation
 
-  worker = $consumer({
-    queue: this.q,
-    handler: async ({ payload }) => {
-      console.log(payload.id);
-    }
-  });
-}
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
-run(App)
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/queue
+```
+## Module
+
+Alepha Queue Module
+
+Generic interface for queueing.
+Gives you the ability to create queues and consumers.
+This module provides only a memory implementation of the queue provider.
+
+## API Reference
+
+### Descriptors
+
+#### $consumer()
+
+Consumer descriptor.
+
+#### $queue()
+
+Create a new queue.

@@ -3,8 +3,6 @@ import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { RetryCancelError } from "../errors/RetryCancelError.ts";
 import { RetryTimeoutError } from "../errors/RetryTimeoutError.ts";
 
-// TODO: move to RetryProvider
-
 /**
  * Creates a function that automatically retries a handler upon failure,
  * with support for exponential backoff, max duration, and cancellation.
@@ -22,6 +20,10 @@ export const $retry = <T extends (...args: any[]) => any>(
 
 	return createRetryHandler(opts, dateTimeProvider, appAbortController);
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+// TODO: move to RetryProvider
 
 export const createRetryHandler = <T extends (...args: any[]) => any>(
 	opts: RetryDescriptorOptions<T>,

@@ -5,6 +5,43 @@ import type { Role } from "../schemas/roleSchema.ts";
 
 const KEY = "REALM";
 
+/**
+ *
+ * @param options
+ */
+export const $realm = (
+	options: RealmDescriptorOptions = {},
+): RealmDescriptor => {
+	__descriptor(KEY);
+
+	const $: RealmDescriptor = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$[KIND] = KEY;
+	$[OPTIONS] = options;
+
+	$.getRoles = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.getRoleByName = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.setRoles = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$.createToken = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	return $;
+};
+
+$realm[KIND] = KEY;
+
 export interface RealmDescriptorOptions {
 	/**
 	 * Define the realm name.
@@ -64,36 +101,3 @@ export interface RealmDescriptor {
 	 */
 	createToken(subject: string, roles?: string[]): Promise<string>;
 }
-
-export const $realm = (
-	options: RealmDescriptorOptions = {},
-): RealmDescriptor => {
-	__descriptor(KEY);
-
-	const $: RealmDescriptor = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	$.getRoles = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.getRoleByName = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.setRoles = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.createToken = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $;
-};
-
-$realm[KIND] = KEY;

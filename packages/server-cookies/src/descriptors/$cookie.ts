@@ -10,6 +10,41 @@ import type { DurationLike } from "@alepha/datetime";
 
 const KEY = "COOKIE";
 
+/**
+ * Declares a type-safe, configurable HTTP cookie.
+ * This descriptor provides methods to get, set, and delete the cookie
+ * within the server request/response cycle.
+ */
+export const $cookie: {
+	<T extends TSchema>(options: CookieDescriptorOptions<T>): CookieDescriptor<T>;
+	[KIND]: string;
+} = <T extends TSchema>(
+	options: CookieDescriptorOptions<T>,
+): CookieDescriptor<T> => {
+	__descriptor(KEY);
+
+	const api: Partial<CookieDescriptor<T>> = {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+		schema: options.schema,
+		set: () => {
+			throw new NotImplementedError(KEY);
+		},
+		get: () => {
+			throw new NotImplementedError(KEY);
+		},
+		del: () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+
+	return api as CookieDescriptor<T>;
+};
+
+$cookie[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface CookieDescriptorOptions<T extends TSchema> {
 	/** The schema for the cookie's value, used for validation and type safety. */
 	schema: T;
@@ -60,41 +95,6 @@ export interface CookieDescriptor<T extends TSchema> {
 	/** Deletes the cookie in the current request's response. */
 	del: (options?: { cookies?: Cookies }) => void;
 }
-
-/**
- * Declares a type-safe, configurable HTTP cookie.
- * This descriptor provides methods to get, set, and delete the cookie
- * within the server request/response cycle.
- */
-export const $cookie: {
-	<T extends TSchema>(options: CookieDescriptorOptions<T>): CookieDescriptor<T>;
-	[KIND]: string;
-} = <T extends TSchema>(
-	options: CookieDescriptorOptions<T>,
-): CookieDescriptor<T> => {
-	__descriptor(KEY);
-
-	const api: Partial<CookieDescriptor<T>> = {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		schema: options.schema,
-		set: () => {
-			throw new NotImplementedError(KEY);
-		},
-		get: () => {
-			throw new NotImplementedError(KEY);
-		},
-		del: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-
-	return api as CookieDescriptor<T>;
-};
-
-$cookie[KIND] = KEY;
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 export interface Cookies {
 	req: Record<string, string>;

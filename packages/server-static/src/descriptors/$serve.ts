@@ -3,6 +3,25 @@ import type { DurationLike } from "@alepha/datetime";
 
 const KEY = "SERVE";
 
+/**
+ * Create a new static file handler.
+ */
+export const $serve: {
+	(options?: ServeDescriptorOptions): ServeDescriptor;
+	[KIND]: string;
+} = (options: ServeDescriptorOptions = {}): ServeDescriptor => {
+	__descriptor(KEY);
+	return {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+		list: () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+};
+
+$serve[KIND] = KEY;
+
 export interface ServeDescriptorOptions {
 	/**
 	 * Prefix for the served path.
@@ -89,19 +108,3 @@ export interface ServeDescriptor {
 	[OPTIONS]: ServeDescriptorOptions;
 	list(): string[];
 }
-
-export const $serve: {
-	(options?: ServeDescriptorOptions): ServeDescriptor;
-	[KIND]: string;
-} = (options: ServeDescriptorOptions = {}): ServeDescriptor => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		list: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-};
-
-$serve[KIND] = KEY;

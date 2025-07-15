@@ -5,6 +5,20 @@ import {
 	type DurationLike,
 } from "../providers/DateTimeProvider.ts";
 
+/**
+ * Registers a new interval.
+ */
+export const $interval = (options: IntervalDescriptorOptions): Interval => {
+	const { context } = $cursor();
+	const dt = context.get(DateTimeProvider);
+
+	return dt.interval({
+		attach: true,
+		run: false,
+		...options,
+	});
+};
+
 export interface IntervalDescriptorOptions {
 	/**
 	 * Whether to start the interval immediately.
@@ -32,17 +46,3 @@ export interface IntervalDescriptorOptions {
 	 */
 	duration: DurationLike;
 }
-
-/**
- * Registers a new interval.
- */
-export const $interval = (options: IntervalDescriptorOptions): Interval => {
-	const { context } = $cursor();
-	const dt = context.get(DateTimeProvider);
-
-	return dt.interval({
-		attach: true,
-		run: false,
-		...options,
-	});
-};

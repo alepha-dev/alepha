@@ -14,6 +14,36 @@ import type {
 
 const KEY = "TOPIC";
 
+/**
+ * Create a new topic.
+ */
+export const $topic = <T extends TopicMessageSchema>(
+	options: TopicDescriptorOptions<T>,
+): TopicDescriptor<T> => {
+	__descriptor(KEY);
+	return {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+		name: () => {
+			throw new NotImplementedError(KEY);
+		},
+		provider: () => {
+			throw new NotImplementedError(KEY);
+		},
+		publish: async () => {
+			throw new NotImplementedError(KEY);
+		},
+		subscribe: async () => {
+			throw new NotImplementedError(KEY);
+		},
+		wait: async () => {
+			throw new NotImplementedError(KEY);
+		},
+	};
+};
+
+$topic[KIND] = KEY;
+
 export interface TopicMessageSchema {
 	headers?: TSchema;
 	payload: TSchema;
@@ -51,30 +81,3 @@ export interface TopicWaitOptions<T extends TopicMessageSchema> {
 	timeout?: DurationLike;
 	filter?: (message: { payload: Static<T["payload"]> }) => boolean;
 }
-
-export const $topic = <T extends TopicMessageSchema>(
-	options: TopicDescriptorOptions<T>,
-): TopicDescriptor<T> => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		name: () => {
-			throw new NotImplementedError(KEY);
-		},
-		provider: () => {
-			throw new NotImplementedError(KEY);
-		},
-		publish: async () => {
-			throw new NotImplementedError(KEY);
-		},
-		subscribe: async () => {
-			throw new NotImplementedError(KEY);
-		},
-		wait: async () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-};
-
-$topic[KIND] = KEY;

@@ -1,14 +1,19 @@
-# alepha/server
+# Alepha Server Proxy
 
-```ts
-import { Alepha } from "alepha";
-import { $route } from "alepha/server";
+Reverse-proxies incoming requests to other backend services.
 
-class App {
-  index = $route({
-    handler: () => "Hello, World!",
-  });
-}
+## Installation
 
-run(App);
+This package is part of the Alepha framework and can be installed via the all-in-one package:
+
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/server-proxy
+```
+
+## API Reference

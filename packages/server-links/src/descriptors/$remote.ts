@@ -4,6 +4,28 @@ import type { ProxyDescriptorOptions } from "@alepha/server-proxy";
 
 const KEY = "REMOTE";
 
+/**
+ * $remote is a descriptor that allows you to define remote service access.
+ *
+ * Use it only when you have 2 or more services that need to communicate with each other.
+ *
+ * All remote services can be exposed as actions, ... or not.
+ *
+ * You can add a service account if you want to use a security layer.
+ */
+export const $remote: {
+	(options: RemoteDescriptorOptions): RemoteDescriptor;
+	[KIND]: string;
+} = (options: RemoteDescriptorOptions) => {
+	__descriptor(KEY);
+	return {
+		[KIND]: KEY,
+		[OPTIONS]: options,
+	} as RemoteDescriptor;
+};
+
+$remote[KIND] = KEY;
+
 export interface RemoteDescriptorOptions {
 	/**
 	 * The URL of the remote service.
@@ -60,25 +82,3 @@ export interface RemoteDescriptor {
 	[KIND]: typeof KEY;
 	[OPTIONS]: RemoteDescriptorOptions;
 }
-
-/**
- * $remote is a descriptor that allows you to define a remote service access.
- *
- * Use it only when you have 2 or more services that need to communicate with each other.
- *
- * All remote services can be exposed as actions, ... or not.
- *
- * You can add a service account if you want to use a security layer.
- */
-export const $remote: {
-	(options: RemoteDescriptorOptions): RemoteDescriptor;
-	[KIND]: string;
-} = (options: RemoteDescriptorOptions) => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-	} as RemoteDescriptor;
-};
-
-$remote[KIND] = KEY;

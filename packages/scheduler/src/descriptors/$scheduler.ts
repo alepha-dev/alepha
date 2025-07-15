@@ -28,9 +28,6 @@ export const $scheduler = (
 
 $scheduler[KIND] = KEY;
 
-export const isScheduler = (value: any): value is SchedulerDescriptor =>
-	value && value[KIND] === KEY;
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type SchedulerDescriptorOptions = {

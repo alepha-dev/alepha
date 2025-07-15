@@ -13,6 +13,34 @@ import type { RunnerMethod } from "../helpers/Runner.ts";
 
 const KEY = "COMMAND";
 
+/**
+ * Declares a CLI command.
+ *
+ * This descriptor allows you to define a command, its flags, and its handler
+ * within your Alepha application structure.
+ */
+export const $command: {
+	<T extends TObject>(
+		options: CommandDescriptorOptions<T>,
+	): CommandDescriptor<T>;
+	[KIND]: string;
+} = <T extends TObject>(
+	options: CommandDescriptorOptions<T>,
+): CommandDescriptor<T> => {
+	__descriptor(KEY);
+
+	const $: Partial<CommandDescriptor<T>> = async () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$[KIND] = KEY;
+	$[OPTIONS] = options;
+
+	return $ as CommandDescriptor<T>;
+};
+
+$command[KIND] = KEY;
+
 export interface CommandDescriptorOptions<T extends TObject> {
 	/**
 	 * The handler function to execute when the command is matched.
@@ -56,31 +84,3 @@ export interface CommandDescriptor<T extends TObject> {
 	 */
 	(flags: Static<T>): Promise<void>;
 }
-
-/**
- * Declares a CLI command.
- *
- * This descriptor allows you to define a command, its flags, and its handler
- * within your Alepha application structure.
- */
-export const $command: {
-	<T extends TObject>(
-		options: CommandDescriptorOptions<T>,
-	): CommandDescriptor<T>;
-	[KIND]: string;
-} = <T extends TObject>(
-	options: CommandDescriptorOptions<T>,
-): CommandDescriptor<T> => {
-	__descriptor(KEY);
-
-	const $: Partial<CommandDescriptor<T>> = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	return $ as CommandDescriptor<T>;
-};
-
-$command[KIND] = KEY;

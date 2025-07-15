@@ -4,6 +4,29 @@ import type { Permission } from "../schemas/permissionSchema.ts";
 
 const KEY = "PERMISSION";
 
+/**
+ *
+ */
+export const $permission = (
+	options: PermissionDescriptorOptions = {},
+): PermissionDescriptor => {
+	__descriptor(KEY);
+
+	const $: PermissionDescriptor = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	$[KIND] = KEY;
+	$[OPTIONS] = options;
+	$.can = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	return $;
+};
+
+$permission[KIND] = KEY;
+
 export interface PermissionDescriptorOptions {
 	/**
 	 * Name of the permission. Use Property name is not provided.
@@ -45,23 +68,3 @@ export interface PermissionDescriptor {
 	 */
 	can(user: UserAccountInfo): boolean;
 }
-
-export const $permission = (
-	options: PermissionDescriptorOptions = {},
-): PermissionDescriptor => {
-	__descriptor(KEY);
-
-	const $: PermissionDescriptor = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-	$.can = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $;
-};
-
-$permission[KIND] = KEY;

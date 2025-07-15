@@ -4,22 +4,9 @@ import { AlephaPostgres } from "../index.ts";
 import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 import { Repository } from "../services/Repository.ts";
 
-export type DbDescriptorOptions<
-	T extends {
-		[key: string]: TableLike;
-	},
-> = {
-	entities?: T;
-};
-
-export type DbDescriptor<
-	T extends {
-		[key: string]: TableLike;
-	},
-> = {
-	[key in keyof T]: Repository<any, T[key]["$schema"]>;
-} & Pick<PostgresProvider, "execute">;
-
+/**
+ * @experimental
+ */
 export const $db = <
 	T extends {
 		[key: string]: TableLike;
@@ -43,3 +30,19 @@ export const $db = <
 		execute: provider.execute.bind(provider),
 	} as DbDescriptor<T>;
 };
+
+export type DbDescriptorOptions<
+	T extends {
+		[key: string]: TableLike;
+	},
+> = {
+	entities?: T;
+};
+
+export type DbDescriptor<
+	T extends {
+		[key: string]: TableLike;
+	},
+> = {
+	[key in keyof T]: Repository<any, T[key]["$schema"]>;
+} & Pick<PostgresProvider, "execute">;

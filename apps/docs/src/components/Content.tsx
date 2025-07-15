@@ -82,7 +82,16 @@ const ContentAside = (props: { name: string }) => {
 	return (
 		<Flex w={theme.sidebarWidth} pos={"relative"} visibleFrom={"xl"}>
 			<Flex pos={"fixed"} right={20}>
-				<Flex p={"xl"} w={theme.sidebarWidth} fw={300}>
+				<Flex
+					p={"xl"}
+					w={theme.sidebarWidth}
+					fw={300}
+					direction={"column"}
+					gap={"md"}
+				>
+					<Text size={"sm"} fw={"bold"}>
+						Table of contents
+					</Text>
 					<TableOfContents
 						reinitializeRef={reinitializeRef}
 						variant="light"

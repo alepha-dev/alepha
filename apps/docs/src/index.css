@@ -26,6 +26,28 @@
 	border-top: 1px solid rgb(0, 0, 0, 0.1);
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	text-shadow: 2px 5px 0 rgba(0, 0, 0, 0.05);
+}
+
+h1::after,
+h2::after,
+h3::after,
+h4::after,
+h5::after,
+h6::after {
+	content: "";
+	display: block;
+	width: 32px;
+	height: 1px;
+	background: var(--mantine-color-text);
+}
+
 html[data-mantine-color-scheme="dark"] {
 	body {
 		background-color: #101010;
@@ -45,6 +67,15 @@ html[data-mantine-color-scheme="dark"] {
 		backdrop-filter: var(--layout-bg-filter);
 		background-color: var(--layout-bg-color-dark);
 		border-top: 1px solid var(--layout-border-color-dark);
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		text-shadow: 2px 5px 0px rgba(0, 0, 0, 0.3);
 	}
 }
 

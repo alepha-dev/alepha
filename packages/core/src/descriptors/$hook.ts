@@ -8,54 +8,6 @@ import { $cursor } from "./$cursor.ts";
 
 const KEY = "HOOK";
 
-export interface HookOptions<T extends keyof Hooks> {
-	/**
-	 * The name of the hook. "configure", "start", "ready", "stop", ...
-	 */
-	on: T;
-
-	/**
-	 * The handler to run when the hook is triggered.
-	 */
-	handler: (app: Hooks[T]) => Async<any>;
-
-	/**
-	 * Force the hook to run first or last on the list of hooks.
-	 */
-	priority?: "first" | "last";
-
-	/**
-	 * Empty placeholder, not working yet. :-)
-	 */
-	before?: object | Array<object>;
-
-	/**
-	 * Empty placeholder, not working yet. :-)
-	 */
-	after?: object | Array<object>;
-}
-
-export interface Hook<T extends keyof Hooks = any> {
-	caller?: Service;
-	priority?: "first" | "last";
-	callback: (payload: Hooks[T]) => Async<void>;
-}
-
-export interface HookDescriptor<T extends keyof Hooks> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: HookOptions<T>;
-	(app: Hooks[T]): Async<any>;
-
-	//TODO:
-	/*
-	   .called - number of times the hook has been called
-	   .calledAt - last time the hook was called
-	   .paused() - boolean - if the hook is paused
-	   .pausedAt - number - when the hook was paused
-	   .resume() - function to resume the hook
-	 */
-}
-
 /**
  * Registers a new hook.
  *
@@ -122,3 +74,51 @@ export const $hook: {
 };
 
 $hook[KIND] = KEY;
+
+export interface HookOptions<T extends keyof Hooks> {
+	/**
+	 * The name of the hook. "configure", "start", "ready", "stop", ...
+	 */
+	on: T;
+
+	/**
+	 * The handler to run when the hook is triggered.
+	 */
+	handler: (app: Hooks[T]) => Async<any>;
+
+	/**
+	 * Force the hook to run first or last on the list of hooks.
+	 */
+	priority?: "first" | "last";
+
+	/**
+	 * Empty placeholder, not working yet. :-)
+	 */
+	before?: object | Array<object>;
+
+	/**
+	 * Empty placeholder, not working yet. :-)
+	 */
+	after?: object | Array<object>;
+}
+
+export interface Hook<T extends keyof Hooks = any> {
+	caller?: Service;
+	priority?: "first" | "last";
+	callback: (payload: Hooks[T]) => Async<void>;
+}
+
+export interface HookDescriptor<T extends keyof Hooks> {
+	[KIND]: typeof KEY;
+	[OPTIONS]: HookOptions<T>;
+	(app: Hooks[T]): Async<any>;
+
+	//TODO:
+	/*
+	   .called - number of times the hook has been called
+	   .calledAt - last time the hook was called
+	   .paused() - boolean - if the hook is paused
+	   .pausedAt - number - when the hook was paused
+	   .resume() - function to resume the hook
+	 */
+}

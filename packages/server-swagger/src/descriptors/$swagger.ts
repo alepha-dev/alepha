@@ -1,6 +1,29 @@
 import { __descriptor, KIND, OPTIONS } from "@alepha/core";
 import type { OpenAPIV3 } from "openapi-types";
 
+/**
+ * Create a new OpenAPI.
+ */
+export const $swagger: {
+	(options: SwaggerDescriptorOptions): SwaggerDescriptor;
+	[KIND]: string;
+} = (options: SwaggerDescriptorOptions): SwaggerDescriptor => {
+	__descriptor("SWAGGER");
+	return {
+		[KIND]: "SWAGGER",
+		[OPTIONS]: options,
+		json() {
+			return {
+				openapi: "3.0.0",
+				info: options.info,
+				paths: {},
+			};
+		},
+	};
+};
+
+$swagger[KIND] = "SWAGGER";
+
 export interface SwaggerDescriptorOptions {
 	info: OpenAPIV3.InfoObject;
 
@@ -87,23 +110,3 @@ export interface SwaggerDescriptor {
 	[OPTIONS]: SwaggerDescriptorOptions;
 	json(): OpenAPIV3.Document;
 }
-
-export const $swagger: {
-	(options: SwaggerDescriptorOptions): SwaggerDescriptor;
-	[KIND]: string;
-} = (options: SwaggerDescriptorOptions): SwaggerDescriptor => {
-	__descriptor("SWAGGER");
-	return {
-		[KIND]: "SWAGGER",
-		[OPTIONS]: options,
-		json() {
-			return {
-				openapi: "3.0.0",
-				info: options.info,
-				paths: {},
-			};
-		},
-	};
-};
-
-$swagger[KIND] = "SWAGGER";

@@ -1,24 +1,22 @@
-# alepha/react/head
+# Alepha React Head
 
-```ts
-import { Alepha } from "alepha";
-import { $page } from "alepha/react";
-import { ReactHeadModule } from "alepha/react/head";
+Manages the document <head> for SEO and metadata.
 
-class App {
-	root = $page({
-		head: {
-			title: 'My App',
-		},
-		component: () => "Hello, World!",
-	})
-}
+## Installation
 
-const alepha = Alepha.create();
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
-alepha
-	.with(ReactHeadModule)
-	.with(App);
-
-run(alepha);
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/react-head
+```
+## Module
+
+Alepha React Head Module
+
+## API Reference

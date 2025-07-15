@@ -1,43 +1,34 @@
-## Alepha Command
+# Alepha Command
 
 Build powerful, type-safe command-line interfaces for your application.
 
-## Usage
+## Installation
 
-```typescript
-import { run, t } from "alepha";
-import { $command } from "alepha/command";
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
-class CLI {
-  // Command name automatically becomes "build" from the key member name
-  build = $command({
-    description: "Build the project",
-    flags: t.object({
-      output: t.string({ description: "Output directory" }),
-      verbose: t.boolean({ default: false, description: "Verbose output" }),
-      watch: t.optional(t.boolean({ description: "Watch for changes" })),
-    }),
-    handler: async (args, rawArgs) => {
-      console.log("Building with options:", args);
-      if (args.verbose) {
-        console.log("Verbose mode enabled");
-      }
-      // Build logic here
-    },
-  });
-
-  // Explicit command name override
-  deploy = $command({
-    name: "deploy-prod",
-    flags: t.object({
-      env: t.string(),
-      replicas: t.number({ default: 1 }),
-    }),
-    handler: async (args, rawArgs) => {
-      console.log(`Deploying to ${args.env} with ${args.replicas} replicas`);
-    },
-  });
-}
-
-run(CLI);
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/command
+```
+## Module
+
+Alepha Command Module
+
+This module provides a powerful way to build command-line interfaces
+directly within your Alepha application, using declarative descriptors.
+
+## API Reference
+
+### Descriptors
+
+#### $command()
+
+Declares a CLI command.
+
+This descriptor allows you to define a command, its flags, and its handler
+within your Alepha application structure.

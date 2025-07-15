@@ -17,6 +17,38 @@ import type { FetchOptions, FetchResponse } from "../services/HttpClient.ts";
 
 const KEY = "ACTION";
 
+export const $action = <TConfig extends RequestConfigSchema>(
+	options: ActionDescriptorOptions<TConfig>,
+): ActionDescriptor<TConfig> => {
+	__descriptor(KEY);
+
+	const routeDescriptorOptions = {
+		...options.use?.[OPTIONS],
+		...options,
+	};
+
+	const action: Partial<ActionDescriptor<TConfig>> = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	action[KIND] = KEY;
+	action[OPTIONS] = routeDescriptorOptions;
+
+	action.fetch = async () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	action.permission = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	return action as ActionDescriptor<TConfig>;
+};
+
+$action[KIND] = KEY;
+
+// ----------------------------------------------------------------------------------------------------------
+
 export interface ActionDescriptorOptions<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends Omit<ServerRoute, "handler" | "path" | "schema"> {
@@ -121,38 +153,6 @@ export interface ActionDescriptor<
 	 */
 	permission: () => string;
 }
-
-export const $action = <TConfig extends RequestConfigSchema>(
-	options: ActionDescriptorOptions<TConfig>,
-): ActionDescriptor<TConfig> => {
-	__descriptor(KEY);
-
-	const routeDescriptorOptions = {
-		...options.use?.[OPTIONS],
-		...options,
-	};
-
-	const action: Partial<ActionDescriptor<TConfig>> = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	action[KIND] = KEY;
-	action[OPTIONS] = routeDescriptorOptions;
-
-	action.fetch = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	action.permission = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return action as ActionDescriptor<TConfig>;
-};
-
-$action[KIND] = KEY;
-
-// ----------------------------------------------------------------------------------------------------------
 
 export type ClientRequestEntry<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,

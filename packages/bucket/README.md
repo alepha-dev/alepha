@@ -1,17 +1,32 @@
-# alepha/bucket
+# Alepha Bucket
 
-```ts
-import { $bucket } from 'alepha/bucket';
-import { run } from 'alepha';
+A universal interface for object and file storage providers.
 
-class App {
-	images = $bucket({
-		provider: 'local', // or 'memory'
-		name: 'images',
-		maxSize: 10 * 1024 * 1024, // 10 MB
-		accept: ['image/png', 'image/jpeg', 'image/gif'],
-	})
-}
+## Installation
 
-run(App);
+This package is part of the Alepha framework and can be installed via the all-in-one package:
+
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/bucket
+```
+## Module
+
+Alepha Bucket Module
+
+This module provides file storage capabilities using different storage providers.
+It includes a default local file storage provider for production and a memory storage provider for testing.
+It also provides a $bucket() descriptor provider to manage file buckets.
+
+## API Reference
+
+### Descriptors
+
+#### $bucket()
+
+Store files in a bucket. WIP

@@ -2,23 +2,6 @@ import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
 
 const KEY = "SEQUENCE";
 
-export interface SequenceDescriptorOptions {
-	name?: string;
-	start?: number;
-	increment?: number;
-	min?: number;
-	max?: number;
-	cycle?: boolean;
-}
-
-export interface SequenceDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: SequenceDescriptorOptions;
-	(): Promise<number>;
-	next(): Promise<number>;
-	current(): Promise<number>;
-}
-
 export const $sequence = (
 	options: SequenceDescriptorOptions = {},
 ): SequenceDescriptor => {
@@ -41,3 +24,22 @@ export const $sequence = (
 };
 
 $sequence[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface SequenceDescriptorOptions {
+	name?: string;
+	start?: number;
+	increment?: number;
+	min?: number;
+	max?: number;
+	cycle?: boolean;
+}
+
+export interface SequenceDescriptor {
+	[KIND]: typeof KEY;
+	[OPTIONS]: SequenceDescriptorOptions;
+	(): Promise<number>;
+	next(): Promise<number>;
+	current(): Promise<number>;
+}

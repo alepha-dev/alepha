@@ -81,8 +81,8 @@ class Server {
 run(Server);
 ```
 
-> **Note:** Did you notice the $ on $route ?</br>
-> `$route` is a _descriptor_, a powerful factory function usable only in Alepha Context.
+> **Note:** Did you notice the `$` on `$route`  ?</br>
+> `$route` is a _descriptor_, a powerful factory function usable only in Alepha Context.</br>
 > You can learn more about descriptors in the [dedicated page](/docs/descriptors).
 
 That's all it takes to write a complete, working web server. Alepha plugs into your project with zero fuss.
@@ -98,13 +98,15 @@ node index.ts
 
 **Using Bun:**
 ```bash
-bun run index.ts
+bun index.ts
 ```
 
 You should see a message indicating that the server has started:
 
 ```
-[20:43:12] INFO: Server listening on http://localhost:3000
+[22:05:51.123] INFO <alepha.core.Alepha>: Starting App...
+[22:05:51.160] INFO <alepha.server.NodeHttpServerProvider>: Server listening on http://localhost:3000
+[22:05:51.160] INFO <alepha.core.Alepha>: App is now ready [37ms]
 ```
 
 Now, open your web browser or use a tool like `curl` to access the endpoint:
@@ -116,10 +118,3 @@ curl http://localhost:3000
 You should see the response: `Hello World!`
 
 Voilà! 🎉 You have successfully created and run your first Alepha application using just your runtime's native capabilities.
-
-### Next Steps
-
-You've just scratched the surface. Here’s where you can go from here:
-*   Learn how to create more complex APIs in the **[Your First API](./your-first-api.md)** guide.
-*   Explore the power of Alepha's type-safe database layer with the **[Database ORM](/packages/postgres/overview.md)** documentation.
-*   Dive into building a full-stack application with the **[Full-Stack Tutorial](./full-stack-tutorial.md)**.

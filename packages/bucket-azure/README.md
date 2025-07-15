@@ -1,21 +1,24 @@
-# alepha/bucket/azure
+# Alepha Bucket Azure
 
-```ts
-import { $bucket } from "alepha/bucket";
-import { AlephaAzureBucket } from "alepha/bucket/azure";
-import { Alepha, run } from "alepha";
+Azure Blob Storage implementation for the bucket file storage.
 
-class App {
-	images = $bucket()
-}
+## Installation
 
-const alepha = Alepha.create( {
-	env: {
-		AZ_STORAGE_CONNECTION_STRING: "",
-	},
-})
-	.with(AlephaAzureBucket)
-	.with(App);
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
-run(alepha);
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/bucket-azure
+```
+## Module
+
+Alepha Bucket Azure Module
+
+Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.
+
+## API Reference

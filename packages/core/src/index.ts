@@ -9,6 +9,9 @@ export * from "./index.shared.ts";
 // only for node.js environment
 AlsProvider.create = () => new AsyncLocalStorage();
 
+/**
+ *
+ */
 export const run = (
 	entry: Alepha | Service | Array<Service>,
 	opts?: RunOptions,

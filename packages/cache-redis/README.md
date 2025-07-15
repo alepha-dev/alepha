@@ -1,23 +1,24 @@
-# alepha/cache/redis
+# Alepha Cache Redis
 
-```ts
-import { $cache } from 'alepha/cache';
-import { AlephaRedisCache } from 'alepha/cache/redis';
-import { run } from 'alepha';
+Redis implementation for the caching interface.
 
-class App {
-	cache = $cache<string>();
-}
+## Installation
 
-const alepha = App.create({
-	env: {
-		REDIS_URL: 'redis://localhost:6379',
-	},
-});
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
-alepha
-	.with(AlephaRedisCache)
-	.with(App);
-
-run(alepha);
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/cache-redis
+```
+## Module
+
+Alepha Cache Redis Module
+
+Plugin for Alepha Cache that provides Redis caching capabilities.
+
+## API Reference

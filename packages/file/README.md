@@ -1,9 +1,19 @@
-# alepha/file
+# Alepha File
 
-```ts
-import { file } from "alepha/file";
+Helpers for creating and managing file-like objects seamlessly.
 
-const image = file("https://example.com/image.png");
-const text = file("file://home/dev/text.txt");
-const buffer = file("hello world", { name: "message.txt", type: "text/plain" });
+## Installation
+
+This package is part of the Alepha framework and can be installed via the all-in-one package:
+
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/file
+```
+
+## API Reference

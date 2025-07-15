@@ -172,6 +172,12 @@ export class ReactBrowserProvider {
 			});
 
 			window.addEventListener("popstate", () => {
+				// when you update silently queryparams or hash, skip rendering
+				// if you want to force a rendering, use #go()
+				if (this.state.pathname === location.pathname) {
+					return;
+				}
+
 				this.render();
 			});
 		},

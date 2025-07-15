@@ -14,6 +14,65 @@ import {
 } from "../helpers/schemaToPgColumns.ts";
 import { pg } from "../providers/PostgresTypeProvider.ts";
 
+/**
+ * Creates a table descriptor for drizzle-orm.
+ */
+export const $entity = <
+	TTableName extends string,
+	TSchema extends TObject,
+	TColumnsMap extends FromSchema<TSchema>,
+>(
+	options: EntityDescriptorOptions<TTableName, TSchema>,
+): PgTableWithColumnsAndSchema<
+	PgTableConfig<TTableName, TSchema, TColumnsMap>,
+	TSchema
+> => {
+	return pgTableSchema<TTableName, TSchema, TColumnsMap>(
+		options.name,
+		options.schema,
+		(t) => {
+			const config: PgTableExtraConfigValue[] = [];
+
+			if (options.config) {
+				config.push(...options.config(t));
+			}
+
+			if (options.indexes) {
+				for (const idx of options.indexes) {
+					if (typeof idx === "string") {
+						const name = `${options.name}_${idx}_idx`;
+						config.push(index(name).on(t[idx]));
+					} else if (typeof idx === "object") {
+						if ("columns" in idx) {
+							const columnsName = idx.columns.join("_");
+							const columns = idx.columns.map((col) => t[col]);
+							const name = idx.name ?? `${options.name}_${columnsName}_idx`;
+							config.push(
+								(idx.unique ? uniqueIndex(name) : index(name)).on(
+									columns[0],
+									...columns.slice(1), // nice one, drizzle
+								),
+							);
+						} else {
+							const name =
+								idx.name ?? `${options.name}_${String(idx.column)}_idx`;
+							config.push(
+								(idx.unique ? uniqueIndex(name) : index(name)).on(
+									t[idx.column],
+								),
+							);
+						}
+					}
+				}
+			}
+
+			return config;
+		},
+	);
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface EntityDescriptorOptions<
 	TTableName extends string,
 	T extends TObject,
@@ -89,63 +148,6 @@ export interface EntityDescriptorOptions<
 		self: BuildExtraConfigColumns<string, FromSchema<T>, "pg">,
 	) => PgTableExtraConfigValue[];
 }
-
-/**
- * Creates a table descriptor for drizzle-orm.
- */
-export const $entity = <
-	TTableName extends string,
-	TSchema extends TObject,
-	TColumnsMap extends FromSchema<TSchema>,
->(
-	options: EntityDescriptorOptions<TTableName, TSchema>,
-): PgTableWithColumnsAndSchema<
-	PgTableConfig<TTableName, TSchema, TColumnsMap>,
-	TSchema
-> => {
-	return pgTableSchema<TTableName, TSchema, TColumnsMap>(
-		options.name,
-		options.schema,
-		(t) => {
-			const config: PgTableExtraConfigValue[] = [];
-
-			if (options.config) {
-				config.push(...options.config(t));
-			}
-
-			if (options.indexes) {
-				for (const idx of options.indexes) {
-					if (typeof idx === "string") {
-						const name = `${options.name}_${idx}_idx`;
-						config.push(index(name).on(t[idx]));
-					} else if (typeof idx === "object") {
-						if ("columns" in idx) {
-							const columnsName = idx.columns.join("_");
-							const columns = idx.columns.map((col) => t[col]);
-							const name = idx.name ?? `${options.name}_${columnsName}_idx`;
-							config.push(
-								(idx.unique ? uniqueIndex(name) : index(name)).on(
-									columns[0],
-									...columns.slice(1), // nice one, drizzle
-								),
-							);
-						} else {
-							const name =
-								idx.name ?? `${options.name}_${String(idx.column)}_idx`;
-							config.push(
-								(idx.unique ? uniqueIndex(name) : index(name)).on(
-									t[idx.column],
-								),
-							);
-						}
-					}
-				}
-			}
-
-			return config;
-		},
-	);
-};
 
 export type Entity<T extends TObject> = PgTableWithColumnsAndSchema<
 	PgTableConfig<string, T, FromSchema<T>>,

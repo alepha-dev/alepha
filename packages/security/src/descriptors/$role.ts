@@ -3,6 +3,24 @@ import type { Role } from "../schemas/roleSchema.ts";
 
 const KEY = "ROLE";
 
+/**
+ *
+ */
+export const $role = (options: RoleDescriptorOptions = {}): RoleDescriptor => {
+	__descriptor(KEY);
+
+	const role: RoleDescriptor = () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	role[KIND] = KEY;
+	role[OPTIONS] = options;
+
+	return role;
+};
+
+$role[KIND] = KEY;
+
 export interface RoleDescriptorOptions {
 	/**
 	 * Name of the role.
@@ -32,18 +50,3 @@ export interface RoleDescriptor {
 	 */
 	(): Role;
 }
-
-export const $role = (options: RoleDescriptorOptions = {}): RoleDescriptor => {
-	__descriptor(KEY);
-
-	const role: RoleDescriptor = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	role[KIND] = KEY;
-	role[OPTIONS] = options;
-
-	return role;
-};
-
-$role[KIND] = KEY;

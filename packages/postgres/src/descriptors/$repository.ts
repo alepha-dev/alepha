@@ -6,23 +6,8 @@ import type { Repository } from "../services/Repository.ts";
 
 const KEY = "REPOSITORY";
 
-export interface RepositoryDescriptorOptions<
-	TEntity extends TableConfig,
-	TSchema extends TObject,
-> {
-	/**
-	 * The table to create the repository for.
-	 */
-	table: PgTableWithColumnsAndSchema<TEntity, TSchema>;
-
-	/**
-	 * Override default provider.
-	 */
-	provider?: () => PostgresProvider;
-}
-
 /**
- * @param optionsOrTable
+ *
  */
 export const $repository = <
 	TEntity extends TableConfig,
@@ -48,3 +33,20 @@ export const $repository = <
 };
 
 $repository[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface RepositoryDescriptorOptions<
+	TEntity extends TableConfig,
+	TSchema extends TObject,
+> {
+	/**
+	 * The table to create the repository for.
+	 */
+	table: PgTableWithColumnsAndSchema<TEntity, TSchema>;
+
+	/**
+	 * Override default provider.
+	 */
+	provider?: () => PostgresProvider;
+}

@@ -1,3 +1,24 @@
-# alepha/server/health
+# Alepha Server Health
 
+Adds a /health endpoint for monitoring application status.
 
+## Installation
+
+This package is part of the Alepha framework and can be installed via the all-in-one package:
+
+```bash
+npm install alepha
+```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/server-health
+```
+## Module
+
+Alepha Server Health Module
+
+Plugin for Alepha Server that provides health-check endpoints.
+
+## API Reference

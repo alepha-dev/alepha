@@ -1,22 +1,24 @@
-# alepha/queue/redis
+# Alepha Queue Redis
 
-```ts
-import { $queue } from 'alepha/queue';
-import { run } from 'alepha';
+Redis implementation for the message queueing system.
 
-class App {
-	q = $queue();
-}
+## Installation
 
-const alepha = App.create({
-	env: {
-		REDIS_URL: 'redis://localhost:6379',
-	},
-});
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
-alepha
-	.with(AlepheRedisQueue)
-	.with(App);
-
-run(alepha);
+```bash
+npm install alepha
 ```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/queue-redis
+```
+## Module
+
+Alepha Queue Redis Module
+
+Plugin for Alepha Queue that provides Redis queue capabilities.
+
+## API Reference

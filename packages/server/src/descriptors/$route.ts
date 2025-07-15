@@ -3,17 +3,6 @@ import type { RequestConfigSchema, ServerRoute } from "../interfaces/index.ts";
 
 const KEY = "ROUTE";
 
-export interface RouteDescriptorOptions<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> extends ServerRoute<TConfig> {}
-
-export type RouteDescriptor<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = {
-	[KIND]: typeof KEY;
-	[OPTIONS]: RouteDescriptorOptions<TConfig>;
-};
-
 export const $route = <
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 >(
@@ -27,3 +16,16 @@ export const $route = <
 };
 
 $route[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface RouteDescriptorOptions<
+	TConfig extends RequestConfigSchema = RequestConfigSchema,
+> extends ServerRoute<TConfig> {}
+
+export type RouteDescriptor<
+	TConfig extends RequestConfigSchema = RequestConfigSchema,
+> = {
+	[KIND]: typeof KEY;
+	[OPTIONS]: RouteDescriptorOptions<TConfig>;
+};

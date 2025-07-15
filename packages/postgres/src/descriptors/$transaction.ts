@@ -5,13 +5,9 @@ import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 import { VersionMismatchError } from "../errors/VersionMismatchError.ts";
 import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 
-export interface TransactionDescriptorOptions<T extends any[], R> {
-	handler: (tx: PgTransaction<any, any, any>, ...args: T) => Promise<R>;
-	config?: PgTransactionConfig;
-}
-
-export type TransactionContext = PgTransaction<any, any, any>;
-
+/**
+ *
+ */
 export const $transaction = <T extends any[], R>(
 	opts: TransactionDescriptorOptions<T, R>,
 ) => {
@@ -27,3 +23,12 @@ export const $transaction = <T extends any[], R>(
 			),
 	});
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface TransactionDescriptorOptions<T extends any[], R> {
+	handler: (tx: PgTransaction<any, any, any>, ...args: T) => Promise<R>;
+	config?: PgTransactionConfig;
+}
+
+export type TransactionContext = PgTransaction<any, any, any>;

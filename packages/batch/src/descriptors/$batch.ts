@@ -11,6 +11,39 @@ import type { RetryDescriptorOptions } from "@alepha/retry";
 
 const KEY = "BATCH";
 
+/**
+ * Creates a batch processor. This is useful for grouping multiple operations
+ * (like API calls or database writes) into a single one to improve performance.
+ */
+export const $batch: {
+	<TItem extends TSchema, TResponse>(
+		options: BatchDescriptorOptions<TItem, TResponse>,
+	): BatchDescriptor<TItem, TResponse>;
+	[KIND]: string;
+} = <TItem extends TSchema, TResponse>(
+	options: BatchDescriptorOptions<TItem, TResponse>,
+): BatchDescriptor<TItem, TResponse> => {
+	__descriptor(KEY);
+
+	const $: Partial<BatchDescriptor<TItem, TResponse>> = {};
+	$[KIND] = KEY;
+	$[OPTIONS] = options;
+
+	// These methods are placeholders and will be replaced by the BatchDescriptorProvider.
+	$.push = async () => {
+		throw new NotImplementedError(KEY);
+	};
+	$.flush = async () => {
+		throw new NotImplementedError(KEY);
+	};
+
+	return $ as BatchDescriptor<TItem, TResponse>;
+};
+
+$batch[KIND] = KEY;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface BatchDescriptorOptions<
 	TItem extends TSchema,
 	TResponse = any,
@@ -74,34 +107,3 @@ export interface BatchDescriptor<TItem extends TSchema, TResponse = any> {
 	 */
 	flush: (partitionKey?: string) => Promise<TResponse>;
 }
-
-/**
- * Creates a batch processor. This is useful for grouping multiple operations
- * (like API calls or database writes) into a single one to improve performance.
- */
-export const $batch: {
-	<TItem extends TSchema, TResponse>(
-		options: BatchDescriptorOptions<TItem, TResponse>,
-	): BatchDescriptor<TItem, TResponse>;
-	[KIND]: string;
-} = <TItem extends TSchema, TResponse>(
-	options: BatchDescriptorOptions<TItem, TResponse>,
-): BatchDescriptor<TItem, TResponse> => {
-	__descriptor(KEY);
-
-	const $: Partial<BatchDescriptor<TItem, TResponse>> = {};
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	// These methods are placeholders and will be replaced by the BatchDescriptorProvider.
-	$.push = async () => {
-		throw new NotImplementedError(KEY);
-	};
-	$.flush = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $ as BatchDescriptor<TItem, TResponse>;
-};
-
-$batch[KIND] = KEY;
