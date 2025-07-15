@@ -17,9 +17,26 @@ npm install @alepha/core @alepha/server-helmet
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaServerHelmet } from "alepha/server/helmet";
+
+const alepha = Alepha.create()
+  .with(AlephaServerHelmet);
+
+run(alepha);
+```
+
 Alepha Server Helmet Module
 
 Automatically adds important HTTP security headers to every response
 to help protect your application from common web vulnerabilities.
 
 ## API Reference
+
+### Providers
+
+#### ServerHelmetProvider
+
+Provides a configurable way to apply essential HTTP security headers
+to every server response, without external dependencies.

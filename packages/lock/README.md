@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/lock
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaLock } from "alepha/lock";
+
+const alepha = Alepha.create()
+  .with(AlephaLock);
+
+run(alepha);
+```
+
 Alepha Lock Module
 
 Lock a resource for a certain period of time.
@@ -35,3 +45,9 @@ Lock descriptor
 Make sure that only one instance of the handler is running at a time.
 
 When connected to a remote store, the lock is shared across all processes.
+
+### Providers
+
+#### MemoryLockProvider
+
+A simple in-memory store provider.

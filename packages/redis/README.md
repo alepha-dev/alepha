@@ -17,3 +17,9 @@ npm install @alepha/core @alepha/redis
 ```
 
 ## API Reference
+
+### Providers
+
+#### RedisProvider
+
+Redis client provider.

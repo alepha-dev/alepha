@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/server-multipart
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaServerMultipart } from "alepha/server/multipart";
+
+const alepha = Alepha.create()
+  .with(AlephaServerMultipart);
+
+run(alepha);
+```
+
 Alepha Server Multipart Module
 
 This module provides support for handling multipart/form-data requests.

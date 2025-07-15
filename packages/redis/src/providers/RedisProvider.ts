@@ -47,6 +47,9 @@ export type RedisClient = RedisClientType<
 export type RedisClientOptions = Parameters<typeof createClient>[0];
 export type RedisSetOptions = SetOptions;
 
+/**
+ * Redis client provider.
+ */
 export class RedisProvider {
 	protected readonly log: Logger = $logger();
 	protected readonly alepha: Alepha = $inject(Alepha);

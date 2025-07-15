@@ -32,6 +32,9 @@ interface BatchInstance<TItem extends TSchema> {
 	handler: (items: Static<TItem>[]) => Promise<void>;
 }
 
+/**
+ * Process every $batch.
+ */
 export class BatchDescriptorProvider {
 	protected readonly alepha: Alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();

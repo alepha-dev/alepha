@@ -59,3 +59,9 @@ class MyService {
   }
 }
 ```
+
+### Providers
+
+#### JwtProvider
+
+Provides utilities for working with JSON Web Tokens (JWT).

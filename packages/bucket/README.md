@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/bucket
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaBucket } from "alepha/bucket";
+
+const alepha = Alepha.create()
+  .with(AlephaBucket);
+
+run(alepha);
+```
+
 Alepha Bucket Module
 
 This module provides file storage capabilities using different storage providers.

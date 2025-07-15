@@ -37,6 +37,9 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
+/**
+ * Azure Blog Storage implementation of File Storage Provider.
+ */
 export class AzureFileStorageProvider implements FileStorageProvider {
 	protected readonly log: Logger = $logger();
 	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
@@ -46,17 +49,14 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 	protected readonly time: DateTimeProvider = $inject(DateTimeProvider);
 	protected readonly containers: Record<string, ContainerClient> = {};
 	protected readonly blobServiceClient: BlobServiceClient;
-	protected readonly options: StoragePipelineOptions = {};
+
+	public readonly options: StoragePipelineOptions = {};
 
 	constructor() {
 		this.blobServiceClient = BlobServiceClient.fromConnectionString(
 			this.env.AZ_STORAGE_CONNECTION_STRING,
-			this.storagePipelineOptions(),
+			this.options,
 		);
-	}
-
-	public storagePipelineOptions(): StoragePipelineOptions {
-		return {};
 	}
 
 	public async createContainer(

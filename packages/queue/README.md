@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/queue
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaQueue } from "alepha/queue";
+
+const alepha = Alepha.create()
+  .with(AlephaQueue);
+
+run(alepha);
+```
+
 Alepha Queue Module
 
 Generic interface for queueing.

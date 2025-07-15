@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/cache
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaCache } from "alepha/cache";
+
+const alepha = Alepha.create()
+  .with(AlephaCache);
+
+run(alepha);
+```
+
 Alepha Cache Module
 
 This module provides a caching mechanism for Alepha applications.

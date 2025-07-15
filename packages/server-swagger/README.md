@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/server-swagger
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaServerSwagger } from "alepha/server/swagger";
+
+const alepha = Alepha.create()
+  .with(AlephaServerSwagger);
+
+run(alepha);
+```
+
 Alepha Server Swagger Module
 
 Plugin for Alepha Server that provides Swagger documentation capabilities.

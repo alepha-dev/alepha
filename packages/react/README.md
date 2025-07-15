@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/react
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaReact } from "alepha/react";
+
+const alepha = Alepha.create()
+  .with(AlephaReact);
+
+run(alepha);
+```
+
 Alepha React Module
 
 Alepha React Module contains a router for client-side navigation and server-side rendering.

@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/topic
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaTopic } from "alepha/topic";
+
+const alepha = Alepha.create()
+  .with(AlephaTopic);
+
+run(alepha);
+```
+
 Alepha Topic Module
 
 Generic interface for pub/sub messaging.

@@ -83,6 +83,30 @@ async function extractDescriptorInfo(
 }
 
 /**
+ * Reads a provider file and extracts the JSDoc comment block
+ * for the main exported provider function.
+ */
+async function extractProviderInfo(
+	filePath: string,
+): Promise<DescriptorInfo | null> {
+	try {
+		const content = await fs.readFile(filePath, "utf-8");
+		const regex = /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport class (\w+)/;
+		const match = content.match(regex);
+
+		if (!match) return null;
+
+		return {
+			name: match[2],
+			description: cleanJsDoc(match[1]),
+		};
+	} catch (error) {
+		console.error(`\n❌ Error parsing provider file ${filePath}:`, error);
+		return null;
+	}
+}
+
+/**
  * Finds all descriptors in a package's `src/descriptors` directory.
  */
 async function getDescriptorsInfo(
@@ -96,6 +120,27 @@ async function getDescriptorsInfo(
 			.map((file) => extractDescriptorInfo(join(descriptorsDir, file.name)));
 
 		const results = await Promise.all(descriptorPromises);
+		return results.filter((info): info is DescriptorInfo => info !== null);
+	} catch (error: any) {
+		if (error.code === "ENOENT") return [];
+		throw error;
+	}
+}
+
+/**
+ * Finds all providers in a package's `src/providers` directory.
+ */
+async function getProvidersInfo(
+	packagePath: string,
+): Promise<DescriptorInfo[]> {
+	const providersDir = join(packagePath, "src", "providers");
+	try {
+		const files = await fs.readdir(providersDir, { withFileTypes: true });
+		const providerPromises = files
+			.filter((file) => file.isFile() && file.name.endsWith(".ts"))
+			.map((file) => extractProviderInfo(join(providersDir, file.name)));
+
+		const results = await Promise.all(providerPromises);
 		return results.filter((info): info is DescriptorInfo => info !== null);
 	} catch (error: any) {
 		if (error.code === "ENOENT") return [];
@@ -142,6 +187,7 @@ async function generateReadmes() {
 
 			const nameSegment = pkgJson.name.replace("@alepha/", "");
 			const formattedName = formatPackageName(nameSegment);
+			const moduleName = `Alepha${formattedName.replaceAll(" ", "")}`
 
 			const moduleDescription = await extractModuleDescription(
 				join(
@@ -151,6 +197,7 @@ async function generateReadmes() {
 				),
 			);
 			const descriptors = await getDescriptorsInfo(packagePath);
+			const providers = await getProvidersInfo(packagePath);
 
 			// --- Build the README content ---
 			let readmeContent = `# Alepha ${formattedName}\n\n${pkgJson.description}\n`;
@@ -158,7 +205,22 @@ async function generateReadmes() {
 			readmeContent += `\n## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\nAlternatively, you can install it individually:\n\n\`\`\`bash\nnpm install ${pkgJson.name === "@alepha/core" ? pkgJson.name : `@alepha/core ${pkgJson.name}`}\n\`\`\`\n`;
 
 			if (moduleDescription) {
-				readmeContent += `## Module\n\n${moduleDescription}\n`;
+				readmeContent += `## Module\n\n`;
+				if (nameSegment !== "core") {
+					readmeContent += `
+\`\`\`ts
+import { Alepha, run } from "alepha";
+import { ${moduleName} } from "alepha/${nameSegment.replaceAll("-", "/")}";
+
+const alepha = Alepha.create()
+  .with(${moduleName});
+
+run(alepha);
+\`\`\`
+				`.trim()
+					readmeContent += "\n\n";
+				}
+				readmeContent += `${moduleDescription}\n`;
 			}
 
 			readmeContent += `\n## API Reference\n`;
@@ -167,6 +229,13 @@ async function generateReadmes() {
 				readmeContent += `\n### Descriptors\n`;
 				descriptors.forEach((desc) => {
 					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
+				});
+			}
+
+			if (providers.length > 0) {
+				readmeContent += `\n### Providers\n`;
+				providers.forEach((provider) => {
+					readmeContent += `\n#### ${provider.name}\n\n${provider.description}\n`;
 				});
 			}
 

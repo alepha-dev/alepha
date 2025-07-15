@@ -17,6 +17,16 @@ npm install @alepha/core @alepha/topic-redis
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaTopicRedis } from "alepha/topic/redis";
+
+const alepha = Alepha.create()
+  .with(AlephaTopicRedis);
+
+run(alepha);
+```
+
 Alepha Topic Redis Module.
 
 Plugin for Alepha Topic that provides Redis pub/sub capabilities.

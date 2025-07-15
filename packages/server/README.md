@@ -17,3 +17,13 @@ npm install @alepha/core @alepha/server
 ```
 
 ## API Reference
+
+### Providers
+
+#### ServerRouterProvider
+
+Main router for all routes on the server side.
+
+- $route => generic route
+- $action => action route (for API calls)
+- $page => React route (for SSR)

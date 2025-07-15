@@ -17,8 +17,26 @@ npm install @alepha/core @alepha/server-health
 ```
 ## Module
 
+```ts
+import { Alepha, run } from "alepha";
+import { AlephaServerHealth } from "alepha/server/health";
+
+const alepha = Alepha.create()
+  .with(AlephaServerHealth);
+
+run(alepha);
+```
+
 Alepha Server Health Module
 
 Plugin for Alepha Server that provides health-check endpoints.
 
 ## API Reference
+
+### Providers
+
+#### ServerHealthProvider
+
+Register `/health` endpoint.
+
+- Provides basic health information about the server.
