@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/scheduler
 ```
 ## Module
 
-Alepha Scheduler Module
-
 Generic interface for scheduling tasks.
 
 ## API Reference

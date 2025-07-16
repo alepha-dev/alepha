@@ -20,7 +20,7 @@ npm install @alepha/core @alepha/cache
 Provides high-performance caching capabilities for Alepha applications with configurable TTL and multiple storage backends.
 
 The cache module enables declarative caching through the `$cache` descriptor, allowing you to cache method results,
-API responses, or computed values with automatic invalidation and type safety. It supports both in-memory and 
+API responses, or computed values with automatic invalidation and type safety. It supports both in-memory and
 persistent storage backends for different performance and durability requirements.
 
 **Key Features:**

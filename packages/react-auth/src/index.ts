@@ -27,8 +27,6 @@ declare module "@alepha/react" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha React Authentication Module
- *
  * The ReactAuthModule provides authentication services for React applications.
  *
  * @see {@link ReactAuthProvider}

@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/topic
 ```
 ## Module
 
-Alepha Topic Module
-
 Generic interface for pub/sub messaging.
 Gives you the ability to create topics and subscribers.
 This module provides only a memory implementation of the topic provider.

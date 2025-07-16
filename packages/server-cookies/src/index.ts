@@ -18,11 +18,11 @@ declare module "@alepha/server" {
 
 /**
  * Provides HTTP cookie management capabilities for server requests and responses with type-safe cookie descriptors.
- * 
+ *
  * The server-cookies module enables declarative cookie handling using the `$cookie` descriptor on class properties.
  * It offers automatic cookie parsing, secure cookie configuration, and seamless integration with server routes
  * for managing user sessions, preferences, and authentication tokens.
- * 
+ *
  * **Key Features:**
  * - Declarative cookie definition with `$cookie` descriptor
  * - Automatic cookie parsing from requests
@@ -30,13 +30,13 @@ declare module "@alepha/server" {
  * - Type-safe cookie values with schema validation
  * - Automatic cookie serialization and deserialization
  * - Integration with server request/response lifecycle
- * 
+ *
  * **Basic Usage:**
  * ```ts
  * import { Alepha, run, t } from "alepha";
  * import { AlephaServer, $route } from "alepha/server";
  * import { AlephaServerCookies, $cookie } from "alepha/server/cookies";
- * 
+ *
  * class AuthRoutes {
  *   // Define authentication cookie
  *   authToken = $cookie({
@@ -46,7 +46,7 @@ declare module "@alepha/server" {
  *     sameSite: "strict",
  *     maxAge: "7d",
  *   });
- * 
+ *
  *   // Define user preferences cookie
  *   userPrefs = $cookie({
  *     name: "user_prefs",
@@ -56,7 +56,7 @@ declare module "@alepha/server" {
  *     }),
  *     maxAge: "30d",
  *   });
- * 
+ *
  *   login = $route({
  *     path: "/login",
  *     method: "POST",
@@ -71,16 +71,16 @@ declare module "@alepha/server" {
  *       if (!user) {
  *         return new Response("Invalid credentials", { status: 401 });
  *       }
- * 
+ *
  *       const token = await generateJWT(user.id);
- * 
+ *
  *       // Set authentication cookie
  *       this.authToken.set(reply, token);
- * 
+ *
  *       return Response.json({ success: true, user });
  *     },
  *   });
- * 
+ *
  *   profile = $route({
  *     path: "/profile",
  *     method: "GET",
@@ -90,17 +90,17 @@ declare module "@alepha/server" {
  *       if (!token) {
  *         return new Response("Unauthorized", { status: 401 });
  *       }
- * 
+ *
  *       const user = await validateJWT(token);
  *       const preferences = this.userPrefs.get(cookies) || {
  *         theme: "light",
  *         language: "en",
  *       };
- * 
+ *
  *       return Response.json({ user, preferences });
  *     },
  *   });
- * 
+ *
  *   logout = $route({
  *     path: "/logout",
  *     method: "POST",
@@ -111,15 +111,15 @@ declare module "@alepha/server" {
  *     },
  *   });
  * }
- * 
+ *
  * const alepha = Alepha.create()
  *   .with(AlephaServer)
  *   .with(AlephaServerCookies)
  *   .with(AuthRoutes);
- * 
+ *
  * run(alepha);
  * ```
- * 
+ *
  * **Advanced Cookie Management:**
  * ```ts
  * class SessionRoutes {
@@ -133,7 +133,7 @@ declare module "@alepha/server" {
  *     maxAge: "2h",
  *     encrypt: true, // Optional encryption
  *   });
- * 
+ *
  *   // Shopping cart cookie
  *   cart = $cookie({
  *     name: "shopping_cart",
@@ -146,7 +146,7 @@ declare module "@alepha/server" {
  *     }),
  *     maxAge: "30d",
  *   });
- * 
+ *
  *   // Tracking consent cookie
  *   consent = $cookie({
  *     name: "tracking_consent",
@@ -157,7 +157,7 @@ declare module "@alepha/server" {
  *     }),
  *     maxAge: "1y",
  *   });
- * 
+ *
  *   updateCart = $route({
  *     path: "/cart",
  *     method: "POST",
@@ -169,7 +169,7 @@ declare module "@alepha/server" {
  *     },
  *     handler: async ({ body, cookies, reply }) => {
  *       const currentCart = this.cart.get(cookies) || { items: [], total: 0 };
- * 
+ *
  *       // Update cart logic
  *       const existingItem = currentCart.items.find(item => item.id === body.productId);
  *       if (existingItem) {
@@ -177,19 +177,19 @@ declare module "@alepha/server" {
  *       } else {
  *         currentCart.items.push({ id: body.productId, quantity: body.quantity });
  *       }
- * 
+ *
  *       // Recalculate total
  *       currentCart.total = await calculateCartTotal(currentCart.items);
- * 
+ *
  *       // Update cookie
  *       this.cart.set(reply, currentCart);
- * 
+ *
  *       return Response.json(currentCart);
  *     },
  *   });
  * }
  * ```
- * 
+ *
  * @see {@link $cookie}
  * @module alepha.server.cookies
  */

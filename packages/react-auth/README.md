@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/react-auth
 ```
 ## Module
 
-Alepha React Authentication Module
-
 The ReactAuthModule provides authentication services for React applications.
 
 ## API Reference

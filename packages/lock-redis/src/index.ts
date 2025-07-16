@@ -10,8 +10,6 @@ export * from "./providers/RedisLockProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Lock Redis Module
- *
  * Plugin for Alepha that provides a locking mechanism.
  *
  * @see {@link RedisLockProvider}

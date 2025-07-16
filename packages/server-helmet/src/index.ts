@@ -9,8 +9,6 @@ export * from "./providers/ServerHelmetProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Server Helmet Module
- *
  * Automatically adds important HTTP security headers to every response
  * to help protect your application from common web vulnerabilities.
  *

@@ -95,11 +95,11 @@ export * from "./providers/ServerRouterProvider.ts";
 
 /**
  * Provides high-performance HTTP server capabilities with declarative routing and action descriptors.
- * 
+ *
  * The server module enables building REST APIs and web applications using `$route` and `$action` descriptors
  * on class properties. It provides automatic request/response handling, schema validation, middleware support,
  * and seamless integration with other Alepha modules for a complete backend solution.
- * 
+ *
  * **Key Features:**
  * - Declarative route definition with `$route` descriptor
  * - API action handlers with `$action` descriptor
@@ -108,12 +108,12 @@ export * from "./providers/ServerRouterProvider.ts";
  * - Built-in middleware system and error handling
  * - Type-safe request parameters and response data
  * - Integration with authentication and security modules
- * 
+ *
  * **Basic Routing:**
  * ```ts
  * import { Alepha, run, t } from "alepha";
  * import { AlephaServer, $route } from "alepha/server";
- * 
+ *
  * class ApiRoutes {
  *   // Simple GET route
  *   getUsers = $route({
@@ -124,7 +124,7 @@ export * from "./providers/ServerRouterProvider.ts";
  *       return Response.json(users);
  *     },
  *   });
- * 
+ *
  *   // POST route with body validation
  *   createUser = $route({
  *     path: "/api/users",
@@ -140,7 +140,7 @@ export * from "./providers/ServerRouterProvider.ts";
  *       return Response.json(user, { status: 201 });
  *     },
  *   });
- * 
+ *
  *   // Dynamic route with parameters
  *   getUserById = $route({
  *     path: "/api/users/:id",
@@ -159,18 +159,18 @@ export * from "./providers/ServerRouterProvider.ts";
  *     },
  *   });
  * }
- * 
+ *
  * const alepha = Alepha.create()
  *   .with(AlephaServer)
  *   .with(ApiRoutes);
- * 
+ *
  * run(alepha);
  * ```
- * 
+ *
  * **Action Descriptors:**
  * ```ts
  * import { $action } from "alepha/server";
- * 
+ *
  * class UserController {
  *   // Reusable business logic action
  *   getUserProfile = $action({
@@ -193,7 +193,7 @@ export * from "./providers/ServerRouterProvider.ts";
  *       };
  *     },
  *   });
- * 
+ *
  *   // Route that uses the action
  *   profileRoute = $route({
  *     path: "/api/profile/:userId",
@@ -205,7 +205,7 @@ export * from "./providers/ServerRouterProvider.ts";
  *   });
  * }
  * ```
- * 
+ *
  * **Middleware and Error Handling:**
  * ```ts
  * class AppServer {
@@ -223,7 +223,7 @@ export * from "./providers/ServerRouterProvider.ts";
  *       }
  *     },
  *   });
- * 
+ *
  *   // CORS preflight handling
  *   corsPrelight = $route({
  *     path: "*",
@@ -241,7 +241,7 @@ export * from "./providers/ServerRouterProvider.ts";
  *   });
  * }
  * ```
- * 
+ *
  * @see {@link $route}
  * @see {@link $action}
  * @module alepha.server

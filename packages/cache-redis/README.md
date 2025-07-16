@@ -17,6 +17,4 @@ npm install @alepha/core @alepha/cache-redis
 ```
 ## Module
 
-Alepha Cache Redis Module
-
 Plugin for Alepha Cache that provides Redis caching capabilities.

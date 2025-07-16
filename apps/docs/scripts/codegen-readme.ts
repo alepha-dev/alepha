@@ -187,7 +187,7 @@ async function generateReadmes() {
 
 			const nameSegment = pkgJson.name.replace("@alepha/", "");
 			const formattedName = formatPackageName(nameSegment);
-			const moduleName = `Alepha${formattedName.replaceAll(" ", "")}`
+			const moduleName = `Alepha${formattedName.replaceAll(" ", "")}`;
 
 			const moduleDescription = await extractModuleDescription(
 				join(
@@ -208,7 +208,6 @@ async function generateReadmes() {
 				readmeContent += `## Module\n\n`;
 				readmeContent += `${moduleDescription}\n`;
 			}
-
 
 			if (descriptors.length > 0 || providers.length > 0) {
 				readmeContent += `\n## API Reference\n`;

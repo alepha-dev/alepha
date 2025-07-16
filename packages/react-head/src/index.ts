@@ -33,7 +33,7 @@ declare module "@alepha/react" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha React Head Module
+ * Fill `<head>` server & client side.
  *
  * @see {@link ServerHeadProvider}
  * @module alepha.react.head

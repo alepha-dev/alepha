@@ -44,7 +44,7 @@ const adminRole = $role({
 });
 
 const userRole = $role({
-  name: "user", 
+  name: "user",
   description: "Regular user with limited access",
 });
 

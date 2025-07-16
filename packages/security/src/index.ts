@@ -30,11 +30,11 @@ declare module "@alepha/core" {
 
 /**
  * Provides comprehensive authentication and authorization capabilities with JWT tokens, role-based access control, and user management.
- * 
+ *
  * The security module enables building secure applications using descriptors like `$realm`, `$role`, and `$permission`
  * on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
  * integration with various authentication providers and user management systems.
- * 
+ *
  * **Key Features:**
  * - Declarative realm definition with `$realm` descriptor for user authentication
  * - Role-based access control with `$role` descriptor
@@ -43,34 +43,34 @@ declare module "@alepha/core" {
  * - JWT token generation and validation
  * - OAuth integration and external provider support
  * - User session management and security hooks
- * 
+ *
  * **Basic Usage:**
  * ```ts
  * import { Alepha, run, t } from "alepha";
  * import { AlephaSecurity, $realm, $role, $permission } from "alepha/security";
- * 
+ *
  * // Define user roles
  * const adminRole = $role({
  *   name: "admin",
  *   description: "Administrator with full access",
  * });
- * 
+ *
  * const userRole = $role({
- *   name: "user", 
+ *   name: "user",
  *   description: "Regular user with limited access",
  * });
- * 
+ *
  * // Define permissions
  * const readUsersPermission = $permission({
  *   name: "users:read",
  *   description: "Read user information",
  * });
- * 
+ *
  * const writeUsersPermission = $permission({
  *   name: "users:write",
  *   description: "Create and update users",
  * });
- * 
+ *
  * // Define authentication realm
  * class AuthSystem {
  *   userRealm = $realm({
@@ -89,18 +89,18 @@ declare module "@alepha/core" {
  *     },
  *   });
  * }
- * 
+ *
  * const alepha = Alepha.create()
  *   .with(AlephaSecurity)
  *   .with(AuthSystem);
- * 
+ *
  * run(alepha);
  * ```
- * 
+ *
  * **OAuth Integration:**
  * ```ts
  * import { $serviceAccount } from "alepha/security";
- * 
+ *
  * class OAuthSystem {
  *   googleAuth = $realm({
  *     name: "google-oauth",
@@ -121,7 +121,7 @@ declare module "@alepha/core" {
  *       };
  *     },
  *   });
- * 
+ *
  *   serviceAccount = $serviceAccount({
  *     name: "api-service",
  *     permissions: ["api:read", "api:write"],
@@ -129,7 +129,7 @@ declare module "@alepha/core" {
  *   });
  * }
  * ```
- * 
+ *
  * **Role and Permission Management:**
  * ```ts
  * class PermissionSystem {
@@ -139,13 +139,13 @@ declare module "@alepha/core" {
  *     inherits: [adminRole],
  *     permissions: ["*"], // All permissions
  *   });
- * 
+ *
  *   moderatorRole = $role({
  *     name: "moderator",
  *     inherits: [userRole],
  *     permissions: ["posts:moderate", "comments:moderate"],
  *   });
- * 
+ *
  *   // Define resource-specific permissions
  *   postPermissions = [
  *     $permission({ name: "posts:create", description: "Create posts" }),
@@ -153,7 +153,7 @@ declare module "@alepha/core" {
  *     $permission({ name: "posts:delete", description: "Delete posts" }),
  *     $permission({ name: "posts:moderate", description: "Moderate posts" }),
  *   ];
- * 
+ *
  *   // Check permissions in application logic
  *   async checkUserPermission(userId: string, permission: string) {
  *     const user = await this.userRealm.getUser(userId);
@@ -161,7 +161,7 @@ declare module "@alepha/core" {
  *   }
  * }
  * ```
- * 
+ *
  * **JWT Token Management:**
  * ```ts
  * class TokenSystem {
@@ -179,7 +179,7 @@ declare module "@alepha/core" {
  *       return jwtToken.payload;
  *     },
  *   });
- * 
+ *
  *   async generateUserToken(user: { id: string; email: string; roles: string[] }) {
  *     return await this.userTokens.generateToken({
  *       sub: user.id,
@@ -190,7 +190,7 @@ declare module "@alepha/core" {
  *   }
  * }
  * ```
- * 
+ *
  * @see {@link $realm}
  * @see {@link $role}
  * @see {@link $permission}

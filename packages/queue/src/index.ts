@@ -17,11 +17,11 @@ export * from "./providers/QueueProvider.ts";
 
 /**
  * Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.
- * 
+ *
  * The queue module enables reliable background job processing and message passing using the `$queue` descriptor
  * on class properties. It supports schema validation, automatic retries, and multiple queue backends for
  * building scalable, decoupled applications with robust error handling.
- * 
+ *
  * **Key Features:**
  * - Declarative queue definition with `$queue` descriptor
  * - Schema validation for message payloads and headers
@@ -29,12 +29,12 @@ export * from "./providers/QueueProvider.ts";
  * - Multiple queue backends (memory, Redis, etc.)
  * - Type-safe message publishing and consumption
  * - Automatic retry mechanisms and error handling
- * 
+ *
  * **Basic Usage:**
  * ```ts
  * import { Alepha, run, t } from "alepha";
  * import { AlephaQueue, $queue } from "alepha/queue";
- * 
+ *
  * class EmailService {
  *   sendEmail = $queue({
  *     name: "emails",
@@ -52,14 +52,14 @@ export * from "./providers/QueueProvider.ts";
  *     },
  *   });
  * }
- * 
+ *
  * const alepha = Alepha.create()
  *   .with(AlephaQueue)
  *   .with(EmailService);
- * 
+ *
  * run(alepha);
  * ```
- * 
+ *
  * **Queue Operations:**
  * ```ts
  * class NotificationService {
@@ -77,14 +77,14 @@ export * from "./providers/QueueProvider.ts";
  *       await sendNotification(payload.userId, payload.message, payload.type);
  *     },
  *   });
- * 
+ *
  *   async notifyUser(userId: string, message: string, type: "info" | "warning" | "error") {
  *     // Push message to queue
  *     await this.notifications.push({ userId, message, type });
  *   }
  * }
  * ```
- * 
+ *
  * **Batch Processing:**
  * ```ts
  * class BatchProcessor {
@@ -100,14 +100,14 @@ export * from "./providers/QueueProvider.ts";
  *       await processTask(payload.taskId, payload.data);
  *     },
  *   });
- * 
+ *
  *   async submitBatch(tasks: Array<{ taskId: string; data: any }>) {
  *     // Push multiple messages at once
  *     await this.processTasks.push(...tasks);
  *   }
  * }
  * ```
- * 
+ *
  * @see {@link $queue}
  * @see {@link $consumer}
  * @module alepha.queue

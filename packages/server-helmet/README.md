@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/server-helmet
 ```
 ## Module
 
-Alepha Server Helmet Module
-
 Automatically adds important HTTP security headers to every response
 to help protect your application from common web vulnerabilities.
 

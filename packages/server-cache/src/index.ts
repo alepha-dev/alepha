@@ -10,9 +10,6 @@ export * from "./providers/ServerCacheProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * # Alepha Server Cache Module
- *
- * @description
  * Plugin for Alepha Server that provides server-side caching capabilities.
  * It uses the Alepha Cache module to cache responses from server actions ($action).
  * It also provides a ETag-based cache invalidation mechanism.

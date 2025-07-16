@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/command
 ```
 ## Module
 
-Alepha Command Module
-
 This module provides a powerful way to build command-line interfaces
 directly within your Alepha application, using declarative descriptors.
 

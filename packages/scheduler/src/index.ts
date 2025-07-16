@@ -11,8 +11,6 @@ export * from "./providers/SchedulerDescriptorProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Scheduler Module
- *
  * Generic interface for scheduling tasks.
  *
  * @see {@link $scheduler}

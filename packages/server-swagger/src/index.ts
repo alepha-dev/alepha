@@ -11,8 +11,6 @@ export * from "./ServerSwaggerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Server Swagger Module
- *
  * Plugin for Alepha Server that provides Swagger documentation capabilities.
  * It generates OpenAPI v3 documentation for the server's endpoints ($action).
  * It also provides a Swagger UI for interactive API documentation.

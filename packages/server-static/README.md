@@ -17,7 +17,7 @@ npm install @alepha/core @alepha/server-static
 ```
 ## Module
 
-Alepha Server Static Module
+Create static file server with `$static()`.
 
 ## API Reference
 

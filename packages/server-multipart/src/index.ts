@@ -9,8 +9,6 @@ export * from "./providers/ServerMultipartProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Server Multipart Module
- *
  * This module provides support for handling multipart/form-data requests.
  * It allows to parse body data containing t.file().
  *

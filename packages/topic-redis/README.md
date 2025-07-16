@@ -17,6 +17,4 @@ npm install @alepha/core @alepha/topic-redis
 ```
 ## Module
 
-Alepha Topic Redis Module.
-
 Plugin for Alepha Topic that provides Redis pub/sub capabilities.

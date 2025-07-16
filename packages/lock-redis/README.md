@@ -17,6 +17,4 @@ npm install @alepha/core @alepha/lock-redis
 ```
 ## Module
 
-Alepha Lock Redis Module
-
 Plugin for Alepha that provides a locking mechanism.

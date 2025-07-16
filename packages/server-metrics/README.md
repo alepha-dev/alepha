@@ -17,7 +17,5 @@ npm install @alepha/core @alepha/server-metrics
 ```
 ## Module
 
-Alepha Server Metrics Module
-
 This module provides prometheus metrics for the Alepha server.
 Metrics are exposed at the `/metrics` endpoint.

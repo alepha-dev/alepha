@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/bucket-azure
 ```
 ## Module
 
-Alepha Bucket Azure Module
-
 Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.
 
 ## API Reference

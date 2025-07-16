@@ -19,7 +19,7 @@ npm install @alepha/core @alepha/postgres
 
 Provides PostgreSQL and SQLite database integration with type-safe ORM capabilities through Drizzle.
 
-The postgres module enables declarative database operations using descriptors like `$entity`, `$repository`, 
+The postgres module enables declarative database operations using descriptors like `$entity`, `$repository`,
 and `$db` on class properties. It offers automatic schema generation, type-safe queries, transactions,
 and database migrations with support for both PostgreSQL and SQLite backends.
 

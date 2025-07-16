@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/lock
 ```
 ## Module
 
-Alepha Lock Module
-
 Lock a resource for a certain period of time.
 
 This module provides a memory implementation of the lock provider.

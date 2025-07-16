@@ -12,9 +12,7 @@ export * from "./providers/CommandDescriptorProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Command Module
- *
- * This module provides a powerful way to build command-line interfaces
+ *This module provides a powerful way to build command-line interfaces
  * directly within your Alepha application, using declarative descriptors.
  *
  * @see {@link $command}

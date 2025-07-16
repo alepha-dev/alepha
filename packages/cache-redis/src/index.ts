@@ -9,8 +9,6 @@ export * from "./providers/RedisCacheProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Cache Redis Module
- *
  * Plugin for Alepha Cache that provides Redis caching capabilities.
  *
  * @see {@link RedisCacheProvider}

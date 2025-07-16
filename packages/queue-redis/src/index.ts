@@ -9,8 +9,6 @@ export * from "./providers/RedisQueueProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Queue Redis Module
- *
  * Plugin for Alepha Queue that provides Redis queue capabilities.
  *
  * @see {@link RedisQueueProvider}

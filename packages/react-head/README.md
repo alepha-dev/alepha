@@ -17,4 +17,4 @@ npm install @alepha/core @alepha/react-head
 ```
 ## Module
 
-Alepha React Head Module
+Fill `<head>` server & client side.

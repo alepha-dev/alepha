@@ -7,8 +7,6 @@ export * from "./providers/AzureFileStorageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Bucket Azure Module
- *
  * Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.
  *
  * @see {@link AzureFileStorageProvider}

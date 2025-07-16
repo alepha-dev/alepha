@@ -17,6 +17,4 @@ npm install @alepha/core @alepha/queue-redis
 ```
 ## Module
 
-Alepha Queue Redis Module
-
 Plugin for Alepha Queue that provides Redis queue capabilities.

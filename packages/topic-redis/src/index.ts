@@ -9,8 +9,6 @@ export * from "./providers/RedisTopicProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Topic Redis Module.
- *
  * Plugin for Alepha Topic that provides Redis pub/sub capabilities.
  *
  * @see {@link RedisTopicProvider}

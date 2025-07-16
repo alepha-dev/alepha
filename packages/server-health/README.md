@@ -17,8 +17,6 @@ npm install @alepha/core @alepha/server-health
 ```
 ## Module
 
-Alepha Server Health Module
-
 Plugin for Alepha Server that provides health-check endpoints.
 
 ## API Reference

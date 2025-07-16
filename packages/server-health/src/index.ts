@@ -9,9 +9,6 @@ export * from "./providers/ServerHealthProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Server Health Module
- *
- * @description
  * Plugin for Alepha Server that provides health-check endpoints.
  *
  * @see {@link ServerHealthProvider}

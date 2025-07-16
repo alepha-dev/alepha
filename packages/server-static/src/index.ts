@@ -11,7 +11,7 @@ export * from "./providers/ServerStaticProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Alepha Server Static Module
+ * Create static file server with `$static()`.
  *
  * @see {@link ServerStaticProvider}
  * @module alepha.server.static
