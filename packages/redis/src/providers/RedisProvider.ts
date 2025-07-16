@@ -104,6 +104,7 @@ export class RedisProvider {
 	}
 
 	public async get(key: string): Promise<Buffer | undefined> {
+		this.log.trace(`Getting key ${key}`);
 		const resp = await this.publisher.get(key);
 
 		if (resp === null) {

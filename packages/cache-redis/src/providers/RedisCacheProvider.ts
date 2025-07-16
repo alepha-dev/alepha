@@ -34,7 +34,7 @@ export class RedisCacheProvider implements CacheProvider {
 	protected readonly alepha: Alepha = $inject(Alepha);
 
 	public async get(name: string, key: string): Promise<Uint8Array | undefined> {
-		if (!this.alepha.isReady()) {
+		if (!this.alepha.isStarted()) {
 			return;
 		}
 

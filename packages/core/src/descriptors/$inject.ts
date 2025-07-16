@@ -1,5 +1,7 @@
 import type { Static, TObject } from "@sinclair/typebox";
+import { KIND } from "../constants/KIND.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import { descriptorEvents } from "../helpers/descriptor.ts";
 import type { Service } from "../interfaces/Service.ts";
 import { TypeGuard } from "../providers/TypeProvider.ts";
 import { $cursor } from "./$cursor.ts";
@@ -24,6 +26,14 @@ export function $inject<T extends TObject>(type: T): Static<T>; // env
 export function $inject<T extends object>(type: Service<T>): T; // services
 export function $inject<T extends object>(type: any): any {
 	const { context, definition, module } = $cursor();
+
+	descriptorEvents.emit("create", {
+		context,
+		definition,
+		module,
+		[KIND]: "INJECT",
+		provider: type,
+	});
 
 	// allow to inject TypeBox schemas
 	if (TypeGuard.IsObject(type)) {

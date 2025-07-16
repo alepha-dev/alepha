@@ -13,7 +13,7 @@ import { EventEmitterLike } from "./EventEmitterLike.ts";
  * - `create` - Emitted when a descriptor is created.
  */
 export const descriptorEvents: EventEmitterLike<{
-	create: CursorDescriptor & { [KIND]: string };
+	create: CursorDescriptor & { [KIND]: string; provider?: Service };
 }> = new EventEmitterLike();
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -22,9 +22,6 @@ export const descriptorEvents: EventEmitterLike<{
  * Register a descriptor.
  *
  * This is used to run the event "create" and allow auto-registration of descriptors.
- *
- * @internal
- * @param kind
  */
 export const __descriptor = (kind: string): void => {
 	descriptorEvents.emit("create", {
@@ -36,23 +33,30 @@ export const __descriptor = (kind: string): void => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Auto-inject a class/module when a descriptor is created.
+ * Auto-inject a class/module when a descriptor or a provider is created.
  *
- * Like, you auto-inject the ServerModule when a `$route` descriptor is used.
- *
- * @param descriptor
- * @param to
+ * Example, you auto-inject the ServerModule when a `$route` descriptor is used.
+ * Or, you auto-inject the RedisModule when RedisClientProvider is injected.
  */
 export const __bind = (
-	descriptor: { [KIND]: string },
-	...to: Service[]
+	descriptor: { [KIND]: string } | Service,
+	to: Service,
 ): void => {
+	if (!(KIND in descriptor)) {
+		descriptorEvents.on("create", (ctx) => {
+			if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
+				if (ctx[KIND] === "INJECT" && ctx.provider === descriptor) {
+					ctx.context.with(to);
+				}
+			}
+		});
+		return;
+	}
+
 	descriptorEvents.on("create", (ctx) => {
 		if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
 			if (ctx[KIND] === descriptor[KIND]) {
-				for (const injectedClass of to) {
-					ctx.context.with(injectedClass);
-				}
+				ctx.context.with(to);
 			}
 		}
 	});
