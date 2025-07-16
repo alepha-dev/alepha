@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/react",
 	"description": "Build server-side rendered (SSR) or single-page React applications.",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,12 +15,12 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.8.0",
-		"@alepha/router": "0.8.0",
-		"@alepha/server": "0.8.0",
-		"@alepha/server-cache": "0.8.0",
-		"@alepha/server-links": "0.8.0",
-		"@alepha/server-static": "0.8.0",
+		"@alepha/core": "0.8.1",
+		"@alepha/router": "0.8.1",
+		"@alepha/server": "0.8.1",
+		"@alepha/server-cache": "0.8.1",
+		"@alepha/server-links": "0.8.1",
+		"@alepha/server-static": "0.8.1",
 		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {

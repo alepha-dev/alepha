@@ -7,7 +7,7 @@
 		"redis"
 	],
 	"author": "Feunard",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -20,9 +20,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.8.0",
-		"@alepha/core": "0.8.0",
-		"@alepha/redis": "0.8.0"
+		"@alepha/cache": "0.8.1",
+		"@alepha/core": "0.8.1",
+		"@alepha/redis": "0.8.1"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",

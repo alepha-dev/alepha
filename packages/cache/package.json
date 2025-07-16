@@ -7,7 +7,7 @@
 		"in-memory"
 	],
 	"author": "Feunard",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -20,8 +20,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.8.0",
-		"@alepha/datetime": "0.8.0"
+		"@alepha/core": "0.8.1",
+		"@alepha/datetime": "0.8.1"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",
