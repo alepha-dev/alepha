@@ -1,4 +1,4 @@
-import { $module, __bind, type Alepha, type Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { AlephaServer, type ServerRequest } from "@alepha/server";
 import { AlephaServerCache } from "@alepha/server-cache";
 import { AlephaServerLinks } from "@alepha/server-links";
@@ -11,7 +11,7 @@ import {
 } from "./providers/PageDescriptorProvider.ts";
 import {
 	ReactBrowserProvider,
-	ReactHydrationState,
+	type ReactHydrationState,
 } from "./providers/ReactBrowserProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 
