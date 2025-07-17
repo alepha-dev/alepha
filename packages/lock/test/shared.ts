@@ -7,9 +7,8 @@ import {
 	type TopicProvider,
 } from "@alepha/topic";
 import { expect } from "vitest";
-import {
+import AlephaLock, {
 	$lock,
-	AlephaLock,
 	LockProvider,
 	LockTopicProvider,
 	MemoryLockProvider,
@@ -17,18 +16,18 @@ import {
 
 export const store: Record<string, string> = {};
 export class SharedLockProvider extends MemoryLockProvider {
-	store = store;
+	store: Record<string, string> = store;
 }
 
 export const subscriptions: Record<string, SubscribeCallback[]> = {};
 export class SharedTopicProvider extends MemoryTopicProvider {
-	subscriptions = subscriptions;
+	subscriptions: Record<string, SubscribeCallback[]> = subscriptions;
 }
 
 export const testLockBasic = async (
 	provider: Service<LockProvider>,
 	topicProvider: Service<TopicProvider>,
-) => {
+): Promise<void> => {
 	const state: Record<string, string> = {};
 	class TestLock {
 		lock = $inject(LockProvider);
@@ -80,7 +79,7 @@ export const testLockBasic = async (
 export const testLockWait = async (
 	provider: Service<LockProvider>,
 	topicProvider: Service<TopicProvider>,
-) => {
+): Promise<void> => {
 	let count = 0;
 
 	class TestLockWait {

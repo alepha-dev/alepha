@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
@@ -67,7 +68,7 @@ declare module "@alepha/core" {
 export class ServerActionDescriptorProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly client = $inject(HttpClient);
 	protected readonly serverProvider = $inject(ServerProvider);
 	protected readonly helper = $inject(ActionDescriptorHelper);

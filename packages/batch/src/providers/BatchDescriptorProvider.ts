@@ -3,7 +3,6 @@ import {
 	$inject,
 	$logger,
 	Alepha,
-	type HookDescriptor,
 	type Logger,
 	OPTIONS,
 	type Static,
@@ -42,7 +41,7 @@ export class BatchDescriptorProvider {
 		$inject(DateTimeProvider);
 	protected readonly instances: Map<string, BatchInstance<any>> = new Map();
 
-	protected readonly configure: HookDescriptor<"configure"> = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
 		handler: () => {
 			const descriptors = this.alepha.getDescriptorValues($batch);
@@ -82,7 +81,7 @@ export class BatchDescriptorProvider {
 	});
 
 	// On application stop, flush all pending batches gracefully.
-	protected readonly onStop: HookDescriptor<"stop"> = $hook({
+	protected readonly onStop = $hook({
 		on: "stop",
 		handler: async () => {
 			const flushPromises: Promise<void>[] = [];

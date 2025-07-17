@@ -4,7 +4,6 @@ import {
 	$hook,
 	$inject,
 	Alepha,
-	type HookDescriptor,
 	isTypeFile,
 	OPTIONS,
 	type TObject,
@@ -34,7 +33,7 @@ export class ServerSwaggerProvider {
 		$inject(ServerRouterProvider);
 	protected readonly alepha: Alepha = $inject(Alepha);
 
-	protected readonly configure: HookDescriptor<"configure"> = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
 		after: this.serverActionProvider,
 		handler: async (alepha) => {

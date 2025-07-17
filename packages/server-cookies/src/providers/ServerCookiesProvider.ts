@@ -7,6 +7,7 @@ import {
 } from "node:crypto";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
@@ -53,7 +54,7 @@ declare module "@alepha/core" {
 export class ServerCookiesProvider {
 	protected readonly alepha: Alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly dateTimeProvider: DateTimeProvider =
 		$inject(DateTimeProvider);
 
@@ -63,7 +64,7 @@ export class ServerCookiesProvider {
 	protected readonly AUTH_TAG_LENGTH = 16;
 	protected readonly SIGNATURE_LENGTH = 32; // For SHA256
 
-	protected readonly configure: HookDescriptor<"configure"> = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
 		handler: () => {
 			const descriptors = this.alepha.getDescriptorValues($cookie);

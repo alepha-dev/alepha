@@ -1,7 +1,15 @@
 import type { IncomingMessage } from "node:http";
 import { createServer, type ServerResponse } from "node:http";
 import { Readable } from "node:stream";
-import { $hook, $inject, $logger, Alepha, type Static, t } from "@alepha/core";
+import {
+	$env,
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type Static,
+	t,
+} from "@alepha/core";
 import type { RouteMethod } from "../../constants/routeMethods.ts";
 import type { ServerRawRequest } from "../../interfaces/index.ts";
 import { ServerRouterProvider } from "../ServerRouterProvider.ts";
@@ -27,7 +35,7 @@ declare module "@alepha/core" {
 export class NodeHttpServerProvider extends ServerProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly router = $inject(ServerRouterProvider);
 
 	protected readonly server = createServer((req, res) => this.handle(req, res));

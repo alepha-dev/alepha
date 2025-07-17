@@ -1,8 +1,8 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	Alepha,
-	type HookDescriptor,
 	KIND,
 	OPTIONS,
 	type Static,
@@ -52,7 +52,7 @@ export class CacheDescriptorProvider {
 		$inject(MemoryCacheProvider);
 	protected readonly dateTimeProvider: DateTimeProvider =
 		$inject(DateTimeProvider);
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly caches: Cache[] = [];
 
 	protected encoder: TextEncoder = new TextEncoder();
@@ -63,7 +63,7 @@ export class CacheDescriptorProvider {
 		STRING: 0x03,
 	};
 
-	protected readonly configure: HookDescriptor<"configure"> = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
 			this.processDescriptors();

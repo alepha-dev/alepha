@@ -3,7 +3,35 @@ import { OPTIONS } from "../constants/OPTIONS.ts";
 import type { CursorDescriptor } from "../descriptors/$cursor.ts";
 import { $cursor } from "../descriptors/$cursor.ts";
 import type { Service } from "../interfaces/Service.ts";
-import { EventEmitterLike } from "./EventEmitterLike.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+class EventEmitterLike<TEvents extends { [key: string]: any }> {
+	private hooks: {
+		[key in keyof TEvents]?: ((data: TEvents[key]) => void)[];
+	} = {};
+
+	on<T extends keyof TEvents>(
+		event: T,
+		callback: (data: TEvents[T]) => void,
+	): void {
+		if (!this.hooks[event]) {
+			this.hooks[event] = [];
+		}
+
+		this.hooks[event].push(callback);
+	}
+
+	emit<T extends keyof TEvents>(event: T, data: TEvents[T]): void {
+		if (!this.hooks[event]) {
+			return;
+		}
+
+		for (const callback of this.hooks[event]) {
+			callback(data);
+		}
+	}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -65,14 +93,11 @@ export const __bind = (
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Check if the value is a descriptor value.
- *
- * @param value - Value to check.
- * @returns Is the value a descriptor value.
+ * Check if the value is a descriptor instance.
  */
-export const isDescriptorValue = (
+export const isDescriptorInstance = (
 	value: any,
-): value is DescriptorIdentifier => {
+): value is DescriptorInstance => {
 	return value?.[KIND] != null && typeof value[OPTIONS] === "object";
 };
 
@@ -83,15 +108,15 @@ export const isDescriptorValue = (
  */
 export interface Descriptor<T extends object = any> {
 	[KIND]: string; // this is required to be able to use auto-inject.
-	(options: T): DescriptorIdentifier<T>;
+	(options: T): DescriptorInstance<T> | any; // any = some descriptors are fake right now.
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Class member descriptor.
+ * Result of the "$descriptor" function.
  */
-export interface DescriptorIdentifier<T = object> {
+export interface DescriptorInstance<T = object> {
 	[KIND]: string; // this is required to be able to use `isDescriptorValue` during processing.
 	[OPTIONS]: T;
 }
@@ -99,9 +124,9 @@ export interface DescriptorIdentifier<T = object> {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Descriptor identifier + his instance + his key.
+ * Descriptor instance + his class instance + his member key.
  */
-export interface DescriptorItem<T extends Descriptor> {
+export interface DescriptorMember<T extends Descriptor> {
 	value: ReturnType<T>;
 	key: string;
 	instance: Record<string, any>;

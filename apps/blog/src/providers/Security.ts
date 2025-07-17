@@ -1,9 +1,9 @@
-import { $hook, $inject, t } from "@alepha/core";
+import { $env, $hook, t } from "@alepha/core";
 import { $auth } from "@alepha/react-auth";
 import { $realm } from "@alepha/security";
 
 export class Security {
-	env = $inject(
+	env = $env(
 		t.object({
 			GOOGLE_CLIENT_ID: t.string(),
 			GOOGLE_CLIENT_SECRET: t.string(),

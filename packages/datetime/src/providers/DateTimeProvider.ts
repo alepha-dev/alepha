@@ -1,4 +1,4 @@
-import { $hook, $logger, type HookDescriptor, type Logger } from "@alepha/core";
+import { $hook, $logger, type Logger } from "@alepha/core";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
@@ -24,7 +24,7 @@ export class DateTimeProvider {
 		dayjs.extend(dayjsRelativeTime);
 	}
 
-	protected readonly start: HookDescriptor<"start"> = $hook({
+	protected readonly start = $hook({
 		on: "start",
 		handler: async () => {
 			for (const interval of this.intervals) {
@@ -33,7 +33,7 @@ export class DateTimeProvider {
 		},
 	});
 
-	protected readonly stop: HookDescriptor<"stop"> = $hook({
+	protected readonly stop = $hook({
 		on: "stop",
 		handler: () => {
 			for (const timeout of this.timeouts) {

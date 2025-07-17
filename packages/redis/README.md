@@ -15,6 +15,9 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/redis
 ```
+## Module
+
+Redis client provider for Alepha applications.
 
 ## API Reference
 

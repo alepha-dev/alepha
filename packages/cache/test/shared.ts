@@ -34,7 +34,7 @@ export class TestCache {
 export const testCacheBasic = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -68,7 +68,7 @@ export const testCacheBasic = async (
 export const testCacheStop = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -88,7 +88,7 @@ export const testCacheStop = async (
 export const testCacheMissingProvider = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -105,7 +105,7 @@ export const testCacheMissingProvider = async (
 export const testCacheDisabled = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env: {
 			REDIS_CACHE_PREFIX: randomUUID(),
@@ -128,7 +128,7 @@ export const testCacheDisabled = async (
 export const testCacheInvalidateByKey = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -151,7 +151,7 @@ export const testCacheInvalidateByKey = async (
 export const testCacheInvalidateByArgs = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -174,7 +174,7 @@ export const testCacheInvalidateByArgs = async (
 export const testCacheInvalidateAll = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -195,7 +195,7 @@ export const testCacheInvalidateAll = async (
 export const testCacheClear = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	const app = Alepha.create({
 		env,
 	}).with({
@@ -221,7 +221,7 @@ export const testCacheClear = async (
 export const testCacheReturnTypes = async (
 	env: Env = {},
 	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
-) => {
+): Promise<void> => {
 	class Types {
 		json = $cache({
 			handler: () => ({ a: 1 }),

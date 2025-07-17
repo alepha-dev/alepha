@@ -1,4 +1,5 @@
 import { type Dirent, promises as fs } from "node:fs";
+import { cp } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 /**
@@ -169,8 +170,14 @@ async function generateReadmes() {
 	let updatedCount = 0;
 	let skippedCount = 0;
 
+	await cp(
+		join(packagesDir, "../README.md"),
+		join(packagesDir, "alepha/README.md"),
+	);
+
 	for (const dirent of dirents) {
 		if (!dirent.isDirectory()) continue;
+		if (dirent.name === "alepha") continue;
 
 		const packagePath = join(packagesDir, dirent.name);
 		const pkgJsonPath = join(packagePath, "package.json");

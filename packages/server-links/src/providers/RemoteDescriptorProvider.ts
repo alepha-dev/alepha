@@ -3,7 +3,6 @@ import {
 	$inject,
 	$logger,
 	Alepha,
-	type HookDescriptor,
 	type Logger,
 	OPTIONS,
 } from "@alepha/core";
@@ -34,7 +33,7 @@ export class RemoteDescriptorProvider {
 		return this.remotes;
 	}
 
-	public readonly configure: HookDescriptor<"configure"> = $hook({
+	public readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
 			const remotes = this.alepha.getDescriptorValues($remote);
@@ -44,7 +43,7 @@ export class RemoteDescriptorProvider {
 		},
 	});
 
-	public readonly start: HookDescriptor<"start"> = $hook({
+	public readonly start = $hook({
 		on: "start",
 		handler: async () => {
 			for (const remote of this.remotes) {

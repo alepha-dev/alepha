@@ -1,5 +1,5 @@
 import { AlephaBucket, FileStorageProvider } from "@alepha/bucket";
-import type { Alepha, Module } from "@alepha/core";
+import { $module, type ModuleDescriptor } from "@alepha/core";
 import { AzureFileStorageProvider } from "./providers/AzureFileStorageProvider.ts";
 
 export * from "./providers/AzureFileStorageProvider.ts";
@@ -12,15 +12,15 @@ export * from "./providers/AzureFileStorageProvider.ts";
  * @see {@link AzureFileStorageProvider}
  * @module alepha.bucket.azure
  */
-export class AlephaBucketAzure implements Module {
-	public readonly name = "alepha.bucket.azure";
-	public readonly $services = (alepha: Alepha): void => {
+export const AlephaBucketAzure: ModuleDescriptor = $module({
+	name: "alepha.bucket.azure",
+	services: [AzureFileStorageProvider],
+	register: (alepha) =>
 		alepha
 			.with({
+				optional: true,
 				provide: FileStorageProvider,
 				use: AzureFileStorageProvider,
-				optional: true,
 			})
-			.with(AlephaBucket);
-	};
-}
+			.with(AlephaBucket),
+});

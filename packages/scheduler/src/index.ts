@@ -1,5 +1,5 @@
 import { __bind, type Alepha } from "@alepha/core";
-import { AlephaLock } from "@alepha/lock";
+import AlephaLock from "@alepha/lock";
 import { $scheduler } from "./descriptors/$scheduler.ts";
 import { SchedulerDescriptorProvider } from "./providers/SchedulerDescriptorProvider.ts";
 

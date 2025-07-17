@@ -1,5 +1,13 @@
-import type { Static } from "@alepha/core";
-import { $hook, $inject, $logger, Alepha, OPTIONS, t } from "@alepha/core";
+import {
+	$env,
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	OPTIONS,
+	type Static,
+	t,
+} from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { createElement, type ReactNode, StrictMode } from "react";
 import ClientOnly from "../components/ClientOnly.tsx";
@@ -21,7 +29,7 @@ declare module "@alepha/core" {
 
 export class PageDescriptorProvider {
 	protected readonly log = $logger();
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly pages: PageRoute[] = [];
 

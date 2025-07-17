@@ -1,4 +1,4 @@
-import { $inject, Alepha, KIND, OPTIONS, t } from "@alepha/core";
+import { $env, $inject, Alepha, KIND, OPTIONS, t } from "@alepha/core";
 import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import {
@@ -76,7 +76,9 @@ export class Repository<
 > {
 	public readonly provider = $inject(PostgresProvider);
 	protected readonly alepha = $inject(Alepha);
-	protected readonly env = $inject(
+
+	// TODO: count should be an options and default=false?
+	protected readonly env = $env(
 		t.object({
 			POSTGRES_PAGINATION_COUNT_ENABLED: t.boolean({ default: true }),
 		}),

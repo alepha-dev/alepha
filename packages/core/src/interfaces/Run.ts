@@ -4,7 +4,7 @@ import type { Async } from "./Async.ts";
 export interface RunOptions {
 	/**
 	 * Environment variables to be used by the application.
-	 * If not provided, it will use the current process environment.
+	 * It will be merged with the current process environment.
 	 */
 	env?: Env;
 
@@ -20,7 +20,8 @@ export interface RunOptions {
 	ready?: (alepha: Alepha) => Async<void>;
 
 	/**
-	 * If true, the application will stop after the ready callback is executed.
+	 * If true, the application will .stop() after the ready callback is executed.
+	 * Useful for one-time tasks!
 	 */
 	once?: boolean;
 }

@@ -1,0 +1,41 @@
+import type { Static, TObject } from "@sinclair/typebox";
+import { AlephaError } from "../errors/AlephaError.ts";
+import { TypeGuard } from "../providers/TypeProvider.ts";
+import { $cursor } from "./$cursor.ts";
+
+/**
+ * Get typed values from environment variables.
+ *
+ * @example
+ * ```ts
+ * const alepha = Alepha.create({
+ *   env: {
+ *     // Alepha.create() will also use process.env when running on Node.js
+ *     HELLO: "world",
+ *   }
+ * });
+ *
+ * class App {
+ *   log = $logger();
+ *
+ *   // program expect a var env "HELLO" as string to works
+ *   env = $env(t.object({
+ *     HELLO: t.string()
+ *   }));
+ *
+ *   sayHello = () => this.log.info("Hello ${this.env.HELLO}")
+ * }
+ *
+ * run(alepha.with(App));
+ * ```
+ */
+export const $env = <T extends TObject>(type: T): Static<T> => {
+	const { context: alepha } = $cursor();
+
+	// allow to inject TypeBox schemas
+	if (!TypeGuard.IsObject(type)) {
+		throw new AlephaError("Type must be an TObject");
+	}
+
+	return alepha.parseEnv(type) as T;
+};

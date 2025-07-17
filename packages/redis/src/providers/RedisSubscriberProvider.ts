@@ -1,11 +1,4 @@
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type HookDescriptor,
-	type Logger,
-} from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, type Logger } from "@alepha/core";
 import type { RedisClient } from "./RedisProvider.ts";
 import { RedisProvider } from "./RedisProvider.ts";
 
@@ -23,12 +16,12 @@ export class RedisSubscriberProvider {
 		return this.client;
 	}
 
-	protected readonly start: HookDescriptor<"start"> = $hook({
+	protected readonly start = $hook({
 		on: "start",
 		handler: () => this.connect(),
 	});
 
-	protected readonly stop: HookDescriptor<"stop"> = $hook({
+	protected readonly stop = $hook({
 		on: "stop",
 		handler: () => this.close(),
 	});

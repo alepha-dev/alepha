@@ -1,5 +1,12 @@
-import type { Static } from "@alepha/core";
-import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import {
+	$env,
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type Static,
+	t,
+} from "@alepha/core";
 import { $lock } from "@alepha/lock";
 import type { TObject } from "@sinclair/typebox";
 import { sql } from "drizzle-orm";
@@ -65,7 +72,7 @@ export class NodePostgresProvider extends PostgresProvider {
 	public readonly dialect = "postgres";
 
 	protected readonly log = $logger();
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly kit = $inject(DrizzleKitProvider);
 	protected state?: NodePostgresProviderState;

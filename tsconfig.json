@@ -9,6 +9,7 @@
 		"jsx": "react-jsx",
 		"strict": true,
 		"noEmit": true,
+		"isolatedModules": true,
 		"allowSyntheticDefaultImports": true,
 		"allowImportingTsExtensions": true
 	},

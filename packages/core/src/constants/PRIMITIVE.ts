@@ -5,4 +5,4 @@
  *
  * @internal
  */
-export const PRIMITIVE = Symbol("Alepha.Primitive");
+export const PRIMITIVE: unique symbol = Symbol("Alepha.Primitive");

@@ -1,4 +1,4 @@
-import { __bind, type Alepha, type Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
 import { AlephaServerLinks } from "@alepha/server-links";
 import { $page } from "./descriptors/$page.ts";
@@ -16,16 +16,21 @@ export * from "./providers/ReactBrowserProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class AlephaReact implements Module {
-	public readonly name = "alepha.react";
-	public readonly $services = (alepha: Alepha) =>
+export const AlephaReact = $module({
+	name: "alepha.react",
+	descriptors: [$page],
+	services: [
+		PageDescriptorProvider,
+		ReactBrowserRenderer,
+		BrowserRouterProvider,
+		ReactBrowserProvider,
+	],
+	register: (alepha) =>
 		alepha
 			.with(AlephaServer)
 			.with(AlephaServerLinks)
 			.with(PageDescriptorProvider)
 			.with(ReactBrowserProvider)
 			.with(BrowserRouterProvider)
-			.with(ReactBrowserRenderer);
-}
-
-__bind($page, AlephaReact);
+			.with(ReactBrowserRenderer),
+});

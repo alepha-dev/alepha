@@ -1,4 +1,5 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
@@ -40,7 +41,7 @@ export class SecurityProvider {
 
 	protected readonly log = $logger();
 	protected readonly jwt = $inject(JwtProvider);
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
 	/**

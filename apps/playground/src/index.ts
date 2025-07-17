@@ -1,35 +1,22 @@
-import { CacheProvider } from "@alepha/cache";
-import { AlephaCacheRedis } from "@alepha/cache-redis";
-import { $hook, $inject, $logger, type Alepha, run } from "@alepha/core";
+import { $module, run } from "@alepha/core";
+import { $route } from "@alepha/server";
+import { ServerMetricsProvider } from "@alepha/server-metrics";
 
 class App {
-	log = $logger();
-	cache = $inject(CacheProvider);
+	hello = $route({
+		path: "/",
+		handler: () => "Hello, world!",
+	});
 
-	ready = $hook({
-		on: "ready",
-		handler: async () => {
-			this.log.info("App is ready!");
-			this.log.info("Cache value:", await this.cache.get("z", "test"));
-		},
+	hello2 = $route({
+		path: "/2",
+		handler: () => "Hello, world2!",
 	});
 }
 
-const $module = (args: any) => {};
-
-const playground = $module({
-	name: "alepha.playground",
-	descriptors: [],
-	services: [AlephaCacheRedis, App],
-});
-
-class PlaygroundModule {
-	name = "playground";
-	$services = (alepha: Alepha) => alepha.with(AlephaCacheRedis).with(App);
-}
-
-run(PlaygroundModule, {
-	env: {
-		LOG_LEVEL: "trace",
-	},
-});
+run(
+	$module({
+		name: "app",
+		register: (alepha) => alepha.with(ServerMetricsProvider).with(App),
+	}),
+);

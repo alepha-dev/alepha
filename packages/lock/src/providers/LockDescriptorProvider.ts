@@ -1,10 +1,10 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
 	Alepha,
 	type AsyncFn,
-	type HookDescriptor,
 	KIND,
 	type Logger,
 	OPTIONS,
@@ -45,14 +45,14 @@ export class LockDescriptorProvider {
 	protected readonly lockTopicProvider: LockTopicProvider =
 		$inject(LockTopicProvider);
 	protected readonly log: Logger = $logger();
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly id: string = Math.random().toString(36).slice(2, 10);
 	protected readonly locks: Map<string, LockDescriptorValue> = new Map<
 		string,
 		LockDescriptorValue
 	>();
 
-	protected readonly configure: HookDescriptor<"configure"> = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
 		handler: (alepha: Alepha) => {
 			const descriptors = alepha.getDescriptorValues($lock);

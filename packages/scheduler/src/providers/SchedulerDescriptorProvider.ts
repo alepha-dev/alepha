@@ -1,4 +1,5 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
@@ -32,7 +33,7 @@ declare module "@alepha/core" {
 
 export class SchedulerDescriptorProvider {
 	protected readonly log = $logger();
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly cronProvider = $inject(CronProvider);

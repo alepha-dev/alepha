@@ -1,9 +1,9 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
 	Alepha,
-	type HookDescriptor,
 	type Logger,
 	OPTIONS,
 	type Static,
@@ -47,7 +47,7 @@ declare module "@alepha/core" {
 }
 
 export class CommandDescriptorProvider {
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly alepha: Alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();
 	protected commands: Command[] = [];
@@ -73,7 +73,7 @@ export class CommandDescriptorProvider {
 		},
 	} as const;
 
-	protected readonly onConfigure: HookDescriptor<"configure"> = $hook({
+	protected readonly onConfigure = $hook({
 		on: "configure",
 		handler: () => {
 			const descriptors = this.alepha.getDescriptorValues($command);
@@ -92,7 +92,7 @@ export class CommandDescriptorProvider {
 		},
 	});
 
-	protected readonly onReady: HookDescriptor<"ready"> = $hook({
+	protected readonly onReady = $hook({
 		on: "ready",
 		handler: async () => {
 			const argv = [...this.options.argv];

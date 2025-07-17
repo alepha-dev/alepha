@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, type Static, t } from "@alepha/core";
+import { $env, $hook, $inject, $logger, type Static, t } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
@@ -25,7 +25,7 @@ export interface ReactBrowserRendererOptions {
 export class ReactBrowserRenderer {
 	protected readonly browserProvider = $inject(ReactBrowserProvider);
 	protected readonly browserRouterProvider = $inject(BrowserRouterProvider);
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly log = $logger();
 
 	protected root!: Root;

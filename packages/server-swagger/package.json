@@ -22,7 +22,7 @@
 		"openapi-types": "^12.1.3"
 	},
 	"devDependencies": {
-		"swagger-ui-dist": "^5.26.2",
+		"swagger-ui-dist": "^5.27.0",
 		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4"
 	},

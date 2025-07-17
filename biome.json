@@ -1,6 +1,8 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/latest/schema.json",
 	"files": {
+		"ignoreUnknown": true,
+		"experimentalScannerIgnores": ["dist", "node_modules"],
 		"includes": [
 			"scripts/*.ts",
 			"**/apps/**",
@@ -8,11 +10,13 @@
 			"!**/node_modules",
 			"!**/dist",
 			"!**/coverage",
-			"!**/assets"
+			"!**/assets",
+			"!node_modules"
 		]
 	},
 	"formatter": {
-		"enabled": true
+		"enabled": true,
+		"useEditorconfig": true
 	},
 	"assist": {
 		"enabled": true,

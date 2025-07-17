@@ -1,9 +1,9 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
 	Alepha,
-	type HookDescriptor,
 	type Logger,
 	type Static,
 	type TNumber,
@@ -53,7 +53,7 @@ export type RedisSetOptions = SetOptions;
 export class RedisProvider {
 	protected readonly log: Logger = $logger();
 	protected readonly alepha: Alepha = $inject(Alepha);
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly client: RedisClient = this.createClient();
 
 	public get publisher(): RedisClient {
@@ -64,12 +64,12 @@ export class RedisProvider {
 		return this.client;
 	}
 
-	protected readonly start: HookDescriptor<"start"> = $hook({
+	protected readonly start = $hook({
 		on: "start",
 		handler: () => this.connect(),
 	});
 
-	protected readonly stop: HookDescriptor<"stop"> = $hook({
+	protected readonly stop = $hook({
 		on: "stop",
 		handler: () => this.close(),
 	});

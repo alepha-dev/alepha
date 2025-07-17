@@ -1,10 +1,11 @@
 import { expect, test } from "vitest";
-import type { Service } from "../src";
 import {
 	$cursor,
+	$env,
 	$inject,
 	Alepha,
 	CircularDependencyError,
+	type Service,
 	TypeBoxError,
 	t,
 } from "../src";
@@ -46,9 +47,9 @@ test("$inject - missing context", () => {
 	expect(() => new B()).toThrow(MissingContextError);
 });
 
-test("$inject - env", () => {
+test("$env", () => {
 	class A {
-		env = $inject(
+		env = $env(
 			t.object({
 				N1: t.string(),
 				N2: t.string({ default: "$N1" }),

@@ -6,7 +6,7 @@
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"description": "TypeScript framework for building full-stack apps with strict conventions, and React-based SPA or SSR without filesystem-based routing.",
+	"description": "Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe applications, from serverless APIs to full-stack React apps.",
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {
 		"type": "git",

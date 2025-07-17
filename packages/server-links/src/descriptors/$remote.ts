@@ -30,7 +30,7 @@ export interface RemoteDescriptorOptions {
 	/**
 	 * The URL of the remote service.
 	 * You can use a function to generate the URL dynamically.
-	 * You probably should use $inject(env) to get the URL from the environment.
+	 * You probably should use $env(env) to get the URL from the environment.
 	 *
 	 * @example
 	 * ```ts
@@ -38,7 +38,7 @@ export interface RemoteDescriptorOptions {
 	 * import { $inject, t } from "@alepha/core";
 	 *
 	 * class App {
-	 *   env = $inject(t.object({
+	 *   env = $env(t.object({
 	 *     REMOTE_URL: t.string({default: "http://localhost:3000"}),
 	 *   }));
 	 *   remote = $remote({

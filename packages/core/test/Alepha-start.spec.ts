@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { $hook, $inject, Alepha, ContainerLockedError, t } from "../src";
+import { $env, $hook, $inject, Alepha, ContainerLockedError, t } from "../src";
 
 /**
  * Start the application.
@@ -17,7 +17,7 @@ test("Alepha#start - basic", async () => {
 test("Alepha#start - lock", async () => {
 	class A {
 		a = "a";
-		e = $inject(
+		e = $env(
 			t.object({
 				HELLO: t.string(),
 			}),

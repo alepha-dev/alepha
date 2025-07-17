@@ -1,4 +1,4 @@
-import { __bind, type Alepha } from "@alepha/core";
+import { $module, type ModuleDescriptor } from "@alepha/core";
 import { MemoryTopicProvider } from "@alepha/topic";
 import { $lock } from "./descriptors/$lock.ts";
 import { LockDescriptorProvider } from "./providers/LockDescriptorProvider.ts";
@@ -25,21 +25,28 @@ export * from "./providers/MemoryLockProvider.ts";
  * @see {@link $lock}
  * @module alepha.lock
  */
-export class AlephaLock {
-	public readonly name = "alepha.lock";
-	public readonly $services = (alepha: Alepha): Alepha =>
+const AlephaLock: ModuleDescriptor = $module({
+	name: "alepha.lock",
+	descriptors: [$lock],
+	services: [
+		LockProvider,
+		MemoryLockProvider,
+		LockTopicProvider,
+		LockDescriptorProvider,
+	],
+	register: (alepha) =>
 		alepha
 			.with({
+				optional: true,
 				provide: LockTopicProvider,
 				use: MemoryTopicProvider,
-				optional: true,
 			})
 			.with({
+				optional: true,
 				provide: LockProvider,
 				use: MemoryLockProvider,
-				optional: true,
 			})
-			.with(LockDescriptorProvider);
-}
+			.with(LockDescriptorProvider),
+});
 
-__bind($lock, AlephaLock);
+export default AlephaLock;

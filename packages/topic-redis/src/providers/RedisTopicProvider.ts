@@ -1,8 +1,8 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
-	type HookDescriptor,
 	type Logger,
 	type Static,
 	type TObject,
@@ -25,7 +25,7 @@ const envSchema: TObject<{
 });
 
 export class RedisTopicProvider implements TopicProvider {
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 	protected readonly redisSubscriberProvider: RedisSubscriberProvider = $inject(
 		RedisSubscriberProvider,
@@ -33,7 +33,7 @@ export class RedisTopicProvider implements TopicProvider {
 
 	protected readonly log: Logger = $logger();
 
-	protected readonly stop: HookDescriptor<"stop"> = $hook({
+	protected readonly stop = $hook({
 		on: "stop",
 		handler: async () => {
 			this.redisSubscriberProvider.subscriber.removeAllListeners();

@@ -1,4 +1,5 @@
 import {
+	$env,
 	$inject,
 	type Static,
 	type TObject,
@@ -17,7 +18,7 @@ const envSchema: TObject<{
 });
 
 export class RedisQueueProvider implements QueueProvider {
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 
 	public prefix(queue: string): string {

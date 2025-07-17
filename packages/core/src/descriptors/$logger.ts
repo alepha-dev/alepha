@@ -25,6 +25,6 @@ export const $logger = (name?: string): Logger => {
 
 	return context.log.child({
 		caller: name ?? definition?.name,
-		name: module?.name ?? context.env.MODULE_NAME ?? "app",
+		name: module?.$name ?? context.env.MODULE_NAME ?? "app",
 	});
 };

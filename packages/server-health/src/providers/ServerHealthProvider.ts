@@ -1,14 +1,6 @@
-import {
-	$inject,
-	Alepha,
-	type TBoolean,
-	type TNumber,
-	type TObject,
-	type TString,
-	t,
-} from "@alepha/core";
+import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $route, type RouteDescriptor } from "@alepha/server";
+import { $route } from "@alepha/server";
 
 /**
  * Register `/health` endpoint.
@@ -19,14 +11,7 @@ export class ServerHealthProvider {
 	protected readonly time: DateTimeProvider = $inject(DateTimeProvider);
 	protected readonly alepha: Alepha = $inject(Alepha);
 
-	public readonly health: RouteDescriptor<{
-		response: TObject<{
-			message: TString;
-			uptime: TNumber;
-			date: TString;
-			ready: TBoolean;
-		}>;
-	}> = $route({
+	public readonly health = $route({
 		path: "/health",
 		schema: {
 			response: t.object({

@@ -1,5 +1,4 @@
-import type { ServiceEntry } from "@alepha/core";
-import { $inject, Alepha, t } from "@alepha/core";
+import { $env, Alepha, type ServiceEntry, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "@alepha/lock";
 import { RedisLockProvider } from "@alepha/lock-redis";
@@ -19,7 +18,7 @@ const env = t.object({
 });
 
 class TestSchedulerInterval {
-	env = $inject(env);
+	env = $env(env);
 	tick = 0;
 	t = $scheduler({
 		interval: intervalDurationMs,

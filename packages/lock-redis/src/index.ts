@@ -1,5 +1,5 @@
-import type { Alepha } from "@alepha/core";
-import { AlephaLock, LockProvider, LockTopicProvider } from "@alepha/lock";
+import { $module, type Alepha, type ModuleDescriptor } from "@alepha/core";
+import AlephaLock, { LockProvider, LockTopicProvider } from "@alepha/lock";
 import { RedisTopicProvider } from "@alepha/topic-redis";
 import { RedisLockProvider } from "./providers/RedisLockProvider.ts";
 
@@ -15,19 +15,20 @@ export * from "./providers/RedisLockProvider.ts";
  * @see {@link RedisLockProvider}
  * @module alepha.lock.redis
  */
-export class AlephaLockRedis {
-	public readonly name = "alepha.lock.redis";
-	public readonly $services = (alepha: Alepha): Alepha =>
+export const AlephaLockRedis: ModuleDescriptor = $module({
+	name: "alepha.lock.redis",
+	services: [RedisLockProvider, RedisTopicProvider],
+	register: (alepha: Alepha): Alepha =>
 		alepha
 			.with({
+				optional: true,
 				provide: LockTopicProvider,
 				use: RedisTopicProvider,
-				optional: true,
 			})
 			.with({
+				optional: true,
 				provide: LockProvider,
 				use: RedisLockProvider,
-				optional: true,
 			})
-			.with(AlephaLock);
-}
+			.with(AlephaLock),
+});

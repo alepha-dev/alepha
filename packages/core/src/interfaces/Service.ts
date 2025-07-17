@@ -1,17 +1,21 @@
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * In Alepha, a service is a class that can be instantiated. Nothing more, nothing less.
+ * In Alepha, a service is a class that can be instantiated or an abstract class. Nothing more, nothing less...
  */
 export type Service<T extends object = any> =
-	| InstantiableService<T>
-	| AbstractService<T>;
+	| InstantiableClass<T>
+	| AbstractClass<T>;
 
-export type InstantiableService<T extends object = any> = new (
+export type InstantiableClass<T extends object = any> = new (
 	...args: any[]
 ) => T;
 
-export type AbstractService<T extends object = any> = abstract new (
+/**
+ * Abstract class is a class that cannot be instantiated directly!
+ * It widely used for defining interfaces.
+ */
+export type AbstractClass<T extends object = any> = abstract new (
 	...args: any[]
 ) => T;
 
@@ -19,22 +23,26 @@ export type AbstractService<T extends object = any> = abstract new (
 
 /**
  * Service substitution allows you to register a class as a different class.
+ * Providing class A, but using class B instead.
+ * This is useful for testing, mocking, or providing a different implementation of a service.
+ *
+ * class A is mostly an AbstractClass, while class B is an InstantiableClass.
  */
 export interface ServiceSubstitution<T extends object = any> {
 	/**
-	 * Every time someone asks for this service, it will be provided with the 'use' service.
+	 * Every time someone asks for this class, it will be provided with the 'use' class.
 	 */
 	provide: Service<T>;
 
 	/**
 	 * Service to use instead of the 'provide' service.
 	 *
-	 * Note: Syntax is based on Angular's DI system.
+	 * Syntax is inspired by Angular's DI system.
 	 */
 	use: Service<T>;
 
 	/**
-	 * If true and the service already exists, just ignore the substitution and do not throw an error.
+	 * If true, if the service already exists -> just ignore the substitution and do not throw an error.
 	 * Mostly used for plugins to enforce a substitution without throwing an error.
 	 */
 	optional?: boolean;

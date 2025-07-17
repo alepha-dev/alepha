@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
@@ -53,7 +54,7 @@ export class ReactServerProvider {
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly ROOT_DIV_REGEX = new RegExp(
 		`<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
 		"is",

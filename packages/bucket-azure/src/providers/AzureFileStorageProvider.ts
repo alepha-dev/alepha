@@ -5,11 +5,11 @@ import {
 	type FileStorageProvider,
 } from "@alepha/bucket";
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
 	type FileLike,
-	type HookDescriptor,
 	type Logger,
 	type Static,
 	type TObject,
@@ -42,7 +42,7 @@ declare module "@alepha/core" {
  */
 export class AzureFileStorageProvider implements FileStorageProvider {
 	protected readonly log: Logger = $logger();
-	protected readonly env: Static<typeof envSchema> = $inject(envSchema);
+	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly bucket: BucketDescriptorProvider = $inject(
 		BucketDescriptorProvider,
 	);
@@ -147,7 +147,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 		return this.containers[container].getBlockBlobClient(fileId);
 	}
 
-	public readonly onStart: HookDescriptor<"start"> = $hook({
+	public readonly onStart = $hook({
 		on: "start",
 		handler: async () => {
 			for (const bucket of this.bucket.getBuckets()) {

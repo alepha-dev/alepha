@@ -9,8 +9,8 @@ import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
-import type { Descriptor, DescriptorItem } from "./helpers/descriptor.ts";
-import { isDescriptorValue } from "./helpers/descriptor.ts";
+import type { Descriptor, DescriptorMember } from "./helpers/descriptor.ts";
+import { isDescriptorInstance } from "./helpers/descriptor.ts";
 import {
 	isModule,
 	type Module,
@@ -19,7 +19,7 @@ import {
 } from "./helpers/Module.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type {
-	InstantiableService,
+	InstantiableClass,
 	Service,
 	ServiceEntry,
 } from "./interfaces/Service.ts";
@@ -50,10 +50,102 @@ import { Logger, type LoggerEnv } from "./services/Logger.ts";
  * run(alepha); // trigger .start (and .stop) automatically
  * ```
  *
- * > Some alepha methods are not intended to be used directly, use descriptors instead.
- * >
- * > - $hook -> alepha.on()
- * > - $inject -> alepha.get(), alepha.parseEnv()
+ * ### Alepha Factory
+ *
+ * Alepha.create() is an enhanced version of new Alepha().
+ * - It merges `process.env` with the provided state.env when available.
+ * - It populates the test hooks for Vitest or Jest environments when available.
+ *
+ * new Alepha() is fine if you don't need these helpers.
+ *
+ * ### Platforms & Environments
+ *
+ * Alepha is designed to work in various environments:
+ * - **Browser**: Runs in the browser, using the global `window` object.
+ * - **Serverless**: Runs in serverless environments like Vercel or Vite.
+ * - **Test**: Runs in test environments like Jest or Vitest.
+ * - **Production**: Runs in production environments, typically with NODE_ENV set to "production".
+ * * You can check the current environment using the following methods:
+ *
+ * - `isBrowser()`: Returns true if the App is running in a browser environment.
+ * - `isServerless()`: Returns true if the App is running in a serverless environment.
+ * - `isTest()`: Returns true if the App is running in a test environment.
+ * - `isProduction()`: Returns true if the App is running in a production environment.
+ *
+ * ### State & Environment
+ *
+ * The state of the Alepha container is stored in the `store` property.
+ * Most important property is `store.env`, which contains the environment variables.
+ *
+ * ```ts
+ * const alepha = Alepha.create({ env: { MY_VAR: "value" } });
+ *
+ * // You can access the environment variables using alepha.env
+ * console.log(alepha.env.MY_VAR); // "value"
+ *
+ * // But you should use $env() descriptor to get typed values from the environment.
+ * class App {
+ *   env = $env(
+ *     t.object({
+ *  	   MY_VAR: t.string(),
+ *     })
+ *   );
+ * }
+ * ```
+ *
+ * ### Modules
+ *
+ * Modules are a way to group services together.
+ * You can register a module using the `$module` descriptor.
+ *
+ * ```ts
+ * import { $module } from "@alepha/core";
+ *
+ * class MyLib {}
+ *
+ * const myModule = $module({
+ *   name: "my.project.module",
+ *   services: [MyLib],
+ * });
+ * ```
+ *
+ * Do not use modules for small applications.
+ *
+ * ### Hooks
+ *
+ * Hooks are a way to run async functions from all registered providers/services.
+ * You can register a hook using the `$hook` descriptor.
+ *
+ * ```ts
+ * import { $hook } from "@alepha/core";
+ *
+ * class App {
+ * 	 log = $logger();
+ * 	 onCustomerHook = $hook({
+ * 			on: "my:custom:hook",
+ * 			handler: () => {
+ * 		 	  this.log.info("App is being configured");
+ * 	 		},
+ * 	  });
+ * 	}
+ *
+ * Alepha.create()
+ * 	 .with(App)
+ * 	 .start()
+ * 	 .then(alepha => alepha.emit("my:custom:hook"));
+ * ```
+ *
+ * 	Hooks are fully typed. You can create your own hooks by using module augmentation:
+ *
+ * 	```ts
+ * 	declare module "alepha" {
+ * 		interface Hooks {
+ * 		  "my:custom:hook": {
+ * 				arg1: string;
+ * 		  }
+ * 		}
+ * 	}
+ * 	```
  */
 export class Alepha {
 	/**
@@ -522,7 +614,7 @@ export class Alepha {
 			/**
 			 * Constructor arguments to pass when creating a new instance.
 			 */
-			args?: ConstructorParameters<InstantiableService<T>>;
+			args?: ConstructorParameters<InstantiableClass<T>>;
 			/**
 			 * Parent service that requested the instance.
 			 * @internal
@@ -607,7 +699,7 @@ export class Alepha {
 		if (isModule(instance)) {
 			const moduleDefinition: ModuleDefinition = {
 				...instance,
-				name: instance.name ?? toModuleName(instance.constructor.name),
+				$name: instance.$name ?? toModuleName(instance.constructor.name),
 				services: [],
 			};
 
@@ -946,8 +1038,8 @@ export class Alepha {
 			if (use?.name) {
 				graph[provide.name].as = use.name;
 			}
-			if (module?.name) {
-				graph[provide.name].module = module.name;
+			if (module?.$name) {
+				graph[provide.name].module = module.$name;
 			}
 		}
 
@@ -961,13 +1053,13 @@ export class Alepha {
 	 */
 	public getDescriptorValues<T extends Descriptor>(
 		descriptor: T,
-	): Array<DescriptorItem<T>> {
-		const items: Array<DescriptorItem<T>> = [];
+	): Array<DescriptorMember<T>> {
+		const items: Array<DescriptorMember<T>> = [];
 
 		for (const { instance } of this.registry.values()) {
 			if (instance) {
 				for (const [key, value] of Object.entries(instance)) {
-					if (isDescriptorValue(value) && value[KIND] === descriptor[KIND]) {
+					if (isDescriptorInstance(value) && value[KIND] === descriptor[KIND]) {
 						// when class swap, instance can be referenced twice (provide: itself and provide: swapped)
 						// -> we take instance only once to avoid duplicate descriptors
 						if (
@@ -1015,7 +1107,7 @@ export class Alepha {
 			return definition as T;
 		}
 
-		const instance: T = new (definition as InstantiableService<any>)(...args);
+		const instance: T = new (definition as InstantiableClass<any>)(...args);
 
 		const obj = instance as unknown as Record<string, any>;
 		for (const key of Object.keys(obj)) {

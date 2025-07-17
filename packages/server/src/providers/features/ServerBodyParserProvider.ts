@@ -1,7 +1,7 @@
 import type { IncomingMessage } from "node:http";
 import type Stream from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
-import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $env, $hook, $inject, Alepha, t } from "@alepha/core";
 import { HttpError } from "../../errors/HttpError.ts";
 
 const envSchema = t.object({
@@ -17,7 +17,7 @@ const envSchema = t.object({
 });
 
 export class ServerBodyParserProvider {
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest = $hook({

@@ -1,4 +1,5 @@
 import {
+	$env,
 	$hook,
 	$inject,
 	$logger,
@@ -57,7 +58,7 @@ export interface QueueDescriptorProviderState {
 
 export class QueueDescriptorProvider {
 	protected readonly log = $logger();
-	protected readonly env = $inject(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly queueProvider = $inject(QueueProvider);
 	protected readonly memoryQueueProvider = $inject(MemoryQueueProvider);

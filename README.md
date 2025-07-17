@@ -19,6 +19,8 @@ Alepha
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
+Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe applications, from serverless APIs to full-stack React apps.
+
 ## Installation
 
 ```bash
@@ -41,3 +43,5 @@ class App {
 
 run(App);
 ```
+
+👉 For more information, please visit the [documentation](https://feunard.github.io/alepha/).

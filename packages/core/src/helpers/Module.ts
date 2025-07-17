@@ -2,7 +2,7 @@ import type { Alepha } from "../Alepha.ts";
 import type { Service } from "../interfaces/Service.ts";
 
 export interface Module {
-	name?: string;
+	$name?: string;
 	$services: (alepha: Alepha) => void | Alepha;
 }
 

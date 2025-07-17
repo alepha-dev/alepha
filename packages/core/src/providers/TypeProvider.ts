@@ -39,7 +39,6 @@ import { FormatRegistry, Kind, Type } from "@sinclair/typebox";
 import * as TypeBoxValue from "@sinclair/typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
-import { fullFormats } from "../helpers/formats.ts";
 
 export { TypeBox, TypeBoxValue };
 
@@ -69,80 +68,16 @@ export class TypeProvider {
 	static DEFAULT_ARRAY_MAX_ITEMS = 1000;
 	static FormatRegistry: typeof FormatRegistry = FormatRegistry;
 
-	public raw: typeof Type = Type;
-
-	public any(options?: SchemaOptions): TAny {
-		return Type.Any(options);
-	}
-
-	public void(options?: SchemaOptions): TVoid {
-		return Type.Void(options);
-	}
-
-	public undefined(options?: SchemaOptions): TUndefined {
-		return Type.Undefined(options);
-	}
-
-	public record<Key extends TSchema, Value extends TSchema>(
-		key: Key,
-		value: Value,
-		options?: ObjectOptions,
-	): TRecordOrObject<Key, Value> {
-		return Type.Record(key, value, {
-			...options,
-		});
-	}
-
-	public omit<Type extends TSchema, Key extends TSchema>(
-		type: Type,
-		key: Key,
-		options?: SchemaOptions,
-	): TOmit<Type, Key>;
-	public omit<Type extends TSchema, Key extends PropertyKey[]>(
-		type: Type,
-		key: readonly [...Key],
-		options?: SchemaOptions,
-	): TOmit<Type, Key> {
-		return Type.Omit(type, key, options);
-	}
-
-	public partial<MappedResult extends TMappedResult>(
-		type: MappedResult,
-		options?: SchemaOptions,
-	): TPartialFromMappedResult<MappedResult>;
-	public partial<Type extends TSchema>(
-		type: Type,
-		options?: SchemaOptions,
-	): TPartial<Type> {
-		return Type.Partial(type, options);
-	}
-
-	public union<Types extends TSchema[]>(
-		types: [...Types],
-		options?: SchemaOptions,
-	): Union<Types> {
-		return Type.Union(types, options);
-	}
-
-	public composite<T extends TSchema[]>(
-		schemas: [...T],
-		options?: ObjectOptions,
-	): TComposite<T> {
-		return Type.Composite(schemas, options);
-	}
-
-	public pick<Type extends TSchema, Key extends PropertyKey[]>(
-		type: Type,
-		key: readonly [...Key],
-		options?: SchemaOptions,
-	): TPick<Type, Key>;
-	public pick<Type extends TSchema, Key extends TSchema>(
-		type: Type,
-		key: Key,
-		options?: SchemaOptions,
-	): TPick<Type, Key> {
-		return Type.Pick(type, key, options);
-	}
+	public raw = Type;
+	public any = Type.Any;
+	public void = Type.Void;
+	public undefined = Type.Undefined;
+	public record = Type.Record;
+	public omit = Type.Omit;
+	public partial = Type.Partial;
+	public union = Type.Union;
+	public composite = Type.Composite;
+	public pick = Type.Pick;
 
 	/**
 	 * Create a schema for an object.
@@ -424,6 +359,42 @@ export class TypeProvider {
 			type: "string",
 		});
 	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+	// Exotic types
+
+	/**
+	 * Create a schema for a string enum e.g. LIKE_THIS.
+	 *
+	 * @param options
+	 */
+	public snakeCase = (options?: StringOptions) =>
+		this.string({
+			pattern: "^[A-Z_-]+$",
+			...options,
+		});
+
+	/**
+	 * Create a schema for an object with a value and label.
+	 */
+	public valueLabel = (options?: ObjectOptions) =>
+		this.object(
+			{
+				value: this.snakeCase({
+					description: "Machine-readable value.",
+				}),
+				label: this.string({
+					description: "Human-readable label.",
+				}),
+				description: this.optional(
+					this.string({
+						description: "Description of the value.",
+						maxLength: 1024,
+					}),
+				),
+			},
+			options,
+		);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -550,18 +521,68 @@ export const t: TypeProvider = new TypeProvider();
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-for (const [formatName, formatValue] of Object.entries(fullFormats)) {
-	if (!FormatRegistry.Has(formatName)) {
-		if (formatValue instanceof RegExp)
-			FormatRegistry.Set(formatName, (value) =>
-				value != null ? formatValue.test(value) : true,
-			);
-		else if (typeof formatValue === "function")
-			FormatRegistry.Set(formatName, formatValue as any);
-	}
-}
+FormatRegistry.Set("date", isISODate);
+FormatRegistry.Set("date-time", isISODateTime);
+FormatRegistry.Set("time", isISOTime);
+FormatRegistry.Set("uuid", isUUID);
+
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const isUUID = (value: string): boolean => {
-	return fullFormats.uuid.test(value);
-};
+const DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
+const DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
+const DATE_TIME_SEPARATOR = /t|\s/i;
+const UUID = /^(?:urn:uuid:)?[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
+function isLeapYear(year: number): boolean {
+	// https://tools.ietf.org/html/rfc3339#appendix-C
+	return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+
+function isISOTime(value: string): boolean {
+	const matches: string[] | null = TIME.exec(value);
+	if (!matches) return false;
+	const hr: number = +matches[1];
+	const min: number = +matches[2];
+	const sec: number = +matches[3];
+	const tz: string | undefined = matches[4];
+	const tzSign: number = matches[5] === "-" ? -1 : 1;
+	const tzH: number = +(matches[6] || 0);
+	const tzM: number = +(matches[7] || 0);
+	if (tzH > 23 || tzM > 59 || !tz) return false;
+	if (hr <= 23 && min <= 59 && sec < 60) return true;
+	// leap second
+	const utcMin = min - tzM * tzSign;
+	const utcHr = hr - tzH * tzSign - (utcMin < 0 ? 1 : 0);
+	return (
+		(utcHr === 23 || utcHr === -1) &&
+		(utcMin === 59 || utcMin === -1) &&
+		sec < 61
+	);
+}
+
+export function isISODate(str: string): boolean {
+	// full-date from http://tools.ietf.org/html/rfc3339#section-5.6
+	const matches: string[] | null = DATE.exec(str);
+	if (!matches) return false;
+	const year: number = +matches[1];
+	const month: number = +matches[2];
+	const day: number = +matches[3];
+	return (
+		month >= 1 &&
+		month <= 12 &&
+		day >= 1 &&
+		day <= (month === 2 && isLeapYear(year) ? 29 : DAYS[month])
+	);
+}
+
+export function isISODateTime(value: string): boolean {
+	const dateTime: string[] = value.split(DATE_TIME_SEPARATOR);
+	return (
+		dateTime.length === 2 && isISODate(dateTime[0]) && isISOTime(dateTime[1])
+	);
+}
+
+export function isUUID(value: string): boolean {
+	return UUID.test(value);
+}

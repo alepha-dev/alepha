@@ -7,7 +7,6 @@ import {
 	$inject,
 	$logger,
 	Alepha,
-	type HookDescriptor,
 	type Logger,
 	OPTIONS,
 } from "@alepha/core";
@@ -26,7 +25,7 @@ export class ServerStaticProvider {
 
 	protected readonly directories: ServeDirectory[] = [];
 
-	protected readonly configure: HookDescriptor<"configure"> = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
 			const serves = this.alepha.getDescriptorValues($serve);
