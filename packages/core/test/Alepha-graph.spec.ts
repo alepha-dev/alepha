@@ -50,14 +50,14 @@ test("Alepha#graph - basic ", async () => {
 
 	a.with(M);
 
+	await a.start();
+
 	expect(a.graph()).toEqual({
-		A: { from: ["Alepha", "B", "C"], as: "A3" },
 		B: { from: ["M"] },
 		C: { from: ["M"] },
 		M: { from: ["Alepha"] },
 		A3X: { from: ["A3"] },
-		A3: { from: [] },
-		X: { from: ["Alepha"], as: "X2" },
-		X2: { from: [] },
+		A3: { from: ["B", "C", "Alepha"], as: ["A"] },
+		X2: { from: ["Alepha"], as: ["X"] },
 	});
 });

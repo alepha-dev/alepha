@@ -1,4 +1,4 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module, type Alepha } from "@alepha/core";
 import { AlephaTopic, TopicProvider } from "@alepha/topic";
 import { RedisTopicProvider } from "./providers/RedisTopicProvider.ts";
 
@@ -14,14 +14,15 @@ export * from "./providers/RedisTopicProvider.ts";
  * @see {@link RedisTopicProvider}
  * @module alepha.topic.redis
  */
-export class AlephaTopicRedis implements Module {
-	public readonly name = "alepha.topic.redis";
-	public readonly $services = (alepha: Alepha): Alepha =>
+export const AlephaTopicRedis = $module({
+	name: "alepha.topic.redis",
+	services: [RedisTopicProvider],
+	register: (alepha: Alepha): Alepha =>
 		alepha
 			.with({
+				optional: true,
 				provide: TopicProvider,
 				use: RedisTopicProvider,
-				optional: true,
 			})
-			.with(AlephaTopic);
-}
+			.with(AlephaTopic),
+});

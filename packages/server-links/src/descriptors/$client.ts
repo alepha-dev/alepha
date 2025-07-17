@@ -1,4 +1,4 @@
-import { $inject } from "@alepha/core";
+import { $inject, KIND } from "@alepha/core";
 import {
 	type ClientScope,
 	type HttpVirtualClient,
@@ -13,3 +13,5 @@ export const $client = <T extends object>(
 ): HttpVirtualClient<T> => {
 	return $inject(LinkProvider).client<T>(scope);
 };
+
+$client[KIND] = "client";

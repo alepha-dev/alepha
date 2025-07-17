@@ -1,7 +1,11 @@
 import { Alepha } from "@alepha/core";
 import { $action, AlephaServer, ServerProvider } from "@alepha/server";
 import { afterEach, describe, expect, test } from "vitest";
-import { AlephaServerCors, type CorsOptions, ServerCorsProvider } from "../src";
+import {
+	AlephaServerCors,
+	ServerCorsProvider,
+	type ServerCorsProviderOptions,
+} from "../src";
 
 // A simple test action to hit
 class TestApp {
@@ -15,7 +19,9 @@ describe("ServerCorsProvider", () => {
 	let alepha: Alepha;
 	let server: ServerProvider;
 
-	const setupServer = async (corsOptions?: Partial<CorsOptions>) => {
+	const setupServer = async (
+		corsOptions?: Partial<ServerCorsProviderOptions>,
+	) => {
 		alepha = Alepha.create()
 			.with(AlephaServer)
 			.with(AlephaServerCors)

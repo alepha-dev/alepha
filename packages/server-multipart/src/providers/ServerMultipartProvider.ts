@@ -28,7 +28,7 @@ export class ServerMultipartProvider {
 	protected readonly helper: ActionDescriptorHelper = $inject(
 		ActionDescriptorHelper,
 	);
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
 		on: "server:onRequest",

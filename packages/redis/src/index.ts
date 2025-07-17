@@ -1,4 +1,4 @@
-import { __bind, type Alepha, type Module } from "@alepha/core";
+import { $module, type Alepha } from "@alepha/core";
 import { RedisProvider } from "./providers/RedisProvider.ts";
 import { RedisSubscriberProvider } from "./providers/RedisSubscriberProvider.ts";
 
@@ -15,11 +15,8 @@ export * from "./providers/RedisSubscriberProvider.ts";
  * @see {@link RedisProvider}
  * @module alepha.redis
  */
-export class AlephaRedis implements Module {
-	public readonly name = "alepha.redis";
-	public readonly $services = (alepha: Alepha): Alepha =>
-		alepha.with(RedisProvider);
-}
-
-__bind(RedisProvider, AlephaRedis);
-__bind(RedisSubscriberProvider, AlephaRedis);
+export const AlephaRedis = $module({
+	name: "alepha.redis",
+	services: [RedisProvider, RedisSubscriberProvider],
+	register: (alepha: Alepha) => alepha.with(RedisProvider),
+});

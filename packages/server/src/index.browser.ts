@@ -1,4 +1,5 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module } from "@alepha/core";
+import { $action } from "./descriptors/$action.ts";
 import { HttpClient } from "./services/HttpClient.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -7,9 +8,8 @@ export * from "./index.shared.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class AlephaServer implements Module {
-	public readonly name = "alepha.server";
-	public readonly $services = (alepha: Alepha) => {
-		alepha.with(HttpClient);
-	};
-}
+export const AlephaServer = $module({
+	name: "alepha.server",
+	descriptors: [$action],
+	services: [HttpClient],
+});

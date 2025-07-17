@@ -16,7 +16,7 @@ import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
 export class ServerStaticProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly routerProvider: ServerRouterProvider =
 		$inject(ServerRouterProvider);
 	protected readonly dateTimeProvider: DateTimeProvider =

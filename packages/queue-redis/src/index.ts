@@ -1,4 +1,4 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module, type Alepha } from "@alepha/core";
 import { AlephaQueue, QueueProvider } from "@alepha/queue";
 import { RedisQueueProvider } from "./providers/RedisQueueProvider.ts";
 
@@ -14,14 +14,15 @@ export * from "./providers/RedisQueueProvider.ts";
  * @see {@link RedisQueueProvider}
  * @module alepha.queue.redis
  */
-export class AlephaQueueRedis implements Module {
-	public readonly name = "alepha.queue.redis";
-	public readonly $services = (alepha: Alepha): Alepha =>
+export const AlephaQueueRedis = $module({
+	name: "alepha.queue.redis",
+	services: [RedisQueueProvider],
+	register: (alepha: Alepha) =>
 		alepha
 			.with({
+				optional: true,
 				provide: QueueProvider,
 				use: RedisQueueProvider,
-				optional: true,
 			})
-			.with(AlephaQueue);
-}
+			.with(AlephaQueue),
+});

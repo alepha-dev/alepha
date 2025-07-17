@@ -2,7 +2,6 @@ import {
 	$hook,
 	$inject,
 	Alepha,
-	type HookDescriptor,
 	type TAny,
 	type TArray,
 	type TObject,
@@ -30,18 +29,15 @@ import { LinkProvider } from "./LinkProvider.ts";
 import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
 
 export class ServerLinksProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
-	protected readonly client: LinkProvider = $inject(LinkProvider);
-	protected readonly helper: ActionDescriptorHelper = $inject(
-		ActionDescriptorHelper,
+	protected readonly alepha = $inject(Alepha);
+	protected readonly client = $inject(LinkProvider);
+	protected readonly helper = $inject(ActionDescriptorHelper);
+	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
+	protected readonly serverActionDescriptorProvider = $inject(
+		ServerActionDescriptorProvider,
 	);
-	protected readonly remoteProvider: RemoteDescriptorProvider = $inject(
-		RemoteDescriptorProvider,
-	);
-	protected readonly serverActionDescriptorProvider: ServerActionDescriptorProvider =
-		$inject(ServerActionDescriptorProvider);
 
-	public readonly onRoute: HookDescriptor<"server:onRoute"> = $hook({
+	public readonly onRoute = $hook({
 		on: "server:onRoute",
 		handler: ({ route }) => {
 			if (!isServerAction(route)) {

@@ -46,7 +46,7 @@ declare module "@alepha/core" {
 }
 
 export class CacheDescriptorProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly cacheProvider: CacheProvider = $inject(CacheProvider);
 	protected readonly memoryCacheProvider: MemoryCacheProvider =
 		$inject(MemoryCacheProvider);

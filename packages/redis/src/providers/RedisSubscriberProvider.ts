@@ -4,7 +4,7 @@ import { RedisProvider } from "./RedisProvider.ts";
 
 export class RedisSubscriberProvider {
 	protected readonly log: Logger = $logger();
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 	protected readonly client: RedisClient = this.createClient();
 

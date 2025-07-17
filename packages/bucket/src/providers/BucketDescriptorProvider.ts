@@ -5,7 +5,7 @@ import {
 } from "../descriptors/$bucket.ts";
 
 export class BucketDescriptorProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly buckets: Array<Bucket> = [];
 
 	public readonly onConfigure = $hook({

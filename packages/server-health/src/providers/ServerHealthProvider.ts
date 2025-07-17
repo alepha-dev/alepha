@@ -9,7 +9,7 @@ import { $route } from "@alepha/server";
  */
 export class ServerHealthProvider {
 	protected readonly time: DateTimeProvider = $inject(DateTimeProvider);
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 
 	public readonly health = $route({
 		path: "/health",

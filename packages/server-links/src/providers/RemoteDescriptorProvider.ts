@@ -21,7 +21,7 @@ export class RemoteDescriptorProvider {
 		apiLinks: "/api/_links",
 	};
 
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly client: LinkProvider = $inject(LinkProvider);
 	protected readonly proxyProvider: ProxyDescriptorProvider = $inject(
 		ProxyDescriptorProvider,

@@ -1,4 +1,4 @@
-import { __bind, type Alepha, type Module } from "@alepha/core";
+import { $module, type Alepha } from "@alepha/core";
 import { $topic } from "./descriptors/$topic.ts";
 import { MemoryTopicProvider } from "./providers/MemoryTopicProvider.ts";
 import { TopicDescriptorProvider } from "./providers/TopicDescriptorProvider.ts";
@@ -24,16 +24,16 @@ export * from "./providers/TopicProvider.ts";
  * @see {@link $subscriber}
  * @module alepha.topic
  */
-export class AlephaTopic implements Module {
-	public readonly name = "alepha.topic";
-	public readonly $services = (alepha: Alepha) =>
+export const AlephaTopic = $module({
+	name: "alepha.topic",
+	descriptors: [$topic],
+	services: [TopicProvider, MemoryTopicProvider, TopicDescriptorProvider],
+	register: (alepha: Alepha) =>
 		alepha
 			.with({
+				optional: true,
 				provide: TopicProvider,
 				use: MemoryTopicProvider,
-				optional: true,
 			})
-			.with(TopicDescriptorProvider);
-}
-
-__bind($topic, AlephaTopic);
+			.with(TopicDescriptorProvider),
+});

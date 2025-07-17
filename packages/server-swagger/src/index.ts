@@ -1,4 +1,4 @@
-import { __bind, type Alepha, type Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
 import { $swagger } from "./descriptors/$swagger.ts";
 import { ServerSwaggerProvider } from "./ServerSwaggerProvider.ts";
@@ -18,10 +18,8 @@ export * from "./ServerSwaggerProvider.ts";
  * @see {@link ServerSwaggerProvider}
  * @module alepha.server.swagger
  */
-export class AlephaServerSwagger implements Module {
-	public readonly name = "alepha.server.swagger";
-	public readonly $services = (alepha: Alepha): Alepha =>
-		alepha.with(AlephaServer).with(ServerSwaggerProvider);
-}
-
-__bind($swagger, AlephaServerSwagger);
+export const AlephaServerSwagger = $module({
+	name: "alepha.server.swagger",
+	descriptors: [$swagger],
+	services: [AlephaServer, ServerSwaggerProvider],
+});

@@ -13,7 +13,7 @@ const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
 
 export class ServerCompressProvider {
-	compressors: Record<
+	public compressors: Record<
 		string,
 		| {
 				compress: (...args: any[]) => Promise<Buffer>;
@@ -36,6 +36,16 @@ export class ServerCompressProvider {
 						stream: createZstdCompress,
 					}
 				: undefined,
+	};
+
+	public options: ServerCompressProviderOptions = {
+		allowedContentTypes: [
+			"application/json",
+			"text/html",
+			"application/javascript",
+			"text/plain",
+			"text/css",
+		],
 	};
 
 	public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
@@ -66,12 +76,14 @@ export class ServerCompressProvider {
 	});
 
 	protected isAllowedContentType(contentType: string | undefined): boolean {
-		return (
-			contentType === "application/json" ||
-			contentType === "text/html" ||
-			contentType === "application/javascript" ||
-			contentType === "text/plain" ||
-			contentType === "text/css"
+		if (!contentType) {
+			return false;
+		}
+
+		const lowerContentType = contentType.toLowerCase();
+
+		return !!this.options.allowedContentTypes.find((it) =>
+			lowerContentType.includes(it),
 		);
 	}
 
@@ -139,4 +151,8 @@ export class ServerCompressProvider {
 		response.headers["content-encoding"] = encoding;
 		response.headers["cache-control"] = "no-cache";
 	}
+}
+
+export interface ServerCompressProviderOptions {
+	allowedContentTypes: string[];
 }

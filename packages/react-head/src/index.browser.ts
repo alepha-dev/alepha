@@ -1,5 +1,5 @@
-import { __bind, type Alepha, type Module } from "@alepha/core";
-import { $page, AlephaReact } from "@alepha/react";
+import { $module } from "@alepha/core";
+import { AlephaReact } from "@alepha/react";
 import { BrowserHeadProvider } from "./providers/BrowserHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -16,10 +16,7 @@ export * from "./providers/BrowserHeadProvider.ts";
  * @see {@link BrowserHeadProvider}
  * @module alepha.react.head
  */
-export class AlephaReactHead implements Module {
-	public readonly name = "alepha.react.head";
-	public readonly $services = (alepha: Alepha) =>
-		alepha.with(AlephaReact).with(BrowserHeadProvider);
-}
-
-__bind($page, AlephaReactHead);
+export const AlephaReactHead = $module({
+	name: "alepha.react.head",
+	services: [AlephaReact, BrowserHeadProvider],
+});

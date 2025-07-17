@@ -15,9 +15,10 @@ class Api {
 run(Api);
 `,
 	react: `
+import { run } from "alepha";
 import { $page } from "alepha/react";
 
-class Web {
+class App {
   // Define a server-side rendered React page.
   // Data from \`resolve\` is passed as type-safe props.
   home = $page({
@@ -26,9 +27,11 @@ class Web {
     component: ({ message }) => <h1>{message}</h1>,
   });
 }
+
+run(App);
 `,
 	db: `
-import { t } from "alepha";
+import { t, run } from "alepha";
 import { $entity, pg, Repository } from "alepha/postgres";
 
 // Define an entity with type-safe columns.
@@ -63,7 +66,7 @@ run(Queue);
 import { t, run } from "alepha";
 import { $command } from "alepha/command";
 
-class Queue {
+class CLI {
   build = $command({
     schema: t.object({
     	verbose: t.optional(t.boolean()),
@@ -72,6 +75,6 @@ class Queue {
   });
 }
 
-run(Queue);
+run(CLI);
 `,
 };

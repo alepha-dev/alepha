@@ -20,10 +20,6 @@ npm install @alepha/core @alepha/batch
 This module allows you to group multiple asynchronous operations into a single "batch," which is then processed together.
 This is an essential pattern for improving performance, reducing I/O, and interacting efficiently with rate-limited APIs or databases.
 
-### Basic Example: A Simple Event Logger
-
-Let's create a batch processor that collects log messages and prints them to the console every 5 seconds or whenever 10 messages have been collected.
-
 ```ts
 import { Alepha, $hook, run, t } from "alepha";
 import { $batch } from "alepha/batch";

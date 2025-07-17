@@ -2,7 +2,7 @@ import type {
 	IncomingMessage,
 	ServerResponse as NodeServerResponse,
 } from "node:http";
-import { __bind, type Alepha, type Module } from "@alepha/core";
+import { __bind, $module, type Alepha } from "@alepha/core";
 import { $realm, $role } from "@alepha/security";
 import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
 import { $route } from "./descriptors/$route.ts";
@@ -246,9 +246,21 @@ export * from "./providers/ServerRouterProvider.ts";
  * @see {@link $action}
  * @module alepha.server
  */
-export class AlephaServer implements Module {
-	public readonly name = "alepha.server";
-	public readonly $services = (alepha: Alepha) => {
+export const AlephaServer = $module({
+	name: "alepha.server",
+	descriptors: [$route, $action],
+	services: [
+		ServerProvider,
+		NodeHttpServerProvider,
+		ServerActionDescriptorProvider,
+		ServerRouteDescriptorProvider,
+		ServerBodyParserProvider,
+		ServerLoggerProvider,
+		ServerNotReadyProvider,
+		ServerTimingProvider,
+		ServerSecurityProvider,
+	],
+	register: (alepha: Alepha) => {
 		alepha.with({
 			optional: true,
 			provide: ServerProvider,
@@ -264,10 +276,8 @@ export class AlephaServer implements Module {
 		if (!alepha.isProduction()) {
 			alepha.with(ServerTimingProvider);
 		}
-	};
-}
+	},
+});
 
-__bind($route, AlephaServer);
-__bind($action, AlephaServer);
 __bind($realm, ServerSecurityProvider);
 __bind($role, ServerSecurityProvider);

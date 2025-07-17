@@ -32,7 +32,7 @@ export class RedisCacheProvider implements CacheProvider {
 	protected readonly log: Logger = $logger();
 	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 	protected readonly env: Static<typeof envSchema> = $env(envSchema);
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 
 	public async get(name: string, key: string): Promise<Uint8Array | undefined> {
 		if (!this.alepha.isStarted()) {

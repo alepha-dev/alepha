@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { $action, AlephaServer, ServerProvider } from "@alepha/server";
+import { $action, ServerProvider } from "@alepha/server";
 import { describe, expect, test } from "vitest";
 import {
 	AlephaServerHelmet,
@@ -16,7 +16,6 @@ describe("ServerHelmetProvider", () => {
 		const alepha = Alepha.create({
 			env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
 		})
-			.with(AlephaServer)
 			.with(AlephaServerHelmet)
 			.with(TestApp);
 

@@ -20,6 +20,8 @@ npm install @alepha/core @alepha/command
 This module provides a powerful way to build command-line interfaces
 directly within your Alepha application, using declarative descriptors.
 
+It allows you to define commands using the `$command` descriptor.
+
 ## API Reference
 
 ### Descriptors

@@ -1,4 +1,4 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
 import { ServerHelmetProvider } from "./providers/ServerHelmetProvider.ts";
 
@@ -15,9 +15,7 @@ export * from "./providers/ServerHelmetProvider.ts";
  * @see {@link ServerHelmetProvider}
  * @module alepha.server.helmet
  */
-export class AlephaServerHelmet implements Module {
-	public readonly name = "alepha.server.helmet";
-	public readonly $services = (alepha: Alepha): void => {
-		alepha.with(AlephaServer).with(ServerHelmetProvider);
-	};
-}
+export const AlephaServerHelmet = $module({
+	name: "alepha.server.helmet",
+	services: [AlephaServer, ServerHelmetProvider],
+});

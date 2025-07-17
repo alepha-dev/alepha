@@ -48,7 +48,7 @@ declare module "@alepha/core" {
 
 export class CommandDescriptorProvider {
 	protected readonly env: Static<typeof envSchema> = $env(envSchema);
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();
 	protected commands: Command[] = [];
 

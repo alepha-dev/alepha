@@ -72,6 +72,7 @@ async function extractDescriptorInfo(
 		const match = content.match(regex);
 
 		if (!match) return null;
+		if (match[1].includes("@internal")) return null;
 
 		return {
 			name: match[2],
@@ -222,9 +223,9 @@ async function generateReadmes() {
 
 			if (descriptors.length > 0) {
 				readmeContent += `\n### Descriptors\n`;
-				descriptors.forEach((desc) => {
+				for (const desc of descriptors) {
 					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
-				});
+				}
 			}
 
 			if (providers.length > 0) {

@@ -38,7 +38,7 @@ declare module "@alepha/core" {
 }
 
 export class LockDescriptorProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly dateTimeProvider: DateTimeProvider =
 		$inject(DateTimeProvider);
 	protected readonly lockProvider: LockProvider = $inject(LockProvider);

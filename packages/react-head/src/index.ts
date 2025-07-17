@@ -1,4 +1,4 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 import {
 	AlephaReact,
 	type PageConfigSchema,
@@ -38,8 +38,7 @@ declare module "@alepha/react" {
  * @see {@link ServerHeadProvider}
  * @module alepha.react.head
  */
-export class AlephaReactHead implements Module {
-	public readonly name = "alepha.react.head";
-	public readonly $services = (alepha: Alepha) =>
-		alepha.with(AlephaReact).with(ServerHeadProvider);
-}
+export const AlephaReactHead = $module({
+	name: "alepha.react.head",
+	services: [AlephaReact, ServerHeadProvider],
+});

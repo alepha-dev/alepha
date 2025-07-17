@@ -54,7 +54,7 @@ export interface HelmetOptions {
  * to every server response, without external dependencies.
  */
 export class ServerHelmetProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 
 	/**
 	 * The configuration options. These can be overridden during

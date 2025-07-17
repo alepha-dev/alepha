@@ -35,7 +35,7 @@ interface BatchInstance<TItem extends TSchema> {
  * Process every $batch.
  */
 export class BatchDescriptorProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();
 	protected readonly dateTimeProvider: DateTimeProvider =
 		$inject(DateTimeProvider);

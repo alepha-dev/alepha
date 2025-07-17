@@ -5,7 +5,7 @@ export class ServerCorsProvider {
 	protected readonly serverRouterProvider: ServerRouterProvider =
 		$inject(ServerRouterProvider);
 
-	public options: CorsOptions = {
+	public options: ServerCorsProviderOptions = {
 		origin: "*",
 		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 		headers: ["Content-Type", "Authorization"],
@@ -64,7 +64,7 @@ export class ServerCorsProvider {
 
 	public isOriginAllowed(
 		origin: string | undefined,
-		allowed: CorsOptions["origin"],
+		allowed: ServerCorsProviderOptions["origin"],
 	): boolean {
 		if (allowed === "*") return true;
 		if (typeof allowed === "function") return allowed(origin);
@@ -76,7 +76,7 @@ export class ServerCorsProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CorsOptions {
+export interface ServerCorsProviderOptions {
 	origin?: string | string[] | ((origin: string | undefined) => boolean);
 	methods: string[];
 	headers: string[];

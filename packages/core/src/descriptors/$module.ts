@@ -50,10 +50,10 @@ export const $module = (args: ModuleDescriptorOptions): ModuleDescriptor => {
 	};
 
 	for (const service of services) {
-		if (typeof service === "function") {
-			__bind(service, Class[name]);
-		} else {
-			__bind(service.provide, Class[name]);
+		const it = typeof service === "function" ? service : service.provide;
+		const isModule = !!it.prototype?.$services;
+		if (!isModule) {
+			__bind(it, Class[name]);
 		}
 	}
 

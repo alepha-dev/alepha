@@ -25,13 +25,12 @@ import {
 } from "./descriptors/$swagger.ts";
 
 export class ServerSwaggerProvider {
-	protected readonly serverActionProvider: ServerActionDescriptorProvider =
-		$inject(ServerActionDescriptorProvider);
-	protected readonly serverStaticProvider: ServerStaticProvider =
-		$inject(ServerStaticProvider);
-	protected readonly serverRouterProvider: ServerRouterProvider =
-		$inject(ServerRouterProvider);
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly serverActionProvider = $inject(
+		ServerActionDescriptorProvider,
+	);
+	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
+	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+	protected readonly alepha = $inject(Alepha);
 
 	protected readonly configure = $hook({
 		on: "configure",

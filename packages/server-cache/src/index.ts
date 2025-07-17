@@ -1,6 +1,5 @@
 import { AlephaCache } from "@alepha/cache";
-import type { Alepha, Module } from "@alepha/core";
-import { AlephaServer } from "@alepha/server";
+import { $module } from "@alepha/core";
 import { ServerCacheProvider } from "./providers/ServerCacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -37,8 +36,7 @@ export * from "./providers/ServerCacheProvider.ts";
  * @see {@link ServerCacheProvider}
  * @module alepha.server.cache
  */
-export class AlephaServerCache implements Module {
-	public readonly name = "alepha.server.cache";
-	public readonly $services = (alepha: Alepha) =>
-		alepha.with(AlephaServer).with(AlephaCache).with(ServerCacheProvider);
-}
+export const AlephaServerCache = $module({
+	name: "alepha.server.cache",
+	services: [AlephaCache, ServerCacheProvider],
+});

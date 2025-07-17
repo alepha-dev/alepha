@@ -14,13 +14,9 @@ import {
 	Alepha,
 	type HookDescriptor,
 	KIND,
-	type Logger,
 	OPTIONS,
 	type Static,
-	type TObject,
-	type TOptional,
 	type TSchema,
-	type TString,
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
@@ -33,9 +29,7 @@ import {
 	type Cookies,
 } from "../descriptors/$cookie.ts";
 
-const envSchema: TObject<{
-	COOKIE_SECRET: TOptional<TString>;
-}> = t.object({
+const envSchema = t.object({
 	/**
 	 *  A 32-byte secret key used for cookie encryption and signing. MUST be set for `encrypt` or `sign` to work.
 	 */
@@ -52,13 +46,12 @@ declare module "@alepha/core" {
 }
 
 export class ServerCookiesProvider {
-	protected readonly alepha: Alepha = $inject(Alepha);
-	protected readonly log: Logger = $logger();
-	protected readonly env: Static<typeof envSchema> = $env(envSchema);
-	protected readonly dateTimeProvider: DateTimeProvider =
-		$inject(DateTimeProvider);
+	protected readonly alepha = $inject(Alepha);
+	protected readonly log = $logger();
+	protected readonly env = $env(envSchema);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-	// Crypto constants
+	// crypto constants
 	protected readonly ALGORITHM = "aes-256-gcm";
 	protected readonly IV_LENGTH = 16; // For GCM
 	protected readonly AUTH_TAG_LENGTH = 16;

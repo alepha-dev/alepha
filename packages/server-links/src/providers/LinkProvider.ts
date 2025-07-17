@@ -19,7 +19,7 @@ export class LinkProvider {
 	public readonly URL_LINKS = "/api/_links";
 
 	protected readonly log: Logger = $logger();
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly httpClient: HttpClient = $inject(HttpClient);
 
 	public links?: Array<HttpClientLink>;

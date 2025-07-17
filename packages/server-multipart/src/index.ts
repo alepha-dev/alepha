@@ -1,4 +1,4 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
 import { ServerMultipartProvider } from "./providers/ServerMultipartProvider.ts";
 
@@ -15,10 +15,7 @@ export * from "./providers/ServerMultipartProvider.ts";
  * @see {@link ServerMultipartProvider}
  * @module alepha.server.multipart
  */
-export class AlephaServerMultipart implements Module {
-	public readonly name = "alepha.server.multipart";
-	public readonly $services = (alepha: Alepha): void => {
-		alepha.with(AlephaServer);
-		alepha.with(ServerMultipartProvider);
-	};
-}
+export const AlephaServerMultipart = $module({
+	name: "alepha.server.multipart",
+	services: [AlephaServer, ServerMultipartProvider],
+});

@@ -244,10 +244,9 @@ test("SecurityProvider#jwt - default", async () => {
 });
 
 test("SecurityProvider#jwt - realms", async () => {
-	const app = Alepha.create();
-	const sec = app.get({
+	const app = Alepha.create().with({
 		provide: SecurityProvider,
-		use: class extends SecurityProvider {
+		use: class MySecurityProvider extends SecurityProvider {
 			createRealms(): Realm[] {
 				return [
 					{
@@ -264,6 +263,8 @@ test("SecurityProvider#jwt - realms", async () => {
 			}
 		},
 	});
+
+	const sec = app.get(SecurityProvider);
 
 	sec.createPermission("customers:get");
 	sec.createPermission("operators:get");

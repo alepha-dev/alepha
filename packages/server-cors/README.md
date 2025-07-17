@@ -15,3 +15,6 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-cors
 ```
+## Module
+
+Plugin for configuring CORS on the Alepha server.

@@ -288,6 +288,9 @@ export class Alepha {
 	 */
 	protected modules: Array<ModuleDefinition> = [];
 
+	protected substitutions: Map<Service, Service> = new Map();
+	protected configurations: Map<Service, object> = new Map();
+
 	/**
 	 * Node.js feature that allows to store context across asynchronous calls.
 	 *
@@ -460,6 +463,10 @@ export class Alepha {
 
 		this.log.info("Starting App...");
 
+		for (const [key] of this.substitutions.entries()) {
+			this.get(key);
+		}
+
 		this.locked = true;
 
 		await this.emit("configure", this, { log: true });
@@ -539,6 +546,10 @@ export class Alepha {
 				: { provide: entry };
 
 		if (!opts || opts.inRegistry === true) {
+			const substitute = this.substitutions.get(provide);
+			if (substitute) {
+				return true;
+			}
 			const match = this.registry.get(provide);
 			if (match) {
 				return true;
@@ -546,6 +557,11 @@ export class Alepha {
 		}
 
 		if (!opts || opts.inStack === true) {
+			const substitute = this.substitutions.get(provide);
+			if (substitute && this.pendingInstantiations.includes(substitute)) {
+				return true;
+			}
+
 			return this.pendingInstantiations.includes(provide);
 		}
 
@@ -589,6 +605,18 @@ export class Alepha {
 			return this;
 		}
 
+		const isSubstitution = typeof entry === "object";
+		if (isSubstitution) {
+			if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
+				this.substitutions.set(entry.provide, entry.use);
+			} else if (!entry.optional) {
+				throw new AlephaError(
+					`Service already substituted. Please, substitute Service '${entry.provide.name}' with Service '${entry.use.name}' before using it.`,
+				);
+			}
+			return this;
+		}
+
 		this.get(entry);
 
 		return this;
@@ -605,7 +633,7 @@ export class Alepha {
 	 * @return The instance of the specified class or type.
 	 */
 	public get<T extends object>(
-		serviceEntry: ServiceEntry<T>,
+		service: Service<T>,
 		opts: {
 			/**
 			 * Ignore current existing instance.
@@ -638,42 +666,33 @@ export class Alepha {
 		const module = opts.module ?? __alephaRef.$services?.module;
 
 		// If the requested type is the container, the current instance is returned.
-		if ((serviceEntry as any) === Alepha) {
+		if ((service as any) === Alepha) {
 			return this as any;
 		}
 
-		const definition =
-			"provide" in serviceEntry ? serviceEntry : { provide: serviceEntry };
+		const substitute = this.substitutions.get(service);
+		if (substitute) {
+			return this.get(substitute, { parent, module });
+		}
 
-		const index = this.pendingInstantiations.indexOf(definition.provide);
+		const index = this.pendingInstantiations.indexOf(service);
 		if (index !== -1) {
 			throw new CircularDependencyError(
-				definition.provide.name,
+				service.name,
 				this.pendingInstantiations.slice(0, index).map((it) => it.name),
 			);
 		}
 
 		// the requested type is searched in the container
-		const match = this.registry.get(definition.provide);
-
+		const match = this.registry.get(service);
 		if (match && !opts.skipCache) {
-			if (
-				"use" in definition &&
-				definition.use &&
-				match.use !== definition.use &&
-				definition.optional !== true
-			) {
-				throw new AlephaError(
-					`Late substitution is forbidden. Please, substitute Service '${match.provide.name}' with Service '${definition.use.name}' before using it.`,
-				);
-			}
-
 			if (!match.parents.includes(parent)) {
 				match.parents.push(parent);
 			}
 
 			if (match.instance === undefined) {
-				match.instance = this.new(match.use ?? match.provide, opts.args);
+				throw new Error("Should not happen: instance is undefined");
+				// match.instance = this.new(match.use ?? match.provide, opts.args);
 			}
 
 			return match.instance;
@@ -681,7 +700,7 @@ export class Alepha {
 
 		if (this.started) {
 			throw new ContainerLockedError(
-				`Container is locked. No more services can be added. ${parent?.name} -> ${definition.provide.name}`,
+				`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
 			);
 		}
 
@@ -689,24 +708,35 @@ export class Alepha {
 			[KIND]: "INJECT",
 			context: this,
 			module,
-			provider:
-				"use" in definition && definition.use
-					? definition.use
-					: definition.provide,
+			provider: service,
 		});
 
-		const instance: T =
-			"use" in definition && definition.use
-				? this.get(definition.use, { parent: null, module })
-				: this.new(definition.provide, opts.args, module);
+		// check if service has been registered by a module
+		if (this.has(service) && !opts.skipCache) {
+			// if the service is already registered, we just return the instance
+			return this.get(service);
+		}
+
+		const instance: T = this.new(service, opts.args, module);
+
+		const configuration = this.configurations.get(service);
+		if (
+			configuration &&
+			"options" in instance &&
+			instance.options &&
+			typeof instance.options === "object"
+		) {
+			Object.assign(instance.options, configuration);
+		}
+
+		const definition: ServiceDefinition<T> = {
+			module,
+			parents: [parent],
+			instance,
+		};
 
 		if (!opts.skipRegistration) {
-			this.registry.set(definition.provide, {
-				...definition,
-				instance,
-				parents: [parent],
-				module,
-			});
+			this.registry.set(service, definition);
 		}
 
 		// [feature]: modules - it's just a way to group services together
@@ -764,10 +794,9 @@ export class Alepha {
 		if (this.has(service)) {
 			Object.assign(this.get(service).options, state);
 		} else {
-			this.log.debug(
-				`Service '${service.constructor.name}' not registered, skipping configuration`,
-			);
+			this.configurations.set(service, state);
 		}
+
 		return this;
 	}
 
@@ -1038,19 +1067,31 @@ export class Alepha {
 	 */
 	public graph(): Record<
 		string,
-		{ from: string[]; as?: string; module?: string }
+		{ from: string[]; as?: string[]; module?: string }
 	> {
+		for (const [key] of this.substitutions.entries()) {
+			if (!this.has(key)) {
+				this.get(key);
+			}
+		}
+
 		const graph: Record<
 			string,
-			{ from: string[]; as?: string; module?: string }
+			{ from: string[]; as?: string[]; module?: string }
 		> = {};
 
-		for (const { provide, parents, use, module } of this.registry.values()) {
+		for (const [provide, { parents, module }] of this.registry.entries()) {
 			graph[provide.name] = {
 				from: parents.filter((it) => !!it).map((it) => it.name),
 			};
-			if (use?.name) {
-				graph[provide.name].as = use.name;
+			const aliases = this.substitutions
+				.entries()
+				.filter((it) => it[1] === provide)
+				.map((it) => it[0].name)
+				.toArray();
+
+			if (aliases.length) {
+				graph[provide.name].as = aliases;
 			}
 			if (module?.$name) {
 				graph[provide.name].module = module.$name;
@@ -1180,16 +1221,6 @@ export class Alepha {
  * This is how we store services in the Alepha container.
  */
 interface ServiceDefinition<T extends object = any> {
-	/**
-	 * The class or type definition to provide.
-	 */
-	provide: Service<T>;
-
-	/**
-	 * The class or type definition to use. This will override the 'provide' property.
-	 */
-	use?: Service<T>;
-
 	/**
 	 * The instance of the class or type definition.
 	 * Mostly used for caching / singleton but can be used for other purposes like forcing the instance.

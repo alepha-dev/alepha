@@ -15,7 +15,7 @@
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",
-		"vite": "^7.0.4"
+		"vite": "^7.0.5"
 	},
 	"peerDependencies": {
 		"vite": "*"

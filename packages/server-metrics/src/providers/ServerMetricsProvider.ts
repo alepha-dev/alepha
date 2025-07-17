@@ -4,7 +4,7 @@ import { collectDefaultMetrics, Histogram, Registry } from "prom-client";
 
 export class ServerMetricsProvider {
 	protected readonly register: Registry = new Registry();
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 	protected httpRequestDuration?: Histogram<string>;
 
 	public readonly options: ServerMetricsProviderOptions = {};

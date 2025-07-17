@@ -1,10 +1,4 @@
-import {
-	$inject,
-	Alepha,
-	type Service,
-	type ServiceEntry,
-	t,
-} from "@alepha/core";
+import { $inject, Alepha, type Service, t } from "@alepha/core";
 import { expect } from "vitest";
 import {
 	$consumer,
@@ -46,7 +40,7 @@ export const testQueueBasic = async (provider: Service<QueueProvider>) => {
 	}
 
 	const createApp = async <T extends object>(
-		testClass: ServiceEntry<T>,
+		testClass: Service<T>,
 	): Promise<{ app: Alepha; test: T }> => {
 		const app = Alepha.create({
 			env: {

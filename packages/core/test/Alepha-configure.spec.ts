@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { $inject, Alepha } from "../src";
 
-test("Alepha#tune", () => {
+test("Alepha#configure", () => {
 	class A {
 		options = {
 			name: "A",
@@ -37,7 +37,7 @@ test("Alepha#tune", () => {
 	});
 });
 
-test("Alepsha#tune - substitution", () => {
+test("Alepha#configure - substitution", () => {
 	class Abstract {
 		options = {
 			name: "Abstract",
@@ -58,12 +58,11 @@ test("Alepsha#tune - substitution", () => {
 
 	const alepha = Alepha.create().with({ provide: Abstract, use: Impl1 });
 
-	alepha.configure(Impl1, { name: "hey" });
-	alepha.configure(Impl2, { name: "hey" });
+	alepha.configure(Impl1, { name: "hey1" });
+	alepha.configure(Impl2, { name: "hey2" });
 
-	expect(alepha.get(Abstract).options.name).toBe("hey");
+	expect(alepha.get(Abstract).options.name).toBe("hey1");
 	expect(alepha.graph()).toEqual({
-		Impl1: { from: ["Alepha"] },
-		Abstract: { from: ["Alepha"], as: "Impl1" },
+		Impl1: { from: ["Alepha"], as: ["Abstract"] },
 	});
 });

@@ -18,7 +18,7 @@ export class ProxyDescriptorProvider {
 	protected readonly log: Logger = $logger();
 	protected readonly routerProvider: ServerRouterProvider =
 		$inject(ServerRouterProvider);
-	protected readonly alepha: Alepha = $inject(Alepha);
+	protected readonly alepha = $inject(Alepha);
 
 	public readonly configure = $hook({
 		on: "configure",
