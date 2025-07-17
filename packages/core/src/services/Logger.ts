@@ -300,7 +300,7 @@ export class Logger {
 		}
 
 		const now = new Date();
-		const date = `${now.toLocaleTimeString()}.${now.getMilliseconds()}`;
+		const date = `${now.toLocaleTimeString()}.${String(now.getMilliseconds()).padStart(3, "0")}`;
 		const levelStr = level.toUpperCase();
 		let output = "";
 		let dataStr = "";

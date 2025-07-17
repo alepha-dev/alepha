@@ -14,7 +14,7 @@ export * from "./providers/RedisCacheProvider.ts";
  * @see {@link RedisCacheProvider}
  * @module alepha.cache.redis
  */
-const AlephaCacheRedis = $module({
+export const AlephaCacheRedis = $module({
 	name: "alepha.cache.redis",
 	services: [RedisCacheProvider],
 	register: (alepha) =>
@@ -26,5 +26,3 @@ const AlephaCacheRedis = $module({
 			})
 			.with(AlephaCache),
 });
-
-export default AlephaCacheRedis;

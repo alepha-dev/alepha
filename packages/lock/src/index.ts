@@ -25,7 +25,7 @@ export * from "./providers/MemoryLockProvider.ts";
  * @see {@link $lock}
  * @module alepha.lock
  */
-const AlephaLock = $module({
+export const AlephaLock = $module({
 	name: "alepha.lock",
 	descriptors: [$lock],
 	services: [
@@ -48,5 +48,3 @@ const AlephaLock = $module({
 			})
 			.with(LockDescriptorProvider),
 });
-
-export default AlephaLock;

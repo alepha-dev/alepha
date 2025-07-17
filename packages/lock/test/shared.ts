@@ -7,8 +7,9 @@ import {
 	type TopicProvider,
 } from "@alepha/topic";
 import { expect } from "vitest";
-import AlephaLock, {
+import {
 	$lock,
+	AlephaLock,
 	LockProvider,
 	LockTopicProvider,
 	MemoryLockProvider,

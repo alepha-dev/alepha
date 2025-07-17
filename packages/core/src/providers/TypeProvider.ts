@@ -243,6 +243,13 @@ export class TypeProvider {
 		return Type.Union([Type.Null(), schema], options);
 	}
 
+	public nullify = <T extends TSchema>(schema: T, options?: ObjectOptions) =>
+		Type.Mapped(
+			Type.KeyOf(schema),
+			(K) => this.nullable(Type.Index(schema, K), options),
+			options,
+		);
+
 	/**
 	 * Map a schema to another schema.
 	 *
