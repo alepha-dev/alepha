@@ -526,6 +526,7 @@ FormatRegistry.Set("date", isISODate);
 FormatRegistry.Set("date-time", isISODateTime);
 FormatRegistry.Set("time", isISOTime);
 FormatRegistry.Set("uuid", isUUID);
+FormatRegistry.Set("email", isEmail);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -534,6 +535,7 @@ const DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
 const DATE_TIME_SEPARATOR = /t|\s/i;
 const UUID = /^(?:urn:uuid:)?[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+const EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/i;
 
 function isLeapYear(year: number): boolean {
 	// https://tools.ietf.org/html/rfc3339#appendix-C
@@ -586,4 +588,8 @@ export function isISODateTime(value: string): boolean {
 
 export function isUUID(value: string): boolean {
 	return UUID.test(value);
+}
+
+export function isEmail(value: string): boolean {
+	return EMAIL.test(value);
 }

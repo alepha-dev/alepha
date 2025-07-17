@@ -101,11 +101,7 @@ export async function viteAlephaDev(
 			// forward vite request to alepha server
 			server.middlewares.use((req, res, next) => {
 				if (state.started && state.app && req.url && !isViteFile(req.url)) {
-					state.app.emit("node:request", { req, res }).then(() => {
-						if (!res.statusCode) {
-							next();
-						}
-					});
+					state.app.emit("node:request", { req, res }).then(next);
 					return;
 				}
 				next();

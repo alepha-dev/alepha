@@ -61,21 +61,7 @@ export class ServerLinksProvider {
 		},
 	});
 
-	public readonly links: RouteDescriptor<{
-		response: TObject<{
-			prefix: TOptional<TString>;
-			links: TArray<
-				TObject<{
-					name: TString;
-					path: TString;
-					method: TOptional<TString>;
-					group: TOptional<TString>;
-					requestBodyType: TOptional<TString>;
-					service: TOptional<TString>;
-				}>
-			>;
-		}>;
-	}> = $route({
+	public readonly links = $route({
 		path: RemoteDescriptorProvider.path.apiLinks,
 		schema: {
 			response: apiLinksResponseSchema,
@@ -88,12 +74,7 @@ export class ServerLinksProvider {
 		},
 	});
 
-	public readonly schema: RouteDescriptor<{
-		params: TObject<{
-			name: TString;
-		}>;
-		response: TRecord<TString, TAny>;
-	}> = $route({
+	public readonly schema = $route({
 		path: `${RemoteDescriptorProvider.path.apiLinks}/:name/schema`,
 		schema: {
 			params: t.object({

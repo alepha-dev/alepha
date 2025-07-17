@@ -165,13 +165,13 @@ export class LinkProvider {
 			},
 		};
 
-		action.path = `${action.prefix ?? "/api"}${action.path}`;
-		action.prefix = undefined; // prefix is not used in the client
-
 		// prefix with service when host is not defined (e.g. browser)
 		if (!link.host && link.service) {
-			action.path += `/${link.service}${link.path}`;
+			action.path = `/${link.service}${action.path}`;
 		}
+
+		action.path = `${action.prefix ?? "/api"}${action.path}`;
+		action.prefix = undefined; // prefix is not used in the client
 
 		if (link.requestBodyType) {
 			options.request.headers.set("content-type", link.requestBodyType);

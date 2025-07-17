@@ -35,7 +35,7 @@ export class NodeSqliteProvider extends PostgresProvider {
 		return this.mapResult(rows, schema);
 	}
 
-	public readonly sqlite = new DatabaseSync(":memory:");
+	public sqlite!: DatabaseSync;
 
 	public readonly db = drizzle(async (sql, params, method) => {
 		const statement = this.sqlite.prepare(sql);
@@ -60,6 +60,14 @@ export class NodeSqliteProvider extends PostgresProvider {
 
 		throw new Error(`Unsupported method: ${method}`);
 	}) as unknown as PgDatabase<any>;
+
+	protected readonly configure = $hook({
+		on: "configure",
+		handler: async () => {
+			const { DatabaseSync} = await import("node:sqlite");
+			this.sqlite = new DatabaseSync(":memory:");
+		},
+	});
 
 	protected readonly start = $hook({
 		on: "start",

@@ -4,6 +4,7 @@ import { $client } from "./descriptors/$client.ts";
 import { $remote } from "./descriptors/$remote.ts";
 import { RemoteDescriptorProvider } from "./providers/RemoteDescriptorProvider.ts";
 import { ServerLinksProvider } from "./providers/ServerLinksProvider.ts";
+import { LinkProvider } from "./providers/LinkProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -18,5 +19,6 @@ export * from "./providers/ServerLinksProvider.ts";
 export const AlephaServerLinks = $module({
 	name: "alepha.server.links",
 	descriptors: [$remote, $client],
-	services: [AlephaServer, ServerLinksProvider, RemoteDescriptorProvider],
+	services: [AlephaServer, ServerLinksProvider, RemoteDescriptorProvider,
+		LinkProvider],
 });
