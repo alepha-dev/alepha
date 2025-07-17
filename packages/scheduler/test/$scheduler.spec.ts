@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { $env, Alepha, type ServiceEntry, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "@alepha/lock";
@@ -11,8 +12,6 @@ class SharedLockProvider extends MemoryLockProvider {
 	store = store;
 }
 
-const intervalDurationMs = 250;
-
 const env = t.object({
 	LOCK: t.boolean(),
 });
@@ -21,7 +20,7 @@ class TestSchedulerInterval {
 	env = $env(env);
 	tick = 0;
 	t = $scheduler({
-		interval: intervalDurationMs,
+		interval: [1, "minute"],
 		lock: this.env.LOCK,
 		handler: async () => {
 			this.tick += 1;
@@ -33,8 +32,9 @@ const createApp = <T extends object>(
 	testClass: ServiceEntry<T>,
 	LOCK: boolean,
 	provider?: "redis",
+	prefix?: string,
 ): Alepha => {
-	return Alepha.create({ env: { LOCK } })
+	return Alepha.create({ env: { LOCK, LOCK_PREFIX_KEY: prefix } })
 		.with({
 			provide: LockProvider,
 			use: provider === "redis" ? RedisLockProvider : SharedLockProvider,
@@ -44,11 +44,12 @@ const createApp = <T extends object>(
 };
 
 const testSchedulerInterval = async (lock: boolean, provider?: "redis") => {
+	const prefix = randomUUID();
 	const apps = [
-		createApp(TestSchedulerInterval, lock, provider),
-		createApp(TestSchedulerInterval, lock, provider),
-		createApp(TestSchedulerInterval, lock, provider),
-		createApp(TestSchedulerInterval, lock, provider),
+		createApp(TestSchedulerInterval, lock, provider, prefix),
+		createApp(TestSchedulerInterval, lock, provider, prefix),
+		createApp(TestSchedulerInterval, lock, provider, prefix),
+		createApp(TestSchedulerInterval, lock, provider, prefix),
 	];
 
 	await Promise.all(apps.map((app) => app.start()));
@@ -56,13 +57,17 @@ const testSchedulerInterval = async (lock: boolean, provider?: "redis") => {
 	const sum = () =>
 		apps.reduce((acc, app) => acc + app.get(TestSchedulerInterval).tick, 0);
 
+	await Promise.all(
+		apps.map((app) => app.get(DateTimeProvider).travel(64, "seconds")),
+	);
+
+	await new Promise((r) => setTimeout(r, 100));
+
 	if (lock) {
-		await expect
-			.poll(() => expect(sum()).toEqual(3), { timeout: 2000 })
-			.toBeTruthy();
+		await expect.poll(() => expect(sum()).toEqual(1)).toBeTruthy();
 	} else {
 		await expect
-			.poll(() => expect(sum()).toEqual(3 * apps.length), { timeout: 2000 })
+			.poll(() => expect(sum()).toEqual(1 * apps.length))
 			.toBeTruthy();
 	}
 
@@ -77,7 +82,7 @@ test("$scheduler - interval no-lock", async () => {
 	await testSchedulerInterval(false);
 });
 
-test("$scheduler - interval (redis)", { retry: 2 }, async () => {
+test("$scheduler - interval (redis)", async () => {
 	await testSchedulerInterval(true, "redis");
 });
 

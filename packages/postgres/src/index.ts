@@ -1,7 +1,9 @@
-import { __bind, $env, type Alepha, type Module, t } from "@alepha/core";
+import { $module, type Alepha, t } from "@alepha/core";
 import * as drizzle from "drizzle-orm";
+import { $entity } from "./descriptors/$entity.ts";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
+import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
@@ -40,12 +42,6 @@ export * from "./types/schema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-	DATABASE_URL: t.string({
-		default: ":memory:",
-	}),
-});
-
 /**
  * Provides PostgreSQL (and SQLite!) database integration with type-safe ORM capabilities through Drizzle.
  *
@@ -58,14 +54,29 @@ const envSchema = t.object({
  * @see {@link $transaction}
  * @module alepha.postgres
  */
-export class AlephaPostgres implements Module {
-	public readonly name = "alepha.postgres";
-	public readonly env = $env(envSchema);
+export const AlephaPostgres = $module({
+	name: "alepha.postgres",
+	descriptors: [$repository, $sequence, $entity],
+	services: [
+		RepositoryDescriptorProvider,
+		SequenceProvider,
+		PostgresProvider,
+		NodePostgresProvider,
+		NodeSqliteProvider,
+		DrizzleKitProvider,
+	],
+	register: (alepha: Alepha) => {
+		const env = alepha.parseEnv(
+			t.object({
+				DATABASE_URL: t.string({
+					default: ":memory:",
+				}),
+			}),
+		);
 
-	public readonly $services = (alepha: Alepha) => {
 		alepha.with(RepositoryDescriptorProvider);
 
-		if (this.env.DATABASE_URL?.includes(":memory:")) {
+		if (env.DATABASE_URL.includes(":memory:")) {
 			alepha.with({
 				optional: true,
 				provide: PostgresProvider,
@@ -80,8 +91,5 @@ export class AlephaPostgres implements Module {
 		}
 
 		alepha.with(SequenceProvider);
-	};
-}
-
-__bind($repository, AlephaPostgres);
-__bind($sequence, AlephaPostgres);
+	},
+});

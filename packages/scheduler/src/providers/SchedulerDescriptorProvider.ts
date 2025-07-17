@@ -140,6 +140,7 @@ export class SchedulerDescriptorProvider {
 				`+ Interval "${this.dateTimeProvider.duration(options.interval).humanize()}" -> "${name}"`,
 			);
 			scheduler.interval = this.dateTimeProvider.interval({
+				attach: true,
 				duration: options.interval,
 				handler: () =>
 					scheduler.trigger({

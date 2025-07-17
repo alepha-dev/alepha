@@ -28,10 +28,6 @@ export class RedisLockProvider implements LockProvider {
 		}
 
 		const resp = await this.redisProvider.set(key, value, options);
-		if (resp === null) {
-			this.log.debug(`Lock already exists`, { key, value });
-			return value;
-		}
 
 		return resp.toString("utf-8");
 	}

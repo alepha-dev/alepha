@@ -1,10 +1,7 @@
-import type { Alepha, Module } from "@alepha/core";
+import { $module } from "@alepha/core";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// TODO: check if this is needed
-export * from "./descriptors/$entity.ts";
-//
 export * from "./errors/EntityNotFoundError.ts";
 export * from "./helpers/nullToUndefined.ts";
 export * from "./interfaces/FilterOperators.ts";
@@ -17,7 +14,8 @@ export * from "./schemas/pageSchema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class AlephaPostgres implements Module {
-	public readonly name = "alepha.postgres";
-	public readonly $services = (alepha: Alepha) => alepha;
-}
+export const AlephaPostgres = $module({
+	name: "alepha.postgres",
+	descriptors: [],
+	services: [],
+});

@@ -7,7 +7,7 @@ import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
 const alepha = Alepha.create().with(AlephaBucketAzure);
 
 describe("AzureFileStorageProvider", () => {
-	test("upload", async ({ expect }) => {
+	test("upload", { timeout: 10000 }, async ({ expect }) => {
 		const fileStorageProvider = alepha.get(FileStorageProvider);
 		const azureFileStorageProvider = alepha.get(AzureFileStorageProvider);
 

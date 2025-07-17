@@ -1,4 +1,4 @@
-import { $module, type ModuleDescriptor } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { MemoryTopicProvider } from "@alepha/topic";
 import { $lock } from "./descriptors/$lock.ts";
 import { LockDescriptorProvider } from "./providers/LockDescriptorProvider.ts";
@@ -25,7 +25,7 @@ export * from "./providers/MemoryLockProvider.ts";
  * @see {@link $lock}
  * @module alepha.lock
  */
-const AlephaLock: ModuleDescriptor = $module({
+const AlephaLock = $module({
 	name: "alepha.lock",
 	descriptors: [$lock],
 	services: [

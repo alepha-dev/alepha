@@ -1,5 +1,3 @@
-import { KIND } from "../constants/KIND.ts";
-import { descriptorEvents } from "../helpers/descriptor.ts";
 import type { Service } from "../interfaces/Service.ts";
 import { $cursor } from "./$cursor.ts";
 
@@ -15,14 +13,6 @@ import { $cursor } from "./$cursor.ts";
  */
 export const $inject = <T extends object>(type: Service<T>): T => {
 	const { context, definition, module } = $cursor();
-
-	descriptorEvents.emit("create", {
-		context,
-		definition,
-		module,
-		[KIND]: "INJECT",
-		provider: type,
-	});
 
 	// _ = $inject(Alepha)
 	if (type === context.constructor) {

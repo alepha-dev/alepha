@@ -9,8 +9,12 @@ import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
-import type { Descriptor, DescriptorMember } from "./helpers/descriptor.ts";
-import { isDescriptorInstance } from "./helpers/descriptor.ts";
+import {
+	type Descriptor,
+	type DescriptorMember,
+	descriptorEvents,
+	isDescriptorInstance,
+} from "./helpers/descriptor.ts";
 import {
 	isModule,
 	type Module,
@@ -680,6 +684,16 @@ export class Alepha {
 				`Container is locked. No more services can be added. ${parent?.name} -> ${definition.provide.name}`,
 			);
 		}
+
+		descriptorEvents.emit("create", {
+			[KIND]: "INJECT",
+			context: this,
+			module,
+			provider:
+				"use" in definition && definition.use
+					? definition.use
+					: definition.provide,
+		});
 
 		const instance: T =
 			"use" in definition && definition.use

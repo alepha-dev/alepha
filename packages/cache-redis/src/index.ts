@@ -1,5 +1,5 @@
 import { AlephaCache, CacheProvider } from "@alepha/cache";
-import { $module, type ModuleDescriptor } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { RedisCacheProvider } from "./providers/RedisCacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -14,7 +14,7 @@ export * from "./providers/RedisCacheProvider.ts";
  * @see {@link RedisCacheProvider}
  * @module alepha.cache.redis
  */
-const AlephaCacheRedis: ModuleDescriptor = $module({
+const AlephaCacheRedis = $module({
 	name: "alepha.cache.redis",
 	services: [RedisCacheProvider],
 	register: (alepha) =>

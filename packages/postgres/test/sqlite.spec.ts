@@ -12,15 +12,7 @@ test("sqlite", async () => {
 		}),
 	});
 
-	class UserRepository extends Repository.of(
-		$entity({
-			name: "users",
-			schema: t.object({
-				id: pg.primaryKey(),
-				name: t.string(),
-			}),
-		}),
-	) {}
+	class UserRepository extends Repository.of(users) {}
 
 	const alepha = Alepha.create().with({
 		provide: PostgresProvider,

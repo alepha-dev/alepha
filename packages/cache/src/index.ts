@@ -1,4 +1,4 @@
-import { $module, type ModuleDescriptor } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { $cache } from "./descriptors/$cache.ts";
 import { CacheDescriptorProvider } from "./providers/CacheDescriptorProvider.ts";
 import { CacheProvider } from "./providers/CacheProvider.ts";
@@ -24,7 +24,7 @@ export * from "./providers/MemoryCacheProvider.ts";
  * @see {@link CacheProvider}
  * @module alepha.cache
  */
-export const AlephaCache: ModuleDescriptor = $module({
+export const AlephaCache = $module({
 	name: "alepha.cache",
 	descriptors: [$cache],
 	services: [CacheProvider, MemoryCacheProvider, CacheDescriptorProvider],

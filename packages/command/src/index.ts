@@ -1,4 +1,4 @@
-import { $module, type ModuleDescriptor } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { $command } from "./descriptors/$command.ts";
 import { CommandDescriptorProvider } from "./providers/CommandDescriptorProvider.ts";
 
@@ -20,7 +20,7 @@ export * from "./providers/CommandDescriptorProvider.ts";
  * @see {@link $command}
  * @module alepha.command
  */
-const AlephaCommand: ModuleDescriptor = $module({
+const AlephaCommand = $module({
 	name: "alepha.command",
 	descriptors: [$command],
 	services: [CommandDescriptorProvider],

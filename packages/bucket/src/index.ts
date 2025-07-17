@@ -1,4 +1,4 @@
-import { $module, type ModuleDescriptor } from "@alepha/core";
+import { $module } from "@alepha/core";
 import { $bucket } from "./descriptors/$bucket.ts";
 import { BucketDescriptorProvider } from "./providers/BucketDescriptorProvider.ts";
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
@@ -24,7 +24,7 @@ export * from "./providers/MemoryFileStorageProvider.ts";
  * @see {@link FileStorageProvider}
  * @module alepha.bucket
  */
-export const AlephaBucket: ModuleDescriptor = $module({
+export const AlephaBucket = $module({
 	name: "alepha.bucket",
 	descriptors: [$bucket],
 	services: [

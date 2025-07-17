@@ -57,7 +57,6 @@ const testSchedulerCron = async (lock: boolean, provider?: "redis") => {
 
 	await Promise.all(apps.map((app) => app.start()));
 
-	// 🕒 simulate time travel to trigger the cron job 🕒
 	await Promise.all(
 		apps.map((app) => app.get(DateTimeProvider).travel(1, "hour")),
 	);
