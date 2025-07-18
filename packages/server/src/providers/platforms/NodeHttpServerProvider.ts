@@ -88,7 +88,15 @@ export class NodeHttpServerProvider extends ServerProvider {
 
 		// if response.body is web stream
 		if (response.body instanceof ReadableStream) {
-			Readable.from(response.body).pipe(res);
+			try {
+				for await (const chunk of response.body) {
+					res.write(chunk);
+				}
+			} catch (error) {
+				this.log.error("Error piping proxy response stream:", error);
+			} finally {
+				res.end();
+			}
 			return;
 		}
 
