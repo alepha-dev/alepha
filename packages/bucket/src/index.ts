@@ -5,6 +5,9 @@ import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./descriptors/$bucket.ts";
 export * from "./errors/FileNotFoundError.ts";
 export * from "./providers/BucketDescriptorProvider.ts";
 export * from "./providers/FileStorageProvider.ts";

@@ -3,6 +3,7 @@ import {
 	$inject,
 	$logger,
 	Alepha,
+	KIND,
 	type Logger,
 	OPTIONS,
 	type Static,
@@ -10,26 +11,11 @@ import {
 } from "@alepha/core";
 import { DateTimeProvider, type Timeout } from "@alepha/datetime";
 import { createRetryHandler } from "@alepha/retry";
-import type { BatchDescriptorOptions } from "../descriptors/$batch.ts";
+import type {
+	BatchDescriptor,
+	BatchDescriptorOptions,
+} from "../descriptors/$batch.ts";
 import { $batch } from "../descriptors/$batch.ts";
-
-interface PartitionState<TItem extends TSchema> {
-	items: Static<TItem>[];
-	timeout?: Timeout;
-	// Promises to resolve/reject when the batch is processed
-	resolvers: Array<{
-		resolve: (result?: any) => void;
-		reject: (reason?: any) => void;
-	}>;
-}
-
-interface BatchInstance<TItem extends TSchema> {
-	id: string;
-	options: BatchDescriptorOptions<TItem>;
-	partitions: Map<string, PartitionState<TItem>>;
-	activeHandlers: PromiseWithResolvers<void>[];
-	handler: (items: Static<TItem>[]) => Promise<void>;
-}
 
 /**
  * Process every $batch.
@@ -50,7 +36,6 @@ export class BatchDescriptorProvider {
 				const id = `${instance.constructor.name}:${key}`;
 				const options = value[OPTIONS] as BatchDescriptorOptions<any>;
 
-				// Create a retry-wrapped handler
 				const handler = createRetryHandler(
 					{
 						...options.retry,
@@ -59,7 +44,7 @@ export class BatchDescriptorProvider {
 					this.dateTimeProvider,
 				);
 
-				const batchInstance: BatchInstance<any> = {
+				const batchInstance: BatchInstance = {
 					id,
 					options: {
 						maxSize: 10,
@@ -71,14 +56,24 @@ export class BatchDescriptorProvider {
 					activeHandlers: [],
 					handler,
 				};
+
 				this.instances.set(id, batchInstance);
 
-				instance[key].push = (item: any) => this.push(id, item);
-				instance[key].flush = (partitionKey?: string) =>
-					this.flush(id, partitionKey);
+				instance[key] = this.createApi(batchInstance);
 			}
 		},
 	});
+
+	protected createApi<T extends TSchema>(
+		instance: BatchInstance<T>,
+	): BatchDescriptor<T> {
+		return {
+			[KIND]: "BATCH",
+			[OPTIONS]: instance.options,
+			push: (item: Static<T>) => this.push(instance.id, item),
+			flush: (partitionKey?: string) => this.flush(instance.id, partitionKey),
+		};
+	}
 
 	// On application stop, flush all pending batches gracefully.
 	protected readonly onStop = $hook({
@@ -199,4 +194,22 @@ export class BatchDescriptorProvider {
 			);
 		}
 	}
+}
+
+interface PartitionState<TItem extends TSchema> {
+	items: Static<TItem>[];
+	timeout?: Timeout;
+	// Promises to resolve/reject when the batch is processed
+	resolvers: Array<{
+		resolve: (result?: any) => void;
+		reject: (reason?: any) => void;
+	}>;
+}
+
+interface BatchInstance<TItem extends TSchema = TSchema> {
+	id: string;
+	options: BatchDescriptorOptions<TItem>;
+	partitions: Map<string, PartitionState<TItem>>;
+	activeHandlers: PromiseWithResolvers<void>[];
+	handler: (items: Static<TItem>[]) => Promise<void>;
 }

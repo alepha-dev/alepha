@@ -36,6 +36,7 @@ __metadata:
   resolution: "@alepha/bucket@workspace:packages/bucket"
   dependencies:
     "@alepha/core": "npm:0.8.1"
+    "@alepha/file": "npm:0.8.1"
     tsdown: "npm:^0.12.9"
     vitest: "npm:^3.2.4"
   languageName: unknown

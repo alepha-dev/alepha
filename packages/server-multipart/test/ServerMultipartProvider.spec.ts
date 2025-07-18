@@ -1,6 +1,6 @@
 import { Alepha, t } from "@alepha/core";
 import { $action, ServerProvider } from "@alepha/server";
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { AlephaServerMultipart } from "../src";
 
 class App {
@@ -22,38 +22,40 @@ class App {
 	});
 }
 
-test("ServerMultipartProvider - hello", async ({ expect }) => {
-	const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
-	await alepha.start();
+describe("ServerMultipartProvider", () => {
+	test("ServerMultipartProvider - hello", async ({ expect }) => {
+		const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+		await alepha.start();
 
-	const file = new File(["test content"], "test.txt", { type: "text/plain" });
-	const body = new FormData();
-	body.append("file", file);
+		const file = new File(["test content"], "test.txt", { type: "text/plain" });
+		const body = new FormData();
+		body.append("file", file);
 
-	const resp = await fetch(
-		`${alepha.get(ServerProvider).hostname}/api/upload`,
-		{
-			method: "POST",
-			body,
-		},
-	);
+		const resp = await fetch(
+			`${alepha.get(ServerProvider).hostname}/api/upload`,
+			{
+				method: "POST",
+				body,
+			},
+		);
 
-	const text = await resp.text();
-	expect(resp.status).toBe(200);
-	expect(text).toBe(`File test.txt uploaded successfully.`);
-});
-
-test("ServerMultipartProvider - local", async ({ expect }) => {
-	const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
-	await alepha.start();
-
-	const file = new File(["test content"], "test.txt", { type: "text/plain" });
-
-	const resp = await alepha.get(App).upload({
-		body: {
-			file,
-		},
+		const text = await resp.text();
+		expect(resp.status).toBe(200);
+		expect(text).toBe(`File test.txt uploaded successfully.`);
 	});
 
-	expect(resp).toBe(`File test.txt uploaded successfully.`);
+	test("ServerMultipartProvider - local", async ({ expect }) => {
+		const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+		await alepha.start();
+
+		const file = new File(["test content"], "test.txt", { type: "text/plain" });
+
+		const resp = await alepha.get(App).upload({
+			body: {
+				file,
+			},
+		});
+
+		expect(resp).toBe(`File test.txt uploaded successfully.`);
+	});
 });

@@ -11,6 +11,7 @@ export const createFile = (
 	options: {
 		type?: string;
 		name?: string;
+		size?: number;
 	} = {},
 ): FileLike => {
 	// Handle URL strings
@@ -69,6 +70,7 @@ export const createFileFromStream = (
 	options: {
 		type?: string;
 		name?: string;
+		size?: number;
 	} = {},
 ): FileLike & { _buffer: null | Buffer } => {
 	let buffer: Buffer | null = null;
@@ -76,7 +78,7 @@ export const createFileFromStream = (
 	return {
 		name: options.name ?? "file",
 		type: options.type ?? getContentType(options.name ?? "file"),
-		size: 0,
+		size: options.size ?? 0,
 		lastModified: Date.now(),
 		stream: () => source,
 		_buffer: null as Buffer | null,

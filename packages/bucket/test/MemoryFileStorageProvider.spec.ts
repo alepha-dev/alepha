@@ -1,3 +1,10 @@
+import { Alepha } from "@alepha/core";
+import { beforeEach, describe, test } from "vitest";
+import {
+	AlephaBucket,
+	FileStorageProvider,
+	MemoryFileStorageProvider,
+} from "../src";
 import {
 	TestApp,
 	testCustomFileId,
@@ -10,15 +17,24 @@ import {
 	testNonExistentFileError,
 	testUploadAndExistence,
 	testUploadIntoBuckets,
-} from "@alepha/bucket/test/shared.ts";
-import { Alepha } from "@alepha/core";
-import { describe, test } from "vitest";
-import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
+} from "./shared.ts";
 
-const alepha = Alepha.create().with(AlephaBucketAzure).with(TestApp);
-const provider = alepha.get(AzureFileStorageProvider);
+let alepha: Alepha;
+let provider: MemoryFileStorageProvider;
 
-describe("LocalFileStorageProvider", () => {
+beforeEach(() => {
+	alepha = Alepha.create()
+		.with({
+			provide: FileStorageProvider,
+			use: MemoryFileStorageProvider,
+		})
+		.with(AlephaBucket)
+		.with(TestApp);
+
+	provider = alepha.get(MemoryFileStorageProvider);
+});
+
+describe("MemoryFileStorageProvider", () => {
 	test("should upload a file and return a fileId", async () => {
 		await testUploadAndExistence(provider);
 	});

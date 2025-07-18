@@ -1,4 +1,4 @@
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 import { $hook, $inject, $logger } from "@alepha/core";
 import type { Static, TObject } from "@sinclair/typebox";
 import type { PgDatabase } from "drizzle-orm/pg-core";
@@ -64,7 +64,7 @@ export class NodeSqliteProvider extends PostgresProvider {
 	protected readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
-			const { DatabaseSync} = await import("node:sqlite");
+			const { DatabaseSync } = await import("node:sqlite");
 			this.sqlite = new DatabaseSync(":memory:");
 		},
 	});

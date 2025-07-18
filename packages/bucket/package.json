@@ -21,7 +21,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.8.1"
+		"@alepha/core": "0.8.1",
+		"@alepha/file": "0.8.1"
 	},
 	"devDependencies": {
 		"tsdown": "^0.12.9",

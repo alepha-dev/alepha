@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 import {
 	BucketDescriptorProvider,
 	FileNotFoundError,
@@ -10,10 +11,7 @@ import {
 	$inject,
 	$logger,
 	type FileLike,
-	type Logger,
 	type Static,
-	type TObject,
-	type TString,
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
@@ -25,9 +23,7 @@ import {
 	type StoragePipelineOptions,
 } from "@azure/storage-blob";
 
-const envSchema: TObject<{
-	AZ_STORAGE_CONNECTION_STRING: TString;
-}> = t.object({
+const envSchema = t.object({
 	AZ_STORAGE_CONNECTION_STRING: t.string({
 		size: "long",
 	}),
@@ -41,12 +37,10 @@ declare module "@alepha/core" {
  * Azure Blog Storage implementation of File Storage Provider.
  */
 export class AzureFileStorageProvider implements FileStorageProvider {
-	protected readonly log: Logger = $logger();
-	protected readonly env: Static<typeof envSchema> = $env(envSchema);
-	protected readonly bucket: BucketDescriptorProvider = $inject(
-		BucketDescriptorProvider,
-	);
-	protected readonly time: DateTimeProvider = $inject(DateTimeProvider);
+	protected readonly log = $logger();
+	protected readonly env = $env(envSchema);
+	protected readonly bucket = $inject(BucketDescriptorProvider);
+	protected readonly time = $inject(DateTimeProvider);
 	protected readonly containers: Record<string, ContainerClient> = {};
 	protected readonly blobServiceClient: BlobServiceClient;
 
@@ -98,7 +92,17 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 				},
 			});
 		} else {
-			throw new Error("Raw stream upload is not supported yet");
+			await block.uploadStream(
+				Readable.from(file.stream()),
+				file.size || undefined,
+				5,
+				{
+					metadata,
+					blobHTTPHeaders: {
+						blobContentType: file.type,
+					},
+				},
+			);
 		}
 
 		return fileId;
@@ -119,7 +123,10 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 			throw new FileNotFoundError("File not found - empty stream body");
 		}
 
-		return createFile(blob.readableStreamBody, blob.metadata);
+		return createFile(blob.readableStreamBody, {
+			...blob.metadata,
+			size: blob.contentLength,
+		});
 	}
 
 	public async exists(bucketName: string, fileId: string): Promise<boolean> {
