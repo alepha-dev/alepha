@@ -51,7 +51,7 @@ $bucket[KIND] = "BUCKET";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type BucketDescriptorOptions = {
+export interface BucketDescriptorOptions extends BucketFileOptions {
 	/**
 	 * File storage provider. If not provided, the default provider will be used.
 	 */
@@ -61,22 +61,7 @@ export type BucketDescriptorOptions = {
 	 * Optional name of the bucket. If not provided, the key of the descriptor will be used.
 	 */
 	name?: string;
-
-	/**
-	 * Optional description of the bucket.
-	 */
-	description?: string;
-
-	/**
-	 * Allowed MIME types.
-	 */
-	mimeTypes?: string[];
-
-	/**
-	 * Maximum size of the files in the bucket. Default is 10MB.
-	 */
-	maxSize?: number;
-};
+}
 
 export interface BucketDescriptor {
 	[KIND]: "BUCKET";
@@ -95,7 +80,7 @@ export interface BucketDescriptor {
 	/**
 	 * Uploads a file to the bucket.
 	 */
-	upload: (file: FileLike) => Promise<string>;
+	upload: (file: FileLike, options?: BucketFileOptions) => Promise<string>;
 
 	/**
 	 * Checks if a file exists in the bucket.
@@ -111,4 +96,21 @@ export interface BucketDescriptor {
 	 * Streams a file from the bucket.
 	 */
 	delete: (fileId: string) => Promise<void>;
+}
+
+export interface BucketFileOptions {
+	/**
+	 * Optional description of the bucket.
+	 */
+	description?: string;
+
+	/**
+	 * Allowed MIME types.
+	 */
+	mimeTypes?: string[];
+
+	/**
+	 * Maximum size of the files in the bucket. Default is 10MB.
+	 */
+	maxSize?: number;
 }

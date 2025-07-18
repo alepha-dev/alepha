@@ -41,10 +41,3 @@ export abstract class FileStorageProvider {
 	 */
 	abstract delete(bucketName: string, fileId: string): Promise<void>;
 }
-
-export interface FileMetadata {
-	id: string;
-	name: string;
-	size: number;
-	type: string;
-}

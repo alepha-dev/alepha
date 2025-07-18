@@ -11,6 +11,7 @@ import {
 	$bucket,
 	type BucketDescriptor,
 	type BucketDescriptorOptions,
+	type BucketFileOptions,
 } from "../descriptors/$bucket.ts";
 import { InvalidFileError } from "../errors/InvalidFileError.ts";
 import { FileStorageProvider } from "./FileStorageProvider.ts";
@@ -44,6 +45,7 @@ export class BucketDescriptorProvider {
 	public async upload(
 		bucketName: string | Bucket,
 		file: FileLike,
+		options?: BucketFileOptions,
 	): Promise<string> {
 		if (file instanceof File) {
 			// our createFile is smarter than the browser's File constructor
@@ -60,16 +62,23 @@ export class BucketDescriptorProvider {
 			throw new Error(`Bucket ${bucketName} not found`);
 		}
 
-		if (bucket.options.mimeTypes) {
+		options = {
+			...bucket.options,
+			...options,
+		};
+
+		const mimeTypes = options.mimeTypes ?? undefined;
+		const maxSize = options.maxSize ?? 10; // Default to 10 MB if not specified
+
+		if (mimeTypes) {
 			const mimeType = file.type || "application/octet-stream";
-			if (!bucket.options.mimeTypes.includes(mimeType)) {
+			if (!mimeTypes.includes(mimeType)) {
 				throw new InvalidFileError(
 					`MIME type ${mimeType} is not allowed in bucket ${bucket.name}`,
 				);
 			}
 		}
 
-		const maxSize = bucket.options.maxSize ?? 10; // Default to 10 MB if not specified
 		if (file.size > maxSize * 1024 * 1024) {
 			throw new InvalidFileError(
 				`File size ${file.size} exceeds the maximum size of ${bucket.options.maxSize} MB in bucket ${bucket.name}`,
@@ -80,8 +89,9 @@ export class BucketDescriptorProvider {
 
 		await this.alepha.emit("bucket:file:uploaded", {
 			id,
-			bucket: bucket.name,
-			...file,
+			bucket,
+			file,
+			options,
 		});
 
 		return id;
@@ -104,7 +114,7 @@ export class BucketDescriptorProvider {
 
 		await this.alepha.emit("bucket:file:deleted", {
 			id: fileId,
-			bucket: bucket.name,
+			bucket: bucket,
 		});
 	}
 
@@ -118,7 +128,8 @@ export class BucketDescriptorProvider {
 			get provider() {
 				return bucket.provider;
 			},
-			upload: async (file: FileLike) => this.upload(bucket, file),
+			upload: async (file: FileLike, options?: BucketFileOptions) =>
+				this.upload(bucket, file, options),
 			delete: (fileId: string) => this.delete(bucket, fileId),
 			download: (fileId: string) =>
 				bucket.provider.download(bucket.name, fileId),

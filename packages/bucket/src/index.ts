@@ -1,10 +1,10 @@
-import { $module } from "@alepha/core";
-import { $bucket } from "./descriptors/$bucket.ts";
-import { BucketDescriptorProvider } from "./providers/BucketDescriptorProvider.ts";
+import { $module, type FileLike } from "@alepha/core";
+import { $bucket, type BucketFileOptions } from "./descriptors/$bucket.ts";
 import {
-	type FileMetadata,
-	FileStorageProvider,
-} from "./providers/FileStorageProvider.ts";
+	type Bucket,
+	BucketDescriptorProvider,
+} from "./providers/BucketDescriptorProvider.ts";
+import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
 
@@ -21,16 +21,22 @@ export * from "./providers/MemoryFileStorageProvider.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
+		/**
+		 * Triggered when a file is uploaded to a bucket.
+		 * Can be used to perform actions after a file is uploaded, like creating a database record!
+		 */
 		"bucket:file:uploaded": {
 			id: string;
-			bucket: string;
-			name: string;
-			type: string;
-			size: number;
+			file: FileLike;
+			bucket: Bucket;
+			options: BucketFileOptions;
 		};
+		/**
+		 * Triggered when a file is deleted from a bucket.
+		 */
 		"bucket:file:deleted": {
 			id: string;
-			bucket: string;
+			bucket: Bucket;
 		};
 	}
 }

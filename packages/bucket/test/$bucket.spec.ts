@@ -1,6 +1,11 @@
-import { Alepha } from "@alepha/core";
+import { $inject, Alepha, NotImplementedError } from "@alepha/core";
 import { describe, test } from "vitest";
-import { $bucket, AlephaBucket } from "../src";
+import {
+	$bucket,
+	AlephaBucket,
+	FileStorageProvider,
+	MemoryFileStorageProvider,
+} from "../src";
 import { InvalidFileError } from "../src/errors/InvalidFileError.ts";
 
 class TestApp {
@@ -51,23 +56,49 @@ describe("$bucket", () => {
 		let uploadEventCalled = false;
 		let deleteEventCalled = false;
 
-		alepha.on("bucket:file:uploaded", (file) => {
-			expect(file.id).toBeDefined();
+		alepha.on("bucket:file:uploaded", ({ id, file, options }) => {
+			expect(id).toBeDefined();
 			expect(file.name).toBe("test.png");
 			expect(file.type).toBe("image/png");
 			expect(file.size).toBe(file.size);
+			expect(options).toEqual({
+				maxSize: 2,
+				mimeTypes: ["image/png", "image/jpeg"],
+			});
 			uploadEventCalled = true;
 		});
 
-		alepha.on("bucket:file:deleted", (file) => {
-			expect(file.id).toBeDefined();
+		alepha.on("bucket:file:deleted", ({ id }) => {
+			expect(id).toBeDefined();
 			deleteEventCalled = true;
 		});
 
-		const fileId = await app.images.upload(file);
+		const fileId = await app.images.upload(file, { maxSize: 2 });
 		expect(uploadEventCalled).toBe(true);
 
 		await app.images.delete(fileId);
 		expect(deleteEventCalled).toBe(true);
+	});
+
+	test("should use many providers", async ({ expect }) => {
+		class MySecondMemoryProvider extends MemoryFileStorageProvider {}
+		class AnotherApp {
+			gn = $bucket({
+				provider: $inject(MySecondMemoryProvider),
+			});
+		}
+
+		const alepha = Alepha.create().with(AlephaBucket).with(AnotherApp);
+		await alepha.start();
+
+		const app = alepha.get(AnotherApp);
+		const file = new File(["test content"], "test.png", { type: "image/png" });
+		const fileId = await app.gn.upload(file);
+		await expect(
+			alepha.get(FileStorageProvider).exists(app.gn.name, fileId),
+		).resolves.toBe(false);
+		await expect(
+			alepha.get(MySecondMemoryProvider).exists(app.gn.name, fileId),
+		).resolves.toBe(true);
 	});
 });
