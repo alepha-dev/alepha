@@ -6,6 +6,7 @@ import {
 	KIND,
 	OPTIONS,
 } from "@alepha/core";
+import { createFile } from "@alepha/file";
 import {
 	$bucket,
 	type BucketDescriptor,
@@ -40,7 +41,16 @@ export class BucketDescriptorProvider {
 		},
 	});
 
-	public upload(bucketName: string | Bucket, file: FileLike): Promise<string> {
+	public async upload(
+		bucketName: string | Bucket,
+		file: FileLike,
+	): Promise<string> {
+		if (file instanceof File) {
+			// our createFile is smarter than the browser's File constructor
+			// by doing this, we can guess the MIME type and size!
+			file = createFile(file);
+		}
+
 		const bucket =
 			typeof bucketName === "object"
 				? bucketName
@@ -66,7 +76,36 @@ export class BucketDescriptorProvider {
 			);
 		}
 
-		return bucket.provider.upload(bucket.name, file);
+		const id = await bucket.provider.upload(bucket.name, file);
+
+		await this.alepha.emit("bucket:file:uploaded", {
+			id,
+			bucket: bucket.name,
+			...file,
+		});
+
+		return id;
+	}
+
+	public async delete(
+		bucketName: string | Bucket,
+		fileId: string,
+	): Promise<void> {
+		const bucket =
+			typeof bucketName === "object"
+				? bucketName
+				: this.buckets.find((b) => b.name === bucketName);
+
+		if (!bucket) {
+			throw new Error(`Bucket ${bucketName} not found`);
+		}
+
+		await bucket.provider.delete(bucket.name, fileId);
+
+		await this.alepha.emit("bucket:file:deleted", {
+			id: fileId,
+			bucket: bucket.name,
+		});
 	}
 
 	protected createApi(bucket: Bucket): BucketDescriptor {
@@ -80,10 +119,10 @@ export class BucketDescriptorProvider {
 				return bucket.provider;
 			},
 			upload: async (file: FileLike) => this.upload(bucket, file),
+			delete: (fileId: string) => this.delete(bucket, fileId),
 			download: (fileId: string) =>
 				bucket.provider.download(bucket.name, fileId),
 			exists: (fileId: string) => bucket.provider.exists(bucket.name, fileId),
-			delete: (fileId: string) => bucket.provider.delete(bucket.name, fileId),
 		};
 	}
 

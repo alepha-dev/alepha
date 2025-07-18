@@ -7,13 +7,17 @@ import type { FileLike, StreamLike } from "@alepha/core";
 import { getContentType } from "./getContentType.ts";
 
 export const createFile = (
-	source: string | Buffer | ArrayBuffer | StreamLike,
+	source: string | Buffer | ArrayBuffer | StreamLike | File,
 	options: {
 		type?: string;
 		name?: string;
 		size?: number;
 	} = {},
 ): FileLike => {
+	if (source instanceof File) {
+		return createFileFromWebFile(source, options);
+	}
+
 	// Handle URL strings
 	if (
 		typeof source === "string" &&
@@ -40,6 +44,29 @@ export const createFile = (
 				: Buffer.from(source),
 		options,
 	);
+};
+
+export const createFileFromWebFile = (
+	source: File,
+	options: {
+		type?: string;
+		name?: string;
+		size?: number;
+	} = {},
+): FileLike => {
+	return {
+		name: source.name,
+		type: source.type || options.type || getContentType(source.name),
+		size: source.size || options.size || 0,
+		lastModified: source.lastModified || Date.now(),
+		stream: () => source.stream(),
+		arrayBuffer: async (): Promise<ArrayBuffer> => {
+			return await source.arrayBuffer();
+		},
+		text: async (): Promise<string> => {
+			return await source.text();
+		},
+	};
 };
 
 export const createFileFromBuffer = (

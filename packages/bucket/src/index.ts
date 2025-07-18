@@ -1,7 +1,10 @@
 import { $module } from "@alepha/core";
 import { $bucket } from "./descriptors/$bucket.ts";
 import { BucketDescriptorProvider } from "./providers/BucketDescriptorProvider.ts";
-import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
+import {
+	type FileMetadata,
+	FileStorageProvider,
+} from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
 
@@ -13,6 +16,24 @@ export * from "./providers/BucketDescriptorProvider.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+	interface Hooks {
+		"bucket:file:uploaded": {
+			id: string;
+			bucket: string;
+			name: string;
+			type: string;
+			size: number;
+		};
+		"bucket:file:deleted": {
+			id: string;
+			bucket: string;
+		};
+	}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 

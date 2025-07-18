@@ -43,4 +43,31 @@ describe("$bucket", () => {
 		expect(downloadedFile.type).toBe("image/png");
 		expect(downloadedFile.size).toBe(file.size);
 	});
+
+	test("should call events on upload and delete", async ({ expect }) => {
+		const app = alepha.get(TestApp);
+		const file = new File(["test content"], "test.png");
+
+		let uploadEventCalled = false;
+		let deleteEventCalled = false;
+
+		alepha.on("bucket:file:uploaded", (file) => {
+			expect(file.id).toBeDefined();
+			expect(file.name).toBe("test.png");
+			expect(file.type).toBe("image/png");
+			expect(file.size).toBe(file.size);
+			uploadEventCalled = true;
+		});
+
+		alepha.on("bucket:file:deleted", (file) => {
+			expect(file.id).toBeDefined();
+			deleteEventCalled = true;
+		});
+
+		const fileId = await app.images.upload(file);
+		expect(uploadEventCalled).toBe(true);
+
+		await app.images.delete(fileId);
+		expect(deleteEventCalled).toBe(true);
+	});
 });
