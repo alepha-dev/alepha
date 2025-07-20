@@ -248,7 +248,12 @@ export * from "./providers/ServerRouterProvider.ts";
  */
 export const AlephaServer = $module({
 	name: "alepha.server",
-	descriptors: [$route, $action],
+	descriptors: [
+		$route,
+		$action,
+		[$realm, ServerSecurityProvider],
+		[$role, ServerSecurityProvider],
+	],
 	services: [
 		ServerProvider,
 		NodeHttpServerProvider,
@@ -278,6 +283,3 @@ export const AlephaServer = $module({
 		}
 	},
 });
-
-__bind($realm, ServerSecurityProvider);
-__bind($role, ServerSecurityProvider);

@@ -1,61 +1,57 @@
-import { $cursor, type MaybePromise } from "@alepha/core";
+import {
+	$cursor,
+	$inject,
+	createFactory,
+	Descriptor,
+	type DescriptorArgs,
+} from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { RetryCancelError } from "../errors/RetryCancelError.ts";
 import { RetryTimeoutError } from "../errors/RetryTimeoutError.ts";
 
-/**
- * Creates a function that automatically retries a handler upon failure,
- * with support for exponential backoff, max duration, and cancellation.
- */
-export const $retry = <T extends (...args: any[]) => any>(
-	opts: RetryDescriptorOptions<T>,
-): RetryDescriptor<T> => {
-	const { context } = $cursor();
-	const dateTimeProvider = context.get(DateTimeProvider);
-	const appAbortController = new AbortController();
+export class RetryDescriptor<
+	T extends (...args: any[]) => any,
+> extends Descriptor<RetryDescriptorOptions<T>> {
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected appAbortController: AbortController;
 
-	context.on("stop", () => {
-		appAbortController.abort();
-	});
+	constructor(args: DescriptorArgs<RetryDescriptorOptions<T>>) {
+		super(args);
 
-	return createRetryHandler(opts, dateTimeProvider, appAbortController);
-};
+		this.appAbortController = new AbortController();
+		this.alepha.on("stop", () => {
+			this.appAbortController.abort();
+		});
+	}
 
-// ---------------------------------------------------------------------------------------------------------------------
+	async run(...args: Parameters<T>): Promise<ReturnType<T>> {
+		const maxAttempts = this.options.max ?? 3;
+		const when = this.options.when ?? (() => true);
+		const { handler, onError } = this.options;
 
-// TODO: move to RetryProvider
-
-export const createRetryHandler = <T extends (...args: any[]) => any>(
-	opts: RetryDescriptorOptions<T>,
-	dateTimeProvider: DateTimeProvider,
-	appAbortController: AbortController = new AbortController(),
-): RetryDescriptor<T> => {
-	const maxAttempts = opts.max ?? 3;
-	const when = opts.when ?? (() => true);
-	const { handler, onError } = opts;
-
-	return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
 		let lastError: Error | undefined;
 		const startTime = Date.now();
 
-		const maxDurationMs = opts.maxDuration
-			? dateTimeProvider.duration(opts.maxDuration).asMilliseconds()
+		const maxDurationMs = this.options.maxDuration
+			? this.dateTimeProvider
+					.duration(this.options.maxDuration)
+					.asMilliseconds()
 			: Infinity;
 
 		// combine user-provided signal with the app's lifecycle signal
-		const combinedSignal = opts.signal;
+		const combinedSignal = this.options.signal;
 		const onAbort = () => {
 			if (!lastError) {
 				lastError = new RetryCancelError();
 			}
 		};
 
-		appAbortController.signal.addEventListener("abort", onAbort);
+		this.appAbortController.signal.addEventListener("abort", onAbort);
 		combinedSignal?.addEventListener("abort", onAbort);
 
 		try {
 			for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-				if (appAbortController.signal.aborted || combinedSignal?.aborted) {
+				if (this.appAbortController.signal.aborted || combinedSignal?.aborted) {
 					throw new RetryCancelError();
 				}
 
@@ -81,21 +77,21 @@ export const createRetryHandler = <T extends (...args: any[]) => any>(
 					}
 
 					// calculate and wait for backoff delay
-					const delay = calculateBackoff(attempt, opts.backoff);
+					const delay = calculateBackoff(attempt, this.options.backoff);
 					if (delay > 0) {
-						await dateTimeProvider.wait(delay, { signal: combinedSignal });
+						await this.dateTimeProvider.wait(delay, { signal: combinedSignal });
 					}
 				}
 			}
 		} finally {
 			// clean up listeners to prevent memory leaks
-			appAbortController.signal.removeEventListener("abort", onAbort);
+			this.appAbortController.signal.removeEventListener("abort", onAbort);
 			combinedSignal?.removeEventListener("abort", onAbort);
 		}
 
 		throw lastError;
-	}) as T;
-};
+	}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -174,9 +170,24 @@ export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
 	signal?: AbortSignal;
 }
 
-export type RetryDescriptor<T extends (...args: any[]) => any> = (
-	...parameters: Parameters<T>
-) => MaybePromise<ReturnType<T>>;
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface RetryDescriptorFn<T extends (...args: any[]) => any>
+	extends RetryDescriptor<T> {
+	(...args: Parameters<T>): Promise<ReturnType<T>>;
+}
+
+/**
+ * Creates a function that automatically retries a handler upon failure,
+ * with support for exponential backoff, max duration, and cancellation.
+ */
+export const $retry = <T extends (...args: any[]) => any>(
+	options: RetryDescriptorOptions<T>,
+): RetryDescriptorFn<T> => {
+	const instance = createFactory(RetryDescriptor)(options);
+	const fn = (...args: Parameters<T>) => instance.run(...args);
+	return Object.setPrototypeOf(fn, instance) as RetryDescriptorFn<T>;
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

@@ -1,11 +1,12 @@
 import { expect, test } from "vitest";
-import { __bind, __descriptor, Alepha, KIND } from "../src";
+import { $cursor, Alepha, descriptorEvents, KIND } from "../src";
 
 test("autoInject", () => {
 	class A {}
+	class D {}
 
 	const dummy = (options: { abc: number }) => {
-		__descriptor("DUMMY");
+		descriptorEvents.emit(D, $cursor().context);
 		return {
 			[KIND]: "DUMMY",
 			options,
@@ -15,9 +16,9 @@ test("autoInject", () => {
 		};
 	};
 
-	dummy[KIND] = "DUMMY";
+	dummy.descriptor = D;
 
-	__bind(dummy, A);
+	descriptorEvents.bind(D, A);
 
 	const app = Alepha.create();
 

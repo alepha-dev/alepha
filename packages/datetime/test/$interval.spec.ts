@@ -3,50 +3,67 @@ import { expect, test } from "vitest";
 import { $interval, DateTimeProvider } from "../src";
 
 test("$interval - basic", async () => {
-	let count = 0;
-	class Dummy {
+	const count = { value: 0 };
+	class TestApp {
 		loop = $interval({
+			run: "start",
 			duration: [10, "seconds"],
 			handler: () => {
-				count += 1;
+				console.log("Loop executed");
+				count.value += 1;
 			},
 		});
 	}
 
-	const app = Alepha.create().with(Dummy);
-	const dt = app.get(DateTimeProvider);
+	const alepha = Alepha.create({
+		env: {
+			LOG_LEVEL: "trace",
+		},
+	});
+	const dt = alepha.get(DateTimeProvider);
+	const app = alepha.get(TestApp);
+	expect(app.loop.called).toBe(0);
+	expect(count.value).toBe(0);
 
-	expect(count).toBe(0);
-	await app.start();
-	expect(count).toBe(1);
+	expect(app.loop.called).toBe(0);
+	expect(count.value).toBe(0);
+	await alepha.start();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	expect(app.loop.called).toBe(1);
+	expect(count.value).toBe(1);
 
 	await dt.travel([50, "seconds"]);
-	expect(count).toBe(6);
+	expect(app.loop.called).toBe(6);
+	expect(count.value).toBe(6);
 });
 
 test("$interval - abort", async () => {
-	let count = 0;
-	class Dummy {
+	const count = { value: 0 };
+	class TestApp {
 		loop = $interval({
 			duration: [10, "seconds"],
 			handler: () => {
-				count += 1;
+				count.value += 1;
 			},
 		});
 	}
 
-	const app = Alepha.create().with(Dummy);
-	expect(count).toBe(0);
+	const alepha = Alepha.create();
+	const app = alepha.get(TestApp);
+	expect(app.loop.called).toBe(0);
+	expect(count.value).toBe(0);
 
-	await app.start();
-	expect(count).toBe(1);
+	await alepha.start();
+	expect(app.loop.called).toBe(1);
+	expect(count.value).toBe(1);
 
-	await app.stop();
-	expect(count).toBe(1);
+	await alepha.stop();
+	expect(app.loop.called).toBe(1);
+	expect(count.value).toBe(1);
 });
 
 test("Alepha#start - flags", async () => {
-	const app = Alepha.create();
+	const app = Alepha.create({});
 	const dt = app.get(DateTimeProvider);
 
 	expect(app.isStarted()).toBe(false);

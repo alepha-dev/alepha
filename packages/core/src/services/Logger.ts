@@ -1,3 +1,4 @@
+import { Descriptor } from "../helpers/descriptor.ts";
 import type { AlsProvider } from "../providers/AlsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -44,6 +45,9 @@ export interface LoggerOptions {
 	 */
 	level?: string;
 
+	/**
+	 * The name of the application. Used to identify the source of the log messages.
+	 */
 	app?: string;
 
 	/**

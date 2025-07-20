@@ -1,11 +1,9 @@
 import { $module } from "@alepha/core";
 import { $batch } from "./descriptors/$batch.ts";
-import { BatchDescriptorProvider } from "./providers/BatchDescriptorProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$batch.ts";
-export * from "./providers/BatchDescriptorProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -46,5 +44,4 @@ export * from "./providers/BatchDescriptorProvider.ts";
 export const AlephaBatch = $module({
 	name: "alepha.batch",
 	descriptors: [$batch],
-	services: [BatchDescriptorProvider],
 });

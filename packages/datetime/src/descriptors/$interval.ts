@@ -1,36 +1,24 @@
-import { __descriptor, $cursor, type Async, KIND } from "@alepha/core";
-import type { Interval } from "../helpers/Interval.ts";
+import {
+	type Async,
+	createFactory,
+	Descriptor,
+	type DescriptorArgs,
+} from "@alepha/core";
 import {
 	DateTimeProvider,
 	type DurationLike,
 } from "../providers/DateTimeProvider.ts";
 
-/**
- * Registers a new interval.
- */
-export const $interval: {
-	(options: IntervalDescriptorOptions): Interval;
-	[KIND]: string;
-} = (options: IntervalDescriptorOptions): Interval => {
-	__descriptor("INTERVAL");
-
-	const { context } = $cursor();
-	const dt = context.get(DateTimeProvider);
-
-	return dt.interval({
-		attach: true,
-		run: false,
-		...options,
-	});
-};
-
 export interface IntervalDescriptorOptions {
 	/**
-	 * Whether to start the interval immediately.
+	 * When to run the interval handler.
+	 * - "now": Run immediately when the interval is registered.
+	 * - "start": Run when the context starts.
+	 * - "ready": Run when the context is ready (after all services are started).
 	 *
-	 * @default false
+	 * @default "start"
 	 */
-	run?: boolean;
+	run?: "now" | "start" | "ready";
 
 	/**
 	 * Whether to attach the interval to the context.
@@ -52,4 +40,79 @@ export interface IntervalDescriptorOptions {
 	duration: DurationLike;
 }
 
-$interval[KIND] = "INTERVAL";
+export class IntervalDescriptor extends Descriptor<IntervalDescriptorOptions> {
+	protected timer: any = null;
+	protected duration: number;
+	protected readonly run: () => Promise<void>;
+
+	public called = 0;
+
+	constructor(args: DescriptorArgs<IntervalDescriptorOptions>) {
+		super(args);
+		this.options.attach ??= true;
+		this.options.run ??= "start";
+		this.duration = this.alepha
+			.get(DateTimeProvider)
+			.duration(args.options.duration)
+			.asMilliseconds();
+
+		this.run = async () => {
+			try {
+				await this.options.handler();
+				this.called += 1;
+			} catch (error) {
+				console.error(error);
+			}
+		};
+
+		if (this.options.run === "now") {
+			this.run();
+		}
+	}
+
+	/**
+	 * Start the interval.
+	 */
+	public async start(): Promise<void> {
+		if (this.timer != null) {
+			return;
+		}
+
+		await this.run();
+
+		this.timer = setInterval(this.run, this.duration);
+	}
+
+	/**
+	 * Add time to the interval. For test purposes only.
+	 */
+	public async add(amountMs: number): Promise<void> {
+		if (this.timer == null) {
+			return;
+		}
+
+		clearInterval(this.timer);
+		this.timer = null;
+
+		const repeat = Math.floor(amountMs / this.duration);
+		for (let i = 0; i < repeat; i++) {
+			await this.run();
+		}
+	}
+
+	/**
+	 * Clear the interval.
+	 */
+	public clear(): void {
+		clearInterval(this.timer);
+		this.duration = 0;
+		this.timer = null;
+	}
+}
+
+/**
+ * Run a function periodically.
+ * It uses the `setInterval` internally.
+ * It starts by default when the context starts and stops when the context stops.
+ */
+export const $interval = createFactory(IntervalDescriptor);

@@ -23,9 +23,7 @@ export class RemoteDescriptorProvider {
 
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client: LinkProvider = $inject(LinkProvider);
-	protected readonly proxyProvider: ProxyDescriptorProvider = $inject(
-		ProxyDescriptorProvider,
-	);
+	protected readonly proxyProvider = $inject(ProxyDescriptorProvider);
 	protected readonly remotes: Array<ServerRemote> = [];
 	protected readonly log: Logger = $logger();
 

@@ -1,3 +1,4 @@
+import { Descriptor } from "../helpers/descriptor.ts";
 import type { Service } from "../interfaces/Service.ts";
 import { $cursor } from "./$cursor.ts";
 
@@ -25,3 +26,5 @@ export const $inject = <T extends object>(type: Service<T>): T => {
 		module,
 	});
 };
+
+export class InjectDescriptor extends Descriptor {}

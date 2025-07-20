@@ -2,18 +2,17 @@ import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
-import { KIND } from "./constants/KIND.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
-import type { Hook } from "./descriptors/$hook.ts";
+import type { ModuleDescriptor } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import {
-	type Descriptor,
-	type DescriptorMember,
+	Descriptor,
+	type DescriptorFactory,
+	type DescriptorFactoryLike,
 	descriptorEvents,
-	isDescriptorInstance,
 } from "./helpers/descriptor.ts";
 import {
 	isModule,
@@ -290,6 +289,14 @@ export class Alepha {
 
 	protected substitutions: Map<Service, Service> = new Map();
 	protected configurations: Map<Service, object> = new Map();
+	protected descriptors: Map<
+		Service,
+		Array<{
+			descriptor: Descriptor;
+			instance: any;
+			key: string;
+		}>
+	> = new Map();
 
 	/**
 	 * Node.js feature that allows to store context across asynchronous calls.
@@ -704,12 +711,7 @@ export class Alepha {
 			);
 		}
 
-		descriptorEvents.emit("create", {
-			[KIND]: "INJECT",
-			context: this,
-			module,
-			provider: service,
-		});
+		descriptorEvents.emit(service, this);
 
 		// check if service has been registered by a module
 		if (this.has(service) && !opts.skipCache) {
@@ -741,33 +743,37 @@ export class Alepha {
 
 		// [feature]: modules - it's just a way to group services together
 		if (isModule(instance)) {
-			const moduleDefinition: ModuleDefinition = {
-				...instance,
-				$name: instance.$name ?? toModuleName(instance.constructor.name),
-				services: [],
-			};
-
-			this.modules.push(moduleDefinition);
-			const definition = this.registry.get(instance.constructor as Service);
-			if (definition) {
-				definition.module = moduleDefinition;
-			}
-
-			const $services = __alephaRef.$services;
-
-			// propagate the current module
-			__alephaRef.$services = {
-				module: moduleDefinition,
-				parent: instance.constructor as Service,
-			};
-
-			instance.$services(this);
-
-			// restore the previous $get context
-			__alephaRef.$services = $services;
+			this.pushModule(instance);
 		}
 
 		return instance;
+	}
+
+	protected pushModule(instance: Module) {
+		const moduleDefinition: ModuleDefinition = {
+			...instance,
+			$name: instance.$name ?? toModuleName(instance.constructor.name),
+			services: [],
+		};
+
+		this.modules.push(moduleDefinition);
+		const definition = this.registry.get(instance.constructor as Service);
+		if (definition) {
+			definition.module = moduleDefinition;
+		}
+
+		const $services = __alephaRef.$services;
+
+		// propagate the current module
+		__alephaRef.$services = {
+			module: moduleDefinition,
+			parent: instance.constructor as Service,
+		};
+
+		instance.$services(this);
+
+		// restore the previous $get context
+		__alephaRef.$services = $services;
 	}
 
 	/**
@@ -802,20 +808,53 @@ export class Alepha {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	protected useCounter = 0;
-	public use<T extends Descriptor>(
-		descriptor: T,
+	public use<T extends DescriptorFactoryLike>(
+		factory: T,
 		options: Parameters<T>[0],
+		context: {
+			service?: Service;
+			module?: ModuleDescriptor;
+		} = {},
 	): ReturnType<T> {
-		const key = options.name ?? "name";
-		const instanceName = `Auto${this.useCounter++}`;
-		const loader = {
-			[instanceName]: class {
-				[key] = descriptor(options);
-			},
-		};
+		if (this.isLocked()) {
+			throw new ContainerLockedError(
+				`Container is locked. No more descriptors can be added.`,
+			);
+		}
 
-		return this.get(loader[instanceName]) as ReturnType<T>;
+		const outside = !__alephaRef.context;
+		if (outside) {
+			__alephaRef.context = this;
+			__alephaRef.definition = context.service;
+			__alephaRef.module =
+				this.modules.find((it) => it.$name === context?.module?.name) ??
+				(context.service
+					? this.registry.get(context.service)?.module
+					: undefined);
+		}
+
+		const instance = factory(options);
+
+		if ("descriptor" in factory) {
+			const key = factory.descriptor as Service;
+			const list = this.descriptors.get(key) ?? [];
+			this.descriptors.set(key, [
+				...list,
+				{
+					descriptor: instance,
+					instance: {},
+					key: "",
+				},
+			]);
+		}
+
+		if (outside) {
+			__alephaRef.context = undefined;
+			__alephaRef.definition = undefined;
+			__alephaRef.module = undefined;
+		}
+
+		return instance as ReturnType<T>;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -1101,52 +1140,33 @@ export class Alepha {
 		return graph;
 	}
 
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * @internal
-	 */
-	public getDescriptorValues<T extends Descriptor>(
-		descriptor: T,
-	): Array<DescriptorMember<T>> {
-		const items: Array<DescriptorMember<T>> = [];
-
-		for (const { instance } of this.registry.values()) {
-			if (instance) {
-				for (const [key, value] of Object.entries(instance)) {
-					if (isDescriptorInstance(value) && value[KIND] === descriptor[KIND]) {
-						// when class swap, instance can be referenced twice (provide: itself and provide: swapped)
-						// -> we take instance only once to avoid duplicate descriptors
-						if (
-							items.find((it) => it.instance === instance && it.key === key)
-						) {
-							continue;
-						}
-
-						items.push({
-							value: value as ReturnType<T>,
-							key,
-							instance,
-						});
-					}
-				}
-			}
-		}
-
-		return items;
+	public getDescriptors<
+		T extends object,
+		TDescriptor extends Descriptor<T>,
+	>(factory: {
+		descriptor: InstantiableClass<TDescriptor>;
+	}): Array<{
+		descriptor: TDescriptor;
+		instance: any;
+		key: string;
+	}> {
+		return (this.descriptors.get(factory.descriptor) ?? []) as Array<{
+			descriptor: TDescriptor;
+			instance: any;
+			key: string;
+		}>;
 	}
 
-	/**
-	 * @internal
-	 */
+	// -------------------------------------------------------------------------------------------------------------------
+
 	protected new<T extends object>(
-		definition: Service<T>,
+		service: Service<T>,
 		args: any[] = [],
 		module?: ModuleDefinition,
 	): T {
 		// we keep a tree of dependencies to detect circular dependencies
 		// it's also useful for cleaning are global cursor
-		this.pendingInstantiations.push(definition);
+		this.pendingInstantiations.push(service);
 
 		//
 		// we use a global cursor to store the current context and definition
@@ -1154,20 +1174,30 @@ export class Alepha {
 		//
 		const previousModule = __alephaRef.module;
 		__alephaRef.context = this;
-		__alephaRef.definition = definition;
+		__alephaRef.definition = service;
 		__alephaRef.module = module;
 
-		if (typeof definition !== "function") {
-			console.warn("definition is not a function", definition);
-			return definition as T;
+		if (typeof service !== "function") {
+			console.warn("service is not a function", service);
+			return service as T;
 		}
 
-		const instance: T = new (definition as InstantiableClass<any>)(...args);
+		const instance: T = new (service as InstantiableClass<any>)(...args);
 
 		const obj = instance as unknown as Record<string, any>;
-		for (const key of Object.keys(obj)) {
-			if (obj[key]?.[KIND] && obj[key].options) {
-				obj[key].options.name ??= key;
+		for (const [key, value] of Object.entries(obj)) {
+			if (value instanceof Descriptor) {
+				value.options.name ??= key;
+
+				const descriptor = value.constructor as Service;
+				this.descriptors.set(descriptor, [
+					...(this.descriptors.get(descriptor) ?? []),
+					{
+						descriptor: value,
+						instance: instance,
+						key: key,
+					},
+				]);
 			}
 		}
 
@@ -1189,30 +1219,34 @@ export class Alepha {
 	 * @internal
 	 */
 	protected createLogger(env: Env): Logger {
+		const isProd = env.NODE_ENV === "production";
+
+		const als = this.context;
+		const level = env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info");
+		const name = "alepha.core";
+		const app = env.APP_NAME;
+		const format = env.LOG_FORMAT ?? (isProd ? "json" : "text");
+		const color = !env.NO_COLOR && env.FORCE_COLOR !== "0" && !isProd;
+		const caller = "Alepha";
+
 		return new Logger({
-			als: this.context,
-			level: env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info"),
-			name: "alepha.core",
-			app: env.APP_NAME,
-			format:
-				env.LOG_FORMAT ?? (env.NODE_ENV === "production" ? "json" : "text"),
-			caller: "Alepha",
-			color:
-				!env.NO_COLOR &&
-				env.FORCE_COLOR !== "0" &&
-				env.NODE_ENV !== "production",
+			als,
+			level,
+			name,
+			app,
+			format,
+			caller,
+			color,
 		});
 	}
+}
 
-	public getModuleOf(service: Service): Module | undefined {
-		for (const module of this.modules) {
-			for (const it of module.services ?? []) {
-				if (it === service) {
-					return module;
-				}
-			}
-		}
-	}
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface Hook<T extends keyof Hooks = any> {
+	caller?: Service;
+	priority?: "first" | "last";
+	callback: (payload: Hooks[T]) => Async<void>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

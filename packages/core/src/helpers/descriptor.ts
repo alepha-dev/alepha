@@ -1,133 +1,91 @@
-import { KIND } from "../constants/KIND.ts";
-import { OPTIONS } from "../constants/OPTIONS.ts";
-import type { CursorDescriptor } from "../descriptors/$cursor.ts";
+import type { Alepha } from "../Alepha.ts";
 import { $cursor } from "../descriptors/$cursor.ts";
-import type { Service } from "../interfaces/Service.ts";
+import type { InstantiableClass, Service } from "../interfaces/Service.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-class EventEmitterLike<TEvents extends { [key: string]: any }> {
-	private hooks: {
-		[key in keyof TEvents]?: ((data: TEvents[key]) => void)[];
-	} = {};
-
-	on<T extends keyof TEvents>(
-		event: T,
-		callback: (data: TEvents[T]) => void,
-	): void {
-		if (!this.hooks[event]) {
-			this.hooks[event] = [];
+export const descriptorEvents = {
+	events: new Map<Service, ((alepha: Alepha) => void)[]>(),
+	on(descriptor: Service, callback: (alepha: Alepha) => void): void {
+		const callbacks = this.events.get(descriptor) ?? [];
+		callbacks.push(callback);
+		this.events.set(descriptor, callbacks);
+	},
+	emit(descriptor: Service, alepha: Alepha): void {
+		for (const callback of this.events.get(descriptor) ?? []) {
+			callback(alepha);
 		}
-
-		this.hooks[event].push(callback);
-	}
-
-	emit<T extends keyof TEvents>(event: T, data: TEvents[T]): void {
-		if (!this.hooks[event]) {
-			return;
-		}
-
-		for (const callback of this.hooks[event]) {
-			callback(data);
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Descriptor events.
- *
- * - `create` - Emitted when a descriptor is created.
- */
-export const descriptorEvents: EventEmitterLike<{
-	create: CursorDescriptor & { [KIND]: string; provider?: Service };
-}> = new EventEmitterLike();
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Register a descriptor.
- *
- * This is used to run the event "create" and allow auto-registration of descriptors.
- */
-export const __descriptor = (kind: string): void => {
-	descriptorEvents.emit("create", {
-		...$cursor(),
-		[KIND]: kind,
-	});
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Auto-inject a class/module when a descriptor or a provider is created.
- *
- * Example, you auto-inject the ServerModule when a `$route` descriptor is used.
- * Or, you auto-inject the RedisModule when RedisClientProvider is injected.
- */
-export const __bind = (
-	descriptor: { [KIND]: string } | Service,
-	to: Service,
-): void => {
-	if (!(KIND in descriptor)) {
-		descriptorEvents.on("create", (ctx) => {
-			if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
-				if (ctx[KIND] === "INJECT" && ctx.provider === descriptor) {
-					ctx.context.with(to);
-				}
+	},
+	bind(when: Service, register: Service): void {
+		this.on(when, (alepha: Alepha) => {
+			if (!alepha.isLocked()) {
+				alepha.with(register);
 			}
 		});
-		return;
+	},
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface DescriptorArgs<T extends object = {}> {
+	options: T;
+	alepha: Alepha;
+	service?: Service;
+	module?: Service;
+}
+
+export abstract class Descriptor<T extends object = {}> {
+	public readonly alepha: Alepha;
+	public readonly options: T;
+	public readonly service?: Service;
+	public readonly module?: Service;
+
+	constructor(args: DescriptorArgs<T>) {
+		this.alepha = args.alepha;
+		this.options = args.options;
+		this.service = args.service;
+		this.module = args.module;
 	}
+}
 
-	descriptorEvents.on("create", (ctx) => {
-		if (!ctx.context.env.EXPLICIT_PROVIDERS && !ctx.context.isLocked()) {
-			if (ctx[KIND] === descriptor[KIND]) {
-				ctx.context.with(to);
-			}
-		}
-	});
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type DescriptorFactory<
+	TOptions extends object,
+	TDescriptor extends Descriptor<TOptions>,
+> = {
+	(options: TOptions): TDescriptor;
+	descriptor: InstantiableClass<TDescriptor>;
 };
 
-// ---------------------------------------------------------------------------------------------------------------------
+export type DescriptorFactoryLike<T extends object = any> = (options: T) => any;
 
-/**
- * Check if the value is a descriptor instance.
- */
-export const isDescriptorInstance = (
-	value: any,
-): value is DescriptorInstance => {
-	return value?.[KIND] != null && typeof value[OPTIONS] === "object";
+export const createFactory = <
+	TOptions extends object,
+	TDescriptor extends Descriptor<TOptions>,
+>(
+	descriptor: InstantiableClass<TDescriptor>,
+): DescriptorFactory<TOptions, TDescriptor> => {
+	const factory = (options: TOptions) => {
+		const { context, definition, module } = $cursor();
+
+		descriptorEvents.emit(descriptor, context);
+
+		return context.get(descriptor, {
+			skipRegistration: true,
+			skipCache: true,
+			args: [
+				{
+					options,
+					alepha: context,
+					service: definition,
+					module: module,
+				},
+			],
+		});
+	};
+
+	factory.descriptor = descriptor;
+
+	return factory;
 };
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * The "$descriptor" function.
- */
-export interface Descriptor<T extends object = any> {
-	[KIND]: string; // this is required to be able to use auto-inject.
-	(options: T): DescriptorInstance<T> | any; // any = some descriptors are fake right now.
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Result of the "$descriptor" function.
- */
-export interface DescriptorInstance<T = object> {
-	[KIND]: string; // this is required to be able to use `isDescriptorValue` during processing.
-	[OPTIONS]: T;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Descriptor instance + his class instance + his member key.
- */
-export interface DescriptorMember<T extends Descriptor> {
-	value: ReturnType<T>;
-	key: string;
-	instance: Record<string, any>;
-}

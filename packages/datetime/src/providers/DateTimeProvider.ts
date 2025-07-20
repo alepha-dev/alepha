@@ -1,11 +1,14 @@
-import { $hook, $logger, type Logger } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
-import type { IntervalDescriptorOptions } from "../descriptors/$interval.ts";
-import { Interval } from "../helpers/Interval.ts";
+import {
+	$interval,
+	type IntervalDescriptor,
+} from "../descriptors/$interval.ts";
 import { Timeout } from "../helpers/Timeout.ts";
 
+export type DateTimeApi = typeof dayjs;
 export type DateTime = dayjs.Dayjs;
 export type Duration = dayjsDuration.Duration;
 export type DurationLike =
@@ -14,22 +17,51 @@ export type DurationLike =
 	| [number, ManipulateType];
 
 export class DateTimeProvider {
-	protected log: Logger = $logger();
+	protected alepha = $inject(Alepha);
+	protected log = $logger();
 	protected ref: DateTime | null = null;
 	protected readonly timeouts: Timeout[] = [];
-	protected readonly intervals: Interval[] = [];
+
+	public get intervals(): IntervalDescriptor[] {
+		return this.alepha
+			.getDescriptors($interval)
+			.map(({ descriptor }) => descriptor);
+	}
 
 	constructor() {
-		dayjs.extend(dayjsDuration);
-		dayjs.extend(dayjsRelativeTime);
+		this.plugins(dayjs);
+	}
+
+	/**
+	 * Load Day.js plugins.
+	 *
+	 * You can override this method to add custom plugins.
+	 */
+	protected plugins(api: DateTimeApi): void {
+		api.extend(dayjsDuration);
+		api.extend(dayjsRelativeTime);
 	}
 
 	protected readonly start = $hook({
 		on: "start",
 		handler: async () => {
-			for (const interval of this.intervals) {
-				await interval.start();
-			}
+			await Promise.all(
+				this.intervals
+					.filter((interval) => interval.options.run === "start")
+					.map((interval) => interval.start()),
+			);
+		},
+	});
+
+	protected readonly ready = $hook({
+		priority: "last",
+		on: "ready",
+		handler: async () => {
+			await Promise.all(
+				this.intervals
+					.filter((interval) => interval.options.run === "ready")
+					.map((interval) => interval.start()),
+			);
 		},
 	});
 
@@ -109,6 +141,8 @@ export class DateTimeProvider {
 		return dayjs.isDuration(this.duration(value as DurationLike));
 	}
 
+	// -------------------------------------------------------------------------------------------------------------------
+
 	/**
 	 * Return a promise that resolves after a next tick.
 	 * It uses `setTimeout` with 0ms delay.
@@ -184,28 +218,6 @@ export class DateTimeProvider {
 	}
 
 	/**
-	 * Create an interval.
-	 *
-	 * @param args
-	 */
-	public interval(args: IntervalDescriptorOptions): Interval {
-		const ms = this.duration(args.duration).as("milliseconds");
-		const interval = new Interval(ms, args);
-
-		if (args.attach) {
-			this.intervals.push(interval);
-		}
-
-		if (args.run) {
-			interval.start().catch((error) => {
-				this.log.error(error);
-			});
-		}
-
-		return interval;
-	}
-
-	/**
 	 * Run a function with a deadline.
 	 */
 	public async deadline<T>(
@@ -220,6 +232,8 @@ export class DateTimeProvider {
 			timeout.clear();
 		}
 	}
+
+	// -------------------------------------------------------------------------------------------------------------------
 
 	// Testing
 

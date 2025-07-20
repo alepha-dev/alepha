@@ -1,6 +1,21 @@
 import { expect, test } from "vitest";
 import { $hook, $inject, Alepha } from "../src";
 
+test("$hook - basic", async () => {
+	class App {
+		hook = $hook({
+			on: "echo",
+			handler: () => {},
+		});
+	}
+	const alepha = Alepha.create().with(App);
+	expect(alepha.get(App).hook.called).toBe(0);
+	await alepha.emit("echo", {});
+	expect(alepha.get(App).hook.called).toBe(1);
+	await alepha.emit("echo", {});
+	expect(alepha.get(App).hook.called).toBe(2);
+});
+
 test("$hook - with swapping", async () => {
 	let count = 0;
 

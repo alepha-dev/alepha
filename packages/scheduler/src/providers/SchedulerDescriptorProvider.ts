@@ -9,7 +9,7 @@ import {
 	type Static,
 	t,
 } from "@alepha/core";
-import { DateTimeProvider, type Interval } from "@alepha/datetime";
+import { $interval, DateTimeProvider, type Interval } from "@alepha/datetime";
 import { $lock } from "@alepha/lock";
 import {
 	$scheduler,
@@ -139,7 +139,7 @@ export class SchedulerDescriptorProvider {
 			this.log.debug(
 				`+ Interval "${this.dateTimeProvider.duration(options.interval).humanize()}" -> "${name}"`,
 			);
-			scheduler.interval = this.dateTimeProvider.interval({
+			scheduler.interval = this.alepha.use($interval, {
 				attach: true,
 				duration: options.interval,
 				handler: () =>

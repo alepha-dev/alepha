@@ -17,10 +17,8 @@ import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
 export class ServerStaticProvider {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly routerProvider: ServerRouterProvider =
-		$inject(ServerRouterProvider);
-	protected readonly dateTimeProvider: DateTimeProvider =
-		$inject(DateTimeProvider);
+	protected readonly routerProvider = $inject(ServerRouterProvider);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly log: Logger = $logger();
 
 	protected readonly directories: ServeDirectory[] = [];

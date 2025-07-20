@@ -1,5 +1,8 @@
 import type { Alepha } from "../Alepha.ts";
-import { __bind, type Descriptor } from "../helpers/descriptor.ts";
+import {
+	type DescriptorFactory,
+	descriptorEvents,
+} from "../helpers/descriptor.ts";
 import type { Module } from "../helpers/Module.ts";
 import type { Service, ServiceEntry } from "../interfaces/Service.ts";
 
@@ -53,12 +56,16 @@ export const $module = (args: ModuleDescriptorOptions): ModuleDescriptor => {
 		const it = typeof service === "function" ? service : service.provide;
 		const isModule = !!it.prototype?.$services;
 		if (!isModule) {
-			__bind(it, Class[name]);
+			descriptorEvents.bind(it, Class[name]);
 		}
 	}
 
-	for (const descriptor of descriptors) {
-		__bind(descriptor, Class[name]);
+	for (const factory of descriptors) {
+		if (Array.isArray(factory)) {
+			descriptorEvents.bind(factory[0].descriptor, factory[1]);
+		} else {
+			descriptorEvents.bind(factory.descriptor, Class[name]);
+		}
 	}
 
 	return Class[name];
@@ -82,7 +89,7 @@ export interface ModuleDescriptorOptions {
 	/**
 	 * List of $descriptors to register in the module.
 	 */
-	descriptors?: Array<Descriptor>;
+	descriptors?: Array<DescriptorFactory | [DescriptorFactory, Service]>;
 
 	/**
 	 * By default, module will register all services.

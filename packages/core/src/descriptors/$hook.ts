@@ -1,12 +1,10 @@
 import type { Hooks } from "../Alepha.ts";
-import { KIND } from "../constants/KIND.ts";
-import { OPTIONS } from "../constants/OPTIONS.ts";
-import { __descriptor } from "../helpers/descriptor.ts";
+import {
+	createFactory,
+	Descriptor,
+	type DescriptorArgs,
+} from "../helpers/descriptor.ts";
 import type { Async } from "../interfaces/Async.ts";
-import type { Service } from "../interfaces/Service.ts";
-import { $cursor } from "./$cursor.ts";
-
-const KEY = "HOOK";
 
 /**
  * Registers a new hook.
@@ -47,32 +45,11 @@ const KEY = "HOOK";
  * ```
  *
  */
-export const $hook = <T extends keyof Hooks>(
-	options: HookOptions<T>,
-): HookDescriptor<T> => {
-	__descriptor(KEY);
-
-	const { context, definition } = $cursor();
-
-	if (!definition) {
-		throw new Error("Hook must be called inside a class");
-	}
-
-	context.on(options.on, {
-		caller: definition,
-		priority: options.priority,
-		callback: options.handler,
-	});
-
-	const $: HookDescriptor<T> = (arg: Hooks[T]) => options.handler(arg);
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	return $;
+export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) => {
+	return createFactory(HookDescriptor)(options);
 };
 
-$hook[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface HookOptions<T extends keyof Hooks> {
 	/**
@@ -91,33 +68,35 @@ export interface HookOptions<T extends keyof Hooks> {
 	priority?: "first" | "last";
 
 	/**
-	 * Empty placeholder, not working yet. :-)
+	 * Empty placeholder, not implemented yet. :-)
 	 */
 	before?: object | Array<object>;
 
 	/**
-	 * Empty placeholder, not working yet. :-)
+	 * Empty placeholder, not implemented yet. :-)
 	 */
 	after?: object | Array<object>;
 }
 
-export interface Hook<T extends keyof Hooks = any> {
-	caller?: Service;
-	priority?: "first" | "last";
-	callback: (payload: Hooks[T]) => Async<void>;
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class HookDescriptor<T extends keyof Hooks> extends Descriptor<
+	HookOptions<T>
+> {
+	public called = 0;
+
+	constructor(args: DescriptorArgs<HookOptions<T>>) {
+		super(args);
+
+		this.alepha.on(this.options.on, {
+			caller: this.service,
+			priority: this.options.priority,
+			callback: async (args: any) => {
+				this.called += 1;
+				await this.options.handler(args);
+			},
+		});
+	}
 }
 
-export interface HookDescriptor<T extends keyof Hooks> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: HookOptions<T>;
-	(app: Hooks[T]): Async<any>;
-
-	//TODO:
-	/*
-	   .called - number of times the hook has been called
-	   .calledAt - last time the hook was called
-	   .paused() - boolean - if the hook is paused
-	   .pausedAt - number - when the hook was paused
-	   .resume() - function to resume the hook
-	 */
-}
+$hook.descriptor = HookDescriptor;

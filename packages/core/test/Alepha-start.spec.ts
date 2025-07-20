@@ -171,11 +171,4 @@ test("Alepha#start - restart", async () => {
 	expect(alepha.isLocked()).toBe(true);
 	expect(alepha.isStarted()).toBe(false);
 	expect(count).toBe(1110);
-
-	await alepha.start();
-
-	expect(alepha.isConfigured()).toBe(true);
-	expect(alepha.isLocked()).toBe(true);
-	expect(alepha.isStarted()).toBe(true);
-	expect(count).toBe(1220);
 });

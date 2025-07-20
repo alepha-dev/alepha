@@ -23,28 +23,6 @@ describe("$batch descriptor", () => {
 		await alepha.stop();
 	});
 
-	test("should not implement push method on descriptor", async () => {
-		class App {
-			b = $batch({
-				schema: t.string(),
-				maxSize: 10,
-				handler: createMockHandler(),
-			});
-		}
-
-		const descriptor = alepha.get(App).b;
-
-		expect(descriptor.push).toBeDefined();
-		expect(descriptor.flush).toBeDefined();
-
-		await expect(() => descriptor.push("test")).rejects.toThrowError(
-			NotImplementedError,
-		);
-		await expect(() => descriptor.flush()).rejects.toThrowError(
-			NotImplementedError,
-		);
-	});
-
 	test("should batch items and flush when maxSize is reached", async () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
