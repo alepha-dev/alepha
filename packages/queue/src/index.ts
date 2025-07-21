@@ -2,15 +2,14 @@ import { $module, type Alepha } from "@alepha/core";
 import { $consumer } from "./descriptors/$consumer.ts";
 import { $queue } from "./descriptors/$queue.ts";
 import { MemoryQueueProvider } from "./providers/MemoryQueueProvider.ts";
-import { QueueDescriptorProvider } from "./providers/QueueDescriptorProvider.ts";
 import { QueueProvider } from "./providers/QueueProvider.ts";
+import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$consumer.ts";
 export * from "./descriptors/$queue.ts";
 export * from "./providers/MemoryQueueProvider.ts";
-export * from "./providers/QueueDescriptorProvider.ts";
 export * from "./providers/QueueProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -29,7 +28,7 @@ export * from "./providers/QueueProvider.ts";
 export const AlephaQueue = $module({
 	name: "alepha.queue",
 	descriptors: [$queue, $consumer],
-	services: [QueueProvider, MemoryQueueProvider, QueueDescriptorProvider],
+	services: [QueueProvider, MemoryQueueProvider, WorkerProvider],
 	register: (alepha: Alepha) =>
 		alepha
 			.with({
@@ -37,5 +36,5 @@ export const AlephaQueue = $module({
 				provide: QueueProvider,
 				use: MemoryQueueProvider,
 			})
-			.with(QueueDescriptorProvider),
+			.with(WorkerProvider),
 });

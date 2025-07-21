@@ -1,17 +1,8 @@
-import {
-	$env,
-	$inject,
-	type Static,
-	type TObject,
-	type TString,
-	t,
-} from "@alepha/core";
+import { $env, $inject, type Static, t } from "@alepha/core";
 import type { QueueProvider } from "@alepha/queue";
 import { RedisProvider } from "@alepha/redis";
 
-const envSchema: TObject<{
-	REDIS_QUEUE_PREFIX: TString;
-}> = t.object({
+const envSchema = t.object({
 	REDIS_QUEUE_PREFIX: t.string({
 		default: "queue",
 	}),

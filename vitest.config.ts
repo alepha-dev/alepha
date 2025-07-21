@@ -12,7 +12,7 @@ export default defineConfig({
 				"scripts/**",
 				"packages/alepha/**",
 				"packages/cli/**",
-				"packages/protobuf/**"
+				"packages/protobuf/**",
 			],
 			reporter: ["cobertura", "text", "html"],
 		},

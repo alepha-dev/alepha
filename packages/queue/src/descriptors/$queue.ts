@@ -1,62 +1,85 @@
 import {
-	__descriptor,
+	$inject,
+	$logger,
+	createDescriptor,
+	Descriptor,
 	KIND,
-	NotImplementedError,
-	OPTIONS,
+	type Service,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
-import type { QueueProvider } from "../providers/QueueProvider.ts";
-
-const KEY = "QUEUE";
+import { MemoryQueueProvider } from "../providers/MemoryQueueProvider.ts";
+import { QueueProvider } from "../providers/QueueProvider.ts";
+import { WorkerProvider } from "../providers/WorkerProvider.ts";
 
 /**
  * Create a new queue.
  */
-export const $queue = <T extends QueueMessageSchema>(
+export const $queue = <T extends TSchema>(
 	options: QueueDescriptorOptions<T>,
 ): QueueDescriptor<T> => {
-	__descriptor(KEY);
-
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		name: () => {
-			throw new NotImplementedError(KEY);
-		},
-		provider: () => {
-			throw new NotImplementedError(KEY);
-		},
-		push: async () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
+	return createDescriptor(QueueDescriptor<T>, options);
 };
 
-$queue[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface QueueDescriptorOptions<T extends TSchema> {
+	name?: string; // or use the key
+	description?: string;
+	provider?: "memory" | Service<QueueProvider>;
+	schema: T;
+	handler?: (message: QueueMessage<T>) => Promise<void>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class QueueDescriptor<T extends TSchema> extends Descriptor<
+	QueueDescriptorOptions<T>
+> {
+	protected readonly log = $logger();
+	protected readonly workerProvider = $inject(WorkerProvider);
+	public readonly provider = this.$provider();
+
+	public async push(...payloads: Array<Static<T>>) {
+		await Promise.all(
+			payloads.map((payload) =>
+				this.provider.push(
+					this.name,
+					JSON.stringify({
+						headers: {},
+						payload: this.alepha.parse(this.options.schema, payload),
+					}),
+				),
+			),
+		);
+
+		this.log.debug(`Pushed to queue ${this.name}`, payloads);
+		this.workerProvider.wakeUp();
+	}
+
+	public get name() {
+		return this.options.name || this.config.propertyKey;
+	}
+
+	protected $provider() {
+		if (!this.options.provider) {
+			return this.alepha.get(QueueProvider);
+		}
+		if (this.options.provider === "memory") {
+			return this.alepha.get(MemoryQueueProvider);
+		}
+		return this.alepha.get(this.options.provider);
+	}
+}
+
+$queue[KIND] = QueueDescriptor;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface QueueMessageSchema {
-	headers?: TSchema;
 	payload: TSchema;
 }
 
-export interface QueueDescriptorOptions<T extends QueueMessageSchema> {
-	name?: string; // or use the key
-	description?: string;
-	provider?: "memory" | (() => QueueProvider);
-	schema: T;
-	handler?: (message: { payload: Static<T["payload"]> }) => Promise<void>;
-}
-
-export interface QueueDescriptor<
-	T extends QueueMessageSchema = QueueMessageSchema,
-> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: QueueDescriptorOptions<T>;
-
-	name(): string;
-	provider(): QueueProvider;
-	push(...payload: Array<Static<T["payload"]>>): Promise<void>;
+export interface QueueMessage<T extends TSchema> {
+	payload: Static<T>;
 }

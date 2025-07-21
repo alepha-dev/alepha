@@ -1,12 +1,7 @@
 import { $inject, Alepha, type Service, t } from "@alepha/core";
 import { expect } from "vitest";
-import {
-	$consumer,
-	$queue,
-	MemoryQueueProvider,
-	QueueDescriptorProvider,
-	QueueProvider,
-} from "../src";
+import { $consumer, $queue, MemoryQueueProvider, QueueProvider } from "../src";
+import { WorkerProvider } from "../src/providers/WorkerProvider.ts";
 
 export const payloadSchema = t.object({
 	id: t.string(),
@@ -22,9 +17,7 @@ export const testQueueBasic = async (provider: Service<QueueProvider>) => {
 	class TestQueue {
 		q = $queue({
 			name: "test",
-			schema: {
-				payload: payloadSchema,
-			},
+			schema: payloadSchema,
 		});
 	}
 
@@ -82,9 +75,7 @@ export const testQueueHasConsumer = async (
 	let count = 0;
 	class A {
 		q = $queue({
-			schema: {
-				payload: t.object({ n: t.uint() }),
-			},
+			schema: t.object({ n: t.uint() }),
 			handler: async ({ payload }) => {
 				count += payload.n;
 			},
@@ -110,9 +101,7 @@ export const testQueueKillWorkerSleep = async (
 	let count = 0;
 	class A {
 		q = $queue({
-			schema: {
-				payload: t.object({}),
-			},
+			schema: t.object({}),
 		});
 		c = $consumer({
 			queue: this.q,
@@ -130,8 +119,8 @@ export const testQueueKillWorkerSleep = async (
 			use: provider,
 		})
 		.with({
-			provide: QueueDescriptorProvider,
-			use: class FakeQueueDescriptorProvider extends QueueDescriptorProvider {
+			provide: WorkerProvider,
+			use: class FakeQueueDescriptorProvider extends WorkerProvider {
 				async stopWorkers() {
 					await super.stopWorkers();
 					count += 123;
