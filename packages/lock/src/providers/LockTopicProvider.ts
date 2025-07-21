@@ -1,3 +1,3 @@
 import { TopicProvider } from "@alepha/topic";
 
-export class LockTopicProvider extends TopicProvider {}
+export abstract class LockTopicProvider extends TopicProvider {}

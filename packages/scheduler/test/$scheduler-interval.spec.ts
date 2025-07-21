@@ -2,8 +2,8 @@ import { RedisLockProvider } from "@alepha/lock-redis";
 import { describe, test } from "vitest";
 import { SharedLockProvider, testSchedulerBasic } from "./shared.ts";
 
-describe("$scheduler - cron", () => {
-	const scheduler = { cron: "0 * * * *" };
+describe("$scheduler - interval", () => {
+	const scheduler = { interval: [1, "minute"] } as any;
 
 	test("should trigger all apps", async () => {
 		await testSchedulerBasic({

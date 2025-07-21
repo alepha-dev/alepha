@@ -1,9 +1,9 @@
 import { $module, type FileLike } from "@alepha/core";
-import { $bucket, type BucketFileOptions } from "./descriptors/$bucket.ts";
 import {
-	type Bucket,
-	BucketDescriptorProvider,
-} from "./providers/BucketDescriptorProvider.ts";
+	$bucket,
+	type BucketDescriptor,
+	type BucketFileOptions,
+} from "./descriptors/$bucket.ts";
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
@@ -12,7 +12,6 @@ import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider
 
 export * from "./descriptors/$bucket.ts";
 export * from "./errors/FileNotFoundError.ts";
-export * from "./providers/BucketDescriptorProvider.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
@@ -28,7 +27,7 @@ declare module "@alepha/core" {
 		"bucket:file:uploaded": {
 			id: string;
 			file: FileLike;
-			bucket: Bucket;
+			bucket: BucketDescriptor;
 			options: BucketFileOptions;
 		};
 		/**
@@ -36,7 +35,7 @@ declare module "@alepha/core" {
 		 */
 		"bucket:file:deleted": {
 			id: string;
-			bucket: Bucket;
+			bucket: BucketDescriptor;
 		};
 	}
 }
@@ -61,16 +60,13 @@ export const AlephaBucket = $module({
 		FileStorageProvider,
 		MemoryFileStorageProvider,
 		LocalFileStorageProvider,
-		BucketDescriptorProvider,
 	],
 	register: (alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: FileStorageProvider,
-				use: alepha.isTest()
-					? MemoryFileStorageProvider
-					: LocalFileStorageProvider,
-			})
-			.with(BucketDescriptorProvider),
+		alepha.with({
+			optional: true,
+			provide: FileStorageProvider,
+			use: alepha.isTest()
+				? MemoryFileStorageProvider
+				: LocalFileStorageProvider,
+		}),
 });

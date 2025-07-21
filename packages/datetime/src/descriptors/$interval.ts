@@ -1,13 +1,24 @@
 import {
 	type Async,
-	createFactory,
+	createDescriptor,
 	Descriptor,
 	type DescriptorArgs,
+	KIND,
 } from "@alepha/core";
 import {
 	DateTimeProvider,
 	type DurationLike,
 } from "../providers/DateTimeProvider.ts";
+
+/**
+ * Run a function periodically.
+ * It uses the `setInterval` internally.
+ * It starts by default when the context starts and stops when the context stops.
+ */
+export const $interval = (options: IntervalDescriptorOptions) =>
+	createDescriptor(IntervalDescriptor, options);
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface IntervalDescriptorOptions {
 	/**
@@ -21,15 +32,6 @@ export interface IntervalDescriptorOptions {
 	run?: "now" | "start" | "ready";
 
 	/**
-	 * Whether to attach the interval to the context.
-	 *
-	 * Attached intervals are automatically started when the context starts and stopped when the context stops.
-	 *
-	 * @default true
-	 */
-	attach?: boolean;
-
-	/**
 	 * The interval handler.
 	 */
 	handler: () => Async<void>;
@@ -39,6 +41,8 @@ export interface IntervalDescriptorOptions {
 	 */
 	duration: DurationLike;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class IntervalDescriptor extends Descriptor<IntervalDescriptorOptions> {
 	protected timer: any = null;
@@ -110,9 +114,4 @@ export class IntervalDescriptor extends Descriptor<IntervalDescriptorOptions> {
 	}
 }
 
-/**
- * Run a function periodically.
- * It uses the `setInterval` internally.
- * It starts by default when the context starts and stops when the context stops.
- */
-export const $interval = createFactory(IntervalDescriptor);
+$interval[KIND] = IntervalDescriptor;

@@ -1,8 +1,8 @@
 import { Alepha, MockLogger, t } from "@alepha/core";
 import { describe, expect, test, vi } from "vitest";
-import { $command, CommandDescriptorProvider } from "../src";
+import { $command, CliProvider } from "../src";
 
-describe("CommandDescriptorProvider", () => {
+describe("$command", () => {
 	const setupTestCommands = async (
 		argv?: string[],
 		before?: (alepha: Alepha) => any,
@@ -41,7 +41,7 @@ describe("CommandDescriptorProvider", () => {
 
 		const mockLogger = new MockLogger();
 		const alepha = Alepha.create({ log: mockLogger }).with(TestCommands);
-		const provider = alepha.get(CommandDescriptorProvider);
+		const provider = alepha.get(CliProvider);
 
 		if (argv) {
 			provider.options.argv = argv;
@@ -186,7 +186,7 @@ describe("CommandDescriptorProvider", () => {
 	describe("Help Message", () => {
 		test("should print general help with --help flag", async () => {
 			const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
-				const provider = alepha.get(CommandDescriptorProvider);
+				const provider = alepha.get(CliProvider);
 				provider.options.name = "my-cli";
 				provider.options.description = "My awesome CLI tool.";
 			});
@@ -204,7 +204,7 @@ describe("CommandDescriptorProvider", () => {
 			const { mockLogger } = await setupTestCommands(
 				["greet", "-h"],
 				(alepha) =>
-					alepha.configure(CommandDescriptorProvider, {
+					alepha.configure(CliProvider, {
 						name: "my-cli",
 					}),
 			);

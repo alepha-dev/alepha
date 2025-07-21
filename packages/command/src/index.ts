@@ -1,13 +1,13 @@
 import { $module } from "@alepha/core";
 import { $command } from "./descriptors/$command.ts";
-import { CommandDescriptorProvider } from "./providers/CommandDescriptorProvider.ts";
+import { CliProvider } from "./providers/CliProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$command.ts";
 export * from "./errors/CommandError.ts";
 export * from "./helpers/Runner.ts";
-export * from "./providers/CommandDescriptorProvider.ts";
+export * from "./providers/CliProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -20,10 +20,8 @@ export * from "./providers/CommandDescriptorProvider.ts";
  * @see {@link $command}
  * @module alepha.command
  */
-const AlephaCommand = $module({
+export const AlephaCommand = $module({
 	name: "alepha.command",
 	descriptors: [$command],
-	services: [CommandDescriptorProvider],
+	services: [CliProvider],
 });
-
-export default AlephaCommand;

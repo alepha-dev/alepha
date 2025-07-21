@@ -10,9 +10,8 @@ type CacheValue = {
 };
 
 export class MemoryCacheProvider implements CacheProvider {
-	protected readonly dateTimeProvider: DateTimeProvider =
-		$inject(DateTimeProvider);
-	protected readonly log: Logger = $logger();
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly log = $logger();
 
 	protected store: Record<CacheName, Record<CacheKey, CacheValue>> = {};
 

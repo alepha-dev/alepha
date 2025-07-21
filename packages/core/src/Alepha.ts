@@ -2,6 +2,7 @@ import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
+import { KIND } from "./constants/KIND.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { ModuleDescriptor } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
@@ -10,7 +11,6 @@ import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import {
 	Descriptor,
-	type DescriptorFactory,
 	type DescriptorFactoryLike,
 	descriptorEvents,
 } from "./helpers/descriptor.ts";
@@ -287,16 +287,11 @@ export class Alepha {
 	 */
 	protected modules: Array<ModuleDefinition> = [];
 
-	protected substitutions: Map<Service, Service> = new Map();
-	protected configurations: Map<Service, object> = new Map();
-	protected descriptors: Map<
-		Service,
-		Array<{
-			descriptor: Descriptor;
-			instance: any;
-			key: string;
-		}>
-	> = new Map();
+	protected substitutions = new Map<Service, Service>();
+
+	protected configurations = new Map<Service, object>();
+
+	protected descriptorsMap = new Map<Service<Descriptor>, Array<Descriptor>>();
 
 	/**
 	 * Node.js feature that allows to store context across asynchronous calls.
@@ -810,8 +805,9 @@ export class Alepha {
 
 	public use<T extends DescriptorFactoryLike>(
 		factory: T,
-		options: Parameters<T>[0],
+		options?: Parameters<T>[0],
 		context: {
+			propertyKey?: string;
 			service?: Service;
 			module?: ModuleDescriptor;
 		} = {},
@@ -833,19 +829,9 @@ export class Alepha {
 					: undefined);
 		}
 
-		const instance = factory(options);
-
-		if ("descriptor" in factory) {
-			const key = factory.descriptor as Service;
-			const list = this.descriptors.get(key) ?? [];
-			this.descriptors.set(key, [
-				...list,
-				{
-					descriptor: instance,
-					instance: {},
-					key: "",
-				},
-			]);
+		const value = factory(options);
+		if (value instanceof Descriptor) {
+			this.processDescriptor(value, context.propertyKey);
 		}
 
 		if (outside) {
@@ -854,7 +840,7 @@ export class Alepha {
 			__alephaRef.module = undefined;
 		}
 
-		return instance as ReturnType<T>;
+		return value as ReturnType<T>;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -1140,21 +1126,10 @@ export class Alepha {
 		return graph;
 	}
 
-	public getDescriptors<
-		T extends object,
-		TDescriptor extends Descriptor<T>,
-	>(factory: {
-		descriptor: InstantiableClass<TDescriptor>;
-	}): Array<{
-		descriptor: TDescriptor;
-		instance: any;
-		key: string;
-	}> {
-		return (this.descriptors.get(factory.descriptor) ?? []) as Array<{
-			descriptor: TDescriptor;
-			instance: any;
-			key: string;
-		}>;
+	public descriptors<TDescriptor extends Descriptor>(factory: {
+		[KIND]: InstantiableClass<TDescriptor>;
+	}): Array<TDescriptor> {
+		return (this.descriptorsMap.get(factory[KIND]) ?? []) as Array<TDescriptor>;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -1187,17 +1162,7 @@ export class Alepha {
 		const obj = instance as unknown as Record<string, any>;
 		for (const [key, value] of Object.entries(obj)) {
 			if (value instanceof Descriptor) {
-				value.options.name ??= key;
-
-				const descriptor = value.constructor as Service;
-				this.descriptors.set(descriptor, [
-					...(this.descriptors.get(descriptor) ?? []),
-					{
-						descriptor: value,
-						instance: instance,
-						key: key,
-					},
-				]);
+				this.processDescriptor(value, key);
 			}
 		}
 
@@ -1213,6 +1178,15 @@ export class Alepha {
 		__alephaRef.module = previousModule;
 
 		return instance;
+	}
+
+	protected processDescriptor(value: Descriptor, propertyKey = "") {
+		value["config"]["propertyKey"] = propertyKey;
+		value["onInit"]();
+
+		const kind = value.constructor as Service;
+		const list = this.descriptorsMap.get(kind) ?? [];
+		this.descriptorsMap.set(kind, [...list, value]);
 	}
 
 	/**

@@ -1,10 +1,14 @@
 import {
+	createDescriptor,
+	Descriptor,
 	type FileLike,
 	KIND,
-	NotImplementedError,
-	OPTIONS,
+	type Service,
 } from "@alepha/core";
-import type { FileStorageProvider } from "../providers/FileStorageProvider.ts";
+import { createFile } from "@alepha/file";
+import { InvalidFileError } from "../errors/InvalidFileError.ts";
+import { FileStorageProvider } from "../providers/FileStorageProvider.ts";
+import { MemoryFileStorageProvider } from "../providers/MemoryFileStorageProvider.ts";
 
 /**
  * Create a container for storing files.
@@ -22,32 +26,8 @@ import type { FileStorageProvider } from "../providers/FileStorageProvider.ts";
  * }
  * ```
  */
-export const $bucket = (options: BucketDescriptorOptions): BucketDescriptor => {
-	return {
-		[KIND]: "BUCKET",
-		[OPTIONS]: options,
-		get name(): string {
-			throw new NotImplementedError("BUCKET");
-		},
-		get provider(): FileStorageProvider {
-			throw new NotImplementedError("BUCKET");
-		},
-		upload: async (): Promise<string> => {
-			throw new NotImplementedError("BUCKET");
-		},
-		exists: async (): Promise<boolean> => {
-			throw new NotImplementedError("BUCKET");
-		},
-		download: async (): Promise<FileLike> => {
-			throw new NotImplementedError("BUCKET");
-		},
-		delete: async (): Promise<void> => {
-			throw new NotImplementedError("BUCKET");
-		},
-	};
-};
-
-$bucket[KIND] = "BUCKET";
+export const $bucket = (options: BucketDescriptorOptions) =>
+	createDescriptor(BucketDescriptor, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -55,7 +35,7 @@ export interface BucketDescriptorOptions extends BucketFileOptions {
 	/**
 	 * File storage provider. If not provided, the default provider will be used.
 	 */
-	provider?: FileStorageProvider;
+	provider?: Service<FileStorageProvider> | "memory";
 
 	/**
 	 * Optional name of the bucket. If not provided, the key of the descriptor will be used.
@@ -63,40 +43,102 @@ export interface BucketDescriptorOptions extends BucketFileOptions {
 	name?: string;
 }
 
-export interface BucketDescriptor {
-	[KIND]: "BUCKET";
-	[OPTIONS]: BucketDescriptorOptions;
+// ---------------------------------------------------------------------------------------------------------------------
 
-	/**
-	 * Name of the bucket.
-	 */
-	readonly name: string;
+export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
+	public readonly provider = this.$provider();
 
-	/**
-	 * File storage provider.
-	 */
-	readonly provider: FileStorageProvider;
+	public get name() {
+		return this.options.name ?? `${this.config.propertyKey}`;
+	}
 
 	/**
 	 * Uploads a file to the bucket.
 	 */
-	upload: (file: FileLike, options?: BucketFileOptions) => Promise<string>;
+	public async upload(
+		file: FileLike,
+		options?: BucketFileOptions,
+	): Promise<string> {
+		if (file instanceof File) {
+			// our createFile is smarter than the browser's File constructor
+			// by doing this, we can guess the MIME type and size!
+			file = createFile(file);
+		}
+
+		options = {
+			...this.options,
+			...options,
+		};
+
+		const mimeTypes = options.mimeTypes ?? undefined;
+		const maxSize = options.maxSize ?? 10; // Default to 10 MB if not specified
+
+		if (mimeTypes) {
+			const mimeType = file.type || "application/octet-stream";
+			if (!mimeTypes.includes(mimeType)) {
+				throw new InvalidFileError(
+					`MIME type ${mimeType} is not allowed in bucket ${this.name}`,
+				);
+			}
+		}
+
+		if (file.size > maxSize * 1024 * 1024) {
+			throw new InvalidFileError(
+				`File size ${file.size} exceeds the maximum size of ${this.options.maxSize} MB in bucket ${this.name}`,
+			);
+		}
+
+		const id = await this.provider.upload(this.name, file);
+
+		await this.alepha.emit("bucket:file:uploaded", {
+			id,
+			bucket: this,
+			file,
+			options,
+		});
+
+		return id;
+	}
+
+	/**
+	 * Delete permanently a file from the bucket.
+	 */
+	public async delete(fileId: string): Promise<void> {
+		await this.provider.delete(this.name, fileId);
+		await this.alepha.emit("bucket:file:deleted", {
+			id: fileId,
+			bucket: this,
+		});
+	}
 
 	/**
 	 * Checks if a file exists in the bucket.
 	 */
-	exists: (fileId: string) => Promise<boolean>;
+	public async exists(fileId: string): Promise<boolean> {
+		return this.provider.exists(this.name, fileId);
+	}
 
 	/**
 	 * Downloads a file from the bucket.
 	 */
-	download: (fileId: string) => Promise<FileLike>;
+	public async download(fileId: string): Promise<FileLike> {
+		return this.provider.download(this.name, fileId);
+	}
 
-	/**
-	 * Streams a file from the bucket.
-	 */
-	delete: (fileId: string) => Promise<void>;
+	protected $provider() {
+		if (!this.options.provider) {
+			return this.alepha.get(FileStorageProvider);
+		}
+		if (this.options.provider === "memory") {
+			return this.alepha.get(MemoryFileStorageProvider);
+		}
+		return this.alepha.get(this.options.provider);
+	}
 }
+
+$bucket[KIND] = BucketDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface BucketFileOptions {
 	/**
@@ -110,7 +152,9 @@ export interface BucketFileOptions {
 	mimeTypes?: string[];
 
 	/**
-	 * Maximum size of the files in the bucket. Default is 10MB.
+	 * Maximum size of the files in the bucket.
+	 *
+	 * @default 10
 	 */
 	maxSize?: number;
 }

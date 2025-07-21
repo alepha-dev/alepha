@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { $inject, Alepha, type Service } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import {
 	MemoryTopicProvider,
 	type SubscribeCallback,
@@ -70,7 +70,11 @@ export const testLockBasic = async (
 
 	await app1.lock.set("stack", "");
 
-	await Promise.all([app1.migrate(), app2.migrate(), app3.migrate()]);
+	await Promise.all([
+		app1.migrate.run(),
+		app2.migrate.run(),
+		app3.migrate.run(),
+	]);
 
 	expect(app1.stack()).toBe("A");
 	expect(app2.stack()).toBe("A");
@@ -96,7 +100,7 @@ export const testLockWait = async (
 
 		async migrate() {
 			const now = Date.now();
-			await this.migrateLock();
+			await this.migrateLock.run();
 			return Date.now() - now;
 		}
 	}
@@ -129,5 +133,54 @@ export const testLockWait = async (
 	expect(result[1]).toBeGreaterThanOrEqual(500);
 	expect(result[2]).toBeGreaterThanOrEqual(500);
 
+	expect(count).toBe(1);
+};
+
+export const testLockGracePeriod = async (
+	provider: Service<LockProvider>,
+	topicProvider: Service<TopicProvider>,
+): Promise<void> => {
+	const config: {
+		gracePeriod?: DurationLike;
+	} = {};
+	let count = 0;
+
+	const createApp = () => {
+		const alepha = Alepha.create()
+			.with({
+				provide: LockTopicProvider,
+				use: topicProvider,
+			})
+			.with({
+				provide: LockProvider,
+				use: provider,
+			});
+		const fn = alepha.use($lock, {
+			gracePeriod: config.gracePeriod,
+			handler: async () => {
+				count += 1;
+			},
+		});
+		alepha.on("ready", () => fn.run());
+		return alepha;
+	};
+
+	// no grace period
+	// as you run apps one by one, lock is released after each start!
+	count = 0;
+	expect(count).toBe(0);
+	for (const app of [createApp(), createApp(), createApp()]) {
+		await app.start();
+	}
+	expect(count).toBe(3);
+
+	// but with grace period
+	// as we wait 1 second before releasing lock, all started apps will see the lock!
+	count = 0;
+	expect(count).toBe(0);
+	config.gracePeriod = [1, "seconds"];
+	for (const app of [createApp(), createApp(), createApp()]) {
+		await app.start();
+	}
 	expect(count).toBe(1);
 };

@@ -6,16 +6,11 @@ import {
 	Alepha,
 	type Logger,
 	type Static,
-	type TObject,
-	type TOptional,
-	type TString,
 	t,
 } from "@alepha/core";
 import { RedisProvider } from "@alepha/redis";
 
-const envSchema: TObject<{
-	REDIS_CACHE_PREFIX: TOptional<TString>;
-}> = t.object({
+const envSchema = t.object({
 	REDIS_CACHE_PREFIX: t.optional(
 		t.string({
 			description:

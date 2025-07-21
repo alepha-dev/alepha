@@ -4,16 +4,22 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { type FileHandle, mkdir, open, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import { $hook, $inject, AlephaError, type FileLike, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	Alepha,
+	AlephaError,
+	type FileLike,
+	t,
+} from "@alepha/core";
 import { createFile } from "@alepha/file";
+import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
-import { BucketDescriptorProvider } from "./BucketDescriptorProvider.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 export class LocalFileStorageProvider implements FileStorageProvider {
 	public static METADATA_HEADER_LENGTH = 4;
-
-	protected bucketProvider = $inject(BucketDescriptorProvider);
+	protected readonly alepha = $inject(Alepha);
 
 	public options = {
 		storagePath: "files",
@@ -23,7 +29,12 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 		on: "configure",
 		handler: async () => {
 			await mkdir(this.options.storagePath, { recursive: true });
-			for (const bucket of this.bucketProvider.getBuckets()) {
+
+			for (const bucket of this.alepha.descriptors($bucket)) {
+				if (bucket.provider !== this) {
+					continue;
+				}
+
 				await mkdir(join(this.options.storagePath, bucket.name), {
 					recursive: true,
 				});

@@ -1,11 +1,26 @@
-import type {
-	SubscribeCallback,
+import { $hook, $logger } from "@alepha/core";
+import { $subscriber } from "../descriptors/$subscriber.ts";
+import { $topic } from "../descriptors/$topic.ts";
+import {
+	type SubscribeCallback,
 	TopicProvider,
-	UnSubscribeFn,
+	type UnSubscribeFn,
 } from "./TopicProvider.ts";
 
-export class MemoryTopicProvider implements TopicProvider {
+export class MemoryTopicProvider extends TopicProvider {
+	protected readonly log = $logger();
 	protected readonly subscriptions: Record<string, SubscribeCallback[]> = {};
+
+	protected readonly start = $hook({
+		on: "start",
+		handler: async () => {
+			const subscribers = this.subscribers();
+			if (subscribers.length) {
+				await Promise.all(subscribers.map((fn) => fn()));
+				this.log.info(`Subscribed to ${subscribers.length} topics`);
+			}
+		},
+	});
 
 	/**
 	 * Publish a message to a topic.

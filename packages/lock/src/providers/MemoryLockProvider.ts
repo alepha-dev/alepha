@@ -1,4 +1,4 @@
-import { $inject, $logger, type Logger } from "@alepha/core";
+import { $inject, $logger } from "@alepha/core";
 import { DateTimeProvider, type Timeout } from "@alepha/datetime";
 import type { LockProvider } from "./LockProvider.ts";
 
@@ -6,9 +6,8 @@ import type { LockProvider } from "./LockProvider.ts";
  * A simple in-memory store provider.
  */
 export class MemoryLockProvider implements LockProvider {
-	protected readonly dateTimeProvider: DateTimeProvider =
-		$inject(DateTimeProvider);
-	protected readonly log: Logger = $logger();
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly log = $logger();
 
 	/**
 	 * The in-memory store.

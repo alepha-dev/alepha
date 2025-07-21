@@ -5,33 +5,22 @@ import {
 	$logger,
 	Alepha,
 	type Logger,
-	OPTIONS,
 	type Static,
 	type TObject,
-	type TProperties,
 	type TSchema,
-	type TString,
 	TypeBoxError,
 	TypeGuard,
 	t,
 } from "@alepha/core";
-import { $command } from "../descriptors/$command.ts";
+import {
+	$command,
+	type CommandDescriptor,
+	type CommandHandlerArgs,
+} from "../descriptors/$command.ts";
 import { CommandError } from "../errors/CommandError.ts";
 import { Runner } from "../helpers/Runner.ts";
 
-interface Command {
-	key: string;
-	name: string;
-	description?: string;
-	aliases: string[];
-	flags: TObject<TProperties>;
-	handler: (flags: any) => Promise<void>;
-}
-
-const envSchema: TObject<{
-	CLI_NAME: TString;
-	CLI_DESCRIPTION: TString;
-}> = t.object({
+const envSchema = t.object({
 	CLI_NAME: t.string({
 		default: "cli",
 		description: "Name of the CLI application.",
@@ -46,51 +35,24 @@ declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export class CommandDescriptorProvider {
+export class CliProvider {
 	protected readonly env: Static<typeof envSchema> = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log: Logger = $logger();
-	protected commands: Command[] = [];
 
-	public options: {
-		name: string;
-		description: string;
-		argv: string[];
-	} = {
+	public options = {
 		name: this.env.CLI_NAME,
 		description: this.env.CLI_DESCRIPTION,
 		argv: typeof process !== "undefined" ? process.argv.slice(2) : [],
 	};
 
-	protected readonly globalFlags: Record<
-		string,
-		{ aliases: string[]; description: string; schema: TSchema }
-	> = {
+	protected readonly globalFlags = {
 		help: {
 			aliases: ["h", "help"],
 			description: "Show this help message",
 			schema: t.boolean(),
 		},
-	} as const;
-
-	protected readonly onConfigure = $hook({
-		on: "configure",
-		handler: () => {
-			const descriptors = this.alepha.getDescriptorValues($command);
-
-			for (const { value, key } of descriptors) {
-				const options = value[OPTIONS];
-				this.commands.push({
-					key,
-					name: options.name ?? key,
-					description: options.description,
-					aliases: options.aliases ?? [],
-					flags: options.flags ?? t.object({}),
-					handler: options.handler as (flags: any) => Promise<void>,
-				});
-			}
-		},
-	});
+	};
 
 	protected readonly onReady = $hook({
 		on: "ready",
@@ -101,9 +63,9 @@ export class CommandDescriptorProvider {
 
 			const globalFlags = this.parseFlags(
 				argv,
-				Object.keys(this.globalFlags).map((key) => ({
+				Object.entries(this.globalFlags).map(([key, value]) => ({
 					key,
-					...this.globalFlags[key],
+					...value,
 				})),
 			);
 
@@ -134,7 +96,7 @@ export class CommandDescriptorProvider {
 					run: runner.run,
 				};
 
-				await command.handler(args);
+				await command.options.handler(args as CommandHandlerArgs<TObject>);
 
 				runner.summary();
 
@@ -143,9 +105,13 @@ export class CommandDescriptorProvider {
 		},
 	});
 
-	private findCommand(name: string): Command | undefined {
+	public get commands(): CommandDescriptor<any>[] {
+		return this.alepha.descriptors($command);
+	}
+
+	private findCommand(name: string): CommandDescriptor<TObject> | undefined {
 		return this.commands.find(
-			(cmd) => cmd.name === name || cmd.aliases.includes(name),
+			(command) => command.name === name || command.aliases.includes(name),
 		);
 	}
 
@@ -207,7 +173,7 @@ export class CommandDescriptorProvider {
 		return result;
 	}
 
-	private printHelp(command?: Command): void {
+	private printHelp(command?: CommandDescriptor<any>): void {
 		const cliName = this.options.name || "cli";
 		this.log.info(""); // Newline
 
@@ -215,9 +181,9 @@ export class CommandDescriptorProvider {
 			// Command-specific help
 			this.log.info(`Usage: \`${(`${cliName} ${command.name}`).trim()}\``);
 
-			if (command.description) {
+			if (command.options.description) {
 				this.log.info(``);
-				this.log.info(`\t${command.description}`);
+				this.log.info(`\t${command.options.description}`);
 			}
 
 			this.log.info("");
@@ -252,7 +218,7 @@ export class CommandDescriptorProvider {
 			this.log.info("Commands:");
 			const maxCmdLength = this.getMaxCmdLength(this.commands);
 
-			for (const { name, aliases, description } of this.commands) {
+			for (const { name, aliases, options } of this.commands) {
 				// skip root command in list
 				if (name === "") {
 					continue;
@@ -260,7 +226,7 @@ export class CommandDescriptorProvider {
 
 				const cmdStr = [name, ...aliases].join(", ");
 				this.log.info(
-					`    ${cliName} ${cmdStr.padEnd(maxCmdLength)} # ${description ?? ""}`,
+					`    ${cliName} ${cmdStr.padEnd(maxCmdLength)} # ${options.description ?? ""}`,
 				);
 			}
 
@@ -280,7 +246,7 @@ export class CommandDescriptorProvider {
 		this.log.info(""); // Newline
 	}
 
-	private getMaxCmdLength(commands: Command[]): number {
+	private getMaxCmdLength(commands: CommandDescriptor[]): number {
 		return Math.max(
 			...commands.map((c) => [c.name, ...c.aliases].join(", ").length),
 		);

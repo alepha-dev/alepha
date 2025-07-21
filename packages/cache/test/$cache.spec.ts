@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha, NotImplementedError } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
-import { $cache, MemoryCacheProvider } from "../src";
+import { $cache, AlephaCache, MemoryCacheProvider } from "../src";
 import {
 	TestCache,
 	testCacheBasic,
@@ -62,14 +62,6 @@ test("$cache - infinite", async () => {
 	expect(await test.b({ name: "A" })).toBe("A:0");
 	await time.travel([1, "day"]);
 	expect(await test.b({ name: "A" })).toBe("A:0");
-});
-
-test("$cache - not implemented", async () => {
-	const alepha = Alepha.create();
-	const test = alepha.get(TestCache);
-
-	expect(() => test.a.key({ name: "A" })).toThrow(NotImplementedError);
-	await expect(() => test.a.invalidate()).rejects.toThrow(NotImplementedError);
 });
 
 test("$cache - unique key", async () => {

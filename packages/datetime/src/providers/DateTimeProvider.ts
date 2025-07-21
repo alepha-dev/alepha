@@ -23,9 +23,7 @@ export class DateTimeProvider {
 	protected readonly timeouts: Timeout[] = [];
 
 	public get intervals(): IntervalDescriptor[] {
-		return this.alepha
-			.getDescriptors($interval)
-			.map(({ descriptor }) => descriptor);
+		return this.alepha.descriptors($interval);
 	}
 
 	constructor() {

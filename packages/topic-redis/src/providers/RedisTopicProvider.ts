@@ -1,42 +1,33 @@
-import {
-	$env,
-	$hook,
-	$inject,
-	$logger,
-	type Logger,
-	type Static,
-	type TObject,
-	type TString,
-	t,
-} from "@alepha/core";
+import { $env, $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { RedisProvider, RedisSubscriberProvider } from "@alepha/redis";
-import type {
-	SubscribeCallback,
+import {
+	type SubscribeCallback,
 	TopicProvider,
-	UnSubscribeFn,
+	type UnSubscribeFn,
 } from "@alepha/topic";
 
-const envSchema: TObject<{
-	REDIS_TOPIC_PREFIX: TString;
-}> = t.object({
+const envSchema = t.object({
 	REDIS_TOPIC_PREFIX: t.string({
 		default: "topic",
 	}),
 });
 
-export class RedisTopicProvider implements TopicProvider {
-	protected readonly env: Static<typeof envSchema> = $env(envSchema);
-	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
-	protected readonly redisSubscriberProvider: RedisSubscriberProvider = $inject(
-		RedisSubscriberProvider,
-	);
+export class RedisTopicProvider extends TopicProvider {
+	protected readonly env = $env(envSchema);
+	protected readonly alepha = $inject(Alepha);
+	protected readonly redisProvider = $inject(RedisProvider);
+	protected readonly redisSubscriberProvider = $inject(RedisSubscriberProvider);
 
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
 
-	protected readonly stop = $hook({
-		on: "stop",
+	protected readonly start = $hook({
+		on: "start",
 		handler: async () => {
-			this.redisSubscriberProvider.subscriber.removeAllListeners();
+			const subscribers = this.subscribers();
+			if (subscribers.length) {
+				await Promise.all(subscribers.map((fn) => fn()));
+				this.log.info(`Subscribed to ${subscribers.length} topics`);
+			}
 		},
 	});
 

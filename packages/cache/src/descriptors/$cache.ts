@@ -1,55 +1,33 @@
-import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
-import type { DurationLike } from "@alepha/datetime";
-import type { CacheProvider } from "../providers/CacheProvider.ts";
-
-const KEY = "CACHE";
+import {
+	$env,
+	$inject,
+	createDescriptor,
+	Descriptor,
+	type InstantiableClass,
+	KIND,
+	t,
+} from "@alepha/core";
+import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import { CacheError } from "../errors/CacheError.ts";
+import { CacheProvider } from "../providers/CacheProvider.ts";
+import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
 
 /**
- * Cache Descriptor
+ * Creates a cache storage or a cache function.
  */
-export const $cache: {
-	<TReturn = string, TParameter extends any[] = any[]>(
-		options?: CacheDescriptorOptions<TReturn, TParameter>,
-	): CacheDescriptor<TReturn, TParameter>;
-	[KIND]: string;
-} = <TReturn = string, TParameter extends any[] = any[]>(
+export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
 	options: CacheDescriptorOptions<TReturn, TParameter> = {},
-): CacheDescriptor<TReturn, TParameter> => {
-	__descriptor(KEY);
-
-	const $: CacheDescriptor<TReturn, TParameter> = async (
-		...args: TParameter
-	): Promise<TReturn> => {
-		if (!options.handler) {
-			throw new NotImplementedError(KEY);
-		}
-
-		return options.handler(...args);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	$.key = (): string => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.invalidate = async (): Promise<void> => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.set = async (): Promise<void> => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.get = async (): Promise<TReturn> => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $;
+): CacheDescriptorFn<TReturn, TParameter> => {
+	const instance = createDescriptor(
+		CacheDescriptor<TReturn, TParameter>,
+		options,
+	);
+	const fn = (...args: TParameter): Promise<TReturn> => instance.run(...args);
+	return Object.setPrototypeOf(fn, instance) as CacheDescriptorFn<
+		TReturn,
+		TParameter
+	>;
 };
-
-$cache[KIND] = KEY;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -62,13 +40,12 @@ export interface CacheDescriptorOptions<
 	 *
 	 * Store key as `cache:$name:$key`.
 	 *
-	 * @default ClassName:methodName
+	 * @default Name of the key of the class.
 	 */
 	name?: string;
 
 	/**
 	 * Function which returns cached data.
-	 * @param args Arguments for handler.
 	 */
 	handler?: (...args: TParameter) => TReturn;
 
@@ -82,7 +59,7 @@ export interface CacheDescriptorOptions<
 	 * The store provider for the cache.
 	 * If not provided, the default store provider will be used.
 	 */
-	provider?: CacheProvider | (() => CacheProvider) | "memory";
+	provider?: InstantiableClass<CacheProvider> | "memory";
 
 	/**
 	 * The time-to-live for the cache in seconds.
@@ -98,41 +75,157 @@ export interface CacheDescriptorOptions<
 	disabled?: boolean;
 }
 
-export interface CacheDescriptor<
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = t.object({
+	CACHE_ENABLED: t.boolean({ default: true }),
+	CACHE_DEFAULT_TTL: t.number({
+		default: 300, // 5 minutes
+		description: "The default time to live for cache entries. In seconds.",
+	}),
+});
+
+export class CacheDescriptor<
 	TReturn = any,
 	TParameter extends any[] = any[],
-> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: CacheDescriptorOptions<TReturn, TParameter>;
+> extends Descriptor<CacheDescriptorOptions<TReturn, TParameter>> {
+	protected readonly env = $env(envSchema);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly provider = this.$provider();
+	protected encoder: TextEncoder = new TextEncoder();
+	protected decoder: TextDecoder = new TextDecoder();
+	protected codes = {
+		BINARY: 0x01,
+		JSON: 0x02,
+		STRING: 0x03,
+	};
 
+	public get container(): string {
+		return (
+			this.options.name ??
+			`${this.config.service.name}:${this.config.propertyKey}`
+		);
+	}
+
+	public async run(...args: TParameter): Promise<TReturn> {
+		const handler = this.options.handler;
+		if (!handler) {
+			throw new Error("Cache handler is not defined.");
+		}
+
+		const key = this.key(...args);
+		const cached = await this.get(key);
+		if (cached) {
+			return cached;
+		}
+
+		const result = await handler(...args);
+		// note: when exception occurs, don't cache the result
+
+		await this.set(key, result);
+
+		return result;
+	}
+
+	public key(...args: TParameter): string {
+		return this.options.key ? this.options.key(...args) : JSON.stringify(args);
+	}
+
+	public async invalidate(...keys: string[]): Promise<void> {
+		await this.provider.del(this.container, ...keys);
+	}
+
+	public async set(
+		key: string,
+		value: TReturn,
+		ttl?: DurationLike,
+	): Promise<void> {
+		const px = this.dateTimeProvider
+			.duration(
+				ttl ?? this.options.ttl ?? [this.env.CACHE_DEFAULT_TTL, "seconds"],
+			)
+			.as("milliseconds");
+
+		await this.provider.set(
+			this.container,
+			key,
+			this.serialize(value),
+			px > 0 ? px : undefined,
+		);
+	}
+
+	public async get(key: string): Promise<TReturn | undefined> {
+		if (
+			!this.alepha.isReady() ||
+			this.options.disabled ||
+			!this.env.CACHE_ENABLED
+		) {
+			return undefined;
+		}
+
+		const data = await this.provider.get(this.container, key);
+		if (data) {
+			return await this.deserialize<TReturn>(data);
+		}
+
+		return undefined;
+	}
+
+	protected serialize<TReturn>(value: TReturn): Uint8Array {
+		if (value instanceof Uint8Array) {
+			return new Uint8Array([this.codes.BINARY, ...value]); // TODO: check if copy is ok?
+		}
+
+		if (typeof value === "string") {
+			return new Uint8Array([this.codes.STRING, ...this.encoder.encode(value)]);
+		}
+
+		return new Uint8Array([
+			this.codes.JSON,
+			...this.encoder.encode(JSON.stringify(value)),
+		]);
+	}
+
+	protected async deserialize<TReturn>(
+		uint8Array: Uint8Array,
+	): Promise<TReturn> {
+		const type = uint8Array[0];
+		const payload = uint8Array.slice(1);
+
+		if (type === this.codes.BINARY) {
+			return payload as TReturn;
+		}
+		if (type === this.codes.JSON) {
+			return JSON.parse(this.decoder.decode(payload)) as TReturn;
+		}
+		if (type === this.codes.STRING) {
+			return this.decoder.decode(payload) as TReturn;
+		}
+
+		throw new CacheError(`Unknown serialization type: ${type}`);
+	}
+
+	protected $provider(): CacheProvider {
+		if (!this.options.provider) {
+			return this.alepha.get(CacheProvider);
+		}
+
+		if (this.options.provider === "memory") {
+			return this.alepha.get(MemoryCacheProvider);
+		}
+
+		return this.alepha.get(this.options.provider);
+	}
+}
+
+export interface CacheDescriptorFn<
+	TReturn = any,
+	TParameter extends any[] = any[],
+> extends CacheDescriptor<TReturn, TParameter> {
 	/**
-	 * Cache handler.
+	 * Run the cache descriptor with the provided arguments.
 	 */
 	(...args: TParameter): Promise<TReturn>;
-
-	/**
-	 * Cache key generator.
-	 */
-	key: (...args: TParameter) => string;
-
-	/**
-	 * Invalidate cache by keys.
-	 */
-	invalidate: (...keys: string[]) => Promise<void>;
-
-	/**
-	 * Set cache with key, value and ttl.
-	 *
-	 * @param key
-	 * @param value
-	 * @param ttl
-	 */
-	set: (key: string, value: TReturn, ttl?: DurationLike) => Promise<void>;
-
-	/**
-	 * Get cache by key.
-	 *
-	 * @param key
-	 */
-	get: (key: string) => Promise<TReturn | undefined>;
 }
+
+$cache[KIND] = CacheDescriptor;

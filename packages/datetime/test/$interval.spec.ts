@@ -9,16 +9,13 @@ test("$interval - basic", async () => {
 			run: "start",
 			duration: [10, "seconds"],
 			handler: () => {
-				console.log("Loop executed");
 				count.value += 1;
 			},
 		});
 	}
 
 	const alepha = Alepha.create({
-		env: {
-			LOG_LEVEL: "trace",
-		},
+		env: {},
 	});
 	const dt = alepha.get(DateTimeProvider);
 	const app = alepha.get(TestApp);

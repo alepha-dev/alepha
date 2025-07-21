@@ -2,12 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha, type Env, type Service } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect } from "vitest";
-import {
-	$cache,
-	CacheDescriptorProvider,
-	CacheProvider,
-	MemoryCacheProvider,
-} from "../src";
+import { $cache, CacheProvider, MemoryCacheProvider } from "../src";
 
 export class TestCache {
 	cursor_a = 0;
@@ -204,7 +199,6 @@ export const testCacheClear = async (
 	});
 
 	const test = app.get(TestCache);
-	const provider = app.get(CacheDescriptorProvider);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -212,7 +206,7 @@ export const testCacheClear = async (
 	expect(await test.b({ name: "A" })).toBe("A:0");
 	expect(await test.b({ name: "A" })).toBe("A:0");
 
-	await provider.clear();
+	await Promise.all(app.descriptors($cache).map((cache) => cache.invalidate()));
 
 	expect(await test.a({ name: "A" })).toBe("A:1");
 	expect(await test.b({ name: "A" })).toBe("A:1");

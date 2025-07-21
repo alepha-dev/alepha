@@ -1,13 +1,76 @@
 import {
-	$cursor,
 	$inject,
-	createFactory,
+	createDescriptor,
 	Descriptor,
 	type DescriptorArgs,
+	KIND,
 } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { RetryCancelError } from "../errors/RetryCancelError.ts";
 import { RetryTimeoutError } from "../errors/RetryTimeoutError.ts";
+
+/**
+ * Creates a function that automatically retries a handler upon failure,
+ * with support for exponential backoff, max duration, and cancellation.
+ */
+export const $retry = <T extends (...args: any[]) => any>(
+	options: RetryDescriptorOptions<T>,
+): RetryDescriptorFn<T> => {
+	const instance = createDescriptor(RetryDescriptor, options);
+	const fn = (...args: Parameters<T>) => instance.run(...args);
+	return Object.setPrototypeOf(fn, instance) as RetryDescriptorFn<T>;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
+	/**
+	 * The function to retry.
+	 */
+	handler: T;
+
+	/**
+	 * The maximum number of attempts.
+	 *
+	 * @default 3
+	 */
+	max?: number;
+
+	/**
+	 * The backoff strategy for delays between retries.
+	 * Can be a fixed number (in ms) or a configuration object for exponential backoff.
+	 *
+	 * @default { initial: 200, factor: 2, jitter: true }
+	 */
+	backoff?: number | RetryBackoffOptions;
+
+	/**
+	 * An overall time limit for all retry attempts combined.
+	 *
+	 * e.g., `[5, 'seconds']`
+	 */
+	maxDuration?: DurationLike;
+
+	/**
+	 * A function that determines if a retry should be attempted based on the error.
+	 *
+	 * @default (error) => true (retries on any error)
+	 */
+	when?: (error: Error) => boolean;
+
+	/**
+	 * A custom callback for when a retry attempt fails.
+	 * This is called before the delay.
+	 */
+	onError?: (error: Error, attempt: number, ...args: Parameters<T>) => void;
+
+	/**
+	 * An AbortSignal to allow for external cancellation of the retry loop.
+	 */
+	signal?: AbortSignal;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class RetryDescriptor<
 	T extends (...args: any[]) => any,
@@ -93,6 +156,39 @@ export class RetryDescriptor<
 	}
 }
 
+export interface RetryDescriptorFn<T extends (...args: any[]) => any>
+	extends RetryDescriptor<T> {
+	(...args: Parameters<T>): Promise<ReturnType<T>>;
+}
+
+$retry[KIND] = RetryDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+function calculateBackoff(
+	attempt: number,
+	options?: number | RetryBackoffOptions,
+): number {
+	if (typeof options === "number") {
+		return options;
+	}
+
+	const initial = options?.initial ?? 200;
+	const factor = options?.factor ?? 2;
+	const max = options?.max ?? 10000;
+	const useJitter = options?.jitter !== false;
+
+	const exponential = initial * factor ** (attempt - 1);
+	let delay = Math.min(exponential, max);
+
+	if (useJitter) {
+		// Add a random amount of jitter (e.g., up to 50% of the delay)
+		delay = delay * (1 + Math.random() * 0.5);
+	}
+
+	return Math.floor(delay);
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RetryBackoffOptions {
@@ -121,96 +217,4 @@ export interface RetryBackoffOptions {
 	 * @default true
 	 */
 	jitter?: boolean;
-}
-
-export interface RetryDescriptorOptions<T extends (...args: any[]) => any> {
-	/**
-	 * The function to retry.
-	 */
-	handler: T;
-
-	/**
-	 * The maximum number of attempts.
-	 *
-	 * @default 3
-	 */
-	max?: number;
-
-	/**
-	 * The backoff strategy for delays between retries.
-	 * Can be a fixed number (in ms) or a configuration object for exponential backoff.
-	 *
-	 * @default { initial: 200, factor: 2, jitter: true }
-	 */
-	backoff?: number | RetryBackoffOptions;
-
-	/**
-	 * An overall time limit for all retry attempts combined.
-	 *
-	 * e.g., `[5, 'seconds']`
-	 */
-	maxDuration?: DurationLike;
-
-	/**
-	 * A function that determines if a retry should be attempted based on the error.
-	 *
-	 * @default (error) => true (retries on any error)
-	 */
-	when?: (error: Error) => boolean;
-
-	/**
-	 * A custom callback for when a retry attempt fails.
-	 * This is called before the delay.
-	 */
-	onError?: (error: Error, attempt: number, ...args: Parameters<T>) => void;
-
-	/**
-	 * An AbortSignal to allow for external cancellation of the retry loop.
-	 */
-	signal?: AbortSignal;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface RetryDescriptorFn<T extends (...args: any[]) => any>
-	extends RetryDescriptor<T> {
-	(...args: Parameters<T>): Promise<ReturnType<T>>;
-}
-
-/**
- * Creates a function that automatically retries a handler upon failure,
- * with support for exponential backoff, max duration, and cancellation.
- */
-export const $retry = <T extends (...args: any[]) => any>(
-	options: RetryDescriptorOptions<T>,
-): RetryDescriptorFn<T> => {
-	const instance = createFactory(RetryDescriptor)(options);
-	const fn = (...args: Parameters<T>) => instance.run(...args);
-	return Object.setPrototypeOf(fn, instance) as RetryDescriptorFn<T>;
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-function calculateBackoff(
-	attempt: number,
-	options?: number | RetryBackoffOptions,
-): number {
-	if (typeof options === "number") {
-		return options;
-	}
-
-	const initial = options?.initial ?? 200;
-	const factor = options?.factor ?? 2;
-	const max = options?.max ?? 10000;
-	const useJitter = options?.jitter !== false;
-
-	const exponential = initial * factor ** (attempt - 1);
-	let delay = Math.min(exponential, max);
-
-	if (useJitter) {
-		// Add a random amount of jitter (e.g., up to 50% of the delay)
-		delay = delay * (1 + Math.random() * 0.5);
-	}
-
-	return Math.floor(delay);
 }

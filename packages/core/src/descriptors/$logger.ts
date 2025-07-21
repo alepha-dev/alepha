@@ -1,3 +1,4 @@
+import { KIND } from "../constants/KIND.ts";
 import { Logger } from "../services/Logger.ts";
 import { $cursor } from "./$cursor.ts";
 
@@ -33,4 +34,4 @@ export interface LoggerDescriptorOptions {
 	name?: string;
 }
 
-$logger.descriptor = Logger;
+$logger[KIND] = Logger;

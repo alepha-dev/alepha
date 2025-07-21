@@ -1,6 +1,7 @@
 import type { Hooks } from "../Alepha.ts";
+import { KIND } from "../constants/KIND.ts";
 import {
-	createFactory,
+	createDescriptor,
 	Descriptor,
 	type DescriptorArgs,
 } from "../helpers/descriptor.ts";
@@ -45,9 +46,8 @@ import type { Async } from "../interfaces/Async.ts";
  * ```
  *
  */
-export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) => {
-	return createFactory(HookDescriptor)(options);
-};
+export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) =>
+	createDescriptor(HookDescriptor<T>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -89,7 +89,7 @@ export class HookDescriptor<T extends keyof Hooks> extends Descriptor<
 		super(args);
 
 		this.alepha.on(this.options.on, {
-			caller: this.service,
+			caller: args.service,
 			priority: this.options.priority,
 			callback: async (args: any) => {
 				this.called += 1;
@@ -99,4 +99,4 @@ export class HookDescriptor<T extends keyof Hooks> extends Descriptor<
 	}
 }
 
-$hook.descriptor = HookDescriptor;
+$hook[KIND] = HookDescriptor;

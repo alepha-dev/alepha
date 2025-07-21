@@ -1,48 +1,30 @@
-import {
-	__descriptor,
-	KIND,
-	NotImplementedError,
-	OPTIONS,
-	type Static,
-} from "@alepha/core";
-import type { TopicDescriptor, TopicMessageSchema } from "./$topic.ts";
-
-const KEY = "SUBSCRIBER";
+import { createDescriptor, Descriptor, KIND } from "@alepha/core";
+import type {
+	TopicDescriptor,
+	TopicHandler,
+	TopicMessageSchema,
+} from "./$topic.ts";
 
 /**
- * Subscriber descriptor.
- *
- * @param options - The subscriber options.
- * @returns The descriptor value.
+ * Subscribe to a $topic.
  */
 export const $subscriber = <T extends TopicMessageSchema>(
 	options: SubscriberDescriptorOptions<T>,
 ): SubscriberDescriptor<T> => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		topic: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
+	return createDescriptor(SubscriberDescriptor<T>, options);
 };
 
-$subscriber[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
 
-export interface SubscriberDescriptorOptions<
-	T extends TopicMessageSchema = TopicMessageSchema,
-> {
+export interface SubscriberDescriptorOptions<T extends TopicMessageSchema> {
 	topic: TopicDescriptor<T>;
-
-	handler: (message: { payload: Static<T["payload"]> }) => Promise<void>;
+	handler: TopicHandler<T>;
 }
 
-export interface SubscriberDescriptor<
-	T extends TopicMessageSchema = TopicMessageSchema,
-> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: SubscriberDescriptorOptions<T>;
+// ---------------------------------------------------------------------------------------------------------------------
 
-	topic: () => TopicDescriptor<T>;
-}
+export class SubscriberDescriptor<
+	T extends TopicMessageSchema,
+> extends Descriptor<SubscriberDescriptorOptions<T>> {}
+
+$subscriber[KIND] = SubscriberDescriptor;

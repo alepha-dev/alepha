@@ -1,13 +1,24 @@
+import { scheduler } from "node:timers/promises";
 import {
-	__descriptor,
+	$env,
+	$inject,
+	$logger,
+	Alepha,
 	type Async,
+	createDescriptor,
+	Descriptor,
 	KIND,
-	NotImplementedError,
-	OPTIONS,
+	type Static,
+	t,
 } from "@alepha/core";
-import type { DateTime, DurationLike } from "@alepha/datetime";
-
-const KEY = "SCHEDULER";
+import {
+	$interval,
+	type DateTime,
+	DateTimeProvider,
+	type DurationLike,
+} from "@alepha/datetime";
+import { $lock } from "@alepha/lock";
+import { CronProvider } from "../providers/CronProvider.ts";
 
 /**
  * Scheduler descriptor.
@@ -15,18 +26,8 @@ const KEY = "SCHEDULER";
 export const $scheduler = (
 	options: SchedulerDescriptorOptions,
 ): SchedulerDescriptor => {
-	__descriptor(KEY);
-	const $: SchedulerDescriptor = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	return $;
+	return createDescriptor(SchedulerDescriptor, options);
 };
-
-$scheduler[KIND] = KEY;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -65,11 +66,93 @@ export type SchedulerDescriptorOptions = {
 	lock?: boolean;
 };
 
-export interface SchedulerDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: SchedulerDescriptorOptions;
-	(): Promise<void>;
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = t.object({
+	SCHEDULER_PREFIX: t.optional(
+		t.string({
+			description: "Prefix store key",
+		}),
+	),
+});
+
+declare module "@alepha/core" {
+	interface Env extends Partial<Static<typeof envSchema>> {}
 }
+
+export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> {
+	protected readonly log = $logger();
+	protected readonly env = $env(envSchema);
+	protected readonly alepha = $inject(Alepha);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly cronProvider = $inject(CronProvider);
+
+	public get name(): string {
+		return (
+			this.options.name ??
+			`${this.config.service.name}.${this.config.propertyKey}`
+		);
+	}
+
+	protected onInit() {
+		if (this.options.interval) {
+			this.alepha.use($interval, {
+				duration: this.options.interval,
+				handler: () => this.trigger(),
+			});
+		}
+		if (this.options.cron) {
+			this.cronProvider.register(this.name, this.options.cron, () =>
+				this.trigger(),
+			);
+		}
+	}
+
+	public async trigger(): Promise<void> {
+		if (!this.alepha.isStarted()) {
+			return;
+		}
+
+		await this.alepha.context.run(async () => {
+			try {
+				const now = this.dateTimeProvider.now();
+				if (this.options.lock !== false) {
+					await this.schedulerLock.run({ now });
+				} else {
+					await this.options.handler({ now });
+				}
+			} catch (error) {
+				this.log.error("Error running scheduler:", error);
+			}
+		});
+	}
+
+	protected schedulerLock = $lock({
+		handler: async (args: SchedulerHandlerArguments) => {
+			await this.options.handler(args);
+		},
+	});
+
+	protected prefix(key: string) {
+		const parts = ["scheduler", key];
+
+		if (this.env.SCHEDULER_PREFIX) {
+			parts.unshift(this.env.SCHEDULER_PREFIX);
+		}
+
+		return parts.join(":");
+	}
+
+	protected getLockGracePeriod(options: SchedulerDescriptorOptions) {
+		return options.interval
+			? this.dateTimeProvider.duration(options.interval).as("milliseconds") / 2
+			: 500;
+	}
+}
+
+$scheduler[KIND] = SchedulerDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface SchedulerHandlerArguments {
 	now: DateTime;

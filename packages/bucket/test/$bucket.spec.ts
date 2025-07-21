@@ -1,4 +1,4 @@
-import { $inject, Alepha, NotImplementedError } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
 import { describe, test } from "vitest";
 import {
 	$bucket,
@@ -84,7 +84,7 @@ describe("$bucket", () => {
 		class MySecondMemoryProvider extends MemoryFileStorageProvider {}
 		class AnotherApp {
 			gn = $bucket({
-				provider: $inject(MySecondMemoryProvider),
+				provider: MySecondMemoryProvider,
 			});
 		}
 

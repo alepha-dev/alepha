@@ -1,17 +1,15 @@
 import type * as fs from "node:fs/promises";
 import type { glob } from "node:fs/promises";
 import {
-	__descriptor,
 	type Async,
+	createDescriptor,
+	Descriptor,
 	KIND,
-	NotImplementedError,
-	OPTIONS,
 	type Static,
 	type TObject,
+	t,
 } from "@alepha/core";
 import type { RunnerMethod } from "../helpers/Runner.ts";
-
-const KEY = "COMMAND";
 
 /**
  * Declares a CLI command.
@@ -19,38 +17,17 @@ const KEY = "COMMAND";
  * This descriptor allows you to define a command, its flags, and its handler
  * within your Alepha application structure.
  */
-export const $command: {
-	<T extends TObject>(
-		options: CommandDescriptorOptions<T>,
-	): CommandDescriptor<T>;
-	[KIND]: string;
-} = <T extends TObject>(
+export const $command = <T extends TObject>(
 	options: CommandDescriptorOptions<T>,
-): CommandDescriptor<T> => {
-	__descriptor(KEY);
+) => createDescriptor(CommandDescriptor<T>, options);
 
-	const $: Partial<CommandDescriptor<T>> = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	return $ as CommandDescriptor<T>;
-};
-
-$command[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface CommandDescriptorOptions<T extends TObject> {
 	/**
 	 * The handler function to execute when the command is matched.
 	 */
-	handler: (args: {
-		flags: Static<T>;
-		run: RunnerMethod;
-		glob: typeof glob;
-		fs: typeof fs;
-	}) => Async<void>;
+	handler: (args: CommandHandlerArgs<T>) => Async<void>;
 
 	/**
 	 * The name of the command. If omitted, the property key is used.
@@ -75,12 +52,26 @@ export interface CommandDescriptorOptions<T extends TObject> {
 	flags?: T;
 }
 
-export interface CommandDescriptor<T extends TObject> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: CommandDescriptorOptions<T>;
+// ---------------------------------------------------------------------------------------------------------------------
 
-	/**
-	 * Executes the command. This is a placeholder and will be replaced by the provider.
-	 */
-	(flags: Static<T>): Promise<void>;
+export class CommandDescriptor<T extends TObject = TObject> extends Descriptor<
+	CommandDescriptorOptions<T>
+> {
+	public readonly flags = this.options.flags ?? t.object({});
+	public readonly aliases = this.options.aliases ?? [];
+
+	public get name(): string {
+		return this.options.name ?? `${this.config.propertyKey}`;
+	}
+}
+
+$command[KIND] = CommandDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface CommandHandlerArgs<T extends TObject> {
+	flags: Static<T>;
+	run: RunnerMethod;
+	glob: typeof glob;
+	fs: typeof fs;
 }

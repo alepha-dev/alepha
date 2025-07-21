@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import {
-	BucketDescriptorProvider,
+	$bucket,
 	FileNotFoundError,
 	type FileStorageProvider,
 } from "@alepha/bucket";
@@ -10,6 +10,7 @@ import {
 	$hook,
 	$inject,
 	$logger,
+	Alepha,
 	type FileLike,
 	type Static,
 	t,
@@ -39,7 +40,7 @@ declare module "@alepha/core" {
 export class AzureFileStorageProvider implements FileStorageProvider {
 	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
-	protected readonly bucket = $inject(BucketDescriptorProvider);
+	protected readonly alepha = $inject(Alepha);
 	protected readonly time = $inject(DateTimeProvider);
 	protected readonly containers: Record<string, ContainerClient> = {};
 	protected readonly blobServiceClient: BlobServiceClient;
@@ -52,6 +53,27 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 			this.options,
 		);
 	}
+
+	protected readonly onStart = $hook({
+		on: "start",
+		handler: async () => {
+			for (const bucket of this.alepha.descriptors($bucket)) {
+				if (bucket.provider !== this) {
+					continue;
+				}
+
+				const containerName = bucket.name.replaceAll("/", "-").toLowerCase();
+				this.log.debug(`Prepare container ${containerName}...`);
+
+				if (!this.containers[containerName]) {
+					this.containers[containerName] =
+						await this.createContainerClient(containerName);
+				}
+
+				this.log.info(`Container ${bucket} OK`);
+			}
+		},
+	});
 
 	public async createContainer(
 		containerName: string,
@@ -153,23 +175,6 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 
 		return this.containers[container].getBlockBlobClient(fileId);
 	}
-
-	public readonly onStart = $hook({
-		on: "start",
-		handler: async () => {
-			for (const bucket of this.bucket.getBuckets()) {
-				const containerName = bucket.name.replaceAll("/", "-").toLowerCase();
-				this.log.debug(`Prepare container ${containerName}...`);
-
-				if (!this.containers[containerName]) {
-					this.containers[containerName] =
-						await this.createContainerClient(containerName);
-				}
-
-				this.log.info(`Container ${bucket} OK`);
-			}
-		},
-	});
 
 	protected async createContainerClient(
 		name: string,

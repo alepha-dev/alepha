@@ -2,13 +2,14 @@ import {
 	$hook,
 	$inject,
 	$logger,
-	createFactory,
+	createDescriptor,
 	Descriptor,
+	KIND,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
-import { createRetryHandler, type RetryDescriptorOptions } from "@alepha/retry";
+import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
 
 /**
  * Creates a batch processor. This is useful for grouping multiple operations
@@ -17,10 +18,7 @@ import { createRetryHandler, type RetryDescriptorOptions } from "@alepha/retry";
 export const $batch = <TItem extends TSchema, TResponse>(
 	options: BatchDescriptorOptions<TItem, TResponse>,
 ): BatchDescriptor<TItem, TResponse> =>
-	createFactory<
-		BatchDescriptorOptions<TItem, TResponse>,
-		BatchDescriptor<TItem, TResponse>
-	>(BatchDescriptor)(options);
+	createDescriptor(BatchDescriptor<TItem, TResponse>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -71,6 +69,8 @@ export interface BatchDescriptorOptions<
 	retry?: Omit<RetryDescriptorOptions<() => Array<Static<TItem>>>, "handler">;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class BatchDescriptor<
 	TItem extends TSchema,
 	TResponse = any,
@@ -81,13 +81,10 @@ export class BatchDescriptor<
 	protected readonly partitions = new Map();
 	protected activeHandlers: PromiseWithResolvers<void>[] = [];
 	protected readonly handler: (items: Static<TItem>[]) => Promise<TResponse> =
-		createRetryHandler(
-			{
-				...this.options.retry,
-				handler: this.options.handler,
-			},
-			this.dateTime,
-		);
+		this.alepha.use($retry, {
+			...this.options.retry,
+			handler: this.options.handler,
+		});
 
 	/**
 	 * Pushes an item into the batch. The item will be processed
@@ -195,4 +192,4 @@ export class BatchDescriptor<
 	});
 }
 
-$batch.descriptor = BatchDescriptor;
+$batch[KIND] = BatchDescriptor;

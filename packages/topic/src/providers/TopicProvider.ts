@@ -1,9 +1,12 @@
-import { NotImplementedError } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
+import { $subscriber } from "../descriptors/$subscriber.ts";
+import { $topic } from "../descriptors/$topic.ts";
 
-export class TopicProvider {
-	constructor() {
-		throw new NotImplementedError(this.constructor.name);
-	}
+/**
+ * Base class for topic providers.
+ */
+export abstract class TopicProvider {
+	protected readonly alepha = $inject(Alepha);
 
 	/**
 	 * Publish a message to a topic.
@@ -11,9 +14,7 @@ export class TopicProvider {
 	 * @param topic - The topic to publish to.
 	 * @param message - The message to publish.
 	 */
-	public async publish(_topic: string, _message: string): Promise<void> {
-		throw new NotImplementedError(this.constructor.name);
-	}
+	public abstract publish(topic: string, message: string): Promise<void>;
 
 	/**
 	 * Subscribe to a topic.
@@ -21,20 +22,49 @@ export class TopicProvider {
 	 * @param topic - The topic to subscribe to.
 	 * @param callback - The callback to call when a message is received.
 	 */
-	public async subscribe(
-		_topic: string,
-		_callback: SubscribeCallback,
-	): Promise<UnSubscribeFn> {
-		throw new NotImplementedError(this.constructor.name);
-	}
+	public abstract subscribe(
+		topic: string,
+		callback: SubscribeCallback,
+	): Promise<UnSubscribeFn>;
 
 	/**
 	 * Unsubscribe from a topic.
 	 *
 	 * @param topic - The topic to unsubscribe from.
 	 */
-	public async unsubscribe(_topic: string): Promise<void> {
-		throw new NotImplementedError(this.constructor.name);
+	public abstract unsubscribe(topic: string): Promise<void>;
+
+	/**
+	 * Returns the list of $subscribers for this provider.
+	 */
+	protected subscribers(): Array<() => Promise<unknown>> {
+		const handlers: Array<() => Promise<unknown>> = [];
+
+		const topics = this.alepha.descriptors($topic);
+
+		for (const topic of topics) {
+			if (topic.provider !== this) {
+				continue;
+			}
+
+			const handler = topic.options.handler;
+			if (handler && topic.provider === this) {
+				handlers.push(() => topic.subscribe(handler));
+			}
+		}
+
+		const subscribers = this.alepha.descriptors($subscriber);
+		for (const subscriber of subscribers) {
+			if (subscriber.options.topic.provider !== this) {
+				continue;
+			}
+
+			handlers.push(() =>
+				subscriber.options.topic.subscribe(subscriber.options.handler),
+			);
+		}
+
+		return handlers;
 	}
 }
 

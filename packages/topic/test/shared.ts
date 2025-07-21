@@ -1,8 +1,9 @@
-import { $inject, Alepha, type Service, t } from "@alepha/core";
+import { $inject, Alepha, type Service, TypeBoxError, t } from "@alepha/core";
 import { expect } from "vitest";
 import {
 	$subscriber,
 	$topic,
+	AlephaTopic,
 	MemoryTopicProvider,
 	type SubscribeCallback,
 	TopicProvider,
@@ -103,4 +104,33 @@ export const testTopicAsSub = async (provider: Service<TopicProvider>) => {
 	await a.t.publish({ n: 123 });
 
 	await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
+	await expect(a.t.publish({ n: 123.6 })).rejects.toThrowError(TypeBoxError);
+};
+
+export const testTopicLateSubscribe = async (
+	Provider: Service<TopicProvider>,
+) => {
+	const alepha = Alepha.create()
+		.with({
+			provide: TopicProvider,
+			use: Provider,
+		})
+		.with(AlephaTopic);
+
+	await alepha.start();
+
+	const provider = alepha.get(TopicProvider);
+
+	// no topic created yet !
+
+	let count = 0;
+	const unsub = await provider.subscribe("inc", () => {
+		count += 1;
+	});
+	expect(count).toBe(0);
+	await provider.publish("inc", "");
+	expect(count).toBe(1);
+	await unsub();
+	await provider.publish("inc", "");
+	expect(count).toBe(1);
 };
