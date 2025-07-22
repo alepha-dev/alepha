@@ -1,46 +1,29 @@
-import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
+import {
+	$inject,
+	AppNotStartedError,
+	createDescriptor,
+	Descriptor,
+	KIND,
+} from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
-import type { SecurityUserAccountProvider } from "../providers/SecurityProvider.ts";
+import { SecurityError } from "../errors/SecurityError.ts";
+import { JwtProvider } from "../providers/JwtProvider.ts";
+import {
+	SecurityProvider,
+	type SecurityUserAccountProvider,
+} from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
 
-const KEY = "REALM";
-
 /**
- *
- * @param options
+ * Create a new realm.
  */
 export const $realm = (
 	options: RealmDescriptorOptions = {},
 ): RealmDescriptor => {
-	__descriptor(KEY);
-
-	const $: RealmDescriptor = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-
-	$.getRoles = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.getRoleByName = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.setRoles = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$.createToken = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $;
+	return createDescriptor(RealmDescriptor, options);
 };
 
-$realm[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface RealmDescriptorOptions {
 	/**
@@ -77,27 +60,57 @@ export interface RealmDescriptorOptions {
 		| (() => SecurityUserAccountProvider);
 }
 
-export interface RealmDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: RealmDescriptorOptions;
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
+	protected readonly securityProvider = $inject(SecurityProvider);
+	protected readonly jwt = $inject(JwtProvider);
+
+	public get name(): string {
+		return this.options.name || this.config.propertyKey;
+	}
+
+	protected onInit() {
+		this.securityProvider.createRealm(this);
+	}
 
 	/**
 	 * Get all roles in the realm.
 	 */
-	getRoles(): Role[];
+	public getRoles(): Role[] {
+		return this.securityProvider.getRoles(this.name);
+	}
 
 	/**
 	 * Set all roles in the realm.
 	 */
-	setRoles(roles: Role[]): Promise<void>;
+	public async setRoles(roles: Role[]): Promise<void> {
+		await this.securityProvider.updateRealm(this.name, roles);
+	}
 
 	/**
 	 * Get a role by name, throws an error if not found.
 	 */
-	getRoleByName(name: string): Role;
+	public getRoleByName(name: string): Role {
+		const role = this.getRoles().find((it) => it.name === name);
+		if (!role) {
+			throw new SecurityError(`Role '${name}' not found`);
+		}
+		return role;
+	}
 
 	/**
 	 * Create a token for the subject.
 	 */
-	createToken(subject: string, roles?: string[]): Promise<string>;
+	public async createToken(subject: string, roles?: string[]): Promise<string> {
+		return this.jwt.create(
+			{
+				sub: subject,
+				roles,
+			},
+			this.name,
+		);
+	}
 }
+
+$realm[KIND] = RealmDescriptor;

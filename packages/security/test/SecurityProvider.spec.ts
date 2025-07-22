@@ -1,9 +1,10 @@
 import { Alepha, ContainerLockedError } from "@alepha/core";
 import { expect, test } from "vitest";
-import type { Realm } from "../src";
 import {
+	$realm,
 	InvalidPermissionError,
 	JwtProvider,
+	Realm,
 	SecurityError,
 	SecurityProvider,
 } from "../src";
@@ -244,25 +245,12 @@ test("SecurityProvider#jwt - default", async () => {
 });
 
 test("SecurityProvider#jwt - realms", async () => {
-	const app = Alepha.create().with({
-		provide: SecurityProvider,
-		use: class MySecurityProvider extends SecurityProvider {
-			createRealms(): Realm[] {
-				return [
-					{
-						name: "customers",
-						roles: [],
-						secret: "********",
-					},
-					{
-						name: "operators",
-						roles: [],
-						secret: "********",
-					},
-				];
-			}
-		},
-	});
+	class TestApp {
+		customers = $realm();
+		operators = $realm();
+	}
+
+	const app = Alepha.create().with(TestApp);
 
 	const sec = app.get(SecurityProvider);
 

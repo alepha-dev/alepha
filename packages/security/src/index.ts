@@ -34,7 +34,7 @@ declare module "@alepha/core" {
  * The security module enables building secure applications using descriptors like `$realm`, `$role`, and `$permission`
  * on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
  * integration with various authentication providers and user management systems.
- * *
+ *
  * @see {@link $realm}
  * @see {@link $role}
  * @see {@link $permission}

@@ -1,25 +1,15 @@
-import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
-import type { Role } from "../schemas/roleSchema.ts";
-
-const KEY = "ROLE";
+import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
+import { SecurityProvider } from "../providers/SecurityProvider.ts";
+import type { RealmDescriptor } from "./$realm.ts";
 
 /**
- *
+ * Create a new role.
  */
 export const $role = (options: RoleDescriptorOptions = {}): RoleDescriptor => {
-	__descriptor(KEY);
-
-	const role: RoleDescriptor = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	role[KIND] = KEY;
-	role[OPTIONS] = options;
-
-	return role;
+	return createDescriptor(RoleDescriptor, options);
 };
 
-$role[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface RoleDescriptorOptions {
 	/**
@@ -32,6 +22,8 @@ export interface RoleDescriptorOptions {
 	 */
 	description?: string;
 
+	realm?: string | RealmDescriptor;
+
 	permissions?: Array<
 		| string
 		| {
@@ -41,12 +33,38 @@ export interface RoleDescriptorOptions {
 	>;
 }
 
-export interface RoleDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: RoleDescriptorOptions;
+export class RoleDescriptor extends Descriptor<RoleDescriptorOptions> {
+	protected readonly securityProvider = $inject(SecurityProvider);
+
+	public get name(): string {
+		return this.options.name || this.config.propertyKey;
+	}
+
+	protected onInit() {
+		this.securityProvider.createRole({
+			...this.options,
+			name: this.name,
+			permissions:
+				this.options.permissions?.map((it) => {
+					if (typeof it === "string") {
+						return {
+							name: it,
+						};
+					}
+
+					return it;
+				}) ?? [],
+		});
+	}
 
 	/**
-	 * Get the role object.
+	 * Get the realm of the role.
 	 */
-	(): Role;
+	public get realm(): string | RealmDescriptor | undefined {
+		return this.options.realm;
+	}
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+$role[KIND] = RoleDescriptor;

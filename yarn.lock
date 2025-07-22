@@ -489,6 +489,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/thread@workspace:packages/thread":
+  version: 0.0.0-use.local
+  resolution: "@alepha/thread@workspace:packages/thread"
+  dependencies:
+    "@alepha/core": "npm:0.8.1"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/topic-redis@npm:0.8.1, @alepha/topic-redis@workspace:packages/topic-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/topic-redis@workspace:packages/topic-redis"

@@ -461,13 +461,13 @@ export class Alepha {
 
 		this.starting = Promise.withResolvers();
 
-		const now = Date.now();
-
-		this.log.info("Starting App...");
-
 		for (const [key] of this.substitutions.entries()) {
 			this.get(key);
 		}
+
+		this.log.info("Starting App...");
+
+		const now = Date.now();
 
 		this.locked = true;
 

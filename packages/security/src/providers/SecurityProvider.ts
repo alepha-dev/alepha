@@ -6,16 +6,11 @@ import {
 	Alepha,
 	AppNotStartedError,
 	ContainerLockedError,
-	KIND,
-	OPTIONS,
 	type Static,
 	t,
 } from "@alepha/core";
 import type { JSONWebKeySet, JWTPayload } from "jose";
-import { $permission } from "../descriptors/$permission.ts";
 import type { RealmDescriptor } from "../descriptors/$realm.ts";
-import { $realm } from "../descriptors/$realm.ts";
-import { $role } from "../descriptors/$role.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
@@ -52,37 +47,26 @@ export class SecurityProvider {
 	/**
 	 * The realms configured for the security provider.
 	 */
-	protected readonly realms: Realm[] = this.createRealms();
-
-	/**
-	 * Create realms.
-	 */
-	protected createRealms(): Realm[] {
-		return [
-			{
-				name: "default",
-				secret: this.env.SECURITY_SECRET_KEY,
-				roles: [
-					{
-						name: "admin",
-						permissions: [
-							{
-								name: "*",
-							},
-						],
-					},
-				],
-			},
-		];
-	}
+	protected readonly realms: Realm[] = [
+		{
+			name: "default",
+			secret: this.env.SECURITY_SECRET_KEY,
+			roles: [
+				{
+					name: "admin",
+					permissions: [
+						{
+							name: "*",
+						},
+					],
+				},
+			],
+		},
+	];
 
 	protected configure = $hook({
 		on: "configure",
 		handler: async () => {
-			this.processPermissionDescriptors();
-			this.processRoleDescriptors();
-			this.processRealmDescriptors();
-
 			for (const realm of this.realms) {
 				if (realm.secret) {
 					this.jwt.setKeyLoader(realm.name, realm.secret);
@@ -93,141 +77,6 @@ export class SecurityProvider {
 			}
 		},
 	});
-
-	/**
-	 * Processes all $permission descriptors.
-	 */
-	protected processPermissionDescriptors() {
-		const permissions = this.alepha.getDescriptorValues($permission);
-		for (const { value, key, instance } of permissions) {
-			const permission = this.createPermission({
-				...value[OPTIONS],
-				name: value[OPTIONS].name ?? key,
-				group: value[OPTIONS].group ?? instance.constructor.name,
-			});
-
-			const $ = () => permission;
-
-			$.options = value[OPTIONS];
-			$[KIND] = value[KIND];
-			$.can = (user: UserAccountInfo) => {
-				if (!user.roles) {
-					return false;
-				}
-				const check = this.checkPermission(permission, ...user.roles);
-				return check.isAuthorized;
-			};
-
-			instance[key] = $;
-		}
-	}
-
-	/**
-	 * Processes all $realm descriptors.
-	 */
-	protected processRealmDescriptors() {
-		const realms = this.alepha.getDescriptorValues($realm);
-		if (realms.length) {
-			this.realms.pop();
-		}
-
-		for (const { value, key, instance } of realms) {
-			const realm: Realm = {
-				name: value[OPTIONS].name ?? key,
-				secret:
-					typeof value[OPTIONS].secret === "function"
-						? value[OPTIONS].secret()
-						: value[OPTIONS].secret,
-				userAccountProvider:
-					typeof value[OPTIONS].userAccountProvider === "function"
-						? value[OPTIONS].userAccountProvider()
-						: value[OPTIONS].userAccountProvider,
-				roles:
-					value[OPTIONS].roles?.map((it) => {
-						if (typeof it === "string") {
-							const role = this.getRoles().find((role) => role.name === it);
-							if (!role) {
-								throw new SecurityError(`Role '${it}' not found`);
-							}
-							return role;
-						}
-
-						return it;
-					}) ?? [],
-			};
-
-			this.realms.push(realm);
-
-			instance[key] = {
-				[KIND]: value[KIND],
-				[OPTIONS]: value[OPTIONS],
-				getRoles: () => {
-					return this.getRoles(realm.name);
-				},
-				getRoleByName: (name: string) => {
-					const role = this.getRoles(realm.name).find((it) => it.name === name);
-					if (!role) {
-						throw new SecurityError(`Role '${name}' not found`);
-					}
-					return role;
-				},
-				setRoles: async (roles: Role[]) => {
-					if (!this.alepha.isStarted()) {
-						throw new AppNotStartedError();
-					}
-
-					const newRolesAsString = JSON.stringify(roles);
-					const oldRolesAsString = JSON.stringify(realm.roles);
-					if (newRolesAsString === oldRolesAsString) {
-						return;
-					}
-
-					realm.roles = roles;
-
-					await realm.userAccountProvider?.synchronize({
-						roles,
-					});
-				},
-				createToken: async (subject: string, roles: string[] = []) => {
-					return this.jwt.create(
-						{
-							sub: subject,
-							roles,
-						},
-						realm.name,
-					);
-				},
-			} as RealmDescriptor;
-		}
-	}
-
-	/**
-	 * Processes all $role descriptors.
-	 */
-	protected processRoleDescriptors() {
-		const roles = this.alepha.getDescriptorValues($role);
-		for (const { value, key, instance } of roles) {
-			const role = this.createRole({
-				...value[OPTIONS],
-				name: value[OPTIONS].name ?? key,
-				permissions:
-					value[OPTIONS].permissions?.map((it) => {
-						if (typeof it === "string") {
-							return {
-								name: it,
-							};
-						}
-
-						return it;
-					}) ?? [],
-			});
-
-			const $ = () => role;
-			$[OPTIONS] = value[OPTIONS];
-			$[KIND] = value[KIND];
-			instance[key] = $;
-		}
-	}
 
 	protected ready = $hook({
 		on: "ready",
@@ -241,31 +90,6 @@ export class SecurityProvider {
 			}
 		},
 	});
-
-	/**
-	 * Updates the roles for a realm then synchronizes the user account provider if available.
-	 *
-	 * Only available when the app is started.
-	 *
-	 * @param realm - The realm to update the roles for.
-	 * @param roles - The roles to update.
-	 */
-	public async updateRealm(realm: string, roles: Role[]): Promise<void> {
-		if (!this.alepha.isStarted()) {
-			throw new AppNotStartedError();
-		}
-
-		const realmInstance = this.realms.find((it) => it.name === realm);
-		if (!realmInstance) {
-			throw new RealmNotFoundError(realm);
-		}
-
-		realmInstance.roles = roles;
-
-		if (realmInstance.userAccountProvider) {
-			await realmInstance.userAccountProvider.synchronize({ roles });
-		}
-	}
 
 	/**
 	 * Adds a role to one or more realms.
@@ -363,6 +187,64 @@ export class SecurityProvider {
 
 		return permission;
 	}
+
+	public createRealm(value: RealmDescriptor) {
+		if (this.realms.length === 1 && this.realms[0].name === "default") {
+			// if the default realm is the only one, we remove it to allow creating new realms
+			this.realms.pop();
+		}
+
+		this.realms.push({
+			name: value.name,
+			secret:
+				typeof value.options.secret === "function"
+					? value.options.secret()
+					: value.options.secret,
+			userAccountProvider:
+				typeof value.options.userAccountProvider === "function"
+					? value.options.userAccountProvider()
+					: value.options.userAccountProvider,
+			roles:
+				value.options.roles?.map((it) => {
+					if (typeof it === "string") {
+						const role = this.getRoles().find((role) => role.name === it);
+						if (!role) {
+							throw new SecurityError(`Role '${it}' not found`);
+						}
+						return role;
+					}
+
+					return it;
+				}) ?? [],
+		});
+	}
+
+	/**
+	 * Updates the roles for a realm then synchronizes the user account provider if available.
+	 *
+	 * Only available when the app is started.
+	 *
+	 * @param realm - The realm to update the roles for.
+	 * @param roles - The roles to update.
+	 */
+	public async updateRealm(realm: string, roles: Role[]): Promise<void> {
+		if (!this.alepha.isStarted()) {
+			throw new AppNotStartedError();
+		}
+
+		const realmInstance = this.realms.find((it) => it.name === realm);
+		if (!realmInstance) {
+			throw new RealmNotFoundError(realm);
+		}
+
+		realmInstance.roles = roles;
+
+		if (realmInstance.userAccountProvider) {
+			await realmInstance.userAccountProvider.synchronize({ roles });
+		}
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
 	 * Creates a user account from the provided payload.

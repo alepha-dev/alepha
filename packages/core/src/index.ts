@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import cluster from "node:cluster";
+import { cpus } from "node:os";
 import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./interfaces/Run.ts";
 import type { Service } from "./interfaces/Service.ts";
@@ -15,7 +17,12 @@ AlsProvider.create = () => new AsyncLocalStorage();
 export const run = (
 	entry: Alepha | Service | Array<Service>,
 	opts?: RunOptions,
-): Alepha => {
+): void => {
+	if (opts?.cluster) {
+		withCluster(entry, opts);
+		return;
+	}
+
 	const alepha =
 		entry instanceof Alepha
 			? entry
@@ -31,7 +38,7 @@ export const run = (
 	(globalThis as any).__alepha = alepha;
 
 	if (alepha.isServerless()) {
-		return alepha;
+		return;
 	}
 
 	// default runner
@@ -74,6 +81,25 @@ export const run = (
 			}
 		}
 	})();
+};
 
-	return alepha;
+const withCluster = (
+	entry: Alepha | Service | Array<Service>,
+	opts?: RunOptions,
+) => {
+	const numCPUs = cpus().length;
+	if (cluster.isPrimary) {
+		for (let i = 0; i < numCPUs; i++) {
+			cluster.fork();
+		}
+	} else {
+		run(entry, {
+			...opts,
+			env: {
+				...opts?.env,
+				APP_NAME: `${opts?.env?.APP_NAME || "P"}-${cluster.worker?.id}`,
+			},
+			cluster: false,
+		});
+	}
 };

@@ -1,31 +1,17 @@
-import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
+import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
-import type { Permission } from "../schemas/permissionSchema.ts";
-
-const KEY = "PERMISSION";
+import { SecurityProvider } from "../providers/SecurityProvider.ts";
 
 /**
- *
+ * Create a new permission.
  */
 export const $permission = (
 	options: PermissionDescriptorOptions = {},
 ): PermissionDescriptor => {
-	__descriptor(KEY);
-
-	const $: PermissionDescriptor = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	$[KIND] = KEY;
-	$[OPTIONS] = options;
-	$.can = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return $;
+	return createDescriptor(PermissionDescriptor, options);
 };
 
-$permission[KIND] = KEY;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface PermissionDescriptorOptions {
 	/**
@@ -42,29 +28,35 @@ export interface PermissionDescriptorOptions {
 	 * Describe the permission.
 	 */
 	description?: string;
-
-	/**
-	 * HTTP method of the permission. When available.
-	 */
-	method?: string;
-
-	/**
-	 * URL of the permission. When available.
-	 */
-	url?: string;
 }
 
-export interface PermissionDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: PermissionDescriptorOptions;
+// ---------------------------------------------------------------------------------------------------------------------
 
-	/**
-	 * Get the permission object.
-	 */
-	(): Permission;
+export class PermissionDescriptor extends Descriptor<PermissionDescriptorOptions> {
+	protected readonly securityProvider = $inject(SecurityProvider);
+
+	public get name(): string {
+		return this.options.name || this.config.propertyKey;
+	}
+
+	public get group(): string {
+		return this.options.group || this.config.service.name;
+	}
+
+	protected onInit() {
+		this.securityProvider.createPermission(this);
+	}
 
 	/**
 	 * Check if the user has the permission.
 	 */
-	can(user: UserAccountInfo): boolean;
+	public can(user: UserAccountInfo): boolean {
+		if (!user.roles) {
+			return false;
+		}
+		const check = this.securityProvider.checkPermission(this, ...user.roles);
+		return check.isAuthorized;
+	}
 }
+
+$permission[KIND] = PermissionDescriptor;
