@@ -303,8 +303,7 @@ export class Logger {
 			return this.formatJson(level, message, data);
 		}
 
-		const now = new Date();
-		const date = `${now.toLocaleTimeString()}.${String(now.getMilliseconds()).padStart(3, "0")}`;
+		const date = this.nowTimeFormatted();
 		const levelStr = level.toUpperCase();
 		let output = "";
 		let dataStr = "";
@@ -390,6 +389,21 @@ export class Logger {
 
 		return output;
 	}
+
+	protected nowTimeFormatted(): string {
+		const d = new Date();
+
+		const h = d.getHours();
+		const m = d.getMinutes();
+		const s = d.getSeconds();
+		const ms = d.getMilliseconds();
+
+		return `${this.pad2(h)}:${this.pad2(m)}:${this.pad2(s)}.${this.pad3(ms)}`;
+	}
+
+	protected pad2 = (n: number) => (n < 10 ? "0" : "") + n;
+	protected pad3 = (n: number) =>
+		n < 10 ? "00" + n : n < 100 ? "0" + n : "" + n;
 
 	protected colorize(
 		color: string,

@@ -67,7 +67,7 @@ export class CrudApp {
 			response: t.void(),
 		},
 		handler: async ({ params }) => {
-			const user = await this.findById({ params });
+			const user = await this.findById.run({ params });
 			this.users = this.users.filter((u) => u.id !== user.id);
 		},
 	});
@@ -85,7 +85,7 @@ export class CrudApp {
 			response: userSchema,
 		},
 		handler: async ({ params, body }) => {
-			const user = await this.findById({ params });
+			const user = await this.findById.run({ params });
 			user.name = body.name;
 			this.users = this.users.map((u) => (u.id === user.id ? user : u));
 			return user;

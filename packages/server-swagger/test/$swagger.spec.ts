@@ -25,6 +25,11 @@ class App {
 				message: t.string(),
 			}),
 		},
+		handler: async () => {
+			return {
+				message: "Hello world",
+			};
+		},
 	});
 
 	text = $action({

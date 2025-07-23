@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { RouterProvider } from "../src/providers/RouterProvider.ts";
 
+interface TestRoute {
+	path: string;
+	name: string;
+	mapping?: Record<string, string>;
+}
+
+class TestRouterProvider extends RouterProvider<TestRoute> {
+	public push(route: TestRoute) {
+		super.push(route);
+	}
+}
+
 // A type-safe helper to create the router instance for tests
 const setupRouter = () => {
-	const router = new RouterProvider<{
-		name: string;
-		path: string;
-		mapping?: Record<string, string>;
-	}>();
+	const router = new TestRouterProvider();
 
 	const add = (path: string, name: string) => {
 		router.push({ path, name });

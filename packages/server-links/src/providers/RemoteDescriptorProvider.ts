@@ -7,11 +7,8 @@ import {
 	OPTIONS,
 } from "@alepha/core";
 import { $retry, type RetryDescriptor } from "@alepha/retry";
-import {
-	type ApiLinksResponse,
-	apiLinksResponseSchema,
-	type ServerRemote,
-} from "@alepha/server";
+import type { ServiceAccountDescriptor } from "@alepha/security";
+import { type ApiLinksResponse, apiLinksResponseSchema } from "@alepha/server";
 import { ProxyDescriptorProvider } from "@alepha/server-proxy";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
 import { LinkProvider } from "./LinkProvider.ts";
@@ -178,4 +175,15 @@ export interface FetchLinksOptions {
 	service: string;
 	url: string;
 	authorization?: string;
+}
+
+export interface ServerRemote {
+	url: string;
+	name: string;
+	proxy: boolean;
+	internal: boolean;
+	links: (args: { authorization?: string }) => Promise<ApiLinksResponse>;
+	schema: (args: { name: string; authorization?: string }) => Promise<any>;
+	serviceAccount?: ServiceAccountDescriptor;
+	prefix: string;
 }

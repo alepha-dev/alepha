@@ -71,7 +71,29 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 	}
 
 	protected onInit() {
-		this.securityProvider.createRealm(this);
+		this.securityProvider.createRealm({
+			name: this.name,
+			secret:
+				typeof this.options.secret === "function"
+					? this.options.secret()
+					: this.options.secret,
+			userAccountProvider:
+				typeof this.options.userAccountProvider === "function"
+					? this.options.userAccountProvider()
+					: this.options.userAccountProvider,
+			roles:
+				this.options.roles?.map((it) => {
+					if (typeof it === "string") {
+						const role = this.getRoles().find((role) => role.name === it);
+						if (!role) {
+							throw new SecurityError(`Role '${it}' not found`);
+						}
+						return role;
+					}
+
+					return it;
+				}) ?? [],
+		});
 	}
 
 	/**

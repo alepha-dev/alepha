@@ -98,7 +98,7 @@ export class ProxyDescriptorProvider {
 		}
 
 		for (const method of routeMethods) {
-			await this.routerProvider.route({
+			await this.routerProvider.createRoute({
 				method,
 				path,
 				handler,

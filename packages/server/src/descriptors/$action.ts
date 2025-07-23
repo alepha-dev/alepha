@@ -1,51 +1,62 @@
+import { randomUUID } from "node:crypto";
 import {
-	__descriptor,
+	$env,
+	$inject,
+	createDescriptor,
+	Descriptor,
+	isFileLike,
+	isTypeFile,
 	KIND,
-	NotImplementedError,
-	OPTIONS,
 	type Static,
 	type TSchema,
+	t,
 } from "@alepha/core";
-import type { UserAccountToken } from "@alepha/security";
+import {
+	type Permission,
+	SecurityProvider,
+	type UserAccountToken,
+} from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
+import { ForbiddenError } from "../errors/ForbiddenError.ts";
+import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
+import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
 	ServerHandler,
+	ServerRequest,
+	ServerRequestConfigEntry,
 	ServerRoute,
 } from "../interfaces/index.ts";
-import type { FetchOptions, FetchResponse } from "../services/HttpClient.ts";
+import { ServerProvider } from "../providers/platforms/ServerProvider.ts";
+import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
+import {
+	type FetchOptions,
+	type FetchResponse,
+	HttpClient,
+} from "../services/HttpClient.ts";
 
-const KEY = "ACTION";
-
+/**
+ * Create an action endpoint.
+ *
+ * By default, all actions are prefixed by `/api`.
+ * If `name` is not provided, the action will be named after the property key.
+ * If `path` is not provided, the action will be named after the function name.
+ *
+ * @example
+ * ```ts
+ * class MyController {
+ *   hello = $action({
+ *     handler: () => "Hello World",
+ *   })
+ * }
+ * // GET /api/hello -> "Hello World"
+ * ```
+ */
 export const $action = <TConfig extends RequestConfigSchema>(
 	options: ActionDescriptorOptions<TConfig>,
 ): ActionDescriptor<TConfig> => {
-	__descriptor(KEY);
-
-	const routeDescriptorOptions = {
-		...options.use?.[OPTIONS],
-		...options,
-	};
-
-	const action: Partial<ActionDescriptor<TConfig>> = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	action[KIND] = KEY;
-	action[OPTIONS] = routeDescriptorOptions;
-
-	action.fetch = async () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	action.permission = () => {
-		throw new NotImplementedError(KEY);
-	};
-
-	return action as ActionDescriptor<TConfig>;
+	return createDescriptor(ActionDescriptor<TConfig>, options);
 };
-
-$action[KIND] = KEY;
 
 // ----------------------------------------------------------------------------------------------------------
 
@@ -53,39 +64,49 @@ export interface ActionDescriptorOptions<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends Omit<ServerRoute, "handler" | "path" | "schema"> {
 	/**
-	 * Name the route.
+	 * Name of the action.
+	 *
+	 * - It will be used to generate the route path if `path` is not provided.
+	 * - It will be used to generate the permission name if `security` is enabled.
 	 */
 	name?: string;
 
 	/**
-	 * Namespace of the route, used for grouping.
+	 * Group actions together.
 	 *
-	 * @default Class name containing the route.
+	 * - If not provided, the service name containing the route will be used.
+	 * - It will be used as Tag for documentation purposes.
+	 * - It will be used for permission name generation if `security` is enabled.
+	 *
+	 * @example
+	 * ```ts
+	 * // group = "MyController"
+	 * class MyController {
+	 * 	hello = $action({ handler: () => "Hello World" });
+	 * }
+	 *
+	 * // group = "users"
+	 * class MyOtherController {
+	 *   group = "users";
+	 *   a1 = $action({ handler: () => "Action 1", group: this.group });
+	 *   a2 = $action({ handler: () => "Action 2", group: this.group });
+	 * }
+	 * ```
 	 */
 	group?: string;
 
 	/**
-	 * If false, disabled the security check for this route.
-	 *
-	 * @default true when SecurityModule is enabled, false otherwise.
-	 * @deprecated
-	 */
-	security?: boolean;
-
-	/**
-	 * Pathname of the route.
+	 * Pathname of the route. If not provided, property key is used.
 	 */
 	path?: string;
 
 	/**
-	 * Inherit options from another route.
-	 */
-	use?: { [OPTIONS]: ActionDescriptorOptions<TConfig> };
-
-	/**
 	 * The route method.
 	 *
-	 * @default "GET" or "POST" when schema body is defined.
+	 * - If not provided, it will be set to "GET" by default.
+	 * - If not provider and a body is provided, it will be set to "POST".
+	 *
+	 * Wildcard methods are not supported for now. (e.g. "ALL", "ANY", etc.)
 	 */
 	method?: RouteMethod;
 
@@ -99,12 +120,7 @@ export interface ActionDescriptorOptions<
 	schema?: TConfig;
 
 	/**
-	 * Short description of the route.
-	 */
-	summary?: string;
-
-	/**
-	 * Long description of the route.
+	 * A short description of the action. Used for documentation purposes.
 	 */
 	description?: string;
 
@@ -114,56 +130,322 @@ export interface ActionDescriptorOptions<
 	disabled?: boolean;
 
 	/**
+	 * Main route handler. This is where the route logic is implemented.
+	 */
+	handler: ServerHandler<TConfig>;
+
+	/**
+	 * Short description of the route.
+	 *
+	 * TODO: move to Swagger plugin.
+	 */
+	summary?: string;
+
+	/**
 	 * Mark the route as private.
+	 *
 	 * - It won't be exposed in the API documentation.
 	 * - It won't be exposed in _links.
+	 *
+	 * @deprecated - use `$route()` instead.
 	 */
 	internal?: boolean;
 
 	/**
-	 * Main route handler. This is where the route logic is implemented.
+	 * If false, disabled the security check for this route.
+	 *
+	 * @deprecated - use `secure` instead.
 	 */
-	handler?: ServerHandler<TConfig>;
+	security?: boolean;
 }
 
-export interface ActionDescriptor<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: ActionDescriptorOptions<TConfig>;
+// ----------------------------------------------------------------------------------------------------------
 
-	/**
-	 * Fetch or just call local route when available.
-	 */
-	(
-		config?: ClientRequestEntry<TConfig>,
-		opts?: ClientRequestOptions,
-	): Promise<ClientRequestResponse<TConfig>>;
+const envSchema = t.object({
+	SERVER_API_PREFIX: t.string({
+		description: "Prefix for all API routes (e.g. $action).",
+		default: "/api",
+	}),
+});
 
-	/**
-	 * Just fetch the route. Skip any local route.
-	 */
-	fetch: (
-		config?: ClientRequestEntry<TConfig>,
-		opts?: ClientRequestOptions,
-	) => Promise<FetchResponse<ClientRequestResponse<TConfig>>>;
+declare module "@alepha/core" {
+	interface Env extends Partial<Static<typeof envSchema>> {}
 
-	/**
-	 * Name of the permission required to access this route.
-	 */
-	permission: () => string;
+	interface State {
+		/**
+		 * Real (or fake) user account, used for internal actions.
+		 * If you define this, you assume that all actions are executed by this user by default.
+		 * And to force a different user, you need to pass it explicitly in the options.
+		 */
+		"ServerSecurityProvider.localSystemUser"?: UserAccountToken;
+	}
 }
+
+export class ActionDescriptor<
+	TConfig extends RequestConfigSchema,
+> extends Descriptor<ActionDescriptorOptions<TConfig>> {
+	protected readonly env = $env(envSchema);
+	protected readonly httpClient = $inject(HttpClient);
+	protected readonly serverProvider = $inject(ServerProvider);
+	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+
+	public get prefix() {
+		return this.env.SERVER_API_PREFIX;
+	}
+
+	public get route(): ServerAction {
+		return {
+			...this.options,
+			method: this.method,
+			path: this.path,
+			action: this,
+		};
+	}
+
+	/**
+	 * Returns the name of the action.
+	 */
+	public get name(): string {
+		return this.options.name || this.config.propertyKey;
+	}
+
+	/**
+	 * Returns the group of the action. (e.g. "orders", "admin", etc.)
+	 */
+	public get group(): string {
+		return this.options.group || this.config.service.name;
+	}
+
+	/**
+	 * Returns the HTTP method of the action.
+	 */
+	public get method(): RouteMethod {
+		return this.options.method || (this.options.schema?.body ? "POST" : "GET");
+	}
+
+	/**
+	 * Returns the path of the action.
+	 *
+	 * Path is prefixed by `/api` by default.
+	 */
+	public get path(): string {
+		return this.options.path || this.config.propertyKey;
+	}
+
+	/**
+	 * Returns the security permission of the action.
+	 *
+	 * TODO: big rework of how we handle permissions of actions.
+	 */
+	public get permission(): Permission {
+		return {
+			group: this.group,
+			name: this.name,
+			description: this.options.description,
+			method: this.method,
+		};
+	}
+
+	public getBodyContentType(): string | undefined {
+		if (this.options.schema?.body) {
+			// TODO: move to `alepha.server.multipart` module ?
+			for (const key in this.options.schema.body.properties) {
+				if (
+					this.options.schema.body.properties[key].type === "string" &&
+					this.options.schema.body.properties[key].format === "binary"
+				) {
+					return "multipart/form-data";
+				}
+			}
+
+			return "application/json";
+		}
+	}
+
+	/**
+	 * Call the action.
+	 *
+	 * - If the action is detected locally, it will be executed directly.
+	 * - If the action is not detected locally, it will be fetched from the server.
+	 *
+	 * > Note: Automatic remote detection requires module `alepha.server.links`.
+	 */
+	public async run(
+		config: ClientRequestEntry<TConfig>,
+		options: ClientRequestOptions = {},
+	): Promise<ClientRequestResponse<TConfig>> {
+		const request = this.alepha.context.get<ServerRequest>("request");
+
+		// TODO: hook - "local:onRequest" ?
+
+		const handler = this.options.handler;
+		const permission = this.permission;
+		const security = !!this.options.secure || this.options.security !== false;
+
+		const user = this.getUserFromLocalFunctionContext(
+			options,
+			permission,
+			security,
+		);
+
+		const {
+			body,
+			params = {},
+			query = {},
+			headers = {},
+		} = config as ClientRequestEntryContainer<RequestConfigSchema>;
+
+		const url = new URL(`http://localhost${this.path ?? ""}`);
+
+		const serverActionRequest: Partial<ServerRequest> = {
+			...request,
+			...options,
+			method: this.method,
+			url,
+			body,
+			params,
+			query,
+			headers,
+			reply: new ServerReply(),
+			metadata: {},
+			raw: {},
+			user,
+		};
+
+		this.serverRouterProvider.validateRequest(
+			this.options,
+			serverActionRequest as ServerRequest,
+		);
+
+		const response = await handler(serverActionRequest as ServerRequest);
+
+		if (this.options.schema?.response) {
+			if (isTypeFile(this.options.schema.response) && isFileLike(response)) {
+				return response;
+			}
+
+			return this.alepha.parse<any>(this.options.schema?.response, response);
+		}
+
+		return response;
+	}
+
+	/**
+	 * Works like `run`, but always fetches (http request) the route.
+	 */
+	public fetch(
+		config?: ClientRequestEntry<TConfig>,
+		options?: ClientRequestOptions,
+	): Promise<FetchResponse<ClientRequestResponse<TConfig>>> {
+		return this.httpClient.fetchAction({
+			host: this.serverProvider.hostname, // that's the trick, we just use the server hostname
+			action: this,
+			config,
+			options,
+		});
+	}
+
+	// -------------
+
+	/**
+	 * Check a mock function for the specified route.
+	 *
+	 * This is mostly used for testing purposes.
+	 */
+	protected createLocalHandler(
+		action: ActionDescriptorOptions,
+		permission: Permission,
+	) {
+		return async (
+			config: ServerRequestConfigEntry = {},
+			options: ClientRequestOptions = {},
+		): Promise<any> => {};
+	}
+
+	/**
+	 * Get the user account token for a local action call.
+	 * It will check the options, context, and system user.
+	 */
+	protected getUserFromLocalFunctionContext(
+		options: { user?: UserAccountToken | "system" | "context" },
+		permission: Permission,
+		isRouteSecure: boolean,
+	): UserAccountToken | undefined {
+		const hasSecurity = this.alepha.has(SecurityProvider);
+		const fromOptions =
+			typeof options.user === "object" ? options.user : undefined;
+
+		if (!hasSecurity) {
+			// system has no security, so we don't need to check it
+			return fromOptions;
+		}
+
+		const type = typeof options.user === "string" ? options.user : undefined;
+
+		let user: UserAccountToken | undefined;
+
+		const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
+		const fromSystem = this.alepha.state(
+			"ServerSecurityProvider.localSystemUser",
+		);
+
+		if (type === "system") {
+			user = fromSystem;
+		} else if (type === "context") {
+			user = fromContext;
+		} else {
+			user = fromOptions ?? fromSystem ?? fromContext;
+		}
+
+		if (!user) {
+			if (isRouteSecure) {
+				if (this.alepha.isTest()) {
+					// in tests, we can return undefined user if route is not secured for now
+					return {
+						id: randomUUID(),
+						name: "Test",
+						roles: ["admin"],
+					};
+				}
+
+				throw new UnauthorizedError(
+					"User is required for calling this route locally",
+				);
+			} else {
+				// if route is not secured, we can return undefined user
+				return;
+			}
+		}
+
+		const roles = user.roles ?? [];
+		const securityProvider = this.alepha.get(SecurityProvider);
+		const result = securityProvider.checkPermission(permission, ...roles);
+		if (!result.isAuthorized) {
+			throw new ForbiddenError(
+				`Permission '${securityProvider.permissionToString(permission)}' is required for this route`,
+			);
+		}
+
+		// create a new user object with ownership if needed
+		return {
+			...user,
+			ownership: result.ownership,
+		};
+	}
+}
+
+$action[KIND] = ActionDescriptor;
+
+// ----------------------------------------------------------------------------------------------------------
 
 export type ClientRequestEntry<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
+	TConfig extends RequestConfigSchema,
 	T = ClientRequestEntryContainer<TConfig>,
 > = {
 	[K in keyof T as T[K] extends undefined ? never : K]: T[K];
 };
 
-export type ClientRequestEntryContainer<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = {
+export type ClientRequestEntryContainer<TConfig extends RequestConfigSchema> = {
 	body: TConfig["body"] extends TSchema ? Static<TConfig["body"]> : undefined;
 
 	params: TConfig["params"] extends TSchema
@@ -197,3 +479,15 @@ export interface ClientRequestOptions extends FetchOptions {
 
 export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
 	TConfig["response"] extends TSchema ? Static<TConfig["response"]> : any;
+
+export interface ServerAction extends ServerRoute {
+	action: ActionDescriptor<RequestConfigSchema>;
+}
+
+export function isServerAction(route: any): route is ServerAction {
+	return (
+		typeof route === "object" &&
+		"action" in route &&
+		route.action instanceof ActionDescriptor
+	);
+}

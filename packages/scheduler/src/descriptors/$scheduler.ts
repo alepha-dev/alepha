@@ -1,4 +1,3 @@
-import { scheduler } from "node:timers/promises";
 import {
 	$env,
 	$inject,
@@ -7,6 +6,7 @@ import {
 	type Async,
 	createDescriptor,
 	Descriptor,
+	type DescriptorArgs,
 	KIND,
 	type Static,
 	t,
@@ -102,7 +102,7 @@ export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> 
 			});
 		}
 		if (this.options.cron) {
-			this.cronProvider.register(this.name, this.options.cron, () =>
+			this.cronProvider.createCronJob(this.name, this.options.cron, () =>
 				this.trigger(),
 			);
 		}

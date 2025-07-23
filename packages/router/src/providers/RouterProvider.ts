@@ -1,9 +1,13 @@
-export class RouterProvider<T extends Route = Route> {
+export abstract class RouterProvider<T extends Route = Route> {
 	protected routePathRegex: RegExp = /^(\/[:*]?[.\-_a-zA-Z0-9]*)*$/;
 	protected tree: Tree<T> = { children: {} };
-	public readonly routes: T[] = [];
+	protected readonly routes: T[] = [];
 
-	public push(route: T): void {
+	public match(path: string): RouteMatch<T> {
+		return this.mapParams(this.createRouteMatch(path));
+	}
+
+	protected push(route: T): void {
 		if (!this.routePathRegex.test(route.path)) {
 			throw new Error(`Route "${route.path}" is not valid`);
 		}
@@ -50,10 +54,6 @@ export class RouterProvider<T extends Route = Route> {
 		}
 
 		this.routes.push(route);
-	}
-
-	public match(path: string): RouteMatch<T> {
-		return this.mapParams(this.createRouteMatch(path));
 	}
 
 	protected createRouteMatch(path: string): RouteMatch<T> {

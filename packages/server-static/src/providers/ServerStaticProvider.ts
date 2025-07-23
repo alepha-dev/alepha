@@ -74,13 +74,13 @@ export class ServerStaticProvider {
 		);
 
 		for (const route of routes) {
-			await this.routerProvider.route(route);
+			await this.routerProvider.createRoute(route);
 
 			if (
 				options.indexFallback !== false &&
 				route.path.endsWith("index.html")
 			) {
-				await this.routerProvider.route({
+				await this.routerProvider.createRoute({
 					path: route.path.replace(/index\.html$/, ""),
 					handler: route.handler,
 				});
@@ -93,7 +93,7 @@ export class ServerStaticProvider {
 		});
 
 		if (options.historyApiFallback) {
-			await this.routerProvider.route({
+			await this.routerProvider.createRoute({
 				path: join(prefix, "*").replace(/\\/g, "/"),
 				handler: async (request) => {
 					const { reply } = request;

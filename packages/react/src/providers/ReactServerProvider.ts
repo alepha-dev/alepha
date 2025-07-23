@@ -63,7 +63,7 @@ export class ReactServerProvider {
 	public readonly onConfigure = $hook({
 		on: "configure",
 		handler: async () => {
-			const pages = this.alepha.getDescriptorValues($page);
+			const pages = this.alepha.descriptors($page);
 
 			const ssrEnabled =
 				pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
@@ -106,7 +106,7 @@ export class ReactServerProvider {
 
 			// no SSR enabled, serve index.html for all unmatched routes
 			this.log.info("SSR is disabled, use History API fallback");
-			await this.serverRouterProvider.route({
+			await this.serverRouterProvider.createRoute({
 				path: "*",
 				handler: async ({ url, reply }) => {
 					if (url.pathname.includes(".")) {
@@ -141,7 +141,7 @@ export class ReactServerProvider {
 
 			this.log.debug(`+ ${page.match} -> ${page.name}`);
 
-			await this.serverRouterProvider.route({
+			await this.serverRouterProvider.createRoute({
 				...page,
 				schema: undefined, // schema is handled by the page descriptor provider for now (shared by browser and server)
 				method: "GET",

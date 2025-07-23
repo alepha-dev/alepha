@@ -1,25 +1,37 @@
-import { Alepha, run } from "@alepha/core";
-import { $thread } from "@alepha/thread";
+import { $inject, Alepha, run } from "@alepha/core";
 
-const app = Alepha.create();
-
-const task = app.use($thread, {
-	name: "longTask",
-	handler: async () => {
-		app.log.info("Long task started");
-		// Simulate a long-running task
-		app.log.info("Long task completed");
+const app = new Alepha({
+	env: {
+		LOG_LEVEL: "trace",
 	},
 });
 
-app.on("ready", async () => {
-	if (app.isWorkerThread()) {
-		return;
-	}
+class Prov1 {}
+class Prov2 {}
+class Prov3 {}
 
-	app.log.info("App is ready, starting long task...");
-	await task.create();
-	app.log.info("Long task has been initiated.");
+class Cmd1 {
+	p1 = $inject(Prov1);
+}
+class Cmd2 {
+	p2 = $inject(Prov2);
+}
+class Cmd3 {
+	p2 = $inject(Prov2);
+	p3 = $inject(Prov3);
+}
+
+class App {
+	c1 = $inject(Cmd1);
+	c2 = $inject(Cmd2);
+	c3 = $inject(Cmd3);
+}
+
+app.with(App);
+app.target = Cmd3;
+
+app.on("ready", () => {
+	console.log(app.graph());
 });
 
 run(app);

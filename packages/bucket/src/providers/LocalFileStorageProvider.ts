@@ -26,7 +26,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 	};
 
 	protected readonly configure = $hook({
-		on: "configure",
+		on: "start",
 		handler: async () => {
 			await mkdir(this.options.storagePath, { recursive: true });
 

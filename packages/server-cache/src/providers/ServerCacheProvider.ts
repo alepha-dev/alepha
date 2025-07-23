@@ -1,77 +1,72 @@
 import { createHash } from "node:crypto";
 import {
-	type Cache,
+	$cache,
+	type CacheDescriptor,
 	type CacheDescriptorOptions,
-	CacheDescriptorProvider,
 } from "@alepha/cache";
 import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import {
-	$action,
+	ActionDescriptor,
+	type RequestConfigSchema,
 	type ServerHandler,
-	type ServerRequestConfig,
+	type ServerRequest,
 } from "@alepha/server";
 
 declare module "@alepha/server" {
 	interface ServerRoute {
 		cache?: ServerRouteCache;
 	}
-	interface ActionDescriptor {
+
+	interface ActionDescriptor<TConfig extends RequestConfigSchema> {
 		invalidate: () => Promise<void>;
 	}
 }
 
+ActionDescriptor.prototype.invalidate = async function (
+	this: ActionDescriptor<RequestConfigSchema>,
+) {
+	await this.alepha.get(ServerCacheProvider).invalidate(this);
+};
+
 export class ServerCacheProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly cacheProvider = $inject(CacheDescriptorProvider);
 	protected readonly time = $inject(DateTimeProvider);
 	protected readonly caches = new Map<ServerHandler, RouteCache>();
 
-	public readonly onConfigure = $hook({
-		priority: "last",
-		on: "configure",
-		handler: async () => {
-			const actions = this.alepha.getDescriptorValues($action);
-			for (const { value: action } of actions) {
-				action.invalidate = async () => {
-					await this.invalidate(action);
-				};
-			}
-		},
-	});
+	public generateETag(content: string): string {
+		return `"${createHash("md5").update(content).digest("hex")}"`;
+	}
 
-	public readonly onRoute = $hook({
+	public async invalidate(route: RouteLike) {
+		const cache = this.getCacheByRoute(route);
+		if (!cache) {
+			return;
+		}
+
+		await cache.invalidate();
+	}
+
+	protected readonly onRoute = $hook({
 		on: "server:onRoute",
 		handler: async ({ route }) => {
 			if (!route.cache) {
 				return;
 			}
 
-			const cache = this.cacheProvider.register({
+			const cache = this.alepha.use($cache<RouteCacheEntry, [ServerRequest]>, {
 				name: `${route.method}:${route.path}`,
-				options: {
-					provider: "memory",
-					key: (args: any) => this.createCacheKey(args),
-					...(typeof route.cache === "boolean"
-						? {
-								ttl: this.time.duration(5, "minutes"),
-							}
-						: this.time.isDurationLike(route.cache)
-							? {
-									ttl: route.cache,
-								}
-							: {
-									...route.cache,
-								}),
-				},
+				provider: "memory",
+				key: (args) => this.createCacheKey(args),
+				...this.getCacheOptions(route.cache),
 			});
 
 			this.caches.set(route.handler, cache);
 		},
 	});
 
-	public readonly onRequest = $hook({
+	protected readonly onRequest = $hook({
 		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			const cache = this.getCacheByRoute(route);
@@ -80,7 +75,7 @@ export class ServerCacheProvider {
 			}
 
 			const key = this.createCacheKey(request);
-			const cached = await this.cacheProvider.get(cache, key);
+			const cached = await cache.get(key);
 			if (cached) {
 				// if user has already the resource cached, just return 304 Not Modified
 				if (
@@ -102,7 +97,7 @@ export class ServerCacheProvider {
 		},
 	});
 
-	public readonly onSend = $hook({
+	protected readonly onSend = $hook({
 		on: "server:onResponse",
 		priority: "first",
 		handler: async ({ route, request, response }) => {
@@ -118,7 +113,7 @@ export class ServerCacheProvider {
 
 			if (typeof response.body === "string") {
 				const etag = this.generateETag(response.body);
-				await this.cacheProvider.set(cache, key, {
+				await cache.set(key, {
 					body: response.body,
 					status: response.status,
 					contentType: response.headers?.["content-type"],
@@ -131,21 +126,26 @@ export class ServerCacheProvider {
 		},
 	});
 
-	public generateETag(content: string): string {
-		return `"${createHash("md5").update(content).digest("hex")}"`;
-	}
-
-	public async invalidate(route: RouteLike) {
-		const cache = this.getCacheByRoute(route);
-		if (!cache) {
-			return;
+	protected getCacheOptions(cache: ServerRouteCache) {
+		if (typeof cache === "boolean") {
+			return {
+				ttl: this.time.duration(5, "minutes"),
+			};
 		}
 
-		await this.cacheProvider.invalidate(cache);
+		if (this.time.isDurationLike(cache)) {
+			return {
+				ttl: cache,
+			};
+		}
+
+		return {
+			...cache,
+		};
 	}
 
 	protected getCacheByRoute(route: RouteLike): RouteCache | undefined {
-		const options = OPTIONS in route ? route[OPTIONS] : route;
+		const options = "options" in route ? route.options : route;
 		if (!options.handler) {
 			return;
 		}
@@ -153,11 +153,13 @@ export class ServerCacheProvider {
 		return this.caches.get(options.handler);
 	}
 
-	protected createCacheKey(args: ServerRequestConfig) {
+	protected createCacheKey(args: ServerRequest) {
 		return JSON.stringify({
+			method: args.method,
+			pathname: args.url.pathname,
 			query: args.query ?? {},
 			params: args.params ?? {},
-			body: args.body ?? {},
+			body: args.body ?? {}, // hmmm ?
 		});
 	}
 }
@@ -167,17 +169,19 @@ export type ServerRouteCache =
 	| DurationLike
 	| Omit<CacheDescriptorOptions<any>, "handler" | "key">;
 
-type RouteCache = Cache<{
+interface RouteCacheEntry {
 	contentType?: string;
 	body: string;
 	status?: number;
 	lastModified: string;
 	hash: string;
-}>;
+}
+
+type RouteCache = CacheDescriptor<RouteCacheEntry, [ServerRequest]>;
 
 type RouteLike =
 	| {
-			[OPTIONS]: {
+			options: {
 				handler?: ServerHandler;
 			};
 	  }

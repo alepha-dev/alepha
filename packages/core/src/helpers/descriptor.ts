@@ -42,10 +42,10 @@ export interface DescriptorConfig {
 }
 
 export abstract class Descriptor<T extends object = {}> {
-	public readonly options: T;
-
 	protected readonly alepha: Alepha;
-	protected readonly config: DescriptorConfig;
+
+	public readonly options: T;
+	public readonly config: DescriptorConfig;
 
 	constructor(args: DescriptorArgs<T>) {
 		this.alepha = args.alepha;
@@ -88,7 +88,7 @@ export const createDescriptor = <TDescriptor extends Descriptor>(
 	descriptorEvents.emit(descriptor, context);
 
 	return context.get(descriptor, {
-		skipRegistration: true,
+		//skipRegistration: true,
 		skipCache: true,
 		args: [
 			{

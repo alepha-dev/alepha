@@ -53,7 +53,6 @@ export class IntervalDescriptor extends Descriptor<IntervalDescriptorOptions> {
 
 	constructor(args: DescriptorArgs<IntervalDescriptorOptions>) {
 		super(args);
-		this.options.attach ??= true;
 		this.options.run ??= "start";
 		this.duration = this.alepha
 			.get(DateTimeProvider)

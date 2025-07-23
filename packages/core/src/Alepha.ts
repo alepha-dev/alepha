@@ -1,3 +1,4 @@
+import { now } from "@alepha/cli";
 import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
@@ -291,7 +292,10 @@ export class Alepha {
 
 	protected configurations = new Map<Service, object>();
 
-	protected descriptorsMap = new Map<Service<Descriptor>, Array<Descriptor>>();
+	protected descriptorRegistry = new Map<
+		Service<Descriptor>,
+		Array<Descriptor>
+	>();
 
 	/**
 	 * Node.js feature that allows to store context across asynchronous calls.
@@ -461,13 +465,20 @@ export class Alepha {
 
 		this.starting = Promise.withResolvers();
 
+		const now = Date.now();
+
+		this.log.info("Starting App...");
+
 		for (const [key] of this.substitutions.entries()) {
 			this.get(key);
 		}
 
-		this.log.info("Starting App...");
-
-		const now = Date.now();
+		const target = this.state("target");
+		if (target) {
+			this.registry = new Map();
+			this.descriptorRegistry = new Map();
+			this.with(target);
+		}
 
 		this.locked = true;
 
@@ -1129,7 +1140,8 @@ export class Alepha {
 	public descriptors<TDescriptor extends Descriptor>(factory: {
 		[KIND]: InstantiableClass<TDescriptor>;
 	}): Array<TDescriptor> {
-		return (this.descriptorsMap.get(factory[KIND]) ?? []) as Array<TDescriptor>;
+		return (this.descriptorRegistry.get(factory[KIND]) ??
+			[]) as Array<TDescriptor>;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -1151,11 +1163,6 @@ export class Alepha {
 		__alephaRef.context = this;
 		__alephaRef.definition = service;
 		__alephaRef.module = module;
-
-		if (typeof service !== "function") {
-			console.warn("service is not a function", service);
-			return service as T;
-		}
 
 		const instance: T = new (service as InstantiableClass<any>)(...args);
 
@@ -1185,8 +1192,8 @@ export class Alepha {
 		value["onInit"]();
 
 		const kind = value.constructor as Service;
-		const list = this.descriptorsMap.get(kind) ?? [];
-		this.descriptorsMap.set(kind, [...list, value]);
+		const list = this.descriptorRegistry.get(kind) ?? [];
+		this.descriptorRegistry.set(kind, [...list, value]);
 	}
 
 	/**
@@ -1281,6 +1288,11 @@ export interface Env extends LoggerEnv {
 export interface State {
 	log: Logger;
 	env?: Readonly<Env>;
+
+	/**
+	 * If defined, the Alepha container will only register this service and its dependencies.
+	 */
+	target?: Service;
 
 	// test hooks
 	beforeAll?: (run: any) => any;

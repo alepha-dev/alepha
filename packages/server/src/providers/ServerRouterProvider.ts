@@ -1,6 +1,7 @@
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
+	$hook,
 	$inject,
 	Alepha,
 	isFileLike,
@@ -9,6 +10,8 @@ import {
 } from "@alepha/core";
 import { RouterProvider } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
+import { $action } from "../descriptors/$action.ts";
+import { $route } from "../descriptors/$route.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
@@ -33,9 +36,20 @@ import type {
 export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
 	protected readonly alepha = $inject(Alepha);
 
-	public async route<TConfig extends RequestConfigSchema = RequestConfigSchema>(
-		route: ServerRoute<TConfig>,
-	): Promise<void> {
+	protected readonly onConfigure = $hook({
+		on: "configure",
+		handler: async () => {
+			await Promise.all(
+				this.alepha.descriptors($route).map(async (route) => {
+					await this.createRoute(route.options);
+				}),
+			);
+		},
+	});
+
+	public async createRoute<
+		TConfig extends RequestConfigSchema = RequestConfigSchema,
+	>(route: ServerRoute<TConfig>): Promise<void> {
 		route.method ??= "GET";
 		route.method = route.method.toUpperCase() as RouteMethod;
 
@@ -52,7 +66,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			},
 		);
 
-		return this.push({
+		this.push({
 			path,
 			handler: (request) => this.onRequest(route, request, responseKind),
 		});

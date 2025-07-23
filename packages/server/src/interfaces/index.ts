@@ -67,8 +67,8 @@ export interface ServerRequest<
 export interface ServerRoute<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends Route {
-	method?: RouteMethod; // undefined = all
 	handler: ServerHandler<TConfig>;
+	method?: RouteMethod;
 	schema?: TConfig;
 
 	/**

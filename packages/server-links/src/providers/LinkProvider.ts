@@ -4,7 +4,9 @@ import {
 	type ApiLink,
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
+	type ClientRequestEntry,
 	type ClientRequestOptions,
+	type ClientRequestResponse,
 	type FetchResponse,
 	HttpClient,
 	type RequestConfigSchema,
@@ -244,10 +246,14 @@ export interface ClientScope {
 }
 
 export type HttpVirtualClient<T> = {
-	[K in keyof T as T[K] extends ActionDescriptor
+	[K in keyof T as T[K] extends ActionDescriptor<RequestConfigSchema>
 		? K
 		: never]: T[K] extends ActionDescriptor<infer Schema>
 		? T[K] & {
+				(
+					config?: ClientRequestEntry<Schema>,
+					opts?: ClientRequestOptions,
+				): Promise<ClientRequestResponse<Schema>>;
 				can: () => boolean;
 				schema: Schema;
 			}

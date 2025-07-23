@@ -10,7 +10,6 @@ import {
 	t,
 } from "@alepha/core";
 import type { JSONWebKeySet, JWTPayload } from "jose";
-import type { RealmDescriptor } from "../descriptors/$realm.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
@@ -188,35 +187,13 @@ export class SecurityProvider {
 		return permission;
 	}
 
-	public createRealm(value: RealmDescriptor) {
+	public createRealm(realm: Realm) {
 		if (this.realms.length === 1 && this.realms[0].name === "default") {
 			// if the default realm is the only one, we remove it to allow creating new realms
 			this.realms.pop();
 		}
 
-		this.realms.push({
-			name: value.name,
-			secret:
-				typeof value.options.secret === "function"
-					? value.options.secret()
-					: value.options.secret,
-			userAccountProvider:
-				typeof value.options.userAccountProvider === "function"
-					? value.options.userAccountProvider()
-					: value.options.userAccountProvider,
-			roles:
-				value.options.roles?.map((it) => {
-					if (typeof it === "string") {
-						const role = this.getRoles().find((role) => role.name === it);
-						if (!role) {
-							throw new SecurityError(`Role '${it}' not found`);
-						}
-						return role;
-					}
-
-					return it;
-				}) ?? [],
-		});
+		this.realms.push(realm);
 	}
 
 	/**

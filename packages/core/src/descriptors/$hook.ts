@@ -85,11 +85,9 @@ export class HookDescriptor<T extends keyof Hooks> extends Descriptor<
 > {
 	public called = 0;
 
-	constructor(args: DescriptorArgs<HookOptions<T>>) {
-		super(args);
-
+	protected onInit() {
 		this.alepha.on(this.options.on, {
-			caller: args.service,
+			caller: this.config.service,
 			priority: this.options.priority,
 			callback: async (args: any) => {
 				this.called += 1;

@@ -266,7 +266,7 @@ export class ServerSwaggerProvider {
 		prefix: string,
 		json: OpenAPIV3.Document,
 	): Promise<void> {
-		await this.serverRouterProvider.route({
+		await this.serverRouterProvider.createRoute({
 			method: "GET",
 			path: `${prefix}/json`,
 			schema: {
@@ -316,7 +316,7 @@ window.onload = function() {
 			root,
 		});
 
-		await this.serverRouterProvider.route({
+		await this.serverRouterProvider.createRoute({
 			method: "GET",
 			path: `${prefix}/swagger-initializer.js`,
 			handler: ({ reply }) => {

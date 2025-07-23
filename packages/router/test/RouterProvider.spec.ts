@@ -1,8 +1,19 @@
 import { test } from "vitest";
 import { RouterProvider } from "../src/providers/RouterProvider.ts";
 
+interface TestRoute {
+	name: string;
+	path: string;
+}
+
+class TestRouterProvider extends RouterProvider<TestRoute> {
+	public push(route: TestRoute) {
+		super.push(route);
+	}
+}
+
 const playground = () => {
-	const router = new RouterProvider<{ name: string; path: string }>();
+	const router = new TestRouterProvider();
 	const add = (path: string, name: string) => {
 		router.push({
 			path,

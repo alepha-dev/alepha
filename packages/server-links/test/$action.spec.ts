@@ -38,20 +38,20 @@ afterEach(() => {
 const testActionBasicCrud = async (
 	app: CrudApp | HttpVirtualClient<CrudApp>,
 ) => {
-	expect(await app.findAll()).toEqual([]);
-	expect(await app.findAll()).toEqual([]);
+	expect(await app.findAll.run()).toEqual([]);
+	expect(await app.findAll.run()).toEqual([]);
 
-	expect(await app.create({ body: { name: "John" } })).toEqual({
+	expect(await app.create.run({ body: { name: "John" } })).toEqual({
 		id: 1,
 		name: "John",
 	});
 
-	expect(await app.create({ body: { name: "Jean" } })).toEqual({
+	expect(await app.create.run({ body: { name: "Jean" } })).toEqual({
 		id: 2,
 		name: "Jean",
 	});
 
-	expect(await app.findAll()).toEqual([
+	expect(await app.findAll.run()).toEqual([
 		{
 			id: 1,
 			name: "John",
@@ -63,7 +63,7 @@ const testActionBasicCrud = async (
 	]);
 
 	expect(
-		await app.findAll({
+		await app.findAll.run({
 			query: { name: "John" },
 		}),
 	).toEqual([
@@ -74,7 +74,7 @@ const testActionBasicCrud = async (
 	]);
 
 	expect(
-		await app.findAll({
+		await app.findAll.run({
 			query: { name: "J" },
 		}),
 	).toEqual([
@@ -88,7 +88,7 @@ const testActionBasicCrud = async (
 		},
 	]);
 
-	expect(await app.findAll()).toEqual([
+	expect(await app.findAll.run()).toEqual([
 		{
 			id: 1,
 			name: "John",
@@ -99,43 +99,43 @@ const testActionBasicCrud = async (
 		},
 	]);
 
-	expect(await app.findById({ params: { id: 1 } })).toEqual({
+	expect(await app.findById.run({ params: { id: 1 } })).toEqual({
 		id: 1,
 		name: "John",
 	});
 
-	expect(await app.findById({ params: { id: 2 } })).toEqual({
+	expect(await app.findById.run({ params: { id: 2 } })).toEqual({
 		id: 2,
 		name: "Jean",
 	});
 
 	expect(
-		await app.update({ params: { id: 1 }, body: { name: "John Doe" } }),
+		await app.update.run({ params: { id: 1 }, body: { name: "John Doe" } }),
 	).toEqual({
 		id: 1,
 		name: "John Doe",
 	});
 
-	expect(await app.findById({ params: { id: 1 } })).toEqual({
+	expect(await app.findById.run({ params: { id: 1 } })).toEqual({
 		id: 1,
 		name: "John Doe",
 	});
 
 	expect(
-		await app.update({ params: { id: 1 }, body: { name: "Rasmus" } }),
+		await app.update.run({ params: { id: 1 }, body: { name: "Rasmus" } }),
 	).toEqual({
 		id: 1,
 		name: "Rasmus",
 	});
 
-	expect(await app.findById({ params: { id: 1 } })).toEqual({
+	expect(await app.findById.run({ params: { id: 1 } })).toEqual({
 		id: 1,
 		name: "Rasmus",
 	});
 
-	expect(await app.delete({ params: { id: 1 } })).toEqual(undefined);
+	expect(await app.delete.run({ params: { id: 1 } })).toEqual(undefined);
 
-	expect(await app.findAll()).toEqual([
+	expect(await app.findAll.run()).toEqual([
 		{
 			id: 2,
 			name: "Jean",
@@ -156,14 +156,14 @@ test("$action - basic crud (linkRemote)", async () => {
 });
 
 const testActionHeader = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
-	expect(await app.findAll()).toEqual([]);
-	expect(await app.create({ body: { name: "Jean" } })).toEqual({
+	expect(await app.findAll.run()).toEqual([]);
+	expect(await app.create.run({ body: { name: "Jean" } })).toEqual({
 		id: 1,
 		name: "Jean",
 	});
 
 	expect(
-		await app.findById({
+		await app.findById.run({
 			params: { id: 1 },
 			headers: { uppercase: true },
 		}),
@@ -173,14 +173,14 @@ const testActionHeader = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 	});
 
 	expect(
-		await app.findById({ params: { id: 1 }, headers: { uppercase: true } }),
+		await app.findById.run({ params: { id: 1 }, headers: { uppercase: true } }),
 	).toEqual({
 		id: 1,
 		name: "JEAN",
 	});
 
 	expect(
-		await app.findById({
+		await app.findById.run({
 			params: { id: 1 },
 			headers: { uppercase: true },
 		}),
@@ -203,13 +203,13 @@ test("$action - headers (linkRemote)", async () => {
 });
 
 const testActionErrors = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
-	await expect(app.findById({ params: { id: 2 } })).rejects.toThrowError(
+	await expect(app.findById.run({ params: { id: 2 } })).rejects.toThrowError(
 		"User not found",
 	);
 
 	// as local function, we go the real error
 	// as remove function, we go the http error wrapper
-	await expect(app.internalError()).rejects.toThrowError("Oops");
+	await expect(app.internalError.run()).rejects.toThrowError("Oops");
 };
 
 test("$action - errors (app)", async () => {

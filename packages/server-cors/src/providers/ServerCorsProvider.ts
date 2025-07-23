@@ -1,9 +1,8 @@
-import { $hook, $inject, type HookDescriptor } from "@alepha/core";
+import { $hook, $inject } from "@alepha/core";
 import { ServerRouterProvider } from "@alepha/server";
 
 export class ServerCorsProvider {
-	protected readonly serverRouterProvider: ServerRouterProvider =
-		$inject(ServerRouterProvider);
+	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
 	public options: ServerCorsProviderOptions = {
 		origin: "*",
@@ -12,7 +11,7 @@ export class ServerCorsProvider {
 		credentials: true,
 	};
 
-	protected readonly onRoute: HookDescriptor<"server:onRoute"> = $hook({
+	protected readonly onRoute = $hook({
 		on: "server:onRoute",
 		handler: async ({ route }) => {
 			if (
@@ -23,7 +22,7 @@ export class ServerCorsProvider {
 				return;
 			}
 
-			await this.serverRouterProvider.route({
+			await this.serverRouterProvider.createRoute({
 				path: route.path,
 				method: "OPTIONS",
 				handler: ({ reply }) => {
@@ -33,7 +32,7 @@ export class ServerCorsProvider {
 		},
 	});
 
-	protected readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
+	protected readonly onRequest = $hook({
 		on: "server:onRequest",
 		handler: ({ request }) => {
 			const reqOrigin = request.headers.origin;

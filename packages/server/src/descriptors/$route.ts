@@ -1,21 +1,19 @@
-import { __descriptor, KIND, OPTIONS } from "@alepha/core";
+import { createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { RequestConfigSchema, ServerRoute } from "../interfaces/index.ts";
 
-const KEY = "ROUTE";
-
-export const $route = <
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
->(
+/**
+ * Create a basic endpoint.
+ *
+ * It's a low level descriptor. You probably want to use `$action` instead.
+ *
+ * @see {@link $action}
+ * @see {@link $page}
+ */
+export const $route = <TConfig extends RequestConfigSchema>(
 	options: RouteDescriptorOptions<TConfig>,
 ): RouteDescriptor<TConfig> => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-	};
+	return createDescriptor(RouteDescriptor<TConfig>, options);
 };
-
-$route[KIND] = KEY;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -23,9 +21,10 @@ export interface RouteDescriptorOptions<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends ServerRoute<TConfig> {}
 
-export type RouteDescriptor<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = {
-	[KIND]: typeof KEY;
-	[OPTIONS]: RouteDescriptorOptions<TConfig>;
-};
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class RouteDescriptor<
+	TConfig extends RequestConfigSchema,
+> extends Descriptor<RouteDescriptorOptions<TConfig>> {}
+
+$route[KIND] = RouteDescriptor;

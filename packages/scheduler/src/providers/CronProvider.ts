@@ -75,7 +75,7 @@ export class CronProvider {
 	 *
 	 * It's automatically done when using the `$scheduler` descriptor but can also be used manually.
 	 */
-	public register(
+	public createCronJob(
 		name: string,
 		expression: string,
 		handler: (context: { now: DateTime }) => Promise<void>,
