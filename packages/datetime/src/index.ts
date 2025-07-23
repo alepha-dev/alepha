@@ -3,7 +3,6 @@ import { $interval } from "./descriptors/$interval.ts";
 import { DateTimeProvider } from "./providers/DateTimeProvider.ts";
 
 export * from "./descriptors/$interval.ts";
-export * from "./helpers/Timeout.ts";
 export * from "./providers/DateTimeProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

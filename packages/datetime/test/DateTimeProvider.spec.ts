@@ -50,15 +50,15 @@ test("DateTimeProvider#timeout", async () => {
 	const dt = app.get(DateTimeProvider);
 	const stack: string[] = [];
 
-	dt.timeout(() => stack.push("A"), [10, "minutes"]);
-	const n2 = dt.timeout(() => stack.push("B"), [10, "minutes"]);
+	dt.createTimeout(() => stack.push("A"), [10, "minutes"]);
+	const n2 = dt.createTimeout(() => stack.push("B"), [10, "minutes"]);
 
 	expect(stack).toEqual([]);
 
 	await dt.travel([5, "minutes"]);
 	expect(stack).toEqual([]);
 
-	n2.clear();
+	dt.clearTimeout(n2);
 
 	await dt.travel([5, "minutes"]);
 	expect(stack).toEqual(["A"]);

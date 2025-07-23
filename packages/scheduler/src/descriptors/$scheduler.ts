@@ -6,13 +6,11 @@ import {
 	type Async,
 	createDescriptor,
 	Descriptor,
-	type DescriptorArgs,
 	KIND,
 	type Static,
 	t,
 } from "@alepha/core";
 import {
-	$interval,
 	type DateTime,
 	DateTimeProvider,
 	type DurationLike,
@@ -96,10 +94,10 @@ export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> 
 
 	protected onInit() {
 		if (this.options.interval) {
-			this.alepha.use($interval, {
-				duration: this.options.interval,
-				handler: () => this.trigger(),
-			});
+			this.dateTimeProvider.createInterval(
+				() => this.trigger(),
+				this.options.interval,
+			);
 		}
 		if (this.options.cron) {
 			this.cronProvider.createCronJob(this.name, this.options.cron, () =>

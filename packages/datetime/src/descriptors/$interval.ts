@@ -1,10 +1,4 @@
-import {
-	type Async,
-	createDescriptor,
-	Descriptor,
-	type DescriptorArgs,
-	KIND,
-} from "@alepha/core";
+import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import {
 	DateTimeProvider,
 	type DurationLike,
@@ -22,19 +16,9 @@ export const $interval = (options: IntervalDescriptorOptions) =>
 
 export interface IntervalDescriptorOptions {
 	/**
-	 * When to run the interval handler.
-	 * - "now": Run immediately when the interval is registered.
-	 * - "start": Run when the context starts.
-	 * - "ready": Run when the context is ready (after all services are started).
-	 *
-	 * @default "start"
-	 */
-	run?: "now" | "start" | "ready";
-
-	/**
 	 * The interval handler.
 	 */
-	handler: () => Async<void>;
+	handler: () => unknown;
 
 	/**
 	 * The interval duration.
@@ -45,71 +29,15 @@ export interface IntervalDescriptorOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class IntervalDescriptor extends Descriptor<IntervalDescriptorOptions> {
-	protected timer: any = null;
-	protected duration: number;
-	protected readonly run: () => Promise<void>;
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
 	public called = 0;
 
-	constructor(args: DescriptorArgs<IntervalDescriptorOptions>) {
-		super(args);
-		this.options.run ??= "start";
-		this.duration = this.alepha
-			.get(DateTimeProvider)
-			.duration(args.options.duration)
-			.asMilliseconds();
-
-		this.run = async () => {
-			try {
-				await this.options.handler();
-				this.called += 1;
-			} catch (error) {
-				console.error(error);
-			}
-		};
-
-		if (this.options.run === "now") {
-			this.run();
-		}
-	}
-
-	/**
-	 * Start the interval.
-	 */
-	public async start(): Promise<void> {
-		if (this.timer != null) {
-			return;
-		}
-
-		await this.run();
-
-		this.timer = setInterval(this.run, this.duration);
-	}
-
-	/**
-	 * Add time to the interval. For test purposes only.
-	 */
-	public async add(amountMs: number): Promise<void> {
-		if (this.timer == null) {
-			return;
-		}
-
-		clearInterval(this.timer);
-		this.timer = null;
-
-		const repeat = Math.floor(amountMs / this.duration);
-		for (let i = 0; i < repeat; i++) {
-			await this.run();
-		}
-	}
-
-	/**
-	 * Clear the interval.
-	 */
-	public clear(): void {
-		clearInterval(this.timer);
-		this.duration = 0;
-		this.timer = null;
+	protected onInit() {
+		this.dateTimeProvider.createInterval(async () => {
+			await this.options.handler();
+			this.called += 1;
+		}, this.options.duration);
 	}
 }
 

@@ -6,7 +6,6 @@ test("$interval - basic", async () => {
 	const count = { value: 0 };
 	class TestApp {
 		loop = $interval({
-			run: "start",
 			duration: [10, "seconds"],
 			handler: () => {
 				count.value += 1;
@@ -68,18 +67,18 @@ test("Alepha#start - flags", async () => {
 	expect(app.isLocked()).toBe(false);
 
 	const blocker = {
-		release: () => {},
+		resolve: () => {},
 	};
 
 	const end = new Promise<void>((resolve) => {
-		blocker.release = resolve;
+		blocker.resolve = resolve;
 	});
 
 	class LongStart {
 		_ = $hook({
 			on: "start",
 			handler: async () => {
-				blocker.release();
+				blocker.resolve();
 				await dt.wait([1, "minute"]);
 			},
 		});

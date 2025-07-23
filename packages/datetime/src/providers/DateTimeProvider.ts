@@ -2,11 +2,6 @@ import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
-import {
-	$interval,
-	type IntervalDescriptor,
-} from "../descriptors/$interval.ts";
-import { Timeout } from "../helpers/Timeout.ts";
 
 export type DateTimeApi = typeof dayjs;
 export type DateTime = dayjs.Dayjs;
@@ -21,10 +16,7 @@ export class DateTimeProvider {
 	protected log = $logger();
 	protected ref: DateTime | null = null;
 	protected readonly timeouts: Timeout[] = [];
-
-	public get intervals(): IntervalDescriptor[] {
-		return this.alepha.descriptors($interval);
-	}
+	protected readonly intervals: Interval[] = [];
 
 	constructor() {
 		this.plugins(dayjs);
@@ -43,22 +35,15 @@ export class DateTimeProvider {
 	protected readonly start = $hook({
 		on: "start",
 		handler: async () => {
+			// we start intervals now but first tick will be rejected as App is not ready yet
 			await Promise.all(
-				this.intervals
-					.filter((interval) => interval.options.run === "start")
-					.map((interval) => interval.start()),
-			);
-		},
-	});
-
-	protected readonly ready = $hook({
-		priority: "last",
-		on: "ready",
-		handler: async () => {
-			await Promise.all(
-				this.intervals
-					.filter((interval) => interval.options.run === "ready")
-					.map((interval) => interval.start()),
+				this.intervals.map(async (interval) => {
+					if (interval.timer != null) {
+						return;
+					}
+					await interval.run();
+					interval.timer = setInterval(interval.run, interval.duration);
+				}),
 			);
 		},
 	});
@@ -67,11 +52,13 @@ export class DateTimeProvider {
 		on: "stop",
 		handler: () => {
 			for (const timeout of this.timeouts) {
-				timeout.clear();
+				this.clearTimeout(timeout);
 			}
 
 			for (const interval of this.intervals) {
-				interval.clear();
+				clearInterval(interval.timer);
+				interval.duration = 0;
+				interval.timer = null;
 			}
 		},
 	});
@@ -141,9 +128,11 @@ export class DateTimeProvider {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
+	// Timer Management
+
 	/**
-	 * Return a promise that resolves after a next tick.
-	 * It uses `setTimeout` with 0ms delay.
+	 * Return a promise that resolves after the next tick.
+	 * It uses `setTimeout` with 0 ms delay.
 	 */
 	public async tick(): Promise<void> {
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -166,7 +155,7 @@ export class DateTimeProvider {
 			let clearTimeout: any;
 			let callback: any;
 
-			const timeout = this.timeout(
+			const timeout = this.createTimeout(
 				() => {
 					if (options.signal && clearTimeout) {
 						options.signal.removeEventListener("abort", callback);
@@ -178,7 +167,7 @@ export class DateTimeProvider {
 			);
 
 			if (options.signal) {
-				clearTimeout = () => timeout.clear();
+				clearTimeout = () => this.clearTimeout(timeout);
 				callback = () => {
 					clearTimeout();
 					resolve();
@@ -188,10 +177,19 @@ export class DateTimeProvider {
 		});
 	}
 
+	public createInterval(run: () => unknown, distance: DurationLike): Interval {
+		const interval = {
+			run,
+			duration: this.duration(distance).asMilliseconds(),
+		};
+		this.intervals.push(interval);
+		return interval;
+	}
+
 	/**
 	 * Run a callback after a certain duration.
 	 */
-	public timeout(
+	public createTimeout(
 		callback: () => void,
 		duration: DurationLike,
 		now?: number,
@@ -201,18 +199,32 @@ export class DateTimeProvider {
 			if (next < this.now()) {
 				callback();
 			}
-			return new Timeout(now, 0, () => {});
+			return {
+				now,
+				duration: 0,
+				callback: () => {},
+			};
 		}
 
-		const timeout = new Timeout(
-			now ?? this.now().valueOf(),
-			this.duration(duration).asMilliseconds(),
+		const timeout: Timeout = {
+			now: now ?? this.now().valueOf(),
+			duration: this.duration(duration).asMilliseconds(),
 			callback,
-		);
+		};
+
+		timeout.timer = setTimeout(() => {
+			timeout.callback();
+		}, timeout.duration);
 
 		this.timeouts.push(timeout);
 
 		return timeout;
+	}
+
+	public clearTimeout(timeout: Timeout): void {
+		clearTimeout(timeout.timer);
+		timeout.duration = 0;
+		timeout.timer = null;
 	}
 
 	/**
@@ -223,11 +235,11 @@ export class DateTimeProvider {
 		duration: DurationLike,
 	): Promise<T> {
 		const abort = new AbortController();
-		const timeout = this.timeout(() => abort.abort(), duration);
+		const timeout = this.createTimeout(() => abort.abort(), duration);
 		try {
 			return await fn(abort.signal);
 		} finally {
-			timeout.clear();
+			this.clearTimeout(timeout);
 		}
 	}
 
@@ -245,13 +257,40 @@ export class DateTimeProvider {
 		this.ref = this.ref || this.now();
 		this.ref = this.ref.add(this.duration(duration, unit));
 		const ms = this.duration(duration, unit).asMilliseconds();
+		const now = Date.now();
 
 		for (const timeout of this.timeouts) {
-			timeout.add(ms);
+			if (!timeout.timer) {
+				continue;
+			}
+
+			clearTimeout(timeout.timer);
+			timeout.timer = null;
+
+			const spent = now - timeout.now;
+			timeout.duration = timeout.duration - spent - ms;
+
+			if (timeout.duration <= 0) {
+				timeout.callback();
+			} else {
+				timeout.timer = setTimeout(() => {
+					timeout.callback();
+				}, timeout.duration);
+			}
 		}
 
 		for (const interval of this.intervals) {
-			await interval.add(ms);
+			if (!interval.timer) {
+				continue;
+			}
+
+			clearInterval(interval.timer);
+			interval.timer = null;
+
+			const repeat = Math.floor(ms / interval.duration);
+			for (let i = 0; i < repeat; i++) {
+				await interval.run();
+			}
 		}
 
 		await this.tick();
@@ -271,4 +310,17 @@ export class DateTimeProvider {
 	public reset(): void {
 		this.ref = null;
 	}
+}
+
+export interface Interval {
+	timer?: any;
+	duration: number;
+	run: () => unknown;
+}
+
+export interface Timeout {
+	now: number;
+	timer?: any;
+	duration: number;
+	callback: () => void;
 }

@@ -54,7 +54,7 @@ export class MemoryLockProvider implements LockProvider {
 			delete this.storeTimeout[key];
 		}
 
-		this.storeTimeout[key] = this.dateTimeProvider.timeout(() => {
+		this.storeTimeout[key] = this.dateTimeProvider.createTimeout(() => {
 			delete this.store[key];
 			delete this.storeTimeout[key];
 		}, ms);

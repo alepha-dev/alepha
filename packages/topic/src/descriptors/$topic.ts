@@ -3,7 +3,6 @@ import {
 	$logger,
 	createDescriptor,
 	Descriptor,
-	type InstantiableClass,
 	KIND,
 	type Service,
 	type Static,
@@ -119,7 +118,7 @@ export class TopicDescriptor<T extends TopicMessageSchema> extends Descriptor<
 
 				const timeoutDuration = options.timeout ?? [10, "seconds"];
 
-				ref.timeout = this.dateTimeProvider.timeout(() => {
+				ref.timeout = this.dateTimeProvider.createTimeout(() => {
 					clear();
 					reject(
 						new TopicTimeoutError(

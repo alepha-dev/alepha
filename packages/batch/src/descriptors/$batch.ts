@@ -121,7 +121,7 @@ export class BatchDescriptor<
 				this.flushPartition(partitionKey);
 			} else if (!partition.timeout) {
 				// 6. Start the timeout if it's not already running for this partition
-				partition.timeout = this.dateTime.timeout(() => {
+				partition.timeout = this.dateTime.createTimeout(() => {
 					this.log.trace(
 						`Batch partition '${partitionKey}' timed out, flushing.`,
 					);

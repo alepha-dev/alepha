@@ -41,7 +41,7 @@ export class MemoryCacheProvider implements CacheProvider {
 		}
 
 		if (ttl) {
-			this.store[name][key].timeout = this.dateTimeProvider.timeout(
+			this.store[name][key].timeout = this.dateTimeProvider.createTimeout(
 				() => this.del(name, key),
 				ttl,
 			);
