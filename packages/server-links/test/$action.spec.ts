@@ -13,8 +13,8 @@ const ctx = Alepha.create({
 	env: {},
 }).with(AlephaServerLinks);
 
-const app = ctx.get(CrudApp);
-const linkLocal = ctx.get(
+const app = ctx.inject(CrudApp);
+const linkLocal = ctx.inject(
 	class Client {
 		client = $client<CrudApp>();
 	},
@@ -22,11 +22,11 @@ const linkLocal = ctx.get(
 
 const linkRemote = Alepha.create()
 	.with(AlephaServerLinks)
-	.get(
+	.inject(
 		class Client {
 			client = $client<CrudApp>();
 			app = $remote({
-				url: () => ctx.get(ServerProvider).hostname,
+				url: () => ctx.inject(ServerProvider).hostname,
 			});
 		},
 	).client;

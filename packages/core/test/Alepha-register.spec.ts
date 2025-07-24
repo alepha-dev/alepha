@@ -25,7 +25,7 @@ test("Alepha#register - basic swapping", () => {
 					value = "z";
 				},
 			})
-			.get(M).a.value,
+			.inject(M).a.value,
 	).toBe("z");
 });
 
@@ -45,13 +45,13 @@ test("Alepha#register - optional", () => {
 	}
 
 	const T1 = Alepha.create().with(M);
-	expect(T1.get(M).a.a).toBe("a");
+	expect(T1.inject(M).a.a).toBe("a");
 
 	const T2 = Alepha.create().with({
 		provide: A,
 		use: B,
 	});
-	expect(T2.get(M).a.a).toBe("b");
+	expect(T2.inject(M).a.a).toBe("b");
 
 	const T3 = Alepha.create();
 	T3.with({
@@ -59,7 +59,7 @@ test("Alepha#register - optional", () => {
 		use: C,
 		optional: true,
 	});
-	expect(T3.get(M).a.a).toBe("c");
+	expect(T3.inject(M).a.a).toBe("c");
 
 	const T4 = Alepha.create();
 	T4.with(M);
@@ -68,7 +68,7 @@ test("Alepha#register - optional", () => {
 		use: C,
 		optional: true,
 	});
-	expect(T1.get(M).a.a).toBe("a");
+	expect(T1.inject(M).a.a).toBe("a");
 
 	const T5 = Alepha.create();
 	T5.with(M);

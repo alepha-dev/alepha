@@ -32,7 +32,7 @@ describe("ServerMultipartProvider", () => {
 		body.append("file", file);
 
 		const resp = await fetch(
-			`${alepha.get(ServerProvider).hostname}/api/upload`,
+			`${alepha.inject(ServerProvider).hostname}/api/upload`,
 			{
 				method: "POST",
 				body,
@@ -50,7 +50,7 @@ describe("ServerMultipartProvider", () => {
 
 		const file = new File(["test content"], "test.txt", { type: "text/plain" });
 
-		const resp = await alepha.get(App).upload({
+		const resp = await alepha.inject(App).upload({
 			body: {
 				file,
 			},

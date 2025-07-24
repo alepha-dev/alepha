@@ -6,7 +6,7 @@ import { Blog } from "./fixtures/blogSchema.ts";
 
 const setup = async (env: Env = {}) => {
 	const alepha = Alepha.create({ env });
-	const app = alepha.get(Blog);
+	const app = alepha.inject(Blog);
 	await alepha.start();
 
 	const john = await app.users.create({

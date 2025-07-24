@@ -13,8 +13,8 @@ const a1 = Alepha.create().with(App).with(AlephaServerCompress);
 const a2 = Alepha.create().with(App);
 
 test("ServerCompressProvider", async ({ expect }) => {
-	const serv1 = a1.get(ServerProvider);
-	const serv2 = a2.get(ServerProvider);
+	const serv1 = a1.inject(ServerProvider);
+	const serv2 = a2.inject(ServerProvider);
 
 	const resp1 = await fetch(`${serv1.hostname}/api/hello`, {
 		headers: { "Accept-Encoding": "gzip" },

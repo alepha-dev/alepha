@@ -35,7 +35,7 @@ const alepha = Alepha.create()
 		storagePath: testStoragePath,
 	});
 
-const provider = alepha.get(LocalFileStorageProvider);
+const provider = alepha.inject(LocalFileStorageProvider);
 
 afterAll(() => rm(testStoragePath, { recursive: true, force: true }));
 

@@ -38,7 +38,7 @@ export const $serviceAccount = (
 	const store: {
 		cache?: AccessTokenResponse;
 	} = {};
-	const dateTimeProvider = context.get(DateTimeProvider);
+	const dateTimeProvider = context.inject(DateTimeProvider);
 	const gracePeriod = options.gracePeriod ?? 30000;
 
 	const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
@@ -100,7 +100,7 @@ export const $serviceAccount = (
 
 	const { secret, signOptions } = options.jwt;
 
-	const jwt = context.get(JwtProvider);
+	const jwt = context.inject(JwtProvider);
 	const sub = randomUUID();
 	const roles = options.jwt.roles ?? [];
 

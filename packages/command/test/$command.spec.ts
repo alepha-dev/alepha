@@ -41,7 +41,7 @@ describe("$command", () => {
 
 		const mockLogger = new MockLogger();
 		const alepha = Alepha.create({ log: mockLogger }).with(TestCommands);
-		const provider = alepha.get(CliProvider);
+		const provider = alepha.inject(CliProvider);
 
 		if (argv) {
 			provider.options.argv = argv;
@@ -186,7 +186,7 @@ describe("$command", () => {
 	describe("Help Message", () => {
 		test("should print general help with --help flag", async () => {
 			const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
-				const provider = alepha.get(CliProvider);
+				const provider = alepha.inject(CliProvider);
 				provider.options.name = "my-cli";
 				provider.options.description = "My awesome CLI tool.";
 			});

@@ -20,7 +20,7 @@ test("LinkProvider - local handler", async ({ expect }) => {
 	const alepha = Alepha.create().with(App).with(ServerLinksProvider);
 	await alepha.start();
 
-	const app = alepha.get(LinkProvider).client<App>();
+	const app = alepha.inject(LinkProvider).client<App>();
 
 	expect(await app.ping()).toStrictEqual({ pong: true });
 });
@@ -29,7 +29,7 @@ test("LinkProvider - links", async ({ expect }) => {
 	const alepha = Alepha.create().with(App).with(ServerLinksProvider);
 	await alepha.start();
 
-	const res = await fetch(`${alepha.get(ServerProvider).hostname}/api/_links`);
+	const res = await fetch(`${alepha.inject(ServerProvider).hostname}/api/_links`);
 
 	expect(await res.json()).toStrictEqual({
 		prefix: "/api",

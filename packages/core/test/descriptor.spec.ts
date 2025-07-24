@@ -22,11 +22,9 @@ test("descriptor", () => {
 	}
 
 	const alepha = Alepha.create();
-	const app = alepha.get(TestApp);
-	const h3 = alepha.use($my, { name: "h3" });
+	const app = alepha.inject(TestApp);
 
 	expect(app.h1.key()).toBe("h1");
 	expect(app.h2.key()).toBe("hello");
 	expect(app.h2.identity()).toBe("TestApp:hello");
-	expect(h3.identity()).toBe("Alepha:h3");
 });

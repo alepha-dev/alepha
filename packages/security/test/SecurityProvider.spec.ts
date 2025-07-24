@@ -10,7 +10,7 @@ import {
 } from "../src";
 
 test("SecurityProvider#can - default", () => {
-	const sec = Alepha.create().get(SecurityProvider);
+	const sec = Alepha.create().inject(SecurityProvider);
 
 	sec.createPermission("hey");
 	sec.createRole({
@@ -26,7 +26,7 @@ test("SecurityProvider#can - default", () => {
 
 test("SecurityProvider#permissions - duplicate", () => {
 	const app = Alepha.create();
-	const security = app.get(SecurityProvider);
+	const security = app.inject(SecurityProvider);
 
 	expect(security.getPermissions().length).toEqual(0);
 	security.createPermission("something:else");
@@ -37,7 +37,7 @@ test("SecurityProvider#permissions - duplicate", () => {
 
 test("SecurityProvider#permissions - invalid", () => {
 	const app = Alepha.create();
-	const security = app.get(SecurityProvider);
+	const security = app.inject(SecurityProvider);
 	const invalid = [
 		"",
 		":",
@@ -59,7 +59,7 @@ test("SecurityProvider#permissions - invalid", () => {
 
 test("SecurityProvider#permissions - user", () => {
 	const app = Alepha.create();
-	const sec = app.get(SecurityProvider);
+	const sec = app.inject(SecurityProvider);
 
 	sec.createPermission("hello:hey");
 	sec.createPermission("hello:ho");
@@ -110,7 +110,7 @@ test("SecurityProvider#can - group", async () => {
 		},
 	});
 
-	const sec = app.get(SecurityProvider);
+	const sec = app.inject(SecurityProvider);
 
 	const permission = sec.createPermission("hello:hey");
 
@@ -151,7 +151,7 @@ test("SecurityProvider#can - group", async () => {
 
 test("SecurityProvider#checkPermission - ownership", async () => {
 	const app = Alepha.create();
-	const sec = app.get(SecurityProvider);
+	const sec = app.inject(SecurityProvider);
 
 	const user = {
 		name: "user",
@@ -190,8 +190,8 @@ test("SecurityProvider#checkPermission - ownership", async () => {
 
 test("SecurityProvider#jwt - default", async () => {
 	const app = Alepha.create();
-	const jwt = app.get(JwtProvider);
-	const sec = app.get(SecurityProvider);
+	const jwt = app.inject(JwtProvider);
+	const sec = app.inject(SecurityProvider);
 
 	const userPermission = "hi";
 	const userRole = {
@@ -246,7 +246,7 @@ test("SecurityProvider#jwt - default", async () => {
 
 test("SecurityProvider#jwt - realms", async () => {
 	const app = Alepha.create();
-	const sec = app.get(SecurityProvider);
+	const sec = app.inject(SecurityProvider);
 
 	sec.createRealm({ name: "customers", roles: [] });
 	sec.createRealm({ name: "operators", roles: [] });
@@ -311,7 +311,7 @@ test("SecurityProvider#jwt - realms", async () => {
 });
 
 test("SecurityProvider#can - exclude", () => {
-	const sec = Alepha.create().get(SecurityProvider);
+	const sec = Alepha.create().inject(SecurityProvider);
 	const group = "message";
 	sec.createPermission({ name: "new", group });
 	sec.createPermission({ name: "edit", group });

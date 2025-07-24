@@ -4,7 +4,7 @@ import { DateTimeProvider } from "../src";
 
 test("DateTimeProvider#pause", async () => {
 	const app = Alepha.create();
-	const dt = app.get(DateTimeProvider);
+	const dt = app.inject(DateTimeProvider);
 	const clock = () => dt.nowISOString();
 
 	const n1 = clock();
@@ -27,7 +27,7 @@ test("DateTimeProvider#pause", async () => {
 test("DateTimeProvider#add", async () => {
 	const stack: string[] = [];
 	const app = Alepha.create();
-	const dt = app.get(DateTimeProvider);
+	const dt = app.inject(DateTimeProvider);
 
 	stack.push("A");
 
@@ -47,7 +47,7 @@ test("DateTimeProvider#add", async () => {
 
 test("DateTimeProvider#timeout", async () => {
 	const app = Alepha.create();
-	const dt = app.get(DateTimeProvider);
+	const dt = app.inject(DateTimeProvider);
 	const stack: string[] = [];
 
 	dt.createTimeout(() => stack.push("A"), [10, "minutes"]);
@@ -66,7 +66,7 @@ test("DateTimeProvider#timeout", async () => {
 
 test("DateTimeProvider#wait", async () => {
 	const app = Alepha.create();
-	const dt = app.get(DateTimeProvider);
+	const dt = app.inject(DateTimeProvider);
 	const stack: string[] = [];
 
 	const abortController = new AbortController();

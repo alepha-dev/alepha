@@ -16,7 +16,7 @@ describe("$batch descriptor", () => {
 
 	beforeEach(() => {
 		alepha = Alepha.create().with(AlephaBatch);
-		time = alepha.get(DateTimeProvider);
+		time = alepha.inject(DateTimeProvider);
 	});
 
 	afterEach(async () => {
@@ -33,7 +33,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		app.batcher.push("A");
@@ -59,7 +59,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		app.batcher.push("A");
@@ -85,7 +85,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		app.batcher.push({ id: 1, value: "A" });
@@ -127,7 +127,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		app.batcher.push("A");
@@ -153,7 +153,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		const pushPromise = app.batcher.push("A");
@@ -175,7 +175,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		const pushPromise = app.batcher.push("A");
@@ -203,7 +203,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		// Push 4 items to trigger 4 batches
@@ -231,7 +231,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		app.batcher.push({ id: 1, value: "A" });
@@ -270,7 +270,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		app.batcher.push({ id: 1, value: "A" });
@@ -295,7 +295,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		// Vitest doesn't properly catch type errors in async promises thrown by TypeBox,
@@ -319,7 +319,7 @@ describe("$batch descriptor", () => {
 			});
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		await app.batcher.flush(); // Should not throw or call handler
@@ -338,7 +338,7 @@ describe("$batch descriptor", () => {
 				handler: mockHandler,
 			});
 		}
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 		await app.batcher.push("D");
 		await app.batcher.flush("D");
@@ -374,7 +374,7 @@ describe("$batch descriptor", () => {
 			}
 		}
 
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		await alepha.start();
 
 		const tasks: Promise<any>[] = [];

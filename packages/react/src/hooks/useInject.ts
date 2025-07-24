@@ -8,5 +8,5 @@ export const useInject = <T extends object>(clazz: Service<T>): T => {
 		throw new Error("useRouter must be used within a <RouterProvider>");
 	}
 
-	return useMemo(() => ctx.alepha.get(clazz), []);
+	return useMemo(() => ctx.alepha.inject(clazz), []);
 };

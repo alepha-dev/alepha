@@ -14,7 +14,7 @@ test("$permission - can", async () => {
 		});
 	}
 
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 
 	await alepha.start();
 

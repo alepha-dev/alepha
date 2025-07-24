@@ -50,7 +50,7 @@ export const testTopicBasic = async (provider: Service<TopicProvider>) => {
 			use: provider,
 		});
 
-		const test = app.get(testClass);
+		const test = app.inject(testClass);
 
 		await app.start();
 
@@ -99,7 +99,7 @@ export const testTopicAsSub = async (provider: Service<TopicProvider>) => {
 
 	await app.start();
 
-	const a = app.get(A);
+	const a = app.inject(A);
 
 	await a.t.publish({ n: 123 });
 
@@ -119,7 +119,7 @@ export const testTopicLateSubscribe = async (
 
 	await alepha.start();
 
-	const provider = alepha.get(TopicProvider);
+	const provider = alepha.inject(TopicProvider);
 
 	// no topic created yet !
 

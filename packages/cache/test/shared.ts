@@ -36,8 +36,8 @@ export const testCacheBasic = async (
 		provide: CacheProvider,
 		use: cacheProvider,
 	});
-	const test = app.get(TestCache);
-	const time = app.get(DateTimeProvider);
+	const test = app.inject(TestCache);
+	const time = app.inject(DateTimeProvider);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -45,7 +45,7 @@ export const testCacheBasic = async (
 	expect(await test.a({ name: "B" })).toBe("B:1");
 	expect(await test.a({ name: "B" })).toBe("B:1");
 
-	if (!(app.get(CacheProvider) instanceof MemoryCacheProvider)) {
+	if (!(app.inject(CacheProvider) instanceof MemoryCacheProvider)) {
 		return; // we can mock only MemoryCacheProvider
 	}
 
@@ -71,7 +71,7 @@ export const testCacheStop = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 	await app.start();
 	await app.stop();
 
@@ -91,7 +91,7 @@ export const testCacheMissingProvider = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
 	expect(await test.a({ name: "A" })).toBe("A:1");
@@ -112,7 +112,7 @@ export const testCacheDisabled = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -131,7 +131,7 @@ export const testCacheInvalidateByKey = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -154,7 +154,7 @@ export const testCacheInvalidateByArgs = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -177,7 +177,7 @@ export const testCacheInvalidateAll = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -198,7 +198,7 @@ export const testCacheClear = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(TestCache);
+	const test = app.inject(TestCache);
 	await app.start();
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
@@ -238,7 +238,7 @@ export const testCacheReturnTypes = async (
 		use: cacheProvider,
 	});
 
-	const test = app.get(Types);
+	const test = app.inject(Types);
 
 	expect(await test.json()).toEqual({ a: 1 });
 	expect(await test.json()).toEqual({ a: 1 });

@@ -31,7 +31,7 @@ beforeEach(() => {
 		.with(AlephaBucket)
 		.with(TestApp);
 
-	provider = alepha.get(MemoryFileStorageProvider);
+	provider = alepha.inject(MemoryFileStorageProvider);
 });
 
 describe("MemoryFileStorageProvider", () => {

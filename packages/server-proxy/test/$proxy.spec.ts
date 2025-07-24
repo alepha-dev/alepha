@@ -40,7 +40,7 @@ const a1 = Alepha.create().with(App);
 class AppProxy {
 	proxy = $proxy({
 		path: "/api/*",
-		target: () => a1.get(ServerProvider).hostname,
+		target: () => a1.inject(ServerProvider).hostname,
 	});
 }
 
@@ -48,7 +48,7 @@ const alephaProxy = Alepha.create().with(AppProxy);
 
 test("$proxy", async () => {
 	for (let i = 0; i < 10; i++) {
-		const hostname = alephaProxy.get(ServerProvider).hostname;
+		const hostname = alephaProxy.inject(ServerProvider).hostname;
 
 		const response = await fetch(`${hostname}/api/hello?transform=uppercase`, {
 			method: "POST",

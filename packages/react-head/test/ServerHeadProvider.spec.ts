@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { ServerHeadProvider } from "../src/providers/ServerHeadProvider.ts";
 
 const alepha = Alepha.create();
-const serverHeadProvider = alepha.get(ServerHeadProvider);
+const serverHeadProvider = alepha.inject(ServerHeadProvider);
 
 test("ServerHeadProvider - basic", ({ expect }) => {
 	const template = `

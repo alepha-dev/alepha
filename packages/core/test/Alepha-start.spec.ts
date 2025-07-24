@@ -32,7 +32,7 @@ test("Alepha#start - lock", async () => {
 	expect(() => app.with(class {})).toThrow(ContainerLockedError);
 
 	// you can't get after start.
-	expect(() => app.get(class {})).toThrow(ContainerLockedError);
+	expect(() => app.inject(class {})).toThrow(ContainerLockedError);
 });
 
 /**

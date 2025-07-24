@@ -55,11 +55,11 @@ export const testSchedulerBasic = async (options: {
 
 	if (options.scheduler.interval) {
 		await Promise.all(
-			apps.map((app) => app.get(DateTimeProvider).travel([64, "seconds"])),
+			apps.map((app) => app.inject(DateTimeProvider).travel([64, "seconds"])),
 		);
 	} else {
 		await Promise.all(
-			apps.map((app) => app.get(DateTimeProvider).travel([1, "hour"])),
+			apps.map((app) => app.inject(DateTimeProvider).travel([1, "hour"])),
 		);
 	}
 

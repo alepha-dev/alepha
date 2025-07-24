@@ -31,7 +31,7 @@ describe("ServerCorsProvider", () => {
 			alepha.configure(ServerCorsProvider, corsOptions);
 		}
 
-		server = alepha.get(ServerProvider);
+		server = alepha.inject(ServerProvider);
 
 		await alepha.start();
 	};

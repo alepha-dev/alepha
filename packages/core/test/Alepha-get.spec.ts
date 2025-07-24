@@ -9,19 +9,19 @@ test("Alepha#get - skip registration", () => {
 
 	const alepha = new Alepha();
 
-	expect(alepha.get(Logger, { skipRegistration: true }).a).not.toBe(
-		alepha.get(Logger, { skipRegistration: true }).a,
+	expect(alepha.inject(Logger, { skipRegistration: true }).a).not.toBe(
+		alepha.inject(Logger, { skipRegistration: true }).a,
 	);
 
-	expect(alepha.get(Logger).a).toBe(alepha.get(Logger).a);
+	expect(alepha.inject(Logger).a).toBe(alepha.inject(Logger).a);
 
-	expect(alepha.get(Logger, { skipRegistration: true }).a).toBe(
-		alepha.get(Logger, { skipRegistration: true }).a,
+	expect(alepha.inject(Logger, { skipRegistration: true }).a).toBe(
+		alepha.inject(Logger, { skipRegistration: true }).a,
 	);
 
 	expect(
-		alepha.get(Logger, { skipRegistration: true, skipCache: true }).a,
-	).not.toBe(alepha.get(Logger, { skipRegistration: true, skipCache: true }).a);
+		alepha.inject(Logger, { skipRegistration: true, skipCache: true }).a,
+	).not.toBe(alepha.inject(Logger, { skipRegistration: true, skipCache: true }).a);
 });
 
 test("Alepha#get - args", () => {
@@ -31,12 +31,12 @@ test("Alepha#get - args", () => {
 
 	const alepha = new Alepha();
 
-	expect(alepha.get(Logger, { args: ["a"] }).a).toBe("a");
-	expect(alepha.get(Logger).a).toBe("a");
+	expect(alepha.inject(Logger, { args: ["a"] }).a).toBe("a");
+	expect(alepha.inject(Logger).a).toBe("a");
 });
 
 test("Alepha#get - alepha", () => {
 	const alepha = new Alepha();
 
-	expect(alepha.get(Alepha)).toBe(alepha);
+	expect(alepha.inject(Alepha)).toBe(alepha);
 });

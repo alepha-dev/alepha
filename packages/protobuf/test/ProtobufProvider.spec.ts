@@ -2,7 +2,7 @@ import { Alepha, t } from "@alepha/core";
 import { test } from "vitest";
 import { ProtobufProvider } from "../src";
 
-const protobuf = Alepha.create().get(ProtobufProvider);
+const protobuf = Alepha.create().inject(ProtobufProvider);
 const userSchema = t.object({
 	username: t.string(),
 	createdAt: t.datetime(),

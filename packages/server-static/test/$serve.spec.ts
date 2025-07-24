@@ -51,7 +51,7 @@ describe("@alepha/server-static", () => {
 			.with(TestApp);
 
 		await alepha.start();
-		const server = alepha.get(ServerProvider);
+		const server = alepha.inject(ServerProvider);
 
 		return {
 			hostname: server.hostname,

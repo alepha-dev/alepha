@@ -4,7 +4,7 @@ import { $sequence } from "../src";
 import { SequenceProvider } from "../src/providers/SequenceProvider.ts";
 
 const alepha = Alepha.create();
-const app = alepha.get(
+const app = alepha.inject(
 	class App {
 		seq = $sequence();
 		seq2 = $sequence({ start: 100, increment: 2 });
@@ -28,7 +28,7 @@ test("$sequence options", async () => {
 });
 
 test("$sequence - SeqProvider", async () => {
-	const seqProvider = alepha.get(SequenceProvider);
+	const seqProvider = alepha.inject(SequenceProvider);
 	const seq = await seqProvider.create("test", { start: 100, increment: 2 });
 	expect(await seqProvider.next(seq)).toBe(100);
 	expect(await seqProvider.next(seq)).toBe(102);

@@ -19,14 +19,14 @@ const alepha = Alepha.create().with(AlephaBucket).with(TestApp);
 
 describe("$bucket", () => {
 	test("should reject mimeTypes", async ({ expect }) => {
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		const file = new File(["test content"], "test.txt", { type: "text/plain" });
 
 		await expect(app.images.upload(file)).rejects.toThrow(InvalidFileError);
 	});
 
 	test("should reject file size", async ({ expect }) => {
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		const largeFile = new File(["a".repeat(2 * 1024 * 1024)], "large.png", {
 			type: "image/png",
 		});
@@ -37,7 +37,7 @@ describe("$bucket", () => {
 	});
 
 	test("should upload and download files", async ({ expect }) => {
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		const file = new File(["test content"], "test.png", { type: "image/png" });
 
 		const fileId = await app.images.upload(file);
@@ -50,7 +50,7 @@ describe("$bucket", () => {
 	});
 
 	test("should call events on upload and delete", async ({ expect }) => {
-		const app = alepha.get(TestApp);
+		const app = alepha.inject(TestApp);
 		const file = new File(["test content"], "test.png");
 
 		let uploadEventCalled = false;
@@ -91,14 +91,14 @@ describe("$bucket", () => {
 		const alepha = Alepha.create().with(AlephaBucket).with(AnotherApp);
 		await alepha.start();
 
-		const app = alepha.get(AnotherApp);
+		const app = alepha.inject(AnotherApp);
 		const file = new File(["test content"], "test.png", { type: "image/png" });
 		const fileId = await app.gn.upload(file);
 		await expect(
-			alepha.get(FileStorageProvider).exists(app.gn.name, fileId),
+			alepha.inject(FileStorageProvider).exists(app.gn.name, fileId),
 		).resolves.toBe(false);
 		await expect(
-			alepha.get(MySecondMemoryProvider).exists(app.gn.name, fileId),
+			alepha.inject(MySecondMemoryProvider).exists(app.gn.name, fileId),
 		).resolves.toBe(true);
 	});
 });

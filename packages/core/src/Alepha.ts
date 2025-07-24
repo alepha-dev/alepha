@@ -470,7 +470,7 @@ export class Alepha {
 		this.log.info("Starting App...");
 
 		for (const [key] of this.substitutions.entries()) {
-			this.get(key);
+			this.inject(key);
 		}
 
 		const target = this.state("target");
@@ -630,7 +630,7 @@ export class Alepha {
 			return this;
 		}
 
-		this.get(entry);
+		this.inject(entry);
 
 		return this;
 	}
@@ -645,7 +645,7 @@ export class Alepha {
 	 *
 	 * @return The instance of the specified class or type.
 	 */
-	public get<T extends object>(
+	public inject<T extends object>(
 		service: Service<T>,
 		opts: {
 			/**
@@ -685,7 +685,7 @@ export class Alepha {
 
 		const substitute = this.substitutions.get(service);
 		if (substitute) {
-			return this.get(substitute, { parent, module });
+			return this.inject(substitute, { parent, module });
 		}
 
 		const index = this.pendingInstantiations.indexOf(service);
@@ -722,7 +722,7 @@ export class Alepha {
 		// check if service has been registered by a module
 		if (this.has(service) && !opts.skipCache) {
 			// if the service is already registered, we just return the instance
-			return this.get(service);
+			return this.inject(service);
 		}
 
 		const instance: T = this.new(service, opts.args, module);
@@ -804,7 +804,7 @@ export class Alepha {
 		state: Partial<T["options"]>,
 	): this {
 		if (this.has(service)) {
-			Object.assign(this.get(service).options, state);
+			Object.assign(this.inject(service).options, state);
 		} else {
 			this.configurations.set(service, state);
 		}
@@ -814,45 +814,44 @@ export class Alepha {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	public use<T extends DescriptorFactoryLike>(
-		factory: T,
-		options?: Parameters<T>[0],
-		context: {
-			propertyKey?: string;
-			service?: Service;
-			module?: ModuleDescriptor;
-		} = {},
-	): ReturnType<T> {
-		if (this.isLocked()) {
-			throw new ContainerLockedError(
-				`Container is locked. No more descriptors can be added.`,
-			);
-		}
-
-		const outside = !__alephaRef.context;
-		if (outside) {
-			__alephaRef.context = this;
-			__alephaRef.definition = context.service;
-			__alephaRef.module =
-				this.modules.find((it) => it.$name === context?.module?.name) ??
-				(context.service
-					? this.registry.get(context.service)?.module
-					: undefined);
-		}
-
-		const value = factory(options);
-		if (value instanceof Descriptor) {
-			this.processDescriptor(value, context.propertyKey);
-		}
-
-		if (outside) {
-			__alephaRef.context = undefined;
-			__alephaRef.definition = undefined;
-			__alephaRef.module = undefined;
-		}
-
-		return value as ReturnType<T>;
-	}
+	// public use<T extends Descriptor>(
+	// 	factory: () => T,
+	// 	context: {
+	// 		propertyKey?: string;
+	// 		service?: Service;
+	// 		module?: ModuleDescriptor;
+	// 	} = {},
+	// ): T {
+	// 	if (this.isLocked()) {
+	// 		throw new ContainerLockedError(
+	// 			`Container is locked. No more descriptors can be added.`,
+	// 		);
+	// 	}
+	//
+	// 	const outside = !__alephaRef.context;
+	// 	if (outside) {
+	// 		__alephaRef.context = this;
+	// 		__alephaRef.definition = context.service;
+	// 		__alephaRef.module =
+	// 			this.modules.find((it) => it.$name === context?.module?.name) ??
+	// 			(context.service
+	// 				? this.registry.get(context.service)?.module
+	// 				: undefined);
+	// 	}
+	//
+	// 	const value = factory();
+	// 	if (value instanceof Descriptor) {
+	// 		this.processDescriptor(value, context.propertyKey);
+	// 	}
+	//
+	// 	if (outside) {
+	// 		__alephaRef.context = undefined;
+	// 		__alephaRef.definition = undefined;
+	// 		__alephaRef.module = undefined;
+	// 	}
+	//
+	// 	return value as T;
+	// }
 
 	// -------------------------------------------------------------------------------------------------------------------
 
@@ -1107,7 +1106,7 @@ export class Alepha {
 	> {
 		for (const [key] of this.substitutions.entries()) {
 			if (!this.has(key)) {
-				this.get(key);
+				this.inject(key);
 			}
 		}
 
@@ -1351,3 +1350,6 @@ export interface Hooks {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+type OptionsFor<T extends (...args: any) => any> =
+	Parameters<T>[0] extends infer C ? C : never;

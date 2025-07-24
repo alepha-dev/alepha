@@ -7,6 +7,10 @@ export abstract class RouterProvider<T extends Route = Route> {
 		return this.mapParams(this.createRouteMatch(path));
 	}
 
+	public getRoutes(): T[] {
+		return this.routes;
+	}
+
 	protected push(route: T): void {
 		if (!this.routePathRegex.test(route.path)) {
 			throw new Error(`Route "${route.path}" is not valid`);

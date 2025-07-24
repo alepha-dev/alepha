@@ -35,7 +35,7 @@ class App {
 
 test("references - delete cascade", async () => {
 	const alepha = Alepha.create();
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	const user = await app.users.create({ name: "John" });
@@ -61,7 +61,7 @@ test("references - delete cascade", async () => {
 
 test("references - delete null", async () => {
 	const alepha = Alepha.create();
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	const user = await app.users.create({ name: "John" });

@@ -22,7 +22,7 @@ test("Alepha#configure", () => {
 	}
 
 	const alepha = Alepha.create();
-	const b = alepha.get(B);
+	const b = alepha.inject(B);
 	alepha.configure(A, { name: "B" });
 	alepha.configure(C, { x: "B" });
 
@@ -61,7 +61,7 @@ test("Alepha#configure - substitution", () => {
 	alepha.configure(Impl1, { name: "hey1" });
 	alepha.configure(Impl2, { name: "hey2" });
 
-	expect(alepha.get(Abstract).options.name).toBe("hey1");
+	expect(alepha.inject(Abstract).options.name).toBe("hey1");
 	expect(alepha.graph()).toEqual({
 		Impl1: { from: ["Alepha"], as: ["Abstract"] },
 	});

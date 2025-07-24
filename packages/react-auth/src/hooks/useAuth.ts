@@ -15,13 +15,13 @@ export const useAuth = (): AuthHook => {
 	return {
 		user: context.user,
 		logout: () => {
-			ctx.alepha.get(ReactAuth).logout();
+			ctx.alepha.inject(ReactAuth).logout();
 		},
 		login: (_provider?: string) => {
-			ctx.alepha.get(ReactAuth).login();
+			ctx.alepha.inject(ReactAuth).login();
 		},
 		can: (name: string) => {
-			const client = ctx.alepha.get(LinkProvider);
+			const client = ctx.alepha.inject(LinkProvider);
 			return client.can(name);
 		},
 	};

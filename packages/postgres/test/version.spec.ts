@@ -48,7 +48,7 @@ class A {
 
 test("version - basic", async () => {
 	const alepha = Alepha.create();
-	const app = alepha.get(A);
+	const app = alepha.inject(A);
 	await alepha.start();
 
 	const { id } = await app.repository.save({ counter: 0 });

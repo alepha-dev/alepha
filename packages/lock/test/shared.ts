@@ -61,7 +61,7 @@ export const testLockBasic = async (
 			.with(AlephaLock)
 			.with(TestLock)
 			.start()
-			.then((a) => a.get(TestLock));
+			.then((a) => a.inject(TestLock));
 	};
 
 	const app1 = await createApp();
@@ -116,7 +116,7 @@ export const testLockWait = async (
 				use: provider,
 			});
 		app.with(TestLockWait);
-		return app.start().then(() => app.get(TestLockWait));
+		return app.start().then(() => app.inject(TestLockWait));
 	};
 
 	const app1 = await createApp();

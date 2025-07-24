@@ -28,9 +28,6 @@ declare module "@alepha/core" {
 	interface Hooks {
 		// -----------------------------------------------------------------------------------------------------------------
 		// Server hooks
-		"server:onRoute": {
-			route: ServerRoute;
-		};
 		"server:onRequest": {
 			route: ServerRoute;
 			request: ServerRequest;

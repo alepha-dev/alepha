@@ -1,13 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { JwtProvider, SecurityProvider } from "@alepha/security";
-import { isServerAction } from "../../descriptors/$action.ts";
+import { $action, isServerAction } from "../../descriptors/$action.ts";
 
 export class ServerSecurityProvider {
 	protected readonly log = $logger();
 	protected readonly securityProvider = $inject(SecurityProvider);
 	protected readonly jwtProvider = $inject(JwtProvider);
 	protected readonly alepha = $inject(Alepha);
+
+	protected readonly onConfigure = $hook({
+		on: "configure",
+		handler: async () => {
+			for (const action of this.alepha.descriptors($action)) {
+				if (action.permission) {
+					this.securityProvider.createPermission(action.permission);
+				}
+			}
+		},
+	});
 
 	public readonly onClientRequest = $hook({
 		on: "client:onRequest",
@@ -84,19 +95,6 @@ export class ServerSecurityProvider {
 				request.headers.authorization,
 				route.action.permission,
 			);
-		},
-	});
-
-	protected readonly onRoute = $hook({
-		on: "server:onRoute",
-		handler: async ({ route }) => {
-			if (!isServerAction(route)) {
-				return;
-			}
-
-			if (route.action.permission) {
-				this.securityProvider.createPermission(route.action.permission);
-			}
 		},
 	});
 }

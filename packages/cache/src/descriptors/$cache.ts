@@ -207,14 +207,14 @@ export class CacheDescriptor<
 
 	protected $provider(): CacheProvider {
 		if (!this.options.provider) {
-			return this.alepha.get(CacheProvider);
+			return this.alepha.inject(CacheProvider);
 		}
 
 		if (this.options.provider === "memory") {
-			return this.alepha.get(MemoryCacheProvider);
+			return this.alepha.inject(MemoryCacheProvider);
 		}
 
-		return this.alepha.get(this.options.provider);
+		return this.alepha.inject(this.options.provider);
 	}
 }
 

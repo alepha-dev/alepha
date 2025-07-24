@@ -46,7 +46,7 @@ export const testQueueBasic = async (provider: Service<QueueProvider>) => {
 			use: provider,
 		});
 
-		const test = app.get(testClass);
+		const test = app.inject(testClass);
 
 		await app.start();
 
@@ -91,7 +91,7 @@ export const testQueueHasConsumer = async (
 	await app.start();
 	expect(count).toBe(0);
 
-	await app.get(A).q.push({ n: 123 });
+	await app.inject(A).q.push({ n: 123 });
 	await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
 };
 

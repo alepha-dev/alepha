@@ -19,7 +19,7 @@ test("sqlite", async () => {
 		use: NodeSqliteProvider,
 	});
 
-	const repository = alepha.get(UserRepository);
+	const repository = alepha.inject(UserRepository);
 
 	await alepha.start();
 

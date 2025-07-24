@@ -22,7 +22,7 @@ test("Repository - id serial", async () => {
 
 	const alepha = Alepha.create();
 
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 
 	await alepha.start();
 
@@ -55,7 +55,7 @@ test("Repository - id uuid", async () => {
 
 	const alepha = Alepha.create();
 
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 
 	await alepha.start();
 
@@ -91,7 +91,7 @@ test("Repository - inject", async () => {
 	}
 
 	const alepha = Alepha.create().with(AlephaPostgres);
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	const it = await app.repository.create({ name: "test" });

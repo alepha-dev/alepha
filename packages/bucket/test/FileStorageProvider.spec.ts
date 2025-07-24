@@ -7,7 +7,7 @@ import { MemoryFileStorageProvider } from "../src/providers/MemoryFileStoragePro
 describe("FileStorageProvider", () => {
 	test("create default provider", async ({ expect }) => {
 		const alepha = Alepha.create().with(AlephaBucket);
-		const fileStorageProvider = alepha.get(FileStorageProvider);
+		const fileStorageProvider = alepha.inject(FileStorageProvider);
 		expect(fileStorageProvider).toBeInstanceOf(MemoryFileStorageProvider);
 	});
 });

@@ -18,7 +18,7 @@ class App {
 }
 
 const alepha = Alepha.create();
-const app = alepha.get(App);
+const app = alepha.inject(App);
 
 test("execute - basic", async () => {
 	const name = "Alepha";

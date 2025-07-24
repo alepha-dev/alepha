@@ -12,7 +12,7 @@ export const $transaction = <T extends any[], R>(
 	opts: TransactionDescriptorOptions<T, R>,
 ) => {
 	const { context } = $cursor();
-	const provider = context.get(PostgresProvider);
+	const provider = context.inject(PostgresProvider);
 
 	return $retry({
 		when: (err) => err instanceof VersionMismatchError,

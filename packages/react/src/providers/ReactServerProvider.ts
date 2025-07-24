@@ -263,7 +263,7 @@ export class ReactServerProvider {
 			};
 
 			if (this.alepha.has(ServerLinksProvider)) {
-				const srv = this.alepha.get(ServerLinksProvider);
+				const srv = this.alepha.inject(ServerLinksProvider);
 				const schema = apiLinksResponseSchema as any;
 
 				context.links = this.alepha.parse(

@@ -6,7 +6,7 @@ import { AlephaServerHealth } from "../src";
 const alepha = Alepha.create().with(AlephaServerHealth);
 
 test("Alepha Server Health Module", async () => {
-	const srv = alepha.get(ServerProvider);
+	const srv = alepha.inject(ServerProvider);
 	const hostname = srv.hostname;
 
 	const ping = await fetch(`${hostname}/health`);

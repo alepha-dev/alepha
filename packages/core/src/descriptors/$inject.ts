@@ -20,7 +20,7 @@ export const $inject = <T extends object>(type: Service<T>): T => {
 		return context as T;
 	}
 
-	return context.get(type, {
+	return context.inject(type, {
 		// keep the parent for better error messages and circular dependencies detection
 		parent: definition ?? (context.constructor as Service),
 		module,

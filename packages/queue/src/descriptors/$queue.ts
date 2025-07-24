@@ -63,12 +63,12 @@ export class QueueDescriptor<T extends TSchema> extends Descriptor<
 
 	protected $provider() {
 		if (!this.options.provider) {
-			return this.alepha.get(QueueProvider);
+			return this.alepha.inject(QueueProvider);
 		}
 		if (this.options.provider === "memory") {
-			return this.alepha.get(MemoryQueueProvider);
+			return this.alepha.inject(MemoryQueueProvider);
 		}
-		return this.alepha.get(this.options.provider);
+		return this.alepha.inject(this.options.provider);
 	}
 }
 

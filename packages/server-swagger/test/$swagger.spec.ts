@@ -85,7 +85,7 @@ class App {
 const alepha = Alepha.create().with(App);
 
 test("$swagger", () => {
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	const swagger = app.docs.json();
 
 	expect(swagger).toEqual({

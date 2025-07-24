@@ -27,7 +27,7 @@ export class ReactAuth {
 
 	protected getUserFromCookies(): UserAccountToken | undefined {
 		if (this.alepha.isBrowser()) {
-			const browser = this.alepha.get(ReactBrowserProvider);
+			const browser = this.alepha.inject(ReactBrowserProvider);
 			const cookies = browser.document.cookie.split("; ");
 			const userCookie = cookies.find((cookie) => cookie.startsWith("user="));
 
@@ -45,7 +45,7 @@ export class ReactAuth {
 
 	public login() {
 		if (this.alepha.isBrowser()) {
-			const browser = this.alepha.get(ReactBrowserProvider);
+			const browser = this.alepha.inject(ReactBrowserProvider);
 			const redirect = browser.transitioning
 				? window.location.origin + browser.transitioning.to
 				: window.location.href;

@@ -26,7 +26,7 @@ declare module "@alepha/server" {
 ActionDescriptor.prototype.invalidate = async function (
 	this: ActionDescriptor<RequestConfigSchema>,
 ) {
-	await this.alepha.get(ServerCacheProvider).invalidate(this);
+	await this.alepha.inject(ServerCacheProvider).invalidate(this);
 };
 
 export class ServerCacheProvider {

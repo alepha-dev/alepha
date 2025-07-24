@@ -54,8 +54,8 @@ test("$cache - types", async () => {
 
 test("$cache - infinite", async () => {
 	const app = Alepha.create({ env: { REDIS_CACHE_PREFIX: randomUUID() } });
-	const test = app.get(TestCache);
-	const time = app.get(DateTimeProvider);
+	const test = app.inject(TestCache);
+	const time = app.inject(DateTimeProvider);
 	await app.start();
 
 	expect(await test.b({ name: "A" })).toBe("A:0");
@@ -75,7 +75,7 @@ test("$cache - unique key", async () => {
 		});
 	}
 	const app = Alepha.create();
-	const test = app.get(A);
+	const test = app.inject(A);
 	await app.start();
 
 	expect(await test.task()).toBe("DONE");
@@ -89,6 +89,6 @@ test("$cache - unique key", async () => {
 	expect(count).toBe(2);
 
 	// [] means no args, it's JSON.stringify([])
-	const obj = await app.get(MemoryCacheProvider).get("A:task", "[]");
+	const obj = await app.inject(MemoryCacheProvider).get("A:task", "[]");
 	expect(new TextDecoder().decode(obj?.slice(1))).toEqual("DONE");
 });

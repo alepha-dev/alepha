@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
 	$env,
 	$inject,
+	$logger,
 	createDescriptor,
 	Descriptor,
 	isFileLike,
@@ -24,7 +25,6 @@ import type {
 	RequestConfigSchema,
 	ServerHandler,
 	ServerRequest,
-	ServerRequestConfigEntry,
 	ServerRoute,
 } from "../interfaces/index.ts";
 import { ServerProvider } from "../providers/platforms/ServerProvider.ts";
@@ -60,9 +60,8 @@ export const $action = <TConfig extends RequestConfigSchema>(
 
 // ----------------------------------------------------------------------------------------------------------
 
-export interface ActionDescriptorOptions<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> extends Omit<ServerRoute, "handler" | "path" | "schema"> {
+export interface ActionDescriptorOptions<TConfig extends RequestConfigSchema>
+	extends Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams"> {
 	/**
 	 * Name of the action.
 	 *
@@ -126,6 +125,7 @@ export interface ActionDescriptorOptions<
 
 	/**
 	 * Disable the route. Useful with env variables do disable one specific route.
+	 * Route won't be available in the API but can still be called locally!
 	 */
 	disabled?: boolean;
 
@@ -184,10 +184,21 @@ declare module "@alepha/core" {
 export class ActionDescriptor<
 	TConfig extends RequestConfigSchema,
 > extends Descriptor<ActionDescriptorOptions<TConfig>> {
+	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
 	protected readonly httpClient = $inject(HttpClient);
 	protected readonly serverProvider = $inject(ServerProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+
+	protected onInit() {
+		if (this.options.disabled) {
+			this.log.debug(
+				`Action '${this.name}' is disabled. It won't be available in the API.`,
+			);
+			return;
+		}
+		this.serverRouterProvider.createRoute(this.route);
+	}
 
 	public get prefix() {
 		return this.env.SERVER_API_PREFIX;
@@ -197,7 +208,7 @@ export class ActionDescriptor<
 		return {
 			...this.options,
 			method: this.method,
-			path: this.path,
+			path: `${this.prefix}${this.path}`,
 			action: this,
 		};
 	}
@@ -229,7 +240,25 @@ export class ActionDescriptor<
 	 * Path is prefixed by `/api` by default.
 	 */
 	public get path(): string {
-		return this.options.path || this.config.propertyKey;
+		if (this.options.path) {
+			return this.options.path;
+		}
+
+		let path = `/${this.name}`;
+
+		if (this.options.schema?.params) {
+			for (const [key] of Object.entries(
+				this.options.schema.params.properties,
+			)) {
+				path += `/:${key}`;
+			}
+		}
+
+		return path;
+	}
+
+	public get schema(): TConfig | undefined {
+		return this.options.schema;
 	}
 
 	/**
@@ -279,14 +308,6 @@ export class ActionDescriptor<
 		// TODO: hook - "local:onRequest" ?
 
 		const handler = this.options.handler;
-		const permission = this.permission;
-		const security = !!this.options.secure || this.options.security !== false;
-
-		const user = this.getUserFromLocalFunctionContext(
-			options,
-			permission,
-			security,
-		);
 
 		const {
 			body,
@@ -309,7 +330,11 @@ export class ActionDescriptor<
 			reply: new ServerReply(),
 			metadata: {},
 			raw: {},
-			user,
+			user: this.getUserFromLocalFunctionContext(
+				options,
+				this.permission,
+				!!this.options.secure || this.options.security !== false,
+			),
 		};
 
 		this.serverRouterProvider.validateRequest(
@@ -346,21 +371,6 @@ export class ActionDescriptor<
 	}
 
 	// -------------
-
-	/**
-	 * Check a mock function for the specified route.
-	 *
-	 * This is mostly used for testing purposes.
-	 */
-	protected createLocalHandler(
-		action: ActionDescriptorOptions,
-		permission: Permission,
-	) {
-		return async (
-			config: ServerRequestConfigEntry = {},
-			options: ClientRequestOptions = {},
-		): Promise<any> => {};
-	}
 
 	/**
 	 * Get the user account token for a local action call.
@@ -418,7 +428,7 @@ export class ActionDescriptor<
 		}
 
 		const roles = user.roles ?? [];
-		const securityProvider = this.alepha.get(SecurityProvider);
+		const securityProvider = this.alepha.inject(SecurityProvider);
 		const result = securityProvider.checkPermission(permission, ...roles);
 		if (!result.isAuthorized) {
 			throw new ForbiddenError(

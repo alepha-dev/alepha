@@ -1,7 +1,8 @@
 import type { IncomingMessage } from "node:http";
 import type Stream from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
-import { $env, $hook, $inject, Alepha, t } from "@alepha/core";
+import { $env, $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { BadRequestError } from "../../errors/BadRequestError.ts";
 import { HttpError } from "../../errors/HttpError.ts";
 
 const envSchema = t.object({
@@ -19,6 +20,7 @@ const envSchema = t.object({
 export class ServerBodyParserProvider {
 	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
+	protected readonly log = $logger();
 
 	public readonly onRequest = $hook({
 		on: "server:onRequest",
@@ -33,9 +35,21 @@ export class ServerBodyParserProvider {
 			}
 
 			if (route.schema?.body) {
-				const body = await this.parse(stream, request.headers);
-				if (body) {
-					request.body = body;
+				try {
+					const body = await this.parse(stream, request.headers);
+					if (body) {
+						request.body = body;
+					}
+				} catch (error) {
+					if (error instanceof HttpError) {
+						throw error;
+					}
+
+					throw new HttpError({
+						status: 400,
+						message: "Failed to parse request body",
+						cause: error,
+					});
 				}
 			}
 		},
@@ -71,17 +85,7 @@ export class ServerBodyParserProvider {
 	): Promise<string> {
 		const buffer = await this.streamToBuffer(stream);
 		const bufferInflated = await this.maybeDecompress(buffer, contentEncoding);
-		try {
-			return bufferInflated.toString("utf-8");
-		} catch (error) {
-			throw new HttpError(
-				{
-					status: 400,
-					message: "Malformed text",
-				},
-				error,
-			);
-		}
+		return bufferInflated.toString("utf-8");
 	}
 
 	public async parseUrlEncoded(
@@ -102,18 +106,8 @@ export class ServerBodyParserProvider {
 		stream: Stream,
 		contentEncoding?: string,
 	): Promise<object> {
-		try {
-			const text = await this.parseText(stream, contentEncoding);
-			return JSON.parse(text);
-		} catch (error) {
-			throw new HttpError(
-				{
-					status: 400,
-					message: "Malformed JSON",
-				},
-				error,
-			);
-		}
+		const text = await this.parseText(stream, contentEncoding);
+		return JSON.parse(text);
 	}
 
 	protected async maybeDecompress(
@@ -166,14 +160,28 @@ export class ServerBodyParserProvider {
 				totalLength += chunk.length;
 
 				if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
-					(req as IncomingMessage).destroy(); // stop receiving data
-					return reject(new Error("Body size limit exceeded"));
+					this.log.error(
+						`Body size limit exceeded: ${totalLength} > ${this.env.SERVER_BODY_PARSER_LIMIT}`,
+					);
+
+					(req as IncomingMessage).pause(); // stop receiving data
+
+					return reject(
+						new HttpError({
+							status: 413,
+							message: `Request body size limit exceeded`,
+						}),
+					);
 				}
 
 				chunks.push(chunk);
 			});
 
 			req.on("end", () => {
+				if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
+					return;
+				}
+
 				resolve(Buffer.concat(chunks));
 			});
 

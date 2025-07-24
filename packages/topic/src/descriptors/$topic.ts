@@ -133,14 +133,14 @@ export class TopicDescriptor<T extends TopicMessageSchema> extends Descriptor<
 
 	protected $provider(): TopicProvider {
 		if (!this.options.provider) {
-			return this.alepha.get(TopicProvider);
+			return this.alepha.inject(TopicProvider);
 		}
 
 		if (this.options.provider === "memory") {
-			return this.alepha.get(MemoryTopicProvider);
+			return this.alepha.inject(MemoryTopicProvider);
 		}
 
-		return this.alepha.get(this.options.provider);
+		return this.alepha.inject(this.options.provider);
 	}
 
 	protected parseMessage(message: string): TopicMessage<T> {

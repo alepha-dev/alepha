@@ -18,7 +18,7 @@ class App {
 }
 
 const alepha = Alepha.create().with(AlephaReactHead);
-const a = alepha.get(App);
+const a = alepha.inject(App);
 
 test("PageHead - basic", async ({ expect }) => {
 	const result = await a.hello.render({ html: true, hydration: false });

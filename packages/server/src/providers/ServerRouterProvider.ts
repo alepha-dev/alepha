@@ -40,31 +40,21 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 		on: "configure",
 		handler: async () => {
 			await Promise.all(
-				this.alepha.descriptors($route).map(async (route) => {
-					await this.createRoute(route.options);
+				this.alepha.descriptors($route).map((route) => {
+					this.createRoute(route.options);
 				}),
 			);
 		},
 	});
 
-	public async createRoute<
-		TConfig extends RequestConfigSchema = RequestConfigSchema,
-	>(route: ServerRoute<TConfig>): Promise<void> {
+	public createRoute<TConfig extends RequestConfigSchema = RequestConfigSchema>(
+		route: ServerRoute<TConfig>,
+	): void {
 		route.method ??= "GET";
 		route.method = route.method.toUpperCase() as RouteMethod;
 
 		const path = `/${route.method}/${route.path}`.replace(/\/+/g, "/");
 		const responseKind = this.getResponseType(route.schema);
-
-		await this.alepha.emit(
-			"server:onRoute",
-			{
-				route,
-			},
-			{
-				log: false,
-			},
-		);
 
 		this.push({
 			path,

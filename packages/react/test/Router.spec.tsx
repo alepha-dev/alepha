@@ -6,7 +6,7 @@ import { BrowserRouterProvider } from "../src/providers/BrowserRouterProvider.ts
 
 const setup = () => {
 	const alepha = Alepha.create();
-	const router = alepha.get(BrowserRouterProvider);
+	const router = alepha.inject(BrowserRouterProvider);
 
 	const render = async (path: string): Promise<string> => {
 		const { state, context } = await router.transition(

@@ -10,7 +10,7 @@ test("PostgresProvider - basic", async () => {
 
 	const alepha = Alepha.create();
 
-	const userService = alepha.get(UserService);
+	const userService = alepha.inject(UserService);
 
 	await alepha.start();
 

@@ -29,7 +29,7 @@ test("$remote - basic", async ({ expect }) => {
 
 	class Config {
 		alepha1 = $remote({
-			url: () => alepha1.get(ServerProvider).hostname,
+			url: () => alepha1.inject(ServerProvider).hostname,
 		});
 	}
 
@@ -42,7 +42,7 @@ test("$remote - basic", async ({ expect }) => {
 	await alepha1.start();
 	await alepha2.start();
 
-	const app = alepha2.get(LinkProvider).client<App>();
+	const app = alepha2.inject(LinkProvider).client<App>();
 	const ping = () => alepha2.context.run(() => app.ping());
 	expect(await ping()).toStrictEqual({ pong: true });
 });
@@ -72,11 +72,11 @@ test("$remote - complex", async ({ expect }) => {
 
 	class ServiceA {
 		br = $remote({
-			url: () => b.get(ServerProvider).hostname,
+			url: () => b.inject(ServerProvider).hostname,
 		});
 
 		cr = $remote({
-			url: () => c.get(ServerProvider).hostname,
+			url: () => c.inject(ServerProvider).hostname,
 			proxy: true,
 		});
 
@@ -96,7 +96,7 @@ test("$remote - complex", async ({ expect }) => {
 
 	class WebApp {
 		a = $remote({
-			url: () => a.get(ServerProvider).hostname,
+			url: () => a.inject(ServerProvider).hostname,
 			proxy: true,
 		});
 
@@ -114,7 +114,7 @@ test("$remote - complex", async ({ expect }) => {
 	await a.start();
 	await front.start();
 
-	const linkProvider = front.get(LinkProvider);
+	const linkProvider = front.inject(LinkProvider);
 
 	expect(await getLinks(c)).toEqual({
 		links: [
@@ -189,6 +189,6 @@ test("$remote - complex", async ({ expect }) => {
 });
 
 const getLinks = (a: Alepha) =>
-	fetch(`${a.get(ServerProvider).hostname}/api/_links`).then((res) =>
+	fetch(`${a.inject(ServerProvider).hostname}/api/_links`).then((res) =>
 		res.json(),
 	);

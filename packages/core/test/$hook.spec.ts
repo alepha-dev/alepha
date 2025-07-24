@@ -10,11 +10,11 @@ test("$hook - basic", async () => {
 	}
 	const alepha = Alepha.create().with(App);
 	await alepha.start();
-	expect(alepha.get(App).hook.called).toBe(0);
+	expect(alepha.inject(App).hook.called).toBe(0);
 	await alepha.emit("echo", {});
-	expect(alepha.get(App).hook.called).toBe(1);
+	expect(alepha.inject(App).hook.called).toBe(1);
 	await alepha.emit("echo", {});
-	expect(alepha.get(App).hook.called).toBe(2);
+	expect(alepha.inject(App).hook.called).toBe(2);
 });
 
 test("$hook - with swapping", async () => {

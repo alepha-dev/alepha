@@ -29,7 +29,7 @@ class App {
 	});
 }
 
-const app = Alepha.create().get(App);
+const app = Alepha.create().inject(App);
 
 test("$page - Basic", async ({ expect }) => {
 	expect(await app.root.render().then((it) => it.html)).toEqual("root");

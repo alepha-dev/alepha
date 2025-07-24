@@ -103,7 +103,7 @@ export class ServerLinksProvider {
 		let permissions: Permission[] | undefined;
 		const hasSecurity = this.alepha.has(SecurityProvider);
 		if (hasSecurity && user) {
-			permissions = this.alepha.get(SecurityProvider).getPermissions(user);
+			permissions = this.alepha.inject(SecurityProvider).getPermissions(user);
 		}
 
 		const appLinks = this.client.links ?? [];

@@ -7,7 +7,7 @@ test("ServerMetricsProvider", async ({ expect }) => {
 	const alepha = Alepha.create().with(AlephaServerMetrics);
 	await alepha.start();
 
-	const resp = await fetch(`${alepha.get(ServerProvider).hostname}/metrics`);
+	const resp = await fetch(`${alepha.inject(ServerProvider).hostname}/metrics`);
 
 	expect(resp.status).toBe(200);
 	const text = await resp.text();

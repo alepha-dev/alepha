@@ -18,7 +18,7 @@ class App {
 describe("ServerCacheProvider", () => {
 	test("etag", async ({ expect }) => {
 		const alepha = Alepha.create().with(AlephaServerCache);
-		const app = alepha.get(App);
+		const app = alepha.inject(App);
 		await alepha.start();
 
 		{
@@ -35,7 +35,7 @@ describe("ServerCacheProvider", () => {
 
 	test("default", async ({ expect }) => {
 		const alepha = Alepha.create().with(AlephaServerCache);
-		const app = alepha.get(App);
+		const app = alepha.inject(App);
 		await alepha.start();
 
 		for (let i = 0; i < 10; i++) {
@@ -50,14 +50,14 @@ describe("ServerCacheProvider", () => {
 
 	test("invalidate", async ({ expect }) => {
 		const alepha = Alepha.create().with(AlephaServerCache);
-		const app = alepha.get(App);
+		const app = alepha.inject(App);
 		await alepha.start();
 
 		const count = await app.cache.fetch().then((r) => r.data);
 
 		expect(count).toBe(await app.cache.fetch().then((r) => r.data));
 
-		const serverCacheProvider = alepha.get(ServerCacheProvider);
+		const serverCacheProvider = alepha.inject(ServerCacheProvider);
 		await serverCacheProvider.invalidate(app.cache);
 
 		expect(count).not.toBe(await app.cache.fetch().then((r) => r.data));
@@ -65,7 +65,7 @@ describe("ServerCacheProvider", () => {
 
 	test("invalidate - $action", async ({ expect }) => {
 		const alepha = Alepha.create().with(AlephaServerCache);
-		const app = alepha.get(App);
+		const app = alepha.inject(App);
 		await alepha.start();
 
 		const count = await app.cache.fetch().then((r) => r.data);

@@ -127,12 +127,12 @@ export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
 
 	protected $provider() {
 		if (!this.options.provider) {
-			return this.alepha.get(FileStorageProvider);
+			return this.alepha.inject(FileStorageProvider);
 		}
 		if (this.options.provider === "memory") {
-			return this.alepha.get(MemoryFileStorageProvider);
+			return this.alepha.inject(MemoryFileStorageProvider);
 		}
-		return this.alepha.get(this.options.provider);
+		return this.alepha.inject(this.options.provider);
 	}
 }
 

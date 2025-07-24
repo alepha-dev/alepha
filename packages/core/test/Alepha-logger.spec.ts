@@ -12,5 +12,5 @@ test("Alepha#logger - descriptor", () => {
 		log = $logger();
 	}
 
-	new Alepha().get(A).log.trace("test");
+	new Alepha().inject(A).log.trace("test");
 });

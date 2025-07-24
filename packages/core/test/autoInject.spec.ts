@@ -30,7 +30,7 @@ test("autoInject", () => {
 		});
 	}
 
-	const b = app.get(B);
+	const b = app.inject(B);
 
 	expect(app.has(A)).toBe(true);
 	expect(b.test.nice()).toBe("nice 123 !");

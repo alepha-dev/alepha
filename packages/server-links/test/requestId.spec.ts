@@ -22,7 +22,7 @@ test("requestId", async () => {
 
 	class Reporting {
 		puppeteer = $remote({
-			url: () => p1.get(ServerProvider).hostname,
+			url: () => p1.inject(ServerProvider).hostname,
 		});
 
 		puppeteerApi = $client<Puppeteer>();
@@ -40,7 +40,7 @@ test("requestId", async () => {
 
 	class Frontend {
 		reporting = $remote({
-			url: () => p2.get(ServerProvider).hostname,
+			url: () => p2.inject(ServerProvider).hostname,
 		});
 
 		reportingApi = $client<Reporting>();
@@ -62,7 +62,7 @@ test("requestId", async () => {
 
 	log.reset();
 
-	await fetch(`${p3.get(ServerProvider).hostname}/api/download`);
+	await fetch(`${p3.inject(ServerProvider).hostname}/api/download`);
 
 	const uuid = log.store.stack[0].context;
 	const logs = log.store.stack.map(

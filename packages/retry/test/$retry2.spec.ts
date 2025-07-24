@@ -9,7 +9,7 @@ describe("@alepha/retry", () => {
 
 	beforeEach(() => {
 		alepha = Alepha.create();
-		time = alepha.get(DateTimeProvider);
+		time = alepha.inject(DateTimeProvider);
 	});
 
 	afterEach(async () => {
@@ -18,7 +18,7 @@ describe("@alepha/retry", () => {
 
 	test("should succeed on the first attempt", async () => {
 		const handler = vi.fn().mockResolvedValue("success");
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({ handler });
 			},
@@ -32,7 +32,7 @@ describe("@alepha/retry", () => {
 		const handler = vi.fn().mockRejectedValue(new Error("Failed"));
 		const onError = vi.fn();
 
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({ handler, max: 3, backoff: 0, onError });
 			},
@@ -55,7 +55,7 @@ describe("@alepha/retry", () => {
 			return Promise.resolve("success");
 		});
 
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({ handler, max: 4, backoff: 0 });
 			},
@@ -71,7 +71,7 @@ describe("@alepha/retry", () => {
 			throw new Error("Failed");
 		});
 
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({
 					handler,
@@ -95,7 +95,7 @@ describe("@alepha/retry", () => {
 		});
 
 		const abortController = new AbortController();
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({
 					handler,
@@ -128,7 +128,7 @@ describe("@alepha/retry", () => {
 			throw new Error("Failed");
 		});
 
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({ handler, max: 5, backoff: 100 });
 			},
@@ -154,7 +154,7 @@ describe("@alepha/retry", () => {
 			.mockRejectedValueOnce(new CustomError("Do not retry me"))
 			.mockRejectedValue(new Error("Retry me"));
 
-		const retryFunc = alepha.get(
+		const retryFunc = alepha.inject(
 			class {
 				retry = $retry({
 					handler,

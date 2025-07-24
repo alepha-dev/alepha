@@ -4,8 +4,8 @@ import { test } from "vitest";
 import { RedisProvider, RedisSubscriberProvider } from "../src";
 
 const alepha = Alepha.create();
-const redis = alepha.get(RedisProvider);
-const sub = alepha.get(RedisSubscriberProvider);
+const redis = alepha.inject(RedisProvider);
+const sub = alepha.inject(RedisSubscriberProvider);
 
 test("Redis - basic", async ({ expect }) => {
 	const uuid = randomUUID();
@@ -42,8 +42,8 @@ test("Redis - buffer", async ({ expect }) => {
 
 test("Redis - stop", async () => {
 	const alepha = Alepha.create();
-	const redis = alepha.get(RedisProvider);
-	const sub = alepha.get(RedisSubscriberProvider);
+	const redis = alepha.inject(RedisProvider);
+	const sub = alepha.inject(RedisSubscriberProvider);
 	await alepha.start();
 	sub.subscriber.subscribe("test", (message) => {});
 	redis.publisher.publish("test:a", "a");

@@ -25,8 +25,8 @@ class App {
 }
 
 const alepha = Alepha.create();
-const app = alepha.get(App);
-const time = alepha.get(DateTimeProvider);
+const app = alepha.inject(App);
+const time = alepha.inject(DateTimeProvider);
 
 test("$serviceAccount - jwt", async () => {
 	const tk = await app.jwt.token();

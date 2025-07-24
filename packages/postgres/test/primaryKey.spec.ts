@@ -19,7 +19,7 @@ test("primaryKey - identity", async () => {
 	}
 
 	const alepha = Alepha.create();
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	expect(await app.identity.create({})).toEqual({
@@ -47,7 +47,7 @@ test("primaryKey - big identity", async () => {
 	}
 
 	const alepha = Alepha.create();
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	expect(await app.big.create({})).toEqual({
@@ -76,7 +76,7 @@ test("primaryKey - uuid", async () => {
 	}
 
 	const alepha = Alepha.create();
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	expect(await app.uuid.create({})).toEqual({

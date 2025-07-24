@@ -30,7 +30,7 @@ class App {
 
 describe("Swagger UI", () => {
 	const alepha = Alepha.create().with(App);
-	const server = alepha.get(ServerProvider);
+	const server = alepha.inject(ServerProvider);
 
 	test("ui", async ({ expect }) => {
 		const html = await fetch(`${server.hostname}/test/`).then((it) =>

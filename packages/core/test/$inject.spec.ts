@@ -26,10 +26,10 @@ test("$inject - basic", () => {
 	}
 
 	const ctx = new Alepha();
-	const c1 = ctx.get(C);
+	const c1 = ctx.inject(C);
 	expect(c1.b.a.hello).toBe("world");
 
-	const c2 = ctx.get(C);
+	const c2 = ctx.inject(C);
 	c2.b.a.hello = "test";
 
 	expect(c1.b.a.hello).toBe("test");
@@ -65,30 +65,30 @@ test("$env", () => {
 		b = $inject(B);
 	}
 
-	expect(Alepha.create({ env: { N1: "abc" } }).get(C).b.a.env).toStrictEqual({
+	expect(Alepha.create({ env: { N1: "abc" } }).inject(C).b.a.env).toStrictEqual({
 		N1: "abc",
 		N2: "abc",
 	});
 
 	expect(
-		Alepha.create({ env: { N1: "abc", N2: "efg" } }).get(C).b.a.env,
+		Alepha.create({ env: { N1: "abc", N2: "efg" } }).inject(C).b.a.env,
 	).toStrictEqual({
 		N1: "abc",
 		N2: "efg",
 	});
 
-	expect(() => Alepha.create().get(C)).toThrow(TypeBoxError);
+	expect(() => Alepha.create().inject(C)).toThrow(TypeBoxError);
 });
 
 test("$inject - circular", () => {
 	const superInject = (type: Service) => {
 		const { context } = $cursor();
-		context.get(Module); // <- trying to "#get" during a tree walk is bad
+		context.inject(Module); // <- trying to "#get" during a tree walk is bad
 
 		// consider using "#register" instead
 		// register check if the type is already registered (or pending) before calling #get
 
-		return context.get(type);
+		return context.inject(type);
 	};
 
 	class A {}
@@ -101,7 +101,7 @@ test("$inject - circular", () => {
 		hi = superInject(A);
 	}
 
-	expect(() => Alepha.create().get(Test)).toThrow(
+	expect(() => Alepha.create().inject(Test)).toThrow(
 		new CircularDependencyError("Module", ["Test"]),
 	);
 });
@@ -110,7 +110,7 @@ test("$inject - circular fix", () => {
 	const superInject = <T extends object>(type: Service<T>): T => {
 		const { context } = $cursor();
 		context.with(Module); // <- replace .get by .with to fix circular dependency
-		return context.get(type);
+		return context.inject(type);
 	};
 
 	class A {
@@ -125,7 +125,7 @@ test("$inject - circular fix", () => {
 		hi = superInject(A);
 	}
 
-	expect(Alepha.create().get(Test).hi.hello).toBe("world");
+	expect(Alepha.create().inject(Test).hi.hello).toBe("world");
 });
 
 test("$inject - with extends", () => {
@@ -153,11 +153,11 @@ test("$inject - with extends", () => {
 
 	const ctx = Alepha.create();
 
-	const r2 = ctx.get(R2);
+	const r2 = ctx.inject(R2);
 	expect(r2.p1).toBeInstanceOf(P1);
 	expect(logs).toEqual(["P1"]);
 
-	const r3 = ctx.get(R3);
+	const r3 = ctx.inject(R3);
 	expect(r3.p2).toBeInstanceOf(P2);
 
 	// just be to ensure that P1 is not created again (because R3 extends R1)

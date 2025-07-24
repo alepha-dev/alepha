@@ -12,7 +12,7 @@ class App {
 }
 
 const testPgAttr = async (alepha: Alepha) => {
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	const entity = await app.users.create({
@@ -43,7 +43,7 @@ test("$repository - pg.attr (sqlite)", async () => {
 });
 
 const testAllTypes = async (alepha: Alepha) => {
-	const app = alepha.get(App);
+	const app = alepha.inject(App);
 	await alepha.start();
 
 	const data = {

@@ -104,7 +104,7 @@ export class RepositoryDescriptorProvider {
 
 			const provider = options.provider
 				? options.provider()
-				: this.alepha.get(PostgresProvider);
+				: this.alepha.inject(PostgresProvider);
 
 			const alreadyExists = this.repositories.find(
 				(it) => it.table === options.table && it.provider === provider,
@@ -115,7 +115,7 @@ export class RepositoryDescriptorProvider {
 				continue;
 			}
 
-			const repository = this.alepha.get(Repository, {
+			const repository = this.alepha.inject(Repository, {
 				skipRegistration: true,
 				args: [
 					{

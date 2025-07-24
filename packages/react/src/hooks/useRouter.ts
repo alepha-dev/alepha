@@ -13,7 +13,7 @@ export const useRouter = (): RouterHookApi => {
 	}
 
 	const pages = useMemo(() => {
-		return ctx.alepha.get(PageDescriptorProvider).getPages();
+		return ctx.alepha.inject(PageDescriptorProvider).getPages();
 	}, []);
 
 	return useMemo(
@@ -24,7 +24,7 @@ export const useRouter = (): RouterHookApi => {
 				ctx.state,
 				layer,
 				ctx.alepha.isBrowser()
-					? ctx.alepha.get(ReactBrowserProvider)
+					? ctx.alepha.inject(ReactBrowserProvider)
 					: undefined,
 			),
 		[layer],

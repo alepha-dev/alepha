@@ -78,7 +78,7 @@ const alepha = Alepha.create({
 	.with(AlephaServer)
 	.with(AlephaServerCookies);
 
-const app = alepha.get(CookieTestApp);
+const app = alepha.inject(CookieTestApp);
 
 // Helper to simulate a request and capture the response headers
 const makeRequest = async (incomingCookieHeader = "") => {
@@ -222,7 +222,7 @@ describe("ServerCookiesProvider", () => {
 
 		await attrAlepha.start();
 
-		const response = await attrAlepha.get(AttrApp).test.fetch();
+		const response = await attrAlepha.inject(AttrApp).test.fetch();
 		const setCookieHeader = response.headers.get("set-cookie");
 		expect(setCookieHeader).toContain("Max-Age=1800");
 		expect(setCookieHeader).toContain("Path=/admin");

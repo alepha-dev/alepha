@@ -1,9 +1,9 @@
 import { $logger, Alepha, MockLogger } from "@alepha/core";
 import { beforeEach, test } from "vitest";
-import { $action } from "../../descriptors/$action.ts";
-import { HttpError } from "../../errors/HttpError.ts";
-import { AlephaServer } from "../../index";
-import { ServerLoggerProvider } from "./ServerLoggerProvider.ts";
+import { AlephaServer } from "../src";
+import { $action } from "../src/descriptors/$action.ts";
+import { HttpError } from "../src/errors/HttpError.ts";
+import { ServerLoggerProvider } from "../src/providers/features/ServerLoggerProvider.ts";
 
 class App {
 	log = $logger();
@@ -40,7 +40,7 @@ const app = Alepha.create({
 })
 	.with(AlephaServer)
 	.with(ServerLoggerProvider)
-	.get(App);
+	.inject(App);
 
 test("ServerLoggerProvider - ok", async ({ expect }) => {
 	expect(log.store.stack.length).toBe(0);

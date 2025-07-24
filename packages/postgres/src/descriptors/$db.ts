@@ -15,7 +15,7 @@ export const $db = <
 	options: DbDescriptorOptions<T> = {},
 ): DbDescriptor<T> => {
 	const { context: alepha } = $cursor();
-	const provider = alepha.with(AlephaPostgres).get(PostgresProvider);
+	const provider = alepha.with(AlephaPostgres).inject(PostgresProvider);
 
 	const entities: Record<string, Repository<any, any>> = {};
 	for (const [key, entity] of Object.entries(options.entities ?? {})) {

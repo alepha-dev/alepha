@@ -41,7 +41,7 @@ class App {
 }
 
 const alepha = Alepha.create();
-const app = alepha.get(App);
+const app = alepha.inject(App);
 
 test("$transaction - mismatch", { timeout: 10000 }, async () => {
 	const { id } = await app.repository.create({ counter: 0 });

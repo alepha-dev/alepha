@@ -16,8 +16,8 @@ test("$interval - basic", async () => {
 	const alepha = Alepha.create({
 		env: {},
 	});
-	const dt = alepha.get(DateTimeProvider);
-	const app = alepha.get(TestApp);
+	const dt = alepha.inject(DateTimeProvider);
+	const app = alepha.inject(TestApp);
 	expect(app.loop.called).toBe(0);
 	expect(count.value).toBe(0);
 
@@ -45,7 +45,7 @@ test("$interval - abort", async () => {
 	}
 
 	const alepha = Alepha.create();
-	const app = alepha.get(TestApp);
+	const app = alepha.inject(TestApp);
 	expect(app.loop.called).toBe(0);
 	expect(count.value).toBe(0);
 
@@ -60,7 +60,7 @@ test("$interval - abort", async () => {
 
 test("Alepha#start - flags", async () => {
 	const app = Alepha.create({});
-	const dt = app.get(DateTimeProvider);
+	const dt = app.inject(DateTimeProvider);
 
 	expect(app.isStarted()).toBe(false);
 	expect(app.isConfigured()).toBe(false);

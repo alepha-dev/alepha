@@ -23,7 +23,7 @@ test("$retry - basic", async () => {
 	}
 
 	const app = Alepha.create();
-	const basic = app.get(Dummy);
+	const basic = app.inject(Dummy);
 
 	expect(await basic.work(1, 2)).toBe(2);
 	expect(await basic.work(1, 3)).toBe(3);
@@ -52,7 +52,7 @@ test("$retry - when func", async () => {
 	}
 
 	const app = Alepha.create();
-	const basic = app.get(Dummy);
+	const basic = app.inject(Dummy);
 
 	expect(await basic.work(1, 2)).toBe(2);
 	await expect(() => basic.work(1, 3)).rejects.toThrow(Error);
