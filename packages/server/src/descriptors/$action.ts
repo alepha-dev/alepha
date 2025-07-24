@@ -1,33 +1,26 @@
-import { randomUUID } from "node:crypto";
 import {
 	$env,
 	$inject,
 	$logger,
+	type Async,
 	createDescriptor,
 	Descriptor,
-	isFileLike,
 	isTypeFile,
 	KIND,
 	type Static,
 	type TSchema,
 	t,
 } from "@alepha/core";
-import {
-	type Permission,
-	SecurityProvider,
-	type UserAccountToken,
-} from "@alepha/security";
+import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
-import { ForbiddenError } from "../errors/ForbiddenError.ts";
-import { UnauthorizedError } from "../errors/UnauthorizedError.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
-	ServerHandler,
 	ServerRequest,
+	ServerResponseBody,
 	ServerRoute,
-} from "../interfaces/index.ts";
-import { ServerProvider } from "../providers/platforms/ServerProvider.ts";
+} from "../interfaces/ServerRequest.ts";
+import { ServerProvider } from "../providers/ServerProvider.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
 import {
 	type FetchOptions,
@@ -132,31 +125,7 @@ export interface ActionDescriptorOptions<TConfig extends RequestConfigSchema>
 	/**
 	 * Main route handler. This is where the route logic is implemented.
 	 */
-	handler: ServerHandler<TConfig>;
-
-	/**
-	 * Short description of the route.
-	 *
-	 * TODO: move to Swagger plugin.
-	 */
-	summary?: string;
-
-	/**
-	 * Mark the route as private.
-	 *
-	 * - It won't be exposed in the API documentation.
-	 * - It won't be exposed in _links.
-	 *
-	 * @deprecated - use `$route()` instead.
-	 */
-	internal?: boolean;
-
-	/**
-	 * If false, disabled the security check for this route.
-	 *
-	 * @deprecated - use `secure` instead.
-	 */
-	security?: boolean;
+	handler: ServerActionHandler<TConfig>;
 }
 
 // ----------------------------------------------------------------------------------------------------------
@@ -167,19 +136,6 @@ const envSchema = t.object({
 		default: "/api",
 	}),
 });
-
-declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
-
-	interface State {
-		/**
-		 * Real (or fake) user account, used for internal actions.
-		 * If you define this, you assume that all actions are executed by this user by default.
-		 * And to force a different user, you need to pass it explicitly in the options.
-		 */
-		"ServerSecurityProvider.localSystemUser"?: UserAccountToken;
-	}
-}
 
 export class ActionDescriptor<
 	TConfig extends RequestConfigSchema,
@@ -204,13 +160,12 @@ export class ActionDescriptor<
 		return this.env.SERVER_API_PREFIX;
 	}
 
-	public get route(): ServerAction {
+	public get route(): ServerRoute {
 		return {
 			...this.options,
 			method: this.method,
 			path: `${this.prefix}${this.path}`,
-			action: this,
-		};
+		} as ServerRoute;
 	}
 
 	/**
@@ -261,20 +216,6 @@ export class ActionDescriptor<
 		return this.options.schema;
 	}
 
-	/**
-	 * Returns the security permission of the action.
-	 *
-	 * TODO: big rework of how we handle permissions of actions.
-	 */
-	public get permission(): Permission {
-		return {
-			group: this.group,
-			name: this.name,
-			description: this.options.description,
-			method: this.method,
-		};
-	}
-
 	public getBodyContentType(): string | undefined {
 		if (this.options.schema?.body) {
 			// TODO: move to `alepha.server.multipart` module ?
@@ -287,68 +228,75 @@ export class ActionDescriptor<
 				}
 			}
 
-			return "application/json";
+			if (this.options.schema.body.type === "string") {
+				// if body is a string, we assume it's plain text
+				return "text/plain";
+			}
+
+			if (
+				this.options.schema.body.type === "object" ||
+				this.options.schema.body.type === "array"
+			) {
+				// if body is an object or array, we assume it's JSON
+				return "application/json";
+			}
 		}
 	}
 
 	/**
-	 * Call the action.
-	 *
-	 * - If the action is detected locally, it will be executed directly.
-	 * - If the action is not detected locally, it will be fetched from the server.
-	 *
-	 * > Note: Automatic remote detection requires module `alepha.server.links`.
+	 * Call the action handler directly.
+	 * There is no HTTP layer involved.
 	 */
 	public async run(
 		config: ClientRequestEntry<TConfig>,
-		options: ClientRequestOptions = {},
+		options: ClientRequestOptions = {}, // most of the options are ignored here
 	): Promise<ClientRequestResponse<TConfig>> {
-		const request = this.alepha.context.get<ServerRequest>("request");
-
-		// TODO: hook - "local:onRequest" ?
-
 		const handler = this.options.handler;
-
 		const {
 			body,
 			params = {},
 			query = {},
 			headers = {},
 		} = config as ClientRequestEntryContainer<RequestConfigSchema>;
+		const reply = new ServerReply();
+		const method = this.method;
 
+		// we use localhost as the base URL for the action
 		const url = new URL(`http://localhost${this.path ?? ""}`);
 
 		const serverActionRequest: Partial<ServerRequest> = {
-			...request,
-			...options,
-			method: this.method,
+			method,
 			url,
 			body,
 			params,
 			query,
 			headers,
-			reply: new ServerReply(),
+			reply,
 			metadata: {},
 			raw: {},
-			user: this.getUserFromLocalFunctionContext(
-				options,
-				this.permission,
-				!!this.options.secure || this.options.security !== false,
-			),
 		};
+
+		await this.alepha.emit("action:onRequest", {
+			action: this,
+			request: serverActionRequest as ServerRequest,
+			options,
+		});
 
 		this.serverRouterProvider.validateRequest(
 			this.options,
 			serverActionRequest as ServerRequest,
 		);
 
-		const response = await handler(serverActionRequest as ServerRequest);
+		const response = await handler(
+			serverActionRequest as ServerActionRequest<TConfig>,
+		);
 
-		if (this.options.schema?.response) {
-			if (isTypeFile(this.options.schema.response) && isFileLike(response)) {
-				return response;
-			}
-
+		// we validate response just to remove undeclared properties from response
+		if (
+			this.options.schema?.response &&
+			// skip validation if response is expected as file
+			!isTypeFile(this.options.schema.response)
+		) {
 			return this.alepha.parse<any>(this.options.schema?.response, response);
 		}
 
@@ -368,79 +316,6 @@ export class ActionDescriptor<
 			config,
 			options,
 		});
-	}
-
-	// -------------
-
-	/**
-	 * Get the user account token for a local action call.
-	 * It will check the options, context, and system user.
-	 */
-	protected getUserFromLocalFunctionContext(
-		options: { user?: UserAccountToken | "system" | "context" },
-		permission: Permission,
-		isRouteSecure: boolean,
-	): UserAccountToken | undefined {
-		const hasSecurity = this.alepha.has(SecurityProvider);
-		const fromOptions =
-			typeof options.user === "object" ? options.user : undefined;
-
-		if (!hasSecurity) {
-			// system has no security, so we don't need to check it
-			return fromOptions;
-		}
-
-		const type = typeof options.user === "string" ? options.user : undefined;
-
-		let user: UserAccountToken | undefined;
-
-		const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
-		const fromSystem = this.alepha.state(
-			"ServerSecurityProvider.localSystemUser",
-		);
-
-		if (type === "system") {
-			user = fromSystem;
-		} else if (type === "context") {
-			user = fromContext;
-		} else {
-			user = fromOptions ?? fromSystem ?? fromContext;
-		}
-
-		if (!user) {
-			if (isRouteSecure) {
-				if (this.alepha.isTest()) {
-					// in tests, we can return undefined user if route is not secured for now
-					return {
-						id: randomUUID(),
-						name: "Test",
-						roles: ["admin"],
-					};
-				}
-
-				throw new UnauthorizedError(
-					"User is required for calling this route locally",
-				);
-			} else {
-				// if route is not secured, we can return undefined user
-				return;
-			}
-		}
-
-		const roles = user.roles ?? [];
-		const securityProvider = this.alepha.inject(SecurityProvider);
-		const result = securityProvider.checkPermission(permission, ...roles);
-		if (!result.isAuthorized) {
-			throw new ForbiddenError(
-				`Permission '${securityProvider.permissionToString(permission)}' is required for this route`,
-			);
-		}
-
-		// create a new user object with ownership if needed
-		return {
-			...user,
-			ownership: result.ownership,
-		};
 	}
 }
 
@@ -490,14 +365,21 @@ export interface ClientRequestOptions extends FetchOptions {
 export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
 	TConfig["response"] extends TSchema ? Static<TConfig["response"]> : any;
 
-export interface ServerAction extends ServerRoute {
-	action: ActionDescriptor<RequestConfigSchema>;
-}
+/**
+ * Specific handler for server actions.
+ */
+export type ServerActionHandler<
+	TConfig extends RequestConfigSchema = RequestConfigSchema,
+> = (
+	request: ServerActionRequest<TConfig>,
+) => Async<ServerResponseBody<TConfig>>;
 
-export function isServerAction(route: any): route is ServerAction {
-	return (
-		typeof route === "object" &&
-		"action" in route &&
-		route.action instanceof ActionDescriptor
-	);
-}
+/**
+ * Server Action Request Interface
+ *
+ * Can be extended with module augmentation to add custom properties (like `user` in Server Security).
+ *
+ * This is NOT Server Request, but a specific type for actions.
+ */
+export interface ServerActionRequest<TConfig extends RequestConfigSchema>
+	extends ServerRequest<TConfig> {}

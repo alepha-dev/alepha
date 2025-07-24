@@ -6,7 +6,6 @@ import type { Readable as NodeStream } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type { Async, Static, StreamLike, TObject, TSchema } from "@alepha/core";
 import type { Route } from "@alepha/router";
-import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerReply } from "../helpers/ServerReply.ts";
 
@@ -59,9 +58,6 @@ export interface ServerRequest<
 			res: NodeServerResponse;
 		};
 	};
-
-	// user from SecurityModule
-	user: UserAccountToken;
 }
 
 export interface ServerRoute<
@@ -75,11 +71,6 @@ export interface ServerRoute<
 	 * @see ServerLoggerProvider
 	 */
 	silent?: boolean;
-
-	/**
-	 * @see ServerSecurityProvider
-	 */
-	secure?: ServerRouteSecure;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -116,7 +107,7 @@ export interface ServerResponse {
 	status: number;
 }
 
-export interface ServerRouteWithHandler extends Route {
+export interface ServerRouteMatcher extends Route {
 	handler: (request: ServerRawRequest) => Promise<ServerResponse>;
 }
 
@@ -133,14 +124,3 @@ export interface ServerRawRequest {
 		};
 	};
 }
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export type ServerRouteSecure =
-	| boolean
-	| {
-			permissions?: string[];
-			roles?: string[];
-			realms?: string[];
-			organizations?: string[];
-	  };

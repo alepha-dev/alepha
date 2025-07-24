@@ -10,10 +10,10 @@ import {
 	type Static,
 	t,
 } from "@alepha/core";
-import type { RouteMethod } from "../../constants/routeMethods.ts";
-import type { ServerRawRequest } from "../../interfaces/index.ts";
-import { ServerRouterProvider } from "../ServerRouterProvider.ts";
+import type { RouteMethod } from "../constants/routeMethods.ts";
+import type { ServerRawRequest } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "./ServerProvider.ts";
+import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
 const envSchema = t.object({
 	SERVER_PORT: t.uint({

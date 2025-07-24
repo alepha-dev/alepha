@@ -3,11 +3,11 @@ import { describe, test } from "vitest";
 import { $action, HttpError } from "../src";
 
 describe("ServerBodyParserProvider", () => {
-	test("should handle simple json body", async ({ expect }) => {
+	test("should handle simple body", async ({ expect }) => {
 		const alepha = Alepha.create();
 
 		class TestApp {
-			test = $action({
+			json = $action({
 				schema: {
 					body: t.object({
 						message: t.string(),
@@ -16,9 +16,16 @@ describe("ServerBodyParserProvider", () => {
 						received: t.string(),
 					}),
 				},
-				handler: ({ body }) => {
-					return { received: body.message };
+				handler: ({ body }) => ({ received: body.message }),
+			});
+			string = $action({
+				schema: {
+					body: t.string(),
+					response: t.object({
+						received: t.string(),
+					}),
 				},
+				handler: ({ body }) => ({ received: body }),
 			});
 		}
 
@@ -26,12 +33,24 @@ describe("ServerBodyParserProvider", () => {
 		await alepha.start();
 
 		expect(
-			await app.test.run({
+			await app.json.run({
 				body: { message: "Hello, World!" },
 			}),
 		).toEqual({
 			received: "Hello, World!",
 		});
+
+		expect(app.json.getBodyContentType()).toBe("application/json");
+
+		expect(
+			await app.string.run({
+				body: "Hello, World!",
+			}),
+		).toEqual({
+			received: "Hello, World!",
+		});
+
+		expect(app.string.getBodyContentType()).toBe("text/plain");
 	});
 
 	test("should reject big payload", async ({ expect }) => {

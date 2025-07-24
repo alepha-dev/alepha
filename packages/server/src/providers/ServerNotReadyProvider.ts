@@ -1,5 +1,5 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
-import { HttpError } from "../../errors/HttpError.ts";
+import { HttpError } from "../errors/HttpError.ts";
 
 /**
  * On every request, this provider checks if the server is ready.

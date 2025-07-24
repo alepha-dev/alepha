@@ -344,7 +344,7 @@ export class SecurityProvider {
 	 */
 	public async createUserFromToken(
 		headerOrToken?: string,
-		permissionLike?: Permission | string,
+		permission?: Permission | string,
 	): Promise<UserAccountToken> {
 		const token = headerOrToken?.replace("Bearer", "").trim();
 		if (typeof token !== "string" || token === "") {
@@ -365,12 +365,11 @@ export class SecurityProvider {
 
 		let ownership: string | boolean | undefined;
 
-		if (permissionLike) {
-			const permission = this.permissionToString(permissionLike);
+		if (permission) {
 			const check = this.checkPermission(permission, ...roles);
 			if (!check.isAuthorized) {
 				throw new SecurityError(
-					`User is not allowed to access '${permission}'`,
+					`User is not allowed to access '${this.permissionToString(permission)}'`,
 				);
 			}
 

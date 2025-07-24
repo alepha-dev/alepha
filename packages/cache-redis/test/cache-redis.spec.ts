@@ -6,6 +6,7 @@ import {
 	testCacheInvalidateAll,
 	testCacheInvalidateByArgs,
 	testCacheInvalidateByKey,
+	testCacheKeys,
 	testCacheMissingProvider,
 	testCacheReturnTypes,
 	testCacheStop,
@@ -50,4 +51,8 @@ test("$cache - clear (redis)", async () => {
 
 test("$cache - types (redis)", async () => {
 	await testCacheReturnTypes(env(), provider);
+});
+
+test("$cache - keys (redis)", async () => {
+	await testCacheKeys(env(), provider);
 });

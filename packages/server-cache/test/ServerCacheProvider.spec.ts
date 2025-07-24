@@ -58,7 +58,7 @@ describe("ServerCacheProvider", () => {
 		expect(count).toBe(await app.cache.fetch().then((r) => r.data));
 
 		const serverCacheProvider = alepha.inject(ServerCacheProvider);
-		await serverCacheProvider.invalidate(app.cache);
+		await serverCacheProvider.invalidate(app.cache.route);
 
 		expect(count).not.toBe(await app.cache.fetch().then((r) => r.data));
 	});

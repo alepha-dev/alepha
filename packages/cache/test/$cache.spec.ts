@@ -11,6 +11,7 @@ import {
 	testCacheInvalidateAll,
 	testCacheInvalidateByArgs,
 	testCacheInvalidateByKey,
+	testCacheKeys,
 	testCacheMissingProvider,
 	testCacheReturnTypes,
 	testCacheStop,
@@ -50,6 +51,10 @@ test("$cache - clear", async () => {
 
 test("$cache - types", async () => {
 	await testCacheReturnTypes();
+});
+
+test("$cache - keys", async () => {
+	await testCacheKeys();
 });
 
 test("$cache - infinite", async () => {

@@ -1,4 +1,5 @@
 import { Alepha, t } from "@alepha/core";
+import { createFile } from "@alepha/file";
 import { describe, test } from "vitest";
 import { $action, ServerRouterProvider } from "../src";
 
@@ -82,5 +83,73 @@ describe("$action", () => {
 		expect(await app.a2.fetch({}).then((it) => it.data)).toBe("Not Found");
 		// note: $action disabled is callable locally
 		expect(await app.a2.run({})).toBe("ok:a2");
+	});
+
+	test("should return nothing", async ({ expect }) => {
+		const alepha = Alepha.create();
+		class TestApp {
+			test = $action({
+				schema: {
+					response: t.void(), // force no response
+				},
+				handler: () => {},
+			});
+		}
+		const app = alepha.inject(TestApp);
+		await alepha.start();
+
+		expect(await app.test.run({})).toStrictEqual(undefined);
+		expect(await app.test.fetch({}).then((it) => it.data)).toStrictEqual(
+			undefined,
+		);
+
+		const response = await app.test.fetch({});
+		expect(response.status).toBe(204); // No Content
+	});
+
+	test("should return an object", async ({ expect }) => {
+		const alepha = Alepha.create();
+		class TestApp {
+			test = $action({
+				schema: {
+					response: t.json(),
+				},
+				handler: () => ({
+					ok: true,
+				}),
+			});
+		}
+		const app = alepha.inject(TestApp);
+		await alepha.start();
+
+		expect(await app.test.run({})).toStrictEqual({ ok: true });
+		expect(await app.test.fetch({}).then((it) => it.data)).toStrictEqual({
+			ok: true,
+		});
+	});
+
+	test("should return a file", async ({ expect }) => {
+		const alepha = Alepha.create();
+		class TestApp {
+			test = $action({
+				schema: {
+					response: t.file(), // expect a file response
+				},
+				handler: () =>
+					createFile(Buffer.from("hello"), {
+						name: "hello.txt",
+						type: "text/plain",
+					}),
+			});
+		}
+		const app = alepha.inject(TestApp);
+		await alepha.start();
+
+		expect(await app.test.run({}).then((it) => it.text())).toBe("hello");
+		expect(await app.test.fetch({}).then((it) => it.data.text())).toBe("hello");
+
+		const file = await app.test.run({});
+		expect(file.name).toBe("hello.txt");
+		expect(file.type).toBe("text/plain");
 	});
 });

@@ -1,5 +1,5 @@
 import { $module } from "@alepha/core";
-import { AlephaServer } from "@alepha/server";
+import { AlephaServer, type RequestConfigSchema } from "@alepha/server";
 import { $swagger } from "./descriptors/$swagger.ts";
 import { ServerSwaggerProvider } from "./ServerSwaggerProvider.ts";
 
@@ -7,6 +7,17 @@ import { ServerSwaggerProvider } from "./ServerSwaggerProvider.ts";
 
 export * from "./descriptors/$swagger.ts";
 export * from "./ServerSwaggerProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/server" {
+	interface ActionDescriptorOptions<TConfig extends RequestConfigSchema> {
+		/**
+		 * Short description of the route.
+		 */
+		summary?: string;
+	}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 

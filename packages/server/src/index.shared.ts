@@ -7,7 +7,7 @@ export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
 export * from "./helpers/ServerReply.ts";
-export * from "./interfaces/index.ts";
+export * from "./interfaces/ServerRequest.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
 export * from "./schemas/errorSchema.ts";
 export * from "./schemas/okSchema.ts";

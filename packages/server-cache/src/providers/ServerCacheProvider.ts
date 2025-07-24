@@ -3,14 +3,17 @@ import {
 	$cache,
 	type CacheDescriptor,
 	type CacheDescriptorOptions,
+	CacheProvider,
 } from "@alepha/cache";
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import {
+	$action,
 	ActionDescriptor,
 	type RequestConfigSchema,
 	type ServerHandler,
 	type ServerRequest,
+	type ServerRoute,
 } from "@alepha/server";
 
 declare module "@alepha/server" {
@@ -26,56 +29,41 @@ declare module "@alepha/server" {
 ActionDescriptor.prototype.invalidate = async function (
 	this: ActionDescriptor<RequestConfigSchema>,
 ) {
-	await this.alepha.inject(ServerCacheProvider).invalidate(this);
+	await this.alepha.inject(ServerCacheProvider).invalidate(this.route);
 };
 
 export class ServerCacheProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly time = $inject(DateTimeProvider);
-	protected readonly caches = new Map<ServerHandler, RouteCache>();
+	protected readonly cache = $cache<RouteCacheEntry>({
+		provider: "memory",
+	});
 
 	public generateETag(content: string): string {
 		return `"${createHash("md5").update(content).digest("hex")}"`;
 	}
 
-	public async invalidate(route: RouteLike) {
-		const cache = this.getCacheByRoute(route);
+	public async invalidate(route: ServerRoute) {
+		const cache = route.cache;
 		if (!cache) {
 			return;
 		}
 
-		await cache.invalidate();
+		await this.cache.invalidate(this.createCacheKey(route));
 	}
-
-	protected readonly onRoute = $hook({
-		on: "server:onRoute",
-		handler: async ({ route }) => {
-			if (!route.cache) {
-				return;
-			}
-
-			const cache = this.alepha.use($cache<RouteCacheEntry, [ServerRequest]>, {
-				name: `${route.method}:${route.path}`,
-				provider: "memory",
-				key: (args) => this.createCacheKey(args),
-				...this.getCacheOptions(route.cache),
-			});
-
-			this.caches.set(route.handler, cache);
-		},
-	});
 
 	protected readonly onRequest = $hook({
 		on: "server:onRequest",
 		handler: async ({ route, request }) => {
-			const cache = this.getCacheByRoute(route);
+			const cache = route.cache;
 			if (!cache) {
 				return;
 			}
 
-			const key = this.createCacheKey(request);
-			const cached = await cache.get(key);
+			const key = this.createCacheKey(route, request);
+
+			const cached = await this.cache.get(key);
 			if (cached) {
 				// if user has already the resource cached, just return 304 Not Modified
 				if (
@@ -101,19 +89,19 @@ export class ServerCacheProvider {
 		on: "server:onResponse",
 		priority: "first",
 		handler: async ({ route, request, response }) => {
-			const cache = this.getCacheByRoute(route);
+			const cache = route.cache;
 			if (!cache) {
 				return;
 			}
 
-			const key = this.createCacheKey(request);
+			const key = this.createCacheKey(route, request);
 
 			// we only cache string responses (text, html, json, etc.)
 			// - buffer is not supported by @alepha/cache, for now!
 
 			if (typeof response.body === "string") {
 				const etag = this.generateETag(response.body);
-				await cache.set(key, {
+				await this.cache.set(key, {
 					body: response.body,
 					status: response.status,
 					contentType: response.headers?.["content-type"],
@@ -144,23 +132,8 @@ export class ServerCacheProvider {
 		};
 	}
 
-	protected getCacheByRoute(route: RouteLike): RouteCache | undefined {
-		const options = "options" in route ? route.options : route;
-		if (!options.handler) {
-			return;
-		}
-
-		return this.caches.get(options.handler);
-	}
-
-	protected createCacheKey(args: ServerRequest) {
-		return JSON.stringify({
-			method: args.method,
-			pathname: args.url.pathname,
-			query: args.query ?? {},
-			params: args.params ?? {},
-			body: args.body ?? {}, // hmmm ?
-		});
+	protected createCacheKey(route: ServerRoute, args?: ServerRequest) {
+		return `${route.method}:${route.path}:${args?.url?.href ?? "*"}`;
 	}
 }
 
@@ -176,15 +149,3 @@ interface RouteCacheEntry {
 	lastModified: string;
 	hash: string;
 }
-
-type RouteCache = CacheDescriptor<RouteCacheEntry, [ServerRequest]>;
-
-type RouteLike =
-	| {
-			options: {
-				handler?: ServerHandler;
-			};
-	  }
-	| {
-			handler?: ServerHandler;
-	  };

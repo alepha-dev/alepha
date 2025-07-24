@@ -3,7 +3,7 @@ import { beforeEach, test } from "vitest";
 import { AlephaServer } from "../src";
 import { $action } from "../src/descriptors/$action.ts";
 import { HttpError } from "../src/errors/HttpError.ts";
-import { ServerLoggerProvider } from "../src/providers/features/ServerLoggerProvider.ts";
+import { ServerLoggerProvider } from "../src/providers/ServerLoggerProvider.ts";
 
 class App {
 	log = $logger();

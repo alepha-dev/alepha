@@ -50,7 +50,7 @@ describe("ServerMultipartProvider", () => {
 
 		const file = new File(["test content"], "test.txt", { type: "text/plain" });
 
-		const resp = await alepha.inject(App).upload({
+		const resp = await alepha.inject(App).upload.run({
 			body: {
 				file,
 			},

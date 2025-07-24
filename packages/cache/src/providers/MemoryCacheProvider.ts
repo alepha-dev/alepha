@@ -36,7 +36,7 @@ export class MemoryCacheProvider implements CacheProvider {
 
 		// clear previous timeout if exists
 		if (this.store[name][key].timeout) {
-			this.store[name][key].timeout.clear();
+			this.dateTimeProvider.clearTimeout(this.store[name][key].timeout);
 			this.store[name][key].timeout = undefined;
 		}
 
@@ -57,7 +57,10 @@ export class MemoryCacheProvider implements CacheProvider {
 
 			if (this.store[name]) {
 				for (const key of Object.keys(this.store[name])) {
-					this.store[name][key]?.timeout?.clear();
+					const timeout = this.store[name][key]?.timeout;
+					if (timeout) {
+						this.dateTimeProvider.clearTimeout(timeout);
+					}
 				}
 			}
 			delete this.store[name];
@@ -70,7 +73,11 @@ export class MemoryCacheProvider implements CacheProvider {
 		for (const key of keys) {
 			if (this.store[name] == null) break;
 
-			this.store[name][key]?.timeout?.clear();
+			const timeout = this.store[name][key]?.timeout;
+			if (timeout) {
+				this.dateTimeProvider.clearTimeout(timeout);
+			}
+
 			delete this.store[name][key];
 		}
 
@@ -84,7 +91,12 @@ export class MemoryCacheProvider implements CacheProvider {
 		return this.store[name]?.[key]?.data != null;
 	}
 
-	public async keys(name: string): Promise<string[]> {
-		return Object.keys(this.store[name] ?? {});
+	public async keys(name: string, filter?: string): Promise<string[]> {
+		const store = this.store[name] ?? {};
+		const keys = Object.keys(store);
+		if (filter) {
+			return keys.filter((key) => key.startsWith(filter));
+		}
+		return keys;
 	}
 }

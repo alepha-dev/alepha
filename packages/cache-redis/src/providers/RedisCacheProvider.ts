@@ -87,7 +87,10 @@ export class RedisCacheProvider implements CacheProvider {
 		return this.get(name, key).then((value) => value != null);
 	}
 
-	public async keys(name: string): Promise<string[]> {
+	public async keys(name: string, filter?: string): Promise<string[]> {
+		if (filter) {
+			return await this.redisProvider.keys(`${this.prefix(name)}:${filter}*`);
+		}
 		return this.redisProvider.keys(`${this.prefix(name)}:*`);
 	}
 

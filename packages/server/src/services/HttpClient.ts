@@ -13,7 +13,7 @@ import type { DurationLike } from "@alepha/datetime";
 import type { ClientRequestOptions } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
-import type { ServerRequestConfigEntry } from "../interfaces/index.ts";
+import type { ServerRequestConfigEntry } from "../interfaces/ServerRequest.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 export class HttpClient {
@@ -297,6 +297,10 @@ export class HttpClient {
 		const contentType = response.headers.get("Content-Type");
 		if (!contentType) {
 			return false;
+		}
+
+		if (response.headers.get("Content-Disposition")?.includes("attachment")) {
+			return true; // If Content-Disposition indicates an attachment, treat it as a file
 		}
 
 		return (

@@ -2,8 +2,8 @@ import type { IncomingMessage } from "node:http";
 import type Stream from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { $env, $hook, $inject, $logger, Alepha, t } from "@alepha/core";
-import { BadRequestError } from "../../errors/BadRequestError.ts";
-import { HttpError } from "../../errors/HttpError.ts";
+import { BadRequestError } from "../errors/BadRequestError.ts";
+import { HttpError } from "../errors/HttpError.ts";
 
 const envSchema = t.object({
 	SERVER_BODY_PARSER_INFLATE: t.boolean({
@@ -151,6 +151,9 @@ export class ServerBodyParserProvider {
 		}
 	}
 
+	/**
+	 * Classic Node.js stream to Buffer conversion but with a size limit.
+	 */
 	protected streamToBuffer(req: Stream): Promise<Buffer> {
 		const chunks: Buffer[] = [];
 		let totalLength = 0;

@@ -1,5 +1,9 @@
-import { createDescriptor, Descriptor, KIND } from "@alepha/core";
-import type { RequestConfigSchema, ServerRoute } from "../interfaces/index.ts";
+import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
+import type {
+	RequestConfigSchema,
+	ServerRoute,
+} from "../interfaces/ServerRequest.ts";
+import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
 
 /**
  * Create a basic endpoint.
@@ -25,6 +29,12 @@ export interface RouteDescriptorOptions<
 
 export class RouteDescriptor<
 	TConfig extends RequestConfigSchema,
-> extends Descriptor<RouteDescriptorOptions<TConfig>> {}
+> extends Descriptor<RouteDescriptorOptions<TConfig>> {
+	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+
+	protected onInit() {
+		this.serverRouterProvider.createRoute(this.options);
+	}
+}
 
 $route[KIND] = RouteDescriptor;

@@ -45,5 +45,5 @@ export abstract class CacheProvider {
 
 	public abstract has(name: string, key: string): Promise<boolean>;
 
-	public abstract keys(name: string): Promise<string[]>;
+	public abstract keys(name: string, filter?: string): Promise<string[]>;
 }

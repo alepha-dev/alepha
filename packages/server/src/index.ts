@@ -2,30 +2,40 @@ import type {
 	IncomingMessage,
 	ServerResponse as NodeServerResponse,
 } from "node:http";
-import { $module, type Alepha } from "@alepha/core";
-import { $realm, $role } from "@alepha/security";
-import { $action, type ClientRequestOptions } from "./descriptors/$action.ts";
+import { $module, type Alepha, type DescriptorFactoryLike } from "@alepha/core";
+import {
+	$action,
+	type ActionDescriptor,
+	type ClientRequestOptions,
+} from "./descriptors/$action.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import type {
+	RequestConfigSchema,
 	ServerRequest,
 	ServerRequestConfigEntry,
 	ServerResponse,
 	ServerRoute,
-} from "./interfaces/index.ts";
-import { ServerBodyParserProvider } from "./providers/features/ServerBodyParserProvider.ts";
-import { ServerLoggerProvider } from "./providers/features/ServerLoggerProvider.ts";
-import { ServerNotReadyProvider } from "./providers/features/ServerNotReadyProvider.ts";
-import { ServerSecurityProvider } from "./providers/features/ServerSecurityProvider.ts";
-import { ServerTimingProvider } from "./providers/features/ServerTimingProvider.ts";
-import { NodeHttpServerProvider } from "./providers/platforms/NodeHttpServerProvider.ts";
-import { ServerProvider } from "./providers/platforms/ServerProvider.ts";
+} from "./interfaces/ServerRequest.ts";
+import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
+import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
+import { ServerLoggerProvider } from "./providers/ServerLoggerProvider.ts";
+import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
+import { ServerProvider } from "./providers/ServerProvider.ts";
+import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
 import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
 	interface Hooks {
+		// -----------------------------------------------------------------------------------------------------------------
+		// Local Actions hooks
+		"action:onRequest": {
+			action: ActionDescriptor<RequestConfigSchema>;
+			request: ServerRequest;
+			options: ClientRequestOptions;
+		};
 		// -----------------------------------------------------------------------------------------------------------------
 		// Server hooks
 		"server:onRequest": {
@@ -82,13 +92,12 @@ export * from "./descriptors/$action.ts";
 export * from "./descriptors/$route.ts";
 export * from "./helpers/ActionDescriptorHelper.ts";
 export * from "./index.shared.ts";
-export * from "./providers/features/ServerLoggerProvider.ts";
-export * from "./providers/features/ServerNotReadyProvider.ts";
-export * from "./providers/features/ServerSecurityProvider.ts";
-export * from "./providers/features/ServerTimingProvider.ts";
-export * from "./providers/platforms/NodeHttpServerProvider.ts";
-export * from "./providers/platforms/ServerProvider.ts";
+export * from "./providers/NodeHttpServerProvider.ts";
+export * from "./providers/ServerLoggerProvider.ts";
+export * from "./providers/ServerNotReadyProvider.ts";
+export * from "./providers/ServerProvider.ts";
 export * from "./providers/ServerRouterProvider.ts";
+export * from "./providers/ServerTimingProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -105,12 +114,7 @@ export * from "./providers/ServerRouterProvider.ts";
  */
 export const AlephaServer = $module({
 	name: "alepha.server",
-	descriptors: [
-		$route,
-		$action,
-		[$realm, ServerSecurityProvider],
-		[$role, ServerSecurityProvider],
-	],
+	descriptors: [$route, $action as DescriptorFactoryLike],
 	services: [
 		ServerProvider,
 		NodeHttpServerProvider,
@@ -118,7 +122,6 @@ export const AlephaServer = $module({
 		ServerLoggerProvider,
 		ServerNotReadyProvider,
 		ServerTimingProvider,
-		ServerSecurityProvider,
 	],
 	register: (alepha: Alepha) => {
 		alepha.with({

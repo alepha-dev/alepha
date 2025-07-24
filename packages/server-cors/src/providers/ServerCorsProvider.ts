@@ -11,24 +11,27 @@ export class ServerCorsProvider {
 		credentials: true,
 	};
 
-	protected readonly onRoute = $hook({
-		on: "server:onRoute",
-		handler: async ({ route }) => {
-			if (
-				!route.method ||
-				route.method === "GET" ||
-				route.method === "OPTIONS"
-			) {
-				return;
-			}
+	protected readonly configure = $hook({
+		on: "configure",
+		handler: () => {
+			const routes = this.serverRouterProvider.getRoutes();
+			for (const route of routes) {
+				if (
+					!route.method ||
+					route.method === "GET" ||
+					route.method === "OPTIONS"
+				) {
+					continue;
+				}
 
-			await this.serverRouterProvider.createRoute({
-				path: route.path,
-				method: "OPTIONS",
-				handler: ({ reply }) => {
-					reply.setStatus(204);
-				},
-			});
+				this.serverRouterProvider.createRoute({
+					path: route.path,
+					method: "OPTIONS",
+					handler: ({ reply }) => {
+						reply.setStatus(204);
+					},
+				});
+			}
 		},
 	});
 

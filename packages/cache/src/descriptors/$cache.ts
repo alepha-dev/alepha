@@ -132,7 +132,21 @@ export class CacheDescriptor<
 	}
 
 	public async invalidate(...keys: string[]): Promise<void> {
-		await this.provider.del(this.container, ...keys);
+		const keysToDelete: string[] = [];
+
+		for (const key of keys) {
+			if (key.endsWith("*")) {
+				const result = await this.provider.keys(
+					this.container,
+					key.slice(0, -1),
+				);
+				keysToDelete.push(...result);
+			} else {
+				keysToDelete.push(key);
+			}
+		}
+
+		await this.provider.del(this.container, ...keysToDelete);
 	}
 
 	public async set(

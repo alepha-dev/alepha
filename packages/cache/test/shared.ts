@@ -252,3 +252,34 @@ export const testCacheReturnTypes = async (
 	expect(await test.string()).toBe('{ "a": 1 }');
 	expect(await test.string()).toBe('{ "a": 1 }');
 };
+
+export const testCacheKeys = async (
+	env: Env = {},
+	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+) => {
+	const alepha = Alepha.create({
+		env,
+	}).with({
+		provide: CacheProvider,
+		use: cacheProvider,
+	});
+	class TestApp {
+		cache = $cache<string>();
+	}
+
+	const app = alepha.inject(TestApp);
+	const provider = alepha.inject(CacheProvider);
+	await alepha.start();
+
+	app.cache.set("test:A", "A");
+	app.cache.set("test:B", "B");
+	app.cache.set("hello", "C");
+	expect(await provider.keys("TestApp:cache").then((it) => it.length)).toEqual(
+		3,
+	);
+
+	await app.cache.invalidate("test:*");
+	expect(await provider.keys("TestApp:cache").then((it) => it.length)).toEqual(
+		1,
+	);
+};

@@ -23,8 +23,8 @@ import type {
 	ServerRequestConfig,
 	ServerResponse,
 	ServerRoute,
-	ServerRouteWithHandler,
-} from "../interfaces";
+	ServerRouteMatcher,
+} from "../interfaces/ServerRequest.ts";
 
 /**
  * Main router for all routes on the server side.
@@ -33,25 +33,21 @@ import type {
  * - $action => action route (for API calls)
  * - $page => React route (for SSR)
  */
-export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler> {
+export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	protected readonly alepha = $inject(Alepha);
+	protected readonly routes: ServerRoute[] = [];
 
-	protected readonly onConfigure = $hook({
-		on: "configure",
-		handler: async () => {
-			await Promise.all(
-				this.alepha.descriptors($route).map((route) => {
-					this.createRoute(route.options);
-				}),
-			);
-		},
-	});
+	public getRoutes(): ServerRoute[] {
+		return this.routes;
+	}
 
 	public createRoute<TConfig extends RequestConfigSchema = RequestConfigSchema>(
 		route: ServerRoute<TConfig>,
 	): void {
 		route.method ??= "GET";
 		route.method = route.method.toUpperCase() as RouteMethod;
+
+		this.routes.push(route);
 
 		const path = `/${route.method}/${route.path}`.replace(/\/+/g, "/");
 		const responseKind = this.getResponseType(route.schema);
@@ -323,7 +319,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteWithHandler>
 			}
 			reply.headers["content-type"] = reply.body.type;
 			reply.headers["content-disposition"] =
-				`attachment; filename="${reply.body.name}"`;
+				`attachment; filename="${reply.body.name.replaceAll('"', "")}"`;
 			reply.body = reply.body.stream() as NodeWebStream;
 			return;
 		}
