@@ -1,18 +1,9 @@
-import { __descriptor, type Async, KIND, OPTIONS } from "@alepha/core";
+import { type Async, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { ServerRequest } from "@alepha/server";
 
-export const $proxy: {
-	(options: ProxyDescriptorOptions): ProxyDescriptor;
-	[KIND]: string;
-} = (options: ProxyDescriptorOptions): ProxyDescriptor => {
-	__descriptor("PROXY");
-	return {
-		[KIND]: "PROXY",
-		[OPTIONS]: options,
-	};
+export const $proxy = (options: ProxyDescriptorOptions): ProxyDescriptor => {
+	return createDescriptor(ProxyDescriptor, options);
 };
-
-$proxy[KIND] = "PROXY";
 
 export type ProxyDescriptorOptions = {
 	path: string;
@@ -38,7 +29,6 @@ export type ProxyDescriptorOptions = {
 	// retry: RetryOptions;
 };
 
-export interface ProxyDescriptor {
-	[KIND]: "PROXY";
-	[OPTIONS]: ProxyDescriptorOptions;
-}
+export class ProxyDescriptor extends Descriptor<ProxyDescriptorOptions> {}
+
+$proxy[KIND] = ProxyDescriptor;

@@ -29,13 +29,15 @@ test("LinkProvider - links", async ({ expect }) => {
 	const alepha = Alepha.create().with(App).with(ServerLinksProvider);
 	await alepha.start();
 
-	const res = await fetch(`${alepha.inject(ServerProvider).hostname}/api/_links`);
+	const res = await fetch(
+		`${alepha.inject(ServerProvider).hostname}/api/_links`,
+	);
 
 	expect(await res.json()).toStrictEqual({
 		prefix: "/api",
 		links: [
 			{
-				group: "app",
+				group: "App",
 				name: "ping",
 				path: "/ping",
 			},

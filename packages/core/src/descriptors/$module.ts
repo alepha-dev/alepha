@@ -91,7 +91,7 @@ export interface ModuleDescriptorOptions {
 	/**
 	 * List of $descriptors to register in the module.
 	 */
-	descriptors?: Array<DescriptorFactoryLike | [DescriptorFactoryLike, Service]>;
+	descriptors?: Array<DescriptorFactoryLike>;
 
 	/**
 	 * By default, module will register all services.

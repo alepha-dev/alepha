@@ -1,26 +1,14 @@
-import { __descriptor, KIND, NotImplementedError, OPTIONS } from "@alepha/core";
+import { createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
-
-const KEY = "SERVE";
 
 /**
  * Create a new static file handler.
  */
-export const $serve: {
-	(options?: ServeDescriptorOptions): ServeDescriptor;
-	[KIND]: string;
-} = (options: ServeDescriptorOptions = {}): ServeDescriptor => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		list: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
+export const $serve = (
+	options: ServeDescriptorOptions = {},
+): ServeDescriptor => {
+	return createDescriptor(ServeDescriptor, options);
 };
-
-$serve[KIND] = KEY;
 
 export interface ServeDescriptorOptions {
 	/**
@@ -103,8 +91,6 @@ export interface CacheControlOptions {
 	immutable: boolean;
 }
 
-export interface ServeDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: ServeDescriptorOptions;
-	list(): string[];
-}
+export class ServeDescriptor extends Descriptor<ServeDescriptorOptions> {}
+
+$serve[KIND] = ServeDescriptor;

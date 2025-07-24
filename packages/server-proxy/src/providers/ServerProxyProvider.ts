@@ -1,11 +1,4 @@
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Logger,
-	OPTIONS,
-} from "@alepha/core";
+import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import {
 	routeMethods,
 	type ServerHandler,
@@ -14,25 +7,44 @@ import {
 } from "@alepha/server";
 import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
 
-export class ProxyDescriptorProvider {
-	protected readonly log: Logger = $logger();
-	protected readonly routerProvider: ServerRouterProvider =
-		$inject(ServerRouterProvider);
+export class ServerProxyProvider {
+	protected readonly log = $logger();
+	protected readonly routerProvider = $inject(ServerRouterProvider);
 	protected readonly alepha = $inject(Alepha);
 
-	public readonly configure = $hook({
+	protected readonly configure = $hook({
 		on: "configure",
-		handler: async () => {
-			const proxies = this.alepha.getDescriptorValues($proxy);
-			for (const { value } of proxies) {
-				if (value[OPTIONS].disabled) {
-					continue;
-				}
-
-				await this.proxy(value[OPTIONS]);
+		handler: () => {
+			for (const proxy of this.alepha.descriptors($proxy)) {
+				this.createProxy(proxy.options);
 			}
 		},
 	});
+
+	public createProxy(options: ProxyDescriptorOptions): void {
+		if (options.disabled) {
+			return;
+		}
+
+		const path = options.path;
+		const target =
+			typeof options.target === "function" ? options.target() : options.target;
+		const handler = this.createProxyHandler(target, options);
+
+		if (!path.endsWith("/*")) {
+			throw new Error("Proxy path should end with '/*'");
+		}
+
+		for (const method of routeMethods) {
+			this.routerProvider.createRoute({
+				method,
+				path,
+				handler,
+			});
+		}
+
+		this.alepha.log.info("Proxying", { path, target });
+	}
 
 	public createProxyHandler(
 		target: string,
@@ -85,27 +97,6 @@ export class ProxyDescriptorProvider {
 				await options.afterResponse(request, response);
 			}
 		};
-	}
-
-	public async proxy(options: ProxyDescriptorOptions): Promise<void> {
-		const path = options.path;
-		const target =
-			typeof options.target === "function" ? options.target() : options.target;
-		const handler: ServerHandler = this.createProxyHandler(target, options);
-
-		if (!path.endsWith("/*")) {
-			throw new Error("Proxy path should end with '/*'");
-		}
-
-		for (const method of routeMethods) {
-			await this.routerProvider.createRoute({
-				method,
-				path,
-				handler,
-			});
-		}
-
-		this.alepha.log.info("Proxying", { path, target });
 	}
 
 	private getRawRequestBody(req: ServerRequest): any {

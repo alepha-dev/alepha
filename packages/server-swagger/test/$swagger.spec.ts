@@ -1,11 +1,11 @@
 import { Alepha, t } from "@alepha/core";
 import { $action } from "@alepha/server";
 import { expect, test } from "vitest";
-import { $swagger } from "../src";
+import { $swagger, ServerSwaggerProvider } from "../src";
 
 class App {
 	internal = $action({
-		internal: true,
+		hide: true,
 		schema: {
 			response: t.object({
 				message: t.string(),
@@ -19,7 +19,7 @@ class App {
 	});
 
 	api = $action({
-		internal: true,
+		hide: true,
 		schema: {
 			response: t.object({
 				message: t.string(),
@@ -85,8 +85,7 @@ class App {
 const alepha = Alepha.create().with(App);
 
 test("$swagger", () => {
-	const app = alepha.inject(App);
-	const swagger = app.docs.json();
+	const swagger = alepha.inject(ServerSwaggerProvider).json;
 
 	expect(swagger).toEqual({
 		openapi: "3.0.0",
@@ -167,7 +166,7 @@ test("$swagger", () => {
 							description: "",
 						},
 					},
-					tags: ["app"],
+					tags: ["App"],
 				},
 			},
 		},

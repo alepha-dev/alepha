@@ -20,39 +20,22 @@ export class ServerStaticProvider {
 	protected readonly routerProvider = $inject(ServerRouterProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly log: Logger = $logger();
-
 	protected readonly directories: ServeDirectory[] = [];
 
 	protected readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
-			const serves = this.alepha.getDescriptorValues($serve);
-			for (const { value, instance, key } of serves) {
-				if (value[OPTIONS].disabled) {
-					continue;
-				}
-
-				const name = value[OPTIONS].name ?? key;
-
-				await this.serve(value[OPTIONS]);
-
-				instance[key].list = () => {
-					return this.list(name);
-				};
-			}
+			await Promise.all(
+				this.alepha
+					.descriptors($serve)
+					.map((it) => this.createStaticServer(it.options)),
+			);
 		},
 	});
 
-	public list(name: string): string[] {
-		const directory = this.directories.find((dir) => dir.options.name === name);
-		if (!directory) {
-			return [];
-		}
-
-		return directory.files;
-	}
-
-	public async serve(options: ServeDescriptorOptions): Promise<void> {
+	public async createStaticServer(
+		options: ServeDescriptorOptions,
+	): Promise<void> {
 		const prefix = options.path ?? "/";
 
 		let root = options.root ?? process.cwd();
@@ -74,13 +57,13 @@ export class ServerStaticProvider {
 		);
 
 		for (const route of routes) {
-			await this.routerProvider.createRoute(route);
+			this.routerProvider.createRoute(route);
 
 			if (
 				options.indexFallback !== false &&
 				route.path.endsWith("index.html")
 			) {
-				await this.routerProvider.createRoute({
+				this.routerProvider.createRoute({
 					path: route.path.replace(/index\.html$/, ""),
 					handler: route.handler,
 				});
@@ -93,13 +76,13 @@ export class ServerStaticProvider {
 		});
 
 		if (options.historyApiFallback) {
-			await this.routerProvider.createRoute({
+			this.routerProvider.createRoute({
 				path: join(prefix, "*").replace(/\\/g, "/"),
 				handler: async (request) => {
 					const { reply } = request;
 
 					if (request.url.pathname.includes(".")) {
-						// If the request is for a file (e.g., /style.css), do not fallback
+						// If the request is for a file (e.g., /style.css), do not fall back
 						reply.headers["content-type"] = "text/plain";
 						reply.body = "Not Found";
 						reply.status = 404;

@@ -16,6 +16,11 @@ declare module "@alepha/server" {
 		 * Short description of the route.
 		 */
 		summary?: string;
+
+		/**
+		 * Don't include this action in the Swagger documentation.
+		 */
+		hide?: boolean;
 	}
 }
 

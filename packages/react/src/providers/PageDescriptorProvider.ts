@@ -16,7 +16,11 @@ import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import { $page, type PageDescriptorOptions } from "../descriptors/$page.ts";
+import {
+	$page,
+	type PageDescriptor,
+	type PageDescriptorOptions,
+} from "../descriptors/$page.ts";
 import { RedirectionError } from "../errors/RedirectionError.ts";
 
 const envSchema = t.object({
@@ -364,14 +368,14 @@ export class PageDescriptorProvider {
 		on: "configure",
 		handler: () => {
 			let hasNotFoundHandler = false;
-			const pages = this.alepha.getDescriptorValues($page);
+			const pages = this.alepha.descriptors($page);
 
-			const hasParent = (it: { [OPTIONS]: PageDescriptorOptions }) => {
+			const hasParent = (it: PageDescriptor) => {
 				for (const page of pages) {
-					const children = page.value[OPTIONS].children
-						? Array.isArray(page.value[OPTIONS].children)
-							? page.value[OPTIONS].children
-							: page.value[OPTIONS].children()
+					const children = page.options.children
+						? Array.isArray(page.options.children)
+							? page.options.children
+							: page.options.children()
 						: [];
 					if (children.includes(it)) {
 						return true;
@@ -379,21 +383,17 @@ export class PageDescriptorProvider {
 				}
 			};
 
-			for (const { value, key } of pages) {
-				value[OPTIONS].name ??= key;
-			}
-
-			for (const { value } of pages) {
-				if (value[OPTIONS].path === "/*") {
+			for (const page of pages) {
+				if (page.options.path === "/*") {
 					hasNotFoundHandler = true;
 				}
 
 				// skip children, we only want root pages
-				if (hasParent(value)) {
+				if (hasParent(page)) {
 					continue;
 				}
 
-				this.add(this.map(pages, value));
+				this.add(this.map(pages, page));
 			}
 
 			if (!hasNotFoundHandler && pages.length > 0) {
@@ -412,17 +412,18 @@ export class PageDescriptorProvider {
 	});
 
 	protected map(
-		pages: Array<{ value: { [OPTIONS]: PageDescriptorOptions } }>,
-		target: { [OPTIONS]: PageDescriptorOptions },
+		pages: Array<PageDescriptor>,
+		target: PageDescriptor,
 	): PageRouteEntry {
-		const children = target[OPTIONS].children
-			? Array.isArray(target[OPTIONS].children)
-				? target[OPTIONS].children
-				: target[OPTIONS].children()
+		const children = target.options.children
+			? Array.isArray(target.options.children)
+				? target.options.children
+				: target.options.children()
 			: [];
 
 		return {
-			...target[OPTIONS],
+			...target.options,
+			name: target.name,
 			parent: undefined,
 			children: children.map((it) => this.map(pages, it)),
 		} as PageRoute;

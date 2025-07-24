@@ -1,6 +1,7 @@
 import {
-	__descriptor,
 	type Async,
+	createDescriptor,
+	Descriptor,
 	KIND,
 	NotImplementedError,
 	OPTIONS,
@@ -13,8 +14,6 @@ import type { FC, ReactNode } from "react";
 import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
 
-const KEY = "PAGE";
-
 /**
  * Main descriptor for defining a React route in the application.
  */
@@ -25,44 +24,13 @@ export const $page = <
 >(
 	options: PageDescriptorOptions<TConfig, TProps, TPropsParent>,
 ): PageDescriptor<TConfig, TProps, TPropsParent> => {
-	__descriptor(KEY);
-
-	// if (options.children) {
-	// 	for (const child of options.children) {
-	// 		child[OPTIONS].parent = {
-	// 			[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
-	// 		};
-	// 	}
-	// }
-
-	// if (options.parent) {
-	// 	options.parent[OPTIONS].children ??= [];
-	// 	options.parent[OPTIONS].children.push({
-	// 		[OPTIONS]: options as PageDescriptorOptions<any, any, any>,
-	// 	});
-	// }
-
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		render: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
+	return createDescriptor(
+		PageDescriptor<TConfig, TProps, TPropsParent>,
+		options,
+	);
 };
 
-$page[KIND] = KEY;
-
 // ---------------------------------------------------------------------------------------------------------------------
-
-export interface PageConfigSchema {
-	query?: TSchema;
-	params?: TSchema;
-}
-
-export type TPropsDefault = any;
-
-export type TPropsParentDefault = {};
 
 export interface PageDescriptorOptions<
 	TConfig extends PageConfigSchema = PageConfigSchema,
@@ -136,11 +104,9 @@ export interface PageDescriptorOptions<
 	 *
 	 * If you still want to render at this pathname, add a child page with an empty path.
 	 */
-	children?:
-		| Array<{ [OPTIONS]: PageDescriptorOptions }>
-		| (() => Array<{ [OPTIONS]: PageDescriptorOptions }>);
+	children?: Array<PageDescriptor> | (() => Array<PageDescriptor>);
 
-	parent?: { [OPTIONS]: PageDescriptorOptions<PageConfigSchema, TPropsParent> };
+	parent?: PageDescriptor<PageConfigSchema, TPropsParent>;
 
 	can?: () => boolean;
 
@@ -168,22 +134,38 @@ export interface PageDescriptorOptions<
 	cache?: ServerRouteCache;
 }
 
-export interface PageDescriptor<
+export class PageDescriptor<
 	TConfig extends PageConfigSchema = PageConfigSchema,
 	TProps extends object = TPropsDefault,
 	TPropsParent extends object = TPropsParentDefault,
-> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: PageDescriptorOptions<TConfig, TProps, TPropsParent>;
+> extends Descriptor<PageDescriptorOptions<TConfig, TProps, TPropsParent>> {
+	public get name(): string {
+		return this.options.name ?? this.config.propertyKey;
+	}
 
 	/**
 	 * For testing or build purposes, this will render the page (with or without the HTML layout) and return the HTML and context.
 	 * Only valid for server-side rendering, it will throw an error if called on the client-side.
 	 */
-	render: (
+	public async render(
 		options?: PageDescriptorRenderOptions,
-	) => Promise<PageDescriptorRenderResult>;
+	): Promise<PageDescriptorRenderResult> {
+		throw new NotImplementedError("");
+	}
 }
+
+$page[KIND] = PageDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface PageConfigSchema {
+	query?: TSchema;
+	params?: TSchema;
+}
+
+export type TPropsDefault = any;
+
+export type TPropsParentDefault = {};
 
 export interface PageDescriptorRenderOptions {
 	params?: Record<string, string>;

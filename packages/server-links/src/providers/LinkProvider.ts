@@ -78,6 +78,16 @@ export class LinkProvider {
 					});
 				};
 
+				$.run = async (
+					config: any = {},
+					options: ClientRequestOptions = {},
+				) => {
+					return this.follow(prop, config, {
+						...scope,
+						...options,
+					});
+				};
+
 				$.fetch = async (
 					config: any = {},
 					options: ClientRequestOptions = {},

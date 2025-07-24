@@ -5,7 +5,6 @@ import {
 	$inject,
 	Alepha,
 	isTypeFile,
-	OPTIONS,
 	type TObject,
 	type TSchema,
 	TypeGuard,
@@ -13,8 +12,9 @@ import {
 } from "@alepha/core";
 import { AlephaSecurity } from "@alepha/security";
 import {
-	ServerActionDescriptorProvider,
-	type ServerRouteAction,
+	$action,
+	type ActionDescriptor,
+	type RequestConfigSchema,
 	ServerRouterProvider,
 } from "@alepha/server";
 import { ServerStaticProvider } from "@alepha/server-static";
@@ -25,43 +25,54 @@ import {
 } from "./descriptors/$swagger.ts";
 
 export class ServerSwaggerProvider {
-	protected readonly serverActionProvider = $inject(
-		ServerActionDescriptorProvider,
-	);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly alepha = $inject(Alepha);
 
+	public json?: OpenAPIV3.Document;
+
 	protected readonly configure = $hook({
 		on: "configure",
-		after: this.serverActionProvider,
+		priority: "last",
 		handler: async (alepha) => {
-			const doc = alepha.getDescriptorValues($swagger)?.[0];
-			if (!doc || doc.value[OPTIONS].disabled) {
+			const swagger = alepha.descriptors($swagger)?.[0];
+			if (!swagger) {
 				return;
 			}
 
-			const options = doc.value[OPTIONS];
-
-			const json = this.configureOpenApi(options);
-
-			if (options.rewrite) {
-				options.rewrite(json);
-			}
-
-			doc.instance[doc.key].json = () => json;
-
-			const prefix = options.prefix ?? "/docs";
-
-			await this.configureSwaggerApi(prefix, json);
-
-			if (options.ui !== false) {
-				await this.configureSwaggerUi(prefix, options);
-			}
+			this.json = await this.createSwagger(swagger.options);
 		},
 	});
 
+	public async createSwagger(
+		options: SwaggerDescriptorOptions,
+	): Promise<OpenAPIV3.Document | undefined> {
+		if (options.disabled) {
+			return;
+		}
+
+		const json = this.configureOpenApi(
+			this.alepha.descriptors($action),
+			options,
+		);
+
+		if (options.rewrite) {
+			options.rewrite(json);
+		}
+
+		const prefix = options.prefix ?? "/docs";
+
+		this.configureSwaggerApi(prefix, json);
+
+		if (options.ui !== false) {
+			await this.configureSwaggerUi(prefix, options);
+		}
+
+		return json;
+	}
+
 	protected configureOpenApi(
+		actions: ActionDescriptor<RequestConfigSchema>[],
 		doc: SwaggerDescriptorOptions,
 	): OpenAPIV3.Document {
 		const openApi: OpenAPIV3.Document = {
@@ -92,7 +103,7 @@ export class ServerSwaggerProvider {
 			return source;
 		};
 
-		for (const route of this.serverActionProvider.getActions()) {
+		for (const route of actions) {
 			if (!route.options.schema) {
 				continue;
 			}
@@ -106,7 +117,7 @@ export class ServerSwaggerProvider {
 				continue;
 			}
 
-			if (route.options.internal) {
+			if (route.options.hide) {
 				continue;
 			}
 
@@ -129,7 +140,7 @@ export class ServerSwaggerProvider {
 				},
 			};
 
-			if (route.options.security !== false && hasSecurity) {
+			if (route.options.secure !== false && hasSecurity) {
 				operation.security = [{ bearerAuth: [] }];
 			}
 
@@ -212,7 +223,7 @@ export class ServerSwaggerProvider {
 		});
 	}
 
-	public getResponseSchema(route: ServerRouteAction):
+	public getResponseSchema(route: ActionDescriptor<RequestConfigSchema>):
 		| {
 				type?: string;
 				schema?: any;
@@ -262,11 +273,11 @@ export class ServerSwaggerProvider {
 		}
 	}
 
-	protected async configureSwaggerApi(
+	protected configureSwaggerApi(
 		prefix: string,
 		json: OpenAPIV3.Document,
-	): Promise<void> {
-		await this.serverRouterProvider.createRoute({
+	): void {
+		this.serverRouterProvider.createRoute({
 			method: "GET",
 			path: `${prefix}/json`,
 			schema: {
@@ -311,12 +322,12 @@ window.onload = function() {
 			ui.root ??
 			join(fileURLToPath(import.meta.url), "../../assets/swagger-ui");
 
-		await this.serverStaticProvider.serve({
+		await this.serverStaticProvider.createStaticServer({
 			path: prefix,
 			root,
 		});
 
-		await this.serverRouterProvider.createRoute({
+		this.serverRouterProvider.createRoute({
 			method: "GET",
 			path: `${prefix}/swagger-initializer.js`,
 			handler: ({ reply }) => {

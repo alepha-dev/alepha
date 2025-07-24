@@ -12,21 +12,16 @@ import {
 	$inject,
 	$logger,
 	Alepha,
-	type HookDescriptor,
-	KIND,
-	OPTIONS,
 	type Static,
 	type TSchema,
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import type { ServerRequest } from "@alepha/server";
-import {
-	$cookie,
-	type Cookie,
-	type CookieDescriptor,
-	type CookieDescriptorOptions,
-	type Cookies,
+import type {
+	Cookie,
+	CookieDescriptorOptions,
+	Cookies,
 } from "../descriptors/$cookie.ts";
 
 const envSchema = t.object({
@@ -57,43 +52,7 @@ export class ServerCookiesProvider {
 	protected readonly AUTH_TAG_LENGTH = 16;
 	protected readonly SIGNATURE_LENGTH = 32; // For SHA256
 
-	protected readonly configure = $hook({
-		on: "configure",
-		handler: () => {
-			const descriptors = this.alepha.getDescriptorValues($cookie);
-			for (const { value, instance, key } of descriptors) {
-				const options = value[OPTIONS];
-
-				options.name ??= key;
-
-				// Validate that a secret is provided if encrypt or sign is used
-				if ((options.encrypt || options.sign) && !this.env.COOKIE_SECRET) {
-					throw new Error(
-						`Cookie "${options.name}" requires encryption or signing, but COOKIE_SECRET environment variable is not set or is not 32 characters long.`,
-					);
-				}
-
-				// Replace descriptor with a live implementation
-				instance[key] = this.createApi(options.name, options);
-			}
-		},
-	});
-
-	protected createApi<T extends TSchema>(
-		name: string,
-		options: CookieDescriptorOptions<T>,
-	): CookieDescriptor<T> {
-		return {
-			[KIND]: "COOKIE",
-			[OPTIONS]: options,
-			schema: options.schema,
-			get: (opts) => this.getCookie(name, options, opts?.cookies),
-			set: (value, opts) => this.setCookie(name, options, value, opts?.cookies),
-			del: (opts) => this.deleteCookie(name, opts?.cookies),
-		};
-	}
-
-	public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
+	public readonly onRequest = $hook({
 		on: "server:onRequest",
 		handler: async ({ request }) => {
 			request.cookies = {
@@ -103,7 +62,7 @@ export class ServerCookiesProvider {
 		},
 	});
 
-	public readonly onSend: HookDescriptor<"server:onSend"> = $hook({
+	public readonly onSend = $hook({
 		on: "server:onSend",
 		handler: async ({ request }) => {
 			if (request.cookies && Object.keys(request.cookies.res).length > 0) {
@@ -128,7 +87,7 @@ export class ServerCookiesProvider {
 		);
 	}
 
-	protected getCookie<T extends TSchema>(
+	public getCookie<T extends TSchema>(
 		name: string,
 		options: CookieDescriptorOptions<T>,
 		contextCookies?: Cookies,
@@ -180,7 +139,7 @@ export class ServerCookiesProvider {
 		}
 	}
 
-	protected setCookie<T extends TSchema>(
+	public setCookie<T extends TSchema>(
 		name: string,
 		options: CookieDescriptorOptions<T>,
 		data: Static<T>,
@@ -217,7 +176,7 @@ export class ServerCookiesProvider {
 		cookies.res[name] = cookie;
 	}
 
-	protected deleteCookie<T extends TSchema>(
+	public deleteCookie<T extends TSchema>(
 		name: string,
 		contextCookies?: Cookies,
 	): void {

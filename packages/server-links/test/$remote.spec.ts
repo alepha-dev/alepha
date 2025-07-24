@@ -119,7 +119,7 @@ test("$remote - complex", async ({ expect }) => {
 	expect(await getLinks(c)).toEqual({
 		links: [
 			{
-				group: "service-c",
+				group: "ServiceC",
 				name: "print",
 				path: "/print",
 			},
@@ -130,7 +130,7 @@ test("$remote - complex", async ({ expect }) => {
 	expect(await getLinks(b)).toEqual({
 		links: [
 			{
-				group: "service-b",
+				group: "ServiceB",
 				name: "compute",
 				path: "/compute",
 			},
@@ -141,12 +141,12 @@ test("$remote - complex", async ({ expect }) => {
 	expect(await getLinks(a)).toEqual({
 		links: [
 			{
-				group: "service-a",
+				group: "ServiceA",
 				name: "getReport",
 				path: "/getReport",
 			},
 			{
-				group: "service-c",
+				group: "ServiceC",
 				name: "print",
 				path: "/print",
 				service: "cr",
@@ -158,18 +158,18 @@ test("$remote - complex", async ({ expect }) => {
 	expect(await getLinks(front)).toEqual({
 		links: [
 			{
-				group: "web-app",
+				group: "WebApp",
 				name: "ping",
 				path: "/ping",
 			},
 			{
-				group: "service-a",
+				group: "ServiceA",
 				name: "getReport",
 				path: "/getReport",
 				service: "a",
 			},
 			{
-				group: "service-c",
+				group: "ServiceC",
 				name: "print",
 				path: "/cr/print",
 				service: "a",

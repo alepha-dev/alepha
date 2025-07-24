@@ -1,8 +1,6 @@
-import { __descriptor, KIND, OPTIONS } from "@alepha/core";
+import { createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { ServiceAccountDescriptor } from "@alepha/security";
 import type { ProxyDescriptorOptions } from "@alepha/server-proxy";
-
-const KEY = "REMOTE";
 
 /**
  * $remote is a descriptor that allows you to define remote service access.
@@ -13,18 +11,9 @@ const KEY = "REMOTE";
  *
  * You can add a service account if you want to use a security layer.
  */
-export const $remote: {
-	(options: RemoteDescriptorOptions): RemoteDescriptor;
-	[KIND]: string;
-} = (options: RemoteDescriptorOptions) => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-	} as RemoteDescriptor;
+export const $remote = (options: RemoteDescriptorOptions) => {
+	return createDescriptor(RemoteDescriptor, options);
 };
-
-$remote[KIND] = KEY;
 
 export interface RemoteDescriptorOptions {
 	/**
@@ -78,7 +67,10 @@ export interface RemoteDescriptorOptions {
 	serviceAccount?: ServiceAccountDescriptor;
 }
 
-export interface RemoteDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: RemoteDescriptorOptions;
+export class RemoteDescriptor extends Descriptor<RemoteDescriptorOptions> {
+	public get name(): string {
+		return this.options.name ?? this.config.propertyKey;
+	}
 }
+
+$remote[KIND] = RemoteDescriptor;

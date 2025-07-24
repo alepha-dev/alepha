@@ -5,7 +5,11 @@ import { brotliCompressSync, gzipSync } from "node:zlib";
 import { Alepha } from "@alepha/core";
 import { AlephaServer, ServerProvider } from "@alepha/server";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { $serve, AlephaServerStatic } from "../src";
+import {
+	$serve,
+	AlephaServerStatic,
+	type ServeDescriptorOptions,
+} from "../src";
 
 // --- Test Setup: Create a temporary directory for static files ---
 
@@ -38,9 +42,7 @@ afterAll(async () => {
 // --- Test Suite ---
 
 describe("@alepha/server-static", () => {
-	const setupServer = async (
-		serveOptions: import("../src").ServeDescriptorOptions,
-	) => {
+	const setupServer = async (serveOptions: ServeDescriptorOptions) => {
 		class TestApp {
 			staticContent = $serve({ root: tempTestDir, ...serveOptions });
 		}
@@ -55,36 +57,31 @@ describe("@alepha/server-static", () => {
 
 		return {
 			hostname: server.hostname,
-			stop: () => alepha.stop(),
 		};
 	};
 
 	test("should serve a basic static file with correct content-type", async () => {
-		const { hostname, stop } = await setupServer({});
+		const { hostname } = await setupServer({});
 
 		const response = await fetch(`${hostname}/style.css`);
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("content-type")).toBe("text/css");
 		expect(await response.text()).toBe("body { color: red; }");
-
-		await stop();
 	});
 
 	test("should serve index.html for root path", async () => {
-		const { hostname, stop } = await setupServer({});
+		const { hostname } = await setupServer({});
 
 		const response = await fetch(`${hostname}/`);
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("content-type")).toBe("text/html");
 		expect(await response.text()).toBe("<h1>Hello World</h1>");
-
-		await stop();
 	});
 
 	test("should handle ETag and Last-Modified headers for caching", async () => {
-		const { hostname, stop } = await setupServer({});
+		const { hostname } = await setupServer({});
 
 		const initialResponse = await fetch(`${hostname}/script.js`);
 		const etag = initialResponse.headers.get("etag");
@@ -103,12 +100,10 @@ describe("@alepha/server-static", () => {
 
 		expect(cachedResponse.status).toBe(304); // Not Modified
 		expect(await cachedResponse.text()).toBe(""); // Body should be empty
-
-		await stop();
 	});
 
 	test("should serve pre-compressed .gz file if accepted", async () => {
-		const { hostname, stop } = await setupServer({});
+		const { hostname } = await setupServer({});
 
 		const response = await fetch(`${hostname}/compressed.css`, {
 			headers: { "Accept-Encoding": "gzip, deflate, br" },
@@ -119,12 +114,10 @@ describe("@alepha/server-static", () => {
 		expect(response.headers.get("content-type")).toBe("text/css");
 		// The fetched content will be automatically decompressed by fetch
 		expect(await response.text()).toBe("body { color: blue; }");
-
-		await stop();
 	});
 
 	test("should serve pre-compressed .br file if accepted and preferred", async () => {
-		const { hostname, stop } = await setupServer({});
+		const { hostname } = await setupServer({});
 
 		// Brotli is generally preferred by servers if available
 		const response = await fetch(`${hostname}/compressed.css`, {
@@ -134,31 +127,25 @@ describe("@alepha/server-static", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("content-encoding")).toBe("br");
 		expect(await response.text()).toBe("body { color: blue; }");
-
-		await stop();
 	});
 
 	test("should not serve dotfiles by default", async () => {
-		const { hostname, stop } = await setupServer({});
+		const { hostname } = await setupServer({});
 
 		const response = await fetch(`${hostname}/.secret`);
 		expect(response.status).toBe(404);
-
-		await stop();
 	});
 
 	test("should serve dotfiles if ignoreDotEnvFiles is false", async () => {
-		const { hostname, stop } = await setupServer({ ignoreDotEnvFiles: false });
+		const { hostname } = await setupServer({ ignoreDotEnvFiles: false });
 
 		const response = await fetch(`${hostname}/.secret`);
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("should-not-be-served");
-
-		await stop();
 	});
 
 	test("should use historyApiFallback for SPA routing", async () => {
-		const { hostname, stop } = await setupServer({ historyApiFallback: true });
+		const { hostname } = await setupServer({ historyApiFallback: true });
 
 		// A path that doesn't correspond to a real file
 		const response = await fetch(`${hostname}/some/deep/spa/route`);
@@ -170,12 +157,10 @@ describe("@alepha/server-static", () => {
 		// Should still not fallback for paths that look like files
 		const fileResponse = await fetch(`${hostname}/non-existent/style.css`);
 		expect(fileResponse.status).toBe(404);
-
-		await stop();
 	});
 
 	test("should apply Cache-Control headers for configured file types", async () => {
-		const { hostname, stop } = await setupServer({
+		const { hostname } = await setupServer({
 			cacheControl: {
 				fileTypes: [".css"],
 				maxAge: [1, "day"],
@@ -191,7 +176,5 @@ describe("@alepha/server-static", () => {
 		// JS file should not have the header
 		const jsResponse = await fetch(`${hostname}/script.js`);
 		expect(jsResponse.headers.get("cache-control")).toBeNull();
-
-		await stop();
 	});
 });

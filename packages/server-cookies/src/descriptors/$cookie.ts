@@ -1,47 +1,24 @@
 import {
-	__descriptor,
+	$inject,
+	createDescriptor,
+	Descriptor,
 	KIND,
-	NotImplementedError,
-	OPTIONS,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
-
-const KEY = "COOKIE";
+import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
 
 /**
  * Declares a type-safe, configurable HTTP cookie.
  * This descriptor provides methods to get, set, and delete the cookie
  * within the server request/response cycle.
  */
-export const $cookie: {
-	<T extends TSchema>(options: CookieDescriptorOptions<T>): CookieDescriptor<T>;
-	[KIND]: string;
-} = <T extends TSchema>(
+export const $cookie = <T extends TSchema>(
 	options: CookieDescriptorOptions<T>,
 ): CookieDescriptor<T> => {
-	__descriptor(KEY);
-
-	const api: Partial<CookieDescriptor<T>> = {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		schema: options.schema,
-		set: () => {
-			throw new NotImplementedError(KEY);
-		},
-		get: () => {
-			throw new NotImplementedError(KEY);
-		},
-		del: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
-
-	return api as CookieDescriptor<T>;
+	return createDescriptor(CookieDescriptor<T>, options);
 };
-
-$cookie[KIND] = KEY;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -80,21 +57,43 @@ export interface CookieDescriptorOptions<T extends TSchema> {
 	sign?: boolean;
 }
 
-export interface CookieDescriptor<T extends TSchema> {
-	[KIND]: typeof KEY;
-	[OPTIONS]: CookieDescriptorOptions<T>;
+export class CookieDescriptor<T extends TSchema> extends Descriptor<
+	CookieDescriptorOptions<T>
+> {
+	protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
 
-	schema: T;
+	public get name(): string {
+		return this.options.name ?? `${this.config.propertyKey}`;
+	}
 
 	/** Sets the cookie with the given value in the current request's response. */
-	set: (value: Static<T>, options?: { cookies?: Cookies }) => void;
+	public set(value: Static<T>, options?: { cookies?: Cookies }) {
+		this.serverCookiesProvider.setCookie(
+			this.name,
+			this.options,
+			value,
+			options?.cookies,
+		);
+	}
 
 	/** Gets the cookie value from the current request. Returns undefined if not found or invalid. */
-	get: (options?: { cookies?: Cookies }) => Static<T> | undefined;
+	public get(options?: { cookies?: Cookies }): Static<T> | undefined {
+		return this.serverCookiesProvider.getCookie(
+			this.name,
+			this.options,
+			options?.cookies,
+		);
+	}
 
 	/** Deletes the cookie in the current request's response. */
-	del: (options?: { cookies?: Cookies }) => void;
+	public del(options?: { cookies?: Cookies }): void {
+		this.serverCookiesProvider.deleteCookie(this.name, options?.cookies);
+	}
 }
+
+$cookie[KIND] = CookieDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface Cookies {
 	req: Record<string, string>;

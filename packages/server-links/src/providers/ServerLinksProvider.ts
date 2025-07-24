@@ -5,13 +5,15 @@ import {
 	type UserAccountToken,
 } from "@alepha/security";
 import {
+	$action,
 	$route,
 	ActionDescriptorHelper,
 	type ApiLink,
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
-	isServerAction,
-	ServerActionDescriptorProvider,
+	type ClientRequestEntry,
+	type ClientRequestOptions,
+	type RequestConfigSchema,
 } from "@alepha/server";
 import { LinkProvider } from "./LinkProvider.ts";
 import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
@@ -21,31 +23,26 @@ export class ServerLinksProvider {
 	protected readonly client = $inject(LinkProvider);
 	protected readonly helper = $inject(ActionDescriptorHelper);
 	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
-	protected readonly serverActionDescriptorProvider = $inject(
-		ServerActionDescriptorProvider,
-	);
 
 	public readonly onRoute = $hook({
-		on: "server:onRoute",
-		handler: ({ route }) => {
-			if (!isServerAction(route)) {
-				return;
+		on: "configure",
+		handler: () => {
+			for (const action of this.alepha.descriptors($action)) {
+				this.client.pushLink({
+					name: action.name,
+					group: action.group,
+					schema: action.options.schema,
+					requestBodyType: action.getBodyContentType(),
+					secured: action.options.secure !== false,
+					method: action.method === "GET" ? undefined : action.method,
+					prefix: action.prefix,
+					path: action.path,
+					handler: (
+						config: ClientRequestEntry<RequestConfigSchema>,
+						options: ClientRequestOptions = {},
+					) => action.run(config, options),
+				});
 			}
-
-			if (route.options.internal) {
-				return;
-			}
-
-			this.client.pushLink({
-				...route,
-				schema: route.options.schema,
-				requestBodyType: this.helper.bodyContentType(route.options),
-				handler: route.localHandler,
-				secured: route.options.security !== false,
-				method: route.method === "GET" ? undefined : route.method,
-				prefix: route.prefix,
-				path: route.path.replace(route.prefix, ""),
-			});
 		},
 	});
 
@@ -169,7 +166,7 @@ export class ServerLinksProvider {
 		);
 
 		return {
-			prefix: this.serverActionDescriptorProvider.getPrefix(),
+			prefix: this.client.links?.[0]?.prefix ?? "/api",
 			links: userLinks,
 		};
 	}

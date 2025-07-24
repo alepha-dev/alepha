@@ -70,10 +70,8 @@ export class ReactServerProvider {
 
 			this.alepha.state("react.server.ssr", ssrEnabled);
 
-			for (const { key, instance, value } of pages) {
-				const name = value[OPTIONS].name ?? key;
-
-				instance[key].render = this.createRenderFunction(name);
+			for (const page of pages) {
+				page.render = this.createRenderFunction(page.name);
 			}
 
 			// development mode
@@ -106,7 +104,7 @@ export class ReactServerProvider {
 
 			// no SSR enabled, serve index.html for all unmatched routes
 			this.log.info("SSR is disabled, use History API fallback");
-			await this.serverRouterProvider.createRoute({
+			this.serverRouterProvider.createRoute({
 				path: "*",
 				handler: async ({ url, reply }) => {
 					if (url.pathname.includes(".")) {
@@ -141,7 +139,7 @@ export class ReactServerProvider {
 
 			this.log.debug(`+ ${page.match} -> ${page.name}`);
 
-			await this.serverRouterProvider.createRoute({
+			this.serverRouterProvider.createRoute({
 				...page,
 				schema: undefined, // schema is handled by the page descriptor provider for now (shared by browser and server)
 				method: "GET",
@@ -167,7 +165,7 @@ export class ReactServerProvider {
 	}
 
 	protected async configureStaticServer(root: string) {
-		await this.serverStaticProvider.serve({
+		await this.serverStaticProvider.createStaticServer({
 			root,
 			path: this.env.REACT_SERVER_PREFIX,
 		});

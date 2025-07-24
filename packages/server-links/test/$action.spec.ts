@@ -38,8 +38,8 @@ afterEach(() => {
 const testActionBasicCrud = async (
 	app: CrudApp | HttpVirtualClient<CrudApp>,
 ) => {
-	expect(await app.findAll.run()).toEqual([]);
-	expect(await app.findAll.run()).toEqual([]);
+	expect(await app.findAll.run({})).toEqual([]);
+	expect(await app.findAll.run({})).toEqual([]);
 
 	expect(await app.create.run({ body: { name: "John" } })).toEqual({
 		id: 1,
@@ -51,7 +51,7 @@ const testActionBasicCrud = async (
 		name: "Jean",
 	});
 
-	expect(await app.findAll.run()).toEqual([
+	expect(await app.findAll.run({})).toEqual([
 		{
 			id: 1,
 			name: "John",
@@ -88,7 +88,7 @@ const testActionBasicCrud = async (
 		},
 	]);
 
-	expect(await app.findAll.run()).toEqual([
+	expect(await app.findAll.run({})).toEqual([
 		{
 			id: 1,
 			name: "John",
@@ -135,7 +135,7 @@ const testActionBasicCrud = async (
 
 	expect(await app.delete.run({ params: { id: 1 } })).toEqual(undefined);
 
-	expect(await app.findAll.run()).toEqual([
+	expect(await app.findAll.run({})).toEqual([
 		{
 			id: 2,
 			name: "Jean",
@@ -156,7 +156,7 @@ test("$action - basic crud (linkRemote)", async () => {
 });
 
 const testActionHeader = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
-	expect(await app.findAll.run()).toEqual([]);
+	expect(await app.findAll.run({})).toEqual([]);
 	expect(await app.create.run({ body: { name: "Jean" } })).toEqual({
 		id: 1,
 		name: "Jean",
@@ -209,7 +209,7 @@ const testActionErrors = async (app: CrudApp | HttpVirtualClient<CrudApp>) => {
 
 	// as local function, we go the real error
 	// as remove function, we go the http error wrapper
-	await expect(app.internalError.run()).rejects.toThrowError("Oops");
+	await expect(app.internalError.run({})).rejects.toThrowError("Oops");
 };
 
 test("$action - errors (app)", async () => {

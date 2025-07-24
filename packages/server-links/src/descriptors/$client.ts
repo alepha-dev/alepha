@@ -14,4 +14,4 @@ export const $client = <T extends object>(
 	return $inject(LinkProvider).client<T>(scope);
 };
 
-$client[KIND] = "client";
+$client[KIND] = "$client";
