@@ -27,7 +27,7 @@ This module provides only a memory implementation of the topic provider.
 
 #### $subscriber()
 
-Subscriber descriptor.
+Subscribe to a $topic.
 
 #### $topic()
 

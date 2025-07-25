@@ -1,6 +1,6 @@
-# Alepha Server Compress
+# Alepha Server Security
 
-Gzip and Brotli compression for server responses.
+Add security layer to the Alepha server.
 
 ## Installation
 
@@ -13,10 +13,11 @@ npm install alepha
 Alternatively, you can install it individually:
 
 ```bash
-npm install @alepha/core @alepha/server-compress
+npm install @alepha/core @alepha/server-security
 ```
 ## Module
 
-Plugin for Alepha Server that provides server-side compression capabilities.
-
-Compresses responses using gzip, brotli, or zstd based on the `Accept-Encoding` header.
+Real (or fake) user account, used for internal actions.
+		
+		If you define this, you assume that all actions are executed by this user by default.
+		> To force a different user, you need to pass it explicitly in the options.

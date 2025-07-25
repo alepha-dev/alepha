@@ -1131,8 +1131,16 @@ export class Alepha {
 	}
 
 	public descriptors<TDescriptor extends Descriptor>(factory: {
-		[KIND]: InstantiableClass<TDescriptor>;
+		[KIND]: InstantiableClass<TDescriptor> | string;
 	}): Array<TDescriptor> {
+		if (typeof factory[KIND] === "string") {
+			for (const [key, value] of this.descriptorRegistry.entries()) {
+				if (key.name === factory[KIND]) {
+					return value as Array<TDescriptor>;
+				}
+			}
+			return [];
+		}
 		return (this.descriptorRegistry.get(factory[KIND]) ??
 			[]) as Array<TDescriptor>;
 	}

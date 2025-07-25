@@ -8,6 +8,6 @@
 		"preview": "yarn build && vite preview --outDit=dist/public"
 	},
 	"devDependencies": {
-		"rolldown-vite": "^7.0.9"
+		"rolldown-vite": "^7.0.11"
 	}
 }

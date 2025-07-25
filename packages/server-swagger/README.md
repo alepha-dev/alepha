@@ -17,9 +17,7 @@ npm install @alepha/core @alepha/server-swagger
 ```
 ## Module
 
-Plugin for Alepha Server that provides Swagger documentation capabilities.
-It generates OpenAPI v3 documentation for the server's endpoints ($action).
-It also provides a Swagger UI for interactive API documentation.
+Short description of the route.
 
 ## API Reference
 

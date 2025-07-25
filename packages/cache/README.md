@@ -29,4 +29,4 @@ persistent storage backends for different performance and durability requirement
 
 #### $cache()
 
-Cache Descriptor
+Creates a cache storage or a cache function.

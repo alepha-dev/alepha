@@ -15,3 +15,6 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-proxy
 ```
+## Module
+
+Plugin for Alepha that provides a proxy server functionality.

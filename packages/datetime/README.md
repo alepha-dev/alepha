@@ -22,4 +22,6 @@ npm install @alepha/core @alepha/datetime
 
 #### $interval()
 
-Registers a new interval.
+Run a function periodically.
+It uses the `setInterval` internally.
+It starts by default when the context starts and stops when the context stops.

@@ -22,7 +22,6 @@ Provides comprehensive authentication and authorization capabilities with JWT to
 The security module enables building secure applications using descriptors like `$realm`, `$role`, and `$permission`
 on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
 integration with various authentication providers and user management systems.
-*
 
 ## API Reference
 
@@ -30,15 +29,15 @@ integration with various authentication providers and user management systems.
 
 #### $permission()
 
-
+Create a new permission.
 
 #### $realm()
 
-
+Create a new realm.
 
 #### $role()
 
-
+Create a new role.
 
 #### $serviceAccount()
 

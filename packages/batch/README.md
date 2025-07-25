@@ -55,9 +55,3 @@ class LoggingService {
 
 Creates a batch processor. This is useful for grouping multiple operations
 (like API calls or database writes) into a single one to improve performance.
-
-### Providers
-
-#### BatchDescriptorProvider
-
-Process every $batch.

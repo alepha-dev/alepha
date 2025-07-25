@@ -27,10 +27,6 @@ and database migrations with support for PostgreSQLs.
 
 ### Descriptors
 
-#### $db()
-
-
-
 #### $entity()
 
 Creates a table descriptor for drizzle-orm.
