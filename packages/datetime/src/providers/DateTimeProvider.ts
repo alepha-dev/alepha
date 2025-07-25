@@ -203,6 +203,7 @@ export class DateTimeProvider {
 				now,
 				duration: 0,
 				callback: () => {},
+				clear: () => {},
 			};
 		}
 
@@ -210,6 +211,7 @@ export class DateTimeProvider {
 			now: now ?? this.now().valueOf(),
 			duration: this.duration(duration).asMilliseconds(),
 			callback,
+			clear: () => this.clearTimeout(timeout),
 		};
 
 		timeout.timer = setTimeout(() => {
@@ -323,4 +325,5 @@ export interface Timeout {
 	timer?: any;
 	duration: number;
 	callback: () => void;
+	clear: () => void;
 }

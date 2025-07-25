@@ -6,7 +6,6 @@ import {
 	$inject,
 	$logger,
 	Alepha,
-	OPTIONS,
 	type Static,
 	t,
 } from "@alepha/core";

@@ -1,7 +1,6 @@
 import type { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import {
-	type DescriptorFactory,
 	type DescriptorFactoryLike,
 	descriptorEvents,
 } from "../helpers/descriptor.ts";

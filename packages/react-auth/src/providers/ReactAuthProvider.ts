@@ -1,12 +1,4 @@
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Async,
-	OPTIONS,
-	t,
-} from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, type Async, t } from "@alepha/core";
 import { $route, BadRequestError } from "@alepha/server";
 import {
 	$cookie,
@@ -81,9 +73,9 @@ export class ReactAuthProvider {
 	protected readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
-			const auths = this.alepha.getDescriptorValues($auth);
-			for (const { value, key, instance } of auths) {
-				const options = value[OPTIONS];
+			const auths = this.alepha.descriptors($auth);
+			for (const auth of auths) {
+				const options = auth.options;
 
 				if (options.oidc) {
 					this.log.debug(
@@ -117,7 +109,7 @@ export class ReactAuthProvider {
 					// TODO: remove cache
 					const config = await client.get();
 
-					instance[key].jwks = () => {
+					auth.jwks = () => {
 						const jwksUri = config.serverMetadata().jwks_uri;
 						if (!jwksUri) {
 							throw new BadRequestError(
@@ -128,7 +120,7 @@ export class ReactAuthProvider {
 					};
 
 					this.authProviders.push({
-						name: options.name ?? key,
+						name: auth.name,
 						redirectUri: options.oidc.redirectUri ?? ReactAuth.path.callback,
 						client,
 						fallback: options.fallback,

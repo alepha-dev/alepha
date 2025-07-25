@@ -1,5 +1,7 @@
-import { Alepha, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import { expect, test } from "vitest";
+import { Alepha } from "../src/Alepha";
+import { KIND } from "../src/constants/KIND";
+import { createDescriptor, Descriptor } from "../src/helpers/descriptor";
 
 test("descriptor", () => {
 	class MyDescriptor extends Descriptor<{ name?: string }> {

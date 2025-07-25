@@ -65,10 +65,12 @@ test("$env", () => {
 		b = $inject(B);
 	}
 
-	expect(Alepha.create({ env: { N1: "abc" } }).inject(C).b.a.env).toStrictEqual({
-		N1: "abc",
-		N2: "abc",
-	});
+	expect(Alepha.create({ env: { N1: "abc" } }).inject(C).b.a.env).toStrictEqual(
+		{
+			N1: "abc",
+			N2: "abc",
+		},
+	);
 
 	expect(
 		Alepha.create({ env: { N1: "abc", N2: "efg" } }).inject(C).b.a.env,

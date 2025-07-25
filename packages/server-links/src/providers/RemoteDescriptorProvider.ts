@@ -1,12 +1,5 @@
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Logger,
-	OPTIONS,
-} from "@alepha/core";
-import { $retry, type RetryDescriptor } from "@alepha/retry";
+import { $hook, $inject, $logger, Alepha, type Logger } from "@alepha/core";
+import { $retry } from "@alepha/retry";
 import type { ServiceAccountDescriptor } from "@alepha/security";
 import { type ApiLinksResponse, apiLinksResponseSchema } from "@alepha/server";
 import { ServerProxyProvider } from "@alepha/server-proxy";

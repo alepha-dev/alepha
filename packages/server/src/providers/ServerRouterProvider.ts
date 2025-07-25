@@ -1,7 +1,6 @@
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
-	$hook,
 	$inject,
 	Alepha,
 	isFileLike,
@@ -10,8 +9,6 @@ import {
 } from "@alepha/core";
 import { RouterProvider } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
-import { $action } from "../descriptors/$action.ts";
-import { $route } from "../descriptors/$route.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";

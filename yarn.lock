@@ -438,6 +438,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-security@npm:0.8.1, @alepha/server-security@workspace:packages/server-security":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-security@workspace:packages/server-security"
+  dependencies:
+    "@alepha/core": "npm:0.8.1"
+    "@alepha/security": "npm:0.8.1"
+    "@alepha/server": "npm:0.8.1"
+    tsdown: "npm:^0.12.9"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-static@npm:0.8.1, @alepha/server-static@workspace:packages/server-static":
   version: 0.0.0-use.local
   resolution: "@alepha/server-static@workspace:packages/server-static"
@@ -473,8 +485,8 @@ __metadata:
     "@alepha/cache": "npm:0.8.1"
     "@alepha/core": "npm:0.8.1"
     "@alepha/datetime": "npm:0.8.1"
+    "@alepha/file": "npm:0.8.1"
     "@alepha/router": "npm:0.8.1"
-    "@alepha/security": "npm:0.8.1"
     tsdown: "npm:^0.12.9"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -3280,6 +3292,7 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@alepha/batch": "npm:0.8.1"
+    "@alepha/bucket": "npm:0.8.1"
     "@alepha/cache": "npm:0.8.1"
     "@alepha/cache-redis": "npm:0.8.1"
     "@alepha/command": "npm:0.8.1"
@@ -3310,6 +3323,7 @@ __metadata:
     "@alepha/server-metrics": "npm:0.8.1"
     "@alepha/server-multipart": "npm:0.8.1"
     "@alepha/server-proxy": "npm:0.8.1"
+    "@alepha/server-security": "npm:0.8.1"
     "@alepha/server-static": "npm:0.8.1"
     "@alepha/server-swagger": "npm:0.8.1"
     "@alepha/testing": "npm:0.8.1"

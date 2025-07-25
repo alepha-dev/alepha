@@ -1,4 +1,3 @@
-import { OPTIONS } from "@alepha/core";
 import type { AnchorHTMLAttributes } from "react";
 import React from "react";
 import { RouterContext } from "../contexts/RouterContext.ts";
@@ -15,18 +14,17 @@ const Link = (props: LinkProps) => {
 
 	const router = useRouter();
 
-	const to = typeof props.to === "string" ? props.to : props.to[OPTIONS].path;
+	const to = typeof props.to === "string" ? props.to : props.to.options.path;
 	if (!to) {
 		return null;
 	}
 
-	const can = typeof props.to === "string" ? undefined : props.to[OPTIONS].can;
+	const can = typeof props.to === "string" ? undefined : props.to.options.can;
 	if (can && !can()) {
 		return null;
 	}
 
-	const name =
-		typeof props.to === "string" ? undefined : props.to[OPTIONS].name;
+	const name = typeof props.to === "string" ? undefined : props.to.options.name;
 
 	const anchorProps = {
 		...props,

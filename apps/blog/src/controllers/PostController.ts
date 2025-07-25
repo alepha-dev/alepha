@@ -7,7 +7,7 @@ export class PostController {
 	db = $inject(Database);
 
 	getLastPosts = $action({
-		security: false,
+		secure: false,
 		schema: {
 			response: t.array(post.$schema),
 		},
@@ -23,7 +23,7 @@ export class PostController {
 	});
 
 	getPostBySlug = $action({
-		security: false,
+		secure: false,
 		schema: {
 			params: t.object({
 				slug: t.string(),

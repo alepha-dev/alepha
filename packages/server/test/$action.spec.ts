@@ -1,7 +1,7 @@
 import { Alepha, t } from "@alepha/core";
 import { createFile } from "@alepha/file";
 import { describe, test } from "vitest";
-import { $action, ServerRouterProvider } from "../src";
+import { $action } from "../src";
 
 describe("$action", () => {
 	test("should expose api", async ({ expect }) => {

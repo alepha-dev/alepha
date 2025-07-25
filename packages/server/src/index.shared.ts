@@ -6,6 +6,7 @@ export * from "./errors/HttpError.ts";
 export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
+export * from "./helpers/isMultipart.ts";
 export * from "./helpers/ServerReply.ts";
 export * from "./interfaces/ServerRequest.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";

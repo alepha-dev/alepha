@@ -46,7 +46,8 @@ class AlephaDevCli {
 			await run(`yarn clean`);
 			await run(`yarn lint`);
 			await run([`yarn check`, `yarn check-dependencies`]);
-			await run([`yarn test`, `yarn build`]);
+			await run(`yarn test`);
+			await run(`yarn build`);
 			await run(`yarn clean`);
 		},
 	});

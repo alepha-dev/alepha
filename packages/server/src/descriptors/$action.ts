@@ -11,8 +11,8 @@ import {
 	type TSchema,
 	t,
 } from "@alepha/core";
-import type { UserAccountToken } from "@alepha/security";
 import type { RouteMethod } from "../constants/routeMethods.ts";
+import { isMultipart } from "../helpers/isMultipart.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
@@ -219,13 +219,8 @@ export class ActionDescriptor<
 	public getBodyContentType(): string | undefined {
 		if (this.options.schema?.body) {
 			// TODO: move to `alepha.server.multipart` module ?
-			for (const key in this.options.schema.body.properties) {
-				if (
-					this.options.schema.body.properties[key].type === "string" &&
-					this.options.schema.body.properties[key].format === "binary"
-				) {
-					return "multipart/form-data";
-				}
+			if (isMultipart(this.options)) {
+				return "multipart/form-data";
 			}
 
 			if (this.options.schema.body.type === "string") {
@@ -347,15 +342,6 @@ export type ClientRequestEntryContainer<TConfig extends RequestConfigSchema> = {
 };
 
 export interface ClientRequestOptions extends FetchOptions {
-	/**
-	 * Forward user from the previous request.
-	 * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
-	 * If "context", use the user from the current context (e.g. request).
-	 *
-	 * @default "system" is provided, else "context" is used.
-	 */
-	user?: UserAccountToken | "system" | "context";
-
 	/**
 	 * Standard request fetch options.
 	 */

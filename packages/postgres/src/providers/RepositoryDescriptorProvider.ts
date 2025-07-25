@@ -1,15 +1,19 @@
-import { $hook, $inject, $logger, Alepha, OPTIONS } from "@alepha/core";
+import { $inject, $logger, Alepha } from "@alepha/core";
 import type { TObject } from "@sinclair/typebox";
-import type { PgTableWithColumns, TableConfig } from "drizzle-orm/pg-core";
-import type { RepositoryDescriptorOptions } from "../descriptors/$repository.ts";
-import { $repository } from "../descriptors/$repository.ts";
-import { Repository } from "../services/Repository.ts";
-import { PostgresProvider } from "./drivers/PostgresProvider.ts";
+import type { TableConfig } from "drizzle-orm/pg-core";
+import {
+	$repository,
+	type RepositoryDescriptor,
+} from "../descriptors/$repository.ts";
+import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 
 export class RepositoryDescriptorProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly repositories: Array<Repository<any, TObject>> = [];
+
+	public get repositories(): RepositoryDescriptor<TableConfig, TObject>[] {
+		return this.alepha.descriptors($repository);
+	}
 
 	constructor() {
 		// TODO: it's time to remove it and use it manually in tests
@@ -31,13 +35,6 @@ export class RepositoryDescriptorProvider {
 		await Promise.all(this.repositories.map((it) => it.clear()));
 	}
 
-	protected readonly configure = $hook({
-		on: "configure",
-		handler: async () => {
-			await this.processDescriptors();
-		},
-	});
-
 	/**
 	 * Get all repositories.
 	 *
@@ -45,7 +42,7 @@ export class RepositoryDescriptorProvider {
 	 */
 	public getRepositories(
 		provider?: PostgresProvider,
-	): Repository<PgTableWithColumns<TableConfig>, TObject>[] {
+	): RepositoryDescriptor<TableConfig, TObject>[] {
 		if (provider) {
 			return this.repositories.filter(
 				(repository) => repository.provider === provider,
@@ -77,59 +74,5 @@ export class RepositoryDescriptorProvider {
 		}
 
 		return providers;
-	}
-
-	/**
-	 * Process all descriptors.
-	 *
-	 * @protected
-	 */
-	protected async processDescriptors() {
-		await this.processRepositoryDescriptors();
-	}
-
-	/**
-	 * Get all models from the repository descriptors.
-	 *
-	 * By models, we mean the tables.
-	 */
-	protected async processRepositoryDescriptors() {
-		const repositories = this.alepha.getDescriptorValues($repository);
-
-		for (const { value, instance, key } of repositories) {
-			const options = value[OPTIONS] as RepositoryDescriptorOptions<
-				TableConfig,
-				TObject
-			>;
-
-			const provider = options.provider
-				? options.provider()
-				: this.alepha.inject(PostgresProvider);
-
-			const alreadyExists = this.repositories.find(
-				(it) => it.table === options.table && it.provider === provider,
-			);
-
-			if (alreadyExists) {
-				instance[key] = alreadyExists;
-				continue;
-			}
-
-			const repository = this.alepha.inject(Repository, {
-				skipRegistration: true,
-				args: [
-					{
-						provider,
-						table: options.table.$table,
-						schema: options.table.$schema,
-					},
-				],
-			});
-
-			// first time we use class instance as descriptor value
-			instance[key] = repository;
-
-			this.repositories.push(repository);
-		}
 	}
 }

@@ -80,11 +80,11 @@ export class BatchDescriptor<
 
 	protected readonly partitions = new Map();
 	protected activeHandlers: PromiseWithResolvers<void>[] = [];
-	protected readonly handler: (items: Static<TItem>[]) => Promise<TResponse> =
-		this.alepha.use($retry, {
-			...this.options.retry,
-			handler: this.options.handler,
-		});
+
+	protected retry = $retry({
+		...this.options.retry,
+		handler: this.options.handler,
+	});
 
 	/**
 	 * Pushes an item into the batch. The item will be processed
@@ -170,7 +170,7 @@ export class BatchDescriptor<
 		let result: any;
 		try {
 			result = await this.alepha.context.run(() =>
-				this.handler(itemsToProcess),
+				this.retry.run(itemsToProcess),
 			);
 			resolversToProcess.forEach(({ resolve }) => resolve(result));
 		} catch (error) {

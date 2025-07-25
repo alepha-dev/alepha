@@ -155,12 +155,16 @@ export const testLockGracePeriod = async (
 				provide: LockProvider,
 				use: provider,
 			});
-		const fn = alepha.use($lock, {
-			gracePeriod: config.gracePeriod,
-			handler: async () => {
-				count += 1;
-			},
-		});
+
+		class TestApp {
+			fn = $lock({
+				gracePeriod: config.gracePeriod,
+				handler: async () => {
+					count += 1;
+				},
+			});
+		}
+		const fn = alepha.inject(TestApp).fn;
 		alepha.on("ready", () => fn.run());
 		return alepha;
 	};

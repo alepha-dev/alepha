@@ -21,6 +21,7 @@
 		"@alepha/router": "0.8.1"
 	},
 	"devDependencies": {
+		"@alepha/file": "0.8.1",
 		"tsdown": "^0.12.9",
 		"vitest": "^3.2.4"
 	},

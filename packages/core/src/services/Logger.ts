@@ -1,4 +1,3 @@
-import { Descriptor } from "../helpers/descriptor.ts";
 import type { AlsProvider } from "../providers/AlsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -403,7 +402,7 @@ export class Logger {
 
 	protected pad2 = (n: number) => (n < 10 ? "0" : "") + n;
 	protected pad3 = (n: number) =>
-		n < 10 ? "00" + n : n < 100 ? "0" + n : "" + n;
+		n < 10 ? `00${n}` : n < 100 ? `0${n}` : `${n}`;
 
 	protected colorize(
 		color: string,

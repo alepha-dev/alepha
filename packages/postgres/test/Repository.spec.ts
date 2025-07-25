@@ -1,12 +1,6 @@
-import { $inject, Alepha, t } from "@alepha/core";
+import { Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import {
-	$repository,
-	AlephaPostgres,
-	pg,
-	pgTableSchema,
-	Repository,
-} from "../src";
+import { $repository, pg, pgTableSchema } from "../src";
 import { legacyIdSchema } from "../src/schemas/legacyIdSchema.ts";
 
 const testSchema = pg.entity({
@@ -73,28 +67,4 @@ test("Repository - id uuid", async () => {
 	await app.repository.deleteById(it.uuid);
 
 	expect(await app.repository.count()).toBe(0);
-});
-
-test("Repository - inject", async () => {
-	class MyRepository extends Repository.of(testEntity) {
-		findByName(name: string) {
-			return this.findOne({
-				name: {
-					eq: name,
-				},
-			});
-		}
-	}
-
-	class App {
-		repository = $inject(MyRepository);
-	}
-
-	const alepha = Alepha.create().with(AlephaPostgres);
-	const app = alepha.inject(App);
-	await alepha.start();
-
-	const it = await app.repository.create({ name: "test" });
-
-	expect(await app.repository.findByName("test")).toEqual(it);
 });

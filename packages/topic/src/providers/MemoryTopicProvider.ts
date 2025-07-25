@@ -1,6 +1,4 @@
 import { $hook, $logger } from "@alepha/core";
-import { $subscriber } from "../descriptors/$subscriber.ts";
-import { $topic } from "../descriptors/$topic.ts";
 import {
 	type SubscribeCallback,
 	TopicProvider,

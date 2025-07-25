@@ -127,10 +127,18 @@ export const testTopicLateSubscribe = async (
 	const unsub = await provider.subscribe("inc", () => {
 		count += 1;
 	});
+	await provider.subscribe("inc10", () => {
+		count += 10;
+	});
+
 	expect(count).toBe(0);
 	await provider.publish("inc", "");
-	expect(count).toBe(1);
+	await provider.publish("inc10", "");
+	await expect.poll(() => expect(count).toBe(11)).toBeTruthy();
+
 	await unsub();
+
 	await provider.publish("inc", "");
-	expect(count).toBe(1);
+	await provider.publish("inc10", "");
+	await expect.poll(() => expect(count).toBe(21)).toBeTruthy();
 };

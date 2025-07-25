@@ -1,10 +1,8 @@
 import { Alepha, ContainerLockedError } from "@alepha/core";
 import { expect, test } from "vitest";
 import {
-	$realm,
 	InvalidPermissionError,
 	JwtProvider,
-	Realm,
 	SecurityError,
 	SecurityProvider,
 } from "../src";

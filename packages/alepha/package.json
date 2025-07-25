@@ -16,6 +16,7 @@
 	"types": "./core.d.ts",
 	"dependencies": {
 		"@alepha/batch": "0.8.1",
+		"@alepha/bucket": "0.8.1",
 		"@alepha/cache": "0.8.1",
 		"@alepha/cache-redis": "0.8.1",
 		"@alepha/command": "0.8.1",
@@ -46,6 +47,7 @@
 		"@alepha/server-metrics": "0.8.1",
 		"@alepha/server-multipart": "0.8.1",
 		"@alepha/server-proxy": "0.8.1",
+		"@alepha/server-security": "0.8.1",
 		"@alepha/server-static": "0.8.1",
 		"@alepha/server-swagger": "0.8.1",
 		"@alepha/testing": "0.8.1",
@@ -74,6 +76,11 @@
 			"import": "./batch.js",
 			"require": "./batch.cjs",
 			"types": "./batch.d.ts"
+		},
+		"./bucket": {
+			"import": "./bucket.js",
+			"require": "./bucket.cjs",
+			"types": "./bucket.d.ts"
 		},
 		"./cache": {
 			"import": "./cache.js",
@@ -225,6 +232,11 @@
 			"require": "./server/proxy.cjs",
 			"types": "./server/proxy.d.ts"
 		},
+		"./server/security": {
+			"import": "./server/security.js",
+			"require": "./server/security.cjs",
+			"types": "./server/security.d.ts"
+		},
 		"./server/static": {
 			"import": "./server/static.js",
 			"require": "./server/static.cjs",
@@ -259,6 +271,7 @@
 	"keywords": [
 		"alepha",
 		"batch",
+		"bucket",
 		"cache",
 		"cache-redis",
 		"command",
@@ -289,6 +302,7 @@
 		"server-metrics",
 		"server-multipart",
 		"server-proxy",
+		"server-security",
 		"server-static",
 		"server-swagger",
 		"testing",

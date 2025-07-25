@@ -1,30 +1,10 @@
-import {
-	__descriptor,
-	type Async,
-	KIND,
-	NotImplementedError,
-	OPTIONS,
-} from "@alepha/core";
+import { type Async, createDescriptor, Descriptor, KIND } from "@alepha/core";
 
-const KEY = "AUTH";
-
-/**
- *
- */
 export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
-	__descriptor(KEY);
-	return {
-		[KIND]: KEY,
-		[OPTIONS]: options,
-		jwks: () => {
-			throw new NotImplementedError(KEY);
-		},
-	};
+	return createDescriptor(AuthDescriptor, options);
 };
 
-$auth[KIND] = KEY;
-
-export type AccessToken = string;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface AuthDescriptorOptions {
 	name?: string;
@@ -39,8 +19,20 @@ export interface AuthDescriptorOptions {
 	};
 }
 
-export interface AuthDescriptor {
-	[KIND]: typeof KEY;
-	[OPTIONS]: AuthDescriptorOptions;
-	jwks: () => string;
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
+	public get name() {
+		return this.options.name ?? this.config.propertyKey;
+	}
+
+	public jwks(): string {
+		return "";
+	}
 }
+
+$auth[KIND] = AuthDescriptor;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type AccessToken = string;

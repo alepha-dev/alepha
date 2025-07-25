@@ -7,7 +7,6 @@ import {
 import {
 	$action,
 	$route,
-	ActionDescriptorHelper,
 	type ApiLink,
 	type ApiLinksResponse,
 	apiLinksResponseSchema,
@@ -21,7 +20,6 @@ import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
 export class ServerLinksProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly client = $inject(LinkProvider);
-	protected readonly helper = $inject(ActionDescriptorHelper);
 	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
 
 	public readonly onRoute = $hook({

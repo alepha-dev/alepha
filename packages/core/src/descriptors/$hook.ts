@@ -1,10 +1,6 @@
 import type { Hooks } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
-import {
-	createDescriptor,
-	Descriptor,
-	type DescriptorArgs,
-} from "../helpers/descriptor.ts";
+import { createDescriptor, Descriptor } from "../helpers/descriptor.ts";
 import type { Async } from "../interfaces/Async.ts";
 
 /**

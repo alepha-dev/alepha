@@ -8,7 +8,6 @@ import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.t
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
-import { SequenceProvider } from "./providers/SequenceProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -17,7 +16,6 @@ export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
 export * from "./constants/PG_SCHEMA.ts";
 export * from "./constants/PG_SYMBOLS.ts";
-export * from "./descriptors/$db.ts";
 export * from "./descriptors/$entity.ts";
 export * from "./descriptors/$repository.ts";
 export * from "./descriptors/$sequence.ts";
@@ -37,7 +35,6 @@ export * from "./providers/RepositoryDescriptorProvider.ts";
 export * from "./schemas/entitySchema.ts";
 export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
-export * from "./services/Repository.ts";
 export * from "./types/schema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -59,7 +56,6 @@ export const AlephaPostgres = $module({
 	descriptors: [$repository, $sequence, $entity],
 	services: [
 		RepositoryDescriptorProvider,
-		SequenceProvider,
 		PostgresProvider,
 		NodePostgresProvider,
 		NodeSqliteProvider,
@@ -89,7 +85,5 @@ export const AlephaPostgres = $module({
 				use: NodePostgresProvider,
 			});
 		}
-
-		alepha.with(SequenceProvider);
 	},
 });

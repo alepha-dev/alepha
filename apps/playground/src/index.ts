@@ -28,7 +28,7 @@ class App {
 }
 
 app.with(App);
-app.target = Cmd3;
+//app.target = Cmd3;
 
 app.on("ready", () => {
 	console.log(app.graph());

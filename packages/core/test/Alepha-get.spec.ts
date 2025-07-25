@@ -21,7 +21,9 @@ test("Alepha#get - skip registration", () => {
 
 	expect(
 		alepha.inject(Logger, { skipRegistration: true, skipCache: true }).a,
-	).not.toBe(alepha.inject(Logger, { skipRegistration: true, skipCache: true }).a);
+	).not.toBe(
+		alepha.inject(Logger, { skipRegistration: true, skipCache: true }).a,
+	);
 });
 
 test("Alepha#get - args", () => {

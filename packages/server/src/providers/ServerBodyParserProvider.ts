@@ -2,7 +2,6 @@ import type { IncomingMessage } from "node:http";
 import type Stream from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { $env, $hook, $inject, $logger, Alepha, t } from "@alepha/core";
-import { BadRequestError } from "../errors/BadRequestError.ts";
 import { HttpError } from "../errors/HttpError.ts";
 
 const envSchema = t.object({

@@ -104,7 +104,7 @@ export class NodePostgresProvider extends PostgresProvider {
 			const provider = this.alepha.isServerless();
 			// except for vite
 			if (!provider || provider === "vite") {
-				await this.migrate();
+				await this.migrate.run();
 			}
 		},
 	});

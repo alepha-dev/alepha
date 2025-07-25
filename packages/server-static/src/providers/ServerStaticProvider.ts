@@ -2,14 +2,7 @@ import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
-import {
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Logger,
-	OPTIONS,
-} from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, type Logger } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { getContentType } from "@alepha/file";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";

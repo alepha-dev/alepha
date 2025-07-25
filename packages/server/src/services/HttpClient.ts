@@ -12,14 +12,13 @@ import {
 import type { DurationLike } from "@alepha/datetime";
 import type { ClientRequestOptions } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
-import { ActionDescriptorHelper } from "../helpers/ActionDescriptorHelper.ts";
+import { isMultipart } from "../helpers/isMultipart.ts";
 import type { ServerRequestConfigEntry } from "../interfaces/ServerRequest.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 export class HttpClient {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly helper = $inject(ActionDescriptorHelper);
 
 	public readonly cache = $cache<HttpClientCache>();
 
@@ -189,7 +188,7 @@ export class HttpClient {
 			"content-type" in init.headers &&
 			init.headers["content-type"] === "multipart/form-data";
 
-		if (hasHeader || this.helper.isMultipart(action)) {
+		if (hasHeader || isMultipart(action)) {
 			if (typeof init.headers === "object" && "content-type" in init.headers) {
 				delete init.headers["content-type"]; // fetch() will fill this for us
 			}

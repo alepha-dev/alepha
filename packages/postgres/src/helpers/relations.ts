@@ -3,8 +3,8 @@ import { eq, getTableName, isSQLWrapper } from "drizzle-orm";
 import type { PgColumn, PgSelectJoinFn } from "drizzle-orm/pg-core";
 import type { PgManyOptions } from "../constants/PG_SYMBOLS.ts";
 import { PG_MANY, PG_PRIMARY_KEY } from "../constants/PG_SYMBOLS.ts";
+import type { PgAttrField } from "../descriptors/$repository.ts";
 import type { PgQuery, PgQueryWith } from "../interfaces/PgQuery.ts";
-import type { PgAttrField } from "../services/Repository.ts";
 import { getAttrFields } from "./pgAttr.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

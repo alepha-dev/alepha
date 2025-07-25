@@ -4,7 +4,6 @@ import {
 	Descriptor,
 	KIND,
 	NotImplementedError,
-	OPTIONS,
 	type Static,
 	type TSchema,
 } from "@alepha/core";

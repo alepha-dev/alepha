@@ -6,7 +6,7 @@ import {
 	AlephaSecurity,
 	type UserAccountToken,
 } from "@alepha/security";
-import { AlephaServer, type RequestConfigSchema } from "@alepha/server";
+import { AlephaServer, type FetchOptions } from "@alepha/server";
 import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -41,6 +41,16 @@ declare module "@alepha/server" {
 		 * All actions are secure by default, but you can disable it for specific actions.
 		 */
 		secure?: boolean;
+	}
+	interface ClientRequestOptions extends FetchOptions {
+		/**
+		 * Forward user from the previous request.
+		 * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
+		 * If "context", use the user from the current context (e.g. request).
+		 *
+		 * @default "system" is provided, else "context" is used.
+		 */
+		user?: UserAccountToken | "system" | "context";
 	}
 }
 

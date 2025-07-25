@@ -13,11 +13,7 @@ import {
 	TypeGuard,
 } from "@alepha/core";
 import { bufferToArrayBuffer } from "@alepha/file";
-import {
-	ActionDescriptorHelper,
-	HttpError,
-	type ServerRoute,
-} from "@alepha/server";
+import { HttpError, isMultipart, type ServerRoute } from "@alepha/server";
 import Busboy, {
 	type BusboyConfig,
 	type BusboyFileStream,
@@ -25,9 +21,6 @@ import Busboy, {
 } from "@fastify/busboy";
 
 export class ServerMultipartProvider {
-	protected readonly helper: ActionDescriptorHelper = $inject(
-		ActionDescriptorHelper,
-	);
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
@@ -49,7 +42,7 @@ export class ServerMultipartProvider {
 			const contentType = request.headers["content-type"];
 
 			if (
-				!this.helper.isMultipart(route) &&
+				!isMultipart(route) &&
 				!contentType?.startsWith("multipart/form-data")
 			) {
 				return;

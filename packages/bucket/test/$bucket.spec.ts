@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "@alepha/core";
+import { Alepha } from "@alepha/core";
 import { describe, test } from "vitest";
 import {
 	$bucket,

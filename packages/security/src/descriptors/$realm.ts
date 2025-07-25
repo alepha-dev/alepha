@@ -1,10 +1,4 @@
-import {
-	$inject,
-	AppNotStartedError,
-	createDescriptor,
-	Descriptor,
-	KIND,
-} from "@alepha/core";
+import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
 import { SecurityError } from "../errors/SecurityError.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";

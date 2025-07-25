@@ -1,6 +1,6 @@
 import { Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $entity, PostgresProvider, pg, Repository } from "../src";
+import { $entity, $repository, PostgresProvider, pg } from "../src";
 import { NodeSqliteProvider } from "../src/providers/drivers/NodeSqliteProvider.ts";
 
 test("sqlite", async () => {
@@ -12,14 +12,16 @@ test("sqlite", async () => {
 		}),
 	});
 
-	class UserRepository extends Repository.of(users) {}
-
 	const alepha = Alepha.create().with({
 		provide: PostgresProvider,
 		use: NodeSqliteProvider,
 	});
 
-	const repository = alepha.inject(UserRepository);
+	class TestApp {
+		userRepository = $repository(users);
+	}
+
+	const repository = alepha.inject(TestApp).userRepository;
 
 	await alepha.start();
 

@@ -1,20 +1,14 @@
-import { now } from "@alepha/cli";
 import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
-import type { ModuleDescriptor } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
-import {
-	Descriptor,
-	type DescriptorFactoryLike,
-	descriptorEvents,
-} from "./helpers/descriptor.ts";
+import { Descriptor, descriptorEvents } from "./helpers/descriptor.ts";
 import {
 	isModule,
 	type Module,
@@ -1187,8 +1181,8 @@ export class Alepha {
 	}
 
 	protected processDescriptor(value: Descriptor, propertyKey = "") {
-		value["config"]["propertyKey"] = propertyKey;
-		value["onInit"]();
+		value.config.propertyKey = propertyKey;
+		(value as any).onInit();
 
 		const kind = value.constructor as Service;
 		const list = this.descriptorRegistry.get(kind) ?? [];

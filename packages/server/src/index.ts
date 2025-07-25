@@ -90,7 +90,6 @@ declare module "@alepha/core" {
 
 export * from "./descriptors/$action.ts";
 export * from "./descriptors/$route.ts";
-export * from "./helpers/ActionDescriptorHelper.ts";
 export * from "./index.shared.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
 export * from "./providers/ServerLoggerProvider.ts";
