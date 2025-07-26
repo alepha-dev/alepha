@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/react-auth",
 	"description": "Simplifies user authentication flows in React applications.",
-	"version": "0.8.1",
+	"version": "0.9.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,12 +15,12 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.8.1",
-		"@alepha/react": "0.8.1",
-		"@alepha/security": "0.8.1",
-		"@alepha/server": "0.8.1",
-		"@alepha/server-cookies": "0.8.1",
-		"@alepha/server-links": "0.8.1",
+		"@alepha/core": "0.9.0",
+		"@alepha/react": "0.9.0",
+		"@alepha/security": "0.9.0",
+		"@alepha/server": "0.9.0",
+		"@alepha/server-cookies": "0.9.0",
+		"@alepha/server-links": "0.9.0",
 		"openid-client": "^6.6.2"
 	},
 	"devDependencies": {

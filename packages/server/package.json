@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server",
 	"description": "Core HTTP server for creating REST APIs.",
-	"version": "0.8.1",
+	"version": "0.9.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,13 +15,13 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.8.1",
-		"@alepha/core": "0.8.1",
-		"@alepha/datetime": "0.8.1",
-		"@alepha/router": "0.8.1"
+		"@alepha/cache": "0.9.0",
+		"@alepha/core": "0.9.0",
+		"@alepha/datetime": "0.9.0",
+		"@alepha/router": "0.9.0"
 	},
 	"devDependencies": {
-		"@alepha/file": "0.8.1",
+		"@alepha/file": "0.9.0",
 		"tsdown": "^0.13.0",
 		"vitest": "^3.2.4"
 	},

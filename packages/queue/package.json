@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/queue",
 	"description": "A simple, powerful interface for message queueing systems.",
-	"version": "0.8.1",
+	"version": "0.9.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,8 +14,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.8.1",
-		"@alepha/datetime": "0.8.1"
+		"@alepha/core": "0.9.0",
+		"@alepha/datetime": "0.9.0"
 	},
 	"devDependencies": {
 		"tsdown": "^0.13.0",
