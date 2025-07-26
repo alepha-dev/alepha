@@ -1761,6 +1761,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mantine/spotlight@npm:^8.2.1":
+  version: 8.2.1
+  resolution: "@mantine/spotlight@npm:8.2.1"
+  dependencies:
+    "@mantine/store": "npm:8.2.1"
+  peerDependencies:
+    "@mantine/core": 8.2.1
+    "@mantine/hooks": 8.2.1
+    react: ^18.x || ^19.x
+    react-dom: ^18.x || ^19.x
+  checksum: 10c0/08ce89279c9b7723b9807ce591b3d6b00c4a71d5fd34b9bca1be9717fab1326fdaec93b0c47c91ecfb4050ac7dd3ce5a92d7c5340b4c7e4269af23f6ac7d4128
+  languageName: node
+  linkType: hard
+
 "@mantine/store@npm:8.2.1":
   version: 8.2.1
   resolution: "@mantine/store@npm:8.2.1"
@@ -2954,6 +2968,17 @@ __metadata:
     json-schema-to-ts: "npm:1.6.4"
     ts-morph: "npm:12.0.0"
   checksum: 10c0/3a26c6da0ada2e2c478257d3f19a4592c61367f84b452afa9038f19aa8ef6c991a99768b91e5be9a2c4635070703a59fee75ef47bc8eb43b20d3ec77721fb49b
+  languageName: node
+  linkType: hard
+
+"@vitejs/plugin-react-oxc@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@vitejs/plugin-react-oxc@npm:0.3.0"
+  dependencies:
+    "@rolldown/pluginutils": "npm:1.0.0-beta.27"
+  peerDependencies:
+    vite: ^6.3.0 || ^7.0.0
+  checksum: 10c0/d6e7064d909685a760439e733cdffd5c48fce5bbbee227057f926bf327f2ea05269c1a875db25b6db93336d1253506561118a2090bc99f0067a39b28e9ce9a80
   languageName: node
   linkType: hard
 
@@ -4474,8 +4499,10 @@ __metadata:
     "@mantine/form": "npm:^8.2.1"
     "@mantine/hooks": "npm:^8.2.1"
     "@mantine/nprogress": "npm:^8.2.1"
+    "@mantine/spotlight": "npm:^8.2.1"
     "@tabler/icons-react": "npm:3.17.0"
     "@types/react": "npm:^19.1.8"
+    "@vitejs/plugin-react-oxc": "npm:^0.3.0"
     highlight.js: "npm:^11.11.1"
     marked: "npm:^16.1.1"
     marked-highlight: "npm:^2.2.2"

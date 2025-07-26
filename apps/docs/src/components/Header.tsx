@@ -1,4 +1,4 @@
-import { Link } from "@alepha/react";
+import { Link, useRouter } from "@alepha/react";
 import {
 	ActionIcon,
 	Burger,
@@ -13,13 +13,24 @@ import {
 	useMantineColorScheme,
 } from "@mantine/core";
 import {
+	Spotlight,
+	type SpotlightActionData,
+	spotlight,
+} from "@mantine/spotlight";
+import {
 	IconBrandGithub,
 	IconCheck,
+	IconDashboard,
 	IconDeviceLaptop,
+	IconFileText,
+	IconHome,
 	IconMoon,
 	IconSearch,
 	IconSun,
 } from "@tabler/icons-react";
+import { useMemo } from "react";
+import { docs } from "../config/docs.ts";
+import { iconByName } from "../config/icons.ts";
 import { theme } from "../config/theme.ts";
 
 type Props = {
@@ -79,15 +90,41 @@ const Header = (props: Props) => {
 export default Header;
 
 const SearchButton = () => {
+	const router = useRouter();
+
+	const actions = useMemo(() => {
+		return docs.map((doc) => ({
+			id: doc.slug,
+			label: doc.name,
+			description: doc.description,
+			onClick: () => router.go(`/docs/${doc.slug}`),
+			leftSection: iconByName(doc.name),
+		}));
+	}, []);
+
 	return (
-		<Button
-			leftSection={<IconSearch size={16} />}
-			variant={"default"}
-			c={"dimmed"}
-			rightSection={<Kbd>Ctrl K</Kbd>}
-		>
-			Search...
-		</Button>
+		<>
+			<Button
+				leftSection={<IconSearch size={16} />}
+				variant={"default"}
+				c={"dimmed"}
+				rightSection={<Kbd>Ctrl K</Kbd>}
+				onClick={spotlight.open}
+			>
+				Search...
+			</Button>
+			<Spotlight
+				shortcut={["mod + K", "mod + P", "/"]}
+				limit={7}
+				actions={actions}
+				nothingFound="Nothing found..."
+				highlightQuery
+				searchProps={{
+					leftSection: <IconSearch size={20} stroke={1.5} />,
+					placeholder: "Search...",
+				}}
+			/>
+		</>
 	);
 };
 
