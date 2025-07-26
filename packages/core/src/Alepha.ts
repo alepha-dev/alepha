@@ -282,7 +282,10 @@ export class Alepha {
 	 */
 	protected modules: Array<ModuleDefinition> = [];
 
-	protected substitutions = new Map<Service, Service>();
+	protected substitutions = new Map<
+		Service,
+		{ use: Service; module?: ModuleDefinition }
+	>();
 
 	protected configurations = new Map<Service, object>();
 
@@ -463,8 +466,8 @@ export class Alepha {
 
 		this.log.info("Starting App...");
 
-		for (const [key] of this.substitutions.entries()) {
-			this.inject(key);
+		for (const [key, { module }] of this.substitutions.entries()) {
+			this.inject(key, { module });
 		}
 
 		const target = this.state("target");
@@ -564,7 +567,7 @@ export class Alepha {
 		}
 
 		if (!opts || opts.inStack === true) {
-			const substitute = this.substitutions.get(provide);
+			const substitute = this.substitutions.get(provide)?.use;
 			if (substitute && this.pendingInstantiations.includes(substitute)) {
 				return true;
 			}
@@ -615,7 +618,10 @@ export class Alepha {
 		const isSubstitution = typeof entry === "object";
 		if (isSubstitution) {
 			if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
-				this.substitutions.set(entry.provide, entry.use);
+				this.substitutions.set(entry.provide, {
+					use: entry.use,
+					module: __alephaRef.$services?.module,
+				});
 			} else if (!entry.optional) {
 				throw new AlephaError(
 					`Service already substituted. Please, substitute Service '${entry.provide.name}' with Service '${entry.use.name}' before using it.`,
@@ -679,7 +685,7 @@ export class Alepha {
 
 		const substitute = this.substitutions.get(service);
 		if (substitute) {
-			return this.inject(substitute, { parent, module });
+			return this.inject(substitute.use, { parent, module });
 		}
 
 		const index = this.pendingInstantiations.indexOf(service);
@@ -1115,7 +1121,7 @@ export class Alepha {
 			};
 			const aliases = this.substitutions
 				.entries()
-				.filter((it) => it[1] === provide)
+				.filter((it) => it[1].use === provide)
 				.map((it) => it[0].name)
 				.toArray();
 
@@ -1273,15 +1279,6 @@ export interface Env extends LoggerEnv {
 	 * Optional root module name.
 	 */
 	MODULE_NAME?: string;
-
-	/**
-	 * If true, the container will not automatically register the default providers based on the descriptors.
-	 *
-	 * It means that you have to alepha.with(ServiceModule) manually. No magic.
-	 *
-	 * @default false
-	 */
-	EXPLICIT_PROVIDERS?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

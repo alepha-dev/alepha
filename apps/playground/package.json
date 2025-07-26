@@ -2,9 +2,10 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "node --disable-warning=ExperimentalWarning src/index.ts",
+		"dev": "vite dev",
 		"build": "vite build",
-		"start": "vite build && node dist",
+		"start": "node dist",
+		"build&start": "yarn build && yarn start",
 		"preview": "yarn build && vite preview --outDit=dist/public"
 	},
 	"devDependencies": {

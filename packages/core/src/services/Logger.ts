@@ -256,7 +256,7 @@ export class Logger {
 			date: new Date().toISOString(),
 			app: this.app,
 			module: this.name,
-			caller: this.caller,
+			service: this.caller,
 			context: this.context ? this.context : undefined,
 			level,
 			message: message,

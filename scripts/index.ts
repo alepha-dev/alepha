@@ -9,6 +9,9 @@ class AlephaDevCli {
 			await run("yarn convert ts");
 
 			await run.rm([
+				`apps/*/dist`,
+				`apps/*/node_modules`,
+				`apps/*/coverage`,
 				`packages/*/dist`,
 				`packages/*/node_modules`,
 				`packages/*/coverage`,

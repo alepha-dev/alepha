@@ -4,7 +4,10 @@ import { importVite } from "./importVite.ts";
 
 export const importAlepha = async (
 	entry: string,
-	config: UserConfig,
+	options: {
+		config: UserConfig;
+		env: Record<string, string>;
+	},
 ): Promise<{
 	alepha: Alepha;
 	server?: ViteDevServer;
@@ -14,7 +17,7 @@ export const importAlepha = async (
 	const server = await createServer({
 		server: { middlewareMode: true },
 		appType: "custom",
-		...config,
+		...options.config,
 	});
 
 	await server.pluginContainer.buildStart({});
@@ -28,6 +31,10 @@ export const importAlepha = async (
 
 	for (const key in env) {
 		process.env[key] = env[key];
+	}
+
+	for (const key in options.env) {
+		process.env[key] = options.env[key];
 	}
 
 	process.env.VITE_ALEPHA_DEV = "true";

@@ -4,7 +4,7 @@ import { defineConfig } from "rolldown-vite";
 export default defineConfig({
 	plugins: [
 		viteAlepha({
-			serverEntry: "src/index.ts",
+			serverEntry: "src/index.tsx",
 		}),
 	],
 });

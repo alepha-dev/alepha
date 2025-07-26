@@ -36,12 +36,12 @@ const envSchema = t.object({
 	REACT_SERVER_PREFIX: t.string({ default: "" }),
 	REACT_SSR_ENABLED: t.optional(t.boolean()),
 	REACT_ROOT_ID: t.string({ default: "root" }),
+	REACT_SERVER_TEMPLATE: t.optional(t.string()),
 });
 
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
 	interface State {
-		"react.server.template"?: string;
 		"react.server.ssr"?: boolean;
 	}
 }
@@ -125,7 +125,7 @@ export class ReactServerProvider {
 
 	public get template() {
 		return (
-			this.alepha.state("react.server.template") ??
+			this.alepha.env.REACT_SERVER_TEMPLATE ??
 			"<!DOCTYPE html><html lang='en'><head></head><body></body></html>"
 		);
 	}

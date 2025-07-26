@@ -153,10 +153,10 @@ async function getProvidersInfo(
 /**
  * The main function to generate README.md files for all packages.
  */
-async function generateReadmes() {
-	console.log("🚀 Starting README generation...");
+export async function generateReadmes(root: string, log = console.log) {
+	log("🚀 Starting README generation...");
 
-	const packagesDir = resolve(process.cwd(), "../../../packages");
+	const packagesDir = resolve(root, "../../packages");
 	let dirents: Dirent[];
 
 	try {
@@ -247,10 +247,10 @@ async function generateReadmes() {
 				await fs.writeFile(readmePath, readmeContent);
 				if (existingContent) {
 					updatedCount++;
-					console.log(`  🔄 Updated ${pkgJson.name}`);
+					log(`  🔄 Updated ${pkgJson.name}`);
 				} else {
 					generatedCount++;
-					console.log(`  ✅ Generated ${pkgJson.name}`);
+					log(`  ✅ Generated ${pkgJson.name}`);
 				}
 			} else {
 				skippedCount++;
@@ -264,14 +264,8 @@ async function generateReadmes() {
 		}
 	}
 
-	console.log("\n✨ README generation complete!");
-	console.log(
+	log("\n✨ README generation complete!");
+	log(
 		`   Generated: ${generatedCount}, Updated: ${updatedCount}, Skipped/Unchanged: ${skippedCount}\n`,
 	);
 }
-
-// Run the script
-generateReadmes().catch((err) => {
-	console.error("A critical error occurred:", err);
-	process.exit(1);
-});

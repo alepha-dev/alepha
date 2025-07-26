@@ -1,8 +1,9 @@
 import { run } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { $route } from "@alepha/server";
 
 class App {
-	ping = $action({
+	ping = $route({
+		path: "/ping",
 		handler: () => "pong",
 	});
 }
@@ -11,6 +12,8 @@ run(App, {
 	env: {
 		LOG_LEVEL: "silent",
 		SERVER_PORT: 3003,
-		SERVER_API_PREFIX: "",
+	},
+	ready: () => {
+		console.log("Alepha server listening on :3003");
 	},
 });

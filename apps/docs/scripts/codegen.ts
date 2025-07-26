@@ -6,6 +6,7 @@ import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
 import { markedHighlight } from "marked-highlight";
 import { theme } from "../src/config/theme.ts";
+import { generateReadmes } from "./codegen-readme.ts";
 import { snippets } from "./snippets.ts";
 
 export type Docs = Record<
@@ -66,6 +67,12 @@ class App {
 	root = $command({
 		name: "",
 		handler: async ({ run }) => {
+			await run("generate readmes", async () => {
+				await generateReadmes(process.cwd(), (msg: string) =>
+					this.log.trace(msg),
+				);
+			});
+
 			const rootDir = join(import.meta.dirname, "../../..");
 			const outputDir = join(import.meta.dirname, "../node_modules/.docs");
 			const docs: Docs = {};

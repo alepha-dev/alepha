@@ -10,6 +10,7 @@ import {
 	type Static,
 	t,
 } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerRawRequest } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "./ServerProvider.ts";
@@ -34,6 +35,7 @@ declare module "@alepha/core" {
 
 export class NodeHttpServerProvider extends ServerProvider {
 	protected readonly alepha = $inject(Alepha);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
 	protected readonly router = $inject(ServerRouterProvider);
@@ -199,23 +201,24 @@ export class NodeHttpServerProvider extends ServerProvider {
 			});
 
 			this.server?.on("error", (err) => {
-				this.log.error("Error starting server", err);
 				reject(err);
 			});
 		});
 	}
 
 	protected async close() {
-		await new Promise<void>((resolve, reject) => {
+		const promise = new Promise<void>((resolve, reject) => {
 			this.server?.close((err) => {
 				if (err) {
-					this.log.error("Error closing server", err);
 					reject(err);
 				} else {
-					this.log.info("Server closed");
 					resolve();
 				}
 			});
 		});
+
+		await Promise.race([this.dateTimeProvider.wait(2000), promise]);
+
+		this.log.info("Server closed");
 	}
 }

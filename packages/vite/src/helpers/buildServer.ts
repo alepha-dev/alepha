@@ -72,7 +72,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
 		);
 	}
 
-	let state = "";
+	let template = "";
 
 	if (opts.clientDir) {
 		const index = await readFile(
@@ -80,7 +80,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
 			"utf-8",
 		);
 
-		state = `__alepha.state(\n\t"react.server.template", \n\t\`${index.replace(/>\s*</g, "><").trim()}\`\n);`;
+		template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()};\``;
 
 		await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
 	}
@@ -94,6 +94,6 @@ export const buildServer = async (opts: BuildServerOptions) => {
 
 	await writeFile(
 		`${opts.distDir}/index.js`,
-		`${warning}\n${forceProduction}\nimport'./server/${indexFileName}';\n\n${state}`.trim(),
+		`${warning}\n${forceProduction}${template}\n\nimport('./server/${indexFileName}');`.trim(),
 	);
 };

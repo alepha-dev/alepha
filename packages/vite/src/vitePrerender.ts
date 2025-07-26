@@ -24,12 +24,17 @@ export function vitePrerender(opts: VitePrerenderOptions): Plugin {
 			try {
 				const entry = extractFirstModuleScriptSrc(opts.html);
 				if (entry) {
-					const { alepha } = await importAlepha(entry, opts.config ?? {});
+					const template = await readFile(
+						`${opts.dist}/index.html`,
+						"utf-8",
+					).catch(() => "");
 
-					alepha.state(
-						"react.server.template",
-						await readFile(`${opts.dist}/index.html`, "utf-8").catch(() => ""),
-					);
+					const { alepha } = await importAlepha(entry, {
+						config: opts.config ?? {},
+						env: {
+							REACT_SERVER_TEMPLATE: template,
+						},
+					});
 
 					const stats = await prerenderFromAlepha(
 						alepha,
