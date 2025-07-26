@@ -36,6 +36,7 @@ const Home = () => {
 			w={"100%"}
 			className={"graph-paper"}
 		>
+			<AlephaWarning />
 			<HeroSection />
 			<FeatureGrid />
 		</Flex>
@@ -76,7 +77,7 @@ const FeatureGrid = () => (
 	</Container>
 );
 
-const AlphaWarning = () => {
+const AlephaWarning = () => {
 	const [hide, setHide] = useSessionStorage<boolean>({
 		key: "warning.not-ready-yet",
 		defaultValue: false,
@@ -92,7 +93,7 @@ const AlphaWarning = () => {
 					setHide(true);
 				}}
 				icon={<IconAlertTriangle size={24} />}
-				title="Not Ready for Production"
+				title="Early Access Warning"
 				color="orange"
 				radius="md"
 			>

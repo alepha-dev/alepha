@@ -25,4 +25,4 @@ Simple interface for managing worker threads in Alepha.
 
 #### $thread()
 
-/!\ WORK IN PROGRESS /!\
+

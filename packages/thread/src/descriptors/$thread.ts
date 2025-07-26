@@ -2,7 +2,7 @@ import { Worker } from "node:worker_threads";
 import { createDescriptor, Descriptor, KIND } from "@alepha/core";
 
 /**
- * /!\ WORK IN PROGRESS /!\
+ *
  */
 export const $thread = (options: ThreadDescriptorOptions): ThreadDescriptor => {
 	return createDescriptor(ThreadDescriptor, options);

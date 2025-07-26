@@ -96,11 +96,6 @@ You're all set. You can run your server directly with Node.js or Bun. No extra b
 node index.ts
 ```
 
-**Using Bun:**
-```bash
-bun index.ts
-```
-
 You should see a message indicating that the server has started:
 
 ```
