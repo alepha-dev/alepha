@@ -12,7 +12,13 @@ export class RepositoryDescriptorProvider {
 	protected readonly alepha = $inject(Alepha);
 
 	public get repositories(): RepositoryDescriptor<TableConfig, TObject>[] {
-		return this.alepha.descriptors($repository);
+		const list: RepositoryDescriptor<TableConfig, TObject>[] = [];
+		for (const descriptor of this.alepha.descriptors($repository)) {
+			if (!list.find((it) => it.table === descriptor.table)) {
+				list.push(descriptor);
+			}
+		}
+		return list;
 	}
 
 	constructor() {

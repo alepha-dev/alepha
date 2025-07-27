@@ -58,10 +58,19 @@ export class ServerSecurityProvider {
 				return;
 			}
 
-			request.user = this.createUserFromLocalFunctionContext(
-				options,
-				permission,
-			);
+			const secure =
+				typeof action.options.secure === "object" ? action.options.secure : {};
+
+			try {
+				request.user = this.createUserFromLocalFunctionContext(
+					options,
+					permission,
+				);
+			} catch (error) {
+				if (!secure.optional) {
+					throw error;
+				}
+			}
 		},
 	});
 
@@ -77,10 +86,18 @@ export class ServerSecurityProvider {
 				return;
 			}
 
-			request.user = await this.securityProvider.createUserFromToken(
-				request.headers.authorization,
-				permission,
-			);
+			const secure = typeof route.secure === "object" ? route.secure : {};
+
+			try {
+				request.user = await this.securityProvider.createUserFromToken(
+					request.headers.authorization,
+					permission,
+				);
+			} catch (error) {
+				if (!secure.optional) {
+					throw error;
+				}
+			}
 		},
 	});
 
@@ -128,7 +145,11 @@ export class ServerSecurityProvider {
 			throw new UnauthorizedError("User is required for calling this action");
 		}
 
-		const roles = user.roles ?? [];
+		const roles =
+			user.roles ??
+			(this.alepha.isTest()
+				? this.securityProvider.getRoles().map((role) => role.name)
+				: []);
 		let ownership: boolean | string | undefined;
 
 		if (permission) {

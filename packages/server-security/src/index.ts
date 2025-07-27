@@ -40,7 +40,11 @@ declare module "@alepha/server" {
 		 * If true, the route will be protected by the security provider.
 		 * All actions are secure by default, but you can disable it for specific actions.
 		 */
-		secure?: boolean;
+		secure?:
+			| boolean
+			| {
+					optional?: boolean; // if true, the user is not required
+			  };
 	}
 	interface ClientRequestOptions extends FetchOptions {
 		/**
