@@ -1,15 +1,16 @@
+import type { Alepha } from "@alepha/core";
 import { useState } from "react";
-import { useAlepha } from "../hooks/useAlepha.ts";
 
 interface ErrorViewerProps {
 	error: Error;
+	alepha: Alepha;
 }
 
 // TODO: design this better
 
-const ErrorViewer = ({ error }: ErrorViewerProps) => {
+const ErrorViewer = ({ error, alepha }: ErrorViewerProps) => {
 	const [expanded, setExpanded] = useState(false);
-	const isProduction = useAlepha().isProduction();
+	const isProduction = alepha.isProduction();
 	// const status = isHttpError(error) ? error.status : 500;
 
 	if (isProduction) {

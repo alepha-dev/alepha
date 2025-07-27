@@ -18,11 +18,6 @@ export const run = (
 	entry: Alepha | Service | Array<Service>,
 	opts?: RunOptions,
 ): void => {
-	if (opts?.cluster) {
-		withCluster(entry, opts);
-		return;
-	}
-
 	const alepha =
 		entry instanceof Alepha
 			? entry
@@ -38,6 +33,11 @@ export const run = (
 	(globalThis as any).__alepha = alepha;
 
 	if (alepha.isServerless()) {
+		return;
+	}
+
+	if (opts?.cluster) {
+		withCluster(entry, opts);
 		return;
 	}
 

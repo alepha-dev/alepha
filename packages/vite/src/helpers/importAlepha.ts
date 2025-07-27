@@ -1,33 +1,25 @@
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { Alepha } from "@alepha/core";
-import type { UserConfig, ViteDevServer } from "vite";
 import { importVite } from "./importVite.ts";
 
+/**
+ * Import Alepha instance from a transpiled server entry file.
+ */
 export const importAlepha = async (
 	entry: string,
 	options: {
-		config: UserConfig;
 		env: Record<string, string>;
 	},
-): Promise<{
-	alepha: Alepha;
-	server?: ViteDevServer;
-}> => {
-	const { loadEnv, createServer } = await importVite();
-
-	const server = await createServer({
-		server: { middlewareMode: true },
-		appType: "custom",
-		...options.config,
-	});
-
-	await server.pluginContainer.buildStart({});
-
-	const env = loadEnv("development", process.cwd(), "");
-
+): Promise<Alepha> => {
 	if (global.__alepha) {
 		const alepha = global.__alepha as Alepha;
-		return { alepha };
+		return alepha;
 	}
+
+	const { loadEnv } = await importVite();
+
+	const env = loadEnv("development", process.cwd(), "");
 
 	for (const key in env) {
 		process.env[key] = env[key];
@@ -42,7 +34,12 @@ export const importAlepha = async (
 	process.env.LOG_FORMAT = "text";
 	process.env.NODE_ENV = "production";
 
-	await server.ssrLoadModule(entry);
+	const entryFile = pathToFileURL(join(process.cwd(), entry)).href;
+
+	await import(entryFile);
+
+	// wait for the Alepha instance to be initialized (I know, this is not ideal)
+	await new Promise((resolve) => setTimeout(resolve, 1000));
 
 	const alepha = global.__alepha as Alepha | undefined;
 	if (!alepha) {
@@ -51,5 +48,5 @@ export const importAlepha = async (
 
 	await alepha.emit("configure", alepha);
 
-	return { alepha, server };
+	return alepha;
 };

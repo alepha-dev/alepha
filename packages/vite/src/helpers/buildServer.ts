@@ -53,10 +53,46 @@ export const buildServer = async (opts: BuildServerOptions) => {
 		plugins,
 	};
 
-	const entryFilePath = join(process.cwd(), opts.entry).replace(/\\/g, "/");
 	const result = await viteBuild(
 		mergeConfig(viteBuildServerConfig, opts.config || {}),
 	);
+
+	const indexFileName = extractIndexFromBundle(opts.entry, result);
+
+	let template = "";
+
+	if (opts.clientDir) {
+		const index = await readFile(
+			`${opts.distDir}/${opts.clientDir}/index.html`,
+			"utf-8",
+		);
+
+		template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()};\`\n`;
+
+		await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
+	}
+
+	const warning =
+		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
+		"\n" +
+		"// Changes to this file will be lost when the code is regenerated.\n";
+
+	const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
+
+	await writeFile(
+		`${opts.distDir}/index.js`,
+		`${warning}\n${forceProduction}${template}\nimport('./server/${indexFileName}');`.trim(),
+	);
+};
+
+function extractIndexFromBundle(
+	entry: string,
+	result:
+		| vite.Rollup.RollupOutput
+		| vite.Rollup.RollupOutput[]
+		| vite.Rollup.RollupWatcher,
+) {
+	const entryFilePath = join(process.cwd(), entry).replace(/\\/g, "/");
 
 	const rollupOutput = (
 		Array.isArray(result) ? result[0] : result
@@ -72,28 +108,5 @@ export const buildServer = async (opts: BuildServerOptions) => {
 		);
 	}
 
-	let template = "";
-
-	if (opts.clientDir) {
-		const index = await readFile(
-			`${opts.distDir}/${opts.clientDir}/index.html`,
-			"utf-8",
-		);
-
-		template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()};\``;
-
-		await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
-	}
-
-	const warning =
-		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
-		"\n" +
-		"// Changes to this file will be lost when the code is regenerated.\n";
-
-	const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
-
-	await writeFile(
-		`${opts.distDir}/index.js`,
-		`${warning}\n${forceProduction}${template}\n\nimport('./server/${indexFileName}');`.trim(),
-	);
-};
+	return indexFileName;
+}

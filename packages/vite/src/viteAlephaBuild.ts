@@ -3,6 +3,7 @@ import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
+import { extractFirstModuleScriptSrc, prerender } from "./helpers/prerender.ts";
 
 export interface ViteAlephaBuildOptions {
 	/**
@@ -30,7 +31,7 @@ export interface ViteAlephaBuildOptions {
 export async function viteAlephaBuild(
 	options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
-	const entry = options.serverEntry;
+	let entry = options.serverEntry;
 
 	const distDir = "dist";
 	const clientDir = "public";
@@ -61,24 +62,48 @@ export async function viteAlephaBuild(
 
 			const hasClient =
 				options.client !== false && (await fileExists("index.html"));
+			const buildClientOptions =
+				typeof options.client === "object" ? options.client : {};
 
+			let html = "";
 			if (hasClient) {
-				const buildClientOptions =
-					typeof options.client === "object" ? options.client : {};
+				html = await readFile("index.html", "utf-8");
 				await buildClient({
-					config: rootConfig,
-					html: await readFile("index.html", "utf-8"),
-					dist: `${distDir}/${clientDir}`,
 					...buildClientOptions,
+					config: rootConfig,
+					html,
+					dist: `${distDir}/${clientDir}`,
 				});
+			}
+
+			let template = "";
+			if (hasClient) {
+				template = await readFile(
+					`${distDir}/${clientDir}/index.html`,
+					"utf-8",
+				);
+			}
+
+			if (buildClientOptions.prerender && !entry && html) {
+				entry = extractFirstModuleScriptSrc(html);
 			}
 
 			if (entry) {
 				await buildServer({
+					config: rootConfig,
 					entry,
 					distDir: `${distDir}`,
 					clientDir: hasClient ? clientDir : undefined,
 					vercel: options.vercel,
+				});
+			}
+
+			if (buildClientOptions.prerender && template) {
+				await prerender({
+					template: template,
+					dist: `${distDir}/${clientDir}`,
+					entry: `${distDir}/index.js`,
+					compress: buildClientOptions.precompress,
 				});
 			}
 

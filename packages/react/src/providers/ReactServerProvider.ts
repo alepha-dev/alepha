@@ -36,7 +36,11 @@ const envSchema = t.object({
 	REACT_SERVER_PREFIX: t.string({ default: "" }),
 	REACT_SSR_ENABLED: t.optional(t.boolean()),
 	REACT_ROOT_ID: t.string({ default: "root" }),
-	REACT_SERVER_TEMPLATE: t.optional(t.string()),
+	REACT_SERVER_TEMPLATE: t.optional(
+		t.string({
+			size: "rich",
+		}),
+	),
 });
 
 declare module "@alepha/core" {

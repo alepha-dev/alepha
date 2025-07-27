@@ -1,6 +1,5 @@
 import type { UserConfig } from "vite";
 import { type ViteCompressOptions, viteCompress } from "../viteCompress.ts";
-import { vitePrerender } from "../vitePrerender.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildClientOptions {
@@ -29,15 +28,6 @@ export const buildClient = async (opts: BuildClientOptions) => {
 			? opts.precompress
 			: {}
 		: undefined;
-
-	if (opts.prerender) {
-		plugins.push(
-			vitePrerender({
-				...opts,
-				compress,
-			}),
-		);
-	}
 
 	if (opts.precompress && compress) {
 		plugins.push(viteCompress(compress));

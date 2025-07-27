@@ -300,7 +300,7 @@ export class PageDescriptorProvider {
 	}
 
 	public renderError(error: Error): ReactNode {
-		return createElement(ErrorViewer, { error });
+		return createElement(ErrorViewer, { error, alepha: this.alepha });
 	}
 
 	public renderEmptyView(): ReactNode {
