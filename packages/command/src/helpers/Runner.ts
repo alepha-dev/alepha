@@ -1,5 +1,5 @@
 import { exec } from "node:child_process";
-import { glob, rm } from "node:fs/promises";
+import { cp, glob, rm } from "node:fs/promises";
 import type { Logger } from "@alepha/core";
 import { CommandError } from "../errors/CommandError.ts";
 
@@ -16,6 +16,7 @@ interface Timer {
 export interface RunnerMethod {
 	(cmd: string | Array<string | Task>, fn?: () => any): Promise<string>;
 	rm: (glob: string | string[]) => Promise<string>;
+	cp: (source: string, dest: string) => Promise<string>;
 }
 
 export class Runner {
@@ -26,7 +27,10 @@ export class Runner {
 
 	constructor(log: Logger) {
 		this.log = log;
+		this.run = this.createRunMethod();
+	}
 
+	protected createRunMethod() {
 		const runFn: RunnerMethod = async (
 			cmd: string | Array<string | Task>,
 			fn?: () => any,
@@ -49,7 +53,7 @@ export class Runner {
 
 		runFn.rm = async (files: string | string[]): Promise<string> => {
 			if (Array.isArray(files)) {
-				return runFn(files.join(" "), async () => {
+				return runFn(`rm -rf ${files.join(" ")}`, async () => {
 					for await (const file of glob(files)) {
 						this.log.trace(`Removing ${file}`);
 						await rm(file, { recursive: true, force: true });
@@ -57,10 +61,19 @@ export class Runner {
 				});
 			}
 			this.log.trace(`Removing ${files}`);
-			return runFn(files, () => rm(files, { recursive: true, force: true }));
+			return runFn(`rm -rf ${files}`, () =>
+				rm(files, { recursive: true, force: true }),
+			);
 		};
 
-		this.run = runFn;
+		runFn.cp = async (source: string, dist: string): Promise<string> => {
+			this.log.trace(`Copying ${source} to ${dist}`);
+			return runFn(`cp -r ${source} ${dist}`, () =>
+				cp(source, dist, { recursive: true }),
+			);
+		};
+
+		return runFn;
 	}
 
 	protected async exec(cmd: string): Promise<string> {
