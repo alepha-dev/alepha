@@ -11,19 +11,6 @@ export * from "./providers/CliProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "@sinclair/typebox" {
-	interface StringOptions {
-		/**
-		 * Additional aliases for the flags.
-		 *
-		 * @module alepha.command
-		 */
-		aliases?: string[];
-	}
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * This module provides a powerful way to build command-line interfaces
  * directly within your Alepha application, using declarative descriptors.
@@ -38,3 +25,16 @@ export const AlephaCommand = $module({
 	descriptors: [$command],
 	services: [CliProvider],
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@sinclair/typebox" {
+	interface StringOptions {
+		/**
+		 * Additional aliases for the flags.
+		 *
+		 * @module alepha.command
+		 */
+		aliases?: string[];
+	}
+}
