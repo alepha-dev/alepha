@@ -78,20 +78,9 @@ const FeatureGrid = () => (
 );
 
 const AlephaWarning = () => {
-	const [hide, setHide] = useSessionStorage<boolean>({
-		key: "warning.not-ready-yet",
-		defaultValue: false,
-	});
-
-	if (hide) return null;
-
 	return (
 		<Container size="lg" my="xl">
 			<Alert
-				withCloseButton={true}
-				onClick={() => {
-					setHide(true);
-				}}
 				icon={<IconAlertTriangle size={24} />}
 				title="Early Access Warning"
 				color="orange"
