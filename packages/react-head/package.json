@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/react-head",
 	"description": "Manages the document <head> for SEO and metadata.",
-	"version": "0.9.0",
+	"version": "0.9.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,8 +15,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.0",
-		"@alepha/react": "0.9.0"
+		"@alepha/core": "0.9.1",
+		"@alepha/react": "0.9.1"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
