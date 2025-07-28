@@ -39,7 +39,6 @@ class TodoApi {
       response: t.array(taskSchema),
     },
     handler: async ({ params }) => {
-      console.log("Deleting task:", params.task);
       this.tasks = this.tasks.filter((t) => t.id !== params.task);
       return this.tasks;
     },

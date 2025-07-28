@@ -50,6 +50,11 @@ export interface CommandDescriptorOptions<T extends TObject> {
 	 * A TypeBox object schema defining the flags for the command.
 	 */
 	flags?: T;
+
+	/**
+	 * If false, skip summary message at the end of the command execution.
+	 */
+	summary?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

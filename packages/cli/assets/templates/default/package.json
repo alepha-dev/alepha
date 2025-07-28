@@ -2,7 +2,7 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
-		"alepha": "0.9.0",
+		"alepha": "^{{ alepha.version }}",
 		"react": "^19.0.0"
 	},
 	"devDependencies": {

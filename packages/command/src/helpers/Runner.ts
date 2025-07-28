@@ -13,16 +13,26 @@ interface Timer {
 	duration: string;
 }
 
+export interface RunOptions {
+	/**
+	 * Rename the command for logging purposes.
+	 */
+	alias?: string;
+
+	/**
+	 * If true, the command will not be logged.
+	 */
+	silent?: boolean; // TODO: implement
+}
+
 export interface RunnerMethod {
-	(cmd: string | Array<string | Task>, fn?: () => any): Promise<string>;
-	rm: (glob: string | string[]) => Promise<string>;
-	cp: (
-		source: string,
-		dest: string,
-		options?: {
-			alias?: string;
-		},
-	) => Promise<string>;
+	(
+		cmd: string | Array<string | Task>,
+		fn?: () => any,
+		options?: RunOptions,
+	): Promise<string>;
+	rm: (glob: string | string[], options?: RunOptions) => Promise<string>;
+	cp: (source: string, dest: string, options?: RunOptions) => Promise<string>;
 }
 
 export class Runner {
@@ -40,6 +50,7 @@ export class Runner {
 		const runFn: RunnerMethod = async (
 			cmd: string | Array<string | Task>,
 			fn?: () => any,
+			options: RunOptions = {},
 		) => {
 			if (Array.isArray(cmd)) {
 				return await this.execute(
@@ -52,14 +63,17 @@ export class Runner {
 			}
 
 			return await this.execute({
-				name: cmd,
+				name: options.alias ?? cmd,
 				handler: fn ? fn : () => this.exec(cmd),
 			});
 		};
 
-		runFn.rm = async (files: string | string[]): Promise<string> => {
+		runFn.rm = async (
+			files: string | string[],
+			options: RunOptions = {},
+		): Promise<string> => {
 			if (Array.isArray(files)) {
-				return runFn(`rm -rf ${files.join(" ")}`, async () => {
+				return runFn(options.alias ?? `rm -rf ${files.join(" ")}`, async () => {
 					for await (const file of glob(files)) {
 						this.log.trace(`Removing ${file}`);
 						await rm(file, { recursive: true, force: true });
@@ -75,7 +89,7 @@ export class Runner {
 		runFn.cp = async (
 			source: string,
 			dist: string,
-			options: { alias?: string } = {},
+			options: RunOptions = {},
 		): Promise<string> => {
 			this.log.trace(`Copying ${source} to ${dist}`);
 			return runFn(options.alias ?? `cp -r ${source} ${dist}`, () =>

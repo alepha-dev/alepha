@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { glob, readFile, writeFile } from "node:fs/promises";
+import { cp, glob, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $logger, run, t } from "@alepha/core";
@@ -15,6 +15,7 @@ class AlephaCli {
 		flags: t.object({
 			name: t.optional(t.string()),
 		}),
+		summary: false,
 		handler: async ({ run, flags }) => {
 			const name = flags.name ?? "my-alepha-project";
 			const source = join(
@@ -26,28 +27,27 @@ class AlephaCli {
 			);
 			const dest = join(process.cwd(), name);
 
-			this.log.info("📂 Copying template files...");
-			await run.cp(source, dest);
-
-			await run("rename files", async () => {
-				for await (const file of glob(`${dest}/**/*.txt`)) {
-					const content = await readFile(file, "utf-8");
-					await writeFile(
-						file.replace(/\.txt$/, ""),
-						await this.runTemplate(content),
-					);
-					await run.rm(file);
+			await run("📂 Copying files", async () => {
+				await cp(source, dest, { recursive: true });
+				for await (const file of glob(`${dest}/**/*`, {
+					withFileTypes: true,
+				})) {
+					if (file.isDirectory()) continue;
+					const filepath = join(file.parentPath, file.name);
+					const content = await readFile(filepath, "utf-8");
+					await writeFile(filepath, await this.runTemplate(content));
 				}
 			});
 
 			// with emoji
-			this.log.info("📦 Installing dependencies...");
-			await run(`cd ${name} && npm install`);
+			await run(`cd ${name} && npm install`, undefined, {
+				alias: "📦 Installing dependencies",
+			});
 
 			this.log.info(
-				`🎉 Project created successfully!
+				`\n🎉 Project created successfully!
 
-\t$ cd ${name} && npm run dev
+  $ cd ${name} && npm run dev
 `,
 			);
 		},
@@ -61,9 +61,9 @@ class AlephaCli {
 
 run(AlephaCli, {
 	env: {
-		LOG_LEVEL: "alepha:warn,info",
-		LOG_FORMAT: "cli",
-		CLI_NAME: "Alepha CLI",
-		CLI_DESCRIPTION: "Create and manage Alepha projects.",
+		LOG_LEVEL: "alepha.core:warn,info",
+		LOG_FORMAT: "raw",
+		CLI_NAME: "alepha",
+		CLI_DESCRIPTION: `Alepha CLI v${pkg.version} - Create and manage Alepha projects.`,
 	},
 });

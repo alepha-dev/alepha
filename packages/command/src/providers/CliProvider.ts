@@ -98,7 +98,9 @@ export class CliProvider {
 
 				await command.options.handler(args as CommandHandlerArgs<TObject>);
 
-				runner.summary();
+				if (command.options.summary !== false) {
+					runner.summary();
+				}
 
 				this.log.debug(`Command '${command.name}' executed successfully.`);
 			});
