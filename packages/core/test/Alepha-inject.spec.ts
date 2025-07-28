@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "vitest";
 import { Alepha } from "../src";
 
-test("Alepha#get - skip registration", () => {
+test("Alepha#inject - skip registration", () => {
 	class Logger {
 		a = randomUUID();
 	}
@@ -26,7 +26,7 @@ test("Alepha#get - skip registration", () => {
 	);
 });
 
-test("Alepha#get - args", () => {
+test("Alepha#inject - args", () => {
 	class Logger {
 		constructor(public a: string) {}
 	}
@@ -37,7 +37,7 @@ test("Alepha#get - args", () => {
 	expect(alepha.inject(Logger).a).toBe("a");
 });
 
-test("Alepha#get - alepha", () => {
+test("Alepha#inject - alepha", () => {
 	const alepha = new Alepha();
 
 	expect(alepha.inject(Alepha)).toBe(alepha);

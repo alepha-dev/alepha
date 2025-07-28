@@ -32,7 +32,7 @@ run(App);
 `,
 	db: `
 import { t, run } from "alepha";
-import { $entity, pg, Repository } from "alepha/postgres";
+import { $entity, pg, $repository } from "alepha/postgres";
 
 // Define an entity with type-safe columns.
 export const users = $entity({
@@ -43,8 +43,8 @@ export const users = $entity({
   })
 });
 
-class UserRepository extends Repository.of(users) {
-  // Get a fully-typed repository for your entity.
+class App {
+  userRepository = $repository(users);
 }
 `,
 	queue: `

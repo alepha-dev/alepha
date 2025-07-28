@@ -22,12 +22,11 @@ export async function prerender(opts: PrerenderOptions) {
 	});
 
 	const now = Date.now();
-	console.log(`Pre-rendering...`);
 
 	const stats = await prerenderFromAlepha(alepha, opts.dist, opts.compress);
 
 	console.log(
-		`Pre-rendered ${stats.count} page${stats.count > 1 ? "s" : ""} in ${Date.now() - now}ms.`,
+		`[plugin prerender] Rendered ${stats.count} page${stats.count > 1 ? "s" : ""} in ${Date.now() - now}ms.`,
 	);
 }
 

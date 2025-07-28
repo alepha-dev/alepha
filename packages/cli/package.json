@@ -10,13 +10,15 @@
 	"types": "./src/index.ts",
 	"files": [
 		"dist",
-		"src"
+		"src",
+		"assets"
 	],
-	"dependencies": {
-		"@sinclair/typebox": "^0.34.38",
-		"shx": "^0.4.0"
+	"bin": {
+		"alepha": "./dist/index.cjs"
 	},
 	"devDependencies": {
+		"@alepha/command": "^0.9.0",
+		"@alepha/core": "^0.9.0",
 		"tsdown": "^0.13.0"
 	},
 	"scripts": {

@@ -141,7 +141,7 @@ class UserController {
 // or in different processes (microservices), does not matter
 ```
 
-Check out the [alepha/server/links](/docs/alepha-server-links) package for more details on how to use `$client` and communicate between modules.
+Check out the [alepha/server/links](/apps/docs/assets/alepha-server-links) package for more details on how to use `$client` and communicate between modules.
 
 
 

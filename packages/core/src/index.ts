@@ -1,3 +1,14 @@
+/// <reference types="vite/client" />
+
+declare global {
+	interface ImportMetaEnv {
+		SSR: boolean;
+	}
+	interface ImportMeta {
+		readonly env: ImportMetaEnv;
+	}
+}
+
 import { AsyncLocalStorage } from "node:async_hooks";
 import cluster from "node:cluster";
 import { cpus } from "node:os";

@@ -16,7 +16,13 @@ interface Timer {
 export interface RunnerMethod {
 	(cmd: string | Array<string | Task>, fn?: () => any): Promise<string>;
 	rm: (glob: string | string[]) => Promise<string>;
-	cp: (source: string, dest: string) => Promise<string>;
+	cp: (
+		source: string,
+		dest: string,
+		options?: {
+			alias?: string;
+		},
+	) => Promise<string>;
 }
 
 export class Runner {
@@ -66,9 +72,13 @@ export class Runner {
 			);
 		};
 
-		runFn.cp = async (source: string, dist: string): Promise<string> => {
+		runFn.cp = async (
+			source: string,
+			dist: string,
+			options: { alias?: string } = {},
+		): Promise<string> => {
 			this.log.trace(`Copying ${source} to ${dist}`);
-			return runFn(`cp -r ${source} ${dist}`, () =>
+			return runFn(options.alias ?? `cp -r ${source} ${dist}`, () =>
 				cp(source, dist, { recursive: true }),
 			);
 		};

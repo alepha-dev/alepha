@@ -1,10 +1,9 @@
-import { run } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { Alepha, run } from "@alepha/core";
 
-class Server {
-	hello = $action({
-		handler: () => "Hello from the!",
-	});
+const alepha = Alepha.create();
+
+if (import.meta.env.SSR) {
+	alepha.with(await import("./users"));
 }
 
-run(Server);
+run(alepha);

@@ -87,7 +87,7 @@ class App {
 
 			for (const category of categories) {
 				await run(`parse /${category}`, async () => {
-					const files = glob(`docs/${category}/**/*.md`, {
+					const files = glob(`apps/docs/assets/${category}/**/*.md`, {
 						cwd: rootDir,
 					});
 

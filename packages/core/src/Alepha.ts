@@ -601,10 +601,15 @@ export class Alepha {
 	 * > It's useful for testing or for providing different implementations of a service.
 	 * > If you are interested in configuring a service, use Alepha#configure() instead.
 	 *
-	 * @param entry - The service to register in the container.
+	 * @param serviceEntry - The service to register in the container.
 	 * @return Current instance of Alepha.
 	 */
-	public with<T extends object>(entry: ServiceEntry<T>): this {
+	public with<T extends object>(
+		serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
+	): this {
+		const entry: ServiceEntry<T> =
+			"default" in serviceEntry ? serviceEntry.default : serviceEntry;
+
 		if (this.started) {
 			throw new ContainerLockedError();
 		}
