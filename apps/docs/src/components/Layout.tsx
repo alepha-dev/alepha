@@ -38,7 +38,7 @@ export default Layout;
 const Main = () => {
 	const [opened, { toggle }] = useDisclosure();
 	const router = useRouterState();
-	const isHome = router.pathname === "/";
+	const noSidebar = router.layers.slice(-1)[0]?.route?.sidebar !== true;
 
 	const header = (
 		<AppShell.Header>
@@ -56,14 +56,14 @@ const Main = () => {
 				</Flex>
 				<Flex justify={"flex-end"}>
 					<Text size={"xs"} c={"dimmed"}>
-						{`Last update - ${new Date(import.meta.env.VITE_BUILD_DATE).toLocaleDateString()}`}
+						{`Last update - ${import.meta.env.VITE_BUILD_DATE.split("T")[0]}`}
 					</Text>
 				</Flex>
 			</Flex>
 		</AppShell.Footer>
 	);
 
-	if (isHome) {
+	if (noSidebar) {
 		return (
 			<AppShell
 				padding="md"

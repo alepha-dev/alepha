@@ -12,18 +12,11 @@ import {
 	Text,
 	useMantineColorScheme,
 } from "@mantine/core";
-import {
-	Spotlight,
-	type SpotlightActionData,
-	spotlight,
-} from "@mantine/spotlight";
+import { Spotlight, spotlight } from "@mantine/spotlight";
 import {
 	IconBrandGithub,
 	IconCheck,
-	IconDashboard,
 	IconDeviceLaptop,
-	IconFileText,
-	IconHome,
 	IconMoon,
 	IconSearch,
 	IconSun,

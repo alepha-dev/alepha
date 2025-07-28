@@ -8,47 +8,8 @@ import {
 	useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import {
-	IconApi,
-	IconArrowsExchange,
-	IconBolt,
-	IconBox,
-	IconBrandReact,
-	IconBucket,
-	IconChartBar,
-	IconClock,
-	IconCloudBolt,
-	IconCode,
-	IconCommand,
-	IconComponents,
-	IconCookie,
-	IconDatabase,
-	IconExposure,
-	IconFile,
-	IconFileDescription,
-	IconFileTypeDoc,
-	IconFileZip,
-	IconForms,
-	IconHeartbeat,
-	IconHeartHandshake,
-	IconHelmet,
-	IconHtml,
-	IconLineDashed,
-	IconLink,
-	IconLock,
-	IconMap2,
-	IconMessage2,
-	IconMessageCircle,
-	IconPackage,
-	IconRepeat,
-	IconServer,
-	IconServerBolt,
-	IconShieldCheck,
-	IconTestPipe,
-	IconUserCheck,
-	IconWorldWww,
-} from "@tabler/icons-react";
-import { createElement, useEffect, useMemo, useState } from "react";
+import { IconHeartHandshake, IconMap2, IconPackage } from "@tabler/icons-react";
+import { useEffect, useMemo, useState } from "react";
 import { docs } from "../config/docs.ts";
 import { iconByName } from "../config/icons.ts";
 import { theme } from "../config/theme.ts";

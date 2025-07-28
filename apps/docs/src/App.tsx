@@ -1,15 +1,21 @@
 import { t } from "@alepha/core";
-import { $page } from "@alepha/react";
+import { $page, NotFound } from "@alepha/react";
 import { NotFoundError } from "@alepha/server";
 import Content from "./components/Content.tsx";
 import Home from "./components/Home.tsx";
 import Layout from "./components/Layout.tsx";
 import { docs } from "./config/docs.ts";
 
+declare module "@alepha/react" {
+	interface PageDescriptorOptions {
+		sidebar?: boolean;
+	}
+}
+
 export class App {
 	layout = $page({
 		component: Layout,
-		children: () => [this.home, this.m],
+		children: () => [this.home, this.m, this.github404, this.notFound],
 		head: {
 			title: "Alepha",
 			titleSeparator: " | ",
@@ -26,6 +32,7 @@ export class App {
 	});
 
 	m = $page({
+		sidebar: true,
 		path: "/docs/:slug",
 		component: Content,
 		schema: {
@@ -51,5 +58,16 @@ export class App {
 				title: name,
 			};
 		},
+	});
+
+	github404 = $page({
+		path: "/404",
+		static: true,
+		component: () => <NotFound />,
+	});
+
+	notFound = $page({
+		path: "/*",
+		component: () => <NotFound />,
 	});
 }
