@@ -14,15 +14,11 @@ import {
 } from "@mantine/core";
 import { Spotlight, spotlight } from "@mantine/spotlight";
 import {
-	IconAddressBook,
-	IconBook,
-	IconBookFilled,
 	IconBrandGithub,
 	IconCheck,
 	IconDeviceLaptop,
 	IconMoon,
 	IconPlayerPlay,
-	IconRun,
 	IconSearch,
 	IconSun,
 } from "@tabler/icons-react";

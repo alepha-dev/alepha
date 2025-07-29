@@ -214,6 +214,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/react-form@workspace:packages/react-form":
+  version: 0.0.0-use.local
+  resolution: "@alepha/react-form@workspace:packages/react-form"
+  dependencies:
+    "@alepha/core": "npm:0.9.1"
+    "@types/react": "npm:^19.1.8"
+    react: "npm:^19.1.0"
+    tsdown: "npm:^0.13.0"
+  peerDependencies:
+    "@types/react": ^19
+    react: ^19
+  languageName: unknown
+  linkType: soft
+
 "@alepha/react-head@npm:0.9.1, @alepha/react-head@workspace:packages/react-head":
   version: 0.0.0-use.local
   resolution: "@alepha/react-head@workspace:packages/react-head"

@@ -8,7 +8,6 @@ import {
 	TableOfContents,
 	Text,
 	Typography,
-	TypographyStylesProvider,
 } from "@mantine/core";
 import { IconCaretLeft, IconCaretRight, IconEdit } from "@tabler/icons-react";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";

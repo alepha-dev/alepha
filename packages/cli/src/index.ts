@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cp, glob, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, glob, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $logger, run, t } from "@alepha/core";

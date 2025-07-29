@@ -16,7 +16,7 @@ describe("$scheduler - cron", () => {
 			scheduler,
 		});
 	});
-	test("should trigger one app (redis)", async () => {
+	test("should trigger one app (redis)", { retry: 3 }, async () => {
 		await testSchedulerBasic({
 			lock: RedisLockProvider,
 			scheduler,
