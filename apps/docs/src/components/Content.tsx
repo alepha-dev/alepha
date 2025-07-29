@@ -7,6 +7,7 @@ import {
 	SimpleGrid,
 	TableOfContents,
 	Text,
+	Typography,
 	TypographyStylesProvider,
 } from "@mantine/core";
 import { IconCaretLeft, IconCaretRight, IconEdit } from "@tabler/icons-react";
@@ -44,9 +45,9 @@ const Content = (props: ModuleProps) => {
 					}}
 					gap={{ base: "sm", md: "xl" }}
 				>
-					<TypographyStylesProvider style={{ width: "100%" }}>
+					<Typography style={{ width: "100%" }}>
 						<HtmlContent html={props.content} />
-					</TypographyStylesProvider>
+					</Typography>
 					<Flex>
 						<Button
 							leftSection={<IconEdit />}

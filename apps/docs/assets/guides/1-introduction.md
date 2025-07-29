@@ -32,7 +32,6 @@ The entire ecosystem is built with a single goal: to let you write less boilerpl
 While much of Alepha is a fresh rewrite, it also stands on the shoulders of giants. The framework's philosophy is to build where unique value can be added and integrate where it makes sense. To provide a seamless, end-to-end typed experience, Alepha is built upon a mandatory foundation of three exceptional tools:
 
 1.  **[React](https://react.dev/) for UIs:** The `@alepha/react` package provides a powerful routing and data-fetching system inspired by the golden era of Next.js—before Server Components. It offers a straightforward and effective model for building Server-Side Rendered (SSR) applications.
-    > **Note:** Alepha does not implement and has no plans to implement the `"use client"` or `"use server"` directives. The framework is built on a simpler, more direct model for full-stack development.
 
 2.  **[Drizzle ORM](https://orm.drizzle.team/) for Databases:** Alepha uses Drizzle as its foundation for database interaction. You can use Drizzle's powerful query builder directly, or leverage Alepha's type-safe repository layer (`$repository`), which provides a streamlined and integrated experience for PostgreSQL and SQLite.
 

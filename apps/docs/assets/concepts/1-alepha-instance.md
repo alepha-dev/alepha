@@ -75,7 +75,8 @@ run(alepha); // run http server
 
 The Alepha instance acts as a container for your application. You can register services, providers, modules, that your application needs.
 
-> Descriptors will automatically register their module when they are used, so you don't need to register them manually. Example: A service with `$route()` will register the `AlephaServer` for you.
+> Descriptors will automatically register their module when they are used, so you don't need to register them manually. </br>
+> Example: A service with `$route()` will register the `AlephaServer` for you.
 
 You can also inject services.
 

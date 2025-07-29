@@ -24,6 +24,7 @@ import {
 	IconServer,
 	IconTools,
 } from "@tabler/icons-react";
+import { useState } from "react";
 import { snippets } from "../config/docs.ts";
 import { features } from "../config/features.ts";
 
@@ -77,9 +78,17 @@ const FeatureGrid = () => (
 );
 
 const AlephaWarning = () => {
+	const [hideWarning, setHideWarning] = useState(false);
+	if (hideWarning) return null;
 	return (
 		<Container size="lg" my="xl">
 			<Alert
+				withCloseButton
+				onClick={() => setHideWarning(true)}
+				style={{
+					backdropFilter: "blur(2px)",
+					border: "1px solid rgba(255, 255, 255, 0.1)",
+				}}
 				icon={<IconAlertTriangle size={24} />}
 				title="Early Access Warning"
 				color="orange"
@@ -136,7 +145,7 @@ const HeroSectionMessage = () => {
 				<Text
 					component="span"
 					variant="gradient"
-					gradient={{ from: "teal", to: "cyan" }}
+					gradient={{ from: "gray", to: "cyan" }}
 					inherit
 				>
 					Clarity.

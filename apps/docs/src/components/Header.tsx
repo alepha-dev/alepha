@@ -14,10 +14,15 @@ import {
 } from "@mantine/core";
 import { Spotlight, spotlight } from "@mantine/spotlight";
 import {
+	IconAddressBook,
+	IconBook,
+	IconBookFilled,
 	IconBrandGithub,
 	IconCheck,
 	IconDeviceLaptop,
 	IconMoon,
+	IconPlayerPlay,
+	IconRun,
 	IconSearch,
 	IconSun,
 } from "@tabler/icons-react";
@@ -52,12 +57,13 @@ const Header = (props: Props) => {
 				<Flex flex={1}></Flex>
 
 				<Button
+					leftSection={<IconPlayerPlay size={16} />}
 					visibleFrom={"md"}
-					variant={"subtle"}
+					variant={"transparent"}
 					component={Link}
 					to={"/docs/introduction"}
 				>
-					Guide
+					Start
 				</Button>
 				<Divider visibleFrom={"md"} orientation={"vertical"} />
 				<Flex visibleFrom={"md"}>
@@ -132,7 +138,7 @@ const HomeButton = () => {
 				hiddenFrom={"md"}
 			>
 				<Flex direction={"column"} align={"start"}>
-					<Text fw={"bold"} ff={"monospace"} size={"md"}>
+					<Text fw={"bold"} size={"md"}>
 						Alepha
 					</Text>
 					<Text size={"xs"} c={"dimmed"} mt={-8} fw={"300"}>
@@ -148,21 +154,24 @@ const HomeButton = () => {
 				to={"/"}
 				visibleFrom={"md"}
 			>
-				<Flex>
-					<Image
-						src={`${import.meta.env.BASE_URL}logo.png`}
-						alt={"logo"}
-						width={64}
-						height={64}
-					/>
-				</Flex>
-				<Flex direction={"column"}>
-					<Text fw={"bold"} ff={"monospace"} size={"xl"}>
-						Alepha
-					</Text>
-					<Text size={"xs"} c={"dimmed"} mt={-8} fw={"300"}>
-						Documentation
-					</Text>
+				<Flex align={"center"} justify={"center"}>
+					<Flex>
+						<Image
+							style={{ marginBottom: -32 }}
+							src={`${import.meta.env.BASE_URL}alepha.png`}
+							alt={"logo"}
+							width={50}
+							height={50}
+						/>
+					</Flex>
+					<Flex direction={"column"} align={"start"}>
+						<Text size={"xl"} ff={"var(--mantine-font-family-monospace)"}>
+							Alepha
+						</Text>
+						<Text size={"xs"} c={"dimmed"} mt={-6} fw={"300"}>
+							Documentation
+						</Text>
+					</Flex>
 				</Flex>
 			</Button>
 		</>

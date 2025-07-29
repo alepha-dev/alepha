@@ -22,7 +22,7 @@
 		"vite-bundle-analyzer": "^1.1.0"
 	},
 	"scripts": {
-		"dev": "vite",
+		"dev": "yarn copy && vite",
 		"build": "vite build",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",

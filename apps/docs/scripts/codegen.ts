@@ -39,7 +39,7 @@ class App {
 			heading: ({ text, depth }: Tokens.Heading) => {
 				const slug = text
 					.replace(/\//g, "-")
-					.replace(/[()`$:/@]/g, "")
+					.replace(/[()`:/@]/g, "")
 					.trim()
 					.replace(/ /g, "-")
 					.toLowerCase();
@@ -193,7 +193,7 @@ class App {
 
 	slug(name: string) {
 		return name
-			.replace(/(\d+)-/, "")
+			.replace(/(\d+)-/, "") // remove leading numbers
 			.replace(/[/\\]/g, "-")
 			.replace("@", "");
 	}

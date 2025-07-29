@@ -1,0 +1,42 @@
+{
+	"name": "@alepha/react-form",
+	"version": "0.9.1",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.9.1",
+		"@alepha/react": "0.9.1"
+	},
+	"devDependencies": {
+		"@types/react": "^19.1.8",
+		"react": "^19.1.0",
+		"tsdown": "^0.13.0"
+	},
+	"peerDependencies": {
+		"@types/react": "^19",
+		"react": "^19"
+	},
+	"scripts": {
+		"build": "tsdown -c ../../tsdown.config.ts"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"react",
+		"form",
+		"hooks"
+	]
+}
