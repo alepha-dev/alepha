@@ -85,10 +85,6 @@ const AlephaWarning = () => {
 			<Alert
 				withCloseButton
 				onClick={() => setHideWarning(true)}
-				style={{
-					backdropFilter: "blur(2px)",
-					border: "1px solid rgba(255, 255, 255, 0.1)",
-				}}
 				icon={<IconAlertTriangle size={24} />}
 				title="Early Access Warning"
 				color="orange"
@@ -184,8 +180,8 @@ const HeroSectionMessage = () => {
 };
 
 const ShowcaseSection = () => (
-	<Paper withBorder shadow="md" visibleFrom={"md"}>
-		<Tabs defaultValue="server" radius="md">
+	<Paper>
+		<Tabs defaultValue="server" variant={"outline"}>
 			<Tabs.List grow>
 				<Tabs.Tab value="server" leftSection={<IconServer size={16} />}>
 					API Server

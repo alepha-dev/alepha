@@ -24,8 +24,8 @@ const Layout = () => {
 
 	return (
 		<>
-			<ColorSchemeScript defaultColorScheme="auto" />
-			<MantineProvider defaultColorScheme="auto" theme={theme.mantine}>
+			<ColorSchemeScript defaultColorScheme="dark" />
+			<MantineProvider defaultColorScheme="dark" theme={theme.mantine}>
 				<NavigationProgress />
 				<Main />
 			</MantineProvider>

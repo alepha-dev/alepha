@@ -4,11 +4,11 @@ import { run } from "alepha";
 import { $action } from "alepha/server";
 
 class Api {
-  // Define an API endpoint with a single descriptor.
-  // Type-safe inputs and outputs are inferred automatically.
+  // define a type-safe API action
+  // accessible via HTTP GET /api/greet?name=John
   greet = $action({
     schema: { query: t.object({ name: t.string() }) },
-    handler: ({ query }) => \`Hello, \${query.name}!\`,
+    handler: async ({ query }) => \`Hello, \${query.name}!\`,
   });
 }
 
@@ -19,10 +19,10 @@ import { run } from "alepha";
 import { $page } from "alepha/react";
 
 class App {
-  // Define a server-side rendered React page.
-  // Data from \`resolve\` is passed as type-safe props.
+  // define a type-safe React page (both server and client)
   home = $page({
     path: '/',
+    // fetch data before rendering the page
     resolve: async () => ({ message: "Welcome to Alepha!" }),
     component: ({ message }) => <h1>{message}</h1>,
   });
@@ -34,7 +34,7 @@ run(App);
 import { t, run } from "alepha";
 import { $entity, pg, $repository } from "alepha/postgres";
 
-// Define an entity with type-safe columns.
+// define an entity with a schema
 export const users = $entity({
   name: "users",
   schema: t.object({
@@ -51,16 +51,16 @@ class App {
 import { t, run } from "alepha";
 import { $queue } from "alepha/queue";
 
-class Queue {
+class App {
   sendEmail = $queue({
     schema: t.object({
-        email: t.string()
+      email: t.string()
     }),
-    handler: () => { /* worker */ }
+    handler: async ({ payload }) => { /* worker */ }
   });
 }
 
-run(Queue);
+run(App);
 `,
 	command: `
 import { t, run } from "alepha";

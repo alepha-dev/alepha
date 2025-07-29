@@ -29,14 +29,18 @@ class AlephaCli {
 
 			await run("📂 Copying files", async () => {
 				await cp(source, dest, { recursive: true });
-				for await (const file of glob(`${dest}/**/*`, {
-					withFileTypes: true,
-				})) {
-					if (file.isDirectory()) continue;
-					const filepath = join(file.parentPath, file.name);
-					const content = await readFile(filepath, "utf-8");
-					await writeFile(filepath, await this.runTemplate(content));
-				}
+
+				// change alepha version in package.json
+				const packageJsonPath = join(dest, "package.json");
+				const packageJsonContent = await readFile(packageJsonPath, "utf-8");
+				await writeFile(
+					packageJsonPath,
+					packageJsonContent.replace(
+						`"alepha": "*"`,
+						`"alepha": "^${pkg.version}"`,
+					),
+					"utf-8",
+				);
 			});
 
 			// with emoji
@@ -44,12 +48,16 @@ class AlephaCli {
 				alias: "📦 Installing dependencies",
 			});
 
-			this.log.info(
-				`\n🎉 Project created successfully!
+			await run(`cd ${name} && npm run dev --open`, undefined, {
+				alias: "🚀 Starting development server",
+			});
 
-  $ cd ${name} && npm run dev
-`,
-			);
+			// 			this.log.info(
+			// 				`\n🎉 Project created successfully!
+			//
+			//   $ cd ${name} && npm run dev
+			// `,
+			// 			);
 		},
 	});
 
