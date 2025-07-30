@@ -1,4 +1,3 @@
-import type { Alepha } from "@alepha/core";
 import { createContext } from "react";
 import type {
 	PageReactContext,
@@ -6,7 +5,6 @@ import type {
 } from "../providers/PageDescriptorProvider.ts";
 
 export interface RouterContextValue {
-	alepha: Alepha;
 	state: RouterState;
 	context: PageReactContext;
 }

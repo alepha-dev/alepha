@@ -4,8 +4,10 @@ import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { PageDescriptorProvider } from "../providers/PageDescriptorProvider.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import { RouterHookApi } from "./RouterHookApi.ts";
+import { useAlepha } from "./useAlepha.ts";
 
 export const useRouter = (): RouterHookApi => {
+	const alepha = useAlepha();
 	const ctx = useContext(RouterContext);
 	const layer = useContext(RouterLayerContext);
 	if (!ctx || !layer) {
@@ -13,7 +15,7 @@ export const useRouter = (): RouterHookApi => {
 	}
 
 	const pages = useMemo(() => {
-		return ctx.alepha.inject(PageDescriptorProvider).getPages();
+		return alepha.inject(PageDescriptorProvider).getPages();
 	}, []);
 
 	return useMemo(
@@ -23,9 +25,7 @@ export const useRouter = (): RouterHookApi => {
 				ctx.context,
 				ctx.state,
 				layer,
-				ctx.alepha.isBrowser()
-					? ctx.alepha.inject(ReactBrowserProvider)
-					: undefined,
+				alepha.isBrowser() ? alepha.inject(ReactBrowserProvider) : undefined,
 			),
 		[layer],
 	);

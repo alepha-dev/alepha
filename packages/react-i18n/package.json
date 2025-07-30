@@ -1,6 +1,6 @@
 {
-	"name": "@alepha/react-form",
-	"description": "Manages form state and validation in React applications.",
+	"name": "@alepha/react-i18n",
+	"description": "Internationalization (i18n) support for React applications using Alepha.",
 	"version": "0.9.1",
 	"type": "module",
 	"engines": {
@@ -18,10 +18,7 @@
 		"@alepha/react": "0.9.1"
 	},
 	"devDependencies": {
-		"@testing-library/dom": "^10.4.1",
-		"@testing-library/react": "^16.3.0",
 		"@types/react": "^19.1.8",
-		"jsdom": "^26.1.0",
 		"react": "^19.1.0",
 		"tsdown": "^0.13.0",
 		"vitest": "^3.2.4"

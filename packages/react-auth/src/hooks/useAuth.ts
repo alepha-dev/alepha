@@ -1,27 +1,27 @@
-import { RouterContext } from "@alepha/react";
+import { RouterContext, useAlepha } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { type HttpVirtualClient, LinkProvider } from "@alepha/server-links";
 import { useContext } from "react";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
 export const useAuth = (): AuthHook => {
-	const ctx = useContext(RouterContext);
-	if (!ctx) {
-		throw new Error("useAuth must be used within a RouterContext");
+	const alepha = useAlepha();
+	const router = useContext(RouterContext);
+	if (!router) {
+		throw new Error("useAuth must be used within a RouterProvider");
 	}
-
-	const context = ctx.context ?? {};
+	const context = router.context ?? {};
 
 	return {
 		user: context.user,
 		logout: () => {
-			ctx.alepha.inject(ReactAuth).logout();
+			alepha.inject(ReactAuth).logout();
 		},
 		login: (_provider?: string) => {
-			ctx.alepha.inject(ReactAuth).login();
+			alepha.inject(ReactAuth).login();
 		},
 		can: (name: string) => {
-			const client = ctx.alepha.inject(LinkProvider);
+			const client = alepha.inject(LinkProvider);
 			return client.can(name);
 		},
 	};

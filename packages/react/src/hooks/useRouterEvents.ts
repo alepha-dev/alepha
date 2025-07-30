@@ -1,6 +1,6 @@
-import { useContext, useEffect } from "react";
-import { RouterContext } from "../contexts/RouterContext.ts";
+import { useEffect } from "react";
 import type { RouterState } from "../providers/PageDescriptorProvider.ts";
+import { useAlepha } from "./useAlepha.ts";
 
 export const useRouterEvents = (
 	opts: {
@@ -10,13 +10,10 @@ export const useRouterEvents = (
 	} = {},
 	deps: any[] = [],
 ) => {
-	const ctx = useContext(RouterContext);
-	if (!ctx) {
-		throw new Error("useRouter must be used within a RouterProvider");
-	}
+	const alepha = useAlepha();
 
 	useEffect(() => {
-		if (!ctx.alepha.isBrowser()) {
+		if (!alepha.isBrowser()) {
 			return;
 		}
 
@@ -27,7 +24,7 @@ export const useRouterEvents = (
 
 		if (onBegin) {
 			subs.push(
-				ctx.alepha.on("react:transition:begin", {
+				alepha.on("react:transition:begin", {
 					callback: onBegin,
 				}),
 			);
@@ -35,7 +32,7 @@ export const useRouterEvents = (
 
 		if (onEnd) {
 			subs.push(
-				ctx.alepha.on("react:transition:end", {
+				alepha.on("react:transition:end", {
 					callback: onEnd,
 				}),
 			);
@@ -43,7 +40,7 @@ export const useRouterEvents = (
 
 		if (onError) {
 			subs.push(
-				ctx.alepha.on("react:transition:error", {
+				alepha.on("react:transition:error", {
 					callback: onError,
 				}),
 			);

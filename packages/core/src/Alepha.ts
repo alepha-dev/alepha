@@ -334,6 +334,13 @@ export class Alepha {
 		key: Key,
 		value?: State[Key],
 	): State[Key] {
+		if (!this.isBrowser() && this.context.exists()) {
+			if (value !== undefined) {
+				this.context.set(key, value);
+			}
+			return this.context.get<State[Key]>(key) ?? this.store[key];
+		}
+
 		if (value !== undefined) {
 			if (this.isReady()) {
 				this.emit(

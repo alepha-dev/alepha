@@ -27,13 +27,16 @@ export class AlsProvider {
 		return this.als.run(data, callback);
 	}
 
+	public exists(): boolean {
+		return !!this.get("context");
+	}
+
 	public get<T>(key: string): T | undefined {
 		if (!this.als) {
 			return undefined;
 		}
 
 		const store = this.als.getStore();
-
 		if (store) {
 			return store[key] as T;
 		}
@@ -47,7 +50,6 @@ export class AlsProvider {
 		}
 
 		const store = this.als.getStore();
-
 		if (store) {
 			store[key] = value;
 		}

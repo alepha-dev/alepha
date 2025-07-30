@@ -31,3 +31,9 @@ type safety and schema validation for route parameters and data.
 #### $page()
 
 Main descriptor for defining a React route in the application.
+
+### Hooks
+
+#### useStore()
+
+Hook to access and mutate the Alepha state.

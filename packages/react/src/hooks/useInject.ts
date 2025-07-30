@@ -1,12 +1,9 @@
 import type { Service } from "@alepha/core";
-import { useContext, useMemo } from "react";
-import { RouterContext } from "../contexts/RouterContext.ts";
+import { useMemo } from "react";
+import { useAlepha } from "./useAlepha.ts";
 
-export const useInject = <T extends object>(clazz: Service<T>): T => {
-	const ctx = useContext(RouterContext);
-	if (!ctx) {
-		throw new Error("useRouter must be used within a <RouterProvider>");
-	}
+export const useInject = <T extends object>(service: Service<T>): T => {
+	const alepha = useAlepha();
 
-	return useMemo(() => ctx.alepha.inject(clazz), []);
+	return useMemo(() => alepha.inject(service), []);
 };

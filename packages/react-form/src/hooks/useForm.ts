@@ -44,15 +44,10 @@ export const useForm = <T extends TObject>(
 		event.preventDefault();
 
 		const form = event.currentTarget;
-		const formData = new FormData(form);
-		const values: Record<string, any> = {};
-
-		for (const [key, value] of formData.entries()) {
-			if (options.schema.properties[key] != null) {
-				values[key] = inputToValue(value, options.schema.properties[key]);
-			}
-		}
-
+		const values: Record<string, any> = parseValuesFromFormElement(
+			options,
+			form,
+		);
 		const args = {
 			form,
 		};
@@ -70,23 +65,119 @@ export const useForm = <T extends TObject>(
 
 	return {
 		onSubmit,
-		input: (name: string) => createField<T>(name, options),
+		input: createProxyFromSchema(options, options.schema),
 	};
 };
 
-const createField = <T extends TObject>(
+const parseValuesFromFormElement = <T extends TObject>(
+	options: UseFormOptions<T>,
+	form: HTMLFormElement,
+): Record<string, any> => {
+	const formData = new FormData(form);
+	const values: Record<string, any> = {};
+
+	for (const [key, value] of formData.entries()) {
+		if (key.includes(".")) {
+			// addon: support for nested objects
+			getValueFromInputObject(options, values, key, value);
+		} else if (options.schema?.properties[key] != null) {
+			values[key] = getValueFromInput(value, options.schema.properties[key]);
+		}
+	}
+
+	return values;
+};
+
+const getValueFromInputObject = <T extends TObject>(
+	options: UseFormOptions<T>,
+	values: Record<string, any>,
+	key: string,
+	value: FormDataEntryValue,
+) => {
+	const pathSegments = key.split(".");
+	const finalPropertyKey = pathSegments.pop();
+	if (!finalPropertyKey) {
+		return;
+	}
+
+	let currentObjectLevel = values;
+	let currentSchemaLevel: TSchema | undefined = options.schema;
+
+	// traverse the path to find the target object and its schema.
+	for (const segment of pathSegments) {
+		currentObjectLevel[segment] ??= {};
+		currentObjectLevel = currentObjectLevel[segment];
+
+		if (
+			currentSchemaLevel?.type === "object" &&
+			currentSchemaLevel.properties[segment]
+		) {
+			currentSchemaLevel = currentSchemaLevel.properties[segment];
+		} else {
+			// the path doesn't exist in the schema, so we can't validate or type it, abort!
+			currentSchemaLevel = undefined;
+			break;
+		}
+	}
+
+	// find the schema for the final property.
+	const finalPropertySchema =
+		currentSchemaLevel && currentSchemaLevel.type === "object"
+			? currentSchemaLevel.properties[finalPropertyKey]
+			: undefined;
+
+	if (finalPropertySchema) {
+		currentObjectLevel[finalPropertyKey] = getValueFromInput(
+			value,
+			finalPropertySchema,
+		);
+	}
+};
+
+const createProxyFromSchema = <T extends TObject>(
+	options: UseFormOptions<T>,
+	schema: TSchema,
+	parent = "",
+): SchemaToInput<T> => {
+	return new Proxy<SchemaToInput<T>>({} as SchemaToInput<T>, {
+		get: (_, prop: string) => {
+			if (!options.schema) {
+				return {};
+			}
+			if (prop in schema.properties) {
+				if (schema.properties[prop].type === "object") {
+					return createProxyFromSchema(
+						options,
+						schema.properties[prop],
+						parent ? `${parent}.${prop}` : prop,
+					);
+				}
+				return createInputFromSchema<T>(
+					prop as keyof Static<T> & string,
+					options,
+					schema,
+					parent,
+				);
+			}
+		},
+	});
+};
+
+const createInputFromSchema = <T extends TObject>(
 	name: keyof Static<T> & string,
 	options: UseFormOptions<T>,
+	schema: TSchema,
+	parent = "",
 ): InputHTMLAttributes<unknown> => {
-	const schema = options.schema?.properties?.[name];
-	if (!schema) {
+	const field = schema.properties?.[name];
+	if (!field) {
 		return {} as InputHTMLAttributes<unknown>;
 	}
 
-	const isRequired = options.schema.required?.includes(name) ?? false;
+	const isRequired = schema.required?.includes(name) ?? false;
 
 	const attr: InputHTMLAttributes<unknown> = {
-		name,
+		name: parent ? `${parent}.${name}` : name,
 		onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
 			const value = event.target.value;
 			// Handle field change logic here if needed
@@ -100,32 +191,33 @@ const createField = <T extends TObject>(
 	};
 
 	if (options.id) {
-		attr.id = `${options.id}-${name}`;
+		attr.id = `${options.id}-${parent ? `${parent}.${name}` : name}`;
+		(attr as any)["data-testid"] = attr.id;
 	}
 
-	if (schema.maxLength != null) {
-		attr.maxLength = Number(schema.maxLength);
+	if (field.maxLength != null) {
+		attr.maxLength = Number(field.maxLength);
 	}
 
-	if (schema.minLength != null) {
-		attr.minLength = Number(schema.minLength);
+	if (field.minLength != null) {
+		attr.minLength = Number(field.minLength);
 	}
 
 	if (options.initialValues?.[name] != null) {
-		attr.defaultValue = valueToInput(options.initialValues[name]);
-	} else if (schema.default != null) {
-		attr.defaultValue = valueToInput(schema.default);
+		attr.defaultValue = valueToInputEntry(options.initialValues[name]);
+	} else if (field.default != null) {
+		attr.defaultValue = valueToInputEntry(field.default);
 	}
 
 	if (isRequired) {
 		attr.required = true;
 	}
 
-	if (schema.description) {
-		attr["aria-label"] = schema.description;
+	if (field.description) {
+		attr["aria-label"] = field.description;
 	}
 
-	if (schema.type === "number" || schema.type === "integer") {
+	if (field.type === "number" || field.type === "integer") {
 		attr.type = "number";
 	} else if (name === "password") {
 		attr.type = "password";
@@ -133,41 +225,52 @@ const createField = <T extends TObject>(
 		attr.type = "email";
 	} else if (name === "url") {
 		attr.type = "url";
-	} else if (schema.type === "string") {
-		if (schema.format === "binary") {
+	} else if (field.type === "string") {
+		if (field.format === "binary") {
 			attr.type = "file";
-		} else if (schema.format === "date") {
+		} else if (field.format === "date") {
 			attr.type = "date";
-		} else if (schema.format === "time") {
+		} else if (field.format === "time") {
 			attr.type = "time";
-		} else if (schema.format === "date-time") {
+		} else if (field.format === "date-time") {
 			attr.type = "datetime-local";
 		} else {
 			attr.type = "text";
 		}
-	} else if (schema.type === "boolean") {
+	} else if (field.type === "boolean") {
 		attr.type = "checkbox";
 	}
 
 	if (options.onCreateField) {
-		const customAttr = options.onCreateField(name, schema);
+		const customAttr = options.onCreateField(name, field);
 		Object.assign(attr, customAttr);
 	}
 
 	return attr;
 };
 
-export const inputToValue = (input: any, schema: TSchema): any => {
+export const getValueFromInput = (
+	input: FormDataEntryValue,
+	schema: TSchema,
+): any => {
+	if (input instanceof File) {
+		// For file inputs, return the File object directly
+		if (schema.format === "binary") {
+			return input;
+		}
+		// for now, ignore other formats
+		return null;
+	}
+
 	if (schema.type === "boolean") {
 		return input === "on";
 	}
+
 	if (schema.type === "number" || schema.type === "integer") {
 		const num = Number(input);
 		return Number.isNaN(num) ? null : num;
 	}
-	if (schema.format === "binary") {
-		return input instanceof File ? input : null;
-	}
+
 	if (schema.type === "string") {
 		if (schema.format === "date") {
 			return new Date(input).toISOString().slice(0, 10); // For date input
@@ -180,10 +283,11 @@ export const inputToValue = (input: any, schema: TSchema): any => {
 		}
 		return String(input);
 	}
+
 	return input; // Fallback for other types
 };
 
-export const valueToInput = (value: any): string | number => {
+export const valueToInputEntry = (value: any): string | number => {
 	if (value === null || value === undefined) {
 		return "";
 	}
@@ -268,7 +372,13 @@ export type UseFormReturn<T extends TObject> = {
 	/**
 	 * Creates an input field for the specified schema property.
 	 */
-	input: (name: keyof Static<T> & string) => InputHTMLAttributes<unknown>;
+	input: SchemaToInput<T>;
+};
+
+export type SchemaToInput<T extends TObject> = {
+	[K in keyof T["properties"]]: T["properties"][K] extends TObject
+		? SchemaToInput<T["properties"][K]>
+		: InputHTMLAttributes<unknown>;
 };
 
 export interface FormEventLike {

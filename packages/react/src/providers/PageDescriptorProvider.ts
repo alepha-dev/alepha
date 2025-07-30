@@ -13,6 +13,7 @@ import ClientOnly from "../components/ClientOnly.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
+import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import {
@@ -76,15 +77,18 @@ export class PageDescriptorProvider {
 
 	public root(state: RouterState, context: PageReactContext): ReactNode {
 		const root = createElement(
-			RouterContext.Provider,
-			{
-				value: {
-					alepha: this.alepha,
-					state,
-					context,
+			AlephaContext.Provider,
+			{ value: this.alepha },
+			createElement(
+				RouterContext.Provider,
+				{
+					value: {
+						state,
+						context,
+					},
 				},
-			},
-			createElement(NestedView, {}, state.layers[0]?.element),
+				createElement(NestedView, {}, state.layers[0]?.element),
+			),
 		);
 
 		if (this.env.REACT_STRICT_MODE) {

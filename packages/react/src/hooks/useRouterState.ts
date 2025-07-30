@@ -5,13 +5,15 @@ import type { RouterState } from "../providers/PageDescriptorProvider.ts";
 import { useRouterEvents } from "./useRouterEvents.ts";
 
 export const useRouterState = (): RouterState => {
-	const ctx = useContext(RouterContext);
+	const router = useContext(RouterContext);
 	const layer = useContext(RouterLayerContext);
-	if (!ctx || !layer) {
-		throw new Error("useRouter must be used within a RouterProvider");
+	if (!router || !layer) {
+		throw new Error(
+			"useRouterState must be used within a RouterContext.Provider",
+		);
 	}
 
-	const [state, setState] = useState(ctx.state);
+	const [state, setState] = useState(router.state);
 
 	useRouterEvents({
 		onEnd: ({ state }) => setState({ ...state }),

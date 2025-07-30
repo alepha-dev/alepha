@@ -1,21 +1,24 @@
 import type { Alepha } from "@alepha/core";
 import {
-	type ActionDescriptor,
 	type FetchOptions,
 	HttpClient,
 	type RequestConfigSchema,
 } from "@alepha/server";
-import { type HttpClientLink, LinkProvider } from "@alepha/server-links";
+import {
+	type HttpClientLink,
+	LinkProvider,
+	type VirtualAction,
+} from "@alepha/server-links";
 import { useEffect, useState } from "react";
 import { useAlepha } from "./useAlepha.ts";
 import { useInject } from "./useInject.ts";
 
 export const useSchema = <TConfig extends RequestConfigSchema>(
-	action: ActionDescriptor<TConfig> & { $name: string },
+	action: VirtualAction<TConfig>,
 ): UseSchemaReturn<TConfig> => {
-	const name = action.$name;
+	const name = action.name;
 	const alepha = useAlepha();
-	const http = useInject(HttpClient);
+	const httpClient = useInject(HttpClient);
 	const linkProvider = useInject(LinkProvider);
 	const [schema, setSchema] = useState<UseSchemaReturn<TConfig>>(
 		ssrSchemaLoading(alepha, name) as UseSchemaReturn<TConfig>,
@@ -30,7 +33,7 @@ export const useSchema = <TConfig extends RequestConfigSchema>(
 			cache: true,
 		};
 
-		http
+		httpClient
 			.fetch(`${linkProvider.URL_LINKS}/${name}/schema`, {}, opts)
 			.then((it) => setSchema(it.data as UseSchemaReturn<TConfig>));
 	}, [name]);

@@ -68,43 +68,47 @@ export class LinkProvider {
 					return;
 				}
 
-				const $ = async (
-					config: any = {},
-					options: ClientRequestOptions = {},
-				) => {
-					return this.follow(prop, config, {
-						...scope,
-						...options,
-					});
-				};
-
-				$.run = async (
-					config: any = {},
-					options: ClientRequestOptions = {},
-				) => {
-					return this.follow(prop, config, {
-						...scope,
-						...options,
-					});
-				};
-
-				$.fetch = async (
-					config: any = {},
-					options: ClientRequestOptions = {},
-				) => {
-					const link = await this.getLinkByName(prop, scope);
-					return this.followRemote(link, config, options);
-				};
-
-				$.can = () => {
-					return this.can(prop);
-				};
-
-				$.$name = prop;
-
-				return $;
+				return this.createVirtualAction<RequestConfigSchema>(prop, scope);
 			},
 		});
+	}
+
+	protected createVirtualAction<T extends RequestConfigSchema>(
+		name: string,
+		scope: ClientScope = {},
+	): VirtualAction<T> {
+		const $: VirtualAction<T> = async (
+			config: any = {},
+			options: ClientRequestOptions = {},
+		) => {
+			return this.follow(name, config, {
+				...scope,
+				...options,
+			});
+		};
+
+		Object.defineProperty($, "name", {
+			value: name,
+			writable: false,
+		});
+
+		$.run = async (config: any = {}, options: ClientRequestOptions = {}) => {
+			return this.follow(name, config, {
+				...scope,
+				...options,
+			});
+		};
+
+		$.fetch = async (config: any = {}, options: ClientRequestOptions = {}) => {
+			const link = await this.getLinkByName(name, scope);
+			return this.followRemote(link, config, options);
+		};
+
+		$.can = () => {
+			return this.can(name);
+		};
+
+		return $;
 	}
 
 	/**
@@ -261,14 +265,15 @@ export type HttpVirtualClient<T> = {
 	[K in keyof T as T[K] extends ActionDescriptor<RequestConfigSchema>
 		? K
 		: never]: T[K] extends ActionDescriptor<infer Schema>
-		? T[K] & {
-				(
-					config?: ClientRequestEntry<Schema>,
-					opts?: ClientRequestOptions,
-				): Promise<ClientRequestResponse<Schema>>;
-				can: () => boolean;
-				schema: Schema;
-				$name: K;
-			}
+		? VirtualAction<Schema>
 		: never;
 };
+
+export interface VirtualAction<T extends RequestConfigSchema>
+	extends Pick<ActionDescriptor<T>, "name" | "run" | "fetch"> {
+	(
+		config?: ClientRequestEntry<T>,
+		opts?: ClientRequestOptions,
+	): Promise<ClientRequestResponse<T>>;
+	can: () => boolean;
+}
