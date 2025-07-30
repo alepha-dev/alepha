@@ -32,6 +32,7 @@
 		"@alepha/react-auth": "0.9.1",
 		"@alepha/react-form": "0.9.1",
 		"@alepha/react-head": "0.9.1",
+		"@alepha/react-i18n": "0.9.1",
 		"@alepha/redis": "0.9.1",
 		"@alepha/retry": "0.9.1",
 		"@alepha/router": "0.9.1",
