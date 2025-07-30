@@ -159,6 +159,11 @@
 			"require": "./react/head.cjs",
 			"types": "./react/head.d.ts"
 		},
+		"./react/i18n": {
+			"import": "./react/i18n.js",
+			"require": "./react/i18n.cjs",
+			"types": "./react/i18n.d.ts"
+		},
 		"./redis": {
 			"import": "./redis.js",
 			"require": "./redis.cjs",
@@ -294,6 +299,7 @@
 		"react-auth",
 		"react-form",
 		"react-head",
+		"react-i18n",
 		"redis",
 		"retry",
 		"router",

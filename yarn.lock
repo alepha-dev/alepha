@@ -249,7 +249,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-i18n@workspace:packages/react-i18n":
+"@alepha/react-i18n@npm:0.9.1, @alepha/react-i18n@workspace:packages/react-i18n":
   version: 0.0.0-use.local
   resolution: "@alepha/react-i18n@workspace:packages/react-i18n"
   dependencies:
@@ -3491,6 +3491,7 @@ __metadata:
     "@alepha/react-auth": "npm:0.9.1"
     "@alepha/react-form": "npm:0.9.1"
     "@alepha/react-head": "npm:0.9.1"
+    "@alepha/react-i18n": "npm:0.9.1"
     "@alepha/redis": "npm:0.9.1"
     "@alepha/retry": "npm:0.9.1"
     "@alepha/router": "npm:0.9.1"
