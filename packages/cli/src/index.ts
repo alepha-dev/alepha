@@ -2,18 +2,31 @@
 
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { $command } from "@alepha/command";
-import { $logger, run, t } from "@alepha/core";
+import { $command, CliProvider } from "@alepha/command";
+import { $inject, $logger, run, t } from "@alepha/core";
 import pkg from "../package.json" with { type: "json" };
 
 class AlephaCli {
 	log = $logger();
 
+	cli = $inject(CliProvider);
+
+	root = $command({
+		name: "",
+		handler: async () => {
+			this.cli.printHelp();
+		},
+	});
+
 	create = $command({
 		name: "create",
 		description: "Create a new Alepha project",
 		flags: t.object({
-			name: t.optional(t.string()),
+			name: t.optional(
+				t.string({
+					description: "Name of the project",
+				}),
+			),
 		}),
 		summary: false,
 		handler: async ({ run, flags }) => {

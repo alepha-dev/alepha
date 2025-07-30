@@ -175,11 +175,11 @@ export class CliProvider {
 		return result;
 	}
 
-	private printHelp(command?: CommandDescriptor<any>): void {
+	public printHelp(command?: CommandDescriptor<any>): void {
 		const cliName = this.options.name || "cli";
 		this.log.info(""); // Newline
 
-		if (command) {
+		if (command?.name) {
 			// Command-specific help
 			this.log.info(`Usage: \`${(`${cliName} ${command.name}`).trim()}\``);
 
