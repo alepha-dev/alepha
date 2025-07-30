@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-cache",
 	"description": "Adds ETag and Cache-Control headers to server responses.",
-	"version": "0.9.1",
+	"version": "0.9.2",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,10 +14,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.9.1",
-		"@alepha/core": "0.9.1",
-		"@alepha/datetime": "0.9.1",
-		"@alepha/server": "0.9.1"
+		"@alepha/cache": "0.9.2",
+		"@alepha/core": "0.9.2",
+		"@alepha/datetime": "0.9.2",
+		"@alepha/server": "0.9.2"
 	},
 	"devDependencies": {
 		"tsdown": "^0.13.0",

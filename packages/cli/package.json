@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cli",
-	"version": "0.9.1",
+	"version": "0.9.2",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -17,8 +17,8 @@
 		"alepha": "./dist/index.cjs"
 	},
 	"devDependencies": {
-		"@alepha/command": "^0.9.1",
-		"@alepha/core": "^0.9.1",
+		"@alepha/command": "^0.9.2",
+		"@alepha/core": "^0.9.2",
 		"tsdown": "^0.13.0"
 	},
 	"scripts": {
