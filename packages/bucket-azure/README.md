@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/bucket-azure
 ```
+
 ## Module
 
 Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.

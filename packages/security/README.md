@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/security
 ```
+
 ## Module
 
 Provides comprehensive authentication and authorization capabilities with JWT tokens, role-based access control, and user management.

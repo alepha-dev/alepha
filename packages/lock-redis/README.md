@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/lock-redis
 ```
+
 ## Module
 
 Plugin for Alepha that provides a locking mechanism.

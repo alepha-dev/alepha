@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core
 ```
+
 ## Module
 
 Core container of the Alepha framework.

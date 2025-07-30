@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-swagger
 ```
+
 ## Module
 
 Short description of the route.

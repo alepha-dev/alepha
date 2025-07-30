@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-static
 ```
+
 ## Module
 
 Create static file server with `$static()`.

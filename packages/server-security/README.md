@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-security
 ```
+
 ## Module
 
 Real (or fake) user account, used for internal actions.

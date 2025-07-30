@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/postgres
 ```
+
 ## Module
 
 Provides PostgreSQL (and SQLite!) database integration with type-safe ORM capabilities through Drizzle.

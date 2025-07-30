@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/bucket
 ```
+
 ## Module
 
 Triggered when a file is uploaded to a bucket.

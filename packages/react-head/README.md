@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/react-head
 ```
+
 ## Module
 
 Fill `<head>` server & client side.

@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-cache
 ```
+
 ## Module
 
 Plugin for Alepha Server that provides server-side caching capabilities.

@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/cache-redis
 ```
+
 ## Module
 
 Plugin for Alepha Cache that provides Redis caching capabilities.

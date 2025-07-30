@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/react-auth
 ```
+
 ## Module
 
 The ReactAuthModule provides authentication services for React applications.

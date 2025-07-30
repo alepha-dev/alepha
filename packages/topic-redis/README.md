@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/topic-redis
 ```
+
 ## Module
 
 Plugin for Alepha Topic that provides Redis pub/sub capabilities.

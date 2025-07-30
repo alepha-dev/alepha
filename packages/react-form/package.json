@@ -1,5 +1,6 @@
 {
 	"name": "@alepha/react-form",
+	"description": "Manages form state and validation in React applications.",
 	"version": "0.9.1",
 	"type": "module",
 	"engines": {

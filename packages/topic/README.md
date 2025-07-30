@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/topic
 ```
+
 ## Module
 
 Generic interface for pub/sub messaging.

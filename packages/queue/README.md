@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/queue
 ```
+
 ## Module
 
 Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.

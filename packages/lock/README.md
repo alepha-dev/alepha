@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/lock
 ```
+
 ## Module
 
 Lock a resource for a certain period of time.

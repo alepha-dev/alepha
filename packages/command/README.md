@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/command
 ```
+
 ## Module
 
 This module provides a powerful way to build command-line interfaces

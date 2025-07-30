@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/thread
 ```
+
 ## Module
 
 Simple interface for managing worker threads in Alepha.

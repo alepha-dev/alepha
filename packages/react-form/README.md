@@ -1,5 +1,58 @@
-# alepha/react/form
+# Alepha React Form
 
-Type-safe form handling and validation for React.
+Manages form state and validation in React applications.
 
-useForm based on t.object()
+## Installation
+
+This package is part of the Alepha framework and can be installed via the all-in-one package:
+
+```bash
+npm install alepha
+```
+
+Alternatively, you can install it individually:
+
+```bash
+npm install @alepha/core @alepha/react-form
+```
+
+## Module
+
+React hooks for managing forms in Alepha applications.
+
+This module provides a set of hooks to simplify form handling, validation, and submission in React applications built with Alepha.
+
+It includes:
+- `useForm`: A hook for managing form state, validation, and submission.
+
+## API Reference
+
+### Hooks
+
+#### useForm()
+
+Custom hook to create a form with validation and field management.
+This hook uses TypeBox schemas to define the structure and validation rules for the form.
+It provides a way to handle form submission, field creation, and value management.
+
+```tsx
+import { t } from "@alepha/core";
+
+const form = useForm({
+  schema: t.object({
+    username: t.string(),
+    password: t.string(),
+  }),
+  handler: (values) => {
+    console.log("Form submitted with values:", values);
+  },
+});
+
+return (
+  <form onSubmit={form.onSubmit}>
+    <input {...form.input("username")} />
+    <input {...form.input("password")} />
+    <button type="submit">Submit</button>
+  </form>
+);
+```

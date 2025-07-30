@@ -193,7 +193,7 @@ export function HtmlContent(props: { html: string }) {
 		};
 		return props.html.replace(/<a href="\/docs\/(.*)">/gim, (_, arg1) => {
 			const pathname = `${import.meta.env.BASE_URL ?? "/"}docs/${arg1}`;
-			return `<a href="${pathname}" onclick="${onclick(`${pathname}`)}">`;
+			return `<a href="${pathname}" onclick="${onclick(`/docs/${arg1}`)}">`;
 		});
 	}, [props.html]);
 

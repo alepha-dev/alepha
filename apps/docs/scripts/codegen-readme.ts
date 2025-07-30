@@ -65,10 +65,13 @@ async function extractModuleDescription(
  */
 async function extractDescriptorInfo(
 	filePath: string,
+	hook = false,
 ): Promise<DescriptorInfo | null> {
 	try {
 		const content = await fs.readFile(filePath, "utf-8");
-		const regex = /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport const (\$\w+)/;
+		const regex = hook
+			? /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport const (use\w+)/
+			: /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport const (\$\w+)/;
 		const match = content.match(regex);
 
 		if (!match) return null;
@@ -113,13 +116,19 @@ async function extractProviderInfo(
  */
 async function getDescriptorsInfo(
 	packagePath: string,
+	dirName: string = "descriptors",
 ): Promise<DescriptorInfo[]> {
-	const descriptorsDir = join(packagePath, "src", "descriptors");
+	const descriptorsDir = join(packagePath, "src", dirName);
 	try {
 		const files = await fs.readdir(descriptorsDir, { withFileTypes: true });
 		const descriptorPromises = files
 			.filter((file) => file.isFile() && file.name.endsWith(".ts"))
-			.map((file) => extractDescriptorInfo(join(descriptorsDir, file.name)));
+			.map((file) =>
+				extractDescriptorInfo(
+					join(descriptorsDir, file.name),
+					dirName === "hooks",
+				),
+			);
 
 		const results = await Promise.all(descriptorPromises);
 		return results.filter((info): info is DescriptorInfo => info !== null);
@@ -205,25 +214,33 @@ export async function generateReadmes(root: string, log = console.log) {
 				),
 			);
 			const descriptors = await getDescriptorsInfo(packagePath);
+			const hooks = await getDescriptorsInfo(packagePath, "hooks");
 			const providers = await getProvidersInfo(packagePath);
 
 			// --- Build the README content ---
 			let readmeContent = `# Alepha ${formattedName}\n\n${pkgJson.description}\n`;
 
-			readmeContent += `\n## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\nAlternatively, you can install it individually:\n\n\`\`\`bash\nnpm install ${pkgJson.name === "@alepha/core" ? pkgJson.name : `@alepha/core ${pkgJson.name}`}\n\`\`\`\n`;
+			readmeContent += `\n## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\nAlternatively, you can install it individually:\n\n\`\`\`bash\nnpm install ${pkgJson.name === "@alepha/core" ? pkgJson.name : `@alepha/core ${pkgJson.name}`}\n\`\`\`\n\n`;
 
 			if (moduleDescription) {
 				readmeContent += `## Module\n\n`;
 				readmeContent += `${moduleDescription}\n`;
 			}
 
-			if (descriptors.length > 0 || providers.length > 0) {
+			if (descriptors.length > 0 || providers.length > 0 || hooks.length > 0) {
 				readmeContent += `\n## API Reference\n`;
 			}
 
 			if (descriptors.length > 0) {
 				readmeContent += `\n### Descriptors\n`;
 				for (const desc of descriptors) {
+					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
+				}
+			}
+
+			if (hooks.length > 0) {
+				readmeContent += `\n### Hooks\n`;
+				for (const desc of hooks) {
 					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
 				}
 			}

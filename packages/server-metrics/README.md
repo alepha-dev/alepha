@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server-metrics
 ```
+
 ## Module
 
 This module provides prometheus metrics for the Alepha server.

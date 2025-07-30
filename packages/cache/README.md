@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/cache
 ```
+
 ## Module
 
 Provides high-performance caching capabilities for Alepha applications with configurable TTL and multiple storage backends.

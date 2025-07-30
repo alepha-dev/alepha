@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/scheduler
 ```
+
 ## Module
 
 Generic interface for scheduling tasks.

@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/react
 ```
+
 ## Module
 
 Provides full-stack React development with declarative routing, server-side rendering, and client-side hydration.

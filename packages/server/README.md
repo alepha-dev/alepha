@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/server
 ```
+
 ## Module
 
 Provides high-performance HTTP server capabilities with declarative routing and action descriptors.

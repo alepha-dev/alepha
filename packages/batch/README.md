@@ -15,6 +15,7 @@ Alternatively, you can install it individually:
 ```bash
 npm install @alepha/core @alepha/batch
 ```
+
 ## Module
 
 This module allows you to group multiple asynchronous operations into a single "batch," which is then processed together.
