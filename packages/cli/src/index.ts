@@ -48,16 +48,12 @@ class AlephaCli {
 				alias: "📦 Installing dependencies",
 			});
 
-			await run(`cd ${name} && npm run dev --open`, undefined, {
-				alias: "🚀 Starting development server",
-			});
+			this.log.info(
+				`\n🎉 Project created successfully!
 
-			// 			this.log.info(
-			// 				`\n🎉 Project created successfully!
-			//
-			//   $ cd ${name} && npm run dev
-			// `,
-			// 			);
+			  $ cd ${name} && npm run dev
+			`,
+			);
 		},
 	});
 
