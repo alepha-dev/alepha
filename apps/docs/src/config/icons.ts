@@ -17,6 +17,7 @@ import {
 	IconForms,
 	IconHeartbeat,
 	IconHelmet,
+	IconLanguage,
 	IconLineDashed,
 	IconLink,
 	IconLock,
@@ -99,6 +100,7 @@ const keywordToIconMap: Record<string, any> = {
 	auth: IconUserCheck,
 	form: IconForms,
 	head: IconCode,
+	i18n: IconLanguage,
 
 	// Development & Tooling
 	protobuf: IconComponents, // Represents data structures/components
