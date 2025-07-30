@@ -84,7 +84,7 @@ const AlephaWarning = () => {
 		<Container size="lg" my="xl">
 			<Alert
 				withCloseButton
-				onClick={() => setHideWarning(true)}
+				onClose={() => setHideWarning(true)}
 				icon={<IconAlertTriangle size={24} />}
 				title="Early Access Warning"
 				color="orange"
@@ -141,7 +141,7 @@ const HeroSectionMessage = () => {
 				<Text
 					component="span"
 					variant="gradient"
-					gradient={{ from: "gray", to: "cyan" }}
+					gradient={{ from: "gray", to: "green" }}
 					inherit
 				>
 					Clarity.

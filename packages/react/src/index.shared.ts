@@ -17,3 +17,4 @@ export * from "./hooks/useQueryParams.ts";
 export * from "./hooks/useRouter.ts";
 export * from "./hooks/useRouterEvents.ts";
 export * from "./hooks/useRouterState.ts";
+export * from "./hooks/useSchema.ts";

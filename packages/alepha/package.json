@@ -30,6 +30,7 @@
 		"@alepha/queue-redis": "0.9.1",
 		"@alepha/react": "0.9.1",
 		"@alepha/react-auth": "0.9.1",
+		"@alepha/react-form": "0.9.1",
 		"@alepha/react-head": "0.9.1",
 		"@alepha/redis": "0.9.1",
 		"@alepha/retry": "0.9.1",
@@ -146,6 +147,11 @@
 			"import": "./react/auth.js",
 			"require": "./react/auth.cjs",
 			"types": "./react/auth.d.ts"
+		},
+		"./react/form": {
+			"import": "./react/form.js",
+			"require": "./react/form.cjs",
+			"types": "./react/form.d.ts"
 		},
 		"./react/head": {
 			"import": "./react/head.js",
@@ -285,6 +291,7 @@
 		"queue-redis",
 		"react",
 		"react-auth",
+		"react-form",
 		"react-head",
 		"redis",
 		"retry",

@@ -100,6 +100,8 @@ export class LinkProvider {
 					return this.can(prop);
 				};
 
+				$.$name = prop;
+
 				return $;
 			},
 		});
@@ -266,6 +268,7 @@ export type HttpVirtualClient<T> = {
 				): Promise<ClientRequestResponse<Schema>>;
 				can: () => boolean;
 				schema: Schema;
+				$name: K;
 			}
 		: never;
 };

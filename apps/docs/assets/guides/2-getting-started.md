@@ -83,7 +83,7 @@ run(Server);
 
 > **Note:** Did you notice the `$` on `$route`  ?</br>
 > `$route` is a _descriptor_, a powerful factory function usable only in Alepha Context.</br>
-> You can learn more about descriptors in the [dedicated page](/apps/docs/assets/descriptors).
+> You can learn more about descriptors in the [dedicated page](/docs/descriptors).
 
 That's all it takes to write a complete, working web server. Alepha plugs into your project with zero fuss.
 

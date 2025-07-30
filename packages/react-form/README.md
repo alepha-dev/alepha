@@ -1,4 +1,4 @@
-# alepha/react/auth
+# alepha/react/form
 
 Type-safe form handling and validation for React.
 

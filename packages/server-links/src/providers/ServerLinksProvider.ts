@@ -26,11 +26,15 @@ export class ServerLinksProvider {
 		on: "configure",
 		handler: () => {
 			for (const action of this.alepha.descriptors($action)) {
+				let bodyContentType = action.getBodyContentType();
+				if (bodyContentType === "application/json") {
+					bodyContentType = undefined;
+				}
 				this.client.pushLink({
 					name: action.name,
 					group: action.group,
 					schema: action.options.schema,
-					requestBodyType: action.getBodyContentType(),
+					requestBodyType: bodyContentType,
 					secured: action.options.secure !== false,
 					method: action.method === "GET" ? undefined : action.method,
 					prefix: action.prefix,
