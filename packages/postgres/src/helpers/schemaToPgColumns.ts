@@ -1,4 +1,4 @@
-import { type TObject, type TSchema, TypeGuard } from "@alepha/core";
+import { PRIMITIVE, type TObject, type TSchema, TypeGuard } from "@alepha/core";
 import type { TableConfig } from "drizzle-orm";
 import type {
 	PgColumnBuilderBase,
@@ -92,6 +92,10 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 			return pg
 				.bigint({ mode: "number" })
 				.generatedAlwaysAsIdentity(value[PG_IDENTITY] as PgIdentityOptions);
+		}
+
+		if (PRIMITIVE in value && value[PRIMITIVE] === "bigint") {
+			return pg.bigint(key, { mode: "number" });
 		}
 
 		return pg.numeric(key);

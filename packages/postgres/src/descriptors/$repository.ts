@@ -59,10 +59,10 @@ import {
 	PG_UPDATED_AT,
 	PG_VERSION,
 } from "../constants/PG_SYMBOLS.ts";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError.ts";
 import { PgConflictError } from "../errors/PgConflictError.ts";
+import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
-import { VersionMismatchError } from "../errors/VersionMismatchError.ts";
+import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import type { NullifyIfOptional } from "../helpers/nullToUndefined.ts";
 import { nullToUndefined } from "../helpers/nullToUndefined.ts";
 import { getAttrFields } from "../helpers/pgAttr.ts";
@@ -80,7 +80,7 @@ import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
 
 /**
- *
+ * @stability 3
  */
 export const $repository = <
 	EntityTableConfig extends TableConfig,
@@ -397,7 +397,7 @@ export class RepositoryDescriptor<
 		const [entity] = await this.find({ where: where as any, limit: 1 }, opts);
 
 		if (!entity) {
-			throw new EntityNotFoundError(this.tableName);
+			throw new PgEntityNotFoundError(this.tableName);
 		}
 
 		return entity;
@@ -616,11 +616,11 @@ export class RepositoryDescriptor<
 		if (!response[0]) {
 			if (hasVersion && id) {
 				await this.findById(id).then(() => {
-					throw new VersionMismatchError(this.tableName, id);
+					throw new PgVersionMismatchError(this.tableName, id);
 				});
 			}
 
-			throw new EntityNotFoundError(this.tableName);
+			throw new PgEntityNotFoundError(this.tableName);
 		}
 
 		return this.clean(response[0]);

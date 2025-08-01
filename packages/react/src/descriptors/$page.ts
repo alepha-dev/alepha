@@ -3,7 +3,6 @@ import {
 	createDescriptor,
 	Descriptor,
 	KIND,
-	NotImplementedError,
 	type Static,
 	type TSchema,
 } from "@alepha/core";
@@ -149,7 +148,7 @@ export class PageDescriptor<
 	public async render(
 		options?: PageDescriptorRenderOptions,
 	): Promise<PageDescriptorRenderResult> {
-		throw new NotImplementedError("");
+		throw new Error("render method is not implemented in this environment");
 	}
 }
 

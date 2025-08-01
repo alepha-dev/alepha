@@ -20,7 +20,7 @@ export * from "./descriptors/$entity.ts";
 export * from "./descriptors/$repository.ts";
 export * from "./descriptors/$sequence.ts";
 export * from "./descriptors/$transaction.ts";
-export * from "./errors/EntityNotFoundError.ts";
+export * from "./errors/PgEntityNotFoundError.ts";
 export * from "./helpers/nullToUndefined.ts";
 export * from "./helpers/schemaToPgColumns.ts";
 export * from "./interfaces/FilterOperators.ts";

@@ -30,6 +30,7 @@ import { theme } from "../config/theme.ts";
 type Props = {
 	opened?: boolean;
 	toggle?: () => void;
+	withBurger?: boolean;
 };
 
 const Header = (props: Props) => {
@@ -41,12 +42,14 @@ const Header = (props: Props) => {
 				px={"lg"}
 				gap={{ base: "xs", md: "lg" }}
 			>
-				<Burger
-					opened={props.opened}
-					onClick={props.toggle}
-					size="sm"
-					hiddenFrom={theme.sidebarBreakpoint}
-				/>
+				{props.withBurger && (
+					<Burger
+						opened={props.opened}
+						onClick={props.toggle}
+						size="sm"
+						hiddenFrom={theme.sidebarBreakpoint}
+					/>
+				)}
 
 				<HomeButton />
 
@@ -125,52 +128,27 @@ const SearchButton = () => {
 
 const HomeButton = () => {
 	return (
-		<>
-			<Button
-				size={"xs"}
-				variant={"transparent"}
-				component={Link}
-				to={"/"}
-				hiddenFrom={"md"}
-			>
+		<Button size={"xl"} variant={"transparent"} component={Link} to={"/"}>
+			<Flex align={"center"} justify={"center"}>
+				<Flex>
+					<Image
+						style={{ marginBottom: -32 }}
+						src={`${import.meta.env.BASE_URL}alepha.png`}
+						alt={"logo"}
+						width={50}
+						height={50}
+					/>
+				</Flex>
 				<Flex direction={"column"} align={"start"}>
-					<Text fw={"bold"} size={"md"}>
+					<Text size={"xl"} ff={"var(--mantine-font-family-monospace)"}>
 						Alepha
 					</Text>
-					<Text size={"xs"} c={"dimmed"} mt={-8} fw={"300"}>
-						Docs
+					<Text size={"xs"} c={"dimmed"} mt={-6} fw={"300"}>
+						Documentation
 					</Text>
 				</Flex>
-			</Button>
-
-			<Button
-				size={"xl"}
-				variant={"transparent"}
-				component={Link}
-				to={"/"}
-				visibleFrom={"md"}
-			>
-				<Flex align={"center"} justify={"center"}>
-					<Flex>
-						<Image
-							style={{ marginBottom: -32 }}
-							src={`${import.meta.env.BASE_URL}alepha.png`}
-							alt={"logo"}
-							width={50}
-							height={50}
-						/>
-					</Flex>
-					<Flex direction={"column"} align={"start"}>
-						<Text size={"xl"} ff={"var(--mantine-font-family-monospace)"}>
-							Alepha
-						</Text>
-						<Text size={"xs"} c={"dimmed"} mt={-6} fw={"300"}>
-							Documentation
-						</Text>
-					</Flex>
-				</Flex>
-			</Button>
-		</>
+			</Flex>
+		</Button>
 	);
 };
 

@@ -1,4 +1,5 @@
-import { t } from "@alepha/core";
+import { TypeGuard, t } from "@alepha/core";
+import { PRIMITIVE } from "@alepha/core/src/constants/PRIMITIVE.ts";
 import type {
 	IntegerOptions,
 	NumberOptions,
@@ -6,10 +7,13 @@ import type {
 	Static,
 	StringOptions,
 	TArray,
+	TInteger,
+	TNumber,
 	TObject,
 	TOptionalWithFlag,
 	TProperties,
 	TSchema,
+	TString,
 } from "@sinclair/typebox";
 import type { TableConfig } from "drizzle-orm/pg-core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
@@ -25,6 +29,7 @@ import {
 	type PgDefault,
 	type PgIdentityOptions,
 	type PgMany,
+	type PgPrimaryKey,
 	type PgRef,
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
@@ -65,7 +70,7 @@ export class PostgresTypeProvider {
 		options?: NumberOptions,
 	) =>
 		pgAttr(
-			pgAttr(pgAttr(t.number(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+			pgAttr(pgAttr(t.bigint(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
 			PG_DEFAULT,
 		);
 
@@ -76,9 +81,33 @@ export class PostgresTypeProvider {
 		pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 
 	/**
-	 * @alias bigIdentityPrimaryKey
+	 *
 	 */
-	public readonly primaryKey = this.bigIdentityPrimaryKey;
+	public primaryKey(
+		type: TString,
+	): PgAttr<PgAttr<TString, PgPrimaryKey>, PgDefault>;
+	public primaryKey(
+		type: TInteger,
+	): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
+	public primaryKey(
+		type: TNumber,
+	): PgAttr<PgAttr<TNumber, PgPrimaryKey>, PgDefault>;
+	public primaryKey(
+		type: TSchema,
+	): PgAttr<PgAttr<TSchema, PgPrimaryKey>, PgDefault> {
+		if (TypeGuard.IsString(type) && type.format === "uuid") {
+			return this.uuidPrimaryKey();
+		} else if (TypeGuard.IsInteger(type)) {
+			return this.identityPrimaryKey();
+		} else if (
+			TypeGuard.IsNumber(type) &&
+			PRIMITIVE in type &&
+			type[PRIMITIVE] === "bigint"
+		) {
+			return this.bigIdentityPrimaryKey();
+		}
+		throw new Error(`Unsupported type for primary key: ${type}`);
+	}
 
 	/**
 	 * Wrap a schema with "default" attribute.

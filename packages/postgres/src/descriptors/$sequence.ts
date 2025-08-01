@@ -2,6 +2,9 @@ import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import { sql } from "drizzle-orm";
 import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
 
+/**
+ * @stability 1
+ */
 export const $sequence = (
 	options: SequenceDescriptorOptions = {},
 ): SequenceDescriptor => {

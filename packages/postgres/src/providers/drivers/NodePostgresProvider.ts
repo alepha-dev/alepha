@@ -15,6 +15,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
+import { PgMigrationError } from "../../errors/PgMigrationError.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
 
@@ -104,7 +105,11 @@ export class NodePostgresProvider extends PostgresProvider {
 			const provider = this.alepha.isServerless();
 			// except for vite
 			if (!provider || provider === "vite") {
-				await this.migrate.run();
+				try {
+					await this.migrate.run();
+				} catch (error) {
+					throw new PgMigrationError("Failed to migrate database", error);
+				}
 			}
 		},
 	});

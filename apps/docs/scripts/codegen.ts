@@ -48,7 +48,7 @@ class App {
 				// instead of go-to <h1>, you go-to a <div> with metadata with a position top negative
 				// it's the only way to manage all use-cases of fixed <header>
 				return `
-					<div id="${slug}" data-depth="${depth}" data-heading="${text}" style="position: relative; top: -${theme.headerHeight.lg}px"></div>
+					<div id="${slug}" data-depth="${depth}" data-heading="${text}" style="position: relative; top: -${theme.headerHeight.base}px"></div>
 					<h${depth}>${text}</h${depth}>
 				`.trim();
 			},

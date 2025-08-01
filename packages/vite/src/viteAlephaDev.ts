@@ -1,8 +1,10 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Alepha, State } from "@alepha/core";
 import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
 import { importVite } from "./helpers/importVite.ts";
+import { extractFirstModuleScriptSrc } from "./helpers/prerender.ts";
 
 export interface ViteAlephaDevOptions {
 	/**
@@ -25,13 +27,17 @@ export interface ViteAlephaDevOptions {
 export async function viteAlephaDev(
 	options: ViteAlephaDevOptions = {},
 ): Promise<Plugin> {
-	const entry = options.serverEntry;
+	let entry = options.serverEntry;
 	if (!entry) {
-		return {
-			name: "alepha-dev",
-			apply: "serve",
-			config() {},
-		};
+		const html = await readFile("index.html", "utf-8");
+		entry = extractFirstModuleScriptSrc(html);
+		if (!entry) {
+			return {
+				name: "alepha-dev",
+				apply: "serve",
+				config() {},
+			};
+		}
 	}
 
 	const log = (...msg: string[]) => {

@@ -12,8 +12,9 @@
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",
+		"@vitejs/plugin-react-oxc": "^0.3.0",
 		"drizzle-kit": "^0.31.4",
-		"rolldown-vite": "^7.0.11",
+		"rolldown-vite": "^7.0.12",
 		"vercel": "^44.6.3",
 		"vite-bundle-analyzer": "^1.1.0"
 	},
@@ -22,8 +23,7 @@
 		"build": "vite build",
 		"start": "node --env-file=.env dist/index.mjs",
 		"db:generate": "drizzle-kit generate",
-		"db:push": "node --env-file=.env scripts/db.ts --push",
-		"db:push:prod": "node --env-file=.env.production scripts/db.ts --push",
+		"db:migrate:prod": "node --env-file=.env.production scripts/migrate.ts",
 		"vercel:dev": "yarn vercel dev --cwd dist",
 		"vercel:deploy": "yarn build && yarn vercel deploy --cwd dist",
 		"vercel:deploy:prod": "yarn build && yarn vercel deploy --cwd dist --prod",

@@ -211,7 +211,7 @@ export class TypeProvider {
 	 * Create a schema for a bigint. Bigint is a 64-bit integer.
 	 * This is a workaround for TypeBox, which does not support bigint natively.
 	 */
-	public bigint(options?: IntegerOptions): TNumber {
+	public bigint(options?: NumberOptions): TNumber {
 		return Type.Number({
 			[PRIMITIVE]: "bigint",
 			multipleOf: 1,

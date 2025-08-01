@@ -1,7 +1,17 @@
 import type { PageReactContext, PageRoute, RouterState } from "@alepha/react";
+import type { Head } from "../interfaces/Head.ts";
 
 export class HeadProvider {
+	public global?: Head;
+
 	public fillHead(state: RouterState, context: PageReactContext) {
+		if (this.global) {
+			context.head = {
+				...context.head,
+				...this.global,
+			};
+		}
+
 		for (const layer of state.layers) {
 			if (layer.route?.head && !layer.error) {
 				this.fillHeadByPage(layer.route, context, layer.props ?? {});

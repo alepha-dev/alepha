@@ -334,16 +334,18 @@ export class ReactServerProvider {
 
 			const html = this.renderToHtml(template, state, context);
 
-			await this.alepha.emit("react:server:render:end", {
+			const event = {
 				request: serverRequest,
 				context,
 				state,
 				html,
-			});
+			};
+
+			await this.alepha.emit("react:server:render:end", event);
 
 			page.afterHandler?.(serverRequest);
 
-			return html;
+			return event.html;
 		};
 	}
 

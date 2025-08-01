@@ -1,10 +1,10 @@
-export class PgConflictError extends Error {
-	readonly error = "ConflictError";
+import { AlephaError } from "@alepha/core";
+
+export class PgConflictError extends AlephaError {
+	readonly name = "PgConflictError";
 	readonly status = 409;
-	readonly cause: Error;
-	constructor(message: string, cause: Error) {
-		super(message);
-		this.cause = cause;
-		this.name = "DuplicateError";
+
+	constructor(message: string, cause: unknown) {
+		super(message, { cause });
 	}
 }

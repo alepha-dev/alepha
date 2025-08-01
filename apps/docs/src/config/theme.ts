@@ -16,6 +16,6 @@ export const theme = {
 	sidebarWidth: 300,
 	sidebarBreakpoint: "md",
 
-	headerHeight: { base: 48, sm: 56, lg: 64 },
+	headerHeight: { base: 64 },
 	footerHeight: 32,
 };

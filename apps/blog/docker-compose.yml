@@ -1,11 +1,15 @@
 services:
+
   app:
-    build: .
+    build: dist
     environment:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       ADMIN_USER_ID: ${ADMIN_USER_ID}
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      LOG_FORMAT: text
+      LOG_LEVEL: debug
+      DATABASE_URL: postgres://default:6jDxS4nqWhsy@ep-shrill-bonus-a2bn9xwy-pooler.eu-central-1.aws.neon.tech/verceldb?sslmode=require
+
   postgres:
     image: postgres:14
     environment:

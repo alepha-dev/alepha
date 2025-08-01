@@ -4,6 +4,7 @@ import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
 import { extractFirstModuleScriptSrc, prerender } from "./helpers/prerender.ts";
+import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
 
 export interface ViteAlephaBuildOptions {
 	/**
@@ -26,6 +27,12 @@ export interface ViteAlephaBuildOptions {
 	 * @default false
 	 */
 	vercel?: boolean;
+
+	/**
+	 * If true, the build will be optimized for Docker deployment.
+	 * Additionally, it will generate a Dockerfile in the dist directory.
+	 */
+	docker?: boolean | ViteAlephaBuildDockerOptions;
 }
 
 export async function viteAlephaBuild(
@@ -84,7 +91,7 @@ export async function viteAlephaBuild(
 				);
 			}
 
-			if (buildClientOptions.prerender && !entry && html) {
+			if (!entry && html) {
 				entry = extractFirstModuleScriptSrc(html);
 			}
 
@@ -95,6 +102,7 @@ export async function viteAlephaBuild(
 					distDir: `${distDir}`,
 					clientDir: hasClient ? clientDir : undefined,
 					vercel: options.vercel,
+					docker: options.docker,
 				});
 			}
 

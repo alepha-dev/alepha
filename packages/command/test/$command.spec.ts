@@ -1,6 +1,6 @@
-import { Alepha, MockLogger, t } from "@alepha/core";
+import { Alepha, AlephaError, MockLogger, t } from "@alepha/core";
 import { describe, expect, test, vi } from "vitest";
-import { $command, CliProvider } from "../src";
+import { $command, CliProvider, CommandError } from "../src";
 
 describe("$command", () => {
 	const setupTestCommands = async (
@@ -48,7 +48,14 @@ describe("$command", () => {
 		}
 
 		await before?.(alepha);
-		await alepha.start();
+		try {
+			await alepha.start();
+		} catch (error) {
+			if (error instanceof AlephaError && error.cause instanceof CommandError) {
+				throw error.cause;
+			}
+			throw error;
+		}
 
 		return {
 			alepha,

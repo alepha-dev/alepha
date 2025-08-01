@@ -180,7 +180,7 @@ const HeroSectionMessage = () => {
 };
 
 const ShowcaseSection = () => (
-	<Paper>
+	<Paper visibleFrom={"sm"}>
 		<Tabs defaultValue="server" variant={"outline"}>
 			<Tabs.List grow>
 				<Tabs.Tab value="server" leftSection={<IconServer size={16} />}>

@@ -80,6 +80,8 @@ export class ServerHeadProvider {
 	}
 
 	protected parseAttributes(attrStr: string): Record<string, string> {
+		attrStr = attrStr.replaceAll("'", '"');
+
 		const attrs: Record<string, string> = {};
 		const attrRegex = /([^\s=]+)(?:="([^"]*)")?/g;
 		let match: RegExpExecArray | null = attrRegex.exec(attrStr);

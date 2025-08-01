@@ -2,6 +2,10 @@ import { readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
+import {
+	type ViteAlephaBuildDockerOptions,
+	viteAlephaBuildDocker,
+} from "../viteAlephaBuildDocker.ts";
 import { viteAlephaBuildVercel } from "../viteAlephaBuildVercel.ts";
 import { importVite } from "./importVite.ts";
 
@@ -10,6 +14,7 @@ export interface BuildServerOptions {
 	distDir: string;
 	clientDir?: string;
 	vercel?: boolean;
+	docker?: boolean | ViteAlephaBuildDockerOptions;
 	config?: UserConfig;
 }
 
@@ -24,6 +29,16 @@ export const buildServer = async (opts: BuildServerOptions) => {
 				clientDir: opts.clientDir,
 				distDir: opts.distDir,
 				...vercel,
+			}),
+		);
+	}
+
+	if (opts.docker) {
+		const docker = typeof opts.docker === "boolean" ? {} : opts.docker;
+		plugins.push(
+			viteAlephaBuildDocker({
+				distDir: opts.distDir,
+				...docker,
 			}),
 		);
 	}

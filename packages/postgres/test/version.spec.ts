@@ -7,7 +7,7 @@ import {
 	pgTableSchema,
 	type TransactionContext,
 } from "../src";
-import { VersionMismatchError } from "../src/errors/VersionMismatchError.ts";
+import { PgVersionMismatchError } from "../src/errors/PgVersionMismatchError.ts";
 
 class A {
 	dt = $inject(DateTimeProvider);
@@ -61,6 +61,6 @@ test("version - basic", async () => {
 	await app.repository.save(r1);
 
 	await expect(() => app.repository.save(r2)).rejects.toThrow(
-		new VersionMismatchError("a", id),
+		new PgVersionMismatchError("a", id),
 	);
 });

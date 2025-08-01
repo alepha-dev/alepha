@@ -148,7 +148,7 @@ export class Runner {
 			stdout = String((await task.handler()) ?? "");
 		} catch (error) {
 			if (error instanceof Error && "stdout" in error) {
-				this.log.info(error.stdout);
+				this.log.info(`\n\n${error.stdout}`);
 			}
 			throw new CommandError(`Task '${task.name}' failed`, { cause: error });
 		}

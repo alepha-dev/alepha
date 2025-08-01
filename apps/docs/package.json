@@ -18,11 +18,11 @@
 		"highlight.js": "^11.11.1",
 		"marked": "^16.1.1",
 		"marked-highlight": "^2.2.2",
-		"rolldown-vite": "^7.0.11",
+		"rolldown-vite": "^7.0.12",
 		"vite-bundle-analyzer": "^1.1.0"
 	},
 	"scripts": {
-		"dev": "yarn copy && vite",
+		"dev": "yarn copy && vite --host",
 		"build": "vite build",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",

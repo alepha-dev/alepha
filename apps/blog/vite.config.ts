@@ -1,5 +1,5 @@
 import { viteAlepha } from "@alepha/vite";
-import { defineConfig } from "rolldown-vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [

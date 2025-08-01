@@ -951,15 +951,20 @@ export class Alepha {
 				this.log.trace(`${func}(${name}) ...`);
 			}
 
-			if (options.catch) {
-				try {
-					await hook.callback(payload);
-				} catch (error) {
+			try {
+				await hook.callback(payload);
+			} catch (error) {
+				if (options.catch) {
 					this.log.error(`${func}(${name}) ERROR`, error);
 					continue;
 				}
-			} else {
-				await hook.callback(payload);
+				if (options.log) {
+					throw new AlephaError(
+						`Failed during '${func}()' hook for service: ${name}`,
+						{ cause: error },
+					);
+				}
+				throw error;
 			}
 
 			if (options.log) {

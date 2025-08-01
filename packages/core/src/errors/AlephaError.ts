@@ -3,6 +3,8 @@
 /**
  * Default error class for Alepha.
  */
-export class AlephaError extends Error {}
+export class AlephaError extends Error {
+	name = "AlephaError";
+}
 
 // ---------------------------------------------------------------------------------------------------------------------

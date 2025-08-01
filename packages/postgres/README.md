@@ -30,9 +30,31 @@ and database migrations with support for PostgreSQLs.
 
 #### $entity()
 
-Creates a table descriptor for drizzle-orm.
+Declare a new entity in the database.
+This descriptor alone does not create the table, it only describes it.
+It must be used with `$repository` to create the table and perform operations on it.
+
+This is a convenience function to create a table with a json schema.
+For now, it creates a drizzle-orm table under the hood.
+```ts
+import { $entity } from "@alepha/postgres";
+
+const User = $entity({
+  name: "user",
+  schema: t.object({
+    id: pg.primaryKey(t.uuid()),
+    name: t.string(),
+    email: t.string(),
+  }),
+  indexes: ["email"],
+});
+```
 
 #### $repository()
+
+
+
+#### $sequence()
 
 
 

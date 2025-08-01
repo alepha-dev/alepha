@@ -4,7 +4,7 @@ import { pg, pgTableSchema } from "../../src";
 import type { userEntitySchema } from "./userEntitySchema.ts";
 
 export const bigEntitySchema = t.object({
-	id: pg.primaryKey(),
+	id: pg.primaryKey(t.bigint()),
 	a: t.string(),
 	b: t.number(),
 	c: t.int(),

@@ -1,11 +1,8 @@
-import { Alepha } from "@alepha/core";
+import { Alepha, t } from "@alepha/core";
 import { describe, test } from "vitest";
 import { $route, ServerProvider } from "../src";
 
 describe("$route", () => {
-	/**
-	 * $route is not important, but it is a good "minimal" example.
-	 */
 	test("should return the correct route", async ({ expect }) => {
 		const alepha = Alepha.create();
 
@@ -20,5 +17,36 @@ describe("$route", () => {
 
 		const resp = await fetch(`${alepha.inject(ServerProvider).hostname}/hello`);
 		expect(await resp.text()).toBe("OK");
+	});
+
+	test("should return the correct route with queryParams", async ({
+		expect,
+	}) => {
+		const alepha = Alepha.create();
+
+		class TestApp {
+			$route = $route({
+				path: "/hello",
+				schema: {
+					query: t.object({
+						a: t.optional(t.string()),
+						b: t.optional(t.array(t.string())),
+					}),
+				},
+				handler: ({ query }) => JSON.stringify({ query }),
+			});
+		}
+
+		await alepha.with(TestApp).start();
+
+		const resp = await fetch(
+			`${alepha.inject(ServerProvider).hostname}/hello?a=1&b=HELLO,WORLD`,
+		);
+		expect(await resp.json()).toEqual({
+			query: {
+				a: "1",
+				b: ["HELLO,WORLD"], // TODO: Fix this, it should be ["HELLO", "WORLD"]
+			},
+		});
 	});
 });

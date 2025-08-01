@@ -6,7 +6,7 @@ import { $entity, $repository, pg, sql } from "../src";
 const userEntity = $entity({
 	name: "users",
 	schema: t.object({
-		id: pg.primaryKey(),
+		id: pg.primaryKey(t.bigint()),
 		name: t.string(),
 		guildId: t.optional(t.int()),
 	}),

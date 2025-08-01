@@ -7,7 +7,7 @@ test("sqlite", async () => {
 	const users = $entity({
 		name: "users",
 		schema: t.object({
-			id: pg.primaryKey(),
+			id: pg.primaryKey(t.int()),
 			name: t.string(),
 		}),
 	});

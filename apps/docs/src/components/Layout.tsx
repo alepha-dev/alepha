@@ -42,7 +42,7 @@ const Main = () => {
 
 	const header = (
 		<AppShell.Header>
-			<Header opened={opened} toggle={toggle} />
+			<Header opened={opened} toggle={toggle} withBurger={!noSidebar} />
 		</AppShell.Header>
 	);
 

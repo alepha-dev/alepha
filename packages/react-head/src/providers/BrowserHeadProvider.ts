@@ -55,14 +55,15 @@ export class BrowserHeadProvider {
 		}
 
 		if (head.meta) {
-			for (const [key, value] of Object.entries(head.meta)) {
-				const meta = document.querySelector(`meta[name="${key}"]`);
+			for (const it of head.meta) {
+				const { name, content } = it;
+				const meta = document.querySelector(`meta[name="${name}"]`);
 				if (meta) {
-					meta.setAttribute("content", value.content);
+					meta.setAttribute("content", content);
 				} else {
 					const newMeta = document.createElement("meta");
-					newMeta.setAttribute("name", key);
-					newMeta.setAttribute("content", value.content);
+					newMeta.setAttribute("name", name);
+					newMeta.setAttribute("content", content);
 					document.head.appendChild(newMeta);
 				}
 			}
