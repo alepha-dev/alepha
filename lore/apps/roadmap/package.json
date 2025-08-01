@@ -1,0 +1,16 @@
+{
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"@vitejs/plugin-react-oxc": "^0.3.0",
+		"rolldown-vite": "^7.0.12"
+	},
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"start": "node dist"
+	},
+	"dependencies": {
+		"@blueprintjs/core": "^6.1.0"
+	}
+}
