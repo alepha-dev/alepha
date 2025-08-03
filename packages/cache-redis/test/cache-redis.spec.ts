@@ -10,6 +10,7 @@ import {
 	testCacheMissingProvider,
 	testCacheReturnTypes,
 	testCacheStop,
+	testSimpleKeyMappingHandler,
 } from "@alepha/cache/test/shared.ts";
 import { test } from "vitest";
 import { RedisCacheProvider } from "../src/providers/RedisCacheProvider.ts";
@@ -55,4 +56,8 @@ test("$cache - types (redis)", async () => {
 
 test("$cache - keys (redis)", async () => {
 	await testCacheKeys(env(), provider);
+});
+
+test("$cache - unique key with args (redis)", async () => {
+	await testSimpleKeyMappingHandler();
 });

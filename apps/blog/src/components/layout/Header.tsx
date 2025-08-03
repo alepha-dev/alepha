@@ -19,7 +19,7 @@ import {
 	IconPlus,
 	IconSun,
 } from "@tabler/icons-react";
-import type { Blog } from "../../Blog.ts";
+import type { AppRouter } from "../../AppRouter.ts";
 import type { PostController } from "../../controllers/PostController.ts";
 import { GoogleIcon } from "../icons/GoogleIcon.tsx";
 import Go from "../shared/Go.tsx";
@@ -29,13 +29,13 @@ const Header = () => {
 	return (
 		<Flex h={"100%"} align="center" justify="center">
 			<Flex flex={1}>
-				<Go<Blog> to={"home"} skipActiveCheck variant={"transparent"}>
+				<Go<AppRouter> to={"home"} skipActiveCheck variant={"transparent"}>
 					<Flex direction={"column"}>
-						<Text fw={"bold"} size={"xl"} ff={"monospace"}>
-							Alepha.js
+						<Text size={"xs"} c={"dimmed"}>
+							Alepha
 						</Text>
-						<Text c={"dimmed"} size={"xs"} mt={-10}>
-							or something like that
+						<Text size={"xl"} ff={"monospace"} mt={-10} fw={"bold"}>
+							Blog
 						</Text>
 					</Flex>
 				</Go>
@@ -68,7 +68,7 @@ const Header = () => {
 					}
 				>
 					{auth.can<PostController>("createPost") && (
-						<Go<Blog>
+						<Go<AppRouter>
 							to={"newPost"}
 							leftSection={<IconPlus size={16} />}
 							variant={"filled"}

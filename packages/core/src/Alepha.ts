@@ -710,6 +710,24 @@ export class Alepha {
 
 		// the requested type is searched in the container
 		const match = this.registry.get(service);
+
+		// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
+		if (
+			!match &&
+			this.isServerless() === "vite" &&
+			!opts.skipRegistration &&
+			this.started
+		) {
+			for (const [_, definition] of this.registry.entries()) {
+				if (definition.instance?.constructor.name === service.name) {
+					this.log.debug(`Hot reload detected for ${service.name}`);
+					const instance: T = this.new(service, opts.args, module);
+					definition.instance = instance;
+					return instance;
+				}
+			}
+		}
+
 		if (match && !opts.skipCache) {
 			if (!match.parents.includes(parent)) {
 				match.parents.push(parent);
@@ -723,7 +741,7 @@ export class Alepha {
 			return match.instance;
 		}
 
-		if (this.started) {
+		if (this.started && !opts.skipRegistration) {
 			throw new ContainerLockedError(
 				`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
 			);

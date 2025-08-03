@@ -1,6 +1,7 @@
 import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { JSONWebKeySet } from "jose";
 import { SecurityError } from "../errors/SecurityError.ts";
+import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";
 import {
 	SecurityProvider,
@@ -52,6 +53,11 @@ export interface RealmDescriptorOptions {
 	userAccountProvider?:
 		| SecurityUserAccountProvider
 		| (() => SecurityUserAccountProvider);
+
+	/**
+	 * Function to create a user profile from the JWT payload.
+	 */
+	profile?: (payload: Record<string, any>) => UserAccountInfo;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -67,10 +73,8 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 	protected onInit() {
 		this.securityProvider.createRealm({
 			name: this.name,
-			secret:
-				typeof this.options.secret === "function"
-					? this.options.secret()
-					: this.options.secret,
+			profile: this.options.profile,
+			secret: this.options.secret,
 			userAccountProvider:
 				typeof this.options.userAccountProvider === "function"
 					? this.options.userAccountProvider()

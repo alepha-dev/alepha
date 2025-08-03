@@ -5,7 +5,7 @@ import { AlephaServerCookies } from "@alepha/server-cookies";
 import { $auth } from "./descriptors/$auth.ts";
 import {
 	ReactAuthProvider,
-	type ReactUser,
+	type UserProfile,
 } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
 
@@ -21,7 +21,7 @@ declare module "@alepha/react" {
 		user?: UserAccountToken;
 	}
 	export interface ReactHydrationState {
-		user?: ReactUser;
+		user?: UserProfile;
 	}
 }
 

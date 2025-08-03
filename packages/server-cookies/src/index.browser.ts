@@ -3,8 +3,7 @@ import { AlephaServer } from "@alepha/server";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$cookie";
-export * from "./providers/ServerCookiesProvider";
+export * from "./descriptors/$cookie.browser.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

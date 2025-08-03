@@ -42,6 +42,7 @@ export const testCacheBasic = async (
 
 	expect(await test.a({ name: "A" })).toBe("A:0");
 	expect(await test.a({ name: "A" })).toBe("A:0");
+	expect(await test.a({ name: "A" })).toBe("A:0");
 	expect(await test.a({ name: "B" })).toBe("B:1");
 	expect(await test.a({ name: "B" })).toBe("B:1");
 
@@ -282,4 +283,40 @@ export const testCacheKeys = async (
 	expect(await provider.keys("TestApp:cache").then((it) => it.length)).toEqual(
 		1,
 	);
+};
+
+export const testSimpleKeyMappingHandler = async (
+	env: Env = {},
+	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+	class App {
+		i = 0;
+		run = $cache({
+			key: (name: string) => name,
+			ttl: [5, "seconds"],
+			handler: async (name: string) => {
+				this.i++;
+				return `${name}=${this.i}`;
+			},
+		});
+	}
+	const alepha = Alepha.create({
+		env,
+	})
+		.with({
+			provide: CacheProvider,
+			use: cacheProvider,
+		})
+		.with(App);
+
+	await alepha.start();
+	const app = alepha.inject(App);
+	expect(await app.run("A")).toBe("A=1");
+	expect(await app.run("A")).toBe("A=1");
+	expect(await app.run("A")).toBe("A=1");
+	expect(await app.run("A")).toBe("A=1");
+	expect(await app.run("B")).toBe("B=2");
+	expect(await app.run("B")).toBe("B=2");
+	expect(await app.run("B")).toBe("B=2");
+	expect(await app.run("C")).toBe("C=3");
 };

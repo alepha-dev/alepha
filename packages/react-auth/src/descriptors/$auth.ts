@@ -1,4 +1,6 @@
 import { type Async, createDescriptor, Descriptor, KIND } from "@alepha/core";
+import type { UserProfile } from "../providers/ReactAuthProvider.ts";
+import type { Tokens } from "../schemas/tokensSchema.ts";
 
 export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
 	return createDescriptor(AuthDescriptor, options);
@@ -6,17 +8,39 @@ export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface AuthDescriptorOptions {
+export type AuthDescriptorOptions = {
+	disabled?: boolean;
 	name?: string;
 	fallback?: () => Async<AccessToken>;
-	oidc?: {
-		issuer: string;
-		clientId: string;
-		clientSecret?: string;
-		redirectUri?: string;
-		useIdToken?: boolean;
-		logoutUri?: string;
-	};
+	profile?: (raw: Record<string, any>) => Async<UserProfile>;
+} & (
+	| {
+			oidc: OidcOptions;
+	  }
+	| {
+			oauth: OAuthOptions;
+	  }
+	| {}
+);
+
+export interface OidcOptions {
+	issuer: string;
+	clientId: string;
+	clientSecret?: string;
+	redirectUri?: string;
+	useIdToken?: boolean;
+	logoutUri?: string;
+	scope?: string;
+}
+
+export interface OAuthOptions {
+	clientId: string;
+	clientSecret?: string;
+	redirectUri?: string;
+	scope?: string;
+	authorization: string;
+	token: string;
+	user: (tokens: Tokens) => Async<UserProfile>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -27,7 +51,7 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 	}
 
 	public jwks(): string {
-		return "";
+		throw new Error("Method 'jwks' is not implemented in AuthDescriptor.");
 	}
 }
 

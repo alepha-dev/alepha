@@ -2,6 +2,7 @@ import {
 	type Static,
 	type TObject,
 	type TSchema,
+	TypeBoxError,
 	TypeGuard,
 } from "@alepha/core";
 import { useAlepha } from "@alepha/react";
@@ -40,32 +41,38 @@ export const useForm = <T extends TObject>(
 ): UseFormReturn<T> => {
 	const alepha = useAlepha();
 
-	const onSubmit = (event: FormEventLike) => {
-		event.preventDefault();
-
-		const form = event.currentTarget;
-		const values: Record<string, any> = parseValuesFromFormElement(
-			options,
-			form,
-		);
-		const args = {
-			form,
-		};
-
-		try {
-			if (TypeGuard.IsSchema(options.schema)) {
-				options.handler(alepha.parse(options.schema, values), args);
-			} else {
-				options.handler(values, args); // for now, trust
-			}
-		} catch (error) {
-			alepha.log.error("Form validation failed:", error);
-		}
-	};
-
 	return {
-		onSubmit,
-		input: createProxyFromSchema(options, options.schema),
+		input: createProxyFromSchema(options, options.schema, {
+			parent: "",
+		}),
+		onSubmit: (event: FormEventLike) => {
+			event.preventDefault();
+
+			const form = event.currentTarget;
+			const values: Record<string, any> = parseValuesFromFormElement(
+				options,
+				form,
+			);
+			const args = {
+				form,
+			};
+
+			try {
+				if (TypeGuard.IsSchema(options.schema)) {
+					options.handler(alepha.parse(options.schema, values), args);
+				} else {
+					options.handler(values, args); // for now, trust
+				}
+			} catch (error) {
+				if (error instanceof TypeBoxError) {
+					if (options.onError) {
+						options.onError?.(error, args);
+					}
+					return;
+				}
+				throw error;
+			}
+		},
 	};
 };
 
@@ -137,8 +144,11 @@ const getValueFromInputObject = <T extends TObject>(
 const createProxyFromSchema = <T extends TObject>(
 	options: UseFormOptions<T>,
 	schema: TSchema,
-	parent = "",
+	context: {
+		parent: string;
+	},
 ): SchemaToInput<T> => {
+	const parent = context.parent || "";
 	return new Proxy<SchemaToInput<T>>({} as SchemaToInput<T>, {
 		get: (_, prop: string) => {
 			if (!options.schema) {
@@ -146,17 +156,15 @@ const createProxyFromSchema = <T extends TObject>(
 			}
 			if (prop in schema.properties) {
 				if (schema.properties[prop].type === "object") {
-					return createProxyFromSchema(
-						options,
-						schema.properties[prop],
-						parent ? `${parent}.${prop}` : prop,
-					);
+					return createProxyFromSchema(options, schema.properties[prop], {
+						parent: parent ? `${parent}.${prop}` : prop,
+					});
 				}
 				return createInputFromSchema<T>(
 					prop as keyof Static<T> & string,
 					options,
 					schema,
-					parent,
+					context,
 				);
 			}
 		},
@@ -167,31 +175,38 @@ const createInputFromSchema = <T extends TObject>(
 	name: keyof Static<T> & string,
 	options: UseFormOptions<T>,
 	schema: TSchema,
-	parent = "",
-): InputHTMLAttributes<unknown> => {
+	context: {
+		parent: string;
+	},
+): InputField => {
+	const parent = context.parent || "";
 	const field = schema.properties?.[name];
 	if (!field) {
-		return {} as InputHTMLAttributes<unknown>;
+		return {
+			path: "",
+			props: {} as InputHTMLAttributes<unknown>,
+			schema: schema,
+		};
 	}
 
 	const isRequired = schema.required?.includes(name) ?? false;
 
-	const attr: InputHTMLAttributes<unknown> = {
-		name: parent ? `${parent}.${name}` : name,
+	const key = parent ? `${parent}.${name}` : name;
+	const path = `/${key.replaceAll(".", "/")}`;
+
+	const attr: InputHTMLAttributesLike = {
+		name: key,
 		onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
 			const value = event.target.value;
 			// Handle field change logic here if needed
-			if (options.onValuesChange) {
-				options.onValuesChange(
-					{ ...options.initialValues, [name]: value } as Static<T>,
-					{},
-				);
+			if (options.onChange) {
+				options.onChange(path, getValueFromInput(value, field));
 			}
 		},
 	};
 
 	if (options.id) {
-		attr.id = `${options.id}-${parent ? `${parent}.${name}` : name}`;
+		attr.id = `${options.id}-${key}`;
 		(attr as any)["data-testid"] = attr.id;
 	}
 
@@ -246,7 +261,11 @@ const createInputFromSchema = <T extends TObject>(
 		Object.assign(attr, customAttr);
 	}
 
-	return attr;
+	return {
+		path,
+		props: attr,
+		schema: field,
+	};
 };
 
 export const getValueFromInput = (
@@ -325,12 +344,6 @@ export type UseFormOptions<T extends TObject> = {
 	handler: (values: Static<T>, args: { form: HTMLFormElement }) => void;
 
 	/**
-	 * Optional callback to handle changes in form values.
-	 * This can be used to update state or perform side effects when values change.
-	 */
-	onValuesChange?: (values: Static<T>, previous: Static<T>) => void;
-
-	/**
 	 * Optional initial values for the form fields.
 	 * This can be used to pre-populate the form with existing data.
 	 */
@@ -353,6 +366,10 @@ export type UseFormOptions<T extends TObject> = {
 	 * If omitted, IDs will not be generated.
 	 */
 	id?: string;
+
+	onError?: (error: TypeBoxError, args: { form: HTMLFormElement }) => void;
+
+	onChange?: (key: string, value: any) => void;
 };
 
 export type UseFormReturn<T extends TObject> = {
@@ -378,10 +395,33 @@ export type UseFormReturn<T extends TObject> = {
 export type SchemaToInput<T extends TObject> = {
 	[K in keyof T["properties"]]: T["properties"][K] extends TObject
 		? SchemaToInput<T["properties"][K]>
-		: InputHTMLAttributes<unknown>;
+		: InputField;
 };
 
 export interface FormEventLike {
 	currentTarget: HTMLFormElement;
 	preventDefault: () => void;
 }
+
+export interface InputField {
+	path: string;
+	props: InputHTMLAttributesLike;
+	schema: TSchema;
+}
+
+export type InputHTMLAttributesLike = Pick<
+	InputHTMLAttributes<unknown>,
+	| "id"
+	| "name"
+	| "type"
+	| "value"
+	| "defaultValue"
+	| "onChange"
+	| "required"
+	| "maxLength"
+	| "minLength"
+	| "aria-label"
+> & {
+	value?: any;
+	defaultValue?: any;
+};

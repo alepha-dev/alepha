@@ -46,8 +46,8 @@ const Hello = () => {
 			<Link to={"/page2"}>Page2</Link>
 
 			<form onSubmit={form.onSubmit}>
-				<input {...form.input.username} />
-				<input {...form.input.password} />
+				<input {...form.input.username.props} />
+				<input {...form.input.password.props} />
 				<button type={"submit"}>Submit</button>
 			</form>
 		</fieldset>

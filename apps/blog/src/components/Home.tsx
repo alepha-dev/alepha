@@ -15,7 +15,7 @@ import {
 	IconHeart,
 	IconUser,
 } from "@tabler/icons-react";
-import type { Blog } from "../Blog.ts";
+import type { AppRouter } from "../AppRouter.ts";
 import type { post } from "../entities.ts";
 import Go from "./shared/Go.tsx";
 
@@ -100,7 +100,7 @@ const Home = (props: Props) => {
 								</Flex>
 								<Divider />
 								<Flex gap="sm" p={"xs"}>
-									<Go<Blog>
+									<Go<AppRouter>
 										variant="default"
 										to={"viewPost"}
 										params={{ slug: post.slug }}

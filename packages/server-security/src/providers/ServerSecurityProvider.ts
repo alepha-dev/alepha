@@ -28,6 +28,8 @@ export class ServerSecurityProvider {
 					continue;
 				}
 
+				action.options.secure = true; // ensure the action is secure by default
+
 				const route = action.route;
 
 				const permission: Permission = {
@@ -47,6 +49,10 @@ export class ServerSecurityProvider {
 	protected readonly onActionRequest = $hook({
 		on: "action:onRequest",
 		handler: async ({ action, request, options }) => {
+			if (request.user) {
+				return; // user is already set, no need to do anything
+			}
+
 			const permission = this.securityProvider
 				.getPermissions()
 				.find(
@@ -54,22 +60,16 @@ export class ServerSecurityProvider {
 						it.path === action.route.path && it.method === action.route.method,
 				);
 
-			if (!permission && action.options.secure === false) {
-				return;
-			}
-
-			const secure =
-				typeof action.options.secure === "object" ? action.options.secure : {};
-
 			try {
 				request.user = this.createUserFromLocalFunctionContext(
 					options,
 					permission,
 				);
 			} catch (error) {
-				if (!secure.optional) {
+				if (action.options.secure) {
 					throw error;
 				}
+				// else, we skip the security check
 			}
 		},
 	});
@@ -82,21 +82,16 @@ export class ServerSecurityProvider {
 				.getPermissions()
 				.find((it) => it.path === route.path && it.method === route.method);
 
-			if (!permission && !route.secure) {
-				return;
-			}
-
-			const secure = typeof route.secure === "object" ? route.secure : {};
-
 			try {
 				request.user = await this.securityProvider.createUserFromToken(
 					request.headers.authorization,
 					permission,
 				);
 			} catch (error) {
-				if (!secure.optional) {
+				if (route.secure || permission) {
 					throw error;
 				}
+				// else, we skip the security check
 			}
 		},
 	});

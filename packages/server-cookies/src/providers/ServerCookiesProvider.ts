@@ -23,6 +23,7 @@ import type {
 	CookieDescriptorOptions,
 	Cookies,
 } from "../descriptors/$cookie.ts";
+import { CookieParser } from "../services/CookieParser.ts";
 
 const envSchema = t.object({
 	/**
@@ -44,6 +45,7 @@ export class ServerCookiesProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
+	protected readonly cookieParser = $inject(CookieParser);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
 	// crypto constants
@@ -56,7 +58,9 @@ export class ServerCookiesProvider {
 		on: "server:onRequest",
 		handler: async ({ request }) => {
 			request.cookies = {
-				req: this.parseRequestCookies(request.headers.cookie ?? ""),
+				req: this.cookieParser.parseRequestCookies(
+					request.headers.cookie ?? "",
+				),
 				res: {},
 			};
 		},
@@ -66,7 +70,7 @@ export class ServerCookiesProvider {
 		on: "server:onSend",
 		handler: async ({ request }) => {
 			if (request.cookies && Object.keys(request.cookies.res).length > 0) {
-				const setCookieHeaders = this.serializeResponseCookies(
+				const setCookieHeaders = this.cookieParser.serializeResponseCookies(
 					request.cookies.res,
 					request.url.protocol === "https:",
 				);
@@ -239,71 +243,4 @@ export class ServerCookiesProvider {
 	protected sign(data: string): string {
 		return createHmac("sha256", this.secretKey()).update(data).digest("hex");
 	}
-
-	protected parseRequestCookies(header: string): Record<string, string> {
-		const cookies: Record<string, string> = {};
-		const parts = header.split(";");
-		for (const part of parts) {
-			const [key, value] = part.split("=");
-			if (!key || !value) {
-				continue;
-			}
-
-			cookies[key.trim()] = value.trim();
-		}
-
-		return cookies;
-	}
-
-	protected serializeResponseCookies(
-		cookies: Record<string, Cookie | null>,
-		isHttps: boolean,
-	): string[] {
-		const headers = [];
-
-		for (const [name, cookie] of Object.entries(cookies)) {
-			const parts: string[] = [];
-
-			// If the cookie is null, we need to delete it
-			if (cookie == null) {
-				parts.push(`${name}=; Path=/; Max-Age=0`);
-				headers.push(parts.join("; "));
-				continue;
-			}
-
-			if (!cookie.value) {
-				continue;
-			}
-
-			parts.push(`${name}=${cookie.value}`);
-
-			if (cookie.path) {
-				parts.push(`Path=${cookie.path}`);
-			}
-			if (cookie.maxAge) {
-				parts.push(`Max-Age=${cookie.maxAge}`);
-			}
-			if (cookie.secure !== false && isHttps) {
-				parts.push("Secure");
-			}
-			if (cookie.httpOnly) {
-				parts.push("HttpOnly");
-			}
-			if (cookie.sameSite) {
-				parts.push(`SameSite=${cookie.sameSite}`);
-			}
-			if (cookie.domain) {
-				parts.push(`Domain=${cookie.domain}`);
-			}
-
-			headers.push(parts.join("; "));
-		}
-
-		return headers;
-	}
 }
-
-type FinalCookieDescriptorOptions<T extends TSchema> =
-	CookieDescriptorOptions<T> & {
-		name: string;
-	};

@@ -11,7 +11,7 @@ export const $head = (options: HeadDescriptorOptions) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface HeadDescriptorOptions extends Head {}
+export type HeadDescriptorOptions = Head | (() => Head);
 
 // ---------------------------------------------------------------------------------------------------------------------
 

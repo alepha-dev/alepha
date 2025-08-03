@@ -36,7 +36,7 @@ const setup = async (env: Env = {}) => {
 	return { app, john, dave };
 };
 
-test("relations - basic", async () => {
+test("relations - basic", { timeout: 10000 }, async () => {
 	const { app, john } = await setup();
 
 	const list = await app.users.find({

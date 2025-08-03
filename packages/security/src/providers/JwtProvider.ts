@@ -100,7 +100,9 @@ export class JwtProvider {
 			}
 		}
 
-		this.log.warn("No valid key loader found to verify the token");
+		this.log.warn(
+			`No valid key loader found to verify the token (keystore size: ${this.keystore.length})`,
+		);
 
 		throw new SecurityError("Invalid token");
 	}

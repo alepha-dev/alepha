@@ -5,8 +5,8 @@ import { ServerCookiesProvider } from "./providers/ServerCookiesProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$cookie";
-export * from "./providers/ServerCookiesProvider";
+export * from "./descriptors/$cookie.ts";
+export * from "./providers/ServerCookiesProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

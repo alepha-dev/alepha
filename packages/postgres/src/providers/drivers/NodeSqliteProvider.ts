@@ -1,5 +1,6 @@
+import { mkdir } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
-import { $hook, $inject, $logger } from "@alepha/core";
+import { $env, $hook, $inject, $logger, t } from "@alepha/core";
 import type { Static, TObject } from "@sinclair/typebox";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
@@ -9,9 +10,18 @@ import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
 export class NodeSqliteProvider extends PostgresProvider {
 	protected readonly kit = $inject(DrizzleKitProvider);
 	protected readonly log = $logger();
+	protected readonly env = $env(
+		t.object({
+			DATABASE_URL: t.optional(t.string()),
+		}),
+	);
 
 	public readonly dialect = "sqlite";
 	public readonly schema = "public";
+
+	public options = {
+		path: this.env.DATABASE_URL || ":memory:",
+	};
 
 	public async execute<T extends TObject = any>(
 		query: SQLLike,
@@ -65,7 +75,13 @@ export class NodeSqliteProvider extends PostgresProvider {
 		on: "configure",
 		handler: async () => {
 			const { DatabaseSync } = await import("node:sqlite");
-			this.sqlite = new DatabaseSync(":memory:");
+			const filepath = this.options.path.replace("sqlite://", "");
+			this.log.info(filepath);
+			const dirname = filepath.split("/").slice(0, -1).join("/");
+			if (dirname) {
+				await mkdir(dirname, { recursive: true });
+			}
+			this.sqlite = new DatabaseSync(filepath);
 		},
 	});
 

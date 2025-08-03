@@ -86,7 +86,10 @@ export async function viteAlephaDev(
 			}
 
 			if (isSsrEnabled && ctx.modules[0]) {
-				await restart(state, ctx.server, invalidate);
+				const skip = await restart(state, ctx.server, invalidate);
+				if (skip) {
+					return [];
+				}
 
 				if (!state.started) {
 					log("[DEBUG] HMR - abort due to app not started");
@@ -225,9 +228,11 @@ const restart = async (
 	invalidate?: boolean,
 ) => {
 	if (state.lock) {
-		return state.lock.promise;
+		state.log("[DEBUG] STILL LOCKING");
+		return true;
 	}
 
+	state.log("[DEBUG] LOCK RESTART");
 	state.lock = Promise.withResolvers();
 
 	const now = Date.now();
@@ -243,9 +248,10 @@ const restart = async (
 	state.log(`[DEBUG] RESTART OK in ${Date.now() - now}ms`);
 
 	setTimeout(() => {
+		state.log("[DEBUG] UNLOCK RESTART");
 		state.lock?.resolve();
 		state.lock = undefined;
-	}, 250);
+	}, 500);
 };
 
 const isViteFile = (file: string) => {

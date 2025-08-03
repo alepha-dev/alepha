@@ -3,9 +3,10 @@ import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Decorates a schema with a Postgres attribute.
- * Don't use this function directly. Use tools from "pg.*" instead.
+ * It's just a fancy way to add Symbols to a field...
  *
  * @internal
+ *
  * @example
  * ```ts
  * import { t } from "@alepha/core";

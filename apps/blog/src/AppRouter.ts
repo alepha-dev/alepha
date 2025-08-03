@@ -7,7 +7,7 @@ import { createElement } from "react";
 import NotFound from "./components/layout/NotFound.tsx";
 import type { PostController } from "./controllers/PostController.ts";
 
-export class Blog {
+export class AppRouter {
 	posts = $client<PostController>();
 	client = $inject(LinkProvider);
 	auth = $inject(ReactAuth);
@@ -52,7 +52,7 @@ export class Blog {
 				slug: t.string(),
 			}),
 		},
-		client: true,
+
 		resolve: async ({ params }) => {
 			return {
 				post: await this.posts.getPostBySlug({ params }),

@@ -17,8 +17,8 @@ services:
       POSTGRES_PASSWORD: postgres
 
   azurite:
-    restart: always
-    image: mcr.microsoft.com/azure-storage/azurite
+    restart: "always"
     pull_policy: "always"
+    image: mcr.microsoft.com/azure-storage/azurite
     ports:
       - "10000:10000"

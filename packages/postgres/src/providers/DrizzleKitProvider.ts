@@ -218,20 +218,10 @@ export class DrizzleKitProvider {
 	protected async importDrizzleKit(): Promise<typeof DrizzleKit> {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
-		} catch (_ignore) {
-			try {
-				return createRequire(import.meta.url)("../libs/drizzle-kit/api.cjs");
-			} catch (_ignore) {
-				try {
-					return createRequire(import.meta.url)(
-						"../../libs/drizzle-kit/api.cjs",
-					);
-				} catch (_ignore) {
-					throw new Error(
-						"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
-					);
-				}
-			}
+		} catch (_) {
+			throw new Error(
+				"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
+			);
 		}
 	}
 }

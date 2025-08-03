@@ -16,7 +16,7 @@ import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
  */
 export const $cookie = <T extends TSchema>(
 	options: CookieDescriptorOptions<T>,
-): CookieDescriptor<T> => {
+): AbstractCookieDescriptor<T> => {
 	return createDescriptor(CookieDescriptor<T>, options);
 };
 
@@ -57,17 +57,32 @@ export interface CookieDescriptorOptions<T extends TSchema> {
 	sign?: boolean;
 }
 
-export class CookieDescriptor<T extends TSchema> extends Descriptor<
-	CookieDescriptorOptions<T>
-> {
+export interface AbstractCookieDescriptor<T extends TSchema> {
+	readonly name: string;
+	readonly options: CookieDescriptorOptions<T>;
+	set(value: Static<T>, options?: { cookies?: Cookies }): void;
+	get(options?: { cookies?: Cookies }): Static<T> | undefined;
+	del(options?: { cookies?: Cookies }): void;
+}
+
+export class CookieDescriptor<T extends TSchema>
+	extends Descriptor<CookieDescriptorOptions<T>>
+	implements AbstractCookieDescriptor<T>
+{
 	protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
+
+	public get schema(): T {
+		return this.options.schema;
+	}
 
 	public get name(): string {
 		return this.options.name ?? `${this.config.propertyKey}`;
 	}
 
-	/** Sets the cookie with the given value in the current request's response. */
-	public set(value: Static<T>, options?: { cookies?: Cookies }) {
+	/**
+	 * Sets the cookie with the given value in the current request's response.
+	 */
+	public set(value: Static<T>, options?: { cookies?: Cookies }): void {
 		this.serverCookiesProvider.setCookie(
 			this.name,
 			this.options,
@@ -76,7 +91,9 @@ export class CookieDescriptor<T extends TSchema> extends Descriptor<
 		);
 	}
 
-	/** Gets the cookie value from the current request. Returns undefined if not found or invalid. */
+	/**
+	 * Gets the cookie value from the current request. Returns undefined if not found or invalid.
+	 */
 	public get(options?: { cookies?: Cookies }): Static<T> | undefined {
 		return this.serverCookiesProvider.getCookie(
 			this.name,
@@ -85,7 +102,9 @@ export class CookieDescriptor<T extends TSchema> extends Descriptor<
 		);
 	}
 
-	/** Deletes the cookie in the current request's response. */
+	/**
+	 * Deletes the cookie in the current request's response.
+	 */
 	public del(options?: { cookies?: Cookies }): void {
 		this.serverCookiesProvider.deleteCookie(this.name, options?.cookies);
 	}

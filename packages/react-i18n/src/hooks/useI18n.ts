@@ -1,4 +1,5 @@
 import { useInject, useStore } from "@alepha/react";
+import { useMemo } from "react";
 import type { DictionaryDescriptor } from "../descriptors/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
 
@@ -12,13 +13,17 @@ export const useI18n = <
 	const i18n = useInject(I18nProvider);
 	const [lang = i18n.options.fallbackLang] = useStore("react.i18n.lang");
 
-	return {
-		lang,
-		setLang: (lang: string) => i18n.setLang(lang),
-		tr: (key: keyof ServiceDictionary<S>[K]) => i18n.translate(key as string),
-	};
+	return useMemo(() => {
+		return {
+			lang,
+			setLang: (lang: string) => i18n.setLang(lang),
+			tr: (key: keyof ServiceDictionary<S>[K] | string, args?: string[]) =>
+				i18n.translate(key as string, args),
+			languages: i18n.languages,
+		};
+	}, [lang]);
 };
 
-type ServiceDictionary<T extends object> = {
+export type ServiceDictionary<T extends object> = {
 	[K in keyof T]: T[K] extends DictionaryDescriptor<infer U> ? U : never;
 };

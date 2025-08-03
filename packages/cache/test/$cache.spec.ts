@@ -15,6 +15,7 @@ import {
 	testCacheMissingProvider,
 	testCacheReturnTypes,
 	testCacheStop,
+	testSimpleKeyMappingHandler,
 } from "./shared.ts";
 
 test("$cache - basic", async () => {
@@ -96,4 +97,8 @@ test("$cache - unique key", async () => {
 	// [] means no args, it's JSON.stringify([])
 	const obj = await app.inject(MemoryCacheProvider).get("A:task", "[]");
 	expect(new TextDecoder().decode(obj?.slice(1))).toEqual("DONE");
+});
+
+test("$cache - unique key with args", async () => {
+	await testSimpleKeyMappingHandler();
 });

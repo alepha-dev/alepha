@@ -1,12 +1,20 @@
 import { Alepha, run } from "@alepha/core";
-import { Blog } from "./Blog.ts";
+import { AlephaReactAuth } from "@alepha/react-auth";
+import { AlephaServerSecurity } from "@alepha/server-security";
+import { AppRouter } from "./AppRouter.ts";
 import { PostController } from "./controllers/PostController.ts";
-import { Security } from "./providers/Security.ts";
+import { Sec } from "./providers/Sec.ts";
 
-const app = Alepha.create();
+const app = Alepha.create({
+	env: {
+		DATABASE_URL: "sqlite://data/db.sqlite",
+	},
+});
 
-app.with(Blog);
+app.with(AlephaReactAuth);
+app.with(AlephaServerSecurity);
+app.with(AppRouter);
 app.with(PostController);
-app.with(Security);
+app.with(Sec);
 
 run(app);

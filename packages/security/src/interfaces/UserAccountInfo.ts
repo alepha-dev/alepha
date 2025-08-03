@@ -8,11 +8,6 @@ export interface UserAccountInfo {
 	id: string;
 
 	/**
-	 * Represents the roles assigned to a user.
-	 */
-	roles?: string[];
-
-	/**
 	 * User full name, if available.
 	 */
 	name?: string;
@@ -28,7 +23,14 @@ export interface UserAccountInfo {
 	picture?: string;
 
 	/**
-	 * Organization ID, if available.
+	 * List of organizations the user belongs to, if available.
 	 */
-	organization?: string;
+	organizations?: string[];
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Represents the roles assigned to a user.
+	 */
+	roles?: string[];
 }

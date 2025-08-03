@@ -10,10 +10,25 @@
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"dependencies": {
-		"@faker-js/faker": "^9.9.0"
+		"@faker-js/faker": "^9.9.0",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/react": "^16.3.0",
+		"jsdom": "^26.1.0"
+	},
+	"peerDependencies": {
+		"react": "^19",
+		"react-dom": "^19"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		},
+		"react-dom": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
-		"tsdown": "^0.13.0"
+		"tsdown": "^0.13.2"
 	},
 	"scripts": {
 		"build": "tsdown -c ../../tsdown.config.ts"

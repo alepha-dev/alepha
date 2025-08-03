@@ -12,10 +12,14 @@ test("sqlite", async () => {
 		}),
 	});
 
-	const alepha = Alepha.create().with({
-		provide: PostgresProvider,
-		use: NodeSqliteProvider,
-	});
+	const alepha = Alepha.create()
+		.with({
+			provide: PostgresProvider,
+			use: NodeSqliteProvider,
+		})
+		.configure(NodeSqliteProvider, {
+			path: ":memory:",
+		});
 
 	class TestApp {
 		userRepository = $repository(users);

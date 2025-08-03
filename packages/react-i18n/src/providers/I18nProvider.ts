@@ -1,8 +1,14 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $cookie } from "@alepha/server-cookies";
 
 export class I18nProvider {
 	logger = $logger();
 	alepha = $inject(Alepha);
+
+	cookie = $cookie({
+		name: "lang",
+		schema: t.string(),
+	});
 
 	registry: Array<{
 		name: string;
@@ -15,11 +21,20 @@ export class I18nProvider {
 		fallbackLang: "en",
 	};
 
+	get languages() {
+		const languages = new Set<string>();
+		for (const item of this.registry) {
+			languages.add(item.lang);
+		}
+		languages.add(this.options.fallbackLang);
+		return Array.from(languages);
+	}
+
 	onRender = $hook({
 		on: "server:onRequest",
 		priority: "last",
 		handler: async ({ request }) => {
-			this.alepha.state("react.i18n.lang", request.cookies.req.lang);
+			this.alepha.state("react.i18n.lang", this.cookie.get(request));
 		},
 	});
 
@@ -28,16 +43,16 @@ export class I18nProvider {
 		handler: async () => {
 			if (this.alepha.isBrowser()) {
 				// get cookie lang
-				const cookieLang = document.cookie
-					.split("; ")
-					.find((row) => row.startsWith("lang="))
-					?.split("=")[1];
+				const cookieLang = this.cookie.get();
 				if (cookieLang) {
 					this.alepha.state("react.i18n.lang", cookieLang);
 				}
 
 				for (const item of this.registry) {
-					if (item.lang === this.lang) {
+					if (
+						item.lang === this.lang ||
+						item.lang === this.options.fallbackLang
+					) {
 						item.translations = await item.loader();
 					}
 				}
@@ -60,7 +75,7 @@ export class I18nProvider {
 					item.translations = await item.loader();
 				}
 			}
-			document.cookie = `lang=${lang}; path=/; max-age=31536000`; /// make server-cookies browser compatible
+			this.cookie.set(lang);
 		}
 
 		this.alepha.state("react.i18n.lang", lang);
@@ -91,14 +106,35 @@ export class I18nProvider {
 		return this.alepha.state("react.i18n.lang") || this.options.fallbackLang;
 	}
 
-	translate = (key: string) => {
+	translate = (key: string, args: string[] = []) => {
 		for (const item of this.registry) {
 			if (item.lang === this.lang) {
 				if (item.translations[key]) {
-					return item.translations[key];
+					return this.render(item.translations[key], args); // append lang for fallback
+				} else {
+					break;
 				}
 			}
 		}
+
+		for (const item of this.registry) {
+			if (item.lang === this.options.fallbackLang) {
+				if (item.translations[key]) {
+					return this.render(item.translations[key], args); // append lang for fallback
+				} else {
+					break;
+				}
+			}
+		}
+
 		return key; // fallback to the key itself if not found
 	};
+
+	protected render(item: string, args: string[]): string {
+		let result = item;
+		for (let i = 0; i < args.length; i++) {
+			result = result.replace(`$${i}`, args[i]);
+		}
+		return result;
+	}
 }

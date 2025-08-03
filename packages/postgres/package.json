@@ -21,18 +21,17 @@
 		"@alepha/lock": "0.9.2",
 		"@alepha/retry": "0.9.2",
 		"@sinclair/typebox": "^0.34.38",
-		"drizzle-orm": "^0.44.3",
+		"drizzle-orm": "^0.44.4",
 		"postgres": "^3.4.7"
 	},
 	"devDependencies": {
 		"drizzle-kit": "0.31.4",
-		"tsdown": "^0.13.0",
+		"tsdown": "^0.13.2",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",
-		"build": "tsdown -c ../../tsdown.config.ts",
-		"copy": "node scripts/copy.ts"
+		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

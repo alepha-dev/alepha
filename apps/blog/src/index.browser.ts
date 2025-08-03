@@ -1,10 +1,10 @@
 import { Alepha, run } from "@alepha/core";
 import { AlephaReactAuth } from "@alepha/react-auth";
-import { Blog } from "./Blog";
+import { AppRouter } from "./AppRouter.ts";
 
 const app = Alepha.create();
 
-app.with(Blog);
+app.with(AppRouter);
 app.with(AlephaReactAuth);
 
 run(app);

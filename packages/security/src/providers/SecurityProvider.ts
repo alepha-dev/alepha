@@ -64,11 +64,13 @@ export class SecurityProvider {
 	];
 
 	protected configure = $hook({
-		on: "configure",
+		on: "start",
 		handler: async () => {
 			for (const realm of this.realms) {
 				if (realm.secret) {
-					this.jwt.setKeyLoader(realm.name, realm.secret);
+					const secret =
+						typeof realm.secret === "function" ? realm.secret() : realm.secret;
+					this.jwt.setKeyLoader(realm.name, secret);
 				}
 				if (realm.userAccountProvider?.jwks) {
 					this.jwt.setKeyLoader(realm.name, realm.userAccountProvider.jwks);
@@ -240,21 +242,28 @@ export class SecurityProvider {
 		const email = this.getEmailFromPayload(payload);
 		const picture = this.getPictureFromPayload(payload);
 		const name = this.getNameFromPayload(payload);
-		const organization = this.getOrganizationFromPayload(payload);
+		const organizations = this.getOrganizationsFromPayload(payload);
 		const rolesFromSystem = this.getRoles(realmName);
-		const roles = rolesFromPayload.reduce<Role[]>(
-			(arr, roleName) =>
-				arr.concat(rolesFromSystem.filter((it) => it.name === roleName)),
-			[],
-		);
+		const roles = rolesFromPayload
+			.reduce<Role[]>(
+				(arr, roleName) =>
+					arr.concat(rolesFromSystem.filter((it) => it.name === roleName)),
+				[],
+			)
+			.map((it) => it.name);
+
+		const realm = this.realms.find((it) => it.name === realmName);
+		if (realm?.profile) {
+			return realm.profile(payload);
+		}
 
 		return {
 			id,
-			roles: roles.map((it) => it.name),
+			roles,
 			name,
 			email,
 			picture,
-			organization,
+			organizations,
 		};
 	}
 
@@ -355,13 +364,21 @@ export class SecurityProvider {
 
 		const { result, keyName: realm } = await this.jwt.parse(token);
 		const info = this.createInfoFromPayload(result.payload, realm);
+		const realmRoles = this.getRoles(realm).filter((it) => it.default);
+		const roles = info.roles ?? [];
+
+		for (const role of realmRoles) {
+			if (!roles.includes(role.name)) {
+				roles.push(role.name);
+			}
+		}
+
+		info.roles = roles;
 
 		await this.alepha.emit("security:user:created", {
 			realm,
 			user: info,
 		});
-
-		const roles = info.roles ?? [];
 
 		let ownership: string | boolean | undefined;
 
@@ -611,19 +628,19 @@ export class SecurityProvider {
 		return this.UNKNOWN_USER_NAME;
 	}
 
-	public getOrganizationFromPayload(
+	public getOrganizationsFromPayload(
 		payload: Record<string, any>,
-	): string | undefined {
+	): string[] | undefined {
 		if (!payload) {
 			return;
 		}
 
 		if (payload.organization) {
 			if (typeof payload.organization === "string") {
-				return payload.organization;
+				return [payload.organization];
 			}
 			if (Array.isArray(payload.organization)) {
-				return payload.organization[0];
+				return payload.organization;
 			}
 		}
 	}
@@ -644,7 +661,7 @@ export interface Realm {
 	 *
 	 * Can be also a JWKS URL.
 	 */
-	secret?: string | JSONWebKeySet;
+	secret?: string | JSONWebKeySet | (() => string);
 
 	/**
 	 * Attach a user provider to the realm.
@@ -654,6 +671,11 @@ export interface Realm {
 	userAccountProvider?: SecurityUserAccountProvider;
 
 	onLoadUser?: (user: UserAccountInfo) => Promise<void> | void;
+
+	/**
+	 * Function to create a user profile from the raw JWT user data.
+	 */
+	profile?: (raw: Record<string, any>) => UserAccountInfo;
 }
 
 export interface SecurityUserAccountProvider {

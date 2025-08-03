@@ -72,7 +72,10 @@ export const AlephaPostgres = $module({
 
 		alepha.with(RepositoryDescriptorProvider);
 
-		if (env.DATABASE_URL.includes(":memory:")) {
+		const memory = env.DATABASE_URL.includes(":memory:");
+		const sqlite = env.DATABASE_URL.startsWith("sqlite://");
+
+		if (sqlite || memory) {
 			alepha.with({
 				optional: true,
 				provide: PostgresProvider,

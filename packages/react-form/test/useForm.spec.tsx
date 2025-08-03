@@ -1,6 +1,6 @@
 import { Alepha, t } from "@alepha/core";
 import { AlephaContext } from "@alepha/react";
-import { fireEvent, render } from "@testing-library/react";
+import { dom } from "@alepha/testing";
 import type { ReactNode } from "react";
 import { describe, it, vi } from "vitest";
 import { useForm } from "../src";
@@ -11,7 +11,7 @@ import { useForm } from "../src";
 
 describe("useForm", () => {
 	const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
-		return render(
+		return dom.render(
 			<AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
 		);
 	};
@@ -37,10 +37,10 @@ describe("useForm", () => {
 
 			return (
 				<form onSubmit={form.onSubmit} data-testid="test-form">
-					<input {...form.input.str} />
-					<input {...form.input.int} />
-					<input {...form.input.nested.str} />
-					<input {...form.input.nested.another.level} />
+					<input {...form.input.str.props} />
+					<input {...form.input.int.props} />
+					<input {...form.input.nested.str.props} />
+					<input {...form.input.nested.another.level.props} />
 					<button type="submit">Submit</button>
 				</form>
 			);
@@ -48,23 +48,23 @@ describe("useForm", () => {
 
 		const ui = renderWithAlepha(alepha, <Form />);
 
-		fireEvent.change(ui.getByTestId("test-str"), {
+		dom.fireEvent.change(ui.getByTestId("test-str"), {
 			target: { value: "testuser" },
 		});
 
-		fireEvent.change(ui.getByTestId("test-int"), {
+		dom.fireEvent.change(ui.getByTestId("test-int"), {
 			target: { value: "123" },
 		});
 
-		fireEvent.change(ui.getByTestId("test-nested.str"), {
+		dom.fireEvent.change(ui.getByTestId("test-nested.str"), {
 			target: { value: "nestedvalue" },
 		});
 
-		fireEvent.change(ui.getByTestId("test-nested.another.level"), {
+		dom.fireEvent.change(ui.getByTestId("test-nested.another.level"), {
 			target: { value: "anothervalue" },
 		});
 
-		fireEvent.submit(ui.getByText("Submit"));
+		dom.fireEvent.submit(ui.getByText("Submit"));
 
 		expect(fn).toHaveBeenCalledTimes(1);
 		expect(fn).toHaveBeenCalledWith(

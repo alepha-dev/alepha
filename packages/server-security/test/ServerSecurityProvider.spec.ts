@@ -12,7 +12,7 @@ import { describe, expect, test } from "vitest";
 import { AlephaServerSecurity } from "../src";
 
 describe("ServerSecurityProvider", () => {
-	test("should protection action from unauthorized users", async () => {
+	test("should protect action from unauthorized users", async () => {
 		class TestApp {
 			ok = $action({
 				handler: () => "OK",
@@ -95,13 +95,13 @@ describe("ServerSecurityProvider", () => {
 			"USER",
 		);
 
-		// admin is also allowed
+		// as admin, you can access user action too
 		expect(await app.user.run({}, { user: admin })).toBe("USER");
 		expect(
 			await app.user.fetch({}, { user: admin }).then((it) => it.data),
 		).toBe("USER");
 
-		// but as user, you cannot access admin action
+		// as user, you cannot access admin action
 		await expect(app.admin.run({}, { user })).rejects.toThrowError(
 			ForbiddenError,
 		);
@@ -112,7 +112,7 @@ describe("ServerSecurityProvider", () => {
 			}),
 		);
 
-		// admin is allowed
+		// as admin, you can access admin action
 		expect(await app.admin.run({}, { user: admin })).toBe("ADMIN");
 		expect(
 			await app.admin.fetch({}, { user: admin }).then((it) => it.data),

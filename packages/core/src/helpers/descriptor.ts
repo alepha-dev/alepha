@@ -88,7 +88,7 @@ export const createDescriptor = <TDescriptor extends Descriptor>(
 	descriptorEvents.emit(descriptor, context);
 
 	return context.inject(descriptor, {
-		//skipRegistration: true,
+		skipRegistration: true,
 		skipCache: true,
 		args: [
 			{

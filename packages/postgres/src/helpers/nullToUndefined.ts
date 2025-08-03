@@ -1,5 +1,6 @@
 /**
  * Replaces all null values in an object with undefined.
+ * We need this for converting all nulls from Drizzle outputs.
  *
  * @param value - The object to be processed.
  * @return A new object with all null values replaced with undefined.

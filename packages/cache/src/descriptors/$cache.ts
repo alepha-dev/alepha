@@ -170,7 +170,7 @@ export class CacheDescriptor<
 
 	public async get(key: string): Promise<TReturn | undefined> {
 		if (
-			!this.alepha.isReady() ||
+			!this.alepha.isStarted() ||
 			this.options.disabled ||
 			!this.env.CACHE_ENABLED
 		) {

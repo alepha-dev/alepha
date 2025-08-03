@@ -1,4 +1,5 @@
 import { $hook, $inject, $logger, Alepha, type Async, t } from "@alepha/core";
+import { SecurityError } from "@alepha/security";
 import { $route, BadRequestError } from "@alepha/server";
 import {
 	$cookie,
@@ -10,14 +11,22 @@ import {
 	authorizationCodeGrant,
 	buildAuthorizationUrl,
 	buildEndSessionUrl,
-	type Configuration,
+	Configuration,
 	calculatePKCECodeChallenge,
 	discovery,
 	randomPKCECodeVerifier,
+	randomState,
 	refreshTokenGrant,
 	tokenRevocation,
 } from "openid-client";
-import { $auth, type AccessToken } from "../descriptors/$auth.ts";
+import {
+	$auth,
+	type AccessToken,
+	type OAuthOptions,
+	type OidcOptions,
+} from "../descriptors/$auth.ts";
+import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
+import { userProfileSchema } from "../schemas/userProfileSchema.ts";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
 export class ReactAuthProvider {
@@ -33,34 +42,23 @@ export class ReactAuthProvider {
 		schema: t.object({
 			codeVerifier: t.optional(t.string({ size: "long" })),
 			redirectUri: t.optional(t.string({ size: "long" })),
+			state: t.optional(t.string()),
+			nonce: t.optional(t.string()),
 		}),
 	});
 
 	public readonly tokens = $cookie({
 		name: "tokens",
-		ttl: [1, "days"],
+		ttl: [1, "days"], // TODO
 		httpOnly: true,
 		compress: true,
-		schema: t.object({
-			provider: t.optional(t.string()),
-			access_token: t.optional(t.string({ size: "rich" })),
-			expires_in: t.optional(t.number()),
-			refresh_token: t.optional(t.string({ size: "rich" })),
-			id_token: t.optional(t.string({ size: "rich" })),
-			scope: t.optional(t.string()),
-			issued_at: t.optional(t.number()),
-		}),
+		schema: tokensSchema,
 	});
 
 	public readonly user = $cookie({
 		name: "user",
-		ttl: [1, "days"],
-		schema: t.object({
-			id: t.string(),
-			name: t.optional(t.string()),
-			email: t.optional(t.string()),
-			picture: t.optional(t.string()),
-		}),
+		ttl: [1, "day"], // TODO
+		schema: userProfileSchema,
 	});
 
 	public readonly onRender = $hook({
@@ -76,38 +74,33 @@ export class ReactAuthProvider {
 			const auths = this.alepha.descriptors($auth);
 			for (const auth of auths) {
 				const options = auth.options;
+				if (options.disabled) {
+					continue;
+				}
 
-				if (options.oidc) {
+				if ("oidc" in options) {
 					this.log.debug(
 						`Discover OIDC auth provider -> ${options.oidc.issuer}`,
 					);
 
 					const oidc = options.oidc;
 
-					const client: {
-						cache?: Configuration;
-						get: () => Promise<Configuration>;
-					} = {
-						cache: undefined,
-						async get() {
-							this.cache ??= await discovery(
-								new URL(oidc.issuer),
-								oidc.clientId,
-								{
-									client_secret: oidc.clientSecret,
-								},
-								undefined,
-								{
-									execute: [allowInsecureRequests],
-								},
-							);
+					const addons: Array<(config: Configuration) => void> = [];
+					if (!this.alepha.isProduction()) {
+						addons.push(allowInsecureRequests);
+					}
 
-							return this.cache as Configuration;
+					const config = await discovery(
+						new URL(oidc.issuer),
+						oidc.clientId,
+						{
+							client_secret: oidc.clientSecret,
 						},
-					};
-
-					// TODO: remove cache
-					const config = await client.get();
+						undefined,
+						{
+							execute: addons,
+						},
+					);
 
 					auth.jwks = () => {
 						const jwksUri = config.serverMetadata().jwks_uri;
@@ -122,10 +115,41 @@ export class ReactAuthProvider {
 					this.authProviders.push({
 						name: auth.name,
 						redirectUri: options.oidc.redirectUri ?? ReactAuth.path.callback,
-						client,
 						fallback: options.fallback,
 						useIdToken: options.oidc.useIdToken,
 						logoutUri: options.oidc.logoutUri,
+						config,
+						oidc: options.oidc,
+						scope: options.oidc.scope ?? "openid profile email",
+						profile: options.profile,
+					});
+				}
+
+				if ("oauth" in options) {
+					const oauth = options.oauth;
+
+					const config = new Configuration(
+						{
+							authorization_endpoint: oauth.authorization,
+							token_endpoint: oauth.token,
+							issuer: oauth.authorization, // Use authorization URL as a pseudo-issuer
+							jwks_uri: undefined,
+							end_session_endpoint: undefined, // Pure OAuth2 usually doesn't have this
+						},
+						oauth.clientId,
+						{
+							client_secret: oauth.clientSecret,
+						},
+					);
+
+					this.authProviders.push({
+						name: auth.name,
+						redirectUri: options.oauth.redirectUri ?? ReactAuth.path.callback,
+						fallback: options.fallback,
+						config,
+						oauth: options.oauth,
+						scope: options.oauth.scope,
+						profile: options.profile,
 					});
 				}
 			}
@@ -202,7 +226,7 @@ export class ReactAuthProvider {
 					try {
 						const provider = await this.provider();
 						const newTokens = await refreshTokenGrant(
-							provider.client,
+							provider.config,
 							tokens.refresh_token,
 						);
 
@@ -246,17 +270,40 @@ export class ReactAuthProvider {
 				provider: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ query, cookies, url, reply }) => {
-			const { client, redirectUri } = await this.provider(query.provider);
-
-			const codeVerifier = randomPKCECodeVerifier();
-			const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-			const scope = "openid profile email";
+		handler: async ({ query, url, reply }) => {
+			const {
+				config,
+				redirectUri,
+				scope = "openid profile email",
+			} = await this.provider(query.provider);
 
 			let redirect_uri = redirectUri;
 			if (redirect_uri.startsWith("/")) {
 				redirect_uri = `${url.protocol}//${url.host}${redirect_uri}`;
 			}
+
+			if (!config.serverMetadata().supportsPKCE()) {
+				const state = randomState();
+				const nonce = randomState();
+				const parameters: Record<string, string> = {
+					redirect_uri,
+					scope,
+					state,
+					nonce,
+				};
+
+				this.authorizationCode.set({
+					state,
+					nonce,
+					redirectUri: query.redirect ?? "/",
+				});
+
+				reply.redirect(buildAuthorizationUrl(config, parameters).toString());
+				return;
+			}
+
+			const codeVerifier = randomPKCECodeVerifier();
+			const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
 
 			const parameters: Record<string, string> = {
 				redirect_uri,
@@ -270,7 +317,7 @@ export class ReactAuthProvider {
 				redirectUri: query.redirect ?? "/",
 			});
 
-			reply.redirect(buildAuthorizationUrl(client, parameters).toString());
+			reply.redirect(buildAuthorizationUrl(config, parameters).toString());
 		},
 	});
 
@@ -281,16 +328,24 @@ export class ReactAuthProvider {
 				provider: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ url, cookies, query, reply }) => {
-			const { client, name } = await this.provider(query.provider);
+		handler: async ({ url, query, reply }) => {
+			const authProvider = await this.provider(query.provider);
+			const { config, name } = authProvider;
 
 			const authorizationCode = this.authorizationCode.get();
 			if (!authorizationCode) {
 				throw new BadRequestError("Missing code verifier");
 			}
 
-			const tokens = await authorizationCodeGrant(client, url, {
+			const tokens = await authorizationCodeGrant(config, url, {
 				pkceCodeVerifier: authorizationCode.codeVerifier,
+				expectedState: authorizationCode.state,
+				expectedNonce: authorizationCode.nonce,
+			}).catch((e) => {
+				this.log.error("Failed to get access token", e);
+				throw new SecurityError("Failed to get access token", {
+					cause: e,
+				});
 			});
 
 			this.authorizationCode.del();
@@ -301,47 +356,52 @@ export class ReactAuthProvider {
 				provider: name,
 			});
 
-			const user = this.userFromAccessToken(
-				tokens.id_token ?? tokens.access_token,
-			);
-
-			if (user) {
-				this.user.set(user);
+			try {
+				this.user.set(await this.getUserProfile(authProvider, tokens));
+			} catch (e) {
+				throw new SecurityError("Failed to get user profile", { cause: e });
 			}
 
 			reply.redirect(authorizationCode.redirectUri ?? "/");
 		},
 	});
 
-	/**
-	 *
-	 * @param accessToken
-	 * @protected
-	 */
-	protected userFromAccessToken(accessToken: string) {
-		try {
-			const parts = accessToken.split(".");
-			if (parts.length !== 3) {
-				return;
-			}
+	protected async getUserProfile(
+		authProvider: AuthProvider,
+		tokens: Tokens,
+	): Promise<UserProfile> {
+		console.log(tokens);
 
-			const payload = parts[1];
-			const decoded = JSON.parse(atob(payload));
-			if (!decoded.sub) {
-				return;
-			}
-
-			return {
-				id: decoded.sub,
-				name: decoded.name,
-				email: decoded.email,
-				picture: decoded.picture,
-				// organization
-				// ...
-			};
-		} catch (e) {
-			this.log.warn(e, "Failed to decode access token");
+		if (authProvider.oauth?.user) {
+			return authProvider.oauth.user(tokens);
 		}
+
+		const token = tokens.id_token ?? tokens.access_token;
+		if (!token) {
+			throw new SecurityError("No access token or ID token found");
+		}
+
+		const payload = token.split(".")[1];
+		const decoded = JSON.parse(atob(payload));
+
+		if (!decoded.sub) {
+			throw new SecurityError("No user ID found in token");
+		}
+
+		if (authProvider.profile) {
+			return authProvider.profile(decoded);
+		}
+
+		// generic jwt to profile mapping
+
+		return {
+			id: String(decoded.sub),
+			name: decoded.name,
+			email: decoded.email,
+			picture: decoded.picture,
+			// organizations
+			// ...
+		};
 	}
 
 	public readonly logout = $route({
@@ -355,7 +415,7 @@ export class ReactAuthProvider {
 		},
 		handler: async ({ query, reply }) => {
 			const redirect = query.redirect ?? "/";
-			const { client, logoutUri } = await this.provider(query.provider);
+			const { config, logoutUri, oauth } = await this.provider(query.provider);
 			const tokens = this.tokens.get();
 			if (!tokens?.access_token) {
 				reply.redirect(redirect);
@@ -367,9 +427,15 @@ export class ReactAuthProvider {
 			this.tokens.del();
 			this.user.del();
 
-			if (!client.serverMetadata().end_session_endpoint) {
+			if (oauth) {
+				// for now, we only support logout for OIDC
+				reply.redirect(redirect);
+				return;
+			}
+
+			if (!config.serverMetadata().end_session_endpoint) {
 				await tokenRevocation(
-					client,
+					config,
 					tokens?.refresh_token ?? tokens.access_token,
 				);
 				reply.redirect(redirect);
@@ -388,7 +454,7 @@ export class ReactAuthProvider {
 				return;
 			}
 
-			reply.redirect(buildEndSessionUrl(client, params).toString());
+			reply.redirect(buildEndSessionUrl(config, params).toString());
 		},
 	});
 
@@ -403,10 +469,7 @@ export class ReactAuthProvider {
 			if (!authProvider) {
 				throw new BadRequestError("Client name is required");
 			}
-			return {
-				...authProvider,
-				client: await authProvider.client.get(),
-			};
+			return authProvider;
 		}
 
 		const authProvider = this.authProviders.find(
@@ -417,39 +480,7 @@ export class ReactAuthProvider {
 			throw new BadRequestError(`Client ${name} not found`);
 		}
 
-		await authProvider.client.get();
-
-		return {
-			...authProvider,
-			client: await authProvider.client.get(),
-		};
-	}
-
-	/**
-	 *
-	 * @param file
-	 * @protected
-	 */
-	protected isViteFile(file: string) {
-		const [pathname] = file.split("?");
-
-		// swagger
-		if (pathname.startsWith("/docs")) {
-			return false;
-		}
-
-		// static assets
-		if (pathname.match(/\.\w{2,5}$/)) {
-			return true;
-		}
-
-		// vite internal files
-		if (pathname.startsWith("/@")) {
-			return true;
-		}
-
-		// our backend files
-		return false;
+		return authProvider;
 	}
 }
 
@@ -466,16 +497,19 @@ export interface SessionTokens {
 export interface AuthProvider {
 	name: string;
 	redirectUri: string;
-	client: {
-		get: () => Promise<Configuration>;
-	};
+	scope?: string;
 	fallback?: () => Async<AccessToken>;
 	useIdToken?: boolean;
 	logoutUri?: string;
+	config: Configuration;
+	oidc?: OidcOptions;
+	oauth?: OAuthOptions;
+	profile?: (raw: any) => Async<UserProfile>;
 }
 
-export interface ReactUser {
+export interface UserProfile {
 	id: string;
 	name?: string;
 	email?: string;
+	picture?: string;
 }

@@ -1,5 +1,5 @@
 import { Flex, Text, Title } from "@mantine/core";
-import type { Blog } from "../../Blog.ts";
+import type { AppRouter } from "../../AppRouter.ts";
 import Go from "../shared/Go.tsx";
 
 const NotFound = () => {
@@ -17,7 +17,7 @@ const NotFound = () => {
 			<Text size={"xl"} c={"dimmed"}>
 				The page you are looking for does not exist.
 			</Text>
-			<Go<Blog> to={"home"}>Take me back to the homepage</Go>
+			<Go<AppRouter> to={"home"}>Take me back to the homepage</Go>
 		</Flex>
 	);
 };

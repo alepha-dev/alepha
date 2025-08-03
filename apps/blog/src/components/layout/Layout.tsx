@@ -54,12 +54,12 @@ const Layout = () => {
 							<Flex p={"md"} justify={"space-between"} align={"center"}>
 								<Flex flex={1} justify={"flex-start"}>
 									<Text size={"xs"} c={"dimmed"}>
-										Alepha.js Blog
+										Alepha Blog
 									</Text>
 								</Flex>
 								<Flex justify={"flex-end"}>
 									<Text size={"xs"} c={"dimmed"}>
-										Made with ❤️ by Alepha.js
+										Made with ❤️ by Alepha
 									</Text>
 								</Flex>
 							</Flex>

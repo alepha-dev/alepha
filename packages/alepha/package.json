@@ -52,13 +52,12 @@
 		"@alepha/server-security": "0.9.2",
 		"@alepha/server-static": "0.9.2",
 		"@alepha/server-swagger": "0.9.2",
-		"@alepha/testing": "0.9.2",
 		"@alepha/topic": "0.9.2",
 		"@alepha/topic-redis": "0.9.2",
 		"@alepha/vite": "0.9.2"
 	},
 	"devDependencies": {
-		"tsdown": "^0.13.0"
+		"tsdown": "^0.13.2"
 	},
 	"scripts": {
 		"build": "node build.ts"

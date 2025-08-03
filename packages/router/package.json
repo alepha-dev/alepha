@@ -10,7 +10,7 @@
 		"src"
 	],
 	"devDependencies": {
-		"tsdown": "^0.13.0",
+		"tsdown": "^0.13.2",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {

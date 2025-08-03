@@ -1,28 +1,24 @@
+import { $inject } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { $head } from "@alepha/react-head";
-import Home from "./Home.tsx";
+import { I18n } from "./services/I18n.ts";
+import { Theme } from "./services/Theme.ts";
 
 export class App {
-	head = $head({
-		title: "Roadmap",
-		meta: [
-			{
-				name: "description",
-				content: "Roadmap application built with Alepha.",
+	i18n = $inject(I18n);
+	theme = $inject(Theme);
+
+	head = $head(() => {
+		return {
+			title: "Roadmap",
+			bodyAttributes: {
+				class: this.theme.getColorSchemeClass(),
 			},
-			{
-				name: "theme-color",
-				content: "#ffffff",
-			},
-			{
-				name: "author",
-				content: "Alepha Team",
-			},
-		],
+		};
 	});
 
 	home = $page({
 		path: "/",
-		component: Home,
+		lazy: () => import("./components/Home.tsx"),
 	});
 }
