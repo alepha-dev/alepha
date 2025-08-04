@@ -30,6 +30,18 @@ export class DrizzleKitProvider {
 		);
 	}
 
+	public async setPgSchema(provider: PostgresProvider): Promise<void> {
+		if (!provider.schema || provider.schema === "public") {
+			return; // no need to set schema if it's public or not defined
+		}
+		const repositories = this.repositoryProvider.getRepositories(provider);
+
+		for (const repository of repositories) {
+			const table = (repository as any).options.table;
+			table[(Table as any).Symbol.Schema] = provider.schema; // set pgSchema manually
+		}
+	}
+
 	/**
 	 * Try to generate migrations from scratch based on the models.
 	 * Then, execute the migrations.
@@ -78,10 +90,12 @@ export class DrizzleKitProvider {
 		const tables: Record<string, any> = {};
 
 		for (const repository of repositories) {
+			// extract TypeBox schema and convert it to SQLite columns
 			const table = sqliteTable(
 				repository.tableName,
 				schemaToSqliteColumns(repository.schema) as any,
 			);
+			// then, swap the PG Table with the SQLite one (yes)
 			(repository as any).options.table = table;
 			tables[repository.tableName] = table;
 		}
@@ -94,11 +108,12 @@ export class DrizzleKitProvider {
 
 			for (const statement of statements) {
 				if ("run" in provider.db && typeof provider.db.run === "function") {
-					await provider.db.run(
-						sql.raw(
-							statement.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"),
-						),
+					const statementFixed = statement.replace(
+						"CREATE TABLE",
+						"CREATE TABLE IF NOT EXISTS",
 					);
+
+					await provider.db.run(sql.raw(statementFixed));
 				}
 			}
 		}

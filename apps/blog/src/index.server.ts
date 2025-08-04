@@ -5,11 +5,7 @@ import { AppRouter } from "./AppRouter.ts";
 import { PostController } from "./controllers/PostController.ts";
 import { Sec } from "./providers/Sec.ts";
 
-const app = Alepha.create({
-	env: {
-		DATABASE_URL: "sqlite://data/db.sqlite",
-	},
-});
+const app = Alepha.create();
 
 app.with(AlephaReactAuth);
 app.with(AlephaServerSecurity);

@@ -1,4 +1,8 @@
-export class HttpError extends Error {
+import { AlephaError } from "@alepha/core";
+
+export class HttpError extends AlephaError {
+	public name = "HttpError";
+
 	static toJSON(error: HttpError) {
 		if (error.reason) {
 			return {

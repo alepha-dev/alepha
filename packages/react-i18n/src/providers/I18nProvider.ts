@@ -133,7 +133,7 @@ export class I18nProvider {
 	protected render(item: string, args: string[]): string {
 		let result = item;
 		for (let i = 0; i < args.length; i++) {
-			result = result.replace(`$${i}`, args[i]);
+			result = result.replace(`$${i + 1}`, args[i]);
 		}
 		return result;
 	}

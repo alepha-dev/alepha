@@ -7,7 +7,26 @@ import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
 
+export interface NodeSqliteProviderOptions {
+	/**
+	 * Sqlite database file path.
+	 * Set to `:memory:` to use an in-memory database.
+	 *
+	 * @default this.env.DATABASE_URL || ":memory:"
+	 */
+	path: string;
+}
+
+/**
+ * Add a fake support for SQLite in Node.js based on PostgresProvider (yes)
+ *
+ * This is NOT a real SQLite provider, it's a workaround to use SQLite with Drizzle ORM.
+ * This is NOT recommended for production use.
+ */
 export class NodeSqliteProvider extends PostgresProvider {
+	public readonly dialect = "sqlite";
+	public readonly schema = "public";
+
 	protected readonly kit = $inject(DrizzleKitProvider);
 	protected readonly log = $logger();
 	protected readonly env = $env(
@@ -16,10 +35,8 @@ export class NodeSqliteProvider extends PostgresProvider {
 		}),
 	);
 
-	public readonly dialect = "sqlite";
-	public readonly schema = "public";
-
-	public options = {
+	public sqlite!: DatabaseSync;
+	public options: NodeSqliteProviderOptions = {
 		path: this.env.DATABASE_URL || ":memory:",
 	};
 
@@ -44,8 +61,6 @@ export class NodeSqliteProvider extends PostgresProvider {
 		const rows = statement.all(...(params as any[]));
 		return this.mapResult(rows, schema);
 	}
-
-	public sqlite!: DatabaseSync;
 
 	public readonly db = drizzle(async (sql, params, method) => {
 		const statement = this.sqlite.prepare(sql);
@@ -92,4 +107,15 @@ export class NodeSqliteProvider extends PostgresProvider {
 			this.log.info("Sqlite OK");
 		},
 	});
+
+	protected mapResult<T extends TObject = any>(
+		result: Array<any>,
+		schema?: T,
+	): Array<T extends TObject ? Static<T> : any> {
+		if (!schema) {
+			return result;
+		}
+
+		return result.map((row) => this.alepha.parse(schema, row)) as Array<any>;
+	}
 }

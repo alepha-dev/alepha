@@ -15,6 +15,14 @@ export interface ViteAlephaBuildVercelOptions {
 	 * @default "public"
 	 */
 	clientDir?: string;
+
+	config?: VercelConfig;
+}
+
+export interface VercelConfig {
+	projectName?: string;
+	orgId?: string;
+	projectId?: string;
 }
 
 export async function viteAlephaBuildVercel(
@@ -58,7 +66,6 @@ export default async function (req, res) {
 				`${distDir}/vercel.json`,
 				JSON.stringify(
 					{
-						// name: projectName,
 						rewrites: [
 							{
 								source: "/(.*)",
@@ -75,8 +82,10 @@ export default async function (req, res) {
 			);
 
 			// generate .vercel/project.json if VERCEL_PROJECT_ID and VERCEL_ORG_ID are set
-			const projectId = env.VERCEL_PROJECT_ID;
-			const orgId = env.VERCEL_ORG_ID;
+			const projectId = env.VERCEL_PROJECT_ID ?? opts.config?.projectId;
+			const projectName = env.VERCEL_PROJECT_NAME ?? opts.config?.projectName;
+			const orgId = env.VERCEL_ORG_ID ?? opts.config?.orgId;
+
 			if (projectId && orgId) {
 				try {
 					mkdirSync(`${distDir}/.vercel`, { recursive: true });
@@ -89,6 +98,7 @@ export default async function (req, res) {
 					JSON.stringify(
 						{
 							projectId,
+							projectName,
 							orgId,
 						},
 						null,

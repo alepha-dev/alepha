@@ -1,5 +1,5 @@
 import type { State } from "@alepha/core";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAlepha } from "./useAlepha.ts";
 
 /**
@@ -7,8 +7,16 @@ import { useAlepha } from "./useAlepha.ts";
  */
 export const useStore = <Key extends keyof State>(
 	key: Key,
+	defaultValue?: State[Key],
 ): [State[Key], (value: State[Key]) => void] => {
 	const alepha = useAlepha();
+
+	useMemo(() => {
+		if (defaultValue != null && alepha.state(key) == null) {
+			alepha.state(key, defaultValue);
+		}
+	}, [defaultValue]);
+
 	const [state, setState] = useState(alepha.state(key));
 
 	useEffect(() => {

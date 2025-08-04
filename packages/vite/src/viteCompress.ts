@@ -46,8 +46,7 @@ export interface ViteCompressOptions {
 }
 
 export function viteCompress(options: ViteCompressOptions = {}): Plugin {
-	const { disabled = false, filter = /\.(js|mjs|cjs|css|wasm|svg|html)$/ } =
-		options;
+	const { disabled = false, filter = /\.(js|mjs|cjs|css|wasm|svg)$/ } = options;
 
 	return {
 		name: "compress",

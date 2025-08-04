@@ -370,8 +370,6 @@ export class ReactAuthProvider {
 		authProvider: AuthProvider,
 		tokens: Tokens,
 	): Promise<UserProfile> {
-		console.log(tokens);
-
 		if (authProvider.oauth?.user) {
 			return authProvider.oauth.user(tokens);
 		}

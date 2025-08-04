@@ -6,14 +6,17 @@ import {
 	type ViteAlephaBuildDockerOptions,
 	viteAlephaBuildDocker,
 } from "../viteAlephaBuildDocker.ts";
-import { viteAlephaBuildVercel } from "../viteAlephaBuildVercel.ts";
+import {
+	type VercelConfig,
+	viteAlephaBuildVercel,
+} from "../viteAlephaBuildVercel.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildServerOptions {
 	entry: string;
 	distDir: string;
 	clientDir?: string;
-	vercel?: boolean;
+	vercel?: boolean | VercelConfig;
 	docker?: boolean | ViteAlephaBuildDockerOptions;
 	config?: UserConfig;
 }
@@ -23,12 +26,12 @@ export const buildServer = async (opts: BuildServerOptions) => {
 	const plugins: any[] = [];
 
 	if (opts.vercel) {
-		const vercel = typeof opts.vercel === "boolean" ? {} : opts.vercel;
+		const config = typeof opts.vercel === "boolean" ? {} : opts.vercel;
 		plugins.push(
 			viteAlephaBuildVercel({
 				clientDir: opts.clientDir,
 				distDir: opts.distDir,
-				...vercel,
+				config,
 			}),
 		);
 	}
@@ -95,8 +98,8 @@ export const buildServer = async (opts: BuildServerOptions) => {
 	const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
 
 	await writeFile(
-		`${opts.distDir}/index.js`,
-		`${warning}\n${forceProduction}${template}\nimport('./server/${indexFileName}');`.trim(),
+		`${opts.distDir}/index.mjs`,
+		`${warning}\n${forceProduction}${template}\nawait import('./server/${indexFileName}');`.trim(),
 	);
 };
 

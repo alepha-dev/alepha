@@ -18,15 +18,4 @@ export abstract class PostgresProvider {
 		query: SQLLike,
 		schema?: T,
 	): Promise<Array<T extends TObject ? Static<T> : any>>;
-
-	mapResult<T extends TObject = any>(
-		result: Array<any>,
-		schema?: T,
-	): Array<T extends TObject ? Static<T> : any> {
-		if (!schema) {
-			return result;
-		}
-
-		return result.map((row) => this.alepha.parse(schema, row)) as Array<any>;
-	}
 }

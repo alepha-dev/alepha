@@ -24,9 +24,7 @@
 		"start": "node --env-file=.env dist/index.mjs",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:prod": "node --env-file=.env.production scripts/migrate.ts",
-		"vercel:dev": "yarn vercel dev --cwd dist",
-		"vercel:deploy": "yarn build && yarn vercel deploy --cwd dist",
-		"vercel:deploy:prod": "yarn build && yarn vercel deploy --cwd dist --prod",
+		"vercel:deploy": "yarn build && cd dist && yarn vercel deploy --prod",
 		"docker:build": "yarn build && docker compose build"
 	}
 }

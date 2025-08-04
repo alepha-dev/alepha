@@ -5,6 +5,7 @@ import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
 import { extractFirstModuleScriptSrc, prerender } from "./helpers/prerender.ts";
 import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
+import type { VercelConfig } from "./viteAlephaBuildVercel.ts";
 
 export interface ViteAlephaBuildOptions {
 	/**
@@ -26,7 +27,7 @@ export interface ViteAlephaBuildOptions {
 	 *
 	 * @default false
 	 */
-	vercel?: boolean;
+	vercel?: boolean | VercelConfig;
 
 	/**
 	 * If true, the build will be optimized for Docker deployment.

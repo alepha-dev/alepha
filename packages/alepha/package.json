@@ -258,11 +258,6 @@
 			"require": "./server/swagger.cjs",
 			"types": "./server/swagger.d.ts"
 		},
-		"./testing": {
-			"import": "./testing.js",
-			"require": "./testing.cjs",
-			"types": "./testing.d.ts"
-		},
 		"./topic": {
 			"import": "./topic.js",
 			"require": "./topic.cjs",
@@ -318,7 +313,6 @@
 		"server-security",
 		"server-static",
 		"server-swagger",
-		"testing",
 		"topic",
 		"topic-redis",
 		"vite"

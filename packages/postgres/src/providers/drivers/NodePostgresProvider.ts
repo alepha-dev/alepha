@@ -1,9 +1,11 @@
+import { stat } from "node:fs/promises";
 import {
 	$env,
 	$hook,
 	$inject,
 	$logger,
 	Alepha,
+	AlephaError,
 	type Static,
 	t,
 } from "@alepha/core";
@@ -24,26 +26,28 @@ declare module "@alepha/core" {
 }
 
 const envSchema = t.object({
-	PG_HOST: t.optional(t.string()),
-	PG_USERNAME: t.optional(t.string()),
-	PG_DATABASE: t.optional(t.string()),
-	PG_PASSWORD: t.optional(t.string()),
-	PG_PORT: t.optional(t.number()),
-
+	/**
+	 * Main configuration for database connection.
+	 * Accept a string in the format of a Postgres connection URL.
+	 * Example: postgres://user:password@localhost:5432/database
+	 * or
+	 * Example: postgres://user:password@localhost:5432/database?sslmode=require
+	 */
 	DATABASE_URL: t.optional(t.string()),
-	DATABASE_MIGRATIONS_FOLDER: t.string({
-		default: "drizzle",
-	}),
 
 	/**
-	 * The schema to use.
-	 * Accept a string.
+	 * In addition to the DATABASE_URL, you can specify the postgres schema name.
+	 *
+	 * It will monkey patch drizzle tables.
 	 */
 	POSTGRES_SCHEMA: t.optional(t.string()),
 
 	/**
 	 * Synchronize the database schema with the models.
-	 * Accept a boolean or a postgres schema name.
+	 * It uses a custom implementation, it's not related to `drizzle-kit push` command.
+	 * It will generate the migration script and save it to the DB.
+	 *
+	 * This is recommended for development and testing purposes only.
 	 *
 	 * @default false
 	 */
@@ -51,43 +55,65 @@ const envSchema = t.object({
 
 	/**
 	 * Push the schema to the database.
+	 * It's like `drizzle-kit push` command.
+	 * It will introspect the models from DB and generate the SQL statements to create or update the tables.
 	 *
 	 * @default false
 	 */
-	POSTGRES_PUSH_SCHEMA: t.optional(t.boolean()),
-
-	/**
-	 * Reject unauthorized SSL connections.
-	 *
-	 * @default false
-	 */
-	POSTGRES_REJECT_UNAUTHORIZED: t.boolean({ default: false }),
+	POSTGRES_PUSH: t.optional(t.boolean()),
 });
 
-export interface NodePostgresProviderState {
-	client: postgres.Sql;
-	db: PostgresJsDatabase;
+export interface NodePostgresProviderOptions {
+	migrations: MigrationConfig;
+	connection: postgres.Options<any>;
 }
 
 export class NodePostgresProvider extends PostgresProvider {
 	public readonly dialect = "postgres";
 
+	protected readonly sslModes = [
+		"require",
+		"allow",
+		"prefer",
+		"verify-full",
+	] as const;
 	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly kit = $inject(DrizzleKitProvider);
-	protected state?: NodePostgresProviderState;
+	protected client?: postgres.Sql;
+	protected pg?: PostgresJsDatabase;
+
+	public readonly options: NodePostgresProviderOptions = {
+		migrations: this.getMigrationOptions(),
+		connection: this.getClientOptions(),
+	};
 
 	/**
 	 * In testing mode, the schema name will be generated and deleted after the test.
 	 */
-	protected testingSchemaName?: string;
+	protected schemaForTesting?: string;
+
+	/**
+	 * Get Postgres schema.
+	 */
+	public get schema(): string {
+		if (this.schemaForTesting) {
+			return this.schemaForTesting;
+		}
+
+		if (this.env.POSTGRES_SCHEMA) {
+			return this.env.POSTGRES_SCHEMA;
+		}
+
+		return "public";
+	}
 
 	public get db(): PostgresJsDatabase {
-		if (!this.state?.db) {
-			throw new Error("Database not initialized");
+		if (!this.pg) {
+			throw new AlephaError("Database not initialized");
 		}
-		return this.state.db;
+		return this.pg;
 	}
 
 	protected readonly configure = $hook({
@@ -95,14 +121,13 @@ export class NodePostgresProvider extends PostgresProvider {
 		handler: async () => {
 			await this.connect();
 
-			if (this.env.POSTGRES_PUSH_SCHEMA) {
-				// push schema to the database
-				await this.kit.push(this);
-				return;
+			if (this.env.POSTGRES_SCHEMA) {
+				await this.kit.setPgSchema(this);
 			}
 
 			// never migrate in serverless mode (vercel, netlify, ...)
 			const provider = this.alepha.isServerless();
+
 			// except for vite
 			if (!provider || provider === "vite") {
 				try {
@@ -117,30 +142,24 @@ export class NodePostgresProvider extends PostgresProvider {
 	protected readonly stop = $hook({
 		on: "stop",
 		handler: async () => {
-			if (this.alepha.isTest() && this.testingSchemaName) {
+			if (
+				this.alepha.isTest() &&
+				process.env.NODE_ENV === "test" && // just to be sure :-)
+				this.schemaForTesting &&
+				this.schemaForTesting.startsWith("test_")
+			) {
+				this.log.warn(`Deleting test schema '${this.schemaForTesting}' ...`);
+				// I hope that this will never delete a production schema
 				await this.execute(
-					sql`DROP SCHEMA IF EXISTS "${sql.raw(this.testingSchemaName)}" CASCADE`,
+					sql`DROP SCHEMA IF EXISTS "${sql.raw(this.schemaForTesting)}" CASCADE`,
 				);
+				this.log.info(`Test schema '${this.schemaForTesting}' deleted`);
 			}
 
+			// close the connection
 			await this.close();
 		},
 	});
-
-	/**
-	 * Get Postgres schema.
-	 */
-	public get schema(): string {
-		if (this.testingSchemaName) {
-			return this.testingSchemaName;
-		}
-
-		if (this.env.POSTGRES_SCHEMA) {
-			return this.env.POSTGRES_SCHEMA;
-		}
-
-		return "public";
-	}
 
 	public async execute<T extends TObject = any>(
 		query: SQLLike,
@@ -154,17 +173,33 @@ export class NodePostgresProvider extends PostgresProvider {
 
 	public async connect(): Promise<void> {
 		this.log.debug("Connect ..");
-		const state = this.createClient();
-		await state.client`SELECT 1`; // test connection
-		this.state = state;
+
+		const client = postgres(this.getClientOptions());
+
+		await client`SELECT 1`; // test connection
+
+		this.client = client;
+		this.pg = drizzle(client, {
+			logger: {
+				// forward logs
+				logQuery: (query: string, params: unknown[]) => {
+					this.log.trace({ params }, query);
+				},
+			},
+		});
+
 		this.log.info("Connection OK");
 	}
 
 	public async close(): Promise<void> {
-		if (this.state?.client) {
+		if (this.client) {
 			this.log.debug("Close...");
-			await this.state.client.end();
-			this.state = undefined;
+
+			await this.client.end();
+
+			this.client = undefined;
+			this.pg = undefined;
+
 			this.log.info("Connection closed");
 		}
 	}
@@ -175,30 +210,30 @@ export class NodePostgresProvider extends PostgresProvider {
 			const migration = this.getMigrationOptions();
 
 			if (!this.alepha.isProduction()) {
-				// unit testing mode
+				// -------------------------------------------------------------------------------------------------------------
+				// Testing environment
+				// -------------------------------------------------------------------------------------------------------------
 				if (this.alepha.isTest()) {
-					// when you are testing with a specific schema
-					if (schema) {
-						await this.kit.synchronize(this, schema);
-						return;
-					}
-
-					// when you are testing without a specific schema, just create a random schema
-					this.testingSchemaName = `test_${Date.now()}_${Math.floor(Math.random() * 100)}`;
-					await this.kit.synchronize(this, this.testingSchemaName);
+					this.schemaForTesting = this.generateTestSchemaName();
+					await this.kit.synchronize(this, this.schema);
 					return;
 				}
 
-				// development mode
+				// -------------------------------------------------------------------------------------------------------------
+				// Development environment
+				// -------------------------------------------------------------------------------------------------------------
+
+				// synchronize is TRUE in development mode
 				if (this.env.POSTGRES_SYNCHRONIZE !== false) {
 					try {
-						// silently run migrations
+						// 1. silently run migrations
 						await migrate(this.db, migration);
-					} catch (_ignore) {
+					} catch (_) {
 						// ignore errors
 					}
 
-					await this.kit.synchronize(this, schema ?? "public");
+					// 2. synchronize the database schema with the models
+					await this.kit.synchronize(this, this.schema);
 					return;
 				}
 			}
@@ -207,13 +242,18 @@ export class NodePostgresProvider extends PostgresProvider {
 				`Migrate from '${migration.migrationsFolder}' directory ...`,
 			);
 
-			await migrate(this.db, migration);
+			const exists = await stat(migration.migrationsFolder).catch(() => false);
+			if (!exists) {
+				this.log.info("Migration SKIPPED - no migrations found");
+				return;
+			}
 
+			await migrate(this.db, migration);
 			this.log.info("Migration OK");
 		},
 	});
 
-	protected createClient(): NodePostgresProviderState {
+	protected createClient() {
 		const client = postgres(this.getClientOptions());
 		const db = drizzle(client, {
 			logger: {
@@ -227,47 +267,83 @@ export class NodePostgresProvider extends PostgresProvider {
 		return { client, db };
 	}
 
+	/**
+	 * Generate a minimal migration configuration.
+	 */
 	protected getMigrationOptions(): MigrationConfig {
 		return {
-			migrationsFolder: this.env.DATABASE_MIGRATIONS_FOLDER,
+			migrationsFolder: "drizzle",
 		};
 	}
 
+	/**
+	 * Map the DATABASE_URL to postgres client options.
+	 */
 	protected getClientOptions(): postgres.Options<any> {
-		let url: URL | undefined;
-		if (this.env.DATABASE_URL) {
-			url = new URL(this.env.DATABASE_URL);
+		if (!this.env.DATABASE_URL) {
+			throw new AlephaError("DATABASE_URL is not defined in the environment");
 		}
 
+		const url = new URL(this.env.DATABASE_URL);
+
 		return {
-			host: this.env.PG_HOST || url?.hostname,
-			user: this.env.PG_USERNAME || url?.username,
-			database: this.env.PG_DATABASE || url?.pathname.replace("/", ""),
-			password: this.env.PG_PASSWORD || url?.password,
-			port: Number(this.env.PG_PORT || url?.port || 5432),
-			ssl:
-				this.ssl(url) ??
-				(this.env.POSTGRES_REJECT_UNAUTHORIZED
-					? {
-							rejectUnauthorized: false,
-						}
-					: undefined),
+			host: url.hostname,
+			user: url.username,
+			database: url.pathname.replace("/", ""),
+			password: url.password,
+			port: Number(url.port || 5432),
+			ssl: this.ssl(url),
 			onnotice: () => {
 				// let drizzle handle logs
 			},
 		};
 	}
 
-	protected sslModes = ["require", "allow", "prefer", "verify-full"] as const;
-
 	protected ssl(
-		url: URL | undefined,
+		url: URL,
 	): "require" | "allow" | "prefer" | "verify-full" | undefined {
-		const mode = url?.searchParams.get("sslmode");
-		for (const m of this.sslModes) {
-			if (mode === m) {
-				return m;
+		const mode = url.searchParams.get("sslmode");
+		for (const it of this.sslModes) {
+			if (mode === it) {
+				return it;
 			}
 		}
+	}
+
+	/**
+	 * For testing purposes, generate a unique schema name.
+	 * The schema name will be generated based on the current date and time.
+	 * It will be in the format of `test_YYYYMMDD_HHMMSS_randomSuffix`.
+	 *
+	 * TODO: investigate for adding the test file name to the schema name if possible.
+	 * TODO: options to skip deletion on failure, in order to inspect the schema?
+	 */
+	protected generateTestSchemaName(): string {
+		const pad = (n: number) => n.toString().padStart(2, "0");
+
+		const now = new Date();
+		const year = now.getUTCFullYear();
+		const month = pad(now.getUTCMonth() + 1);
+		const day = pad(now.getUTCDate());
+		const hours = pad(now.getUTCHours());
+		const minutes = pad(now.getUTCMinutes());
+		const seconds = pad(now.getUTCSeconds());
+
+		const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+
+		const randomSuffix = Math.random().toString(36).slice(2, 6); // 4 alphanumeric chars
+
+		return `test_${timestamp}_${randomSuffix}`;
+	}
+
+	protected mapResult<T extends TObject = any>(
+		result: Array<any>,
+		schema?: T,
+	): Array<T extends TObject ? Static<T> : any> {
+		if (!schema) {
+			return result;
+		}
+
+		return result.map((row) => this.alepha.parse(schema, row)) as Array<any>;
 	}
 }
