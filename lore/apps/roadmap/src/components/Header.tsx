@@ -15,6 +15,7 @@ import type TaskApi from "../api/TaskApi.ts";
 import type { I18n } from "../services/I18n.ts";
 import { Theme } from "../services/Theme.ts";
 import TaskCreate from "./TaskCreate.tsx";
+import Action from "./ui/Action.tsx";
 
 const Header = () => {
 	const theme = useInject(Theme);
@@ -39,7 +40,8 @@ const Header = () => {
 						<Text large>{tr("roadmap.title")}</Text>
 					</Flex>
 				</Flex>
-				<Flex gap2 center>
+				<Flex gap1 center>
+					<CreateTaskButton />
 					<Popover
 						position={"bottom"}
 						content={
@@ -60,8 +62,6 @@ const Header = () => {
 						<Button icon={"translate"} variant={"minimal"} />
 					</Popover>
 					<AuthButton />
-
-					<AddTask />
 					<Button
 						icon={"moon"}
 						variant={"minimal"}
@@ -77,16 +77,16 @@ const Header = () => {
 
 export default Header;
 
-const AddTask = () => {
+const CreateTaskButton = () => {
 	const [showDialog, setShowDialog] = useState(false);
 	const { tr } = useI18n<I18n, "en">();
 	const client = useClient<TaskApi>();
 	return (
 		<Flex>
 			<Button
+				intent={"success"}
 				disabled={!client.createTask.can()}
 				icon="add"
-				variant={"outlined"}
 				onClick={() => setShowDialog(true)}
 			>
 				{tr("roadmap.header.addTask")}
@@ -129,18 +129,38 @@ const AddTask = () => {
 const AuthButton = () => {
 	const auth = useAuth();
 
-	return (
-		<Button
-			icon={auth.user ? "log-out" : "log-in"}
-			onClick={() => {
-				if (auth.user) {
-					auth.logout();
-				} else {
-					auth.login();
+	if (auth.user) {
+		return (
+			<Popover
+				minimal
+				position={"bottom"}
+				content={
+					<Menu>
+						<MenuItem
+							text="Logout"
+							icon="log-out"
+							onClick={() => auth.logout()}
+						/>
+					</Menu>
 				}
+			>
+				<Action
+					variant={"minimal"}
+					icon="person"
+					text={auth.user.name}
+					endIcon={"caret-down"}
+				/>
+			</Popover>
+		);
+	}
+
+	return (
+		<Action
+			icon={"log-in"}
+			text={"Login"}
+			onClick={() => {
+				auth.login();
 			}}
-		>
-			{auth.user ? auth.user.name : "Login"}
-		</Button>
+		/>
 	);
 };
