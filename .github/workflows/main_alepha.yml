@@ -146,4 +146,4 @@ jobs:
         run: cd apps/roadmap && yarn build
 
       - name: Deploy to Vercel
-        run: yarn vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --confirm
+        run: cd apps/roadmap/dist && yarn vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --confirm
