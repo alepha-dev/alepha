@@ -1,29 +1,25 @@
+import { useAlepha, useClient } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Collapse, Icon, Tag } from "@blueprintjs/core";
 import { type ReactNode, useState } from "react";
+import type TaskApi from "../api/TaskApi.ts";
+import type { Task } from "../providers/Db.ts";
 import type { I18n } from "../services/I18n.ts";
 import Action from "./ui/Action.tsx";
-
-export interface Task {
-	id: number;
-	title: string;
-	description: string;
-	started: boolean;
-	package: string;
-	level: number;
-	createdAt: Date;
-	priority: "optional" | "low" | "medium" | "high";
-}
 
 const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
 	const { tr } = useI18n<I18n, "en">();
 	const [showDetails, setShowDetails] = useState(false);
+	const taskApi = useClient<TaskApi>();
+	const alepha = useAlepha();
 
 	const stars: ReactNode[] = [];
 	for (let i = 0; i < 5; i++) {
-		stars.push(<Icon key={i} icon={task.level > i ? "star" : "star-empty"} />);
+		stars.push(
+			<Icon key={i} icon={task.complexity > i ? "star" : "star-empty"} />,
+		);
 	}
 
 	return (
@@ -68,18 +64,32 @@ const TaskItem = (props: { task: Task }) => {
 						variant={"minimal"}
 						intent={"success"}
 						title={"Validate Task"}
+						disabled={!taskApi.deleteTask.can()}
+						onClick={async () => {
+							await taskApi.deleteTask({
+								params: { id: task.id },
+							});
+							alepha.state(
+								"tasks",
+								(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
+							);
+						}}
 					/>
 					<Action
-						icon={"edit"}
-						variant={"minimal"}
-						intent={"none"}
-						title={"Edit Task"}
-					/>
-					<Action
+						disabled={!taskApi.deleteTask.can()}
 						icon={"cross"}
 						variant={"minimal"}
 						intent={"danger"}
 						title={"Delete Task"}
+						onClick={async () => {
+							await taskApi.deleteTask({
+								params: { id: task.id },
+							});
+							alepha.state(
+								"tasks",
+								(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
+							);
+						}}
 					/>
 				</Flex>
 			</Flex>
@@ -94,8 +104,8 @@ const TaskItem = (props: { task: Task }) => {
 						<Flex fill />
 						<Text small muted>
 							{tr("roadmap.item.createdAt", [
-								task.createdAt.toISOString().slice(0, 10),
-								task.createdAt.toISOString().slice(11, 19),
+								task.createdAt.slice(0, 10),
+								task.createdAt.slice(11, 16),
 							])}
 						</Text>
 					</Flex>

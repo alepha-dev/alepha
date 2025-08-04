@@ -4,12 +4,14 @@
 	"devDependencies": {
 		"@vitejs/plugin-react-oxc": "^0.3.0",
 		"drizzle-kit": "0.31.4",
-		"rolldown-vite": "^7.0.12"
+		"rolldown-vite": "^7.0.12",
+		"vercel": "^44.7.0"
 	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"start": "node dist"
+		"start": "node --env-file=.env dist/index.mjs",
+		"deploy": "cd dist && vercel --prod"
 	},
 	"dependencies": {
 		"@blueprintjs/core": "^6.1.0"

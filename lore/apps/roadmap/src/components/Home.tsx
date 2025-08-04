@@ -1,35 +1,23 @@
+import { useStore } from "@alepha/react";
 import { Flex } from "@alepha/react-flex";
 import { BlueprintProvider, Button } from "@blueprintjs/core";
+import type { Task } from "../providers/Db.ts";
 import Header from "./Header.tsx";
-import type { Task } from "./TaskItem.tsx";
-import TaskItem from "./TaskItem.tsx";
+import TaskList from "./TaskList.tsx";
 
-const tasks: Task[] = [
-	{
-		id: 1,
-		package: "Roadmap",
-		title: "Deploy to Vercel",
-		description:
-			"Deploy the roadmap application to Vercel for public access. Editing roadmap via internet is a must-have feature.",
-		started: false,
-		level: 2,
-		createdAt: new Date("2023-10-01T12:00:00Z"),
-		priority: "high",
-	},
-	{
-		id: 2,
-		package: "React Head",
-		title: "useHead()",
-		description:
-			"Implement useHead() hook to manage document head in React applications. This will allow dynamic updates to the document title and meta tags.",
-		started: false,
-		level: 3,
-		createdAt: new Date("2023-10-02T12:00:00Z"),
-		priority: "low",
-	},
-];
+export interface HomeProps {
+	tasks: Task[];
+}
 
-const Home = () => {
+declare module "@alepha/core" {
+	interface State {
+		tasks?: Task[];
+	}
+}
+
+const Home = (props: HomeProps) => {
+	const [tasks = []] = useStore("tasks", props.tasks);
+
 	return (
 		<BlueprintProvider>
 			<Flex col layout>
@@ -48,15 +36,13 @@ const Home = () => {
 					>
 						<Flex fill></Flex>
 						<Flex pad2 col>
-							<Button variant={"minimal"} icon={"export"} size={"large"} />
-							<Button variant={"minimal"} icon={"input"} size={"large"} />
-							<Button variant={"minimal"} icon={"menu"} size={"large"} />
+							<Button variant={"minimal"} icon={"glass"} size={"large"} />
+							<Button variant={"minimal"} icon={"shield"} size={"large"} />
+							<Button variant={"minimal"} icon={"range-ring"} size={"large"} />
 						</Flex>
 					</Flex>
 					<Flex pad1 col style={{ width: 1000, height: "100%" }}>
-						{tasks.map((task) => (
-							<TaskItem task={task} key={task.id} />
-						))}
+						<TaskList tasks={tasks} />
 					</Flex>
 					<Flex
 						fill

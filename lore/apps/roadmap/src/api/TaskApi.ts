@@ -1,16 +1,43 @@
-import { t } from "@alepha/core";
+import { $inject, $logger, t } from "@alepha/core";
 import { $action } from "@alepha/server";
+import { Db, tasks } from "../providers/Db.ts";
 
 class TaskApi {
-	ping = $action({
-		description: "Ping the task API",
+	log = $logger();
+	db = $inject(Db);
+
+	getTasks = $action({
+		group: "read",
 		schema: {
-			response: t.object({
-				message: t.string(),
-			}),
+			response: t.array(tasks.$schema),
 		},
 		handler: async () => {
-			return { message: "pong" };
+			return this.db.tasks.find();
+		},
+	});
+
+	createTask = $action({
+		group: "write",
+		schema: {
+			body: tasks.$insertSchema,
+			response: tasks.$schema,
+		},
+		handler: async ({ body }) => {
+			return await this.db.tasks.create(body);
+		},
+	});
+
+	deleteTask = $action({
+		group: "write",
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: t.boolean(),
+		},
+		handler: async ({ params }) => {
+			await this.db.tasks.deleteById(params.id);
+			return true;
 		},
 	});
 }
