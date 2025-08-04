@@ -111,7 +111,7 @@ export async function viteAlephaBuild(
 				await prerender({
 					template: template,
 					dist: `${distDir}/${clientDir}`,
-					entry: `${distDir}/index.js`,
+					entry: `${distDir}/index.mjs`,
 					compress: buildClientOptions.precompress,
 				});
 			}
