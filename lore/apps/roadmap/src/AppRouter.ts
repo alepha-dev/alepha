@@ -1,7 +1,9 @@
-import { $inject, t } from "@alepha/core";
-import { $page } from "@alepha/react";
+import { $hook, $inject, t } from "@alepha/core";
+import { $page, NotFound, Redirection } from "@alepha/react";
 import { $head } from "@alepha/react-head";
+import { HttpError, isHttpError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
+import { createElement } from "react";
 import type TaskApi from "./api/TaskApi.ts";
 import { Theme } from "./services/Theme.ts";
 
@@ -33,10 +35,9 @@ export class AppRouter {
 			};
 		},
 		errorHandler: (error) => {
-			if ("status" in error && error.status === 404) {
-				return "NotFound";
+			if (HttpError.is(error, 401)) {
+				return new Redirection("/"); // redirect to home if unauthorized (and soon /login)
 			}
-			throw error; // rethrow other errors
 		},
 	});
 
@@ -58,6 +59,11 @@ export class AppRouter {
 				params,
 			});
 			return { task };
+		},
+		errorHandler: (error) => {
+			if (HttpError.is(error, 404)) {
+				return createElement(NotFound, { style: { height: "100%" } });
+			}
 		},
 	});
 }
