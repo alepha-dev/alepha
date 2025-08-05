@@ -3,6 +3,7 @@
 
 @import "@alepha/react-flex";
 @import "components/shared/StupidLogo.css";
+@import "components/shared/ExperienceBar.css";
 
 :root {
 	--color-gold: #db9b05;

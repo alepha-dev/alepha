@@ -7,7 +7,7 @@ const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
 
 	const router = useRouter();
-	const { isActive, anchorProps } = useActive(`/q/${task.id}`);
+	const { isActive, isPending, anchorProps } = useActive(`/q/${task.id}`);
 
 	const renderComplexity = (complexity: number) => {
 		if (complexity === 5)
@@ -58,22 +58,25 @@ const TaskItem = (props: { task: Task }) => {
 		);
 	};
 
-	const flexProps = isActive
-		? {
-				bordered: true,
-				shadow: true,
-				"aria-current": "page",
-				"data-active": true,
-				style: {
-					padding: "2px 4px",
-				},
-			}
-		: {
-				style: {
-					padding: "2px 4px",
-					border: "1px solid transparent",
-				},
-			};
+	const flexProps =
+		isActive || isPending
+			? {
+					bordered: true,
+					shadow: true,
+					"aria-current": "page",
+					"data-active": true,
+					style: {
+						padding: "2px 4px",
+						borderLeftColor: "var(--text-color)",
+						borderRightColor: "var(--text-color)",
+					},
+				}
+			: {
+					style: {
+						padding: "2px 4px",
+						border: "1px solid transparent",
+					},
+				};
 
 	return (
 		<Flex

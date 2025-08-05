@@ -3,6 +3,7 @@ import { Flex } from "@alepha/react-flex";
 import { BlueprintProvider } from "@blueprintjs/core";
 import type { Task } from "../providers/Db.ts";
 import QuestLog from "./home/QuestLog.tsx";
+import ExperienceBar from "./shared/ExperienceBar.tsx";
 import Header from "./shared/Header.tsx";
 
 export interface HomeProps {
@@ -40,7 +41,7 @@ const Layout = (props: HomeProps) => {
 						}}
 					></Flex>
 				</Flex>
-				<Flex pad1 bordered />
+				<ExperienceBar />
 			</Flex>
 		</BlueprintProvider>
 	);
