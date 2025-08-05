@@ -4,7 +4,11 @@ import { AlephaServerSecurity } from "@alepha/server-security";
 import { FocusStyleManager } from "@blueprintjs/core";
 import { AppRouter } from "./AppRouter.ts";
 
-const alepha = Alepha.create();
+const alepha = Alepha.create({
+	env: {
+		LOG_LEVEL: "trace",
+	},
+});
 
 alepha.with(AlephaServerSecurity);
 alepha.with(AlephaReactAuth);

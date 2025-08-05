@@ -21,14 +21,14 @@ const Layout = (props: HomeProps) => {
 	return (
 		<BlueprintProvider>
 			<Flex col layout>
-				<Header />
+				<Header tasks={tasks} />
 				<Flex fill bg overflow>
-					<Flex fill>
+					<Flex fill visible={"md"}>
 						<Flex pad1 fill>
 							<QuestLog tasks={tasks} />
 						</Flex>
 					</Flex>
-					<Flex pad1 col style={{ width: 1000, height: "100%" }}>
+					<Flex col className={"container"}>
 						<NestedView />
 					</Flex>
 					<Flex

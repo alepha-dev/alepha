@@ -1,6 +1,21 @@
-@import "@blueprintjs/core";
 @import "@blueprintjs/icons";
+@import "@blueprintjs/core";
+
 @import "@alepha/react-flex";
+@import "components/shared/StupidLogo.css";
+
+:root {
+	--color-gold: #db9b05;
+	--color-silver: #b9b6b6ff;
+	--color-high-priority: #d61b1b;
+}
+
+body {
+	font-family:
+		"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+		"Roboto", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+		"Segoe UI Emoji";
+}
 
 pre {
 	margin: 0;
@@ -19,7 +34,30 @@ pre {
 	:root {
 		--spacing: 4px;
 	}
+}
+
+@media (max-width: 1408px) {
 	pre {
 		white-space: pre-wrap;
+	}
+}
+
+/* ------------------------------------------------------------------------------------------------------------------- */
+
+.container {
+	height: 100%;
+	width: 1000px;
+	margin: 0 auto;
+}
+
+@media (max-width: 990px) {
+	.container {
+		width: 800px;
+	}
+}
+
+@media (max-width: 768px) {
+	.container {
+		max-width: 100%;
 	}
 }

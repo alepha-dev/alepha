@@ -5,16 +5,16 @@ import { $realm } from "@alepha/security";
 class Security {
 	env = $env(
 		t.object({
-			BATTLE_NET_CLIENT_ID: t.string(),
-			BATTLE_NET_CLIENT_SECRET: t.string(),
-			ADMIN_NAME: t.string(),
+			GOOGLE_CLIENT_ID: t.string(),
+			GOOGLE_CLIENT_SECRET: t.string(),
+			ADMIN_USER_ID: t.string(),
 		}),
 	);
 
 	onCreateUser = $hook({
 		on: "security:user:created",
 		handler: ({ user }) => {
-			if (user.name === this.env.ADMIN_NAME) {
+			if (user.id === this.env.ADMIN_USER_ID) {
 				user.roles ??= [];
 				user.roles.push("admin");
 			}
@@ -35,28 +35,14 @@ class Security {
 				permissions: [{ name: "*" }],
 			},
 		],
-		profile: (payload) => {
-			return {
-				id: payload.sub,
-				name: payload.battle_tag,
-			};
-		},
 	});
 
 	battleNet = $auth({
 		oidc: {
+			issuer: "https://accounts.google.com",
+			clientId: this.env.GOOGLE_CLIENT_ID,
+			clientSecret: this.env.GOOGLE_CLIENT_SECRET,
 			useIdToken: true,
-			issuer: "https://oauth.battle.net",
-			clientId: this.env.BATTLE_NET_CLIENT_ID,
-			clientSecret: this.env.BATTLE_NET_CLIENT_SECRET,
-			scope: "openid",
-			logoutUri: "https://battle.net/login/logout",
-		},
-		profile: (payload) => {
-			return {
-				id: payload.sub,
-				name: payload.battle_tag,
-			};
 		},
 	});
 

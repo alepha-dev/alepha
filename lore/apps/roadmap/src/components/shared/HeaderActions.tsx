@@ -123,7 +123,7 @@ const AuthButton = () => {
 				<Action
 					visibleText={"md"}
 					variant={"minimal"}
-					icon="satellite"
+					icon="user"
 					text={auth.user.name}
 					endIcon={"caret-down"}
 				/>
@@ -133,8 +133,9 @@ const AuthButton = () => {
 
 	return (
 		<Action
-			icon={"log-in"}
-			text={"Login"}
+			variant={"minimal"}
+			icon={"user"}
+			text={"Sign in"}
 			onClick={() => {
 				auth.login();
 			}}

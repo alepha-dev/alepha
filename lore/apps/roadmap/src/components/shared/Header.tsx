@@ -1,10 +1,20 @@
+import { useRouterEvents } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
+import { Button, Drawer } from "@blueprintjs/core";
+import { useState } from "react";
+import { type Task, tasks } from "../../providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
+import QuestLog from "../home/QuestLog.tsx";
+import Action from "./Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import StupidLogo from "./StupidLogo.tsx";
 
-const Header = () => {
+export interface HeaderProps {
+	tasks: Array<Task>;
+}
+
+const Header = (props: HeaderProps) => {
 	const { tr } = useI18n<I18n, "en">();
 
 	return (
@@ -24,7 +34,7 @@ const Header = () => {
 				bordered
 				centerY
 				style={{
-					height: 64,
+					height: 58,
 					borderTop: 0,
 					borderLeft: 0,
 					borderRight: 0,
@@ -36,16 +46,13 @@ const Header = () => {
 				<Flex wFill pad2h>
 					<Flex fill gap1>
 						<Flex center gap1>
-							<StupidLogo />
+							<MobileQuestLog tasks={props.tasks} />
+							<Flex visible={"md"}>
+								<StupidLogo />
+							</Flex>
 							<Flex col>
 								<Text bold large>
 									{tr("roadmap.title")}
-									<Text small muted italic style={{ fontWeight: 300 }}>
-										v0.0.1
-									</Text>
-								</Text>
-								<Text muted style={{ marginTop: -4, fontSize: 10 }}>
-									{tr("roadmap.subtitle")}
 								</Text>
 							</Flex>
 						</Flex>
@@ -58,3 +65,39 @@ const Header = () => {
 };
 
 export default Header;
+
+const MobileQuestLog = (props: HeaderProps) => {
+	const [show, setShow] = useState(false);
+
+	useRouterEvents({
+		onEnd: () => setShow(false),
+	});
+
+	return (
+		<Flex hide={"md"}>
+			<Action icon={"menu"} variant={"minimal"} onClick={() => setShow(true)} />
+			<Drawer
+				onClose={() => setShow(false)}
+				position={"left"}
+				className={"drawer"}
+				isOpen={show}
+			>
+				<Flex bg col bordered fill pad1>
+					<Flex center pad2h style={{ height: 48 }}>
+						<Flex fill></Flex>
+						<Flex>
+							<Button
+								variant={"minimal"}
+								icon={"cross"}
+								onClick={() => setShow(false)}
+							/>
+						</Flex>
+					</Flex>
+					<Flex fill>
+						<QuestLog tasks={props.tasks} />
+					</Flex>
+				</Flex>
+			</Drawer>
+		</Flex>
+	);
+};

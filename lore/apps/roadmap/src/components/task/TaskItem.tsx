@@ -1,13 +1,13 @@
 import { useActive, useRouter } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
-import { Icon, Spinner } from "@blueprintjs/core";
+import { Icon, Popover } from "@blueprintjs/core";
 import type { Task } from "../../providers/Db.ts";
 
 const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
 
 	const router = useRouter();
-	const { isActive, anchorProps, isPending } = useActive(`/q/${task.id}`);
+	const { isActive, anchorProps } = useActive(`/q/${task.id}`);
 
 	const renderComplexity = (complexity: number) => {
 		if (complexity === 5)
@@ -61,7 +61,6 @@ const TaskItem = (props: { task: Task }) => {
 	const flexProps = isActive
 		? {
 				bordered: true,
-				rounded: true,
 				shadow: true,
 				"aria-current": "page",
 				"data-active": true,
@@ -80,6 +79,7 @@ const TaskItem = (props: { task: Task }) => {
 		<Flex
 			gap1
 			card
+			rounded
 			onClick={() => {
 				if (isActive) {
 					router.go("/");
@@ -89,13 +89,7 @@ const TaskItem = (props: { task: Task }) => {
 			}}
 			{...flexProps}
 		>
-			{isPending ? (
-				<Flex bg rounded bordered center style={{ width: 25 }}>
-					<Spinner size={22} />
-				</Flex>
-			) : (
-				renderComplexity(task.complexity)
-			)}
+			{renderComplexity(task.complexity)}
 
 			<Flex center>
 				<Flex col>
@@ -105,9 +99,44 @@ const TaskItem = (props: { task: Task }) => {
 
 			<Flex fill />
 
+			{task.priority === "optional" && (
+				<Flex center>
+					<Popover
+						hoverOpenDelay={1000}
+						interactionKind={"hover"}
+						content={
+							<Flex pad1 col>
+								<Text bold>Bonus</Text>
+								<Text small>This quest is optional.</Text>
+							</Flex>
+						}
+					>
+						<Flex pad1h>
+							<Icon icon={"clean"} color={"var(--text-muted)"} />
+						</Flex>
+					</Popover>
+				</Flex>
+			)}
+
 			{task.priority === "high" && (
 				<Flex center>
-					<Icon icon={"high-priority"} color={"#d61b1b"} />
+					<Popover
+						hoverOpenDelay={1000}
+						interactionKind={"hover"}
+						content={
+							<Flex pad1 col>
+								<Text bold>High Priority !</Text>
+								<Text small>Which means more rewards.</Text>
+							</Flex>
+						}
+					>
+						<Flex pad1h>
+							<Icon
+								icon={"high-priority"}
+								color={"var(--color-high-priority)"}
+							/>
+						</Flex>
+					</Popover>
 				</Flex>
 			)}
 		</Flex>
