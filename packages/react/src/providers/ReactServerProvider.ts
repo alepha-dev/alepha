@@ -22,6 +22,7 @@ import {
 	$page,
 	type PageDescriptorRenderOptions,
 } from "../descriptors/$page.ts";
+import { Redirection } from "../errors/Redirection.ts";
 import {
 	PageDescriptorProvider,
 	type PageReactContext,
@@ -231,6 +232,10 @@ export class ReactServerProvider {
 				options.hydration,
 			);
 
+			if (html instanceof Redirection) {
+				throw new Error("Redirection is not supported in this context");
+			}
+
 			const result = {
 				context,
 				state,
@@ -304,6 +309,11 @@ export class ReactServerProvider {
 			// 	return;
 			// }
 
+			await this.alepha.emit("react:transition:begin", {
+				request: serverRequest,
+				context,
+			});
+
 			await this.alepha.emit("react:server:render:begin", {
 				request: serverRequest,
 				context,
@@ -337,6 +347,14 @@ export class ReactServerProvider {
 			}
 
 			const html = this.renderToHtml(template, state, context);
+			if (html instanceof Redirection) {
+				reply.redirect(
+					typeof html.page === "string"
+						? html.page
+						: this.pageDescriptorProvider.href(html.page),
+				);
+				return;
+			}
 
 			const event = {
 				request: serverRequest,
@@ -347,7 +365,7 @@ export class ReactServerProvider {
 
 			await this.alepha.emit("react:server:render:end", event);
 
-			page.afterHandler?.(serverRequest);
+			page.onServerResponse?.(serverRequest);
 
 			this.log.trace("Page rendered", {
 				name: page.name,
@@ -362,7 +380,7 @@ export class ReactServerProvider {
 		state: RouterState,
 		context: PageReactContext,
 		hydration = true,
-	) {
+	): string | Redirection {
 		const element = this.pageDescriptorProvider.root(state, context);
 
 		this.serverTimingProvider.beginTiming("renderToString");
@@ -372,7 +390,13 @@ export class ReactServerProvider {
 			app = renderToString(element);
 		} catch (error) {
 			this.log.error("Error during SSR", error);
-			app = renderToString(context.onError(error as Error));
+			const element = context.onError(error as Error, context);
+			if (element instanceof Redirection) {
+				// if the error is a redirection, return the redirection URL
+				return element;
+			}
+
+			app = renderToString(element);
 		}
 
 		this.serverTimingProvider.endTiming("renderToString");

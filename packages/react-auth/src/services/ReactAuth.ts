@@ -1,5 +1,5 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
-import { ReactBrowserProvider, RedirectionError } from "@alepha/react";
+import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { HttpClient } from "@alepha/server";
 
@@ -53,13 +53,13 @@ export class ReactAuth {
 			window.location.href = `${ReactAuth.path.login}?redirect=${redirect}`;
 
 			if (browser.transitioning) {
-				throw new RedirectionError(browser.state.pathname);
+				throw new Redirection(browser.state.pathname);
 			}
 
 			return;
 		}
 
-		throw new RedirectionError(ReactAuth.path.login);
+		throw new Redirection(ReactAuth.path.login);
 	}
 
 	public logout() {

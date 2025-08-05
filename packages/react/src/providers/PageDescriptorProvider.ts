@@ -18,10 +18,12 @@ import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import {
 	$page,
+	type ErrorHandler,
 	type PageDescriptor,
 	type PageDescriptorOptions,
 } from "../descriptors/$page.ts";
-import { RedirectionError } from "../errors/RedirectionError.ts";
+import { Redirection } from "../errors/Redirection.ts";
+import type { HrefLike } from "../hooks/RouterHookApi.ts";
 
 const envSchema = t.object({
 	REACT_STRICT_MODE: t.boolean({ default: true }),
@@ -200,13 +202,11 @@ export class PageDescriptorProvider {
 				};
 			} catch (e) {
 				// check if we need to redirect
-				if (e instanceof RedirectionError) {
-					return {
-						layers: [],
-						redirect: typeof e.page === "string" ? e.page : this.href(e.page),
+				if (e instanceof Redirection) {
+					return this.createRedirectionLayer(e.page, {
 						pathname,
 						search,
-					};
+					});
 				}
 
 				this.log.error(e);
@@ -231,28 +231,56 @@ export class PageDescriptorProvider {
 			const path = acc.replace(/\/+/, "/");
 			const localErrorHandler = this.getErrorHandler(it.route);
 			if (localErrorHandler) {
-				request.onError = localErrorHandler;
+				const onErrorParent = request.onError;
+				request.onError = (error, context) => {
+					const result = localErrorHandler(error, context);
+					// if nothing happen, call the parent
+					if (result === undefined) {
+						return onErrorParent(error, context);
+					}
+					return result;
+				};
 			}
 
 			// handler has thrown an error, render an error view
 			if (it.error) {
-				let element: ReactNode = await request.onError(it.error);
-				if (element === null) {
-					element = this.renderError(it.error);
-				}
+				try {
+					let element: ReactNode | Redirection | undefined =
+						await request.onError(it.error, request);
 
-				layers.push({
-					props,
-					error: it.error,
-					name: it.route.name,
-					part: it.route.path,
-					config: it.config,
-					element: this.renderView(i + 1, path, element, it.route),
-					index: i + 1,
-					path,
-					route: it.route,
-				});
-				break;
+					if (element === undefined) {
+						throw it.error;
+					}
+
+					if (element instanceof Redirection) {
+						return this.createRedirectionLayer(element.page, {
+							pathname,
+							search,
+						});
+					}
+
+					if (element === null) {
+						element = this.renderError(it.error);
+					}
+
+					layers.push({
+						props,
+						error: it.error,
+						name: it.route.name,
+						part: it.route.path,
+						config: it.config,
+						element: this.renderView(i + 1, path, element, it.route),
+						index: i + 1,
+						path,
+						route: it.route,
+					});
+					break;
+				} catch (e) {
+					if (e instanceof Redirection) {
+						return this.createRedirectionLayer(e.page, { pathname, search });
+					}
+					throw e;
+				}
 			}
 
 			// normal use case
@@ -278,7 +306,22 @@ export class PageDescriptorProvider {
 		return { layers, pathname, search };
 	}
 
-	protected getErrorHandler(route: PageRoute) {
+	protected createRedirectionLayer(
+		href: HrefLike,
+		context: {
+			pathname: string;
+			search: string;
+		},
+	) {
+		return {
+			layers: [],
+			redirect: typeof href === "string" ? href : this.href(href),
+			pathname: context.pathname,
+			search: context.search,
+		};
+	}
+
+	protected getErrorHandler(route: PageRoute): ErrorHandler | undefined {
 		if (route.errorHandler) return route.errorHandler;
 		let parent = route.parent;
 		while (parent) {
@@ -410,7 +453,7 @@ export class PageDescriptorProvider {
 					name: "notFound",
 					cache: true,
 					component: NotFoundPage,
-					afterHandler: ({ reply }) => {
+					onServerResponse: ({ reply }) => {
 						reply.status = 404;
 					},
 				});
@@ -584,6 +627,6 @@ export interface CreateLayersResult extends RouterState {
  */
 export interface PageReactContext {
 	url: URL;
-	onError: (error: Error) => ReactNode;
+	onError: ErrorHandler;
 	links?: ApiLinksResponse;
 }

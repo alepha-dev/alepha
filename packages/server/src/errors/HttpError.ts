@@ -1,7 +1,32 @@
 import { AlephaError } from "@alepha/core";
 
+export const isHttpError = (
+	error: unknown,
+	status?: number,
+): error is HttpErrorLike => {
+	const isError =
+		!!error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof error.message === "string" &&
+		"status" in error &&
+		typeof error.status === "number";
+
+	if (!isError) {
+		return false;
+	}
+
+	if (status) {
+		return (error as HttpErrorLike).status === status;
+	}
+
+	return true;
+};
+
 export class HttpError extends AlephaError {
 	public name = "HttpError";
+
+	static is = isHttpError;
 
 	static toJSON(error: HttpError) {
 		if (error.reason) {
@@ -26,6 +51,7 @@ export class HttpError extends AlephaError {
 		message: string;
 	};
 
+	// TODO: refactoring, it's too complex and not very readable
 	constructor(
 		options: {
 			error?: string;
@@ -84,17 +110,6 @@ export const errorNameByStatus: Record<number, string> = {
 	502: "BadGatewayError",
 	503: "ServiceUnavailableError",
 	504: "GatewayTimeoutError",
-};
-
-export const isHttpError = (error: unknown): error is HttpErrorLike => {
-	return (
-		!!error &&
-		typeof error === "object" &&
-		"message" in error &&
-		typeof error.message === "string" &&
-		"status" in error &&
-		typeof error.status === "number"
-	);
 };
 
 export interface HttpErrorLike extends Error {

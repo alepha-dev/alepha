@@ -10,6 +10,7 @@ import type { ServerRequest } from "@alepha/server";
 import type { ServerRouteCache } from "@alepha/server-cache";
 import type { FC, ReactNode } from "react";
 import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
+import type { Redirection } from "../errors/Redirection.ts";
 import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
 
 /**
@@ -108,13 +109,52 @@ export interface PageDescriptorOptions<
 
 	can?: () => boolean;
 
-	errorHandler?: (error: Error) => ReactNode;
+	/**
+	 * Catch any error from the `resolve` function or during `rendering`.
+	 *
+	 * Expected to return one of the following:
+	 * - a ReactNode to render an error page
+	 * - a Redirection to redirect the user
+	 * - undefined to let the error propagate
+	 *
+	 * If not defined, the error will be thrown and handled by the server or client error handler.
+	 * If a leaf $page does not define an error handler, the error can be caught by parent pages.
+	 *
+	 * @example Catch a 404 from API and render a custom not found component:
+	 * ```ts
+	 * resolve: async ({ params, query }) => {
+	 *    api.fetch("/api/resource", { params, query });
+	 * },
+	 * errorHandler: (error, context) => {
+	 *   if (HttpError.is(error, 404)) {
+	 *     return <ResourceNotFound />;
+	 *   }
+	 * }
+	 * ```
+	 *
+	 * @example Catch an 401 error and redirect the user to the login page:
+	 * ```ts
+	 * resolve: async ({ params, query }) => {
+	 *   // but the user is not authenticated
+	 *   api.fetch("/api/resource", { params, query });
+	 * },
+	 * errorHandler: (error, context) => {
+	 *   if (HttpError.is(error, 401)) {
+	 *     // throwing a Redirection is also valid!
+	 *     return new Redirection("/login");
+	 *   }
+	 * }
+	 * ```
+	 */
+	errorHandler?: ErrorHandler;
 
 	/**
-	 * If true, the page will be rendered on the build time.
-	 * Works only with viteAlepha plugin.
-	 *
+	 * If true, the page will be considered as a static page, immutable and cacheable.
 	 * Replace boolean by an object to define static entries. (e.g. list of params/query)
+	 *
+	 * For now, it only works with `@alepha/vite` which can pre-render the page at build time.
+	 *
+	 * It will act as timeless cached page server-side. You can use `cache` to configure the cache behavior.
 	 */
 	static?:
 		| boolean
@@ -122,21 +162,39 @@ export interface PageDescriptorOptions<
 				entries?: Array<Partial<PageRequestConfig<TConfig>>>;
 		  };
 
+	cache?: ServerRouteCache;
+
 	/**
-	 * If true, the page will be rendered on the client-side.
+	 * If true, force the page to be rendered only on the client-side.
+	 * It uses the `<ClientOnly/>` component to render the page.
 	 */
 	client?: boolean | ClientOnlyProps;
 
-	afterHandler?: (request: ServerRequest) => any;
-
-	cache?: ServerRouteCache;
+	/**
+	 * Called before the server response is sent to the client.
+	 */
+	onServerResponse?: (request: ServerRequest) => any;
 }
+
+export type ErrorHandler = (
+	error: Error,
+	context: PageReactContext,
+) => ReactNode | Redirection | undefined;
 
 export class PageDescriptor<
 	TConfig extends PageConfigSchema = PageConfigSchema,
 	TProps extends object = TPropsDefault,
 	TPropsParent extends object = TPropsParentDefault,
 > extends Descriptor<PageDescriptorOptions<TConfig, TProps, TPropsParent>> {
+	protected onInit() {
+		if (this.options.static) {
+			this.options.cache ??= {
+				provider: "memory",
+				ttl: [1, "week"],
+			};
+		}
+	}
+
 	public get name(): string {
 		return this.options.name ?? this.config.propertyKey;
 	}

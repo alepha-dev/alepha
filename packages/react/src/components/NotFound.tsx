@@ -1,4 +1,6 @@
-export default function NotFoundPage() {
+import type { CSSProperties } from "react";
+
+export default function NotFoundPage(props: { style?: CSSProperties }) {
 	return (
 		<div
 			style={{
@@ -10,6 +12,7 @@ export default function NotFoundPage() {
 				textAlign: "center",
 				fontFamily: "sans-serif",
 				padding: "1rem",
+				...props.style,
 			}}
 		>
 			<h1 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
