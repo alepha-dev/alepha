@@ -1,3 +1,25 @@
 @import "@blueprintjs/core";
 @import "@blueprintjs/icons";
 @import "@alepha/react-flex";
+
+pre {
+	margin: 0;
+	font-family: "Fira Code", "Liberation Mono", Menlo, Courier, monospace;
+	font-size: 12px;
+}
+
+.bp6-input {
+	background-color: #f8f8f8;
+}
+
+@media (max-width: 990px) {
+	.drawer.bp6-drawer {
+		width: 100%;
+	}
+	:root {
+		--spacing: 4px;
+	}
+	pre {
+		white-space: pre-wrap;
+	}
+}

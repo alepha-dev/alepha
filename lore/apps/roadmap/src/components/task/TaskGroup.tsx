@@ -1,0 +1,54 @@
+import { Flex, Text } from "@alepha/react-flex";
+import { Collapse, Icon } from "@blueprintjs/core";
+import { useState } from "react";
+import type { Task } from "../../providers/Db.ts";
+import TaskItem from "./TaskItem.tsx";
+
+interface TaskGroupProps {
+	name: string;
+	tasks: Task[];
+}
+
+const TaskGroup = (props: TaskGroupProps) => {
+	const [isCollapsed, setIsCollapsed] = useState(true);
+
+	// sort by complexity
+	const tasks = [...props.tasks].sort((a, b) =>
+		a.complexity - b.complexity > 0 ? -1 : 1,
+	);
+
+	return (
+		<Flex col>
+			<Flex pad1 centerX card onClick={() => setIsCollapsed(!isCollapsed)}>
+				<Flex centerX gap1>
+					<Icon size={12} icon={isCollapsed ? "minus" : "plus"} />
+					<Text bold>{props.name}</Text>
+				</Flex>
+				<Flex fill center pad2h>
+					<Flex
+						style={{
+							height: 1,
+							opacity: 0.2,
+							width: "100%",
+							backgroundColor: "var(--text-muted)",
+						}}
+					/>
+				</Flex>
+				<Flex>
+					<Text muted small>
+						{props.tasks.length} task{props.tasks.length > 1 ? "s" : ""}
+					</Text>
+				</Flex>
+			</Flex>
+			<Collapse isOpen={isCollapsed}>
+				<Flex col style={{ gap: 4 }}>
+					{tasks.map((item) => (
+						<TaskItem key={item.id} task={item} />
+					))}
+				</Flex>
+			</Collapse>
+		</Flex>
+	);
+};
+
+export default TaskGroup;
