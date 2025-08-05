@@ -2,6 +2,7 @@ import { AlephaError } from "@alepha/core";
 import { useInject } from "@alepha/react";
 import { type Breakpoint, Flex } from "@alepha/react-flex";
 import { Button, type ButtonProps } from "@blueprintjs/core";
+import { useState } from "react";
 import Toast from "../../services/Toast.ts";
 
 const Action = (
@@ -9,10 +10,13 @@ const Action = (
 ) => {
 	const toast = useInject(Toast);
 	const { hideText, visibleText, ...rest } = props;
+	const [pending, setPending] = useState(false);
 
 	const onClick = rest.onClick;
 	if (onClick) {
 		rest.onClick = async (e: any) => {
+			if (pending) return;
+			setPending(true);
 			try {
 				await onClick(e);
 			} catch (error) {
@@ -22,17 +26,23 @@ const Action = (
 				}
 				throw error;
 			}
+			setPending(false);
 		};
 	}
+
+	rest.disabled ??= pending;
 
 	const btn = <Button {...rest} />;
 
 	if (visibleText) {
+		const { children, text, endIcon, ...btnProps } = rest;
 		return (
 			<>
-				<Flex visible={visibleText}>{btn}</Flex>
+				<Flex visible={visibleText}>
+					<Button {...rest} />
+				</Flex>
 				<Flex hide={visibleText}>
-					<Button {...rest} text={undefined} />
+					<Button {...btnProps} />
 				</Flex>
 			</>
 		);

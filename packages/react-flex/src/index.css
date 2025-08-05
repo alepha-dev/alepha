@@ -21,10 +21,18 @@
 	--app-bg-color-dark: #010409;
 	--app-bg-color: var(--app-bg-color-light);
 
+	--text-color-light: #000000;
+	--text-color-dark: #ffffff;
+	--text-color: var(--text-color-light);
+
 	--radius: 8px;
 	--spacing: 8px;
 
 	--text-muted: #6c757d;
+
+	--shadow-color-dark: rgba(0, 0, 0, 0.5);
+	--shadow-color-light: rgba(0, 0, 0, 0.05);
+	--shadow-color: var(--shadow-color-light);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -46,6 +54,8 @@
 	--card-bg-hover-color: var(--card-bg-hover-color-dark);
 	--border-color: var(--border-color-dark);
 	--app-bg-color: var(--app-bg-color-dark);
+	--shadow-color: var(--shadow-color-dark);
+	--text-color: var(--text-color-dark);
 }
 
 .color-scheme-light {
@@ -54,6 +64,8 @@
 	--card-bg-hover-color: var(--card-bg-hover-color-light);
 	--border-color: var(--border-color-light);
 	--app-bg-color: var(--app-bg-color-light);
+	--shadow-color: var(--shadow-color-light);
+	--text-color: var(--text-color-light);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -130,6 +142,18 @@ body {
 
 .fx.rad {
 	border-radius: var(--radius);
+}
+
+.fx.shd-1 {
+	box-shadow:
+		0 1px 3px var(--shadow-color),
+		0 1px 2px var(--shadow-color);
+}
+
+.fx.ovf {
+	overflow: auto;
+	scrollbar-color: var(--text-muted) transparent;
+	scrollbar-width: thin;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -243,3 +267,9 @@ body {
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
+
+@media (max-width: 990px) {
+	.grid-md-2 {
+		grid-template-columns: 1fr !important;
+	}
+}

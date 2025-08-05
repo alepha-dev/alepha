@@ -1,0 +1,22 @@
+@keyframes logoAnimation {
+	48% {
+		transform: rotate(0deg);
+	}
+	50% {
+		transform: rotate(180deg);
+	}
+	52% {
+		transform: rotate(0deg);
+	}
+}
+
+.LogoBar {
+	height: 32px;
+	background-color: var(--text-color);
+	transition: all 0.3s ease-in-out;
+	animation: logoAnimation 60s ease-in-out infinite;
+}
+
+.LogoBar:hover {
+	opacity: 0.5;
+}

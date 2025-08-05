@@ -1,81 +1,54 @@
 import { useClient, useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
-import { Flex, Text } from "@alepha/react-flex";
+import { Flex } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import {
-	Button,
-	Drawer,
-	Icon,
-	Menu,
-	MenuItem,
-	Popover,
-} from "@blueprintjs/core";
+import { Button, Drawer, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import { useState } from "react";
-import type TaskApi from "../api/TaskApi.ts";
-import type { I18n } from "../services/I18n.ts";
-import { Theme } from "../services/Theme.ts";
-import TaskCreate from "./TaskCreate.tsx";
-import Action from "./ui/Action.tsx";
+import type TaskApi from "../../api/TaskApi.ts";
+import type { I18n } from "../../services/I18n.ts";
+import { Theme } from "../../services/Theme.ts";
+import TaskCreate from "../task/TaskCreate.tsx";
+import Action from "./Action.tsx";
 
-const Header = () => {
+const HeaderActions = () => {
 	const theme = useInject(Theme);
 	const { tr, setLang, lang, languages } = useI18n<I18n, "en">();
 
 	return (
-		<Flex
-			bordered
-			style={{
-				borderTop: 0,
-				borderLeft: 0,
-				borderRight: 0,
-			}}
-			col
-			pad1
-			gap1
-		>
-			<Flex wFill pad2h>
-				<Flex fill gap1>
-					<Flex center gap1>
-						<Icon icon={"route"} />
-						<Text large>{tr("roadmap.title")}</Text>
-					</Flex>
-				</Flex>
-				<Flex gap1 center>
-					<CreateTaskButton />
-					<Popover
-						position={"bottom"}
-						content={
-							<Menu>
-								{languages.map((key) => (
-									<MenuItem
-										icon={lang === key ? "tick" : "blank"}
-										key={key}
-										text={tr(key)}
-										onClick={() => {
-											setLang(key);
-										}}
-									/>
-								))}
-							</Menu>
-						}
-					>
-						<Button icon={"translate"} variant={"minimal"} />
-					</Popover>
-					<AuthButton />
-					<Button
-						icon={"moon"}
-						variant={"minimal"}
-						onClick={() => {
-							theme.toggleColorScheme();
-						}}
-					></Button>
-				</Flex>
-			</Flex>
+		<Flex gap1 center>
+			<CreateTaskButton />
+			<Popover
+				position={"bottom"}
+				content={
+					<Menu>
+						{languages.map((key) => (
+							<MenuItem
+								icon={lang === key ? "tick" : "blank"}
+								key={key}
+								text={tr(key)}
+								onClick={() => {
+									setLang(key);
+								}}
+							/>
+						))}
+					</Menu>
+				}
+			>
+				<Button icon={"translate"} variant={"minimal"} />
+			</Popover>
+			<AuthButton />
+			<Button
+				icon={"moon"}
+				variant={"minimal"}
+				onClick={() => {
+					theme.toggleColorScheme();
+				}}
+			></Button>
 		</Flex>
 	);
 };
 
-export default Header;
+export default HeaderActions;
 
 const CreateTaskButton = () => {
 	const [showDialog, setShowDialog] = useState(false);
@@ -83,17 +56,22 @@ const CreateTaskButton = () => {
 	const client = useClient<TaskApi>();
 	return (
 		<Flex>
-			<Button
+			<Action
+				visibleText={"md"}
 				intent={"success"}
 				disabled={!client.createTask.can()}
-				icon="add"
+				icon="plus"
 				onClick={() => setShowDialog(true)}
 			>
 				{tr("roadmap.header.addTask")}
-			</Button>
-			<Drawer isOpen={showDialog} onClose={() => setShowDialog(false)}>
+			</Action>
+			<Drawer
+				isOpen={showDialog}
+				onClose={() => setShowDialog(false)}
+				className={"drawer"}
+			>
 				<Flex bg col bordered fill pad2>
-					<Flex col style={{ height: 64 }}>
+					<Flex col style={{ height: 48 }}>
 						<Flex>
 							<Flex fill></Flex>
 							<Flex>
@@ -128,11 +106,9 @@ const CreateTaskButton = () => {
 
 const AuthButton = () => {
 	const auth = useAuth();
-
 	if (auth.user) {
 		return (
 			<Popover
-				minimal
 				position={"bottom"}
 				content={
 					<Menu>
@@ -145,8 +121,9 @@ const AuthButton = () => {
 				}
 			>
 				<Action
+					visibleText={"md"}
 					variant={"minimal"}
-					icon="person"
+					icon="satellite"
 					text={auth.user.name}
 					endIcon={"caret-down"}
 				/>

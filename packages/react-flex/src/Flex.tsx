@@ -72,6 +72,7 @@ export interface FlexProps {
 	pad2?: boolean; // Padding 2
 	pad3?: boolean; // Padding 3
 	pad4?: boolean; // Padding 4
+	pad1h?: boolean; // Horizontal Padding 2
 	pad2h?: boolean; // Horizontal Padding 2
 
 	/**
@@ -128,6 +129,13 @@ export interface FlexProps {
 	 * Replace div by another HTML element.
 	 */
 	as?: string;
+
+	/**
+	 * If true, the flex container will have a shadow effect.
+	 */
+	shadow?: boolean;
+
+	overflow?: boolean;
 }
 
 /**
@@ -157,6 +165,10 @@ const Flex = (props: FlexProps) => {
 
 	if (props.visible) {
 		c.push(`hide-${props.visible}-down`);
+	}
+
+	if (props.shadow) {
+		c.push("shd-1");
 	}
 
 	if (props.hide) {
@@ -189,6 +201,10 @@ const Flex = (props: FlexProps) => {
 		c.push("col");
 	}
 
+	if (props.overflow) {
+		c.push("ovf");
+	}
+
 	if (props.layout) {
 		c.push("layout");
 	}
@@ -219,6 +235,9 @@ const Flex = (props: FlexProps) => {
 		c.push("p4");
 	}
 
+	if (props.pad1h) {
+		c.push("p1h");
+	}
 	if (props.pad2h) {
 		c.push("p2h");
 	}

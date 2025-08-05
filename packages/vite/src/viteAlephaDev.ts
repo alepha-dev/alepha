@@ -261,7 +261,7 @@ const isViteFile = (file: string) => {
 	if (
 		pathname.startsWith("/@") ||
 		pathname.startsWith("/src") ||
-		pathname.includes("/node_modules/.vite/")
+		pathname.includes("/node_modules/")
 	) {
 		return true;
 	}

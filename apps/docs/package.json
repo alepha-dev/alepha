@@ -8,7 +8,7 @@
 		"@mantine/hooks": "^8.2.2",
 		"@mantine/nprogress": "^8.2.2",
 		"@mantine/spotlight": "^8.2.2",
-		"@tabler/icons-react": "3.34.1",
+		"@tabler/icons-react": "^3.34.1",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1"
 	},

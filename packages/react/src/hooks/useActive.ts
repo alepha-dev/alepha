@@ -34,9 +34,9 @@ export const useActive = (path: HrefLike): UseActiveHook => {
 		isActive,
 		anchorProps: {
 			href,
-			onClick: (ev: any) => {
-				ev.stopPropagation();
-				ev.preventDefault();
+			onClick: (ev?: any) => {
+				ev?.stopPropagation();
+				ev?.preventDefault();
 				if (isActive) return;
 				if (isPending) return;
 

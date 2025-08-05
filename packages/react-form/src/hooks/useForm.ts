@@ -6,7 +6,7 @@ import {
 	TypeGuard,
 } from "@alepha/core";
 import { useAlepha } from "@alepha/react";
-import type { InputHTMLAttributes } from "react";
+import { type InputHTMLAttributes, useRef } from "react";
 
 /**
  * Custom hook to create a form with validation and field management.
@@ -41,8 +41,11 @@ export const useForm = <T extends TObject>(
 ): UseFormReturn<T> => {
 	const alepha = useAlepha();
 
+	const store = useRef<Record<string, any>>({});
+
 	return {
 		input: createProxyFromSchema(options, options.schema, {
+			store: store.current,
 			parent: "",
 		}),
 		onSubmit: (event: FormEventLike) => {
@@ -51,8 +54,9 @@ export const useForm = <T extends TObject>(
 			const form = event.currentTarget;
 			const values: Record<string, any> = parseValuesFromFormElement(
 				options,
-				form,
+				store.current,
 			);
+
 			const args = {
 				form,
 			};
@@ -78,12 +82,11 @@ export const useForm = <T extends TObject>(
 
 const parseValuesFromFormElement = <T extends TObject>(
 	options: UseFormOptions<T>,
-	form: HTMLFormElement,
+	store: Record<string, any>,
 ): Record<string, any> => {
-	const formData = new FormData(form);
 	const values: Record<string, any> = {};
 
-	for (const [key, value] of formData.entries()) {
+	for (const [key, value] of Object.entries(store)) {
 		if (key.includes(".")) {
 			// addon: support for nested objects
 			getValueFromInputObject(options, values, key, value);
@@ -146,6 +149,7 @@ const createProxyFromSchema = <T extends TObject>(
 	schema: TSchema,
 	context: {
 		parent: string;
+		store: Record<string, any>;
 	},
 ): SchemaToInput<T> => {
 	const parent = context.parent || "";
@@ -158,6 +162,7 @@ const createProxyFromSchema = <T extends TObject>(
 				if (schema.properties[prop].type === "object") {
 					return createProxyFromSchema(options, schema.properties[prop], {
 						parent: parent ? `${parent}.${prop}` : prop,
+						store: context.store,
 					});
 				}
 				return createInputFromSchema<T>(
@@ -177,6 +182,7 @@ const createInputFromSchema = <T extends TObject>(
 	schema: TSchema,
 	context: {
 		parent: string;
+		store: Record<string, any>;
 	},
 ): InputField => {
 	const parent = context.parent || "";
@@ -186,6 +192,7 @@ const createInputFromSchema = <T extends TObject>(
 			path: "",
 			props: {} as InputHTMLAttributes<unknown>,
 			schema: schema,
+			set: () => {},
 		};
 	}
 
@@ -194,14 +201,22 @@ const createInputFromSchema = <T extends TObject>(
 	const key = parent ? `${parent}.${name}` : name;
 	const path = `/${key.replaceAll(".", "/")}`;
 
+	const set = (value: any) => {
+		if (context.store[key] === value) {
+			// No change, do not update
+			return;
+		}
+
+		context.store[key] = value;
+		if (options.onChange) {
+			options.onChange(key, value, context.store);
+		}
+	};
+
 	const attr: InputHTMLAttributesLike = {
 		name: key,
 		onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-			const value = event.target.value;
-			// Handle field change logic here if needed
-			if (options.onChange) {
-				options.onChange(path, getValueFromInput(value, field));
-			}
+			set(event.target.value);
 		},
 	};
 
@@ -265,6 +280,7 @@ const createInputFromSchema = <T extends TObject>(
 		path,
 		props: attr,
 		schema: field,
+		set,
 	};
 };
 
@@ -369,7 +385,7 @@ export type UseFormOptions<T extends TObject> = {
 
 	onError?: (error: TypeBoxError, args: { form: HTMLFormElement }) => void;
 
-	onChange?: (key: string, value: any) => void;
+	onChange?: (key: string, value: any, store: Record<string, any>) => void;
 };
 
 export type UseFormReturn<T extends TObject> = {
@@ -407,6 +423,7 @@ export interface InputField {
 	path: string;
 	props: InputHTMLAttributesLike;
 	schema: TSchema;
+	set: (value: any) => void;
 }
 
 export type InputHTMLAttributesLike = Pick<

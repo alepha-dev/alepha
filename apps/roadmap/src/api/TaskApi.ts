@@ -1,5 +1,5 @@
 import { $inject, $logger, t } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { $action, NotFoundError } from "@alepha/server";
 import { Db, tasks } from "../providers/Db.ts";
 
 class TaskApi {
@@ -12,7 +12,48 @@ class TaskApi {
 			response: t.array(tasks.$schema),
 		},
 		handler: async () => {
-			return this.db.tasks.find();
+			return this.db.tasks.find({
+				limit: 100,
+			});
+		},
+	});
+
+	getTaskById = $action({
+		group: "read",
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: tasks.$schema,
+		},
+		handler: async ({ params }) => {
+			const task = await this.db.tasks.findById(params.id);
+			if (!task) {
+				throw new NotFoundError(`Task with id ${params.id} not found`);
+			}
+			return task;
+		},
+	});
+
+	updateTaskById = $action({
+		group: "write",
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			body: t.partial(
+				t.pick(tasks.$schema, [
+					"title",
+					"description",
+					"package",
+					"complexity",
+					"priority",
+				]),
+			),
+			response: tasks.$schema,
+		},
+		handler: async ({ params, body }) => {
+			return await this.db.tasks.updateById(params.id, body);
 		},
 	});
 

@@ -1,0 +1,11 @@
+.TaskItem .actions {
+	display: none;
+}
+
+.TaskItem:hover .actions {
+	display: flex;
+}
+
+.TaskItem:hover .info {
+	display: none;
+}

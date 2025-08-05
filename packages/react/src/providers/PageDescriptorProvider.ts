@@ -374,6 +374,10 @@ export class PageDescriptorProvider {
 			const pages = this.alepha.descriptors($page);
 
 			const hasParent = (it: PageDescriptor) => {
+				if (it.options.parent) {
+					return true;
+				}
+
 				for (const page of pages) {
 					const children = page.options.children
 						? Array.isArray(page.options.children)
@@ -423,6 +427,18 @@ export class PageDescriptorProvider {
 				? target.options.children
 				: target.options.children()
 			: [];
+
+		const getChildrenFromParent = (it: PageDescriptor): PageDescriptor[] => {
+			const children = [];
+			for (const page of pages) {
+				if (page.options.parent === it) {
+					children.push(page);
+				}
+			}
+			return children;
+		};
+
+		children.push(...getChildrenFromParent(target));
 
 		return {
 			...target.options,
@@ -521,7 +537,7 @@ export type PreviousLayerData = Omit<Layer, "element" | "index" | "path">;
 
 export interface AnchorProps {
 	href: string;
-	onClick: (ev: any) => any;
+	onClick: (ev?: any) => any;
 }
 
 export interface RouterState {

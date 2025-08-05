@@ -17,10 +17,13 @@ export interface TextProps {
 	children?: ReactNode;
 	className?: string;
 	date?: boolean;
+	style?: CSSProperties;
 }
 
 const Text = (props: TextProps) => {
-	const s: CSSProperties = {};
+	const s: CSSProperties = {
+		...props.style,
+	};
 	const c: string[] = [...(props.className ? props.className.split(" ") : [])];
 
 	if (props.bold) {

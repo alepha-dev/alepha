@@ -8,10 +8,11 @@
 		"vercel": "^44.7.0"
 	},
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "vite dev --host",
 		"build": "vite build",
 		"start": "node --env-file=.env dist/index.mjs",
-		"deploy": "cd dist && vercel --prod"
+		"deploy": "cd dist && vercel --prod",
+		"build&deploy": "vite build && cd dist && vercel --prod"
 	},
 	"dependencies": {
 		"@blueprintjs/core": "^6.1.0"
