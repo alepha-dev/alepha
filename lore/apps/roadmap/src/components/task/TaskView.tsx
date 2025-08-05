@@ -1,12 +1,10 @@
 import { DateTimeProvider } from "@alepha/datetime";
 import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
-import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
 import { useState } from "react";
 import type TaskApi from "../../api/TaskApi.ts";
 import type { Task } from "../../providers/Db.ts";
-import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 

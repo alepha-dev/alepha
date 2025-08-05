@@ -1,5 +1,5 @@
 import { $inject, t } from "@alepha/core";
-import { $page, NotFound } from "@alepha/react";
+import { $page } from "@alepha/react";
 import { $head } from "@alepha/react-head";
 import { $client } from "@alepha/server-links";
 import type TaskApi from "./api/TaskApi.ts";
