@@ -133,7 +133,7 @@ export interface FlexProps {
 	/**
 	 * If true, the flex container will have a shadow effect.
 	 */
-	shadow?: boolean;
+	shadow?: boolean | 2 | 3;
 
 	overflow?: boolean;
 }
@@ -167,7 +167,11 @@ const Flex = (props: FlexProps) => {
 		c.push(`hide-${props.visible}-down`);
 	}
 
-	if (props.shadow) {
+	if (props.shadow === 2) {
+		c.push("shd-2");
+	} else if (props.shadow === 3) {
+		c.push("shd-3");
+	} else if (props.shadow) {
 		c.push("shd-1");
 	}
 

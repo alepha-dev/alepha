@@ -1,16 +1,22 @@
 import { AlephaError } from "@alepha/core";
-import { useInject } from "@alepha/react";
+import { type LinkProps, useActive, useInject } from "@alepha/react";
 import { type Breakpoint, Flex } from "@alepha/react-flex";
-import { Button, type ButtonProps } from "@blueprintjs/core";
-import { useState } from "react";
+import { AnchorButton, Button, type ButtonProps } from "@blueprintjs/core";
+import { createElement, type FunctionComponent, useState } from "react";
 import Toast from "../../services/Toast.ts";
 
-const Action = (
-	props: ButtonProps & { hideText?: Breakpoint; visibleText?: Breakpoint },
-) => {
+export type ActionProps = ButtonProps & {
+	visibleText?: Breakpoint;
+	link?: LinkProps;
+};
+
+const Action = (props: ActionProps) => {
 	const toast = useInject(Toast);
-	const { hideText, visibleText, ...rest } = props;
+	let { visibleText, link, ...rest } = props;
 	const [pending, setPending] = useState(false);
+
+	const hasLink = !!link;
+	const active = useActive(link?.to);
 
 	const onClick = rest.onClick;
 	if (onClick) {
@@ -32,23 +38,26 @@ const Action = (
 
 	rest.disabled ??= pending;
 
-	const btn = <Button {...rest} />;
+	let element: FunctionComponent = Button;
+	if (hasLink) {
+		element = AnchorButton;
+		rest = {
+			...rest,
+			...active.anchorProps,
+		};
+	}
 
 	if (visibleText) {
 		const { children, text, endIcon, ...btnProps } = rest;
 		return (
 			<>
-				<Flex visible={visibleText}>
-					<Button {...rest} />
-				</Flex>
-				<Flex hide={visibleText}>
-					<Button {...btnProps} />
-				</Flex>
+				<Flex visible={visibleText}>{createElement(element, rest)}</Flex>
+				<Flex hide={visibleText}>{createElement(element, btnProps)}</Flex>
 			</>
 		);
 	}
 
-	return btn;
+	return createElement(element, rest);
 };
 
 export default Action;

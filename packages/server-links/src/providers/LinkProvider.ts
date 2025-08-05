@@ -61,7 +61,8 @@ export class LinkProvider {
 	public client<T extends object>(
 		scope: ClientScope = {},
 	): HttpVirtualClient<T> {
-		this.log.trace("Creating virtual client for scope", scope);
+		this.log.trace("Creating virtual client with", { scope });
+
 		return new Proxy<HttpVirtualClient<T>>({} as HttpVirtualClient<T>, {
 			get: (_, prop) => {
 				if (typeof prop !== "string") {

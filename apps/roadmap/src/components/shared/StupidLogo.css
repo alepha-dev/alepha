@@ -1,4 +1,4 @@
-@keyframes logoAnimation {
+@keyframes rdLogoAnimation {
 	48% {
 		transform: rotate(0deg);
 	}
@@ -10,13 +10,13 @@
 	}
 }
 
-.LogoBar {
+.rd-logo-bar {
 	height: 32px;
 	background-color: var(--text-color);
 	transition: all 0.3s ease-in-out;
-	animation: logoAnimation 60s ease-in-out infinite;
+	animation: rdLogoAnimation 60s ease-in-out infinite;
 }
 
-.LogoBar:hover {
+.rd-logo-bar:hover {
 	opacity: 0.5;
 }

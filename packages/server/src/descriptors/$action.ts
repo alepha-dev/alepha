@@ -277,12 +277,16 @@ export class ActionDescriptor<
 			options,
 		});
 
+		if (serverActionRequest.reply?.body) {
+			return serverActionRequest.reply.body as ClientRequestResponse<TConfig>;
+		}
+
 		this.serverRouterProvider.validateRequest(
 			this.options,
 			serverActionRequest as ServerRequest,
 		);
 
-		const response = await handler(
+		let response = await handler(
 			serverActionRequest as ServerActionRequest<TConfig>,
 		);
 
@@ -292,8 +296,18 @@ export class ActionDescriptor<
 			// skip validation if response is expected as file
 			!isTypeFile(this.options.schema.response)
 		) {
-			return this.alepha.parse<any>(this.options.schema?.response, response);
+			response = this.alepha.parse<any>(
+				this.options.schema?.response,
+				response,
+			);
 		}
+
+		await this.alepha.emit("action:onResponse", {
+			action: this,
+			request: serverActionRequest as ServerRequest,
+			options,
+			response,
+		});
 
 		return response;
 	}

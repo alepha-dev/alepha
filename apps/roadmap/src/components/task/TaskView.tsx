@@ -2,7 +2,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type TaskApi from "../../api/TaskApi.ts";
 import type { Task } from "../../providers/Db.ts";
 import Action from "../shared/Action.tsx";
@@ -17,7 +17,11 @@ const TaskView = (props: TaskViewProps) => {
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
 	const router = useRouter();
+
 	const [task, setTask] = useState<Task>(props.task);
+	useEffect(() => {
+		setTask(props.task);
+	}, [props.task]);
 
 	return (
 		<Flex fill pad2 col>
@@ -26,18 +30,30 @@ const TaskView = (props: TaskViewProps) => {
 					<Flex>
 						<Flex fill />
 						<Flex>
-							<Text small muted>
-								created {dt.of(task.createdAt).fromNow()}
-							</Text>
+							<Action
+								link={{ to: "/" }}
+								icon={"cross"}
+								size={"small"}
+								variant={"minimal"}
+							/>
 						</Flex>
 					</Flex>
+
 					<Flex pad3 col gap3 fill overflow>
 						<Flex gap1 centerX>
 							<Icon icon={"tag"} />
-							<Text large bold>
+							<Text large bold style={{ textWrap: "nowrap" }}>
 								{task.title}
 							</Text>
 							<EditTaskButton task={task} onUpdate={setTask} />
+							<Flex
+								wFill
+								style={{
+									opacity: 0.1,
+									height: 1,
+									backgroundColor: "var(--text-color)",
+								}}
+							/>
 						</Flex>
 						<Text>
 							This quest is on a <Text italic> {task.priority}</Text> priority
@@ -56,13 +72,23 @@ const TaskView = (props: TaskViewProps) => {
 							tier.
 						</Text>
 
-						<Flex gap1 centerX>
-							<Icon icon={"manually-entered-data"} />
-							<Text large bold>
-								Description
-							</Text>
+						<Flex col>
+							<Flex gap1 centerX>
+								<Icon icon={"manually-entered-data"} />
+								<Text large bold>
+									Description
+								</Text>
+								<Flex
+									wFill
+									style={{
+										opacity: 0.1,
+										height: 1,
+										backgroundColor: "var(--text-color)",
+									}}
+								/>
+							</Flex>
 						</Flex>
-						<Flex shadow overflow bordered pad1 pad2h rounded>
+						<Flex bg overflow bordered pad2 rounded>
 							<pre>{task.description}</pre>
 						</Flex>
 
@@ -71,17 +97,25 @@ const TaskView = (props: TaskViewProps) => {
 							<Text large bold>
 								Rewards
 							</Text>
+							<Flex
+								wFill
+								style={{
+									opacity: 0.1,
+									height: 1,
+									backgroundColor: "var(--text-color)",
+								}}
+							/>
 						</Flex>
 						<Flex gap2>
 							<Text>You will receive:</Text>
 							<Flex gap1>
 								<Flex>
 									{task.complexity * 1}{" "}
-									<Icon icon={"symbol-circle"} color={"#db9b05"} />
+									<Icon icon={"symbol-circle"} color={"var(--color-gold)"} />
 								</Flex>
 								<Flex>
 									{task.complexity * 10}{" "}
-									<Icon icon={"symbol-circle"} color={"rgb(185,182,182)"} />
+									<Icon icon={"symbol-circle"} color={"var(--color-silver)"} />
 								</Flex>
 							</Flex>
 						</Flex>
@@ -89,6 +123,15 @@ const TaskView = (props: TaskViewProps) => {
 						<Flex gap2>
 							<Text>Experience:</Text>
 							<Text bold>{task.complexity * 150} XP</Text>
+						</Flex>
+					</Flex>
+
+					<Flex pad1h>
+						<Flex fill />
+						<Flex>
+							<Text small muted>
+								created {dt.of(task.createdAt).fromNow()}
+							</Text>
 						</Flex>
 					</Flex>
 				</Flex>
@@ -99,6 +142,7 @@ const TaskView = (props: TaskViewProps) => {
 							intent={"success"}
 							icon={"tick"}
 							text={"Mark As Complete"}
+							disabled={!taskApi.deleteTask.can()}
 							onClick={async () => {
 								await taskApi.deleteTask({
 									params: { id: task.id },
@@ -117,6 +161,7 @@ const TaskView = (props: TaskViewProps) => {
 							icon={"cross"}
 							text={"Abandon Quest"}
 							intent={"danger"}
+							disabled={!taskApi.deleteTask.can()}
 							onClick={async () => {
 								await taskApi.deleteTask({
 									params: { id: task.id },

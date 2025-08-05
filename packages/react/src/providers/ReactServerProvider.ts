@@ -254,6 +254,10 @@ export class ReactServerProvider {
 				throw new Error("Template not found");
 			}
 
+			this.log.trace("Rendering page", {
+				name: page.name,
+			});
+
 			const context: PageRequest = {
 				url,
 				params,
@@ -344,6 +348,10 @@ export class ReactServerProvider {
 			await this.alepha.emit("react:server:render:end", event);
 
 			page.afterHandler?.(serverRequest);
+
+			this.log.trace("Page rendered", {
+				name: page.name,
+			});
 
 			return event.html;
 		};

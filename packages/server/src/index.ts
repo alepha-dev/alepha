@@ -36,6 +36,12 @@ declare module "@alepha/core" {
 			request: ServerRequest;
 			options: ClientRequestOptions;
 		};
+		"action:onResponse": {
+			action: ActionDescriptor<RequestConfigSchema>;
+			request: ServerRequest;
+			options: ClientRequestOptions;
+			response: any;
+		};
 		// -----------------------------------------------------------------------------------------------------------------
 		// Server hooks
 		"server:onRequest": {

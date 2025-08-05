@@ -6,7 +6,7 @@ import type { HrefLike } from "./RouterHookApi.ts";
 import { useRouter } from "./useRouter.ts";
 import { useRouterEvents } from "./useRouterEvents.ts";
 
-export const useActive = (path: HrefLike): UseActiveHook => {
+export const useActive = (path?: HrefLike): UseActiveHook => {
 	const router = useRouter();
 	const ctx = useContext(RouterContext);
 	const layer = useContext(RouterLayerContext);
@@ -20,13 +20,21 @@ export const useActive = (path: HrefLike): UseActiveHook => {
 	}
 
 	const [current, setCurrent] = useState(ctx.state.pathname);
-	const href = useMemo(() => router.createHref(path, layer), [path, layer]);
+	const href = useMemo(
+		() => router.createHref(path ?? "", layer),
+		[path, layer],
+	);
 	const [isPending, setPending] = useState(false);
 	const isActive = current === href;
 
-	useRouterEvents({
-		onEnd: ({ state }) => setCurrent(state.pathname),
-	});
+	useRouterEvents(
+		{
+			onEnd: ({ state }) => {
+				path ? setCurrent(state.pathname) : undefined;
+			},
+		},
+		[path],
+	);
 
 	return {
 		name,

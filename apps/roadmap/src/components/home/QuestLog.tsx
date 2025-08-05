@@ -15,9 +15,9 @@ const QuestLog = (props: QuestLogProps) => {
 	const { tr } = useI18n<I18n, "en">();
 	return (
 		<Flex
-			visible={"md"}
 			card
-			shadow
+			rounded
+			shadow={2}
 			fill
 			bordered
 			style={{
@@ -37,7 +37,7 @@ const QuestLog = (props: QuestLogProps) => {
 					<Flex pad2h gap1 center>
 						<Text small>{tr("roadmap.quest-log.quests")}</Text>
 						<Flex bordered style={{ padding: "0 4px" }} rounded>
-							<Text small>{tasks.length}</Text>
+							<Text small>{tasks.length}/25</Text>
 						</Flex>
 					</Flex>
 					<Flex fill />

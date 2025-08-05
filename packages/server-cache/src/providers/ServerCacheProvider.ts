@@ -46,6 +46,71 @@ export class ServerCacheProvider {
 		await this.cache.invalidate(this.createCacheKey(route));
 	}
 
+	protected readonly onActionRequest = $hook({
+		on: "action:onRequest",
+		handler: async ({ action, request }) => {
+			const cache = action.route.cache;
+			if (!cache) {
+				return;
+			}
+
+			const key = this.createCacheKey(action.route, request);
+			const cached = await this.cache.get(key);
+			if (cached) {
+				const body =
+					cached.contentType === "application/json"
+						? JSON.parse(cached.body)
+						: cached.body;
+
+				this.log.trace("Cache hit for action", {
+					key,
+					action: action.name,
+				});
+
+				request.reply.body = body; // just re-use, full trust
+			} else {
+				this.log.trace("Cache miss for action", {
+					key,
+					action: action.name,
+				});
+			}
+		},
+	});
+
+	protected readonly onActionResponse = $hook({
+		on: "action:onResponse",
+		handler: async ({ action, request, response }) => {
+			const cache = action.route.cache;
+			if (!cache || !response) {
+				return;
+			}
+
+			const key = this.createCacheKey(action.route, request);
+
+			// TODO: serialize the response body, exactly like in the server response hook
+			// this is bad
+			const contentType =
+				typeof response === "string" ? "text/plain" : "application/json";
+			const body =
+				contentType === "text/plain" ? response : JSON.stringify(response);
+
+			const etag = this.generateETag(body);
+
+			this.log.trace("Caching action", {
+				key,
+				action: action.name,
+				length: body.length,
+			});
+
+			await this.cache.set(key, {
+				body: body,
+				lastModified: this.time.toISOString(),
+				contentType: contentType,
+				hash: etag,
+			});
+		},
+	});
+
 	protected readonly onRequest = $hook({
 		on: "server:onRequest",
 		handler: async ({ route, request }) => {
@@ -58,6 +123,11 @@ export class ServerCacheProvider {
 
 			const cached = await this.cache.get(key);
 			if (cached) {
+				this.log.trace("Cache hit for route", {
+					key,
+					route: route.path,
+				});
+
 				// if user has already the resource cached, just return 304 Not Modified
 				if (
 					request.headers["if-none-match"] === cached.hash ||
@@ -74,11 +144,16 @@ export class ServerCacheProvider {
 				if (cached.contentType) {
 					request.reply.setHeader("Content-Type", cached.contentType);
 				}
+			} else {
+				this.log.trace("Cache miss for route", {
+					key,
+					route: route.path,
+				});
 			}
 		},
 	});
 
-	protected readonly onSend = $hook({
+	protected readonly onResponse = $hook({
 		on: "server:onResponse",
 		priority: "first",
 		handler: async ({ route, request, response }) => {
@@ -93,6 +168,11 @@ export class ServerCacheProvider {
 			// - buffer is not supported by @alepha/cache, for now!
 
 			if (typeof response.body === "string") {
+				this.log.trace("Caching response", {
+					key,
+					route: route.path,
+					status: response.status,
+				});
 				const etag = this.generateETag(response.body);
 				await this.cache.set(key, {
 					body: response.body,
@@ -125,8 +205,16 @@ export class ServerCacheProvider {
 		};
 	}
 
-	protected createCacheKey(route: ServerRoute, args?: ServerRequest) {
-		return `${route.method}:${route.path}:${args?.url?.href ?? "*"}`;
+	protected createCacheKey(route: ServerRoute, config?: ServerRequest): string {
+		const params: string[] = [];
+		for (const [key, value] of Object.entries(config?.params ?? {})) {
+			params.push(`${key}=${value}`);
+		}
+		for (const [key, value] of Object.entries(config?.query ?? {})) {
+			params.push(`${key}=${value}`);
+		}
+
+		return `${route.method}:${route.path.replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}`;
 	}
 }
 
@@ -137,7 +225,7 @@ export type ServerRouteCache =
 
 interface RouteCacheEntry {
 	contentType?: string;
-	body: string;
+	body: any;
 	status?: number;
 	lastModified: string;
 	hash: string;

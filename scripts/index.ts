@@ -125,7 +125,7 @@ class AlephaDevCli {
 
 const alepha = Alepha.create({
 	env: {
-		LOG_FORMAT: "cli",
+		LOG_FORMAT: "raw",
 		LOG_LEVEL: "alepha.command:info,warn",
 		CLI_NAME: "yarn alepha",
 		CLI_DESCRIPTION: "Alepha development CLI 🛠️",

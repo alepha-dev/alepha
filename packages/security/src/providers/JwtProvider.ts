@@ -83,15 +83,23 @@ export class JwtProvider {
 		}
 
 		for (const it of this.keystore) {
-			this.log.trace(`Trying to verify token with key '${it.name}'`);
+			this.log.trace(`Trying to verify token`, {
+				keyName: it.name,
+			});
 
 			try {
-				return {
+				const verified = {
+					keyName: it.name,
 					result: await jwtVerify(token, it.keyLoader, {
 						currentDate: this.dateTimeProvider.now().toDate(),
 					}),
-					keyName: it.name,
 				};
+
+				this.log.trace("Token verified successfully", {
+					keyName: verified.keyName,
+				});
+
+				return verified;
 			} catch (error) {
 				if (error instanceof JWTExpired) {
 					throw new SecurityError("Token expired", { cause: error });

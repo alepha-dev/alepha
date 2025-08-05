@@ -1,7 +1,7 @@
 export { default as ClientOnly } from "./components/ClientOnly.tsx";
 export { default as ErrorBoundary } from "./components/ErrorBoundary.tsx";
 export * from "./components/ErrorViewer.tsx";
-export { default as Link } from "./components/Link.tsx";
+export { default as Link, type LinkProps } from "./components/Link.tsx";
 export { default as NestedView } from "./components/NestedView.tsx";
 export { default as NotFound } from "./components/NotFound.tsx";
 export * from "./contexts/AlephaContext.ts";
