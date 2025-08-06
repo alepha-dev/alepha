@@ -1,8 +1,17 @@
 import { DateTimeProvider } from "@alepha/datetime";
-import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
+import {
+	useAlepha,
+	useClient,
+	useInject,
+	useRouter,
+	useStore,
+} from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
 import { useEffect, useState } from "react";
+import Markdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+import remarkGfm from "remark-gfm";
 import type TaskApi from "../../api/TaskApi.ts";
 import type { Task } from "../../providers/Db.ts";
 import Action from "../shared/Action.tsx";
@@ -88,8 +97,22 @@ const TaskView = (props: TaskViewProps) => {
 								/>
 							</Flex>
 						</Flex>
-						<Flex bg overflow bordered pad2 rounded>
-							<pre>{task.description}</pre>
+						<Flex
+							bg
+							overflow
+							bordered
+							pad2
+							rounded
+							col
+							className={"bp6-running-text"}
+						>
+							<Markdown
+								remarkPlugins={[remarkGfm]}
+								rehypePlugins={[rehypeHighlight]}
+							>
+								{task.description}
+							</Markdown>
+							{/*<pre>{task.description}</pre>*/}
 						</Flex>
 
 						<Flex gap1 centerX>
@@ -188,6 +211,10 @@ const EditTaskButton = (props: {
 }) => {
 	const [showDialog, setShowDialog] = useState(false);
 	const client = useClient<TaskApi>();
+	const [project] = useStore("project");
+	if (!project) {
+		return null;
+	}
 
 	if (!client.updateTaskById.can()) {
 		return null;
@@ -235,6 +262,7 @@ const EditTaskButton = (props: {
 						/>
 					</Flex>
 					<TaskCreate
+						project={project}
 						task={props.task}
 						onSubmit={(task) => {
 							setShowDialog(false);

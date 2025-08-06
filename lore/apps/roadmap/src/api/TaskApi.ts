@@ -9,11 +9,17 @@ class TaskApi {
 	getTasks = $action({
 		group: "read",
 		schema: {
+			params: t.object({
+				projectId: t.int(),
+			}),
 			response: t.array(tasks.$schema),
 		},
-		handler: async () => {
+		handler: async ({ params }) => {
 			return this.db.tasks.find({
 				limit: 100,
+				where: {
+					projectId: { eq: params.projectId },
+				},
 			});
 		},
 	});
@@ -27,7 +33,10 @@ class TaskApi {
 			response: tasks.$schema,
 		},
 		handler: async ({ params }) => {
-			const task = await this.db.tasks.findById(params.id);
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+			});
+
 			if (!task) {
 				throw new NotFoundError(`Task with id ${params.id} not found`);
 			}
@@ -60,11 +69,14 @@ class TaskApi {
 	createTask = $action({
 		group: "write",
 		schema: {
-			body: tasks.$insertSchema,
+			body: t.omit(tasks.$insertSchema, ["createdBy"]),
 			response: tasks.$schema,
 		},
-		handler: async ({ body }) => {
-			return await this.db.tasks.create(body);
+		handler: async ({ body, user }) => {
+			return await this.db.tasks.create({
+				...body,
+				createdBy: user.id,
+			});
 		},
 	});
 

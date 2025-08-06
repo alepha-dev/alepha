@@ -1,8 +1,15 @@
+import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { Popover } from "@blueprintjs/core";
 import type { ReactNode } from "react";
 
 const ExperienceBar = () => {
+	const auth = useAuth();
+
+	if (!auth.user) {
+		return null;
+	}
+
 	const chunks: Array<ReactNode> = [];
 
 	for (let i = 0; i < 20; i++) {

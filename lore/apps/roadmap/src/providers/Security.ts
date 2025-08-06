@@ -1,10 +1,12 @@
-import { $env, $hook, t } from "@alepha/core";
+import { $env, $hook, $inject, t } from "@alepha/core";
 import { $auth } from "@alepha/react-auth";
 import { $realm } from "@alepha/security";
+import { Db } from "./Db.ts";
 
 class Security {
 	env = $env(
 		t.object({
+			APP_SECRET: t.string(),
 			GOOGLE_CLIENT_ID: t.string(),
 			GOOGLE_CLIENT_SECRET: t.string(),
 			ADMIN_USER_ID: t.string(),
@@ -23,7 +25,7 @@ class Security {
 
 	realm = $realm({
 		name: "roadmap",
-		secret: () => this.battleNet.jwks(),
+		secret: this.env.APP_SECRET,
 		roles: [
 			{
 				name: "user",
@@ -37,7 +39,15 @@ class Security {
 		],
 	});
 
-	battleNet = $auth({
+	db = $inject(Db);
+
+	google = $auth({
+		realm: this.realm,
+		user: async (it) => {
+			return await this.db.users.findOne({
+				email: { eq: it.email },
+			});
+		},
 		oidc: {
 			issuer: "https://accounts.google.com",
 			clientId: this.env.GOOGLE_CLIENT_ID,
@@ -46,6 +56,7 @@ class Security {
 		},
 	});
 
+	//
 	// gh = $auth({
 	// 	disabled: true,
 	// 	oauth: {

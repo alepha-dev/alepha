@@ -1,17 +1,13 @@
+import { useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Icon, InputGroup, Menu, MenuItem, Popover } from "@blueprintjs/core";
-import type { Task } from "../../providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
 import TaskList from "../task/TaskList.tsx";
 
-export interface QuestLogProps {
-	tasks: Task[];
-}
-
-const QuestLog = (props: QuestLogProps) => {
-	const { tasks = [] } = props;
+const QuestLog = () => {
+	const [tasks = []] = useStore("tasks");
 	const { tr } = useI18n<I18n, "en">();
 	return (
 		<Flex
