@@ -7,7 +7,7 @@ export class AlsProvider {
 		return undefined;
 	};
 
-	protected als?: AsyncLocalStorage<AsyncLocalStorageData>;
+	public als?: AsyncLocalStorage<AsyncLocalStorageData>;
 
 	constructor() {
 		this.als = AlsProvider.create();

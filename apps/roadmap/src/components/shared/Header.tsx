@@ -1,20 +1,15 @@
-import { useRouterEvents } from "@alepha/react";
+import { useRouterEvents, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Drawer } from "@blueprintjs/core";
+import { Button, Drawer, Icon } from "@blueprintjs/core";
 import { useState } from "react";
-import { type Task, tasks } from "../../providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestLog from "../home/QuestLog.tsx";
 import Action from "./Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import StupidLogo from "./StupidLogo.tsx";
 
-export interface HeaderProps {
-	tasks: Array<Task>;
-}
-
-const Header = (props: HeaderProps) => {
+const Header = () => {
 	const { tr } = useI18n<I18n, "en">();
 
 	return (
@@ -46,15 +41,18 @@ const Header = (props: HeaderProps) => {
 				<Flex wFill pad2h>
 					<Flex fill gap1>
 						<Flex center gap1>
-							<MobileQuestLog tasks={props.tasks} />
+							<MobileQuestLog />
 							<Flex visible={"md"}>
 								<StupidLogo />
 							</Flex>
 							<Flex col>
-								<Text bold large>
-									{tr("roadmap.title")}
-								</Text>
+								<Action variant={"minimal"} link={{ to: "/" }}>
+									<Text bold large>
+										{tr("roadmap.title")}
+									</Text>
+								</Action>
 							</Flex>
+							<HeaderProject />
 						</Flex>
 					</Flex>
 					<HeaderActions />
@@ -66,7 +64,21 @@ const Header = (props: HeaderProps) => {
 
 export default Header;
 
-const MobileQuestLog = (props: HeaderProps) => {
+const HeaderProject = () => {
+	const [project] = useStore("project");
+	if (!project) {
+		return null;
+	}
+
+	return (
+		<Flex gap2 center>
+			<Icon icon={"caret-right"} />
+			<Text>{project.title}</Text>
+		</Flex>
+	);
+};
+
+const MobileQuestLog = () => {
 	const [show, setShow] = useState(false);
 
 	useRouterEvents({
@@ -94,7 +106,7 @@ const MobileQuestLog = (props: HeaderProps) => {
 						</Flex>
 					</Flex>
 					<Flex fill>
-						<QuestLog tasks={props.tasks} />
+						<QuestLog />
 					</Flex>
 				</Flex>
 			</Drawer>

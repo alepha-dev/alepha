@@ -1,4 +1,4 @@
-import { useActive, useRouter } from "@alepha/react";
+import { useActive, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Icon, Popover } from "@blueprintjs/core";
 import type { Task } from "../../providers/Db.ts";
@@ -7,7 +7,10 @@ const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
 
 	const router = useRouter();
-	const { isActive, isPending, anchorProps } = useActive(`/q/${task.id}`);
+	const [project] = useStore("project");
+	const { isActive, isPending, anchorProps } = useActive(
+		`/p/${project?.id}/q/${task.id}`,
+	);
 
 	const renderComplexity = (complexity: number) => {
 		if (complexity === 5)

@@ -57,7 +57,13 @@ const NestedView = (props: NestedViewProps) => {
 	const element = view ?? props.children ?? null;
 
 	return (
-		<ErrorBoundary fallback={app.context.onError!}>{element}</ErrorBoundary>
+		<ErrorBoundary
+			fallback={(error) => {
+				return app.context.onError?.(error, app.context) as ReactNode;
+			}}
+		>
+			{element}
+		</ErrorBoundary>
 	);
 };
 

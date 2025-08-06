@@ -1,4 +1,4 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, type State } from "@alepha/core";
 import type { ApiLinksResponse } from "@alepha/server";
 import { LinkProvider } from "@alepha/server-links";
 import type { Root } from "react-dom/client";
@@ -156,6 +156,14 @@ export class ReactBrowserProvider {
 		handler: async () => {
 			const hydration = this.getHydrationState();
 			const previous = hydration?.layers ?? [];
+
+			if (hydration) {
+				for (const [key, value] of Object.entries(hydration)) {
+					if (key !== "layers" && key !== "links") {
+						this.alepha.state(key as keyof State, value);
+					}
+				}
+			}
 
 			if (hydration?.links) {
 				for (const link of hydration.links.links) {

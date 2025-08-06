@@ -87,10 +87,16 @@ export class ServerSecurityProvider {
 					request.headers.authorization,
 					permission,
 				);
+				this.log.trace("User set from request token", {
+					user: request.user,
+					permission: permission,
+				});
 			} catch (error) {
 				if (route.secure || permission) {
 					throw error;
 				}
+
+				this.log.trace("Skipping security check for route");
 				// else, we skip the security check
 			}
 		},

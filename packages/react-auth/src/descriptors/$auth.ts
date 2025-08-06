@@ -1,4 +1,5 @@
 import { type Async, createDescriptor, Descriptor, KIND } from "@alepha/core";
+import type { RealmDescriptor, UserAccountInfo } from "@alepha/security";
 import type { UserProfile } from "../providers/ReactAuthProvider.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
 
@@ -11,17 +12,21 @@ export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
 export type AuthDescriptorOptions = {
 	disabled?: boolean;
 	name?: string;
+
 	fallback?: () => Async<AccessToken>;
 	profile?: (raw: Record<string, any>) => Async<UserProfile>;
-} & (
-	| {
-			oidc: OidcOptions;
-	  }
-	| {
-			oauth: OAuthOptions;
-	  }
-	| {}
-);
+
+	user?: (
+		profile: UserProfile & { provider: string },
+	) => Async<UserAccountInfo>;
+	realm?: RealmDescriptor;
+} & {
+	oidc: OidcOptions;
+};
+
+export interface CredentialsOptions {
+	dummy?: boolean;
+}
 
 export interface OidcOptions {
 	issuer: string;

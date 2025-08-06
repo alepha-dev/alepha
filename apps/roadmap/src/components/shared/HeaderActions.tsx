@@ -1,4 +1,4 @@
-import { useClient, useInject } from "@alepha/react";
+import { useClient, useInject, useStore } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
@@ -54,6 +54,12 @@ const CreateTaskButton = () => {
 	const [showDialog, setShowDialog] = useState(false);
 	const { tr } = useI18n<I18n, "en">();
 	const client = useClient<TaskApi>();
+
+	const [project] = useStore("project");
+	if (!project) {
+		return null;
+	}
+
 	return (
 		<Flex>
 			<Action
@@ -97,7 +103,7 @@ const CreateTaskButton = () => {
 							}}
 						/>
 					</Flex>
-					<TaskCreate onSubmit={() => setShowDialog(false)} />
+					<TaskCreate project={project} onSubmit={() => setShowDialog(false)} />
 				</Flex>
 			</Drawer>
 		</Flex>
@@ -121,10 +127,9 @@ const AuthButton = () => {
 				}
 			>
 				<Action
-					visibleText={"md"}
 					variant={"minimal"}
 					icon="user"
-					text={auth.user.name}
+					text={"Profile"}
 					endIcon={"caret-down"}
 				/>
 			</Popover>
@@ -136,9 +141,7 @@ const AuthButton = () => {
 			variant={"minimal"}
 			icon={"user"}
 			text={"Sign in"}
-			onClick={() => {
-				auth.login();
-			}}
+			link={{ to: "/login" }}
 		/>
 	);
 };

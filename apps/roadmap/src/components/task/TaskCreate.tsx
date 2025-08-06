@@ -11,12 +11,13 @@ import {
 } from "@blueprintjs/core";
 import { useState } from "react";
 import type TaskApi from "../../api/TaskApi.ts";
-import type { Task } from "../../providers/Db.ts";
+import type { Project, Task } from "../../providers/Db.ts";
 import Control from "../shared/Control.tsx";
 
 export interface TaskCreateProps {
 	onSubmit: (task: Task) => void;
 	task?: Task;
+	project: Project;
 }
 
 const TaskCreate = (props: TaskCreateProps) => {
@@ -47,11 +48,14 @@ const TaskCreate = (props: TaskCreateProps) => {
 			}
 
 			const resp = await taskApi.createTask({
-				body: data,
+				body: {
+					...data,
+					projectId: props.project.id,
+				},
 			});
 			alepha.state("tasks", [resp, ...(alepha.state("tasks") ?? [])]);
 			props.onSubmit(resp);
-			await router.go(`/q/${resp.id}`);
+			await router.go(`p/${props.project.id}/q/${resp.id}`);
 		},
 		onError: (err) => {
 			setError(err);

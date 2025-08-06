@@ -1,5 +1,9 @@
 import { $hook, $inject, $logger, Alepha, type Async, t } from "@alepha/core";
-import { SecurityError } from "@alepha/security";
+import {
+	type RealmDescriptor,
+	SecurityError,
+	type UserAccountInfo,
+} from "@alepha/security";
 import { $route, BadRequestError } from "@alepha/server";
 import {
 	$cookie,
@@ -11,7 +15,7 @@ import {
 	authorizationCodeGrant,
 	buildAuthorizationUrl,
 	buildEndSessionUrl,
-	Configuration,
+	type Configuration,
 	calculatePKCECodeChallenge,
 	discovery,
 	randomPKCECodeVerifier,
@@ -122,36 +126,38 @@ export class ReactAuthProvider {
 						oidc: options.oidc,
 						scope: options.oidc.scope ?? "openid profile email",
 						profile: options.profile,
+						realm: options.realm,
+						user: options.user,
 					});
 				}
 
-				if ("oauth" in options) {
-					const oauth = options.oauth;
-
-					const config = new Configuration(
-						{
-							authorization_endpoint: oauth.authorization,
-							token_endpoint: oauth.token,
-							issuer: oauth.authorization, // Use authorization URL as a pseudo-issuer
-							jwks_uri: undefined,
-							end_session_endpoint: undefined, // Pure OAuth2 usually doesn't have this
-						},
-						oauth.clientId,
-						{
-							client_secret: oauth.clientSecret,
-						},
-					);
-
-					this.authProviders.push({
-						name: auth.name,
-						redirectUri: options.oauth.redirectUri ?? ReactAuth.path.callback,
-						fallback: options.fallback,
-						config,
-						oauth: options.oauth,
-						scope: options.oauth.scope,
-						profile: options.profile,
-					});
-				}
+				// if ("oauth" in options) {
+				// 	const oauth = options.oauth;
+				//
+				// 	const config = new Configuration(
+				// 		{
+				// 			authorization_endpoint: oauth.authorization,
+				// 			token_endpoint: oauth.token,
+				// 			issuer: oauth.authorization, // Use authorization URL as a pseudo-issuer
+				// 			jwks_uri: undefined,
+				// 			end_session_endpoint: undefined, // Pure OAuth2 usually doesn't have this
+				// 		},
+				// 		oauth.clientId,
+				// 		{
+				// 			client_secret: oauth.clientSecret,
+				// 		},
+				// 	);
+				//
+				// 	this.authProviders.push({
+				// 		name: auth.name,
+				// 		redirectUri: options.oauth.redirectUri ?? ReactAuth.path.callback,
+				// 		fallback: options.fallback,
+				// 		config,
+				// 		oauth: options.oauth,
+				// 		scope: options.oauth.scope,
+				// 		profile: options.profile,
+				// 	});
+				// }
 			}
 		},
 	});
@@ -349,17 +355,41 @@ export class ReactAuthProvider {
 			});
 
 			this.authorizationCode.del();
+			const profile = await this.getUserProfile(authProvider, tokens);
 
-			this.tokens.set({
-				...tokens,
-				issued_at: Date.now(),
-				provider: name,
-			});
+			if (authProvider.realm && authProvider.user) {
+				const user = await authProvider.user({
+					...profile,
+					provider: name,
+				});
 
-			try {
-				this.user.set(await this.getUserProfile(authProvider, tokens));
-			} catch (e) {
-				throw new SecurityError("Failed to get user profile", { cause: e });
+				const access_token = await authProvider.realm.createToken(
+					user.id,
+					user.roles,
+				);
+
+				this.tokens.set({
+					access_token,
+					issued_at: Date.now(),
+					provider: name,
+				});
+
+				try {
+					this.user.set(user);
+				} catch (e) {
+					throw new SecurityError("Failed to get user profile", { cause: e });
+				}
+			} else {
+				this.tokens.set({
+					...tokens,
+					issued_at: Date.now(),
+					provider: name,
+				});
+				try {
+					this.user.set(profile);
+				} catch (e) {
+					throw new SecurityError("Failed to get user profile", { cause: e });
+				}
 			}
 
 			reply.redirect(authorizationCode.redirectUri ?? "/");
@@ -503,6 +533,11 @@ export interface AuthProvider {
 	oidc?: OidcOptions;
 	oauth?: OAuthOptions;
 	profile?: (raw: any) => Async<UserProfile>;
+
+	user?: (
+		profile: UserProfile & { provider: string },
+	) => Async<UserAccountInfo>;
+	realm?: RealmDescriptor;
 }
 
 export interface UserProfile {

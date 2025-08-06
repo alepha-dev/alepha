@@ -406,8 +406,10 @@ export class ReactServerProvider {
 		};
 
 		if (hydration) {
+			const { request, ...rest } = this.alepha.context.als?.getStore() ?? {};
+
 			const hydrationData: ReactHydrationState = {
-				links: context.links,
+				...rest,
 				layers: state.layers.map((it) => ({
 					...it,
 					error: it.error

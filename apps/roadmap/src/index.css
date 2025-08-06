@@ -5,6 +5,9 @@
 @import "components/shared/StupidLogo.css";
 @import "components/shared/ExperienceBar.css";
 
+@import "highlight.js/styles/github.css";
+@import "./styles/code-github-dark.css";
+
 :root {
 	--color-gold: #db9b05;
 	--color-silver: #b9b6b6ff;
