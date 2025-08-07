@@ -6,7 +6,7 @@ import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import { RouterHookApi } from "./RouterHookApi.ts";
 import { useAlepha } from "./useAlepha.ts";
 
-export const useRouter = (): RouterHookApi => {
+export const useRouter = <T extends object>(): RouterHookApi<T> => {
 	const alepha = useAlepha();
 	const ctx = useContext(RouterContext);
 	const layer = useContext(RouterLayerContext);
@@ -25,6 +25,7 @@ export const useRouter = (): RouterHookApi => {
 				ctx.context,
 				ctx.state,
 				layer,
+				alepha.inject(PageDescriptorProvider),
 				alepha.isBrowser() ? alepha.inject(ReactBrowserProvider) : undefined,
 			),
 		[layer],

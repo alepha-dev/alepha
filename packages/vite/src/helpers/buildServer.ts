@@ -85,7 +85,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
 			"utf-8",
 		);
 
-		template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()};\`\n`;
+		template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()}\`;\n`;
 
 		await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
 	}

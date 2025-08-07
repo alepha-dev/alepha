@@ -4,7 +4,7 @@ import { useI18n } from "@alepha/react-i18n";
 import { Icon, InputGroup, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
-import TaskList from "../task/TaskList.tsx";
+import TaskList from "./task/TaskList.tsx";
 
 const QuestLog = () => {
 	const [tasks = []] = useStore("tasks");

@@ -53,10 +53,13 @@ export class PageDescriptorProvider {
 		throw new Error(`Page ${name} not found`);
 	}
 
-	public url(
+	public pathname(
 		name: string,
-		options: { params?: Record<string, string>; base?: string } = {},
-	): URL {
+		options: {
+			params?: Record<string, string>;
+			query?: Record<string, string>;
+		} = {},
+	) {
 		const page = this.page(name);
 		if (!page) {
 			throw new Error(`Page ${name} not found`);
@@ -71,8 +74,23 @@ export class PageDescriptorProvider {
 
 		url = this.compile(url, options.params ?? {});
 
+		if (options.query) {
+			const query = new URLSearchParams(options.query);
+			if (query.toString()) {
+				url += `?${query.toString()}`;
+			}
+		}
+
+		return url.replace(/\/\/+/g, "/") || "/";
+	}
+
+	public url(
+		name: string,
+		options: { params?: Record<string, string>; base?: string } = {},
+	): URL {
 		return new URL(
-			url.replace(/\/\/+/g, "/") || "/",
+			this.pathname(name, options),
+			// use provided base or default to http://localhost
 			options.base ?? `http://localhost`,
 		);
 	}
@@ -629,4 +647,7 @@ export interface PageReactContext {
 	url: URL;
 	onError: ErrorHandler;
 	links?: ApiLinksResponse;
+
+	params: Record<string, any>;
+	query: Record<string, string>;
 }

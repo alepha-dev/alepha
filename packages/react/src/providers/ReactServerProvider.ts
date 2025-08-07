@@ -454,7 +454,7 @@ export class ReactServerProvider {
 			const bodyOpenTag = /<body([^>]*)>/i;
 			if (bodyOpenTag.test(response.html)) {
 				response.html = response.html.replace(bodyOpenTag, (match) => {
-					return `${match}\n<div id="${this.env.REACT_ROOT_ID}">${app}</div>`;
+					return `${match}<div id="${this.env.REACT_ROOT_ID}">${app}</div>`;
 				});
 			}
 		}
@@ -463,7 +463,7 @@ export class ReactServerProvider {
 		if (bodyCloseTagRegex.test(response.html)) {
 			response.html = response.html.replace(
 				bodyCloseTagRegex,
-				`${script}\n</body>`,
+				`${script}</body>`,
 			);
 		}
 	}

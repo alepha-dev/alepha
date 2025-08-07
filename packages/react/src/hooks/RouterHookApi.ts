@@ -1,6 +1,7 @@
 import type { PageDescriptor } from "../descriptors/$page.ts";
 import type {
 	AnchorProps,
+	PageDescriptorProvider,
 	PageReactContext,
 	PageRoute,
 	RouterState,
@@ -10,7 +11,7 @@ import type {
 	RouterGoOptions,
 } from "../providers/ReactBrowserProvider.ts";
 
-export class RouterHookApi {
+export class RouterHookApi<T extends object> {
 	constructor(
 		private readonly pages: PageRoute[],
 		private readonly context: PageReactContext,
@@ -18,8 +19,25 @@ export class RouterHookApi {
 		private readonly layer: {
 			path: string;
 		},
+		private readonly pageApi: PageDescriptorProvider,
 		private readonly browser?: ReactBrowserProvider,
 	) {}
+
+	public path(
+		name: keyof VirtualRouter<T>,
+		config: {
+			params?: Record<string, string>;
+			query?: Record<string, string>;
+		} = {},
+	): string {
+		return this.pageApi.pathname(name as string, {
+			params: {
+				...this.context.params,
+				...config.params,
+			},
+			query: config.query,
+		});
+	}
 
 	public getURL(): URL {
 		if (!this.browser) {
@@ -95,19 +113,28 @@ export class RouterHookApi {
 	}
 
 	public async go(path: string, options?: RouterGoOptions): Promise<void>;
-	public async go<T extends object>(
+	public async go(
 		path: keyof VirtualRouter<T>,
 		options?: RouterGoOptions,
 	): Promise<void>;
-	public async go(path: string, options?: RouterGoOptions): Promise<void> {
+	public async go(
+		path: string | keyof VirtualRouter<T>,
+		options?: RouterGoOptions,
+	): Promise<void> {
 		for (const page of this.pages) {
 			if (page.name === path) {
-				path = page.path ?? "";
-				break;
+				await this.browser?.go(
+					this.path(path as keyof VirtualRouter<T>, options),
+					options,
+				);
+				return;
 			}
 		}
 
-		await this.browser?.go(this.createHref(path, this.layer, options), options);
+		await this.browser?.go(
+			this.createHref(path as string, this.layer, options),
+			options,
+		);
 	}
 
 	public anchor(

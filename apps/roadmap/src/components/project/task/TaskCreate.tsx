@@ -10,9 +10,9 @@ import {
 	TextArea,
 } from "@blueprintjs/core";
 import { useState } from "react";
-import type TaskApi from "../../api/TaskApi.ts";
-import type { Project, Task } from "../../providers/Db.ts";
-import Control from "../shared/Control.tsx";
+import type TaskApi from "../../../api/TaskApi.ts";
+import type { Project, Task } from "../../../providers/Db.ts";
+import Control from "../../shared/Control.tsx";
 
 export interface TaskCreateProps {
 	onSubmit: (task: Task) => void;

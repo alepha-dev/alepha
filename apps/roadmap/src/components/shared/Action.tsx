@@ -1,12 +1,11 @@
 import { AlephaError } from "@alepha/core";
 import { type LinkProps, useActive, useInject } from "@alepha/react";
-import { type Breakpoint, Flex } from "@alepha/react-flex";
 import { AnchorButton, Button, type ButtonProps } from "@blueprintjs/core";
 import { createElement, type FunctionComponent, useState } from "react";
 import Toast from "../../services/Toast.ts";
 
 export type ActionProps = ButtonProps & {
-	visibleText?: Breakpoint;
+	visibleText?: "sm";
 	link?: LinkProps;
 };
 
@@ -37,6 +36,14 @@ const Action = (props: ActionProps) => {
 	}
 
 	rest.disabled ??= pending;
+	rest.loading ??= pending;
+
+	if (active.isActive && link?.to) {
+		rest = {
+			...rest,
+			active: true,
+		};
+	}
 
 	let element: FunctionComponent = Button;
 	if (hasLink) {
@@ -48,13 +55,8 @@ const Action = (props: ActionProps) => {
 	}
 
 	if (visibleText) {
-		const { children, text, endIcon, ...btnProps } = rest;
-		return (
-			<>
-				<Flex visible={visibleText}>{createElement(element, rest)}</Flex>
-				<Flex hide={visibleText}>{createElement(element, btnProps)}</Flex>
-			</>
-		);
+		rest.className ??= "";
+		rest.className += " hide-sm-up-text";
 	}
 
 	return createElement(element, rest);
