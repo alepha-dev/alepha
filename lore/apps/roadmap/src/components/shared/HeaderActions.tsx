@@ -1,20 +1,10 @@
-import { useClient, useInject, useStore } from "@alepha/react";
+import { useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import {
-	Button,
-	Divider,
-	Drawer,
-	Menu,
-	MenuItem,
-	Popover,
-} from "@blueprintjs/core";
-import { useState } from "react";
-import type TaskApi from "../../api/TaskApi.ts";
+import { Button, Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import type { I18n } from "../../services/I18n.ts";
 import { Theme } from "../../services/Theme.ts";
-import TaskCreate from "../project/task/TaskCreate.tsx";
 import Action from "./Action.tsx";
 
 const HeaderActions = () => {

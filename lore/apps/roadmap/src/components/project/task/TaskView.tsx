@@ -9,9 +9,6 @@ import {
 import { Flex, Text } from "@alepha/react-flex";
 import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
 import { useEffect, useState } from "react";
-import Markdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import remarkGfm from "remark-gfm";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type TaskApi from "../../../api/TaskApi.ts";
 import type { Task } from "../../../providers/Db.ts";

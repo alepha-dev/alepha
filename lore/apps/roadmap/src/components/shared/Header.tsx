@@ -1,7 +1,4 @@
 import {
-	NestedView,
-	useActive,
-	useClient,
 	useRouter,
 	useRouterEvents,
 	useRouterState,
@@ -19,12 +16,9 @@ import {
 	Popover,
 } from "@blueprintjs/core";
 import { useState } from "react";
-import type { AppRouter } from "../../AppRouter.ts";
-import type TaskApi from "../../api/TaskApi.ts";
 import type { I18n } from "../../services/I18n.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
-import TaskCreate from "../project/task/TaskCreate.tsx";
 import Action from "./Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import StupidLogo from "./StupidLogo.tsx";
