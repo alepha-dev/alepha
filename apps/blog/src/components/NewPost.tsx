@@ -5,7 +5,7 @@ import type { AppRouter } from "../AppRouter.ts";
 import type { PostController } from "../controllers/PostController.ts";
 
 const NewPost = () => {
-	const router = useRouter();
+	const router = useRouter<AppRouter>();
 	const client = useClient<PostController>();
 
 	const form = useForm({
@@ -29,7 +29,7 @@ const NewPost = () => {
 		<form
 			onSubmit={form.onSubmit(async (values) => {
 				await client.createPost({ body: values });
-				router.go<AppRouter>("home");
+				router.go("home");
 			})}
 		>
 			<Flex p={"md"} flex={1} direction={"column"} gap={"md"}>

@@ -26,7 +26,7 @@ export const useActive = (path?: HrefLike): UseActiveHook => {
 	);
 	const [isPending, setPending] = useState(false);
 	const isActive =
-		current === href || current === href + "/" || current + "/" === href;
+		current === href || current === `${href}/` || `${current}/` === href;
 
 	useRouterEvents(
 		{
