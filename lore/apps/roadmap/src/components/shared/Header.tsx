@@ -1,10 +1,30 @@
-import { useRouterEvents, useStore } from "@alepha/react";
+import {
+	NestedView,
+	useActive,
+	useClient,
+	useRouter,
+	useRouterEvents,
+	useRouterState,
+	useStore,
+} from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Drawer, Icon } from "@blueprintjs/core";
+import {
+	Button,
+	Divider,
+	Drawer,
+	Icon,
+	Menu,
+	MenuItem,
+	Popover,
+} from "@blueprintjs/core";
 import { useState } from "react";
+import type { AppRouter } from "../../AppRouter.ts";
+import type TaskApi from "../../api/TaskApi.ts";
 import type { I18n } from "../../services/I18n.ts";
-import QuestLog from "../home/QuestLog.tsx";
+import ProjectActions from "../project/ProjectActions.tsx";
+import QuestLog from "../project/QuestLog.tsx";
+import TaskCreate from "../project/task/TaskCreate.tsx";
 import Action from "./Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import StupidLogo from "./StupidLogo.tsx";
@@ -55,7 +75,15 @@ const Header = () => {
 							<HeaderProject />
 						</Flex>
 					</Flex>
-					<HeaderActions />
+					<Flex pad2h visible={"md"} className={"container"}>
+						<Flex fill col>
+							<ProjectActions />
+						</Flex>
+					</Flex>
+					<Flex fill>
+						<Flex fill />
+						<HeaderActions />
+					</Flex>
 				</Flex>
 			</Flex>
 		</Flex>
@@ -66,14 +94,58 @@ export default Header;
 
 const HeaderProject = () => {
 	const [project] = useStore("project");
+	const router = useRouter();
+	const { pathname } = useRouterState();
+
 	if (!project) {
 		return null;
 	}
 
+	const menuItem = (id: number, label: string) => {
+		return (
+			<MenuItem
+				intent={pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
+				icon={pathname.startsWith(`/p/${id}`) ? "tick-circle" : "blank"}
+				text={label}
+				onClick={() => router.go(`/p/${id}`)}
+			/>
+		);
+	};
+
+	/**
+
+	 (x) Current Workspace ( if public project )
+
+	 ----- separator -----
+
+	 ( ) User Workspace 1
+	 ( ) User Workspace 2
+	 ( ) User Workspace 3
+
+
+	 */
+
 	return (
-		<Flex gap2 center>
-			<Icon icon={"caret-right"} />
-			<Text>{project.title}</Text>
+		<Flex gap1 center>
+			<Icon icon={"slash"} />
+			<Flex>
+				<Popover
+					position={"bottom"}
+					minimal
+					content={
+						<Menu>
+							{menuItem(1, "Alepha")}
+							{menuItem(2, "Roadmap")}
+							<Divider />
+							<MenuItem text={"Add Project"} icon={"plus"} />
+						</Menu>
+					}
+				>
+					<Action variant={"minimal"}>
+						<Text bold>{project.title}</Text>
+					</Action>
+				</Popover>
+			</Flex>
 		</Flex>
 	);
 };

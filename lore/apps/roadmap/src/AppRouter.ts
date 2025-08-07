@@ -54,11 +54,19 @@ export class AppRouter {
 	home = $page({
 		path: "/",
 		lazy: () => import("./components/home/Home.tsx"),
+		resolve: async () => {
+			this.alepha.state("project", null);
+			this.alepha.state("tasks", []);
+		},
 	});
 
 	project = $page({
 		children: () => [
-			this.task, //
+			this.projectTask, //
+			this.projectBoard,
+			this.projectSettings,
+			this.projectAnalytics,
+			this.projectPlayers,
 		],
 		path: "/p/:projectId",
 		schema: {
@@ -84,14 +92,34 @@ export class AppRouter {
 		},
 	});
 
-	task = $page({
+	projectBoard = $page({
+		path: "/",
+		lazy: () => import("./components/project/ProjectBoard.tsx"),
+	});
+
+	projectPlayers = $page({
+		path: "/players",
+		component: () => "players",
+	});
+
+	projectAnalytics = $page({
+		path: "/analytics",
+		component: () => "analytics",
+	});
+
+	projectSettings = $page({
+		path: "/settings",
+		component: () => "Settings",
+	});
+
+	projectTask = $page({
 		path: "/q/:taskId",
 		schema: {
 			params: t.object({
 				taskId: t.int(),
 			}),
 		},
-		lazy: () => import("./components/task/TaskView.tsx"),
+		lazy: () => import("./components/project/task/TaskView.tsx"),
 		resolve: async ({ params }) => {
 			const task = await this.taskApi.getTaskById({
 				params: {

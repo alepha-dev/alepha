@@ -12,10 +12,12 @@ import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import type TaskApi from "../../api/TaskApi.ts";
-import type { Task } from "../../providers/Db.ts";
-import Action from "../shared/Action.tsx";
+import type { AppRouter } from "../../../AppRouter.ts";
+import type TaskApi from "../../../api/TaskApi.ts";
+import type { Task } from "../../../providers/Db.ts";
+import Action from "../../shared/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
+import TaskDescription from "./TaskDescription.tsx";
 
 export interface TaskViewProps {
 	task: Task;
@@ -25,22 +27,27 @@ const TaskView = (props: TaskViewProps) => {
 	const dt = useInject(DateTimeProvider);
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
-	const router = useRouter();
+	const router = useRouter<AppRouter>();
 
 	const [task, setTask] = useState<Task>(props.task);
 	useEffect(() => {
 		setTask(props.task);
 	}, [props.task]);
 
+	const [project] = useStore("project");
+	if (!project) {
+		return null;
+	}
+
 	return (
-		<Flex fill pad2 col>
+		<Flex fill pad1 col>
 			<Flex card pad1 fill gap3 col shadow bordered>
 				<Flex overflow fill col>
 					<Flex>
 						<Flex fill />
 						<Flex>
 							<Action
-								link={{ to: "/" }}
+								link={{ to: `/p/${project.id}` }}
 								icon={"cross"}
 								size={"small"}
 								variant={"minimal"}
@@ -97,24 +104,7 @@ const TaskView = (props: TaskViewProps) => {
 								/>
 							</Flex>
 						</Flex>
-						<Flex
-							bg
-							overflow
-							bordered
-							pad2
-							rounded
-							col
-							className={"bp6-running-text"}
-						>
-							<Markdown
-								remarkPlugins={[remarkGfm]}
-								rehypePlugins={[rehypeHighlight]}
-							>
-								{task.description}
-							</Markdown>
-							{/*<pre>{task.description}</pre>*/}
-						</Flex>
-
+						<TaskDescription task={task} />
 						<Flex gap1 centerX>
 							<Icon icon={"bank-account"} />
 							<Text large bold>
@@ -174,7 +164,7 @@ const TaskView = (props: TaskViewProps) => {
 									"tasks",
 									(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
 								);
-								await router.go("/");
+								await router.go("projectBoard");
 							}}
 						/>
 						<Divider />
@@ -193,7 +183,7 @@ const TaskView = (props: TaskViewProps) => {
 									"tasks",
 									(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
 								);
-								await router.go("/");
+								await router.go("projectBoard");
 							}}
 						/>
 					</Flex>

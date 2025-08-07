@@ -1,7 +1,7 @@
 import { Flex, Text } from "@alepha/react-flex";
 import { Collapse, Icon } from "@blueprintjs/core";
 import { useState } from "react";
-import type { Task } from "../../providers/Db.ts";
+import type { Task } from "../../../providers/Db.ts";
 import TaskItem from "./TaskItem.tsx";
 
 interface TaskGroupProps {

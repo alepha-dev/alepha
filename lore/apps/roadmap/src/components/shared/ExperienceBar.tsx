@@ -19,7 +19,7 @@ const ExperienceBar = () => {
 	}
 
 	const max = 580;
-	const current = 10; // Example current XP, can be dynamic
+	const current = 156; // Example current XP, can be dynamic
 	const percentage = Math.floor((current * 100) / max);
 
 	return (

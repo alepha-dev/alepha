@@ -1,7 +1,8 @@
 import { NestedView } from "@alepha/react";
 import { Flex } from "@alepha/react-flex";
-import QuestLog from "../home/QuestLog.tsx";
 import ExperienceBar from "../shared/ExperienceBar.tsx";
+import ProjectActions from "./ProjectActions.tsx";
+import QuestLog from "./QuestLog.tsx";
 
 const ProjectView = () => {
 	return (
@@ -12,12 +13,15 @@ const ProjectView = () => {
 						<QuestLog />
 					</Flex>
 				</Flex>
-				<Flex col className={"container"}>
+				<Flex className={"container"} col overflow>
+					<Flex pad1 hide={"md"} wFill>
+						<ProjectActions />
+					</Flex>
 					<NestedView />
 				</Flex>
 				<Flex
 					fill
-					visible={"md"}
+					visible={"xl"}
 					style={{
 						width: 300,
 						height: "100%",
