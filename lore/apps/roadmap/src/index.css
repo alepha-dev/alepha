@@ -79,3 +79,27 @@ pre {
 		}
 	}
 }
+
+@media (max-width: 990px) {
+	.bp6-button.hide-md-up-text {
+		.bp6-button-text {
+			display: none !important;
+		}
+		.bp6-icon {
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+}
+
+@media (max-width: 1200px) {
+	.bp6-button.hide-lg-up-text {
+		.bp6-button-text {
+			display: none !important;
+		}
+		.bp6-icon {
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+}

@@ -1,17 +1,20 @@
-import type { TypeBoxError } from "@alepha/core";
-import { useAlepha, useClient, useRouter, useSchema } from "@alepha/react";
+import { TypeBoxError } from "@alepha/core";
+import {
+	useAlepha,
+	useClient,
+	useInject,
+	useRouter,
+	useSchema,
+} from "@alepha/react";
 import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
-import {
-	Button,
-	FormGroup,
-	Icon,
-	SegmentedControl,
-	TextArea,
-} from "@blueprintjs/core";
+import { FormGroup, Icon, SegmentedControl, TextArea } from "@blueprintjs/core";
 import { useState } from "react";
+import type { AppRouter } from "../../../AppRouter.ts";
 import type TaskApi from "../../../api/TaskApi.ts";
 import type { Project, Task } from "../../../providers/Db.ts";
+import Toast from "../../../services/Toast.ts";
+import Action from "../../shared/Action.tsx";
 import Control from "../../shared/Control.tsx";
 
 export interface TaskCreateProps {
@@ -24,8 +27,9 @@ const TaskCreate = (props: TaskCreateProps) => {
 	const [error, setError] = useState<TypeBoxError | undefined>();
 	const taskApi = useClient<TaskApi>();
 	const alepha = useAlepha();
+	const toast = useInject(Toast);
 	const schema = useSchema(taskApi.createTask);
-	const router = useRouter();
+	const router = useRouter<AppRouter>();
 
 	const form = useForm({
 		id: "add-task",
@@ -47,21 +51,32 @@ const TaskCreate = (props: TaskCreateProps) => {
 				return;
 			}
 
-			const resp = await taskApi.createTask({
+			const task = await taskApi.createTask({
 				body: {
 					...data,
 					projectId: props.project.id,
 				},
 			});
-			alepha.state("tasks", [resp, ...(alepha.state("tasks") ?? [])]);
-			props.onSubmit(resp);
-			await router.go(`p/${props.project.id}/q/${resp.id}`);
+
+			alepha.state("tasks", [task, ...(alepha.state("tasks") ?? [])]);
+			props.onSubmit(task);
+
+			await router.go("projectTask", {
+				params: {
+					projectId: String(props.project.id),
+					taskId: String(task.id),
+				},
+			});
 		},
 		onError: (err) => {
-			setError(err);
-			document
-				.getElementById(`add-task${err.value.path.replaceAll("/", "-")}`)
-				?.focus();
+			if (err instanceof TypeBoxError) {
+				setError(err);
+				document
+					.getElementById(`add-task${err.value.path.replaceAll("/", "-")}`)
+					?.focus();
+			} else {
+				toast.show(err.message, "danger");
+			}
 		},
 		onChange: (key) => {
 			if (error?.value.path === key) {
@@ -187,7 +202,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 
 						<Flex>
 							{props.task ? (
-								<Button
+								<Action
 									type="submit"
 									variant={"solid"}
 									icon={"floppy-disk"}
@@ -195,9 +210,9 @@ const TaskCreate = (props: TaskCreateProps) => {
 									intent={"primary"}
 								>
 									Update Quest
-								</Button>
+								</Action>
 							) : (
-								<Button
+								<Action
 									type="submit"
 									variant={"solid"}
 									icon={"plus"}
@@ -205,7 +220,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 									intent={"success"}
 								>
 									Add Quest To Roadmap
-								</Button>
+								</Action>
 							)}
 						</Flex>
 					</Flex>

@@ -5,7 +5,7 @@ import { createElement, type FunctionComponent, useState } from "react";
 import Toast from "../../services/Toast.ts";
 
 export type ActionProps = ButtonProps & {
-	visibleText?: "sm";
+	visibleText?: "sm" | "md" | "lg";
 	link?: LinkProps;
 	active?: boolean;
 	href?: string;
@@ -58,7 +58,7 @@ const Action = (props: ActionProps) => {
 
 	if (visibleText) {
 		rest.className ??= "";
-		rest.className += " hide-sm-up-text";
+		rest.className += ` hide-${visibleText}-up-text`;
 	}
 
 	return createElement(element, rest);

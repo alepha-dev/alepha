@@ -33,6 +33,14 @@ class Security {
 				permissions: [{ name: "*" }],
 			},
 		],
+		settings: {
+			accessToken: {
+				expiration: [30, "minutes"],
+			},
+			refreshToken: {
+				expiration: [60, "days"],
+			},
+		},
 	});
 
 	db = $inject(Db);
