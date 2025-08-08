@@ -6,7 +6,7 @@ import TaskApi from "./TaskApi.ts";
 
 const RoadmapApi = $module({
 	name: "roadmap.api",
-	services: [Security, Db, TaskApi, ProjectApi],
+	services: [Security, TaskApi, ProjectApi],
 });
 
 export default RoadmapApi;

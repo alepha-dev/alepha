@@ -6,6 +6,7 @@ export default defineConfig({
 	plugins: [
 		viteReact(),
 		viteAlepha({
+			debug: true,
 			vercel: {
 				projectName: "alepha-roadmap",
 			},
