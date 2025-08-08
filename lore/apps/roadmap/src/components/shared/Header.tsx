@@ -60,7 +60,7 @@ const Header = () => {
 								<StupidLogo />
 							</Flex>
 							<Flex col>
-								<Action variant={"minimal"} link={{ to: "/" }}>
+								<Action active={false} variant={"minimal"} link={{ to: "/" }}>
 									<Text bold large>
 										{tr("roadmap.title")}
 									</Text>
