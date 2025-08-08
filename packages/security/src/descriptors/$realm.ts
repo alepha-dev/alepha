@@ -64,6 +64,8 @@ export interface RealmSettings {
 		 */
 		expiration?: DurationLike;
 
+		// TODO: expirationIdle (max inactive time before the token is invalidated)
+
 		/**
 		 * If true, no refresh token will be created.
 		 */

@@ -414,11 +414,11 @@ export class Alepha {
 			return false;
 		}
 
-		if (process.env.VERCEL_REGION) {
+		if (this.env.VERCEL_REGION || process.env.VERCEL_REGION) {
 			return "vercel";
 		}
 
-		if (process.env.VITE_ALEPHA_DEV || process.env.VITE_ALEPHA_BUILD) {
+		if (this.env.VITE_ALEPHA_DEV || process.env.VITE_ALEPHA_DEV) {
 			return "vite";
 		}
 
@@ -459,11 +459,13 @@ export class Alepha {
 	 */
 	public async start(): Promise<this> {
 		if (this.ready) {
+			this.log.warn("App is already started, skipping...");
 			return this;
 		}
 
 		// make sure that start is called only once
 		if (this.starting) {
+			this.log.warn("App is already starting, waiting for it to finish...");
 			return this.starting.promise;
 		}
 

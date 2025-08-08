@@ -21,6 +21,13 @@ export interface ViteAlephaDevOptions {
 	debug?: boolean;
 }
 
+const state: ViteAlephaDevState = {
+	root: process.cwd().replace(/\\/g, "/"),
+	started: false,
+	log: (...msg: string[]) => {},
+	entry: "",
+};
+
 /**
  * Plug Alepha into Vite development server.
  */
@@ -46,12 +53,8 @@ export async function viteAlephaDev(
 		}
 	};
 
-	const state: ViteAlephaDevState = {
-		root: process.cwd().replace(/\\/g, "/"),
-		started: false,
-		entry,
-		log,
-	};
+	state.log = log;
+	state.entry = entry;
 
 	return {
 		name: "alepha-dev",
@@ -130,10 +133,11 @@ export async function viteAlephaDev(
 			await start(state, server);
 		},
 		async closeBundle() {
-			log("[DEBUG] Closing bundle");
-			if (state.app?.stop) {
-				await state.app.stop();
-			}
+			// it's not a good idea
+			// log("[DEBUG] Closing bundle");
+			// if (state.app?.stop) {
+			// 	await state.app.stop();
+			// }
 		},
 	};
 }
@@ -161,7 +165,7 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 	const { loadEnv } = await importVite();
 
 	if (state.started) {
-		state.log("[DEBUG] Already started - skip starting");
+		restart(state, server, true);
 		return;
 	}
 
@@ -172,31 +176,31 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 
 	state.log("[DEBUG] Starting Alepha app...");
 
+	state.started = false;
+	state.app = undefined;
+
+	const serverEntryPath = path.resolve(state.config.root, state.entry);
+	const fileUrl = pathToFileURL(`${serverEntryPath}`).href;
 	const env = loadEnv("development", state.config.root, "");
+	const before = { ...process.env };
+
 	for (const key in env) {
 		process.env[key] = env[key];
 	}
 
-	process.env.NODE_ENV = "development";
-	process.env.SSR = "true";
-	process.env.SERVER = "true";
+	process.env.NODE_ENV ??= "development";
 	process.env.VITE_ALEPHA_DEV = "true";
-	process.env.SERVER_HOST =
+	process.env.SERVER_HOST ??=
 		typeof server.config.server.host === "string"
 			? server.config.server.host
 			: "localhost";
-	process.env.SERVER_PORT = String(server.config.server.port || "5173");
-
-	state.started = false;
-
-	const serverEntryPath = path.resolve(state.config.root, state.entry);
-	const fileUrl = pathToFileURL(`${serverEntryPath}`).href;
+	process.env.SERVER_PORT ??= String(server.config.server.port || "5173");
 
 	try {
-		const imported = await server.ssrLoadModule(fileUrl);
+		await server.ssrLoadModule(fileUrl);
+		await new Promise((r) => setTimeout(r, 10));
 
-		state.app = undefined;
-		state.app = (globalThis as any).__alepha ?? imported.default;
+		state.app = (globalThis as any).__alepha;
 		if (!state.app) {
 			state.log("[DEBUG] No app found - skip starting");
 			return;
@@ -204,6 +208,9 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 
 		await state.app.start();
 		state.started = true;
+
+		process.env = { ...before };
+
 		state.log("[DEBUG] Starting Done!");
 	} catch (e) {
 		console.error(e);
@@ -240,9 +247,9 @@ const restart = async (
 	await stop(state);
 	state.log(`[DEBUG] RESTART (stop) in ${Date.now() - now}ms`);
 
-	if (invalidate) {
-		server.moduleGraph.invalidateAll();
-	}
+	//if (invalidate) {
+	server.moduleGraph.invalidateAll();
+	//}
 
 	await start(state, server);
 	state.log(`[DEBUG] RESTART OK in ${Date.now() - now}ms`);

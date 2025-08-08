@@ -1,14 +1,11 @@
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
 import { $env, $inject, t } from "@alepha/core";
 import { $auth } from "@alepha/react-auth";
-import { $realm, type UserAccountInfo } from "@alepha/security";
+import { $realm, CryptoProvider, type UserAccountInfo } from "@alepha/security";
 import { UnauthorizedError } from "@alepha/server";
 import { Db } from "./Db.ts";
 
-const scryptAsync = promisify(scrypt);
-
 class Security {
+	crypto = $inject(CryptoProvider);
 	env = $env(
 		t.object({
 			APP_SECRET: t.string(),
@@ -54,12 +51,12 @@ class Security {
 					providerUserId: { eq: it.username },
 				});
 
-				if (
-					!(await this.verifyPassword(
-						it.password,
-						identity.providerData?.password,
-					))
-				) {
+				const valid = await this.crypto.verifyPassword(
+					it.password,
+					identity.providerData?.password,
+				);
+
+				if (!valid) {
 					throw new UnauthorizedError("Invalid credentials");
 				}
 
@@ -83,21 +80,6 @@ class Security {
 			},
 		},
 	});
-
-	async hashPassword(password: string): Promise<string> {
-		const salt = randomBytes(16).toString("hex"); // 128-bit salt
-		const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
-		return `${salt}:${derivedKey.toString("hex")}`;
-	}
-
-	async verifyPassword(password: string, stored: string): Promise<boolean> {
-		const [salt, originalHex] = stored.split(":");
-		const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
-		const originalKey = Buffer.from(originalHex, "hex");
-
-		// Important: prevent timing attacks
-		return timingSafeEqual(derivedKey, originalKey);
-	}
 
 	//
 	github = $auth({
