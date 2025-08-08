@@ -67,22 +67,12 @@ export class JwtProvider {
 	 *
 	 * @return A Promise that resolves with the payload object from the token.
 	 */
-	public async parse(token: string): Promise<JwtParseResult> {
-		if (this.keystore.length > 1) {
-			const keyLoaderHolder = this.tryToGetKeyLoaderFromToken(token);
-			if (keyLoaderHolder) {
-				try {
-					return {
-						result: await jwtVerify(token, keyLoaderHolder.keyLoader),
-						keyName: keyLoaderHolder.name,
-					};
-				} catch (error) {
-					throw new SecurityError("Invalid token", { cause: error });
-				}
-			}
-		}
-
+	public async parse(token: string, keyName?: string): Promise<JwtParseResult> {
 		for (const it of this.keystore) {
+			if (keyName && it.name !== keyName) {
+				continue;
+			}
+
 			this.log.trace(`Trying to verify token`, {
 				keyName: it.name,
 			});
@@ -121,7 +111,6 @@ export class JwtProvider {
 	 * @param payload - The payload to be encoded in the token.
 	 * 	It should include the `realm_access` property which contains an array of roles.
 	 * @param keyName - The name of the key to use when signing the token.
-	 * @param signOptions - The options to use when signing the token.
 	 *
 	 * @returns The signed JWT token.
 	 */
@@ -145,14 +134,6 @@ export class JwtProvider {
 		);
 
 		const signJwt = new SignJWT(payload);
-
-		if (options.issuedAt) {
-			signJwt.setIssuedAt();
-		}
-
-		if (options.expiresIn) {
-			signJwt.setExpirationTime(options.expiresIn);
-		}
 
 		if (options.protectedHeader) {
 			signJwt.setProtectedHeader(options.protectedHeader);
@@ -196,29 +177,6 @@ export class JwtProvider {
 	protected isSecretKey(key: string): boolean {
 		return !key.startsWith("http");
 	}
-
-	/**
-	 * Try to find a realm name or something similar in the token.
-	 *
-	 * This is useful when the token is not encrypted and API has multiple realms.
-	 * Instead of trying to verify the token with all keys, we can try to find the key !
-	 *
-	 * @param token
-	 * @protected
-	 */
-	protected tryToGetKeyLoaderFromToken(
-		token: string,
-	): KeyLoaderHolder | undefined {
-		try {
-			const iss = JSON.parse(atob(token.split(".")[1])).iss;
-			if (typeof iss === "string") {
-				const realmAsKeyName = iss.split("/realms/")[1];
-				return this.keystore.find((it) => it.name === realmAsKeyName);
-			}
-		} catch (_error) {
-			// ignore
-		}
-	}
 }
 
 export type KeyLoader = (
@@ -241,6 +199,8 @@ export interface JwtSignOptions {
 export interface ExtendedJWTPayload extends JWTPayload {
 	name?: string;
 	roles?: string[];
+	email?: string;
+	organizations?: string[];
 	// keycloak specific
 	realm_access?: { roles: string[] };
 }

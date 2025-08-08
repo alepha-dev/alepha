@@ -131,39 +131,36 @@ export class RouterHookApi<T extends object> {
 			}
 		}
 
-		await this.browser?.go(
-			this.createHref(path as string, this.layer, options),
-			options,
-		);
+		await this.browser?.go(path as string, options);
 	}
 
 	public anchor(
 		path: string,
 		options?: { params?: Record<string, any> },
 	): AnchorProps;
-	public anchor<T extends object>(
+	public anchor(
 		path: keyof VirtualRouter<T>,
 		options?: { params?: Record<string, any> },
 	): AnchorProps;
 	public anchor(
-		path: string,
+		path: string | keyof VirtualRouter<T>,
 		options: { params?: Record<string, any> } = {},
 	): AnchorProps {
+		let href = path as string;
 		for (const page of this.pages) {
 			if (page.name === path) {
-				path = page.path ?? "";
+				href = this.path(path as keyof VirtualRouter<T>, options);
 				break;
 			}
 		}
 
-		const href = this.createHref(path, this.layer, options);
 		return {
 			href,
 			onClick: (ev: any) => {
 				ev.stopPropagation();
 				ev.preventDefault();
 
-				this.go(path, options).catch(console.error);
+				this.go(href, options).catch(console.error);
 			},
 		};
 	}

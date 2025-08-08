@@ -14,10 +14,10 @@ import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
-import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import type { Role } from "../schemas/roleSchema.ts";
+import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 
 const envSchema = t.object({
@@ -233,7 +233,7 @@ export class SecurityProvider {
 	 *
 	 * @returns The user info created from the payload.
 	 */
-	public createInfoFromPayload(
+	public createUserFromPayload(
 		payload: JWTPayload,
 		realmName?: string,
 	): UserAccountInfo {
@@ -353,7 +353,10 @@ export class SecurityProvider {
 	 */
 	public async createUserFromToken(
 		headerOrToken?: string,
-		permission?: Permission | string,
+		options: {
+			permission?: Permission | string;
+			realm?: string;
+		} = {},
 	): Promise<UserAccountToken> {
 		const token = headerOrToken?.replace("Bearer", "").trim();
 		if (typeof token !== "string" || token === "") {
@@ -362,8 +365,11 @@ export class SecurityProvider {
 			);
 		}
 
-		const { result, keyName: realm } = await this.jwt.parse(token);
-		const info = this.createInfoFromPayload(result.payload, realm);
+		const { result, keyName: realm } = await this.jwt.parse(
+			token,
+			options.realm,
+		);
+		const info = this.createUserFromPayload(result.payload, realm);
 		const realmRoles = this.getRoles(realm).filter((it) => it.default);
 		const roles = info.roles ?? [];
 
@@ -382,11 +388,11 @@ export class SecurityProvider {
 
 		let ownership: string | boolean | undefined;
 
-		if (permission) {
-			const check = this.checkPermission(permission, ...roles);
+		if (options.permission) {
+			const check = this.checkPermission(options.permission, ...roles);
 			if (!check.isAuthorized) {
 				throw new SecurityError(
-					`User is not allowed to access '${this.permissionToString(permission)}'`,
+					`User is not allowed to access '${this.permissionToString(options.permission)}'`,
 				);
 			}
 

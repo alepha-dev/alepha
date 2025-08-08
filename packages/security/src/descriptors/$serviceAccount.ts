@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { $cursor } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { JwtProvider, type JwtSignOptions } from "../providers/JwtProvider.ts";
+import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
+import type { AccessTokenResponse, RealmDescriptor } from "./$realm.ts";
 
 /**
  * Allow to get an access token for a service account.
@@ -44,15 +44,19 @@ export const $serviceAccount = (
 	const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
 		store.cache = {
 			...response,
-			at: dateTimeProvider.now().valueOf(),
+			issued_at: dateTimeProvider.now().valueOf(),
 		};
 	};
 
 	const getTokenFromCache = () => {
 		if (store.cache) {
-			const { access_token, expires_in, at } = store.cache;
+			const { access_token, expires_in, issued_at } = store.cache;
+			if (!expires_in) {
+				return access_token;
+			}
+
 			const now = dateTimeProvider.now().valueOf();
-			const expires = at + expires_in * 1000;
+			const expires = issued_at + expires_in * 1000;
 			if (expires + gracePeriod > now) {
 				return access_token;
 			}
@@ -98,14 +102,6 @@ export const $serviceAccount = (
 		};
 	}
 
-	const { secret, signOptions } = options.jwt;
-
-	const jwt = context.inject(JwtProvider);
-	const sub = randomUUID();
-	const roles = options.jwt.roles ?? [];
-
-	jwt.setKeyLoader(secret, secret);
-
 	return {
 		token: async () => {
 			const tokenFromCache = getTokenFromCache();
@@ -113,18 +109,14 @@ export const $serviceAccount = (
 				return tokenFromCache;
 			}
 
-			const options = signOptions ?? {};
-
-			options.expiresIn ??= 300; // default to 5 minutes
-
-			const token = await jwt.create({ sub, roles }, secret, options);
+			const token = await options.realm.createToken(options.user);
 
 			cacheToken({
-				access_token: token,
-				expires_in: options.expiresIn,
+				...token,
+				issued_at: dateTimeProvider.now().valueOf(),
 			});
 
-			return token;
+			return token.access_token;
 		},
 	};
 };
@@ -136,15 +128,10 @@ export type ServiceAccountDescriptorOptions = {
 			oauth2: Oauth2ServiceAccountDescriptorOptions;
 	  }
 	| {
-			jwt: JwtServiceAccountDescriptorOptions;
+			realm: RealmDescriptor;
+			user: UserAccountInfo;
 	  }
 );
-
-export interface JwtServiceAccountDescriptorOptions {
-	secret: string;
-	roles?: string[];
-	signOptions?: JwtSignOptions;
-}
 
 export interface Oauth2ServiceAccountDescriptorOptions {
 	/**
@@ -165,12 +152,6 @@ export interface Oauth2ServiceAccountDescriptorOptions {
 
 export interface ServiceAccountDescriptor {
 	token: () => Promise<string>;
-}
-
-export interface AccessTokenResponse {
-	access_token: string;
-	expires_in: number;
-	at: number;
 }
 
 export interface ServiceAccountStore {

@@ -207,7 +207,9 @@ test("SecurityProvider#jwt - default", async () => {
 		roles: ["user"],
 	});
 
-	const user = await sec.createUserFromToken(token, userPermission);
+	const user = await sec.createUserFromToken(token, {
+		permission: userPermission,
+	});
 
 	expect(user.id).toEqual("123");
 	expect(user.roles).toEqual([userRole.name]);
@@ -215,9 +217,11 @@ test("SecurityProvider#jwt - default", async () => {
 	expect(user.realm).toEqual("default");
 	expect(user.ownership).toEqual(false);
 
-	await expect(() => sec.createUserFromToken(token, "noop")).rejects.toThrow(
-		SecurityError,
-	);
+	await expect(() =>
+		sec.createUserFromToken(token, {
+			permission: "noop",
+		}),
+	).rejects.toThrow(SecurityError);
 
 	await expect(() =>
 		jwt.create(
@@ -238,7 +242,7 @@ test("SecurityProvider#jwt - default", async () => {
 	);
 
 	await expect(() =>
-		sec.createUserFromToken(emptyToken, userPermission),
+		sec.createUserFromToken(emptyToken, { permission: userPermission }),
 	).rejects.toThrow(SecurityError);
 });
 

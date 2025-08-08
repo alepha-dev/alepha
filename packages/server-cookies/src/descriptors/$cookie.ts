@@ -60,7 +60,10 @@ export interface CookieDescriptorOptions<T extends TSchema> {
 export interface AbstractCookieDescriptor<T extends TSchema> {
 	readonly name: string;
 	readonly options: CookieDescriptorOptions<T>;
-	set(value: Static<T>, options?: { cookies?: Cookies }): void;
+	set(
+		value: Static<T>,
+		options?: { cookies?: Cookies; ttl?: DurationLike },
+	): void;
 	get(options?: { cookies?: Cookies }): Static<T> | undefined;
 	del(options?: { cookies?: Cookies }): void;
 }
@@ -82,10 +85,16 @@ export class CookieDescriptor<T extends TSchema>
 	/**
 	 * Sets the cookie with the given value in the current request's response.
 	 */
-	public set(value: Static<T>, options?: { cookies?: Cookies }): void {
+	public set(
+		value: Static<T>,
+		options?: { cookies?: Cookies; ttl?: DurationLike },
+	): void {
 		this.serverCookiesProvider.setCookie(
 			this.name,
-			this.options,
+			{
+				...this.options,
+				ttl: options?.ttl ?? this.options.ttl,
+			},
 			value,
 			options?.cookies,
 		);

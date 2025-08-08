@@ -21,7 +21,7 @@ export class Sec {
 	});
 
 	users = $realm({
-		secret: () => this.google.jwks(),
+		jwks: () => this.google.jwks_uri,
 		roles: [
 			{
 				name: "admin",

@@ -1,6 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
+import { $realm } from "../src";
 import { $serviceAccount } from "../src/descriptors/$serviceAccount.ts";
 
 class App {
@@ -16,10 +17,14 @@ class App {
 		expiresIn: 300, // 5 minutes
 	};
 
+	realm = $realm({
+		secret: "your-realm-secret",
+	});
+
 	jwt = $serviceAccount({
-		jwt: {
-			secret: "your-jwt-secret",
-			signOptions: this.signOptions,
+		realm: this.realm,
+		user: {
+			id: "service-account",
 		},
 	});
 }
@@ -35,7 +40,7 @@ test("$serviceAccount - jwt", async () => {
 	const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
 	expect(payload).toEqual({
 		sub: expect.any(String),
-		roles: [],
+		aud: "realm",
 		iat: expect.any(Number),
 		exp: expect.any(Number),
 	});
@@ -44,7 +49,7 @@ test("$serviceAccount - jwt", async () => {
 	const tk2 = await app.jwt.token();
 	expect(tk2).toBe(tk); // should return the same token if not expired
 
-	await time.travel([6, "minutes"]);
+	await time.travel([20, "minutes"]);
 
 	app.signOptions.expiresIn += 1; // ensure token won't be the same
 	const tk3 = await app.jwt.token();

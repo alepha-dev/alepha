@@ -21,11 +21,12 @@ import {
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { PostController } from "../../controllers/PostController.ts";
+import type { Sec } from "../../providers/Sec.ts";
 import { GoogleIcon } from "../icons/GoogleIcon.tsx";
 import Go from "../shared/Go.tsx";
 
 const Header = () => {
-	const auth = useAuth();
+	const auth = useAuth<Sec>();
 	return (
 		<Flex h={"100%"} align="center" justify="center">
 			<Flex flex={1}>
@@ -80,7 +81,7 @@ const Header = () => {
 						<Button
 							variant={"default"}
 							leftSection={<GoogleIcon />}
-							onClick={() => auth.login()}
+							onClick={() => auth.login("google")}
 						>
 							Sign in with Google
 						</Button>

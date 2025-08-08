@@ -10,8 +10,8 @@ const Go = <T extends object>(
 ) => {
 	const { to, params: _params, skipActiveCheck, ...restProps } = props;
 
-	const router = useRouter();
-	const anchorProps = router.anchor<T>(to, props);
+	const router = useRouter<T>();
+	const anchorProps = router.anchor(to, props);
 	const { isActive } = useActive(anchorProps.href);
 
 	return (

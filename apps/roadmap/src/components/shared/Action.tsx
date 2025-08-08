@@ -7,6 +7,8 @@ import Toast from "../../services/Toast.ts";
 export type ActionProps = ButtonProps & {
 	visibleText?: "sm";
 	link?: LinkProps;
+	active?: boolean;
+	href?: string;
 };
 
 const Action = (props: ActionProps) => {
@@ -14,8 +16,8 @@ const Action = (props: ActionProps) => {
 	let { visibleText, link, ...rest } = props;
 	const [pending, setPending] = useState(false);
 
-	const hasLink = !!link;
-	const active = useActive(link?.to);
+	const hasLink = !!link || !!props.href;
+	const active = useActive(props.active !== false ? link?.to : undefined);
 
 	const onClick = rest.onClick;
 	if (onClick) {
@@ -38,7 +40,7 @@ const Action = (props: ActionProps) => {
 	rest.disabled ??= pending;
 	rest.loading ??= pending;
 
-	if (active.isActive && link?.to) {
+	if (active.isActive && link?.to && props.active !== false) {
 		rest = {
 			...rest,
 			active: true,

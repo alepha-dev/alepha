@@ -1,49 +1,48 @@
-import { $hook, $inject, $logger, Alepha, type Async, t } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import {
-	type RealmDescriptor,
 	SecurityError,
-	type UserAccountInfo,
+	SecurityProvider,
+	userAccountInfoSchema,
 } from "@alepha/security";
-import { $route, BadRequestError } from "@alepha/server";
+import {
+	$action,
+	$route,
+	apiLinksResponseSchema,
+	BadRequestError,
+} from "@alepha/server";
 import {
 	$cookie,
 	type Cookies,
 	ServerCookiesProvider,
 } from "@alepha/server-cookies";
+import { ServerLinksProvider } from "@alepha/server-links";
 import {
-	allowInsecureRequests,
 	authorizationCodeGrant,
 	buildAuthorizationUrl,
 	buildEndSessionUrl,
-	type Configuration,
 	calculatePKCECodeChallenge,
-	discovery,
 	randomPKCECodeVerifier,
 	randomState,
-	refreshTokenGrant,
-	tokenRevocation,
 } from "openid-client";
-import {
-	$auth,
-	type AccessToken,
-	type OAuthOptions,
-	type OidcOptions,
-} from "../descriptors/$auth.ts";
+import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
-import { userProfileSchema } from "../schemas/userProfileSchema.ts";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
-	protected authProviders: AuthProvider[] = [];
+	protected readonly securityProvider = $inject(SecurityProvider);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly serverLinksProvider = $inject(ServerLinksProvider);
 
 	protected readonly authorizationCode = $cookie({
 		name: "authorizationCode",
 		ttl: [15, "minutes"],
 		httpOnly: true,
 		schema: t.object({
+			provider: t.string(),
 			codeVerifier: t.optional(t.string({ size: "long" })),
 			redirectUri: t.optional(t.string({ size: "long" })),
 			state: t.optional(t.string()),
@@ -53,152 +52,70 @@ export class ReactAuthProvider {
 
 	public readonly tokens = $cookie({
 		name: "tokens",
-		ttl: [1, "days"], // TODO
+		ttl: [30, "days"],
 		httpOnly: true,
 		compress: true,
+		encrypt: true,
 		schema: tokensSchema,
-	});
-
-	public readonly user = $cookie({
-		name: "user",
-		ttl: [1, "day"], // TODO
-		schema: userProfileSchema,
 	});
 
 	public readonly onRender = $hook({
 		on: "react:server:render:begin",
 		handler: async ({ request, context }) => {
-			context.user = request?.user;
+			context.user = request?.user; // TODO: move user to alepha.state() ?
 		},
 	});
+
+	public get identities(): Array<AuthDescriptor> {
+		return this.alepha
+			.descriptors($auth)
+			.filter((auth) => !auth.options.disabled);
+	}
 
 	protected readonly configure = $hook({
 		on: "configure",
 		handler: async () => {
-			const auths = this.alepha.descriptors($auth);
-			for (const auth of auths) {
-				const options = auth.options;
-				if (options.disabled) {
-					continue;
-				}
-
-				if ("oidc" in options) {
-					this.log.debug(
-						`Discover OIDC auth provider -> ${options.oidc.issuer}`,
-					);
-
-					const oidc = options.oidc;
-
-					const addons: Array<(config: Configuration) => void> = [];
-					if (!this.alepha.isProduction()) {
-						addons.push(allowInsecureRequests);
-					}
-
-					const config = await discovery(
-						new URL(oidc.issuer),
-						oidc.clientId,
-						{
-							client_secret: oidc.clientSecret,
-						},
-						undefined,
-						{
-							execute: addons,
-						},
-					);
-
-					auth.jwks = () => {
-						const jwksUri = config.serverMetadata().jwks_uri;
-						if (!jwksUri) {
-							throw new BadRequestError(
-								"JWKS URI is not available in OIDC configuration",
-							);
-						}
-						return jwksUri;
-					};
-
-					this.authProviders.push({
-						name: auth.name,
-						redirectUri: options.oidc.redirectUri ?? ReactAuth.path.callback,
-						fallback: options.fallback,
-						useIdToken: options.oidc.useIdToken,
-						logoutUri: options.oidc.logoutUri,
-						config,
-						oidc: options.oidc,
-						scope: options.oidc.scope ?? "openid profile email",
-						profile: options.profile,
-						realm: options.realm,
-						user: options.user,
-					});
-				}
-
-				// if ("oauth" in options) {
-				// 	const oauth = options.oauth;
-				//
-				// 	const config = new Configuration(
-				// 		{
-				// 			authorization_endpoint: oauth.authorization,
-				// 			token_endpoint: oauth.token,
-				// 			issuer: oauth.authorization, // Use authorization URL as a pseudo-issuer
-				// 			jwks_uri: undefined,
-				// 			end_session_endpoint: undefined, // Pure OAuth2 usually doesn't have this
-				// 		},
-				// 		oauth.clientId,
-				// 		{
-				// 			client_secret: oauth.clientSecret,
-				// 		},
-				// 	);
-				//
-				// 	this.authProviders.push({
-				// 		name: auth.name,
-				// 		redirectUri: options.oauth.redirectUri ?? ReactAuth.path.callback,
-				// 		fallback: options.fallback,
-				// 		config,
-				// 		oauth: options.oauth,
-				// 		scope: options.oauth.scope,
-				// 		profile: options.profile,
-				// 	});
-				// }
+			for (const identity of this.identities) {
+				await identity.prepare();
 			}
 		},
 	});
 
-	protected async getAccessTokenFromCookies(tokens: SessionTokens) {
-		const { useIdToken } = await this.provider(tokens.provider);
-		if (useIdToken && tokens.id_token) {
+	protected getAccessTokens(tokens: Tokens) {
+		const idp = this.provider(tokens.provider);
+
+		if (
+			"oidc" in idp.options &&
+			!("realm" in idp.options) &&
+			idp.options.oidc?.useIdToken
+		) {
 			return tokens.id_token;
 		}
+
 		return tokens.access_token;
 	}
 
 	/**
-	 * Configure Fastify to forward Session Access Token to Header Authorization.
+	 * Fill request headers with access token from cookies or fallback to provider's fallback function.
 	 */
 	protected readonly onRequest = $hook({
 		on: "server:onRequest",
 		after: this.serverCookiesProvider,
 		handler: async ({ request }) => {
+			// [feature] forward cookies to request headers
 			const cookies = request.cookies;
 			if (cookies) {
-				const tokens = await this.refresh(cookies);
+				const tokens = await this.cookiesToTokens(cookies);
 				if (tokens) {
-					request.headers.authorization = `Bearer ${await this.getAccessTokenFromCookies(tokens)}`;
-				}
-
-				if (this.user.get({ cookies }) && !this.tokens.get({ cookies })) {
-					this.user.del({ cookies });
-				}
-
-				const user = this.user.get({ cookies });
-				if (user) {
-					request.user = user;
-					request.user.roles = []; // user from cookie is not trusted
+					request.headers.authorization = `Bearer ${this.getAccessTokens(tokens)}`;
 				}
 			}
 
-			if (!request.headers.authorization && !!this.authProviders.length) {
-				for (const provider of this.authProviders) {
-					if (provider.fallback) {
-						const token = await provider.fallback();
+			// [feature] support for auth providers with fallback
+			if (!request.headers.authorization) {
+				for (const provider of this.identities) {
+					if (!("realm" in provider.options) && !!provider.options.fallback) {
+						const token = await provider.options.fallback();
 						if (token) {
 							request.headers.authorization = `Bearer ${token}`;
 							break;
@@ -210,101 +127,188 @@ export class ReactAuthProvider {
 	});
 
 	/**
-	 *
-	 * @param cookies
-	 * @protected
+	 * Convert cookies to tokens.
+	 * If the tokens are expired, try to refresh them using the refresh token.
 	 */
-	protected async refresh(
+	protected async cookiesToTokens(
 		cookies: Cookies,
-	): Promise<SessionTokens | undefined> {
-		const now = Date.now();
+	): Promise<Tokens | undefined> {
+		const now = this.dateTimeProvider.now().unix();
 		const tokens = this.tokens.get({ cookies });
 		if (!tokens) {
+			// no cookie, no tokens
+			this.log.trace("No tokens found in cookies");
 			return;
 		}
 
+		// check if tokens are expired
 		if (tokens.expires_in && tokens.issued_at) {
-			const expiresAt = tokens.issued_at + (tokens.expires_in - 10) * 1000;
+			const gracePeriodSec = 10;
+			const expiresAt = tokens.issued_at + (tokens.expires_in - gracePeriodSec);
 			if (expiresAt < now) {
-				// is expired
-				if (tokens.refresh_token) {
-					// but has refresh token
-					try {
-						const provider = await this.provider();
-						const newTokens = await refreshTokenGrant(
-							provider.config,
-							tokens.refresh_token,
-						);
+				this.log.trace("Tokens are expired");
 
-						this.tokens.set(
-							{
-								...newTokens,
-								issued_at: Date.now(),
-							},
-							{ cookies },
-						);
+				// oh no, it is expired
+				if (tokens.refresh_token) {
+					this.log.trace("Trying to refresh tokens using refresh token");
+					// but has refresh token!
+					try {
+						const provider = this.provider(tokens);
+						const result = await provider.refresh(tokens);
+						const newTokens = {
+							...result,
+							provider: tokens.provider,
+							issued_at: Date.now(),
+						};
+
+						const ttl = newTokens.expires_in
+							? this.dateTimeProvider.duration(newTokens.expires_in, "seconds")
+							: undefined;
+
+						this.tokens.set(newTokens, {
+							cookies,
+							ttl,
+						});
+
+						this.log.debug("Tokens refreshed successfully");
 
 						return newTokens;
 					} catch (e) {
-						if (e instanceof Error) {
-							this.log.warn("Failed to refresh token", e.message);
-						}
+						this.log.warn("Failed to refresh token", e);
 					}
 				}
 
 				// session expired and no (valid) refresh token
 				this.tokens.del({ cookies });
-				this.user.del({ cookies });
 				return;
 			}
 		}
 
 		if (!tokens.issued_at && tokens.access_token) {
 			this.tokens.del({ cookies });
-			this.user.del({ cookies });
 			return;
 		}
 
 		return tokens;
 	}
 
+	public readonly userinfo = $action({
+		path: ReactAuth.path.userinfo,
+		schema: {
+			response: userAccountInfoSchema,
+		},
+		handler: async ({ user }) => {
+			return user;
+		},
+	});
+
+	public readonly token = $route({
+		path: ReactAuth.path.token,
+		method: "POST",
+		schema: {
+			query: t.object({
+				provider: t.string(),
+			}),
+			body: t.object({
+				username: t.string(),
+				password: t.string(),
+			}),
+			response: t.composite([
+				tokensSchema,
+				t.object({
+					user: userAccountInfoSchema,
+					links: apiLinksResponseSchema,
+				}),
+			]),
+		},
+		handler: async ({ query, body, cookies }) => {
+			const provider = this.provider(query);
+			const realm = "realm" in provider.options && provider.options.realm;
+			if (!realm) {
+				throw new SecurityError(
+					`Auth provider '${query.provider}' does not support password grant`,
+				);
+			}
+
+			const credentials =
+				"credentials" in provider.options && provider.options.credentials;
+
+			if (!credentials) {
+				throw new SecurityError(
+					`Auth provider '${query.provider}' does not support password grant`,
+				);
+			}
+
+			const user = await credentials.user(body);
+			const tokens = {
+				provider: query.provider,
+				...(await realm.createToken(user)),
+			};
+
+			// for web applications, we store tokens in cookies
+			this.tokens.set(tokens, { cookies });
+
+			const links = await this.serverLinksProvider.getLinks({
+				user,
+			});
+
+			// mobile apps require this
+			return {
+				...tokens,
+				user,
+				links,
+			};
+		},
+	});
+
 	public readonly login = $route({
 		path: ReactAuth.path.login,
 		schema: {
 			query: t.object({
-				redirect: t.optional(t.string({ size: "rich" })),
-				provider: t.optional(t.string()),
+				provider: t.string(),
+				redirect_uri: t.optional(t.string({ size: "rich" })),
 			}),
 		},
 		handler: async ({ query, url, reply }) => {
-			const {
-				config,
-				redirectUri,
-				scope = "openid profile email",
-			} = await this.provider(query.provider);
+			const provider = this.provider(query);
+			const oauth = provider.oauth;
+			if (!oauth) {
+				throw new SecurityError(
+					`Auth provider '${query.provider}' does not support OAuth2`,
+				);
+			}
 
-			let redirect_uri = redirectUri;
+			const scope = provider.scope;
+			let redirect_uri = provider.redirect_uri || ReactAuth.path.callback;
 			if (redirect_uri.startsWith("/")) {
 				redirect_uri = `${url.protocol}//${url.host}${redirect_uri}`;
 			}
 
-			if (!config.serverMetadata().supportsPKCE()) {
+			const oidc = "oidc" in provider.options && provider.options.oidc;
+
+			if (!oauth.serverMetadata().supportsPKCE()) {
 				const state = randomState();
-				const nonce = randomState();
 				const parameters: Record<string, string> = {
 					redirect_uri,
-					scope,
 					state,
-					nonce,
 				};
+
+				if (oidc) {
+					parameters.nonce = randomState();
+				}
+
+				if (scope) {
+					parameters.scope = scope;
+				}
 
 				this.authorizationCode.set({
 					state,
-					nonce,
-					redirectUri: query.redirect ?? "/",
+					nonce: parameters.nonce,
+					redirectUri: query.redirect_uri ?? "/",
+					provider: query.provider,
 				});
 
-				reply.redirect(buildAuthorizationUrl(config, parameters).toString());
+				reply.redirect(buildAuthorizationUrl(oauth, parameters).toString());
 				return;
 			}
 
@@ -313,236 +317,188 @@ export class ReactAuthProvider {
 
 			const parameters: Record<string, string> = {
 				redirect_uri,
-				scope,
 				code_challenge: codeChallenge,
 				code_challenge_method: "S256",
 			};
 
+			if (scope) {
+				parameters.scope = scope;
+			}
+
 			this.authorizationCode.set({
 				codeVerifier,
-				redirectUri: query.redirect ?? "/",
+				redirectUri: query.redirect_uri ?? "/",
+				provider: query.provider,
 			});
 
-			reply.redirect(buildAuthorizationUrl(config, parameters).toString());
+			reply.redirect(buildAuthorizationUrl(oauth, parameters).toString());
 		},
 	});
 
+	/**
+	 * Callback for OAuth2/OIDC providers.
+	 * It handles the authorization code flow and retrieves the access token.
+	 */
 	public readonly callback = $route({
 		path: ReactAuth.path.callback,
-		schema: {
-			query: t.object({
-				provider: t.optional(t.string()),
-			}),
-		},
-		handler: async ({ url, query, reply }) => {
-			const authProvider = await this.provider(query.provider);
-			const { config, name } = authProvider;
-
-			const authorizationCode = this.authorizationCode.get();
+		handler: async ({ url, reply, cookies }) => {
+			const authorizationCode = this.authorizationCode.get({ cookies });
 			if (!authorizationCode) {
 				throw new BadRequestError("Missing code verifier");
 			}
 
-			const tokens = await authorizationCodeGrant(config, url, {
+			const provider = this.provider(authorizationCode);
+			const oauth = provider.oauth;
+			if (!oauth) {
+				throw new SecurityError(
+					`Auth provider '${provider.name}' does not support OAuth2`,
+				);
+			}
+
+			const redirectUri = authorizationCode.redirectUri ?? "/";
+
+			const externalTokens = await authorizationCodeGrant(oauth, url, {
 				pkceCodeVerifier: authorizationCode.codeVerifier,
 				expectedState: authorizationCode.state,
 				expectedNonce: authorizationCode.nonce,
-			}).catch((e) => {
-				this.log.error("Failed to get access token", e);
-				throw new SecurityError("Failed to get access token", {
-					cause: e,
-				});
-			});
-
-			this.authorizationCode.del();
-			const profile = await this.getUserProfile(authProvider, tokens);
-
-			if (authProvider.realm && authProvider.user) {
-				const user = await authProvider.user({
-					...profile,
-					provider: name,
-				});
-
-				const access_token = await authProvider.realm.createToken(
-					user.id,
-					user.roles,
-				);
-
-				this.tokens.set({
-					access_token,
-					issued_at: Date.now(),
-					provider: name,
-				});
-
-				try {
-					this.user.set(user);
-				} catch (e) {
-					throw new SecurityError("Failed to get user profile", { cause: e });
-				}
-			} else {
-				this.tokens.set({
+			})
+				.then((tokens) => ({
+					issued_at: this.dateTimeProvider.now().unix(),
+					provider: provider.name,
 					...tokens,
-					issued_at: Date.now(),
-					provider: name,
+				}))
+				.catch((e) => {
+					this.log.error("Failed to get access token", e);
+					throw new SecurityError("Failed to get access token", {
+						cause: e,
+					});
 				});
-				try {
-					this.user.set(profile);
-				} catch (e) {
-					throw new SecurityError("Failed to get user profile", { cause: e });
-				}
+
+			this.authorizationCode.del({ cookies });
+
+			const realm = "realm" in provider.options && provider.options.realm;
+
+			// external, full OIDC System (e.g. Keycloak, Auth0)
+			if (!realm) {
+				this.tokens.set(externalTokens);
+				reply.redirect(redirectUri);
+				return;
 			}
 
-			reply.redirect(authorizationCode.redirectUri ?? "/");
+			// internal, we need to create our own tokens
+
+			const user = await provider.user(externalTokens);
+			const tokens = await realm.createToken(user);
+
+			this.tokens.set({
+				...tokens,
+				issued_at: this.dateTimeProvider.now().unix(),
+				provider: provider.name,
+			});
+
+			reply.redirect(redirectUri);
 		},
 	});
-
-	protected async getUserProfile(
-		authProvider: AuthProvider,
-		tokens: Tokens,
-	): Promise<UserProfile> {
-		if (authProvider.oauth?.user) {
-			return authProvider.oauth.user(tokens);
-		}
-
-		const token = tokens.id_token ?? tokens.access_token;
-		if (!token) {
-			throw new SecurityError("No access token or ID token found");
-		}
-
-		const payload = token.split(".")[1];
-		const decoded = JSON.parse(atob(payload));
-
-		if (!decoded.sub) {
-			throw new SecurityError("No user ID found in token");
-		}
-
-		if (authProvider.profile) {
-			return authProvider.profile(decoded);
-		}
-
-		// generic jwt to profile mapping
-
-		return {
-			id: String(decoded.sub),
-			name: decoded.name,
-			email: decoded.email,
-			picture: decoded.picture,
-			// organizations
-			// ...
-		};
-	}
 
 	public readonly logout = $route({
 		path: ReactAuth.path.logout,
 		method: "GET",
 		schema: {
 			query: t.object({
-				redirect: t.optional(t.string()),
-				provider: t.optional(t.string()),
+				post_logout_redirect_uri: t.optional(t.string()),
 			}),
 		},
-		handler: async ({ query, reply }) => {
-			const redirect = query.redirect ?? "/";
-			const { config, logoutUri, oauth } = await this.provider(query.provider);
-			const tokens = this.tokens.get();
-			if (!tokens?.access_token) {
+		handler: async ({ query, reply, cookies }) => {
+			const redirect = query.post_logout_redirect_uri ?? "/";
+			const tokens = this.tokens.get({ cookies });
+			if (!tokens) {
 				reply.redirect(redirect);
 				return;
 			}
 
-			const idToken = tokens?.id_token;
+			const provider = this.provider(tokens.provider);
 
-			this.tokens.del();
-			this.user.del();
+			// TODO: hook for session logout
 
-			if (oauth) {
-				// for now, we only support logout for OIDC
-				reply.redirect(redirect);
-				return;
-			}
+			this.tokens.del({ cookies });
 
-			if (!config.serverMetadata().end_session_endpoint) {
-				await tokenRevocation(
-					config,
-					tokens?.refresh_token ?? tokens.access_token,
-				);
+			const oauth = provider.oauth;
+			if (!oauth) {
 				reply.redirect(redirect);
 				return;
 			}
 
 			const params = new URLSearchParams();
+			const idToken = tokens?.id_token;
 
 			params.set("post_logout_redirect_uri", redirect);
 			if (idToken) {
 				params.set("id_token_hint", idToken);
 			}
 
-			if (logoutUri) {
-				reply.redirect(`${logoutUri}?${params}`);
+			const customLogoutUri =
+				"oidc" in provider.options
+					? provider.options.oidc?.logoutUri
+					: undefined;
+
+			if (customLogoutUri) {
+				reply.redirect(`${customLogoutUri}?${params}`);
 				return;
 			}
 
-			reply.redirect(buildEndSessionUrl(config, params).toString());
+			if (!oauth.serverMetadata().end_session_endpoint) {
+				// await tokenRevocation(
+				// 	oauth,
+				// 	tokens?.refresh_token ?? tokens.access_token,
+				// );
+				reply.redirect(redirect);
+				return;
+			}
+
+			reply.redirect(buildEndSessionUrl(oauth, params).toString());
 		},
 	});
 
-	/**
-	 *
-	 * @param name
-	 * @protected
-	 */
-	protected async provider(name?: string) {
-		if (!name) {
-			const authProvider = this.authProviders[0];
-			if (!authProvider) {
-				throw new BadRequestError("Client name is required");
-			}
-			return authProvider;
+	protected provider(opts: string | { provider: string }): AuthDescriptor {
+		const name = typeof opts === "string" ? opts : opts.provider;
+		const identity = this.identities.find((identity) => identity.name === name);
+
+		if (!identity) {
+			throw new SecurityError(`Auth provider '${name}' not found`);
 		}
 
-		const authProvider = this.authProviders.find(
-			(provider) => provider.name === name,
-		);
-
-		if (!authProvider) {
-			throw new BadRequestError(`Client ${name} not found`);
-		}
-
-		return authProvider;
+		return identity;
 	}
 }
 
-export interface SessionTokens {
-	access_token?: string;
-	expires_in?: number;
-	refresh_token?: string;
-	id_token?: string;
-	scope?: string;
-	issued_at?: number;
-	provider?: string;
-}
-
-export interface AuthProvider {
-	name: string;
-	redirectUri: string;
-	scope?: string;
-	fallback?: () => Async<AccessToken>;
-	useIdToken?: boolean;
-	logoutUri?: string;
-	config: Configuration;
-	oidc?: OidcOptions;
-	oauth?: OAuthOptions;
-	profile?: (raw: any) => Async<UserProfile>;
-
-	user?: (
-		profile: UserProfile & { provider: string },
-	) => Async<UserAccountInfo>;
-	realm?: RealmDescriptor;
-}
-
-export interface UserProfile {
-	id: string;
+export interface OAuth2UserInfo {
+	sub: string; // Subject - unique ID per user (required by OpenID)
 	name?: string;
-	email?: string;
+	given_name?: string;
+	family_name?: string;
+	middle_name?: string;
+	nickname?: string;
+	preferred_username?: string;
+	profile?: string;
 	picture?: string;
+	website?: string;
+	email?: string;
+	email_verified?: boolean;
+	gender?: string;
+	birthdate?: string; // ISO 8601: YYYY-MM-DD
+	zoneinfo?: string;
+	locale?: string;
+	phone_number?: string;
+	phone_number_verified?: boolean;
+	address?: {
+		formatted?: string;
+		street_address?: string;
+		locality?: string;
+		region?: string;
+		postal_code?: string;
+		country?: string;
+	};
+	updated_at?: number; // seconds since epoch
+	// Allow additional fields (provider-specific)
+	[key: string]: unknown;
 }

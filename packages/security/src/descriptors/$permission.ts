@@ -1,6 +1,6 @@
 import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
-import type { UserAccountInfo } from "../interfaces/UserAccountInfo.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
+import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
 
 /**
  * Create a new permission.

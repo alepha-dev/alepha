@@ -97,18 +97,12 @@ export class ReactBrowserProvider {
 		});
 
 		// when redirecting in browser
-		if (result.context.url.pathname !== url) {
-			// TODO: check if losing search params is acceptable?
-			this.pushState(result.context.url.pathname);
+		if (result.context.url.pathname + result.context.url.search !== url) {
+			this.pushState(result.context.url.pathname + result.context.url.search);
 			return;
 		}
 
-		if (options.replace) {
-			this.pushState(url);
-			return;
-		}
-
-		this.pushState(url);
+		this.pushState(url, options.replace);
 	}
 
 	protected async render(
@@ -167,7 +161,10 @@ export class ReactBrowserProvider {
 
 			if (hydration?.links) {
 				for (const link of hydration.links.links) {
-					this.client.pushLink(link);
+					this.client.pushLink({
+						...link,
+						prefix: hydration.links.prefix,
+					});
 				}
 			}
 

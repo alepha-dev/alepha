@@ -25,6 +25,11 @@ export class AppRouter {
 
 	login = $page({
 		path: "/login",
+		schema: {
+			query: t.object({
+				r: t.optional(t.string()),
+			}),
+		},
 		lazy: () => import("./components/auth/Login.tsx"),
 		resolve: async ({ user }) => {
 			if (user) {
@@ -40,9 +45,9 @@ export class AppRouter {
 			this.notFound,
 		],
 		lazy: () => import("./components/Layout.tsx"),
-		errorHandler: (error) => {
+		errorHandler: (error, ctx) => {
 			if (HttpError.is(error, 401)) {
-				return new Redirection("/login"); // redirect to home if unauthorized (and soon /login)
+				return new Redirection(`/login?r=${ctx.url.pathname}`);
 			}
 		},
 		resolve: async () => {

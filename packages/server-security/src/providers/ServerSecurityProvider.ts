@@ -5,6 +5,7 @@ import {
 	type Permission,
 	SecurityProvider,
 	type UserAccountToken,
+	userAccountInfoSchema,
 } from "@alepha/security";
 import {
 	$action,
@@ -65,6 +66,10 @@ export class ServerSecurityProvider {
 					options,
 					permission,
 				);
+				this.alepha.state(
+					"user",
+					this.alepha.parse(userAccountInfoSchema, request.user),
+				);
 			} catch (error) {
 				if (action.options.secure) {
 					throw error;
@@ -85,7 +90,11 @@ export class ServerSecurityProvider {
 			try {
 				request.user = await this.securityProvider.createUserFromToken(
 					request.headers.authorization,
-					permission,
+					{ permission },
+				);
+				this.alepha.state(
+					"user",
+					this.alepha.parse(userAccountInfoSchema, request.user),
 				);
 				this.log.trace("User set from request token", {
 					user: request.user,

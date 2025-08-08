@@ -1,35 +1,31 @@
-import { RouterContext, useAlepha } from "@alepha/react";
-import type { UserAccountToken } from "@alepha/security";
+import { useAlepha, useStore } from "@alepha/react";
 import { type HttpVirtualClient, LinkProvider } from "@alepha/server-links";
-import { useContext } from "react";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
-export const useAuth = (): AuthHook => {
+export const useAuth = <T extends object = any>() => {
 	const alepha = useAlepha();
-	const router = useContext(RouterContext);
-	if (!router) {
-		throw new Error("useAuth must be used within a RouterProvider");
-	}
-	const context = router.context ?? {};
+	const [user] = useStore("user");
 
 	return {
-		user: context.user,
+		user,
 		logout: () => {
 			alepha.inject(ReactAuth).logout();
 		},
-		login: (_provider?: string) => {
-			alepha.inject(ReactAuth).login();
+		login: async (
+			provider: keyof T,
+			options: {
+				username?: string;
+				password?: string;
+				redirect?: string;
+				[extra: string]: any;
+			} = {},
+		) => {
+			await alepha.inject(ReactAuth).login(provider as string, options);
 		},
-		can: (name: string) => {
-			const client = alepha.inject(LinkProvider);
-			return client.can(name);
+		can: <Api extends object = any>(
+			name: keyof HttpVirtualClient<Api>,
+		): boolean => {
+			return alepha.inject(LinkProvider).can(name as string);
 		},
 	};
 };
-
-export interface AuthHook {
-	user?: UserAccountToken;
-	logout: () => void;
-	login: (provider?: string) => void;
-	can: <T extends object>(name: keyof HttpVirtualClient<T>) => boolean;
-}

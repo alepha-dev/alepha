@@ -21,6 +21,7 @@ export const users = $entity({
 		updatedAt: pg.updatedAt(),
 		email: t.string({ format: "email" }),
 		roles: t.array(t.string(), { default: ["user"] }),
+		name: t.optional(t.string()),
 	}),
 });
 

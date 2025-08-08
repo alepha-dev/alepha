@@ -190,8 +190,11 @@ export class Logger {
 		this.log("error", message, data as object | Error | string);
 	}
 
-	public warn(message: unknown, data?: object | Error | string): void {
-		this.log("warn", message, data);
+	public warn(
+		message: unknown,
+		data?: object | Error | string | unknown,
+	): void {
+		this.log("warn", message, data as object | Error | string);
 	}
 
 	public info(message: unknown, data?: object | Error | string): void {

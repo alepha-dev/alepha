@@ -1,27 +1,30 @@
 import { $module } from "@alepha/core";
 import { AlephaReact } from "@alepha/react";
-import type { UserAccountToken } from "@alepha/security";
+import type { UserAccountInfo } from "@alepha/security";
 import { AlephaServerCookies } from "@alepha/server-cookies";
 import { $auth } from "./descriptors/$auth.ts";
-import {
-	ReactAuthProvider,
-	type UserProfile,
-} from "./providers/ReactAuthProvider.ts";
+import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./descriptors/$auth.ts";
 export * from "./index.shared.ts";
 export * from "./providers/ReactAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "@alepha/core" {
+	export interface State {
+		user?: UserAccountInfo;
+	}
+}
 declare module "@alepha/react" {
 	interface PageReactContext {
-		user?: UserAccountToken;
+		user?: UserAccountInfo;
 	}
 	export interface ReactHydrationState {
-		user?: UserProfile;
+		user?: UserAccountInfo;
 	}
 }
 
