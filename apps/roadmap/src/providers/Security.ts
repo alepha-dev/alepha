@@ -1,6 +1,6 @@
-import { randomBytes, scrypt, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import { $env, $hook, $inject, t } from "@alepha/core";
+import { $env, $inject, t } from "@alepha/core";
 import { $auth } from "@alepha/react-auth";
 import { $realm, type UserAccountInfo } from "@alepha/security";
 import { UnauthorizedError } from "@alepha/server";
