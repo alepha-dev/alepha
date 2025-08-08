@@ -203,15 +203,18 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		const iat = this.dateTimeProvider.now().unix();
 		const exp = iat + this.accessTokenExpiration.asSeconds();
 
-		const { id: sub, ...rest } = user;
-
 		const access_token = await this.jwt.create(
 			{
-				sub,
+				sub: user.id,
 				exp,
 				iat,
 				aud: this.name,
-				...rest,
+				// our claims
+				name: user.name,
+				roles: user.roles,
+				email: user.email,
+				organizations: user.organizations,
+				picture: user.picture,
 			},
 			this.name,
 		);
@@ -231,17 +234,14 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 				response.refresh_token = refresh_token;
 				response.refresh_token_expires_in = expires_in;
 			} else if (refreshToken) {
-				const payload = await this.parseToken(refreshToken);
-				if (payload.typ !== "refresh") {
-					throw new SecurityError(
-						`Token type mismatch: expected 'refresh', got '${payload.typ}'`,
-					);
-				}
-				if (payload.sub !== user.id) {
-					throw new SecurityError(
-						`Refresh token subject mismatch: expected '${user.id}', got '${payload.sub}'`,
-					);
-				}
+				const {
+					result: { payload },
+				} = await this.jwt.parse(refreshToken, this.name, {
+					typ: "refresh",
+					audience: this.name,
+					subject: user.id,
+				});
+
 				response.refresh_token = refreshToken;
 				if (payload.exp) {
 					response.refresh_token_expires_in = payload.exp - iat;
@@ -255,9 +255,13 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 						exp: iat + this.refreshTokenExpiration.asSeconds(),
 						iat,
 						aud: this.name,
-						typ: "refresh",
 					},
 					this.name,
+					{
+						header: {
+							typ: "refresh",
+						},
+					},
 				);
 			}
 		}

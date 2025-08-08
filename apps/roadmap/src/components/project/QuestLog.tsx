@@ -23,7 +23,7 @@ const QuestLog = () => {
 			col
 		>
 			<Flex pad1 gap1>
-				<Flex center pad2h col>
+				<Flex center pad2h col visible={"xl"}>
 					<Icon icon={"git-repo"} size={24} />
 					<Text small bold>
 						{tr("roadmap.quest-log.title")}

@@ -74,7 +74,7 @@ const CreateTaskButton = () => {
 	return (
 		<Flex>
 			<Action
-				visibleText={"sm"}
+				visibleText={"lg"}
 				intent={"success"}
 				disabled={!client.createTask.can()}
 				icon="plus"

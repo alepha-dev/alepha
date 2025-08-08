@@ -48,7 +48,7 @@ export const useForm = <T extends TObject>(
 			store: store.current,
 			parent: "",
 		}),
-		onSubmit: (event: FormEventLike) => {
+		onSubmit: async (event: FormEventLike) => {
 			event.preventDefault();
 
 			const form = event.currentTarget;
@@ -63,18 +63,13 @@ export const useForm = <T extends TObject>(
 
 			try {
 				if (TypeGuard.IsSchema(options.schema)) {
-					options.handler(alepha.parse(options.schema, values), args);
+					await options.handler(alepha.parse(options.schema, values), args);
 				} else {
-					options.handler(values, args); // for now, trust
+					await options.handler(values, args); // for now, trust
 				}
 			} catch (error) {
-				if (error instanceof TypeBoxError) {
-					if (options.onError) {
-						options.onError?.(error, args);
-					}
-					return;
-				}
-				throw error;
+				console.log("=>", error, options);
+				options.onError?.(error as Error, args);
 			}
 		},
 	};
@@ -357,7 +352,7 @@ export type UseFormOptions<T extends TObject> = {
 	 * Callback function to handle form submission.
 	 * This function will receive the parsed and validated form values.
 	 */
-	handler: (values: Static<T>, args: { form: HTMLFormElement }) => void;
+	handler: (values: Static<T>, args: { form: HTMLFormElement }) => unknown;
 
 	/**
 	 * Optional initial values for the form fields.
@@ -383,7 +378,7 @@ export type UseFormOptions<T extends TObject> = {
 	 */
 	id?: string;
 
-	onError?: (error: TypeBoxError, args: { form: HTMLFormElement }) => void;
+	onError?: (error: Error, args: { form: HTMLFormElement }) => void;
 
 	onChange?: (key: string, value: any, store: Record<string, any>) => void;
 };

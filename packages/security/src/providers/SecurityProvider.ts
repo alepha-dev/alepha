@@ -10,6 +10,7 @@ import {
 	t,
 } from "@alepha/core";
 import type { JSONWebKeySet, JWTPayload } from "jose";
+import type { JWTVerifyOptions } from "jose/jwt/verify";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
@@ -356,6 +357,7 @@ export class SecurityProvider {
 		options: {
 			permission?: Permission | string;
 			realm?: string;
+			verify?: JWTVerifyOptions;
 		} = {},
 	): Promise<UserAccountToken> {
 		const token = headerOrToken?.replace("Bearer", "").trim();
@@ -368,7 +370,9 @@ export class SecurityProvider {
 		const { result, keyName: realm } = await this.jwt.parse(
 			token,
 			options.realm,
+			options.verify,
 		);
+
 		const info = this.createUserFromPayload(result.payload, realm);
 		const realmRoles = this.getRoles(realm).filter((it) => it.default);
 		const roles = info.roles ?? [];

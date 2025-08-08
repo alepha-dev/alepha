@@ -133,11 +133,8 @@ export class ServerCookiesProvider {
 
 			return this.alepha.parse(options.schema, JSON.parse(rawValue));
 		} catch (error) {
-			this.log.error(`Failed to parse cookie "${name}"`, {
-				error,
-				rawValue,
-			});
-			// Corrupted or invalid cookie, instruct browser to delete it on next response
+			this.log.warn(`Failed to parse cookie "${name}"`, error);
+			// corrupted or invalid cookie, instruct browser to delete it on next response
 			this.deleteCookie(name, cookies);
 			return undefined;
 		}

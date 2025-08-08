@@ -261,9 +261,13 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 				tokens.access_token,
 				{
 					realm: this.options.realm.name,
+					verify: {
+						currentDate: new Date(0), // don't verify expiration, it's expected to be expired...
+					},
 				},
 			);
-			return this.options.realm.createToken(user);
+
+			return this.options.realm.createToken(user, tokens.refresh_token);
 		} else if (this.oauth) {
 			return {
 				...(await refreshTokenGrant(this.oauth, tokens.refresh_token)),

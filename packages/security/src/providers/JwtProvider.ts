@@ -15,7 +15,8 @@ import {
 	type KeyObject,
 	SignJWT,
 } from "jose";
-import { JWTExpired } from "jose/errors";
+import { JWTClaimValidationFailed, JWTExpired } from "jose/errors";
+import type { JWTVerifyOptions } from "jose/jwt/verify";
 import { SecurityError } from "../errors/SecurityError.ts";
 
 /**
@@ -25,6 +26,7 @@ export class JwtProvider {
 	protected readonly log = $logger();
 	protected readonly keystore: KeyLoaderHolder[] = [];
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly encoder = new TextEncoder();
 
 	/**
 	 * Adds a key loader to the embedded keystore.
@@ -67,7 +69,11 @@ export class JwtProvider {
 	 *
 	 * @return A Promise that resolves with the payload object from the token.
 	 */
-	public async parse(token: string, keyName?: string): Promise<JwtParseResult> {
+	public async parse(
+		token: string,
+		keyName?: string,
+		options?: JWTVerifyOptions,
+	): Promise<JwtParseResult> {
 		for (const it of this.keystore) {
 			if (keyName && it.name !== keyName) {
 				continue;
@@ -82,6 +88,7 @@ export class JwtProvider {
 					keyName: it.name,
 					result: await jwtVerify(token, it.keyLoader, {
 						currentDate: this.dateTimeProvider.now().toDate(),
+						...options,
 					}),
 				};
 
@@ -93,6 +100,11 @@ export class JwtProvider {
 			} catch (error) {
 				if (error instanceof JWTExpired) {
 					throw new SecurityError("Token expired", { cause: error });
+				}
+				if (error instanceof JWTClaimValidationFailed) {
+					throw new SecurityError("Token claim validation failed", {
+						cause: error,
+					});
 				}
 				this.log.trace(error);
 			}
@@ -121,51 +133,20 @@ export class JwtProvider {
 	): Promise<string> {
 		const secretKey = keyName
 			? this.keystore.find((it) => it.name === keyName)?.secretKey
-			: this.getFirstSecretKey();
+			: this.keystore[0]?.secretKey;
 
 		if (!secretKey) {
 			throw new Error("No secret key found in the keystore");
 		}
 
-		const options: JwtSignOptions = Object.assign(
-			{},
-			this.signOptions(),
-			signOptions,
-		);
-
 		const signJwt = new SignJWT(payload);
 
-		if (options.protectedHeader) {
-			signJwt.setProtectedHeader(options.protectedHeader);
-		}
+		signJwt.setProtectedHeader({
+			alg: "HS256",
+			...signOptions?.header,
+		});
 
-		return await signJwt.sign(new TextEncoder().encode(secretKey));
-	}
-
-	/**
-	 * Retrieves the options to use when signing a JWT token.
-	 *
-	 * @returns The JWT sign options.
-	 */
-	public signOptions(): JwtSignOptions {
-		return {
-			issuedAt: true,
-			protectedHeader: { alg: "HS256" },
-			expiresIn: this.dateTimeProvider.now().add(2, "hour").unix(),
-		};
-	}
-
-	/**
-	 * Retrieves the first secret key from the keystore.
-	 *
-	 * @protected
-	 */
-	protected getFirstSecretKey(): string | undefined {
-		for (const key of this.keystore) {
-			if (key.secretKey) {
-				return key.secretKey;
-			}
-		}
+		return await signJwt.sign(this.encoder.encode(secretKey));
 	}
 
 	/**
@@ -191,9 +172,7 @@ export interface KeyLoaderHolder {
 }
 
 export interface JwtSignOptions {
-	issuedAt?: boolean;
-	protectedHeader?: JWTHeaderParameters;
-	expiresIn?: number;
+	header?: Partial<JWTHeaderParameters>;
 }
 
 export interface ExtendedJWTPayload extends JWTPayload {

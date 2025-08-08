@@ -406,7 +406,7 @@ export class ReactServerProvider {
 		};
 
 		if (hydration) {
-			const { request, ...rest } = this.alepha.context.als?.getStore() ?? {};
+			const { request, context, ...rest } = this.alepha.context.als?.getStore() ?? {};
 
 			const hydrationData: ReactHydrationState = {
 				...rest,
@@ -417,7 +417,7 @@ export class ReactServerProvider {
 								...it.error,
 								name: it.error.name,
 								message: it.error.message,
-								stack: it.error.stack, // TODO: Hide stack in production ?
+								stack: this.alepha.isProduction() ? it.error.stack : undefined,
 							}
 						: undefined,
 					index: undefined,

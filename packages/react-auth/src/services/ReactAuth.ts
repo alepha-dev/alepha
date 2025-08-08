@@ -20,6 +20,16 @@ export class ReactAuth {
 		userinfo: "/oauth/userinfo",
 	};
 
+	protected readonly onFetchRequest = $hook({
+		on: "client:onRequest",
+		handler: async (event) => {
+			if (this.alepha.isBrowser() && this.user) {
+				// ensure cookies are sent with requests and refresh-able
+				event.request.credentials = "include";
+			}
+		},
+	});
+
 	public readonly onRender = $hook({
 		on: "react:transition:begin",
 		handler: async () => {
