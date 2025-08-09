@@ -4,7 +4,7 @@ const ProjectBoard = () => {
 	return (
 		<Flex fill center>
 			<Flex pad2 center bordered rounded>
-				Project Board
+				TODO: Board
 			</Flex>
 		</Flex>
 	);

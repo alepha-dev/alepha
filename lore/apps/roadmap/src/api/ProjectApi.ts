@@ -1,5 +1,4 @@
 import { $inject, $logger, t } from "@alepha/core";
-import { pageQuerySchema, pg } from "@alepha/postgres";
 import { $action } from "@alepha/server";
 import { Db, projects } from "../providers/Db.ts";
 
@@ -7,34 +6,34 @@ class ProjectApi {
 	log = $logger();
 	db = $inject(Db);
 
-	getProjects = $action({
-		group: "admin",
+	createProject = $action({
 		schema: {
-			query: pageQuerySchema,
-			response: pg.page(projects.$schema),
+			body: t.pick(projects.$insertSchema, ["title", "public"]),
+			response: projects.$schema,
 		},
-		handler: async ({ query }) => {
-			return this.db.projects.paginate(query);
+		handler: async ({ body, user }) => {
+			const project = await this.db.projects.create({
+				...body,
+				createdBy: user.id,
+			});
+			return project;
 		},
 	});
 
-	getPublicProjects = $action({
-		group: "read",
+	getProjects = $action({
 		schema: {
-			query: pageQuerySchema,
-			response: pg.page(projects.$schema),
+			response: t.array(projects.$schema),
 		},
-		handler: async ({ query }) => {
-			return this.db.projects.paginate(query, {
+		handler: async ({ user }) => {
+			return this.db.projects.find({
 				where: {
-					public: { eq: true },
+					createdBy: { eq: user.id },
 				},
 			});
 		},
 	});
 
 	getProjectById = $action({
-		group: "read",
 		schema: {
 			params: t.object({
 				id: t.int(),

@@ -7,6 +7,7 @@ import {
 	InputGroup,
 	type InputGroupProps,
 	NumericInput,
+	Switch,
 } from "@blueprintjs/core";
 
 export interface ControlProps {
@@ -37,6 +38,16 @@ const Control = (props: ControlProps) => {
 						</option>
 					))}
 				</HTMLSelect>
+			);
+		}
+
+		if (props.inputField.schema?.type === "boolean") {
+			return (
+				<Switch
+					id={props.inputField.props.id}
+					placeholder={props.inputField.schema?.title}
+					{...props.inputField.props}
+				/>
 			);
 		}
 
@@ -76,7 +87,7 @@ const Control = (props: ControlProps) => {
 			helperText={
 				props.inputField.path === props.error?.value.path
 					? props.error.value.message
-					: undefined
+					: props.inputField.schema?.description
 			}
 			{...props.formGroupProps}
 		>

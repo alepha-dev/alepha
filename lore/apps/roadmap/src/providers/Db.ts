@@ -22,6 +22,7 @@ export const users = $entity({
 		email: t.string({ format: "email" }),
 		roles: t.array(t.string(), { default: ["user"] }),
 		name: t.optional(t.string()),
+		picture: t.optional(t.string()),
 	}),
 });
 
@@ -86,6 +87,7 @@ export const tasks = $entity({
 	}),
 });
 
+export type User = Static<typeof users.$schema>;
 export type Task = Static<typeof tasks.$schema>;
 export type Project = Static<typeof projects.$schema>;
 export type TaskInsert = Static<typeof tasks.$insertSchema>;

@@ -60,7 +60,7 @@ const Header = () => {
 								<StupidLogo />
 							</Flex>
 							<Flex col>
-								<Action active={false} variant={"minimal"} link={{ to: "/" }}>
+								<Action active={false} variant={"minimal"} href={"/"}>
 									<Text bold large>
 										{tr("roadmap.title")}
 									</Text>
@@ -90,6 +90,7 @@ const HeaderProject = () => {
 	const [project] = useStore("project");
 	const router = useRouter();
 	const { pathname } = useRouterState();
+	const [projects = []] = useStore("user.projects");
 
 	if (!project) {
 		return null;
@@ -98,6 +99,7 @@ const HeaderProject = () => {
 	const menuItem = (id: number, label: string) => {
 		return (
 			<MenuItem
+				key={id}
 				intent={pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
 				icon={pathname.startsWith(`/p/${id}`) ? "tick-circle" : "blank"}
 				text={label}
@@ -105,19 +107,6 @@ const HeaderProject = () => {
 			/>
 		);
 	};
-
-	/**
-
-	 (x) Current Workspace ( if public project )
-
-	 ----- separator -----
-
-	 ( ) User Workspace 1
-	 ( ) User Workspace 2
-	 ( ) User Workspace 3
-
-
-	 */
 
 	return (
 		<Flex gap1 center>
@@ -128,8 +117,7 @@ const HeaderProject = () => {
 					minimal
 					content={
 						<Menu>
-							{menuItem(1, "Alepha")}
-							{menuItem(2, "Roadmap")}
+							{projects.map((p) => menuItem(p.id, p.title))}
 							<Divider />
 							<MenuItem text={"Add Project"} icon={"plus"} />
 						</Menu>

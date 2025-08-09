@@ -44,7 +44,9 @@ const TaskView = (props: TaskViewProps) => {
 						<Flex fill />
 						<Flex>
 							<Action
-								link={{ to: `/p/${project.id}` }}
+								href={router.path("projectBoard", {
+									params: { projectId: String(project.id) },
+								})}
 								icon={"cross"}
 								size={"small"}
 								variant={"minimal"}

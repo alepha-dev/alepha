@@ -1,6 +1,6 @@
 import { $env, $inject, t } from "@alepha/core";
-import { $auth } from "@alepha/react-auth";
-import { $realm, CryptoProvider, type UserAccountInfo } from "@alepha/security";
+import { $auth, type OAuth2UserInfo } from "@alepha/react-auth";
+import { $realm, CryptoProvider } from "@alepha/security";
 import { UnauthorizedError } from "@alepha/server";
 import { Db } from "./Db.ts";
 
@@ -22,8 +22,20 @@ class Security {
 		roles: [
 			{
 				name: "user",
-				default: true,
-				permissions: [{ name: "read:*" }],
+				permissions: [
+					{
+						name: "TaskApi:*",
+						ownership: true,
+					},
+					{
+						name: "ProjectApi:*",
+						ownership: true,
+					},
+					{
+						name: "UserApi:*",
+						ownership: true,
+					},
+				],
 			},
 			{
 				name: "admin",
@@ -73,11 +85,7 @@ class Security {
 			issuer: "https://accounts.google.com",
 			clientId: this.env.GOOGLE_CLIENT_ID,
 			clientSecret: this.env.GOOGLE_CLIENT_SECRET,
-			user: async (gg) => {
-				return await this.db.users.findOne({
-					email: { eq: gg.user.email },
-				});
-			},
+			user: ({ user }) => this.link("google", user),
 		},
 	});
 
@@ -99,8 +107,8 @@ class Security {
 					},
 				}).then((res) => res.json());
 
-				const user: UserAccountInfo = {
-					id: res.id.toString(),
+				const user: OAuth2UserInfo = {
+					sub: res.id.toString(),
 				};
 
 				if (res.email) {
@@ -134,6 +142,60 @@ class Security {
 			},
 		},
 	});
+
+	protected async link(provider: string, userInfo: OAuth2UserInfo) {
+		const identity = await this.db.identities
+			.one({
+				provider: { eq: provider },
+				providerUserId: { eq: userInfo.sub },
+			})
+			.catch(() => undefined);
+
+		if (identity) {
+			// actually, we should fetch user from first SQL query,
+			// but @alepha/postgres is not ready for that yet
+			return this.db.users.one({
+				id: { eq: identity.userId },
+			});
+		}
+
+		if (!userInfo.email) {
+			return {
+				id: userInfo.sub,
+				...userInfo,
+			};
+		}
+
+		const existing = await this.db.users
+			.one({
+				email: { eq: userInfo.email },
+			})
+			.catch(() => undefined);
+
+		if (existing) {
+			await this.db.identities.create({
+				provider: provider,
+				providerUserId: userInfo.sub,
+				userId: existing.id,
+			});
+			return existing;
+		}
+
+		const newUser = await this.db.users.create({
+			email: userInfo.email,
+			name: userInfo.name,
+			picture: userInfo.picture,
+			roles: ["user"],
+		});
+
+		await this.db.identities.create({
+			provider: provider,
+			providerUserId: userInfo.sub,
+			userId: newUser.id,
+		});
+
+		return newUser;
+	}
 }
 
 export default Security;

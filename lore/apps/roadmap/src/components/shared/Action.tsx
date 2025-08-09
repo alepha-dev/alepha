@@ -1,23 +1,22 @@
 import { AlephaError } from "@alepha/core";
-import { type LinkProps, useActive, useInject } from "@alepha/react";
+import { useActive, useInject } from "@alepha/react";
 import { AnchorButton, Button, type ButtonProps } from "@blueprintjs/core";
 import { createElement, type FunctionComponent, useState } from "react";
 import Toast from "../../services/Toast.ts";
 
 export type ActionProps = ButtonProps & {
 	visibleText?: "sm" | "md" | "lg";
-	link?: LinkProps;
 	active?: boolean;
 	href?: string;
 };
 
 const Action = (props: ActionProps) => {
 	const toast = useInject(Toast);
-	let { visibleText, link, ...rest } = props;
-	const [pending, setPending] = useState(false);
+	let { visibleText, href, ...rest } = props;
 
-	const hasLink = !!link || !!props.href;
-	const active = useActive(props.active !== false ? link?.to : undefined);
+	const isAnchor = !!href;
+	const { isActive, anchorProps } = useActive(href);
+	const [pending, setPending] = useState(false);
 
 	const onClick = rest.onClick;
 	if (onClick) {
@@ -40,7 +39,7 @@ const Action = (props: ActionProps) => {
 	rest.disabled ??= pending;
 	rest.loading ??= pending;
 
-	if (active.isActive && link?.to && props.active !== false) {
+	if (isAnchor && isActive && props.active !== false) {
 		rest = {
 			...rest,
 			active: true,
@@ -48,11 +47,12 @@ const Action = (props: ActionProps) => {
 	}
 
 	let element: FunctionComponent = Button;
-	if (hasLink) {
+
+	if (isAnchor) {
 		element = AnchorButton;
 		rest = {
 			...rest,
-			...active.anchorProps,
+			...anchorProps,
 		};
 	}
 
