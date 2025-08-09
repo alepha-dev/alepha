@@ -11,6 +11,7 @@ export interface TextProps {
 	uppercase?: boolean;
 	muted?: boolean;
 	large?: boolean;
+
 	visible?: Breakpoint;
 	hide?: Breakpoint;
 	span?: HTMLAttributes<HTMLSpanElement>;

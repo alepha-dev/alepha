@@ -381,14 +381,10 @@ export class RepositoryDescriptor<
 					this.id.key as string,
 				),
 			)
-			.then((rows) => rows.map((row) => this.clean(row, schema)));
-	}
-
-	public async one<T extends Static<EntitySchema> = Static<EntitySchema>>(
-		where: PgQueryWhere<T>,
-		opts: StatementOptions = {},
-	): Promise<Static<EntitySchema>> {
-		return this.findOne(where, opts);
+			.then((rows) => rows.map((row) => this.clean(row, schema)))
+			.catch((error) => {
+				throw new PgError("Query has failed", error);
+			});
 	}
 
 	/**

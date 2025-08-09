@@ -26,12 +26,12 @@ const QuestLog = () => {
 				<Flex center pad2h col visible={"xl"}>
 					<Icon icon={"git-repo"} size={24} />
 					<Text small bold>
-						{tr("roadmap.quest-log.title")}
+						{tr("quest-log.title")}
 					</Text>
 				</Flex>
 				<Flex shadow bg bordered rounded fill centerX>
 					<Flex pad2h gap1 center>
-						<Text small>{tr("roadmap.quest-log.quests")}</Text>
+						<Text small>{tr("quest-log.quests")}</Text>
 						<Flex bordered style={{ padding: "0 4px" }} rounded>
 							<Text small>{tasks.length}/25</Text>
 						</Flex>
@@ -73,7 +73,7 @@ const QuestLog = () => {
 			<Flex pad1h>
 				<InputGroup
 					disabled={tasks.length === 0}
-					placeholder={tr("roadmap.quest-log.search")}
+					placeholder={tr("quest-log.search")}
 					fill
 					leftIcon={"search"}
 					round

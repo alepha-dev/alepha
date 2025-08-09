@@ -8,8 +8,8 @@ export interface ProfileProps {
 const Profile = (props: ProfileProps) => {
 	return (
 		<Flex fill center>
-			<Flex pad2 center bordered rounded>
-				TODO: Profile ({props.user.name})
+			<Flex pad2 center>
+				🚧
 			</Flex>
 		</Flex>
 	);

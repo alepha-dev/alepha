@@ -39,7 +39,7 @@ export const useForm = <T extends TObject>(
 	options: UseFormOptions<T>,
 ): UseFormReturn<T> => {
 	const alepha = useAlepha();
-	const store = useRef<Record<string, any>>({});
+	const store = useRef<Record<string, any>>(options.initialValues ?? {});
 
 	return {
 		input: createProxyFromSchema(options, options.schema, {
@@ -66,6 +66,7 @@ export const useForm = <T extends TObject>(
 					await options.handler(values, args); // for now, trust
 				}
 			} catch (error) {
+				alepha.log.error("Form submission error:", error);
 				options.onError?.(error as Error, args);
 			}
 		},
@@ -208,7 +209,11 @@ const createInputFromSchema = <T extends TObject>(
 	const attr: InputHTMLAttributesLike = {
 		name: key,
 		onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-			set(event.target.value);
+			if (field.type === "boolean") {
+				set(event.target.checked);
+			} else {
+				set(event.target.value);
+			}
 		},
 	};
 

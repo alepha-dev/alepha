@@ -145,7 +145,7 @@ class Security {
 
 	protected async link(provider: string, userInfo: OAuth2UserInfo) {
 		const identity = await this.db.identities
-			.one({
+			.findOne({
 				provider: { eq: provider },
 				providerUserId: { eq: userInfo.sub },
 			})
@@ -154,7 +154,7 @@ class Security {
 		if (identity) {
 			// actually, we should fetch user from first SQL query,
 			// but @alepha/postgres is not ready for that yet
-			return this.db.users.one({
+			return this.db.users.findOne({
 				id: { eq: identity.userId },
 			});
 		}
@@ -167,7 +167,7 @@ class Security {
 		}
 
 		const existing = await this.db.users
-			.one({
+			.findOne({
 				email: { eq: userInfo.email },
 			})
 			.catch(() => undefined);

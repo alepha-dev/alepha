@@ -7,11 +7,13 @@ import {
 	useStore,
 } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
+import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type TaskApi from "../../../api/TaskApi.ts";
 import type { Task } from "../../../providers/Db.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import Action from "../../shared/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
@@ -25,6 +27,7 @@ const TaskView = (props: TaskViewProps) => {
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
 	const router = useRouter<AppRouter>();
+	const { tr } = useI18n<I18n, "en">();
 
 	const [task, setTask] = useState<Task>(props.task);
 	useEffect(() => {
@@ -71,10 +74,9 @@ const TaskView = (props: TaskViewProps) => {
 							/>
 						</Flex>
 						<Text>
-							This quest is on a <Text italic> {task.priority}</Text> priority
-							level. Complexity is{" "}
-							<Text bold>
-								{task.complexity === 5
+							{tr("task.view.summary", [
+								task.priority,
+								task.complexity === 5
 									? "S"
 									: task.complexity === 4
 										? "A"
@@ -82,16 +84,15 @@ const TaskView = (props: TaskViewProps) => {
 											? "B"
 											: task.complexity === 2
 												? "C"
-												: "F"}
-							</Text>{" "}
-							tier.
+												: "F",
+							])}
 						</Text>
 
 						<Flex col>
 							<Flex gap1 centerX>
 								<Icon icon={"manually-entered-data"} />
 								<Text large bold>
-									Description
+									{tr("task.view.description")}
 								</Text>
 								<Flex
 									wFill
@@ -107,7 +108,7 @@ const TaskView = (props: TaskViewProps) => {
 						<Flex gap1 centerX>
 							<Icon icon={"bank-account"} />
 							<Text large bold>
-								Rewards
+								{tr("task.view.rewards")}
 							</Text>
 							<Flex
 								wFill
@@ -119,7 +120,7 @@ const TaskView = (props: TaskViewProps) => {
 							/>
 						</Flex>
 						<Flex gap2>
-							<Text>You will receive:</Text>
+							<Text>{tr("task.view.receive")}</Text>
 							<Flex gap1>
 								<Flex>
 									{task.complexity * 1}{" "}
@@ -133,7 +134,7 @@ const TaskView = (props: TaskViewProps) => {
 						</Flex>
 
 						<Flex gap2>
-							<Text>Experience:</Text>
+							<Text>{tr("task.view.experience")}</Text>
 							<Text bold>{task.complexity * 150} XP</Text>
 						</Flex>
 					</Flex>
@@ -142,7 +143,7 @@ const TaskView = (props: TaskViewProps) => {
 						<Flex fill />
 						<Flex>
 							<Text small muted>
-								created {dt.of(task.createdAt).fromNow()}
+								{tr("task.view.created")} {dt.of(task.createdAt).fromNow()}
 							</Text>
 						</Flex>
 					</Flex>
@@ -153,7 +154,7 @@ const TaskView = (props: TaskViewProps) => {
 							variant={"minimal"}
 							intent={"success"}
 							icon={"tick"}
-							text={"Mark As Complete"}
+							text={tr("task.view.actions.complete")}
 							disabled={!taskApi.deleteTask.can()}
 							onClick={async () => {
 								await taskApi.deleteTask({
@@ -171,7 +172,7 @@ const TaskView = (props: TaskViewProps) => {
 						<Action
 							variant={"minimal"}
 							icon={"cross"}
-							text={"Abandon Quest"}
+							text={tr("task.view.actions.abandon")}
 							intent={"danger"}
 							disabled={!taskApi.deleteTask.can()}
 							onClick={async () => {

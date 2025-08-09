@@ -12,6 +12,7 @@ import TaskCreate from "./task/TaskCreate.tsx";
 const ProjectActions = () => {
 	const [project] = useStore("project");
 	const router = useRouter<AppRouter>();
+	const { tr } = useI18n<I18n, "en">();
 
 	if (!project) {
 		return null;
@@ -28,28 +29,28 @@ const ProjectActions = () => {
 					visibleText={"sm"}
 					icon={"panel-table"}
 					variant={"minimal"}
-					text={"Board"}
+					text={tr("project.menu.board")}
 					href={router.path("projectBoard", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
 					icon={"people"}
 					variant={"minimal"}
-					text={"Players"}
+					text={tr("project.menu.players")}
 					href={router.path("projectPlayers", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
 					icon={"timeline-line-chart"}
 					variant={"minimal"}
-					text={"Analytics"}
+					text={tr("project.menu.analytics")}
 					href={router.path("projectAnalytics", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
 					icon={"cog"}
 					variant={"minimal"}
-					text={"Settings"}
+					text={tr("project.menu.settings")}
 					href={router.path("projectSettings", opts)}
 				/>
 			</ButtonGroup>
@@ -80,7 +81,7 @@ const CreateTaskButton = () => {
 				icon="plus"
 				onClick={() => setShowDialog(true)}
 			>
-				{tr("roadmap.header.addTask")}
+				{tr("project.menu.create-task")}
 			</Action>
 			<Drawer
 				isOpen={showDialog}
