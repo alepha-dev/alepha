@@ -384,6 +384,13 @@ export class RepositoryDescriptor<
 			.then((rows) => rows.map((row) => this.clean(row, schema)));
 	}
 
+	public async one<T extends Static<EntitySchema> = Static<EntitySchema>>(
+		where: PgQueryWhere<T>,
+		opts: StatementOptions = {},
+	): Promise<Static<EntitySchema>> {
+		return this.findOne(where, opts);
+	}
+
 	/**
 	 * Find a single entity.
 	 *

@@ -418,7 +418,7 @@ export class ReactServerProvider {
 								...it.error,
 								name: it.error.name,
 								message: it.error.message,
-								stack: this.alepha.isProduction() ? it.error.stack : undefined,
+								stack: !this.alepha.isProduction() ? it.error.stack : undefined,
 							}
 						: undefined,
 					index: undefined,

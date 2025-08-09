@@ -63,7 +63,7 @@ const Login = () => {
 						Sign in with Google
 					</Action>
 				</Flex>
-				<Action variant={"minimal"} link={{ to: "/" }}>
+				<Action variant={"minimal"} href={"/"}>
 					Cancel
 				</Action>
 			</Flex>

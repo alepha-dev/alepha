@@ -108,6 +108,9 @@ export class ReactAuthProvider {
 				const tokens = await this.cookiesToTokens(cookies);
 				if (tokens) {
 					request.headers.authorization = `Bearer ${this.getAccessTokens(tokens)}`;
+					this.log.trace("Access token set in request headers", {
+						provider: tokens.provider,
+					});
 				}
 			}
 
@@ -141,6 +144,11 @@ export class ReactAuthProvider {
 			return;
 		}
 
+		this.log.trace("Tokens found in cookies", {
+			expires_in: tokens.expires_in,
+			issued_at: tokens.issued_at,
+		});
+
 		// check if tokens are expired
 		if (tokens.expires_in && tokens.issued_at) {
 			const gracePeriodSec = 10;
@@ -158,17 +166,10 @@ export class ReactAuthProvider {
 						const newTokens = {
 							...result,
 							provider: tokens.provider,
-							issued_at: Date.now(),
+							issued_at: this.dateTimeProvider.now().unix(),
 						};
 
-						const ttl = newTokens.expires_in
-							? this.dateTimeProvider.duration(newTokens.expires_in, "seconds")
-							: undefined;
-
-						this.tokens.set(newTokens, {
-							cookies,
-							ttl,
-						});
+						this.setTokens(newTokens, cookies);
 
 						this.log.debug("Tokens refreshed successfully");
 
@@ -246,7 +247,7 @@ export class ReactAuthProvider {
 			};
 
 			// for web applications, we store tokens in cookies
-			this.tokens.set(tokens, { cookies });
+			this.setTokens(tokens, cookies);
 
 			const links = await this.serverLinksProvider.getLinks({
 				user,
@@ -380,7 +381,7 @@ export class ReactAuthProvider {
 
 			// external, full OIDC System (e.g. Keycloak, Auth0)
 			if (!realm) {
-				this.tokens.set(externalTokens);
+				this.setTokens(externalTokens, cookies);
 				reply.redirect(redirectUri);
 				return;
 			}
@@ -390,11 +391,14 @@ export class ReactAuthProvider {
 			const user = await provider.user(externalTokens);
 			const tokens = await realm.createToken(user);
 
-			this.tokens.set({
-				...tokens,
-				issued_at: this.dateTimeProvider.now().unix(),
-				provider: provider.name,
-			});
+			this.setTokens(
+				{
+					...tokens,
+					issued_at: this.dateTimeProvider.now().unix(),
+					provider: provider.name,
+				},
+				cookies,
+			);
 
 			reply.redirect(redirectUri);
 		},
@@ -468,6 +472,18 @@ export class ReactAuthProvider {
 		}
 
 		return identity;
+	}
+
+	protected setTokens(tokens: Tokens, cookies?: Cookies): void {
+		const exp = tokens.refresh_token_expires_in || tokens.expires_in;
+		const ttl = exp
+			? this.dateTimeProvider.duration(exp, "seconds")
+			: undefined;
+
+		this.tokens.set(tokens, {
+			cookies,
+			ttl,
+		});
 	}
 }
 

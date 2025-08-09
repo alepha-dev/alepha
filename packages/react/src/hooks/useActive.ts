@@ -14,17 +14,16 @@ export const useActive = (path?: HrefLike): UseActiveHook => {
 		throw new Error("useRouter must be used within a RouterProvider");
 	}
 
-	let name: string | undefined;
-	if (typeof path === "object" && path.options.name) {
-		name = path.options.name;
-	}
-
 	const [current, setCurrent] = useState(ctx.state.pathname);
 	const href = useMemo(
 		() => router.createHref(path ?? "", layer),
 		[path, layer],
 	);
+
 	const [isPending, setPending] = useState(false);
+
+	// TODO: loose [default] or strict
+	// TODO: startWith: true (e.g. /p/1 should match /p/1/2)
 	const isActive =
 		current === href || current === `${href}/` || `${current}/` === href;
 
@@ -38,7 +37,6 @@ export const useActive = (path?: HrefLike): UseActiveHook => {
 	);
 
 	return {
-		name,
 		isPending,
 		isActive,
 		anchorProps: {

@@ -10,6 +10,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import {
 	type AccessTokenResponse,
 	type RealmDescriptor,
+	SecurityError,
 	SecurityProvider,
 	type UserAccountInfo,
 } from "@alepha/security";
@@ -285,21 +286,30 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 	 * This is used to create a user account from the access token.
 	 */
 	public async user(tokens: Tokens): Promise<UserAccountInfo> {
-		if ("oauth" in this.options) {
-			return this.options.oauth.user(tokens);
-		}
-
-		if ("oidc" in this.options) {
-			const payload = this.getUserFromIdToken(tokens.id_token || "");
-
-			if (this.options.oidc.user) {
-				return this.options.oidc.user({
-					...tokens,
-					user: payload,
-				});
+		try {
+			if ("oauth" in this.options) {
+				return this.options.oauth.user(tokens);
 			}
 
-			return this.securityProvider.createUserFromPayload(payload);
+			if ("oidc" in this.options) {
+				const payload = this.getUserFromIdToken(tokens.id_token || "");
+
+				if (this.options.oidc.user) {
+					return this.options.oidc.user({
+						...tokens,
+						user: payload,
+					});
+				}
+
+				return this.securityProvider.createUserFromPayload(payload);
+			}
+		} catch (error) {
+			throw new SecurityError(
+				"Failed to extract user from identity provider tokens",
+				{
+					cause: error,
+				},
+			);
 		}
 
 		throw new AlephaError(

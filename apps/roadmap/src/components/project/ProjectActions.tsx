@@ -29,28 +29,28 @@ const ProjectActions = () => {
 					icon={"panel-table"}
 					variant={"minimal"}
 					text={"Board"}
-					link={{ to: router.path("projectBoard", opts) }}
+					href={router.path("projectBoard", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
 					icon={"people"}
 					variant={"minimal"}
 					text={"Players"}
-					link={{ to: router.path("projectPlayers", opts) }}
+					href={router.path("projectPlayers", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
 					icon={"timeline-line-chart"}
 					variant={"minimal"}
 					text={"Analytics"}
-					link={{ to: router.path("projectAnalytics", opts) }}
+					href={router.path("projectAnalytics", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
 					icon={"cog"}
 					variant={"minimal"}
 					text={"Settings"}
-					link={{ to: router.path("projectSettings", opts) }}
+					href={router.path("projectSettings", opts)}
 				/>
 			</ButtonGroup>
 			<Flex fill />

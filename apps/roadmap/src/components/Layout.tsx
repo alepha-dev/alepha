@@ -8,6 +8,7 @@ declare module "@alepha/core" {
 	interface State {
 		tasks?: Task[];
 		project?: Project | null;
+		"user.projects"?: Project[];
 	}
 }
 

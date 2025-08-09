@@ -129,6 +129,15 @@ export class BrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			options.state.search = state.search;
 		}
 
+		if (options.previous) {
+			for (let i = 0; i < options.previous.length; i++) {
+				const layer = options.previous[i];
+				if (state.layers[i]?.name !== layer.name) {
+					this.pageDescriptorProvider.page(layer.name)?.onLeave?.();
+				}
+			}
+		}
+
 		await this.alepha.emit("react:transition:end", {
 			state: options.state,
 			context,

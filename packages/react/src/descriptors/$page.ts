@@ -174,6 +174,11 @@ export interface PageDescriptorOptions<
 	 * Called before the server response is sent to the client.
 	 */
 	onServerResponse?: (request: ServerRequest) => any;
+
+	/**
+	 * Called when user leaves the page. (browser only)
+	 */
+	onLeave?: () => void;
 }
 
 export type ErrorHandler = (

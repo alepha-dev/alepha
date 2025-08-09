@@ -42,7 +42,7 @@ const ErrorViewer = ({ error, alepha }: ErrorViewerProps) => {
 		heading: {
 			fontSize: "20px",
 			fontWeight: "bold",
-			marginBottom: "4px",
+			marginBottom: "10px",
 		},
 		name: {
 			fontSize: "16px",

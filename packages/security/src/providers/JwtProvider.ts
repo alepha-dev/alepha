@@ -81,6 +81,7 @@ export class JwtProvider {
 
 			this.log.trace(`Trying to verify token`, {
 				keyName: it.name,
+				options,
 			});
 
 			try {
@@ -98,15 +99,17 @@ export class JwtProvider {
 
 				return verified;
 			} catch (error) {
+				this.log.trace(error);
+
 				if (error instanceof JWTExpired) {
 					throw new SecurityError("Token expired", { cause: error });
 				}
+
 				if (error instanceof JWTClaimValidationFailed) {
 					throw new SecurityError("Token claim validation failed", {
 						cause: error,
 					});
 				}
-				this.log.trace(error);
 			}
 		}
 

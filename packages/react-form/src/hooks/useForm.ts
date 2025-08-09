@@ -39,7 +39,6 @@ export const useForm = <T extends TObject>(
 	options: UseFormOptions<T>,
 ): UseFormReturn<T> => {
 	const alepha = useAlepha();
-
 	const store = useRef<Record<string, any>>({});
 
 	return {
@@ -67,7 +66,6 @@ export const useForm = <T extends TObject>(
 					await options.handler(values, args); // for now, trust
 				}
 			} catch (error) {
-				console.log("=>", error, options);
 				options.onError?.(error as Error, args);
 			}
 		},

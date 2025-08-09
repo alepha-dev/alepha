@@ -7,7 +7,6 @@ class TaskApi {
 	db = $inject(Db);
 
 	getTasks = $action({
-		group: "read",
 		schema: {
 			params: t.object({
 				projectId: t.int(),
@@ -25,7 +24,6 @@ class TaskApi {
 	});
 
 	getTaskById = $action({
-		group: "read",
 		schema: {
 			params: t.object({
 				id: t.int(),
@@ -45,7 +43,6 @@ class TaskApi {
 	});
 
 	updateTaskById = $action({
-		group: "write",
 		schema: {
 			params: t.object({
 				id: t.int(),
@@ -67,7 +64,6 @@ class TaskApi {
 	});
 
 	createTask = $action({
-		group: "write",
 		schema: {
 			body: t.omit(tasks.$insertSchema, ["createdBy"]),
 			response: tasks.$schema,
@@ -81,7 +77,6 @@ class TaskApi {
 	});
 
 	deleteTask = $action({
-		group: "write",
 		schema: {
 			params: t.object({
 				id: t.int(),

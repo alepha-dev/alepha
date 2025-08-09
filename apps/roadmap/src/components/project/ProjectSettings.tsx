@@ -1,13 +1,13 @@
 import { Flex } from "@alepha/react-flex";
 
-const ProjectBoard = () => {
+const ProjectSettings = () => {
 	return (
 		<Flex fill center>
 			<Flex pad2 center bordered rounded>
-				TODO: Board
+				TODO: Settings
 			</Flex>
 		</Flex>
 	);
 };
 
-export default ProjectBoard;
+export default ProjectSettings;

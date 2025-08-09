@@ -1,4 +1,10 @@
-import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
+import {
+	$inject,
+	$logger,
+	createDescriptor,
+	Descriptor,
+	KIND,
+} from "@alepha/core";
 import {
 	DateTimeProvider,
 	type Duration,
@@ -110,6 +116,7 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 	protected readonly securityProvider = $inject(SecurityProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly jwt = $inject(JwtProvider);
+	protected readonly log = $logger();
 
 	public get name(): string {
 		return this.options.name || this.config.propertyKey;
@@ -205,6 +212,13 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		const iat = this.dateTimeProvider.now().unix();
 		const exp = iat + this.accessTokenExpiration.asSeconds();
 
+		this.log.trace("Creating access token", {
+			sub: user.id,
+			exp,
+			iat,
+			aud: this.name,
+		});
+
 		const access_token = await this.jwt.create(
 			{
 				sub: user.id,
@@ -251,20 +265,21 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 			} else {
 				response.refresh_token_expires_in =
 					this.refreshTokenExpiration.asSeconds();
-				response.refresh_token = await this.jwt.create(
-					{
-						sub: user.id,
-						exp: iat + this.refreshTokenExpiration.asSeconds(),
-						iat,
-						aud: this.name,
+
+				const payload = {
+					sub: user.id,
+					exp: iat + this.refreshTokenExpiration.asSeconds(),
+					iat,
+					aud: this.name,
+				};
+
+				this.log.trace("Creating refresh token", payload);
+
+				response.refresh_token = await this.jwt.create(payload, this.name, {
+					header: {
+						typ: "refresh",
 					},
-					this.name,
-					{
-						header: {
-							typ: "refresh",
-						},
-					},
-				);
+				});
 			}
 		}
 

@@ -1,4 +1,4 @@
-import { useInject, useRouter } from "@alepha/react";
+import { useInject, useRouter, useStore } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
@@ -52,6 +52,7 @@ export default HeaderActions;
 const AuthButton = () => {
 	const auth = useAuth();
 	const router = useRouter<AppRouter>();
+	const [project] = useStore("project");
 
 	if (auth.user) {
 		return (
@@ -59,7 +60,13 @@ const AuthButton = () => {
 				position={"bottom"}
 				content={
 					<Menu>
-						<MenuItem icon={"user"} text={"Profile"} />
+						<MenuItem
+							icon={"user"}
+							text={"Profile"}
+							onClick={() => {
+								router.go("profile");
+							}}
+						/>
 						<Divider />
 						<MenuItem
 							text="Logout"
@@ -69,27 +76,30 @@ const AuthButton = () => {
 					</Menu>
 				}
 			>
-				<Action variant={"minimal"} endIcon={"caret-down"}>
-					<Flex gap1>
-						<Flex centerX>
-							<img
-								style={{
-									height: "24px",
-									width: "24px",
-									borderRadius: "50%",
-								}}
-								src={
-									"https://avatars.githubusercontent.com/u/46966636?s=48&v=4"
-								}
-							/>
-						</Flex>
+				<Action
+					variant={"minimal"}
+					endIcon={"caret-down"}
+					icon={
+						<img
+							style={{
+								height: "24px",
+								width: "24px",
+								borderRadius: "50%",
+							}}
+							src={"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"}
+						/>
+					}
+				>
+					{project ? (
 						<Flex col>
 							<Text bold style={{ textWrap: "nowrap" }}>
 								{auth.user.name}
 							</Text>
 							<Text small>Level 1</Text>
 						</Flex>
-					</Flex>
+					) : (
+						auth.user.name
+					)}
 				</Action>
 			</Popover>
 		);
@@ -100,13 +110,12 @@ const AuthButton = () => {
 			variant={"minimal"}
 			icon={"user"}
 			text={"Sign in"}
-			link={{
-				to: router.path("login", {
-					query: {
-						r: router.pathname,
-					},
-				}),
-			}}
+			visibleText={"md"}
+			href={router.path("login", {
+				query: {
+					r: router.pathname,
+				},
+			})}
 		/>
 	);
 };

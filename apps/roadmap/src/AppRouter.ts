@@ -1,18 +1,22 @@
-import { $inject, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { $page, NotFound, Redirection } from "@alepha/react";
+import { ReactAuth } from "@alepha/react-auth";
 import { $head } from "@alepha/react-head";
 import { HttpError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
 import { createElement } from "react";
 import type ProjectApi from "./api/ProjectApi.ts";
 import type TaskApi from "./api/TaskApi.ts";
+import type { UserApi } from "./api/UserApi.ts";
 import { Theme } from "./services/Theme.ts";
 
 export class AppRouter {
 	theme = $inject(Theme);
 	alepha = $inject(Alepha);
+	auth = $inject(ReactAuth);
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
+	userApi = $client<UserApi>();
 
 	head = $head(() => {
 		return {
@@ -21,6 +25,15 @@ export class AppRouter {
 				class: this.theme.getColorSchemeClass(),
 			},
 		};
+	});
+
+	onFetchRequest = $hook({
+		on: "client:onError",
+		handler: async ({ error }) => {
+			if (HttpError.is(error, 401)) {
+				this.auth.logout();
+			}
+		},
 	});
 
 	login = $page({
@@ -42,26 +55,34 @@ export class AppRouter {
 		children: () => [
 			this.home, //
 			this.project,
+			this.profile,
 			this.notFound,
 		],
 		lazy: () => import("./components/Layout.tsx"),
+		resolve: async ({ user }) => {
+			if (user) {
+				this.alepha.state("user.projects", await this.projectApi.getProjects());
+			}
+		},
 		errorHandler: (error, ctx) => {
 			if (HttpError.is(error, 401)) {
 				return new Redirection(`/login?r=${ctx.url.pathname}`);
 			}
-		},
-		resolve: async () => {
-			this.alepha.state("project", null);
-			this.alepha.state("tasks", []);
 		},
 	});
 
 	home = $page({
 		path: "/",
 		lazy: () => import("./components/home/Home.tsx"),
+	});
+
+	profile = $page({
+		path: "/me",
+		lazy: () => import("./components/auth/Profile.tsx"),
 		resolve: async () => {
-			this.alepha.state("project", null);
-			this.alepha.state("tasks", []);
+			return {
+				user: await this.userApi.me(),
+			};
 		},
 	});
 
@@ -95,6 +116,11 @@ export class AppRouter {
 			this.alepha.state("project", project);
 			this.alepha.state("tasks", tasks);
 		},
+		onLeave: () => {
+			console.log("Leaving project page");
+			this.alepha.state("project", null);
+			this.alepha.state("tasks", []);
+		},
 	});
 
 	projectBoard = $page({
@@ -104,17 +130,17 @@ export class AppRouter {
 
 	projectPlayers = $page({
 		path: "/players",
-		component: () => "players",
+		lazy: () => import("./components/project/ProjectPlayers.tsx"),
 	});
 
 	projectAnalytics = $page({
 		path: "/analytics",
-		component: () => "analytics",
+		lazy: () => import("./components/project/ProjectStats.tsx"),
 	});
 
 	projectSettings = $page({
 		path: "/settings",
-		component: () => "Settings",
+		lazy: () => import("./components/project/ProjectSettings.tsx"),
 	});
 
 	projectTask = $page({

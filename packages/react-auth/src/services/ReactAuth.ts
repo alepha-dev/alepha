@@ -32,10 +32,10 @@ export class ReactAuth {
 
 	public readonly onRender = $hook({
 		on: "react:transition:begin",
-		handler: async () => {
-			//if (!this.alepha.state("user")) {
-			//	this.alepha.state("user", await this.auth.userinfo());
-			//}
+		handler: async ({ context }) => {
+			if (this.alepha.isBrowser() && this.user) {
+				context.user = this.user;
+			}
 		},
 	});
 
