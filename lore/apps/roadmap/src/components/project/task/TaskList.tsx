@@ -28,7 +28,7 @@ const TaskList = (props: TaskListProps) => {
 	if (packageList.length === 0) {
 		return (
 			<Flex pad2 col centerX fill>
-				<Text muted>{tr("roadmap.quest-log.empty")}</Text>
+				<Text muted>{tr("quest-log.empty")}</Text>
 			</Flex>
 		);
 	}

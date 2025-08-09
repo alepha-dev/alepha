@@ -53,6 +53,7 @@ const AuthButton = () => {
 	const auth = useAuth();
 	const router = useRouter<AppRouter>();
 	const [project] = useStore("project");
+	const { tr } = useI18n<I18n, "en">();
 
 	if (auth.user) {
 		return (
@@ -62,14 +63,14 @@ const AuthButton = () => {
 					<Menu>
 						<MenuItem
 							icon={"user"}
-							text={"Profile"}
+							text={tr("header.actions.profile")}
 							onClick={() => {
 								router.go("profile");
 							}}
 						/>
 						<Divider />
 						<MenuItem
-							text="Logout"
+							text={tr("header.actions.logout")}
 							icon="log-out"
 							onClick={() => auth.logout()}
 						/>
@@ -95,7 +96,7 @@ const AuthButton = () => {
 							<Text bold style={{ textWrap: "nowrap" }}>
 								{auth.user.name}
 							</Text>
-							<Text small>Level 1</Text>
+							<Text small>{tr("header.actions.profile.level", ["1"])}</Text>
 						</Flex>
 					) : (
 						auth.user.name
@@ -109,7 +110,7 @@ const AuthButton = () => {
 		<Action
 			variant={"minimal"}
 			icon={"user"}
-			text={"Sign in"}
+			text={tr("header.actions.login")}
 			visibleText={"md"}
 			href={router.path("login", {
 				query: {

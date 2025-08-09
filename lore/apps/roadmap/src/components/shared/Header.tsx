@@ -1,26 +1,14 @@
-import {
-	useRouter,
-	useRouterEvents,
-	useRouterState,
-	useStore,
-} from "@alepha/react";
+import { useRouterEvents } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import {
-	Button,
-	Divider,
-	Drawer,
-	Icon,
-	Menu,
-	MenuItem,
-	Popover,
-} from "@blueprintjs/core";
+import { Button, Drawer } from "@blueprintjs/core";
 import { useState } from "react";
 import type { I18n } from "../../services/I18n.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
 import Action from "./Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
+import HeaderProject from "./HeaderProject.tsx";
 import StupidLogo from "./StupidLogo.tsx";
 
 const Header = () => {
@@ -62,7 +50,7 @@ const Header = () => {
 							<Flex col>
 								<Action active={false} variant={"minimal"} href={"/"}>
 									<Text bold large>
-										{tr("roadmap.title")}
+										{tr("header.title")}
 									</Text>
 								</Action>
 							</Flex>
@@ -85,52 +73,6 @@ const Header = () => {
 };
 
 export default Header;
-
-const HeaderProject = () => {
-	const [project] = useStore("project");
-	const router = useRouter();
-	const { pathname } = useRouterState();
-	const [projects = []] = useStore("user.projects");
-
-	if (!project) {
-		return null;
-	}
-
-	const menuItem = (id: number, label: string) => {
-		return (
-			<MenuItem
-				key={id}
-				intent={pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
-				icon={pathname.startsWith(`/p/${id}`) ? "tick-circle" : "blank"}
-				text={label}
-				onClick={() => router.go(`/p/${id}`)}
-			/>
-		);
-	};
-
-	return (
-		<Flex gap1 center>
-			<Icon icon={"slash"} />
-			<Flex>
-				<Popover
-					position={"bottom"}
-					minimal
-					content={
-						<Menu>
-							{projects.map((p) => menuItem(p.id, p.title))}
-							<Divider />
-							<MenuItem text={"Add Project"} icon={"plus"} />
-						</Menu>
-					}
-				>
-					<Action variant={"minimal"}>
-						<Text bold>{project.title}</Text>
-					</Action>
-				</Popover>
-			</Flex>
-		</Flex>
-	);
-};
 
 const MobileQuestLog = () => {
 	const [show, setShow] = useState(false);

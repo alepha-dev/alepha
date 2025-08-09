@@ -10,7 +10,7 @@ export class UserApi {
 			response: users.$schema,
 		},
 		handler: async ({ user }) => {
-			return await this.db.users.one({
+			return await this.db.users.findOne({
 				id: { eq: user.id },
 			});
 		},

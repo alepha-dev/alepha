@@ -55,6 +55,7 @@ export class AppRouter {
 		children: () => [
 			this.home, //
 			this.project,
+			this.projectCreate,
 			this.profile,
 			this.notFound,
 		],
@@ -84,6 +85,11 @@ export class AppRouter {
 				user: await this.userApi.me(),
 			};
 		},
+	});
+
+	projectCreate = $page({
+		path: "/p-new",
+		lazy: () => import("./components/project/ProjectCreate.tsx"),
 	});
 
 	project = $page({

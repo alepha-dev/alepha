@@ -8,11 +8,13 @@ import {
 } from "@alepha/react";
 import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
+import { useI18n } from "@alepha/react-i18n";
 import { FormGroup, Icon, SegmentedControl, TextArea } from "@blueprintjs/core";
 import { useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type TaskApi from "../../../api/TaskApi.ts";
 import type { Project, Task } from "../../../providers/Db.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import Toast from "../../../services/Toast.ts";
 import Action from "../../shared/Action.tsx";
 import Control from "../../shared/Control.tsx";
@@ -30,6 +32,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 	const toast = useInject(Toast);
 	const schema = useSchema(taskApi.createTask);
 	const router = useRouter<AppRouter>();
+	const { tr } = useI18n<I18n, "en">();
 
 	const form = useForm({
 		id: "add-task",
@@ -87,29 +90,42 @@ const TaskCreate = (props: TaskCreateProps) => {
 
 	return (
 		<Flex card fill col gap1 pad4 rounded bordered>
-			<Flex fill style={{ maxWidth: 512 }}>
+			<Flex fill style={{ maxWidth: 640 }}>
 				<form style={{ display: "flex", flex: 1 }} onSubmit={form.onSubmit}>
 					<Flex col fill gap1>
 						<Grid md={2} gap2>
 							<Control
 								fill
-								inputField={form.input.package}
+								inputField={form.input.title}
+								error={error}
 								inputGroupProps={{
 									autoFocus: true,
-									leftElement: <Icon icon={"package"} />,
+									leftElement: <Icon icon={"tag"} />,
+								}}
+								formGroupProps={{
+									label: tr("task.create.title"),
+									helperText: tr("task.create.title.helper"),
 								}}
 							/>
 							<Control
 								fill
-								inputField={form.input.title}
-								error={error}
+								inputField={form.input.package}
 								inputGroupProps={{
-									leftElement: <Icon icon={"tag"} />,
+									leftElement: <Icon icon={"area-of-interest"} />,
+								}}
+								formGroupProps={{
+									label: tr("task.create.package"),
+									helperText: tr("task.create.package.helper"),
 								}}
 							/>
 						</Grid>
 
-						<FormGroup fill label="Description" labelFor="text-input3">
+						<FormGroup
+							fill
+							label={tr("task.create.description")}
+							labelFor="text-input3"
+							helperText={tr("task.create.description.helper")}
+						>
 							<TextArea
 								style={{ resize: "none" }}
 								rows={16}
@@ -120,9 +136,11 @@ const TaskCreate = (props: TaskCreateProps) => {
 						</FormGroup>
 
 						<Grid gap2>
-							<Flex fill>
-								<Flex col>
-									<Text style={{ marginBottom: 5 }}>Priority</Text>{" "}
+							<FormGroup
+								label={tr("task.create.priority")}
+								helperText={tr("task.create.priority.helper")}
+							>
+								<Flex>
 									<Flex shadow bordered>
 										<SegmentedControl
 											defaultValue={
@@ -135,30 +153,31 @@ const TaskCreate = (props: TaskCreateProps) => {
 											}}
 											options={[
 												{
-													label: "High",
+													label: tr("priority.high"),
 													value: "high",
 												},
 												{
-													label: "Normal",
+													label: tr("priority.medium"),
 													value: "medium",
 												},
 												{
-													label: "Low",
+													label: tr("priority.low"),
 													value: "low",
 												},
 												{
-													label: "None",
+													label: tr("priority.none"),
 													value: "optional",
 												},
 											]}
 										/>
 									</Flex>
-									<Flex pad1 />
 								</Flex>
-							</Flex>
-							<Flex fill>
-								<Flex col>
-									<Text style={{ marginBottom: 5 }}>Complexity</Text>
+							</FormGroup>
+							<FormGroup
+								label={tr("task.create.complexity")}
+								helperText={tr("task.create.complexity.helper")}
+							>
+								<Flex>
 									<Flex shadow bordered>
 										<SegmentedControl
 											defaultValue={
@@ -194,8 +213,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 										/>
 									</Flex>
 								</Flex>
-							</Flex>
-							<Flex pad1 />
+							</FormGroup>
 						</Grid>
 
 						<Flex fill />
@@ -219,7 +237,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 									size={"large"}
 									intent={"success"}
 								>
-									Add Quest To Roadmap
+									{tr("task.create.submit")}
 								</Action>
 							)}
 						</Flex>
