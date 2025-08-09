@@ -13,7 +13,7 @@ import { $cursor } from "./$cursor.ts";
  * ```
  */
 export const $inject = <T extends object>(type: Service<T>): T => {
-	const { context, definition, module } = $cursor();
+	const { context, definition } = $cursor();
 
 	// _ = $inject(Alepha)
 	if (type === context.constructor) {
@@ -23,7 +23,6 @@ export const $inject = <T extends object>(type: Service<T>): T => {
 	return context.inject(type, {
 		// keep the parent for better error messages and circular dependencies detection
 		parent: definition ?? (context.constructor as Service),
-		module,
 	});
 };
 

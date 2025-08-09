@@ -406,7 +406,8 @@ export class ReactServerProvider {
 		};
 
 		if (hydration) {
-			const { request, context, ...rest } = this.alepha.context.als?.getStore() ?? {};
+			const { request, context, ...rest } =
+				this.alepha.context.als?.getStore() ?? {};
 
 			const hydrationData: ReactHydrationState = {
 				...rest,

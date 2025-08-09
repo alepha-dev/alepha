@@ -44,14 +44,14 @@ export class JwtProvider {
 				keyLoader: createLocalJWKSet(secretKeyOrJwks),
 			});
 		} else if (this.isSecretKey(secretKeyOrJwks)) {
-			this.log.info(`will verify JWTs '${name}' with secret key`);
+			const secretKey = this.encoder.encode(secretKeyOrJwks);
+			this.log.info(
+				`will verify JWTs from '${name}' with secret a key (${secretKey.length} bytes)`,
+			);
 			this.keystore.push({
 				name,
 				secretKey: secretKeyOrJwks,
-				keyLoader: () =>
-					Promise.resolve(
-						createSecretKey(new TextEncoder().encode(secretKeyOrJwks)),
-					),
+				keyLoader: () => Promise.resolve(createSecretKey(secretKey)),
 			});
 		} else {
 			this.log.info(`will verify JWTs '${name}' with ${secretKeyOrJwks}`);

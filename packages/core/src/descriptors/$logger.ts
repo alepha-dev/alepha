@@ -26,7 +26,7 @@ export const $logger = (options: LoggerDescriptorOptions = {}): Logger => {
 
 	return context.log.child({
 		caller: options.name ?? definition?.name,
-		name: module?.$name ?? context.env.MODULE_NAME ?? "app",
+		name: module?.name ?? context.env.MODULE_NAME ?? "app",
 	});
 };
 

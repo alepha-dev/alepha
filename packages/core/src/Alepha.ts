@@ -3,18 +3,18 @@ import type { TypeCheck } from "@sinclair/typebox/compiler";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
+import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
+import {
+	isModule,
+	type Module,
+	type ServiceWithModule,
+} from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
-import { Descriptor, descriptorEvents } from "./helpers/descriptor.ts";
-import {
-	isModule,
-	type Module,
-	type ModuleDefinition,
-	toModuleName,
-} from "./helpers/Module.ts";
+import { Descriptor } from "./helpers/descriptor.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type {
 	InstantiableClass,
@@ -280,12 +280,9 @@ export class Alepha {
 	 *
 	 * Modules are used to group services and provide a way to register them in the container.
 	 */
-	protected modules: Array<ModuleDefinition> = [];
+	protected modules: Array<Module> = [];
 
-	protected substitutions = new Map<
-		Service,
-		{ use: Service; module?: ModuleDefinition }
-	>();
+	protected substitutions = new Map<Service, { use: Service }>();
 
 	protected configurations = new Map<Service, object>();
 
@@ -475,8 +472,8 @@ export class Alepha {
 
 		this.log.info("Starting App...");
 
-		for (const [key, { module }] of this.substitutions.entries()) {
-			this.inject(key, { module });
+		for (const [key] of this.substitutions.entries()) {
+			this.inject(key);
 		}
 
 		const target = this.state("target");
@@ -634,7 +631,6 @@ export class Alepha {
 			if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
 				this.substitutions.set(entry.provide, {
 					use: entry.use,
-					module: __alephaRef.$services?.module,
 				});
 			} else if (!entry.optional) {
 				throw new AlephaError(
@@ -679,18 +675,10 @@ export class Alepha {
 			 * @internal
 			 */
 			parent?: Service | null;
-			/**
-			 * If the service is provided by a module, the module definition.
-			 * @internal
-			 */
-			module?: ModuleDefinition;
 		} = {},
 	): T {
 		const parent =
-			opts.parent !== undefined
-				? opts.parent
-				: (__alephaRef.$services?.parent ?? Alepha);
-		const module = opts.module ?? __alephaRef.$services?.module;
+			opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
 
 		// If the requested type is the container, the current instance is returned.
 		if ((service as any) === Alepha) {
@@ -699,7 +687,9 @@ export class Alepha {
 
 		const substitute = this.substitutions.get(service);
 		if (substitute) {
-			return this.inject(substitute.use, { parent, module });
+			return this.inject(substitute.use, {
+				parent,
+			});
 		}
 
 		const index = this.pendingInstantiations.indexOf(service);
@@ -723,7 +713,7 @@ export class Alepha {
 			for (const [_, definition] of this.registry.entries()) {
 				if (definition.instance?.constructor.name === service.name) {
 					this.log.debug(`Hot reload detected for ${service.name}`);
-					const instance: T = this.new(service, opts.args, module);
+					const instance: T = this.new(service, opts.args);
 					definition.instance = instance;
 					return instance;
 				}
@@ -749,16 +739,15 @@ export class Alepha {
 			);
 		}
 
-		descriptorEvents.emit(service, this);
-
 		// check if service has been registered by a module
 		if (this.has(service) && !opts.skipCache) {
 			// if the service is already registered, we just return the instance
 			return this.inject(service);
 		}
 
-		const instance: T = this.new(service, opts.args, module);
+		const instance: T = this.new(service, opts.args);
 
+		// [feature]: configurations - update .options: object of the service instance
 		const configuration = this.configurations.get(service);
 		if (
 			configuration &&
@@ -769,8 +758,9 @@ export class Alepha {
 			Object.assign(instance.options, configuration);
 		}
 
+		const module = (service as ServiceWithModule)[MODULE];
 		const definition: ServiceDefinition<T> = {
-			module,
+			module: typeof module === "function" ? module : undefined,
 			parents: [parent],
 			instance,
 		};
@@ -781,37 +771,20 @@ export class Alepha {
 
 		// [feature]: modules - it's just a way to group services together
 		if (isModule(instance)) {
-			this.pushModule(instance);
+			this.modules.push(instance);
+
+			const parent = __alephaRef.parent;
+
+			// propagate the current module
+			__alephaRef.parent = instance.constructor as Service;
+
+			instance.register(this);
+
+			// restore the previous $get context
+			__alephaRef.parent = parent;
 		}
 
 		return instance;
-	}
-
-	protected pushModule(instance: Module) {
-		const moduleDefinition: ModuleDefinition = {
-			...instance,
-			$name: instance.$name ?? toModuleName(instance.constructor.name),
-			services: [],
-		};
-
-		this.modules.push(moduleDefinition);
-		const definition = this.registry.get(instance.constructor as Service);
-		if (definition) {
-			definition.module = moduleDefinition;
-		}
-
-		const $services = __alephaRef.$services;
-
-		// propagate the current module
-		__alephaRef.$services = {
-			module: moduleDefinition,
-			parent: instance.constructor as Service,
-		};
-
-		instance.$services(this);
-
-		// restore the previous $get context
-		__alephaRef.$services = $services;
 	}
 
 	/**
@@ -851,7 +824,7 @@ export class Alepha {
 	// 	context: {
 	// 		propertyKey?: string;
 	// 		service?: Service;
-	// 		module?: ModuleDescriptor;
+	// 		module?: Module;
 	// 	} = {},
 	// ): T {
 	// 	if (this.isLocked()) {
@@ -1156,6 +1129,7 @@ export class Alepha {
 			graph[provide.name] = {
 				from: parents.filter((it) => !!it).map((it) => it.name),
 			};
+
 			const aliases = this.substitutions
 				.entries()
 				.filter((it) => it[1].use === provide)
@@ -1165,8 +1139,8 @@ export class Alepha {
 			if (aliases.length) {
 				graph[provide.name].as = aliases;
 			}
-			if (module?.$name) {
-				graph[provide.name].module = module.$name;
+			if (module?.name) {
+				graph[provide.name].module = module.name;
 			}
 		}
 
@@ -1190,11 +1164,7 @@ export class Alepha {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	protected new<T extends object>(
-		service: Service<T>,
-		args: any[] = [],
-		module?: ModuleDefinition,
-	): T {
+	protected new<T extends object>(service: Service<T>, args: any[] = []): T {
 		// we keep a tree of dependencies to detect circular dependencies
 		// it's also useful for cleaning are global cursor
 		this.pendingInstantiations.push(service);
@@ -1203,10 +1173,8 @@ export class Alepha {
 		// we use a global cursor to store the current context and definition
 		// as new() is synchronous, there is no worry to do that
 		//
-		const previousModule = __alephaRef.module;
 		__alephaRef.context = this;
 		__alephaRef.definition = service;
-		__alephaRef.module = module;
 
 		const instance: T = new (service as InstantiableClass<any>)(...args);
 
@@ -1226,7 +1194,6 @@ export class Alepha {
 
 		__alephaRef.definition =
 			this.pendingInstantiations[this.pendingInstantiations.length - 1];
-		__alephaRef.module = previousModule;
 
 		return instance;
 	}
@@ -1294,7 +1261,7 @@ interface ServiceDefinition<T extends object = any> {
 	/**
 	 * If the service is provided by a module, the module definition.
 	 */
-	module?: ModuleDefinition;
+	module?: Service;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

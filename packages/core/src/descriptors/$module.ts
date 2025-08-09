@@ -1,11 +1,9 @@
 import type { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
-import {
-	type DescriptorFactoryLike,
-	descriptorEvents,
-} from "../helpers/descriptor.ts";
-import type { Module } from "../helpers/Module.ts";
-import type { Service, ServiceEntry } from "../interfaces/Service.ts";
+import { MODULE } from "../constants/MODULE.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
+import type { DescriptorFactoryLike } from "../helpers/descriptor.ts";
+import type { Service } from "../interfaces/Service.ts";
 
 /**
  * Wrap services and descriptors into a module.
@@ -34,45 +32,45 @@ import type { Service, ServiceEntry } from "../interfaces/Service.ts";
  * - It's useful for large applications or libraries to group services and descriptors together.
  * - It's probably overkill for small applications.
  */
-export const $module = (args: ModuleDescriptorOptions): ModuleDescriptor => {
-	const { services = [], descriptors = [], name } = args;
+export const $module = (options: ModuleDescriptorOptions): Service<Module> => {
+	const { services = [], descriptors = [], name } = options;
 
 	const Class = {
 		// force class name to be the module name
-		[name]: class implements Module {
-			$name = name;
-			$services(alepha: Alepha) {
-				if (typeof args.register === "function") {
-					args.register(alepha);
-				} else {
-					for (const service of services) {
-						alepha.with(service);
-					}
+		[name]: class {
+			static [MODULE] = true;
+			[KIND] = "MODULE" as const;
+			[OPTIONS] = options;
+
+			register(alepha: Alepha): void {
+				if (typeof options.register === "function") {
+					options.register(alepha);
+					return;
+				}
+
+				for (const service of services) {
+					alepha.with(service);
 				}
 			}
 		},
 	};
 
 	for (const service of services) {
-		const it = typeof service === "function" ? service : service.provide;
-		const isModule = !!it.prototype?.$services;
-		if (!isModule) {
-			descriptorEvents.bind(it, Class[name]);
+		if (!(MODULE in service)) {
+			(service as ServiceWithModule)[MODULE] = Class[name];
 		}
 	}
 
 	for (const factory of descriptors) {
-		if (Array.isArray(factory)) {
-			descriptorEvents.bind(factory[0][KIND], factory[1]);
-		} else {
-			descriptorEvents.bind(factory[KIND], Class[name]);
+		if (typeof factory[KIND] === "function") {
+			factory[KIND][MODULE] = Class[name];
 		}
 	}
 
 	return Class[name];
 };
 
-export type ModuleDescriptor = Service<Module>;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface ModuleDescriptorOptions {
 	/**
@@ -85,7 +83,7 @@ export interface ModuleDescriptorOptions {
 	/**
 	 * List of services to register in the module.
 	 */
-	services?: Array<ServiceEntry>;
+	services?: Array<Service>;
 
 	/**
 	 * List of $descriptors to register in the module.
@@ -99,3 +97,39 @@ export interface ModuleDescriptorOptions {
 	 */
 	register?: (alepha: Alepha) => void;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface Module {
+	[KIND]: "MODULE";
+	[OPTIONS]: ModuleDescriptorOptions;
+	register: (alepha: Alepha) => void;
+}
+
+export type ServiceWithModule<T extends object = any> = T & {
+	[MODULE]?: Service;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const isModule = (value: unknown): value is Module => {
+	return (
+		typeof value === "object" &&
+		!!value &&
+		OPTIONS in value &&
+		KIND in value &&
+		value[KIND] === "MODULE"
+	);
+};
+
+export const toModuleName = (name: string): string => {
+	// Remove optional "Module" suffix
+	name = name.replace(/Module$/, "");
+
+	// Split PascalCase into words
+	const parts = name.match(/[A-Z][a-z0-9]*/g);
+
+	if (!parts) return name.toLowerCase();
+
+	return parts.map((p) => p.toLowerCase()).join(".");
+};

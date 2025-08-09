@@ -100,6 +100,7 @@ export const $repository = <
 					table: optionsOrTable,
 					provider: PostgresProvider,
 				} as RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>);
+
 	return createDescriptor(
 		RepositoryDescriptor<EntityTableConfig, EntitySchema>,
 		options,

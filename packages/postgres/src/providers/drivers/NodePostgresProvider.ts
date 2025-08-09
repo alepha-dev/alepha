@@ -206,7 +206,6 @@ export class NodePostgresProvider extends PostgresProvider {
 
 	protected migrate = $lock({
 		handler: async () => {
-			const schema = this.env.POSTGRES_SCHEMA;
 			const migration = this.getMigrationOptions();
 
 			if (!this.alepha.isProduction()) {
@@ -244,7 +243,7 @@ export class NodePostgresProvider extends PostgresProvider {
 
 			const exists = await stat(migration.migrationsFolder).catch(() => false);
 			if (!exists) {
-				this.log.info("Migration SKIPPED - no migrations found");
+				this.log.warn("Migration SKIPPED - no migrations found");
 				return;
 			}
 

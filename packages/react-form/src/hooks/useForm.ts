@@ -2,7 +2,6 @@ import {
 	type Static,
 	type TObject,
 	type TSchema,
-	TypeBoxError,
 	TypeGuard,
 } from "@alepha/core";
 import { useAlepha } from "@alepha/react";

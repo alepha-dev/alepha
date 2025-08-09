@@ -73,6 +73,17 @@ describe("$realm", () => {
 			aud: app.realm.name,
 			iat: now.unix(),
 			exp: now.unix() + app.realm.refreshTokenExpiration.asSeconds(),
+		});
+
+		expect(
+			JSON.parse(
+				Buffer.from(
+					token.refresh_token?.split(".")?.[0] || "",
+					"base64",
+				).toString(),
+			),
+		).toEqual({
+			alg: "HS256",
 			typ: "refresh",
 		});
 

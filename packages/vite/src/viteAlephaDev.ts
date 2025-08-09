@@ -197,7 +197,9 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 	process.env.SERVER_PORT ??= String(server.config.server.port || "5173");
 
 	try {
+		const now = Date.now();
 		await server.ssrLoadModule(fileUrl);
+		state.log(`[DEBUG] Alepha app loaded in ${Date.now() - now}ms`);
 		await new Promise((r) => setTimeout(r, 10));
 
 		state.app = (globalThis as any).__alepha;
@@ -215,6 +217,7 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 	} catch (e) {
 		console.error(e);
 		state.log("[DEBUG] Alepha app start error");
+		state.started = false;
 	}
 };
 
@@ -247,9 +250,9 @@ const restart = async (
 	await stop(state);
 	state.log(`[DEBUG] RESTART (stop) in ${Date.now() - now}ms`);
 
-	//if (invalidate) {
-	server.moduleGraph.invalidateAll();
-	//}
+	if (invalidate) {
+		server.moduleGraph.invalidateAll();
+	}
 
 	await start(state, server);
 	state.log(`[DEBUG] RESTART OK in ${Date.now() - now}ms`);

@@ -1,30 +1,8 @@
 import { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
+import { MODULE } from "../constants/MODULE.ts";
 import { $cursor } from "../descriptors/$cursor.ts";
 import type { InstantiableClass, Service } from "../interfaces/Service.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export const descriptorEvents = {
-	events: new Map<Service, ((alepha: Alepha) => void)[]>(),
-	on(descriptor: Service, callback: (alepha: Alepha) => void): void {
-		const callbacks = this.events.get(descriptor) ?? [];
-		callbacks.push(callback);
-		this.events.set(descriptor, callbacks);
-	},
-	emit(descriptor: Service, alepha: Alepha): void {
-		for (const callback of this.events.get(descriptor) ?? []) {
-			callback(alepha);
-		}
-	},
-	bind(when: Service, register: Service): void {
-		this.on(when, (alepha: Alepha) => {
-			if (!alepha.isLocked()) {
-				alepha.with(register);
-			}
-		});
-	},
-};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -80,12 +58,14 @@ export type DescriptorFactoryLike<T extends object = any> = {
 };
 
 export const createDescriptor = <TDescriptor extends Descriptor>(
-	descriptor: InstantiableClass<TDescriptor>,
+	descriptor: InstantiableClass<TDescriptor> & { [MODULE]?: Service },
 	options: TDescriptor["options"],
 ): TDescriptor => {
-	const { context, definition, module } = $cursor();
+	const { context, definition } = $cursor();
 
-	descriptorEvents.emit(descriptor, context);
+	if (MODULE in descriptor && descriptor[MODULE]) {
+		context.with(descriptor[MODULE]);
+	}
 
 	return context.inject(descriptor, {
 		skipRegistration: true,
@@ -95,7 +75,6 @@ export const createDescriptor = <TDescriptor extends Descriptor>(
 				options,
 				alepha: context,
 				service: definition ?? Alepha,
-				module: module,
 			},
 		],
 	});

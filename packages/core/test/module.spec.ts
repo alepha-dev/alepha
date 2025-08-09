@@ -8,27 +8,30 @@ test("module", () => {
 	}
 	const CoreModule = $module({
 		name: "core",
-		register: (alepha: Alepha) => alepha.with(RandomService),
+		services: [RandomService, VeryRandomService],
 	});
+
 	class DatabaseService {}
-	class DatabaseModule {
-		$services = (alepha: Alepha) => alepha.with(DatabaseService);
-	}
+	const DatabaseModule = $module({
+		name: "database",
+		services: [DatabaseService],
+	});
+
 	class ServerProvider {}
-	class ServerModule {
-		$services = (alepha: Alepha) =>
-			alepha.with(CoreModule).with(DatabaseModule).with(ServerProvider);
-	}
+	const ServerModule = $module({
+		name: "server",
+		services: [CoreModule, DatabaseModule, ServerProvider],
+	});
 
 	const alepha = Alepha.create().with(ServerModule);
 
 	expect(alepha.graph()).toEqual({
-		ServerModule: { from: ["Alepha"], module: "server" },
-		core: { from: ["ServerModule"], module: "core" },
-		VeryRandomService: { from: ["RandomService"], module: "core" },
+		server: { from: ["Alepha"] },
+		core: { from: ["server"] },
+		VeryRandomService: { from: ["RandomService", "core"], module: "core" },
 		RandomService: { from: ["core"], module: "core" },
-		DatabaseModule: { from: ["ServerModule"], module: "database" },
-		DatabaseService: { from: ["DatabaseModule"], module: "database" },
-		ServerProvider: { from: ["ServerModule"], module: "server" },
+		database: { from: ["server"] },
+		DatabaseService: { from: ["database"], module: "database" },
+		ServerProvider: { from: ["server"], module: "server" },
 	});
 });
