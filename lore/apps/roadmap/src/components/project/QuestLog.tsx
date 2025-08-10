@@ -1,7 +1,7 @@
 import { useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Icon, InputGroup, Menu, MenuItem, Popover } from "@blueprintjs/core";
+import { InputGroup, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
 import TaskList from "./task/TaskList.tsx";
