@@ -6,13 +6,11 @@ export default defineConfig({
 		coverage: {
 			include: [
 				"packages/*/src/**/*.ts",
+				"packages/*/src/**/*.tsx",
 			],
 			exclude: [
 				"apps/**",
-				"scripts/**",
-				"packages/alepha/**",
-				"packages/cli/**",
-				"packages/protobuf/**",
+				"scripts/**"
 			],
 			reporter: ["cobertura", "text", "html"],
 		},
