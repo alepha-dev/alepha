@@ -1,6 +1,5 @@
 import { $inject, $logger, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $transaction } from "@alepha/postgres";
 import { $action, NotFoundError } from "@alepha/server";
 import { characters, Db, tasks } from "../providers/Db.ts";
 import { Level } from "../services/Level.ts";

@@ -6,7 +6,7 @@ import {
 	useRouter,
 	useSchema,
 } from "@alepha/react";
-import { Flex, Grid, Text } from "@alepha/react-flex";
+import { Flex, Grid } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { FormGroup, Icon, SegmentedControl, TextArea } from "@blueprintjs/core";

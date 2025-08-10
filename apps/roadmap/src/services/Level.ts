@@ -28,7 +28,7 @@ export class Level {
 	getMaxXpForLevel(level: number): number {
 		const index = level - 1;
 		if (index < 0 || index >= this.levels.length) {
-			throw new Error("Invalid level: " + level);
+			throw new Error(`Invalid level: ${level}`);
 		}
 		return this.levels[index];
 	}

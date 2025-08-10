@@ -51,7 +51,7 @@ test("version - basic", async () => {
 	const app = alepha.inject(A);
 	await alepha.start();
 
-	const { id } = await app.repository.save({ counter: 0 });
+	const { id } = await app.repository.create({ counter: 0 });
 	const r1 = await app.repository.findById(id);
 	const r2 = await app.repository.findById(id);
 
