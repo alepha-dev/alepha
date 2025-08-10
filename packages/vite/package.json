@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/vite",
 	"description": "Vite plugin for building Alepha applications.",
-	"version": "0.9.2",
+	"version": "0.9.3",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -10,8 +10,8 @@
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"dependencies": {
-		"@alepha/core": "0.9.2",
-		"@alepha/react": "0.9.2"
+		"@alepha/core": "0.9.3",
+		"@alepha/react": "0.9.3"
 	},
 	"devDependencies": {
 		"tsdown": "^0.13.2",
