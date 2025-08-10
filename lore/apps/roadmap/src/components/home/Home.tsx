@@ -21,12 +21,14 @@ const Home = () => {
 			<Flex gap3 col pad2 className={"container"}>
 				<Grid md={2} gap2>
 					<Flex col gap1>
-						<Text large>{tr("home.title")}</Text>
+						<Text bold large>
+							{tr("home.title")}
+						</Text>
 						<Text>{tr("home.subtitle")}</Text>
 					</Flex>
 					<Flex>
 						<Flex fill />
-						<Flex pad1 bordered rounded>
+						<Flex pad1 bordered rounded card>
 							<Action
 								variant={"minimal"}
 								icon={"cube-add"}

@@ -1,10 +1,15 @@
 import { $inject, $logger, t } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
+import { $transaction } from "@alepha/postgres";
 import { $action, NotFoundError } from "@alepha/server";
-import { Db, tasks } from "../providers/Db.ts";
+import { characters, Db, tasks } from "../providers/Db.ts";
+import { Level } from "../services/Level.ts";
 
 class TaskApi {
 	log = $logger();
 	db = $inject(Db);
+	lvl = $inject(Level);
+	dt = $inject(DateTimeProvider);
 
 	getTasks = $action({
 		schema: {
@@ -18,7 +23,56 @@ class TaskApi {
 				limit: 100,
 				where: {
 					projectId: { eq: params.projectId },
+					completedAt: { isNull: true },
 				},
+			});
+		},
+	});
+
+	completeTask = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: t.composite([
+				tasks.$schema,
+				t.object({
+					character: characters.$schema,
+				}),
+			]),
+		},
+		handler: async ({ params, user }) => {
+			return this.db.tasks.transaction(async (tx) => {
+				const task = await this.db.tasks.findOne(
+					{
+						id: { eq: params.id },
+						completedAt: { isNull: true },
+					},
+					{ tx },
+				);
+				const character = await this.db.characters.findOne(
+					{
+						projectId: { eq: task.projectId },
+						userId: { eq: user.id },
+					},
+					{ tx },
+				);
+
+				const xp = this.lvl.getXpFromTask(task);
+
+				character.xp += xp;
+				task.completedAt = this.dt.nowISOString();
+				task.completedBy = user.id;
+
+				await Promise.all([
+					this.db.characters.save(character, { tx }),
+					this.db.tasks.save(task, { tx }),
+				]);
+
+				return {
+					...task,
+					character,
+				};
 			});
 		},
 	});

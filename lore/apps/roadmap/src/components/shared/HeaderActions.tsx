@@ -5,6 +5,7 @@ import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { Level } from "../../services/Level.ts";
 import { Theme } from "../../services/Theme.ts";
 import Action from "./Action.tsx";
 
@@ -52,7 +53,8 @@ export default HeaderActions;
 const AuthButton = () => {
 	const auth = useAuth();
 	const router = useRouter<AppRouter>();
-	const [project] = useStore("project");
+	const [character] = useStore("character");
+	const lvl = useInject(Level);
 	const { tr } = useI18n<I18n, "en">();
 
 	if (auth.user) {
@@ -91,12 +93,16 @@ const AuthButton = () => {
 						/>
 					}
 				>
-					{project ? (
+					{character ? (
 						<Flex col>
 							<Text bold style={{ textWrap: "nowrap" }}>
 								{auth.user.name}
 							</Text>
-							<Text small>{tr("header.actions.profile.level", ["1"])}</Text>
+							<Text small>
+								{tr("header.actions.profile.level", [
+									String(lvl.getLevelByXp(character.xp)),
+								])}
+							</Text>
 						</Flex>
 					) : (
 						auth.user.name

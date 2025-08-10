@@ -14,6 +14,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import type TaskApi from "../../../api/TaskApi.ts";
 import type { Task } from "../../../providers/Db.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { Level } from "../../../services/Level.ts";
 import Action from "../../shared/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
@@ -27,6 +28,7 @@ const TaskView = (props: TaskViewProps) => {
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
 	const router = useRouter<AppRouter>();
+	const level = useInject(Level);
 	const { tr } = useI18n<I18n, "en">();
 
 	const [task, setTask] = useState<Task>(props.task);
@@ -135,7 +137,7 @@ const TaskView = (props: TaskViewProps) => {
 
 						<Flex gap2>
 							<Text>{tr("task.view.experience")}</Text>
-							<Text bold>{task.complexity * 150} XP</Text>
+							<Text bold>{level.getXpFromTask(task)} XP</Text>
 						</Flex>
 					</Flex>
 
@@ -157,9 +159,10 @@ const TaskView = (props: TaskViewProps) => {
 							text={tr("task.view.actions.complete")}
 							disabled={!taskApi.deleteTask.can()}
 							onClick={async () => {
-								await taskApi.deleteTask({
+								const { character } = await taskApi.completeTask({
 									params: { id: task.id },
 								});
+								alepha.state("character", character);
 								alepha.state(
 									"tasks",
 									(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),

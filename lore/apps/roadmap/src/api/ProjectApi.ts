@@ -1,7 +1,7 @@
 import { $inject, $logger, t } from "@alepha/core";
-import { pageQuerySchema } from "@alepha/postgres";
+import { PgEntityNotFoundError, pageQuerySchema } from "@alepha/postgres";
 import { $action, ForbiddenError, NotFoundError } from "@alepha/server";
-import { Db, projects } from "../providers/Db.ts";
+import { characters, Db, projects, tasks } from "../providers/Db.ts";
 
 class ProjectApi {
 	log = $logger();
@@ -26,7 +26,7 @@ class ProjectApi {
 			query: pageQuerySchema,
 			response: t.array(projects.$schema),
 		},
-		handler: async ({ query, user }) => {
+		handler: async ({ user }) => {
 			return this.db.projects.find({
 				where: {
 					createdBy: { eq: user.id },
@@ -40,12 +40,46 @@ class ProjectApi {
 			params: t.object({
 				id: t.int(),
 			}),
-			response: projects.$schema,
+			response: t.composite([
+				projects.$schema,
+				t.object({
+					character: t.optional(characters.$schema),
+					tasks: t.array(tasks.$schema),
+				}),
+			]),
 		},
-		handler: async ({ params }) => {
-			return await this.db.projects.findOne({
+		handler: async ({ params, user }) => {
+			const project = await this.db.projects.findOne({
 				id: { eq: params.id },
 			});
+
+			const tasks = await this.db.tasks.find({
+				where: {
+					projectId: { eq: params.id },
+					completedAt: { isNull: true },
+				},
+			});
+
+			if (user.id === project.createdBy) {
+				const character = await this.db.characters
+					.findOne({
+						projectId: { eq: params.id },
+						userId: { eq: user.id },
+					})
+					.catch((err) => {
+						if (err instanceof PgEntityNotFoundError) {
+							return this.db.characters.create({
+								projectId: params.id,
+								userId: user.id,
+								xp: 0,
+							});
+						}
+						throw err;
+					});
+				return { ...project, tasks, character };
+			}
+
+			return { ...project, tasks, character: undefined };
 		},
 	});
 
