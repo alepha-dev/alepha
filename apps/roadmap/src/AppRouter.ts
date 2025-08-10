@@ -113,17 +113,13 @@ export class AppRouter {
 					id: params.projectId,
 				},
 			});
-			const tasks = await this.taskApi.getTasks({
-				params: {
-					projectId: params.projectId,
-				},
-			});
 
 			this.alepha.state("project", project);
-			this.alepha.state("tasks", tasks);
+			this.alepha.state("character", project.character);
+			this.alepha.state("tasks", project.tasks);
 		},
 		onLeave: () => {
-			console.log("Leaving project page");
+			this.alepha.state("character", null);
 			this.alepha.state("project", null);
 			this.alepha.state("tasks", []);
 		},

@@ -87,6 +87,23 @@ export const tasks = $entity({
 	}),
 });
 
+export const characters = $entity({
+	name: "characters",
+	schema: t.object({
+		id: pg.primaryKey(t.int()),
+		createdAt: pg.createdAt(),
+		updatedAt: pg.updatedAt(),
+		userId: pg.ref(t.uuid(), () => users.id, {
+			onDelete: "cascade",
+		}),
+		projectId: pg.ref(t.int(), () => projects.id, {
+			onDelete: "cascade",
+		}),
+		xp: t.int(),
+	}),
+});
+
+export type Character = Static<typeof characters.$schema>;
 export type User = Static<typeof users.$schema>;
 export type Task = Static<typeof tasks.$schema>;
 export type Project = Static<typeof projects.$schema>;
@@ -98,6 +115,7 @@ export class Db {
 	projects = $repository(projects);
 	identities = $repository(identities);
 	sessions = $repository(sessions);
+	characters = $repository(characters);
 
 	ready = $hook({
 		on: "ready",

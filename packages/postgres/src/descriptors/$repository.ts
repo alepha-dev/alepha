@@ -631,15 +631,12 @@ export class RepositoryDescriptor<
 	}
 
 	public async save(
-		data: InferInsert<EntitySchema>,
+		data: Static<EntitySchema>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		const set = { ...data } as any;
 		const id = set[this.id.key];
-		if (id) {
-			return await this.updateById(id, set, opts);
-		}
-		return await this.create(set, opts);
+		return await this.updateById(id, set, opts);
 	}
 
 	/**

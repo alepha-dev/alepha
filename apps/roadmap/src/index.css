@@ -14,7 +14,8 @@
 	--color-high-priority: #d61b1b;
 }
 
-body {
+body,
+span {
 	font-family:
 		"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
 		"Roboto", Helvetica, Arial, sans-serif, "Apple Color Emoji",
@@ -43,6 +44,12 @@ pre {
 @media (max-width: 1408px) {
 	pre {
 		white-space: pre-wrap;
+	}
+}
+
+.color-scheme-dark {
+	#logo-github {
+		background-color: #24292e;
 	}
 }
 

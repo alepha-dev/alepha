@@ -1,12 +1,16 @@
+import { useInject, useStore } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { Popover } from "@blueprintjs/core";
 import type { ReactNode } from "react";
+import { Level } from "../../services/Level.ts";
 
 const ExperienceBar = () => {
 	const auth = useAuth();
+	const [character] = useStore("character");
+	const lvl = useInject(Level);
 
-	if (!auth.user) {
+	if (!auth.user || !character) {
 		return null;
 	}
 
@@ -18,8 +22,9 @@ const ExperienceBar = () => {
 		);
 	}
 
-	const max = 580;
-	const current = 156; // Example current XP, can be dynamic
+	const level = lvl.getLevelByXp(character.xp);
+	const max = lvl.getMaxXpForLevel(level);
+	const current = lvl.getCurrentXpForLevel(level, character.xp);
 	const percentage = Math.floor((current * 100) / max);
 
 	return (

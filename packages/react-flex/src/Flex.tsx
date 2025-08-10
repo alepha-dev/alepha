@@ -136,6 +136,9 @@ export interface FlexProps {
 	shadow?: boolean | 2 | 3;
 
 	overflow?: boolean;
+
+	// TODO: as=form
+	onSubmit?: any;
 }
 
 /**
