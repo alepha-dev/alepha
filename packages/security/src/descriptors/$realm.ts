@@ -1,6 +1,7 @@
 import {
 	$inject,
 	$logger,
+	AlephaError,
 	createDescriptor,
 	Descriptor,
 	KIND,
@@ -77,13 +78,15 @@ export interface RealmSettings {
 		 */
 		disabled?: boolean;
 
-		create?: (
+		onCreate?: (
 			user: UserAccountInfo,
 			refreshToken?: string,
 		) => Promise<{
 			refresh_token: string;
 			expires_in: number;
 		}>;
+
+		onRefresh?: (refreshToken: string) => Promise<UserAccountInfo>;
 	};
 }
 
@@ -244,7 +247,7 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 
 		if (refreshTokenEnabled) {
 			// handle session by yourself
-			const create = this.options.settings?.refreshToken?.create;
+			const create = this.options.settings?.refreshToken?.onCreate;
 			if (create) {
 				const { refresh_token, expires_in } = await create(user, refreshToken);
 				response.refresh_token = refresh_token;
@@ -284,6 +287,35 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		}
 
 		return response;
+	}
+
+	public async refreshToken(
+		refreshToken: string,
+		accessToken?: string,
+	): Promise<{
+		tokens: AccessTokenResponse;
+		user: UserAccountInfo;
+	}> {
+		let user =
+			await this.options.settings?.refreshToken?.onRefresh?.(refreshToken);
+
+		if (!user) {
+			if (!accessToken) {
+				throw new AlephaError("An access token is required for refreshing");
+			}
+
+			user = await this.securityProvider.createUserFromToken(accessToken, {
+				realm: this.name,
+				verify: {
+					currentDate: new Date(0), // don't verify expiration, it's expected to be expired...
+				},
+			});
+		}
+
+		return {
+			user,
+			tokens: await this.createToken(user, refreshToken),
+		};
 	}
 }
 

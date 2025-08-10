@@ -50,10 +50,6 @@ export class ServerSecurityProvider {
 	protected readonly onActionRequest = $hook({
 		on: "action:onRequest",
 		handler: async ({ action, request, options }) => {
-			if (request.user) {
-				return; // user is already set, no need to do anything
-			}
-
 			const permission = this.securityProvider
 				.getPermissions()
 				.find(

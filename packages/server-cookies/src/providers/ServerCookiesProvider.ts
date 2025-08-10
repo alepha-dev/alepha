@@ -32,7 +32,6 @@ const envSchema = t.object({
 	COOKIE_SECRET: t.optional(
 		t.string({
 			minLength: 32,
-			maxLength: 32,
 		}),
 	),
 });
@@ -56,6 +55,18 @@ export class ServerCookiesProvider {
 
 	public readonly onRequest = $hook({
 		on: "server:onRequest",
+		handler: async ({ request }) => {
+			request.cookies = {
+				req: this.cookieParser.parseRequestCookies(
+					request.headers.cookie ?? "",
+				),
+				res: {},
+			};
+		},
+	});
+
+	public readonly onAction = $hook({
+		on: "action:onRequest",
 		handler: async ({ request }) => {
 			request.cookies = {
 				req: this.cookieParser.parseRequestCookies(
@@ -230,6 +241,12 @@ export class ServerCookiesProvider {
 	public secretKey(): string {
 		const key = this.env.COOKIE_SECRET;
 		if (!key) {
+			if (this.alepha.isTest()) {
+				this.log.warn(
+					"COOKIE_SECRET is not set, generating a random key for tests.",
+				);
+				return randomBytes(32).toString("hex").slice(0, 32);
+			}
 			throw new Error(
 				"COOKIE_SECRET environment variable is not set. It must be a 32-character string.",
 			);

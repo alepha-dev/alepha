@@ -1,23 +1,23 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
-import { HttpClient } from "@alepha/server";
 import { $client, LinkProvider } from "@alepha/server-links";
 import type { ReactAuthProvider } from "../providers/ReactAuthProvider.ts";
+import type { Tokens } from "../schemas/tokensSchema.ts";
 
 export class ReactAuth {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly auth = $client<ReactAuthProvider>();
-	protected readonly client = $inject(HttpClient);
 	protected readonly linkProvider = $inject(LinkProvider);
 
 	static path = {
 		login: "/oauth/login",
 		callback: "/oauth/callback",
 		logout: "/oauth/logout",
-		token: "/oauth/token",
-		userinfo: "/oauth/userinfo",
+		token: "/_auth/token",
+		refresh: "/_auth/refresh",
+		userinfo: "/_auth/userinfo",
 	};
 
 	protected readonly onFetchRequest = $hook({
@@ -25,7 +25,7 @@ export class ReactAuth {
 		handler: async (event) => {
 			if (this.alepha.isBrowser() && this.user) {
 				// ensure cookies are sent with requests and refresh-able
-				event.request.credentials = "include";
+				event.request.credentials ??= "include";
 			}
 		},
 	});
@@ -43,6 +43,12 @@ export class ReactAuth {
 		return this.alepha.state("user");
 	}
 
+	public async ping() {
+		const user = await this.auth.userinfo();
+		this.alepha.state("user", user);
+		return user;
+	}
+
 	public async login(
 		provider: string,
 		options: {
@@ -51,31 +57,31 @@ export class ReactAuth {
 			redirect?: string;
 			[extra: string]: any;
 		},
-	) {
-		if (options.username) {
-			const { data } = await this.client.fetch<any>(
-				`${ReactAuth.path.token}?provider=${provider}`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					credentials: "include",
-					body: JSON.stringify({
-						username: options.username,
-						password: options.password,
-						...options,
-					}),
+	): Promise<Tokens> {
+		if (options.username && options.password) {
+			const data = await this.auth.token({
+				query: {
+					provider,
 				},
-			);
-			for (const link of data.links.links) {
-				this.linkProvider.pushLink({
-					...link,
-					prefix: link.prefix,
-				});
+				body: {
+					username: options.username,
+					password: options.password,
+					...options,
+				},
+			});
+
+			if (this.alepha.isBrowser()) {
+				for (const link of data.links.links) {
+					this.linkProvider.pushLink({
+						...link,
+						prefix: data.links.prefix,
+					});
+				}
 			}
+
 			this.alepha.state("user", data.user);
-			return;
+
+			return data;
 		}
 
 		if (this.alepha.isBrowser()) {
@@ -92,7 +98,7 @@ export class ReactAuth {
 				throw new Redirection(browser.state.pathname);
 			}
 
-			return;
+			return {} as Tokens;
 		}
 
 		throw new Redirection(ReactAuth.path.login);

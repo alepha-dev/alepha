@@ -205,10 +205,12 @@ __metadata:
     "@alepha/server": "npm:0.9.3"
     "@alepha/server-cookies": "npm:0.9.3"
     "@alepha/server-links": "npm:0.9.3"
+    "@alepha/server-security": "npm:0.9.3"
     "@types/react": "npm:^19.1.9"
     openid-client: "npm:^6.6.2"
     react: "npm:^19.1.1"
     tsdown: "npm:^0.13.2"
+    vitest: "npm:^3.2.4"
   peerDependencies:
     "@types/react": ^19
     react: ^19

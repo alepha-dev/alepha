@@ -49,7 +49,7 @@ declare module "@alepha/server" {
 		 * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
 		 * If "context", use the user from the current context (e.g. request).
 		 *
-		 * @default "system" is provided, else "context" is used.
+		 * @default "system" if provided, else "context" if available.
 		 */
 		user?: UserAccountToken | "system" | "context";
 	}

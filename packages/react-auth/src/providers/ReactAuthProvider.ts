@@ -136,7 +136,6 @@ export class ReactAuthProvider {
 	protected async cookiesToTokens(
 		cookies: Cookies,
 	): Promise<Tokens | undefined> {
-		const now = this.dateTimeProvider.now().unix();
 		const tokens = this.tokens.get({ cookies });
 		if (!tokens) {
 			// no cookie, no tokens
@@ -150,10 +149,24 @@ export class ReactAuthProvider {
 		});
 
 		// check if tokens are expired
+		const refreshedTokens = await this.refreshTokens(tokens);
+		if (refreshedTokens) {
+			if (refreshedTokens.access_token !== tokens.access_token) {
+				this.setTokens(refreshedTokens, cookies);
+			}
+
+			return refreshedTokens;
+		}
+
+		this.tokens.del({ cookies });
+	}
+
+	protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {
 		if (tokens.expires_in && tokens.issued_at) {
 			const gracePeriodSec = 10;
 			const expiresAt = tokens.issued_at + (tokens.expires_in - gracePeriodSec);
-			if (expiresAt < now) {
+
+			if (expiresAt < this.dateTimeProvider.now().unix()) {
 				this.log.trace("Tokens are expired");
 
 				// oh no, it is expired
@@ -162,14 +175,15 @@ export class ReactAuthProvider {
 					// but has refresh token!
 					try {
 						const provider = this.provider(tokens);
-						const result = await provider.refresh(tokens);
+						const result = await provider.refresh(
+							tokens.refresh_token,
+							tokens.access_token,
+						);
 						const newTokens = {
 							...result,
 							provider: tokens.provider,
 							issued_at: this.dateTimeProvider.now().unix(),
 						};
-
-						this.setTokens(newTokens, cookies);
 
 						this.log.debug("Tokens refreshed successfully");
 
@@ -180,13 +194,11 @@ export class ReactAuthProvider {
 				}
 
 				// session expired and no (valid) refresh token
-				this.tokens.del({ cookies });
 				return;
 			}
 		}
 
 		if (!tokens.issued_at && tokens.access_token) {
-			this.tokens.del({ cookies });
 			return;
 		}
 
@@ -203,8 +215,43 @@ export class ReactAuthProvider {
 		},
 	});
 
-	public readonly token = $route({
+	public readonly refresh = $action({
+		path: ReactAuth.path.refresh,
+		secure: false, // do not check tokens, this is for login
+		method: "POST",
+		schema: {
+			query: t.object({
+				provider: t.string(),
+			}),
+			body: t.object({
+				refresh_token: t.string(),
+				access_token: t.optional(
+					t.string({
+						description:
+							"Required if provider has stateless refresh token on credentials mode",
+					}),
+				),
+			}),
+			response: tokensSchema,
+		},
+		handler: async ({ query, body, cookies }) => {
+			const provider = this.provider(query);
+
+			const tokens = {
+				provider: query.provider,
+				...(await provider.refresh(body.refresh_token, body.access_token)),
+			};
+
+			// for web applications, we store tokens in cookies
+			this.setTokens(tokens, cookies);
+
+			return tokens;
+		},
+	});
+
+	public readonly token = $action({
 		path: ReactAuth.path.token,
+		secure: false, // do not check tokens, this is for login
 		method: "POST",
 		schema: {
 			query: t.object({

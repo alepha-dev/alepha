@@ -249,35 +249,42 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 
 	/**
 	 * Refreshes the access token using the refresh token.
+	 * Can be used on oauth2, oidc or credentials auth providers.
 	 */
-	public async refresh(tokens: Tokens): Promise<AccessTokenResponse> {
-		if (!tokens.refresh_token) {
-			throw new AlephaError("No refresh token available for the auth provider");
-		}
-
+	public async refresh(
+		refreshToken: string,
+		accessToken?: string,
+	): Promise<AccessTokenResponse> {
 		if ("realm" in this.options) {
-			// TODO: hook for session refresh
-
-			const user = await this.securityProvider.createUserFromToken(
-				tokens.access_token,
-				{
-					realm: this.options.realm.name,
-					verify: {
-						currentDate: new Date(0), // don't verify expiration, it's expected to be expired...
-					},
-				},
-			);
-
-			return this.options.realm.createToken(user, tokens.refresh_token);
+			return this.options.realm
+				.refreshToken(refreshToken, accessToken)
+				.then((it) => it.tokens)
+				.catch((error) => {
+					throw new SecurityError(
+						"Failed to refresh access token using the refresh token (realm)",
+						{
+							cause: error,
+						},
+					);
+				});
 		} else if (this.oauth) {
-			return {
-				...(await refreshTokenGrant(this.oauth, tokens.refresh_token)),
-				issued_at: this.dateTimeProvider.now().unix(),
-			};
+			try {
+				return {
+					...(await refreshTokenGrant(this.oauth, refreshToken)),
+					issued_at: this.dateTimeProvider.now().unix(),
+				};
+			} catch (error) {
+				throw new SecurityError(
+					"Failed to refresh access token using the refresh token (oauth2)",
+					{
+						cause: error,
+					},
+				);
+			}
 		}
 
 		throw new AlephaError(
-			"No realm or OAuth2 configuration available for the auth provider",
+			"No realm or OAuth2 configuration available for refreshing the access token",
 		);
 	}
 
@@ -313,7 +320,7 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 		}
 
 		throw new AlephaError(
-			"Authentication is not supported for user extraction from tokens",
+			"This authentication does not support user extraction from tokens",
 		);
 	}
 
