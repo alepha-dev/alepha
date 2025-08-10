@@ -1,4 +1,4 @@
-import { useRouterEvents } from "@alepha/react";
+import { useRouterEvents, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Button, Drawer } from "@blueprintjs/core";
@@ -57,7 +57,7 @@ const Header = () => {
 							<HeaderProject />
 						</Flex>
 					</Flex>
-					<Flex pad2h visible={"md"} className={"container"}>
+					<Flex pad2h visible={"md"} className={"container header"}>
 						<Flex fill col>
 							<ProjectActions />
 						</Flex>
@@ -76,10 +76,15 @@ export default Header;
 
 const MobileQuestLog = () => {
 	const [show, setShow] = useState(false);
+	const [project] = useStore("project");
 
 	useRouterEvents({
 		onEnd: () => setShow(false),
 	});
+
+	if (!project) {
+		return null;
+	}
 
 	return (
 		<Flex hide={"md"}>

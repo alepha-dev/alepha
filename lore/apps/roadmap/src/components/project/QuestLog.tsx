@@ -23,12 +23,12 @@ const QuestLog = () => {
 			col
 		>
 			<Flex pad1 gap1>
-				<Flex center pad2h col visible={"xl"}>
-					<Icon icon={"git-repo"} size={24} />
-					<Text small bold>
-						{tr("quest-log.title")}
-					</Text>
-				</Flex>
+				{/*<Flex center pad2h col visible={"xl"}>*/}
+				{/*	<Icon icon={"git-repo"} size={24} />*/}
+				{/*	<Text small bold>*/}
+				{/*		{tr("quest-log.title")}*/}
+				{/*	</Text>*/}
+				{/*</Flex>*/}
 				<Flex shadow bg bordered rounded fill centerX>
 					<Flex pad2h gap1 center>
 						<Text small>{tr("quest-log.quests")}</Text>

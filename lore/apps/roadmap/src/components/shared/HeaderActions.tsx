@@ -114,6 +114,7 @@ const AuthButton = () => {
 
 	return (
 		<Action
+			style={{ textWrap: "nowrap" }}
 			variant={"minimal"}
 			icon={"user"}
 			text={tr("header.actions.login")}

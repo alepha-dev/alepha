@@ -1,4 +1,5 @@
-import { useRouter, useStore } from "@alepha/react";
+import { DateTimeProvider } from "@alepha/datetime";
+import { useInject, useRouter, useStore } from "@alepha/react";
 import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Divider } from "@blueprintjs/core";
@@ -15,6 +16,7 @@ const Home = () => {
 	const { tr } = useI18n<I18n, "en">();
 	const [projects = []] = useStore("user.projects");
 	const router = useRouter<AppRouter>();
+	const dt = useInject(DateTimeProvider);
 
 	return (
 		<Flex fill col pad2 bg>
@@ -28,7 +30,7 @@ const Home = () => {
 					</Flex>
 					<Flex>
 						<Flex fill />
-						<Flex pad1 bordered rounded card>
+						<Flex pad1 bordered rounded card shadow>
 							<Action
 								variant={"minimal"}
 								icon={"cube-add"}
@@ -43,13 +45,18 @@ const Home = () => {
 				<Flex col>
 					{projects.length > 0 ? (
 						<Flex
-							gap2
+							card
+							pad3
+							bordered
+							rounded
+							gap3
 							style={{
 								flexWrap: "wrap",
 							}}
 						>
 							{projects.map((project) => (
 								<Action
+									style={{ width: 256 }}
 									key={project.id}
 									icon={"application"}
 									alignText={"left"}
@@ -63,7 +70,7 @@ const Home = () => {
 											{project.title}
 										</Text>
 										<Text small muted>
-											{project.createdAt}
+											{dt.of(project.updatedAt).fromNow()}
 										</Text>
 									</Flex>
 								</Action>

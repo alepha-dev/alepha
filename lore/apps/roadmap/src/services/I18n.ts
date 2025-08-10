@@ -15,9 +15,8 @@ export class I18n {
 				"header.actions.logout": "Logout",
 				"header.actions.profile.level": "Level $1",
 
-				"quest-log.title": "Quest Log",
 				"quest-log.quests": "Quests:",
-				"quest-log.search": "Find by name, package, or complexity...",
+				"quest-log.search": "Find by name, zone...",
 				"quest-log.empty": "No quests available.",
 
 				"home.title": "Welcome to the Roadmap App",
