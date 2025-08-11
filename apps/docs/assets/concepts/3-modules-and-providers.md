@@ -18,7 +18,8 @@ class UserNotificationService {
 
 The class `NotificationService` inside the Alepha container is called a **service**. It's a stateless singleton.
 
-In order to send our email, we need to create a provider that will handle the email sending logic. Providers are classes that encapsulate specific functionality and can be injected into services or other providers.
+In order to send our email, we need to create a provider that will handle the email sending logic.
+Providers are classes that encapsulate specific functionality and can be injected into services or other providers.
 
 ```ts
 import { $hook, $env, t, $inject } from "alepha";
@@ -51,15 +52,18 @@ class UserNotificationService {
 }
 ```
 
-Voila! Now we have a `UserNotificationService` that can send notifications using the `EmailProvider`. The `EmailProvider` is configured with environment variables and can be injected into any service that needs to send emails.
+Voila! Now we have a `UserNotificationService` that can send notifications using the `EmailProvider`.
+The `EmailProvider` is configured with environment variables and can be injected into any service that needs to send emails.
 
-All Alepha packages contains a set of providers that can be used in your application. For example, the `alepha/queue` package provides a `QueueProvider` that can be used to send messages to a queue.
+All Alepha packages contains a set of providers that can be used in your application.
+For example, the `alepha/queue` package provides a `QueueProvider` that can be used to send messages to a queue.
 
 #### Polymorphic Providers
 
 Sometimes, you may want to use different implementations of a provider based on the environment or configuration.
 
-For example, `QueueProvider` may vary based on the queue system you use (e.g., Redis, RabbitMQ, etc.). In this case, you can use polymorphic providers.
+For example, `QueueProvider` may vary based on the queue system you use (e.g., Redis, RabbitMQ, etc.).
+In this case, you can use polymorphic providers.
 
 ```ts
 import { $env, t, $inject, alepha } from "alepha";

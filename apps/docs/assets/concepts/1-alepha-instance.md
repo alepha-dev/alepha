@@ -36,7 +36,9 @@ The `stop` method gracefully shuts down the instance, cleaning up resources and 
 ```ts
 import { run } from "alepha";
 
-run(alepha) // => alepha.start().then(() => process.on("exit", () => alepha.stop()));
+run(alepha)
+// server: alepha.start().then(() => process.on("exit", () => alepha.stop()));
+// browser: alepha.start()
 ```
 
 The `run` function is a convenience method that starts the Alepha instance.

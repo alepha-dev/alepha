@@ -1,6 +1,7 @@
 ## Descriptors
 
-Alepha Framework provides factory functions called **descriptors** that allow you to define various aspects of your application in a declarative way. These descriptors are used to create routes, services, and other components without the need for complex boilerplate code.
+Alepha Framework provides factory functions called **descriptors** that allow you to define various aspects of your application in a declarative way.
+These descriptors are used to create routes, services, and other components without the need for complex boilerplate code.
 
 ```ts
 import { $action } from "alepha/server";
@@ -10,14 +11,18 @@ import { $scheduler } from "alepha/scheduler";
 
 class UserController {
   log = $logger();
+
   findUsers = $action({
     handler: () => "List of users",
   });
+
   sendEmail = $queue();
+
   purgeItems = $scheduler({
     cron: "0 0 * * *",
     handler: () => this.log.info("Purging items..."),
   })
+
   // etc ...
 }
 
@@ -27,6 +32,8 @@ const alepha = Alepha
 
 run(alepha);
 ```
+
+Descriptors are functions that return a configuration object, which Alepha uses to set up the corresponding functionality.
 
 ### Collection of Descriptors
 

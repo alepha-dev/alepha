@@ -110,10 +110,6 @@ h6::after {
 	background: var(--mantine-color-text);
 }
 
-#root .mantine-NavLink-root {
-	border-radius: var(--mantine-radius-sm);
-}
-
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 html[data-mantine-color-scheme="dark"] {

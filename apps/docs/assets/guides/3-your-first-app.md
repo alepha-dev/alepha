@@ -1,3 +1,0 @@
-## Your first app
-
-Soon.

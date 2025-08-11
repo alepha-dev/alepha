@@ -6,10 +6,10 @@ Welcome to Alepha! This guide will walk you through creating your first Alepha a
 
 All you need is a modern JavaScript runtime. Alepha is built and optimized for **Node.js 22+** or the latest version of **Bun**.
 
-That's it. You don't need `ts-node`, `tsx`, or any other runtime transpilers. Alepha leverages the native capabilities of modern Node.js and Bun.
-
 *   [Install Node.js](https://nodejs.org/)
 *   [Install Bun](https://bun.sh/)
+
+If you're new to TypeScript, don't worry! Alepha is designed to be beginner-friendly, and this guide will help you get started without any prior experience.
 
 ### 1. Project Setup
 
@@ -51,38 +51,37 @@ You'll also need to update your `package.json` to specify that your project uses
 **`package.json`**
 ```json
 {
-  // ... other properties
   "type": "module"
 }
 ```
 
 ### 3. Create Your First Server
 
-Now for the fun part! Create an `index.ts` file. This will be the entry point for your application.
+Now for the fun part! Create an `src/index.ts` file. This will be the entry point for your application.
 
 We'll define a simple server with a single route that responds with "Hello World!". Notice that we are using standard TypeScript classes and methods—**no decorator shims or complex syntax required.**
 
-**`index.ts`**
+**`src/index.ts`**
 ```typescript
 import { run } from "alepha";
 import { $route } from "alepha/server";
 
 class Server {
-  // The $route descriptor declares a new HTTP endpoint.
-  // By default, it's a GET request.
+  // the $route descriptor declares a new HTTP endpoint
+  // by default, it's a GET request
   hello = $route({
     path: "/",
     handler: () => "Hello World!",
   });
 }
 
-// The run function initializes the Alepha application
-// and starts the server.
+// the run function initializes the Alepha application
+// and starts the server
 run(Server);
 ```
 
 > **Note:** Did you notice the `$` on `$route`  ?</br>
-> `$route` is a _descriptor_, a powerful factory function usable only in Alepha Context.</br>
+> `$route` is a _descriptor_, a factory function usable only in Alepha Context.</br>
 > You can learn more about descriptors in the [dedicated page](/docs/descriptors).
 
 That's all it takes to write a complete, working web server. Alepha plugs into your project with zero fuss.
@@ -93,7 +92,7 @@ You're all set. You can run your server directly with Node.js or Bun. No extra b
 
 **Using Node.js:**
 ```bash
-node index.ts
+node src/index.ts
 ```
 
 You should see a message indicating that the server has started:
