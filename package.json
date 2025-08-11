@@ -30,7 +30,6 @@
 		"check": "tsc --noEmit",
 		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=jsdom,@alepha/testing,shx,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets",
 		"test": "vitest run",
-		"build": "yarn workspaces foreach -Apt --no-private run build",
-		"build:docs": "cd apps/docs && yarn build"
+		"build": "yarn workspaces foreach -Apt run build"
 	}
 }

@@ -1,6 +1,6 @@
 import { viteAlepha } from "@alepha/vite";
-import viteReact from "@vitejs/plugin-react-oxc";
-import { defineConfig } from "rolldown-vite";
+import viteReact from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [

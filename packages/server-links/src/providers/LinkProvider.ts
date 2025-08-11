@@ -30,8 +30,14 @@ export class LinkProvider {
 		if (!this.links) {
 			this.links = [];
 		}
+
 		if (!link.handler && !link.host && !this.alepha.isBrowser()) {
 			throw new Error("Link handler or host is required");
+		}
+
+		if (this.links.some((l) => l.name === link.name)) {
+			// remove existing link with the same name
+			this.links = this.links.filter((l) => l.name !== link.name);
 		}
 
 		this.links.push(link);

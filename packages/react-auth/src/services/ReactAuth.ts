@@ -8,8 +8,8 @@ import type { Tokens } from "../schemas/tokensSchema.ts";
 export class ReactAuth {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly auth = $client<ReactAuthProvider>();
 	protected readonly linkProvider = $inject(LinkProvider);
+	protected readonly auth = $client<ReactAuthProvider>();
 
 	static path = {
 		login: "/oauth/login",
