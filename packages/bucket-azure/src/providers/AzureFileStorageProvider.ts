@@ -11,7 +11,6 @@ import {
 	$inject,
 	$logger,
 	Alepha,
-	AlephaError,
 	type FileLike,
 	type Static,
 	t,
@@ -75,21 +74,6 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 			}
 		},
 	});
-
-	public async createContainer(
-		containerName: string,
-	): Promise<ContainerClient> {
-		if (this.containers[containerName]) {
-			return this.containers[containerName];
-		}
-
-		const container = await this.createContainerClient(containerName);
-		this.containers[containerName] = container;
-
-		this.log.trace(`Container '${containerName}' created successfully`);
-
-		return container;
-	}
 
 	public async upload(
 		bucketName: string,

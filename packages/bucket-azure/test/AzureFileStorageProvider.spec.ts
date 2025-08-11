@@ -17,9 +17,10 @@ import { describe, test } from "vitest";
 import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
 
 const alepha = Alepha.create().with(AlephaBucketAzure).with(TestApp);
+
 const provider = alepha.inject(AzureFileStorageProvider);
 
-describe("LocalFileStorageProvider", () => {
+describe("AzureFileStorageProvider", () => {
 	test("should upload a file and return a fileId", async () => {
 		await testUploadAndExistence(provider);
 	});

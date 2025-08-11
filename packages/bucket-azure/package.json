@@ -27,7 +27,7 @@
 		"@alepha/core": "0.9.3",
 		"@alepha/datetime": "0.9.3",
 		"@alepha/file": "0.9.3",
-		"@azure/storage-blob": "12.28.0"
+		"@azure/storage-blob": "^12.28.0"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.1",
