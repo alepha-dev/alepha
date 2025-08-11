@@ -3,23 +3,23 @@
 	"type": "module",
 	"dependencies": {
 		"@fontsource/inter": "^5.2.6",
-		"@mantine/core": "^8.2.2",
-		"@mantine/form": "^8.2.2",
-		"@mantine/hooks": "^8.2.2",
-		"@mantine/nprogress": "^8.2.2",
-		"@mantine/spotlight": "^8.2.2",
+		"@mantine/core": "^8.2.4",
+		"@mantine/form": "^8.2.4",
+		"@mantine/hooks": "^8.2.4",
+		"@mantine/nprogress": "^8.2.4",
+		"@mantine/spotlight": "^8.2.4",
 		"@tabler/icons-react": "^3.34.1",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.9",
-		"@vitejs/plugin-react-oxc": "^0.3.0",
+		"@vitejs/plugin-react-oxc": "^0.4.0",
 		"highlight.js": "^11.11.1",
 		"marked": "^16.1.2",
 		"marked-highlight": "^2.2.2",
-		"rolldown-vite": "^7.0.12",
-		"vite-bundle-analyzer": "^1.1.0"
+		"rolldown-vite": "^7.1.0",
+		"vite-bundle-analyzer": "^1.2.1"
 	},
 	"scripts": {
 		"dev": "yarn copy && vite --host",

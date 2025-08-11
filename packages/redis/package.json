@@ -15,10 +15,10 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.9.3",
-		"@redis/client": "^5.7.0"
+		"@redis/client": "^5.8.0"
 	},
 	"devDependencies": {
-		"tsdown": "^0.13.2",
+		"tsdown": "^0.14.1",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {

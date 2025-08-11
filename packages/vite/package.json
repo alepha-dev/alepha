@@ -14,8 +14,8 @@
 		"@alepha/react": "0.9.3"
 	},
 	"devDependencies": {
-		"tsdown": "^0.13.2",
-		"vite": "^7.0.6"
+		"tsdown": "^0.14.1",
+		"vite": "^7.1.1"
 	},
 	"peerDependencies": {
 		"vite": "*"

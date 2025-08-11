@@ -456,7 +456,7 @@ export class Alepha {
 	 */
 	public async start(): Promise<this> {
 		if (this.ready) {
-			this.log.warn("App is already started, skipping...");
+			this.log.debug("App is already started, skipping...");
 			return this;
 		}
 
@@ -629,6 +629,14 @@ export class Alepha {
 		const isSubstitution = typeof entry === "object";
 		if (isSubstitution) {
 			if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
+				// inherit of module, if service has no module
+				if (
+					MODULE in entry.provide &&
+					typeof entry.provide[MODULE] === "function"
+				) {
+					(entry.use as ServiceWithModule)[MODULE] ??= entry.provide[MODULE];
+				}
+
 				this.substitutions.set(entry.provide, {
 					use: entry.use,
 				});
@@ -721,7 +729,7 @@ export class Alepha {
 		}
 
 		if (match && !opts.skipCache) {
-			if (!match.parents.includes(parent)) {
+			if (!match.parents.includes(parent) && parent !== service) {
 				match.parents.push(parent);
 			}
 
@@ -737,6 +745,11 @@ export class Alepha {
 			throw new ContainerLockedError(
 				`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
 			);
+		}
+
+		const module = (service as ServiceWithModule)[MODULE];
+		if (module && typeof module === "function") {
+			this.with(module);
 		}
 
 		// check if service has been registered by a module
@@ -758,7 +771,6 @@ export class Alepha {
 			Object.assign(instance.options, configuration);
 		}
 
-		const module = (service as ServiceWithModule)[MODULE];
 		const definition: ServiceDefinition<T> = {
 			module: typeof module === "function" ? module : undefined,
 			parents: [parent],

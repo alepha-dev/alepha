@@ -15,20 +15,8 @@
 		"@testing-library/react": "^16.3.0",
 		"jsdom": "^26.1.0"
 	},
-	"peerDependencies": {
-		"react": "^19",
-		"react-dom": "^19"
-	},
-	"peerDependenciesMeta": {
-		"react": {
-			"optional": true
-		},
-		"react-dom": {
-			"optional": true
-		}
-	},
 	"devDependencies": {
-		"tsdown": "^0.13.2"
+		"tsdown": "^0.14.1"
 	},
 	"scripts": {
 		"build": "tsdown -c ../../tsdown.config.ts"

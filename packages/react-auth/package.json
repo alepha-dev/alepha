@@ -23,12 +23,12 @@
 		"@alepha/server-cookies": "0.9.3",
 		"@alepha/server-links": "0.9.3",
 		"@alepha/server-security": "0.9.3",
-		"openid-client": "^6.6.2"
+		"openid-client": "^6.6.3"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.9",
 		"react": "^19.1.1",
-		"tsdown": "^0.13.2",
+		"tsdown": "^0.14.1",
 		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {

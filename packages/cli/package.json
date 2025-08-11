@@ -19,7 +19,7 @@
 	"devDependencies": {
 		"@alepha/command": "^0.9.3",
 		"@alepha/core": "^0.9.3",
-		"tsdown": "^0.13.2"
+		"tsdown": "^0.14.1"
 	},
 	"scripts": {
 		"build": "tsdown -c ../../tsdown.config.ts"

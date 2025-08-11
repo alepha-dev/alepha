@@ -30,7 +30,7 @@
 		"@azure/storage-blob": "12.28.0"
 	},
 	"devDependencies": {
-		"tsdown": "^0.13.2",
+		"tsdown": "^0.14.1",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {

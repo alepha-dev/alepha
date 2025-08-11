@@ -20,7 +20,7 @@
 	"devDependencies": {
 		"@types/react": "^19.1.9",
 		"react": "^19.1.1",
-		"tsdown": "^0.13.2"
+		"tsdown": "^0.14.1"
 	},
 	"peerDependencies": {
 		"@types/react": "^19",
