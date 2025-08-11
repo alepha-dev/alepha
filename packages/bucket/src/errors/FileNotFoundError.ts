@@ -1,3 +1,5 @@
-export class FileNotFoundError extends Error {
+import { AlephaError } from "@alepha/core";
+
+export class FileNotFoundError extends AlephaError {
 	public readonly status = 404;
 }

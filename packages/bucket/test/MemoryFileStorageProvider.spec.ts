@@ -9,6 +9,7 @@ import {
 	TestApp,
 	testCustomFileId,
 	testDeleteFile,
+	testDeleteNonExistentFile,
 	testDownloadAndMetadata,
 	testEmptyFiles,
 	testFileExistence,
@@ -44,7 +45,7 @@ describe("MemoryFileStorageProvider", () => {
 	});
 
 	test("exists() should return false for a non-existent file", async () => {
-		await testFileExistence(provider);
+		await testNonExistentFile(provider);
 	});
 
 	test("exists() should return true for an existing file", async () => {
@@ -56,7 +57,7 @@ describe("MemoryFileStorageProvider", () => {
 	});
 
 	test("delete() should not throw for a non-existent file", async () => {
-		await testNonExistentFile(provider);
+		await testDeleteNonExistentFile(provider);
 	});
 
 	test("download() should throw FileNotFoundError for a non-existent file", async () => {

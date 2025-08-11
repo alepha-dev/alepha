@@ -11,6 +11,7 @@ import {
 	$inject,
 	$logger,
 	Alepha,
+	AlephaError,
 	type FileLike,
 	type Static,
 	t,
@@ -81,8 +82,12 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 		if (this.containers[containerName]) {
 			return this.containers[containerName];
 		}
+
 		const container = await this.createContainerClient(containerName);
 		this.containers[containerName] = container;
+
+		this.log.trace(`Container '${containerName}' created successfully`);
+
 		return container;
 	}
 
@@ -131,6 +136,9 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 	}
 
 	public async download(bucketName: string, fileId: string): Promise<FileLike> {
+		this.log.trace(
+			`Downloading file '${fileId}' from bucket '${bucketName}'...`,
+		);
 		const block = this.getBlock(bucketName, fileId);
 
 		const blob = await block.download().catch((error) => {
@@ -152,10 +160,14 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 	}
 
 	public async exists(bucketName: string, fileId: string): Promise<boolean> {
+		this.log.trace(
+			`Checking existence of file '${fileId}' in bucket '${bucketName}'...`,
+		);
 		return await this.getBlock(bucketName, fileId).exists();
 	}
 
 	public async delete(bucketName: string, fileId: string): Promise<void> {
+		this.log.trace(`Deleting file '${fileId}' from bucket '${bucketName}'...`);
 		try {
 			await this.getBlock(bucketName, fileId).delete();
 		} catch (error) {

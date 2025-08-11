@@ -52,6 +52,23 @@ export const testFileExistence = async (provider: FileStorageProvider) => {
 	expect(fileExists).toBe(true);
 };
 
+export const testNonExistentFile = async (provider: FileStorageProvider) => {
+	const fileExists = await provider.exists(BUCKET_NAME, "non-existent-file-id");
+	expect(fileExists).toBe(false);
+};
+
+export const testDeleteNonExistentFile = async (
+	provider: FileStorageProvider,
+) => {
+	const file = createFile("exists", { name: "exists.txt" });
+	const fileId = await provider.upload(BUCKET_NAME, file);
+	const fileExists = await provider.exists(BUCKET_NAME, fileId);
+	expect(fileExists).toBe(true);
+	await provider.delete(BUCKET_NAME, fileId);
+	const fileExists2 = await provider.exists(BUCKET_NAME, fileId);
+	expect(fileExists2).toBe(false);
+};
+
 export const testDeleteFile = async (provider: FileStorageProvider) => {
 	const file = createFile("to be deleted", { name: "delete_me.txt" });
 	const fileId = await provider.upload(BUCKET_NAME, file);
@@ -71,11 +88,6 @@ export const testNonExistentFileError = async (
 	await expect(
 		provider.download(BUCKET_NAME, "i-do-not-exist"),
 	).rejects.toThrow(FileNotFoundError);
-};
-
-export const testNonExistentFile = async (provider: FileStorageProvider) => {
-	const fileExists = await provider.exists(BUCKET_NAME, "non-existent-file-id");
-	expect(fileExists).toBe(false);
 };
 
 export const testUploadIntoBuckets = async (provider: FileStorageProvider) => {

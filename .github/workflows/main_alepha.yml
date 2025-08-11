@@ -108,7 +108,7 @@ jobs:
         run: yarn
 
       - name: Build Documentation
-        run: yarn build:docs --base=/alepha/
+        run: cd apps/docs && yarn build --base=/alepha/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
