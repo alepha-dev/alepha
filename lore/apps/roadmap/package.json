@@ -2,10 +2,10 @@
 	"private": true,
 	"type": "module",
 	"devDependencies": {
-		"@vitejs/plugin-react-oxc": "^0.3.0",
+		"@vitejs/plugin-react-oxc": "^0.4.0",
 		"drizzle-kit": "0.31.4",
-		"rolldown-vite": "^7.0.12",
-		"vercel": "^44.7.0"
+		"rolldown-vite": "^7.1.0",
+		"vercel": "^44.7.3"
 	},
 	"scripts": {
 		"dev": "vite dev --host",
