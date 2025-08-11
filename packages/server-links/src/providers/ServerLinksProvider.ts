@@ -109,10 +109,16 @@ export class ServerLinksProvider {
 		const userLinks: ApiLink[] = [];
 
 		for (const permission of permissions ?? []) {
-			if (!permission.path && !permission.method) {
+			if (
+				!permission.path &&
+				!permission.method &&
+				permission.name &&
+				permission.group
+			) {
 				userLinks.push({
 					path: "", // this is a placeholder for links without specific path
-					...permission,
+					name: permission.name,
+					group: permission.group,
 				});
 			}
 		}

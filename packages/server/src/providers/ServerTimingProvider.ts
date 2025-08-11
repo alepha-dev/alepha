@@ -49,7 +49,7 @@ export class ServerTimingProvider {
 	});
 
 	protected get handlerName() {
-		return `${this.alepha.env.APP_NAME ?? "App"}Handler`;
+		return `request`;
 	}
 
 	public beginTiming(name: string): void {

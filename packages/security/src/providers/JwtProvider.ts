@@ -55,7 +55,7 @@ export class JwtProvider {
 			});
 		} else {
 			this.log.info(
-				`will verify JWTs from '${name}' with JWKS URI ${secretKeyOrJwks}`,
+				`will verify JWTs from '${name}' with JWKS ${secretKeyOrJwks}`,
 			);
 			this.keystore.push({
 				name,

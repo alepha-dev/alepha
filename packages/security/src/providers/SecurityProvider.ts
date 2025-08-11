@@ -77,19 +77,6 @@ export class SecurityProvider {
 		},
 	});
 
-	protected ready = $hook({
-		on: "ready",
-		handler: async () => {
-			for (const realm of this.realms) {
-				if (realm.userAccountProvider) {
-					await realm.userAccountProvider.synchronize({
-						roles: realm.roles,
-					});
-				}
-			}
-		},
-	});
-
 	/**
 	 * Adds a role to one or more realms.
 	 *
@@ -215,10 +202,6 @@ export class SecurityProvider {
 		}
 
 		realmInstance.roles = roles;
-
-		if (realmInstance.userAccountProvider) {
-			await realmInstance.userAccountProvider.synchronize({ roles });
-		}
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -671,32 +654,13 @@ export interface Realm {
 	secret?: string | JSONWebKeySet | (() => string);
 
 	/**
-	 * Attach a user provider to the realm.
-	 *
-	 * This is useful when you want to use a custom user provider for a specific realm.
-	 */
-	userAccountProvider?: SecurityUserAccountProvider;
-
-	onLoadUser?: (user: UserAccountInfo) => Promise<void> | void;
-
-	/**
-	 * Function to create a user profile from the raw JWT user data.
+	 * Create the user account info based on the raw JWT payload.
+	 * By default, SecurityProvider has his own implementation, but this method allow to override it.
 	 */
 	profile?: (raw: Record<string, any>) => UserAccountInfo;
-}
-
-export interface SecurityUserAccountProvider {
-	synchronize(config: RealmConfig): Promise<void>;
 }
 
 export interface SecurityCheckResult {
 	isAuthorized: boolean;
 	ownership: string | boolean | undefined;
-}
-
-export interface RealmConfig {
-	roles?: Array<Role>;
-	smtp?: {
-		host?: string;
-	};
 }

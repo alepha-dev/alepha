@@ -22,6 +22,7 @@ import type {
 	ServerRoute,
 	ServerRouteMatcher,
 } from "../interfaces/ServerRequest.ts";
+import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 
 /**
  * Main router for all routes on the server side.
@@ -33,6 +34,7 @@ import type {
 export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly routes: ServerRoute[] = [];
+	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
 	public getRoutes(): ServerRoute[] {
 		return this.routes;
@@ -148,19 +150,85 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			return;
 		}
 
-		// validate
-		this.validateRequest(route, request);
-
 		// request is ready to be used
 		this.alepha.context.set<ServerRequest>("request", request as ServerRequest);
 
+		// validate
+		this.serverTimingProvider.beginTiming("validateRequest");
+		this.validateRequest(route, request);
+		this.serverTimingProvider.endTiming("validateRequest");
+
 		// call the handler only if the body is not set yet
+		this.serverTimingProvider.beginTiming("runHandler");
 		const result = await route.handler(request);
 		if (result) {
 			request.reply.body = result;
 		}
+		this.serverTimingProvider.endTiming("runHandler");
 
+		this.serverTimingProvider.beginTiming("serializeResponse");
 		this.serializeResponse(route, request.reply, responseKind);
+		this.serverTimingProvider.endTiming("serializeResponse");
+	}
+
+	public serializeResponse(
+		route: ServerRoute,
+		reply: ServerReply,
+		responseKind: ResponseKind,
+	): void {
+		if (responseKind === "json" && route.schema?.response) {
+			reply.headers["content-type"] = "application/json";
+			reply.body = JSON.stringify(
+				this.alepha.parse<any>(route.schema.response, reply.body, {
+					clone: true, // clone is required, as parse() will modify the object
+				}),
+			);
+			return;
+		}
+
+		if (responseKind === "file") {
+			if (!isFileLike(reply.body)) {
+				throw new HttpError({
+					status: 500,
+					message: "Invalid response body - not a file",
+				});
+			}
+			reply.headers["content-type"] = reply.body.type;
+			reply.headers["content-disposition"] =
+				`attachment; filename="${reply.body.name.replaceAll('"', "")}"`;
+			reply.body = reply.body.stream() as NodeWebStream;
+			return;
+		}
+
+		if (responseKind === "text") {
+			reply.headers["content-type"] = "text/plain";
+			reply.body = String(reply.body);
+			return;
+		}
+
+		if (reply.body == null || responseKind === "void") {
+			delete reply.headers["content-type"];
+			reply.body = undefined;
+			return;
+		}
+
+		if (Buffer.isBuffer(reply.body)) {
+			reply.headers["content-type"] ??= "application/octet-stream";
+			return;
+		}
+
+		if (
+			reply.body instanceof NodeWebStream ||
+			reply.body instanceof NodeStream
+		) {
+			// set content-type to application/octet-stream if not set
+			reply.headers["content-type"] ??= "application/octet-stream";
+			return;
+		}
+
+		reply.headers["content-type"] ??= "text/plain";
+		reply.body = String(reply.body);
+		return;
 	}
 
 	protected getResponseType(schema?: RequestConfigSchema): ResponseKind {
@@ -290,65 +358,5 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 				throw new ValidationError("Invalid request body", error);
 			}
 		}
-	}
-
-	public serializeResponse(
-		route: ServerRoute,
-		reply: ServerReply,
-		responseKind: ResponseKind,
-	): void {
-		if (responseKind === "json" && route.schema?.response) {
-			reply.headers["content-type"] = "application/json";
-			reply.body = JSON.stringify(
-				this.alepha.parse<any>(route.schema.response, reply.body, {
-					clone: true, // clone is required, as parse() will modify the object
-				}),
-			);
-			return;
-		}
-
-		if (responseKind === "file") {
-			if (!isFileLike(reply.body)) {
-				throw new HttpError({
-					status: 500,
-					message: "Invalid response body - not a file",
-				});
-			}
-			reply.headers["content-type"] = reply.body.type;
-			reply.headers["content-disposition"] =
-				`attachment; filename="${reply.body.name.replaceAll('"', "")}"`;
-			reply.body = reply.body.stream() as NodeWebStream;
-			return;
-		}
-
-		if (responseKind === "text") {
-			reply.headers["content-type"] = "text/plain";
-			reply.body = String(reply.body);
-			return;
-		}
-
-		if (reply.body == null || responseKind === "void") {
-			delete reply.headers["content-type"];
-			reply.body = undefined;
-			return;
-		}
-
-		if (Buffer.isBuffer(reply.body)) {
-			reply.headers["content-type"] ??= "application/octet-stream";
-			return;
-		}
-
-		if (
-			reply.body instanceof NodeWebStream ||
-			reply.body instanceof NodeStream
-		) {
-			// set content-type to application/octet-stream if not set
-			reply.headers["content-type"] ??= "application/octet-stream";
-			return;
-		}
-
-		reply.headers["content-type"] ??= "text/plain";
-		reply.body = String(reply.body);
-		return;
 	}
 }

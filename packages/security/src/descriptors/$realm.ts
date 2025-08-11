@@ -14,10 +14,7 @@ import {
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import { SecurityError } from "../errors/SecurityError.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";
-import {
-	SecurityProvider,
-	type SecurityUserAccountProvider,
-} from "../providers/SecurityProvider.ts";
+import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
 import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
 
@@ -102,15 +99,6 @@ export interface RealmExternal {
 	 * URL to the JWKS (JSON Web Key Set) to verify JWT tokens from external providers.
 	 */
 	jwks: (() => string) | JSONWebKeySet;
-
-	/**
-	 * Attach a user account provider to the realm to manage roles.
-	 *
-	 * For example, you can use a KeycloakUserProvider to automatically create/update realm roles inside Keycloak.
-	 */
-	userAccountProvider?:
-		| SecurityUserAccountProvider
-		| (() => SecurityUserAccountProvider);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -151,25 +139,12 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 				return it;
 			}) ?? [];
 
-		if ("jwks" in this.options) {
-			this.securityProvider.createRealm({
-				name: this.name,
-				profile: this.options.profile,
-				secret: this.options.jwks,
-				userAccountProvider:
-					typeof this.options.userAccountProvider === "function"
-						? this.options.userAccountProvider()
-						: this.options.userAccountProvider,
-				roles,
-			});
-		} else {
-			this.securityProvider.createRealm({
-				name: this.name,
-				profile: this.options.profile,
-				secret: this.options.secret,
-				roles,
-			});
-		}
+		this.securityProvider.createRealm({
+			name: this.name,
+			profile: this.options.profile,
+			secret: "jwks" in this.options ? this.options.jwks : this.options.secret,
+			roles,
+		});
 	}
 
 	/**
