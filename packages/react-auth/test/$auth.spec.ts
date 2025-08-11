@@ -2,9 +2,12 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $realm } from "@alepha/security";
+import { HttpClient, ServerProvider } from "@alepha/server";
 import { $client } from "@alepha/server-links";
+import type { UserInfoResponse } from "openid-client";
 import { describe, test } from "vitest";
-import { $auth, ReactAuth, ReactAuthProvider } from "../src";
+import { $auth, ReactAuth, type ReactAuthProvider } from "../src";
+import type { TokenResponse } from "../src/schemas/tokenResponseSchema.ts";
 
 describe("$auth", () => {
 	describe("$auth", () => {
@@ -37,30 +40,47 @@ describe("$auth", () => {
 			api = $client<ReactAuthProvider>();
 		}
 
-		const userinfo = (auth: ReactAuthProvider, token?: string) =>
-			auth.userinfo
-				.fetch(
-					{},
+		const userinfo = (alepha: Alepha, token?: string) =>
+			alepha
+				.inject(HttpClient)
+				.fetch<UserInfoResponse>(
+					`${alepha.inject(ServerProvider).hostname}${ReactAuth.path.userinfo}`,
 					{
-						request: {
-							headers: {
-								authorization: `Bearer ${token}`,
-							},
+						method: "GET",
+						headers: {
+							authorization: `Bearer ${token}`,
 						},
 					},
 				)
 				.then((it) => it.data);
 
-		const login = (auth: ReactAuthProvider) =>
-			auth.token.fetch({
-				query: {
-					provider: "auth",
-				},
-				body: {
-					username: user.username,
-					password: user.password,
-				},
-			});
+		const login = (alepha: Alepha) =>
+			alepha
+				.inject(HttpClient)
+				.fetch<TokenResponse>(
+					`${alepha.inject(ServerProvider).hostname}${ReactAuth.path.token}?provider=auth`,
+					{
+						method: "POST",
+						body: JSON.stringify({
+							username: user.username,
+							password: user.password,
+						}),
+					},
+				);
+
+		const refresh = (alepha: Alepha, tokens: TokenResponse) =>
+			alepha
+				.inject(HttpClient)
+				.fetch<TokenResponse>(
+					`${alepha.inject(ServerProvider).hostname}${ReactAuth.path.refresh}?provider=auth`,
+					{
+						method: "POST",
+						body: JSON.stringify({
+							refresh_token: tokens.refresh_token!,
+							access_token: tokens.access_token,
+						}),
+					},
+				);
 
 		test("should login with credentials", async ({ expect }) => {
 			const alepha = Alepha.create().with(App);
@@ -68,7 +88,11 @@ describe("$auth", () => {
 			await alepha.start();
 
 			expect(auth.user).toBeUndefined();
-			await auth.login("auth", user);
+			await auth.login("auth", {
+				username: user.username,
+				password: user.password,
+				hostname: alepha.inject(ServerProvider).hostname,
+			});
 			expect(auth.user).toEqual({
 				id: user.id,
 				name: user.name,
@@ -79,77 +103,70 @@ describe("$auth", () => {
 		test("should get userinfo", async ({ expect }) => {
 			const alepha = Alepha.create().with(App);
 			await alepha.start();
-			const auth = alepha.inject(ReactAuthProvider);
 
-			const { data: tokens } = await login(auth);
+			const { data: tokens } = await login(alepha);
 
-			expect(await userinfo(auth, tokens.access_token)).toEqual({
-				id: user.id,
-				name: user.name,
-				roles: user.roles,
+			expect(await userinfo(alepha, tokens.access_token)).toEqual({
+				user: {
+					id: user.id,
+					name: user.name,
+					roles: user.roles,
+				},
+				links: {
+					prefix: "/api",
+					links: [],
+				},
 			});
 		});
 
 		test("should reject expired token", async ({ expect }) => {
 			const alepha = Alepha.create().with(App);
 			await alepha.start();
-			const auth = alepha.inject(ReactAuthProvider);
 
-			const { data: tokens } = await login(auth);
+			const { data: tokens } = await login(alepha);
 
 			await alepha.inject(DateTimeProvider).travel(1, "hour");
 
-			await expect(userinfo(auth, tokens.access_token)).rejects.toThrowError(
-				"Token expired",
-			);
+			expect(await userinfo(alepha, tokens.access_token)).toEqual({
+				links: {
+					prefix: "/api",
+					links: [],
+				},
+			});
 		});
 
 		test("should refresh expired token", async ({ expect }) => {
 			const alepha = Alepha.create().with(App);
 			await alepha.start();
-			const auth = alepha.inject(ReactAuthProvider);
 
-			const { data: tokens } = await login(auth);
+			const { data: tokens } = await login(alepha);
 
 			await alepha.inject(DateTimeProvider).travel(1, "hour");
 
-			const { data: tokens2 } = await auth.refresh.fetch({
-				query: {
-					provider: "auth",
-				},
-				body: {
-					refresh_token: tokens.refresh_token!,
-					access_token: tokens.access_token,
-				},
-			});
+			const { data: tokens2 } = await refresh(alepha, tokens);
 
-			expect(await userinfo(auth, tokens2.access_token)).toEqual({
-				id: user.id,
-				name: user.name,
-				roles: user.roles,
+			expect(await userinfo(alepha, tokens2.access_token)).toEqual({
+				user: {
+					id: user.id,
+					name: user.name,
+					roles: user.roles,
+				},
+				links: {
+					prefix: "/api",
+					links: [],
+				},
 			});
 		});
 
 		test("should reject expired refresh token", async ({ expect }) => {
 			const alepha = Alepha.create().with(App);
 			await alepha.start();
-			const auth = alepha.inject(ReactAuthProvider);
 
-			const { data: tokens } = await login(auth);
+			const { data: tokens } = await login(alepha);
 
 			await alepha.inject(DateTimeProvider).travel(40, "days");
 
-			await expect(
-				auth.refresh.fetch({
-					query: {
-						provider: "auth",
-					},
-					body: {
-						refresh_token: tokens.refresh_token!,
-						access_token: tokens.access_token,
-					},
-				}),
-			).rejects.toThrowError(
+			await expect(refresh(alepha, tokens)).rejects.toThrowError(
 				"Failed to refresh access token using the refresh token (realm)",
 			);
 		});

@@ -57,6 +57,7 @@ export class ReactAuth {
 	public async login(
 		provider: string,
 		options: {
+			hostname?: string;
 			username?: string;
 			password?: string;
 			redirect?: string;
@@ -65,7 +66,7 @@ export class ReactAuth {
 	): Promise<Tokens> {
 		if (options.username && options.password) {
 			const { data } = await this.httpClient.fetch<TokenResponse>(
-				`${ReactAuth.path.token}?provider=${provider}`,
+				`${options.hostname}${ReactAuth.path.token}?provider=${provider}`,
 				{
 					method: "POST",
 					body: JSON.stringify({

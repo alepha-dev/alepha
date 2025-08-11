@@ -2,7 +2,6 @@ import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { SecurityError, userAccountInfoSchema } from "@alepha/security";
 import {
-	$action,
 	$route,
 	apiLinksResponseSchema,
 	BadRequestError,
@@ -201,6 +200,8 @@ export class ReactAuthProvider {
 		return tokens;
 	}
 
+	// -------------------------------------------------------------------------------------------------------------------
+
 	public readonly userinfo = $route({
 		path: ReactAuth.path.userinfo,
 		schema: {
@@ -211,9 +212,11 @@ export class ReactAuthProvider {
 			if (!tokens) {
 				const links = await this.serverLinksProvider.getLinks({
 					authorization: headers.authorization,
+					user,
 				});
 				return {
 					links,
+					user,
 				};
 			}
 
@@ -240,9 +243,11 @@ export class ReactAuthProvider {
 
 			const links = await this.serverLinksProvider.getLinks({
 				authorization: headers.authorization,
+				user,
 			});
 			return {
 				links,
+				user,
 			};
 		},
 	});
