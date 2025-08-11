@@ -1,15 +1,17 @@
 import { $hook, $inject, $logger, Alepha } from "@alepha/core";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
-import { $client, LinkProvider } from "@alepha/server-links";
-import type { ReactAuthProvider } from "../providers/ReactAuthProvider.ts";
+import { HttpClient } from "@alepha/server";
+import { LinkProvider } from "@alepha/server-links";
+import type { TokenResponse } from "../schemas/tokenResponseSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
+import type { UserinfoResponse } from "../schemas/userinfoResponseSchema.ts";
 
 export class ReactAuth {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly linkProvider = $inject(LinkProvider);
-	protected readonly auth = $client<ReactAuthProvider>();
+	protected readonly httpClient = $inject(HttpClient);
 
 	static path = {
 		login: "/oauth/login",
@@ -44,9 +46,12 @@ export class ReactAuth {
 	}
 
 	public async ping() {
-		const user = await this.auth.userinfo();
-		this.alepha.state("user", user);
-		return user;
+		const { data } = await this.httpClient.fetch<UserinfoResponse>(
+			ReactAuth.path.userinfo,
+		);
+		this.alepha.state("user", data.user);
+		this.alepha.state("links", data.links);
+		return data.user;
 	}
 
 	public async login(
@@ -59,16 +64,17 @@ export class ReactAuth {
 		},
 	): Promise<Tokens> {
 		if (options.username && options.password) {
-			const data = await this.auth.token({
-				query: {
-					provider,
+			const { data } = await this.httpClient.fetch<TokenResponse>(
+				`${ReactAuth.path.token}?provider=${provider}`,
+				{
+					method: "POST",
+					body: JSON.stringify({
+						username: options.username,
+						password: options.password,
+						...options,
+					}),
 				},
-				body: {
-					username: options.username,
-					password: options.password,
-					...options,
-				},
-			});
+			);
 
 			if (this.alepha.isBrowser()) {
 				for (const link of data.links.links) {

@@ -160,11 +160,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
 		// call the handler only if the body is not set yet
 		this.serverTimingProvider.beginTiming("runHandler");
-		const result = await route.handler(request);
-		if (result) {
-			request.reply.body = result;
+		try {
+			const result = await route.handler(request);
+			if (result) {
+				request.reply.body = result;
+			}
+		} finally {
+			this.serverTimingProvider.endTiming("runHandler");
 		}
-		this.serverTimingProvider.endTiming("runHandler");
 
 		this.serverTimingProvider.beginTiming("serializeResponse");
 		this.serializeResponse(route, request.reply, responseKind);

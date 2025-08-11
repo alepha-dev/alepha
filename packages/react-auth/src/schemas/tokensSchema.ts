@@ -8,6 +8,12 @@ export const tokensSchema = t.object({
 	expires_in: t.optional(t.number()),
 	refresh_token: t.optional(t.string({ size: "rich" })),
 	refresh_token_expires_in: t.optional(t.number()),
+	refresh_expires_in: t.optional(
+		t.number({
+			description:
+				"Alias of `refresh_token_expires_in` for compatibility with some providers.",
+		}),
+	),
 	id_token: t.optional(t.string({ size: "rich" })),
 	scope: t.optional(t.string()),
 });

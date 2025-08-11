@@ -39,12 +39,12 @@ export const $serviceAccount = (
 		cache?: AccessTokenResponse;
 	} = {};
 	const dateTimeProvider = context.inject(DateTimeProvider);
-	const gracePeriod = options.gracePeriod ?? 30000;
+	const gracePeriod = options.gracePeriod ?? 30;
 
 	const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
 		store.cache = {
 			...response,
-			issued_at: dateTimeProvider.now().valueOf(),
+			issued_at: dateTimeProvider.now().unix(),
 		};
 	};
 
@@ -55,9 +55,10 @@ export const $serviceAccount = (
 				return access_token;
 			}
 
-			const now = dateTimeProvider.now().valueOf();
-			const expires = issued_at + expires_in * 1000;
-			if (expires + gracePeriod > now) {
+			const now = dateTimeProvider.now().unix();
+			const expires = issued_at + expires_in;
+
+			if (expires - gracePeriod > now) {
 				return access_token;
 			}
 		}
@@ -113,7 +114,7 @@ export const $serviceAccount = (
 
 			cacheToken({
 				...token,
-				issued_at: dateTimeProvider.now().valueOf(),
+				issued_at: dateTimeProvider.now().unix(),
 			});
 
 			return token.access_token;

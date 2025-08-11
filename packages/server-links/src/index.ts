@@ -1,5 +1,5 @@
 import { $module } from "@alepha/core";
-import { AlephaServer } from "@alepha/server";
+import { AlephaServer, type ApiLinksResponse } from "@alepha/server";
 import { $client } from "./descriptors/$client.ts";
 import { $remote } from "./descriptors/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
@@ -13,6 +13,14 @@ export * from "./descriptors/$remote.ts";
 export * from "./providers/LinkProvider.ts";
 export * from "./providers/RemoteDescriptorProvider.ts";
 export * from "./providers/ServerLinksProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+	interface State {
+		links?: ApiLinksResponse;
+	}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 

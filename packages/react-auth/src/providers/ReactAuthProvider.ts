@@ -1,10 +1,6 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import {
-	SecurityError,
-	SecurityProvider,
-	userAccountInfoSchema,
-} from "@alepha/security";
+import { SecurityError, userAccountInfoSchema } from "@alepha/security";
 import {
 	$action,
 	$route,
@@ -27,13 +23,13 @@ import {
 } from "openid-client";
 import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
+import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
 export class ReactAuthProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
-	protected readonly securityProvider = $inject(SecurityProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly serverLinksProvider = $inject(ServerLinksProvider);
 
@@ -205,19 +201,54 @@ export class ReactAuthProvider {
 		return tokens;
 	}
 
-	public readonly userinfo = $action({
+	public readonly userinfo = $route({
 		path: ReactAuth.path.userinfo,
 		schema: {
-			response: userAccountInfoSchema,
+			response: userinfoResponseSchema,
 		},
-		handler: async ({ user }) => {
-			return user;
+		handler: async ({ cookies, user, headers }) => {
+			const tokens = this.tokens.get({ cookies });
+			if (!tokens) {
+				const links = await this.serverLinksProvider.getLinks({
+					authorization: headers.authorization,
+				});
+				return {
+					links,
+				};
+			}
+
+			const provider = this.provider(tokens.provider);
+			if ("realm" in provider.options) {
+				const links = await this.serverLinksProvider.getLinks({
+					authorization: headers.authorization,
+					user,
+				});
+				return { user, links };
+			}
+
+			if (provider.oauth) {
+				const user = await provider.user(tokens);
+				const links = await this.serverLinksProvider.getLinks({
+					authorization: headers.authorization,
+					user,
+				});
+				return {
+					links,
+					user,
+				};
+			}
+
+			const links = await this.serverLinksProvider.getLinks({
+				authorization: headers.authorization,
+			});
+			return {
+				links,
+			};
 		},
 	});
 
-	public readonly refresh = $action({
+	public readonly refresh = $route({
 		path: ReactAuth.path.refresh,
-		secure: false, // do not check tokens, this is for login
 		method: "POST",
 		schema: {
 			query: t.object({
@@ -249,9 +280,8 @@ export class ReactAuthProvider {
 		},
 	});
 
-	public readonly token = $action({
+	public readonly token = $route({
 		path: ReactAuth.path.token,
-		secure: false, // do not check tokens, this is for login
 		method: "POST",
 		schema: {
 			query: t.object({
@@ -522,7 +552,11 @@ export class ReactAuthProvider {
 	}
 
 	protected setTokens(tokens: Tokens, cookies?: Cookies): void {
-		const exp = tokens.refresh_token_expires_in || tokens.expires_in;
+		const exp =
+			tokens.refresh_token_expires_in ||
+			tokens.refresh_expires_in ||
+			tokens.expires_in;
+
 		const ttl = exp
 			? this.dateTimeProvider.duration(exp, "seconds")
 			: undefined;

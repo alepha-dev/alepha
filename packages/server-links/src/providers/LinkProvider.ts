@@ -45,6 +45,17 @@ export class LinkProvider {
 
 	public async getLinks(force = false): Promise<HttpClientLink[]> {
 		if ((force || !this.links) && this.alepha.isBrowser()) {
+			const links = this.alepha.state("links");
+			if (links) {
+				for (const link of links.links) {
+					this.pushLink({
+						...link,
+						prefix: links.prefix,
+					});
+				}
+				return this.links ?? [];
+			}
+
 			const { data } = await this.httpClient.fetch<ApiLinksResponse>(
 				`${this.URL_LINKS}`,
 				{
