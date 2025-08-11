@@ -77,7 +77,7 @@ export class WorkerProvider {
 			if (this.consumers.length > 0) {
 				this.startWorkers();
 				this.log.info(
-					`Listen ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""}.`,
+					`Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""}`,
 				);
 			}
 		},

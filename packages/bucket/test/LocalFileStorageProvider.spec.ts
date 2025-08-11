@@ -1,8 +1,5 @@
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { Alepha } from "@alepha/core";
-import { afterAll, describe, test } from "vitest";
+import { describe, test } from "vitest";
 import {
 	AlephaBucket,
 	FileStorageProvider,
@@ -23,22 +20,15 @@ import {
 	testUploadIntoBuckets,
 } from "./shared.ts";
 
-const testStoragePath = join(tmpdir(), `alepha-bucket-test-${Date.now()}`);
-
 const alepha = Alepha.create()
 	.with({
 		provide: FileStorageProvider,
 		use: LocalFileStorageProvider,
 	})
 	.with(AlephaBucket)
-	.with(TestApp)
-	.configure(LocalFileStorageProvider, {
-		storagePath: testStoragePath,
-	});
+	.with(TestApp);
 
 const provider = alepha.inject(LocalFileStorageProvider);
-
-afterAll(() => rm(testStoragePath, { recursive: true, force: true }));
 
 describe("LocalFileStorageProvider", () => {
 	test("should upload a file and return a fileId", async () => {

@@ -62,9 +62,8 @@ export class RemoteDescriptorProvider {
 					});
 				}
 
-				this.log.info("Remote links OK", {
-					service: remote.name,
-					links: remote.links,
+				this.log.info(`Remote '${remote.name}' OK`, {
+					links: remote.links.length,
 					prefix: remote.prefix,
 				});
 			}

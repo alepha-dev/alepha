@@ -37,7 +37,7 @@ export class JwtProvider {
 	public setKeyLoader(name: string, secretKeyOrJwks: string | JSONWebKeySet) {
 		if (typeof secretKeyOrJwks === "object") {
 			this.log.info(
-				`will verify JWTs '${name}' with JWKS object [x${secretKeyOrJwks.keys.length}]`,
+				`will verify JWTs from '${name}' with JWKS object (x${secretKeyOrJwks.keys.length})`,
 			);
 			this.keystore.push({
 				name,
@@ -54,7 +54,9 @@ export class JwtProvider {
 				keyLoader: () => Promise.resolve(createSecretKey(secretKey)),
 			});
 		} else {
-			this.log.info(`will verify JWTs '${name}' with ${secretKeyOrJwks}`);
+			this.log.info(
+				`will verify JWTs from '${name}' with JWKS URI ${secretKeyOrJwks}`,
+			);
 			this.keystore.push({
 				name,
 				keyLoader: createRemoteJWKSet(new URL(secretKeyOrJwks)),

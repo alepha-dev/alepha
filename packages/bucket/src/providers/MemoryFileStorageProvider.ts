@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { FileLike } from "@alepha/core";
+import { createFile } from "@alepha/file";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
@@ -13,7 +14,11 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
 	): Promise<string> {
 		fileId ??= this.createId();
 
-		this.files[`${bucketName}/${fileId}`] = file;
+		this.files[`${bucketName}/${fileId}`] = createFile(file.stream(), {
+			name: file.name,
+			type: file.type,
+			size: file.size,
+		});
 
 		return fileId;
 	}

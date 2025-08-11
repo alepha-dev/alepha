@@ -63,14 +63,14 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 				}
 
 				const containerName = bucket.name.replaceAll("/", "-").toLowerCase();
-				this.log.debug(`Prepare container ${containerName}...`);
+				this.log.debug(`Prepare container '${containerName}' ...`);
 
 				if (!this.containers[containerName]) {
 					this.containers[containerName] =
 						await this.createContainerClient(containerName);
 				}
 
-				this.log.info(`Container ${bucket} OK`);
+				this.log.info(`Container '${bucket}' OK`);
 			}
 		},
 	});

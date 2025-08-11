@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type * as fs from "node:fs";
 import { createReadStream, createWriteStream } from "node:fs";
 import { type FileHandle, mkdir, open, stat, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import {
@@ -22,7 +23,9 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 	protected readonly alepha = $inject(Alepha);
 
 	public options = {
-		storagePath: "files",
+		storagePath: this.alepha.isTest()
+			? join(tmpdir(), `alepha-test-${Date.now()}`)
+			: "files",
 	};
 
 	protected readonly configure = $hook({

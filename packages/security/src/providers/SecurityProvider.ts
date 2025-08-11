@@ -73,9 +73,6 @@ export class SecurityProvider {
 						typeof realm.secret === "function" ? realm.secret() : realm.secret;
 					this.jwt.setKeyLoader(realm.name, secret);
 				}
-				if (realm.userAccountProvider?.jwks) {
-					this.jwt.setKeyLoader(realm.name, realm.userAccountProvider.jwks);
-				}
 			}
 		},
 	});
@@ -689,7 +686,6 @@ export interface Realm {
 }
 
 export interface SecurityUserAccountProvider {
-	jwks: string | undefined;
 	synchronize(config: RealmConfig): Promise<void>;
 }
 
