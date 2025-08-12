@@ -1,10 +1,15 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { SecurityError, userAccountInfoSchema } from "@alepha/security";
+import {
+	SecurityError,
+	type UserAccountInfo,
+	userAccountInfoSchema,
+} from "@alepha/security";
 import {
 	$route,
 	apiLinksResponseSchema,
 	BadRequestError,
+	UnauthorizedError,
 } from "@alepha/server";
 import {
 	$cookie,
@@ -214,9 +219,17 @@ export class ReactAuthProvider {
 					authorization: headers.authorization,
 					user,
 				});
+
+				if (user?.email) {
+					return {
+						links,
+						user,
+					};
+				}
+
+				// $auth.oidc.fallback
 				return {
 					links,
-					user,
 				};
 			}
 
@@ -322,7 +335,15 @@ export class ReactAuthProvider {
 				);
 			}
 
-			const user = await credentials.user(body);
+			let user: UserAccountInfo;
+			try {
+				user = await credentials.user(body);
+			} catch (e) {
+				throw new UnauthorizedError(`Failed to authenticate user`, {
+					cause: e,
+				});
+			}
+
 			const tokens = {
 				provider: query.provider,
 				...(await realm.createToken(user)),

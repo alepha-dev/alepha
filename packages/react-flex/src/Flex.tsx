@@ -126,19 +126,16 @@ export interface FlexProps {
 	onClick?: () => void;
 
 	/**
-	 * Replace div by another HTML element.
-	 */
-	as?: string;
-
-	/**
 	 * If true, the flex container will have a shadow effect.
 	 */
 	shadow?: boolean | 2 | 3;
 
 	overflow?: boolean;
 
-	// TODO: as=form
-	onSubmit?: any;
+	/**
+	 * Render Flex as <form> element instead of <div>.
+	 */
+	form?: HTMLAttributes<HTMLFormElement>;
 }
 
 /**
@@ -287,8 +284,8 @@ const Flex = (props: FlexProps) => {
 		className: c.join(" ") + (props.className ? ` ${props.className}` : ""),
 	};
 
-	if (props.as) {
-		return createElement(props.as, { ...div }, props.children);
+	if (props.form) {
+		return createElement("form", { ...div, ...props.form }, props.children);
 	}
 
 	return <div {...div}>{props.children}</div>;

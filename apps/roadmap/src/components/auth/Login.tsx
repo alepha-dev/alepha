@@ -1,14 +1,17 @@
 import { t } from "@alepha/core";
-import { useRouter } from "@alepha/react";
+import { useInject, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
+import { HttpError } from "@alepha/server";
+import Toast from "../../services/Toast.ts";
 import Action from "../shared/Action.tsx";
 import Control from "../shared/Control.tsx";
 
 const Login = () => {
 	const auth = useAuth();
 	const router = useRouter();
+	const toaster = useInject(Toast);
 
 	const form = useForm({
 		schema: t.object({
@@ -19,17 +22,30 @@ const Login = () => {
 			await auth.login("usernamePassword", data);
 			await router.go(router.query.r || "/");
 		},
+		onError: (error) => {
+			if (HttpError.is(error, 401)) {
+				toaster.show("Invalid credentials.", "danger");
+			} else {
+				toaster.show((error as Error).message, "danger");
+			}
+		},
 	});
 
 	return (
 		<Flex fill center layout bg>
 			<Flex col gap1 style={{ width: "300px" }}>
 				<Flex col pad3 gap3 card rounded shadow={2} bordered>
-					<Flex as={"form"} onSubmit={form.onSubmit} col fill gap1>
-						<Control inputField={form.input.username} />
+					<Flex form={{ onSubmit: form.onSubmit }} col fill gap1>
+						<Control
+							inputField={form.input.username}
+							inputGroupProps={{
+								autoComplete: "username",
+							}}
+						/>
 						<Control
 							inputField={form.input.password}
 							inputGroupProps={{
+								autoComplete: "current-password",
 								type: "password",
 							}}
 						/>

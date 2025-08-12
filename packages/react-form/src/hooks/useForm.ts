@@ -414,6 +414,7 @@ export type SchemaToInput<T extends TObject> = {
 export interface FormEventLike {
 	currentTarget: HTMLFormElement;
 	preventDefault: () => void;
+	stopPropagation: () => void;
 }
 
 export interface InputField {
