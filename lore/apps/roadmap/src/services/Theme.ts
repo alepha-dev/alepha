@@ -4,6 +4,7 @@ import { $cookie } from "@alepha/server-cookies";
 export class Theme {
 	colorScheme = $cookie({
 		schema: t.enum(["light", "dark"]),
+		ttl: [1, "year"],
 	});
 
 	getColorSchemeClass() {

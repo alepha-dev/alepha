@@ -27,15 +27,6 @@ export class AppRouter {
 		};
 	});
 
-	onFetchRequest = $hook({
-		on: "client:onError",
-		handler: async ({ error }) => {
-			if (HttpError.is(error, 401)) {
-				this.auth.logout();
-			}
-		},
-	});
-
 	login = $page({
 		path: "/login",
 		schema: {
