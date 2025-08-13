@@ -5,27 +5,32 @@ export const apiLinkSchema = t.object({
 	name: t.string({
 		description: "Name of the API link, used for identification.",
 	}),
-	path: t.string({
-		description: "Pathname used to access the API link.",
-	}),
-	method: t.optional(
-		t.string({
-			description:
-				"HTTP method used for the API link, e.g., GET, POST, etc. If not specified, defaults to GET.",
-		}),
-	),
+
 	group: t.optional(
 		t.string({
 			description:
 				"Group to which the API link belongs, used for categorization.",
 		}),
 	),
+
+	path: t.string({
+		description: "Pathname used to access the API link.",
+	}),
+
+	method: t.optional(
+		t.string({
+			description:
+				"HTTP method used for the API link, e.g., GET, POST, etc. If not specified, defaults to GET.",
+		}),
+	),
+
 	requestBodyType: t.optional(
 		t.string({
 			description:
 				"Type of the request body for the API link. Default is application/json for POST/PUT/PATCH, null for others.",
 		}),
 	),
+
 	service: t.optional(
 		t.string({
 			description:

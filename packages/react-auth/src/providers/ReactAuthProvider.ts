@@ -1,16 +1,7 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import {
-	SecurityError,
-	type UserAccountInfo,
-	userAccountInfoSchema,
-} from "@alepha/security";
-import {
-	$route,
-	apiLinksResponseSchema,
-	BadRequestError,
-	UnauthorizedError,
-} from "@alepha/server";
+import { SecurityError, type UserAccountInfo } from "@alepha/security";
+import { $route, BadRequestError, UnauthorizedError } from "@alepha/server";
 import {
 	$cookie,
 	type Cookies,
@@ -26,6 +17,7 @@ import {
 	randomState,
 } from "openid-client";
 import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
+import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
 import { ReactAuth } from "../services/ReactAuth.ts";
@@ -62,7 +54,11 @@ export class ReactAuthProvider {
 	public readonly onRender = $hook({
 		on: "react:server:render:begin",
 		handler: async ({ request, context }) => {
-			context.user = request?.user; // TODO: move user to alepha.state() ?
+			if (request?.user) {
+				const { token, realm, ...user } = request.user; // do not send token and realm to the client
+				this.alepha.state("user", user); // for hydration, browser, etc...
+				context.user = user;
+			}
 		},
 	});
 
@@ -212,54 +208,14 @@ export class ReactAuthProvider {
 		schema: {
 			response: userinfoResponseSchema,
 		},
-		handler: async ({ cookies, user, headers }) => {
-			const tokens = this.tokens.get({ cookies });
-			if (!tokens) {
-				const links = await this.serverLinksProvider.getLinks({
-					authorization: headers.authorization,
-					user,
-				});
-
-				if (user?.email) {
-					return {
-						links,
-						user,
-					};
-				}
-
-				// $auth.oidc.fallback
-				return {
-					links,
-				};
-			}
-
-			const provider = this.provider(tokens.provider);
-			if ("realm" in provider.options) {
-				const links = await this.serverLinksProvider.getLinks({
-					authorization: headers.authorization,
-					user,
-				});
-				return { user, links };
-			}
-
-			if (provider.oauth) {
-				const user = await provider.user(tokens);
-				const links = await this.serverLinksProvider.getLinks({
-					authorization: headers.authorization,
-					user,
-				});
-				return {
-					links,
-					user,
-				};
-			}
-
-			const links = await this.serverLinksProvider.getLinks({
+		handler: async ({ user, headers }) => {
+			const api = await this.serverLinksProvider.getUserApiLinks({
 				authorization: headers.authorization,
 				user,
 			});
+
 			return {
-				links,
+				api,
 				user,
 			};
 		},
@@ -273,9 +229,12 @@ export class ReactAuthProvider {
 				provider: t.string(),
 			}),
 			body: t.object({
-				refresh_token: t.string(),
+				refresh_token: t.string({
+					size: "rich",
+				}),
 				access_token: t.optional(
 					t.string({
+						size: "rich",
 						description:
 							"Required if provider has stateless refresh token on credentials mode",
 					}),
@@ -309,13 +268,7 @@ export class ReactAuthProvider {
 				username: t.string(),
 				password: t.string(),
 			}),
-			response: t.composite([
-				tokensSchema,
-				t.object({
-					user: userAccountInfoSchema,
-					links: apiLinksResponseSchema,
-				}),
-			]),
+			response: tokenResponseSchema,
 		},
 		handler: async ({ query, body, cookies }) => {
 			const provider = this.provider(query);
@@ -352,7 +305,7 @@ export class ReactAuthProvider {
 			// for web applications, we store tokens in cookies
 			this.setTokens(tokens, cookies);
 
-			const links = await this.serverLinksProvider.getLinks({
+			const api = await this.serverLinksProvider.getUserApiLinks({
 				user,
 			});
 
@@ -360,7 +313,7 @@ export class ReactAuthProvider {
 			return {
 				...tokens,
 				user,
-				links,
+				api,
 			};
 		},
 	});

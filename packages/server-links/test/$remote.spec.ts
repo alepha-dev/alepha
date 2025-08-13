@@ -178,11 +178,32 @@ test("$remote - complex", async ({ expect }) => {
 		prefix: "/api",
 	});
 
-	expect(await linkProvider.client<WebApp>().ping()).toEqual("pong");
+	expect(await linkProvider.client<WebApp>().ping.run({})).toEqual("pong");
+	expect(
+		await linkProvider
+			.client<WebApp>(front.inject(ServerProvider))
+			.ping.fetch({})
+			.then((it) => it.data),
+	).toEqual("pong");
+
 	expect(await linkProvider.client<ServiceA>().getReport()).toEqual(
 		"B: 42, C: TADA!",
 	);
+	expect(
+		await linkProvider
+			.client<ServiceA>()
+			.getReport.fetch({})
+			.then((it) => it.data),
+	).toEqual("B: 42, C: TADA!");
+
 	expect(await linkProvider.client<ServiceC>().print()).toEqual("TADA!");
+	expect(
+		await linkProvider
+			.client<ServiceC>()
+			.print.fetch({})
+			.then((it) => it.data),
+	).toEqual("TADA!");
+
 	await expect(() => linkProvider.client<ServiceB>().compute()).rejects.toThrow(
 		"Action compute not found",
 	);

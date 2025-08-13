@@ -24,9 +24,6 @@ declare module "@alepha/react" {
 	interface PageReactContext {
 		user?: UserAccountInfo;
 	}
-	export interface ReactHydrationState {
-		user?: UserAccountInfo;
-	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

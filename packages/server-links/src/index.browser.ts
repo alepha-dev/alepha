@@ -8,6 +8,7 @@ import { LinkProvider } from "./providers/LinkProvider.ts";
 export * from "./descriptors/$client.ts";
 export * from "./descriptors/$remote.ts";
 export * from "./providers/LinkProvider.ts";
+export * from "./schemas/apiLinksResponseSchema.ts";
 
 // ---------------------------------------------------------------- -----------------------------------------------------
 

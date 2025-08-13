@@ -1,5 +1,4 @@
 import { $env, $hook, $inject, $logger, type Static, t } from "@alepha/core";
-import type { ApiLinksResponse } from "@alepha/server";
 import type { Root } from "react-dom/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
@@ -89,5 +88,4 @@ export interface RouterGoOptions {
 
 export interface ReactHydrationState {
 	layers?: Array<PreviousLayerData>;
-	links?: ApiLinksResponse;
 }

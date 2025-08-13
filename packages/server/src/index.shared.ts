@@ -9,7 +9,6 @@ export * from "./errors/ValidationError.ts";
 export * from "./helpers/isMultipart.ts";
 export * from "./helpers/ServerReply.ts";
 export * from "./interfaces/ServerRequest.ts";
-export * from "./schemas/apiLinksResponseSchema.ts";
 export * from "./schemas/errorSchema.ts";
 export * from "./schemas/okSchema.ts";
 export * from "./services/HttpClient.ts";

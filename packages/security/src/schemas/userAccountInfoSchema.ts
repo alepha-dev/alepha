@@ -19,6 +19,12 @@ export const userAccountInfoSchema = t.object({
 		}),
 	),
 
+	username: t.optional(
+		t.string({
+			description: "Preferred username of the user.",
+		}),
+	),
+
 	picture: t.optional(
 		t.string({
 			description: "URL to the user's profile picture.",

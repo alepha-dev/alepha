@@ -17,15 +17,6 @@ export class AppRouter {
 		component: () => createElement("div", null, "Blank Page"),
 	});
 
-	onReady = $hook({
-		on: "ready",
-		handler: async () => {
-			if (this.auth.user) {
-				await this.client.getLinks();
-			}
-		},
-	});
-
 	home = $page({
 		path: "/",
 		head: {

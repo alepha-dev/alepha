@@ -199,16 +199,19 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 
 		const access_token = await this.jwt.create(
 			{
+				// jwt
 				sub: user.id,
 				exp,
 				iat,
 				aud: this.name,
-				// our claims
+				// oidc
 				name: user.name,
-				roles: user.roles,
 				email: user.email,
-				organizations: user.organizations,
+				preferred_username: user.username,
 				picture: user.picture,
+				// our claims
+				organizations: user.organizations,
+				roles: user.roles,
 			},
 			this.name,
 		);

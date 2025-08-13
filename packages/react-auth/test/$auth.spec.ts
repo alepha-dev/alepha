@@ -97,6 +97,7 @@ describe("$auth", () => {
 				id: user.id,
 				name: user.name,
 				roles: user.roles,
+				username: user.username,
 			});
 		});
 
@@ -111,8 +112,9 @@ describe("$auth", () => {
 					id: user.id,
 					name: user.name,
 					roles: user.roles,
+					username: user.username,
 				},
-				links: {
+				api: {
 					prefix: "/api",
 					links: [],
 				},
@@ -128,7 +130,7 @@ describe("$auth", () => {
 			await alepha.inject(DateTimeProvider).travel(1, "hour");
 
 			expect(await userinfo(alepha, tokens.access_token)).toEqual({
-				links: {
+				api: {
 					prefix: "/api",
 					links: [],
 				},
@@ -150,8 +152,9 @@ describe("$auth", () => {
 					id: user.id,
 					name: user.name,
 					roles: user.roles,
+					username: user.username,
 				},
-				links: {
+				api: {
 					prefix: "/api",
 					links: [],
 				},

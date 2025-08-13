@@ -7,7 +7,6 @@ import {
 	type Static,
 	t,
 } from "@alepha/core";
-import type { ApiLinksResponse } from "@alepha/server";
 import { createElement, type ReactNode, StrictMode } from "react";
 import ClientOnly from "../components/ClientOnly.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
@@ -646,8 +645,6 @@ export interface CreateLayersResult extends RouterState {
 export interface PageReactContext {
 	url: URL;
 	onError: ErrorHandler;
-	links?: ApiLinksResponse;
-
 	params: Record<string, any>;
 	query: Record<string, string>;
 }

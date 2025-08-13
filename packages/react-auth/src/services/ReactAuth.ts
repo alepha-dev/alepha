@@ -7,6 +7,9 @@ import type { TokenResponse } from "../schemas/tokenResponseSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
 import type { UserinfoResponse } from "../schemas/userinfoResponseSchema.ts";
 
+/**
+ * Browser, SSR friendly, service to handle authentication.
+ */
 export class ReactAuth {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
@@ -22,21 +25,21 @@ export class ReactAuth {
 		userinfo: "/_auth/userinfo",
 	};
 
+	protected readonly onBeginTransition = $hook({
+		on: "react:transition:begin",
+		handler: async (event) => {
+			if (this.alepha.isBrowser() && this.user) {
+				event.context.user = this.user;
+			}
+		},
+	});
+
 	protected readonly onFetchRequest = $hook({
 		on: "client:onRequest",
 		handler: async (event) => {
 			if (this.alepha.isBrowser() && this.user) {
 				// ensure cookies are sent with requests and refresh-able
 				event.request.credentials ??= "include";
-			}
-		},
-	});
-
-	public readonly onRender = $hook({
-		on: "react:transition:begin",
-		handler: async ({ context }) => {
-			if (this.alepha.isBrowser() && this.user) {
-				context.user = this.user;
 			}
 		},
 	});
@@ -49,8 +52,10 @@ export class ReactAuth {
 		const { data } = await this.httpClient.fetch<UserinfoResponse>(
 			ReactAuth.path.userinfo,
 		);
+
+		this.alepha.state("api", data.api);
 		this.alepha.state("user", data.user);
-		this.alepha.state("links", data.links);
+
 		return data.user;
 	}
 
@@ -77,15 +82,7 @@ export class ReactAuth {
 				},
 			);
 
-			if (this.alepha.isBrowser()) {
-				for (const link of data.links.links) {
-					this.linkProvider.pushLink({
-						...link,
-						prefix: data.links.prefix,
-					});
-				}
-			}
-
+			this.alepha.state("api", data.api);
 			this.alepha.state("user", data.user);
 
 			return data;

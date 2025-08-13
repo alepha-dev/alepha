@@ -1,3 +1,4 @@
+import { t } from "@alepha/core";
 import { Link, useClient, useSchema } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
@@ -7,12 +8,14 @@ import type { I18n } from "./I18n.ts";
 
 const Hello = () => {
 	const client = useClient<Api>();
-	const loginSchema = useSchema(client.login);
 	const { tr, setLang, lang } = useI18n<I18n, "en">();
 
 	const form = useForm({
 		id: "hello",
-		schema: loginSchema.body,
+		schema: t.object({
+			username: t.string(),
+			password: t.string(),
+		}),
 		handler: async (values, { form }) => {
 			console.log("Form submitted with values:", values);
 			const resp = await client.login({ body: values });

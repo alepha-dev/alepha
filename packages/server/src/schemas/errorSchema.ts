@@ -19,7 +19,10 @@ export const errorSchema = t.object(
 		cause: t.optional(
 			t.object({
 				name: t.string(),
-				message: t.string(),
+				message: t.string({
+					description: "Cause Error message",
+					size: "rich",
+				}),
 			}),
 		),
 	},

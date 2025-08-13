@@ -1,6 +1,5 @@
 import { $hook, $inject, $logger, Alepha, type State } from "@alepha/core";
-import type { ApiLinksResponse } from "@alepha/server";
-import { LinkProvider } from "@alepha/server-links";
+import { ApiLinksResponse, LinkProvider } from "@alepha/server-links";
 import type { Root } from "react-dom/client";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {
@@ -94,6 +93,7 @@ export class ReactBrowserProvider {
 	public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
 		const result = await this.render({
 			url,
+			previous: options.force ? [] : this.state.layers,
 		});
 
 		// when redirecting in browser
@@ -153,18 +153,9 @@ export class ReactBrowserProvider {
 
 			if (hydration) {
 				for (const [key, value] of Object.entries(hydration)) {
-					if (key !== "layers" && key !== "links") {
+					if (key !== "layers") {
 						this.alepha.state(key as keyof State, value);
 					}
-				}
-			}
-
-			if (hydration?.links) {
-				for (const link of hydration.links.links) {
-					this.client.pushLink({
-						...link,
-						prefix: hydration.links.prefix,
-					});
 				}
 			}
 
@@ -196,9 +187,15 @@ export interface RouterGoOptions {
 	match?: TransitionOptions;
 	params?: Record<string, string>;
 	query?: Record<string, string>;
+
+	/**
+	 * Recreate the whole page, ignoring the current state.
+	 */
+	force?: boolean;
 }
 
-export interface ReactHydrationState {
+export type ReactHydrationState = {
 	layers?: Array<PreviousLayerData>;
-	links?: ApiLinksResponse;
-}
+} & {
+	[key: string]: any;
+};

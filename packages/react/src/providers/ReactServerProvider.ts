@@ -10,12 +10,14 @@ import {
 	t,
 } from "@alepha/core";
 import {
-	apiLinksResponseSchema,
 	type ServerHandler,
 	ServerRouterProvider,
 	ServerTimingProvider,
 } from "@alepha/server";
-import { ServerLinksProvider } from "@alepha/server-links";
+import {
+	apiLinksResponseSchema,
+	ServerLinksProvider,
+} from "@alepha/server-links";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import {
@@ -273,18 +275,13 @@ export class ReactServerProvider {
 			};
 
 			if (this.alepha.has(ServerLinksProvider)) {
-				const srv = this.alepha.inject(ServerLinksProvider);
-				const schema = apiLinksResponseSchema as any;
-
-				context.links = this.alepha.parse(
-					schema,
-					await srv.getLinks({
+				this.alepha.state(
+					"api",
+					await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
 						user: serverRequest.user,
 						authorization: serverRequest.headers.authorization,
 					}),
-				) as any;
-
-				this.alepha.context.set("links", context.links);
+				);
 			}
 
 			let target: PageRoute | undefined = page; // TODO: move to PageDescriptorProvider
@@ -308,11 +305,6 @@ export class ReactServerProvider {
 			// 	reply.body = template;
 			// 	return;
 			// }
-
-			await this.alepha.emit("react:transition:begin", {
-				request: serverRequest,
-				context,
-			});
 
 			await this.alepha.emit("react:server:render:begin", {
 				request: serverRequest,
@@ -340,11 +332,6 @@ export class ReactServerProvider {
 				"no-store, no-cache, must-revalidate, proxy-revalidate";
 			reply.headers.pragma = "no-cache";
 			reply.headers.expires = "0";
-
-			// don't cache user links
-			if (page.cache && serverRequest.user) {
-				delete context.links;
-			}
 
 			const html = this.renderToHtml(template, state, context);
 			if (html instanceof Redirection) {

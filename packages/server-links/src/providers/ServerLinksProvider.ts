@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $env, $hook, $inject, Alepha, t } from "@alepha/core";
 import {
 	type Permission,
 	SecurityProvider,
@@ -7,38 +7,50 @@ import {
 import {
 	$action,
 	$route,
-	type ApiLink,
-	type ApiLinksResponse,
-	apiLinksResponseSchema,
 	type ClientRequestEntry,
 	type ClientRequestOptions,
 	type RequestConfigSchema,
 } from "@alepha/server";
+import {
+	type ApiLink,
+	type ApiLinksResponse,
+	apiLinksResponseSchema,
+} from "../schemas/apiLinksResponseSchema.ts";
 import { LinkProvider } from "./LinkProvider.ts";
 import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
 
+const envSchema = t.object({
+	SERVER_API_PREFIX: t.string({
+		description: "Prefix for all API routes (e.g. $action).",
+		default: "/api",
+	}),
+});
+
 export class ServerLinksProvider {
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
-	protected readonly client = $inject(LinkProvider);
+	protected readonly linkProvider = $inject(LinkProvider);
 	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
+
+	public get prefix() {
+		return this.env.SERVER_API_PREFIX;
+	}
 
 	public readonly onRoute = $hook({
 		on: "configure",
 		handler: () => {
+			// convert all $action to local links
 			for (const action of this.alepha.descriptors($action)) {
-				let bodyContentType = action.getBodyContentType();
-				if (bodyContentType === "application/json") {
-					bodyContentType = undefined;
-				}
-				this.client.pushLink({
+				this.linkProvider.registerLink({
 					name: action.name,
 					group: action.group,
 					schema: action.options.schema,
-					requestBodyType: bodyContentType,
+					requestBodyType: action.getBodyContentType(),
 					secured: action.options.secure !== false,
 					method: action.method === "GET" ? undefined : action.method,
 					prefix: action.prefix,
 					path: action.path,
+					// by local, we mean that it can be called directly via the handler
 					handler: (
 						config: ClientRequestEntry<RequestConfigSchema>,
 						options: ClientRequestOptions = {},
@@ -48,56 +60,84 @@ export class ServerLinksProvider {
 		},
 	});
 
+	/**
+	 * First API - Get all API links for the user.
+	 *
+	 * This is based on the user's permissions.
+	 */
 	public readonly links = $route({
-		path: RemoteDescriptorProvider.path.apiLinks,
+		path: LinkProvider.path.apiLinks,
 		schema: {
 			response: apiLinksResponseSchema,
 		},
-		handler: async ({ user, headers }) => {
-			return this.getLinks({
+		handler: ({ user, headers }) => {
+			return this.getUserApiLinks({
 				user,
 				authorization: headers.authorization,
 			});
 		},
 	});
 
+	/**
+	 * Second API - Get schema for a specific API link.
+	 *
+	 * Note: Body/Response schema are not included in `links` API because it's TOO BIG.
+	 * I mean for 150+ links, you got 50ms of serialization time.
+	 */
 	public readonly schema = $route({
-		path: `${RemoteDescriptorProvider.path.apiLinks}/:name/schema`,
+		path: LinkProvider.path.apiSchema,
 		schema: {
 			params: t.object({
 				name: t.string(),
 			}),
 			response: t.json(),
 		},
-		handler: async ({ params, user, headers }) => {
-			const authorization = headers.authorization;
-			const links = await this.getLinks({
+		handler: ({ params, user, headers }) => {
+			return this.getSchemaByName(params.name, {
 				user,
-				authorization,
+				authorization: headers.authorization,
 			});
-
-			for (const link of links.links) {
-				if (link.name === params.name) {
-					if (link.service) {
-						// remote
-						return this.remoteProvider
-							.getRemotes()
-							.find((it) => it.name === link.service)
-							?.schema({ name: params.name, authorization });
-					}
-					// local
-					return (
-						this.client.links?.find((it) => it.name === params.name)?.schema ??
-						{}
-					);
-				}
-			}
-
-			return {};
 		},
 	});
 
-	public async getLinks(options: GetLinksOptions): Promise<ApiLinksResponse> {
+	public async getSchemaByName(
+		name: string,
+		options: GetApiLinksOptions = {},
+	): Promise<RequestConfigSchema> {
+		const authorization = options.authorization;
+		const api = await this.getUserApiLinks({
+			user: options.user,
+			authorization,
+		});
+
+		for (const link of api.links) {
+			if (link.name === name) {
+				if (link.service) {
+					// remote
+					return this.remoteProvider
+						.getRemotes()
+						.find((it) => it.name === link.service)
+						?.schema({ name: name, authorization });
+				}
+
+				// local
+				return (
+					this.linkProvider.getServerLinks().find((it) => it.name === name)
+						?.schema ?? {}
+				);
+			}
+		}
+
+		return {};
+	}
+
+	/**
+	 * Retrieves API links for the user based on their permissions.
+	 * Will check on local links and remote links.
+	 */
+	public async getUserApiLinks(
+		options: GetApiLinksOptions,
+	): Promise<ApiLinksResponse> {
 		const { user } = options;
 		let permissions: Permission[] | undefined;
 		const hasSecurity = this.alepha.has(SecurityProvider);
@@ -105,9 +145,9 @@ export class ServerLinksProvider {
 			permissions = this.alepha.inject(SecurityProvider).getPermissions(user);
 		}
 
-		const appLinks = this.client.links ?? [];
 		const userLinks: ApiLink[] = [];
 
+		// bonus: add permissions not related to $action
 		for (const permission of permissions ?? []) {
 			if (
 				!permission.path &&
@@ -123,13 +163,18 @@ export class ServerLinksProvider {
 			}
 		}
 
-		for (const link of appLinks) {
+		// add local links
+		for (const link of this.linkProvider.getServerLinks()) {
+			// SKIP REMOTE LINKS, remote links are handled separately for security
 			if (link.host) continue;
+
 			if (hasSecurity && link.secured) {
+				// skip secured links if user is not provided
 				if (!user) {
 					continue;
 				}
 
+				// small permissions check, can be optimized later ... :')
 				if (permissions) {
 					if (
 						!permissions.some(
@@ -147,40 +192,38 @@ export class ServerLinksProvider {
 			userLinks.push(copy);
 		}
 
-		userLinks.push(
-			...(
-				await Promise.all(
-					this.remoteProvider
-						.getRemotes()
-						.filter((it) => it.proxy) // add only "proxy" remotes
-						.map(async (remote) => {
-							const { links, prefix } = await remote.links(options);
-							return links.map((link) => {
-								let path = link.path.replace(prefix ?? "/api", "");
-								if (link.service) {
-									path = `/${link.service}${path}`;
-								}
+		// this does not scale well, but it's working for now
+		// TODO: remote links can be cached by user.roles
+		const promises = this.remoteProvider
+			.getRemotes()
+			.filter((it) => it.proxy) // add only "proxy" remotes
+			.map(async (remote) => {
+				const { links, prefix } = await remote.links(options);
+				return links.map((link) => {
+					let path = link.path.replace(prefix ?? "/api", "");
+					if (link.service) {
+						path = `/${link.service}${path}`;
+					}
 
-								return {
-									...link,
-									path,
-									proxy: true,
-									service: remote.name,
-								};
-							});
-						}),
-				)
-			).flat(),
-		);
+					return {
+						...link,
+						path,
+						proxy: true,
+						service: remote.name,
+					};
+				});
+			});
+
+		userLinks.push(...(await Promise.all(promises)).flat());
 
 		return {
-			prefix: this.client.links?.[0]?.prefix ?? "/api",
+			prefix: this.env.SERVER_API_PREFIX,
 			links: userLinks,
 		};
 	}
 }
 
-export interface GetLinksOptions {
+export interface GetApiLinksOptions {
 	user?: UserAccountToken;
 	authorization?: string;
 }

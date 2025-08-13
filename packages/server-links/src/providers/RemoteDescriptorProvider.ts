@@ -1,21 +1,28 @@
-import { $hook, $inject, $logger, Alepha, type Logger } from "@alepha/core";
+import { $env, $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { $retry } from "@alepha/retry";
 import type { ServiceAccountDescriptor } from "@alepha/security";
-import { type ApiLinksResponse, apiLinksResponseSchema } from "@alepha/server";
 import { ServerProxyProvider } from "@alepha/server-proxy";
 import { $remote, type RemoteDescriptor } from "../descriptors/$remote.ts";
+import {
+	type ApiLinksResponse,
+	apiLinksResponseSchema,
+} from "../schemas/apiLinksResponseSchema.ts";
 import { LinkProvider } from "./LinkProvider.ts";
 
-export class RemoteDescriptorProvider {
-	static path = {
-		apiLinks: "/api/_links",
-	};
+const envSchema = t.object({
+	SERVER_API_PREFIX: t.string({
+		description: "Prefix for all API routes (e.g. $action).",
+		default: "/api",
+	}),
+});
 
+export class RemoteDescriptorProvider {
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
-	protected readonly client: LinkProvider = $inject(LinkProvider);
 	protected readonly proxyProvider = $inject(ServerProxyProvider);
+	protected readonly linkProvider = $inject(LinkProvider);
 	protected readonly remotes: Array<ServerRemote> = [];
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
 
 	public getRemotes(): ServerRemote[] {
 		return this.remotes;
@@ -52,7 +59,7 @@ export class RemoteDescriptorProvider {
 						path = `/${link.service}${path}`;
 					}
 
-					this.client.pushLink({
+					this.linkProvider.registerLink({
 						...link,
 						prefix: remote.prefix,
 						path,
@@ -73,7 +80,7 @@ export class RemoteDescriptorProvider {
 	public async registerRemote(value: RemoteDescriptor): Promise<void> {
 		const options = value.options;
 		const url = typeof options.url === "string" ? options.url : options.url();
-		const linkPath = RemoteDescriptorProvider.path.apiLinks;
+		const linkPath = LinkProvider.path.apiLinks;
 		const name = value.name;
 		const proxy = typeof options.proxy === "object" ? options.proxy : {};
 
@@ -98,17 +105,17 @@ export class RemoteDescriptorProvider {
 			},
 			links: async (opts) => {
 				const { authorization } = opts;
-				const response = await this.fetchLinks.run({
+				const remoteApi = await this.fetchLinks.run({
 					service: name,
 					url: `${url}${linkPath}`,
 					authorization,
 				});
 
-				if (response.prefix != null) {
-					remote.prefix = response.prefix;
+				if (remoteApi.prefix != null) {
+					remote.prefix = remoteApi.prefix; // monkey patch the prefix, not ideal but works
 				}
 
-				return response;
+				return remoteApi;
 			},
 		};
 
@@ -116,10 +123,15 @@ export class RemoteDescriptorProvider {
 
 		if (options.proxy) {
 			this.proxyProvider.createProxy({
-				path: `/api/${name}/*`,
+				path: `${this.env.SERVER_API_PREFIX}/${name}/*`,
 				target: url,
 				rewrite: (url) => {
-					url.pathname = url.pathname.replace(`/api/${name}`, remote.prefix);
+					console.log("R", url.pathname);
+					url.pathname = url.pathname.replace(
+						`${this.env.SERVER_API_PREFIX}/${name}`,
+						remote.prefix,
+					);
+					console.log("Rewriting URL to", url.toString());
 				},
 				...proxy,
 			});
@@ -161,18 +173,60 @@ export class RemoteDescriptorProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface FetchLinksOptions {
+	/**
+	 * Name of the remote service.
+	 */
 	service: string;
+
+	/**
+	 * URL to fetch links from.
+	 */
 	url: string;
+
+	/**
+	 * Authorization header containing access token.
+	 */
 	authorization?: string;
 }
 
 export interface ServerRemote {
+	/**
+	 * URL of the remote service.
+	 */
 	url: string;
+
+	/**
+	 * Name of the remote service.
+	 */
 	name: string;
+
+	/**
+	 * Expose links as endpoint. It's not only internal.
+	 */
 	proxy: boolean;
+
+	/**
+	 * It's only used inside the application.
+	 */
 	internal: boolean;
+
+	/**
+	 * Links fetcher.
+	 */
 	links: (args: { authorization?: string }) => Promise<ApiLinksResponse>;
+
+	/**
+	 * Fetches schema for the remote service.
+	 */
 	schema: (args: { name: string; authorization?: string }) => Promise<any>;
+
+	/**
+	 * Force a default access token provider when not provided.
+	 */
 	serviceAccount?: ServiceAccountDescriptor;
+
+	/**
+	 * Prefix for the remote service links.
+	 */
 	prefix: string;
 }

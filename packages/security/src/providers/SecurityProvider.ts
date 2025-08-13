@@ -30,7 +30,7 @@ declare module "@alepha/core" {
 }
 
 export class SecurityProvider {
-	protected readonly UNKNOWN_USER_NAME = "Unknown User";
+	protected readonly UNKNOWN_USER_NAME = "Anonymous User";
 	protected readonly PERMISSION_REGEXP = /^[\w-]+(:[\w-]+)?$/;
 	protected readonly PERMISSION_REGEXP_WILDCARD = /^[\w-]+(:[\w-]+)?|(:\*)$/;
 
@@ -221,6 +221,7 @@ export class SecurityProvider {
 		const id = this.getIdFromPayload(payload);
 		const rolesFromPayload = this.getRolesFromPayload(payload);
 		const email = this.getEmailFromPayload(payload);
+		const username = this.getUsernameFromPayload(payload);
 		const picture = this.getPictureFromPayload(payload);
 		const name = this.getNameFromPayload(payload);
 		const organizations = this.getOrganizationsFromPayload(payload);
@@ -243,6 +244,7 @@ export class SecurityProvider {
 			roles,
 			name,
 			email,
+			username,
 			picture,
 			organizations,
 		};
@@ -573,6 +575,24 @@ export class SecurityProvider {
 		return undefined;
 	}
 
+	public getUsernameFromPayload(
+		payload: Record<string, any>,
+	): string | undefined {
+		if (!payload) {
+			return;
+		}
+
+		if (payload.preferred_username) {
+			return payload.preferred_username;
+		}
+
+		if (payload.username) {
+			return payload.username;
+		}
+
+		return undefined;
+	}
+
 	public getEmailFromPayload(payload: Record<string, any>): string | undefined {
 		if (!payload) {
 			return;
@@ -580,14 +600,6 @@ export class SecurityProvider {
 
 		if (payload.email) {
 			return payload.email;
-		}
-
-		if (payload.email_verified) {
-			return payload.email_verified;
-		}
-
-		if (payload.user_email) {
-			return payload.user_email;
 		}
 
 		return undefined;

@@ -1,9 +1,14 @@
-import { $inject, $logger, Alepha, type Logger, t } from "@alepha/core";
+import {
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	AlephaError,
+	type Logger,
+	t,
+} from "@alepha/core";
 import {
 	type ActionDescriptor,
-	type ApiLink,
-	type ApiLinksResponse,
-	apiLinksResponseSchema,
 	type ClientRequestEntry,
 	type ClientRequestOptions,
 	type ClientRequestResponse,
@@ -16,65 +21,97 @@ import {
 	type ServerRequestConfigEntry,
 	UnauthorizedError,
 } from "@alepha/server";
+import {
+	type ApiLink,
+	type ApiLinksResponse,
+	apiLinksResponseSchema,
+} from "../schemas/apiLinksResponseSchema.ts";
 
+/**
+ * Browser, SSR friendly, service to handle links.
+ */
 export class LinkProvider {
-	public readonly URL_LINKS = "/api/_links";
+	static path = {
+		apiLinks: "/api/_links",
+		apiSchema: "/api/_links/:name/schema",
+	};
 
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly httpClient: HttpClient = $inject(HttpClient);
+	protected readonly httpClient = $inject(HttpClient);
 
-	public links?: Array<HttpClientLink>;
+	// all server links (local + remote)
+	// THIS IS NOT USER LINKS! (which are filtered by permissions)
+	protected serverLinks: Array<HttpClientLink> = [];
 
-	public pushLink(link: HttpClientLink): void {
-		if (!this.links) {
-			this.links = [];
-		}
-
-		if (!link.handler && !link.host && !this.alepha.isBrowser()) {
-			throw new Error("Link handler or host is required");
-		}
-
-		if (this.links.some((l) => l.name === link.name)) {
-			// remove existing link with the same name
-			this.links = this.links.filter((l) => l.name !== link.name);
-		}
-
-		this.links.push(link);
-	}
-
-	public async getLinks(force = false): Promise<HttpClientLink[]> {
-		if ((force || !this.links) && this.alepha.isBrowser()) {
-			const links = this.alepha.state("links");
-			if (links) {
-				for (const link of links.links) {
-					this.pushLink({
-						...link,
-						prefix: links.prefix,
-					});
-				}
-				return this.links ?? [];
-			}
-
-			const { data } = await this.httpClient.fetch<ApiLinksResponse>(
-				`${this.URL_LINKS}`,
-				{
-					method: "GET",
-				},
-				{
-					schema: apiLinksResponseSchema,
-				},
+	/**
+	 * Get applicative links registered on the server.
+	 * This does not include lazy-loaded remote links.
+	 */
+	public getServerLinks(): HttpClientLink[] {
+		if (this.alepha.isBrowser()) {
+			this.log.warn(
+				"Getting server links in the browser is not supported. Use `fetchLinks` to get links from the server.",
 			);
-
-			this.links = data.links.map((it) => ({
-				...it,
-				method: it.method ?? "GET",
-			}));
+			return [];
 		}
 
-		return this.links ?? [];
+		return this.serverLinks;
 	}
 
+	/**
+	 * Register a new link for the application.
+	 */
+	public registerLink(link: HttpClientLink): void {
+		if (this.alepha.isBrowser()) {
+			this.log.warn(
+				"Registering links in the browser is not supported. Use `fetchLinks` to get links from the server.",
+			);
+			return;
+		}
+
+		if (!link.handler && !link.host) {
+			throw new AlephaError(
+				"Can't create link - 'handler' or 'host' is required",
+			);
+		}
+
+		if (this.serverLinks.some((l) => l.name === link.name)) {
+			// remove existing link with the same name
+			this.serverLinks = this.serverLinks.filter((l) => l.name !== link.name);
+		}
+
+		this.serverLinks.push(link);
+	}
+
+	public get links(): HttpClientLink[] {
+		return this.alepha.state("api")?.links ?? this.serverLinks ?? [];
+	}
+
+	/**
+	 * Force browser to refresh links from the server.
+	 */
+	public async fetchLinks(): Promise<HttpClientLink[]> {
+		const { data } = await this.httpClient.fetch<ApiLinksResponse>(
+			`${LinkProvider.path.apiLinks}`,
+			{
+				method: "GET",
+			},
+			{
+				schema: apiLinksResponseSchema,
+			},
+		);
+
+		this.alepha.state("api", data);
+
+		return data.links;
+	}
+
+	/**
+	 * Create a virtual client that can be used to call actions.
+	 *
+	 * Use js Proxy under the hood.
+	 */
 	public client<T extends object>(
 		scope: ClientScope = {},
 	): HttpVirtualClient<T> {
@@ -89,6 +126,54 @@ export class LinkProvider {
 				return this.createVirtualAction<RequestConfigSchema>(prop, scope);
 			},
 		});
+	}
+
+	/**
+	 * Check if a link with the given name exists.
+	 * @param name
+	 */
+	public can(name: string): boolean {
+		return this.links.some((link) => link.name === name);
+	}
+
+	/**
+	 * Resolve a link by its name and call it.
+	 * - If link is local, it will call the local handler.
+	 * - If link is remote, it will make a fetch request to the remote server.
+	 */
+	public async follow(
+		name: string,
+		config: Partial<ServerRequestConfigEntry> = {},
+		options: ClientRequestOptions & ClientScope = {},
+	): Promise<any> {
+		this.log.trace("Following link", { name, config, options });
+		const link = await this.getLinkByName(name, options);
+
+		// if a handler is defined, use it (ssr)
+		if (link.handler && !options.request) {
+			this.log.trace("Local link found", { name });
+			return link.handler({
+				method: link.method,
+				url: new URL(`http://localhost${link.path}`),
+				query: config.query ?? {},
+				body: config.body ?? {},
+				params: config.params ?? {},
+				headers: config.headers ?? {},
+				metadata: {},
+				raw: {},
+				reply: new ServerReply(),
+			} as Partial<ServerRequest> as ServerRequest);
+		}
+
+		this.log.trace("Remote link found", {
+			name,
+			host: link.host,
+			service: link.service,
+		});
+
+		return this.followRemote(link, config, options).then(
+			(response) => response.data,
+		);
 	}
 
 	protected createVirtualAction<T extends RequestConfigSchema>(
@@ -127,50 +212,6 @@ export class LinkProvider {
 		};
 
 		return $;
-	}
-
-	/**
-	 * Resolve a link by its name and call it.
-	 * - If link is local, it will call the local handler.
-	 * - If link is remote, it will make a fetch request to the remote server.
-	 */
-	public async follow(
-		name: string,
-		config: Partial<ServerRequestConfigEntry> = {},
-		options: ClientRequestOptions & ClientScope = {},
-	): Promise<any> {
-		this.log.trace("Following link", { name, config, options });
-		const link = await this.getLinkByName(name, options);
-
-		const als = this.alepha.context.get<ServerRequest>("request");
-		const user = options.user ?? als?.user;
-
-		// if a handler is defined, use it (ssr)
-		if (link.handler && !options.request) {
-			this.log.trace("Local link found", { name });
-			return link.handler({
-				method: link.method,
-				url: new URL(`http://localhost${link.path}`),
-				query: config.query ?? {},
-				body: config.body ?? {},
-				params: config.params ?? {},
-				headers: config.headers ?? {},
-				metadata: {},
-				raw: {},
-				reply: new ServerReply(),
-				user,
-			} as Partial<ServerRequest> as ServerRequest);
-		}
-
-		this.log.trace("Remote link found", {
-			name,
-			host: link.host,
-			service: link.service,
-		});
-
-		return this.followRemote(link, config, options).then(
-			(response) => response.data,
-		);
 	}
 
 	protected async followRemote(
@@ -222,23 +263,11 @@ export class LinkProvider {
 		});
 	}
 
-	public can(name: string): boolean {
-		const links = this.alepha.isBrowser()
-			? this.links
-			: this.alepha.context.get<{ links: HttpClientLink[] }>("links")?.links;
-
-		if (!links) {
-			return false;
-		}
-
-		return links?.some((link) => link.name === name);
-	}
-
 	protected async getLinkByName(
 		name: string,
 		options: ClientScope = {},
 	): Promise<HttpClientLink> {
-		const links = await this.getLinks();
+		const links = this.links;
 		const link = links.find(
 			(a) =>
 				a.name === name &&
@@ -254,6 +283,13 @@ export class LinkProvider {
 				error,
 			});
 			throw error;
+		}
+
+		if (options.hostname) {
+			return {
+				...link,
+				host: options.hostname,
+			};
 		}
 
 		return link;
@@ -277,6 +313,7 @@ export interface HttpClientLink extends ApiLink {
 export interface ClientScope {
 	group?: string;
 	service?: string;
+	hostname?: string;
 }
 
 export type HttpVirtualClient<T> = {
