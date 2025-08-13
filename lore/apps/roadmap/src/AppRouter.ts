@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $inject, Alepha, t } from "@alepha/core";
 import { $page, NotFound, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react-auth";
 import { $head } from "@alepha/react-head";

@@ -64,10 +64,8 @@ export const tasks = $entity({
 		id: pg.primaryKey(t.int()),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
-
 		title: t.string(),
 		description: t.string({ size: "rich" }),
-
 		package: t.string(),
 		priority: t.enum(["optional", "low", "medium", "high"]),
 		complexity: t.int({ minimum: 1, maximum: 5 }),

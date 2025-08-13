@@ -2,6 +2,7 @@ import { $inject, $logger, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $action, NotFoundError } from "@alepha/server";
 import { characters, Db, tasks } from "../providers/Db.ts";
+import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { Level } from "../services/Level.ts";
 
 class TaskApi {
@@ -118,7 +119,7 @@ class TaskApi {
 
 	createTask = $action({
 		schema: {
-			body: t.omit(tasks.$insertSchema, ["createdBy"]),
+			body: taskCreateSchema,
 			response: tasks.$schema,
 		},
 		handler: async ({ body, user }) => {

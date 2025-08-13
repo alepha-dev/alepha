@@ -1,11 +1,5 @@
 import { TypeBoxError } from "@alepha/core";
-import {
-	useAlepha,
-	useClient,
-	useInject,
-	useRouter,
-	useSchema,
-} from "@alepha/react";
+import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { Flex, Grid } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
@@ -14,6 +8,7 @@ import { useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type TaskApi from "../../../api/TaskApi.ts";
 import type { Project, Task } from "../../../providers/Db.ts";
+import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import Toast from "../../../services/Toast.ts";
 import Action from "../../shared/Action.tsx";
@@ -30,13 +25,12 @@ const TaskCreate = (props: TaskCreateProps) => {
 	const taskApi = useClient<TaskApi>();
 	const alepha = useAlepha();
 	const toast = useInject(Toast);
-	const schema = useSchema(taskApi.createTask);
 	const router = useRouter<AppRouter>();
 	const { tr } = useI18n<I18n, "en">();
 
 	const form = useForm({
-		id: "add-task",
-		schema: schema.body,
+		id: "task-create",
+		schema: taskCreateSchema,
 		initialValues: props.task,
 		handler: async (data) => {
 			if (props.task) {
