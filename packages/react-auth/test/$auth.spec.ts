@@ -4,6 +4,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { $realm } from "@alepha/security";
 import { HttpClient, ServerProvider } from "@alepha/server";
 import { $client } from "@alepha/server-links";
+import { AlephaServerSecurity } from "@alepha/server-security";
 import type { UserInfoResponse } from "openid-client";
 import { describe, test } from "vitest";
 import { $auth, ReactAuth, type ReactAuthProvider } from "../src";
@@ -83,7 +84,7 @@ describe("$auth", () => {
 				);
 
 		test("should login with credentials", async ({ expect }) => {
-			const alepha = Alepha.create().with(App);
+			const alepha = Alepha.create().with(App).with(AlephaServerSecurity);
 			const auth = alepha.inject(ReactAuth);
 			await alepha.start();
 
@@ -102,7 +103,7 @@ describe("$auth", () => {
 		});
 
 		test("should get userinfo", async ({ expect }) => {
-			const alepha = Alepha.create().with(App);
+			const alepha = Alepha.create().with(App).with(AlephaServerSecurity);
 			await alepha.start();
 
 			const { data: tokens } = await login(alepha);
