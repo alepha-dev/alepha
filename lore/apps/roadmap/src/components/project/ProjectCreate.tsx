@@ -1,5 +1,5 @@
 import { t } from "@alepha/core";
-import { useAlepha, useClient, useRouter } from "@alepha/react";
+import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type ProjectApi from "../../api/ProjectApi.ts";
 import type { I18n } from "../../services/I18n.ts";
+import Toast from "../../services/Toast.ts";
 import Action from "../shared/Action.tsx";
 import Control from "../shared/Control.tsx";
 
@@ -18,6 +19,7 @@ const ProjectCreate = () => {
 	const auth = useAuth();
 	const alepha = useAlepha();
 	const { tr } = useI18n<I18n, "en">();
+	const toaster = useInject(Toast);
 
 	const initialValues = useMemo(() => {
 		try {
@@ -36,6 +38,9 @@ const ProjectCreate = () => {
 			title: t.string(),
 			public: t.optional(t.boolean()),
 		}),
+		onError: (error) => {
+			toaster.show(error.message, "danger");
+		},
 		handler: async (body) => {
 			setLoading(true);
 
