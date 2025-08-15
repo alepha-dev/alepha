@@ -1,4 +1,4 @@
-import type { Task } from "../providers/Db.ts";
+import type { Task } from "../api/providers/Db.ts";
 
 export class Level {
 	levels = [

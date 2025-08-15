@@ -1,5 +1,5 @@
 import { Flex } from "@alepha/react-flex";
-import type { User } from "../../providers/Db.ts";
+import type { User } from "../../api/providers/Db.ts";
 
 export interface ProfileProps {
 	user: User;

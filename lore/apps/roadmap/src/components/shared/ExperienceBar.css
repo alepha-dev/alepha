@@ -14,7 +14,6 @@
 		#590c64 20%,
 		#9818ad 25%,
 		#590c64 35%,
-		#590c64 0%,
 		#150117 100%
 	);
 	transition: width 1s ease-in-out;
@@ -43,6 +42,20 @@
 .experience-bar-text {
 	color: var(--color-text);
 	padding: 0 4px;
-	text-shadow: 1px 1px 0 var(--card-bg-color);
+	text-shadow:
+		1px 0 #fff,
+		-1px 0 #fff,
+		0 1px #fff,
+		0 -1px #fff,
+		1px 1px #fff,
+		-1px -1px #fff,
+		1px -1px #fff,
+		-1px 1px #fff;
 	font-size: 12px;
+	font-weight: bold;
+}
+
+.color-scheme-dark .experience-bar-text {
+	font-weight: normal;
+	text-shadow: 1px 1px 0 var(--card-bg-color);
 }
