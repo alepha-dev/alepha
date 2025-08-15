@@ -1,6 +1,5 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { $page, NotFound, Redirection } from "@alepha/react";
-import { ReactAuth } from "@alepha/react-auth";
 import { $head } from "@alepha/react-head";
 import { HttpError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
@@ -13,7 +12,6 @@ import { Theme } from "./services/Theme.ts";
 export class AppRouter {
 	theme = $inject(Theme);
 	alepha = $inject(Alepha);
-	auth = $inject(ReactAuth);
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
 	userApi = $client<UserApi>();

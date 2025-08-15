@@ -4,7 +4,7 @@ import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import type { AppRouter } from "../../AppRouter.ts";
-import type Security from "../../providers/Security.ts";
+import type Security from "../../api/providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { Level } from "../../services/Level.ts";
 import { Theme } from "../../services/Theme.ts";
@@ -85,6 +85,7 @@ const AuthButton = () => {
 					endIcon={"caret-down"}
 					icon={
 						<img
+							alt={"picture"}
 							style={{
 								height: "24px",
 								width: "24px",

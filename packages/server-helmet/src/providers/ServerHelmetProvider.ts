@@ -1,27 +1,29 @@
-import { $hook, $inject, Alepha, type HookDescriptor } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
 
 type CspDirective = string | string[];
 
+export interface CspDirectives {
+	"default-src"?: CspDirective;
+	"script-src"?: CspDirective;
+	"style-src"?: CspDirective;
+	"img-src"?: CspDirective;
+	"connect-src"?: CspDirective;
+	"font-src"?: CspDirective;
+	"object-src"?: CspDirective;
+	"media-src"?: CspDirective;
+	"frame-src"?: CspDirective;
+	sandbox?: CspDirective | boolean;
+	"report-uri"?: string;
+	"child-src"?: CspDirective;
+	"form-action"?: CspDirective;
+	"frame-ancestors"?: CspDirective;
+	"plugin-types"?: CspDirective;
+	"base-uri"?: CspDirective;
+	[key: string]: CspDirective | undefined | boolean;
+}
+
 export interface CspOptions {
-	directives: {
-		"default-src"?: CspDirective;
-		"script-src"?: CspDirective;
-		"style-src"?: CspDirective;
-		"img-src"?: CspDirective;
-		"connect-src"?: CspDirective;
-		"font-src"?: CspDirective;
-		"object-src"?: CspDirective;
-		"media-src"?: CspDirective;
-		"frame-src"?: CspDirective;
-		sandbox?: CspDirective | boolean;
-		"report-uri"?: string;
-		"child-src"?: CspDirective;
-		"form-action"?: CspDirective;
-		"frame-ancestors"?: CspDirective;
-		"plugin-types"?: CspDirective;
-		"base-uri"?: CspDirective;
-		[key: string]: CspDirective | undefined | boolean;
-	};
+	directives: CspDirectives;
 }
 
 export interface HstsOptions {
@@ -36,7 +38,7 @@ export interface HelmetOptions {
 	xContentTypeOptions?: false;
 	xFrameOptions?: "DENY" | "SAMEORIGIN" | false;
 	xXssProtection?: false;
-	contentSecurityPolicy?: CspOptions | false;
+	contentSecurityPolicy?: CspOptions | false | "default";
 	referrerPolicy?:
 		| "no-referrer"
 		| "no-referrer-when-downgrade"
@@ -68,7 +70,23 @@ export class ServerHelmetProvider {
 		referrerPolicy: "strict-origin-when-cross-origin",
 	};
 
-	private buildHeaders(): Record<string, string> {
+	protected defaultCspDirectives(): CspDirectives {
+		return {
+			"default-src": ["'self'"],
+			"base-uri": ["'self'"],
+			"font-src": ["'self'", "https:", "data:"],
+			"form-action": ["'self'"],
+			"frame-ancestors": ["'self'"],
+			"img-src": ["'self'", "data:"],
+			"object-src": ["'none'"],
+			"script-src": ["'self'"],
+			"script-src-attr": ["'none'"],
+			"style-src": ["'self'", "https:", "'unsafe-inline'"],
+			"upgrade-insecure-requests": [],
+		};
+	}
+
+	protected buildHeaders(): Record<string, string> {
 		const headers: Record<string, string> = {};
 		const {
 			strictTransportSecurity: hsts,
@@ -109,7 +127,9 @@ export class ServerHelmetProvider {
 
 		// Content-Security-Policy
 		if (csp) {
-			headers["content-security-policy"] = Object.entries(csp.directives)
+			const directives =
+				csp === "default" ? this.defaultCspDirectives() : csp.directives;
+			headers["content-security-policy"] = Object.entries(directives)
 				.map(([key, value]) => {
 					const kebabKey = key.replace(
 						/[A-Z]/g,
@@ -129,7 +149,7 @@ export class ServerHelmetProvider {
 		return headers;
 	}
 
-	protected readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
+	protected readonly onResponse = $hook({
 		on: "server:onResponse",
 		priority: "first",
 		handler: ({ response }) => {

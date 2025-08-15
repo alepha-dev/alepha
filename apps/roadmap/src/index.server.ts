@@ -1,16 +1,20 @@
 import { Alepha, run } from "@alepha/core";
 import { AlephaReactAuth } from "@alepha/react-auth";
-import { FocusStyleManager } from "@blueprintjs/core";
+import { AlephaServerHelmet } from "@alepha/server-helmet";
+import { AlephaServerSecurity } from "@alepha/server-security";
 import { AppRouter } from "./AppRouter.ts";
+import { RoadmapApi } from "./api";
 import { RoadmapServices } from "./services";
 
 const alepha = Alepha.create();
 
 alepha.with(AlephaReactAuth);
+alepha.with(AlephaServerHelmet);
+alepha.with(AlephaServerSecurity);
+
 alepha.with(RoadmapServices);
+alepha.with(RoadmapApi);
 
 alepha.with(AppRouter);
-
-FocusStyleManager.onlyShowFocusOnTabs();
 
 run(alepha);

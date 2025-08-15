@@ -15,7 +15,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@sinclair/typebox": "^0.34.38"
+		"@sinclair/typebox": "^0.34.39"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.1",

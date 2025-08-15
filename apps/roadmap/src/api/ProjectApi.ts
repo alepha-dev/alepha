@@ -1,7 +1,7 @@
 import { $inject, $logger, t } from "@alepha/core";
 import { PgEntityNotFoundError, pageQuerySchema } from "@alepha/postgres";
 import { $action, ForbiddenError, NotFoundError } from "@alepha/server";
-import { characters, Db, projects, tasks } from "../providers/Db.ts";
+import { characters, Db, projects, tasks } from "./providers/Db.ts";
 
 class ProjectApi {
 	log = $logger();

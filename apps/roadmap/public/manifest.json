@@ -1,0 +1,33 @@
+{
+	"name": "Roadmap",
+	"short_name": "Roadmap",
+	"description": "This is a sample app to demonstrate Alepha's capabilities.",
+	"display": "standalone",
+	"start_url": "/",
+	"background_color": "#010409",
+	"theme_color": "#010409",
+	"orientation": "portrait",
+	"icons": [
+		{
+			"src": "/logo-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	],
+	"screenshots": [
+		{
+			"src": "/screenshot-1.png",
+			"type": "image/png",
+			"sizes": "1280x605",
+			"form_factor": "wide",
+			"label": "App Overview"
+		},
+		{
+			"src": "/screenshot-2.png",
+			"type": "image/png",
+			"sizes": "365x800",
+			"form_factor": "narrow",
+			"label": "Quest Detail"
+		}
+	]
+}

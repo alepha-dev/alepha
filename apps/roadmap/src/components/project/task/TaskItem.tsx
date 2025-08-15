@@ -1,7 +1,7 @@
 import { useActive, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Icon, Popover } from "@blueprintjs/core";
-import type { Task } from "../../../providers/Db.ts";
+import type { Task } from "../../../api/providers/Db.ts";
 
 const TaskItem = (props: { task: Task }) => {
 	const { task } = props;

@@ -20,7 +20,7 @@
 		"@alepha/datetime": "0.9.3",
 		"@alepha/lock": "0.9.3",
 		"@alepha/retry": "0.9.3",
-		"@sinclair/typebox": "^0.34.38",
+		"@sinclair/typebox": "^0.34.39",
 		"drizzle-orm": "^0.44.4",
 		"postgres": "^3.4.7"
 	},

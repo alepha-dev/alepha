@@ -11,11 +11,11 @@
 		"react-dom": "^19.1.1"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.9",
+		"@types/react": "^19.1.10",
 		"@vitejs/plugin-react": "^5.0.0",
 		"drizzle-kit": "^0.31.4",
-		"vercel": "^44.7.3",
-		"vite": "^7.1.1",
+		"vercel": "^45.0.9",
+		"vite": "^7.1.2",
 		"vite-bundle-analyzer": "^1.2.1"
 	},
 	"scripts": {

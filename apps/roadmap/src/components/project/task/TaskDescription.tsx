@@ -3,7 +3,7 @@ import { useState } from "react";
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import type { Task } from "../../../providers/Db.ts";
+import type { Task } from "../../../api/providers/Db.ts";
 import Action from "../../shared/Action.tsx";
 
 const TaskDescription = (props: { task: Task }) => {
