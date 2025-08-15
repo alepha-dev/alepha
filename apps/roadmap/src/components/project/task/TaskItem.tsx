@@ -1,12 +1,13 @@
 import { useActive, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Icon, Popover } from "@blueprintjs/core";
+import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
 
 const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
 
-	const router = useRouter();
+	const router = useRouter<AppRouter>();
 	const [project] = useStore("project");
 	const { isActive, isPending, anchorProps } = useActive(
 		`/p/${project?.id}/q/${task.id}`,
@@ -88,7 +89,7 @@ const TaskItem = (props: { task: Task }) => {
 			rounded
 			onClick={() => {
 				if (isActive) {
-					router.go("/");
+					router.go("projectBoard");
 				} else {
 					anchorProps.onClick();
 				}

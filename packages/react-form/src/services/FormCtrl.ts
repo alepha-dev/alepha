@@ -24,6 +24,7 @@ export class FormCtrl<T extends TObject> {
 
 		if (options.initialValues) {
 			this.values = this.alepha.parse(options.schema, options.initialValues);
+			console.log(this.values);
 		}
 
 		this.input = this.createProxyFromSchema(options, options.schema, {
@@ -34,7 +35,7 @@ export class FormCtrl<T extends TObject> {
 
 	public readonly onSubmit = async (event: FormEventLike) => {
 		event.preventDefault();
-		this.alepha.emit("form.submit.begin", {
+		this.alepha.emit("form:submit:begin", {
 			id: this.id,
 		});
 		const options = this.options;
@@ -55,15 +56,15 @@ export class FormCtrl<T extends TObject> {
 			} else {
 				await options.handler(values, args); // for now, trust
 			}
-			this.alepha.emit("form.submit.success", {
+			this.alepha.emit("form:submit:success", {
 				id: this.id,
 			});
 		} catch (error) {
 			this.log.error("Form submission error:", error);
 			options.onError?.(error as Error, args);
-			this.alepha.emit("form.submit.error", { error, id: this.id });
+			this.alepha.emit("form:submit:error", { error, id: this.id });
 		}
-		this.alepha.emit("form.submit.end", {
+		this.alepha.emit("form:submit:end", {
 			id: this.id,
 		});
 	};
@@ -208,7 +209,7 @@ export class FormCtrl<T extends TObject> {
 				options.onChange(key, value, context.store);
 			}
 
-			this.alepha.emit("form.change", {
+			this.alepha.emit("form:change", {
 				id: this.id,
 			});
 		};
@@ -323,13 +324,13 @@ export class FormCtrl<T extends TObject> {
 		return input; // Fallback for other types
 	}
 
-	protected valueToInputEntry(value: any): string | number {
+	protected valueToInputEntry(value: any): string | number | boolean {
 		if (value === null || value === undefined) {
 			return "";
 		}
 
 		if (typeof value === "boolean") {
-			return value ? "true" : "false";
+			return value;
 		}
 
 		if (typeof value === "number") {

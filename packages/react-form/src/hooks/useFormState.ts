@@ -22,7 +22,7 @@ export const useFormState = <T extends TObject>(
 		const listeners: Function[] = [];
 
 		listeners.push(
-			alepha.on("form.change", (event) => {
+			alepha.on("form:change", (event) => {
 				if (event.id === form.id) {
 					setDirty(true);
 				}
@@ -30,7 +30,7 @@ export const useFormState = <T extends TObject>(
 		);
 
 		listeners.push(
-			alepha.on("form.submit.begin", (event) => {
+			alepha.on("form:submit:begin", (event) => {
 				if (event.id === form.id) {
 					setDirty(false);
 					setLoading(true);
@@ -39,7 +39,7 @@ export const useFormState = <T extends TObject>(
 		);
 
 		listeners.push(
-			alepha.on("form.submit.end", (event) => {
+			alepha.on("form:submit:end", (event) => {
 				if (event.id === form.id) {
 					setLoading(false);
 				}

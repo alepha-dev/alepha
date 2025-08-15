@@ -61,7 +61,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 				<FormState form={form}>
 					{({ loading, dirty }) => (
 						<Action
-							icon="edit"
+							icon="floppy-disk"
 							type="submit"
 							loading={loading}
 							disabled={loading || !dirty}
