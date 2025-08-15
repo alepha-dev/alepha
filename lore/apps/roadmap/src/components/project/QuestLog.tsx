@@ -13,14 +13,14 @@ const QuestLog = () => {
 		<Flex
 			card
 			rounded
+			wFill
 			shadow={2}
-			fill
 			bordered
 			style={{
 				position: "relative",
-				width: 300,
 			}}
 			col
+			overflow
 		>
 			<Flex pad1 gap1>
 				{/*<Flex center pad2h col visible={"xl"}>*/}
