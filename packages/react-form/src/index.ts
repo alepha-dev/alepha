@@ -1,6 +1,25 @@
 import { $module } from "@alepha/core";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+export { default as FormState } from "./components/FormState.tsx";
 export * from "./hooks/useForm.ts";
+export * from "./hooks/useFormState.ts";
+export * from "./services/FormCtrl.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+	interface Hooks {
+		"form.change": { id: string };
+		"form.submit.begin": { id: string };
+		"form.submit.success": { id: string };
+		"form.submit.error": { id: string; error: Error };
+		"form.submit.end": { id: string };
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * React hooks for managing forms in Alepha applications.

@@ -49,9 +49,7 @@ const Header = () => {
 							</Flex>
 							<Flex col>
 								<Action active={false} variant={"minimal"} href={"/"}>
-									<Text bold large>
-										{tr("header.title")}
-									</Text>
+									<Text bold>{tr("header.title")}</Text>
 								</Action>
 							</Flex>
 							<HeaderProject />
