@@ -78,7 +78,7 @@ export class I18n {
 					"Giving up is hard, but sometimes it's the best option. All quests and progress will be lost.",
 
 				"project.settings.general.title": "General",
-				"project.update.submit": "Edit Information",
+				"project.update.submit": "Save Changes",
 			},
 		}),
 	});
