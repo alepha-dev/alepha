@@ -21,6 +21,41 @@ class ProjectApi {
 		},
 	});
 
+	updateProjectById = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			body: t.partial(t.pick(projects.$insertSchema, ["title", "public"])),
+			response: projects.$schema,
+		},
+		handler: async ({ params, body, user }) => {
+			const project = await this.db.projects.findOne({
+				id: { eq: params.id },
+			});
+
+			if (!project) {
+				throw new NotFoundError(`Project with id ${params.id} not found`);
+			}
+
+			if (user.ownership && project.createdBy !== user.id) {
+				throw new ForbiddenError(
+					`You do not have permission to update project with id ${params.id}`,
+				);
+			}
+
+			if (body.title) {
+				project.title = body.title.trim();
+			}
+
+			if (body.public != null) {
+				project.public = body.public;
+			}
+
+			return await this.db.projects.save(project);
+		},
+	});
+
 	getProjects = $action({
 		schema: {
 			query: pageQuerySchema,
@@ -60,6 +95,12 @@ class ProjectApi {
 				},
 			});
 
+			if (project.createdBy !== user.id && user.ownership) {
+				throw new ForbiddenError(
+					`You do not have permission to access project with id ${params.id}`,
+				);
+			}
+
 			if (user.id === project.createdBy) {
 				const character = await this.db.characters
 					.findOne({
@@ -94,10 +135,6 @@ class ProjectApi {
 			const project = await this.db.projects.findOne({
 				id: { eq: params.id },
 			});
-
-			if (!project) {
-				throw new NotFoundError(`Project with id ${params.id} not found`);
-			}
 
 			if (user.ownership && project.createdBy !== user.id) {
 				throw new ForbiddenError(

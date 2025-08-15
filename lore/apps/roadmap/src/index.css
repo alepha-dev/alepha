@@ -28,6 +28,10 @@ pre {
 	font-size: 12px;
 }
 
+.bp6-form-group {
+	margin-bottom: 0;
+}
+
 .bp6-input {
 	background-color: #f8f8f8;
 }
@@ -57,7 +61,7 @@ pre {
 
 .container {
 	height: 100%;
-	width: 1000px;
+	width: 920px;
 	margin: 0 auto;
 }
 

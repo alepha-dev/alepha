@@ -39,7 +39,7 @@ export class I18n {
 				"task.create.priority.helper": "How fast quest should be completed",
 				"task.create.description": "Quest Description",
 				"task.create.description.helper":
-					"Describe the quest, its objectives, and any relevant details.",
+					"Describe the quest, its objectives, and any relevant details",
 				"task.create.package": "Zone",
 				"task.create.package.helper": "Where the quest takes place",
 				"task.create.title": "Name",
@@ -76,6 +76,9 @@ export class I18n {
 				"project.settings.actions.delete": "Delete this campaign",
 				"project.settings.actions.delete.helper":
 					"Giving up is hard, but sometimes it's the best option. All quests and progress will be lost.",
+
+				"project.settings.general.title": "General",
+				"project.update.submit": "Edit Information",
 			},
 		}),
 	});
@@ -153,6 +156,9 @@ export class I18n {
 				"project.settings.actions.delete": "Détruire cette campagne",
 				"project.settings.actions.delete.helper":
 					"Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
+
+				"project.settings.general.title": "Général",
+				"project.update.submit": "Modifier",
 			},
 		}),
 	});

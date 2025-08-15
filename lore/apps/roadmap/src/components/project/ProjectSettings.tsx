@@ -1,11 +1,14 @@
+import { t } from "@alepha/core";
 import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
+import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { Divider } from "@blueprintjs/core";
 import type { AppRouter } from "../../AppRouter.ts";
 import type ProjectApi from "../../api/ProjectApi.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
+import ProjectUpdate from "./ProjectUpdate.tsx";
 
 const ProjectSettings = () => {
 	const alepha = useAlepha();
@@ -13,13 +16,15 @@ const ProjectSettings = () => {
 	const projectApi = useClient<ProjectApi>();
 	const router = useRouter<AppRouter>();
 	const [project] = useStore("project");
+
 	if (!project) {
 		return null;
 	}
 
 	return (
 		<Flex fill col pad2>
-			<Divider />
+			<h3>{tr("project.settings.general.title")}</h3>
+			<ProjectUpdate project={project} />
 			<h3>{tr("project.settings.danger.title")}</h3>
 			<Flex card pad2 bordered shadow>
 				<Flex col>

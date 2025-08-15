@@ -46,6 +46,7 @@ const Control = (props: ControlProps) => {
 				<Switch
 					id={props.inputField.props.id}
 					placeholder={props.inputField.schema?.title}
+					defaultChecked={props.inputField.props.defaultValue}
 					{...props.inputField.props}
 				/>
 			);

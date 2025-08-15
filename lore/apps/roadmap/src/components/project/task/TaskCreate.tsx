@@ -86,7 +86,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 		<Flex card col gap1 pad4 rounded bordered>
 			<Flex fill style={{ maxWidth: 640 }}>
 				<Flex form={{ onSubmit: form.onSubmit }} fill>
-					<Flex col fill gap1>
+					<Flex col fill gap4>
 						<Grid md={2} gap2>
 							<Control
 								fill

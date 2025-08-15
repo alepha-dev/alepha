@@ -84,7 +84,7 @@ const ProjectCreate = () => {
 							<Text muted>{tr("project.create.description")}</Text>
 						</Flex>
 						<Flex pad2 card bordered shadow rounded>
-							<Flex pad2 gap2 col style={{ maxWidth: 600 }}>
+							<Flex pad2 gap4 col style={{ maxWidth: 600 }}>
 								<Control
 									inputField={form.input.title}
 									inputGroupProps={{
@@ -105,6 +105,7 @@ const ProjectCreate = () => {
 								/>
 								<Flex>
 									<Action
+										size={"large"}
 										intent={"success"}
 										text={tr("project.create.submit")}
 										icon={"build"}
