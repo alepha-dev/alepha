@@ -1,4 +1,4 @@
-import { $hook, $inject, t } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { ReactAuth } from "@alepha/react-auth";
 import { isHttpError } from "@alepha/server";

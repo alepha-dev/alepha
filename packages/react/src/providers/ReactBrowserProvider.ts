@@ -1,5 +1,5 @@
 import { $hook, $inject, $logger, Alepha, type State } from "@alepha/core";
-import { ApiLinksResponse, LinkProvider } from "@alepha/server-links";
+import { LinkProvider } from "@alepha/server-links";
 import type { Root } from "react-dom/client";
 import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
 import type {

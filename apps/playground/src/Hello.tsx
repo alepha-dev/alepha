@@ -1,5 +1,5 @@
 import { t } from "@alepha/core";
-import { Link, useClient, useSchema } from "@alepha/react";
+import { Link, useClient } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { useTransition } from "react";

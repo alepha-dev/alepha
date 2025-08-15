@@ -34,3 +34,9 @@ Use it only when you have 2 or more services that need to communicate with each 
 All remote services can be exposed as actions, ... or not.
 
 You can add a service account if you want to use a security layer.
+
+### Providers
+
+#### LinkProvider
+
+Browser, SSR friendly, service to handle links.

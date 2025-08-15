@@ -66,6 +66,7 @@ export const useForm = <T extends TObject>(
 					await options.handler(values, args); // for now, trust
 				}
 			} catch (error) {
+				console.log(options);
 				alepha.log.error("Form submission error:", error);
 				options.onError?.(error as Error, args);
 			}

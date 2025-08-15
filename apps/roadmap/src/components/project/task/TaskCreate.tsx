@@ -1,4 +1,4 @@
-import { TypeBoxError } from "@alepha/core";
+import { TypeBoxError, t } from "@alepha/core";
 import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { Flex, Grid } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
@@ -30,7 +30,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 
 	const form = useForm({
 		id: "task-create",
-		schema: taskCreateSchema,
+		schema: t.omit(taskCreateSchema, ["projectId"]),
 		initialValues: props.task,
 		handler: async (data) => {
 			if (props.task) {
@@ -66,13 +66,13 @@ const TaskCreate = (props: TaskCreateProps) => {
 			});
 		},
 		onError: (err) => {
+			toast.show(err.message, "danger");
+
 			if (err instanceof TypeBoxError) {
 				setError(err);
 				document
 					.getElementById(`add-task${err.value.path.replaceAll("/", "-")}`)
 					?.focus();
-			} else {
-				toast.show(err.message, "danger");
 			}
 		},
 		onChange: (key) => {

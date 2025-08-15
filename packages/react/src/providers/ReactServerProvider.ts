@@ -14,10 +14,7 @@ import {
 	ServerRouterProvider,
 	ServerTimingProvider,
 } from "@alepha/server";
-import {
-	apiLinksResponseSchema,
-	ServerLinksProvider,
-} from "@alepha/server-links";
+import { ServerLinksProvider } from "@alepha/server-links";
 import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import {
