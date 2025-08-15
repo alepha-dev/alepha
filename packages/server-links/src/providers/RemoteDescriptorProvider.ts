@@ -126,12 +126,10 @@ export class RemoteDescriptorProvider {
 				path: `${this.env.SERVER_API_PREFIX}/${name}/*`,
 				target: url,
 				rewrite: (url) => {
-					console.log("R", url.pathname);
 					url.pathname = url.pathname.replace(
 						`${this.env.SERVER_API_PREFIX}/${name}`,
 						remote.prefix,
 					);
-					console.log("Rewriting URL to", url.toString());
 				},
 				...proxy,
 			});

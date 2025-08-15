@@ -16,7 +16,7 @@ import { SecurityError } from "../errors/SecurityError.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
-import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
+import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 
 /**
  * Create a new realm.
@@ -49,7 +49,7 @@ export type RealmDescriptorOptions = {
 	/**
 	 * Parse the JWT payload to create a user account info.
 	 */
-	profile?: (jwtPayload: Record<string, any>) => UserAccountInfo;
+	profile?: (jwtPayload: Record<string, any>) => UserAccount;
 } & (RealmInternal | RealmExternal);
 
 export interface RealmSettings {
@@ -76,14 +76,14 @@ export interface RealmSettings {
 		disabled?: boolean;
 
 		onCreate?: (
-			user: UserAccountInfo,
+			user: UserAccount,
 			refreshToken?: string,
 		) => Promise<{
 			refresh_token: string;
 			expires_in: number;
 		}>;
 
-		onRefresh?: (refreshToken: string) => Promise<UserAccountInfo>;
+		onRefresh?: (refreshToken: string) => Promise<UserAccount>;
 	};
 }
 
@@ -181,7 +181,7 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 	 * Create a token for the subject.
 	 */
 	public async createToken(
-		user: UserAccountInfo,
+		user: UserAccount,
 		refreshToken?: string,
 	): Promise<AccessTokenResponse> {
 		const refreshTokenEnabled =
@@ -272,7 +272,7 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		accessToken?: string,
 	): Promise<{
 		tokens: AccessTokenResponse;
-		user: UserAccountInfo;
+		user: UserAccount;
 	}> {
 		let user =
 			await this.options.settings?.refreshToken?.onRefresh?.(refreshToken);

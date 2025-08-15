@@ -1,6 +1,6 @@
 import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
-import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
+import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 
 /**
  * Create a new permission.
@@ -50,7 +50,7 @@ export class PermissionDescriptor extends Descriptor<PermissionDescriptorOptions
 	/**
 	 * Check if the user has the permission.
 	 */
-	public can(user: UserAccountInfo): boolean {
+	public can(user: UserAccount): boolean {
 		if (!user.roles) {
 			return false;
 		}

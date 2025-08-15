@@ -1,6 +1,6 @@
 import { $cursor } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
+import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 import type { AccessTokenResponse, RealmDescriptor } from "./$realm.ts";
 
 /**
@@ -130,7 +130,7 @@ export type ServiceAccountDescriptorOptions = {
 	  }
 	| {
 			realm: RealmDescriptor;
-			user: UserAccountInfo;
+			user: UserAccount;
 	  }
 );
 

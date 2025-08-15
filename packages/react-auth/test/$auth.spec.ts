@@ -33,7 +33,7 @@ describe("$auth", () => {
 			auth = $auth({
 				realm: this.realm,
 				credentials: {
-					user: () => user,
+					account: () => user,
 				},
 			});
 

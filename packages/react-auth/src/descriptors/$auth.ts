@@ -12,7 +12,7 @@ import {
 	type RealmDescriptor,
 	SecurityError,
 	SecurityProvider,
-	type UserAccountInfo,
+	type UserAccount,
 } from "@alepha/security";
 import {
 	allowInsecureRequests,
@@ -20,7 +20,7 @@ import {
 	discovery,
 	refreshTokenGrant,
 } from "openid-client";
-import type { OAuth2UserInfo } from "../providers/ReactAuthProvider.ts";
+import type { OAuth2Profile } from "../providers/ReactAuthProvider.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
 
 export const $auth = (options: AuthDescriptorOptions): AuthDescriptor => {
@@ -111,10 +111,10 @@ export type AuthInternal = {
 );
 
 export type CredentialsOptions = {
-	user: (entry: {
+	account: (entry: {
 		username: string;
 		password: string;
-	}) => Async<UserAccountInfo>;
+	}) => Async<UserAccount>;
 };
 
 export interface OidcOptions {
@@ -157,13 +157,13 @@ export interface OidcOptions {
 	 */
 	scope?: string;
 
-	user?: (tokens: {
-		id_token?: string;
+	account?: (tokens: {
 		access_token: string;
+		user: OAuth2Profile;
+		id_token?: string;
 		expires_in?: number;
 		scope?: string;
-		user: OAuth2UserInfo;
-	}) => Async<UserAccountInfo>;
+	}) => Async<UserAccount>;
 }
 
 export interface OAuth2Options {
@@ -190,7 +190,15 @@ export interface OAuth2Options {
 	/**
 	 * Function to retrieve user profile information from the OAuth2 tokens.
 	 */
-	user: (tokens: Tokens) => Async<UserAccountInfo>;
+	userinfo: (tokens: Tokens) => Async<OAuth2Profile>;
+
+	account?: (tokens: {
+		access_token: string;
+		user: OAuth2Profile;
+		id_token?: string;
+		expires_in?: number;
+		scope?: string;
+	}) => Async<UserAccount>;
 
 	/**
 	 * URL of the OAuth2 authorization endpoint.
@@ -292,17 +300,18 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 	 * Extracts user information from the access token.
 	 * This is used to create a user account from the access token.
 	 */
-	public async user(tokens: Tokens): Promise<UserAccountInfo> {
+	public async user(tokens: Tokens): Promise<UserAccount> {
 		try {
 			if ("oauth" in this.options) {
-				return this.options.oauth.user(tokens);
+				const profile = await this.options.oauth.userinfo(tokens);
+				return this.securityProvider.createUserFromPayload(profile);
 			}
 
 			if ("oidc" in this.options) {
 				const payload = this.getUserFromIdToken(tokens.id_token || "");
 
-				if (this.options.oidc.user) {
-					return this.options.oidc.user({
+				if (this.options.oidc.account) {
+					return this.options.oidc.account({
 						...tokens,
 						user: payload,
 					});
@@ -324,11 +333,11 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 		);
 	}
 
-	protected getUserFromIdToken(idToken: string): OAuth2UserInfo {
+	protected getUserFromIdToken(idToken: string): OAuth2Profile {
 		try {
 			return JSON.parse(
 				Buffer.from(idToken.split(".")[1], "base64").toString("utf8"),
-			) as OAuth2UserInfo;
+			) as OAuth2Profile;
 		} catch (error) {
 			throw new AlephaError("Failed to parse ID Token payload", {
 				cause: error,

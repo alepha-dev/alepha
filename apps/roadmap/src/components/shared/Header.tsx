@@ -95,7 +95,7 @@ const MobileQuestLog = () => {
 				className={"drawer"}
 				isOpen={show}
 			>
-				<Flex bg col bordered fill pad1>
+				<Flex bg col bordered fill pad1 overflow>
 					<Flex center pad2h style={{ height: 48 }}>
 						<Flex fill></Flex>
 						<Flex>
@@ -106,9 +106,7 @@ const MobileQuestLog = () => {
 							/>
 						</Flex>
 					</Flex>
-					<Flex fill>
-						<QuestLog />
-					</Flex>
+					<QuestLog />
 				</Flex>
 			</Drawer>
 		</Flex>

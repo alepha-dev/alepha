@@ -1,10 +1,10 @@
-import type { UserAccountInfo } from "../schemas/userAccountInfoSchema";
+import type { UserAccount } from "../schemas/userAccountInfoSchema";
 
 /**
  * Add contextual metadata to a user account info.
  * E.g. UserAccountToken is a UserAccountInfo during a request.
  */
-export interface UserAccountToken extends UserAccountInfo {
+export interface UserAccountToken extends UserAccount {
 	/**
 	 * Access token for the user.
 	 */

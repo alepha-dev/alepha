@@ -83,9 +83,9 @@ const TaskCreate = (props: TaskCreateProps) => {
 	});
 
 	return (
-		<Flex card fill col gap1 pad4 rounded bordered>
+		<Flex card col gap1 pad4 rounded bordered>
 			<Flex fill style={{ maxWidth: 640 }}>
-				<form style={{ display: "flex", flex: 1 }} onSubmit={form.onSubmit}>
+				<Flex form={{ onSubmit: form.onSubmit }} fill>
 					<Flex col fill gap1>
 						<Grid md={2} gap2>
 							<Control
@@ -236,11 +236,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 							)}
 						</Flex>
 					</Flex>
-				</form>
-			</Flex>
-			<Flex>
-				<Flex fill></Flex>
-				<Flex></Flex>
+				</Flex>
 			</Flex>
 		</Flex>
 	);

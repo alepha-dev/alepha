@@ -98,7 +98,7 @@ export async function viteAlephaBuild(
 
 			if (entry) {
 				await buildServer({
-					config: rootConfig,
+					config: {},
 					entry,
 					distDir: `${distDir}`,
 					clientDir: hasClient ? clientDir : undefined,

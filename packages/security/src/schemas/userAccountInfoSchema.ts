@@ -46,4 +46,4 @@ export const userAccountInfoSchema = t.object({
 	),
 });
 
-export type UserAccountInfo = Static<typeof userAccountInfoSchema>;
+export type UserAccount = Static<typeof userAccountInfoSchema>;

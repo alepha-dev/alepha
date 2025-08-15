@@ -1,5 +1,5 @@
 import { $env, $inject, t } from "@alepha/core";
-import { $auth, type OAuth2UserInfo } from "@alepha/react-auth";
+import { $auth, type OAuth2Profile } from "@alepha/react-auth";
 import { $realm, CryptoProvider } from "@alepha/security";
 import { UnauthorizedError } from "@alepha/server";
 import { Db } from "./Db.ts";
@@ -57,7 +57,7 @@ class Security {
 	usernamePassword = $auth({
 		realm: this.realm,
 		credentials: {
-			user: async (it) => {
+			account: async (it) => {
 				const identity = await this.db.identities.findOne({
 					provider: { eq: "usernamePassword" },
 					providerUserId: { eq: it.username },
@@ -85,11 +85,10 @@ class Security {
 			issuer: "https://accounts.google.com",
 			clientId: this.env.GOOGLE_CLIENT_ID,
 			clientSecret: this.env.GOOGLE_CLIENT_SECRET,
-			user: ({ user }) => this.link("google", user),
+			account: ({ user }) => this.link("google", user),
 		},
 	});
 
-	//
 	github = $auth({
 		realm: this.realm,
 		oauth: {
@@ -98,7 +97,7 @@ class Security {
 			authorization: "https://github.com/login/oauth/authorize",
 			token: "https://github.com/login/oauth/access_token",
 			scope: "read:user user:email",
-			user: async (tokens) => {
+			userinfo: async (tokens) => {
 				const BASE_URL = "https://api.github.com";
 				const res = await fetch(`${BASE_URL}/user`, {
 					headers: {
@@ -107,7 +106,7 @@ class Security {
 					},
 				}).then((res) => res.json());
 
-				const user: OAuth2UserInfo = {
+				const user: OAuth2Profile = {
 					sub: res.id.toString(),
 				};
 
@@ -136,14 +135,13 @@ class Security {
 					}
 				}
 
-				return await this.db.users.findOne({
-					email: { eq: user.email },
-				});
+				return user;
 			},
+			account: ({ user }) => this.link("github", user),
 		},
 	});
 
-	protected async link(provider: string, userInfo: OAuth2UserInfo) {
+	protected async link(provider: string, userInfo: OAuth2Profile) {
 		const identity = await this.db.identities
 			.findOne({
 				provider: { eq: provider },

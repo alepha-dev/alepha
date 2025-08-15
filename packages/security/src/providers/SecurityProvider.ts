@@ -18,7 +18,7 @@ import { SecurityError } from "../errors/SecurityError.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import type { Role } from "../schemas/roleSchema.ts";
-import type { UserAccountInfo } from "../schemas/userAccountInfoSchema.ts";
+import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 
 const envSchema = t.object({
@@ -217,7 +217,7 @@ export class SecurityProvider {
 	public createUserFromPayload(
 		payload: JWTPayload,
 		realmName?: string,
-	): UserAccountInfo {
+	): UserAccount {
 		const id = this.getIdFromPayload(payload);
 		const rolesFromPayload = this.getRolesFromPayload(payload);
 		const email = this.getEmailFromPayload(payload);
@@ -669,7 +669,7 @@ export interface Realm {
 	 * Create the user account info based on the raw JWT payload.
 	 * By default, SecurityProvider has his own implementation, but this method allow to override it.
 	 */
-	profile?: (raw: Record<string, any>) => UserAccountInfo;
+	profile?: (raw: Record<string, any>) => UserAccount;
 }
 
 export interface SecurityCheckResult {

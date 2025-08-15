@@ -4,7 +4,7 @@ import { $realm } from "./descriptors/$realm.ts";
 import { $role } from "./descriptors/$role.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
-import type { UserAccountInfo } from "./schemas/userAccountInfoSchema.ts";
+import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 
 export * from "./descriptors/$permission.ts";
 export * from "./descriptors/$realm.ts";
@@ -24,7 +24,7 @@ declare module "@alepha/core" {
 	interface Hooks {
 		"security:user:created": {
 			realm: string;
-			user: UserAccountInfo;
+			user: UserAccount;
 		};
 	}
 }

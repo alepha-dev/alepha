@@ -1,7 +1,12 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { SecurityError, type UserAccountInfo } from "@alepha/security";
-import { $route, BadRequestError, UnauthorizedError } from "@alepha/server";
+import { SecurityError, type UserAccount } from "@alepha/security";
+import {
+	$route,
+	BadRequestError,
+	ForbiddenError,
+	UnauthorizedError,
+} from "@alepha/server";
 import {
 	$cookie,
 	type Cookies,
@@ -28,6 +33,7 @@ export class ReactAuthProvider {
 	protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly serverLinksProvider = $inject(ServerLinksProvider);
+	protected readonly reactAuth = $inject(ReactAuth);
 
 	protected readonly authorizationCode = $cookie({
 		name: "authorizationCode",
@@ -98,11 +104,28 @@ export class ReactAuthProvider {
 		on: "server:onRequest",
 		after: this.serverCookiesProvider,
 		handler: async ({ request }) => {
-			// [feature] forward cookies to request headers
 			const cookies = request.cookies;
+
+			// [feature] csrf protection
+			if (!this.reactAuth.csrfCookie.get({ cookies })) {
+				this.reactAuth.csrfCookie.set(randomState(), {
+					cookies,
+				});
+			}
+
+			// [feature] forward cookies to request headers
 			if (cookies) {
 				const tokens = await this.cookiesToTokens(cookies);
 				if (tokens) {
+					if (
+						request.method === "POST" ||
+						request.method === "PUT" ||
+						request.method === "PATCH" ||
+						request.method === "DELETE"
+					) {
+						this.checkCsrf(cookies, request.headers["x-csrf-token"]);
+					}
+
 					request.headers.authorization = `Bearer ${this.getAccessTokens(tokens)}`;
 					this.log.trace("Access token set in request headers", {
 						provider: tokens.provider,
@@ -157,6 +180,15 @@ export class ReactAuthProvider {
 		this.tokens.del({ cookies });
 	}
 
+	protected async checkCsrf(cookies: Cookies, csrfHeader: string) {
+		const csrfCookie = this.reactAuth.csrfCookie.get({ cookies });
+		if (!csrfCookie || csrfCookie !== csrfHeader) {
+			throw new ForbiddenError(
+				"CSRF token mismatch. Please refresh the page and try again.",
+			);
+		}
+	}
+
 	protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {
 		if (tokens.expires_in && tokens.issued_at) {
 			const gracePeriodSec = 10;
@@ -208,7 +240,23 @@ export class ReactAuthProvider {
 		schema: {
 			response: userinfoResponseSchema,
 		},
-		handler: async ({ user, headers }) => {
+		handler: async ({ user, headers, cookies }) => {
+			const tokens = this.tokens.get({ cookies });
+			if (tokens) {
+				const provider = this.provider(tokens);
+				if (!("realm" in provider.options)) {
+					const user = await provider.user(tokens);
+					const api = await this.serverLinksProvider.getUserApiLinks({
+						authorization: headers.authorization,
+						user,
+					});
+					return {
+						api,
+						user,
+					};
+				}
+			}
+
 			const api = await this.serverLinksProvider.getUserApiLinks({
 				authorization: headers.authorization,
 				user,
@@ -288,9 +336,9 @@ export class ReactAuthProvider {
 				);
 			}
 
-			let user: UserAccountInfo;
+			let user: UserAccount;
 			try {
-				user = await credentials.user(body);
+				user = await credentials.account(body);
 			} catch (e) {
 				throw new UnauthorizedError(`Failed to authenticate user`, {
 					cause: e,
@@ -547,8 +595,9 @@ export class ReactAuthProvider {
 	}
 }
 
-export interface OAuth2UserInfo {
+export interface OAuth2Profile {
 	sub: string; // Subject - unique ID per user (required by OpenID)
+	email?: string;
 	name?: string;
 	given_name?: string;
 	family_name?: string;
@@ -558,7 +607,6 @@ export interface OAuth2UserInfo {
 	profile?: string;
 	picture?: string;
 	website?: string;
-	email?: string;
 	email_verified?: boolean;
 	gender?: string;
 	birthdate?: string; // ISO 8601: YYYY-MM-DD

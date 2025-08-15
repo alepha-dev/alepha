@@ -1,7 +1,8 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { HttpClient } from "@alepha/server";
+import { $cookie } from "@alepha/server-cookies";
 import { LinkProvider } from "@alepha/server-links";
 import type { TokenResponse } from "../schemas/tokenResponseSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
@@ -34,12 +35,25 @@ export class ReactAuth {
 		},
 	});
 
+	public csrfCookie = $cookie({
+		schema: t.string(),
+		httpOnly: false,
+		secure: true,
+		sameSite: "lax",
+	});
+
 	protected readonly onFetchRequest = $hook({
 		on: "client:onRequest",
-		handler: async (event) => {
+		handler: async ({ request }) => {
 			if (this.alepha.isBrowser() && this.user) {
 				// ensure cookies are sent with requests and refresh-able
-				event.request.credentials ??= "include";
+				request.credentials ??= "include";
+
+				const csrfToken = this.csrfCookie.get();
+				if (csrfToken) {
+					request.headers = new Headers(request.headers);
+					request.headers.set("X-CSRF-Token", csrfToken);
+				}
 			}
 		},
 	});

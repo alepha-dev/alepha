@@ -23,7 +23,7 @@ const ProjectActions = () => {
 	};
 
 	return (
-		<Flex fill pad1 pad2h bordered shadow bg rounded>
+		<Flex fill pad1 pad2h bordered shadow card rounded>
 			<ButtonGroup>
 				<Action
 					visibleText={"sm"}
@@ -88,7 +88,7 @@ const CreateTaskButton = () => {
 				onClose={() => setShowDialog(false)}
 				className={"drawer"}
 			>
-				<Flex bg col bordered fill pad2>
+				<Flex bg col bordered fill pad2 overflow>
 					<Flex col style={{ height: 48 }}>
 						<Flex>
 							<Flex fill></Flex>

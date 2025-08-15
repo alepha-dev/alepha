@@ -1,8 +1,7 @@
 import { $module } from "@alepha/core";
 import { AlephaReact } from "@alepha/react";
-import type { UserAccountInfo } from "@alepha/security";
+import type { UserAccount } from "@alepha/security";
 import { AlephaServerCookies } from "@alepha/server-cookies";
-import { AlephaServerSecurity } from "@alepha/server-security";
 import { $auth } from "./descriptors/$auth.ts";
 import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
@@ -17,12 +16,12 @@ export * from "./providers/ReactAuthProvider.ts";
 
 declare module "@alepha/core" {
 	export interface State {
-		user?: UserAccountInfo;
+		user?: UserAccount;
 	}
 }
 declare module "@alepha/react" {
 	interface PageReactContext {
-		user?: UserAccountInfo;
+		user?: UserAccount;
 	}
 }
 
@@ -37,11 +36,5 @@ declare module "@alepha/react" {
 export const AlephaReactAuth = $module({
 	name: "alepha.react.auth",
 	descriptors: [$auth],
-	services: [
-		AlephaReact,
-		AlephaServerSecurity,
-		AlephaServerCookies,
-		ReactAuthProvider,
-		ReactAuth,
-	],
+	services: [AlephaReact, AlephaServerCookies, ReactAuthProvider, ReactAuth],
 });
