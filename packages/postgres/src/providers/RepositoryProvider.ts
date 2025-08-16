@@ -7,38 +7,20 @@ import {
 } from "../descriptors/$repository.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 
-export class RepositoryDescriptorProvider {
+export class RepositoryProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 
-	public get repositories(): RepositoryDescriptor<TableConfig, TObject>[] {
+	protected get repositories(): RepositoryDescriptor<TableConfig, TObject>[] {
 		const list: RepositoryDescriptor<TableConfig, TObject>[] = [];
+
 		for (const descriptor of this.alepha.descriptors($repository)) {
 			if (!list.find((it) => it.table === descriptor.table)) {
 				list.push(descriptor);
 			}
 		}
+
 		return list;
-	}
-
-	constructor() {
-		// TODO: it's time to remove it and use it manually in tests
-
-		// during testing only,
-		if (this.alepha.isTest()) {
-			const afterEach = this.alepha.state("afterEach");
-			// when afterEach hook is available
-			if (afterEach) {
-				// -> clear all repositories after each test
-				afterEach(() => {
-					return this.clearRepositories();
-				});
-			}
-		}
-	}
-
-	public async clearRepositories() {
-		await Promise.all(this.repositories.map((it) => it.clear()));
 	}
 
 	/**
@@ -68,7 +50,7 @@ export class RepositoryDescriptorProvider {
 	}
 
 	/**
-	 * Get all providers from the repositories.
+	 * Get all pg providers from the repositories.
 	 */
 	public getProviders(): PostgresProvider[] {
 		const providers: PostgresProvider[] = [];

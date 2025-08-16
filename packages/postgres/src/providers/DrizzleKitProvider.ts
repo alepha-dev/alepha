@@ -5,12 +5,12 @@ import { sql, Table } from "drizzle-orm";
 import { sqliteTable } from "drizzle-orm/sqlite-core";
 import { schemaToSqliteColumns } from "../helpers/schemaToSqliteColumns.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
-import { RepositoryDescriptorProvider } from "./RepositoryDescriptorProvider.ts";
+import { RepositoryProvider } from "./RepositoryProvider.ts";
 
 export class DrizzleKitProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly repositoryProvider = $inject(RepositoryDescriptorProvider);
+	protected readonly repositoryProvider = $inject(RepositoryProvider);
 
 	public async push(
 		provider: PostgresProvider,

@@ -26,6 +26,9 @@ export const pgAttr = <T extends TSchema, Attr extends PgSymbolKeys>(
 	return type as PgAttr<T, Attr>;
 };
 
+/**
+ * Retrieves the fields of a schema that have a specific attribute.
+ */
 export const getAttrFields = (
 	schema: TObject,
 	name: PgSymbolKeys,

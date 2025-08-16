@@ -1,10 +1,10 @@
 import { Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $repository, pg, pgTableSchema } from "../src";
+import { $entity, $repository, pg } from "../src";
 
-const users = pgTableSchema(
-	"users",
-	t.object({
+const users = $entity({
+	name: "users",
+	schema: t.object({
 		id: pg.identityPrimaryKey(),
 		__v: pg.version(),
 		name: t.string(),
@@ -12,11 +12,11 @@ const users = pgTableSchema(
 			onDelete: "set null",
 		}),
 	}),
-);
+});
 
-const posts = pgTableSchema(
-	"posts",
-	t.object({
+const posts = $entity({
+	name: "posts",
+	schema: t.object({
 		id: pg.identityPrimaryKey(),
 		__v: pg.version(),
 		userId: pg.ref(t.int(), () => users.id, {
@@ -26,7 +26,7 @@ const posts = pgTableSchema(
 			onDelete: "cascade",
 		}),
 	}),
-);
+});
 
 class App {
 	users = $repository(users);

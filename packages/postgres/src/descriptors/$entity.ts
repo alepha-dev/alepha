@@ -186,7 +186,7 @@ export type Entity<T extends TObject> = PgTableWithColumnsAndSchema<
  * @param schema The json schema of the table.
  * @param extraConfig Extra configuration for the table.
  */
-export const pgTableSchema = <
+const pgTableSchema = <
 	TTableName extends string,
 	TSchema extends TObject,
 	TColumnsMap extends FromSchema<TSchema>,

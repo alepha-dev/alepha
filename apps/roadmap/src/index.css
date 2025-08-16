@@ -84,11 +84,11 @@ pre {
 @media (max-width: 768px) {
 	.bp6-button.hide-sm-up-text {
 		.bp6-button-text {
-			display: none !important;
+			display: none;
 		}
 		.bp6-icon {
-			margin-left: 0 !important;
-			margin-right: 0 !important;
+			margin-left: 0;
+			margin-right: 0;
 		}
 	}
 }
@@ -96,11 +96,11 @@ pre {
 @media (max-width: 990px) {
 	.bp6-button.hide-md-up-text {
 		.bp6-button-text {
-			display: none !important;
+			display: none;
 		}
 		.bp6-icon {
-			margin-left: 0 !important;
-			margin-right: 0 !important;
+			margin-left: 0;
+			margin-right: 0;
 		}
 	}
 }
@@ -108,11 +108,11 @@ pre {
 @media (max-width: 1200px) {
 	.bp6-button.hide-lg-up-text {
 		.bp6-button-text {
-			display: none !important;
+			display: none;
 		}
 		.bp6-icon {
-			margin-left: 0 !important;
-			margin-right: 0 !important;
+			margin-left: 0;
+			margin-right: 0;
 		}
 	}
 }

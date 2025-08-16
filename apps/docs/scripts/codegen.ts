@@ -152,6 +152,7 @@ class App {
 					for (const it of list) {
 						const content = it.content
 							.replaceAll("`", "\\`")
+							// biome-ignore lint/suspicious/noUselessEscapeInString: ...
 							.replaceAll(`\$\{`, "\\${")
 							.replaceAll("\t", "  ");
 

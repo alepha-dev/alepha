@@ -7,7 +7,7 @@ import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
-import { RepositoryDescriptorProvider } from "./providers/RepositoryDescriptorProvider.ts";
+import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -31,8 +31,7 @@ export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
-export * from "./providers/RepositoryDescriptorProvider.ts";
-export * from "./schemas/entitySchema.ts";
+export * from "./providers/RepositoryProvider.ts";
 export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
 export * from "./types/schema.ts";
@@ -40,11 +39,41 @@ export * from "./types/schema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides PostgreSQL (and SQLite!) database integration with type-safe ORM capabilities through Drizzle.
+ * Postgres client based on Drizzle ORM, Alepha type-safe friendly.
  *
- * The postgres module enables declarative database operations using descriptors like `$entity`, `$repository`.
- * It offers automatic schema generation, type-safe queries, transactions,
- * and database migrations with support for PostgreSQLs.
+ * ```ts
+ * const users = $entity({
+ *   name: "users",
+ *   schema: t.object({
+ *     id: pg.primaryKey(),
+ *     name: t.string(),
+ *     email: t.string(),
+ *   }),
+ * });
+ *
+ * class Db {
+ *   users = $repository(users);
+ * }
+ *
+ * const db = alepha.inject(Db);
+ * const user = await db.users.one({ name: { eq: "John Doe" } });
+ * ```
+ *
+ * This is not a full ORM, but rather a set of tools to work with Postgres databases in a type-safe way.
+ *
+ * It provides:
+ * - A type-safe way to define entities and repositories. (via `$entity` and `$repository`)
+ * - Custom query builders and filters.
+ * - Built-in special columns like `createdAt`, `updatedAt`, `deletedAt`, `version`.
+ * - Automatic JSONB support.
+ * - Automatic synchronization of entities with the database schema (for testing and development).
+ * - Fallback to raw SQL via Drizzle ORM `sql` function.
+ *
+ * Migrations are supported via Drizzle ORM, you need to use the `drizzle-kit` CLI tool to generate and run migrations.
+ *
+ * > It's look like working with MongoDB, but with Postgres.
+ *
+ * Relations are NOT SUPPORTED yet. If you need relations, please use the `drizzle-orm` package directly.
  *
  * @see {@link $entity}
  * @see {@link $repository}
@@ -55,7 +84,7 @@ export const AlephaPostgres = $module({
 	name: "alepha.postgres",
 	descriptors: [$repository, $sequence, $entity],
 	services: [
-		RepositoryDescriptorProvider,
+		RepositoryProvider,
 		PostgresProvider,
 		NodePostgresProvider,
 		NodeSqliteProvider,
@@ -70,7 +99,7 @@ export const AlephaPostgres = $module({
 			}),
 		);
 
-		alepha.with(RepositoryDescriptorProvider);
+		alepha.with(RepositoryProvider);
 		alepha.with(DrizzleKitProvider);
 
 		const memory = env.DATABASE_URL.includes(":memory:");

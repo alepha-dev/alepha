@@ -7,7 +7,6 @@ import * as pg from "drizzle-orm/sqlite-core";
 import {
 	PG_CREATED_AT,
 	PG_IDENTITY,
-	PG_MANY,
 	PG_PRIMARY_KEY,
 	PG_REF,
 	PG_SERIAL,
@@ -19,6 +18,8 @@ import { camelToSnakeCase, type FromSchema } from "./schemaToPgColumns.ts";
 
 /**
  * Proof of concept. Nothing serious.
+ *
+ * This function converts a Typebox schema to SQLite columns.
  */
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -26,9 +27,8 @@ import { camelToSnakeCase, type FromSchema } from "./schemaToPgColumns.ts";
 export const schemaToSqliteColumns = <T extends TObject>(
 	schema: T,
 ): FromSchema<T> => {
-	return Object.entries(schema.properties)
-		.filter(([, value]) => !(PG_MANY in value))
-		.reduce<Partial<FromSchema<T>>>((columns, [key, value]) => {
+	return Object.entries(schema.properties).reduce<Partial<FromSchema<T>>>(
+		(columns, [key, value]) => {
 			let col = mapFieldToSqliteColumn(key, value);
 
 			if (value.default != null) {
@@ -52,7 +52,9 @@ export const schemaToSqliteColumns = <T extends TObject>(
 				...columns,
 				[key]: col,
 			};
-		}, {}) as FromSchema<T>;
+		},
+		{},
+	) as FromSchema<T>;
 };
 
 /**

@@ -172,10 +172,14 @@ export class BatchDescriptor<
 			result = await this.alepha.context.run(() =>
 				this.retry.run(itemsToProcess),
 			);
-			resolversToProcess.forEach(({ resolve }) => resolve(result));
+			for (const { resolve } of resolversToProcess) {
+				resolve(result);
+			}
 		} catch (error) {
 			this.log.error(`Batch handler failed`, error);
-			resolversToProcess.forEach(({ reject }) => reject(error));
+			for (const { reject } of resolversToProcess) {
+				reject(error);
+			}
 		} finally {
 			promise.resolve(result);
 			this.activeHandlers = this.activeHandlers.filter((it) => it !== promise);

@@ -6,38 +6,29 @@ import type {
 	ObjectOptions,
 	Static,
 	StringOptions,
-	TArray,
 	TInteger,
 	TNumber,
 	TObject,
-	TOptionalWithFlag,
-	TProperties,
 	TSchema,
 	TString,
 } from "@sinclair/typebox";
-import type { TableConfig } from "drizzle-orm/pg-core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 import {
 	PG_CREATED_AT,
 	PG_DEFAULT,
 	PG_IDENTITY,
-	PG_MANY,
 	PG_PRIMARY_KEY,
 	PG_REF,
 	PG_UPDATED_AT,
 	PG_VERSION,
 	type PgDefault,
 	type PgIdentityOptions,
-	type PgMany,
 	type PgPrimaryKey,
 	type PgRef,
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { TInsertObject } from "../interfaces/TInsertObject.ts";
-import type { TEntity } from "../schemas/entitySchema.ts";
-import { legacyIdSchema } from "../schemas/legacyIdSchema.ts";
 import type { TPage } from "../schemas/pageSchema.ts";
 import { pageSchema } from "../schemas/pageSchema.ts";
 
@@ -81,30 +72,51 @@ export class PostgresTypeProvider {
 		pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 
 	/**
-	 *
+	 * Creates a primary key for a given type. Supports:
+	 * - `t.int()` (default)
+	 * - `t.bigint()`
+	 * - `t.uuid()`
 	 */
+	public primaryKey(): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
 		type: TString,
+		options?: StringOptions,
 	): PgAttr<PgAttr<TString, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
 		type: TInteger,
+		options?: IntegerOptions,
+		identity?: PgIdentityOptions,
 	): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
 		type: TNumber,
+		options?: NumberOptions,
+		identity?: PgIdentityOptions,
 	): PgAttr<PgAttr<TNumber, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
-		type: TSchema,
+		type?: TSchema,
+		options?: IntegerOptions | NumberOptions | StringOptions,
+		identity?: PgIdentityOptions,
 	): PgAttr<PgAttr<TSchema, PgPrimaryKey>, PgDefault> {
-		if (TypeGuard.IsString(type) && type.format === "uuid") {
-			return this.uuidPrimaryKey();
-		} else if (TypeGuard.IsInteger(type)) {
-			return this.identityPrimaryKey();
+		if (!type || TypeGuard.IsInteger(type)) {
+			return pgAttr(
+				pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+				PG_DEFAULT,
+			);
+		} else if (TypeGuard.IsString(type) && type.format === "uuid") {
+			return pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 		} else if (
 			TypeGuard.IsNumber(type) &&
 			PRIMITIVE in type &&
 			type[PRIMITIVE] === "bigint"
 		) {
-			return this.bigIdentityPrimaryKey();
+			return pgAttr(
+				pgAttr(
+					pgAttr(t.bigint(options), PG_PRIMARY_KEY),
+					PG_IDENTITY,
+					identity,
+				),
+				PG_DEFAULT,
+			);
 		}
 		throw new Error(`Unsupported type for primary key: ${type}`);
 	}
@@ -144,24 +156,6 @@ export class PostgresTypeProvider {
 		pgAttr(pgAttr(t.datetime(options), PG_UPDATED_AT), PG_DEFAULT);
 
 	/**
-	 * @deprecated Build your own entity schema.
-	 */
-	public readonly entity = <T extends TProperties>(
-		properties: T,
-		options?: ObjectOptions,
-	): TEntity<T> => {
-		return t.object(
-			{
-				id: legacyIdSchema,
-				createdAt: this.createdAt(),
-				updatedAt: this.updatedAt(),
-				...properties,
-			},
-			options,
-		);
-	};
-
-	/**
 	 * Creates an insert schema for a given object schema.
 	 * - pg.default will be optional
 	 */
@@ -171,10 +165,6 @@ export class PostgresTypeProvider {
 
 		for (const key in obj.properties) {
 			const prop = obj.properties[key];
-
-			if (PG_MANY in prop) {
-				continue;
-			}
 
 			if (PG_DEFAULT in prop) {
 				properties[key] = t.optional(prop);
@@ -192,11 +182,6 @@ export class PostgresTypeProvider {
 			properties,
 		} as unknown as TInsertObject<T>;
 	};
-
-	/**
-	 * @alias insert
-	 */
-	public readonly input = this.insert;
 
 	/**
 	 * Creates a page schema for a given object schema.
@@ -223,31 +208,6 @@ export class PostgresTypeProvider {
 			ref,
 			actions,
 		});
-	};
-
-	/**
-	 * @alias ref
-	 */
-	public references = this.ref;
-
-	/**
-	 * Creates a reference to another table or schema with a foreign key.
-	 *
-	 * @experimental
-	 */
-	public readonly many = <T extends TObject, Config extends TableConfig>(
-		table: PgTableWithColumnsAndSchema<Config, T>,
-		foreignKey: keyof T["properties"],
-	): TOptionalWithFlag<PgAttr<PgAttr<TArray<T>, PgMany>, PgDefault>, true> => {
-		return this.attr(
-			this.attr(t.optional(t.array(table.$schema)), PG_DEFAULT),
-			PG_MANY,
-			{
-				table,
-				schema: table.$schema,
-				foreignKey: foreignKey as string,
-			},
-		);
 	};
 }
 

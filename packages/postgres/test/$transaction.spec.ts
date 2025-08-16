@@ -1,23 +1,30 @@
 import { $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
-import { $repository, $transaction, pg, pgTableSchema } from "../src";
+import { $entity, $repository, $transaction, pg } from "../src";
 import { PgConflictError } from "../src/errors/PgConflictError.ts";
+
+const a = $entity({
+	name: "a",
+	schema: t.object({
+		id: pg.primaryKey(
+			t.int(),
+			{},
+			{
+				mode: "byDefault",
+			},
+		),
+		v: pg.version(),
+		counter: t.int(),
+	}),
+});
 
 class App {
 	dt = $inject(DateTimeProvider);
 
-	repository = $repository(
-		pgTableSchema(
-			"a",
-			pg.entity({
-				v: pg.version(),
-				counter: t.int(),
-			}),
-		),
-	);
+	repository = $repository(a);
 
-	inc = $transaction({
+	runIncrementTest = $transaction({
 		handler: async (tx, id: number, val: number, waitMs = 0) => {
 			const e = await this.repository.findById(id, {
 				tx,
@@ -30,7 +37,7 @@ class App {
 		},
 	});
 
-	run = $transaction({
+	runCollisionTest = $transaction({
 		handler: async (tx) => {
 			await this.repository.deleteMany({}, { tx });
 			const { id } = await this.repository.create({ counter: 0 }, { tx });
@@ -40,14 +47,15 @@ class App {
 	});
 }
 
-const alepha = Alepha.create();
-const app = alepha.inject(App);
-
 test("$transaction - mismatch", { timeout: 10000 }, async () => {
+	const alepha = Alepha.create();
+	const app = alepha.inject(App);
+	await alepha.start();
+
 	const { id } = await app.repository.create({ counter: 0 });
 
-	const tx = app.inc(id, 10, 200);
-	await app.inc(id, 100);
+	const tx = app.runIncrementTest(id, 10, 200);
+	await app.runIncrementTest(id, 100);
 	await tx;
 
 	const r3 = await app.repository.findById(id);
@@ -56,9 +64,13 @@ test("$transaction - mismatch", { timeout: 10000 }, async () => {
 });
 
 test("$transaction - rollback", { timeout: 10000 }, async () => {
+	const alepha = Alepha.create();
+	const app = alepha.inject(App);
+	await alepha.start();
+
 	await app.repository.create({ counter: 0 });
 
-	await expect(() => app.run()).rejects.toThrow(PgConflictError);
+	await expect(() => app.runCollisionTest()).rejects.toThrow(PgConflictError);
 
 	expect(await app.repository.count()).toBe(1);
 });

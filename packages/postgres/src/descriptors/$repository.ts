@@ -2,6 +2,7 @@ import {
 	$env,
 	$inject,
 	Alepha,
+	AlephaError,
 	createDescriptor,
 	Descriptor,
 	KIND,
@@ -54,7 +55,6 @@ import type {
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
 import {
-	PG_MANY,
 	PG_PRIMARY_KEY,
 	PG_UPDATED_AT,
 	PG_VERSION,
@@ -66,7 +66,6 @@ import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import type { NullifyIfOptional } from "../helpers/nullToUndefined.ts";
 import { nullToUndefined } from "../helpers/nullToUndefined.ts";
 import { getAttrFields } from "../helpers/pgAttr.ts";
-import { aggregateRowsByRelation, withJoins } from "../helpers/relations.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { InferInsert } from "../interfaces/InferInsert.ts";
@@ -138,7 +137,7 @@ export class RepositoryDescriptor<
 	public readonly schema = this.options.table.$schema;
 	public readonly insertSchema = this.options.table.$insertSchema;
 
-	// TODO: count should be an options and default=false?
+	// TODO: replace with .paginate(withCount=false)
 	protected readonly env = $env(
 		t.object({
 			POSTGRES_PAGINATION_COUNT_ENABLED: t.boolean({ default: true }),
@@ -179,10 +178,6 @@ export class RepositoryDescriptor<
 		return this.provider.db;
 	}
 
-	protected organization(): PgColumn {
-		throw new Error("Organization not implemented");
-	}
-
 	/**
 	 * Execute a SQL query.
 	 *
@@ -202,7 +197,7 @@ export class RepositoryDescriptor<
 			typeof query === "function" ? query(this.table, this.db) : query;
 
 		if (typeof raw === "string" && raw.includes("[object Object]")) {
-			throw new Error(
+			throw new AlephaError(
 				"Invalid SQL query. Did you forget to call the 'sql' function?",
 			);
 		}
@@ -257,6 +252,15 @@ export class RepositoryDescriptor<
 		return (opts.tx ?? this.db).select().from(this.table as PgTable);
 	}
 
+	protected selectDistinct(
+		opts: StatementOptions = {},
+		fields: SelectedFields,
+	) {
+		return (opts.tx ?? this.db)
+			.selectDistinct(fields)
+			.from(this.table as PgTable);
+	}
+
 	/**
 	 * Start an INSERT query on the table.
 	 *
@@ -304,19 +308,18 @@ export class RepositoryDescriptor<
 		}
 
 		const builder = query.distinct
-			? (opts.tx ?? this.db)
-					.selectDistinct(
-						typeof query.columns === "undefined"
-							? {}
-							: query.columns.reduce((acc, key) => {
-									const col = this.col(key);
-									return {
-										...acc,
-										[col.name]: col,
-									};
-								}, {} as SelectedFields),
-					)
-					.from(this.table as PgTable)
+			? this.selectDistinct(
+					opts,
+					typeof query.columns === "undefined"
+						? {}
+						: query.columns.reduce((acc, key) => {
+								const col = this.col(key);
+								return {
+									...acc,
+									[col.name]: col,
+								};
+							}, {} as SelectedFields),
+				)
 			: this.select(opts);
 
 		if (query.where) {
@@ -356,35 +359,14 @@ export class RepositoryDescriptor<
 			}
 		}
 
-		if (opts.organization) {
-			const col = this.organization();
-			if (col) {
-				builder.where(() => eq(col, opts.organization));
-			}
+		// TODO: hook for enhancing the query (organization, soft delete, etc.)
+
+		try {
+			const rows = await builder.execute();
+			return rows.map((row) => this.clean(row, schema));
+		} catch (error) {
+			throw new PgError("Query select has failed", error as Error);
 		}
-
-		const pgManyFields = withJoins(
-			builder,
-			query as any,
-			this.schema,
-			this.id.col,
-		);
-
-		return builder
-			.execute()
-			.then((rows) =>
-				aggregateRowsByRelation(
-					rows,
-					pgManyFields,
-					query as any,
-					this.tableName,
-					this.id.key as string,
-				),
-			)
-			.then((rows) => rows.map((row) => this.clean(row, schema)))
-			.catch((error) => {
-				throw new PgError("Query has failed", error);
-			});
 	}
 
 	/**
@@ -401,6 +383,7 @@ export class RepositoryDescriptor<
 		const [entity] = await this.find({ where: where as any, limit: 1 }, opts);
 
 		if (!entity) {
+			// TODO: enhance error message when finding by ID
 			throw new PgEntityNotFoundError(this.tableName);
 		}
 
@@ -534,15 +517,9 @@ export class RepositoryDescriptor<
 						(error.cause as Error)?.message.includes(msg) ||
 						error.message.includes(msg)
 					) {
-						throw new PgConflictError(
-							`Failed to create entity - ${error.message}`,
-							error,
-						);
+						throw new PgConflictError("Entity already exists", error);
 					}
-					throw new PgError(
-						`Failed to create entity - ${error.message}`,
-						error,
-					);
+					throw new PgError("Failed to create entity", error);
 				}
 				throw error;
 			});
@@ -561,7 +538,7 @@ export class RepositoryDescriptor<
 	): Promise<Static<EntitySchema>[]> {
 		return await this.insert(opts)
 			.values(values.map((data) => this.cast(data, true)))
-			.returning(this.table)
+			.returning(this.table) // TODO: return only the ID
 			.then((rows) => rows.map((it) => this.clean(it)));
 	}
 
@@ -666,12 +643,10 @@ export class RepositoryDescriptor<
 		where: PgQueryWhere<Static<EntitySchema>>,
 		data: Partial<NullifyIfOptional<Static<EntitySchema>>>,
 		opts: StatementOptions = {},
-	): Promise<Static<EntitySchema>[]> {
-		return await this.update(opts)
+	): Promise<void> {
+		await this.update(opts)
 			.set(data as PgUpdateSetSource<PgTableWithColumns<EntityTableConfig>>)
-			.where(this.jsonQueryToSql(where))
-			.returning(this.table)
-			.then((rows) => rows.map((it) => this.clean(it)));
+			.where(this.jsonQueryToSql(where));
 	}
 
 	/**
@@ -689,7 +664,6 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Delete all entities.
-	 * @param opts
 	 */
 	public clear(opts: StatementOptions = {}) {
 		return this.deleteMany({}, opts);
@@ -735,6 +709,8 @@ export class RepositoryDescriptor<
 		);
 	}
 
+	// -------------------------------------------------------------------------------------------------------------------
+
 	/**
 	 * Convert a query object to a SQL query.
 	 *
@@ -748,39 +724,12 @@ export class RepositoryDescriptor<
 		col: (key: string) => PgColumn = (key) => this.col(key),
 	): SQL | undefined {
 		const conditions: SQL[] = [];
-		const pgManyRelationFields = getAttrFields(schema, PG_MANY);
 		const keys = Object.keys(query) as Array<
 			keyof PgQueryWhere<Static<EntitySchema>> & string
 		>;
 
-		const getRelation = (key: string) => {
-			for (const rel of pgManyRelationFields) {
-				if (rel.key === key) {
-					return rel;
-				}
-			}
-		};
-
 		for (const key of keys) {
 			const operator = query[key];
-
-			const rel = getRelation(key);
-			if (rel) {
-				const nestedQueryWhere = query[rel.key] as any;
-				const nestedTable = rel.data.table;
-
-				const sql = this.jsonQueryToSql(
-					nestedQueryWhere,
-					rel.data.schema,
-					(k) => nestedTable[k],
-				);
-
-				if (sql) {
-					conditions.push(sql);
-				}
-
-				continue;
-			}
 
 			if (Array.isArray(operator)) {
 				const operations = operator.map((it) => {
@@ -1063,20 +1012,4 @@ export interface StatementOptions {
 	 * Lock strength.
 	 */
 	for?: LockStrength | { config: LockConfig; strength: LockStrength };
-
-	/**
-	 * Organization ID.
-	 *
-	 * Multi-tenant support.
-	 *
-	 * If set, it will be used to filter the results by organization.
-	 */
-	organization?: string;
-}
-
-export interface PgAttrField {
-	key: string;
-	type: TSchema;
-	data: any;
-	nested?: any[];
 }

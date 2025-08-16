@@ -1,13 +1,16 @@
 import { Alepha, t } from "@alepha/core";
 import { expect, test } from "vitest";
-import { $repository, pg, pgTableSchema } from "../src";
-import { legacyIdSchema } from "../src/schemas/legacyIdSchema.ts";
+import { $entity, $repository, pg } from "../src";
 
-const testSchema = pg.entity({
+const testSchema = t.object({
+	id: pg.primaryKey(),
 	name: t.string(),
 });
 
-const testEntity = pgTableSchema("test", testSchema);
+const testEntity = $entity({
+	name: "test",
+	schema: testSchema,
+});
 
 test("Repository - id serial", async () => {
 	class App {
@@ -21,7 +24,6 @@ test("Repository - id serial", async () => {
 	await alepha.start();
 
 	expect(app.repository.id.key).toEqual("id");
-	expect(app.repository.id.type).toEqual(legacyIdSchema);
 
 	const it = await app.repository.create({ name: "test" });
 
@@ -42,7 +44,10 @@ test("Repository - id uuid", async () => {
 		uuid: pg.uuidPrimaryKey(),
 		name: t.string(),
 	});
-	const entity = pgTableSchema("test", schema);
+	const entity = $entity({
+		name: "test",
+		schema,
+	});
 	class App {
 		repository = $repository(entity);
 	}

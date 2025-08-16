@@ -8,7 +8,6 @@ import * as pg from "drizzle-orm/pg-core";
 import {
 	PG_CREATED_AT,
 	PG_IDENTITY,
-	PG_MANY,
 	PG_PRIMARY_KEY,
 	PG_REF,
 	PG_SERIAL,
@@ -20,14 +19,13 @@ import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";
 
 /**
- * Convert a Typebox Schema to Drizzle ORM Postgres columns (yes)
+ * Convert a Typebox Schema to Drizzle ORM Postgres columns
  */
 export const schemaToPgColumns = <T extends TObject>(
 	schema: T,
 ): FromSchema<T> => {
-	return Object.entries(schema.properties)
-		.filter(([, value]) => !(PG_MANY in value))
-		.reduce<Partial<FromSchema<T>>>((columns, [key, value]) => {
+	return Object.entries(schema.properties).reduce<Partial<FromSchema<T>>>(
+		(columns, [key, value]) => {
 			let col = mapFieldToColumn(key, value);
 
 			if (value.default != null) {
@@ -51,7 +49,9 @@ export const schemaToPgColumns = <T extends TObject>(
 				...columns,
 				[key]: col,
 			};
-		}, {}) as FromSchema<T>;
+		},
+		{},
+	) as FromSchema<T>;
 };
 
 /**
@@ -79,9 +79,11 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 		}
 
 		if (PG_IDENTITY in value) {
-			return pg
-				.integer()
-				.generatedAlwaysAsIdentity(value[PG_IDENTITY] as PgIdentityOptions);
+			const options = value[PG_IDENTITY] as PgIdentityOptions;
+			if (options.mode === "byDefault") {
+				return pg.integer().generatedByDefaultAsIdentity(options);
+			}
+			return pg.integer().generatedAlwaysAsIdentity(options);
 		}
 
 		return pg.integer(key);
@@ -89,9 +91,13 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 
 	if (TypeGuard.IsNumber(value)) {
 		if (PG_IDENTITY in value) {
-			return pg
-				.bigint({ mode: "number" })
-				.generatedAlwaysAsIdentity(value[PG_IDENTITY] as PgIdentityOptions);
+			const options = value[PG_IDENTITY] as PgIdentityOptions;
+			if (options.mode === "byDefault") {
+				return pg
+					.bigint({ mode: "number" })
+					.generatedByDefaultAsIdentity(options);
+			}
+			return pg.bigint({ mode: "number" }).generatedAlwaysAsIdentity(options);
 		}
 
 		if (PRIMITIVE in value && value[PRIMITIVE] === "bigint") {

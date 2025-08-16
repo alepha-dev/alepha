@@ -1,3 +1,5 @@
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Replaces all null values in an object with undefined.
  * We need this for converting all nulls from Drizzle outputs.

@@ -1,6 +1,6 @@
 import { useRouter, useRouterState, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
-import { Divider, Icon, Menu, MenuItem, Popover } from "@blueprintjs/core";
+import { Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
 import { Blank, Plus, Slash, TickCircle } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import Action from "./Action.tsx";
