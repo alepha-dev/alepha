@@ -1,18 +1,6 @@
 import { Flex } from "@alepha/react-flex";
+import { Button, ButtonGroup, Classes, Divider } from "@blueprintjs/core";
 import {
-	Blockquote,
-	Button,
-	ButtonGroup,
-	Classes,
-	Divider,
-} from "@blueprintjs/core";
-import {
-	AlignCenter,
-	AlignLeft,
-	AlignmentHorizontalCenter,
-	AlignmentLeft,
-	AlignmentRight,
-	AlignRight,
 	Bold,
 	Citation,
 	Clean,

@@ -1,6 +1,6 @@
 import { useActive, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
-import { Icon, Popover } from "@blueprintjs/core";
+import { Popover } from "@blueprintjs/core";
 import { Clean, HighPriority } from "@blueprintjs/icons";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";

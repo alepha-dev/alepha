@@ -1,7 +1,7 @@
 import { useRouterEvents, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Drawer, Menu } from "@blueprintjs/core";
+import { Button, Drawer } from "@blueprintjs/core";
 import { Cross, Menu as MenuIcon } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { I18n } from "../../services/I18n.ts";

@@ -1,5 +1,5 @@
 import { Flex, Text } from "@alepha/react-flex";
-import { Collapse, Icon } from "@blueprintjs/core";
+import { Collapse } from "@blueprintjs/core";
 import { Minus, Plus } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { Task } from "../../../api/providers/Db.ts";

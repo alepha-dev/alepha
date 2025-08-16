@@ -8,7 +8,7 @@ import {
 } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
+import { Button, Divider, Drawer } from "@blueprintjs/core";
 import {
 	BankAccount,
 	Cross,

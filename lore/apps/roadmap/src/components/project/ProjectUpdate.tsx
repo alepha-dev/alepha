@@ -26,8 +26,6 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 			public: t.optional(t.boolean()),
 		}),
 		handler: async (values) => {
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-
 			const project = await projectApi.updateProjectById({
 				params: { id: props.project.id },
 				body: values,
