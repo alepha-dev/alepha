@@ -1,10 +1,9 @@
-import { type TObject, t } from "@alepha/core";
+import { t } from "@alepha/core";
 import { useAlepha, useClient } from "@alepha/react";
 import { Flex } from "@alepha/react-flex";
-import { FormState, useForm, useFormState } from "@alepha/react-form";
-import type { FormCtrl } from "@alepha/react-form/src/services/FormCtrl.ts";
+import { FormState, useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
-import type { ReactNode } from "react";
+import { FloppyDisk } from "@blueprintjs/icons";
 import type ProjectApi from "../../api/ProjectApi.ts";
 import type { Project } from "../../api/providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -61,7 +60,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 				<FormState form={form}>
 					{({ loading, dirty }) => (
 						<Action
-							icon="floppy-disk"
+							icon={<FloppyDisk />}
 							type="submit"
 							loading={loading}
 							disabled={loading || !dirty}

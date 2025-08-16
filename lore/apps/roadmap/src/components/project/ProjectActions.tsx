@@ -2,6 +2,14 @@ import { useClient, useRouter, useStore } from "@alepha/react";
 import { Flex } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Button, ButtonGroup, Drawer } from "@blueprintjs/core";
+import {
+	Cog,
+	Cross,
+	PanelTable,
+	People,
+	Plus,
+	TimelineLineChart,
+} from "@blueprintjs/icons";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type TaskApi from "../../api/TaskApi.ts";
@@ -27,28 +35,28 @@ const ProjectActions = () => {
 			<ButtonGroup>
 				<Action
 					visibleText={"sm"}
-					icon={"panel-table"}
+					icon={<PanelTable />}
 					variant={"minimal"}
 					text={tr("project.menu.board")}
 					href={router.path("projectBoard", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
-					icon={"people"}
+					icon={<People />}
 					variant={"minimal"}
 					text={tr("project.menu.players")}
 					href={router.path("projectPlayers", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
-					icon={"timeline-line-chart"}
+					icon={<TimelineLineChart />}
 					variant={"minimal"}
 					text={tr("project.menu.analytics")}
 					href={router.path("projectAnalytics", opts)}
 				/>
 				<Action
 					visibleText={"sm"}
-					icon={"cog"}
+					icon={<Cog />}
 					variant={"minimal"}
 					text={tr("project.menu.settings")}
 					href={router.path("projectSettings", opts)}
@@ -78,7 +86,7 @@ const CreateTaskButton = () => {
 				visibleText={"lg"}
 				intent={"success"}
 				disabled={!client.createTask.can()}
-				icon="plus"
+				icon={<Plus />}
 				onClick={() => setShowDialog(true)}
 			>
 				{tr("project.menu.create-task")}
@@ -95,7 +103,7 @@ const CreateTaskButton = () => {
 							<Flex>
 								<Button
 									variant={"minimal"}
-									icon={"cross"}
+									icon={<Cross />}
 									onClick={() => setShowDialog(false)}
 								/>
 							</Flex>

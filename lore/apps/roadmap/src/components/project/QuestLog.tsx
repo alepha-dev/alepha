@@ -2,6 +2,16 @@ import { useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { InputGroup, Menu, MenuItem, Popover } from "@blueprintjs/core";
+import {
+	CollapseAll,
+	ExpandAll,
+	GitRepo,
+	HighPriority,
+	More,
+	Search,
+	Sort,
+	SortAlphabetical,
+} from "@blueprintjs/icons";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
 import TaskList from "./task/TaskList.tsx";
@@ -23,12 +33,9 @@ const QuestLog = () => {
 			overflow
 		>
 			<Flex pad1 gap1>
-				{/*<Flex center pad2h col visible={"xl"}>*/}
-				{/*	<Icon icon={"git-repo"} size={24} />*/}
-				{/*	<Text small bold>*/}
-				{/*		{tr("quest-log.title")}*/}
-				{/*	</Text>*/}
-				{/*</Flex>*/}
+				<Flex center pad1h col visible={"xl"}>
+					<GitRepo size={24} />
+				</Flex>
 				<Flex shadow bg bordered rounded fill centerX>
 					<Flex pad2h gap1 center>
 						<Text small>{tr("quest-log.quests")}</Text>
@@ -40,12 +47,12 @@ const QuestLog = () => {
 					<Flex pad1h>
 						<Action
 							disabled={tasks.length === 0}
-							icon={"expand-all"}
+							icon={<ExpandAll />}
 							variant={"minimal"}
 						/>
 						<Action
 							disabled={tasks.length === 0}
-							icon={"collapse-all"}
+							icon={<CollapseAll />}
 							variant={"minimal"}
 						/>
 						<Popover
@@ -54,18 +61,18 @@ const QuestLog = () => {
 								<Menu>
 									<MenuItem
 										text={"Sort by"}
-										icon={"sort"}
+										icon={<Sort />}
 										popoverProps={{
 											position: "right",
 										}}
 									>
-										<MenuItem text={"Name"} icon={"sort-alphabetical"} />
-										<MenuItem text={"Priority"} icon={"high-priority"} />
+										<MenuItem text={"Name"} icon={<SortAlphabetical />} />
+										<MenuItem text={"Priority"} icon={<HighPriority />} />
 									</MenuItem>
 								</Menu>
 							}
 						>
-							<Action disabled icon={"more"} variant={"minimal"} />
+							<Action icon={<More />} variant={"minimal"} />
 						</Popover>
 					</Flex>
 				</Flex>
@@ -75,7 +82,7 @@ const QuestLog = () => {
 					disabled={tasks.length === 0}
 					placeholder={tr("quest-log.search")}
 					fill
-					leftIcon={"search"}
+					leftIcon={<Search />}
 					round
 				/>
 			</Flex>

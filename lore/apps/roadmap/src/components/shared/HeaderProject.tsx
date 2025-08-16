@@ -1,6 +1,7 @@
 import { useRouter, useRouterState, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Divider, Icon, Menu, MenuItem, Popover } from "@blueprintjs/core";
+import { Blank, Plus, Slash, TickCircle } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import Action from "./Action.tsx";
 
@@ -19,7 +20,7 @@ const HeaderProject = () => {
 			<MenuItem
 				key={id}
 				intent={pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
-				icon={pathname.startsWith(`/p/${id}`) ? "tick-circle" : "blank"}
+				icon={pathname.startsWith(`/p/${id}`) ? <TickCircle /> : <Blank />}
 				text={label}
 				onClick={() => router.go(`/p/${id}`)}
 			/>
@@ -28,7 +29,7 @@ const HeaderProject = () => {
 
 	return (
 		<Flex gap1 center>
-			<Icon icon={"slash"} />
+			<Slash />
 			<Flex>
 				<Popover
 					position={"bottom"}
@@ -39,7 +40,7 @@ const HeaderProject = () => {
 							<Divider />
 							<MenuItem
 								text={"Add Project"}
-								icon={"plus"}
+								icon={<Plus />}
 								href={router.path("projectCreate")}
 							/>
 						</Menu>

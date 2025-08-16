@@ -7,6 +7,7 @@ import { createElement } from "react";
 import type ProjectApi from "./api/ProjectApi.ts";
 import type TaskApi from "./api/TaskApi.ts";
 import type { UserApi } from "./api/UserApi.ts";
+import ErrorPage from "./components/shared/ErrorPage.tsx";
 import { Theme } from "./services/Theme.ts";
 
 export class AppRouter {
@@ -51,12 +52,21 @@ export class AppRouter {
 		lazy: () => import("./components/Layout.tsx"),
 		resolve: async ({ user }) => {
 			if (user) {
-				this.alepha.state("user.projects", await this.projectApi.getProjects());
+				this.alepha.state(
+					"user.projects",
+					await this.projectApi.getMyProjects(),
+				);
 			}
 		},
 		errorHandler: (error, ctx) => {
 			if (HttpError.is(error, 401)) {
 				return new Redirection(`/login?r=${ctx.url.pathname}`);
+			}
+			if (this.alepha.isProduction()) {
+				return createElement(ErrorPage, {
+					error,
+					alepha: this.alepha,
+				});
 			}
 		},
 	});
@@ -97,15 +107,20 @@ export class AppRouter {
 		},
 		lazy: () => import("./components/project/ProjectView.tsx"),
 		resolve: async ({ params }) => {
-			const project = await this.projectApi.getProjectById({
-				params: {
-					id: params.projectId,
-				},
-			});
+			const { character, tasks, ...project } =
+				await this.projectApi.getProjectById({
+					params: {
+						id: params.projectId,
+					},
+				});
 
 			this.alepha.state("project", project);
-			this.alepha.state("character", project.character);
-			this.alepha.state("tasks", project.tasks);
+			this.alepha.state("character", character);
+			this.alepha.state("tasks", tasks);
+
+			return {
+				project,
+			};
 		},
 		onLeave: () => {
 			this.alepha.state("character", null);

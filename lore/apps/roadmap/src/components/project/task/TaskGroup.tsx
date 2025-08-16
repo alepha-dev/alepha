@@ -1,5 +1,6 @@
 import { Flex, Text } from "@alepha/react-flex";
 import { Collapse, Icon } from "@blueprintjs/core";
+import { Minus, Plus } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { Task } from "../../../api/providers/Db.ts";
 import TaskItem from "./TaskItem.tsx";
@@ -21,7 +22,7 @@ const TaskGroup = (props: TaskGroupProps) => {
 		<Flex col>
 			<Flex pad1 centerX card onClick={() => setIsCollapsed(!isCollapsed)}>
 				<Flex centerX gap1>
-					<Icon size={12} icon={isCollapsed ? "minus" : "plus"} />
+					{isCollapsed ? <Minus size={10} /> : <Plus size={10} />}
 					<Text bold>{props.name}</Text>
 				</Flex>
 				<Flex fill center pad2h>

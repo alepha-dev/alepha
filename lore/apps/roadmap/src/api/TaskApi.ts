@@ -1,15 +1,38 @@
 import { $inject, $logger, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $action, NotFoundError } from "@alepha/server";
-import { characters, Db, tasks } from "./providers/Db.ts";
+import type { UserAccountToken } from "@alepha/security";
+import { $action } from "@alepha/server";
+import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { Level } from "../services/Level.ts";
+import { characters, Db, tasks } from "./providers/Db.ts";
 
 class TaskApi {
 	log = $logger();
 	db = $inject(Db);
 	lvl = $inject(Level);
 	dt = $inject(DateTimeProvider);
+
+	createTask = $action({
+		schema: {
+			body: taskCreateSchema,
+			response: tasks.$schema,
+		},
+		handler: async ({ body, user }) => {
+			await this.db.characters.findOne({
+				projectId: { eq: body.projectId },
+				userId: { eq: user.id },
+			});
+
+			// sanitize HTML content
+			body.description = sanitizeHtml(body.description);
+
+			return await this.db.tasks.create({
+				...body,
+				createdBy: user.id,
+			});
+		},
+	});
 
 	getTasks = $action({
 		schema: {
@@ -18,7 +41,12 @@ class TaskApi {
 			}),
 			response: t.array(tasks.$schema),
 		},
-		handler: async ({ params }) => {
+		handler: async ({ params, user }) => {
+			await this.db.characters.findOne({
+				projectId: { eq: params.projectId },
+				userId: { eq: user.id },
+			});
+
 			return this.db.tasks.find({
 				limit: 100,
 				where: {
@@ -77,6 +105,17 @@ class TaskApi {
 		},
 	});
 
+	load = async (user: UserAccountToken, taskId: number) => {
+		const task = await this.db.tasks.findOne({
+			id: { eq: taskId },
+		});
+		const character = await this.db.characters.findOne({
+			projectId: { eq: task.projectId },
+			userId: { eq: user.id },
+		});
+		return { task, character };
+	};
+
 	getTaskById = $action({
 		schema: {
 			params: t.object({
@@ -84,14 +123,9 @@ class TaskApi {
 			}),
 			response: tasks.$schema,
 		},
-		handler: async ({ params }) => {
-			const task = await this.db.tasks.findOne({
-				id: { eq: params.id },
-			});
+		handler: async ({ params, user }) => {
+			const { task } = await this.load(user, params.id);
 
-			if (!task) {
-				throw new NotFoundError(`Task with id ${params.id} not found`);
-			}
 			return task;
 		},
 	});
@@ -112,21 +146,15 @@ class TaskApi {
 			),
 			response: tasks.$schema,
 		},
-		handler: async ({ params, body }) => {
-			return await this.db.tasks.updateById(params.id, body);
-		},
-	});
+		handler: async ({ params, body, user }) => {
+			await this.load(user, params.id);
 
-	createTask = $action({
-		schema: {
-			body: taskCreateSchema,
-			response: tasks.$schema,
-		},
-		handler: async ({ body, user }) => {
-			return await this.db.tasks.create({
-				...body,
-				createdBy: user.id,
-			});
+			if (body.description) {
+				// sanitize HTML content
+				body.description = sanitizeHtml(body.description);
+			}
+
+			return await this.db.tasks.updateById(params.id, body);
 		},
 	});
 
@@ -137,8 +165,11 @@ class TaskApi {
 			}),
 			response: t.boolean(),
 		},
-		handler: async ({ params }) => {
+		handler: async ({ params, user }) => {
+			await this.load(user, params.id);
+
 			await this.db.tasks.deleteById(params.id);
+
 			return true;
 		},
 	});

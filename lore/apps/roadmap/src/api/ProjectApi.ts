@@ -1,6 +1,6 @@
 import { $inject, $logger, t } from "@alepha/core";
 import { PgEntityNotFoundError, pageQuerySchema } from "@alepha/postgres";
-import { $action, ForbiddenError, NotFoundError } from "@alepha/server";
+import { $action, ForbiddenError } from "@alepha/server";
 import { characters, Db, projects, tasks } from "./providers/Db.ts";
 
 class ProjectApi {
@@ -13,10 +13,19 @@ class ProjectApi {
 			response: projects.$schema,
 		},
 		handler: async ({ body, user }) => {
+			// TODO: load user + check if they have a free project slot
+
 			const project = await this.db.projects.create({
 				...body,
 				createdBy: user.id,
 			});
+
+			await this.db.characters.create({
+				projectId: project.id,
+				userId: user.id,
+				xp: 0,
+			});
+
 			return project;
 		},
 	});
@@ -34,10 +43,7 @@ class ProjectApi {
 				id: { eq: params.id },
 			});
 
-			if (!project) {
-				throw new NotFoundError(`Project with id ${params.id} not found`);
-			}
-
+			// for now, only the project creator or an admin can update a project
 			if (user.ownership && project.createdBy !== user.id) {
 				throw new ForbiddenError(
 					`You do not have permission to update project with id ${params.id}`,
@@ -56,7 +62,8 @@ class ProjectApi {
 		},
 	});
 
-	getProjects = $action({
+	getMyProjects = $action({
+		description: "Get all projects for the authenticated user",
 		schema: {
 			query: pageQuerySchema,
 			response: t.array(projects.$schema),
@@ -88,6 +95,12 @@ class ProjectApi {
 				id: { eq: params.id },
 			});
 
+			if (project.createdBy !== user.id && user.ownership && !project.public) {
+				throw new ForbiddenError(
+					`You do not have permission to access project with id ${params.id}`,
+				);
+			}
+
 			const tasks = await this.db.tasks.find({
 				where: {
 					projectId: { eq: params.id },
@@ -95,28 +108,11 @@ class ProjectApi {
 				},
 			});
 
-			if (project.createdBy !== user.id && user.ownership) {
-				throw new ForbiddenError(
-					`You do not have permission to access project with id ${params.id}`,
-				);
-			}
-
 			if (user.id === project.createdBy) {
-				const character = await this.db.characters
-					.findOne({
-						projectId: { eq: params.id },
-						userId: { eq: user.id },
-					})
-					.catch((err) => {
-						if (err instanceof PgEntityNotFoundError) {
-							return this.db.characters.create({
-								projectId: params.id,
-								userId: user.id,
-								xp: 0,
-							});
-						}
-						throw err;
-					});
+				const character = await this.db.characters.findOne({
+					projectId: { eq: params.id },
+					userId: { eq: user.id },
+				});
 				return { ...project, tasks, character };
 			}
 

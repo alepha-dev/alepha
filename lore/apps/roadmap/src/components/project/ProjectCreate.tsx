@@ -4,6 +4,7 @@ import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
+import { Build } from "@blueprintjs/icons";
 import { useMemo, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type ProjectApi from "../../api/ProjectApi.ts";
@@ -108,7 +109,7 @@ const ProjectCreate = () => {
 										size={"large"}
 										intent={"success"}
 										text={tr("project.create.submit")}
-										icon={"build"}
+										icon={<Build />}
 										loading={loading}
 										type={"submit"}
 									/>
