@@ -7,7 +7,7 @@ import {
 	type TSchema,
 	TypeGuard,
 } from "@alepha/core";
-import type { InputHTMLAttributes } from "react";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
 
 export class FormCtrl<T extends TObject> {
 	protected readonly log = $logger();
@@ -24,7 +24,6 @@ export class FormCtrl<T extends TObject> {
 
 		if (options.initialValues) {
 			this.values = this.alepha.parse(options.schema, options.initialValues);
-			console.log(this.values);
 		}
 
 		this.input = this.createProxyFromSchema(options, options.schema, {
@@ -216,7 +215,13 @@ export class FormCtrl<T extends TObject> {
 
 		const attr: InputHTMLAttributesLike = {
 			name: key,
-			onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+			onChange: (event: ChangeEvent<HTMLInputElement> | string) => {
+				if (typeof event === "string") {
+					// If the event is a string, it means it's a direct value change
+					set(event);
+					return;
+				}
+
 				if (field.type === "boolean") {
 					set(event.target.checked);
 				} else {
@@ -375,7 +380,6 @@ export type InputHTMLAttributesLike = Pick<
 	| "type"
 	| "value"
 	| "defaultValue"
-	| "onChange"
 	| "required"
 	| "maxLength"
 	| "minLength"
@@ -383,6 +387,7 @@ export type InputHTMLAttributesLike = Pick<
 > & {
 	value?: any;
 	defaultValue?: any;
+	onChange?: (event: any) => void;
 };
 
 export type FormCtrlOptions<T extends TObject> = {

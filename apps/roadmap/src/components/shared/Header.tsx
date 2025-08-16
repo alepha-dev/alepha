@@ -1,7 +1,8 @@
 import { useRouterEvents, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Drawer } from "@blueprintjs/core";
+import { Button, Drawer, Menu } from "@blueprintjs/core";
+import { Cross, Menu as MenuIcon } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { I18n } from "../../services/I18n.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
@@ -86,7 +87,11 @@ const MobileQuestLog = () => {
 
 	return (
 		<Flex hide={"md"}>
-			<Action icon={"menu"} variant={"minimal"} onClick={() => setShow(true)} />
+			<Action
+				icon={<MenuIcon />}
+				variant={"minimal"}
+				onClick={() => setShow(true)}
+			/>
 			<Drawer
 				onClose={() => setShow(false)}
 				position={"left"}
@@ -99,7 +104,7 @@ const MobileQuestLog = () => {
 						<Flex>
 							<Button
 								variant={"minimal"}
-								icon={"cross"}
+								icon={<Cross />}
 								onClick={() => setShow(false)}
 							/>
 						</Flex>

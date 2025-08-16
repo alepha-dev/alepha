@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
 	$env,
 	$hook,
@@ -259,6 +260,30 @@ export class PageDescriptorProvider {
 				};
 			}
 
+			// normal use case
+			if (!it.error) {
+				try {
+					const element = await this.createElement(it.route, {
+						...props,
+						...context,
+					});
+
+					layers.push({
+						name: it.route.name,
+						props,
+						part: it.route.path,
+						config: it.config,
+						element: this.renderView(i + 1, path, element, it.route),
+						index: i + 1,
+						path,
+						route: it.route,
+						cache: it.cache,
+					});
+				} catch (e) {
+					it.error = e as Error;
+				}
+			}
+
 			// handler has thrown an error, render an error view
 			if (it.error) {
 				try {
@@ -299,25 +324,6 @@ export class PageDescriptorProvider {
 					throw e;
 				}
 			}
-
-			// normal use case
-
-			const element = await this.createElement(it.route, {
-				...props,
-				...context,
-			});
-
-			layers.push({
-				name: it.route.name,
-				props,
-				part: it.route.path,
-				config: it.config,
-				element: this.renderView(i + 1, path, element, it.route),
-				index: i + 1,
-				path,
-				route: it.route,
-				cache: it.cache,
-			});
 		}
 
 		return { layers, pathname, search };

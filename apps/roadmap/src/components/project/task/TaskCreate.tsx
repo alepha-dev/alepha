@@ -3,7 +3,8 @@ import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { Flex, Grid } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
-import { FormGroup, Icon, SegmentedControl, TextArea } from "@blueprintjs/core";
+import { FormGroup, SegmentedControl } from "@blueprintjs/core";
+import { AreaOfInterest, FloppyDisk, Plus, Tag } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Project, Task } from "../../../api/providers/Db.ts";
@@ -13,6 +14,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import Toast from "../../../services/Toast.ts";
 import Action from "../../shared/Action.tsx";
 import Control from "../../shared/Control.tsx";
+import TextEditor from "../../shared/TextEditor.tsx";
 
 export interface TaskCreateProps {
 	onSubmit: (task: Task) => void;
@@ -94,7 +96,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 								error={error}
 								inputGroupProps={{
 									autoFocus: true,
-									leftElement: <Icon icon={"tag"} />,
+									leftElement: <Tag />,
 								}}
 								formGroupProps={{
 									label: tr("task.create.title"),
@@ -105,7 +107,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 								fill
 								inputField={form.input.package}
 								inputGroupProps={{
-									leftElement: <Icon icon={"area-of-interest"} />,
+									leftElement: <AreaOfInterest />,
 								}}
 								formGroupProps={{
 									label: tr("task.create.package"),
@@ -117,16 +119,10 @@ const TaskCreate = (props: TaskCreateProps) => {
 						<FormGroup
 							fill
 							label={tr("task.create.description")}
-							labelFor="text-input3"
+							labelFor={form.input.description.props.id}
 							helperText={tr("task.create.description.helper")}
 						>
-							<TextArea
-								style={{ resize: "none" }}
-								rows={16}
-								fill
-								{...form.input.description.props}
-								id={"text-input3"}
-							/>
+							<TextEditor {...form.input.description.props} />
 						</FormGroup>
 
 						<Grid gap2>
@@ -217,7 +213,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 								<Action
 									type="submit"
 									variant={"solid"}
-									icon={"floppy-disk"}
+									icon={<FloppyDisk />}
 									size={"large"}
 									intent={"primary"}
 								>
@@ -227,7 +223,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 								<Action
 									type="submit"
 									variant={"solid"}
-									icon={"plus"}
+									icon={<Plus />}
 									size={"large"}
 									intent={"success"}
 								>

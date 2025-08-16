@@ -64,7 +64,14 @@ const Login = () => {
 								backgroundColor: "#24292e",
 							}}
 							intent={"primary"}
-							icon={<img src={"/logo-github.svg"} height={24} width={24} />}
+							icon={
+								<img
+									alt={"github"}
+									src={"/logo-github.svg"}
+									height={24}
+									width={24}
+								/>
+							}
 							type={"button"}
 							onClick={() => {
 								auth.login("github", {
@@ -76,7 +83,14 @@ const Login = () => {
 						</Action>
 						<Action
 							variant={"outlined"}
-							icon={<img src={"/logo-google.svg"} height={24} width={24} />}
+							icon={
+								<img
+									alt={"google"}
+									src={"/logo-google.svg"}
+									height={24}
+									width={24}
+								/>
+							}
 							type={"button"}
 							onClick={() => {
 								auth.login("google", {

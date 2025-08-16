@@ -1,6 +1,7 @@
 import { useActive, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { Icon, Popover } from "@blueprintjs/core";
+import { Clean, HighPriority } from "@blueprintjs/icons";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
 
@@ -119,7 +120,7 @@ const TaskItem = (props: { task: Task }) => {
 						}
 					>
 						<Flex pad1h>
-							<Icon icon={"clean"} color={"var(--text-muted)"} />
+							<Clean color={"var(--text-muted)"} />
 						</Flex>
 					</Popover>
 				</Flex>
@@ -138,10 +139,7 @@ const TaskItem = (props: { task: Task }) => {
 						}
 					>
 						<Flex pad1h>
-							<Icon
-								icon={"high-priority"}
-								color={"var(--color-high-priority)"}
-							/>
+							<HighPriority color={"var(--color-high-priority)"} />
 						</Flex>
 					</Popover>
 				</Flex>
@@ -151,38 +149,3 @@ const TaskItem = (props: { task: Task }) => {
 };
 
 export default TaskItem;
-
-/*
-	<Action
-					icon={"tick"}
-					variant={"minimal"}
-					intent={"success"}
-					title={"Validate Task"}
-					disabled={!taskApi.deleteTask.can()}
-					onClick={async () => {
-						await taskApi.deleteTask({
-							params: { id: task.id },
-						});
-						alepha.state(
-							"tasks",
-							(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
-						);
-					}}
-				/>
-				<Action
-					disabled={!taskApi.deleteTask.can()}
-					icon={"cross"}
-					variant={"minimal"}
-					intent={"danger"}
-					title={"Delete Task"}
-					onClick={async () => {
-						await taskApi.deleteTask({
-							params: { id: task.id },
-						});
-						alepha.state(
-							"tasks",
-							(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
-						);
-					}}
-				/>
- */

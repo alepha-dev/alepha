@@ -9,6 +9,15 @@ import {
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Drawer, Icon } from "@blueprintjs/core";
+import {
+	BankAccount,
+	Cross,
+	Edit,
+	ManuallyEnteredData,
+	SymbolCircle,
+	Tag,
+	Tick,
+} from "@blueprintjs/icons";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
@@ -30,6 +39,7 @@ const TaskView = (props: TaskViewProps) => {
 	const router = useRouter<AppRouter>();
 	const level = useInject(Level);
 	const { tr } = useI18n<I18n, "en">();
+	const [showDialog, setShowDialog] = useState(false);
 
 	const [task, setTask] = useState<Task>(props.task);
 	useEffect(() => {
@@ -52,7 +62,7 @@ const TaskView = (props: TaskViewProps) => {
 								href={router.path("projectBoard", {
 									params: { projectId: String(project.id) },
 								})}
-								icon={"cross"}
+								icon={<Cross />}
 								size={"small"}
 								variant={"minimal"}
 							/>
@@ -61,11 +71,16 @@ const TaskView = (props: TaskViewProps) => {
 
 					<Flex pad3 col gap3 fill overflow>
 						<Flex gap1 centerX>
-							<Icon icon={"tag"} />
+							<Tag />
 							<Text large bold style={{ textWrap: "nowrap" }}>
 								{task.title}
 							</Text>
-							<EditTaskButton task={task} onUpdate={setTask} />
+							<EditTaskButton
+								task={task}
+								onUpdate={setTask}
+								showDialog={showDialog}
+								setShowDialog={setShowDialog}
+							/>
 							<Flex
 								wFill
 								style={{
@@ -92,7 +107,7 @@ const TaskView = (props: TaskViewProps) => {
 
 						<Flex col>
 							<Flex gap1 centerX>
-								<Icon icon={"manually-entered-data"} />
+								<ManuallyEnteredData />
 								<Text large bold>
 									{tr("task.view.description")}
 								</Text>
@@ -106,9 +121,9 @@ const TaskView = (props: TaskViewProps) => {
 								/>
 							</Flex>
 						</Flex>
-						<TaskDescription task={task} />
+						<TaskDescription task={task} onEdit={() => setShowDialog(true)} />
 						<Flex gap1 centerX>
-							<Icon icon={"bank-account"} />
+							<BankAccount />
 							<Text large bold>
 								{tr("task.view.rewards")}
 							</Text>
@@ -126,11 +141,11 @@ const TaskView = (props: TaskViewProps) => {
 							<Flex gap1>
 								<Flex>
 									{task.complexity * 1}{" "}
-									<Icon icon={"symbol-circle"} color={"var(--color-gold)"} />
+									<SymbolCircle color={"var(--color-gold)"} />
 								</Flex>
 								<Flex>
 									{task.complexity * 10}{" "}
-									<Icon icon={"symbol-circle"} color={"var(--color-silver)"} />
+									<SymbolCircle color={"var(--color-silver)"} />
 								</Flex>
 							</Flex>
 						</Flex>
@@ -155,7 +170,7 @@ const TaskView = (props: TaskViewProps) => {
 						<Action
 							variant={"minimal"}
 							intent={"success"}
-							icon={"tick"}
+							icon={<Tick />}
 							text={tr("task.view.actions.complete")}
 							disabled={!taskApi.deleteTask.can()}
 							onClick={async () => {
@@ -174,7 +189,7 @@ const TaskView = (props: TaskViewProps) => {
 						<Flex fill />
 						<Action
 							variant={"minimal"}
-							icon={"cross"}
+							icon={<Cross />}
 							text={tr("task.view.actions.abandon")}
 							intent={"danger"}
 							disabled={!taskApi.deleteTask.can()}
@@ -201,8 +216,11 @@ export default TaskView;
 const EditTaskButton = (props: {
 	task: Task;
 	onUpdate: (task: Task) => void;
+	setShowDialog?: (show: boolean) => void;
+	showDialog?: boolean;
 }) => {
-	const [showDialog, setShowDialog] = useState(false);
+	const { showDialog = false, setShowDialog = () => {} } = props;
+
 	const client = useClient<TaskApi>();
 	const [project] = useStore("project");
 	if (!project) {
@@ -217,7 +235,7 @@ const EditTaskButton = (props: {
 		<Flex>
 			<Action
 				variant={"minimal"}
-				icon={"edit"}
+				icon={<Edit />}
 				onClick={() => {
 					setShowDialog(true);
 				}}
@@ -234,7 +252,7 @@ const EditTaskButton = (props: {
 							<Flex>
 								<Button
 									variant={"minimal"}
-									icon={"cross"}
+									icon={<Cross />}
 									onClick={() => setShowDialog(false)}
 								/>
 							</Flex>

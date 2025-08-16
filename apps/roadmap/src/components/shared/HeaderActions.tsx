@@ -3,6 +3,15 @@ import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
+import {
+	Blank,
+	CaretDown,
+	LogOut,
+	Moon,
+	Tick,
+	Translate,
+	User,
+} from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import type Security from "../../api/providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -23,7 +32,7 @@ const HeaderActions = () => {
 						<Menu>
 							{languages.map((key) => (
 								<MenuItem
-									icon={lang === key ? "tick" : "blank"}
+									icon={lang === key ? <Tick /> : <Blank />}
 									key={key}
 									text={tr(key)}
 									onClick={() => {
@@ -34,12 +43,12 @@ const HeaderActions = () => {
 						</Menu>
 					}
 				>
-					<Button icon={"translate"} variant={"minimal"} />
+					<Button icon={<Translate />} variant={"minimal"} />
 				</Popover>
 			</Flex>
 			<AuthButton />
 			<Button
-				icon={"moon"}
+				icon={<Moon />}
 				variant={"minimal"}
 				onClick={() => {
 					theme.toggleColorScheme();
@@ -65,7 +74,7 @@ const AuthButton = () => {
 				content={
 					<Menu>
 						<MenuItem
-							icon={"user"}
+							icon={<User />}
 							text={tr("header.actions.profile")}
 							onClick={() => {
 								router.go("profile");
@@ -74,7 +83,7 @@ const AuthButton = () => {
 						<Divider />
 						<MenuItem
 							text={tr("header.actions.logout")}
-							icon="log-out"
+							icon={<LogOut />}
 							onClick={() => auth.logout()}
 						/>
 					</Menu>
@@ -82,7 +91,7 @@ const AuthButton = () => {
 			>
 				<Action
 					variant={"minimal"}
-					endIcon={"caret-down"}
+					endIcon={<CaretDown />}
 					icon={
 						<img
 							alt={"picture"}
@@ -118,7 +127,7 @@ const AuthButton = () => {
 		<Action
 			style={{ textWrap: "nowrap" }}
 			variant={"minimal"}
-			icon={"user"}
+			icon={<User />}
 			text={tr("header.actions.login")}
 			visibleText={"md"}
 			href={router.path("login", {

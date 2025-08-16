@@ -3,6 +3,7 @@ import { useInject, useRouter, useStore } from "@alepha/react";
 import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Divider } from "@blueprintjs/core";
+import { Application, CubeAdd } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Project } from "../../api/providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -33,7 +34,7 @@ const Home = () => {
 						<Flex pad1 bordered rounded card shadow>
 							<Action
 								variant={"minimal"}
-								icon={"cube-add"}
+								icon={<CubeAdd />}
 								text={tr("home.create-campaign")}
 								href={router.path("projectCreate")}
 							/>
@@ -58,7 +59,7 @@ const Home = () => {
 								<Action
 									style={{ width: 256 }}
 									key={project.id}
-									icon={"application"}
+									icon={<Application />}
 									alignText={"left"}
 									variant={"outlined"}
 									{...router.anchor("project", {
