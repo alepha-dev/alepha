@@ -54,7 +54,8 @@
 				"noAccumulatingSpread": "off"
 			},
 			"complexity": {
-				"noBannedTypes": "off"
+				"noBannedTypes": "off",
+				"noImportantStyles": "off"
 			},
 			"style": {
 				"noNonNullAssertion": "off",
