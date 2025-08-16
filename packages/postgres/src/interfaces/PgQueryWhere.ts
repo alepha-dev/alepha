@@ -2,7 +2,7 @@ import type { SQL, SQLWrapper } from "drizzle-orm";
 import type { FilterOperators } from "./FilterOperators.ts";
 
 export type PgQueryWhere<T extends object> = {
-	[Key in keyof T]?: FilterOperators<T[Key]>;
+	[Key in keyof T]?: FilterOperators<T[Key]> | T[Key];
 } & {
 	/**
 	 * Combine a list of conditions with the `and` operator. Conditions

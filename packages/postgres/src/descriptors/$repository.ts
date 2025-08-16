@@ -391,6 +391,11 @@ export class RepositoryDescriptor<
 	}
 
 	/**
+	 * @alias findOne.
+	 */
+	public one = this.findOne.bind(this);
+
+	/**
 	 * Find an entity by ID.
 	 *
 	 * @param id
@@ -786,9 +791,13 @@ export class RepositoryDescriptor<
 	 * @protected
 	 */
 	protected mapOperatorToSql(
-		operator: FilterOperators<any>,
+		operator: FilterOperators<any> | any,
 		column: PgColumn,
 	): SQL | undefined {
+		if (typeof operator !== "object") {
+			return eq(column, operator);
+		}
+
 		if (operator?.eq != null) {
 			return eq(column, operator.eq);
 		}
