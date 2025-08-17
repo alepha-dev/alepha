@@ -274,6 +274,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/react": "npm:0.9.3"
+    "@alepha/server": "npm:0.9.3"
     "@types/react": "npm:^19.1.10"
     react: "npm:^19.1.1"
     tsdown: "npm:^0.14.1"
