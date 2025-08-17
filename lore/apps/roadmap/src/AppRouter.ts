@@ -8,19 +8,19 @@ import { createElement } from "react";
 import type { ProjectApi } from "./api/ProjectApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
 import type { UserApi } from "./api/UserApi.ts";
+import { MeRouter } from "./components/auth/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 import { Theme } from "./services/Theme.ts";
 
 export class AppRouter {
 	theme = $inject(Theme);
 	alepha = $inject(Alepha);
-
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
 	userApi = $client<UserApi>();
-
 	router = $inject(ReactRouter);
 	auth = $inject(ReactAuth);
+	meRouter = $inject(MeRouter);
 
 	head = $head(() => {
 		return {
@@ -51,7 +51,7 @@ export class AppRouter {
 			this.home, //
 			this.project,
 			this.projectCreate,
-			this.profile,
+			this.meRouter.me,
 			this.notFound,
 		],
 		lazy: () => import("./components/Layout.tsx"),
@@ -63,27 +63,43 @@ export class AppRouter {
 				);
 			}
 		},
-		errorHandler: (error, ctx) => {
-			if (HttpError.is(error, 401)) {
-				return new Redirection(`/login?r=${ctx.url.pathname}`);
+		errorHandler: (error) => {
+			if (!this.alepha.isProduction()) {
+				return;
 			}
 
-			if (this.alepha.isProduction()) {
-				return createElement(ErrorPage, {
-					error,
-					alepha: this.alepha,
-				});
+			return createElement(ErrorPage, {
+				error,
+				alepha: this.alepha,
+			});
+		},
+	});
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * When server request get an error.
+	 */
+	onServerError = $hook({
+		on: "server:onError",
+		handler: async ({ error, request }) => {
+			// when user try to access a page without being logged in (expired session or just no logged in)
+			if (HttpError.is(error, 401) && request.url.pathname !== "/login") {
+				request.reply.redirect(`/login?r=${request.url.pathname}`);
 			}
 		},
 	});
 
+	/**
+	 * When browser request get an error.
+	 */
 	onFetchError = $hook({
 		on: "client:onError",
 		handler: async ({ error }) => {
+			// when user try to access a resource without being logged in (expired session or just no logged in)
 			if (
-				HttpError.is(error, 401) &&
 				this.alepha.isBrowser() &&
-				this.auth.user &&
+				HttpError.is(error, 401) &&
 				this.router.state.url.pathname !== "/login"
 			) {
 				await this.router.go(`/login?r=${this.router.state.url.pathname}`);
@@ -91,19 +107,11 @@ export class AppRouter {
 		},
 	});
 
+	// -------------------------------------------------------------------------------------------------------------------
+
 	home = $page({
 		path: "/",
 		lazy: () => import("./components/home/Home.tsx"),
-	});
-
-	profile = $page({
-		path: "/me",
-		lazy: () => import("./components/auth/Profile.tsx"),
-		resolve: async () => {
-			return {
-				user: await this.userApi.me(),
-			};
-		},
 	});
 
 	projectCreate = $page({

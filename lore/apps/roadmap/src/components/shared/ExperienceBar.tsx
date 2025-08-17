@@ -28,15 +28,7 @@ const ExperienceBar = () => {
 	const percentage = Math.floor((current * 100) / max);
 
 	return (
-		<Flex
-			bordered
-			pad1
-			style={{
-				borderBottom: 0,
-				borderLeft: 0,
-				borderRight: 0,
-			}}
-		>
+		<Flex pad1>
 			<Flex
 				fill
 				style={{

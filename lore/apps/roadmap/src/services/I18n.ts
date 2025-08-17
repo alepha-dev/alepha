@@ -23,7 +23,7 @@ export class I18n {
 				"home.subtitle":
 					"This is a sample app to demonstrate Alepha's capabilities.",
 				"home.no-campaign": "You don't have any campaigns yet.",
-				"home.campaigns": "Campaigns",
+				"home.campaigns": "Your recent campaigns",
 				"home.create-campaign": "New Campaign",
 
 				"project.menu.create-task": "Create Quest",

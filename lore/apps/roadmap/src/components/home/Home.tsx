@@ -20,68 +20,64 @@ const Home = () => {
 	const dt = useInject(DateTimeProvider);
 
 	return (
-		<Flex fill col pad2 bg>
+		<Flex fill col pad2>
 			<Flex gap3 col pad2 className={"container"}>
-				<Grid md={2} gap2>
-					<Flex col gap1>
-						<Text bold large>
-							{tr("home.title")}
-						</Text>
-						<Text>{tr("home.subtitle")}</Text>
-					</Flex>
-					<Flex>
-						<Flex fill />
-						<Flex pad1 bordered rounded card shadow>
-							<Action
-								variant={"minimal"}
-								icon={<CubeAdd />}
-								text={tr("home.create-campaign")}
-								href={router.path("projectCreate")}
-							/>
+				<Flex bg pad3 rounded shadow bordered>
+					<Grid md={2} gap2 flexProps={{ fill: true }}>
+						<Flex col gap1>
+							<Text bold large>
+								{tr("home.title")}
+							</Text>
+							<Text small>{tr("home.subtitle")}</Text>
 						</Flex>
-					</Flex>
-				</Grid>
-				<Divider />
-				<Text>{tr("home.campaigns")}</Text>
-				<Flex col>
-					{projects.length > 0 ? (
-						<Flex
-							card
-							pad3
-							bordered
-							rounded
-							gap3
-							style={{
-								flexWrap: "wrap",
-							}}
-						>
-							{projects.map((project) => (
+						<Flex fill>
+							<Flex fill visible={"md"} />
+							<Flex fill pad1 bordered rounded card shadow>
 								<Action
-									style={{ width: 256 }}
-									key={project.id}
-									icon={<Application />}
-									alignText={"left"}
-									variant={"outlined"}
-									{...router.anchor("project", {
-										params: { projectId: project.id },
-									})}
-								>
-									<Flex col pad1h>
-										<Text bold large>
-											{project.title}
-										</Text>
-										<Text small muted>
-											{dt.of(project.updatedAt).fromNow()}
-										</Text>
-									</Flex>
-								</Action>
-							))}
+									fill
+									variant={"minimal"}
+									icon={<CubeAdd />}
+									text={tr("home.create-campaign")}
+									href={router.path("projectCreate")}
+								/>
+							</Flex>
 						</Flex>
-					) : (
-						<Flex>
-							<Text muted>{tr("home.no-campaign")}</Text>
-						</Flex>
-					)}
+					</Grid>
+				</Flex>
+				<Flex col gap1>
+					<Text>{tr("home.campaigns")}</Text>
+					<Flex col bg rounded>
+						{projects.length > 0 ? (
+							<Flex pad2 bordered rounded gap2 col>
+								{projects
+									.toSorted((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))
+									.map((project) => (
+										<Flex key={project.id} card fill bordered rounded shadow>
+											<Action
+												fill
+												icon={<Application />}
+												alignText={"left"}
+												variant={"minimal"}
+												{...router.anchor("project", {
+													params: { projectId: project.id },
+												})}
+											>
+												<Flex col pad1h>
+													<Text bold>{project.title}</Text>
+													<Text small muted>
+														Updated {dt.of(project.updatedAt).fromNow()}
+													</Text>
+												</Flex>
+											</Action>
+										</Flex>
+									))}
+							</Flex>
+						) : (
+							<Flex pad2 center>
+								<Text muted>{tr("home.no-campaign")}</Text>
+							</Flex>
+						)}
+					</Flex>
 				</Flex>
 			</Flex>
 		</Flex>

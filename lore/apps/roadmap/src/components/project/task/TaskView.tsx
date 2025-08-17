@@ -245,7 +245,17 @@ const EditTaskButton = (props: {
 				onClose={() => setShowDialog(false)}
 				className={"drawer"}
 			>
-				<Flex bg col bordered fill pad2>
+				<Flex
+					bg
+					col
+					bordered
+					fill
+					pad2
+					style={{
+						borderTop: 0,
+						borderBottom: 0,
+					}}
+				>
 					<Flex col style={{ height: 48 }}>
 						<Flex>
 							<Flex fill></Flex>

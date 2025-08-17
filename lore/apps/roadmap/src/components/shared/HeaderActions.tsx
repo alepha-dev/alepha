@@ -25,27 +25,27 @@ const HeaderActions = () => {
 
 	return (
 		<Flex gap1 center>
-			<Flex visible={"xl"}>
-				<Popover
-					position={"bottom"}
-					content={
-						<Menu>
-							{languages.map((key) => (
-								<MenuItem
-									icon={lang === key ? <Tick /> : <Blank />}
-									key={key}
-									text={tr(key)}
-									onClick={() => {
-										setLang(key);
-									}}
-								/>
-							))}
-						</Menu>
-					}
-				>
-					<Button icon={<Translate />} variant={"minimal"} />
-				</Popover>
-			</Flex>
+			{/*<Flex visible={"xl"}>*/}
+			{/*	<Popover*/}
+			{/*		position={"bottom"}*/}
+			{/*		content={*/}
+			{/*			<Menu>*/}
+			{/*				{languages.map((key) => (*/}
+			{/*					<MenuItem*/}
+			{/*						icon={lang === key ? <Tick /> : <Blank />}*/}
+			{/*						key={key}*/}
+			{/*						text={tr(key)}*/}
+			{/*						onClick={() => {*/}
+			{/*							setLang(key);*/}
+			{/*						}}*/}
+			{/*					/>*/}
+			{/*				))}*/}
+			{/*			</Menu>*/}
+			{/*		}*/}
+			{/*	>*/}
+			{/*		<Button icon={<Translate />} variant={"minimal"} />*/}
+			{/*	</Popover>*/}
+			{/*</Flex>*/}
 			<AuthButton />
 			<Button
 				size={"large"}
@@ -117,7 +117,9 @@ const AuthButton = () => {
 							</Text>
 						</Flex>
 					) : (
-						auth.user.name
+						<Text bold style={{ textWrap: "nowrap" }}>
+							{auth.user.name}
+						</Text>
 					)}
 				</Action>
 			</Popover>
