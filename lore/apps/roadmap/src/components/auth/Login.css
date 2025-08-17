@@ -1,0 +1,8 @@
+.bp6-button.github-button {
+	background-color: #24292e;
+	color: var(--text-color-dark);
+}
+.bp6-button.github-button:hover {
+	background-color: #353a43;
+	color: var(--text-color-dark);
+}

@@ -39,11 +39,6 @@ export class AppRouter {
 			}),
 		},
 		lazy: () => import("./components/auth/Login.tsx"),
-		resolve: async ({ user }) => {
-			if (user) {
-				throw new Redirection("/");
-			}
-		},
 	});
 
 	layout = $page({
@@ -63,7 +58,11 @@ export class AppRouter {
 				);
 			}
 		},
-		errorHandler: (error) => {
+		errorHandler: (error, state) => {
+			if (HttpError.is(error, 401) && state.url.pathname !== "/login") {
+				return new Redirection(`/login?r=${state.url.pathname}`);
+			}
+
 			if (!this.alepha.isProduction()) {
 				return;
 			}
@@ -77,22 +76,6 @@ export class AppRouter {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	/**
-	 * When server request get an error.
-	 */
-	onServerError = $hook({
-		on: "server:onError",
-		handler: async ({ error, request }) => {
-			// when user try to access a page without being logged in (expired session or just no logged in)
-			if (HttpError.is(error, 401) && request.url.pathname !== "/login") {
-				request.reply.redirect(`/login?r=${request.url.pathname}`);
-			}
-		},
-	});
-
-	/**
-	 * When browser request get an error.
-	 */
 	onFetchError = $hook({
 		on: "client:onError",
 		handler: async ({ error }) => {
@@ -102,6 +85,7 @@ export class AppRouter {
 				HttpError.is(error, 401) &&
 				this.router.state.url.pathname !== "/login"
 			) {
+				this.alepha.state("user", undefined);
 				await this.router.go(`/login?r=${this.router.state.url.pathname}`);
 			}
 		},

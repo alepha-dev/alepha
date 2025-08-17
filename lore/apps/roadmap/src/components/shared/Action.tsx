@@ -23,11 +23,12 @@ const Action = (props: ActionProps) => {
 export default Action;
 
 const HrefAction = (props: ActionProps & { href: string }) => {
-	const { isActive, anchorProps } = useActive(props.href);
+	const { isActive, isPending, anchorProps } = useActive(props.href);
 
 	return (
 		<AbstractAction
 			{...props}
+			loading={isPending}
 			active={props.active ?? isActive}
 			anchorProps={anchorProps}
 		/>

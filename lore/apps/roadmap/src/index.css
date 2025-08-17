@@ -1,6 +1,7 @@
 @import "@blueprintjs/core";
-
 @import "@alepha/react-flex";
+
+@import "components/auth/Login.css";
 @import "components/shared/StupidLogo.css";
 @import "components/shared/ExperienceBar.css";
 
