@@ -4,14 +4,14 @@ import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { HttpError } from "@alepha/server";
-import Toast from "../../services/Toast.ts";
+import { Toaster } from "../../services/Toaster.ts";
 import Action from "../shared/Action.tsx";
 import Control from "../shared/Control.tsx";
 
 const Login = () => {
 	const auth = useAuth();
 	const router = useRouter();
-	const toaster = useInject(Toast);
+	const toaster = useInject(Toaster);
 
 	const form = useForm({
 		schema: t.object({

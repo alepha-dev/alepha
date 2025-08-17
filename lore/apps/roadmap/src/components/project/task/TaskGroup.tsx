@@ -41,13 +41,13 @@ const TaskGroup = (props: TaskGroupProps) => {
 					</Text>
 				</Flex>
 			</Flex>
-			<Collapse isOpen={isCollapsed}>
+			{isCollapsed && (
 				<Flex col style={{ gap: 4 }}>
 					{tasks.map((item) => (
 						<TaskItem key={item.id} task={item} />
 					))}
 				</Flex>
-			</Collapse>
+			)}
 		</Flex>
 	);
 };

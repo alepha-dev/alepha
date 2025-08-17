@@ -21,7 +21,7 @@ import {
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
-import type TaskApi from "../../../api/TaskApi.ts";
+import type { TaskApi } from "../../../api/TaskApi.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { Level } from "../../../services/Level.ts";
 import Action from "../../shared/Action.tsx";

@@ -13,7 +13,7 @@ import {
 	User,
 } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
-import type Security from "../../api/providers/Security.ts";
+import type { Security } from "../../api/providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { Level } from "../../services/Level.ts";
 import { Theme } from "../../services/Theme.ts";
@@ -48,6 +48,7 @@ const HeaderActions = () => {
 			</Flex>
 			<AuthButton />
 			<Button
+				size={"large"}
 				icon={<Moon />}
 				variant={"minimal"}
 				onClick={() => {

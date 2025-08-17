@@ -12,7 +12,7 @@ import {
 } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
-import type TaskApi from "../../api/TaskApi.ts";
+import type { TaskApi } from "../../api/TaskApi.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
 import TaskCreate from "./task/TaskCreate.tsx";

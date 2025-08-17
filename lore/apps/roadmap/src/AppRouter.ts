@@ -1,11 +1,12 @@
-import { $inject, Alepha, t } from "@alepha/core";
-import { $page, NotFound, Redirection } from "@alepha/react";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $page, NotFound, ReactRouter, Redirection } from "@alepha/react";
+import { ReactAuth } from "@alepha/react-auth";
 import { $head } from "@alepha/react-head";
 import { HttpError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
 import { createElement } from "react";
-import type ProjectApi from "./api/ProjectApi.ts";
-import type TaskApi from "./api/TaskApi.ts";
+import type { ProjectApi } from "./api/ProjectApi.ts";
+import type { TaskApi } from "./api/TaskApi.ts";
 import type { UserApi } from "./api/UserApi.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 import { Theme } from "./services/Theme.ts";
@@ -13,9 +14,13 @@ import { Theme } from "./services/Theme.ts";
 export class AppRouter {
 	theme = $inject(Theme);
 	alepha = $inject(Alepha);
+
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
 	userApi = $client<UserApi>();
+
+	router = $inject(ReactRouter);
+	auth = $inject(ReactAuth);
 
 	head = $head(() => {
 		return {
@@ -62,11 +67,26 @@ export class AppRouter {
 			if (HttpError.is(error, 401)) {
 				return new Redirection(`/login?r=${ctx.url.pathname}`);
 			}
+
 			if (this.alepha.isProduction()) {
 				return createElement(ErrorPage, {
 					error,
 					alepha: this.alepha,
 				});
+			}
+		},
+	});
+
+	onFetchError = $hook({
+		on: "client:onError",
+		handler: async ({ error }) => {
+			if (
+				HttpError.is(error, 401) &&
+				this.alepha.isBrowser() &&
+				this.auth.user &&
+				this.router.state.url.pathname !== "/login"
+			) {
+				await this.router.go(`/login?r=${this.router.state.url.pathname}`);
 			}
 		},
 	});

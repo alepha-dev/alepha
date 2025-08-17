@@ -55,6 +55,8 @@ export const sessions = $entity({
 			onDelete: "cascade",
 		}),
 		expiresAt: t.datetime(),
+		ip: t.optional(t.string()),
+		userAgent: t.optional(t.string()),
 	}),
 });
 

@@ -2,7 +2,7 @@ import { $module } from "@alepha/core";
 import { I18n } from "./I18n.ts";
 import { Level } from "./Level.ts";
 import { Theme } from "./Theme.ts";
-import Toaster from "./Toast.ts";
+import { Toaster } from "./Toaster.ts";
 
 export const RoadmapServices = $module({
 	name: "roadmap.services",

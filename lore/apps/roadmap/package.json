@@ -6,6 +6,7 @@
 		"@types/sanitize-html": "^2.16.0",
 		"@vitejs/plugin-react": "^5.0.0",
 		"drizzle-kit": "0.31.4",
+		"typescript": "^5.9.2",
 		"vercel": "^45.0.9",
 		"vite": "^7.1.2"
 	},
@@ -14,9 +15,15 @@
 		"build": "vite build",
 		"start": "node --env-file=.env dist/index.mjs",
 		"deploy": "cd dist && vercel --prod",
-		"build&deploy": "vite build && cd dist && vercel --prod"
+		"build&deploy": "vite build && cd dist && vercel --prod",
+		"check": "tsc"
 	},
 	"dependencies": {
+		"@alepha/core": "0.9.3",
+		"@alepha/react": "0.9.3",
+		"@alepha/server": "0.9.3",
+		"@alepha/server-links": "0.9.3",
+		"@alepha/server-security": "0.9.3",
 		"@blueprintjs/core": "^6.1.0",
 		"@blueprintjs/icons": "^6.0.0",
 		"@tiptap/core": "^3.2.0",
