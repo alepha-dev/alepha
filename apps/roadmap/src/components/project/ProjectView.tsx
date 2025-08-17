@@ -48,10 +48,10 @@ export default ProjectView;
 
 const History = () => {
 	const router = useRouterState();
-	console.log(router);
 	if (!router.params.taskId) {
 		return;
 	}
+
 	// transform css 3D scale
 	return (
 		<Flex fill pad1 style={{ paddingLeft: 0, perspective: 1000 }}>

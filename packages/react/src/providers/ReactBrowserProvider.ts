@@ -106,6 +106,8 @@ export class ReactBrowserProvider {
 	public async invalidate(props?: Record<string, any>) {
 		const previous: PreviousLayerData[] = [];
 
+		this.log.trace("Invalidating layers");
+
 		if (props) {
 			const [key] = Object.keys(props);
 			const value = props[key];
@@ -129,6 +131,11 @@ export class ReactBrowserProvider {
 	}
 
 	public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
+		this.log.trace(`Going to ${url}`, {
+			url,
+			options,
+		});
+
 		await this.render({
 			url,
 			previous: options.force ? [] : this.state.layers,
@@ -153,14 +160,25 @@ export class ReactBrowserProvider {
 			to: url,
 		};
 
+		this.log.debug("Transitioning...", {
+			to: url,
+		});
+
 		const redirect = await this.router.transition(
 			new URL(`http://localhost${url}`),
 			previous,
 		);
 
 		if (redirect) {
+			this.log.info("Redirecting to", {
+				redirect,
+			});
 			return await this.render({ url: redirect });
 		}
+
+		this.log.info("Transition OK", {
+			to: url,
+		});
 
 		this.transitioning = undefined;
 	}
@@ -187,6 +205,7 @@ export class ReactBrowserProvider {
 				this.options.scrollRestoration === "top" &&
 				typeof window !== "undefined"
 			) {
+				this.log.trace("Restoring scroll position to top");
 				window.scrollTo(0, 0);
 			}
 		},
@@ -225,6 +244,10 @@ export class ReactBrowserProvider {
 				if (this.state.url.pathname === this.location.pathname) {
 					return;
 				}
+
+				this.log.debug("Popstate event triggered - rendering new state", {
+					url: this.location.pathname + this.location.search,
+				});
 
 				this.render();
 			});

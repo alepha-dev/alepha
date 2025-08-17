@@ -22,7 +22,6 @@ import {
 	randomState,
 } from "openid-client";
 import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
-import { SessionExpiredError } from "../errors/SessionExpiredError.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
@@ -172,7 +171,10 @@ export class ReactAuthProvider {
 		const refreshedTokens = await this.refreshTokens(tokens);
 		if (!refreshedTokens) {
 			this.tokens.del({ cookies });
-			throw new SessionExpiredError("Session expired. Please login again.");
+			// 08/25: exception here will go to Server error handler, not the React one
+			// better to remove cookie & session and let the page handle 401 Unauthorized
+			//throw new SessionExpiredError("Session expired. Please login again.");
+			return;
 		}
 
 		if (refreshedTokens.access_token !== tokens.access_token) {

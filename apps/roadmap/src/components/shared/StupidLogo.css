@@ -13,6 +13,7 @@
 .rd-logo-bar {
 	height: 32px;
 	background-color: var(--text-color);
+	box-shadow: 1px 1px rgba(0, 0, 0, 0.5);
 	transition: all 0.3s ease-in-out;
 	animation: rdLogoAnimation 60s ease-in-out infinite;
 }

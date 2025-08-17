@@ -116,11 +116,17 @@ export class HttpClient {
 
 		const existing = this.pendingRequests[key];
 		if (existing) {
+			this.log.info("Request already pending", key);
 			return existing;
 		}
 
 		this.pendingRequests[key] = fetch(url, request)
 			.then(async (response) => {
+				this.log.debug("Fetch response", {
+					url,
+					status: response.status,
+				});
+
 				const fetchResponse: FetchResponse = {
 					data: await this.responseData(response, options),
 					status: response.status,

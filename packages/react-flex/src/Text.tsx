@@ -10,7 +10,7 @@ export interface TextProps {
 	underline?: boolean;
 	uppercase?: boolean;
 	muted?: boolean;
-	large?: boolean;
+	large?: 2 | boolean;
 
 	visible?: Breakpoint;
 	hide?: Breakpoint;
@@ -35,8 +35,12 @@ const Text = (props: TextProps) => {
 		s.fontSize = "0.8em";
 	}
 
-	if (props.large) {
+	if (props.large === true) {
 		s.fontSize = "1.2em";
+	}
+
+	if (props.large === 2) {
+		s.fontSize = "1.5em";
 	}
 
 	if (props.italic) {

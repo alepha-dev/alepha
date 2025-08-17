@@ -54,7 +54,7 @@ export class Security {
 				expiration: [15, "minutes"],
 			},
 			refreshToken: {
-				expiration: [30, "days"],
+				expiration: [2, "days"], // for testing 2 days, but we will go with +30 days later
 			},
 			onCreateSession: async (user, config) => {
 				return this.createSession(user, config.expiresIn);
