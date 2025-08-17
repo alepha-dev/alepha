@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useContext, useState } from "react";
-import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import { Redirection } from "../errors/Redirection.ts";
+import { useAlepha } from "../hooks/useAlepha.ts";
 import { useRouterEvents } from "../hooks/useRouterEvents.ts";
 import ErrorBoundary from "./ErrorBoundary.tsx";
 
@@ -31,38 +32,39 @@ export interface NestedViewProps {
  * ```
  */
 const NestedView = (props: NestedViewProps) => {
-	const app = useContext(RouterContext);
 	const layer = useContext(RouterLayerContext);
 	const index = layer?.index ?? 0;
+	const alepha = useAlepha();
+	const state = alepha.state("react.router.state");
+	if (!state) {
+		throw new Error("<NestedView/> must be used inside a RouterLayerContext.");
+	}
 
 	const [view, setView] = useState<ReactNode | undefined>(
-		app?.state.layers[index]?.element,
+		state.layers[index]?.element,
 	);
 
 	useRouterEvents(
 		{
-			onEnd: ({ state, context }) => {
-				if (app) {
-					app.context = context;
-				}
+			onEnd: ({ state }) => {
 				if (!state.layers[index]?.cache) {
 					setView(state.layers[index]?.element);
 				}
 			},
 		},
-		[app],
+		[],
 	);
-
-	if (!app) {
-		throw new Error("NestedView must be used within a RouterContext.");
-	}
 
 	const element = view ?? props.children ?? null;
 
 	return (
 		<ErrorBoundary
 			fallback={(error) => {
-				return app.context.onError?.(error, app.context) as ReactNode;
+				const result = state.onError(error, state); // TODO: onError is not refreshed
+				if (result instanceof Redirection) {
+					return "Redirection inside ErrorBoundary is not allowed.";
+				}
+				return result as ReactNode;
 			}}
 		>
 			{element}

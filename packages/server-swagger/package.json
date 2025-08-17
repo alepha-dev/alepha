@@ -18,18 +18,21 @@
 		"@alepha/core": "0.9.3",
 		"@alepha/security": "0.9.3",
 		"@alepha/server": "0.9.3",
+		"@alepha/server-security": "0.9.3",
 		"@alepha/server-static": "0.9.3",
 		"openapi-types": "^12.1.3"
 	},
 	"devDependencies": {
 		"swagger-ui-dist": "^5.27.1",
 		"tsdown": "^0.14.1",
+		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"copy": "node scripts/copy.ts",
 		"test": "vitest run",
-		"build": "tsdown -c ../../tsdown.config.ts && yarn copy"
+		"build": "tsdown -c ../../tsdown.config.ts && yarn copy",
+		"check": "tsc"
 	},
 	"scarfSettings": {
 		"enabled": false

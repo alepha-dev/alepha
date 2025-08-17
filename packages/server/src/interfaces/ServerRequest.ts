@@ -44,6 +44,7 @@ export interface ServerRequest<
 > extends ServerRequestConfig<TConfig> {
 	method: RouteMethod;
 	url: URL;
+	ip?: string;
 
 	// store request data
 	metadata: Record<string, any>;

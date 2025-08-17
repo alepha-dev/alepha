@@ -11,20 +11,20 @@ export class BrowserHeadProvider {
 
 	protected readonly onBrowserRender = $hook({
 		on: "react:browser:render",
-		handler: async ({ state, context }) => {
-			this.headProvider.fillHead(state, context);
-			if (context.head) {
-				this.renderHead(this.document, context.head);
+		handler: async ({ state }) => {
+			this.headProvider.fillHead(state);
+			if (state.head) {
+				this.renderHead(this.document, state.head);
 			}
 		},
 	});
 
 	protected readonly onTransitionEnd = $hook({
 		on: "react:transition:end",
-		handler: async ({ state, context }) => {
-			this.headProvider.fillHead(state, context);
-			if (context.head) {
-				this.renderHead(this.document, context.head);
+		handler: async ({ state }) => {
+			this.headProvider.fillHead(state);
+			if (state.head) {
+				this.renderHead(this.document, state.head);
 			}
 		},
 	});

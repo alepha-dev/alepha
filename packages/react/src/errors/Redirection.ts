@@ -1,10 +1,13 @@
-import type { HrefLike } from "../hooks/RouterHookApi.ts";
-
+/**
+ * Used for Redirection during the page loading.
+ *
+ * Depends on the context, it can be thrown or just returned.
+ */
 export class Redirection extends Error {
-	public readonly page: HrefLike;
+	public readonly redirect: string;
 
-	constructor(page: HrefLike) {
+	constructor(redirect: string) {
 		super("Redirection");
-		this.page = page;
+		this.redirect = redirect;
 	}
 }

@@ -22,6 +22,7 @@ import {
 	randomState,
 } from "openid-client";
 import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
+import { SessionExpiredError } from "../errors/SessionExpiredError.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
@@ -59,11 +60,11 @@ export class ReactAuthProvider {
 
 	public readonly onRender = $hook({
 		on: "react:server:render:begin",
-		handler: async ({ request, context }) => {
+		handler: async ({ request, state }) => {
 			if (request?.user) {
 				const { token, realm, ...user } = request.user; // do not send token and realm to the client
 				this.alepha.state("user", user); // for hydration, browser, etc...
-				context.user = user;
+				state.user = user;
 			}
 		},
 	});
@@ -169,15 +170,17 @@ export class ReactAuthProvider {
 
 		// check if tokens are expired
 		const refreshedTokens = await this.refreshTokens(tokens);
-		if (refreshedTokens) {
-			if (refreshedTokens.access_token !== tokens.access_token) {
-				this.setTokens(refreshedTokens, cookies);
-			}
-
-			return refreshedTokens;
+		if (!refreshedTokens) {
+			console.log("no refreshed tokens, session expired");
+			this.tokens.del({ cookies });
+			throw new SessionExpiredError("Session expired. Please login again.");
 		}
 
-		this.tokens.del({ cookies });
+		if (refreshedTokens.access_token !== tokens.access_token) {
+			this.setTokens(refreshedTokens, cookies);
+		}
+
+		return refreshedTokens;
 	}
 
 	protected async checkCsrf(cookies: Cookies, csrfHeader: string) {
@@ -217,6 +220,7 @@ export class ReactAuthProvider {
 
 						return newTokens;
 					} catch (e) {
+						console.log("error during token refresh", e);
 						this.log.warn("Failed to refresh token", e);
 					}
 				}

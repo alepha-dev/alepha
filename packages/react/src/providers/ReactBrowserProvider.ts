@@ -1,54 +1,92 @@
-import { $hook, $inject, $logger, Alepha, type State } from "@alepha/core";
+import {
+	$env,
+	$hook,
+	$inject,
+	$logger,
+	Alepha,
+	type State,
+	type Static,
+	t,
+} from "@alepha/core";
 import { LinkProvider } from "@alepha/server-links";
-import type { Root } from "react-dom/client";
-import { BrowserRouterProvider } from "./BrowserRouterProvider.ts";
+import { createRoot, hydrateRoot, type Root } from "react-dom/client";
+import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
 	PreviousLayerData,
-	RouterRenderResult,
-	RouterState,
+	ReactRouterState,
 	TransitionOptions,
-} from "./PageDescriptorProvider.ts";
+} from "./ReactPageProvider.ts";
+
+const envSchema = t.object({
+	REACT_ROOT_ID: t.string({ default: "root" }),
+});
+
+declare module "@alepha/core" {
+	interface Env extends Partial<Static<typeof envSchema>> {}
+}
+
+export interface ReactBrowserRendererOptions {
+	scrollRestoration?: "top" | "manual";
+}
 
 export class ReactBrowserProvider {
+	protected readonly env = $env(envSchema);
 	protected readonly log = $logger();
 	protected readonly client = $inject(LinkProvider);
 	protected readonly alepha = $inject(Alepha);
-	protected readonly router = $inject(BrowserRouterProvider);
-	protected root!: Root;
+	protected readonly router = $inject(ReactBrowserRouterProvider);
+	protected root?: Root;
+
+	public options: ReactBrowserRendererOptions = {
+		scrollRestoration: "top",
+	};
+
+	protected getRootElement() {
+		const root = this.document.getElementById(this.env.REACT_ROOT_ID);
+		if (root) {
+			return root;
+		}
+
+		const div = this.document.createElement("div");
+		div.id = this.env.REACT_ROOT_ID;
+
+		this.document.body.prepend(div);
+
+		return div;
+	}
 
 	public transitioning?: {
 		to: string;
+		from?: string;
 	};
 
-	public state: RouterState = {
-		layers: [],
-		pathname: "",
-		search: "",
-	};
+	public get state(): ReactRouterState {
+		return this.alepha.state("react.router.state")!;
+	}
 
+	/**
+	 * Accessor for Document DOM API.
+	 */
 	public get document() {
 		return window.document;
 	}
 
+	/**
+	 * Accessor for History DOM API.
+	 */
 	public get history() {
 		return window.history;
 	}
 
+	/**
+	 * Accessor for Location DOM API.
+	 */
 	public get location() {
 		return window.location;
 	}
 
 	public get url(): string {
-		let url = this.location.pathname + this.location.search;
-
-		if (import.meta?.env?.BASE_URL) {
-			url = url.replace(import.meta.env?.BASE_URL, "");
-			if (!url.startsWith("/")) {
-				url = `/${url}`;
-			}
-		}
-
-		return url;
+		return this.state.url.pathname + this.state.url.search;
 	}
 
 	public pushState(url: string, replace?: boolean) {
@@ -91,14 +129,14 @@ export class ReactBrowserProvider {
 	}
 
 	public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
-		const result = await this.render({
+		await this.render({
 			url,
 			previous: options.force ? [] : this.state.layers,
 		});
 
 		// when redirecting in browser
-		if (result.context.url.pathname + result.context.url.search !== url) {
-			this.pushState(result.context.url.pathname + result.context.url.search);
+		if (this.state.url.pathname + this.state.url.search !== url) {
+			this.pushState(this.state.url.pathname + this.state.url.search);
 			return;
 		}
 
@@ -107,27 +145,24 @@ export class ReactBrowserProvider {
 
 	protected async render(
 		options: { url?: string; previous?: PreviousLayerData[] } = {},
-	): Promise<RouterRenderResult> {
+	): Promise<void> {
 		const previous = options.previous ?? this.state.layers;
-		const url = options.url ?? this.url;
+		const url = options.url ?? this.location.pathname + this.location.search;
 
-		this.transitioning = { to: url };
+		this.transitioning = {
+			to: url,
+		};
 
-		const result = await this.router.transition(
+		const redirect = await this.router.transition(
 			new URL(`http://localhost${url}`),
-			{
-				previous,
-				state: this.state,
-			},
+			previous,
 		);
 
-		if (result.redirect) {
-			return await this.render({ url: result.redirect });
+		if (redirect) {
+			return await this.render({ url: redirect });
 		}
 
 		this.transitioning = undefined;
-
-		return result;
 	}
 
 	/**
@@ -145,6 +180,18 @@ export class ReactBrowserProvider {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
+	protected readonly onTransitionEnd = $hook({
+		on: "react:transition:end",
+		handler: () => {
+			if (
+				this.options.scrollRestoration === "top" &&
+				typeof window !== "undefined"
+			) {
+				window.scrollTo(0, 0);
+			}
+		},
+	});
+
 	public readonly ready = $hook({
 		on: "ready",
 		handler: async () => {
@@ -152,6 +199,7 @@ export class ReactBrowserProvider {
 			const previous = hydration?.layers ?? [];
 
 			if (hydration) {
+				// low budget, but works for now
 				for (const [key, value] of Object.entries(hydration)) {
 					if (key !== "layers") {
 						this.alepha.state(key as keyof State, value);
@@ -159,18 +207,22 @@ export class ReactBrowserProvider {
 				}
 			}
 
-			const { context } = await this.render({ previous });
+			await this.render({ previous });
 
-			await this.alepha.emit("react:browser:render", {
-				state: this.state,
-				context,
-				hydration,
-			});
+			const element = this.router.root(this.state);
+			if (hydration?.layers) {
+				this.root = hydrateRoot(this.getRootElement(), element);
+				this.log.info("Hydrated root element");
+			} else {
+				this.root ??= createRoot(this.getRootElement());
+				this.root.render(element);
+				this.log.info("Created root element");
+			}
 
 			window.addEventListener("popstate", () => {
 				// when you update silently queryparams or hash, skip rendering
 				// if you want to force a rendering, use #go()
-				if (this.state.pathname === this.url) {
+				if (this.state.url.pathname === this.location.pathname) {
 					return;
 				}
 

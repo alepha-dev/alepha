@@ -1,15 +1,15 @@
 import { useEffect } from "react";
-import type {
-	PageReactContext,
-	RouterState,
-} from "../providers/PageDescriptorProvider.ts";
+import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import { useAlepha } from "./useAlepha.ts";
 
+/**
+ * Subscribe to various router events.
+ */
 export const useRouterEvents = (
 	opts: {
-		onBegin?: (ev: { state: RouterState }) => void;
-		onEnd?: (ev: { state: RouterState; context: PageReactContext }) => void;
-		onError?: (ev: { state: RouterState; error: Error }) => void;
+		onBegin?: (ev: { state: ReactRouterState }) => void;
+		onEnd?: (ev: { state: ReactRouterState }) => void;
+		onError?: (ev: { state: ReactRouterState; error: Error }) => void;
 	} = {},
 	deps: any[] = [],
 ) => {

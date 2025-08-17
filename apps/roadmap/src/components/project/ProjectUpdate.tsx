@@ -4,7 +4,7 @@ import { Flex } from "@alepha/react-flex";
 import { FormState, useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { FloppyDisk } from "@blueprintjs/icons";
-import type ProjectApi from "../../api/ProjectApi.ts";
+import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { Project } from "../../api/providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
@@ -32,6 +32,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 			});
 
 			alepha.state("project", project);
+			alepha.state("user.projects", [
+				...(alepha.state("user.projects") ?? []).filter(
+					(p) => p.id !== project.id,
+				),
+				project,
+			]);
 		},
 	});
 

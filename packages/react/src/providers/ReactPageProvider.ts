@@ -13,7 +13,6 @@ import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
 import { AlephaContext } from "../contexts/AlephaContext.ts";
-import { RouterContext } from "../contexts/RouterContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import {
 	$page,
@@ -22,7 +21,6 @@ import {
 	type PageDescriptorOptions,
 } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
-import type { HrefLike } from "../hooks/RouterHookApi.ts";
 
 const envSchema = t.object({
 	REACT_STRICT_MODE: t.boolean({ default: true }),
@@ -32,7 +30,7 @@ declare module "@alepha/core" {
 	export interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export class PageDescriptorProvider {
+export class ReactPageProvider {
 	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
@@ -94,20 +92,11 @@ export class PageDescriptorProvider {
 		);
 	}
 
-	public root(state: RouterState, context: PageReactContext): ReactNode {
+	public root(state: ReactRouterState): ReactNode {
 		const root = createElement(
 			AlephaContext.Provider,
 			{ value: this.alepha },
-			createElement(
-				RouterContext.Provider,
-				{
-					value: {
-						state,
-						context,
-					},
-				},
-				createElement(NestedView, {}, state.layers[0]?.element),
-			),
+			createElement(NestedView, {}, state.layers[0]?.element),
 		);
 
 		if (this.env.REACT_STRICT_MODE) {
@@ -117,15 +106,18 @@ export class PageDescriptorProvider {
 		return root;
 	}
 
+	/**
+	 * Create a new RouterState based on a given route and request.
+	 * This method resolves the layers for the route, applying any query and params schemas defined in the route.
+	 * It also handles errors and redirects.
+	 */
 	public async createLayers(
 		route: PageRoute,
-		request: PageRequest,
+		state: ReactRouterState,
+		previous: PreviousLayerData[] = [],
 	): Promise<CreateLayersResult> {
-		const { pathname, search } = request.url;
-		const layers: Layer[] = []; // result layers
 		let context: Record<string, any> = {}; // all props
 		const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
-		request.onError = (error) => this.renderError(error); // error handler
 
 		let parent = route.parent;
 		while (parent) {
@@ -142,7 +134,7 @@ export class PageDescriptorProvider {
 
 			try {
 				config.query = route.schema?.query
-					? this.alepha.parse(route.schema.query, request.query)
+					? this.alepha.parse(route.schema.query, state.query)
 					: {};
 			} catch (e) {
 				it.error = e as Error;
@@ -151,7 +143,7 @@ export class PageDescriptorProvider {
 
 			try {
 				config.params = route.schema?.params
-					? this.alepha.parse(route.schema.params, request.params)
+					? this.alepha.parse(route.schema.params, state.params)
 					: {};
 			} catch (e) {
 				it.error = e as Error;
@@ -164,7 +156,6 @@ export class PageDescriptorProvider {
 			};
 
 			// check if previous layer is the same, reuse if possible
-			const previous = request.previous;
 			if (previous?.[i] && !forceRefresh && previous[i].name === route.name) {
 				const url = (str?: string) => (str ? str.replace(/\/\/+/g, "/") : "/");
 
@@ -202,7 +193,7 @@ export class PageDescriptorProvider {
 			try {
 				const props =
 					(await route.resolve?.({
-						...request, // request
+						...state, // request
 						...config, // params, query
 						...context, // previous props
 					} as any)) ?? {};
@@ -220,10 +211,9 @@ export class PageDescriptorProvider {
 			} catch (e) {
 				// check if we need to redirect
 				if (e instanceof Redirection) {
-					return this.createRedirectionLayer(e.page, {
-						pathname,
-						search,
-					});
+					return {
+						redirect: e.redirect,
+					};
 				}
 
 				this.log.error(e);
@@ -248,8 +238,8 @@ export class PageDescriptorProvider {
 			const path = acc.replace(/\/+/, "/");
 			const localErrorHandler = this.getErrorHandler(it.route);
 			if (localErrorHandler) {
-				const onErrorParent = request.onError;
-				request.onError = (error, context) => {
+				const onErrorParent = state.onError;
+				state.onError = (error, context) => {
 					const result = localErrorHandler(error, context);
 					// if nothing happen, call the parent
 					if (result === undefined) {
@@ -267,7 +257,7 @@ export class PageDescriptorProvider {
 						...context,
 					});
 
-					layers.push({
+					state.layers.push({
 						name: it.route.name,
 						props,
 						part: it.route.path,
@@ -287,24 +277,23 @@ export class PageDescriptorProvider {
 			if (it.error) {
 				try {
 					let element: ReactNode | Redirection | undefined =
-						await request.onError(it.error, request);
+						await state.onError(it.error, state);
 
 					if (element === undefined) {
 						throw it.error;
 					}
 
 					if (element instanceof Redirection) {
-						return this.createRedirectionLayer(element.page, {
-							pathname,
-							search,
-						});
+						return {
+							redirect: element.redirect,
+						};
 					}
 
 					if (element === null) {
 						element = this.renderError(it.error);
 					}
 
-					layers.push({
+					state.layers.push({
 						props,
 						error: it.error,
 						name: it.route.name,
@@ -318,28 +307,21 @@ export class PageDescriptorProvider {
 					break;
 				} catch (e) {
 					if (e instanceof Redirection) {
-						return this.createRedirectionLayer(e.page, { pathname, search });
+						return {
+							redirect: e.redirect,
+						};
 					}
 					throw e;
 				}
 			}
 		}
 
-		return { layers, pathname, search };
+		return { state };
 	}
 
-	protected createRedirectionLayer(
-		href: HrefLike,
-		context: {
-			pathname: string;
-			search: string;
-		},
-	) {
+	protected createRedirectionLayer(redirect: string): CreateLayersResult {
 		return {
-			layers: [],
-			redirect: typeof href === "string" ? href : this.href(href),
-			pathname: context.pathname,
-			search: context.search,
+			redirect,
 		};
 	}
 
@@ -605,16 +587,31 @@ export interface AnchorProps {
 	onClick: (ev?: any) => any;
 }
 
-export interface RouterState {
-	pathname: string;
-	search: string;
+export interface ReactRouterState {
+	/**
+	 * Stack of layers for the current page.
+	 */
 	layers: Array<Layer>;
-}
 
-export interface TransitionOptions {
-	state?: RouterState;
-	previous?: PreviousLayerData[];
-	context?: PageReactContext;
+	/**
+	 * URL of the current page.
+	 */
+	url: URL;
+
+	/**
+	 * Error handler for the current page.
+	 */
+	onError: ErrorHandler;
+
+	/**
+	 * Params extracted from the URL for the current page.
+	 */
+	params: Record<string, any>;
+
+	/**
+	 * Query parameters extracted from the URL for the current page.
+	 */
+	query: Record<string, string>;
 }
 
 export interface RouterStackItem {
@@ -625,31 +622,11 @@ export interface RouterStackItem {
 	cache?: boolean;
 }
 
-export interface RouterRenderResult {
-	state: RouterState;
-	context: PageReactContext;
-	redirect?: string;
-}
-
-export interface PageRequest extends PageReactContext {
-	params: Record<string, any>;
-	query: Record<string, string>;
-
-	// previous layers (browser history or browser hydration, always null on server)
+export interface TransitionOptions {
 	previous?: PreviousLayerData[];
 }
 
-export interface CreateLayersResult extends RouterState {
+export interface CreateLayersResult {
 	redirect?: string;
-}
-
-/**
- * It's like RouterState, but publicly available in React context.
- * This is where we store all plugin data!
- */
-export interface PageReactContext {
-	url: URL;
-	onError: ErrorHandler;
-	params: Record<string, any>;
-	query: Record<string, string>;
+	state?: ReactRouterState;
 }

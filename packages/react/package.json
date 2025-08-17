@@ -28,6 +28,7 @@
 		"@types/react-dom": "^19.1.7",
 		"react": "^19.1.1",
 		"tsdown": "^0.14.1",
+		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
@@ -35,6 +36,7 @@
 		"react": "^19"
 	},
 	"scripts": {
+		"check": "tsc",
 		"test": "vitest run",
 		"build": "tsdown -c ../../tsdown.config.ts"
 	},

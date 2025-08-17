@@ -1,3 +1,4 @@
+import "@alepha/server-security";
 import { $module } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
 import { $client } from "./descriptors/$client.ts";

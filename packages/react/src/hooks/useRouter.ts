@@ -1,33 +1,20 @@
-import { useContext, useMemo } from "react";
-import { RouterContext } from "../contexts/RouterContext.ts";
-import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import { PageDescriptorProvider } from "../providers/PageDescriptorProvider.ts";
-import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
-import { RouterHookApi } from "./RouterHookApi.ts";
-import { useAlepha } from "./useAlepha.ts";
+import { ReactRouter } from "../services/ReactRouter.ts";
+import { useInject } from "./useInject.ts";
 
-export const useRouter = <T extends object>(): RouterHookApi<T> => {
-	const alepha = useAlepha();
-	const ctx = useContext(RouterContext);
-	const layer = useContext(RouterLayerContext);
-	if (!ctx || !layer) {
-		throw new Error("useRouter must be used within a RouterProvider");
-	}
-
-	const pages = useMemo(() => {
-		return alepha.inject(PageDescriptorProvider).getPages();
-	}, []);
-
-	return useMemo(
-		() =>
-			new RouterHookApi(
-				pages,
-				ctx.context,
-				ctx.state,
-				layer,
-				alepha.inject(PageDescriptorProvider),
-				alepha.isBrowser() ? alepha.inject(ReactBrowserProvider) : undefined,
-			),
-		[layer],
-	);
+/**
+ * Use this hook to access the React Router instance.
+ *
+ * You can add a type parameter to specify the type of your application.
+ * This will allow you to use the router in a typesafe way.
+ *
+ * @example
+ * class App {
+ *   home = $page();
+ * }
+ *
+ * const router = useRouter<App>();
+ * router.go("home"); // typesafe
+ */
+export const useRouter = <T extends object = any>(): ReactRouter<T> => {
+	return useInject(ReactRouter<T>);
 };

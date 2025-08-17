@@ -1,22 +1,45 @@
 import { AlephaError } from "@alepha/core";
-import { useActive, useInject } from "@alepha/react";
+import { type AnchorProps, useActive, useInject } from "@alepha/react";
 import { AnchorButton, Button, type ButtonProps } from "@blueprintjs/core";
 import { createElement, type FunctionComponent, useState } from "react";
-import Toast from "../../services/Toast.ts";
+import { Toaster } from "../../services/Toaster.ts";
 
 export type ActionProps = ButtonProps & {
 	visibleText?: "sm" | "md" | "lg";
-	active?: boolean;
 	href?: string;
+	active?: boolean;
+	anchorProps?: AnchorProps;
 };
 
 const Action = (props: ActionProps) => {
-	const toast = useInject(Toast);
-	let { visibleText, href, ...rest } = props;
+	const href = props.href;
+	if (href) {
+		return <HrefAction {...props} href={href} />;
+	}
+
+	return <AbstractAction {...props} />;
+};
+
+export default Action;
+
+const HrefAction = (props: ActionProps & { href: string }) => {
+	const { isActive, anchorProps } = useActive(props.href);
+
+	return (
+		<AbstractAction
+			{...props}
+			active={props.active ?? isActive}
+			anchorProps={anchorProps}
+		/>
+	);
+};
+
+const AbstractAction = (props: ActionProps) => {
+	const toaster = useInject(Toaster);
+	const [pending, setPending] = useState(false);
+	let { visibleText, href, anchorProps, ...rest } = props;
 
 	const isAnchor = !!href;
-	const { isActive, anchorProps } = useActive(href);
-	const [pending, setPending] = useState(false);
 
 	const onClick = rest.onClick;
 	if (onClick) {
@@ -27,7 +50,7 @@ const Action = (props: ActionProps) => {
 				await onClick(e);
 			} catch (error) {
 				if (error instanceof AlephaError) {
-					toast.show(error.message, "danger");
+					toaster.show(error.message, "danger");
 					return;
 				}
 				throw error;
@@ -38,13 +61,6 @@ const Action = (props: ActionProps) => {
 
 	rest.disabled ??= pending;
 	rest.loading ??= pending;
-
-	if (isAnchor && isActive && props.active !== false) {
-		rest = {
-			...rest,
-			active: true,
-		};
-	}
 
 	let element: FunctionComponent = Button;
 
@@ -63,5 +79,3 @@ const Action = (props: ActionProps) => {
 
 	return createElement(element, rest);
 };
-
-export default Action;

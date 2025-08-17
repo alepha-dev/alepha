@@ -712,12 +712,7 @@ export class Alepha {
 		const match = this.registry.get(service);
 
 		// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
-		if (
-			!match &&
-			this.isServerless() === "vite" &&
-			!opts.skipRegistration &&
-			this.started
-		) {
+		if (!match && this.isServerless() === "vite" && !opts.skipRegistration) {
 			for (const [_, definition] of this.registry.entries()) {
 				if (definition.instance?.constructor.name === service.name) {
 					this.log.debug(`Hot reload detected for ${service.name}`);

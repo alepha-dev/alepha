@@ -9,8 +9,6 @@ export class ServerLoggerProvider {
 		priority: "first",
 		handler: ({ route, request }) => {
 			if (!route.silent) {
-				const req = request.raw.node?.req;
-
 				request.metadata.now = Date.now();
 
 				const data: Record<string, string> = {
@@ -20,10 +18,7 @@ export class ServerLoggerProvider {
 
 				if (this.alepha.isProduction()) {
 					data.agent = request.headers["user-agent"];
-					const ip = req
-						? request.headers["x-forwarded-for"]?.split(",")[0] ||
-							req.socket.remoteAddress
-						: undefined;
+					const ip = request.ip;
 					if (ip) {
 						data.ip = ip;
 					}

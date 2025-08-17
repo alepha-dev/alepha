@@ -2,7 +2,7 @@ import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import type { AppRouter } from "../../AppRouter.ts";
-import type ProjectApi from "../../api/ProjectApi.ts";
+import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../shared/Action.tsx";
 import ProjectUpdate from "./ProjectUpdate.tsx";

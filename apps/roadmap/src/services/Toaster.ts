@@ -1,9 +1,9 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
-import type { Toaster } from "@blueprintjs/core";
+import type { Toaster as BlueprintToaster } from "@blueprintjs/core";
 import { OverlayToaster } from "@blueprintjs/core";
 
-class Toast {
-	toaster?: Toaster;
+export class Toaster {
+	toaster?: BlueprintToaster;
 	alepha = $inject(Alepha);
 
 	configure = $hook({
@@ -31,5 +31,3 @@ class Toast {
 		});
 	}
 }
-
-export default Toast;

@@ -19,6 +19,8 @@ export interface ViteAlephaDevOptions {
 	 * @default false
 	 */
 	debug?: boolean;
+
+	onReload?: () => void;
 }
 
 const state: ViteAlephaDevState = {
@@ -26,6 +28,7 @@ const state: ViteAlephaDevState = {
 	started: false,
 	log: (...msg: string[]) => {},
 	entry: "",
+	onReload: () => {},
 };
 
 /**
@@ -54,6 +57,7 @@ export async function viteAlephaDev(
 	};
 
 	state.log = log;
+	state.onReload = options.onReload;
 	state.entry = entry;
 
 	return {
@@ -78,6 +82,7 @@ export async function viteAlephaDev(
 				return;
 			}
 
+			//const invalidate = !ctx.file.startsWith(state.root);
 			const invalidate = !ctx.file.startsWith(state.root);
 			if (invalidate) {
 				log("[DEBUG] HMR - outside root - invalidate all");
@@ -152,6 +157,7 @@ interface ViteAlephaDevState {
 	lock?: PromiseWithResolvers<void>;
 	log: (...msg: string[]) => void;
 	entry: string;
+	onReload?: () => void;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -173,6 +179,8 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 		state.log("[DEBUG] No config - skip starting");
 		return;
 	}
+
+	state.onReload?.();
 
 	state.log("[DEBUG] Starting Alepha app...");
 

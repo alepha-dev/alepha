@@ -19,10 +19,12 @@
 	"devDependencies": {
 		"@alepha/command": "^0.9.3",
 		"@alepha/core": "^0.9.3",
-		"tsdown": "^0.14.1"
+		"tsdown": "^0.14.1",
+		"typescript": "^5.9.2"
 	},
 	"scripts": {
-		"build": "tsdown -c ../../tsdown.config.ts"
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

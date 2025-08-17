@@ -102,12 +102,12 @@ async function renderFile(
 	dist: string,
 	compress?: ViteCompressOptions | boolean,
 ) {
-	const { html, context } = await page.render({
+	const { html, state } = await page.render({
 		html: true,
 		...options,
 	});
 
-	const pathname = context.url.pathname;
+	const pathname = state.url.pathname;
 	const filepath = `${dist}${pathname === "/" ? "/index" : pathname}.html`;
 
 	await mkdir(filepath.substring(0, filepath.lastIndexOf("/")), {

@@ -6,10 +6,21 @@
 		"build": "vite build",
 		"start": "node dist",
 		"build&start": "yarn build && yarn start",
-		"preview": "yarn build && vite preview --outDit=dist/public"
+		"preview": "yarn build && vite preview --outDit=dist/public",
+		"check": "tsc"
+	},
+	"dependencies": {
+		"@alepha/core": "0.9.3",
+		"@alepha/react": "0.9.3",
+		"@alepha/server": "0.9.3",
+		"@alepha/server-links": "0.9.3",
+		"@alepha/server-security": "0.9.3",
+		"react": "^19.1.1",
+		"react-dom": "^19.1.1"
 	},
 	"devDependencies": {
 		"@vitejs/plugin-react": "^5.0.0",
+		"typescript": "^5.9.2",
 		"vite": "^7.1.2"
 	}
 }

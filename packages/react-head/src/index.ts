@@ -27,7 +27,7 @@ declare module "@alepha/react" {
 		head?: Head | ((props: TProps, previous?: Head) => Head);
 	}
 
-	interface PageReactContext {
+	interface ReactRouterState {
 		head: Head;
 	}
 }

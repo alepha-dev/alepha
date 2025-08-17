@@ -15,6 +15,7 @@
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.1",
+		"typescript": "^5.9.2",
 		"vite": "^7.1.2"
 	},
 	"peerDependencies": {
@@ -26,7 +27,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsdown -c ../../tsdown.config.ts"
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

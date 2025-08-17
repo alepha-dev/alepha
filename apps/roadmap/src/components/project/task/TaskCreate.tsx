@@ -8,10 +8,10 @@ import { AreaOfInterest, FloppyDisk, Plus, Tag } from "@blueprintjs/icons";
 import { useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Project, Task } from "../../../api/providers/Db.ts";
-import type TaskApi from "../../../api/TaskApi.ts";
+import type { TaskApi } from "../../../api/TaskApi.ts";
 import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import Toast from "../../../services/Toast.ts";
+import { Toaster } from "../../../services/Toaster.ts";
 import Action from "../../shared/Action.tsx";
 import Control from "../../shared/Control.tsx";
 import TextEditor from "../../shared/TextEditor.tsx";
@@ -26,7 +26,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 	const [error, setError] = useState<TypeBoxError | undefined>();
 	const taskApi = useClient<TaskApi>();
 	const alepha = useAlepha();
-	const toast = useInject(Toast);
+	const toaster = useInject(Toaster);
 	const router = useRouter<AppRouter>();
 	const { tr } = useI18n<I18n, "en">();
 
@@ -68,7 +68,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 			});
 		},
 		onError: (err) => {
-			toast.show(err.message, "danger");
+			toaster.show(err.message, "danger");
 
 			if (err instanceof TypeBoxError) {
 				setError(err);

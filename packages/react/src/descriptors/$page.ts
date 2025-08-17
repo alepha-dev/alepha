@@ -11,7 +11,7 @@ import type { ServerRouteCache } from "@alepha/server-cache";
 import type { FC, ReactNode } from "react";
 import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { Redirection } from "../errors/Redirection.ts";
-import type { PageReactContext } from "../providers/PageDescriptorProvider.ts";
+import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 
 /**
  * Main descriptor for defining a React route in the application.
@@ -183,7 +183,7 @@ export interface PageDescriptorOptions<
 
 export type ErrorHandler = (
 	error: Error,
-	context: PageReactContext,
+	state: ReactRouterState,
 ) => ReactNode | Redirection | undefined;
 
 export class PageDescriptor<
@@ -237,7 +237,7 @@ export interface PageDescriptorRenderOptions {
 
 export interface PageDescriptorRenderResult {
 	html: string;
-	context: PageReactContext;
+	state: ReactRouterState;
 }
 
 export interface PageRequestConfig<
@@ -255,4 +255,6 @@ export interface PageRequestConfig<
 export type PageResolve<
 	TConfig extends PageConfigSchema = PageConfigSchema,
 	TPropsParent extends object = TPropsParentDefault,
-> = PageRequestConfig<TConfig> & TPropsParent & PageReactContext;
+> = PageRequestConfig<TConfig> &
+	TPropsParent &
+	Omit<ReactRouterState, "layers" | "onError">;

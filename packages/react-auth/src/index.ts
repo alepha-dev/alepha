@@ -20,7 +20,7 @@ declare module "@alepha/core" {
 	}
 }
 declare module "@alepha/react" {
-	interface PageReactContext {
+	interface ReactRouterState {
 		user?: UserAccount;
 	}
 }

@@ -111,7 +111,7 @@ export type AuthInternal = {
 );
 
 export type CredentialsOptions = {
-	account: (entry: {
+	account: (credentials: {
 		username: string;
 		password: string;
 	}) => Async<UserAccount>;

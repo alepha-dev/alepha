@@ -3,65 +3,55 @@ import { AlephaServer, type ServerRequest } from "@alepha/server";
 import { AlephaServerCache } from "@alepha/server-cache";
 import { AlephaServerLinks } from "@alepha/server-links";
 import { $page } from "./descriptors/$page.ts";
+import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import {
-	PageDescriptorProvider,
-	type PageReactContext,
-	type PageRequest,
-	type RouterState,
-} from "./providers/PageDescriptorProvider.ts";
-import {
-	ReactBrowserProvider,
-	type ReactHydrationState,
-} from "./providers/ReactBrowserProvider.ts";
+	ReactPageProvider,
+	type ReactRouterState,
+} from "./providers/ReactPageProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
+import { ReactRouter } from "./services/ReactRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared.ts";
-export * from "./providers/PageDescriptorProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
+export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
+	interface State {
+		"react.router.state"?: ReactRouterState;
+	}
+
 	interface Hooks {
-		"react:router:createLayers": {
-			request: ServerRequest;
-			context: PageRequest;
-			layers: PageRequest[];
-		};
 		"react:server:render:begin": {
 			request?: ServerRequest;
-			context: PageRequest;
+			state: ReactRouterState;
 		};
 		"react:server:render:end": {
 			request?: ServerRequest;
-			context: PageRequest;
-			state: RouterState;
+			state: ReactRouterState;
 			html: string;
 		};
+		// -----------------------------------------------------------------------------------------------------------------
 		"react:browser:render": {
-			state: RouterState;
-			context: PageReactContext;
+			state: ReactRouterState;
 			hydration?: ReactHydrationState;
 		};
 		"react:transition:begin": {
-			state: RouterState;
-			context: PageReactContext;
+			state: ReactRouterState;
 		};
 		"react:transition:success": {
-			state: RouterState;
-			context: PageReactContext;
+			state: ReactRouterState;
 		};
 		"react:transition:error": {
+			state: ReactRouterState;
 			error: Error;
-			state: RouterState;
-			context: PageReactContext;
 		};
 		"react:transition:end": {
-			state: RouterState;
-			context: PageReactContext;
+			state: ReactRouterState;
 		};
 	}
 }
@@ -81,12 +71,13 @@ declare module "@alepha/core" {
 export const AlephaReact = $module({
 	name: "alepha.react",
 	descriptors: [$page],
-	services: [ReactServerProvider, PageDescriptorProvider, ReactBrowserProvider],
+	services: [ReactServerProvider, ReactPageProvider, ReactRouter],
 	register: (alepha) =>
 		alepha
 			.with(AlephaServer)
 			.with(AlephaServerCache)
 			.with(AlephaServerLinks)
 			.with(ReactServerProvider)
-			.with(PageDescriptorProvider),
+			.with(ReactPageProvider)
+			.with(ReactRouter),
 });

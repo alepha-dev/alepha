@@ -4,6 +4,7 @@ import {
 	$realm,
 	$role,
 	AlephaSecurity,
+	type UserAccount,
 	type UserAccountToken,
 } from "@alepha/security";
 import { AlephaServer, type FetchOptions } from "@alepha/server";
@@ -24,6 +25,8 @@ declare module "@alepha/core" {
 		 * > To force a different user, you need to pass it explicitly in the options.
 		 */
 		"server.security.system.user"?: UserAccountToken;
+
+		user?: UserAccount;
 	}
 }
 declare module "@alepha/server" {

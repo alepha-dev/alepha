@@ -1,27 +1,35 @@
+import path from "node:path";
+import { $inject, Alepha } from "@alepha/core";
 import type { PageDescriptor } from "../descriptors/$page.ts";
-import type {
-	AnchorProps,
-	PageDescriptorProvider,
-	PageReactContext,
-	PageRoute,
-	RouterState,
-} from "../providers/PageDescriptorProvider.ts";
-import type {
+import {
 	ReactBrowserProvider,
-	RouterGoOptions,
+	type RouterGoOptions,
 } from "../providers/ReactBrowserProvider.ts";
+import {
+	type AnchorProps,
+	ReactPageProvider,
+	type ReactRouterState,
+} from "../providers/ReactPageProvider.ts";
 
-export class RouterHookApi<T extends object> {
-	constructor(
-		private readonly pages: PageRoute[],
-		private readonly context: PageReactContext,
-		private readonly state: RouterState,
-		private readonly layer: {
-			path: string;
-		},
-		private readonly pageApi: PageDescriptorProvider,
-		private readonly browser?: ReactBrowserProvider,
-	) {}
+export class ReactRouter<T extends object> {
+	protected readonly alepha = $inject(Alepha);
+	protected readonly pageApi = $inject(ReactPageProvider);
+
+	public get state(): ReactRouterState {
+		return this.alepha.state("react.router.state")!;
+	}
+
+	public get pages() {
+		return this.pageApi.getPages();
+	}
+
+	public get browser(): ReactBrowserProvider | undefined {
+		if (this.alepha.isBrowser()) {
+			return this.alepha.inject(ReactBrowserProvider);
+		}
+		// server-side
+		return undefined;
+	}
 
 	public path(
 		name: keyof VirtualRouter<T>,
@@ -32,7 +40,7 @@ export class RouterHookApi<T extends object> {
 	): string {
 		return this.pageApi.pathname(name as string, {
 			params: {
-				...this.context.params,
+				...this.state.params,
 				...config.params,
 			},
 			query: config.query,
@@ -41,8 +49,9 @@ export class RouterHookApi<T extends object> {
 
 	public getURL(): URL {
 		if (!this.browser) {
-			return this.context.url;
+			return this.state.url;
 		}
+
 		return new URL(this.location.href);
 	}
 
@@ -54,19 +63,19 @@ export class RouterHookApi<T extends object> {
 		return this.browser.location;
 	}
 
-	public get current(): RouterState {
+	public get current(): ReactRouterState {
 		return this.state;
 	}
 
 	public get pathname(): string {
-		return this.state.pathname;
+		return this.state.url.pathname;
 	}
 
 	public get query(): Record<string, string> {
 		const query: Record<string, string> = {};
 
 		for (const [key, value] of new URLSearchParams(
-			this.state.search,
+			this.state.url.search,
 		).entries()) {
 			query[key] = String(value);
 		}
@@ -84,32 +93,6 @@ export class RouterHookApi<T extends object> {
 
 	public async invalidate(props?: Record<string, any>) {
 		await this.browser?.invalidate(props);
-	}
-
-	/**
-	 * Create a valid href for the given pathname.
-	 *
-	 * @param pathname
-	 * @param layer
-	 */
-	public createHref(
-		pathname: HrefLike,
-		layer: { path: string } = this.layer,
-		options: { params?: Record<string, any> } = {},
-	) {
-		if (typeof pathname === "object") {
-			pathname = pathname.options.path ?? "";
-		}
-
-		if (options.params) {
-			for (const [key, value] of Object.entries(options.params)) {
-				pathname = pathname.replace(`:${key}`, String(value));
-			}
-		}
-
-		return pathname.startsWith("/")
-			? pathname
-			: `${layer.path}/${pathname}`.replace(/\/\/+/g, "/");
 	}
 
 	public async go(path: string, options?: RouterGoOptions): Promise<void>;
@@ -147,6 +130,7 @@ export class RouterHookApi<T extends object> {
 		options: { params?: Record<string, any> } = {},
 	): AnchorProps {
 		let href = path as string;
+
 		for (const page of this.pages) {
 			if (page.name === path) {
 				href = this.path(path as keyof VirtualRouter<T>, options);
@@ -155,7 +139,7 @@ export class RouterHookApi<T extends object> {
 		}
 
 		return {
-			href,
+			href: this.base(href),
 			onClick: (ev: any) => {
 				ev.stopPropagation();
 				ev.preventDefault();
@@ -163,6 +147,15 @@ export class RouterHookApi<T extends object> {
 				this.go(href, options).catch(console.error);
 			},
 		};
+	}
+
+	protected base(path: string): string {
+		return path; // TODO: add base URL handling if needed
+		// const BASE_URL = import.meta?.env?.BASE_URL;
+		// if (BASE_URL) {
+		// 	path = (BASE_URL + path).replaceAll("//", "/");
+		// }
+		// return path.startsWith("/") ? path : `/${path}`;
 	}
 
 	/**
@@ -193,8 +186,6 @@ export class RouterHookApi<T extends object> {
 		}
 	}
 }
-
-export type HrefLike = string | { options: { path?: string; name?: string } };
 
 export type VirtualRouter<T> = {
 	[K in keyof T as T[K] extends PageDescriptor ? K : never]: T[K];

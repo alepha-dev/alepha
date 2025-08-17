@@ -2,17 +2,16 @@ import { Alepha, t } from "@alepha/core";
 import { renderToString } from "react-dom/server";
 import { test } from "vitest";
 import { NestedView } from "../src";
-import { BrowserRouterProvider } from "../src/providers/BrowserRouterProvider.ts";
+import { ReactBrowserRouterProvider } from "../src/providers/ReactBrowserRouterProvider.ts";
 
 const setup = () => {
 	const alepha = Alepha.create();
-	const router = alepha.inject(BrowserRouterProvider);
+	const router = alepha.inject(ReactBrowserRouterProvider);
 
 	const render = async (path: string): Promise<string> => {
-		const { state, context } = await router.transition(
-			new URL(`http://localhost${path}`),
-		);
-		const element = router.root(state, context);
+		await router.transition(new URL(`http://localhost${path}`));
+		const state = alepha.state("react.router.state");
+		const element = router.root(state);
 		return renderToString(element).replaceAll("<!-- -->", "");
 	};
 

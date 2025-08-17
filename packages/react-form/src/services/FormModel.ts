@@ -9,7 +9,7 @@ import {
 } from "@alepha/core";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
-export class FormCtrl<T extends TObject> {
+export class FormModel<T extends TObject> {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly values: Record<string, any> = {};

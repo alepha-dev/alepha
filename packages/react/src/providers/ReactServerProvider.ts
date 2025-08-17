@@ -6,6 +6,7 @@ import {
 	$inject,
 	$logger,
 	Alepha,
+	AlephaError,
 	type Static,
 	t,
 } from "@alepha/core";
@@ -22,14 +23,12 @@ import {
 	type PageDescriptorRenderOptions,
 } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
-import {
-	PageDescriptorProvider,
-	type PageReactContext,
-	type PageRequest,
-	type PageRoute,
-	type RouterState,
-} from "./PageDescriptorProvider.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
+import {
+	type PageRoute,
+	ReactPageProvider,
+	type ReactRouterState,
+} from "./ReactPageProvider.ts";
 
 const envSchema = t.object({
 	REACT_SERVER_DIST: t.string({ default: "public" }),
@@ -53,7 +52,7 @@ declare module "@alepha/core" {
 export class ReactServerProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly pageDescriptorProvider = $inject(PageDescriptorProvider);
+	protected readonly pageApi = $inject(ReactPageProvider);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
@@ -135,7 +134,7 @@ export class ReactServerProvider {
 	}
 
 	protected async registerPages(templateLoader: TemplateLoader) {
-		for (const page of this.pageDescriptorProvider.getPages()) {
+		for (const page of this.pageApi.getPages()) {
 			if (page.children?.length) {
 				continue;
 			}
@@ -196,38 +195,44 @@ export class ReactServerProvider {
 	 */
 	protected createRenderFunction(name: string, withIndex = false) {
 		return async (options: PageDescriptorRenderOptions = {}) => {
-			const page = this.pageDescriptorProvider.page(name);
-			const url = new URL(this.pageDescriptorProvider.url(name, options));
-			const context: PageRequest = {
+			const page = this.pageApi.page(name);
+			const url = new URL(this.pageApi.url(name, options));
+
+			const entry: Partial<ReactRouterState> = {
 				url,
 				params: options.params ?? {},
 				query: options.query ?? {},
-				head: {},
 				onError: () => null,
+				layers: [],
 			};
 
+			const state = entry as ReactRouterState;
+
 			await this.alepha.emit("react:server:render:begin", {
-				context,
+				state,
 			});
 
-			const state = await this.pageDescriptorProvider.createLayers(
+			const { redirect } = await this.pageApi.createLayers(
 				page,
-				context,
+				state as ReactRouterState,
 			);
+
+			if (redirect) {
+				throw new AlephaError("Redirection is not supported in this context");
+			}
+
+			this.alepha.state("react.router.state", state);
 
 			if (!withIndex && !options.html) {
 				return {
-					context,
-					html: renderToString(
-						this.pageDescriptorProvider.root(state, context),
-					),
+					state,
+					html: renderToString(this.pageApi.root(state)),
 				};
 			}
 
 			const html = this.renderToHtml(
 				this.template ?? "",
 				state,
-				context,
 				options.hydration,
 			);
 
@@ -236,7 +241,6 @@ export class ReactServerProvider {
 			}
 
 			const result = {
-				context,
 				state,
 				html,
 			};
@@ -248,7 +252,7 @@ export class ReactServerProvider {
 	}
 
 	protected createHandler(
-		page: PageRoute,
+		route: PageRoute,
 		templateLoader: TemplateLoader,
 	): ServerHandler {
 		return async (serverRequest) => {
@@ -259,31 +263,32 @@ export class ReactServerProvider {
 			}
 
 			this.log.trace("Rendering page", {
-				name: page.name,
+				name: route.name,
 			});
 
-			const context: PageRequest = {
+			const entry: Partial<ReactRouterState> = {
 				url,
 				params,
 				query,
-				// plugins
-				head: {},
 				onError: () => null,
+				layers: [],
 			};
+
+			const state = entry as ReactRouterState;
 
 			if (this.alepha.has(ServerLinksProvider)) {
 				this.alepha.state(
 					"api",
 					await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
-						user: serverRequest.user,
+						user: (serverRequest as any).user, // TODO: fix type
 						authorization: serverRequest.headers.authorization,
 					}),
 				);
 			}
 
-			let target: PageRoute | undefined = page; // TODO: move to PageDescriptorProvider
+			let target: PageRoute | undefined = route; // TODO: move to PageDescriptorProvider
 			while (target) {
-				if (page.can && !page.can()) {
+				if (route.can && !route.can()) {
 					// if the page is not accessible, return 403
 					reply.status = 403;
 					reply.headers["content-type"] = "text/plain";
@@ -305,20 +310,17 @@ export class ReactServerProvider {
 
 			await this.alepha.emit("react:server:render:begin", {
 				request: serverRequest,
-				context,
+				state,
 			});
 
 			this.serverTimingProvider.beginTiming("createLayers");
 
-			const state = await this.pageDescriptorProvider.createLayers(
-				page,
-				context,
-			);
+			const { redirect } = await this.pageApi.createLayers(route, state);
 
 			this.serverTimingProvider.endTiming("createLayers");
 
-			if (state.redirect) {
-				return reply.redirect(state.redirect);
+			if (redirect) {
+				return reply.redirect(redirect);
 			}
 
 			reply.headers["content-type"] = "text/html";
@@ -330,29 +332,28 @@ export class ReactServerProvider {
 			reply.headers.pragma = "no-cache";
 			reply.headers.expires = "0";
 
-			const html = this.renderToHtml(template, state, context);
+			const html = this.renderToHtml(template, state);
 			if (html instanceof Redirection) {
 				reply.redirect(
-					typeof html.page === "string"
-						? html.page
-						: this.pageDescriptorProvider.href(html.page),
+					typeof html.redirect === "string"
+						? html.redirect
+						: this.pageApi.href(html.redirect),
 				);
 				return;
 			}
 
 			const event = {
 				request: serverRequest,
-				context,
 				state,
 				html,
 			};
 
 			await this.alepha.emit("react:server:render:end", event);
 
-			page.onServerResponse?.(serverRequest);
+			route.onServerResponse?.(serverRequest);
 
 			this.log.trace("Page rendered", {
-				name: page.name,
+				name: route.name,
 			});
 
 			return event.html;
@@ -361,20 +362,21 @@ export class ReactServerProvider {
 
 	public renderToHtml(
 		template: string,
-		state: RouterState,
-		context: PageReactContext,
+		state: ReactRouterState,
 		hydration = true,
 	): string | Redirection {
-		const element = this.pageDescriptorProvider.root(state, context);
+		const element = this.pageApi.root(state);
+
+		// attach react router state to the http request context
+		this.alepha.state("react.router.state", state);
 
 		this.serverTimingProvider.beginTiming("renderToString");
-
 		let app = "";
 		try {
 			app = renderToString(element);
 		} catch (error) {
 			this.log.error("Error during SSR", error);
-			const element = context.onError(error as Error, context);
+			const element = state.onError(error as Error, state);
 			if (element instanceof Redirection) {
 				// if the error is a redirection, return the redirection URL
 				return element;
@@ -382,7 +384,6 @@ export class ReactServerProvider {
 
 			app = renderToString(element);
 		}
-
 		this.serverTimingProvider.endTiming("renderToString");
 
 		const response = {
@@ -390,11 +391,13 @@ export class ReactServerProvider {
 		};
 
 		if (hydration) {
-			const { request, context, ...rest } =
-				this.alepha.context.als?.getStore() ?? {};
+			const { request, context, ...store } =
+				this.alepha.context.als?.getStore() ?? {}; /// TODO: als must be protected, find a way to iterate on alepha.state
 
 			const hydrationData: ReactHydrationState = {
-				...rest,
+				...store,
+				// map react.router.state to the hydration state
+				"react.router.state": undefined,
 				layers: state.layers.map((it) => ({
 					...it,
 					error: it.error

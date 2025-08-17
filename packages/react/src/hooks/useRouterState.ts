@@ -1,23 +1,11 @@
-import { useContext, useState } from "react";
-import { RouterContext } from "../contexts/RouterContext.ts";
-import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import type { RouterState } from "../providers/PageDescriptorProvider.ts";
-import { useRouterEvents } from "./useRouterEvents.ts";
+import { AlephaError } from "@alepha/core";
+import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
+import { useStore } from "./useStore.ts";
 
-export const useRouterState = (): RouterState => {
-	const router = useContext(RouterContext);
-	const layer = useContext(RouterLayerContext);
-	if (!router || !layer) {
-		throw new Error(
-			"useRouterState must be used within a RouterContext.Provider",
-		);
+export const useRouterState = (): ReactRouterState => {
+	const [state] = useStore("react.router.state");
+	if (!state) {
+		throw new AlephaError("Missing react router state");
 	}
-
-	const [state, setState] = useState(router.state);
-
-	useRouterEvents({
-		onEnd: ({ state }) => setState({ ...state }),
-	});
-
 	return state;
 };

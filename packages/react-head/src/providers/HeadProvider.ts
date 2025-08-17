@@ -1,4 +1,4 @@
-import type { PageReactContext, PageRoute, RouterState } from "@alepha/react";
+import type { PageRoute, ReactRouterState } from "@alepha/react";
 import type { Head } from "../interfaces/Head.ts";
 
 export class HeadProvider {
@@ -11,63 +11,63 @@ export class HeadProvider {
 		return this.global;
 	}
 
-	public fillHead(state: RouterState, context: PageReactContext) {
-		context.head = {
-			...context.head,
+	public fillHead(state: ReactRouterState) {
+		state.head = {
+			...state.head,
 			...this.getGlobalHead(),
 		};
 
 		for (const layer of state.layers) {
 			if (layer.route?.head && !layer.error) {
-				this.fillHeadByPage(layer.route, context, layer.props ?? {});
+				this.fillHeadByPage(layer.route, state, layer.props ?? {});
 			}
 		}
 	}
 
 	protected fillHeadByPage(
 		page: PageRoute,
-		context: PageReactContext,
+		state: ReactRouterState,
 		props: Record<string, any>,
 	): void {
 		if (!page.head) {
 			return;
 		}
 
-		context.head ??= {};
+		state.head ??= {};
 
 		const head =
 			typeof page.head === "function"
-				? page.head(props, context.head)
+				? page.head(props, state.head)
 				: page.head;
 
 		if (head.title) {
-			context.head ??= {};
+			state.head ??= {};
 
-			if (context.head.titleSeparator) {
-				context.head.title = `${head.title}${context.head.titleSeparator}${context.head.title}`;
+			if (state.head.titleSeparator) {
+				state.head.title = `${head.title}${state.head.titleSeparator}${state.head.title}`;
 			} else {
-				context.head.title = head.title;
+				state.head.title = head.title;
 			}
 
-			context.head.titleSeparator = head.titleSeparator;
+			state.head.titleSeparator = head.titleSeparator;
 		}
 
 		if (head.htmlAttributes) {
-			context.head.htmlAttributes = {
-				...context.head.htmlAttributes,
+			state.head.htmlAttributes = {
+				...state.head.htmlAttributes,
 				...head.htmlAttributes,
 			};
 		}
 
 		if (head.bodyAttributes) {
-			context.head.bodyAttributes = {
-				...context.head.bodyAttributes,
+			state.head.bodyAttributes = {
+				...state.head.bodyAttributes,
 				...head.bodyAttributes,
 			};
 		}
 
 		if (head.meta) {
-			context.head.meta = [...(context.head.meta ?? []), ...(head.meta ?? [])];
+			state.head.meta = [...(state.head.meta ?? []), ...(head.meta ?? [])];
 		}
 	}
 }

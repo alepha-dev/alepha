@@ -1,10 +1,10 @@
 import type { TObject } from "@alepha/core";
 import type { ReactNode } from "react";
 import { useFormState } from "../hooks/useFormState.ts";
-import type { FormCtrl } from "../services/FormCtrl.ts";
+import type { FormModel } from "../services/FormModel.ts";
 
 const FormState = <T extends TObject>(props: {
-	form: FormCtrl<T>;
+	form: FormModel<T>;
 	children: (state: { loading: boolean; dirty: boolean }) => ReactNode;
 }) => {
 	const formState = useFormState(props.form);

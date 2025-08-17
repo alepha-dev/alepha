@@ -77,13 +77,15 @@ export interface RealmSettings {
 
 		onCreate?: (
 			user: UserAccount,
-			refreshToken?: string,
-		) => Promise<{
-			refresh_token: string;
+			config: {
+				expires_in: number;
+			},
+		) => Promise<string>;
+
+		onRefresh?: (refreshToken: string) => Promise<{
+			user: UserAccount;
 			expires_in: number;
 		}>;
-
-		onRefresh?: (refreshToken: string) => Promise<UserAccount>;
 	};
 }
 
@@ -182,7 +184,10 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 	 */
 	public async createToken(
 		user: UserAccount,
-		refreshToken?: string,
+		refreshToken?: {
+			refresh_token?: string;
+			refresh_token_expires_in?: number;
+		},
 	): Promise<AccessTokenResponse> {
 		const refreshTokenEnabled =
 			this.options.settings?.refreshToken?.disabled !== false;
@@ -224,43 +229,47 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		};
 
 		if (refreshTokenEnabled) {
-			// handle session by yourself
-			const create = this.options.settings?.refreshToken?.onCreate;
-			if (create) {
-				const { refresh_token, expires_in } = await create(user, refreshToken);
-				response.refresh_token = refresh_token;
-				response.refresh_token_expires_in = expires_in;
-			} else if (refreshToken) {
-				const {
-					result: { payload },
-				} = await this.jwt.parse(refreshToken, this.name, {
-					typ: "refresh",
-					audience: this.name,
-					subject: user.id,
-				});
-
-				response.refresh_token = refreshToken;
-				if (payload.exp) {
-					response.refresh_token_expires_in = payload.exp - iat;
-				}
-			} else {
+			if (refreshToken) {
+				// just copy the refresh token as it is
+				response.refresh_token = refreshToken.refresh_token;
 				response.refresh_token_expires_in =
-					this.refreshTokenExpiration.asSeconds();
+					refreshToken.refresh_token_expires_in;
+			} else {
+				// -----------------------------------------------------------------------------------------------------------------
+				// session based
 
-				const payload = {
-					sub: user.id,
-					exp: iat + this.refreshTokenExpiration.asSeconds(),
-					iat,
-					aud: this.name,
-				};
+				const create = this.options.settings?.refreshToken?.onCreate;
+				if (create) {
+					const expires_in = this.refreshTokenExpiration.asSeconds();
 
-				this.log.trace("Creating refresh token", payload);
+					const refresh_token = await create(user, {
+						expires_in,
+					});
 
-				response.refresh_token = await this.jwt.create(payload, this.name, {
-					header: {
-						typ: "refresh",
-					},
-				});
+					response.refresh_token = refresh_token;
+					response.refresh_token_expires_in = expires_in;
+				} else {
+					// -----------------------------------------------------------------------------------------------------------------
+					// token based
+
+					response.refresh_token_expires_in =
+						this.refreshTokenExpiration.asSeconds();
+
+					const payload = {
+						sub: user.id,
+						exp: iat + this.refreshTokenExpiration.asSeconds(),
+						iat,
+						aud: this.name,
+					};
+
+					this.log.trace("Creating refresh token", payload);
+
+					response.refresh_token = await this.jwt.create(payload, this.name, {
+						header: {
+							typ: "refresh",
+						},
+					});
+				}
 			}
 		}
 
@@ -274,25 +283,63 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		tokens: AccessTokenResponse;
 		user: UserAccount;
 	}> {
-		let user =
-			await this.options.settings?.refreshToken?.onRefresh?.(refreshToken);
-
-		if (!user) {
-			if (!accessToken) {
-				throw new AlephaError("An access token is required for refreshing");
-			}
-
-			user = await this.securityProvider.createUserFromToken(accessToken, {
-				realm: this.name,
-				verify: {
-					currentDate: new Date(0), // don't verify expiration, it's expected to be expired...
-				},
-			});
+		// no refresh -> bye
+		if (this.options.settings?.refreshToken?.disabled) {
+			throw new SecurityError("Refresh token is disabled for this realm");
 		}
+
+		// -----------------------------------------------------------------------------------------------------------------
+		// session based
+
+		if (this.options.settings?.refreshToken?.onRefresh) {
+			// get user and expiration from the session
+			const { user, expires_in } =
+				await this.options.settings.refreshToken.onRefresh(refreshToken);
+
+			// then, create a new access token
+			const tokens = await this.createToken(user, {
+				refresh_token: refreshToken,
+				refresh_token_expires_in: expires_in,
+			});
+
+			return { user, tokens };
+		}
+
+		// -----------------------------------------------------------------------------------------------------------------
+		// token based
+
+		if (!accessToken) {
+			throw new AlephaError("An access token is required for refreshing");
+		}
+
+		// extract user from an expired token
+		const user = await this.securityProvider.createUserFromToken(accessToken, {
+			realm: this.name,
+			verify: {
+				currentDate: new Date(0), // don't verify expiration, it's expected to be expired...
+			},
+		});
+
+		// check if the refresh token is valid + match access token user
+		const {
+			result: { payload },
+		} = await this.jwt.parse(refreshToken, this.name, {
+			typ: "refresh",
+			audience: this.name,
+			subject: user.id,
+		});
+
+		const iat = this.dateTimeProvider.now().unix();
+		const expires_in = payload.exp
+			? payload.exp - iat
+			: this.refreshTokenExpiration.asSeconds();
 
 		return {
 			user,
-			tokens: await this.createToken(user, refreshToken),
+			tokens: await this.createToken(user, {
+				refresh_token: refreshToken,
+				refresh_token_expires_in: expires_in,
+			}),
 		};
 	}
 }

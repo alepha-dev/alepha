@@ -1,3 +1,4 @@
+import "@alepha/server-security";
 import { $module } from "@alepha/core";
 import { AlephaServer, type RequestConfigSchema } from "@alepha/server";
 import { $swagger } from "./descriptors/$swagger.ts";

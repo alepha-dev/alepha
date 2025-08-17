@@ -1,17 +1,21 @@
 import { $hook, $inject } from "@alepha/core";
+import { ServerTimingProvider } from "@alepha/server";
 import type { SimpleHead } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 export class ServerHeadProvider {
 	protected readonly headProvider = $inject(HeadProvider);
+	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
 	protected readonly onServerRenderEnd = $hook({
 		on: "react:server:render:end",
-		handler: async (event) => {
-			this.headProvider.fillHead(event.state, event.context);
-			if (event.context.head) {
-				event.html = this.renderHead(event.html, event.context.head);
+		handler: async (ev) => {
+			this.serverTimingProvider.beginTiming("renderHead");
+			this.headProvider.fillHead(ev.state);
+			if (ev.state.head) {
+				ev.html = this.renderHead(ev.html, ev.state.head);
 			}
+			this.serverTimingProvider.endTiming("renderHead");
 		},
 	});
 

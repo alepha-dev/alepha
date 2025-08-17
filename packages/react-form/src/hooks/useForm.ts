@@ -1,7 +1,7 @@
 import type { TObject } from "@alepha/core";
 import { useAlepha } from "@alepha/react";
 import { useId, useMemo } from "react";
-import { FormCtrl, type FormCtrlOptions } from "../services/FormCtrl.ts";
+import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
 
 /**
  * Custom hook to create a form with validation and field management.
@@ -33,12 +33,12 @@ import { FormCtrl, type FormCtrlOptions } from "../services/FormCtrl.ts";
  */
 export const useForm = <T extends TObject>(
 	options: FormCtrlOptions<T>,
-): FormCtrl<T> => {
+): FormModel<T> => {
 	const alepha = useAlepha();
 	const formId = useId();
 
 	return useMemo(() => {
-		return alepha.inject(FormCtrl<T>, {
+		return alepha.inject(FormModel<T>, {
 			skipRegistration: true,
 			args: [options.id || formId, options],
 		});

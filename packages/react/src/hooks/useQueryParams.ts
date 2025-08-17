@@ -3,12 +3,9 @@ import { useEffect, useState } from "react";
 import { useAlepha } from "./useAlepha.ts";
 import { useRouter } from "./useRouter.ts";
 
-export interface UseQueryParamsHookOptions {
-	format?: "base64" | "querystring";
-	key?: string;
-	push?: boolean;
-}
-
+/**
+ * Not well tested. Use with caution.
+ */
 export const useQueryParams = <T extends TObject>(
 	schema: T,
 	options: UseQueryParamsHookOptions = {},
@@ -39,6 +36,12 @@ export const useQueryParams = <T extends TObject>(
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+export interface UseQueryParamsHookOptions {
+	format?: "base64" | "querystring";
+	key?: string;
+	push?: boolean;
+}
 
 const encode = (alepha: Alepha, schema: TObject, data: any) => {
 	return btoa(JSON.stringify(alepha.parse(schema, data)));

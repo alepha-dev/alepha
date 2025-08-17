@@ -68,6 +68,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			body: null,
 			metadata: {},
 			reply: new ServerReply(),
+			ip: this.getClientIp(rawRequest),
 		} as ServerRequest;
 
 		return await this.alepha.context.run(
@@ -76,6 +77,23 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 				context: rawRequest.headers["x-request-id"],
 			},
 		);
+	}
+
+	protected getClientIp(request: ServerRawRequest): string | undefined {
+		// Check for the 'x-forwarded-for' header first, which is commonly used
+		// in proxy setups to forward the original client's IP address.
+		const forwardedFor = request.headers["x-forwarded-for"];
+		if (forwardedFor) {
+			// The 'x-forwarded-for' header can contain multiple IPs, so we take the first one.
+			return Array.isArray(forwardedFor)
+				? forwardedFor[0]
+				: forwardedFor.split(",")[0].trim();
+		}
+
+		// If 'x-forwarded-for' is not present, fall back to the 'ip' property.
+		if (request.raw.node?.req.socket?.remoteAddress) {
+			return request.raw.node?.req.socket.remoteAddress;
+		}
 	}
 
 	protected async processRequest(

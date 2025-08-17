@@ -2,6 +2,8 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
+		"@alepha/core": "0.9.3",
+		"@alepha/react": "0.9.3",
 		"@fontsource/inter": "^5.2.6",
 		"@mantine/core": "^8.2.4",
 		"@mantine/form": "^8.2.4",
@@ -18,6 +20,7 @@
 		"highlight.js": "^11.11.1",
 		"marked": "^16.1.2",
 		"marked-highlight": "^2.2.2",
+		"typescript": "^5.9.2",
 		"vite": "^7.1.2",
 		"vite-bundle-analyzer": "^1.2.1"
 	},
@@ -26,6 +29,7 @@
 		"build": "vite build",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",
-		"preview": "vite build --base=/alepha/ && vite preview --outDir dist/public --base=/alepha/"
+		"preview": "vite build --base=/alepha/ && vite preview --outDir dist/public --base=/alepha/",
+		"check": "tsc"
 	}
 }

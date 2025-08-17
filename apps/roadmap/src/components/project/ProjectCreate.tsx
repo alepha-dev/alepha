@@ -4,12 +4,12 @@ import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
-import { Build } from "@blueprintjs/icons";
+import { Build, Tag } from "@blueprintjs/icons";
 import { useMemo, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
-import type ProjectApi from "../../api/ProjectApi.ts";
+import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Toast from "../../services/Toast.ts";
+import { Toaster } from "../../services/Toaster.ts";
 import Action from "../shared/Action.tsx";
 import Control from "../shared/Control.tsx";
 
@@ -20,7 +20,7 @@ const ProjectCreate = () => {
 	const auth = useAuth();
 	const alepha = useAlepha();
 	const { tr } = useI18n<I18n, "en">();
-	const toaster = useInject(Toast);
+	const toaster = useInject(Toaster);
 
 	const initialValues = useMemo(() => {
 		try {
@@ -30,7 +30,6 @@ const ProjectCreate = () => {
 		} catch (e) {
 			// ignore
 		}
-		return {};
 	}, []);
 
 	const form = useForm({
@@ -90,7 +89,7 @@ const ProjectCreate = () => {
 									inputField={form.input.title}
 									inputGroupProps={{
 										autoFocus: true,
-										leftIcon: "tag",
+										leftIcon: <Tag />,
 									}}
 									formGroupProps={{
 										label: tr("project.create.name"),

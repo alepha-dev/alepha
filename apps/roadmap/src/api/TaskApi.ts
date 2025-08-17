@@ -7,7 +7,7 @@ import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { Level } from "../services/Level.ts";
 import { characters, Db, tasks } from "./providers/Db.ts";
 
-class TaskApi {
+export class TaskApi {
 	log = $logger();
 	db = $inject(Db);
 	lvl = $inject(Level);
@@ -174,5 +174,3 @@ class TaskApi {
 		},
 	});
 }
-
-export default TaskApi;

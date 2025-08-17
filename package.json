@@ -24,10 +24,11 @@
 		"postinstall": "yarn copy",
 		"alepha": "node scripts/index.ts",
 		"clean": "yarn alepha clean",
+		"tsc": "yarn tsc",
 		"copy": "yarn workspaces foreach -Apt run copy",
 		"convert": "node scripts/convert.ts",
 		"lint": "biome check --write --unsafe",
-		"check": "tsc --noEmit",
+		"check": "yarn workspaces foreach -Apt run check",
 		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=jsdom,@alepha/testing,shx,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets",
 		"test": "vitest run",
 		"build": "yarn workspaces foreach -Apt run build"

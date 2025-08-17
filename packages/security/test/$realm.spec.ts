@@ -87,7 +87,7 @@ describe("$realm", () => {
 			typ: "refresh",
 		});
 
-		const newToken = await app.realm.createToken(user, token.refresh_token);
+		const newToken = await app.realm.createToken(user, token);
 		expect(newToken).toEqual({
 			access_token: expect.any(String),
 			issued_at: now.unix(),

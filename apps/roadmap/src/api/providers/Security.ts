@@ -1,10 +1,11 @@
-import { $env, $inject, t } from "@alepha/core";
+import { $env, $inject, Alepha, t } from "@alepha/core";
 import { $auth, type OAuth2Profile } from "@alepha/react-auth";
 import { $realm, CryptoProvider } from "@alepha/security";
-import { UnauthorizedError } from "@alepha/server";
+import { type ServerRequest, UnauthorizedError } from "@alepha/server";
 import { Db } from "./Db.ts";
 
-class Security {
+export class Security {
+	alepha = $inject(Alepha);
 	crypto = $inject(CryptoProvider);
 	env = $env(
 		t.object({
@@ -47,7 +48,47 @@ class Security {
 				expiration: [30, "minutes"],
 			},
 			refreshToken: {
-				expiration: [60, "days"],
+				expiration: [1, "hour"],
+				onCreate: async (user, config) => {
+					console.log("create session for user", user);
+
+					const request = this.alepha.context.get<ServerRequest>("request");
+
+					const session = await this.db.sessions.create({
+						userId: user.id,
+						expiresAt: new Date(
+							Date.now() + config.expires_in * 1000,
+						).toISOString(),
+						ip: request?.ip,
+						userAgent: request?.headers["user-agent"],
+					});
+
+					return session.id;
+				},
+				onRefresh: async (refreshToken) => {
+					const session = await this.db.sessions.findOne({
+						id: { eq: refreshToken },
+					});
+
+					console.log("refresh session", session);
+
+					if (new Date(session.expiresAt) < new Date()) {
+						console.log("session expired", session);
+						await this.db.sessions.deleteById(refreshToken);
+						throw new UnauthorizedError("Session expired");
+					}
+
+					const user = await this.db.users.findOne({
+						id: { eq: session.userId },
+					});
+
+					return {
+						user,
+						expires_in: Math.floor(
+							(new Date(session.expiresAt).getTime() - Date.now()) / 1000,
+						),
+					};
+				},
 			},
 		},
 	});
@@ -141,59 +182,55 @@ class Security {
 		},
 	});
 
-	protected async link(provider: string, userInfo: OAuth2Profile) {
+	protected async link(provider: string, profile: OAuth2Profile) {
 		const identity = await this.db.identities
-			.findOne({
-				provider: { eq: provider },
-				providerUserId: { eq: userInfo.sub },
+			.one({
+				provider,
+				providerUserId: profile.sub,
 			})
 			.catch(() => undefined);
 
 		if (identity) {
-			// actually, we should fetch user from first SQL query,
-			// but @alepha/postgres is not ready for that yet
-			return this.db.users.findOne({
-				id: { eq: identity.userId },
+			return this.db.users.one({
+				id: identity.userId,
 			});
 		}
 
-		if (!userInfo.email) {
+		if (!profile.email) {
 			return {
-				id: userInfo.sub,
-				...userInfo,
+				id: profile.sub,
+				...profile,
 			};
 		}
 
 		const existing = await this.db.users
-			.findOne({
-				email: { eq: userInfo.email },
+			.one({
+				email: profile.email,
 			})
 			.catch(() => undefined);
 
 		if (existing) {
 			await this.db.identities.create({
-				provider: provider,
-				providerUserId: userInfo.sub,
+				provider,
+				providerUserId: profile.sub,
 				userId: existing.id,
 			});
 			return existing;
 		}
 
 		const newUser = await this.db.users.create({
-			email: userInfo.email,
-			name: userInfo.name,
-			picture: userInfo.picture,
+			email: profile.email,
+			name: profile.name,
+			picture: profile.picture,
 			roles: ["user"],
 		});
 
 		await this.db.identities.create({
-			provider: provider,
-			providerUserId: userInfo.sub,
+			provider,
+			providerUserId: profile.sub,
 			userId: newUser.id,
 		});
 
 		return newUser;
 	}
 }
-
-export default Security;

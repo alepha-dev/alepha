@@ -1,7 +1,7 @@
 import type { TObject } from "@alepha/core";
 import { useAlepha } from "@alepha/react";
 import { useEffect, useState } from "react";
-import type { FormCtrl } from "../services/FormCtrl.ts";
+import type { FormModel } from "../services/FormModel.ts";
 
 export interface UseFormStateReturn<T extends TObject> {
 	loading: boolean;
@@ -11,7 +11,7 @@ export interface UseFormStateReturn<T extends TObject> {
 }
 
 export const useFormState = <T extends TObject>(
-	form: FormCtrl<T>,
+	form: FormModel<T>,
 ): UseFormStateReturn<T> => {
 	const alepha = useAlepha();
 

@@ -3,7 +3,7 @@ import { pageQuerySchema } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";
 import { characters, Db, projects, tasks } from "./providers/Db.ts";
 
-class ProjectApi {
+export class ProjectApi {
 	log = $logger();
 	db = $inject(Db);
 
@@ -142,5 +142,3 @@ class ProjectApi {
 		},
 	});
 }
-
-export default ProjectApi;

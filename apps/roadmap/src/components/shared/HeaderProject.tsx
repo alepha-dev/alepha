@@ -8,7 +8,7 @@ import Action from "./Action.tsx";
 const HeaderProject = () => {
 	const [project] = useStore("project");
 	const router = useRouter<AppRouter>();
-	const { pathname } = useRouterState();
+	const { url } = useRouterState();
 	const [projects = []] = useStore("user.projects");
 
 	if (!project) {
@@ -19,8 +19,8 @@ const HeaderProject = () => {
 		return (
 			<MenuItem
 				key={id}
-				intent={pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
-				icon={pathname.startsWith(`/p/${id}`) ? <TickCircle /> : <Blank />}
+				intent={url.pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
+				icon={url.pathname.startsWith(`/p/${id}`) ? <TickCircle /> : <Blank />}
 				text={label}
 				onClick={() => router.go(`/p/${id}`)}
 			/>

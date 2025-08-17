@@ -1,7 +1,7 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
-import { HttpClient } from "@alepha/server";
+import { HttpClient, HttpError } from "@alepha/server";
 import { $cookie } from "@alepha/server-cookies";
 import { LinkProvider } from "@alepha/server-links";
 import type { TokenResponse } from "../schemas/tokenResponseSchema.ts";
@@ -30,7 +30,7 @@ export class ReactAuth {
 		on: "react:transition:begin",
 		handler: async (event) => {
 			if (this.alepha.isBrowser() && this.user) {
-				event.context.user = this.user;
+				event.state.user = this.user;
 			}
 		},
 	});
@@ -54,6 +54,15 @@ export class ReactAuth {
 					request.headers = new Headers(request.headers);
 					request.headers.set("X-CSRF-Token", csrfToken);
 				}
+			}
+		},
+	});
+
+	protected readonly onFetchError = $hook({
+		on: "client:onError",
+		handler: async ({ error }) => {
+			if (this.alepha.isBrowser() && this.user && HttpError.is(error, 401)) {
+				this.logout();
 			}
 		},
 	});
@@ -113,7 +122,7 @@ export class ReactAuth {
 			window.location.href = `${ReactAuth.path.login}?provider=${provider}&redirect_uri=${redirect}`;
 
 			if (browser.transitioning) {
-				throw new Redirection(browser.state.pathname);
+				throw new Redirection(browser.state.url.pathname);
 			}
 
 			return {} as Tokens;
