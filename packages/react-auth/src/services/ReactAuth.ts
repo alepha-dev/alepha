@@ -36,6 +36,7 @@ export class ReactAuth {
 	});
 
 	public csrfCookie = $cookie({
+		name: "csrf_token",
 		schema: t.string(),
 		httpOnly: false,
 		secure: true,

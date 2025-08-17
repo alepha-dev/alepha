@@ -20,7 +20,7 @@ const TaskGroup = (props: TaskGroupProps) => {
 
 	return (
 		<Flex col>
-			<Flex pad1 centerX card onClick={() => setIsCollapsed(!isCollapsed)}>
+			<Flex card pad1 centerX onClick={() => setIsCollapsed(!isCollapsed)}>
 				<Flex centerX gap1>
 					{isCollapsed ? <Minus size={10} /> : <Plus size={10} />}
 					<Text bold>{props.name}</Text>

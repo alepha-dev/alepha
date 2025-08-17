@@ -213,6 +213,16 @@ export class PageDescriptor<
 	): Promise<PageDescriptorRenderResult> {
 		throw new Error("render method is not implemented in this environment");
 	}
+
+	public match(url: string): boolean {
+		// TODO: Implement a way to match the URL against the pathname
+		return false;
+	}
+
+	public pathname(config: any) {
+		// TODO: Implement a way to generate the pathname based on the config
+		return this.options.path || "";
+	}
 }
 
 $page[KIND] = PageDescriptor;

@@ -2,6 +2,7 @@ import { NestedView, useAlepha } from "@alepha/react";
 import { Flex } from "@alepha/react-flex";
 import { BlueprintProvider } from "@blueprintjs/core";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import type { Character, Project, Task } from "../api/providers/Db.ts";
 import Header from "./shared/Header.tsx";
 
@@ -19,6 +20,7 @@ const Layout = () => {
 	return (
 		<BlueprintProvider>
 			{alepha.isProduction() ? <Analytics /> : undefined}
+			{alepha.isProduction() ? <SpeedInsights /> : undefined}
 			<Flex col layout>
 				<Header />
 				<NestedView />

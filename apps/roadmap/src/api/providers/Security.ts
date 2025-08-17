@@ -1,10 +1,12 @@
 import { $env, $inject, Alepha, t } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { $auth, type OAuth2Profile } from "@alepha/react-auth";
-import { $realm, CryptoProvider } from "@alepha/security";
+import { $realm, CryptoProvider, type UserAccount } from "@alepha/security";
 import { type ServerRequest, UnauthorizedError } from "@alepha/server";
 import { Db } from "./Db.ts";
 
 export class Security {
+	dateTimeProvider = $inject(DateTimeProvider);
 	alepha = $inject(Alepha);
 	crypto = $inject(CryptoProvider);
 	env = $env(
@@ -36,6 +38,10 @@ export class Security {
 						name: "UserApi:*",
 						ownership: true,
 					},
+					{
+						name: "SessionApi:*",
+						ownership: true,
+					},
 				],
 			},
 			{
@@ -45,53 +51,72 @@ export class Security {
 		],
 		settings: {
 			accessToken: {
-				expiration: [30, "minutes"],
+				expiration: [15, "minutes"],
 			},
 			refreshToken: {
-				expiration: [1, "hour"],
-				onCreate: async (user, config) => {
-					console.log("create session for user", user);
-
-					const request = this.alepha.context.get<ServerRequest>("request");
-
-					const session = await this.db.sessions.create({
-						userId: user.id,
-						expiresAt: new Date(
-							Date.now() + config.expires_in * 1000,
-						).toISOString(),
-						ip: request?.ip,
-						userAgent: request?.headers["user-agent"],
-					});
-
-					return session.id;
-				},
-				onRefresh: async (refreshToken) => {
-					const session = await this.db.sessions.findOne({
-						id: { eq: refreshToken },
-					});
-
-					console.log("refresh session", session);
-
-					if (new Date(session.expiresAt) < new Date()) {
-						console.log("session expired", session);
-						await this.db.sessions.deleteById(refreshToken);
-						throw new UnauthorizedError("Session expired");
-					}
-
-					const user = await this.db.users.findOne({
-						id: { eq: session.userId },
-					});
-
-					return {
-						user,
-						expires_in: Math.floor(
-							(new Date(session.expiresAt).getTime() - Date.now()) / 1000,
-						),
-					};
-				},
+				expiration: [30, "days"],
+			},
+			onCreateSession: async (user, config) => {
+				return this.createSession(user, config.expiresIn);
+			},
+			onRefreshSession: async (refreshToken) => {
+				return this.refreshSession(refreshToken);
+			},
+			onDeleteSession: async (refreshToken) => {
+				await this.db.sessions.deleteMany({
+					refreshToken,
+				});
 			},
 		},
 	});
+
+	async refreshSession(refreshToken: string) {
+		const session = await this.db.sessions.one({
+			refreshToken: { eq: refreshToken },
+		});
+
+		const now = this.dateTimeProvider.now();
+		const expiresAt = this.dateTimeProvider.of(session.expiresAt);
+
+		if (this.dateTimeProvider.of(session.expiresAt) < now) {
+			await this.db.sessions.deleteById(refreshToken);
+			throw new UnauthorizedError("Session expired");
+		}
+
+		const user = await this.db.users.one({
+			id: { eq: session.userId },
+		});
+
+		return {
+			user,
+			expiresIn: expiresAt.unix() - now.unix(),
+			sessionId: session.id,
+		};
+	}
+
+	async createSession(user: UserAccount, expiresIn: number) {
+		const request = this.alepha.context.get<ServerRequest>("request");
+
+		const refreshToken = crypto.randomUUID();
+
+		const expiresAt = this.dateTimeProvider
+			.now()
+			.add(expiresIn, "seconds")
+			.toISOString();
+
+		const session = await this.db.sessions.create({
+			userId: user.id,
+			expiresAt,
+			ip: request?.ip,
+			userAgent: request?.userAgent,
+			refreshToken,
+		});
+
+		return {
+			refreshToken,
+			sessionId: session.id,
+		};
+	}
 
 	db = $inject(Db);
 

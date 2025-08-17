@@ -9,6 +9,12 @@ export default defineConfig({
 			serverEntry: "./src/index.server.ts",
 			vercel: {
 				projectName: "alepha-roadmap",
+				crons: [
+					{
+						path: "/session/cleanup",
+						schedule: "0 0 * * *", // Every day at midnight
+					},
+				],
 			},
 			client: {
 				precompress: true,

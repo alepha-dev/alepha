@@ -22,6 +22,7 @@ import type {
 	ServerRoute,
 	ServerRouteMatcher,
 } from "../interfaces/ServerRequest.ts";
+import { UserAgentParser } from "../services/UserAgentParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 
 /**
@@ -35,6 +36,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly routes: ServerRoute[] = [];
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
+	protected readonly userAgentParser = $inject(UserAgentParser);
 
 	public getRoutes(): ServerRoute[] {
 		return this.routes;
@@ -62,6 +64,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		rawRequest: ServerRawRequest,
 		responseKind: ResponseKind,
 	): Promise<ServerResponse> {
+		const lazyUserAgent = () =>
+			this.userAgentParser.parse(rawRequest.headers["user-agent"]);
+
 		// create request
 		const request = {
 			...rawRequest,
@@ -69,6 +74,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			metadata: {},
 			reply: new ServerReply(),
 			ip: this.getClientIp(rawRequest),
+			// parsing user agent can be expensive (0.1ms), so we use a lazy getter
+			get userAgent() {
+				return lazyUserAgent();
+			},
 		} as ServerRequest;
 
 		return await this.alepha.context.run(
@@ -80,7 +89,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	}
 
 	protected getClientIp(request: ServerRawRequest): string | undefined {
-		// Check for the 'x-forwarded-for' header first, which is commonly used
+		// check for the 'x-forwarded-for' header first, which is commonly used
 		// in proxy setups to forward the original client's IP address.
 		const forwardedFor = request.headers["x-forwarded-for"];
 		if (forwardedFor) {
@@ -101,9 +110,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		route: ServerRoute,
 		responseKind: ResponseKind,
 	) {
-		await this.runRouteHandler(route, request, responseKind).catch((error) =>
-			this.errorHandler(route, request, error as Error),
-		);
+		await this.runRouteHandler(route, request, responseKind).catch((error) => {
+			return this.errorHandler(route, request, error as Error);
+		});
 
 		await this.alepha.emit(
 			"server:onSend",
@@ -290,35 +299,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		request: ServerRequest,
 		error: Error,
 	) {
-		if (error instanceof HttpError) {
-			request.reply.status = error.status;
-			request.reply.headers["content-type"] = "application/json";
-			request.reply.body = JSON.stringify(HttpError.toJSON(error));
-		} else {
-			if (
-				"status" in error &&
-				typeof error.status === "number" &&
-				!!errorNameByStatus[error.status]
-			) {
-				request.reply.status = error.status;
-				request.reply.headers["content-type"] = "application/json";
-				request.reply.body = JSON.stringify({
-					status: error.status,
-					error: errorNameByStatus[error.status],
-					message: (error as Error).message,
-				});
-				return;
-			}
-
-			request.reply.status = 500;
-			request.reply.headers["content-type"] = "application/json";
-			request.reply.body = JSON.stringify({
-				status: 500,
-				error: "InternalServerError",
-				message: (error as Error).message,
-			});
-		}
-
 		await this.alepha.emit(
 			"server:onError",
 			{
@@ -330,6 +310,37 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 				log: false,
 			},
 		);
+
+		if (!request.reply.body && !request.reply.status) {
+			if (error instanceof HttpError) {
+				request.reply.status = error.status;
+				request.reply.headers["content-type"] = "application/json";
+				request.reply.body = JSON.stringify(HttpError.toJSON(error));
+			} else {
+				if (
+					"status" in error &&
+					typeof error.status === "number" &&
+					!!errorNameByStatus[error.status]
+				) {
+					request.reply.status = error.status;
+					request.reply.headers["content-type"] = "application/json";
+					request.reply.body = JSON.stringify({
+						status: error.status,
+						error: errorNameByStatus[error.status],
+						message: (error as Error).message,
+					});
+					return;
+				}
+
+				request.reply.status = 500;
+				request.reply.headers["content-type"] = "application/json";
+				request.reply.body = JSON.stringify({
+					status: 500,
+					error: "InternalServerError",
+					message: (error as Error).message,
+				});
+			}
+		}
 	}
 
 	public validateRequest(

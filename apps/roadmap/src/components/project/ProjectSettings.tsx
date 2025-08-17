@@ -19,39 +19,43 @@ const ProjectSettings = () => {
 	}
 
 	return (
-		<Flex fill col pad2>
-			<h3>{tr("project.settings.general.title")}</h3>
-			<ProjectUpdate project={project} />
-			<h3>{tr("project.settings.danger.title")}</h3>
-			<Flex card pad2 bordered shadow>
-				<Flex col>
-					<Text>{tr("project.settings.actions.delete")}</Text>
-					<Text small muted>
-						{tr("project.settings.actions.delete.helper")}
-					</Text>
-				</Flex>
-				<Flex fill />
-				<Flex>
-					<Action
-						text={tr("project.settings.actions.delete")}
-						intent={"danger"}
-						onClick={() => {
-							projectApi
-								.deleteProjectById({
-									params: { id: project.id },
-								})
-								.then(() => {
-									alepha.state(
-										"user.projects",
-										(alepha.state("user.projects") ?? []).filter(
-											(p) => p.id !== project.id,
-										),
-									);
+		<Flex fill bg rounded col pad3 gap3>
+			<Flex col gap1>
+				<Text>{tr("project.settings.general.title")}</Text>
+				<ProjectUpdate project={project} />
+			</Flex>
+			<Flex col gap1>
+				<Text>{tr("project.settings.danger.title")}</Text>
+				<Flex card pad2 bordered shadow>
+					<Flex col>
+						<Text>{tr("project.settings.actions.delete")}</Text>
+						<Text small muted>
+							{tr("project.settings.actions.delete.helper")}
+						</Text>
+					</Flex>
+					<Flex fill />
+					<Flex>
+						<Action
+							text={tr("project.settings.actions.delete")}
+							intent={"danger"}
+							onClick={() => {
+								projectApi
+									.deleteProjectById({
+										params: { id: project.id },
+									})
+									.then(() => {
+										alepha.state(
+											"user.projects",
+											(alepha.state("user.projects") ?? []).filter(
+												(p) => p.id !== project.id,
+											),
+										);
 
-									router.go("home");
-								});
-						}}
-					/>
+										router.go("home");
+									});
+							}}
+						/>
+					</Flex>
 				</Flex>
 			</Flex>
 		</Flex>

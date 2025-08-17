@@ -16,55 +16,30 @@ const Header = () => {
 	const { tr } = useI18n<I18n, "en">();
 
 	return (
-		<Flex col>
-			<Flex
-				visible={"md"}
-				pad1
-				card
-				bordered
-				style={{
-					borderTop: 0,
-					borderLeft: 0,
-					borderRight: 0,
-				}}
-			></Flex>
-			<Flex
-				bordered
-				centerY
-				style={{
-					height: 58,
-					borderTop: 0,
-					borderLeft: 0,
-					borderRight: 0,
-				}}
-				col
-				pad1
-				gap1
-			>
-				<Flex wFill pad2h>
-					<Flex fill gap1>
-						<Flex center gap1>
-							<MobileQuestLog />
-							<Flex visible={"md"}>
-								<StupidLogo />
-							</Flex>
-							<Flex col>
-								<Action active={false} variant={"minimal"} href={"/"}>
-									<Text bold>{tr("header.title")}</Text>
-								</Action>
-							</Flex>
-							<HeaderProject />
+		<Flex col pad1 gap1 style={{ height: 64 }} centerY>
+			<Flex wFill pad2h>
+				<Flex fill gap1>
+					<Flex center gap1>
+						<MobileQuestLog />
+						<Flex visible={"md"}>
+							<StupidLogo />
 						</Flex>
-					</Flex>
-					<Flex pad2h visible={"md"} className={"container header"}>
-						<Flex fill col>
-							<ProjectActions />
+						<Flex col>
+							<Action active={false} variant={"minimal"} href={"/"}>
+								<Text bold>{tr("header.title")}</Text>
+							</Action>
 						</Flex>
+						<HeaderProject />
 					</Flex>
-					<Flex fill>
-						<Flex fill />
-						<HeaderActions />
+				</Flex>
+				<Flex pad2h visible={"md"} className={"container header"}>
+					<Flex fill col>
+						<ProjectActions />
 					</Flex>
+				</Flex>
+				<Flex fill>
+					<Flex fill />
+					<HeaderActions />
 				</Flex>
 			</Flex>
 		</Flex>

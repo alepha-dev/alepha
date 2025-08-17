@@ -73,7 +73,16 @@ const ProjectCreate = () => {
 	});
 
 	return (
-		<Flex bg fill pad2>
+		<Flex
+			fill
+			pad2
+			bg
+			bordered
+			style={{
+				borderLeft: 0,
+				borderRight: 0,
+			}}
+		>
 			<Flex className={"container"} col pad2>
 				<form onSubmit={form.onSubmit}>
 					<Flex col pad2 gap2>

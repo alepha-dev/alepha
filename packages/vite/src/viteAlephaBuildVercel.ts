@@ -23,6 +23,10 @@ export interface VercelConfig {
 	projectName?: string;
 	orgId?: string;
 	projectId?: string;
+	crons?: Array<{
+		path: string;
+		schedule: string;
+	}>;
 }
 
 export async function viteAlephaBuildVercel(
@@ -66,6 +70,7 @@ export default async function (req, res) {
 				`${distDir}/vercel.json`,
 				JSON.stringify(
 					{
+						crons: opts.config?.crons,
 						rewrites: [
 							{
 								source: "/(.*)",

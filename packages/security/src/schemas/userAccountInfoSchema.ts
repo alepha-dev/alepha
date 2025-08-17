@@ -31,6 +31,12 @@ export const userAccountInfoSchema = t.object({
 		}),
 	),
 
+	sessionId: t.optional(
+		t.string({
+			description: "Session identifier for the user, if applicable.",
+		}),
+	),
+
 	// -------------------------------------------------------------------------------------------------------------------
 
 	organizations: t.optional(

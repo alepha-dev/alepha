@@ -219,6 +219,7 @@ export class SecurityProvider {
 		realmName?: string,
 	): UserAccount {
 		const id = this.getIdFromPayload(payload);
+		const sessionId = this.getSessionIdFromPayload(payload);
 		const rolesFromPayload = this.getRolesFromPayload(payload);
 		const email = this.getEmailFromPayload(payload);
 		const username = this.getUsernameFromPayload(payload);
@@ -247,6 +248,7 @@ export class SecurityProvider {
 			username,
 			picture,
 			organizations,
+			sessionId,
 		};
 	}
 
@@ -542,6 +544,17 @@ export class SecurityProvider {
 		}
 
 		throw new SecurityError("Invalid JWT - missing id");
+	}
+
+	public getSessionIdFromPayload(
+		payload: Record<string, any>,
+	): string | undefined {
+		if (!payload) {
+			return;
+		}
+		if (payload.sid) {
+			return String(payload.sid);
+		}
 	}
 
 	/**

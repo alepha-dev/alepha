@@ -181,6 +181,8 @@ export interface JwtSignOptions {
 }
 
 export interface ExtendedJWTPayload extends JWTPayload {
+	sid?: string;
+	//
 	name?: string;
 	roles?: string[];
 	email?: string;

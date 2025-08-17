@@ -8,6 +8,7 @@ import type { Async, Static, StreamLike, TObject, TSchema } from "@alepha/core";
 import type { Route } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerReply } from "../helpers/ServerReply.ts";
+import type { UserAgentInfo } from "../services/UserAgentParser.ts";
 
 export interface RequestConfigSchema {
 	body?: TSchema;
@@ -45,6 +46,14 @@ export interface ServerRequest<
 	method: RouteMethod;
 	url: URL;
 	ip?: string;
+
+	/**
+	 * Browser user agent information.
+	 * Information are not guaranteed to be accurate. Use with caution.
+	 *
+	 * @see {@link UserAgentParser}
+	 */
+	userAgent: UserAgentInfo;
 
 	// store request data
 	metadata: Record<string, any>;

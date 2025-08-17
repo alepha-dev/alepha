@@ -69,24 +69,25 @@ export interface RealmSettings {
 		expiration?: DurationLike;
 
 		// TODO: expirationIdle (max inactive time before the token is invalidated)
-
-		/**
-		 * If true, no refresh token will be created.
-		 */
-		disabled?: boolean;
-
-		onCreate?: (
-			user: UserAccount,
-			config: {
-				expires_in: number;
-			},
-		) => Promise<string>;
-
-		onRefresh?: (refreshToken: string) => Promise<{
-			user: UserAccount;
-			expires_in: number;
-		}>;
 	};
+
+	onCreateSession?: (
+		user: UserAccount,
+		config: {
+			expiresIn: number;
+		},
+	) => Promise<{
+		refreshToken: string;
+		sessionId?: string;
+	}>;
+
+	onRefreshSession?: (refreshToken: string) => Promise<{
+		user: UserAccount;
+		expiresIn: number;
+		sessionId?: string;
+	}>;
+
+	onDeleteSession?: (refreshToken: string) => Promise<void>;
 }
 
 export type RealmInternal = {
@@ -185,15 +186,54 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 	public async createToken(
 		user: UserAccount,
 		refreshToken?: {
+			sid?: string;
 			refresh_token?: string;
 			refresh_token_expires_in?: number;
 		},
 	): Promise<AccessTokenResponse> {
-		const refreshTokenEnabled =
-			this.options.settings?.refreshToken?.disabled !== false;
+		let sid: string | undefined = refreshToken?.sid;
+		let refresh_token: string | undefined = refreshToken?.refresh_token;
+		let refresh_token_expires_in: number | undefined =
+			refreshToken?.refresh_token_expires_in;
 
 		const iat = this.dateTimeProvider.now().unix();
 		const exp = iat + this.accessTokenExpiration.asSeconds();
+
+		if (!refreshToken) {
+			const create = this.options.settings?.onCreateSession;
+			if (create) {
+				// -----------------------------------------------------------------------------------------------------------------
+				// managed by the application
+				const expiresIn = this.refreshTokenExpiration.asSeconds();
+				const { refreshToken, sessionId } = await create(user, {
+					expiresIn,
+				});
+
+				refresh_token = refreshToken;
+				refresh_token_expires_in = expiresIn;
+				sid = sessionId;
+			} else {
+				// -----------------------------------------------------------------------------------------------------------------
+				// token based
+
+				const payload = {
+					sub: user.id,
+					exp: iat + this.refreshTokenExpiration.asSeconds(),
+					iat,
+					aud: this.name,
+				};
+
+				this.log.trace("Creating refresh token", payload);
+
+				sid = crypto.randomUUID();
+				refresh_token_expires_in = this.refreshTokenExpiration.asSeconds();
+				refresh_token = await this.jwt.create(payload, this.name, {
+					header: {
+						typ: "refresh",
+					},
+				});
+			}
+		}
 
 		this.log.trace("Creating access token", {
 			sub: user.id,
@@ -209,6 +249,7 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 				exp,
 				iat,
 				aud: this.name,
+				sid, // session id, if available
 				// oidc
 				name: user.name,
 				email: user.email,
@@ -226,52 +267,9 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 			token_type: "Bearer",
 			expires_in: this.accessTokenExpiration.asSeconds(),
 			issued_at: iat,
+			refresh_token,
+			refresh_token_expires_in,
 		};
-
-		if (refreshTokenEnabled) {
-			if (refreshToken) {
-				// just copy the refresh token as it is
-				response.refresh_token = refreshToken.refresh_token;
-				response.refresh_token_expires_in =
-					refreshToken.refresh_token_expires_in;
-			} else {
-				// -----------------------------------------------------------------------------------------------------------------
-				// session based
-
-				const create = this.options.settings?.refreshToken?.onCreate;
-				if (create) {
-					const expires_in = this.refreshTokenExpiration.asSeconds();
-
-					const refresh_token = await create(user, {
-						expires_in,
-					});
-
-					response.refresh_token = refresh_token;
-					response.refresh_token_expires_in = expires_in;
-				} else {
-					// -----------------------------------------------------------------------------------------------------------------
-					// token based
-
-					response.refresh_token_expires_in =
-						this.refreshTokenExpiration.asSeconds();
-
-					const payload = {
-						sub: user.id,
-						exp: iat + this.refreshTokenExpiration.asSeconds(),
-						iat,
-						aud: this.name,
-					};
-
-					this.log.trace("Creating refresh token", payload);
-
-					response.refresh_token = await this.jwt.create(payload, this.name, {
-						header: {
-							typ: "refresh",
-						},
-					});
-				}
-			}
-		}
 
 		return response;
 	}
@@ -283,23 +281,19 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		tokens: AccessTokenResponse;
 		user: UserAccount;
 	}> {
-		// no refresh -> bye
-		if (this.options.settings?.refreshToken?.disabled) {
-			throw new SecurityError("Refresh token is disabled for this realm");
-		}
-
 		// -----------------------------------------------------------------------------------------------------------------
 		// session based
 
-		if (this.options.settings?.refreshToken?.onRefresh) {
+		if (this.options.settings?.onRefreshSession) {
 			// get user and expiration from the session
-			const { user, expires_in } =
-				await this.options.settings.refreshToken.onRefresh(refreshToken);
+			const { user, expiresIn, sessionId } =
+				await this.options.settings.onRefreshSession(refreshToken);
 
 			// then, create a new access token
 			const tokens = await this.createToken(user, {
+				sid: sessionId,
 				refresh_token: refreshToken,
-				refresh_token_expires_in: expires_in,
+				refresh_token_expires_in: expiresIn,
 			});
 
 			return { user, tokens };
@@ -330,15 +324,16 @@ export class RealmDescriptor extends Descriptor<RealmDescriptorOptions> {
 		});
 
 		const iat = this.dateTimeProvider.now().unix();
-		const expires_in = payload.exp
+		const expiresIn = payload.exp
 			? payload.exp - iat
 			: this.refreshTokenExpiration.asSeconds();
 
 		return {
 			user,
 			tokens: await this.createToken(user, {
+				sid: payload.sid,
 				refresh_token: refreshToken,
-				refresh_token_expires_in: expires_in,
+				refresh_token_expires_in: expiresIn,
 			}),
 		};
 	}

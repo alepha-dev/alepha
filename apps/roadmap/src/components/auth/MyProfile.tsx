@@ -5,14 +5,12 @@ export interface ProfileProps {
 	user: User;
 }
 
-const Profile = (props: ProfileProps) => {
+const MyProfile = (props: ProfileProps) => {
 	return (
 		<Flex fill center>
-			<Flex pad2 center>
-				🚧
-			</Flex>
+			profile
 		</Flex>
 	);
 };
 
-export default Profile;
+export default MyProfile;

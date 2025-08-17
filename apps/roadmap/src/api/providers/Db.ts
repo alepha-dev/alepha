@@ -49,6 +49,7 @@ export const sessions = $entity({
 	name: "sessions",
 	schema: t.object({
 		id: pg.primaryKey(t.uuid()),
+		refreshToken: t.uuid(),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
 		userId: pg.ref(t.uuid(), () => users.id, {
@@ -56,8 +57,15 @@ export const sessions = $entity({
 		}),
 		expiresAt: t.datetime(),
 		ip: t.optional(t.string()),
-		userAgent: t.optional(t.string()),
+		userAgent: t.optional(
+			t.object({
+				os: t.string(),
+				browser: t.string(),
+				device: t.enum(["Mobile", "Desktop", "Tablet"]),
+			}),
+		),
 	}),
+	indexes: ["refreshToken"],
 });
 
 export const tasks = $entity({
@@ -108,6 +116,7 @@ export type User = Static<typeof users.$schema>;
 export type Task = Static<typeof tasks.$schema>;
 export type Project = Static<typeof projects.$schema>;
 export type TaskInsert = Static<typeof tasks.$insertSchema>;
+export type Session = Static<typeof sessions.$schema>;
 
 export class Db {
 	tasks = $repository(tasks);

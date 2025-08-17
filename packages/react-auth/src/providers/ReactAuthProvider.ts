@@ -171,7 +171,6 @@ export class ReactAuthProvider {
 		// check if tokens are expired
 		const refreshedTokens = await this.refreshTokens(tokens);
 		if (!refreshedTokens) {
-			console.log("no refreshed tokens, session expired");
 			this.tokens.del({ cookies });
 			throw new SessionExpiredError("Session expired. Please login again.");
 		}
@@ -220,7 +219,6 @@ export class ReactAuthProvider {
 
 						return newTokens;
 					} catch (e) {
-						console.log("error during token refresh", e);
 						this.log.warn("Failed to refresh token", e);
 					}
 				}
@@ -239,6 +237,9 @@ export class ReactAuthProvider {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
+	/**
+	 * Get user information.
+	 */
 	public readonly userinfo = $route({
 		path: ReactAuth.path.userinfo,
 		schema: {
@@ -273,6 +274,9 @@ export class ReactAuthProvider {
 		},
 	});
 
+	/**
+	 * Refresh a token for internal providers.
+	 */
 	public readonly refresh = $route({
 		path: ReactAuth.path.refresh,
 		method: "POST",
@@ -309,6 +313,9 @@ export class ReactAuthProvider {
 		},
 	});
 
+	/**
+	 * Login for local password-based authentication.
+	 */
 	public readonly token = $route({
 		path: ReactAuth.path.token,
 		method: "POST",
@@ -370,6 +377,9 @@ export class ReactAuthProvider {
 		},
 	});
 
+	/**
+	 * Oauth2/OIDC login route.
+	 */
 	public readonly login = $route({
 		path: ReactAuth.path.login,
 		schema: {
@@ -512,6 +522,9 @@ export class ReactAuthProvider {
 		},
 	});
 
+	/**
+	 * Logout route for OAuth2/OIDC providers.
+	 */
 	public readonly logout = $route({
 		path: ReactAuth.path.logout,
 		method: "GET",
@@ -530,9 +543,20 @@ export class ReactAuthProvider {
 
 			const provider = this.provider(tokens.provider);
 
-			// TODO: hook for session logout
-
 			this.tokens.del({ cookies });
+
+			// for internal providers, we can delete the session - if available
+			if ("realm" in provider.options && tokens.refresh_token) {
+				const onDeleteSession =
+					provider.options.realm.options.settings?.onDeleteSession;
+				if (onDeleteSession) {
+					try {
+						await onDeleteSession(tokens.refresh_token);
+					} catch (e) {
+						this.log.error("Failed to delete session", e);
+					}
+				}
+			}
 
 			const oauth = provider.oauth;
 			if (!oauth) {
