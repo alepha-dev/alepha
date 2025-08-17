@@ -3,15 +3,7 @@ import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
 import { Button, Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
-import {
-	Blank,
-	CaretDown,
-	LogOut,
-	Moon,
-	Tick,
-	Translate,
-	User,
-} from "@blueprintjs/icons";
+import { CaretDown, LogOut, Moon, User } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Security } from "../../api/providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";

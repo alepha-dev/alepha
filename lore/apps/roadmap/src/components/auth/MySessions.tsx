@@ -2,9 +2,8 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { useClient, useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Flex, Text } from "@alepha/react-flex";
-import { Circle, Desktop, MobilePhone, SymbolCircle } from "@blueprintjs/icons";
+import { Desktop, MobilePhone, SymbolCircle } from "@blueprintjs/icons";
 import { useState } from "react";
-import type { Session } from "../../api/providers/Db.ts";
 import type { SessionApi, UserSession } from "../../api/SessionApi.ts";
 import Action from "../shared/Action.tsx";
 

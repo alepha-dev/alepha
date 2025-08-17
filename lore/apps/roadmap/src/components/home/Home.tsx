@@ -2,7 +2,6 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useRouter, useStore } from "@alepha/react";
 import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Divider } from "@blueprintjs/core";
 import { Application, CubeAdd } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Project } from "../../api/providers/Db.ts";
