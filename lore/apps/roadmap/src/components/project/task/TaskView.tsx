@@ -258,28 +258,30 @@ const EditTaskButton = (props: {
 							</Flex>
 						</Flex>
 					</Flex>
-					<Flex pad2h>
-						<Flex
-							pad1
-							card
-							bordered
-							wFill
-							rounded
-							style={{
-								borderBottomLeftRadius: 0,
-								borderBottomRightRadius: 0,
-								borderBottom: 0,
+					<Flex col overflow>
+						<Flex pad2h>
+							<Flex
+								pad1
+								card
+								bordered
+								wFill
+								rounded
+								style={{
+									borderBottomLeftRadius: 0,
+									borderBottomRightRadius: 0,
+									borderBottom: 0,
+								}}
+							/>
+						</Flex>
+						<TaskCreate
+							project={project}
+							task={props.task}
+							onSubmit={(task) => {
+								setShowDialog(false);
+								props.onUpdate(task);
 							}}
 						/>
 					</Flex>
-					<TaskCreate
-						project={project}
-						task={props.task}
-						onSubmit={(task) => {
-							setShowDialog(false);
-							props.onUpdate(task);
-						}}
-					/>
 				</Flex>
 			</Drawer>
 		</Flex>
