@@ -114,6 +114,7 @@ describe("$auth", () => {
 					name: user.name,
 					roles: user.roles,
 					username: user.username,
+					sessionId: expect.any(String),
 				},
 				api: {
 					prefix: "/api",

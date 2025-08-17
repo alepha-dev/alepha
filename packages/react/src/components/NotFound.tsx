@@ -16,7 +16,7 @@ export default function NotFoundPage(props: { style?: CSSProperties }) {
 			}}
 		>
 			<h1 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-				This page does not exist
+				404 - This page does not exist
 			</h1>
 		</div>
 	);

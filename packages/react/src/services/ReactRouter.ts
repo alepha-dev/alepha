@@ -1,4 +1,3 @@
-import path from "node:path";
 import { $inject, Alepha } from "@alepha/core";
 import type { PageDescriptor } from "../descriptors/$page.ts";
 import {

@@ -1,8 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { expect, test } from "vitest";
-import { $realm } from "../src";
-import { $serviceAccount } from "../src/descriptors/$serviceAccount.ts";
+import { $realm, $serviceAccount } from "../src";
 
 class App {
 	oauth2 = $serviceAccount({
@@ -43,6 +42,7 @@ test("$serviceAccount - jwt", async () => {
 		aud: "realm",
 		iat: expect.any(Number),
 		exp: expect.any(Number),
+		sid: expect.any(String),
 	});
 
 	app.signOptions.expiresIn += 1; // ensure token won't be the same

@@ -1,6 +1,6 @@
 import { useActive, useRouter, useStore } from "@alepha/react";
 import { Flex, Text } from "@alepha/react-flex";
-import { Popover } from "@blueprintjs/core";
+import { Popover, Spinner } from "@blueprintjs/core";
 import { Clean, HighPriority } from "@blueprintjs/icons";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
@@ -71,6 +71,7 @@ const TaskItem = (props: { task: Task }) => {
 					"aria-current": "page",
 					"data-active": true,
 					style: {
+						opacity: isPending ? 0.5 : 1,
 						padding: "2px 4px",
 						borderLeftColor: "var(--text-color)",
 						borderRightColor: "var(--text-color)",
@@ -78,6 +79,7 @@ const TaskItem = (props: { task: Task }) => {
 				}
 			: {
 					style: {
+						opacity: isPending ? 0.5 : 1,
 						padding: "2px 4px",
 						border: "1px solid transparent",
 					},
@@ -88,21 +90,19 @@ const TaskItem = (props: { task: Task }) => {
 			gap1
 			card
 			rounded
-			onClick={() => {
+			onClick={async () => {
 				if (isActive) {
-					router.go("projectBoard");
+					await router.go("projectBoard");
 				} else {
-					anchorProps.onClick();
+					await anchorProps.onClick();
 				}
 			}}
 			{...flexProps}
 		>
 			{renderComplexity(task.complexity)}
 
-			<Flex center>
-				<Flex col>
-					<Text>{task.title}</Text>
-				</Flex>
+			<Flex centerX fill>
+				<Text>{task.title}</Text>
 			</Flex>
 
 			<Flex fill />

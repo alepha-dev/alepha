@@ -59,6 +59,7 @@ describe("$realm", () => {
 			exp: now.unix() + app.realm.accessTokenExpiration.asSeconds(),
 			name: user.name,
 			roles: ["admin", "user"],
+			sid: expect.any(String),
 		});
 
 		expect(
