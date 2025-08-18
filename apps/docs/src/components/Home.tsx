@@ -36,7 +36,6 @@ const Home = () => {
 			w={"100%"}
 			className={"graph-paper"}
 		>
-			<AlephaWarning />
 			<HeroSection />
 			<FeatureGrid />
 		</Flex>

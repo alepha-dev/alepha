@@ -9,14 +9,6 @@ Alepha is designed from the ground up to provide a cohesive development experien
 where conventions guide you and type safety protects you,
 from your database schema all the way to your frontend components.
 
-### The Motivation Behind Alepha
-
-Years of project development with various tools revealed a recurring pattern: wiring up the same modules,
-configuring React server connections, and building custom dependency injection systems to handle required modularity.
-Every project evolved into a heavily customized, in-house framework.
-
-Alepha is the consolidation of those patterns—a cohesive, opinionated framework built to solve these real-world problems.
-
 ## A Modern, Integrated Foundation
 
 Alepha **is not** a wrapper around existing libraries like [Express](https://expressjs.com) or [Fastify](https://fastify.dev).

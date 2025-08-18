@@ -99,7 +99,7 @@ export class ReactBrowserProvider {
 	public get url(): string {
 		const url = this.location.pathname + this.location.search;
 		if (this.base) {
-			return url.replace(this.base, "/");
+			return url.replace(this.base, "");
 		}
 		return url;
 	}
@@ -251,9 +251,9 @@ export class ReactBrowserProvider {
 			}
 
 			window.addEventListener("popstate", () => {
-				// when you update silently queryparams or hash, skip rendering
+				// when you update silently queryParams or hash, skip rendering
 				// if you want to force a rendering, use #go()
-				if (this.state.url.pathname === this.location.pathname) {
+				if (this.base + this.state.url.pathname === this.location.pathname) {
 					return;
 				}
 

@@ -56,7 +56,7 @@ const Sidebar = (props: Props) => {
 			{
 				name: "Guide",
 				icon: <IconMap2 />,
-				items: docs.filter((it) => it.category === "guides"),
+				items: docs.filter((it) => it.category === "guide"),
 			},
 			{
 				name: "Core Concepts",

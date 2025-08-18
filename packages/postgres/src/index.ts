@@ -71,9 +71,7 @@ export * from "./types/schema.ts";
  *
  * Migrations are supported via Drizzle ORM, you need to use the `drizzle-kit` CLI tool to generate and run migrations.
  *
- * > It's look like working with MongoDB, but with Postgres.
- *
- * Relations are NOT SUPPORTED yet. If you need relations, please use the `drizzle-orm` package directly.
+ * Relations are **NOT SUPPORTED** yet. If you need relations, please use the `drizzle-orm` package directly.
  *
  * @see {@link $entity}
  * @see {@link $repository}

@@ -76,12 +76,12 @@ class App {
 			const rootDir = join(import.meta.dirname, "../../..");
 			const outputDir = join(import.meta.dirname, "../node_modules/.docs");
 			const docs: Docs = {};
-			const categories = ["guides", "concepts"];
+			const categories = ["guide", "concepts"];
 
 			await rm(outputDir, { force: true, recursive: true });
 			await mkdir(outputDir, { recursive: true });
 
-			docs.guides = [];
+			docs.guide = [];
 			docs.concepts = [];
 			docs.packages = [];
 
