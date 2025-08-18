@@ -2,7 +2,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useRouter, useStore } from "@alepha/react";
 import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Application, CubeAdd } from "@blueprintjs/icons";
+import { Application, CircleArrowRight, CubeAdd } from "@blueprintjs/icons";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Project } from "../../api/providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -31,9 +31,10 @@ const Home = () => {
 						</Flex>
 						<Flex fill>
 							<Flex fill visible={"md"} />
-							<Flex fill pad1 bordered rounded card shadow>
+							<Flex fill bordered rounded card shadow>
 								<Action
 									fill
+									size={"large"}
 									variant={"minimal"}
 									icon={<CubeAdd />}
 									text={tr("home.create-campaign")}
@@ -45,37 +46,45 @@ const Home = () => {
 				</Flex>
 				<Flex col gap1>
 					<Text>{tr("home.campaigns")}</Text>
-					<Flex col bg rounded>
-						{projects.length > 0 ? (
-							<Flex pad2 bordered rounded gap2 col>
-								{projects
-									.toSorted((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))
-									.map((project) => (
-										<Flex key={project.id} card fill bordered rounded shadow>
-											<Action
-												fill
-												icon={<Application />}
-												alignText={"left"}
-												variant={"minimal"}
-												{...router.anchor("project", {
-													params: { projectId: project.id },
-												})}
-											>
-												<Flex col pad1h>
-													<Text bold>{project.title}</Text>
-													<Text small muted>
-														Updated {dt.of(project.updatedAt).fromNow()}
-													</Text>
-												</Flex>
-											</Action>
-										</Flex>
-									))}
-							</Flex>
-						) : (
-							<Flex pad2 center>
-								<Text muted>{tr("home.no-campaign")}</Text>
-							</Flex>
-						)}
+					<Flex gap3>
+						<Flex fill col bg rounded>
+							{projects.length > 0 ? (
+								<Flex pad2 bordered rounded gap2 col>
+									{projects
+										.toSorted((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))
+										.map((project) => (
+											<Flex key={project.id} card fill bordered rounded shadow>
+												<Action
+													fill
+													icon={<Application />}
+													alignText={"left"}
+													variant={"minimal"}
+													{...router.anchor("project", {
+														params: { projectId: project.id },
+													})}
+												>
+													<Flex fill>
+														<Flex col pad1h fill>
+															<Text bold>{project.title}</Text>
+															<Text small muted>
+																Updated {dt.of(project.updatedAt).fromNow()}
+															</Text>
+														</Flex>
+														<Flex center pad1h>
+															<CircleArrowRight />
+														</Flex>
+													</Flex>
+												</Action>
+											</Flex>
+										))}
+								</Flex>
+							) : (
+								<Flex pad2 center>
+									<Text muted>{tr("home.no-campaign")}</Text>
+								</Flex>
+							)}
+						</Flex>
+						<Flex fill visible={"md"}></Flex>
 					</Flex>
 				</Flex>
 			</Flex>

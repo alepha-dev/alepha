@@ -108,6 +108,7 @@ export const characters = $entity({
 			onDelete: "cascade",
 		}),
 		xp: t.int(),
+		balance: pg.default(t.int(), 0),
 	}),
 });
 

@@ -7,7 +7,7 @@ export class MeRouter {
 
 	me = $page({
 		path: "/me",
-		lazy: () => import("./Me.tsx"),
+		lazy: () => import("././MeLayout.tsx"),
 	});
 
 	characters = $page({

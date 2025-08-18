@@ -4,12 +4,12 @@ import { Antenna, People, User as UserIcon } from "@blueprintjs/icons";
 import Action, { type ActionProps } from "../shared/Action.tsx";
 import type { MeRouter } from "./MeRouter.ts";
 
-const Me = () => {
+const MeLayout = () => {
 	return (
 		<Flex center>
 			<Flex className={"container"} col pad2h gap3>
 				<Flex>
-					<Flex bordered rounded fill pad4 card bg></Flex>
+					<Flex rounded fill pad4></Flex>
 				</Flex>
 				<Flex hide={"md"}>
 					<MeMenu mobile={true} />
@@ -29,7 +29,7 @@ const Me = () => {
 	);
 };
 
-export default Me;
+export default MeLayout;
 
 const MeMenu = (props: { mobile?: boolean }) => {
 	const meRouter = useRouter<MeRouter>();

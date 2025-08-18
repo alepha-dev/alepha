@@ -6,6 +6,14 @@ export class Level {
 		97000, 117000, 139000, 163000, 189000, 217000, 247000,
 	];
 
+	getGold(balance: number): number {
+		return Math.floor(balance / 100);
+	}
+
+	getSilver(balance: number): number {
+		return balance % 100;
+	}
+
 	getXpFromTask(task: Task) {
 		const priority =
 			task.priority === "high" ? 350 : task.priority === "medium" ? 180 : 80;
@@ -23,6 +31,11 @@ export class Level {
 		}
 
 		return this.levels.length - 1; // Fallback to the last level if not found
+	}
+
+	getNextXpForLevel(xp: number): number {
+		const level = this.getLevelByXp(xp);
+		return this.getMaxXpForLevel(level) - this.getCurrentXpForLevel(level, xp);
 	}
 
 	getMaxXpForLevel(level: number): number {
