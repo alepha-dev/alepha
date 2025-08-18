@@ -27,7 +27,7 @@ const Layout = () => {
 			<ColorSchemeScript defaultColorScheme="dark" />
 			<MantineProvider defaultColorScheme="dark" theme={theme.mantine}>
 				<NavigationProgress />
-				<Main />
+				<LayoutContent />
 			</MantineProvider>
 		</>
 	);
@@ -35,7 +35,7 @@ const Layout = () => {
 
 export default Layout;
 
-const Main = () => {
+const LayoutContent = () => {
 	const [opened, { toggle }] = useDisclosure();
 	const router = useRouterState();
 	const noSidebar = router.layers.slice(-1)[0]?.route?.sidebar !== true;

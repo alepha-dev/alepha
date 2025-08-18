@@ -148,13 +148,13 @@ export class ReactRouter<T extends object> {
 		};
 	}
 
-	protected base(path: string): string {
-		return path; // TODO: add base URL handling if needed
-		// const BASE_URL = import.meta?.env?.BASE_URL;
-		// if (BASE_URL) {
-		// 	path = (BASE_URL + path).replaceAll("//", "/");
-		// }
-		// return path.startsWith("/") ? path : `/${path}`;
+	public base(path: string): string {
+		const base = import.meta.env?.BASE_URL ?? "";
+		if (base) {
+			return base + path;
+		}
+
+		return path;
 	}
 
 	/**

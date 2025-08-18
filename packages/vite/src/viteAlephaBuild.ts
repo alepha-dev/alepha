@@ -92,13 +92,15 @@ export async function viteAlephaBuild(
 				);
 			}
 
-			if (!entry && html) {
+			if (buildClientOptions.prerender && !entry && html) {
 				entry = extractFirstModuleScriptSrc(html);
 			}
 
 			if (entry) {
 				await buildServer({
-					config: {},
+					config: {
+						base: rootConfig.base || "",
+					},
 					entry,
 					distDir: `${distDir}`,
 					clientDir: hasClient ? clientDir : undefined,

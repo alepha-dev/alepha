@@ -83,12 +83,12 @@ export class ReactPageProvider {
 
 	public url(
 		name: string,
-		options: { params?: Record<string, string>; base?: string } = {},
+		options: { params?: Record<string, string>; host?: string } = {},
 	): URL {
 		return new URL(
 			this.pathname(name, options),
 			// use provided base or default to http://localhost
-			options.base ?? `http://localhost`,
+			options.host ?? `http://localhost`,
 		);
 	}
 

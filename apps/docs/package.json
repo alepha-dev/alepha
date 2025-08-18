@@ -29,7 +29,7 @@
 		"build": "vite build",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",
-		"preview": "vite build --base=/alepha/ && vite preview --outDir dist/public --base=/alepha/",
+		"preview": "vite build --base=/alepha && vite preview --outDir dist/public --base=/alepha",
 		"check": "tsc"
 	}
 }

@@ -85,21 +85,25 @@ export class ReactBrowserProvider {
 		return window.location;
 	}
 
-	public get url(): string {
-		return this.state.url.pathname + this.state.url.search;
+	public get base() {
+		return import.meta.env?.BASE_URL ?? "";
 	}
 
-	public pushState(url: string, replace?: boolean) {
-		let path = url;
-
-		if (import.meta?.env?.BASE_URL) {
-			path = (import.meta.env?.BASE_URL + path).replaceAll("//", "/");
+	public get url(): string {
+		const url = this.location.pathname + this.location.search;
+		if (this.base) {
+			return url.replace(this.base, "/");
 		}
+		return url;
+	}
+
+	public pushState(path: string, replace?: boolean) {
+		const url = this.base + path;
 
 		if (replace) {
-			this.history.replaceState({}, "", path);
+			this.history.replaceState({}, "", url);
 		} else {
-			this.history.pushState({}, "", path);
+			this.history.pushState({}, "", url);
 		}
 	}
 
@@ -154,7 +158,7 @@ export class ReactBrowserProvider {
 		options: { url?: string; previous?: PreviousLayerData[] } = {},
 	): Promise<void> {
 		const previous = options.previous ?? this.state.layers;
-		const url = options.url ?? this.location.pathname + this.location.search;
+		const url = options.url ?? this.url;
 
 		this.transitioning = {
 			to: url,

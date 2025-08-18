@@ -12,7 +12,7 @@ declare module "@alepha/react" {
 	}
 }
 
-export class App {
+export class AppRouter {
 	layout = $page({
 		component: Layout,
 		children: () => [this.home, this.m, this.github404, this.notFound],

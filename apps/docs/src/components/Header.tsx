@@ -127,13 +127,14 @@ const SearchButton = () => {
 };
 
 const HomeButton = () => {
+	const router = useRouter();
 	return (
 		<Button size={"xl"} variant={"transparent"} component={Link} to={"/"}>
 			<Flex align={"center"} justify={"center"}>
 				<Flex>
 					<Image
 						style={{ marginBottom: -32 }}
-						src={`${import.meta.env.BASE_URL}alepha.png`}
+						src={router.base("/alepha.png")}
 						alt={"logo"}
 						width={50}
 						height={50}

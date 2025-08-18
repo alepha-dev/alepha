@@ -208,6 +208,10 @@ export class ReactServerProvider {
 
 			const state = entry as ReactRouterState;
 
+			this.log.trace("Rendering", {
+				url,
+			});
+
 			await this.alepha.emit("react:server:render:begin", {
 				state,
 			});
@@ -221,9 +225,9 @@ export class ReactServerProvider {
 				throw new AlephaError("Redirection is not supported in this context");
 			}
 
-			this.alepha.state("react.router.state", state);
-
 			if (!withIndex && !options.html) {
+				this.alepha.state("react.router.state", state);
+
 				return {
 					state,
 					html: renderToString(this.pageApi.root(state)),
@@ -375,7 +379,10 @@ export class ReactServerProvider {
 		try {
 			app = renderToString(element);
 		} catch (error) {
-			this.log.error("Error during SSR", error);
+			this.log.error(
+				"renderToString has failed, fallback to error handler",
+				error,
+			);
 			const element = state.onError(error as Error, state);
 			if (element instanceof Redirection) {
 				// if the error is a redirection, return the redirection URL
@@ -383,6 +390,7 @@ export class ReactServerProvider {
 			}
 
 			app = renderToString(element);
+			this.log.debug("Error handled successfully with fallback");
 		}
 		this.serverTimingProvider.endTiming("renderToString");
 

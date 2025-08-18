@@ -31,13 +31,6 @@ export const useStore = <Key extends keyof State>(
 		});
 	}, []);
 
-	if (!alepha.isBrowser()) {
-		const value = alepha.context.get(key) as State[Key];
-		if (value !== null) {
-			return [value, (_: State[Key]) => {}] as const;
-		}
-	}
-
 	return [
 		state,
 		(value: State[Key]) => {
