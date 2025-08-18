@@ -14,7 +14,7 @@ export class I18nProvider<
 		schema: t.string(),
 	});
 
-	protected registry: Array<{
+	public readonly registry: Array<{
 		name: string;
 		lang: string;
 		loader: () => Promise<Record<string, string>>;
