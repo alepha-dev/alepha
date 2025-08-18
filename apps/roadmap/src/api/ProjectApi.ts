@@ -15,6 +15,16 @@ export class ProjectApi {
 		handler: async ({ body, user }) => {
 			// TODO: load user + check if they have a free project slot
 
+			const count = await this.db.projects.count({
+				createdBy: user.id,
+			});
+
+			if (count >= 5) {
+				throw new ForbiddenError(
+					"You have reached the maximum number of projects allowed.",
+				);
+			}
+
 			const project = await this.db.projects.create({
 				...body,
 				createdBy: user.id,
@@ -24,6 +34,7 @@ export class ProjectApi {
 				projectId: project.id,
 				userId: user.id,
 				xp: 0,
+				balance: 0,
 			});
 
 			return project;

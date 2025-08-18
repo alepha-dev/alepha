@@ -136,6 +136,7 @@ export interface FlexProps {
 	 * Render Flex as <form> element instead of <div>.
 	 */
 	form?: HTMLAttributes<HTMLFormElement>;
+	tr?: boolean; // If true, the flex container will be rendered as a table row
 }
 
 /**
@@ -286,6 +287,10 @@ const Flex = (props: FlexProps) => {
 
 	if (props.form) {
 		return createElement("form", { ...div, ...props.form }, props.children);
+	}
+
+	if (props.tr) {
+		return createElement("tr", { ...div, ...props.div }, props.children);
 	}
 
 	return <div {...div}>{props.children}</div>;
