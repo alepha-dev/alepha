@@ -26,17 +26,19 @@ export const useActive = (href: string): UseActiveHook => {
 		isPending,
 		isActive,
 		anchorProps: {
-			href,
-			onClick: (ev?: any) => {
+			href: router.base(href),
+			onClick: async (ev?: any) => {
 				ev?.stopPropagation();
 				ev?.preventDefault();
 				if (isActive) return;
 				if (isPending) return;
 
 				setPending(true);
-				router.go(href).then(() => {
+				try {
+					await router.go(href);
+				} finally {
 					setPending(false);
-				});
+				}
 			},
 		},
 	};

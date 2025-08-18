@@ -8,6 +8,7 @@ import {
 	type Static,
 	t,
 } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { LinkProvider } from "@alepha/server-links";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
@@ -35,6 +36,7 @@ export class ReactBrowserProvider {
 	protected readonly client = $inject(LinkProvider);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(ReactBrowserRouterProvider);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected root?: Root;
 
 	public options: ReactBrowserRendererOptions = {
@@ -86,7 +88,12 @@ export class ReactBrowserProvider {
 	}
 
 	public get base() {
-		return import.meta.env?.BASE_URL ?? "";
+		const base = import.meta.env?.BASE_URL;
+		if (!base || base === "/") {
+			return "";
+		}
+
+		return base;
 	}
 
 	public get url(): string {
@@ -159,9 +166,11 @@ export class ReactBrowserProvider {
 	): Promise<void> {
 		const previous = options.previous ?? this.state.layers;
 		const url = options.url ?? this.url;
+		const start = this.dateTimeProvider.now();
 
 		this.transitioning = {
 			to: url,
+			from: this.state?.url.pathname,
 		};
 
 		this.log.debug("Transitioning...", {
@@ -180,9 +189,8 @@ export class ReactBrowserProvider {
 			return await this.render({ url: redirect });
 		}
 
-		this.log.info("Transition OK", {
-			to: url,
-		});
+		const ms = this.dateTimeProvider.now().diff(start);
+		this.log.info(`Transition OK [${ms}ms]`, this.transitioning);
 
 		this.transitioning = undefined;
 	}
