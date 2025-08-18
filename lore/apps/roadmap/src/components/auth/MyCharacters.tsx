@@ -2,7 +2,7 @@ import { Flex } from "@alepha/react-flex";
 
 const MyCharacters = () => {
 	return (
-		<Flex fill center>
+		<Flex bg fill center>
 			characters
 		</Flex>
 	);

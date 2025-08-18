@@ -7,7 +7,7 @@ export interface ProfileProps {
 
 const MyProfile = (props: ProfileProps) => {
 	return (
-		<Flex fill center>
+		<Flex bg fill center>
 			profile
 		</Flex>
 	);

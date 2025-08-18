@@ -9,7 +9,7 @@ const MeLayout = () => {
 		<Flex center>
 			<Flex className={"container"} col pad2h gap3>
 				<Flex>
-					<Flex rounded fill pad4></Flex>
+					<Flex rounded fill bg pad4></Flex>
 				</Flex>
 				<Flex hide={"md"}>
 					<MeMenu mobile={true} />
