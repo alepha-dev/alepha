@@ -7,10 +7,10 @@
 		"@alepha/server": "0.9.3",
 		"@alepha/server-links": "0.9.3",
 		"@alepha/server-security": "0.9.3",
-		"@mantine/core": "^8.2.4",
-		"@mantine/form": "^8.2.4",
-		"@mantine/hooks": "^8.2.4",
-		"@mantine/nprogress": "^8.2.4",
+		"@mantine/core": "^8.2.5",
+		"@mantine/form": "^8.2.5",
+		"@mantine/hooks": "^8.2.5",
+		"@mantine/nprogress": "^8.2.5",
 		"@tabler/icons-react": "^3.34.1",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1"
@@ -20,7 +20,7 @@
 		"@vitejs/plugin-react": "^5.0.0",
 		"drizzle-kit": "^0.31.4",
 		"typescript": "^5.9.2",
-		"vercel": "^45.0.9",
+		"vercel": "^46.0.1",
 		"vite": "^7.1.2",
 		"vite-bundle-analyzer": "^1.2.1"
 	},

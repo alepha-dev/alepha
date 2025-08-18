@@ -54,7 +54,8 @@
 		"@alepha/server-swagger": "0.9.3",
 		"@alepha/topic": "0.9.3",
 		"@alepha/topic-redis": "0.9.3",
-		"@alepha/vite": "0.9.3"
+		"@alepha/vite": "0.9.3",
+		"react": "^19.1.1"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.1"

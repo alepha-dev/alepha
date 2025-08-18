@@ -7,7 +7,7 @@
 		"@vitejs/plugin-react": "^5.0.0",
 		"drizzle-kit": "0.31.4",
 		"typescript": "^5.9.2",
-		"vercel": "^45.0.9",
+		"vercel": "^46.0.1",
 		"vite": "^7.1.2"
 	},
 	"scripts": {

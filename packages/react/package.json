@@ -16,6 +16,7 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.9.3",
+		"@alepha/datetime": "0.9.3",
 		"@alepha/router": "0.9.3",
 		"@alepha/server": "0.9.3",
 		"@alepha/server-cache": "0.9.3",
@@ -32,7 +33,6 @@
 		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
-		"@types/react": "^19",
 		"react": "^19"
 	},
 	"scripts": {

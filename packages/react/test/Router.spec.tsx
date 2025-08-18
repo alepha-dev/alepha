@@ -11,6 +11,11 @@ const setup = () => {
 	const render = async (path: string): Promise<string> => {
 		await router.transition(new URL(`http://localhost${path}`));
 		const state = alepha.state("react.router.state");
+		if (!state) {
+			throw new Error(
+				"Router state not found. Ensure the router is properly configured.",
+			);
+		}
 		const element = router.root(state);
 		return renderToString(element).replaceAll("<!-- -->", "");
 	};

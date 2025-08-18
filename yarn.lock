@@ -98,7 +98,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/core@workspace:packages/core"
   dependencies:
-    "@sinclair/typebox": "npm:^0.34.39"
+    "@sinclair/typebox": "npm:^0.34.40"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -163,7 +163,7 @@ __metadata:
     "@alepha/datetime": "npm:0.9.3"
     "@alepha/lock": "npm:0.9.3"
     "@alepha/retry": "npm:0.9.3"
-    "@sinclair/typebox": "npm:^0.34.39"
+    "@sinclair/typebox": "npm:^0.34.40"
     drizzle-kit: "npm:0.31.4"
     drizzle-orm: "npm:^0.44.4"
     postgres: "npm:^3.4.7"
@@ -178,7 +178,7 @@ __metadata:
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
   dependencies:
     "@alepha/core": "npm:0.9.3"
-    protobufjs: "npm:^7.5.3"
+    protobufjs: "npm:^7.5.4"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -309,6 +309,7 @@ __metadata:
   resolution: "@alepha/react@workspace:packages/react"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/datetime": "npm:0.9.3"
     "@alepha/router": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     "@alepha/server-cache": "npm:0.9.3"
@@ -322,7 +323,6 @@ __metadata:
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   peerDependencies:
-    "@types/react": ^19
     react: ^19
   languageName: unknown
   linkType: soft
@@ -501,7 +501,7 @@ __metadata:
     "@alepha/core": "npm:0.9.3"
     "@alepha/file": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
-    "@fastify/busboy": "npm:^3.1.1"
+    "@fastify/busboy": "npm:^3.2.0"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -599,6 +599,8 @@ __metadata:
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.0"
     jsdom: "npm:^26.1.0"
+    react: "npm:^19.1.1"
+    react-dom: "npm:^19.1.1"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
   languageName: unknown
@@ -645,7 +647,6 @@ __metadata:
   resolution: "@alepha/vite@workspace:packages/vite"
   dependencies:
     "@alepha/core": "npm:0.9.3"
-    "@alepha/react": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vite: "npm:^7.1.2"
@@ -1726,10 +1727,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/busboy@npm:^3.1.1":
-  version: 3.1.1
-  resolution: "@fastify/busboy@npm:3.1.1"
-  checksum: 10c0/d34b3640bc331f9951e27426769bdf90b1a5c238a22e4df39f9b18ec4cf793100a929ac0339f6643a4086f780f49177a528936d918dfd6c9dfe5a12566303215
+"@fastify/busboy@npm:^3.2.0":
+  version: 3.2.0
+  resolution: "@fastify/busboy@npm:3.2.0"
+  checksum: 10c0/3e4fb00a27e3149d1c68de8ff14007d2bbcbbc171a9d050d0a8772e836727329d4d3f130995ebaa19cf537d5d2f5ce2a88000366e6192e751457bfcc2125f351
   languageName: node
   linkType: hard
 
@@ -1924,9 +1925,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mantine/core@npm:^8.2.4":
-  version: 8.2.4
-  resolution: "@mantine/core@npm:8.2.4"
+"@mantine/core@npm:^8.2.5":
+  version: 8.2.5
+  resolution: "@mantine/core@npm:8.2.5"
   dependencies:
     "@floating-ui/react": "npm:^0.26.28"
     clsx: "npm:^2.1.1"
@@ -1935,68 +1936,68 @@ __metadata:
     react-textarea-autosize: "npm:8.5.9"
     type-fest: "npm:^4.27.0"
   peerDependencies:
-    "@mantine/hooks": 8.2.4
+    "@mantine/hooks": 8.2.5
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/1a71de70cda970850903c006505eed8585889d84da28ce73ba36ed1ff94867c38d27c3279b45e3ded729da2fcb21d7c7992bf96e4c466e8648f8e2f987bdd590
+  checksum: 10c0/2268218faa02ecfb07819f6fb73426bf32049a3769ee6b1d1be46bdd3fb913ff14518692213a762a1ceccf6245572a5600052572f50b02c201e388475427657a
   languageName: node
   linkType: hard
 
-"@mantine/form@npm:^8.2.4":
-  version: 8.2.4
-  resolution: "@mantine/form@npm:8.2.4"
+"@mantine/form@npm:^8.2.5":
+  version: 8.2.5
+  resolution: "@mantine/form@npm:8.2.5"
   dependencies:
     fast-deep-equal: "npm:^3.1.3"
     klona: "npm:^2.0.6"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/6b2c4be6ea3ff50580cb220cc00e24adfda47d33abf781c353a19ede7a0dcb0f7b14521986c1c74a584164fc9b10e89bee039d5fde9a0fdfb0363f58c15886ac
+  checksum: 10c0/f182a672d27ecd3f85b1723beac4ced044858e7f8b962b3de8379c3c8a38917778e29635d52fa910ae40960bc24043b4f97d414218dd3dc7341bf9ea2723321e
   languageName: node
   linkType: hard
 
-"@mantine/hooks@npm:^8.2.4":
-  version: 8.2.4
-  resolution: "@mantine/hooks@npm:8.2.4"
+"@mantine/hooks@npm:^8.2.5":
+  version: 8.2.5
+  resolution: "@mantine/hooks@npm:8.2.5"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/5321d21256eb02ad79ae4f221ab16c449814dd411ebc849297f4928abd818a29f5453e9a0e0b40d62b6d17e3261de214e8bed722d8f4c5dfce71a9d6c364f537
+  checksum: 10c0/acd6d56703b19032ecced897c26dfb5ee7ff630c51cccfcaa2a9fa3251607432be0e984c8f8715456b4fa0c6647d48b4c240aa72d5eed78dbc358ec445b1f791
   languageName: node
   linkType: hard
 
-"@mantine/nprogress@npm:^8.2.4":
-  version: 8.2.4
-  resolution: "@mantine/nprogress@npm:8.2.4"
+"@mantine/nprogress@npm:^8.2.5":
+  version: 8.2.5
+  resolution: "@mantine/nprogress@npm:8.2.5"
   dependencies:
-    "@mantine/store": "npm:8.2.4"
+    "@mantine/store": "npm:8.2.5"
   peerDependencies:
-    "@mantine/core": 8.2.4
-    "@mantine/hooks": 8.2.4
+    "@mantine/core": 8.2.5
+    "@mantine/hooks": 8.2.5
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/d045139dd5a25bff2e07a188f3aa7f344dc7d91dcf70e6f2bbe0ee0100862d2d9e61dafe00ab89ce55af8fa6840f770ef8857b388d1d59e2bc9e362b79142c0c
+  checksum: 10c0/d3fb910013a7177d50219a7232af4ae2efe89ffc48a8617aab1baf8b91297c70b006602797ae403d52eadafe95984f911513cae071d63930d9c70f2bf63c8057
   languageName: node
   linkType: hard
 
-"@mantine/spotlight@npm:^8.2.4":
-  version: 8.2.4
-  resolution: "@mantine/spotlight@npm:8.2.4"
+"@mantine/spotlight@npm:^8.2.5":
+  version: 8.2.5
+  resolution: "@mantine/spotlight@npm:8.2.5"
   dependencies:
-    "@mantine/store": "npm:8.2.4"
+    "@mantine/store": "npm:8.2.5"
   peerDependencies:
-    "@mantine/core": 8.2.4
-    "@mantine/hooks": 8.2.4
+    "@mantine/core": 8.2.5
+    "@mantine/hooks": 8.2.5
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/44a7bc02518f73cf3507cae5ca93ecddf6297231d8b5c44dbd4c9deb1e9d1778202fb6e5d3a4e39cd076780de1032b5863bb7b521063d3df5f37ac8bf2f6f1d9
+  checksum: 10c0/c5784414f93fe5da8cfa68f62f0b123fa7e9f1a8db0616943c87c3663d5815d33b999e450f096cca555a7ef8a72bf4f2caff8207c30928571f56e950df26b04d
   languageName: node
   linkType: hard
 
-"@mantine/store@npm:8.2.4":
-  version: 8.2.4
-  resolution: "@mantine/store@npm:8.2.4"
+"@mantine/store@npm:8.2.5":
+  version: 8.2.5
+  resolution: "@mantine/store@npm:8.2.5"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/b9bf73a6ba624443081fef4f891dc69bca982637f175f854f2ed1ebf16e94eed4deb1a212586277a08a84053e4e5ef2e4621999d8f4e0873b3eb92d7a8f31266
+  checksum: 10c0/efd5568d5a3e0d9e34b3b902f3ca0dfbdaffb1ec95d1b0e41e2ac39d54d2bc48079d5cc5d24593b140a36ed1d0095756863ab997f504b3d92ac348b82d2c3f43
   languageName: node
   linkType: hard
 
@@ -2621,10 +2622,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinclair/typebox@npm:^0.34.39":
-  version: 0.34.39
-  resolution: "@sinclair/typebox@npm:0.34.39"
-  checksum: 10c0/627fd9da5b6e651329111000d5f665c2f7a5df300dfdf24a32156f483fd30c74ccad92396a33a1c5c23bf4354943cd8ac28d27ae4a2bd00665964f3eb4605f6b
+"@sinclair/typebox@npm:^0.34.40":
+  version: 0.34.40
+  resolution: "@sinclair/typebox@npm:0.34.40"
+  checksum: 10c0/95d7003d49844b31b1f02e023bf0c5bb13cceb07297b20c4df23fb4ba075bd138c20ad2538b862c50a171c76e4a93b93ae831814a6884a7d50bf7c79b2819efb
   languageName: node
   linkType: hard
 
@@ -3315,14 +3316,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/express@npm:0.0.5":
-  version: 0.0.5
-  resolution: "@vercel/express@npm:0.0.5"
+"@vercel/express@npm:0.0.6":
+  version: 0.0.6
+  resolution: "@vercel/express@npm:0.0.6"
   dependencies:
-    "@vercel/node": "npm:5.3.12"
+    "@vercel/node": "npm:5.3.13"
     "@vercel/static-config": "npm:3.1.1"
     ts-morph: "npm:12.0.0"
-  checksum: 10c0/b868819881213608ddea9f3931429b34e820434119398c7d7af13868b91dd67c3e0c2e539a4d51bf9b7af682f94e4515a5154441099c2f63606a8ba4c6fb1d22
+  checksum: 10c0/10610df7174c4e04e0907bdf579d0d62325084d39bc40effc516b6c8be82414d56b062b330f9299e6ed32fd4e9969537a550e9d0c16a5e32ff8fbbc8dc2a8ee9
   languageName: node
   linkType: hard
 
@@ -3381,14 +3382,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/hono@npm:0.0.13":
-  version: 0.0.13
-  resolution: "@vercel/hono@npm:0.0.13"
+"@vercel/hono@npm:0.0.14":
+  version: 0.0.14
+  resolution: "@vercel/hono@npm:0.0.14"
   dependencies:
-    "@vercel/node": "npm:5.3.12"
+    "@vercel/node": "npm:5.3.13"
     "@vercel/static-config": "npm:3.1.1"
     ts-morph: "npm:12.0.0"
-  checksum: 10c0/545de48973583fd9e326231125f8efabb71b280150ad8f177d33348b7576020e15bd9bf2ac6835fece302c7e4b1d0b27f915a4cec983a7813711336217033d71
+  checksum: 10c0/fb6e1cadb845fe4c7809f62ff602d2aa9b2108a9dc1f1483723f4bda8f146b02831bb56650d484c3cd1a2dacb0620266b112897609b1e9e4d129d15ffac35a58
   languageName: node
   linkType: hard
 
@@ -3433,9 +3434,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/node@npm:5.3.12":
-  version: 5.3.12
-  resolution: "@vercel/node@npm:5.3.12"
+"@vercel/node@npm:5.3.13":
+  version: 5.3.13
+  resolution: "@vercel/node@npm:5.3.13"
   dependencies:
     "@edge-runtime/node-utils": "npm:2.3.0"
     "@edge-runtime/primitives": "npm:4.1.0"
@@ -3458,7 +3459,7 @@ __metadata:
     ts-node: "npm:10.9.1"
     typescript: "npm:4.9.5"
     undici: "npm:5.28.4"
-  checksum: 10c0/b36584b8f9d4bbdbafaa5282d0445a405c55043d1a21ca42c3e82d0d9b1c01a700248da49c2b25c3577eddd65322c429dbfe1566f0209a335bfc90430b817df8
+  checksum: 10c0/86a803a6975e56d3ce88566f59926bdef6d7abcaef9ed0a5fc550f0415cd35d1a814cbf9a300546cf590fd75eee1b9a3e55e1fe63e2c0c789fa9da8ef1173292
   languageName: node
   linkType: hard
 
@@ -3986,6 +3987,7 @@ __metadata:
     "@alepha/topic": "npm:0.9.3"
     "@alepha/topic-redis": "npm:0.9.3"
     "@alepha/vite": "npm:0.9.3"
+    react: "npm:^19.1.1"
     tsdown: "npm:^0.14.1"
   languageName: unknown
   linkType: soft
@@ -4340,10 +4342,10 @@ __metadata:
     "@alepha/server": "npm:0.9.3"
     "@alepha/server-links": "npm:0.9.3"
     "@alepha/server-security": "npm:0.9.3"
-    "@mantine/core": "npm:^8.2.4"
-    "@mantine/form": "npm:^8.2.4"
-    "@mantine/hooks": "npm:^8.2.4"
-    "@mantine/nprogress": "npm:^8.2.4"
+    "@mantine/core": "npm:^8.2.5"
+    "@mantine/form": "npm:^8.2.5"
+    "@mantine/hooks": "npm:^8.2.5"
+    "@mantine/nprogress": "npm:^8.2.5"
     "@tabler/icons-react": "npm:^3.34.1"
     "@types/react": "npm:^19.1.10"
     "@vitejs/plugin-react": "npm:^5.0.0"
@@ -4351,7 +4353,7 @@ __metadata:
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
     typescript: "npm:^5.9.2"
-    vercel: "npm:^45.0.9"
+    vercel: "npm:^46.0.1"
     vite: "npm:^7.1.2"
     vite-bundle-analyzer: "npm:^1.2.1"
   languageName: unknown
@@ -5198,16 +5200,16 @@ __metadata:
     "@alepha/core": "npm:0.9.3"
     "@alepha/react": "npm:0.9.3"
     "@fontsource/inter": "npm:^5.2.6"
-    "@mantine/core": "npm:^8.2.4"
-    "@mantine/form": "npm:^8.2.4"
-    "@mantine/hooks": "npm:^8.2.4"
-    "@mantine/nprogress": "npm:^8.2.4"
-    "@mantine/spotlight": "npm:^8.2.4"
+    "@mantine/core": "npm:^8.2.5"
+    "@mantine/form": "npm:^8.2.5"
+    "@mantine/hooks": "npm:^8.2.5"
+    "@mantine/nprogress": "npm:^8.2.5"
+    "@mantine/spotlight": "npm:^8.2.5"
     "@tabler/icons-react": "npm:^3.34.1"
     "@types/react": "npm:^19.1.10"
     "@vitejs/plugin-react": "npm:^5.0.0"
     highlight.js: "npm:^11.11.1"
-    marked: "npm:^16.1.2"
+    marked: "npm:^16.2.0"
     marked-highlight: "npm:^2.2.2"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
@@ -7812,12 +7814,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"marked@npm:^16.1.2":
-  version: 16.1.2
-  resolution: "marked@npm:16.1.2"
+"marked@npm:^16.2.0":
+  version: 16.2.0
+  resolution: "marked@npm:16.2.0"
   bin:
     marked: bin/marked.js
-  checksum: 10c0/4e5878f1aa89de139bed14835865af20f26527674f41dedf2b33d2f85360298a1a0cc0505c675f072175c86eb30684c7b4e287d18f5958daa26e36bc1308d321
+  checksum: 10c0/aefc418370e916ffeb821d05a585f4311c529268880113ee3695857bfb335119b5b4cd202a5d198fc087f7f3c59f98170ba1994027b2a9b8a172b31e3047ca3a
   languageName: node
   linkType: hard
 
@@ -9110,9 +9112,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"protobufjs@npm:^7.5.3":
-  version: 7.5.3
-  resolution: "protobufjs@npm:7.5.3"
+"protobufjs@npm:^7.5.4":
+  version: 7.5.4
+  resolution: "protobufjs@npm:7.5.4"
   dependencies:
     "@protobufjs/aspromise": "npm:^1.1.2"
     "@protobufjs/base64": "npm:^1.1.2"
@@ -9126,7 +9128,7 @@ __metadata:
     "@protobufjs/utf8": "npm:^1.1.0"
     "@types/node": "npm:>=13.7.0"
     long: "npm:^5.0.0"
-  checksum: 10c0/9dc131a7e7a610b8291a0b0033b313f8754ef419b57c44d27874dd4edf1afc2a9a77d7a5bc2df9a744cba014de67c92756759c73200b702a11f13360e907b0dd
+  checksum: 10c0/913b676109ffb3c05d3d31e03a684e569be91f3bba8613da4a683d69d9dba948daa2afd7d2e7944d1aa6c417890c35d9d9a8883c1160affafb0f9670d59ef722
   languageName: node
   linkType: hard
 
@@ -9579,7 +9581,7 @@ __metadata:
     react: "npm:^19.1.1"
     sanitize-html: "npm:^2.17.0"
     typescript: "npm:^5.9.2"
-    vercel: "npm:^45.0.9"
+    vercel: "npm:^46.0.1"
     vite: "npm:^7.1.2"
   languageName: unknown
   linkType: soft
@@ -11274,19 +11276,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vercel@npm:^45.0.9":
-  version: 45.0.9
-  resolution: "vercel@npm:45.0.9"
+"vercel@npm:^46.0.1":
+  version: 46.0.1
+  resolution: "vercel@npm:46.0.1"
   dependencies:
     "@vercel/blob": "npm:1.0.2"
     "@vercel/build-utils": "npm:11.0.1"
-    "@vercel/express": "npm:0.0.5"
+    "@vercel/express": "npm:0.0.6"
     "@vercel/fun": "npm:1.1.6"
     "@vercel/go": "npm:3.2.3"
-    "@vercel/hono": "npm:0.0.13"
+    "@vercel/hono": "npm:0.0.14"
     "@vercel/hydrogen": "npm:1.2.3"
     "@vercel/next": "npm:4.11.2"
-    "@vercel/node": "npm:5.3.12"
+    "@vercel/node": "npm:5.3.13"
     "@vercel/python": "npm:5.0.0"
     "@vercel/redwood": "npm:2.3.4"
     "@vercel/remix-builder": "npm:5.4.10"
@@ -11297,7 +11299,7 @@ __metadata:
   bin:
     vc: dist/vc.js
     vercel: dist/vc.js
-  checksum: 10c0/2d454d9723cdc4742da6bad40fcfde866b8413f6ce65033cf059fc47bda71a9b8fdb0b1434d9c772cbdbb73bd4c533c40d256ef2c6b8680a6f453776a8dfff09
+  checksum: 10c0/cd8103fa895ed9fa15ef5cbd514bb700c91c6d9f9ca7db38b3ac3b36119fab4e07a95b7322191c621be41b380e2f8265e461bd5e8e8417050fc0dda173812143
   languageName: node
   linkType: hard
 
