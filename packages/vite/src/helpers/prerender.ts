@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { type Alepha, KIND } from "@alepha/core";
+import type { Alepha } from "@alepha/core";
 import { compressFile, type ViteCompressOptions } from "../viteCompress.ts";
 import { importAlepha } from "./importAlepha.ts";
 
@@ -58,9 +58,7 @@ async function prerenderFromAlepha(
 	compress?: ViteCompressOptions | boolean,
 ): Promise<{ count: number }> {
 	let count = 0;
-	const pages = alepha.descriptors({
-		[KIND]: "PageDescriptor",
-	}) as any[];
+	const pages = alepha.descriptors("page") as any[];
 
 	for (const page of pages) {
 		const options = page.options;

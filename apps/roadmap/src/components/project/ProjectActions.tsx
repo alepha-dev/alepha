@@ -1,7 +1,7 @@
 import { useClient, useRouter, useStore } from "@alepha/react";
 import { Flex } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, ButtonGroup, Drawer } from "@blueprintjs/core";
+import { Button, Drawer } from "@blueprintjs/core";
 import {
 	Cog,
 	Cross,
@@ -14,7 +14,7 @@ import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../shared/Action.tsx";
+import Action, { type ActionProps } from "../shared/Action.tsx";
 import TaskCreate from "./task/TaskCreate.tsx";
 
 const ProjectActions = () => {
@@ -32,40 +32,36 @@ const ProjectActions = () => {
 
 	return (
 		<Flex fill pad1 pad2h bordered shadow bg rounded>
-			<ButtonGroup>
-				<Action
-					visibleText={"sm"}
+			<Flex gap1>
+				<TabAction
 					icon={<PanelTable />}
-					variant={"minimal"}
 					text={tr("project.menu.board")}
 					href={router.path("projectBoard", opts)}
 				/>
-				<Action
-					visibleText={"sm"}
+				<TabAction
 					icon={<People />}
-					variant={"minimal"}
 					text={tr("project.menu.players")}
 					href={router.path("projectPlayers", opts)}
 				/>
-				<Action
-					visibleText={"sm"}
+				<TabAction
 					icon={<TimelineLineChart />}
-					variant={"minimal"}
 					text={tr("project.menu.analytics")}
 					href={router.path("projectAnalytics", opts)}
 				/>
-				<Action
-					visibleText={"sm"}
+				<TabAction
 					icon={<Cog />}
-					variant={"minimal"}
 					text={tr("project.menu.settings")}
 					href={router.path("projectSettings", opts)}
 				/>
-			</ButtonGroup>
+			</Flex>
 			<Flex fill />
 			<CreateTaskButton />
 		</Flex>
 	);
+};
+
+const TabAction = (props: ActionProps & { href: string }) => {
+	return <Action {...props} variant={"minimal"} visibleText={"sm"} />;
 };
 
 export default ProjectActions;

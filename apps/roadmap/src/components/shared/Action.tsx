@@ -1,5 +1,10 @@
 import { AlephaError } from "@alepha/core";
-import { type AnchorProps, useActive, useInject } from "@alepha/react";
+import {
+	type AnchorProps,
+	type UseActiveOptions,
+	useActive,
+	useInject,
+} from "@alepha/react";
 import { AnchorButton, Button, type ButtonProps } from "@blueprintjs/core";
 import { createElement, type FunctionComponent, useState } from "react";
 import { Toaster } from "../../services/Toaster.ts";
@@ -7,8 +12,8 @@ import { Toaster } from "../../services/Toaster.ts";
 export type ActionProps = ButtonProps & {
 	visibleText?: "sm" | "md" | "lg";
 	href?: string;
-	active?: boolean;
 	anchorProps?: AnchorProps;
+	useActiveOptions?: Partial<UseActiveOptions>;
 };
 
 const Action = (props: ActionProps) => {
@@ -23,13 +28,15 @@ const Action = (props: ActionProps) => {
 export default Action;
 
 const HrefAction = (props: ActionProps & { href: string }) => {
-	const { isActive, isPending, anchorProps } = useActive(props.href);
+	const { isActive, isPending, anchorProps } = useActive({
+		href: props.href,
+		...props.useActiveOptions,
+	});
 
 	return (
 		<AbstractAction
 			{...props}
-			loading={isPending}
-			active={props.active ?? isActive}
+			active={isPending || (props.active ?? isActive)}
 			anchorProps={anchorProps}
 		/>
 	);
@@ -38,7 +45,7 @@ const HrefAction = (props: ActionProps & { href: string }) => {
 const AbstractAction = (props: ActionProps) => {
 	const toaster = useInject(Toaster);
 	const [pending, setPending] = useState(false);
-	let { visibleText, href, anchorProps, ...rest } = props;
+	let { visibleText, href, anchorProps, useActiveOptions: _, ...rest } = props;
 
 	const isAnchor = !!href;
 

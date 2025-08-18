@@ -1,26 +1,29 @@
 import { useState } from "react";
 import type { AnchorProps } from "../providers/ReactPageProvider.ts";
 import { useRouter } from "./useRouter.ts";
-import { useRouterEvents } from "./useRouterEvents.ts";
+import { useRouterState } from "./useRouterState.ts";
 
-export const useActive = (href: string): UseActiveHook => {
+export interface UseActiveOptions {
+	href: string;
+	startWith?: boolean;
+}
+
+export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
 	const router = useRouter();
 	const [isPending, setPending] = useState(false);
-	const [current, setCurrent] = useState(router.state.url.pathname);
+	const state = useRouterState();
+	const current = state.url.pathname;
 
-	// TODO: loose [default] or strict
-	// TODO: startWith: true (e.g. /p/1 should match /p/1/2)
-	const isActive =
+	const options: UseActiveOptions =
+		typeof args === "string" ? { href: args } : { ...args, href: args.href };
+	const href = options.href;
+
+	let isActive =
 		current === href || current === `${href}/` || `${current}/` === href;
 
-	useRouterEvents(
-		{
-			onEnd: ({ state }) => {
-				setCurrent(state.url.pathname);
-			},
-		},
-		[href],
-	);
+	if (options.startWith && !isActive) {
+		isActive = current.startsWith(href);
+	}
 
 	return {
 		isPending,

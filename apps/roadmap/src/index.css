@@ -99,7 +99,8 @@ pre {
 		.bp6-button-text {
 			display: none !important;
 		}
-		.bp6-icon {
+		.bp6-icon,
+		img {
 			margin-left: 0 !important;
 			margin-right: 0 !important;
 		}
@@ -111,7 +112,8 @@ pre {
 		.bp6-button-text {
 			display: none !important;
 		}
-		.bp6-icon {
+		.bp6-icon,
+		img {
 			margin-left: 0 !important;
 			margin-right: 0 !important;
 		}

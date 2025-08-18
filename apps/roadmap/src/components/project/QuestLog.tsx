@@ -45,16 +45,8 @@ const QuestLog = () => {
 					</Flex>
 					<Flex fill />
 					<Flex pad1h>
-						<Action
-							disabled={tasks.length === 0}
-							icon={<ExpandAll />}
-							variant={"minimal"}
-						/>
-						<Action
-							disabled={tasks.length === 0}
-							icon={<CollapseAll />}
-							variant={"minimal"}
-						/>
+						<Action disabled icon={<ExpandAll />} variant={"minimal"} />
+						<Action disabled icon={<CollapseAll />} variant={"minimal"} />
 						<Popover
 							position={"bottom-left"}
 							content={
@@ -72,7 +64,7 @@ const QuestLog = () => {
 								</Menu>
 							}
 						>
-							<Action icon={<More />} variant={"minimal"} />
+							<Action disabled icon={<More />} variant={"minimal"} />
 						</Popover>
 					</Flex>
 				</Flex>

@@ -16,7 +16,7 @@ const Header = () => {
 	const { tr } = useI18n<I18n, "en">();
 
 	return (
-		<Flex col pad1 gap1 style={{ height: 64 }} centerY>
+		<Flex col pad1 gap1 style={{ height: 54 }} centerY>
 			<Flex wFill pad2h>
 				<Flex fill gap1>
 					<Flex center gap1>

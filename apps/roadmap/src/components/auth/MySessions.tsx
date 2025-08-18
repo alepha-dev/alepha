@@ -72,7 +72,8 @@ const MySessions = (props: MySessionsProps) => {
 						<Flex>
 							<Flex col centerY>
 								<Text>
-									{session.userAgent?.browser} ({session.userAgent?.os})
+									{session.userAgent?.browser} ({session.userAgent?.os}){" "}
+									<Text small>- {session.ip}</Text>
 								</Text>
 								<Text small muted>
 									Signed in {dt.of(session.createdAt).fromNow()}

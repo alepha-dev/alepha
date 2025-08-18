@@ -151,7 +151,7 @@ export class ReactRouter<T extends object> {
 	public base(path: string): string {
 		const base = import.meta.env?.BASE_URL;
 		if (!base || base === "/") {
-			return "";
+			return path;
 		}
 
 		return base + path;

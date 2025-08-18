@@ -1154,12 +1154,19 @@ export class Alepha {
 		return graph;
 	}
 
-	public descriptors<TDescriptor extends Descriptor>(factory: {
-		[KIND]: InstantiableClass<TDescriptor> | string;
-	}): Array<TDescriptor> {
-		if (typeof factory[KIND] === "string") {
+	public descriptors<TDescriptor extends Descriptor>(
+		factory:
+			| {
+					[KIND]: InstantiableClass<TDescriptor>;
+			  }
+			| string,
+	): Array<TDescriptor> {
+		if (typeof factory === "string") {
+			const key1 = factory.toLowerCase().replace("$", "");
+			const key2 = `${key1}descriptor`;
 			for (const [key, value] of this.descriptorRegistry.entries()) {
-				if (key.name === factory[KIND]) {
+				const name = key.name.toLowerCase();
+				if (name === key1 || name === key2) {
 					return value as Array<TDescriptor>;
 				}
 			}

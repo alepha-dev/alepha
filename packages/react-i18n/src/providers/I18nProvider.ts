@@ -1,16 +1,20 @@
 import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
 import { $cookie } from "@alepha/server-cookies";
+import type { ServiceDictionary } from "../hooks/useI18n.ts";
 
-export class I18nProvider {
-	logger = $logger();
-	alepha = $inject(Alepha);
+export class I18nProvider<
+	S extends object,
+	K extends keyof ServiceDictionary<S>,
+> {
+	protected logger = $logger();
+	protected alepha = $inject(Alepha);
 
-	cookie = $cookie({
+	protected cookie = $cookie({
 		name: "lang",
 		schema: t.string(),
 	});
 
-	registry: Array<{
+	protected registry: Array<{
 		name: string;
 		lang: string;
 		loader: () => Promise<Record<string, string>>;
@@ -21,16 +25,21 @@ export class I18nProvider {
 		fallbackLang: "en",
 	};
 
-	get languages() {
+	public numberFormat: { format: (value: number) => string } =
+		new Intl.NumberFormat(this.lang);
+
+	public get languages() {
 		const languages = new Set<string>();
+
 		for (const item of this.registry) {
 			languages.add(item.lang);
 		}
 		languages.add(this.options.fallbackLang);
+
 		return Array.from(languages);
 	}
 
-	onRender = $hook({
+	protected readonly onRender = $hook({
 		on: "server:onRequest",
 		priority: "last",
 		handler: async ({ request }) => {
@@ -38,7 +47,7 @@ export class I18nProvider {
 		},
 	});
 
-	onStart = $hook({
+	protected readonly onStart = $hook({
 		on: "start",
 		handler: async () => {
 			if (this.alepha.isBrowser()) {
@@ -65,7 +74,11 @@ export class I18nProvider {
 		},
 	});
 
-	async setLang(lang: string) {
+	protected createFormatters() {
+		this.numberFormat = new Intl.NumberFormat(this.lang);
+	}
+
+	public async setLang(lang: string) {
 		if (this.alepha.isBrowser()) {
 			for (const item of this.registry) {
 				if (lang === item.lang) {
@@ -81,32 +94,35 @@ export class I18nProvider {
 		this.alepha.state("react.i18n.lang", lang);
 	}
 
-	// mutate = $hook({
-	// 	on: "state:mutate",
-	// 	handler: async ({ key, value }) => {
-	// 		if (key === "react.i18n.lang" && this.alepha.isBrowser()) {
-	// 			let hasChanged = false;
-	// 			for (const item of this.registry) {
-	// 				if (value === item.lang) {
-	// 					if (Object.keys(item.translations).length > 0) {
-	// 						continue; // already loaded
-	// 					}
-	// 					item.translations = await item.loader();
-	// 					hasChanged = true;
-	// 				}
-	// 			}
-	// 			if (hasChanged) {
-	// 				this.alepha.state("react.i18n.lang", value);
-	// 			}
-	// 		}
-	// 	},
-	// });
+	protected readonly mutate = $hook({
+		on: "state:mutate",
+		handler: async ({ key, value }) => {
+			if (key === "react.i18n.lang" && this.alepha.isBrowser()) {
+				let hasChanged = false;
+				for (const item of this.registry) {
+					if (value === item.lang) {
+						if (Object.keys(item.translations).length > 0) {
+							continue; // already loaded
+						}
+						item.translations = await item.loader();
+						hasChanged = true;
+					}
+				}
 
-	get lang(): string {
+				this.createFormatters();
+
+				if (hasChanged) {
+					this.alepha.state("react.i18n.lang", value);
+				}
+			}
+		},
+	});
+
+	public get lang(): string {
 		return this.alepha.state("react.i18n.lang") || this.options.fallbackLang;
 	}
 
-	translate = (key: string, args: string[] = []) => {
+	public translate = (key: string, args: string[] = []) => {
 		for (const item of this.registry) {
 			if (item.lang === this.lang) {
 				if (item.translations[key]) {
@@ -129,6 +145,11 @@ export class I18nProvider {
 
 		return key; // fallback to the key itself if not found
 	};
+
+	public readonly tr = (
+		key: keyof ServiceDictionary<S>[K] | string,
+		args?: string[],
+	) => this.translate(key as string, args);
 
 	protected render(item: string, args: string[]): string {
 		let result = item;
