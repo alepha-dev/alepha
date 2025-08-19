@@ -11,10 +11,7 @@ import {
 } from "@blueprintjs/core";
 import {
 	CloudTick,
-	Dot,
 	FilterRemove,
-	Menu,
-	More,
 	PolygonFilter,
 	Search,
 	Sort,
