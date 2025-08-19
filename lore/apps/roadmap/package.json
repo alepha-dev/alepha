@@ -24,7 +24,7 @@
 		"@alepha/server": "0.9.3",
 		"@alepha/server-links": "0.9.3",
 		"@alepha/server-security": "0.9.3",
-		"@blueprintjs/core": "^6.2.0",
+		"@blueprintjs/core": "6.1.0",
 		"@blueprintjs/icons": "^6.1.0",
 		"@tiptap/core": "^3.2.0",
 		"@tiptap/pm": "^3.2.0",
