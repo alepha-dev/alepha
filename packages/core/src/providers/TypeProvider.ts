@@ -56,10 +56,51 @@ export { TypeGuard } from "@sinclair/typebox";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class TypeProvider {
-	static DEFAULT_STRING_MAX_LENGTH = 255;
-	static DEFAULT_LONG_STRING_MAX_LENGTH = 1024;
-	static DEFAULT_RICH_STRING_MAX_LENGTH = 16384;
+	/**
+	 * Default maximum length for strings.
+	 *
+	 * It can be set to a larger value:
+	 * ```ts
+	 * TypeProvider.DEFAULT_STRING_MAX_LENGTH = 1000000;
+	 * TypeProvider.DEFAULT_STRING_MAX_LENGTH = undefined; // no limit (not recommended)
+	 * ```
+	 */
+	static DEFAULT_STRING_MAX_LENGTH: number | undefined = 255;
+
+	static DEFAULT_SHORT_STRING_MAX_LENGTH: number | undefined = 64;
+
+	/**
+	 * Maximum length for long strings, such as descriptions or comments.
+	 * It can be overridden in the string options.
+	 *
+	 * It can be set to a larger value:
+	 * ```ts
+	 * TypeProvider.DEFAULT_LONG_STRING_MAX_LENGTH = 2048;
+	 * ```
+	 */
+	static DEFAULT_LONG_STRING_MAX_LENGTH: number | undefined = 1024;
+
+	/**
+	 * Maximum length for rich strings, such as HTML or Markdown.
+	 * This is a large value to accommodate rich text content.
+	 * > It's also the maximum length of PG's TEXT type.
+	 *
+	 * It can be overridden in the string options.
+	 *
+	 * It can be set to a larger value:
+	 * ```ts
+	 * TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH = 1000000;
+	 * ```
+	 */
+	static DEFAULT_RICH_STRING_MAX_LENGTH: number | undefined = 65535;
+
+	/**
+	 * Maximum number of items in an array.
+	 * This is a default value to prevent excessive memory usage.
+	 * It can be overridden in the array options.
+	 */
 	static DEFAULT_ARRAY_MAX_ITEMS = 1000;
+
 	static FormatRegistry: typeof FormatRegistry = FormatRegistry;
 
 	public raw = Type;
@@ -110,21 +151,21 @@ export class TypeProvider {
 	 *
 	 * @param options
 	 */
-	public string(options?: AlephaStringOptions): TString {
-		const size = options?.size;
+	public string(options: AlephaStringOptions = {}): TString {
+		const { size, ...rest } = options;
 		const maxLength =
-			size === "long"
-				? TypeProvider.DEFAULT_LONG_STRING_MAX_LENGTH
-				: size === "rich"
-					? TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH
-					: TypeProvider.DEFAULT_STRING_MAX_LENGTH;
-
-		delete options?.size;
+			size === "short"
+				? TypeProvider.DEFAULT_SHORT_STRING_MAX_LENGTH
+				: size === "long"
+					? TypeProvider.DEFAULT_LONG_STRING_MAX_LENGTH
+					: size === "rich"
+						? TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH
+						: TypeProvider.DEFAULT_STRING_MAX_LENGTH;
 
 		return Type.String({
 			[PRIMITIVE]: "string",
 			maxLength,
-			...options,
+			...rest,
 		});
 	}
 
