@@ -240,10 +240,6 @@ export class LinkProvider {
 		action.path = `${action.prefix ?? "/api"}${action.path}`;
 		action.prefix = undefined; // prefix is not used in the client
 
-		if (link.requestBodyType) {
-			options.request.headers.set("content-type", link.requestBodyType);
-		}
-
 		// else, make a request
 		return this.httpClient.fetchAction({
 			host: link.host,

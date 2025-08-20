@@ -433,6 +433,7 @@ export interface HttpAction {
 	method?: string;
 	prefix?: string;
 	path: string;
+	requestBodyType?: string;
 	schema?: {
 		params?: TObject;
 		query?: TObject;
