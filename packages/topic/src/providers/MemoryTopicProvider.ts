@@ -15,7 +15,9 @@ export class MemoryTopicProvider extends TopicProvider {
 			const subscribers = this.subscribers();
 			if (subscribers.length) {
 				await Promise.all(subscribers.map((fn) => fn()));
-				this.log.info(`Subscribed to ${subscribers.length} topics`);
+				for (const subscriber of subscribers) {
+					this.log.debug(`Subscribed to topic '${subscriber.name}'`);
+				}
 			}
 		},
 	});

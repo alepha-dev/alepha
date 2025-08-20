@@ -26,9 +26,9 @@ export class RedisTopicProvider extends TopicProvider {
 			const subscribers = this.subscribers();
 			if (subscribers.length) {
 				await Promise.all(subscribers.map((fn) => fn()));
-				this.log.info(
-					`Subscribed to ${subscribers.length} topic${subscribers.length > 1 ? "s" : ""}`,
-				);
+				for (const subscriber of subscribers) {
+					this.log.debug(`Subscribed to topic '${subscriber.name}'`);
+				}
 			}
 		},
 	});

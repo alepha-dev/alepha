@@ -76,8 +76,10 @@ export class WorkerProvider {
 
 			if (this.consumers.length > 0) {
 				this.startWorkers();
-				this.log.info(
-					`Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""}`,
+				this.log.debug(
+					`Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""} with ${this.env.QUEUE_WORKER_CONCURRENCY} worker${
+						this.env.QUEUE_WORKER_CONCURRENCY > 1 ? "s" : ""
+					}.`,
 				);
 			}
 		},
