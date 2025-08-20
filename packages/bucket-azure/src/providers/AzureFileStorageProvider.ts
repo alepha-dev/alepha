@@ -62,7 +62,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 					continue;
 				}
 
-				const containerName = bucket.name.replaceAll("/", "-").toLowerCase();
+				const containerName = this.convertName(bucket.name);
 				this.log.debug(`Prepare container '${containerName}' ...`);
 
 				if (!this.containers[containerName]) {
@@ -70,10 +70,15 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 						await this.createContainerClient(containerName);
 				}
 
-				this.log.info(`Container '${bucket}' OK`);
+				this.log.info(`Container '${bucket.name}' OK`);
 			}
 		},
 	});
+
+	public convertName(name: string): string {
+		// Azure Blob Storage does not allow uppercase letters in container names
+		return name.replaceAll("/", "-").toLowerCase();
+	}
 
 	public async upload(
 		bucketName: string,
@@ -163,13 +168,15 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 	}
 
 	public getBlock(container: string, fileId: string): BlockBlobClient {
-		if (!this.containers[container]) {
+		const containerName = this.convertName(container);
+
+		if (!this.containers[containerName]) {
 			throw new FileNotFoundError(
 				`File '${fileId}' not found - container '${container}' does not exists`,
 			);
 		}
 
-		return this.containers[container].getBlockBlobClient(fileId);
+		return this.containers[containerName].getBlockBlobClient(fileId);
 	}
 
 	protected async createContainerClient(
