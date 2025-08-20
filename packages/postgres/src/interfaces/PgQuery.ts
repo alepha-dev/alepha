@@ -8,7 +8,7 @@ export interface PgQuery<
 > {
 	columns?: Select;
 	distinct?: boolean;
-	where?: PgQueryWhere<T> | SQLWrapper;
+	where?: PgQueryWhere<Static<T>> | SQLWrapper;
 	limit?: number;
 	offset?: number;
 	sort?: {

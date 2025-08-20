@@ -32,6 +32,7 @@ export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
 export * from "./providers/RepositoryProvider.ts";
+export * from "./schemas/legacyIdSchema.ts";
 export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
 export * from "./types/schema.ts";

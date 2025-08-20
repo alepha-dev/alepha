@@ -1,4 +1,4 @@
-import { Alepha } from "@alepha/core";
+import { Alepha, type Static } from "@alepha/core";
 import { expect, test } from "vitest";
 import { $repository } from "../src";
 import { bigEntity } from "./fixtures/bigEntitySchema.ts";
@@ -46,7 +46,8 @@ const testAllTypes = async (alepha: Alepha) => {
 	const app = alepha.inject(App);
 	await alepha.start();
 
-	const data = {
+	const data: Static<typeof bigEntity.$insertSchema> = {
+		type: "big_entity",
 		a: "a",
 		b: 1.111,
 		c: 2,
@@ -105,6 +106,14 @@ const testAllTypes = async (alepha: Alepha) => {
 		id: entity.id,
 		...data,
 	});
+
+	const it = await app.big.find({
+		where: {
+			type: "big_entity",
+		},
+	});
+
+	expect(it).toHaveLength(1);
 };
 
 test("$repository - all types", async () => {
