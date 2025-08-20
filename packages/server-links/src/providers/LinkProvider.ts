@@ -253,8 +253,11 @@ export class LinkProvider {
 		name: string,
 		options: ClientScope = {},
 	): Promise<HttpClientLink> {
-		const links = this.links;
-		const link = links.find(
+		if (this.alepha.isBrowser() && !this.alepha.state("api")) {
+			await this.fetchLinks();
+		}
+
+		const link = this.links.find(
 			(a) =>
 				a.name === name &&
 				(!options.group || a.group === options.group) &&

@@ -10,6 +10,7 @@ import {
 	type ClientRequestEntry,
 	type ClientRequestOptions,
 	type RequestConfigSchema,
+	ServerTimingProvider,
 } from "@alepha/server";
 import {
 	type ApiLink,
@@ -31,6 +32,7 @@ export class ServerLinksProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly linkProvider = $inject(LinkProvider);
 	protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
+	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
 	public get prefix() {
 		return this.env.SERVER_API_PREFIX;
@@ -192,6 +194,7 @@ export class ServerLinksProvider {
 			userLinks.push(copy);
 		}
 
+		this.serverTimingProvider.beginTiming("fetchRemoteLinks");
 		// this does not scale well, but it's working for now
 		// TODO: remote links can be cached by user.roles
 		const promises = this.remoteProvider
@@ -215,6 +218,7 @@ export class ServerLinksProvider {
 			});
 
 		userLinks.push(...(await Promise.all(promises)).flat());
+		this.serverTimingProvider.endTiming("fetchRemoteLinks");
 
 		return {
 			prefix: this.env.SERVER_API_PREFIX,
