@@ -9,7 +9,6 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	type FileLike,
 	type Static,
@@ -17,6 +16,7 @@ import {
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { createFile } from "@alepha/file";
+import { $logger } from "@alepha/logger";
 import {
 	BlobServiceClient,
 	type BlockBlobClient,

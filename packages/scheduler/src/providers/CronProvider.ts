@@ -1,5 +1,6 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
 import { type DateTime, DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { type Cron, parseCronExpression } from "cron-schedule";
 
 export class CronProvider {

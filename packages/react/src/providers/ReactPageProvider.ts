@@ -1,12 +1,5 @@
-import {
-	$env,
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Static,
-	t,
-} from "@alepha/core";
+import { $env, $hook, $inject, Alepha, type Static, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { createElement, type ReactNode, StrictMode } from "react";
 import ClientOnly from "../components/ClientOnly.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
@@ -216,7 +209,7 @@ export class ReactPageProvider {
 					};
 				}
 
-				this.log.error(e);
+				this.log.error("Page resolver has failed", e);
 
 				it.error = e as Error;
 				break;

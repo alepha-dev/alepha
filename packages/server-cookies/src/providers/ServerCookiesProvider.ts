@@ -10,13 +10,13 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	type Static,
 	type TSchema,
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import type { ServerRequest } from "@alepha/server";
 import type {
 	Cookie,

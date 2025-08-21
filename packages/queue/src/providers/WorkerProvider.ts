@@ -2,13 +2,13 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	type Static,
 	type TSchema,
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { $consumer } from "../descriptors/$consumer.ts";
 import {
 	$queue,
@@ -188,7 +188,7 @@ export class WorkerProvider {
 			);
 			await this.alepha.context.run(() => consumer.handler({ payload }));
 		} catch (e) {
-			this.log.error(e);
+			this.log.error("Failed to process message", e);
 		}
 	}
 

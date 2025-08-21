@@ -2,13 +2,13 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	type State,
 	type Static,
 	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { LinkProvider } from "@alepha/server-links";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";

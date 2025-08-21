@@ -34,7 +34,7 @@ export const run = (
 				await opts.ready(alepha);
 			}
 		} catch (error) {
-			alepha.log.error(error);
+			alepha.log?.error("Alepha failed to start", error);
 		}
 	})();
 

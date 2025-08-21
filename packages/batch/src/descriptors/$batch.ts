@@ -1,7 +1,6 @@
 import {
 	$hook,
 	$inject,
-	$logger,
 	createDescriptor,
 	Descriptor,
 	KIND,
@@ -9,6 +8,7 @@ import {
 	type TSchema,
 } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
 
 /**

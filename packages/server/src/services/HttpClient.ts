@@ -1,7 +1,6 @@
 import { $cache } from "@alepha/cache";
 import {
 	$inject,
-	$logger,
 	Alepha,
 	type FileLike,
 	isFileLike,
@@ -10,6 +9,7 @@ import {
 	t,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import type { ClientRequestOptions } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";

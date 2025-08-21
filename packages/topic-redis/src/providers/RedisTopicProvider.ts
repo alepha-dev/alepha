@@ -1,4 +1,5 @@
-import { $env, $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $env, $hook, $inject, Alepha, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { RedisProvider, RedisSubscriberProvider } from "@alepha/redis";
 import {
 	type SubscribeCallback,

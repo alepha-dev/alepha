@@ -1,5 +1,6 @@
-import { $inject, $logger, t } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import type { UserAccountToken } from "@alepha/security";
 import { $action } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";

@@ -15,6 +15,7 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.9.3",
+		"@alepha/logger": "0.9.3",
 		"@redis/client": "^5.8.1"
 	},
 	"devDependencies": {

@@ -1,6 +1,7 @@
 import { createSecretKey } from "node:crypto";
-import { $inject, $logger } from "@alepha/core";
+import { $inject } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import {
 	type CryptoKey,
 	createLocalJWKSet,
@@ -101,7 +102,7 @@ export class JwtProvider {
 
 				return verified;
 			} catch (error) {
-				this.log.trace(error);
+				this.log.trace("Token verification has failed", error);
 
 				if (error instanceof JWTExpired) {
 					throw new SecurityError("Token expired", { cause: error });

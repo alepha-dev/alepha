@@ -1,7 +1,6 @@
 import {
 	$env,
 	$inject,
-	$logger,
 	type AsyncFn,
 	createDescriptor,
 	Descriptor,
@@ -14,6 +13,7 @@ import {
 	DateTimeProvider,
 	type DurationLike,
 } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { $topic, TopicTimeoutError } from "@alepha/topic";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { LockTopicProvider } from "../providers/LockTopicProvider.ts";

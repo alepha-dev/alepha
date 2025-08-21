@@ -1,4 +1,5 @@
-import { $inject, $logger, Alepha, AlephaError, t } from "@alepha/core";
+import { $inject, Alepha, AlephaError, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	type ActionDescriptor,
 	type ClientRequestEntry,

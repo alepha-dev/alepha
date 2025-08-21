@@ -1,15 +1,27 @@
-import { MockLogger } from "@alepha/core";
+import { Alepha } from "@alepha/core";
+import {
+	LogDestinationProvider,
+	MemoryDestinationProvider,
+} from "@alepha/logger";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Runner } from "../src";
 
 describe("Runner", () => {
-	let mockLogger: MockLogger;
+	let mockLogger: MemoryDestinationProvider;
 	let runner: Runner;
 
-	beforeEach(() => {
+	beforeEach(async () => {
+		const alepha = Alepha.create({
+			env: {
+				LOG_LEVEL: "info",
+			},
+		}).with({
+			provide: LogDestinationProvider,
+			use: MemoryDestinationProvider,
+		});
 		// Create a new MockLogger and Runner for each test to ensure isolation
-		mockLogger = new MockLogger();
-		runner = new Runner(mockLogger);
+		runner = alepha.inject(Runner);
+		mockLogger = alepha.inject(MemoryDestinationProvider);
 	});
 
 	afterEach(() => {
@@ -19,9 +31,9 @@ describe("Runner", () => {
 	test("should execute a single shell command via run.sh", async () => {
 		await runner.run(`echo "hello"`);
 
-		expect(mockLogger.store.stack).toHaveLength(2);
-		const startLog = mockLogger.store.stack[0];
-		const finishLog = mockLogger.store.stack[1];
+		expect(mockLogger.logs).toHaveLength(2);
+		const startLog = mockLogger.logs[0];
+		const finishLog = mockLogger.logs[1];
 
 		expect(startLog.message).toBe("Starting 'echo \"hello\"' ...");
 		expect(startLog.level).toBe("info");
@@ -39,10 +51,8 @@ describe("Runner", () => {
 
 	test("should execute a single shell command via run(sh`...`)", async () => {
 		await runner.run(`echo "world"`);
-		expect(mockLogger.store.stack[0].message).toBe(
-			"Starting 'echo \"world\"' ...",
-		);
-		expect(mockLogger.store.stack).toHaveLength(2);
+		expect(mockLogger.logs[0].message).toBe("Starting 'echo \"world\"' ...");
+		expect(mockLogger.logs).toHaveLength(2);
 	});
 
 	test("should execute a single function task via run.fn", async () => {
@@ -50,11 +60,9 @@ describe("Runner", () => {
 		await runner.run("my-test-function", mockFn);
 
 		expect(mockFn).toHaveBeenCalledOnce();
-		expect(mockLogger.store.stack).toHaveLength(2);
-		expect(mockLogger.store.stack[0].message).toBe(
-			"Starting 'my-test-function' ...",
-		);
-		expect(mockLogger.store.stack[1].message).toMatch(
+		expect(mockLogger.logs).toHaveLength(2);
+		expect(mockLogger.logs[0].message).toBe("Starting 'my-test-function' ...");
+		expect(mockLogger.logs[1].message).toMatch(
 			/^Finished 'my-test-function' after \d+\.\d{2}s$/,
 		);
 	});
@@ -63,7 +71,7 @@ describe("Runner", () => {
 		const mockFn = vi.fn();
 		await runner.run("another-function", mockFn);
 		expect(mockFn).toHaveBeenCalledOnce();
-		expect(mockLogger.store.stack).toHaveLength(2);
+		expect(mockLogger.logs).toHaveLength(2);
 	});
 
 	test("should execute an array of tasks in parallel", async () => {
@@ -78,7 +86,7 @@ describe("Runner", () => {
 
 		expect(fn1).toHaveBeenCalledOnce();
 		expect(fn2).toHaveBeenCalledOnce();
-		expect(mockLogger.store.stack).toHaveLength(6); // 3 start, 3 finish logs
+		expect(mockLogger.logs).toHaveLength(6); // 3 start, 3 finish logs
 		expect((runner as any).timers).toHaveLength(3);
 	});
 
@@ -103,7 +111,7 @@ describe("Runner", () => {
 
 		runner.summary();
 
-		const logs = mockLogger.store.stack
+		const logs = mockLogger.logs
 			.slice(4)
 			.map((l) => l.message)
 			.join("\n");
@@ -115,7 +123,7 @@ describe("Runner", () => {
 	test("summary() should not print a table if no tasks were run", () => {
 		runner.summary();
 
-		const logs = mockLogger.store.stack.map((l) => l.message);
+		const logs = mockLogger.logs.map((l) => l.message);
 		expect(logs.join("")).not.toContain("|"); // No table dividers
 		expect(logs[0]).toBe("");
 		expect(logs[1]).toMatch(/^Total time: \d+\.\d{2} s$/);

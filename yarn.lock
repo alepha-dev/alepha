@@ -11,6 +11,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/retry": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -26,6 +27,7 @@ __metadata:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
     "@alepha/file": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@azure/storage-blob": "npm:^12.28.0"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -39,6 +41,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/file": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -51,6 +54,7 @@ __metadata:
   dependencies:
     "@alepha/cache": "npm:0.9.3"
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/redis": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -64,6 +68,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -76,6 +81,7 @@ __metadata:
   dependencies:
     "@alepha/command": "npm:^0.9.3"
     "@alepha/core": "npm:^0.9.3"
+    "@alepha/logger": "npm:^0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
   bin:
@@ -88,6 +94,7 @@ __metadata:
   resolution: "@alepha/command@workspace:packages/command"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:^0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -110,6 +117,7 @@ __metadata:
   resolution: "@alepha/datetime@workspace:packages/datetime"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     dayjs: "npm:^1.11.13"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -134,6 +142,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/lock": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/redis": "npm:0.9.3"
     "@alepha/topic-redis": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
@@ -148,6 +157,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/topic": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -155,7 +165,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/logger@workspace:packages/logger":
+"@alepha/logger@npm:0.9.3, @alepha/logger@npm:^0.9.3, @alepha/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@alepha/logger@workspace:packages/logger"
   dependencies:
@@ -173,6 +183,7 @@ __metadata:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
     "@alepha/lock": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/retry": "npm:0.9.3"
     "@sinclair/typebox": "npm:^0.34.40"
     drizzle-kit: "npm:0.31.4"
@@ -215,6 +226,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -227,6 +239,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/react": "npm:0.9.3"
     "@alepha/security": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
@@ -266,6 +279,7 @@ __metadata:
   resolution: "@alepha/react-form@workspace:packages/react-form"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/react": "npm:0.9.3"
     "@alepha/testing": "npm:0.9.3"
     "@types/react": "npm:^19.1.10"
@@ -302,6 +316,7 @@ __metadata:
   resolution: "@alepha/react-i18n@workspace:packages/react-i18n"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/react": "npm:0.9.3"
     "@alepha/server-cookies": "npm:0.9.3"
     "@types/react": "npm:^19.1.10"
@@ -321,6 +336,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/router": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     "@alepha/server-cache": "npm:0.9.3"
@@ -343,6 +359,7 @@ __metadata:
   resolution: "@alepha/redis@workspace:packages/redis"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@redis/client": "npm:^5.8.1"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -380,6 +397,7 @@ __metadata:
     "@alepha/datetime": "npm:0.9.3"
     "@alepha/lock": "npm:0.9.3"
     "@alepha/lock-redis": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     cron-schedule: "npm:^5.0.4"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -393,6 +411,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     jose: "npm:^6.0.12"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -407,6 +426,7 @@ __metadata:
     "@alepha/cache": "npm:0.9.3"
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -432,6 +452,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -481,6 +502,7 @@ __metadata:
   resolution: "@alepha/server-links@workspace:packages/server-links"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/retry": "npm:0.9.3"
     "@alepha/security": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
@@ -524,6 +546,7 @@ __metadata:
   resolution: "@alepha/server-proxy@workspace:packages/server-proxy"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -548,6 +571,7 @@ __metadata:
   resolution: "@alepha/server-security@workspace:packages/server-security"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/security": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
@@ -563,6 +587,7 @@ __metadata:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
     "@alepha/file": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/server": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -595,6 +620,7 @@ __metadata:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
     "@alepha/file": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/router": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
@@ -622,6 +648,7 @@ __metadata:
   resolution: "@alepha/thread@workspace:packages/thread"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:^0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -633,6 +660,7 @@ __metadata:
   resolution: "@alepha/topic-redis@workspace:packages/topic-redis"
   dependencies:
     "@alepha/core": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/redis": "npm:0.9.3"
     "@alepha/topic": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
@@ -647,6 +675,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.3"
     "@alepha/datetime": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     tsdown: "npm:^0.14.1"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -4000,6 +4029,7 @@ __metadata:
     "@alepha/file": "npm:0.9.3"
     "@alepha/lock": "npm:0.9.3"
     "@alepha/lock-redis": "npm:0.9.3"
+    "@alepha/logger": "npm:0.9.3"
     "@alepha/postgres": "npm:0.9.3"
     "@alepha/queue": "npm:0.9.3"
     "@alepha/queue-redis": "npm:0.9.3"

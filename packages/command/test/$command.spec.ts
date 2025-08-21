@@ -1,4 +1,8 @@
-import { Alepha, AlephaError, MockLogger, t } from "@alepha/core";
+import { Alepha, AlephaError, t } from "@alepha/core";
+import {
+	LogDestinationProvider,
+	MemoryDestinationProvider,
+} from "@alepha/logger";
 import { describe, expect, test, vi } from "vitest";
 import { $command, CliProvider, CommandError } from "../src";
 
@@ -39,8 +43,16 @@ describe("$command", () => {
 			});
 		}
 
-		const mockLogger = new MockLogger();
-		const alepha = Alepha.create({ log: mockLogger }).with(TestCommands);
+		const alepha = Alepha.create({
+			env: {
+				LOG_LEVEL: "info",
+			},
+		})
+			.with({
+				provide: LogDestinationProvider,
+				use: MemoryDestinationProvider,
+			})
+			.with(TestCommands);
 		const provider = alepha.inject(CliProvider);
 
 		if (argv) {
@@ -61,7 +73,7 @@ describe("$command", () => {
 			alepha,
 			mockHandlers,
 			provider,
-			mockLogger,
+			mockLogger: alepha.inject(MemoryDestinationProvider),
 		};
 	};
 
@@ -168,13 +180,11 @@ describe("$command", () => {
 		test("should log an error for an unknown command", async () => {
 			const { mockLogger } = await setupTestCommands(["non-existent-command"]);
 
-			const errorLog = mockLogger.store.stack.find((l) => l.level === "error");
+			const errorLog = mockLogger.logs.find((l) => l.level === "error");
 			expect(errorLog).toBeDefined();
 			expect(errorLog?.message).toBe("Unknown command: 'non-existent-command'");
 			// It should also print help
-			expect(
-				mockLogger.store.stack.some((l) => l.message === "Commands:"),
-			).toBe(true);
+			expect(mockLogger.logs.some((l) => l.message === "Commands:")).toBe(true);
 		});
 
 		test("should throw a CommandError for missing flag values", async () => {
@@ -198,7 +208,7 @@ describe("$command", () => {
 				provider.options.description = "My awesome CLI tool.";
 			});
 
-			const output = mockLogger.store.stack.map((l) => l.message).join("\n");
+			const output = mockLogger.logs.map((l) => l.message).join("\n");
 			expect(output).toContain("My awesome CLI tool.");
 			expect(output).toContain("Commands:");
 			expect(output).toContain("my-cli greet, g");
@@ -216,7 +226,7 @@ describe("$command", () => {
 					}),
 			);
 
-			const output = mockLogger.store.stack.map((l) => l.message).join("\n");
+			const output = mockLogger.logs.map((l) => l.message).join("\n");
 			expect(output).toContain("Usage: `my-cli greet`");
 			expect(output).toContain("A simple greeting command.");
 			expect(output).toContain("Flags:");

@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { cp, glob, rm } from "node:fs/promises";
-import type { Logger } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { CommandError } from "../errors/CommandError.ts";
 
 export type Task = {
@@ -36,13 +36,12 @@ export interface RunnerMethod {
 }
 
 export class Runner {
-	protected readonly log: Logger;
+	protected readonly log = $logger();
 	protected readonly timers: Timer[] = [];
 	protected readonly startTime: number = Date.now();
 	public readonly run: RunnerMethod;
 
-	constructor(log: Logger) {
-		this.log = log;
+	constructor() {
 		this.run = this.createRunMethod();
 	}
 

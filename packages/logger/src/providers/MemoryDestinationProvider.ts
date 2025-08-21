@@ -2,7 +2,7 @@ import type { LogEntry } from "../services/Logger.ts";
 import { LogDestinationProvider } from "./LogDestinationProvider.ts";
 
 export class MemoryDestinationProvider extends LogDestinationProvider {
-	private entries: Array<LogEntry & { formatted: string }> = [];
+	protected entries: Array<LogEntry & { formatted: string }> = [];
 
 	public readonly options = {
 		maxEntries: 1000,

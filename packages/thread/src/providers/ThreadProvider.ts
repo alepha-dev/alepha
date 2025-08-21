@@ -1,4 +1,5 @@
-import { $env, $hook, $logger, t } from "@alepha/core";
+import { $env, $hook, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { $thread } from "../descriptors/$thread.ts";
 
 export class ThreadProvider {

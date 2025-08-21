@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { $cookie } from "@alepha/server-cookies";
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
 

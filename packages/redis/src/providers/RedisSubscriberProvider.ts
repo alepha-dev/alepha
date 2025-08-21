@@ -1,9 +1,10 @@
-import { $hook, $inject, $logger, Alepha, type Logger } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { RedisClient } from "./RedisProvider.ts";
 import { RedisProvider } from "./RedisProvider.ts";
 
 export class RedisSubscriberProvider {
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 	protected readonly client: RedisClient = this.createClient();

@@ -1,6 +1,5 @@
 import {
 	$inject,
-	$logger,
 	createDescriptor,
 	Descriptor,
 	KIND,
@@ -8,6 +7,7 @@ import {
 	type Static,
 	type TSchema,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { MemoryQueueProvider } from "../providers/MemoryQueueProvider.ts";
 import { QueueProvider } from "../providers/QueueProvider.ts";
 import { WorkerProvider } from "../providers/WorkerProvider.ts";

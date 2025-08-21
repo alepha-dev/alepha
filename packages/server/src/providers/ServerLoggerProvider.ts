@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 
 export class ServerLoggerProvider {
 	protected readonly log = $logger();

@@ -1,5 +1,6 @@
-import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { SecurityError, type UserAccount } from "@alepha/security";
 import {
 	$route,

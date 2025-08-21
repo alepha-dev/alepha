@@ -16,6 +16,7 @@
 	"dependencies": {
 		"@alepha/core": "0.9.3",
 		"@alepha/lock": "0.9.3",
+		"@alepha/logger": "0.9.3",
 		"@alepha/redis": "0.9.3",
 		"@alepha/topic-redis": "0.9.3"
 	},

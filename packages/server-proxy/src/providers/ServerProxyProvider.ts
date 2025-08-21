@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	routeMethods,
 	type ServerHandler,
@@ -43,7 +44,7 @@ export class ServerProxyProvider {
 			});
 		}
 
-		this.alepha.log.info("Proxying", { path, target });
+		this.log.info("Proxying", { path, target });
 	}
 
 	public createProxyHandler(

@@ -1,6 +1,5 @@
 import {
 	$inject,
-	$logger,
 	AlephaError,
 	createDescriptor,
 	Descriptor,
@@ -11,6 +10,7 @@ import {
 	type Duration,
 	type DurationLike,
 } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import { SecurityError } from "../errors/SecurityError.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";

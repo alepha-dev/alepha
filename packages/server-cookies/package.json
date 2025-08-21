@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@alepha/core": "0.9.3",
 		"@alepha/datetime": "0.9.3",
+		"@alepha/logger": "0.9.3",
 		"@alepha/server": "0.9.3"
 	},
 	"devDependencies": {

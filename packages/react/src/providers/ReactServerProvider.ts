@@ -4,12 +4,12 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	AlephaError,
 	type Static,
 	t,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	type ServerHandler,
 	ServerRouterProvider,

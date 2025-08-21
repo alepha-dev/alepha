@@ -1,4 +1,5 @@
-import { $hook, $logger } from "@alepha/core";
+import { $hook } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	type SubscribeCallback,
 	TopicProvider,

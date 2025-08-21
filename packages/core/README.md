@@ -114,7 +114,7 @@ class App {
 	 onCustomerHook = $hook({
 			on: "my:custom:hook",
 			handler: () => {
-		 	  this.log.info("App is being configured");
+		 	  this.log?.info("App is being configured");
 	 		},
 	  });
 	}
@@ -214,25 +214,6 @@ Get the instance of the specified type from the context.
 class A { }
 class B {
   a = $inject(A);
-}
-```
-
-#### $logger()
-
-Create a logger.
-
-`name` is optional, by default it will use the name of the service.
-
-```ts
-import { $logger } from "@alepha/core";
-
-class MyService {
-	log = $logger();
-
-	constructor() {
-	    // print something like 'date - [MyService] Service initialized'
-		this.log.info("Service initialized");
-	}
 }
 ```
 

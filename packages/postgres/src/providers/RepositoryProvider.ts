@@ -1,4 +1,5 @@
-import { $inject, $logger, Alepha } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { TObject } from "@sinclair/typebox";
 import type { TableConfig } from "drizzle-orm/pg-core";
 import {

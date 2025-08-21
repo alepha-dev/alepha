@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { $inject, $logger, Alepha } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql, Table } from "drizzle-orm";
 import { sqliteTable } from "drizzle-orm/sqlite-core";

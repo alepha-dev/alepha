@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";

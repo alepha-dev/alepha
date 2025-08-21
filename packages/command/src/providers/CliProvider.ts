@@ -2,9 +2,7 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
-	type Logger,
 	type Static,
 	type TObject,
 	type TSchema,
@@ -12,6 +10,7 @@ import {
 	TypeGuard,
 	t,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	$command,
 	type CommandDescriptor,
@@ -36,9 +35,10 @@ declare module "@alepha/core" {
 }
 
 export class CliProvider {
-	protected readonly env: Static<typeof envSchema> = $env(envSchema);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
+	protected readonly runner = $inject(Runner);
 
 	public options = {
 		name: this.env.CLI_NAME,
@@ -89,7 +89,7 @@ export class CliProvider {
 					flags: commandFlags,
 				});
 
-				const runner = new Runner(this.log);
+				const runner = this.runner;
 
 				const args = {
 					flags: commandFlags,

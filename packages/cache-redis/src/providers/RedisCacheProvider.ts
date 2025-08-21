@@ -1,13 +1,6 @@
 import type { CacheProvider } from "@alepha/cache";
-import {
-	$env,
-	$inject,
-	$logger,
-	Alepha,
-	type Logger,
-	type Static,
-	t,
-} from "@alepha/core";
+import { $env, $inject, Alepha, type Static, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { RedisProvider } from "@alepha/redis";
 
 const envSchema = t.object({
@@ -24,9 +17,9 @@ declare module "@alepha/core" {
 }
 
 export class RedisCacheProvider implements CacheProvider {
-	protected readonly log: Logger = $logger();
-	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
-	protected readonly env: Static<typeof envSchema> = $env(envSchema);
+	protected readonly log = $logger();
+	protected readonly redisProvider = $inject(RedisProvider);
+	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
 	public async get(name: string, key: string): Promise<Uint8Array | undefined> {

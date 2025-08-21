@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	JwtProvider,
 	type Permission,

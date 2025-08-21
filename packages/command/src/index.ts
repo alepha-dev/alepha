@@ -1,5 +1,6 @@
 import { $module } from "@alepha/core";
 import { $command } from "./descriptors/$command.ts";
+import { Runner } from "./helpers/Runner.ts";
 import { CliProvider } from "./providers/CliProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ export * from "./providers/CliProvider.ts";
 export const AlephaCommand = $module({
 	name: "alepha.command",
 	descriptors: [$command],
-	services: [CliProvider],
+	services: [CliProvider, Runner],
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

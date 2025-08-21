@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { HttpClient } from "@alepha/server";

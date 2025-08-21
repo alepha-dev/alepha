@@ -14,6 +14,7 @@ import {
 	t,
 } from "@alepha/core";
 import { createFile } from "@alepha/file";
+import { $logger } from "@alepha/logger";
 import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
@@ -21,6 +22,7 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
 export class LocalFileStorageProvider implements FileStorageProvider {
 	public static METADATA_HEADER_LENGTH = 4;
 	protected readonly alepha = $inject(Alepha);
+	protected readonly log = $logger();
 
 	public options = {
 		storagePath: this.alepha.isTest()
@@ -41,6 +43,10 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 				await mkdir(join(this.options.storagePath, bucket.name), {
 					recursive: true,
 				});
+
+				this.log.debug(
+					`Bucket '${bucket.name}' at ${this.options.storagePath} OK`,
+				);
 			}
 		},
 	});

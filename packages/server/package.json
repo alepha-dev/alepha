@@ -18,6 +18,7 @@
 		"@alepha/cache": "0.9.3",
 		"@alepha/core": "0.9.3",
 		"@alepha/datetime": "0.9.3",
+		"@alepha/logger": "0.9.3",
 		"@alepha/router": "0.9.3"
 	},
 	"devDependencies": {

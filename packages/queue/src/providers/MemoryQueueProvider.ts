@@ -1,4 +1,4 @@
-import { $logger } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { QueueProvider } from "./QueueProvider.ts";
 
 export class MemoryQueueProvider implements QueueProvider {

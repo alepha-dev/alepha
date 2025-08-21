@@ -3,7 +3,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"xbuild": "vite build",
 		"start": "node dist",
 		"build&start": "yarn build && yarn start",
 		"preview": "yarn build && vite preview --outDit=dist/public",

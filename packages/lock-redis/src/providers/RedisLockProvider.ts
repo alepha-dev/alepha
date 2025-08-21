@@ -1,10 +1,11 @@
-import { $inject, $logger, type Logger } from "@alepha/core";
+import { $inject } from "@alepha/core";
 import type { LockProvider } from "@alepha/lock";
+import { $logger } from "@alepha/logger";
 import { RedisProvider, type RedisSetOptions } from "@alepha/redis";
 
 export class RedisLockProvider implements LockProvider {
-	protected readonly log: Logger = $logger();
-	protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
+	protected readonly log = $logger();
+	protected readonly redisProvider = $inject(RedisProvider);
 
 	public async set(
 		key: string,

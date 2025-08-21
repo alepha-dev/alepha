@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command, CliProvider } from "@alepha/command";
-import { $inject, $logger, run, t } from "@alepha/core";
+import { $inject, run, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import pkg from "../package.json" with { type: "json" };
 
 class AlephaCli {

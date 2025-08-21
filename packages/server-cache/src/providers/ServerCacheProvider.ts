@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { $cache, type CacheDescriptorOptions } from "@alepha/cache";
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import {
 	ActionDescriptor,
 	type RequestConfigSchema,

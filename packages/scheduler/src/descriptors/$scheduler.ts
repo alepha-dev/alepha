@@ -1,7 +1,6 @@
 import {
 	$env,
 	$inject,
-	$logger,
 	Alepha,
 	type Async,
 	createDescriptor,
@@ -16,6 +15,7 @@ import {
 	type DurationLike,
 } from "@alepha/datetime";
 import { $lock } from "@alepha/lock";
+import { $logger } from "@alepha/logger";
 import { CronProvider } from "../providers/CronProvider.ts";
 
 /**

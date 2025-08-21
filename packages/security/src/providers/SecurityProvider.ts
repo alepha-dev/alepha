@@ -2,13 +2,13 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	AppNotStartedError,
 	ContainerLockedError,
 	type Static,
 	t,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
@@ -158,13 +158,10 @@ export class SecurityProvider {
 		);
 
 		if (existing) {
-			this.log.warn(
-				{
-					current: existing,
-					new: permission,
-				},
-				`Permission '${asString}' already exists. Skipping.`,
-			);
+			this.log.warn(`Permission '${asString}' already exists. Skipping.`, {
+				current: existing,
+				new: permission,
+			});
 
 			return existing;
 		}

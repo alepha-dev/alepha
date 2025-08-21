@@ -1,4 +1,5 @@
-import { $hook, $inject, $logger, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { type Route, RouterProvider } from "@alepha/router";
 import { createElement, type ReactNode } from "react";
 import NotFoundPage from "../components/NotFound.tsx";
@@ -92,7 +93,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
 			await this.alepha.emit("react:transition:success", { state });
 		} catch (e) {
-			this.log.error(e);
+			this.log.error("Transition has failed", e);
 			state.layers = [
 				{
 					name: "error",

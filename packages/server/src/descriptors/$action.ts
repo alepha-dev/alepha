@@ -1,7 +1,6 @@
 import {
 	$env,
 	$inject,
-	$logger,
 	type Async,
 	createDescriptor,
 	Descriptor,
@@ -11,6 +10,7 @@ import {
 	type TSchema,
 	t,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";

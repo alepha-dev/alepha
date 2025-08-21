@@ -1,16 +1,9 @@
 import type { IncomingMessage } from "node:http";
 import { createServer, type ServerResponse } from "node:http";
 import { Readable } from "node:stream";
-import {
-	$env,
-	$hook,
-	$inject,
-	$logger,
-	Alepha,
-	type Static,
-	t,
-} from "@alepha/core";
+import { $env, $hook, $inject, Alepha, type Static, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerRawRequest } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "./ServerProvider.ts";

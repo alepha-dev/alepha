@@ -2,9 +2,7 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
-	type Logger,
 	type Static,
 	type TNumber,
 	type TObject,
@@ -12,6 +10,7 @@ import {
 	type TString,
 	t,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import {
 	createClient,
 	RESP_TYPES,
@@ -51,10 +50,10 @@ export type RedisSetOptions = SetOptions;
  * Redis client provider.
  */
 export class RedisProvider {
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly env: Static<typeof envSchema> = $env(envSchema);
-	protected readonly client: RedisClient = this.createClient();
+	protected readonly env = $env(envSchema);
+	protected readonly client = this.createClient();
 
 	public get publisher(): RedisClient {
 		if (!this.client.isReady) {

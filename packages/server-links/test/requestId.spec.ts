@@ -1,11 +1,14 @@
-import { Alepha, MockLogger } from "@alepha/core";
+import { Alepha } from "@alepha/core";
+import {
+	LogDestinationProvider,
+	type LogEntry,
+	MemoryDestinationProvider,
+} from "@alepha/logger";
 import { $action, ServerProvider } from "@alepha/server";
 import { expect, test } from "vitest";
 import { $client, $remote, AlephaServerLinks } from "../src";
 
 test("requestId", async () => {
-	const log = new MockLogger();
-
 	class Puppeteer {
 		print = $action({
 			handler: () => {
@@ -14,11 +17,30 @@ test("requestId", async () => {
 		});
 	}
 
+	const entries = [] as Array<LogEntry & { formatted: string }>;
+
+	class SharedMemoryDestinationProvider extends MemoryDestinationProvider {
+		entries = entries;
+
+		clear() {
+			this.entries.splice(0, this.entries.length);
+		}
+	}
+
 	const p1 = Alepha.create({
-		log: log.child({ app: "PPT" }),
+		env: {
+			APP_NAME: "PPT",
+			LOG_LEVEL: "info",
+		},
 	})
+		.with({
+			provide: LogDestinationProvider,
+			use: SharedMemoryDestinationProvider,
+		})
 		.with(Puppeteer)
 		.with(AlephaServerLinks);
+
+	const output = p1.inject(SharedMemoryDestinationProvider);
 
 	class Reporting {
 		puppeteer = $remote({
@@ -35,8 +57,16 @@ test("requestId", async () => {
 	}
 
 	const p2 = Alepha.create({
-		log: log.child({ app: "RPM" }),
-	}).with(Reporting);
+		env: {
+			APP_NAME: "RPM",
+			LOG_LEVEL: "info",
+		},
+	})
+		.with({
+			provide: LogDestinationProvider,
+			use: SharedMemoryDestinationProvider,
+		})
+		.with(Reporting);
 
 	class Frontend {
 		reporting = $remote({
@@ -53,19 +83,27 @@ test("requestId", async () => {
 	}
 
 	const p3 = Alepha.create({
-		log: log.child({ app: "ADM" }),
-	}).with(Frontend);
+		env: {
+			APP_NAME: "ADM",
+			LOG_LEVEL: "info",
+		},
+	})
+		.with({
+			provide: LogDestinationProvider,
+			use: SharedMemoryDestinationProvider,
+		})
+		.with(Frontend);
 
 	await p1.start();
 	await p2.start();
 	await p3.start();
 
-	log.reset();
+	output.clear();
 
 	await fetch(`${p3.inject(ServerProvider).hostname}/api/download`);
 
-	const uuid = log.store.stack[0].context;
-	const logs = log.store.stack.map(
+	const uuid = output.logs[0].context;
+	const logs = output.logs.map(
 		(it) => `${it.app} - ${it.message} - ${it.context}`,
 	);
 

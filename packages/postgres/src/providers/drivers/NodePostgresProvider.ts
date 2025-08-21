@@ -3,13 +3,13 @@ import {
 	$env,
 	$hook,
 	$inject,
-	$logger,
 	Alepha,
 	AlephaError,
 	type Static,
 	t,
 } from "@alepha/core";
 import { $lock } from "@alepha/lock";
+import { $logger } from "@alepha/logger";
 import type { TObject } from "@sinclair/typebox";
 import { sql } from "drizzle-orm";
 import type { MigrationConfig } from "drizzle-orm/migrator";
@@ -183,7 +183,7 @@ export class NodePostgresProvider extends PostgresProvider {
 			logger: {
 				// forward logs
 				logQuery: (query: string, params: unknown[]) => {
-					this.log.trace({ params }, query);
+					this.log.trace(query, { params });
 				},
 			},
 		});
@@ -258,7 +258,7 @@ export class NodePostgresProvider extends PostgresProvider {
 			logger: {
 				// forward logs
 				logQuery: (query: string, params: unknown[]) => {
-					this.log.trace({ params }, query);
+					this.log.trace(query, { params });
 				},
 			},
 		});

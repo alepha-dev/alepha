@@ -2,9 +2,10 @@ import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
-import { $hook, $inject, $logger, Alepha, type Logger } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { getContentType } from "@alepha/file";
+import { $logger } from "@alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
 
@@ -12,7 +13,7 @@ export class ServerStaticProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly routerProvider = $inject(ServerRouterProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly log: Logger = $logger();
+	protected readonly log = $logger();
 	protected readonly directories: ServeDirectory[] = [];
 
 	protected readonly configure = $hook({

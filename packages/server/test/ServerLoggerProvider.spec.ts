@@ -1,4 +1,9 @@
-import { $logger, Alepha, MockLogger } from "@alepha/core";
+import { Alepha } from "@alepha/core";
+import {
+	$logger,
+	LogDestinationProvider,
+	MemoryDestinationProvider,
+} from "@alepha/logger";
 import { beforeEach, test } from "vitest";
 import { AlephaServer } from "../src";
 import { $action } from "../src/descriptors/$action.ts";
@@ -30,29 +35,36 @@ class App {
 	});
 }
 
+const alepha = Alepha.create({
+	env: {
+		LOG_LEVEL: "info",
+	},
+})
+	.with({
+		provide: LogDestinationProvider,
+		use: MemoryDestinationProvider,
+	})
+	.with(AlephaServer)
+	.with(ServerLoggerProvider);
+
+const app = alepha.inject(App);
+const log = alepha.inject(MemoryDestinationProvider);
+
 beforeEach(() => {
-	log.store.stack = [];
+	log.clear();
 });
 
-const log = new MockLogger();
-const app = Alepha.create({
-	log,
-})
-	.with(AlephaServer)
-	.with(ServerLoggerProvider)
-	.inject(App);
-
 test("ServerLoggerProvider - ok", async ({ expect }) => {
-	expect(log.store.stack.length).toBe(0);
+	expect(log.logs.length).toBe(0);
 	const response = await app.ping.fetch();
 	expect(response.data).toBe("pong");
-	expect(log.store.stack[0].message).toBe("Incoming request");
-	expect(log.store.stack[1].message).toBe("!!");
-	expect(log.store.stack[2].message).toBe("Request completed");
+	expect(log.logs[0].message).toBe("Incoming request");
+	expect(log.logs[1].message).toBe("!!");
+	expect(log.logs[2].message).toBe("Request completed");
 });
 
 test("ServerLoggerProvider - error", async ({ expect }) => {
-	expect(log.store.stack.length).toBe(0);
+	expect(log.logs.length).toBe(0);
 	const response = await app.error
 		.fetch()
 		.then((it) => it.data)
@@ -63,15 +75,15 @@ test("ServerLoggerProvider - error", async ({ expect }) => {
 		status: 400,
 		error: "BadRequestError",
 	});
-	expect(log.store.stack[0].message).toBe("Incoming request");
-	expect(log.store.stack[1].message).toBe("Request has failed");
-	expect(log.store.stack[2].message).toBe("Request completed");
+	expect(log.logs[0].message).toBe("Incoming request");
+	expect(log.logs[1].message).toBe("Request has failed");
+	expect(log.logs[2].message).toBe("Request completed");
 });
 
 test("ServerLoggerProvider - silent", async ({ expect }) => {
-	expect(log.store.stack.length).toBe(0);
+	expect(log.logs.length).toBe(0);
 	const response = await app.silent.fetch();
 	expect(response.data).toBe("silent");
-	expect(log.store.stack[0].message).toBe("this message should be logged");
-	expect(log.store.stack.length).toBe(1);
+	expect(log.logs[0].message).toBe("this message should be logged");
+	expect(log.logs.length).toBe(1);
 });

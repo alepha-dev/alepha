@@ -1,12 +1,12 @@
 import {
 	$inject,
-	$logger,
 	Alepha,
 	type Static,
 	type TObject,
 	type TSchema,
 	TypeGuard,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
 export class FormModel<T extends TObject> {

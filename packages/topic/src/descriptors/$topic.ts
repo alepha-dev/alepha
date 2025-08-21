@@ -1,6 +1,5 @@
 import {
 	$inject,
-	$logger,
 	createDescriptor,
 	Descriptor,
 	KIND,
@@ -13,6 +12,7 @@ import {
 	type DurationLike,
 	type Timeout,
 } from "@alepha/datetime";
+import { $logger } from "@alepha/logger";
 import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {
@@ -91,7 +91,7 @@ export class TopicDescriptor<T extends TopicMessageSchema> extends Descriptor<
 			try {
 				await handler(this.parseMessage(message));
 			} catch (error) {
-				this.log.error(error);
+				this.log.error("Message processing has failed", error);
 			}
 		});
 	}

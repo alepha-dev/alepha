@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
-import { $env, $hook, $inject, $logger, t } from "@alepha/core";
+import { $env, $hook, $inject, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { Static, TObject } from "@sinclair/typebox";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
