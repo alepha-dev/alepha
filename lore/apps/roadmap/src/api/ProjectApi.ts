@@ -1,4 +1,5 @@
-import { $inject, $logger, t } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { pageQuerySchema } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";
 import { characters, Db, projects, tasks } from "./providers/Db.ts";
