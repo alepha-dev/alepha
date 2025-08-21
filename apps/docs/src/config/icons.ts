@@ -21,8 +21,10 @@ import {
 	IconLineDashed,
 	IconLink,
 	IconLock,
+	IconLogs,
 	IconMessage2,
 	IconMessageCircle,
+	IconNotes,
 	IconPackage,
 	IconRepeat,
 	IconServer,
@@ -60,6 +62,7 @@ const keywordToIconMap: Record<string, any> = {
 	router: IconWorldWww,
 	datetime: IconClock,
 	file: IconFile,
+	logger: IconNotes,
 
 	// Application Layers
 	server: IconServer,

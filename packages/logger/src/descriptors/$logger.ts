@@ -13,10 +13,10 @@ import { Logger } from "../services/Logger.ts";
  * class MyService {
  * 	log = $logger();
  *
- * 	constructor() {
- * 	    // print something like '[23:45:53.326] INFO <app.App>: App is ready!'
- * 		this.log.info("Service initialized");
- * 	}
+ *   constructor() {
+ *     this.log.info("Service initialized");
+ *     // print something like '[23:45:53.326] INFO <app.MyService>: Service initialized'
+ *   }
  * }
  * ```
  */

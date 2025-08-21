@@ -23,46 +23,6 @@ export * from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-	/**
-	 * Default log level for the application.
-	 *
-	 * Default by environment:
-	 * - dev = info
-	 * - prod = info
-	 * - test = error
-	 *
-	 * Levels are: "trace" | "debug" | "info" | "warn" | "error" | "silent"
-	 *
-	 * Level can be set for a specific module:
-	 *
-	 * @example
-	 * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
-	 * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
-	 */
-	LOG_LEVEL: t.optional(t.string()),
-
-	/**
-	 * Built-in log formats.
-	 * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
-	 * - "text" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
-	 * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
-	 */
-	LOG_FORMAT: t.optional(t.enum(["json", "text", "raw"])),
-});
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-declare module "@alepha/core" {
-	export interface Env extends Partial<Static<typeof envSchema>> {}
-
-	export interface State {
-		logLevel?: string;
-	}
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * Minimalist logger module for Alepha.
  *
@@ -171,3 +131,43 @@ export const AlephaLogger = $module({
 		);
 	},
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = t.object({
+	/**
+	 * Default log level for the application.
+	 *
+	 * Default by environment:
+	 * - dev = info
+	 * - prod = info
+	 * - test = error
+	 *
+	 * Levels are: "trace" | "debug" | "info" | "warn" | "error" | "silent"
+	 *
+	 * Level can be set for a specific module:
+	 *
+	 * @example
+	 * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
+	 * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
+	 */
+	LOG_LEVEL: t.optional(t.string()),
+
+	/**
+	 * Built-in log formats.
+	 * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
+	 * - "text" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
+	 * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
+	 */
+	LOG_FORMAT: t.optional(t.enum(["json", "text", "raw"])),
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+	export interface Env extends Partial<Static<typeof envSchema>> {}
+
+	export interface State {
+		logLevel?: string;
+	}
+}
