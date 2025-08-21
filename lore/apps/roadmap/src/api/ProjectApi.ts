@@ -50,7 +50,7 @@ export class ProjectApi {
 			response: projects.$schema,
 		},
 		handler: async ({ params, body, user }) => {
-			const project = await this.db.projects.one(params);
+			const project = await this.db.projects.findOne(params);
 
 			// for now, only the project creator or an admin can update a project
 			if (user.ownership && project.createdBy !== user.id) {

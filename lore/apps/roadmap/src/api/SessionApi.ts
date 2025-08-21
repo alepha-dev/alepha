@@ -61,7 +61,7 @@ export class SessionApi {
 			response: t.void(),
 		},
 		handler: async ({ params, user }) => {
-			const session = await this.db.sessions.one({
+			const session = await this.db.sessions.findOne({
 				id: params.sessionId,
 				userId: user.id,
 			});
