@@ -1,6 +1,5 @@
-import { KIND } from "../constants/KIND.ts";
+import { $cursor, $inject, KIND } from "@alepha/core";
 import { Logger } from "../services/Logger.ts";
-import { $cursor } from "./$cursor.ts";
 
 /**
  * Create a logger.
@@ -15,7 +14,7 @@ import { $cursor } from "./$cursor.ts";
  * 	log = $logger();
  *
  * 	constructor() {
- * 	    // print something like 'date - [MyService] Service initialized'
+ * 	    // print something like '[23:45:53.326] INFO <app.App>: App is ready!'
  * 		this.log.info("Service initialized");
  * 	}
  * }
@@ -24,9 +23,13 @@ import { $cursor } from "./$cursor.ts";
 export const $logger = (options: LoggerDescriptorOptions = {}): Logger => {
 	const { context, definition, module } = $cursor();
 
-	return context.log.child({
-		caller: options.name ?? definition?.name,
-		name: module?.name ?? context.env.MODULE_NAME ?? "app",
+	return $inject(Logger, {
+		skipCache: true,
+		skipRegistration: true,
+		args: [
+			options.name ?? definition?.name,
+			module?.name ?? context.env.MODULE_NAME ?? "app",
+		],
 	});
 };
 

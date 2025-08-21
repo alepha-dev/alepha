@@ -155,6 +155,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/logger@workspace:packages/logger":
+  version: 0.0.0-use.local
+  resolution: "@alepha/logger@workspace:packages/logger"
+  dependencies:
+    "@alepha/core": "npm:^0.9.3"
+    tsdown: "npm:^0.14.1"
+    typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/postgres@npm:0.9.3, @alepha/postgres@workspace:packages/postgres":
   version: 0.0.0-use.local
   resolution: "@alepha/postgres@workspace:packages/postgres"

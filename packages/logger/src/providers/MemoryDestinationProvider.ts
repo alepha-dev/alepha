@@ -1,0 +1,28 @@
+import type { LogEntry } from "../services/Logger.ts";
+import { LogDestinationProvider } from "./LogDestinationProvider.ts";
+
+export class MemoryDestinationProvider extends LogDestinationProvider {
+	private entries: Array<LogEntry & { formatted: string }> = [];
+
+	public readonly options = {
+		maxEntries: 1000,
+	};
+
+	public write(formatted: string, entry: LogEntry): void {
+		this.entries.push({ ...entry, formatted });
+
+		if (this.entries.length > this.options.maxEntries) {
+			this.entries = this.entries.slice(
+				-Math.floor(this.options.maxEntries * 0.8),
+			);
+		}
+	}
+
+	public get logs() {
+		return [...this.entries];
+	}
+
+	public clear(): void {
+		this.entries = [];
+	}
+}

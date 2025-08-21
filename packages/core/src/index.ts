@@ -73,20 +73,20 @@ export const run = (
 
 				for (const trap of traps) {
 					process.once(trap, async () => {
-						alepha.log.info("Received signal", { trap });
+						alepha.log?.info("Received signal", { trap });
 						try {
 							await alepha.stop();
 							console.log(" ");
 							process.exit(0);
 						} catch (error) {
-							alepha.log.error(error);
+							alepha.log?.error("Alepha failed to stop", error);
 							process.exit(1);
 						}
 					});
 				}
 			}
 		} catch (error) {
-			alepha.log.error("Alepha failed to start", error);
+			alepha.log?.error("Alepha failed to start", error);
 			if (typeof process === "object") {
 				process.exit(1);
 			}

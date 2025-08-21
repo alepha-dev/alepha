@@ -118,19 +118,14 @@ export async function viteAlephaDev(
 			// forward vite request to alepha server
 			server.middlewares.use((req, res, next) => {
 				if (state.started && state.app && req.url && !isViteFile(req.url)) {
-					state.app.emit("node:request", { req, res }).then(next);
+					state.app.emit("node:request" as any, { req, res }).then(next);
 					return;
 				}
 				next();
 			});
 
 			server.config.logger.info = (msg: string) => {
-				state.app?.log
-					.child({
-						name: "alepha.vite",
-						caller: "Builder",
-					})
-					.info(msg.trim());
+				state.app?.log?.info(msg.trim());
 			};
 
 			server.config.logger.clearScreen = () => {};

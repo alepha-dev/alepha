@@ -56,7 +56,7 @@ export interface HookOptions<T extends keyof Hooks> {
 	/**
 	 * The handler to run when the hook is triggered.
 	 */
-	handler: (app: Hooks[T]) => Async<any>;
+	handler: (args: Hooks[T]) => Async<any>;
 
 	/**
 	 * Force the hook to run first or last on the list of hooks.

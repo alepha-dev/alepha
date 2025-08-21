@@ -5,6 +5,7 @@ import { Value as v } from "@sinclair/typebox/value";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
+import type { InjectOptions } from "./descriptors/$inject.ts";
 import {
 	isModule,
 	type Module,
@@ -16,13 +17,13 @@ import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import { Descriptor } from "./helpers/descriptor.ts";
 import type { Async } from "./interfaces/Async.ts";
+import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import type {
 	InstantiableClass,
 	Service,
 	ServiceEntry,
 } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
-import { Logger, type LoggerEnv } from "./services/Logger.ts";
 
 /**
  * Core container of the Alepha framework.
@@ -122,7 +123,7 @@ import { Logger, type LoggerEnv } from "./services/Logger.ts";
  * 	 onCustomerHook = $hook({
  * 			on: "my:custom:hook",
  * 			handler: () => {
- * 		 	  this.log.info("App is being configured");
+ * 		 	  this.log?.info("App is being configured");
  * 	 		},
  * 	  });
  * 	}
@@ -303,25 +304,19 @@ export class Alepha {
 	/**
 	 * Get logger instance.
 	 */
-	public get log(): Logger {
-		return this.store.log;
+	public get log(): LoggerInterface | undefined {
+		return this.state("log");
 	}
 
 	/**
 	 * The environment variables for the App.
 	 */
 	public get env(): Readonly<Env> {
-		return this.store?.env ?? {};
+		return this.store.env ?? {};
 	}
 
 	constructor(state: Partial<State> = {}) {
-		const env = state.env ?? {};
-		const log = state.log ?? this.createLogger(env);
-		this.store = {
-			...state,
-			env,
-			log,
-		};
+		this.store = state;
 	}
 
 	/**
@@ -456,13 +451,13 @@ export class Alepha {
 	 */
 	public async start(): Promise<this> {
 		if (this.ready) {
-			this.log.debug("App is already started, skipping...");
+			this.log?.debug("App is already started, skipping...");
 			return this;
 		}
 
 		// make sure that start is called only once
 		if (this.starting) {
-			this.log.warn("App is already starting, waiting for it to finish...");
+			this.log?.warn("App is already starting, waiting for it to finish...");
 			return this.starting.promise;
 		}
 
@@ -470,7 +465,7 @@ export class Alepha {
 
 		const now = Date.now();
 
-		this.log.info("Starting App...");
+		this.log?.info("Starting App...");
 
 		for (const [key] of this.substitutions.entries()) {
 			this.inject(key);
@@ -495,7 +490,7 @@ export class Alepha {
 
 		await this.emit("ready", this, { log: true });
 
-		this.log.info(`App is now ready [${Date.now() - now}ms]`);
+		this.log?.info(`App is now ready [${Date.now() - now}ms]`);
 
 		this.ready = true;
 
@@ -522,9 +517,9 @@ export class Alepha {
 			return;
 		}
 
-		this.log.info("Stopping App...");
+		this.log?.info("Stopping App...");
 		await this.emit("stop", this, { reverse: true, log: true });
-		this.log.info("App is now off");
+		this.log?.info("App is now off");
 
 		this.started = false;
 		this.ready = false;
@@ -665,25 +660,7 @@ export class Alepha {
 	 */
 	public inject<T extends object>(
 		service: Service<T>,
-		opts: {
-			/**
-			 * Ignore current existing instance.
-			 */
-			skipCache?: boolean;
-			/**
-			 * Don't store the instance in the registry.
-			 */
-			skipRegistration?: boolean;
-			/**
-			 * Constructor arguments to pass when creating a new instance.
-			 */
-			args?: ConstructorParameters<InstantiableClass<T>>;
-			/**
-			 * Parent service that requested the instance.
-			 * @internal
-			 */
-			parent?: Service | null;
-		} = {},
+		opts: InjectOptions<T> = {},
 	): T {
 		const parent =
 			opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
@@ -715,7 +692,7 @@ export class Alepha {
 		if (!match && this.isServerless() === "vite" && !opts.skipRegistration) {
 			for (const [_, definition] of this.registry.entries()) {
 				if (definition.instance?.constructor.name === service.name) {
-					this.log.debug(`Hot reload detected for ${service.name}`);
+					this.log?.debug(`Hot reload detected for ${service.name}`);
 					const instance: T = this.new(service, opts.args);
 					definition.instance = instance;
 					return instance;
@@ -935,7 +912,7 @@ export class Alepha {
 
 		if (options.log) {
 			ctx.now = Date.now();
-			this.log.trace(`${func} ...`);
+			this.log?.trace(`${func} ...`);
 		}
 
 		let events = this.events[func] ?? [];
@@ -948,14 +925,14 @@ export class Alepha {
 			const name = hook.caller?.name ?? "unknown";
 			if (options.log) {
 				ctx.now2 = Date.now();
-				this.log.trace(`${func}(${name}) ...`);
+				this.log?.trace(`${func}(${name}) ...`);
 			}
 
 			try {
 				await hook.callback(payload);
 			} catch (error) {
 				if (options.catch) {
-					this.log.error(`${func}(${name}) ERROR`, error);
+					this.log?.error(`${func}(${name}) ERROR`, error);
 					continue;
 				}
 				if (options.log) {
@@ -968,12 +945,12 @@ export class Alepha {
 			}
 
 			if (options.log) {
-				this.log.debug(`${func}(${name}) OK [${Date.now() - ctx.now2}ms]`);
+				this.log?.debug(`${func}(${name}) OK [${Date.now() - ctx.now2}ms]`);
 			}
 		}
 
 		if (options.log) {
-			this.log.debug(`${func} OK [${Date.now() - ctx.now}ms]`);
+			this.log?.debug(`${func} OK [${Date.now() - ctx.now}ms]`);
 		}
 	}
 
@@ -1220,31 +1197,6 @@ export class Alepha {
 		const list = this.descriptorRegistry.get(kind) ?? [];
 		this.descriptorRegistry.set(kind, [...list, value]);
 	}
-
-	/**
-	 * @internal
-	 */
-	protected createLogger(env: Env): Logger {
-		const isProd = env.NODE_ENV === "production";
-
-		const als = this.context;
-		const level = env.LOG_LEVEL ?? (this.isTest() ? "silent" : "info");
-		const name = "alepha.core";
-		const app = env.APP_NAME;
-		const format = env.LOG_FORMAT ?? (isProd ? "json" : "text");
-		const color = !env.NO_COLOR && env.FORCE_COLOR !== "0" && !isProd;
-		const caller = "Alepha";
-
-		return new Logger({
-			als,
-			level,
-			name,
-			app,
-			format,
-			caller,
-			color,
-		});
-	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1280,7 +1232,7 @@ interface ServiceDefinition<T extends object = any> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface Env extends LoggerEnv {
+export interface Env {
 	[key: string]: string | boolean | number | undefined;
 
 	/**
@@ -1302,7 +1254,7 @@ export interface Env extends LoggerEnv {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface State {
-	log: Logger;
+	log?: LoggerInterface;
 	env?: Readonly<Env>;
 
 	/**
@@ -1365,8 +1317,3 @@ export interface Hooks {
 		prevValue: any;
 	};
 }
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-type OptionsFor<T extends (...args: any) => any> =
-	Parameters<T>[0] extends infer C ? C : never;
