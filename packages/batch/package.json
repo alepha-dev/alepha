@@ -7,7 +7,7 @@
 		"batch"
 	],
 	"author": "Feunard",
-	"version": "0.9.3",
+	"version": "0.9.4",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -20,10 +20,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.3",
-		"@alepha/datetime": "0.9.3",
-		"@alepha/logger": "0.9.3",
-		"@alepha/retry": "0.9.3"
+		"@alepha/core": "0.9.4",
+		"@alepha/datetime": "0.9.4",
+		"@alepha/logger": "0.9.4",
+		"@alepha/retry": "0.9.4"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.1",

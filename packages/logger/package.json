@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/logger",
 	"description": "A simple logger for Alepha applications",
-	"version": "0.9.3",
+	"version": "0.9.4",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,7 +14,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "^0.9.3"
+		"@alepha/core": "^0.9.4"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.1",
