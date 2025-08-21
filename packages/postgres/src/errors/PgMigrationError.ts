@@ -1,9 +1,9 @@
-import { AlephaError } from "@alepha/core";
+import { PgError } from "./PgError.ts";
 
-export class PgMigrationError extends AlephaError {
+export class PgMigrationError extends PgError {
 	readonly name = "PgMigrationError";
 
-	constructor(message: string, cause?: unknown) {
-		super(message, { cause });
+	constructor(cause?: unknown) {
+		super("Failed to migrate database", cause);
 	}
 }

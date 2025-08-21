@@ -1,6 +1,5 @@
 import type { Static, TObject, TPick } from "@sinclair/typebox";
-import type { SQLWrapper } from "drizzle-orm";
-import type { PgQueryWhere } from "./PgQueryWhere.ts";
+import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 export interface PgQuery<
 	T extends TObject,
@@ -8,7 +7,7 @@ export interface PgQuery<
 > {
 	columns?: Select;
 	distinct?: boolean;
-	where?: PgQueryWhere<Static<T>> | SQLWrapper;
+	where?: PgQueryWhereOrSQL<Static<T>>;
 	limit?: number;
 	offset?: number;
 	sort?: {

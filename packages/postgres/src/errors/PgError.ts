@@ -1,9 +1,9 @@
 import { AlephaError } from "@alepha/core";
 
 export class PgError extends AlephaError {
-	readonly name = "PgError";
+	name = "PgError";
 
-	constructor(message: string, cause?: Error) {
+	constructor(message: string, cause?: unknown) {
 		super(message, { cause });
 	}
 }

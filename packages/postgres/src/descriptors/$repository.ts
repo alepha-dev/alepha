@@ -1,5 +1,4 @@
 import {
-	$env,
 	$inject,
 	Alepha,
 	AlephaError,
@@ -9,6 +8,7 @@ import {
 	type Service,
 	t,
 } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import {
@@ -55,6 +55,7 @@ import type {
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
 import {
+	PG_DELETED_AT,
 	PG_PRIMARY_KEY,
 	PG_UPDATED_AT,
 	PG_VERSION,
@@ -65,12 +66,15 @@ import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import type { NullifyIfOptional } from "../helpers/nullToUndefined.ts";
 import { nullToUndefined } from "../helpers/nullToUndefined.ts";
-import { getAttrFields } from "../helpers/pgAttr.ts";
+import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { InferInsert } from "../interfaces/InferInsert.ts";
 import type { PgQuery, PgQueryResult } from "../interfaces/PgQuery.ts";
-import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
+import type {
+	PgQueryWhere,
+	PgQueryWhereOrSQL,
+} from "../interfaces/PgQueryWhere.ts";
 import {
 	PostgresProvider,
 	type SQLLike,
@@ -131,18 +135,12 @@ export class RepositoryDescriptor<
 > extends Descriptor<
 	RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 > {
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	public readonly provider = $inject(PostgresProvider);
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly schema = this.options.table.$schema;
-	public readonly insertSchema = this.options.table.$insertSchema;
-
-	// TODO: replace with .paginate(withCount=false)
-	protected readonly env = $env(
-		t.object({
-			POSTGRES_PAGINATION_COUNT_ENABLED: t.boolean({ default: true }),
-		}),
-	);
+	public readonly schemaInsert = this.options.table.$insertSchema;
 
 	/**
 	 * Represents the primary key of the table.
@@ -180,11 +178,8 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Execute a SQL query.
-	 *
-	 * @param query
-	 * @param schema
 	 */
-	public async execute<T extends TObject = EntitySchema>(
+	public async query<T extends TObject = EntitySchema>(
 		query:
 			| SQLLike
 			| ((
@@ -322,14 +317,8 @@ export class RepositoryDescriptor<
 				)
 			: this.select(opts);
 
-		if (query.where) {
-			if (isSQLWrapper(query.where)) {
-				builder.where(() => query.where as SQL);
-			} else {
-				const where = query.where;
-				builder.where(() => this.jsonQueryToSql(where));
-			}
-		}
+		const where = this.withDeletedAt(query.where ?? {}, opts);
+		builder.where(() => this.jsonQueryToSql(where));
 
 		if (query.offset) {
 			builder.offset(query.offset);
@@ -358,8 +347,6 @@ export class RepositoryDescriptor<
 				builder.for(opts.for.strength, opts.for.config);
 			}
 		}
-
-		// TODO: hook for enhancing the query (organization, soft delete, etc.)
 
 		try {
 			const rows = await builder.execute();
@@ -391,15 +378,7 @@ export class RepositoryDescriptor<
 	}
 
 	/**
-	 * @alias findOne.
-	 */
-	public one = this.findOne.bind(this);
-
-	/**
 	 * Find an entity by ID.
-	 *
-	 * @param id
-	 * @param opts
 	 */
 	public async findById(
 		id: string | number,
@@ -410,25 +389,20 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Paginate entities.
-	 *
-	 * @param pageQuery The pagination query.
-	 * @param findQuery The find query.
-	 * @param opts The statement options.
-	 * @returns The paginated entities.
 	 */
 	public async paginate(
-		pageQuery: PageQuery = {},
-		findQuery: PgQuery<EntitySchema> = {},
-		opts: StatementOptions = {},
+		pagination: PageQuery = {},
+		query: PgQuery<EntitySchema> = {},
+		opts: StatementOptions & { skipCount?: boolean } = {},
 	): Promise<Page<Static<EntitySchema>>> {
-		const limit = findQuery.limit ?? pageQuery.size ?? 10;
-		const page = pageQuery.page ?? 0;
-		const offset = findQuery.offset ?? page * limit;
+		const limit = query.limit ?? pagination.size ?? 10;
+		const page = pagination.page ?? 0;
+		const offset = query.offset ?? page * limit;
 
-		let sort = findQuery.sort;
-		if (!findQuery.sort) {
-			if (pageQuery.sort) {
-				const [field, type] = pageQuery.sort.split(",");
+		let sort = query.sort;
+		if (!query.sort) {
+			if (pagination.sort) {
+				const [field, type] = pagination.sort.split(",");
 				sort = { [field]: type === "desc" ? "desc" : "asc" } as any;
 			} else {
 				sort = {};
@@ -446,7 +420,7 @@ export class RepositoryDescriptor<
 		tasks.push(
 			this.find(
 				{
-					where: findQuery.where,
+					where: query.where,
 					offset,
 					limit: limit + 1,
 					sort,
@@ -458,11 +432,11 @@ export class RepositoryDescriptor<
 			}),
 		);
 
-		if (this.env.POSTGRES_PAGINATION_COUNT_ENABLED) {
-			const where = isSQLWrapper(findQuery.where)
-				? findQuery.where
-				: findQuery.where
-					? this.jsonQueryToSql(findQuery.where)
+		if (!opts.skipCount) {
+			const where = isSQLWrapper(query.where)
+				? query.where
+				: query.where
+					? this.jsonQueryToSql(query.where)
 					: undefined;
 
 			tasks.push(
@@ -516,17 +490,7 @@ export class RepositoryDescriptor<
 			.returning(this.table)
 			.then(([it]) => this.clean(it))
 			.catch((error) => {
-				if (error instanceof Error) {
-					const msg = "duplicate key value violates unique constraint";
-					if (
-						(error.cause as Error)?.message.includes(msg) ||
-						error.message.includes(msg)
-					) {
-						throw new PgConflictError("Entity already exists", error);
-					}
-					throw new PgError("Failed to create entity", error);
-				}
-				throw error;
+				throw this.handleError(error, "Insert query has failed");
 			});
 	}
 
@@ -543,90 +507,114 @@ export class RepositoryDescriptor<
 	): Promise<Static<EntitySchema>[]> {
 		return await this.insert(opts)
 			.values(values.map((data) => this.cast(data, true)))
-			.returning(this.table) // TODO: return only the ID
-			.then((rows) => rows.map((it) => this.clean(it)));
+			.returning(this.table)
+			.then((rows) => rows.map((it) => this.clean(it)))
+			.catch((error) => {
+				throw this.handleError(error, "Insert query has failed");
+			});
 	}
 
+	// -------------------------------------------------------------------------------------------------------------------
+
 	/**
-	 * Update an entity.
-	 *
-	 * @param query The where clause.
-	 * @param data The data to update.
-	 * @param opts The statement options.
-	 * @returns The updated entity.
+	 * Find an entity and update it.
 	 */
 	public async updateOne(
-		query: PgQueryWhere<Static<EntitySchema>>,
-		data:
-			| Partial<NullifyIfOptional<Static<EntitySchema>>>
-			| { $append: Partial<NullifyIfOptional<Static<EntitySchema>>> },
+		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
+		data: Partial<NullifyIfOptional<Static<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		const set = data as any;
-
-		const updatedAtFields = getAttrFields(this.schema, PG_UPDATED_AT);
-		for (const updatedAtField of updatedAtFields) {
-			set[updatedAtField.key] = new Date().toISOString();
-		}
-
-		const versionFields = getAttrFields(this.schema, PG_VERSION);
-		for (const versionField of versionFields) {
-			if (set[versionField.key] != null) {
-				set[versionField.key] = set[versionField.key] + 1;
-			}
-		}
-
 		const id = set[this.id.key];
 
+		// do not update the ID field
 		delete set[this.id.key];
 
-		const hasVersion = versionFields.length > 0 && set[versionFields[0].key];
-		const where = hasVersion
-			? ({
-					and: [
-						query,
-						{
-							[versionFields[0].key]: {
-								eq: set[versionFields[0].key] - 1,
-							},
-						},
-					],
-				} as PgQueryWhere<Static<EntitySchema>>)
-			: query;
+		const updatedAtField = getAttrFields(this.schema, PG_UPDATED_AT)?.[0];
+		if (updatedAtField) {
+			set[updatedAtField.key] = this.dateTimeProvider.now().toISOString();
+		}
+
+		where = this.withDeletedAt(where, opts);
 
 		const response = await this.update(opts)
 			.set(set)
 			.where(this.jsonQueryToSql(where))
-			.returning(this.table);
+			.returning(this.table)
+			.catch((error) => {
+				throw this.handleError(error, "Update query has failed");
+			});
 
 		if (!response[0]) {
-			if (hasVersion && id) {
+			throw new PgEntityNotFoundError(this.tableName);
+		}
+
+		try {
+			return this.clean(response[0]);
+		} catch (error) {
+			throw this.handleError(error, "Update query has failed");
+		}
+	}
+
+	/**
+	 * Save a given entity.
+	 *
+	 * @example
+	 * ```ts
+	 * const entity = await repository.findById(1);
+	 * entity.name = "New Name";
+	 * await repository.save(entity);
+	 * ```
+	 *
+	 * Difference with `updateById/updateOne`:
+	 *
+	 * - requires the entity to be fetched first
+	 * - check pg.version() if present - optimistic locking
+	 * - validate entity against schema
+	 *
+	 * @see {@link PostgresTypeProvider#version}
+	 * @see {@link PgVersionMismatchError}
+	 */
+	public async save(
+		entity: Static<EntitySchema>,
+		opts: StatementOptions = {},
+	): Promise<Static<EntitySchema>> {
+		const set = this.alepha.parse(this.schema, entity) as any;
+		const id = set[this.id.key];
+
+		let where = this.createQueryWhere({
+			id,
+		});
+
+		const versionField = getAttrFields(this.schema, PG_VERSION)?.[0];
+		if (versionField && typeof set[versionField.key] === "number") {
+			where = {
+				and: [
+					where,
+					{
+						[versionField.key]: {
+							eq: set[versionField.key],
+						},
+					} as PgQueryWhere<Static<EntitySchema>>,
+				],
+			};
+			set[versionField.key] += 1;
+		}
+
+		try {
+			return await this.updateOne(where, set, opts);
+		} catch (error) {
+			if (error instanceof PgEntityNotFoundError && versionField) {
 				await this.findById(id).then(() => {
 					throw new PgVersionMismatchError(this.tableName, id);
 				});
 			}
-
-			throw new PgEntityNotFoundError(this.tableName);
+			throw error;
 		}
-
-		return this.clean(response[0]);
-	}
-
-	public async save(
-		data: Static<EntitySchema>,
-		opts: StatementOptions = {},
-	): Promise<Static<EntitySchema>> {
-		const set = { ...data } as any;
-		const id = set[this.id.key];
-		return await this.updateById(id, set, opts);
 	}
 
 	/**
-	 * Update an entity by ID.
-	 *
-	 * @param id
-	 * @param data
-	 * @param opts
+	 * Find an entity by ID and update it.
 	 */
 	public async updateById(
 		id: string | number,
@@ -637,34 +625,47 @@ export class RepositoryDescriptor<
 	}
 
 	/**
-	 * Update entities.
-	 *
-	 * @param where The where clause.
-	 * @param data The data to update.
-	 * @param opts The statement options.
-	 * @returns The updated entities.
+	 * Find many entities and update all of them.
 	 */
 	public async updateMany(
-		where: PgQueryWhere<Static<EntitySchema>>,
+		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
 		data: Partial<NullifyIfOptional<Static<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<void> {
-		await this.update(opts)
-			.set(data as PgUpdateSetSource<PgTableWithColumns<EntityTableConfig>>)
-			.where(this.jsonQueryToSql(where));
+		where = this.withDeletedAt(where, opts);
+		try {
+			await this.update(opts)
+				.set(data as PgUpdateSetSource<PgTableWithColumns<EntityTableConfig>>)
+				.where(this.jsonQueryToSql(where));
+		} catch (error) {
+			throw this.handleError(error, "Update query has failed");
+		}
 	}
 
 	/**
-	 * Delete entities.
-	 *
-	 * @param where Query.
-	 * @param opts The statement options.
+	 * Find many and delete all of them.
 	 */
 	public async deleteMany(
 		where: PgQueryWhere<Static<EntitySchema>> = {},
 		opts: StatementOptions = {},
 	): Promise<void> {
-		await this.delete(opts).where(this.jsonQueryToSql(where));
+		const deletedAt = this.deletedAt();
+		if (deletedAt && !opts.force) {
+			await this.updateMany(
+				where,
+				{
+					[deletedAt.key]: this.dateTimeProvider.now().toISOString(),
+				} as any,
+				opts,
+			);
+			return;
+		}
+
+		try {
+			await this.delete(opts).where(this.jsonQueryToSql(where));
+		} catch (error) {
+			throw new PgError("Delete query has failed", error as Error);
+		}
 	}
 
 	/**
@@ -675,39 +676,46 @@ export class RepositoryDescriptor<
 	}
 
 	/**
-	 * Delete an entity by ID.
+	 * Delete the given entity.
 	 *
-	 * @param id
-	 * @param opts
+	 * You must fetch the entity first in order to delete it.
+	 */
+	public async destroy(
+		entity: Static<EntitySchema>,
+		opts: StatementOptions = {},
+	) {
+		const id = (entity as any)[this.id.key];
+		await this.deleteById(id, opts);
+	}
+
+	/**
+	 * Find an entity and delete it.
+	 */
+	public async deleteOne(
+		where: PgQueryWhere<Static<EntitySchema>> = {},
+		opts: StatementOptions = {},
+	): Promise<void> {
+		await this.deleteMany(where, opts);
+	}
+
+	/**
+	 * Find an entity by ID and delete it.
 	 */
 	public async deleteById(
 		id: string | number,
 		opts: StatementOptions = {},
 	): Promise<void> {
-		try {
-			await this.deleteMany(this.getWhereId(id), opts);
-		} catch (error) {
-			if (error instanceof Error) {
-				throw new PgError(
-					`Failed to delete entity ${id} - ${error.message}`,
-					error,
-				);
-			}
-			throw error;
-		}
+		await this.deleteMany(this.getWhereId(id), opts);
 	}
 
 	/**
 	 * Count entities.
-	 *
-	 * @param where The where clause.
-	 * @param opts The statement options.
-	 * @returns The count of entities.
 	 */
 	public async count(
-		where: PgQueryWhere<Static<EntitySchema>> = {},
+		where: PgQueryWhereOrSQL<Static<EntitySchema>> = {},
 		opts: StatementOptions = {},
 	): Promise<number> {
+		where = this.withDeletedAt(where, opts);
 		return (opts.tx ?? this.db).$count(
 			this.table,
 			this.jsonQueryToSql(where, this.schema, (key) => this.col(key)),
@@ -715,6 +723,64 @@ export class RepositoryDescriptor<
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
+
+	protected conflictMessagePattern =
+		"duplicate key value violates unique constraint";
+
+	protected handleError(error: unknown, message: string): PgError {
+		if (!Error.isError(error)) {
+			return new PgError(message);
+		}
+
+		if (
+			(error.cause as Error)?.message.includes(this.conflictMessagePattern) ||
+			error.message.includes(this.conflictMessagePattern)
+		) {
+			return new PgConflictError(message, error);
+		}
+
+		return new PgError(message, error);
+	}
+
+	protected withDeletedAt(
+		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
+		opts: {
+			force?: boolean;
+		} = {},
+	) {
+		if (opts.force) {
+			return where;
+		}
+
+		const deletedAt = this.deletedAt();
+		if (!deletedAt) {
+			return where;
+		}
+
+		return {
+			and: [
+				where,
+				{
+					[deletedAt.key]: {
+						isNull: true,
+					},
+				} as any,
+			],
+		} as PgQueryWhere<Static<EntitySchema>>;
+	}
+
+	protected get organization() {
+		// TODO: organization column for automatic multi-tenancy
+		return undefined;
+	}
+
+	protected deletedAt(): PgAttrField | undefined {
+		const deletedAtFields = getAttrFields(this.schema, PG_DELETED_AT);
+		if (deletedAtFields.length > 0) {
+			return deletedAtFields[0];
+		}
+		return undefined;
+	}
 
 	/**
 	 * Convert a query object to a SQL query.
@@ -724,54 +790,62 @@ export class RepositoryDescriptor<
 	 * @param col The column to use.
 	 */
 	protected jsonQueryToSql(
-		query: PgQueryWhere<Static<EntitySchema>>,
+		query: PgQueryWhereOrSQL<Static<EntitySchema>>,
 		schema: TObject = this.schema,
 		col: (key: string) => PgColumn = (key) => this.col(key),
 	): SQL | undefined {
 		const conditions: SQL[] = [];
-		const keys = Object.keys(query) as Array<
-			keyof PgQueryWhere<Static<EntitySchema>> & string
-		>;
 
-		for (const key of keys) {
-			const operator = query[key];
+		if (isSQLWrapper(query)) {
+			conditions.push(query as SQL);
+		} else {
+			const keys = Object.keys(query) as Array<
+				keyof PgQueryWhere<Static<EntitySchema>> & string
+			>;
 
-			if (Array.isArray(operator)) {
-				const operations = operator.map((it) => {
-					if (isSQLWrapper(it)) {
-						return it as SQL;
+			for (const key of keys) {
+				const operator = query[key];
+
+				if (Array.isArray(operator)) {
+					const operations: SQL[] = operator
+						.map((it) => {
+							if (isSQLWrapper(it)) {
+								return it as SQL;
+							}
+							return this.jsonQueryToSql(
+								it as PgQueryWhere<Static<EntitySchema>>,
+								schema,
+								col,
+							);
+						})
+						.filter((it) => it != null);
+
+					if (key === "and") {
+						return and(...operations);
 					}
-					return this.jsonQueryToSql(
-						it as PgQueryWhere<Static<EntitySchema>>,
+
+					if (key === "or") {
+						return or(...operations);
+					}
+				}
+
+				if (key === "not") {
+					const where = this.jsonQueryToSql(
+						operator as PgQueryWhere<Static<EntitySchema>>,
 						schema,
 						col,
 					);
-				});
-
-				if (key === "and") {
-					return and(...operations);
+					if (where) {
+						return not(where);
+					}
 				}
-				if (key === "or") {
-					return or(...operations);
-				}
-			}
 
-			if (key === "not") {
-				const where = this.jsonQueryToSql(
-					operator as PgQueryWhere<Static<EntitySchema>>,
-					schema,
-					col,
-				);
-				if (where) {
-					return not(where);
-				}
-			}
-
-			if (operator) {
-				const column = col(key);
-				const sql = this.mapOperatorToSql(operator, column);
-				if (sql) {
-					conditions.push(sql);
+				if (operator) {
+					const column = col(key);
+					const sql = this.mapOperatorToSql(operator, column);
+					if (sql) {
+						conditions.push(sql);
+					}
 				}
 			}
 		}
@@ -910,16 +984,9 @@ export class RepositoryDescriptor<
 		data: any,
 		insert: boolean,
 	): PgInsertValue<PgTableWithColumns<EntityTableConfig>> {
-		const schema = insert ? this.insertSchema : this.schema;
-
-		const versionFields = getAttrFields(this.schema, PG_VERSION);
-		for (const versionField of versionFields) {
-			if (insert) {
-				(data as any)[versionField.key] = 0;
-			} else {
-				(data as any)[versionField.key] = (data as any)[versionField.key] + 1;
-			}
-		}
+		const schema = insert
+			? this.schemaInsert // insert
+			: t.partial(this.schema); // update
 
 		for (const key of Object.keys(data)) {
 			if (data[key] === undefined) {
@@ -946,13 +1013,17 @@ export class RepositoryDescriptor<
 		const entity = nullToUndefined(row) as Static<T>;
 		const schemaRef = schema ?? this.schema;
 
+		// convert PG date-time and date to ISO strings
 		for (const key of Object.keys(schemaRef.properties)) {
 			const value = schemaRef.properties[key];
 			if (value.format === "date-time" && typeof entity[key] === "string") {
-				(entity as any)[key] = new Date(entity[key]).toISOString();
+				(entity as any)[key] = this.dateTimeProvider
+					.of(entity[key])
+					.toISOString();
 			}
 			if (value.format === "date" && typeof entity[key] === "string") {
-				(entity as any)[key] = new Date(entity[key])
+				(entity as any)[key] = this.dateTimeProvider
+					.of(entity[key])
 					.toISOString()
 					.split("T")[0];
 			}
@@ -1021,4 +1092,9 @@ export interface StatementOptions {
 	 * Lock strength.
 	 */
 	for?: LockStrength | { config: LockConfig; strength: LockStrength };
+
+	/**
+	 * If true, ignore soft delete.
+	 */
+	force?: boolean;
 }

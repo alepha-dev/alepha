@@ -16,6 +16,7 @@ import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 import {
 	PG_CREATED_AT,
 	PG_DEFAULT,
+	PG_DELETED_AT,
 	PG_IDENTITY,
 	PG_PRIMARY_KEY,
 	PG_REF,
@@ -73,9 +74,9 @@ export class PostgresTypeProvider {
 
 	/**
 	 * Creates a primary key for a given type. Supports:
-	 * - `t.int()` (default)
-	 * - `t.bigint()`
-	 * - `t.uuid()`
+	 * - `t.int()` -> PG INT (default)
+	 * - `t.bigint()` -> PG BIGINT
+	 * - `t.uuid()` -> PG UUID
 	 */
 	public primaryKey(): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
@@ -132,13 +133,19 @@ export class PostgresTypeProvider {
 		if (value != null) {
 			Object.assign(type, { default: value });
 		}
+
 		return this.attr(type, PG_DEFAULT);
 	};
 
 	/**
-	 * Creates a column version.
+	 * Creates a column 'version'.
+	 *
 	 * This is used to track the version of a row in the database.
-	 * You can use it for optimistic concurrency control.
+	 *
+	 * You can use it for optimistic concurrency control (OCC) with {@link RepositoryDescriptor#save}.
+	 *
+	 * @see {@link RepositoryDescriptor#save}
+	 * @see {@link PgVersionMismatchError}
 	 */
 	public readonly version = (options: IntegerOptions = {}) =>
 		this.default(pgAttr(t.int(options), PG_VERSION), 0);
@@ -156,8 +163,38 @@ export class PostgresTypeProvider {
 		pgAttr(pgAttr(t.datetime(options), PG_UPDATED_AT), PG_DEFAULT);
 
 	/**
-	 * Creates an insert schema for a given object schema.
-	 * - pg.default will be optional
+	 * Creates a column Deleted At for soft delete functionality.
+	 * This is used to mark rows as deleted without actually removing them from the database.
+	 * The column is nullable - NULL means not deleted, timestamp means deleted.
+	 */
+	public readonly deletedAt = (options?: StringOptions) =>
+		pgAttr(t.optional(t.datetime(options)), PG_DELETED_AT);
+
+	/**
+	 * Creates a reference to another table or schema. Basically a foreign key.
+	 */
+	public readonly ref = <T extends TSchema>(
+		type: T,
+		ref: () => any,
+		actions?: {
+			onUpdate?: UpdateDeleteAction;
+			onDelete?: UpdateDeleteAction;
+		},
+	): PgAttr<T, PgRef> => {
+		return this.attr(type, PG_REF, {
+			ref,
+			actions,
+		});
+	};
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Convert a schema to a schema for INSERT operations.
+	 * It means that:
+	 * - All pg.default() will be optional
+	 *
+	 * @internal
 	 */
 	public readonly insert = <T extends TObject>(obj: T): TInsertObject<T> => {
 		const properties: Record<string, TSchema> = {};
@@ -185,29 +222,13 @@ export class PostgresTypeProvider {
 
 	/**
 	 * Creates a page schema for a given object schema.
+	 * It's used by {@link RepositoryDescriptor#paginate} method.
 	 */
 	public readonly page = <T extends TObject>(
 		resource: T,
 		options?: ObjectOptions,
 	): TPage<T> => {
 		return pageSchema(resource, options);
-	};
-
-	/**
-	 * Creates a reference to another table or schema.
-	 */
-	public readonly ref = <T extends TSchema>(
-		type: T,
-		ref: () => any,
-		actions?: {
-			onUpdate?: UpdateDeleteAction;
-			onDelete?: UpdateDeleteAction;
-		},
-	): PgAttr<T, PgRef> => {
-		return this.attr(type, PG_REF, {
-			ref,
-			actions,
-		});
 	};
 }
 

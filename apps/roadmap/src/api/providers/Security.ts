@@ -71,7 +71,7 @@ export class Security {
 	});
 
 	async refreshSession(refreshToken: string) {
-		const session = await this.db.sessions.one({
+		const session = await this.db.sessions.findOne({
 			refreshToken: { eq: refreshToken },
 		});
 
@@ -83,7 +83,7 @@ export class Security {
 			throw new UnauthorizedError("Session expired");
 		}
 
-		const user = await this.db.users.one({
+		const user = await this.db.users.findOne({
 			id: { eq: session.userId },
 		});
 
@@ -209,14 +209,14 @@ export class Security {
 
 	protected async link(provider: string, profile: OAuth2Profile) {
 		const identity = await this.db.identities
-			.one({
+			.findOne({
 				provider,
 				providerUserId: profile.sub,
 			})
 			.catch(() => undefined);
 
 		if (identity) {
-			return this.db.users.one({
+			return this.db.users.findOne({
 				id: identity.userId,
 			});
 		}
@@ -229,7 +229,7 @@ export class Security {
 		}
 
 		const existing = await this.db.users
-			.one({
+			.findOne({
 				email: profile.email,
 			})
 			.catch(() => undefined);

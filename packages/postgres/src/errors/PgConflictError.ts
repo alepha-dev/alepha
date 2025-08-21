@@ -1,10 +1,6 @@
-import { AlephaError } from "@alepha/core";
+import { PgError } from "./PgError.ts";
 
-export class PgConflictError extends AlephaError {
+export class PgConflictError extends PgError {
 	readonly name = "PgConflictError";
 	readonly status = 409;
-
-	constructor(message: string, cause: unknown) {
-		super(message, { cause });
-	}
 }

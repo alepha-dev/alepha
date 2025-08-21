@@ -1,12 +1,10 @@
-import { AlephaError } from "@alepha/core";
+import { PgError } from "./PgError.ts";
 
-export class PgEntityNotFoundError extends AlephaError {
+export class PgEntityNotFoundError extends PgError {
 	readonly name = "EntityNotFoundError";
 	readonly status = 404;
 
 	constructor(entityName: string) {
-		super(
-			`Entity from ${entityName} was not found. Please check the provided ID or query parameters.`,
-		);
+		super(`Entity from '${entityName}' was not found`);
 	}
 }

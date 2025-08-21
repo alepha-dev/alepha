@@ -133,7 +133,7 @@ export class NodePostgresProvider extends PostgresProvider {
 				try {
 					await this.migrate.run();
 				} catch (error) {
-					throw new PgMigrationError("Failed to migrate database", error);
+					throw new PgMigrationError(error);
 				}
 			}
 		},

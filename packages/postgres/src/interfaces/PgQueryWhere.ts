@@ -1,6 +1,7 @@
-import type { SQL, SQLWrapper } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 import type { FilterOperators } from "./FilterOperators.ts";
 
+export type PgQueryWhereOrSQL<T extends object> = SQLWrapper | PgQueryWhere<T>;
 export type PgQueryWhere<T extends object> = {
 	[Key in keyof T]?: FilterOperators<T[Key]> | T[Key];
 } & {
@@ -20,7 +21,7 @@ export type PgQueryWhere<T extends object> = {
 	 *   )
 	 * ```
 	 */
-	and?: Array<PgQueryWhere<T> | SQL>;
+	and?: Array<PgQueryWhereOrSQL<T>>;
 
 	/**
 	 * Combine a list of conditions with the `or` operator. Conditions
@@ -38,7 +39,7 @@ export type PgQueryWhere<T extends object> = {
 	 *   )
 	 * ```
 	 */
-	or?: Array<PgQueryWhere<T> | SQL>;
+	or?: Array<PgQueryWhereOrSQL<T>>;
 
 	/**
 	 * Negate the meaning of an expression using the `not` keyword.
@@ -51,7 +52,7 @@ export type PgQueryWhere<T extends object> = {
 	 *   .where(not(inArray(cars.make, ['GM', 'Ford'])))
 	 * ```
 	 */
-	not?: PgQueryWhere<T>;
+	not?: PgQueryWhereOrSQL<T>;
 
 	/**
 	 * Test whether a subquery evaluates to have any rows.

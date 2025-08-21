@@ -27,8 +27,8 @@ test("execute - basic", async () => {
 	});
 
 	expect(
-		await app.users.execute(
-			(u) => sql`SELECT * FROM ${u} WHERE ${u.name} = ${name}`,
+		await app.users.query(
+			(t) => sql`SELECT * FROM ${t} WHERE ${t.name} = ${name}`,
 			t.pick(userEntity.$schema, ["name"]),
 		),
 	).toEqual([
@@ -38,8 +38,8 @@ test("execute - basic", async () => {
 	]);
 
 	expect(
-		await app.users.execute(
-			(u, db) => db.select({ name: u.name }).from(u).where(eq(u.name, name)),
+		await app.users.query(
+			(t, db) => db.select({ name: t.name }).from(t).where(eq(t.name, name)),
 			t.pick(userEntity.$schema, ["name"]),
 		),
 	).toEqual([
@@ -49,8 +49,8 @@ test("execute - basic", async () => {
 	]);
 
 	expect(
-		await app.users.execute(
-			(u) => sql`SELECT ${u.name} FROM ${u} WHERE ${u.name} = ${name}`,
+		await app.users.query(
+			(t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
 			t.pick(userEntity.$schema, ["name"]),
 		),
 	).toEqual([
@@ -61,8 +61,8 @@ test("execute - basic", async () => {
 
 	// by default execute expects a full schema, so this should throw
 	await expect(() =>
-		app.users.execute(
-			(u) => sql`SELECT ${u.name} FROM ${u} WHERE ${u.name} = ${name}`,
+		app.users.query(
+			(t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
 		),
 	).rejects.toThrowError(TypeBoxError);
 });
