@@ -21,7 +21,6 @@ import {
 	IconLineDashed,
 	IconLink,
 	IconLock,
-	IconLogs,
 	IconMessage2,
 	IconMessageCircle,
 	IconNotes,

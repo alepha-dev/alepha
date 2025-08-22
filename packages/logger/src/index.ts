@@ -97,7 +97,7 @@ export const AlephaLogger = $module({
 				return SimpleFormatterProvider;
 			}
 
-			if (alepha.isProduction()) {
+			if (alepha.isProduction() && !alepha.isBrowser()) {
 				return JsonFormatterProvider;
 			}
 

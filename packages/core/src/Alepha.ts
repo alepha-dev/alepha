@@ -611,10 +611,6 @@ export class Alepha {
 		const entry: ServiceEntry<T> =
 			"default" in serviceEntry ? serviceEntry.default : serviceEntry;
 
-		if (this.started) {
-			throw new ContainerLockedError();
-		}
-
 		// just check if the entry is not present in the pending instantiation stack
 		// Alepha#get will handle the rest
 		if (this.has(entry, { inStack: true })) {
@@ -630,6 +626,10 @@ export class Alepha {
 					typeof entry.provide[MODULE] === "function"
 				) {
 					(entry.use as ServiceWithModule)[MODULE] ??= entry.provide[MODULE];
+				}
+
+				if (this.started) {
+					throw new ContainerLockedError();
 				}
 
 				this.substitutions.set(entry.provide, {
@@ -678,7 +678,7 @@ export class Alepha {
 		}
 
 		const index = this.pendingInstantiations.indexOf(service);
-		if (index !== -1) {
+		if (index !== -1 && !opts.skipRegistration) {
 			throw new CircularDependencyError(
 				service.name,
 				this.pendingInstantiations.slice(0, index).map((it) => it.name),
