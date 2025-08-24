@@ -9,9 +9,9 @@ import {
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Project } from "../../api/providers/Db.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.tsx";
-import Panel from "../ui/Panel.tsx";
 
 export interface HomeProps {
 	projects: Project[];
@@ -47,11 +47,11 @@ const Home = () => {
 					direction={"column"}
 					p={"sm"}
 				>
-					<Panel
+					<Card
 						p={"lg"}
 						withBorder
 						radius={"md"}
-						bg={"var(--panel-bg-color)"}
+						bg={theme.colors.panel}
 						className={"shadow"}
 					>
 						<SimpleGrid
@@ -91,7 +91,7 @@ const Home = () => {
 								</Flex>
 							</Flex>
 						</SimpleGrid>
-					</Panel>
+					</Card>
 					<Flex direction={"column"} gap={"xs"}>
 						<Text size={"sm"}>{tr("home.campaigns")}</Text>
 						<Flex gap={"md"}>

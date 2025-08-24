@@ -53,7 +53,7 @@ const TextEditor: React.FC<TextEditorProps> = (props) => {
 				</RichTextEditor.ControlsGroup>
 			</RichTextEditor.Toolbar>
 
-			<RichTextEditor.Content h={"200px"} />
+			<RichTextEditor.Content />
 		</RichTextEditor>
 	);
 };

@@ -66,7 +66,7 @@ const ProjectActions = () => {
 };
 
 const TabAction = (props: ActionProps & { href: string }) => {
-	return <Action {...props} variant={"minimal"} />;
+	return <Action {...props} textVisibleFrom={"md"} variant={"minimal"} />;
 };
 
 export default ProjectActions;
@@ -84,6 +84,7 @@ const CreateTaskButton = () => {
 	return (
 		<Flex>
 			<Action
+				textVisibleFrom={"sm"}
 				variant={"filled"}
 				color={"green"}
 				disabled={!client.createTask.can()}

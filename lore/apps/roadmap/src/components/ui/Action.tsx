@@ -1,13 +1,32 @@
 import { type UseActiveOptions, useActive } from "@alepha/react";
 import { type FormModel, useFormState } from "@alepha/react-form";
-import { Button, type ButtonProps } from "@mantine/core";
+import { Button, type ButtonProps, Flex } from "@mantine/core";
 import { type ReactNode, useState } from "react";
 
 export type ActionProps = ButtonProps & {
-	children: ReactNode;
+	children?: ReactNode;
+	textVisibleFrom?: "xs" | "sm" | "md" | "lg" | "xl";
 } & (ActiveHrefProps | ActionClickProps | ActionSubmitProps | {});
 
 const Action = (props: ActionProps) => {
+	if (props.textVisibleFrom) {
+		const { children, textVisibleFrom, leftSection, ...rest } = props;
+		return (
+			<>
+				<Flex visibleFrom={textVisibleFrom}>
+					<Action {...rest} leftSection={leftSection}>
+						{children}
+					</Action>
+				</Flex>
+				<Flex hiddenFrom={textVisibleFrom}>
+					<Action {...rest} px={"xs"}>
+						{leftSection}
+					</Action>
+				</Flex>
+			</>
+		);
+	}
+
 	if ("href" in props && props.href) {
 		return (
 			<ActionHref {...props} href={props.href}>
