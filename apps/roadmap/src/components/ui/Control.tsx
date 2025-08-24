@@ -11,6 +11,7 @@ import {
 	type SelectProps,
 	Switch,
 	type SwitchProps,
+	Text,
 	Textarea,
 	type TextareaProps,
 	TextInput,
@@ -99,8 +100,8 @@ const Control = (props: ControlProps) => {
 			<Input.Wrapper {...inputProps}>
 				<Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
 					<SegmentedControl
-						id={id}
 						disabled={disabled}
+						defaultValue={String(props.input.props.defaultValue)}
 						{...segmentedControlProps}
 						onChange={(value) => {
 							props.input.set(value);
