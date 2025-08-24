@@ -1,20 +1,23 @@
-import { TypeBoxError, t } from "@alepha/core";
-import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
-import { Flex, Grid } from "@alepha/react-flex";
+import { t } from "@alepha/core";
+import { useAlepha, useClient, useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
-import { FormGroup, SegmentedControl } from "@blueprintjs/core";
-import { AreaOfInterest, FloppyDisk, Plus, Tag } from "@blueprintjs/icons";
-import { useState } from "react";
+import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
+import {
+	IconDeviceFloppy,
+	IconFileText,
+	IconPlus,
+	IconTag,
+	IconTent,
+} from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Project, Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import { Toaster } from "../../../services/Toaster.ts";
-import Action from "../../shared/Action.tsx";
-import Control from "../../shared/Control.tsx";
 import TextEditor from "../../shared/TextEditor.tsx";
+import Action from "../../ui/Action.tsx";
+import Control from "../../ui/Control.tsx";
 
 export interface TaskCreateProps {
 	onSubmit: (task: Task) => void;
@@ -23,10 +26,8 @@ export interface TaskCreateProps {
 }
 
 const TaskCreate = (props: TaskCreateProps) => {
-	const [error, setError] = useState<TypeBoxError | undefined>();
 	const taskApi = useClient<TaskApi>();
 	const alepha = useAlepha();
-	const toaster = useInject(Toaster);
 	const router = useRouter<AppRouter>();
 	const { tr } = useI18n<I18n, "en">();
 
@@ -67,174 +68,131 @@ const TaskCreate = (props: TaskCreateProps) => {
 				},
 			});
 		},
-		onError: (err) => {
-			toaster.show(err.message, "danger");
-
-			if (err instanceof TypeBoxError) {
-				setError(err);
-				document
-					.getElementById(`add-task${err.value.path.replaceAll("/", "-")}`)
-					?.focus();
-			}
-		},
-		onChange: (key) => {
-			if (error?.value.path === key) {
-				setError(undefined);
-			}
+		onChange: (key, value) => {
+			console.log("change", { key, value });
 		},
 	});
 
 	return (
-		<Flex card col gap1 pad4 rounded bordered>
-			<Flex fill style={{ maxWidth: 640 }}>
-				<Flex form={{ onSubmit: form.onSubmit }} fill>
-					<Flex col fill gap4>
-						<Grid md={2} gap2>
-							<Control
-								fill
-								inputField={form.input.title}
-								error={error}
-								inputGroupProps={{
-									autoFocus: true,
-									leftElement: <Tag />,
-								}}
-								formGroupProps={{
-									label: tr("task.create.title"),
-									helperText: tr("task.create.title.helper"),
-								}}
-							/>
-							<Control
-								fill
-								inputField={form.input.package}
-								inputGroupProps={{
-									leftElement: <AreaOfInterest />,
-								}}
-								formGroupProps={{
-									label: tr("task.create.package"),
-									helperText: tr("task.create.package.helper"),
-								}}
-							/>
-						</Grid>
+		<form onSubmit={form.onSubmit} noValidate>
+			<Stack>
+				<SimpleGrid
+					cols={{
+						base: 1,
+						md: 2,
+					}}
+					spacing={"sm"}
+				>
+					<Control
+						title={tr("task.create.title")}
+						description={tr("task.create.title.helper")}
+						input={form.input.title}
+						icon={<IconTag />}
+					/>
+					<Control
+						title={tr("task.create.package")}
+						description={tr("task.create.package.helper")}
+						input={form.input.package}
+						icon={<IconTent />}
+					/>
+				</SimpleGrid>
 
-						<FormGroup
-							fill
-							label={tr("task.create.description")}
-							labelFor={form.input.description.props.id}
-							helperText={tr("task.create.description.helper")}
+				<Control
+					description={tr("task.create.description.helper")}
+					title={tr("task.create.description")}
+					custom={TextEditor}
+					input={form.input.description}
+					icon={<IconFileText />}
+				/>
+
+				<SimpleGrid
+					cols={{
+						base: 1,
+						md: 2,
+					}}
+					spacing={"sm"}
+				>
+					<Control
+						input={form.input.priority}
+						title={tr("task.create.priority")}
+						description={tr("task.create.priority.helper")}
+						segmented={{
+							data: [
+								{
+									label: tr("priority.high"),
+									value: "high",
+								},
+								{
+									label: tr("priority.medium"),
+									value: "medium",
+								},
+								{
+									label: tr("priority.low"),
+									value: "low",
+								},
+								{
+									label: tr("priority.none"),
+									value: "optional",
+								},
+							],
+						}}
+					/>
+					<Control
+						input={form.input.complexity}
+						title={tr("task.create.complexity")}
+						description={tr("task.create.complexity.helper")}
+						segmented={{
+							data: [
+								{
+									label: "S",
+									value: "5",
+								},
+								{
+									label: "A",
+									value: "4",
+								},
+								{
+									label: "B",
+									value: "3",
+								},
+								{
+									label: "C",
+									value: "2",
+								},
+								{
+									label: "F",
+									value: "1",
+								},
+							],
+						}}
+					/>
+				</SimpleGrid>
+
+				<Space />
+
+				<Flex>
+					{props.task ? (
+						<Action
+							variant={"filled"}
+							color={"blue"}
+							form={form}
+							leftSection={<IconDeviceFloppy />}
 						>
-							<TextEditor {...form.input.description.props} />
-						</FormGroup>
-
-						<Grid gap2>
-							<FormGroup
-								label={tr("task.create.priority")}
-								helperText={tr("task.create.priority.helper")}
-							>
-								<Flex>
-									<Flex shadow bordered>
-										<SegmentedControl
-											defaultValue={
-												props.task?.priority
-													? String(props.task.priority)
-													: undefined
-											}
-											onValueChange={(data) => {
-												form.input.priority.set(data);
-											}}
-											options={[
-												{
-													label: tr("priority.high"),
-													value: "high",
-												},
-												{
-													label: tr("priority.medium"),
-													value: "medium",
-												},
-												{
-													label: tr("priority.low"),
-													value: "low",
-												},
-												{
-													label: tr("priority.none"),
-													value: "optional",
-												},
-											]}
-										/>
-									</Flex>
-								</Flex>
-							</FormGroup>
-							<FormGroup
-								label={tr("task.create.complexity")}
-								helperText={tr("task.create.complexity.helper")}
-							>
-								<Flex>
-									<Flex shadow bordered>
-										<SegmentedControl
-											defaultValue={
-												props.task?.complexity
-													? String(props.task.complexity)
-													: undefined
-											}
-											onValueChange={(data) => {
-												form.input.complexity.set(data);
-											}}
-											options={[
-												{
-													label: "S",
-													value: "5",
-												},
-												{
-													label: "A",
-													value: "4",
-												},
-												{
-													label: "B",
-													value: "3",
-												},
-												{
-													label: "C",
-													value: "2",
-												},
-												{
-													label: "F",
-													value: "1",
-												},
-											]}
-										/>
-									</Flex>
-								</Flex>
-							</FormGroup>
-						</Grid>
-
-						<Flex fill />
-
-						<Flex>
-							{props.task ? (
-								<Action
-									type="submit"
-									variant={"solid"}
-									icon={<FloppyDisk />}
-									size={"large"}
-									intent={"primary"}
-								>
-									Update Quest
-								</Action>
-							) : (
-								<Action
-									type="submit"
-									variant={"solid"}
-									icon={<Plus />}
-									size={"large"}
-									intent={"success"}
-								>
-									{tr("task.create.submit")}
-								</Action>
-							)}
-						</Flex>
-					</Flex>
+							Update Quest
+						</Action>
+					) : (
+						<Action
+							variant={"filled"}
+							color={"green"}
+							form={form}
+							leftSection={<IconPlus />}
+						>
+							{tr("task.create.submit")}
+						</Action>
+					)}
 				</Flex>
-			</Flex>
-		</Flex>
+			</Stack>
+		</form>
 	);
 };
 

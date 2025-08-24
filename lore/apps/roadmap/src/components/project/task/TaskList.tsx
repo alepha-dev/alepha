@@ -1,5 +1,5 @@
-import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
+import { Flex, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
 import type { Task } from "../../../api/providers/Db.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -27,18 +27,24 @@ const TaskList = (props: TaskListProps) => {
 
 	if (packageList.length === 0) {
 		return (
-			<Flex pad2 col centerX fill>
-				<Text muted>{tr("quest-log.empty")}</Text>
+			<Flex
+				p={"sm"}
+				direction={"column"}
+				align="center"
+				justify="center"
+				flex={1}
+			>
+				<Text c={"dimmed"}>{tr("quest-log.empty")}</Text>
 			</Flex>
 		);
 	}
 
 	return (
-		<Flex col>
+		<Stack gap={0}>
 			{packageList.map((key) => (
 				<TaskGroup name={key} tasks={groupByPackage[key]} key={key} />
 			))}
-		</Flex>
+		</Stack>
 	);
 };
 

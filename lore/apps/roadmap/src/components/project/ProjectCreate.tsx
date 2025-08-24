@@ -1,21 +1,21 @@
 import { t } from "@alepha/core";
 import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
-import { Flex, Text } from "@alepha/react-flex";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
-import { Build, Tag } from "@blueprintjs/icons";
-import { useMemo, useState } from "react";
+import { Card, Container, Flex, Stack, Text } from "@mantine/core";
+import { IconHammer, IconTag } from "@tabler/icons-react";
+import { useMemo } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { Toaster } from "../../services/Toaster.ts";
-import Action from "../shared/Action.tsx";
-import Control from "../shared/Control.tsx";
+import Action from "../ui/Action.tsx";
+import Control from "../ui/Control.tsx";
 
 const ProjectCreate = () => {
 	const client = useClient<ProjectApi>();
-	const [loading, setLoading] = useState(false);
 	const router = useRouter<AppRouter>();
 	const auth = useAuth();
 	const alepha = useAlepha();
@@ -35,15 +35,16 @@ const ProjectCreate = () => {
 	const form = useForm({
 		initialValues,
 		schema: t.object({
-			title: t.string(),
+			title: t.string({
+				minLength: 3,
+				maxLength: 24,
+			}),
 			public: t.optional(t.boolean()),
 		}),
 		onError: (error) => {
 			toaster.show(error.message, "danger");
 		},
 		handler: async (body) => {
-			setLoading(true);
-
 			if (!auth.user) {
 				await router.go("login", {
 					query: {
@@ -67,67 +68,70 @@ const ProjectCreate = () => {
 				...(alepha.state("user.projects") || []),
 				project,
 			]);
-
-			setLoading(false);
 		},
 	});
 
 	return (
-		<Flex
-			fill
-			pad2
-			bg
-			bordered
+		<Card
+			withBorder
+			flex={1}
+			radius={0}
+			p={"sm"}
+			bg={theme.colors.panel}
 			style={{
 				borderLeft: 0,
 				borderRight: 0,
 			}}
 		>
-			<Flex className={"container"} col pad2>
-				<form onSubmit={form.onSubmit}>
-					<Flex col pad2 gap2>
-						<Flex col gap1>
-							<Text large bold>
+			<Container w={theme.container}>
+				<form onSubmit={form.onSubmit} noValidate>
+					<Stack p={"lg"}>
+						<Stack gap={0}>
+							<Text size="lg" fw={"bold"}>
 								{tr("project.create.title")}
 							</Text>
-							<Text muted>{tr("project.create.description")}</Text>
-						</Flex>
-						<Flex pad2 card bordered shadow rounded>
-							<Flex pad2 gap4 col style={{ maxWidth: 600 }}>
+							<Text size={"sm"} c={"dimmed"}>
+								{tr("project.create.description")}
+							</Text>
+						</Stack>
+						<Card
+							withBorder
+							radius={"md"}
+							p={"sm"}
+							bg={theme.colors.card}
+							shadow={"md"}
+						>
+							<Stack p={"sm"} style={{ maxWidth: 600 }} gap={"xl"}>
 								<Control
-									inputField={form.input.title}
-									inputGroupProps={{
+									input={form.input.title}
+									text={{
 										autoFocus: true,
-										leftIcon: <Tag />,
 									}}
-									formGroupProps={{
-										label: tr("project.create.name"),
-										helperText: tr("project.create.name.helper"),
-									}}
+									icon={<IconTag />}
+									title={tr("project.create.name")}
+									description={tr("project.create.name.helper")}
 								/>
 								<Control
-									inputField={form.input.public}
-									formGroupProps={{
-										label: tr("project.create.public"),
-										helperText: tr("project.create.public.helper"),
-									}}
+									input={form.input.public}
+									title={tr("project.create.public")}
+									description={tr("project.create.public.helper")}
 								/>
 								<Flex>
 									<Action
-										size={"large"}
-										intent={"success"}
-										text={tr("project.create.submit")}
-										icon={<Build />}
-										loading={loading}
-										type={"submit"}
-									/>
+										leftSection={<IconHammer />}
+										form={form}
+										variant={"filled"}
+										color={"green"}
+									>
+										{tr("project.create.submit")}
+									</Action>
 								</Flex>
-							</Flex>
-						</Flex>
-					</Flex>
+							</Stack>
+						</Card>
+					</Stack>
 				</form>
-			</Flex>
-		</Flex>
+			</Container>
+		</Card>
 	);
 };
 

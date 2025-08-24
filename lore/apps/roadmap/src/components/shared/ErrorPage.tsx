@@ -1,44 +1,51 @@
-import { Flex, Text } from "@alepha/react-flex";
-import { ButtonGroup } from "@blueprintjs/core";
-import { ArrowLeft, HeartBroken, Home, Reset } from "@blueprintjs/icons";
-import Action from "./Action.tsx";
+import { Button, Flex, Text } from "@mantine/core";
+import {
+	IconArrowLeft,
+	IconHeartBroken,
+	IconHome,
+	IconReload,
+} from "@tabler/icons-react";
+import Action from "../ui/Action.tsx";
 
 const ErrorPage = () => {
 	return (
-		<Flex fill center>
-			<Flex col gap3 center>
-				<Text muted>
-					<HeartBroken size={48} />
+		<Flex flex={1} align="center" justify="center">
+			<Flex direction={"column"} gap={"md"} align="center" justify="center">
+				<Text c={"dimmed"}>
+					<IconHeartBroken size={48} />
 				</Text>
-				<Flex gap1 col center>
-					<Text large bold>
+				<Flex gap={"xs"} direction={"column"} align="center" justify="center">
+					<Text size="lg" fw={"bold"}>
 						Oh no! Something went wrong.
 					</Text>
-					<Text muted small>
+					<Text c={"dimmed"} size="sm">
 						We apologize for the inconvenience. Please try again later or
 						contact support if the issue persists.
 					</Text>
 				</Flex>
 				<Flex>
-					<ButtonGroup>
+					<Button.Group>
 						<Action
-							icon={<ArrowLeft />}
-							text={"Back"}
+							leftSection={<IconArrowLeft />}
 							onClick={() => window.history.back()}
-						/>
+						>
+							Back
+						</Action>
 						<Action
-							icon={<Reset />}
-							text={"Reload App"}
+							leftSection={<IconReload />}
 							onClick={() => window.location.reload()}
-						/>
+						>
+							Reload App
+						</Action>
 						<Action
-							icon={<Home />}
-							text={"Home"}
+							leftSection={<IconHome />}
 							onClick={() => {
 								window.location.href = "/";
 							}}
-						/>
-					</ButtonGroup>
+						>
+							Home
+						</Action>
+					</Button.Group>
 				</Flex>
 			</Flex>
 		</Flex>

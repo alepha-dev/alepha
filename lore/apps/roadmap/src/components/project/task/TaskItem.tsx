@@ -1,9 +1,10 @@
 import { useActive, useRouter, useStore } from "@alepha/react";
-import { Flex, Text } from "@alepha/react-flex";
-import { Popover } from "@blueprintjs/core";
-import { Clean, HighPriority } from "@blueprintjs/icons";
+import { Card, Flex, HoverCard, Text } from "@mantine/core";
+import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
+import { theme } from "../../../constants/theme.ts";
+import Action from "../../ui/Action.tsx";
 
 const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
@@ -11,55 +12,79 @@ const TaskItem = (props: { task: Task }) => {
 	const router = useRouter<AppRouter>();
 	const [project] = useStore("project");
 	const { isActive, isPending, anchorProps } = useActive(
-		`/p/${project?.id}/q/${task.id}`,
+		router.path("projectTask", { params: { taskId: task.id } }),
 	);
 
 	const renderComplexity = (complexity: number) => {
 		if (complexity === 5)
 			return (
-				<Flex
-					shadow
-					bg
-					rounded
-					bordered
-					center
-					style={{ width: 25, borderColor: "#d1810a" }}
+				<Card
+					p={0}
+					w={25}
+					h={25}
+					radius={"md"}
+					withBorder
+					className={"shadow"}
+					style={{ borderColor: "#d1810a" }}
+					bg={theme.colors.panel}
 				>
-					<Text large bold>
+					<Text size="md" fw={"bold"}>
 						S
 					</Text>
-				</Flex>
+				</Card>
 			);
 		if (complexity === 4)
 			return (
-				<Flex shadow bg rounded bordered center style={{ width: 25 }}>
-					<Text large bold>
+				<Card
+					p={0}
+					w={25}
+					h={25}
+					radius={"md"}
+					withBorder
+					className={"shadow"}
+					bg={theme.colors.panel}
+				>
+					<Text size="md" fw={"bold"}>
 						A
 					</Text>
-				</Flex>
+				</Card>
 			);
 		if (complexity === 3)
 			return (
-				<Flex bg rounded bordered center style={{ width: 25 }}>
-					<Text large bold>
+				<Card
+					p={0}
+					w={25}
+					h={25}
+					radius={"md"}
+					withBorder
+					bg={theme.colors.panel}
+				>
+					<Text size="md" fw={"bold"}>
 						B
 					</Text>
-				</Flex>
+				</Card>
 			);
 		if (complexity === 2)
 			return (
-				<Flex style={{ width: 25 }} rounded bordered center>
-					<Text large bold>
+				<Card
+					p={0}
+					w={25}
+					h={25}
+					radius={"md"}
+					withBorder
+					bg={theme.colors.card}
+				>
+					<Text size="md" fw={"bold"}>
 						C
 					</Text>
-				</Flex>
+				</Card>
 			);
 		return (
-			<Flex style={{ width: 25 }} rounded bordered center>
-				<Text large bold>
+			<Card p={0} w={25} h={25} radius={"md"} withBorder bg={theme.colors.card}>
+				<Text size="sm" fw={"bold"}>
 					F
 				</Text>
-			</Flex>
+			</Card>
 		);
 	};
 
@@ -86,65 +111,54 @@ const TaskItem = (props: { task: Task }) => {
 				};
 
 	return (
-		<Flex
-			gap1
-			card
-			rounded
-			onClick={async () => {
-				if (isActive) {
-					await router.go("projectBoard");
-				} else {
-					await anchorProps.onClick();
-				}
+		<Action
+			href={isActive ? router.path("project") : anchorProps.href}
+			active={{
+				href: anchorProps.href,
 			}}
-			{...flexProps}
+			variant={isActive ? "light" : "subtle"}
+			justify={"space-between"}
+			rightSection={
+				task.priority === "optional" ? (
+					<Flex align="center" justify="center">
+						<HoverCard openDelay={1000} position="bottom-start">
+							<HoverCard.Target>
+								<Flex px={1}>
+									<IconSparkles color={"var(--text-muted)"} />
+								</Flex>
+							</HoverCard.Target>
+							<HoverCard.Dropdown>
+								<Flex p={"xs"} direction={"column"}>
+									<Text fw={"bold"}>Bonus</Text>
+									<Text size="sm">This quest is optional.</Text>
+								</Flex>
+							</HoverCard.Dropdown>
+						</HoverCard>
+					</Flex>
+				) : task.priority === "high" ? (
+					<Flex align="center" justify="center">
+						<HoverCard openDelay={1000} position="bottom-start">
+							<HoverCard.Target>
+								<Flex px={1}>
+									<IconExclamationMark color={"var(--color-high-priority)"} />
+								</Flex>
+							</HoverCard.Target>
+							<HoverCard.Dropdown>
+								<Flex p={"xs"} direction={"column"}>
+									<Text fw={"bold"}>High Priority !</Text>
+									<Text size="sm">Which means more rewards.</Text>
+								</Flex>
+							</HoverCard.Dropdown>
+						</HoverCard>
+					</Flex>
+				) : undefined
+			}
 		>
-			{renderComplexity(task.complexity)}
-
-			<Flex centerX fill>
-				<Text>{task.title}</Text>
+			<Flex flex={1} align={"center"} gap={"sm"}>
+				{renderComplexity(task.complexity)}
+				{task.title}
 			</Flex>
-
-			<Flex fill />
-
-			{task.priority === "optional" && (
-				<Flex center>
-					<Popover
-						hoverOpenDelay={1000}
-						interactionKind={"hover"}
-						content={
-							<Flex pad1 col>
-								<Text bold>Bonus</Text>
-								<Text small>This quest is optional.</Text>
-							</Flex>
-						}
-					>
-						<Flex pad1h>
-							<Clean color={"var(--text-muted)"} />
-						</Flex>
-					</Popover>
-				</Flex>
-			)}
-
-			{task.priority === "high" && (
-				<Flex center>
-					<Popover
-						hoverOpenDelay={1000}
-						interactionKind={"hover"}
-						content={
-							<Flex pad1 col>
-								<Text bold>High Priority !</Text>
-								<Text small>Which means more rewards.</Text>
-							</Flex>
-						}
-					>
-						<Flex pad1h>
-							<HighPriority color={"var(--color-high-priority)"} />
-						</Flex>
-					</Popover>
-				</Flex>
-			)}
-		</Flex>
+		</Action>
 	);
 };
 

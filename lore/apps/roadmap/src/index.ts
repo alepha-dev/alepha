@@ -1,7 +1,6 @@
 import { Alepha, run } from "@alepha/core";
 import { AlephaReactAuth } from "@alepha/react-auth";
 import { AlephaReactForm } from "@alepha/react-form";
-import { FocusStyleManager } from "@blueprintjs/core";
 import { AppRouter } from "./AppRouter.ts";
 import { RoadmapServices } from "./services";
 
@@ -12,7 +11,5 @@ alepha.with(AlephaReactForm);
 alepha.with(RoadmapServices);
 
 alepha.with(AppRouter);
-
-FocusStyleManager.onlyShowFocusOnTabs();
 
 run(alepha);

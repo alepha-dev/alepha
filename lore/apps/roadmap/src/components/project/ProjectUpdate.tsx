@@ -1,14 +1,15 @@
 import { t } from "@alepha/core";
 import { useAlepha, useClient } from "@alepha/react";
-import { Flex } from "@alepha/react-flex";
-import { FormState, useForm } from "@alepha/react-form";
+import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
-import { FloppyDisk } from "@blueprintjs/icons";
+import { Card, Flex } from "@mantine/core";
+import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { Project } from "../../api/providers/Db.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../shared/Action.tsx";
-import Control from "../shared/Control.tsx";
+import Action from "../ui/Action.tsx";
+import Control from "../ui/Control.tsx";
 
 export interface ProjectUpdateProps {
 	project: Project;
@@ -42,39 +43,30 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 	});
 
 	return (
-		<Flex shadow pad2 bordered card col gap4 form={{ onSubmit: form.onSubmit }}>
-			<Flex>
+		<Card radius={0} withBorder className={"shadow"} bg={theme.colors.card}>
+			<Flex
+				component={"form"}
+				onSubmit={form.onSubmit}
+				direction={"column"}
+				gap={"xl"}
+			>
 				<Control
-					formGroupProps={{
-						label: tr("project.create.name"),
-					}}
-					inputGroupProps={{
-						leftIcon: "tag",
-					}}
-					inputField={form.input.title}
+					title={tr("project.create.name")}
+					icon={<IconTag />}
+					input={form.input.title}
 				/>
+				<Control
+					input={form.input.public}
+					title={tr("project.create.public")}
+					description={tr("project.create.public.helper")}
+				/>
+				<Flex>
+					<Action leftSection={<IconDeviceFloppy />} form={form}>
+						{tr("project.update.submit")}
+					</Action>
+				</Flex>
 			</Flex>
-			<Control
-				inputField={form.input.public}
-				formGroupProps={{
-					helperText: tr("project.create.public.helper"),
-				}}
-			/>
-			<Flex>
-				<FormState form={form}>
-					{({ loading, dirty }) => (
-						<Action
-							icon={<FloppyDisk />}
-							type="submit"
-							loading={loading}
-							disabled={loading || !dirty}
-						>
-							{tr("project.update.submit")}
-						</Action>
-					)}
-				</FormState>
-			</Flex>
-		</Flex>
+		</Card>
 	);
 };
 

@@ -1,12 +1,17 @@
 import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useRouter, useStore } from "@alepha/react";
-import { Flex, Grid, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Application, CircleArrowRight, CubeAdd } from "@blueprintjs/icons";
+import { Card, Container, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
+import {
+	IconCircleArrowRight,
+	IconCubePlus,
+	IconMapRoute,
+} from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Project } from "../../api/providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../shared/Action.tsx";
+import Action from "../ui/Action.tsx";
+import Panel from "../ui/Panel.tsx";
 
 export interface HomeProps {
 	projects: Project[];
@@ -19,76 +24,139 @@ const Home = () => {
 	const dt = useInject(DateTimeProvider);
 
 	return (
-		<Flex fill col pad2>
-			<Flex gap3 col pad2 className={"container"}>
-				<Flex bg pad3 rounded shadow bordered>
-					<Grid md={2} gap2 flexProps={{ fill: true }}>
-						<Flex col gap1>
-							<Text bold large>
-								{tr("home.title")}
-							</Text>
-							<Text small>{tr("home.subtitle")}</Text>
-						</Flex>
-						<Flex fill>
-							<Flex fill visible={"md"} />
-							<Flex fill bordered rounded card shadow>
-								<Action
-									fill
-									size={"large"}
-									variant={"minimal"}
-									icon={<CubeAdd />}
-									text={tr("home.create-campaign")}
-									href={router.path("projectCreate")}
-								/>
+		<Stack>
+			<Flex
+				style={{ zIndex: -1, filter: "" }}
+				pos={"absolute"}
+				w={"100%"}
+				h={"256px"}
+				bg={
+					"linear-gradient(180deg, var(--panel-bg-color) 0%, transparent 100%)"
+				}
+				top={0}
+			></Flex>
+			<Container size={"xl"}>
+				<Flex
+					flex={1}
+					mt={"md"}
+					w={{
+						md: "100%",
+						lg: "920px",
+					}}
+					gap={"lg"}
+					direction={"column"}
+					p={"sm"}
+				>
+					<Panel
+						p={"lg"}
+						withBorder
+						radius={"md"}
+						bg={"var(--panel-bg-color)"}
+						className={"shadow"}
+					>
+						<SimpleGrid
+							cols={{
+								sm: 1,
+								md: 2,
+							}}
+							spacing={"sm"}
+						>
+							<Flex direction={"column"}>
+								<Text fw={"bold"} size={"lg"}>
+									{tr("home.title")}
+								</Text>
+								<Text size="sm" c={"gray"}>
+									{tr("home.subtitle")}
+								</Text>
 							</Flex>
-						</Flex>
-					</Grid>
-				</Flex>
-				<Flex col gap1>
-					<Text>{tr("home.campaigns")}</Text>
-					<Flex gap3>
-						<Flex fill col bg rounded>
-							{projects.length > 0 ? (
-								<Flex pad2 bordered rounded gap2 col>
-									{projects
-										.toSorted((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))
-										.map((project) => (
-											<Flex key={project.id} card fill bordered rounded shadow>
-												<Action
-													fill
-													icon={<Application />}
-													alignText={"left"}
-													variant={"minimal"}
-													{...router.anchor("project", {
-														params: { projectId: project.id },
-													})}
+							<Flex flex={1}>
+								<Flex flex={1} visibleFrom={"md"} />
+								<Flex flex={1} align={"center"}>
+									<Card
+										w={"100%"}
+										withBorder
+										p={2}
+										radius={"md"}
+										bg={"var(--card-bg-color)"}
+									>
+										<Action
+											size={"md"}
+											variant={"subtle"}
+											leftSection={<IconCubePlus size={16} />}
+											href={router.path("projectCreate")}
+										>
+											{tr("home.create-campaign")}
+										</Action>
+									</Card>
+								</Flex>
+							</Flex>
+						</SimpleGrid>
+					</Panel>
+					<Flex direction={"column"} gap={"xs"}>
+						<Text size={"sm"}>{tr("home.campaigns")}</Text>
+						<Flex gap={"md"}>
+							<Card
+								radius={projects.length > 0 ? "xs" : "md"}
+								p={0}
+								withBorder={projects.length > 0}
+								flex={1}
+								bg={"var(--panel-bg-color)"}
+							>
+								{projects.length > 0 ? (
+									<Flex p={"sm"} gap={"sm"} direction={"column"}>
+										{projects
+											.toSorted((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))
+											.map((project) => (
+												<Card
+													withBorder
+													bg={"var(--card-bg-color)"}
+													p={2}
+													key={project.id}
+													flex={1}
+													radius={"md"}
+													className={"shadow"}
 												>
-													<Flex fill>
-														<Flex col pad1h fill>
-															<Text bold>{project.title}</Text>
-															<Text small muted>
-																Updated {dt.of(project.updatedAt).fromNow()}
-															</Text>
+													<Action
+														flex={1}
+														justify={"space-between"}
+														rightSection={<IconCircleArrowRight size={20} />}
+														variant={"subtle"}
+														href={router.path("project", {
+															params: { projectId: project.id },
+														})}
+													>
+														<Flex py={4} flex={1} align={"center"} gap={"sm"}>
+															<IconMapRoute size={20} />
+															<Flex
+																flex={1}
+																w={"100%"}
+																direction={"column"}
+																ta={"left"}
+															>
+																<Text size={"sm"}>{project.title}</Text>
+																<Text size={"xs"} c={"dimmed"}>
+																	Updated {dt.of(project.updatedAt).fromNow()}
+																</Text>
+															</Flex>
 														</Flex>
-														<Flex center pad1h>
-															<CircleArrowRight />
-														</Flex>
-													</Flex>
-												</Action>
-											</Flex>
-										))}
-								</Flex>
-							) : (
-								<Flex pad2 center>
-									<Text muted>{tr("home.no-campaign")}</Text>
-								</Flex>
-							)}
+													</Action>
+												</Card>
+											))}
+									</Flex>
+								) : (
+									<Flex p={"md"} align="center" justify="center">
+										<Text c={"dimmed"} size={"sm"}>
+											{tr("home.no-campaign")}
+										</Text>
+									</Flex>
+								)}
+							</Card>
+							<Flex flex={1} visibleFrom={"md"}></Flex>
 						</Flex>
-						<Flex fill visible={"md"}></Flex>
 					</Flex>
 				</Flex>
-			</Flex>
-		</Flex>
+			</Container>
+		</Stack>
 	);
 };
 

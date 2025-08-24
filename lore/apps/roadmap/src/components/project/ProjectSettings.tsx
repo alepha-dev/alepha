@@ -1,10 +1,12 @@
 import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
-import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
+import { Card, Flex, Stack, Text } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../shared/Action.tsx";
+import Action from "../ui/Action.tsx";
 import ProjectUpdate from "./ProjectUpdate.tsx";
 
 const ProjectSettings = () => {
@@ -18,47 +20,77 @@ const ProjectSettings = () => {
 		return null;
 	}
 
+	const openDeleteModal = () =>
+		new Promise<boolean>((resolve) =>
+			modals.openConfirmModal({
+				id: "delete-campaign-modal",
+				title: "Delete Campaign",
+				centered: true,
+				children: (
+					<Text size="sm">Are you sure you want to delete this campaign?</Text>
+				),
+				labels: { cancel: "Cancel", confirm: "Delete Campaign" },
+				confirmProps: { color: "red" },
+				onClose: () => resolve(false),
+				onCancel: () => resolve(false),
+				onConfirm: () => resolve(true),
+			}),
+		);
+
 	return (
-		<Flex fill bg rounded col pad3 gap3>
-			<Flex col gap1>
+		<Stack flex={1} p={"md"}>
+			<Stack gap={"xs"}>
 				<Text>{tr("project.settings.general.title")}</Text>
 				<ProjectUpdate project={project} />
-			</Flex>
-			<Flex col gap1>
+			</Stack>
+			<Stack gap={"xs"}>
 				<Text>{tr("project.settings.danger.title")}</Text>
-				<Flex card pad2 bordered shadow>
-					<Flex col>
-						<Text>{tr("project.settings.actions.delete")}</Text>
-						<Text small muted>
-							{tr("project.settings.actions.delete.helper")}
-						</Text>
-					</Flex>
-					<Flex fill />
-					<Flex>
-						<Action
-							text={tr("project.settings.actions.delete")}
-							intent={"danger"}
-							onClick={() => {
-								projectApi
-									.deleteProjectById({
-										params: { id: project.id },
-									})
-									.then(() => {
-										alepha.state(
-											"user.projects",
-											(alepha.state("user.projects") ?? []).filter(
-												(p) => p.id !== project.id,
-											),
-										);
+				<Card
+					radius={0}
+					withBorder
+					className={"shadow"}
+					bg={theme.colors.card}
+					p={"sm"}
+				>
+					<Flex justify={"space-between"} align={"center"}>
+						<Stack gap={0}>
+							<Text size={"sm"}>{tr("project.settings.actions.delete")}</Text>
+							<Text size="xs" c={"dimmed"}>
+								{tr("project.settings.actions.delete.helper")}
+							</Text>
+						</Stack>
+						<Flex>
+							<Action
+								color={"red"}
+								onClick={async () => {
+									const confirmed = await openDeleteModal();
+									if (!confirmed) {
+										return;
+									}
 
-										router.go("home");
-									});
-							}}
-						/>
+									projectApi
+										.deleteProjectById({
+											params: { id: project.id },
+										})
+										.then(() => {
+											alepha.state(
+												"user.projects",
+												(alepha.state("user.projects") ?? []).filter(
+													(p) => p.id !== project.id,
+												),
+											);
+
+											router.go("home");
+										});
+								}}
+							>
+								{tr("project.settings.actions.delete")}
+							</Action>
+						</Flex>
 					</Flex>
-				</Flex>
-			</Flex>
-		</Flex>
+				</Card>
+			</Stack>
+		</Stack>
 	);
 };
 

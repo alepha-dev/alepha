@@ -1,126 +1,139 @@
-@import "@blueprintjs/core";
-@import "@alepha/react-flex";
+@import "@mantine/core/styles.css";
+@import "@mantine/nprogress/styles.css";
+@import "@mantine/spotlight/styles.css";
+@import "@mantine/notifications/styles.css";
+@import "@mantine/tiptap/styles.css";
+
+@import "highlight.js/styles/github.css";
+@import "./styles/code-github-dark.css";
 
 @import "components/auth/Login.css";
 @import "components/shared/StupidLogo.css";
 @import "components/shared/ExperienceBar.css";
 
-@import "highlight.js/styles/github.css";
-@import "./styles/code-github-dark.css";
-
 :root {
+	--app-bg-color-light: #ffffff;
+	--app-bg-color-dark: #010409;
+	--app-bg-color: var(--app-bg-color-light);
+
+	--panel-bg-color-light: #f0f0f0;
+	--panel-bg-color-dark: #0d1117;
+	--panel-bg-color: var(--panel-bg-color-light);
+
+	--card-bg-color-light: #ffffff;
+	--card-bg-hover-color-light: #f6f5f5;
+	--card-bg-color-dark: #151b23;
+	--card-bg-hover-color-dark: #262c36;
+
+	--card-bg-color: var(--card-bg-color-light);
+	--card-bg-hover-color: var(--card-bg-hover-color-light);
+
 	--color-gold: #db9b05;
 	--color-silver: #b9b6b6ff;
 	--color-high-priority: #d61b1b;
+
+	--border-color-light: #cbcbcb;
+	--border-color-dark: #3d444d;
+	--border-color: var(--border-color-light);
+
+	--text-color-light: #000000;
+	--text-color-dark: #ffffff;
+	--text-muted: #6c757d;
+	--text-color: var(--text-color-light);
+
+	--shadow-color-dark: rgba(0, 0, 0, 0.5);
+	--shadow-color-light: rgba(0, 0, 0, 0.05);
+	--shadow-color: var(--shadow-color-light);
+
+	--mantine-color-dimmed: var(--text-muted) !important;
+	--mantine-color-dark-8: var(--app-bg-color);
+	--mantine-color-dark-6: var(--panel-bg-color);
+	--mantine-color-dark-4: var(--border-color);
+	--mantine-color-body: var(--panel-bg-color) !important;
+
+	--mantine-spacing-xs: 8px;
 }
 
+html[data-mantine-color-scheme="dark"] {
+	--panel-bg-color: var(--panel-bg-color-dark);
+	--card-bg-color: var(--card-bg-color-dark);
+	--card-bg-hover-color: var(--card-bg-hover-color-dark);
+	--border-color: var(--border-color-dark);
+	--app-bg-color: var(--app-bg-color-dark);
+	--shadow-color: var(--shadow-color-dark);
+	--text-color: var(--text-color-dark);
+}
+
+html[data-mantine-color-scheme="light"] {
+	--mantine-color-gray-3: var(--border-color);
+
+	--panel-bg-color: var(--panel-bg-color-light);
+	--card-bg-color: var(--card-bg-color-light);
+	--card-bg-hover-color: var(--card-bg-hover-color-light);
+	--border-color: var(--border-color-light);
+	--app-bg-color: var(--app-bg-color-light);
+	--shadow-color: var(--shadow-color-light);
+	--text-color: var(--text-color-light);
+}
+
+.overflow-auto {
+	overflow: auto;
+	scrollbar-color: var(--text-muted) transparent;
+	scrollbar-width: thin;
+}
+
+html,
 body,
-span {
-	font-family:
-		"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
-		"Roboto", Helvetica, Arial, sans-serif, "Apple Color Emoji",
-		"Segoe UI Emoji";
-}
-
-pre {
+#root {
 	margin: 0;
-	font-family: "Fira Code", "Liberation Mono", Menlo, Courier, monospace;
-	font-size: 12px;
-}
-
-.bp6-form-group {
-	margin-bottom: 0;
-}
-
-.bp6-input {
-	background-color: #f8f8f8;
-}
-
-@media (max-width: 990px) {
-	.drawer.bp6-drawer {
-		width: 100%;
-	}
-	:root {
-		--spacing: 4px;
-	}
-}
-
-@media (max-width: 1408px) {
-	pre {
-		white-space: pre-wrap;
-	}
-}
-
-.color-scheme-dark {
-	#logo-github {
-		background-color: #24292e;
-	}
-}
-
-/* ------------------------------------------------------------------------------------------------------------------ */
-
-.container {
+	padding: 0;
+	width: 100%;
 	height: 100%;
-	width: 920px;
-	margin: 0 auto;
+	background: transparent;
 }
 
-@media (max-width: 1200px) {
-	.container {
-		width: 800px;
-	}
-	.container.header {
-		width: 100%;
-	}
+html {
+	background-color: var(--app-bg-color);
 }
 
-@media (max-width: 768px) {
-	.container {
-		max-width: 100%;
-	}
+.root {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
 }
 
-/* ------------------------------------------------------------------------------------------------------------------ */
-
-@media (max-width: 768px) {
-	.bp6-button.hide-sm-up-text {
-		.bp6-button-text {
-			display: none !important;
-		}
-		.bp6-icon {
-			margin-left: 0 !important;
-			margin-right: 0 !important;
-		}
-	}
+.shadow {
+	box-shadow:
+		0 1px 3px var(--shadow-color),
+		0 1px 2px var(--shadow-color);
+}
+.shadow-2 {
+	box-shadow:
+		0 4px 6px var(--shadow-color),
+		0 1px 3px var(--shadow-color),
+		inset 0 -1px 4px rgba(255, 255, 255, 0.1);
 }
 
-@media (max-width: 990px) {
-	.bp6-button.hide-md-up-text {
-		.bp6-button-text {
-			display: none !important;
-		}
-		.bp6-icon,
-		img {
-			margin-left: 0 !important;
-			margin-right: 0 !important;
-		}
-	}
+/*
+ * ---------------------------------------------------------------------------------------------------------------------
+ * Mantine overrides
+ */
+
+pre > code {
+	background-color: transparent !important;
 }
 
-@media (max-width: 1200px) {
-	.bp6-button.hide-lg-up-text {
-		.bp6-button-text {
-			display: none !important;
-		}
-		.bp6-icon,
-		img {
-			margin-left: 0 !important;
-			margin-right: 0 !important;
-		}
-	}
+.mantine-Drawer-content {
+	border-left: 1px solid var(--paper-border-color);
 }
-
-/* ------------------------------------------------------------------------------------------------------------------ */
+.mantine-Modal-content {
+	border: 1px solid var(--border-color);
+}
+.mantine-SegmentedControl-root {
+	background-color: var(--panel-bg-color);
+	border: 1px solid var(--border-color);
+}
 
 .tiptap.ProseMirror {
 	height: 100%;
