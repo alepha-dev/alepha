@@ -1,4 +1,4 @@
-import { $hook, type Static, t } from "@alepha/core";
+import { type Static, t } from "@alepha/core";
 import { $entity, $repository, pg } from "@alepha/postgres";
 
 export const projects = $entity({
@@ -7,7 +7,11 @@ export const projects = $entity({
 		id: pg.primaryKey(t.int()),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
-		title: t.string(),
+		deletedAt: pg.deletedAt(),
+		title: t.string({
+			minLength: 3,
+			maxLength: 24,
+		}),
 		createdBy: t.uuid(),
 		public: t.optional(t.boolean()),
 	}),
@@ -74,6 +78,7 @@ export const tasks = $entity({
 		id: pg.primaryKey(t.int()),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
+		deletedAt: pg.deletedAt(),
 		title: t.string(),
 		description: t.string({ size: "rich" }),
 		package: t.string(),
@@ -126,9 +131,4 @@ export class Db {
 	identities = $repository(identities);
 	sessions = $repository(sessions);
 	characters = $repository(characters);
-
-	ready = $hook({
-		on: "ready",
-		handler: async () => {},
-	});
 }

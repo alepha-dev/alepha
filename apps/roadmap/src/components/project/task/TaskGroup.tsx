@@ -1,5 +1,5 @@
-import { Flex, Text } from "@alepha/react-flex";
-import { Minus, Plus } from "@blueprintjs/icons";
+import { Flex, Stack, Text } from "@mantine/core";
+import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 import type { Task } from "../../../api/providers/Db.ts";
 import TaskItem from "./TaskItem.tsx";
@@ -18,13 +18,19 @@ const TaskGroup = (props: TaskGroupProps) => {
 	);
 
 	return (
-		<Flex col>
-			<Flex card pad1 centerX onClick={() => setIsCollapsed(!isCollapsed)}>
-				<Flex centerX gap1>
-					{isCollapsed ? <Minus size={10} /> : <Plus size={10} />}
-					<Text bold>{props.name}</Text>
+		<Stack gap={0}>
+			<Flex
+				p={0}
+				gap={"xs"}
+				align="center"
+				justify="center"
+				onClick={() => setIsCollapsed(!isCollapsed)}
+			>
+				<Flex align="center" justify="center" gap={"xs"}>
+					{isCollapsed ? <IconMinus size={10} /> : <IconPlus size={10} />}
+					<Text fw={"bold"}>{props.name}</Text>
 				</Flex>
-				<Flex fill center pad2h>
+				<Flex flex={1} align="center" justify="center" px={2}>
 					<Flex
 						style={{
 							height: 1,
@@ -35,19 +41,19 @@ const TaskGroup = (props: TaskGroupProps) => {
 					/>
 				</Flex>
 				<Flex>
-					<Text muted small>
+					<Text c={"dimmed"} size="sm">
 						{props.tasks.length} task{props.tasks.length > 1 ? "s" : ""}
 					</Text>
 				</Flex>
 			</Flex>
 			{isCollapsed && (
-				<Flex col style={{ gap: 4 }}>
+				<Stack gap={0}>
 					{tasks.map((item) => (
 						<TaskItem key={item.id} task={item} />
 					))}
-				</Flex>
+				</Stack>
 			)}
-		</Flex>
+		</Stack>
 	);
 };
 

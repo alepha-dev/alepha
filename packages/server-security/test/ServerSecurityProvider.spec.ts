@@ -8,11 +8,11 @@ import {
 	ServerProvider,
 	UnauthorizedError,
 } from "@alepha/server";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { AlephaServerSecurity } from "../src";
 
 describe("ServerSecurityProvider", () => {
-	test("should protect action from unauthorized users", async () => {
+	it("should protect action from unauthorized users", async () => {
 		class TestApp {
 			ok = $action({
 				handler: () => "OK",
@@ -51,7 +51,7 @@ describe("ServerSecurityProvider", () => {
 		});
 	});
 
-	test("should guard by permission", async () => {
+	it("should guard by permission", async () => {
 		class TestApp {
 			admin = $action({
 				group: "read",

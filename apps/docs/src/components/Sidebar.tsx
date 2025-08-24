@@ -19,11 +19,11 @@ type Props = {
 };
 
 const MyNavLink = (
-	props: NavLinkProps & { to?: string; onActive: () => void } & Props,
+	props: NavLinkProps & { href?: string; onActive: () => void } & Props,
 ) => {
-	const { to = "/", toggle, onActive, ...rest } = props;
+	const { href = "/", toggle, onActive, ...rest } = props;
 
-	const { isActive, anchorProps } = useActive(to);
+	const { isActive, anchorProps } = useActive(href);
 	const mantineTheme = useMantineTheme();
 	const isMobile = useMediaQuery(
 		`(max-width: ${mantineTheme.breakpoints[theme.sidebarBreakpoint]})`,
@@ -104,7 +104,7 @@ const Sidebar = (props: Props) => {
 												.replace("Alepha", "")}
 										</Text>
 									}
-									to={`/docs/${it.slug}`}
+									href={`/docs/${it.slug}`}
 								></MyNavLink>
 							))}
 						</NavLink>

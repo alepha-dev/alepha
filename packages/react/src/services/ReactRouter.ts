@@ -33,8 +33,8 @@ export class ReactRouter<T extends object> {
 	public path(
 		name: keyof VirtualRouter<T>,
 		config: {
-			params?: Record<string, string>;
-			query?: Record<string, string>;
+			params?: Record<string, any>;
+			query?: Record<string, any>;
 		} = {},
 	): string {
 		return this.pageApi.pathname(name as string, {

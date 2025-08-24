@@ -1,18 +1,15 @@
-import type React from "react";
 import type { AnchorHTMLAttributes } from "react";
 import { useRouter } from "../hooks/useRouter.ts";
 
 export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
-	to: string;
-	children?: React.ReactNode;
+	href: string;
 }
 
 const Link = (props: LinkProps) => {
 	const router = useRouter();
-	const { to, ...anchorProps } = props;
 
 	return (
-		<a {...router.anchor(to)} {...anchorProps}>
+		<a {...props} {...router.anchor(props.href)}>
 			{props.children}
 		</a>
 	);

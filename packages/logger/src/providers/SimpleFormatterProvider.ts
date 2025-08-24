@@ -1,10 +1,11 @@
-import { $inject } from "@alepha/core";
+import { $inject, Alepha } from "@alepha/core";
 import type { LogEntry } from "../services/Logger.ts";
 import { ConsoleColorProvider } from "./ConsoleColorProvider.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";
 
 export class SimpleFormatterProvider extends LogFormatterProvider {
 	protected color = $inject(ConsoleColorProvider);
+	protected alepha = $inject(Alepha);
 
 	public format(entry: LogEntry): string {
 		const { data, timestamp } = entry;
@@ -75,6 +76,16 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
 		n < 10 ? `00${n}` : n < 100 ? `0${n}` : `${n}`;
 
 	protected formatError(error: Error): string {
+		// Chrome does not like stack traces with ASCII colors
+		// so we remove the stack trace from log and just print with console.error
+		if (this.alepha.isBrowser()) {
+			// call console.error in a separate tick to avoid messing with log order
+			setTimeout(() => {
+				console.error(error);
+			});
+			return "";
+		}
+
 		let str = error.stack ?? error.message;
 
 		const anyError = error as any;

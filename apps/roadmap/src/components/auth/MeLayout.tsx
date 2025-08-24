@@ -1,77 +1,107 @@
 import { NestedView, useRouter } from "@alepha/react";
-import { Flex, Text } from "@alepha/react-flex";
-import { Antenna, People, User as UserIcon } from "@blueprintjs/icons";
-import Action, { type ActionProps } from "../shared/Action.tsx";
+import { useAuth } from "@alepha/react-auth";
+import { Card, Container, Flex, Stack, Text } from "@mantine/core";
+import { IconAntenna, IconUser, IconUsers } from "@tabler/icons-react";
+import { theme } from "../../constants/theme.ts";
+import Action, { type ActionProps } from "../ui/Action.tsx";
 import type { MeRouter } from "./MeRouter.ts";
 
 const MeLayout = () => {
+	const auth = useAuth();
 	return (
-		<Flex center>
-			<Flex className={"container"} col pad2h gap3>
-				<Flex>
-					<Flex rounded fill bg pad4></Flex>
-				</Flex>
-				<Flex hide={"md"}>
-					<MeMenu mobile={true} />
-				</Flex>
-				<Flex gap3>
-					<Flex visible={"md"}>
-						<Flex col>
-							<MeMenu />
-						</Flex>
+		<Container w={theme.container} flex={1}>
+			<Stack flex={1} w={"100%"}>
+				<Card
+					withBorder
+					className={"shadow"}
+					flex={1}
+					p={"md"}
+					px={"lg"}
+					bg={theme.colors.panel}
+				>
+					<Text>{auth.user?.name}</Text>
+					<Text size={"xs"}>{auth.user?.email}</Text>
+				</Card>
+				<Flex
+					flex={1}
+					gap={"lg"}
+					direction={{
+						base: "column",
+						md: "row",
+					}}
+				>
+					<Flex
+						h={"100%"}
+						w={{
+							base: "100%",
+							md: "196px",
+						}}
+					>
+						<MeMenu />
 					</Flex>
-					<Flex wFill>
-						<NestedView />
-					</Flex>
+					<NestedView />
 				</Flex>
-			</Flex>
-		</Flex>
+			</Stack>
+		</Container>
 	);
 };
 
 export default MeLayout;
 
-const MeMenu = (props: { mobile?: boolean }) => {
+const MeMenu = () => {
 	const meRouter = useRouter<MeRouter>();
 
 	return (
-		<Flex
-			fill={props.mobile}
-			col={!props.mobile}
-			gap1
-			pad1
-			bordered
-			rounded
-			shadow
-			style={props.mobile ? { width: "100%" } : { width: "196px" }}
+		<Card
+			withBorder
+			bg={theme.colors.app}
+			p={"xs"}
+			w={{
+				base: "100%",
+				md: "196px",
+			}}
 		>
-			{!props.mobile && <Text small>General</Text>}
-			<ActionNavLink
-				fill={props.mobile}
-				visibleText={"md"}
-				icon={<UserIcon />}
-				text={"Profile"}
-				href={meRouter.path("profile")}
-			/>
-			<ActionNavLink
-				fill={props.mobile}
-				visibleText={"md"}
-				icon={<People />}
-				text={"Campaigns"}
-				href={meRouter.path("characters")}
-			/>
-			{!props.mobile && <Text small>Security</Text>}
-			<ActionNavLink
-				fill={props.mobile}
-				visibleText={"md"}
-				icon={<Antenna />}
-				text={"Sessions"}
-				href={meRouter.path("sessions")}
-			/>
-		</Flex>
+			<Flex
+				flex={1}
+				gap={"xs"}
+				direction={{
+					base: "row",
+					md: "column",
+				}}
+			>
+				<Text visibleFrom={"md"} size="xs">
+					General
+				</Text>
+				<ActionNavLink
+					leftSection={<IconUser size={20} />}
+					href={meRouter.path("profile")}
+				>
+					Profile
+				</ActionNavLink>
+				<ActionNavLink
+					leftSection={<IconUsers size={20} />}
+					href={meRouter.path("characters")}
+				>
+					Campaigns
+				</ActionNavLink>
+				<Text visibleFrom={"md"} size="xs">
+					Security
+				</Text>
+				<ActionNavLink
+					leftSection={<IconAntenna size={20} />}
+					href={meRouter.path("sessions")}
+				>
+					Sessions
+				</ActionNavLink>
+			</Flex>
+		</Card>
 	);
 };
 
 const ActionNavLink = (props: ActionProps & { href: string }) => {
-	return <Action variant={"minimal"} fill alignText={"left"} {...props} />;
+	return (
+		<Action size={"xs"} justify={"flex-start"} variant={"minimal"} {...props}>
+			{props.children}
+		</Action>
+	);
 };

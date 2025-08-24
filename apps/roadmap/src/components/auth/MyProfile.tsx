@@ -1,4 +1,4 @@
-import { Flex } from "@alepha/react-flex";
+import { Flex } from "@mantine/core";
 import type { User } from "../../api/providers/Db.ts";
 
 export interface ProfileProps {
@@ -7,8 +7,8 @@ export interface ProfileProps {
 
 const MyProfile = (props: ProfileProps) => {
 	return (
-		<Flex bg fill center>
-			profile
+		<Flex bg={"var(--app-bg-color)"} flex={1} align="center" justify="center">
+			TODO: Profile
 		</Flex>
 	);
 };

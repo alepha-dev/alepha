@@ -1,9 +1,13 @@
 import { useRouter, useRouterState, useStore } from "@alepha/react";
-import { Flex, Text } from "@alepha/react-flex";
-import { Divider, Menu, MenuItem, Popover } from "@blueprintjs/core";
-import { Blank, Plus, Slash, TickCircle } from "@blueprintjs/icons";
+import { Flex, Menu } from "@mantine/core";
+import {
+	IconPlus,
+	IconSlash,
+	IconSquare,
+	IconSquareCheck,
+} from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
-import Action from "./Action.tsx";
+import Action from "../ui/Action.tsx";
 
 const HeaderProject = () => {
 	const [project] = useStore("project");
@@ -17,40 +21,43 @@ const HeaderProject = () => {
 
 	const menuItem = (id: number, label: string) => {
 		return (
-			<MenuItem
+			<Menu.Item
 				key={id}
-				intent={url.pathname.startsWith(`/p/${id}`) ? "primary" : "none"}
-				icon={url.pathname.startsWith(`/p/${id}`) ? <TickCircle /> : <Blank />}
-				text={label}
+				leftSection={
+					url.pathname.startsWith(`/p/${id}`) ? (
+						<IconSquareCheck size={16} />
+					) : (
+						<IconSquare size={16} />
+					)
+				}
 				onClick={() => router.go(`/p/${id}`)}
-			/>
+			>
+				{label}
+			</Menu.Item>
 		);
 	};
 
 	return (
-		<Flex gap1 center>
-			<Slash />
-			<Flex>
-				<Popover
-					position={"bottom"}
-					minimal
-					content={
-						<Menu>
-							{projects.map((p) => menuItem(p.id, p.title))}
-							<Divider />
-							<MenuItem
-								text={"Add Project"}
-								icon={<Plus />}
-								href={router.path("projectCreate")}
-							/>
-						</Menu>
-					}
-				>
-					<Action variant={"minimal"}>
-						<Text bold>{project.title}</Text>
-					</Action>
-				</Popover>
+		<Flex gap={"xs"} align="center" justify="center">
+			<Flex visibleFrom={"sm"}>
+				<IconSlash size={16} />
 			</Flex>
+			<Menu trigger="hover" position="bottom">
+				<Menu.Target>
+					<Action variant={"subtle"}>{project.title}</Action>
+				</Menu.Target>
+				<Menu.Dropdown>
+					{projects.map((p) => menuItem(p.id, p.title))}
+					<Menu.Divider />
+					<Menu.Item
+						leftSection={<IconPlus size={16} />}
+						component="a"
+						href={router.path("projectCreate")}
+					>
+						Create Campaign
+					</Menu.Item>
+				</Menu.Dropdown>
+			</Menu>
 		</Flex>
 	);
 };

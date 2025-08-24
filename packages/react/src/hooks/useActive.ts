@@ -51,5 +51,4 @@ export interface UseActiveHook {
 	isActive: boolean;
 	anchorProps: AnchorProps;
 	isPending: boolean;
-	name?: string;
 }

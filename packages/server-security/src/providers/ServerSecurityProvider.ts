@@ -25,23 +25,19 @@ export class ServerSecurityProvider {
 		on: "configure",
 		handler: async () => {
 			for (const action of this.alepha.descriptors($action)) {
+				// -------------------------------------------------------------------------------------------------------------
+				// if the action is disabled or not secure, we do NOT create a permission for it
+				// -------------------------------------------------------------------------------------------------------------
 				if (action.options.disabled || action.options.secure === false) {
-					// if the action is disabled or not secure, we skip it
 					continue;
 				}
 
-				action.options.secure = true; // ensure the action is secure by default
-
-				const route = action.route;
-
-				const permission: Permission = {
+				this.securityProvider.createPermission({
 					name: action.name,
 					group: action.group,
-					method: route.method,
-					path: route.path,
-				};
-
-				this.securityProvider.createPermission(permission);
+					method: action.route.method,
+					path: action.route.path,
+				});
 			}
 		},
 	});
@@ -51,6 +47,12 @@ export class ServerSecurityProvider {
 	protected readonly onActionRequest = $hook({
 		on: "action:onRequest",
 		handler: async ({ action, request, options }) => {
+			// if you set explicitly secure: false, we assume you don't want any security check
+			if (action.options.secure === false) {
+				this.log.trace("Skipping security check for route");
+				return;
+			}
+
 			const permission = this.securityProvider
 				.getPermissions()
 				.find(
@@ -68,10 +70,11 @@ export class ServerSecurityProvider {
 					this.alepha.parse(userAccountInfoSchema, request.user),
 				);
 			} catch (error) {
-				if (action.options.secure) {
+				if (action.options.secure || permission) {
 					throw error;
 				}
 				// else, we skip the security check
+				this.log.trace("Skipping security check for action");
 			}
 		},
 	});
@@ -80,30 +83,45 @@ export class ServerSecurityProvider {
 		on: "server:onRequest",
 		priority: "last",
 		handler: async ({ request, route }) => {
+			// if you set explicitly secure: false, we assume you don't want any security check
+			if (route.secure === false) {
+				this.log.trace(
+					"Skipping security check for route - explicitly disabled",
+				);
+				return;
+			}
+
 			const permission = this.securityProvider
 				.getPermissions()
 				.find((it) => it.path === route.path && it.method === route.method);
 
 			try {
+				// set user to request
 				request.user = await this.securityProvider.createUserFromToken(
 					request.headers.authorization,
 					{ permission },
 				);
+
 				this.alepha.state(
 					"user",
+					// remove sensitive info
 					this.alepha.parse(userAccountInfoSchema, request.user),
 				);
+
 				this.log.trace("User set from request token", {
 					user: request.user,
-					permission: permission,
+					permission,
 				});
 			} catch (error) {
 				if (route.secure || permission) {
 					throw error;
 				}
 
-				this.log.trace("Skipping security check for route");
 				// else, we skip the security check
+				this.log.trace(
+					"Skipping security check for route - error occurred",
+					error,
+				);
 			}
 		},
 	});

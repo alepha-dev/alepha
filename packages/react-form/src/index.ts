@@ -11,7 +11,7 @@ export * from "./services/FormModel.ts";
 
 declare module "@alepha/core" {
 	interface Hooks {
-		"form:change": { id: string };
+		"form:change": { id: string; path: string };
 		"form:submit:begin": { id: string };
 		"form:submit:success": { id: string };
 		"form:submit:error": { id: string; error: Error };

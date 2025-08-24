@@ -1,10 +1,10 @@
-import { Flex } from "@alepha/react-flex";
+import { Flex } from "@mantine/core";
 
 const StupidLogo = () => {
 	return (
 		<Flex style={{ position: "relative" }}>
 			<Flex
-				gap1
+				gap={8}
 				style={{
 					transform: "rotate(90deg) scale(0.8)",
 					position: "absolute",
@@ -15,7 +15,7 @@ const StupidLogo = () => {
 				<Flex className={"rd-logo-bar"} style={{ width: "4px" }} />
 				<Flex className={"rd-logo-bar"} style={{ width: "2px" }} />
 			</Flex>
-			<Flex gap1 style={{ transform: "rotate(-16deg) scale(0.8)" }}>
+			<Flex gap={8} style={{ transform: "rotate(-16deg) scale(0.8)" }}>
 				<Flex className={"rd-logo-bar"} style={{ width: "2px" }} />
 				<Flex className={"rd-logo-bar"} style={{ width: "3px" }} />
 				<Flex className={"rd-logo-bar"} style={{ width: "4px" }} />

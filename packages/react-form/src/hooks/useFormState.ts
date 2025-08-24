@@ -1,4 +1,4 @@
-import type { TObject } from "@alepha/core";
+import { type TObject, TypeBoxError } from "@alepha/core";
 import { useAlepha } from "@alepha/react";
 import { useEffect, useState } from "react";
 import type { FormModel } from "../services/FormModel.ts";
@@ -10,41 +10,72 @@ export interface UseFormStateReturn<T extends TObject> {
 	error?: Error;
 }
 
+export type FormStateEvent = "change" | "submit" | "error";
+
 export const useFormState = <T extends TObject>(
-	form: FormModel<T>,
+	target: FormModel<T> | { form: FormModel<T>; path: string },
+	events: FormStateEvent[] = ["change", "submit", "error"],
 ): UseFormStateReturn<T> => {
 	const alepha = useAlepha();
 
 	const [dirty, setDirty] = useState(false);
 	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<Error | undefined>(undefined);
+
+	const form = "form" in target ? target.form : target;
+	const path = "path" in target ? target.path : undefined;
 
 	useEffect(() => {
 		const listeners: Function[] = [];
 
-		listeners.push(
-			alepha.on("form:change", (event) => {
-				if (event.id === form.id) {
-					setDirty(true);
-				}
-			}),
-		);
+		if (events.includes("change") || events.includes("error")) {
+			listeners.push(
+				alepha.on("form:change", (event) => {
+					if (event.id === form.id) {
+						if (!path || event.path === path) {
+							setDirty(true);
+							setError(undefined);
+						}
+					}
+				}),
+				alepha.on("form:submit:success", (event) => {
+					if (event.id === form.id) {
+						setDirty(false);
+					}
+				}),
+			);
+		}
 
-		listeners.push(
-			alepha.on("form:submit:begin", (event) => {
-				if (event.id === form.id) {
-					setDirty(false);
-					setLoading(true);
-				}
-			}),
-		);
+		if (events.includes("submit")) {
+			listeners.push(
+				alepha.on("form:submit:begin", (event) => {
+					if (event.id === form.id) {
+						setLoading(true);
+					}
+				}),
+				alepha.on("form:submit:end", (event) => {
+					if (event.id === form.id) {
+						setLoading(false);
+					}
+				}),
+			);
+		}
 
-		listeners.push(
-			alepha.on("form:submit:end", (event) => {
-				if (event.id === form.id) {
-					setLoading(false);
-				}
-			}),
-		);
+		if (events.includes("error")) {
+			listeners.push(
+				alepha.on("form:submit:error", (event) => {
+					if (event.id === form.id) {
+						if (
+							!path ||
+							(event.error instanceof TypeBoxError &&
+								event.error.value.path === path)
+						) {
+							setError(event.error);
+						}
+					}
+				}),
+			);
+		}
 
 		return () => {
 			for (const unsub of listeners) {
@@ -56,5 +87,6 @@ export const useFormState = <T extends TObject>(
 	return {
 		dirty,
 		loading,
+		error,
 	};
 };

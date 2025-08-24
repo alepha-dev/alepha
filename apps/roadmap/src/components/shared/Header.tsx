@@ -1,13 +1,13 @@
-import { useRouterEvents, useStore } from "@alepha/react";
-import { Flex, Text } from "@alepha/react-flex";
+import { useRouter, useRouterEvents, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Drawer } from "@blueprintjs/core";
-import { Cross, GitRepo } from "@blueprintjs/icons";
+import { Burger, Container, Drawer, Flex } from "@mantine/core";
 import { useState } from "react";
+import type { AppRouter } from "../../AppRouter.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
-import Action from "./Action.tsx";
+import Action from "../ui/Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import HeaderProject from "./HeaderProject.tsx";
 import StupidLogo from "./StupidLogo.tsx";
@@ -15,30 +15,42 @@ import StupidLogo from "./StupidLogo.tsx";
 const Header = () => {
 	const { tr } = useI18n<I18n, "en">();
 
+	const router = useRouter<AppRouter>();
+
 	return (
-		<Flex col pad1 gap1 style={{ height: 54 }} centerY>
-			<Flex wFill pad2h>
-				<Flex fill gap1>
-					<Flex center gap1>
+		<Flex
+			direction={"column"}
+			p={"xs"}
+			px={"md"}
+			gap={"xs"}
+			style={{ height: 64 }}
+			align="center"
+			justify="center"
+		>
+			<Flex w={"100%"} px={2}>
+				<Flex flex={1} gap={"xs"}>
+					<Flex align="center" justify="center" gap={"xs"}>
 						<MobileQuestLog />
-						<Flex visible={"md"}>
+						<Flex visibleFrom={"lg"}>
 							<StupidLogo />
 						</Flex>
-						<Flex col>
-							<Action active={false} variant={"minimal"} href={"/"}>
-								<Text bold>{tr("header.title")}</Text>
+						<Flex>
+							<Action
+								variant={"subtle"}
+								href={router.path("home")}
+								active={false}
+							>
+								{tr("header.title")}
 							</Action>
 						</Flex>
 						<HeaderProject />
 					</Flex>
 				</Flex>
-				<Flex pad2h visible={"md"} className={"container header"}>
-					<Flex fill col>
-						<ProjectActions />
-					</Flex>
-				</Flex>
-				<Flex fill>
-					<Flex fill />
+				<Container w={theme.container} visibleFrom={"lg"}>
+					<ProjectActions />
+				</Container>
+				<Flex flex={1}>
+					<Flex flex={1} />
 					<HeaderActions />
 				</Flex>
 			</Flex>
@@ -61,32 +73,16 @@ const MobileQuestLog = () => {
 	}
 
 	return (
-		<Flex hide={"md"}>
-			<Action
-				size={"large"}
-				icon={<GitRepo />}
-				variant={"minimal"}
-				onClick={() => setShow(true)}
-			/>
+		<Flex hiddenFrom={"md"}>
+			<Burger opened={show} onClick={() => setShow(true)} />
 			<Drawer
+				flex={1}
+				bg={theme.colors.panel}
 				onClose={() => setShow(false)}
 				position={"left"}
-				className={"drawer"}
-				isOpen={show}
+				opened={show}
 			>
-				<Flex bg col bordered fill pad1 overflow>
-					<Flex center pad2h style={{ height: 48 }}>
-						<Flex fill></Flex>
-						<Flex>
-							<Button
-								variant={"minimal"}
-								icon={<Cross />}
-								onClick={() => setShow(false)}
-							/>
-						</Flex>
-					</Flex>
-					<QuestLog />
-				</Flex>
+				<QuestLog />
 			</Drawer>
 		</Flex>
 	);

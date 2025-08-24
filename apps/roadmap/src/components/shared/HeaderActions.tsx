@@ -1,28 +1,22 @@
-import { useInject, useRouter } from "@alepha/react";
+import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
-import { Flex } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button } from "@blueprintjs/core";
-import { Moon, User } from "@blueprintjs/icons";
+import { ActionIcon, Flex, useMantineColorScheme } from "@mantine/core";
+import { IconMoon, IconUser } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Security } from "../../api/providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { Theme } from "../../services/Theme.ts";
 import type { MeRouter } from "../auth/MeRouter.ts";
-import Action from "./Action.tsx";
+import Action from "../ui/Action.tsx";
 
 const HeaderActions = () => {
-	const theme = useInject(Theme);
+	const { toggleColorScheme } = useMantineColorScheme();
 	return (
-		<Flex gap1 center>
+		<Flex gap={"xs"} align="center" justify="center">
 			<AuthButton />
-			<Button
-				icon={<Moon />}
-				variant={"minimal"}
-				onClick={() => {
-					theme.toggleColorScheme();
-				}}
-			></Button>
+			<ActionIcon size={"lg"} variant={"subtle"} onClick={toggleColorScheme}>
+				<IconMoon />
+			</ActionIcon>
 		</Flex>
 	);
 };
@@ -38,15 +32,13 @@ const AuthButton = () => {
 	if (auth.user) {
 		return (
 			<Action
-				alignText={"left"}
-				variant={"minimal"}
+				ta={"left"}
+				variant={"subtle"}
 				href={routerMe.path("profile")}
-				useActiveOptions={{
+				active={{
 					startWith: true,
 				}}
-				visibleText={"md"}
-				text={auth.user.name}
-				icon={
+				leftSection={
 					<img
 						alt={"picture"}
 						style={{
@@ -57,22 +49,24 @@ const AuthButton = () => {
 						src={"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"}
 					/>
 				}
-			/>
+			>
+				{auth.user.name}
+			</Action>
 		);
 	}
 
 	return (
 		<Action
 			style={{ textWrap: "nowrap" }}
-			variant={"minimal"}
-			icon={<User />}
-			text={tr("header.actions.login")}
-			visibleText={"md"}
+			variant={"subtle"}
+			leftSection={<IconUser />}
 			href={router.path("login", {
 				query: {
 					r: router.pathname,
 				},
 			})}
-		/>
+		>
+			{tr("header.actions.login")}
+		</Action>
 	);
 };

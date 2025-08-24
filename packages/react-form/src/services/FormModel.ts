@@ -60,9 +60,12 @@ export class FormModel<T extends TObject> {
 			});
 		} catch (error) {
 			this.log.error("Form submission error:", error);
+
 			options.onError?.(error as Error, args);
+
 			this.alepha.emit("form:submit:error", { error, id: this.id });
 		}
+
 		this.alepha.emit("form:submit:end", {
 			id: this.id,
 		});
@@ -164,6 +167,7 @@ export class FormModel<T extends TObject> {
 						prop as keyof Static<T> & string,
 						options,
 						schema,
+						schema.required?.includes(prop as string) || false,
 						context,
 					);
 				}
@@ -175,6 +179,7 @@ export class FormModel<T extends TObject> {
 		name: keyof Static<T> & string,
 		options: FormCtrlOptions<T>,
 		schema: TSchema,
+		required: boolean,
 		context: {
 			parent: string;
 			store: Record<string, any>;
@@ -185,9 +190,11 @@ export class FormModel<T extends TObject> {
 		if (!field) {
 			return {
 				path: "",
+				required,
 				props: {} as InputHTMLAttributes<unknown>,
 				schema: schema,
 				set: () => {},
+				form: this,
 			};
 		}
 
@@ -210,6 +217,7 @@ export class FormModel<T extends TObject> {
 
 			this.alepha.emit("form:change", {
 				id: this.id,
+				path: path,
 			});
 		};
 
@@ -291,6 +299,8 @@ export class FormModel<T extends TObject> {
 			props: attr,
 			schema: field,
 			set,
+			form: this,
+			required,
 		};
 	}
 
@@ -361,16 +371,18 @@ export type SchemaToInput<T extends TObject> = {
 };
 
 export interface FormEventLike {
-	currentTarget: HTMLFormElement;
+	currentTarget: any;
 	preventDefault: () => void;
 	stopPropagation: () => void;
 }
 
 export interface InputField {
 	path: string;
+	required: boolean;
 	props: InputHTMLAttributesLike;
 	schema: TSchema;
 	set: (value: any) => void;
+	form: FormModel<any>;
 }
 
 export type InputHTMLAttributesLike = Pick<

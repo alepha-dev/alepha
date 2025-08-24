@@ -29,8 +29,6 @@ export class HttpClient {
 	}
 
 	public async fetchAction(args: FetchActionArgs): Promise<FetchResponse> {
-		this.log.trace("Fetch action", args);
-
 		const route = args.action; // our link to fetch
 		const options = args.options ?? {}; // fetch standard options, cache, etc.
 		const config = args.config ?? {}; // params, query, body, etc.
@@ -75,7 +73,7 @@ export class HttpClient {
 	): Promise<FetchResponse<T>> {
 		request.method ??= "GET";
 
-		this.log.trace("Fetch request", {
+		this.log.trace("Request", {
 			url,
 			method: request.method,
 			body: request.body,
@@ -122,7 +120,7 @@ export class HttpClient {
 
 		this.pendingRequests[key] = fetch(url, request)
 			.then(async (response) => {
-				this.log.debug("Fetch response", {
+				this.log.debug("Response", {
 					url,
 					status: response.status,
 				});

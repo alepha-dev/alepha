@@ -63,6 +63,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 				}
 
 				const containerName = this.convertName(bucket.name);
+
 				this.log.debug(`Prepare container '${containerName}' ...`);
 
 				if (!this.containers[containerName]) {
@@ -86,6 +87,11 @@ export class AzureFileStorageProvider implements FileStorageProvider {
 		fileId?: string,
 	): Promise<string> {
 		fileId ??= this.createId();
+
+		this.log.trace(
+			`Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
+		);
+
 		const block = this.getBlock(bucketName, fileId);
 
 		const metadata = {

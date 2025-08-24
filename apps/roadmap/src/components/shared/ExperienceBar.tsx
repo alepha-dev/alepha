@@ -1,8 +1,8 @@
 import { useInject, useStore } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
-import { Flex, Text } from "@alepha/react-flex";
-import { Popover } from "@blueprintjs/core";
+import { Card, Flex, HoverCard, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
+import { theme } from "../../constants/theme.ts";
 import { Level } from "../../services/Level.ts";
 
 const ExperienceBar = () => {
@@ -18,7 +18,14 @@ const ExperienceBar = () => {
 
 	for (let i = 0; i < 20; i++) {
 		chunks.push(
-			<Flex bordered key={i} className={`experience-bar-chunk n${i}`} />,
+			<Card
+				bg={"transparent"}
+				withBorder
+				radius={0}
+				p={0}
+				key={i}
+				className={`experience-bar-chunk n${i}`}
+			/>,
 		);
 	}
 
@@ -28,51 +35,56 @@ const ExperienceBar = () => {
 	const percentage = Math.floor((current * 100) / max);
 
 	return (
-		<Flex pad1>
+		<Flex p={"xs"}>
 			<Flex
-				fill
+				flex={1}
 				style={{
 					position: "relative",
 				}}
 			>
-				<Flex bg style={{ width: "100%", height: 10 }} />
+				<Card
+					p={0}
+					bg={theme.colors.panel}
+					style={{ width: "100%", height: 10 }}
+				/>
 
 				<Flex
 					className={"experience-bar-progress"}
 					style={{ width: `${percentage}%` }}
 				/>
 
-				<Flex shadow wFill style={{ position: "absolute", height: "100%" }}>
+				<Flex w={"100%"} style={{ position: "absolute", height: "100%" }}>
 					{chunks}
 				</Flex>
 
-				<Flex
-					card
-					bordered
-					shadow
+				<Card
+					withBorder
+					p={0}
 					className={"experience-bar-cursor"}
 					style={{ left: `${percentage}%` }}
 				/>
 
-				<Flex fill center style={{ position: "absolute", left: 0, top: 0 }}>
-					<Popover
-						fill
-						position={"top"}
-						interactionKind={"hover"}
-						hoverOpenDelay={1000}
-						content={
-							<Flex col pad1 style={{ maxWidth: 256 }}>
-								<Text bold>Experience Bar</Text>
-								<Text small>
+				<Flex
+					flex={1}
+					align="center"
+					justify="center"
+					style={{ position: "absolute", left: 0, top: -4, right: 0 }}
+				>
+					<HoverCard openDelay={1000} position="top">
+						<HoverCard.Target>
+							<Text size={"xs"} className={"experience-bar-text"}>
+								XP: {current}/{max}
+							</Text>
+						</HoverCard.Target>
+						<HoverCard.Dropdown>
+							<Stack style={{ maxWidth: 256 }}>
+								<Text>Experience Bar</Text>
+								<Text size="sm">
 									Shows your current experience progress towards the next level.
 								</Text>
-							</Flex>
-						}
-					>
-						<Text className={"experience-bar-text"}>
-							XP: {current}/{max}
-						</Text>
-					</Popover>
+							</Stack>
+						</HoverCard.Dropdown>
+					</HoverCard>
 				</Flex>
 			</Flex>
 		</Flex>

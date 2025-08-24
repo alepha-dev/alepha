@@ -143,11 +143,11 @@ const BottomNavButton = (props: { name: string }) => {
 	return (
 		<SimpleGrid cols={{ sm: 1, md: 2 }}>
 			{nav.previous && (
-				<NavButton name={nav.previous.name} to={nav.previous.path} />
+				<NavButton name={nav.previous.name} href={nav.previous.path} />
 			)}
 			{!nav.previous && <Flex />}
 			{nav.next && (
-				<NavButton isRight name={nav.next.name} to={nav.next.path} />
+				<NavButton isRight name={nav.next.name} href={nav.next.path} />
 			)}
 		</SimpleGrid>
 	);
@@ -155,13 +155,13 @@ const BottomNavButton = (props: { name: string }) => {
 
 const NavButton = (
 	props: ButtonProps & {
-		to: string;
+		href: string;
 		name: string;
 		isRight?: boolean;
 	},
 ) => {
-	const { to, name, isRight, ...rest } = props;
-	const { isPending, anchorProps } = useActive(to);
+	const { href, name, isRight, ...rest } = props;
+	const { isPending, anchorProps } = useActive(href);
 	return (
 		<Button
 			flex={1}

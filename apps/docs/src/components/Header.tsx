@@ -60,7 +60,7 @@ const Header = (props: Props) => {
 					visibleFrom={"md"}
 					variant={"transparent"}
 					component={Link}
-					to={"/docs/introduction"}
+					href={"/docs/introduction"}
 				>
 					Start
 				</Button>
@@ -129,7 +129,7 @@ const SearchButton = () => {
 const HomeButton = () => {
 	const router = useRouter();
 	return (
-		<Button size={"xl"} variant={"transparent"} component={Link} to={"/"}>
+		<Button size={"xl"} variant={"transparent"} component={Link} href={"/"}>
 			<Flex align={"center"} justify={"center"}>
 				<Flex>
 					<Image

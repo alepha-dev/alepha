@@ -24,6 +24,7 @@ import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
 import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";
+import { HttpClient } from "./services/HttpClient.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -127,6 +128,7 @@ export const AlephaServer = $module({
 		ServerLoggerProvider,
 		ServerNotReadyProvider,
 		ServerTimingProvider,
+		HttpClient,
 	],
 	register: (alepha: Alepha) => {
 		alepha.with({

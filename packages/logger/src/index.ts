@@ -125,9 +125,11 @@ export const AlephaLogger = $module({
 			}),
 		);
 
+		// TODO: maybe in test mode, we should level=trace, but destination=memory and print all logs only if the test fails?
+
 		alepha.state(
 			"logLevel",
-			env.LOG_LEVEL ?? (alepha.isTest() ? "error" : "info"),
+			env.LOG_LEVEL ?? (alepha.isTest() ? "silent" : "info"),
 		);
 	},
 });

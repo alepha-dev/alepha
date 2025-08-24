@@ -55,7 +55,7 @@ const FeatureGrid = () => (
 					style={{ opacity: feature.disabled ? 0.3 : 1 }}
 					size={"xl"}
 					component={Link}
-					to={feature.disabled ? "/" : `/docs/alepha-${feature.slug}`}
+					href={feature.disabled ? "/" : `/docs/alepha-${feature.slug}`}
 					flex={1}
 					key={feature.title}
 				>
@@ -159,7 +159,7 @@ const HeroSectionMessage = () => {
 					radius="xl"
 					leftSection={<IconPlayerPlay size={20} />}
 					component={Link}
-					to="/docs/introduction"
+					href="/docs/introduction"
 				>
 					Get Started
 				</Button>
@@ -169,7 +169,7 @@ const HeroSectionMessage = () => {
 					radius="xl"
 					leftSection={<IconBook size={20} />}
 					component={Link}
-					to="/docs/alepha-core"
+					href="/docs/alepha-core"
 				>
 					Explore Packages
 				</Button>

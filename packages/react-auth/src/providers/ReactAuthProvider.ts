@@ -2,12 +2,7 @@ import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { SecurityError, type UserAccount } from "@alepha/security";
-import {
-	$route,
-	BadRequestError,
-	ForbiddenError,
-	UnauthorizedError,
-} from "@alepha/server";
+import { $route, BadRequestError, UnauthorizedError } from "@alepha/server";
 import {
 	$cookie,
 	type Cookies,
@@ -107,26 +102,10 @@ export class ReactAuthProvider {
 		handler: async ({ request }) => {
 			const cookies = request.cookies;
 
-			// [feature] csrf protection
-			if (!this.reactAuth.csrfCookie.get({ cookies })) {
-				this.reactAuth.csrfCookie.set(randomState(), {
-					cookies,
-				});
-			}
-
 			// [feature] forward cookies to request headers
 			if (cookies) {
 				const tokens = await this.cookiesToTokens(cookies);
 				if (tokens) {
-					if (
-						request.method === "POST" ||
-						request.method === "PUT" ||
-						request.method === "PATCH" ||
-						request.method === "DELETE"
-					) {
-						this.checkCsrf(cookies, request.headers["x-csrf-token"]);
-					}
-
 					request.headers.authorization = `Bearer ${this.getAccessTokens(tokens)}`;
 					this.log.trace("Access token set in request headers", {
 						provider: tokens.provider,
@@ -183,15 +162,6 @@ export class ReactAuthProvider {
 		}
 
 		return refreshedTokens;
-	}
-
-	protected async checkCsrf(cookies: Cookies, csrfHeader: string) {
-		const csrfCookie = this.reactAuth.csrfCookie.get({ cookies });
-		if (!csrfCookie || csrfCookie !== csrfHeader) {
-			throw new ForbiddenError(
-				"CSRF token mismatch. Please refresh the page and try again.",
-			);
-		}
 	}
 
 	protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {

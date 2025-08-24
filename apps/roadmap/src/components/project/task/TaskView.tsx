@@ -6,25 +6,26 @@ import {
 	useRouter,
 	useStore,
 } from "@alepha/react";
-import { Flex, Text } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Divider, Drawer } from "@blueprintjs/core";
+import { Card, Drawer, Flex, Group, Stack, Text } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import {
-	BankAccount,
-	Cross,
-	Edit,
-	ManuallyEnteredData,
-	SymbolCircle,
-	Tag,
-	Tick,
-} from "@blueprintjs/icons";
+	IconCheck,
+	IconCircleFilled,
+	IconEdit,
+	IconFileText,
+	IconPigMoney,
+	IconTag,
+	IconX,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
+import { theme } from "../../../constants/theme.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { Level } from "../../../services/Level.ts";
-import Action from "../../shared/Action.tsx";
+import Action from "../../ui/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
 
@@ -51,28 +52,53 @@ const TaskView = (props: TaskViewProps) => {
 		return null;
 	}
 
+	const openDeleteModal = () =>
+		new Promise<boolean>((resolve) =>
+			modals.openConfirmModal({
+				title: "Abandon the quest",
+				centered: true,
+				children: (
+					<Text size="sm">
+						Are you sure you want to abandon this quest? You will lose all
+						progress on this task.
+					</Text>
+				),
+				onClose: () => resolve(false),
+				labels: { confirm: "Abandon Quest", cancel: "Cancel" },
+				confirmProps: { color: "red" },
+				onCancel: () => resolve(false),
+				onConfirm: () => resolve(true),
+			}),
+		);
+
 	return (
-		<Flex fill pad1 col>
-			<Flex card pad1 fill gap3 col shadow bordered>
-				<Flex overflow fill col>
+		<Card flex={1} withBorder radius={0} bg={theme.colors.card} p={0}>
+			<Stack flex={1} className={"overflow-auto"} gap={0}>
+				<Stack flex={1} className={"overflow-auto"} p={"xs"} gap={0}>
 					<Flex>
-						<Flex fill />
+						<Flex flex={1} />
 						<Flex>
 							<Action
+								px={"xs"}
 								href={router.path("projectBoard", {
 									params: { projectId: String(project.id) },
 								})}
-								icon={<Cross />}
-								size={"small"}
-								variant={"minimal"}
-							/>
+							>
+								<IconX size={theme.icon.size.md} />
+							</Action>
 						</Flex>
 					</Flex>
 
-					<Flex pad3 col gap3 fill overflow>
-						<Flex gap1 centerX>
-							<Tag />
-							<Text large bold style={{ textWrap: "nowrap" }}>
+					<Flex
+						p={"md"}
+						direction={"column"}
+						gap={"md"}
+						flex={1}
+						className={"overflow-auto"}
+					>
+						<Flex gap={"xs"} align="center" justify="center">
+							<IconTag size={theme.icon.size.lg} />
+							<Text size="lg" fw={"bold"} style={{ textWrap: "nowrap" }}>
 								{task.title}
 							</Text>
 							<EditTaskButton
@@ -82,7 +108,7 @@ const TaskView = (props: TaskViewProps) => {
 								setShowDialog={setShowDialog}
 							/>
 							<Flex
-								wFill
+								w={"100%"}
 								style={{
 									opacity: 0.1,
 									height: 1,
@@ -90,7 +116,7 @@ const TaskView = (props: TaskViewProps) => {
 								}}
 							/>
 						</Flex>
-						<Text>
+						<Text size={"sm"}>
 							{tr("task.view.summary", [
 								task.priority,
 								task.complexity === 5
@@ -105,14 +131,14 @@ const TaskView = (props: TaskViewProps) => {
 							])}
 						</Text>
 
-						<Flex col>
-							<Flex gap1 centerX>
-								<ManuallyEnteredData />
-								<Text large bold>
+						<Stack gap={0}>
+							<Flex gap={"xs"} align="center" justify="center">
+								<IconFileText size={theme.icon.size.lg} />
+								<Text size="lg" fw={"bold"}>
 									{tr("task.view.description")}
 								</Text>
 								<Flex
-									wFill
+									w={"100%"}
 									style={{
 										opacity: 0.1,
 										height: 1,
@@ -120,15 +146,17 @@ const TaskView = (props: TaskViewProps) => {
 									}}
 								/>
 							</Flex>
-						</Flex>
+						</Stack>
+
 						<TaskDescription task={task} onEdit={() => setShowDialog(true)} />
-						<Flex gap1 centerX>
-							<BankAccount />
-							<Text large bold>
+
+						<Flex gap={"xs"} align="center" justify="center">
+							<IconPigMoney size={theme.icon.size.lg} />
+							<Text size="lg" fw={"bold"}>
 								{tr("task.view.rewards")}
 							</Text>
 							<Flex
-								wFill
+								w={"100%"}
 								style={{
 									opacity: 0.1,
 									height: 1,
@@ -136,78 +164,106 @@ const TaskView = (props: TaskViewProps) => {
 								}}
 							/>
 						</Flex>
-						<Flex gap2>
-							<Text>{tr("task.view.receive")}</Text>
-							<Flex gap1>
-								<Flex>
-									{task.complexity * 1}{" "}
-									<SymbolCircle color={"var(--color-gold)"} />
+						<Flex gap={"sm"}>
+							<Text size={"sm"}>{tr("task.view.receive")}</Text>
+							<Flex gap={"xs"} align={"center"}>
+								<Flex align={"center"} gap={2}>
+									<Text size={"sm"}>{task.complexity * 1}</Text>
+									<IconCircleFilled
+										color={"var(--color-gold)"}
+										size={theme.icon.size.xs}
+									/>
 								</Flex>
-								<Flex>
-									{task.complexity * 10}{" "}
-									<SymbolCircle color={"var(--color-silver)"} />
+								<Flex align={"center"} gap={2}>
+									<Text size={"sm"}>{task.complexity * 10}</Text>
+									<IconCircleFilled
+										color={"var(--color-silver)"}
+										size={theme.icon.size.xs}
+									/>
 								</Flex>
 							</Flex>
 						</Flex>
-
-						<Flex gap2>
-							<Text>{tr("task.view.experience")}</Text>
-							<Text bold>{level.getXpFromTask(task)} XP</Text>
+						<Flex gap={"sm"}>
+							<Text size={"sm"}>{tr("task.view.experience")}</Text>
+							<Text size={"sm"} fw={"bold"}>
+								{level.getXpFromTask(task)} XP
+							</Text>
 						</Flex>
 					</Flex>
 
-					<Flex pad1h>
-						<Flex fill />
+					<Flex px={1}>
+						<Flex flex={1} />
 						<Flex>
-							<Text small muted>
+							<Text size="sm" c={"dimmed"}>
 								{tr("task.view.created")} {dt.of(task.createdAt).fromNow()}
 							</Text>
 						</Flex>
 					</Flex>
+				</Stack>
+
+				<Flex p={"xs"}>
+					<Card
+						w={"100%"}
+						p={"xs"}
+						bg={theme.colors.panel}
+						withBorder
+						radius={"md"}
+						className={"shadow"}
+					>
+						<Group>
+							<Action
+								c={"green"}
+								variant={"subtle"}
+								leftSection={<IconCheck size={theme.icon.size.md} />}
+								disabled={!taskApi.deleteTask.can()}
+								onClick={async () => {
+									const { character } = await taskApi.completeTask({
+										params: { id: task.id },
+									});
+									alepha.state("character", character);
+									alepha.state(
+										"tasks",
+										(alepha.state("tasks") ?? []).filter(
+											(t) => t.id !== task.id,
+										),
+									);
+									await router.go("projectBoard");
+								}}
+							>
+								{tr("task.view.actions.complete")}
+							</Action>
+							<Flex flex={1} />
+							<Action
+								c={"red"}
+								variant={"subtle"}
+								leftSection={<IconX size={theme.icon.size.md} />}
+								disabled={!taskApi.deleteTask.can()}
+								onClick={async () => {
+									const confirm = await openDeleteModal();
+									if (!confirm) {
+										return;
+									}
+
+									await taskApi.deleteTask({
+										params: { id: task.id },
+									});
+
+									alepha.state(
+										"tasks",
+										(alepha.state("tasks") ?? []).filter(
+											(t) => t.id !== task.id,
+										),
+									);
+									await router.go("projectBoard");
+								}}
+							>
+								{tr("task.view.actions.abandon")}
+							</Action>
+						</Group>
+					</Card>
 				</Flex>
-				<Flex col>
-					<Flex pad1 card shadow bg bordered wFill rounded>
-						<Action
-							variant={"minimal"}
-							intent={"success"}
-							icon={<Tick />}
-							text={tr("task.view.actions.complete")}
-							disabled={!taskApi.deleteTask.can()}
-							onClick={async () => {
-								const { character } = await taskApi.completeTask({
-									params: { id: task.id },
-								});
-								alepha.state("character", character);
-								alepha.state(
-									"tasks",
-									(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
-								);
-								await router.go("projectBoard");
-							}}
-						/>
-						<Divider />
-						<Flex fill />
-						<Action
-							variant={"minimal"}
-							icon={<Cross />}
-							text={tr("task.view.actions.abandon")}
-							intent={"danger"}
-							disabled={!taskApi.deleteTask.can()}
-							onClick={async () => {
-								await taskApi.deleteTask({
-									params: { id: task.id },
-								});
-								alepha.state(
-									"tasks",
-									(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
-								);
-								await router.go("projectBoard");
-							}}
-						/>
-					</Flex>
-				</Flex>
-			</Flex>
-		</Flex>
+			</Stack>
+		</Card>
 	);
 };
 
@@ -234,65 +290,37 @@ const EditTaskButton = (props: {
 	return (
 		<Flex>
 			<Action
-				variant={"minimal"}
-				icon={<Edit />}
+				px={"xs"}
+				variant={"subtle"}
 				onClick={() => {
 					setShowDialog(true);
 				}}
-			/>
+			>
+				<IconEdit size={theme.icon.size.md} />
+			</Action>
 			<Drawer
-				isOpen={showDialog}
+				title={"Update Quest"}
+				size={"xl"}
+				position={"right"}
+				opened={showDialog}
 				onClose={() => setShowDialog(false)}
 				className={"drawer"}
 			>
-				<Flex
-					bg
-					col
-					bordered
-					fill
-					pad2
-					style={{
-						borderTop: 0,
-						borderBottom: 0,
-					}}
+				<Card
+					withBorder
+					bg={theme.colors.card}
+					radius={"md"}
+					className={"shadow"}
 				>
-					<Flex col style={{ height: 48 }}>
-						<Flex>
-							<Flex fill></Flex>
-							<Flex>
-								<Button
-									variant={"minimal"}
-									icon={<Cross />}
-									onClick={() => setShowDialog(false)}
-								/>
-							</Flex>
-						</Flex>
-					</Flex>
-					<Flex col overflow>
-						<Flex pad2h>
-							<Flex
-								pad1
-								card
-								bordered
-								wFill
-								rounded
-								style={{
-									borderBottomLeftRadius: 0,
-									borderBottomRightRadius: 0,
-									borderBottom: 0,
-								}}
-							/>
-						</Flex>
-						<TaskCreate
-							project={project}
-							task={props.task}
-							onSubmit={(task) => {
-								setShowDialog(false);
-								props.onUpdate(task);
-							}}
-						/>
-					</Flex>
-				</Flex>
+					<TaskCreate
+						project={project}
+						task={props.task}
+						onSubmit={(task) => {
+							setShowDialog(false);
+							props.onUpdate(task);
+						}}
+					/>
+				</Card>
 			</Drawer>
 		</Flex>
 	);

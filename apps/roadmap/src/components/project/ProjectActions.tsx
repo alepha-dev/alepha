@@ -1,20 +1,19 @@
 import { useClient, useRouter, useStore } from "@alepha/react";
-import { Flex } from "@alepha/react-flex";
 import { useI18n } from "@alepha/react-i18n";
-import { Button, Drawer } from "@blueprintjs/core";
+import { Card, Drawer, Flex, Group } from "@mantine/core";
 import {
-	Cog,
-	Cross,
-	PanelTable,
-	People,
-	Plus,
-	TimelineLineChart,
-} from "@blueprintjs/icons";
+	IconChartLine,
+	IconPlus,
+	IconSettings,
+	IconTable,
+	IconUsers,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action, { type ActionProps } from "../shared/Action.tsx";
+import Action, { type ActionProps } from "../ui/Action.tsx";
 import TaskCreate from "./task/TaskCreate.tsx";
 
 const ProjectActions = () => {
@@ -31,37 +30,43 @@ const ProjectActions = () => {
 	};
 
 	return (
-		<Flex fill pad1 pad2h bordered shadow bg rounded>
-			<Flex gap1>
-				<TabAction
-					icon={<PanelTable />}
-					text={tr("project.menu.board")}
-					href={router.path("projectBoard", opts)}
-				/>
-				<TabAction
-					icon={<People />}
-					text={tr("project.menu.players")}
-					href={router.path("projectPlayers", opts)}
-				/>
-				<TabAction
-					icon={<TimelineLineChart />}
-					text={tr("project.menu.analytics")}
-					href={router.path("projectAnalytics", opts)}
-				/>
-				<TabAction
-					icon={<Cog />}
-					text={tr("project.menu.settings")}
-					href={router.path("projectSettings", opts)}
-				/>
-			</Flex>
-			<Flex fill />
-			<CreateTaskButton />
-		</Flex>
+		<Card flex={1} py={"xs"} px={"sm"} withBorder radius={"md"}>
+			<Group flex={1}>
+				<Flex gap={"xs"}>
+					<TabAction
+						leftSection={<IconTable size={theme.icon.size.sm} />}
+						href={router.path("projectBoard", opts)}
+					>
+						{tr("project.menu.board")}
+					</TabAction>
+					<TabAction
+						leftSection={<IconUsers size={theme.icon.size.sm} />}
+						href={router.path("projectPlayers", opts)}
+					>
+						{tr("project.menu.players")}
+					</TabAction>
+					<TabAction
+						leftSection={<IconChartLine size={theme.icon.size.sm} />}
+						href={router.path("projectAnalytics", opts)}
+					>
+						{tr("project.menu.analytics")}
+					</TabAction>
+					<TabAction
+						leftSection={<IconSettings size={theme.icon.size.sm} />}
+						href={router.path("projectSettings", opts)}
+					>
+						{tr("project.menu.settings")}
+					</TabAction>
+				</Flex>
+				<Flex flex={1} />
+				<CreateTaskButton />
+			</Group>
+		</Card>
 	);
 };
 
 const TabAction = (props: ActionProps & { href: string }) => {
-	return <Action {...props} variant={"minimal"} visibleText={"sm"} />;
+	return <Action {...props} variant={"minimal"} />;
 };
 
 export default ProjectActions;
@@ -79,59 +84,30 @@ const CreateTaskButton = () => {
 	return (
 		<Flex>
 			<Action
-				visibleText={"lg"}
-				intent={"success"}
+				variant={"filled"}
+				color={"green"}
 				disabled={!client.createTask.can()}
-				icon={<Plus />}
+				leftSection={<IconPlus />}
 				onClick={() => setShowDialog(true)}
 			>
 				{tr("project.menu.create-task")}
 			</Action>
 			<Drawer
-				isOpen={showDialog}
+				title={tr("project.menu.create-task")}
+				size={"xl"}
+				position={"right"}
+				opened={showDialog}
 				onClose={() => setShowDialog(false)}
 				className={"drawer"}
 			>
-				<Flex
-					bg
-					col
-					bordered
-					fill
-					pad2
-					overflow
-					style={{
-						borderTop: 0,
-						borderBottom: 0,
-					}}
+				<Card
+					withBorder
+					bg={theme.colors.card}
+					radius={"md"}
+					className={"shadow"}
 				>
-					<Flex col style={{ height: 48 }}>
-						<Flex>
-							<Flex fill></Flex>
-							<Flex>
-								<Button
-									variant={"minimal"}
-									icon={<Cross />}
-									onClick={() => setShowDialog(false)}
-								/>
-							</Flex>
-						</Flex>
-					</Flex>
-					<Flex pad2h>
-						<Flex
-							pad1
-							card
-							bordered
-							wFill
-							rounded
-							style={{
-								borderBottomLeftRadius: 0,
-								borderBottomRightRadius: 0,
-								borderBottom: 0,
-							}}
-						/>
-					</Flex>
 					<TaskCreate project={project} onSubmit={() => setShowDialog(false)} />
-				</Flex>
+				</Card>
 			</Drawer>
 		</Flex>
 	);

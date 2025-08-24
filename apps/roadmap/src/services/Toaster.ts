@@ -1,9 +1,7 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
-import type { Toaster as BlueprintToaster } from "@blueprintjs/core";
-import { OverlayToaster } from "@blueprintjs/core";
+import { notifications } from "@mantine/notifications";
 
 export class Toaster {
-	toaster?: BlueprintToaster;
 	alepha = $inject(Alepha);
 
 	configure = $hook({
@@ -12,11 +10,6 @@ export class Toaster {
 			if (!this.alepha.isBrowser()) {
 				return;
 			}
-
-			this.toaster = await OverlayToaster.create({
-				position: "top",
-				className: "alepha-toast",
-			});
 		},
 	});
 
@@ -24,10 +17,12 @@ export class Toaster {
 		message: string,
 		intent: "primary" | "success" | "warning" | "danger" = "primary",
 	) {
-		this.toaster?.show({
+		const color =
+			intent === "primary" ? "blue" : intent === "danger" ? "red" : intent;
+		notifications.show({
 			message,
-			intent,
-			timeout: 3000,
+			color,
+			autoClose: 3000,
 		});
 	}
 }
