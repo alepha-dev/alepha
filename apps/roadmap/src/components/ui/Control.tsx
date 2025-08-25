@@ -11,7 +11,6 @@ import {
 	type SelectProps,
 	Switch,
 	type SwitchProps,
-	Text,
 	Textarea,
 	type TextareaProps,
 	TextInput,
