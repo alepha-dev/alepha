@@ -304,6 +304,14 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 		try {
 			if ("oauth" in this.options) {
 				const profile = await this.options.oauth.userinfo(tokens);
+
+				if (this.options.oauth.account) {
+					return this.options.oauth.account({
+						...tokens,
+						user: profile,
+					});
+				}
+
 				return this.securityProvider.createUserFromPayload(profile);
 			}
 

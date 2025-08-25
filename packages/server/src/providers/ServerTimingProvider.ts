@@ -8,10 +8,18 @@ export class ServerTimingProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 
+	public options = {
+		disabled: this.alepha.isProduction(),
+	};
+
 	public readonly onRequest = $hook({
 		priority: "first",
 		on: "server:onRequest",
 		handler: async ({ request }) => {
+			if (this.options.disabled) {
+				return;
+			}
+
 			request.metadata.timing = {};
 			request.metadata.timing[this.handlerName] = [Date.now()];
 		},
@@ -21,6 +29,10 @@ export class ServerTimingProvider {
 		priority: "last",
 		on: "server:onResponse",
 		handler: async ({ request }) => {
+			if (this.options.disabled) {
+				return;
+			}
+
 			if (request.metadata.timing) {
 				this.setDuration(this.handlerName, request.metadata.timing);
 
@@ -54,6 +66,10 @@ export class ServerTimingProvider {
 	}
 
 	public beginTiming(name: string): void {
+		if (this.options.disabled) {
+			return;
+		}
+
 		const request = this.alepha.context.get<ServerRequest>("request");
 		if (!request) {
 			return;
@@ -65,6 +81,10 @@ export class ServerTimingProvider {
 	}
 
 	public endTiming(name: string): void {
+		if (this.options.disabled) {
+			return;
+		}
+
 		const request = this.alepha.context.get<ServerRequest>("request");
 		if (!request) {
 			return;

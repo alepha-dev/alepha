@@ -18,9 +18,9 @@ import type {
 	ServerRawRequest,
 	ServerRequest,
 	ServerRequestConfig,
-	ServerResponse,
 	ServerRoute,
 	ServerRouteMatcher,
+	ServerRouteRequestHandler,
 } from "../interfaces/ServerRequest.ts";
 import { UserAgentParser } from "../services/UserAgentParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
@@ -37,6 +37,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	protected readonly routes: ServerRoute[] = [];
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 	protected readonly userAgentParser = $inject(UserAgentParser);
+
+	public options = {
+		withAls: true,
+	};
 
 	public getRoutes(): ServerRoute[] {
 		return this.routes;
@@ -55,37 +59,42 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
 		this.push({
 			path,
-			handler: (request) => this.onRequest(route, request, responseKind),
+			handler: this.createRequestHandler(route, responseKind),
 		});
 	}
 
-	public async onRequest(
+	public createRequestHandler(
 		route: ServerRoute,
-		rawRequest: ServerRawRequest,
 		responseKind: ResponseKind,
-	): Promise<ServerResponse> {
-		const lazyUserAgent = () =>
-			this.userAgentParser.parse(rawRequest.headers["user-agent"]);
+	): ServerRouteRequestHandler {
+		const lazyUserAgent = (header: string) =>
+			this.userAgentParser.parse(header);
+		return (rawRequest) => {
+			// create request
+			const request = {
+				...rawRequest,
+				body: null,
+				metadata: {},
+				reply: new ServerReply(),
+				ip: this.getClientIp(rawRequest),
+				// TODO: move to a module
+				// parsing user agent can be expensive (0.1ms), so we use a lazy getter
+				get userAgent() {
+					return lazyUserAgent(rawRequest.headers["user-agent"]);
+				},
+			} as ServerRequest;
 
-		// create request
-		const request = {
-			...rawRequest,
-			body: null,
-			metadata: {},
-			reply: new ServerReply(),
-			ip: this.getClientIp(rawRequest),
-			// parsing user agent can be expensive (0.1ms), so we use a lazy getter
-			get userAgent() {
-				return lazyUserAgent();
-			},
-		} as ServerRequest;
+			if (!this.options.withAls) {
+				return this.processRequest(request, route, responseKind);
+			}
 
-		return await this.alepha.context.run(
-			() => this.processRequest(request, route, responseKind),
-			{
-				context: rawRequest.headers["x-request-id"],
-			},
-		);
+			return this.alepha.context.run(
+				() => this.processRequest(request, route, responseKind),
+				{
+					context: rawRequest.headers["x-request-id"],
+				},
+			);
+		};
 	}
 
 	protected getClientIp(request: ServerRawRequest): string | undefined {

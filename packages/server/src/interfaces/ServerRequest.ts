@@ -117,8 +117,12 @@ export interface ServerResponse {
 	status: number;
 }
 
+export type ServerRouteRequestHandler = (
+	request: ServerRawRequest,
+) => Promise<ServerResponse>;
+
 export interface ServerRouteMatcher extends Route {
-	handler: (request: ServerRawRequest) => Promise<ServerResponse>;
+	handler: ServerRouteRequestHandler;
 }
 
 export interface ServerRawRequest {

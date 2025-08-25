@@ -27,7 +27,7 @@
 	},
 	"devDependencies": {
 		"drizzle-kit": "0.31.4",
-		"tsdown": "^0.14.1",
+		"tsdown": "^0.14.2",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

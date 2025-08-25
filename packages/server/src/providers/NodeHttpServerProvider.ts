@@ -81,6 +81,11 @@ export class NodeHttpServerProvider extends ServerProvider {
 			return;
 		}
 
+		if (typeof response.body === "string") {
+			res.end(response.body);
+			return;
+		}
+
 		// if response.body is web stream
 		if (response.body instanceof ReadableStream) {
 			try {
