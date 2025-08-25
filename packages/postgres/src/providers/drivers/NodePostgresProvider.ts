@@ -287,9 +287,9 @@ export class NodePostgresProvider extends PostgresProvider {
 
 		return {
 			host: url.hostname,
-			user: url.username,
-			database: url.pathname.replace("/", ""),
-			password: url.password,
+			user: decodeURIComponent(url.username),
+			database: decodeURIComponent(url.pathname.replace("/", "")),
+			password: decodeURIComponent(url.password),
 			port: Number(url.port || 5432),
 			ssl: this.ssl(url),
 			onnotice: () => {
