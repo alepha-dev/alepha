@@ -1,5 +1,5 @@
 import { createSecretKey } from "node:crypto";
-import { $inject } from "@alepha/core";
+import { $inject, AlephaError } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import {
@@ -142,7 +142,7 @@ export class JwtProvider {
 			: this.keystore[0]?.secretKey;
 
 		if (!secretKey) {
-			throw new Error("No secret key found in the keystore");
+			throw new AlephaError("No secret key found in the keystore");
 		}
 
 		const signJwt = new SignJWT(payload);

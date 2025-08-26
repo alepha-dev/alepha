@@ -1,28 +1,28 @@
 import { describe, expect, test } from "vitest";
-import { $inject, Alepha, Module } from "../src";
+import { $inject, $module, Alepha } from "../src";
 
-describe("Module", () => {
+describe("$module", () => {
 	test("should create a module with services", () => {
 		class VeryRandomService {}
 		class RandomService {
 			very = $inject(VeryRandomService);
 		}
-
-		class CoreModule extends Module {
-			services = [RandomService, VeryRandomService];
-		}
+		const CoreModule = $module({
+			name: "core",
+			services: [RandomService, VeryRandomService],
+		});
 
 		class DatabaseService {}
-
-		class DatabaseModule extends Module {
-			services = [DatabaseService];
-		}
+		const DatabaseModule = $module({
+			name: "database",
+			services: [DatabaseService],
+		});
 
 		class ServerProvider {}
-
-		class ServerModule extends Module {
-			services = [CoreModule, DatabaseModule, ServerProvider];
-		}
+		const ServerModule = $module({
+			name: "server",
+			services: [CoreModule, DatabaseModule, ServerProvider],
+		});
 
 		const alepha = Alepha.create().with(ServerModule);
 
@@ -62,14 +62,13 @@ describe("Module", () => {
 
 		// note: we do not need to import MyModule,
 		// it will be registered automatically if A or B is injected
-		class MyModule extends Module {
-			name = "my.module";
-			services = [A, B];
-
-			register() {
-				this.alepha.with(B); // load only B explicitly
-			}
-		}
+		const MyModule = $module({
+			name: "my.module",
+			services: [A, B],
+			register: (alepha) => {
+				alepha.with(B); // load only B explicitly
+			},
+		});
 
 		const alepha = Alepha.create();
 

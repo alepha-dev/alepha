@@ -64,7 +64,7 @@ export class SecurityProvider {
 		},
 	];
 
-	protected configure = $hook({
+	protected start = $hook({
 		on: "start",
 		handler: async () => {
 			for (const realm of this.realms) {
@@ -165,6 +165,8 @@ export class SecurityProvider {
 
 			return existing;
 		}
+
+		this.log.trace(`Creating permission '${asString}'`);
 
 		this.permissions.push(permission);
 

@@ -1,4 +1,6 @@
-export class AppNotStartedError extends Error {
+import { AlephaError } from "./AlephaError.ts";
+
+export class AppNotStartedError extends AlephaError {
 	readonly name = "AppNotStartedError";
 
 	constructor() {

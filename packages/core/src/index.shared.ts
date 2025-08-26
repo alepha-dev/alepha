@@ -13,6 +13,7 @@ export * from "./errors/AlephaError.ts";
 export * from "./errors/AppNotStartedError.ts";
 export * from "./errors/CircularDependencyError.ts";
 export * from "./errors/ContainerLockedError.ts";
+export * from "./errors/TooLateSubstitutionError.ts";
 export * from "./errors/TypeBoxError.ts";
 export * from "./helpers/descriptor.ts";
 export * from "./interfaces/Async.ts";

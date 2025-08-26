@@ -187,9 +187,9 @@ test("SecurityProvider#checkPermission - ownership", async () => {
 });
 
 test("SecurityProvider#jwt - default", async () => {
-	const app = Alepha.create();
-	const jwt = app.inject(JwtProvider);
-	const sec = app.inject(SecurityProvider);
+	const alepha = Alepha.create();
+	const jwt = alepha.inject(JwtProvider);
+	const sec = alepha.inject(SecurityProvider);
 
 	const userPermission = "hi";
 	const userRole = {
@@ -200,7 +200,7 @@ test("SecurityProvider#jwt - default", async () => {
 	sec.createPermission(userPermission);
 	sec.createRole(userRole);
 
-	await app.start(); // lock!
+	await alepha.start(); // lock!
 
 	const token = await jwt.create({
 		sub: "123",

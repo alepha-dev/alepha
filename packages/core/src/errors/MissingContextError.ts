@@ -1,4 +1,6 @@
-export class MissingContextError extends Error {
+import { AlephaError } from "./AlephaError.ts";
+
+export class MissingContextError extends AlephaError {
 	readonly name = "MissingContextError";
 
 	constructor() {

@@ -2,6 +2,7 @@ import { $module } from "@alepha/core";
 import { $permission } from "./descriptors/$permission.ts";
 import { $realm } from "./descriptors/$realm.ts";
 import { $role } from "./descriptors/$role.ts";
+import { CryptoProvider } from "./providers/CryptoProvider.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
 import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
@@ -44,5 +45,5 @@ declare module "@alepha/core" {
 export const AlephaSecurity = $module({
 	name: "alepha.security",
 	descriptors: [$realm, $role, $permission],
-	services: [SecurityProvider, JwtProvider],
+	services: [SecurityProvider, JwtProvider, CryptoProvider],
 });

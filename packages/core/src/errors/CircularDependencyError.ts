@@ -1,4 +1,6 @@
-export class CircularDependencyError extends Error {
+import { AlephaError } from "./AlephaError.ts";
+
+export class CircularDependencyError extends AlephaError {
 	readonly name = "CircularDependencyError";
 
 	constructor(provider: string, parents?: string[]) {

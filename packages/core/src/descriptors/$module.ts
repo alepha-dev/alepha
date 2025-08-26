@@ -1,23 +1,23 @@
-import { Alepha } from "../Alepha.ts";
+import type { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import { MODULE } from "../constants/MODULE.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import type { DescriptorFactoryLike } from "../helpers/descriptor.ts";
 import type { Service } from "../interfaces/Service.ts";
-import { $inject } from "./$inject.ts";
 
 /**
- * Wrap services and descriptors into a module.
+ * Wrap Services and Descriptors into a Module.
  *
- * Module is just a class.
- *
- * It's recommended to use `project.module.submodule` format.
+ * - A module is just a Service extended {@link Module}.
+ * - You must attach a `name` to it.
+ * - Name must follow the pattern: `project.module.submodule`.
  *
  * @example
  * ```ts
  * import { $module } from "@alepha/core";
  * import { MyService } from "./MyService.ts";
  *
- * // export MyService so it can be used everywhere
+ * // export MyService, so it can be used everywhere
  * export * from "./MyService.ts";
  *
  * export default $module({
@@ -27,70 +27,128 @@ import { $inject } from "./$inject.ts";
  * });
  * ```
  *
- * - Module is used for logging and other purposes.
- * - It's useful for large applications or libraries to group services and descriptors together.
- * - It's probably overkill for small applications.
+ * ## Why Modules?
+ *
+ * ### Logging
+ *
+ * By default, AlephaLogger will log the module name in the logs.
+ * This helps to identify where the logs are coming from.
+ *
+ * You can also set different log levels for different modules.
+ * It means you can set 'some.very.specific.module' to 'debug' and keep the rest of the application to 'info'.
+ *
+ * ### Modulith
+ *
+ * Force to structure your application in modules, even if it's a single deployable unit.
+ * It helps to keep a clean architecture and avoid monolithic applications.
+ *
+ * You can also use `MODULE_INCLUDE` and `MODULE_EXCLUDE` environment variables to load only specific modules.
+ *
+ * A strict mode is planned to enforce module boundaries. Throwing errors when a service from another module is injected.
+ *
+ * ### When not to use Modules?
+ *
+ * Small applications does not need modules. It's better to keep it simple.
+ * Modules are more useful when the application grows and needs to be structured.
+ * If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
  */
-export abstract class Module {
-	protected readonly alepha = $inject(Alepha);
+export const $module = (options: ModuleDescriptorOptions): Service<Module> => {
+	const { services = [], descriptors = [], name } = options;
 
+	if (!name || !Module.NAME_REGEX.test(name)) {
+		throw new AlephaError(
+			`Invalid module name '${name}'. It should be in the format of 'project.module.submodule'`,
+		);
+	}
+
+	const $ = class extends Module {
+		options = options;
+
+		register(alepha: Alepha): void {
+			if (typeof options.register === "function") {
+				options.register(alepha);
+				return;
+			}
+
+			for (const service of services) {
+				alepha.inject(service, {
+					parent: this.constructor as Service<Module>,
+				});
+			}
+		}
+	};
+
+	Object.defineProperty($, "name", {
+		value: name,
+		writable: false,
+	});
+
+	for (const service of services) {
+		if (!Module.is(service)) {
+			(service as WithModule)[MODULE] = $;
+		}
+	}
+
+	for (const factory of descriptors) {
+		if (typeof factory[KIND] === "function") {
+			factory[KIND][MODULE] = $;
+		}
+	}
+
+	return $;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface ModuleDescriptorOptions {
 	/**
 	 * Name of the module.
 	 *
 	 * It should be in the format of `project.module.submodule`.
 	 */
-	public readonly name: string;
+	name: string;
 
 	/**
-	 * List of services of the module.
-	 * By default, all services will be injected into Alepha application via the `register` method.
+	 * List of services to register in the module.
 	 */
-	public readonly services: Array<Service> = [];
+	services?: Array<Service>;
 
 	/**
 	 * List of $descriptors to register in the module.
-	 *
 	 */
-	public readonly descriptors: Array<DescriptorFactoryLike> = [];
+	descriptors?: Array<DescriptorFactoryLike>;
 
-	constructor() {
-		this.name ??= this.constructor.name;
+	/**
+	 * By default, module will register all services.
+	 * You can override this behavior by providing a register function.
+	 * It's useful when you want to register services conditionally or in a specific order.
+	 */
+	register?: (alepha: Alepha) => void;
+}
 
-		for (const service of this.services) {
-			if (!(MODULE in service)) {
-				(service as WithModule)[MODULE] = this;
-			}
-		}
+/**
+ * Base class for all modules.
+ */
+export abstract class Module {
+	public abstract readonly options: ModuleDescriptorOptions;
 
-		for (const factory of this.descriptors) {
-			if (typeof factory[KIND] === "function") {
-				factory[KIND][MODULE] = this;
-			}
-		}
+	public abstract register(alepha: Alepha): void;
+
+	static NAME_REGEX = /^[a-z]+(\.[a-z][a-z0-9]*)*$/;
+
+	/**
+	 * Check if a Service is a Module.
+	 */
+	static is(ctor: Service): boolean {
+		return ctor.prototype instanceof Module;
 	}
 
 	/**
-	 * Register services in the Alepha instance.
-	 * By default, it will register all services in the `services` array.
-	 * You can override this method to customize the registration process.
+	 * Get the Module of a Service.
 	 */
-	public register(alepha: Alepha): void {
-		for (const service of this.services) {
-			alepha.with(service);
-		}
+	static of(ctor: Service): Service<Module> | undefined {
+		return (ctor as WithModule)[MODULE];
 	}
-
-	public toModuleName = (name: string): string => {
-		// Remove optional "Module" suffix
-		name = name.replace(/Module$/, "");
-
-		// Split PascalCase into words
-		const parts = name.match(/[A-Z][a-z0-9]*/g);
-
-		if (!parts) return name.toLowerCase();
-
-		return parts.map((p) => p.toLowerCase()).join(".");
-	};
 }
 
 export type WithModule<T extends object = any> = T & {

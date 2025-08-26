@@ -10,6 +10,7 @@ import { Module, type WithModule } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
+import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import { Descriptor } from "./helpers/descriptor.ts";
 import type { Async } from "./interfaces/Async.ts";
@@ -528,7 +529,7 @@ export class Alepha {
 	 */
 	public has(
 		entry: ServiceEntry,
-		opts?: {
+		opts: {
 			/**
 			 * Check if the entry is registered in the pending instantiation stack.
 			 *
@@ -547,33 +548,45 @@ export class Alepha {
 			 * @default true
 			 */
 			inSubstitutions?: boolean;
-		},
-		registry = this.registry,
+			/**
+			 * Where to look for registered services.
+			 *
+			 * @default this.registry
+			 */
+			registry?: Map<Service, ServiceDefinition>;
+		} = {},
 	): boolean {
 		if (entry === Alepha) {
 			return true;
 		}
+
+		const {
+			inStack = true,
+			inRegistry = true,
+			inSubstitutions = true,
+			registry = this.registry,
+		} = opts;
 
 		const { provide } =
 			typeof entry === "object" && "provide" in entry
 				? entry
 				: { provide: entry };
 
-		if (!opts || opts.inSubstitutions === true) {
+		if (inSubstitutions) {
 			const substitute = this.substitutions.get(provide);
 			if (substitute) {
 				return true;
 			}
 		}
 
-		if (!opts || opts.inRegistry === true) {
+		if (inRegistry) {
 			const match = registry.get(provide);
 			if (match) {
 				return true;
 			}
 		}
 
-		if (!opts || opts.inStack === true) {
+		if (inStack) {
 			const substitute = this.substitutions.get(provide)?.use;
 			if (substitute && this.pendingInstantiations.includes(substitute)) {
 				return true;
@@ -619,13 +632,22 @@ export class Alepha {
 
 		// just check if the entry is not present in the pending instantiation stack
 		// Alepha#get will handle the rest
-		if (this.has(entry, { inStack: true })) {
+		if (
+			this.has(entry, {
+				inSubstitutions: false,
+				inRegistry: false,
+			})
+		) {
 			return this;
 		}
 
 		const isSubstitution = typeof entry === "object";
 		if (isSubstitution) {
 			if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
+				if (this.started) {
+					throw new ContainerLockedError();
+				}
+
 				// inherit of module, if service has no module
 				if (
 					MODULE in entry.provide &&
@@ -634,17 +656,11 @@ export class Alepha {
 					(entry.use as WithModule)[MODULE] ??= entry.provide[MODULE];
 				}
 
-				if (this.started) {
-					throw new ContainerLockedError();
-				}
-
 				this.substitutions.set(entry.provide, {
 					use: entry.use,
 				});
 			} else if (!entry.optional) {
-				throw new AlephaError(
-					`Service already substituted. Please, substitute Service '${entry.provide.name}' with Service '${entry.use.name}' before using it.`,
-				);
+				throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
 			}
 			return this;
 		}
@@ -663,12 +679,13 @@ export class Alepha {
 		service: Service<T>,
 		opts: InjectOptions<T> = {},
 	): T {
+		const lifetime = opts.lifetime ?? "singleton";
 		const parent =
 			opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
 
-		const transient = opts.lifetime === "transient";
+		const transient = lifetime === "transient";
 		const registry =
-			opts.lifetime === "scoped"
+			lifetime === "scoped"
 				? (this.context.get<Map<Service, ServiceDefinition>>("registry") ??
 					this.registry)
 				: this.registry;
@@ -682,6 +699,7 @@ export class Alepha {
 		if (substitute) {
 			return this.inject(substitute.use, {
 				parent,
+				lifetime,
 			});
 		}
 
@@ -693,38 +711,35 @@ export class Alepha {
 			);
 		}
 
-		// the requested type is searched in the container
-		const match = registry.get(service);
+		if (!transient) {
+			// the requested type is searched in the container
+			const match = registry.get(service);
 
-		// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
-		if (!match && this.isServerless() === "vite" && !transient) {
-			for (const [_, definition] of registry.entries()) {
-				if (definition.instance?.constructor.name === service.name) {
-					this.log?.debug(`Hot reload detected for ${service.name}`);
-					const instance: T = this.new(service, opts.args);
-					definition.instance = instance;
-					return instance;
+			// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
+			if (!match && this.isServerless() === "vite") {
+				for (const [_, definition] of registry.entries()) {
+					if (definition.instance?.constructor.name === service.name) {
+						this.log?.debug(`Hot reload detected for ${service.name}`);
+						const instance: T = this.new(service, opts.args);
+						definition.instance = instance;
+						return instance;
+					}
 				}
 			}
-		}
 
-		if (match && !transient) {
-			if (!match.parents.includes(parent) && parent !== service) {
-				match.parents.push(parent);
+			if (match) {
+				if (!match.parents.includes(parent) && parent !== service) {
+					match.parents.push(parent);
+				}
+
+				return match.instance;
 			}
 
-			if (match.instance === undefined) {
-				throw new Error("Should not happen: instance is undefined");
-				// match.instance = this.new(match.use ?? match.provide, opts.args);
+			if (this.started) {
+				throw new ContainerLockedError(
+					`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
+				);
 			}
-
-			return match.instance;
-		}
-
-		if (this.started && !transient) {
-			throw new ContainerLockedError(
-				`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
-			);
 		}
 
 		const module = (service as WithModule)[MODULE];
@@ -733,9 +748,9 @@ export class Alepha {
 		}
 
 		// check if service has been registered by a module
-		if (this.has(service, {}, registry) && !transient) {
+		if (this.has(service, { registry }) && !transient) {
 			// if the service is already registered, we just return the instance
-			return this.inject(service);
+			return this.inject(service, { parent, lifetime });
 		}
 
 		const instance: T = this.new(service, opts.args);
@@ -752,7 +767,6 @@ export class Alepha {
 		}
 
 		const definition: ServiceDefinition<T> = {
-			module: typeof module === "function" ? module : undefined,
 			parents: [parent],
 			instance,
 		};
@@ -1117,7 +1131,7 @@ export class Alepha {
 			{ from: string[]; as?: string[]; module?: string }
 		> = {};
 
-		for (const [provide, { parents, module }] of this.registry.entries()) {
+		for (const [provide, { parents }] of this.registry.entries()) {
 			graph[provide.name] = {
 				from: parents.filter((it) => !!it).map((it) => it.name),
 			};
@@ -1131,7 +1145,9 @@ export class Alepha {
 			if (aliases.length) {
 				graph[provide.name].as = aliases;
 			}
-			if (module?.name) {
+
+			const module = Module.of(provide);
+			if (module) {
 				graph[provide.name].module = module.name;
 			}
 		}
@@ -1231,11 +1247,6 @@ interface ServiceDefinition<T extends object = any> {
 	 * List of classes which use this class.
 	 */
 	parents: Array<Service | null>;
-
-	/**
-	 * If the service is provided by a module, the module definition.
-	 */
-	module?: Service;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

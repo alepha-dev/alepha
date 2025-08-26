@@ -1,4 +1,6 @@
-export class ContainerLockedError extends Error {
+import { AlephaError } from "./AlephaError.ts";
+
+export class ContainerLockedError extends AlephaError {
 	readonly name = "ContainerLockedError";
 
 	constructor(

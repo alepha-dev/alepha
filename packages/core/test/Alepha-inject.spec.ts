@@ -43,9 +43,10 @@ test("Alepha#inject - transient with substitution", ({ expect }) => {
 	expect(log).toBeInstanceOf(EmojiLogger);
 	expect(log.print("Hello")).toBe("Hello😊");
 
-	// no trace of EmojiLogger in Alepha
 	expect(alepha.has(BaseLogger)).toBe(true);
-	expect(alepha.has(EmojiLogger)).toBe(true);
+
+	// no trace of EmojiLogger in Alepha
+	expect(alepha.has(EmojiLogger)).toBe(false);
 	expect(alepha.has(BaseLogger, { inSubstitutions: false })).toBe(false);
 });
 
