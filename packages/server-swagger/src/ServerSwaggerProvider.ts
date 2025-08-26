@@ -103,6 +103,8 @@ export class ServerSwaggerProvider {
 			return source;
 		};
 
+		const copy = (obj: any) => JSON.parse(JSON.stringify(obj));
+
 		for (const route of actions) {
 			if (!route.options.schema) {
 				continue;
@@ -185,11 +187,15 @@ export class ServerSwaggerProvider {
 				for (const [key, value] of Object.entries(
 					route.options.schema.params.properties,
 				)) {
+					const description = value.description;
+					const ref = copy(schema(value));
+					delete ref.description;
 					operation.parameters.push({
 						name: key,
 						in: "path",
 						required: true,
-						schema: schema(value),
+						description,
+						schema: ref,
 					});
 				}
 			}

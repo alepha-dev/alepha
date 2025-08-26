@@ -1,15 +1,16 @@
-import { $hook, run } from "@alepha/core";
-import { $logger } from "@alepha/logger";
+import { run } from "@alepha/core";
+import { $action } from "@alepha/server";
 
 class App {
-	log = $logger();
-
-	ready = $hook({
-		on: "ready",
-		handler: () => {
-			this.log.info("App is ready!");
+	ok = $action({
+		handler() {
+			return "Hello, world!";
 		},
 	});
 }
 
-run(App);
+run(App, {
+	env: {
+		NODE_ENV: "production",
+	},
+});

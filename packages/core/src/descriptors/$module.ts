@@ -1,15 +1,14 @@
-import type { Alepha } from "../Alepha.ts";
+import { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import { MODULE } from "../constants/MODULE.ts";
-import { OPTIONS } from "../constants/OPTIONS.ts";
 import type { DescriptorFactoryLike } from "../helpers/descriptor.ts";
 import type { Service } from "../interfaces/Service.ts";
+import { $inject } from "./$inject.ts";
 
 /**
  * Wrap services and descriptors into a module.
  *
  * Module is just a class.
- * You must attach a `name` to it.
  *
  * It's recommended to use `project.module.submodule` format.
  *
@@ -32,104 +31,68 @@ import type { Service } from "../interfaces/Service.ts";
  * - It's useful for large applications or libraries to group services and descriptors together.
  * - It's probably overkill for small applications.
  */
-export const $module = (options: ModuleDescriptorOptions): Service<Module> => {
-	const { services = [], descriptors = [], name } = options;
+export abstract class Module {
+	protected readonly alepha = $inject(Alepha);
 
-	const Class = {
-		// force class name to be the module name
-		[name]: class {
-			static [MODULE] = true;
-			[KIND] = "MODULE" as const;
-			[OPTIONS] = options;
-
-			register(alepha: Alepha): void {
-				if (typeof options.register === "function") {
-					options.register(alepha);
-					return;
-				}
-
-				for (const service of services) {
-					alepha.with(service);
-				}
-			}
-		},
-	};
-
-	for (const service of services) {
-		if (!(MODULE in service)) {
-			(service as ServiceWithModule)[MODULE] = Class[name];
-		}
-	}
-
-	for (const factory of descriptors) {
-		if (typeof factory[KIND] === "function") {
-			factory[KIND][MODULE] = Class[name];
-		}
-	}
-
-	return Class[name];
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface ModuleDescriptorOptions {
 	/**
 	 * Name of the module.
 	 *
 	 * It should be in the format of `project.module.submodule`.
 	 */
-	name: string;
+	public readonly name: string;
 
 	/**
-	 * List of services to register in the module.
+	 * List of services of the module.
+	 * By default, all services will be injected into Alepha application via the `register` method.
 	 */
-	services?: Array<Service>;
+	public readonly services: Array<Service> = [];
 
 	/**
 	 * List of $descriptors to register in the module.
+	 *
 	 */
-	descriptors?: Array<DescriptorFactoryLike>;
+	public readonly descriptors: Array<DescriptorFactoryLike> = [];
+
+	constructor() {
+		this.name ??= this.constructor.name;
+
+		for (const service of this.services) {
+			if (!(MODULE in service)) {
+				(service as WithModule)[MODULE] = this;
+			}
+		}
+
+		for (const factory of this.descriptors) {
+			if (typeof factory[KIND] === "function") {
+				factory[KIND][MODULE] = this;
+			}
+		}
+	}
 
 	/**
-	 * By default, module will register all services.
-	 * You can override this behavior by providing a register function.
-	 * It's useful when you want to register services conditionally or in a specific order.
+	 * Register services in the Alepha instance.
+	 * By default, it will register all services in the `services` array.
+	 * You can override this method to customize the registration process.
 	 */
-	register?: (alepha: Alepha) => void;
+	public register(alepha: Alepha): void {
+		for (const service of this.services) {
+			alepha.with(service);
+		}
+	}
+
+	public toModuleName = (name: string): string => {
+		// Remove optional "Module" suffix
+		name = name.replace(/Module$/, "");
+
+		// Split PascalCase into words
+		const parts = name.match(/[A-Z][a-z0-9]*/g);
+
+		if (!parts) return name.toLowerCase();
+
+		return parts.map((p) => p.toLowerCase()).join(".");
+	};
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface Module {
-	[KIND]: "MODULE";
-	[OPTIONS]: ModuleDescriptorOptions;
-	register: (alepha: Alepha) => void;
-}
-
-export type ServiceWithModule<T extends object = any> = T & {
+export type WithModule<T extends object = any> = T & {
 	[MODULE]?: Service;
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export const isModule = (value: unknown): value is Module => {
-	return (
-		typeof value === "object" &&
-		!!value &&
-		OPTIONS in value &&
-		KIND in value &&
-		value[KIND] === "MODULE"
-	);
-};
-
-export const toModuleName = (name: string): string => {
-	// Remove optional "Module" suffix
-	name = name.replace(/Module$/, "");
-
-	// Split PascalCase into words
-	const parts = name.match(/[A-Z][a-z0-9]*/g);
-
-	if (!parts) return name.toLowerCase();
-
-	return parts.map((p) => p.toLowerCase()).join(".");
 };

@@ -6,11 +6,7 @@ import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { InjectOptions } from "./descriptors/$inject.ts";
-import {
-	isModule,
-	type Module,
-	type ServiceWithModule,
-} from "./descriptors/$module.ts";
+import { Module, type WithModule } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
@@ -536,16 +532,23 @@ export class Alepha {
 			/**
 			 * Check if the entry is registered in the pending instantiation stack.
 			 *
-			 * Default: true
+			 * @default true
 			 */
 			inStack?: boolean;
 			/**
 			 * Check if the entry is registered in the container registry.
 			 *
-			 * Default: true
+			 * @default true
 			 */
 			inRegistry?: boolean;
+			/**
+			 * Check if the entry is registered in the substitutions.
+			 *
+			 * @default true
+			 */
+			inSubstitutions?: boolean;
 		},
+		registry = this.registry,
 	): boolean {
 		if (entry === Alepha) {
 			return true;
@@ -556,12 +559,15 @@ export class Alepha {
 				? entry
 				: { provide: entry };
 
-		if (!opts || opts.inRegistry === true) {
+		if (!opts || opts.inSubstitutions === true) {
 			const substitute = this.substitutions.get(provide);
 			if (substitute) {
 				return true;
 			}
-			const match = this.registry.get(provide);
+		}
+
+		if (!opts || opts.inRegistry === true) {
+			const match = registry.get(provide);
 			if (match) {
 				return true;
 			}
@@ -625,7 +631,7 @@ export class Alepha {
 					MODULE in entry.provide &&
 					typeof entry.provide[MODULE] === "function"
 				) {
-					(entry.use as ServiceWithModule)[MODULE] ??= entry.provide[MODULE];
+					(entry.use as WithModule)[MODULE] ??= entry.provide[MODULE];
 				}
 
 				if (this.started) {
@@ -649,14 +655,9 @@ export class Alepha {
 	}
 
 	/**
-	 * Get the instance of the specified service and apply some changes, depending on the options.
-	 * - If the service is already registered, it will return the existing instance. (except if `skipCache` is true)
-	 * - If the service is not registered, it will create a new instance and register it. (except if `skipRegistration` is true)
-	 * - New instance can be created with custom constructor arguments. (`args` option)
+	 * Get an instance of the specified service from the container.
 	 *
-	 * > This method is used by $inject() under the hood.
-	 *
-	 * @return The instance of the specified class or type.
+	 * @see {@link InjectOptions} for the available options.
 	 */
 	public inject<T extends object>(
 		service: Service<T>,
@@ -664,6 +665,13 @@ export class Alepha {
 	): T {
 		const parent =
 			opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
+
+		const transient = opts.lifetime === "transient";
+		const registry =
+			opts.lifetime === "scoped"
+				? (this.context.get<Map<Service, ServiceDefinition>>("registry") ??
+					this.registry)
+				: this.registry;
 
 		// If the requested type is the container, the current instance is returned.
 		if ((service as any) === Alepha) {
@@ -678,7 +686,7 @@ export class Alepha {
 		}
 
 		const index = this.pendingInstantiations.indexOf(service);
-		if (index !== -1 && !opts.skipRegistration) {
+		if (index !== -1 && !transient) {
 			throw new CircularDependencyError(
 				service.name,
 				this.pendingInstantiations.slice(0, index).map((it) => it.name),
@@ -686,11 +694,11 @@ export class Alepha {
 		}
 
 		// the requested type is searched in the container
-		const match = this.registry.get(service);
+		const match = registry.get(service);
 
 		// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
-		if (!match && this.isServerless() === "vite" && !opts.skipRegistration) {
-			for (const [_, definition] of this.registry.entries()) {
+		if (!match && this.isServerless() === "vite" && !transient) {
+			for (const [_, definition] of registry.entries()) {
 				if (definition.instance?.constructor.name === service.name) {
 					this.log?.debug(`Hot reload detected for ${service.name}`);
 					const instance: T = this.new(service, opts.args);
@@ -700,7 +708,7 @@ export class Alepha {
 			}
 		}
 
-		if (match && !opts.skipCache) {
+		if (match && !transient) {
 			if (!match.parents.includes(parent) && parent !== service) {
 				match.parents.push(parent);
 			}
@@ -713,19 +721,19 @@ export class Alepha {
 			return match.instance;
 		}
 
-		if (this.started && !opts.skipRegistration) {
+		if (this.started && !transient) {
 			throw new ContainerLockedError(
 				`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
 			);
 		}
 
-		const module = (service as ServiceWithModule)[MODULE];
+		const module = (service as WithModule)[MODULE];
 		if (module && typeof module === "function") {
 			this.with(module);
 		}
 
 		// check if service has been registered by a module
-		if (this.has(service) && !opts.skipCache) {
+		if (this.has(service, {}, registry) && !transient) {
 			// if the service is already registered, we just return the instance
 			return this.inject(service);
 		}
@@ -749,12 +757,12 @@ export class Alepha {
 			instance,
 		};
 
-		if (!opts.skipRegistration) {
-			this.registry.set(service, definition);
+		if (!transient) {
+			registry.set(service, definition);
 		}
 
 		// [feature]: modules - it's just a way to group services together
-		if (isModule(instance)) {
+		if (instance instanceof Module) {
 			this.modules.push(instance);
 
 			const parent = __alephaRef.parent;

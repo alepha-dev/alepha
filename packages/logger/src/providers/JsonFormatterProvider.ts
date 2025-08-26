@@ -10,7 +10,7 @@ export class JsonFormatterProvider extends LogFormatterProvider {
 			service: entry.service,
 			module: entry.module,
 			app: entry.app,
-			timestamp: entry.timestamp.toISOString(),
+			date: entry.timestamp.toISOString(),
 		};
 
 		if (entry.data instanceof Error) {
@@ -19,7 +19,7 @@ export class JsonFormatterProvider extends LogFormatterProvider {
 			Object.assign(json, entry.data);
 		}
 
-		return JSON.stringify(entry);
+		return JSON.stringify(json);
 	}
 
 	protected formatJsonError(error: Error): object {

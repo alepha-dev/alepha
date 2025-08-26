@@ -1,3 +1,4 @@
+import type { IncomingMessage } from "node:http";
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
@@ -8,10 +9,11 @@ import {
 	TypeGuard,
 } from "@alepha/core";
 import { RouterProvider } from "@alepha/router";
+import type { ServerResponse as NodeServerResponse } from "http";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
-import { ServerReply } from "../helpers/ServerReply.ts";
+import type { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
 	ResponseKind,
@@ -22,6 +24,7 @@ import type {
 	ServerRouteMatcher,
 	ServerRouteRequestHandler,
 } from "../interfaces/ServerRequest.ts";
+import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 import { UserAgentParser } from "../services/UserAgentParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 
@@ -36,11 +39,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly routes: ServerRoute[] = [];
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
-	protected readonly userAgentParser = $inject(UserAgentParser);
-
-	public options = {
-		withAls: true,
-	};
+	protected readonly serverRequestParser = $inject(ServerRequestParser);
 
 	public getRoutes(): ServerRoute[] {
 		return this.routes;
@@ -59,59 +58,18 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
 		this.push({
 			path,
-			handler: this.createRequestHandler(route, responseKind),
+			handler: (rawRequest) => {
+				const request =
+					this.serverRequestParser.createServerRequest(rawRequest);
+
+				return this.alepha.context.run(
+					() => this.processRequest(request, route, responseKind),
+					{
+						context: rawRequest.headers["x-request-id"],
+					},
+				);
+			},
 		});
-	}
-
-	public createRequestHandler(
-		route: ServerRoute,
-		responseKind: ResponseKind,
-	): ServerRouteRequestHandler {
-		const lazyUserAgent = (header: string) =>
-			this.userAgentParser.parse(header);
-		return (rawRequest) => {
-			// create request
-			const request = {
-				...rawRequest,
-				body: null,
-				metadata: {},
-				reply: new ServerReply(),
-				ip: this.getClientIp(rawRequest),
-				// TODO: move to a module
-				// parsing user agent can be expensive (0.1ms), so we use a lazy getter
-				get userAgent() {
-					return lazyUserAgent(rawRequest.headers["user-agent"]);
-				},
-			} as ServerRequest;
-
-			if (!this.options.withAls) {
-				return this.processRequest(request, route, responseKind);
-			}
-
-			return this.alepha.context.run(
-				() => this.processRequest(request, route, responseKind),
-				{
-					context: rawRequest.headers["x-request-id"],
-				},
-			);
-		};
-	}
-
-	protected getClientIp(request: ServerRawRequest): string | undefined {
-		// check for the 'x-forwarded-for' header first, which is commonly used
-		// in proxy setups to forward the original client's IP address.
-		const forwardedFor = request.headers["x-forwarded-for"];
-		if (forwardedFor) {
-			// The 'x-forwarded-for' header can contain multiple IPs, so we take the first one.
-			return Array.isArray(forwardedFor)
-				? forwardedFor[0]
-				: forwardedFor.split(",")[0].trim();
-		}
-
-		// If 'x-forwarded-for' is not present, fall back to the 'ip' property.
-		if (request.raw.node?.req.socket?.remoteAddress) {
-			return request.raw.node?.req.socket.remoteAddress;
-		}
 	}
 
 	protected async processRequest(

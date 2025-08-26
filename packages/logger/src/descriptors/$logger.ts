@@ -24,8 +24,7 @@ export const $logger = (options: LoggerDescriptorOptions = {}): Logger => {
 	const { context, definition, module } = $cursor();
 
 	return $inject(Logger, {
-		skipCache: true,
-		skipRegistration: true,
+		lifetime: "transient",
 		args: [
 			options.name ?? definition?.name,
 			module?.name ?? context.env.MODULE_NAME ?? "app",

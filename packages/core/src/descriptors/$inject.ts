@@ -34,19 +34,25 @@ export class InjectDescriptor extends Descriptor {}
 
 export interface InjectOptions<T extends object = any> {
 	/**
-	 * Ignore current existing instance.
+	 * - 'transient' → Always a new instance on every inject. Zero caching.
+	 * - 'singleton' → One instance per Alepha runtime (per-thread). Never disposed until Alepha shuts down. (default)
+	 * - 'scoped' → One instance per AsyncLocalStorage context.
+	 *   - A new scope is created when Alepha handles a request, a scheduled job, a queue worker task...
+	 *   - You can also start a manual scope via alepha.context.run(() => { ... }).
+	 *   - When the scope ends, the scoped registry is discarded.
+	 *
+	 * @default "singleton"
 	 */
-	skipCache?: boolean;
-	/**
-	 * Don't store the instance in the registry.
-	 */
-	skipRegistration?: boolean;
+	lifetime?: "transient" | "singleton" | "scoped";
+
 	/**
 	 * Constructor arguments to pass when creating a new instance.
 	 */
 	args?: ConstructorParameters<InstantiableClass<T>>;
+
 	/**
-	 * Parent service that requested the instance.
+	 * Parent that requested the instance.
+	 *
 	 * @internal
 	 */
 	parent?: Service | null;

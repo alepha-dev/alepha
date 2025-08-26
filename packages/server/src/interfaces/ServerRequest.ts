@@ -40,12 +40,25 @@ export type ServerRequestConfigEntry<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > = Partial<ServerRequestConfig<TConfig>>;
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface ServerRequest<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends ServerRequestConfig<TConfig> {
 	method: RouteMethod;
 	url: URL;
+	requestId: string;
+
+	/**
+	 * Client IP address.
+	 * Will parse `X-Forwarded-For` header if present.
+	 */
 	ip?: string;
+
+	/**
+	 * Value of the `Host` header sent by the client.
+	 */
+	host?: string;
 
 	/**
 	 * Browser user agent information.
@@ -58,17 +71,33 @@ export interface ServerRequest<
 	// store request data
 	metadata: Record<string, any>;
 
-	// sugar methods
+	/**
+	 * Reply object to be used to send response.
+	 */
 	reply: ServerReply;
 
-	// forward raw request
+	/**
+	 * Raw request and response objects from platform.
+	 * You should avoid using this property as much as possible to keep your code platform-agnostic.
+	 */
 	raw: {
+		/**
+		 * Node.js request and response objects.
+		 */
 		node?: {
+			/**
+			 * Node.js IncomingMessage object. (request)
+			 */
 			req: IncomingMessage;
+			/**
+			 * Node.js ServerResponse object. (response)
+			 */
 			res: NodeServerResponse;
 		};
 	};
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface ServerRoute<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,

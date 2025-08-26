@@ -22,6 +22,7 @@ export class AlsProvider {
 			return callback();
 		}
 
+		data.registry ??= new Map();
 		data.context ??= this.createContextId();
 
 		return this.als.run(data, callback);

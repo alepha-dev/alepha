@@ -39,8 +39,7 @@ export const useForm = <T extends TObject>(
 
 	return useMemo(() => {
 		return alepha.inject(FormModel<T>, {
-			skipRegistration: true,
-			skipCache: true,
+			lifetime: "transient",
 			args: [options.id || formId, options],
 		});
 	}, []);
