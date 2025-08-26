@@ -15,6 +15,14 @@ const TaskItem = (props: { task: Task }) => {
 		router.path("projectTask", { params: { taskId: task.id } }),
 	);
 
+	const renderComplexityText = (letter: string) => {
+		return (
+			<Text size="md" fw={"bold"} lh={"21px"}>
+				{letter}
+			</Text>
+		);
+	};
+
 	const renderComplexity = (complexity: number) => {
 		if (complexity === 5)
 			return (
@@ -28,9 +36,7 @@ const TaskItem = (props: { task: Task }) => {
 					style={{ borderColor: "#d1810a" }}
 					bg={theme.colors.panel}
 				>
-					<Text size="md" fw={"bold"}>
-						S
-					</Text>
+					{renderComplexityText("S")}
 				</Card>
 			);
 		if (complexity === 4)
@@ -44,9 +50,7 @@ const TaskItem = (props: { task: Task }) => {
 					className={"shadow"}
 					bg={theme.colors.panel}
 				>
-					<Text size="md" fw={"bold"}>
-						A
-					</Text>
+					{renderComplexityText("A")}
 				</Card>
 			);
 		if (complexity === 3)
@@ -59,9 +63,7 @@ const TaskItem = (props: { task: Task }) => {
 					withBorder
 					bg={theme.colors.panel}
 				>
-					<Text size="md" fw={"bold"}>
-						B
-					</Text>
+					{renderComplexityText("B")}
 				</Card>
 			);
 		if (complexity === 2)
@@ -74,16 +76,12 @@ const TaskItem = (props: { task: Task }) => {
 					withBorder
 					bg={theme.colors.card}
 				>
-					<Text size="md" fw={"bold"}>
-						C
-					</Text>
+					{renderComplexityText("C")}
 				</Card>
 			);
 		return (
 			<Card p={0} w={25} h={25} radius={"md"} withBorder bg={theme.colors.card}>
-				<Text size="sm" fw={"bold"}>
-					F
-				</Text>
+				{renderComplexityText("F")}
 			</Card>
 		);
 	};

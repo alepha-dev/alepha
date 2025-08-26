@@ -49,7 +49,7 @@ const QuestLog = () => {
 								radius={"md"}
 								withBorder
 								p={0}
-								px={"xs"}
+								px={6}
 								style={{ padding: "0 4px" }}
 							>
 								<Text size="xs">{tasks.length}/25</Text>
@@ -60,12 +60,14 @@ const QuestLog = () => {
 							<ActionIcon disabled variant={"subtle"}>
 								<IconSelector size={theme.icon.size.md} />
 							</ActionIcon>
-							<ActionIcon disabled variant={"subtle"}>
-								<IconSelector size={theme.icon.size.md} />
-							</ActionIcon>
-							<Menu trigger="hover" position="bottom-start">
+							<Menu
+								withArrow
+								arrowSize={12}
+								trigger="hover"
+								position="bottom-start"
+							>
 								<Menu.Target>
-									<ActionIcon disabled variant={"subtle"}>
+									<ActionIcon variant={"subtle"}>
 										<IconDots size={theme.icon.size.md} />
 									</ActionIcon>
 								</Menu.Target>

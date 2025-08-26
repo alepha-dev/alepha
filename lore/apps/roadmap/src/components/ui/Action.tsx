@@ -1,4 +1,4 @@
-import { type UseActiveOptions, useActive } from "@alepha/react";
+import { type UseActiveOptions, useActive, useRouter } from "@alepha/react";
 import { type FormModel, useFormState } from "@alepha/react-form";
 import { Button, type ButtonProps, Flex } from "@mantine/core";
 import { type ReactNode, useState } from "react";
@@ -107,9 +107,11 @@ export interface ActiveHrefProps extends ButtonProps {
 
 const ActionHref = (props: ActiveHrefProps) => {
 	const { active: options, ...buttonProps } = props;
-	const { anchorProps, isPending, isActive } = useActive(
+	const router = useRouter();
+	const { isPending, isActive } = useActive(
 		options ? { href: props.href, ...options } : { href: props.href },
 	);
+	const anchorProps = router.anchor(props.href);
 
 	return (
 		<Button

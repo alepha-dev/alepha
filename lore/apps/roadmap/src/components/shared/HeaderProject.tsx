@@ -12,7 +12,7 @@ import Action from "../ui/Action.tsx";
 const HeaderProject = () => {
 	const [project] = useStore("project");
 	const router = useRouter<AppRouter>();
-	const { url } = useRouterState();
+	const { params } = useRouterState();
 	const [projects = []] = useStore("user.projects");
 
 	if (!project) {
@@ -24,7 +24,7 @@ const HeaderProject = () => {
 			<Menu.Item
 				key={id}
 				leftSection={
-					url.pathname.startsWith(`/p/${id}`) ? (
+					params.projectId === String(id) ? (
 						<IconSquareCheck size={16} />
 					) : (
 						<IconSquare size={16} />
@@ -42,7 +42,7 @@ const HeaderProject = () => {
 			<Flex visibleFrom={"sm"}>
 				<IconSlash size={16} />
 			</Flex>
-			<Menu trigger="hover" position="bottom">
+			<Menu withArrow arrowSize={12} trigger="hover" position="bottom">
 				<Menu.Target>
 					<Action variant={"subtle"}>{project.title}</Action>
 				</Menu.Target>

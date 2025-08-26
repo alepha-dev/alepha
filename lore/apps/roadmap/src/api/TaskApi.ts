@@ -88,8 +88,10 @@ export class TaskApi {
 				);
 
 				const xp = this.lvl.getXpFromTask(task);
+				const money = this.lvl.getMoneyFromTask(task);
 
 				character.xp += xp;
+				character.balance += money;
 				task.completedAt = this.dt.nowISOString();
 				task.completedBy = user.id;
 
