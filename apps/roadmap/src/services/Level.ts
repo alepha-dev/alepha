@@ -6,6 +6,13 @@ export class Level {
 		97000, 117000, 139000, 163000, 189000, 217000, 247000,
 	];
 
+	getMoneyFromTask(task: Task): number {
+		const baseMoney = task.complexity * 40;
+		const priorityBonus =
+			task.priority === "high" ? 200 : task.priority === "medium" ? 100 : 0;
+		return baseMoney + priorityBonus;
+	}
+
 	getGold(balance: number): number {
 		return Math.floor(balance / 100);
 	}

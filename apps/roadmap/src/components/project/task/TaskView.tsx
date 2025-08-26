@@ -15,7 +15,10 @@ import {
 	IconEdit,
 	IconFileText,
 	IconPigMoney,
+	IconSword,
+	IconSwords,
 	IconTag,
+	IconTrash,
 	IconX,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -52,6 +55,8 @@ const TaskView = (props: TaskViewProps) => {
 		return null;
 	}
 
+	const money = level.getMoneyFromTask(task);
+
 	const openDeleteModal = () =>
 		new Promise<boolean>((resolve) =>
 			modals.openConfirmModal({
@@ -72,25 +77,30 @@ const TaskView = (props: TaskViewProps) => {
 		);
 
 	return (
-		<Card flex={1} withBorder radius={0} bg={theme.colors.card} p={0}>
+		<Card
+			flex={1}
+			withBorder
+			className={"shadow-2"}
+			radius={"md"}
+			bg={theme.colors.card}
+			p={0}
+			m={2}
+		>
 			<Stack flex={1} className={"overflow-auto"} gap={0}>
 				<Stack flex={1} className={"overflow-auto"} p={"xs"} gap={0}>
-					<Flex>
-						<Flex flex={1} />
-						<Flex>
-							<Action
-								px={"xs"}
-								href={router.path("projectBoard", {
-									params: { projectId: String(project.id) },
-								})}
-							>
-								<IconX size={theme.icon.size.md} />
-							</Action>
-						</Flex>
+					<Flex justify={"end"}>
+						<Action
+							px={"xs"}
+							href={router.path("projectBoard", {
+								params: { projectId: String(project.id) },
+							})}
+						>
+							<IconX size={theme.icon.size.md} />
+						</Action>
 					</Flex>
 
 					<Flex
-						p={"md"}
+						px={"md"}
 						direction={"column"}
 						gap={"md"}
 						flex={1}
@@ -168,14 +178,14 @@ const TaskView = (props: TaskViewProps) => {
 							<Text size={"sm"}>{tr("task.view.receive")}</Text>
 							<Flex gap={"xs"} align={"center"}>
 								<Flex align={"center"} gap={2}>
-									<Text size={"sm"}>{task.complexity * 1}</Text>
+									<Text size={"sm"}>{level.getGold(money)}</Text>
 									<IconCircleFilled
 										color={"var(--color-gold)"}
 										size={theme.icon.size.xs}
 									/>
 								</Flex>
 								<Flex align={"center"} gap={2}>
-									<Text size={"sm"}>{task.complexity * 10}</Text>
+									<Text size={"sm"}>{level.getSilver(money)}</Text>
 									<IconCircleFilled
 										color={"var(--color-silver)"}
 										size={theme.icon.size.xs}
@@ -214,7 +224,7 @@ const TaskView = (props: TaskViewProps) => {
 							<Action
 								c={"green"}
 								variant={"subtle"}
-								leftSection={<IconCheck size={theme.icon.size.md} />}
+								leftSection={<IconSwords size={theme.icon.size.md} />}
 								disabled={!taskApi.deleteTask.can()}
 								onClick={async () => {
 									const { character } = await taskApi.completeTask({
@@ -236,7 +246,7 @@ const TaskView = (props: TaskViewProps) => {
 							<Action
 								c={"red"}
 								variant={"subtle"}
-								leftSection={<IconX size={theme.icon.size.md} />}
+								leftSection={<IconTrash size={theme.icon.size.md} />}
 								disabled={!taskApi.deleteTask.can()}
 								onClick={async () => {
 									const confirm = await openDeleteModal();

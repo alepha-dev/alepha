@@ -3,6 +3,7 @@ import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import { theme } from "../../constants/theme.ts";
 import ExperienceBar from "../shared/ExperienceBar.tsx";
 import ProjectActions from "./ProjectActions.tsx";
+import ProjectBanner from "./ProjectBanner.tsx";
 import QuestLog from "./QuestLog.tsx";
 
 const ProjectView = () => {
@@ -32,9 +33,12 @@ const ProjectView = () => {
 						mx={0}
 						px={"xs"}
 					>
-						<Stack w={"100%"} gap={0} h={"100%"} className={"overflow-auto"}>
-							<Flex p={"xs"} hiddenFrom={"lg"} w={"100%"}>
+						<Stack w={"100%"} gap={"xs"} h={"100%"} className={"overflow-auto"}>
+							<Flex hiddenFrom={"lg"} w={"100%"}>
 								<ProjectActions />
+							</Flex>
+							<Flex px={"xs"} mb={-16}>
+								<ProjectBanner />
 							</Flex>
 							<NestedView />
 						</Stack>
