@@ -1,4 +1,4 @@
-import { $env, t } from "@alepha/core";
+import { $env, $inject, Alepha, t } from "@alepha/core";
 
 const envSchema = t.object({
 	/**
@@ -13,7 +13,8 @@ const envSchema = t.object({
 });
 
 export class ConsoleColorProvider {
-	protected env = $env(envSchema);
+	protected readonly env = $env(envSchema);
+	protected readonly alepha = $inject(Alepha);
 
 	public readonly colors = {
 		reset: "\x1b[0m",
@@ -37,10 +38,23 @@ export class ConsoleColorProvider {
 	protected enabled = true;
 
 	constructor() {
-		this.enabled =
-			this.env.NO_COLOR !== "true" &&
-			this.env.NO_COLOR !== "1" &&
-			this.env.FORCE_COLOR !== "0";
+		this.enabled = this.isEnabled();
+	}
+
+	public isEnabled(): boolean {
+		if (this.env.FORCE_COLOR) {
+			return true;
+		}
+
+		if (this.env.NO_COLOR) {
+			return false;
+		}
+
+		if (this.alepha.isProduction()) {
+			return false;
+		}
+
+		return true;
 	}
 
 	public colorize(

@@ -19,9 +19,6 @@ export class SessionApi {
 	cleanup = $route({
 		path: "/session/cleanup",
 		schema: {
-			headers: t.object({
-				authorization: t.optional(t.string()),
-			}),
 			response: t.string(),
 		},
 		handler: async () => {

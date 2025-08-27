@@ -1,10 +1,16 @@
 import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { useI18n } from "@alepha/react-i18n";
-import { ActionIcon, Flex, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconUser } from "@tabler/icons-react";
+import { ActionIcon, Flex, Menu, useMantineColorScheme } from "@mantine/core";
+import {
+	IconLogout,
+	IconMoon,
+	IconSettings,
+	IconUser,
+} from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Security } from "../../api/providers/Security.ts";
+import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import type { MeRouter } from "../auth/MeRouter.ts";
 import Action from "../ui/Action.tsx";
@@ -31,27 +37,51 @@ const AuthButton = () => {
 
 	if (auth.user) {
 		return (
-			<Action
-				ta={"left"}
-				variant={"subtle"}
-				href={routerMe.path("profile")}
-				active={{
-					startWith: true,
-				}}
-				leftSection={
-					<img
-						alt={"picture"}
-						style={{
-							height: "24px",
-							width: "24px",
-							borderRadius: "50%",
-						}}
-						src={"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"}
-					/>
-				}
+			<Menu
+				width={"196px"}
+				arrowSize={12}
+				trigger="click"
+				position="bottom"
+				withArrow
 			>
-				{auth.user.name}
-			</Action>
+				<Menu.Target>
+					<Action
+						ta={"left"}
+						variant={"subtle"}
+						leftSection={
+							<img
+								alt={"picture"}
+								style={{
+									height: "24px",
+									width: "24px",
+									borderRadius: "50%",
+								}}
+								src={"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"}
+							/>
+						}
+					>
+						{auth.user.name}
+					</Action>
+				</Menu.Target>
+				<Menu.Dropdown>
+					<Menu.Label>{auth.user.email}</Menu.Label>
+					<Menu.Item
+						component={"a"}
+						{...routerMe.anchor("profile")}
+						leftSection={<IconSettings size={theme.icon.size.sm} />}
+					>
+						Settings
+					</Menu.Item>
+					<Menu.Divider />
+					<Menu.Item
+						color={"red"}
+						onClick={() => auth.logout()}
+						leftSection={<IconLogout size={theme.icon.size.sm} />}
+					>
+						Sign out
+					</Menu.Item>
+				</Menu.Dropdown>
+			</Menu>
 		);
 	}
 

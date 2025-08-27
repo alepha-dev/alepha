@@ -10,7 +10,6 @@ import {
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { LinkProvider } from "@alepha/server-links";
-import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
 	PreviousLayerData,
@@ -37,7 +36,6 @@ export class ReactBrowserProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly router = $inject(ReactBrowserRouterProvider);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected root?: Root;
 
 	public options: ReactBrowserRendererOptions = {
 		scrollRestoration: "top",
@@ -241,14 +239,13 @@ export class ReactBrowserProvider {
 			await this.render({ previous });
 
 			const element = this.router.root(this.state);
-			if (hydration?.layers) {
-				this.root = hydrateRoot(this.getRootElement(), element);
-				this.log.info("Hydrated root element");
-			} else {
-				this.root ??= createRoot(this.getRootElement());
-				this.root.render(element);
-				this.log.info("Created root element");
-			}
+
+			this.alepha.emit("react:browser:render", {
+				element,
+				root: this.getRootElement(),
+				hydration,
+				state: this.state,
+			});
 
 			window.addEventListener("popstate", () => {
 				// when you update silently queryParams or hash, skip rendering

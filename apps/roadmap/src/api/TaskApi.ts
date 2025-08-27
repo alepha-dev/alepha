@@ -108,17 +108,6 @@ export class TaskApi {
 		},
 	});
 
-	load = async (user: UserAccountToken, taskId: number) => {
-		const task = await this.db.tasks.findOne({
-			id: { eq: taskId },
-		});
-		const character = await this.db.characters.findOne({
-			projectId: { eq: task.projectId },
-			userId: { eq: user.id },
-		});
-		return { task, character };
-	};
-
 	getTaskById = $action({
 		schema: {
 			params: t.object({
@@ -127,7 +116,7 @@ export class TaskApi {
 			response: tasks.$schema,
 		},
 		handler: async ({ params, user }) => {
-			const { task } = await this.load(user, params.id);
+			const { task } = await this.check(user, params.id);
 
 			return task;
 		},
@@ -150,7 +139,7 @@ export class TaskApi {
 			response: tasks.$schema,
 		},
 		handler: async ({ params, body, user }) => {
-			await this.load(user, params.id);
+			await this.check(user, params.id);
 
 			if (body.description) {
 				// sanitize HTML content
@@ -169,11 +158,32 @@ export class TaskApi {
 			response: t.boolean(),
 		},
 		handler: async ({ params, user }) => {
-			await this.load(user, params.id);
+			await this.check(user, params.id);
 
 			await this.db.tasks.deleteById(params.id);
 
 			return true;
 		},
 	});
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Act like a security check and load task + character.
+	 */
+	check = async (user: UserAccountToken, taskId: number) => {
+		// 1. load the task
+		const task = await this.db.tasks.findOne({
+			id: { eq: taskId },
+		});
+
+		// 2. load the character associated to the project AND the user
+		// if no match => no access
+		const character = await this.db.characters.findOne({
+			projectId: { eq: task.projectId },
+			userId: { eq: user.id },
+		});
+
+		return { task, character };
+	};
 }

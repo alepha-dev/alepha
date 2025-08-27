@@ -1,7 +1,7 @@
 import { NestedView, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
-import { IconAntenna, IconUser, IconUsers } from "@tabler/icons-react";
+import { IconAntenna, IconMapRoute, IconUser } from "@tabler/icons-react";
 import { theme } from "../../constants/theme.ts";
 import Action, { type ActionProps } from "../ui/Action.tsx";
 import type { MeRouter } from "./MeRouter.ts";
@@ -79,7 +79,7 @@ const MeMenu = () => {
 					Profile
 				</ActionNavLink>
 				<ActionNavLink
-					leftSection={<IconUsers size={20} />}
+					leftSection={<IconMapRoute size={20} />}
 					href={meRouter.path("characters")}
 				>
 					Campaigns
