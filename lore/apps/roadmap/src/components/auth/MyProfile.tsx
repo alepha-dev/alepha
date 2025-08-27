@@ -8,7 +8,7 @@ export interface ProfileProps {
 const MyProfile = (props: ProfileProps) => {
 	return (
 		<Flex bg={"var(--app-bg-color)"} flex={1} align="center" justify="center">
-			TODO: Profile
+			🚧
 		</Flex>
 	);
 };

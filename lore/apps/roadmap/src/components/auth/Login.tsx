@@ -92,11 +92,11 @@ const Login = () => {
 										width={24}
 									/>
 								}
-								onClick={() => {
+								onClick={() =>
 									auth.login("github", {
 										redirect: router.query.r || "/",
-									});
-								}}
+									})
+								}
 							>
 								Continue with GitHub
 							</Action>
