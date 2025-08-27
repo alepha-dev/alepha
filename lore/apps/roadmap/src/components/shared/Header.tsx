@@ -1,11 +1,10 @@
-import { useInject, useRouter, useRouterEvents, useStore } from "@alepha/react";
+import { useRouter, useRouterEvents, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
-import { Burger, Container, Drawer, Flex, Stack } from "@mantine/core";
+import { Burger, Container, Drawer, Flex } from "@mantine/core";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { Level } from "../../services/Level.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
 import Action from "../ui/Action.tsx";

@@ -10,12 +10,10 @@ import { useI18n } from "@alepha/react-i18n";
 import { Card, Drawer, Flex, Group, Stack, Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
-	IconCheck,
 	IconCircleFilled,
 	IconEdit,
 	IconFileText,
 	IconPigMoney,
-	IconSword,
 	IconSwords,
 	IconTag,
 	IconTrash,
