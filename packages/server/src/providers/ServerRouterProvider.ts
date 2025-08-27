@@ -1,4 +1,3 @@
-import type { IncomingMessage } from "node:http";
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
@@ -9,7 +8,6 @@ import {
 	TypeGuard,
 } from "@alepha/core";
 import { RouterProvider } from "@alepha/router";
-import type { ServerResponse as NodeServerResponse } from "http";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
@@ -17,15 +15,12 @@ import type { ServerReply } from "../helpers/ServerReply.ts";
 import type {
 	RequestConfigSchema,
 	ResponseKind,
-	ServerRawRequest,
 	ServerRequest,
 	ServerRequestConfig,
 	ServerRoute,
 	ServerRouteMatcher,
-	ServerRouteRequestHandler,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
-import { UserAgentParser } from "../services/UserAgentParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 
 /**

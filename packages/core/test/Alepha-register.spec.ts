@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { $inject, Alepha, TooLateSubstitutionError } from "../src";
-import { AlephaError } from "../src/errors/AlephaError.ts";
 
 describe("Alepha#with", () => {
 	it("should allow substitution", () => {

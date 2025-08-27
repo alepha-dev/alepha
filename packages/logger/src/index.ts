@@ -1,4 +1,4 @@
-import { $env, $module, type Alepha, type Static, t } from "@alepha/core";
+import { $module, type Static, t } from "@alepha/core";
 import { $logger } from "./descriptors/$logger.ts";
 import { ConsoleDestinationProvider } from "./providers/ConsoleDestinationProvider.ts";
 import { JsonFormatterProvider } from "./providers/JsonFormatterProvider.ts";

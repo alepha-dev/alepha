@@ -219,18 +219,17 @@ class B {
 
 #### $module()
 
-Wrap services and descriptors into a module.
+Wrap Services and Descriptors into a Module.
 
-Module is just a class.
-You must attach a `name` to it.
-
-It's recommended to use `project.module.submodule` format.
+- A module is just a Service extended {@link Module}.
+- You must attach a `name` to it.
+- Name must follow the pattern: `project.module.submodule`.
 
 ```ts
 import { $module } from "@alepha/core";
 import { MyService } from "./MyService.ts";
 
-// export MyService so it can be used everywhere
+// export MyService, so it can be used everywhere
 export * from "./MyService.ts";
 
 export default $module({
@@ -240,6 +239,27 @@ export default $module({
 });
 ```
 
-- Module is used for logging and other purposes.
-- It's useful for large applications or libraries to group services and descriptors together.
-- It's probably overkill for small applications.
+## Why Modules?
+
+### Logging
+
+By default, AlephaLogger will log the module name in the logs.
+This helps to identify where the logs are coming from.
+
+You can also set different log levels for different modules.
+It means you can set 'some.very.specific.module' to 'debug' and keep the rest of the application to 'info'.
+
+### Modulith
+
+Force to structure your application in modules, even if it's a single deployable unit.
+It helps to keep a clean architecture and avoid monolithic applications.
+
+You can also use `MODULE_INCLUDE` and `MODULE_EXCLUDE` environment variables to load only specific modules.
+
+A strict mode is planned to enforce module boundaries. Throwing errors when a service from another module is injected.
+
+### When not to use Modules?
+
+Small applications does not need modules. It's better to keep it simple.
+Modules are more useful when the application grows and needs to be structured.
+If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
