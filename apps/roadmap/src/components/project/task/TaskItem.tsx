@@ -33,7 +33,7 @@ const TaskItem = (props: { task: Task }) => {
 					radius={"md"}
 					withBorder
 					className={"shadow"}
-					style={{ borderColor: "#d1810a" }}
+					style={{ borderColor: theme.colors.gold }}
 					bg={theme.colors.panel}
 				>
 					{renderComplexityText("S")}
@@ -48,6 +48,7 @@ const TaskItem = (props: { task: Task }) => {
 					radius={"md"}
 					withBorder
 					className={"shadow"}
+					style={{ borderColor: theme.colors.silver }}
 					bg={theme.colors.panel}
 				>
 					{renderComplexityText("A")}

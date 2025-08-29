@@ -20,14 +20,11 @@ mkdir my-alepha-app
 cd my-alepha-app
 ```
 
-Next, we'll install Alepha and add TypeScript as a development dependency.
+Next, we'll install Alepha as dependency.
 
 ```bash
 # Install the all-in-one Alepha package
 npm install alepha
-
-# Install TypeScript
-npm install -D typescript
 ```
 
 ### 2. Configure TypeScript
