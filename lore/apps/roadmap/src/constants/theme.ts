@@ -20,6 +20,8 @@ export const theme = {
 		card: "var(--card-bg-color)",
 		panel: "var(--panel-bg-color)",
 		app: "var(--app-bg-color)",
+		gold: "var(--color-gold)",
+		silver: "var(--color-silver)",
 	},
 	icon: {
 		size: {

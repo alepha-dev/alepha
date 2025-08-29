@@ -76,10 +76,10 @@ const TaskView = (props: TaskViewProps) => {
 
 	return (
 		<Card
+			key={task.id}
 			flex={1}
 			withBorder
-			className={"shadow-2"}
-			radius={"md"}
+			className={"shadow"}
 			bg={theme.colors.card}
 			p={0}
 			m={2}
@@ -220,28 +220,6 @@ const TaskView = (props: TaskViewProps) => {
 					>
 						<Group>
 							<Action
-								c={"green"}
-								variant={"subtle"}
-								leftSection={<IconSwords size={theme.icon.size.md} />}
-								disabled={!taskApi.deleteTask.can()}
-								onClick={async () => {
-									const { character } = await taskApi.completeTask({
-										params: { id: task.id },
-									});
-									alepha.state("character", character);
-									alepha.state(
-										"tasks",
-										(alepha.state("tasks") ?? []).filter(
-											(t) => t.id !== task.id,
-										),
-									);
-									await router.go("projectBoard");
-								}}
-							>
-								{tr("task.view.actions.complete")}
-							</Action>
-							<Flex flex={1} />
-							<Action
 								c={"red"}
 								variant={"subtle"}
 								leftSection={<IconTrash size={theme.icon.size.md} />}
@@ -266,6 +244,28 @@ const TaskView = (props: TaskViewProps) => {
 								}}
 							>
 								{tr("task.view.actions.abandon")}
+							</Action>
+							<Flex flex={1} />
+							<Action
+								c={"green"}
+								variant={"subtle"}
+								leftSection={<IconSwords size={theme.icon.size.md} />}
+								disabled={!taskApi.deleteTask.can()}
+								onClick={async () => {
+									const { character } = await taskApi.completeTask({
+										params: { id: task.id },
+									});
+									alepha.state("character", character);
+									alepha.state(
+										"tasks",
+										(alepha.state("tasks") ?? []).filter(
+											(t) => t.id !== task.id,
+										),
+									);
+									await router.go("projectBoard");
+								}}
+							>
+								{tr("task.view.actions.complete")}
 							</Action>
 						</Group>
 					</Card>

@@ -37,7 +37,7 @@ const ProjectView = () => {
 							<Flex hiddenFrom={"lg"} w={"100%"}>
 								<ProjectActions />
 							</Flex>
-							<Flex px={"xs"} mb={-16}>
+							<Flex>
 								<ProjectBanner />
 							</Flex>
 							<NestedView />
