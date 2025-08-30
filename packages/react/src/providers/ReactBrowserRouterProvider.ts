@@ -56,7 +56,10 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
 		const state = entry as ReactRouterState;
 
-		await this.alepha.emit("react:transition:begin", { state });
+		await this.alepha.emit("react:transition:begin", {
+			previous: this.alepha.state("react.router.state")!,
+			state,
+		});
 
 		try {
 			const { route, params } = this.match(pathname);

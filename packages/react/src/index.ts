@@ -44,6 +44,7 @@ declare module "@alepha/core" {
 			hydration?: ReactHydrationState;
 		};
 		"react:transition:begin": {
+			previous: ReactRouterState;
 			state: ReactRouterState;
 		};
 		"react:transition:success": {

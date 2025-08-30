@@ -1,10 +1,12 @@
-import { Flex, Stack } from "@mantine/core";
+import { Flex } from "@mantine/core";
 
 const ProjectBoard = () => {
 	return (
-		<Stack>
-			<Flex w={"100%"}></Flex>
-		</Stack>
+		<Flex flex={1} align="center" justify="center">
+			<Flex p={"sm"} align="center" justify="center">
+				🚧
+			</Flex>
+		</Flex>
 	);
 };
 

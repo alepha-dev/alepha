@@ -179,6 +179,17 @@ export interface PageDescriptorOptions<
 	 * Called when user leaves the page. (browser only)
 	 */
 	onLeave?: () => void;
+
+	animations?: {
+		enter?: {
+			className: string;
+			duration: number;
+		};
+		exit?: {
+			className: string;
+			duration: number;
+		};
+	};
 }
 
 export type ErrorHandler = (

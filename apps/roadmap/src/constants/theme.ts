@@ -22,6 +22,7 @@ export const theme = {
 		app: "var(--app-bg-color)",
 		gold: "var(--color-gold)",
 		silver: "var(--color-silver)",
+		bronze: "var(--color-bronze)",
 	},
 	icon: {
 		size: {

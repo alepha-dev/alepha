@@ -15,6 +15,7 @@ export * from "./hooks/useInject.ts";
 export * from "./hooks/useQueryParams.ts";
 export * from "./hooks/useRouter.ts";
 export * from "./hooks/useRouterEvents.ts";
+export * from "./hooks/useRouterLayerIndex.ts";
 export * from "./hooks/useRouterState.ts";
 export * from "./hooks/useSchema.ts";
 export * from "./hooks/useStore.ts";
