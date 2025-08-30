@@ -140,6 +140,16 @@ export class AppRouter {
 			this.alepha.state("project", null);
 			this.alepha.state("tasks", []);
 		},
+		animation: {
+			enter: {
+				name: "fadeInUp",
+				duration: 400,
+				timing: "cubic-bezier(0.22, 1, 0.36, 1)",
+			},
+			exit: {
+				name: "fadeOutDown",
+			},
+		},
 	});
 
 	projectBoard = $page({
@@ -160,12 +170,7 @@ export class AppRouter {
 	projectSettings = $page({
 		path: "/settings",
 		lazy: () => import("./components/project/ProjectSettings.tsx"),
-		animations: {
-			enter: {
-				className: "slide-in-left",
-				duration: 300,
-			},
-		},
+		animation: "fadeInUp",
 	});
 
 	projectTask = $page({
@@ -175,14 +180,14 @@ export class AppRouter {
 				taskId: t.int(),
 			}),
 		},
-		animations: {
+		animation: {
 			enter: {
-				className: "fade-in-up",
-				duration: 300,
+				name: "genieIn",
+				duration: 500,
+				timing: "cubic-bezier(0.22, 1, 0.36, 1)",
 			},
 			exit: {
-				className: "fade-out-down",
-				duration: 300,
+				name: "fadeOutDown",
 			},
 		},
 		lazy: () => import("./components/project/task/TaskView.tsx"),

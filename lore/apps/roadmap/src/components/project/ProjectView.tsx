@@ -1,6 +1,5 @@
-import { NestedView, useRouterEvents, useRouterState } from "@alepha/react";
-import { Card, Container, Flex, Stack, Text, Transition } from "@mantine/core";
-import { useRef, useState } from "react";
+import { NestedView, useRouterState } from "@alepha/react";
+import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import { theme } from "../../constants/theme.ts";
 import ExperienceBar from "../shared/ExperienceBar.tsx";
 import ProjectActions from "./ProjectActions.tsx";

@@ -16,7 +16,7 @@ const TaskItem = (props: { task: Task }) => {
 
 	const renderComplexityText = (letter: string) => {
 		return (
-			<Text size="md" fw={"bold"} lh={"21px"}>
+			<Text size="md" fw={"bold"} lh={"24px"}>
 				{letter}
 			</Text>
 		);
