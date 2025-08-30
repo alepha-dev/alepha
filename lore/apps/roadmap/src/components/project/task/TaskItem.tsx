@@ -1,4 +1,4 @@
-import { useActive, useRouter, useStore } from "@alepha/react";
+import { useActive, useRouter } from "@alepha/react";
 import { Card, Flex, HoverCard, Text } from "@mantine/core";
 import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
@@ -10,8 +10,7 @@ const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
 
 	const router = useRouter<AppRouter>();
-	const [project] = useStore("project");
-	const { isActive, isPending, anchorProps } = useActive(
+	const { isActive, anchorProps } = useActive(
 		router.path("projectTask", { params: { taskId: task.id } }),
 	);
 
@@ -32,7 +31,7 @@ const TaskItem = (props: { task: Task }) => {
 					h={25}
 					radius={"md"}
 					withBorder
-					className={"shadow"}
+					className={"shadow-2"}
 					style={{ borderColor: theme.colors.gold }}
 					bg={theme.colors.panel}
 				>
@@ -62,6 +61,7 @@ const TaskItem = (props: { task: Task }) => {
 					h={25}
 					radius={"md"}
 					withBorder
+					className={"shadow"}
 					bg={theme.colors.panel}
 				>
 					{renderComplexityText("B")}
@@ -75,7 +75,7 @@ const TaskItem = (props: { task: Task }) => {
 					h={25}
 					radius={"md"}
 					withBorder
-					bg={theme.colors.card}
+					bg={theme.colors.panel}
 				>
 					{renderComplexityText("C")}
 				</Card>
@@ -86,28 +86,6 @@ const TaskItem = (props: { task: Task }) => {
 			</Card>
 		);
 	};
-
-	const flexProps =
-		isActive || isPending
-			? {
-					bordered: true,
-					shadow: true,
-					"aria-current": "page",
-					"data-active": true,
-					style: {
-						opacity: isPending ? 0.5 : 1,
-						padding: "2px 4px",
-						borderLeftColor: "var(--text-color)",
-						borderRightColor: "var(--text-color)",
-					},
-				}
-			: {
-					style: {
-						opacity: isPending ? 0.5 : 1,
-						padding: "2px 4px",
-						border: "1px solid transparent",
-					},
-				};
 
 	return (
 		<Action

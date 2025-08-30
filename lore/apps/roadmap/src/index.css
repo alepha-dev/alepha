@@ -30,6 +30,7 @@
 
 	--color-gold: #db9b05;
 	--color-silver: #b9b6b6ff;
+	--color-bronze: #cd7f32;
 	--color-high-priority: #d61b1b;
 
 	--border-color-light: #cbcbcb;
@@ -138,4 +139,47 @@ pre > code {
 .tiptap.ProseMirror {
 	height: 100%;
 	min-height: 200px;
+}
+
+/**
+ * ---------------------------------------------------------------------------------------------------------------------
+ * Animations
+ */
+
+.fade-in-up {
+	opacity: 0;
+	transform: translateY(30px);
+}
+
+.fade-in-up.active {
+	opacity: 1;
+	transform: translateY(0px);
+	transition:
+		opacity 300ms,
+		transform 300ms;
+}
+
+.fade-out-down {
+	opacity: 1;
+	transform: translateY(0px);
+}
+
+.fade-out-down.active {
+	opacity: 0;
+	transform: translateY(30px);
+	transition:
+		opacity 300ms,
+		transform 300ms;
+}
+
+.slide-in-left {
+	opacity: 0;
+	transform: translateX(-30px);
+}
+.slide-in-left.active {
+	opacity: 1;
+	transform: translateX(0px);
+	transition:
+		opacity 300ms,
+		transform 300ms;
 }

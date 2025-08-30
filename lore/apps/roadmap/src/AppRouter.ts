@@ -160,6 +160,12 @@ export class AppRouter {
 	projectSettings = $page({
 		path: "/settings",
 		lazy: () => import("./components/project/ProjectSettings.tsx"),
+		animations: {
+			enter: {
+				className: "slide-in-left",
+				duration: 300,
+			},
+		},
 	});
 
 	projectTask = $page({
@@ -168,6 +174,16 @@ export class AppRouter {
 			params: t.object({
 				taskId: t.int(),
 			}),
+		},
+		animations: {
+			enter: {
+				className: "fade-in-up",
+				duration: 300,
+			},
+			exit: {
+				className: "fade-out-down",
+				duration: 300,
+			},
 		},
 		lazy: () => import("./components/project/task/TaskView.tsx"),
 		resolve: async ({ params }) => {

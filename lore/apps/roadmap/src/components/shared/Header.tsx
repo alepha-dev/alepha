@@ -46,7 +46,7 @@ const Header = () => {
 						<HeaderProject />
 					</Flex>
 				</Flex>
-				<Container w={theme.container} visibleFrom={"lg"}>
+				<Container w={theme.container} visibleFrom={"lg"} p={"xs"}>
 					<ProjectActions />
 				</Container>
 				<Flex flex={1}>
