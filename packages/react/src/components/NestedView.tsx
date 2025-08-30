@@ -1,16 +1,8 @@
-import { Flex } from "@mantine/core";
-import {
-	type ReactNode,
-	useContext,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-	useState,
-} from "react";
+import { type ReactNode, use, useRef, useState } from "react";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import type { PageAnimation } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import { useRouterEvents } from "../hooks/useRouterEvents.ts";
-import { useRouterLayerIndex } from "../hooks/useRouterLayerIndex.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";
 import ErrorBoundary from "./ErrorBoundary.tsx";
 
@@ -41,81 +33,80 @@ export interface NestedViewProps {
  * ```
  */
 const NestedView = (props: NestedViewProps) => {
-	const index = useRouterLayerIndex();
+	const index = use(RouterLayerContext)?.index ?? 0;
 	const state = useRouterState();
 
 	const [view, setView] = useState<ReactNode | undefined>(
 		state.layers[index]?.element,
 	);
-	const [className, setClassName] = useState("");
 
+	const [animation, setAnimation] = useState("");
 	const animationExitDuration = useRef<number>(0);
 	const animationExitNow = useRef<number>(0);
-	const animationEnterDuration = useRef<number>(0);
 
 	useRouterEvents(
 		{
-			onBegin: async ({ previous }) => {
+			onBegin: async ({ previous, state }) => {
+				// --------- Animations Begin ---------
 				const layer = previous.layers[index];
-				const animationExit = layer.route?.animations?.exit;
-				if (animationExit) {
-					console.log("animating exit");
+				if (state.url.pathname.startsWith(layer?.path)) {
+					return;
+				}
 
+				const animationExit = parseAnimation(layer.route?.animation, "exit");
+				const isChild = state.url.pathname.startsWith(previous.url.pathname);
+				if (animationExit && !isChild) {
+					const duration = animationExit.duration || 200;
 					animationExitNow.current = Date.now();
-					animationExitDuration.current = animationExit.duration;
-					setClassName(animationExit.className);
-					setTimeout(() => {
-						setClassName(`${animationExit.className} active`);
-					});
-					setTimeout(() => {
-						console.log("animation exit done");
-					}, animationExit.duration);
+					animationExitDuration.current = duration;
+					setAnimation(animationExit.animation);
 				} else {
 					animationExitNow.current = 0;
 					animationExitDuration.current = 0;
+					setAnimation("");
 				}
+				// --------- Animations End ---------
 			},
 			onEnd: async ({ state }) => {
 				const layer = state.layers[index];
 
+				// --------- Animations Begin ---------
 				if (animationExitNow.current) {
 					const duration = animationExitDuration.current;
-					const diff = Date.now() - animationExitNow.current - 20;
+					const diff = Date.now() - animationExitNow.current;
 					if (diff < duration) {
-						console.log("waiting to enter", duration - diff);
 						await new Promise((resolve) =>
 							setTimeout(resolve, duration - diff),
 						);
 					}
 				}
+				// --------- Animations End ---------
 
 				if (!layer?.cache) {
 					setView(layer?.element);
-					if (layer?.route?.animations?.enter) {
-						const animationEnter = layer.route.animations.enter;
-						setClassName(animationEnter.className);
-						animationEnterDuration.current = animationEnter.duration;
+
+					// --------- Animations Begin ---------
+					const animationEnter = parseAnimation(
+						layer?.route?.animation,
+						"enter",
+					);
+
+					if (animationEnter) {
+						setAnimation(animationEnter.animation);
+					} else {
+						setAnimation("");
 					}
+					// --------- Animations End ---------
 				}
 			},
 		},
 		[],
 	);
 
-	useEffect(() => {
-		if (animationEnterDuration.current) {
-			console.log("activating enter");
-			setClassName(`${className} active`);
-			setTimeout(() => {
-				setClassName("");
-				console.log("animation enter done");
-			}, animationEnterDuration.current);
-		}
-	}, [view]);
-
 	let element = view ?? props.children ?? null;
 
-	if (className) {
+	// --------- Animations Begin ---------
+	if (animation) {
 		element = (
 			<div
 				style={{
@@ -128,14 +119,15 @@ const NestedView = (props: NestedViewProps) => {
 				}}
 			>
 				<div
-					className={className}
-					style={{ height: "100%", width: "100%", display: "flex" }}
+					key={animation}
+					style={{ height: "100%", width: "100%", display: "flex", animation }}
 				>
 					{element}
 				</div>
 			</div>
 		);
 	}
+	// --------- Animations End ---------
 
 	if (props.errorBoundary === false) {
 		return <>{element}</>;
@@ -163,3 +155,52 @@ const NestedView = (props: NestedViewProps) => {
 };
 
 export default NestedView;
+
+function parseAnimation(
+	animation?: PageAnimation,
+	type: "enter" | "exit" = "enter",
+):
+	| {
+			duration: number;
+			animation: string;
+	  }
+	| undefined {
+	if (!animation) {
+		return undefined;
+	}
+
+	if (typeof animation === "string") {
+		if (type === "exit") {
+			return;
+		}
+		return {
+			duration: 200,
+			animation: `200ms ease-out ${animation}`,
+		};
+	}
+
+	if (typeof animation === "object") {
+		const anim = animation[type];
+		const duration = typeof anim === "object" ? (anim.duration ?? 200) : 200;
+		const name = typeof anim === "object" ? anim.name : anim;
+
+		if (type === "exit") {
+			const timing =
+				typeof anim === "object" ? (anim.timing ?? "ease-in") : "ease-in";
+			return {
+				duration,
+				animation: `${duration}ms ${timing} ${name}`,
+			};
+		}
+
+		const timing =
+			typeof anim === "object" ? (anim.timing ?? "ease-out") : "ease-out";
+
+		return {
+			duration,
+			animation: `${duration}ms ${timing} ${name}`,
+		};
+	}
+
+	return undefined;
+}

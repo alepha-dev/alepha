@@ -180,16 +180,49 @@ export interface PageDescriptorOptions<
 	 */
 	onLeave?: () => void;
 
-	animations?: {
-		enter?: {
-			className: string;
-			duration: number;
-		};
-		exit?: {
-			className: string;
-			duration: number;
-		};
-	};
+	/**
+	 * @experimental
+	 *
+	 * Add a css animation when the page is loaded or unloaded.
+	 * It uses CSS animations, so you need to define the keyframes in your CSS.
+	 *
+	 * @example Simple animation name
+	 * ```ts
+	 * animation: "fadeIn"
+	 * ```
+	 *
+	 * CSS example:
+	 * ```css
+	 * @keyframes fadeIn {
+	 *  from { opacity: 0; }
+	 *  to { opacity: 1; }
+	 * }
+	 * ```
+	 *
+	 * @example Detailed animation
+	 * ```ts
+	 * animation: {
+	 *   enter: { name: "fadeIn", duration: 300 },
+	 *   exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
+	 * }
+	 * ```
+	 *
+	 * @example Only exit animation
+	 * ```ts
+	 * animation: {
+	 *   exit: "fadeOut"
+	 * }
+	 * ```
+	 *
+	 * @example With custom timing function
+	 * ```ts
+	 * animation: {
+	 *   enter: { name: "fadeIn", duration: 300, timing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+	 *   exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
+	 * }
+	 * ```
+	 */
+	animation?: PageAnimation;
 }
 
 export type ErrorHandler = (
@@ -279,3 +312,22 @@ export type PageResolve<
 > = PageRequestConfig<TConfig> &
 	TPropsParent &
 	Omit<ReactRouterState, "layers" | "onError">;
+
+export type PageAnimation =
+	| string
+	| {
+			enter?:
+				| {
+						name: string;
+						duration?: number;
+						timing?: string;
+				  }
+				| string;
+			exit?:
+				| {
+						name: string;
+						duration?: number;
+						timing?: string;
+				  }
+				| string;
+	  };
