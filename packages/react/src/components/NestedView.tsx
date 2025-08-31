@@ -4,6 +4,7 @@ import type { PageAnimation } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import { useRouterEvents } from "../hooks/useRouterEvents.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";
+import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import ErrorBoundary from "./ErrorBoundary.tsx";
 
 export interface NestedViewProps {
@@ -53,7 +54,11 @@ const NestedView = (props: NestedViewProps) => {
 					return;
 				}
 
-				const animationExit = parseAnimation(layer.route?.animation, "exit");
+				const animationExit = parseAnimation(
+					layer.route?.animation,
+					state,
+					"exit",
+				);
 				const isChild = state.url.pathname.startsWith(previous.url.pathname);
 				if (animationExit && !isChild) {
 					const duration = animationExit.duration || 200;
@@ -88,6 +93,7 @@ const NestedView = (props: NestedViewProps) => {
 					// --------- Animations Begin ---------
 					const animationEnter = parseAnimation(
 						layer?.route?.animation,
+						state,
 						"enter",
 					);
 
@@ -157,7 +163,8 @@ const NestedView = (props: NestedViewProps) => {
 export default NestedView;
 
 function parseAnimation(
-	animation?: PageAnimation,
+	animationLike: PageAnimation | undefined,
+	state: ReactRouterState,
 	type: "enter" | "exit" = "enter",
 ):
 	| {
@@ -165,36 +172,42 @@ function parseAnimation(
 			animation: string;
 	  }
 	| undefined {
-	if (!animation) {
+	if (!animationLike) {
 		return undefined;
 	}
+
+	const DEFAULT_DURATION = 300;
+
+	const animation =
+		typeof animationLike === "function" ? animationLike(state) : animationLike;
 
 	if (typeof animation === "string") {
 		if (type === "exit") {
 			return;
 		}
 		return {
-			duration: 200,
-			animation: `200ms ease-out ${animation}`,
+			duration: DEFAULT_DURATION,
+			animation: `${DEFAULT_DURATION}ms ${animation}`,
 		};
 	}
 
 	if (typeof animation === "object") {
 		const anim = animation[type];
-		const duration = typeof anim === "object" ? (anim.duration ?? 200) : 200;
+		const duration =
+			typeof anim === "object"
+				? (anim.duration ?? DEFAULT_DURATION)
+				: DEFAULT_DURATION;
 		const name = typeof anim === "object" ? anim.name : anim;
 
 		if (type === "exit") {
-			const timing =
-				typeof anim === "object" ? (anim.timing ?? "ease-in") : "ease-in";
+			const timing = typeof anim === "object" ? (anim.timing ?? "") : "";
 			return {
 				duration,
 				animation: `${duration}ms ${timing} ${name}`,
 			};
 		}
 
-		const timing =
-			typeof anim === "object" ? (anim.timing ?? "ease-out") : "ease-out";
+		const timing = typeof anim === "object" ? (anim.timing ?? "") : "";
 
 		return {
 			duration,

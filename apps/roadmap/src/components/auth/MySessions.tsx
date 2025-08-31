@@ -85,7 +85,7 @@ const MySessions = (props: MySessionsProps) => {
 
 								<Flex flex={1} />
 
-								<Flex align="center" justify="center">
+								<Flex align="center" justify="center" visibleFrom={"sm"}>
 									<Action
 										variant={"subtle"}
 										onClick={async () => {

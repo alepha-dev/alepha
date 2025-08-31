@@ -1,10 +1,11 @@
-import { NestedView, useRouterState } from "@alepha/react";
-import { Card, Container, Flex, Stack, Text } from "@mantine/core";
+import { NestedView } from "@alepha/react";
+import { Card, Container, Flex, Stack } from "@mantine/core";
 import { theme } from "../../constants/theme.ts";
-import ExperienceBar from "../shared/ExperienceBar.tsx";
+import ExperienceBar from "../misc/ExperienceBar.tsx";
 import ProjectActions from "./ProjectActions.tsx";
 import ProjectBanner from "./ProjectBanner.tsx";
 import QuestLog from "./QuestLog.tsx";
+import TaskHistory from "./task/TaskHistory.tsx";
 
 const ProjectView = () => {
 	return (
@@ -31,7 +32,10 @@ const ProjectView = () => {
 						h={"100%"}
 						w={theme.container}
 						mx={0}
-						px={"xs"}
+						px={{
+							base: 0,
+							md: "xs",
+						}}
 					>
 						<Stack w={"100%"} gap={"xs"} h={"100%"} className={"overflow-auto"}>
 							<Flex hiddenFrom={"lg"} w={"100%"}>
@@ -51,7 +55,7 @@ const ProjectView = () => {
 							height: "100%",
 						}}
 					>
-						<History />
+						<TaskHistory />
 					</Flex>
 				</Flex>
 			</Card>
@@ -61,20 +65,3 @@ const ProjectView = () => {
 };
 
 export default ProjectView;
-
-const History = () => {
-	const router = useRouterState();
-	if (!router.params.taskId) {
-		return;
-	}
-
-	return (
-		<Flex flex={1} p={"xs"} style={{ paddingLeft: 0, perspective: 1000 }}>
-			<Flex flex={1} align="center" justify="center">
-				<Text size="sm" c={"dimmed"}>
-					Quest History
-				</Text>
-			</Flex>
-		</Flex>
-	);
-};

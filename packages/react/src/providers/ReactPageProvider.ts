@@ -605,6 +605,11 @@ export interface ReactRouterState {
 	 * Query parameters extracted from the URL for the current page.
 	 */
 	query: Record<string, string>;
+
+	/**
+	 * Optional meta information associated with the current page.
+	 */
+	meta: Record<string, any>;
 }
 
 export interface RouterStackItem {

@@ -314,20 +314,20 @@ export type PageResolve<
 	Omit<ReactRouterState, "layers" | "onError">;
 
 export type PageAnimation =
-	| string
+	| PageAnimationObject
+	| ((state: ReactRouterState) => PageAnimationObject | undefined);
+
+type PageAnimationObject =
+	| CssAnimationName
 	| {
-			enter?:
-				| {
-						name: string;
-						duration?: number;
-						timing?: string;
-				  }
-				| string;
-			exit?:
-				| {
-						name: string;
-						duration?: number;
-						timing?: string;
-				  }
-				| string;
+			enter?: CssAnimation | CssAnimationName;
+			exit?: CssAnimation | CssAnimationName;
 	  };
+
+type CssAnimationName = string;
+
+type CssAnimation = {
+	name: string;
+	duration?: number;
+	timing?: string;
+};

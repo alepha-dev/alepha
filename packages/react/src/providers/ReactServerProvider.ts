@@ -204,6 +204,7 @@ export class ReactServerProvider {
 				query: options.query ?? {},
 				onError: () => null,
 				layers: [],
+				meta: {},
 			};
 
 			const state = entry as ReactRouterState;

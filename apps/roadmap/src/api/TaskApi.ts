@@ -5,13 +5,13 @@ import type { UserAccountToken } from "@alepha/security";
 import { $action } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
-import { Level } from "../services/Level.ts";
+import { CharacterInfo } from "../services/CharacterInfo.ts";
 import { characters, Db, tasks } from "./providers/Db.ts";
 
 export class TaskApi {
 	log = $logger();
 	db = $inject(Db);
-	lvl = $inject(Level);
+	characterInfo = $inject(CharacterInfo);
 	dt = $inject(DateTimeProvider);
 
 	createTask = $action({
@@ -87,8 +87,8 @@ export class TaskApi {
 					{ tx },
 				);
 
-				const xp = this.lvl.getXpFromTask(task);
-				const money = this.lvl.getMoneyFromTask(task);
+				const xp = this.characterInfo.getXpFromTask(task);
+				const money = this.characterInfo.getMoneyFromTask(task);
 
 				character.xp += xp;
 				character.balance += money;

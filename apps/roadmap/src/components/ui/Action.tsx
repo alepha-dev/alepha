@@ -13,12 +13,12 @@ const Action = (props: ActionProps) => {
 		const { children, textVisibleFrom, leftSection, ...rest } = props;
 		return (
 			<>
-				<Flex visibleFrom={textVisibleFrom}>
-					<Action {...rest} leftSection={leftSection}>
+				<Flex w={"100%"} visibleFrom={textVisibleFrom}>
+					<Action flex={1} {...rest} leftSection={leftSection}>
 						{children}
 					</Action>
 				</Flex>
-				<Flex hiddenFrom={textVisibleFrom}>
+				<Flex w={"100%"} hiddenFrom={textVisibleFrom}>
 					<Action {...rest} px={"xs"}>
 						{leftSection}
 					</Action>

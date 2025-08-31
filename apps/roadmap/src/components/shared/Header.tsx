@@ -34,7 +34,7 @@ const Header = () => {
 						<Flex visibleFrom={"lg"}>
 							<StupidLogo />
 						</Flex>
-						<Flex visibleFrom={"sm"}>
+						<Flex>
 							<Action
 								variant={"subtle"}
 								href={router.path("home")}

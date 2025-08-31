@@ -1,6 +1,6 @@
 import type { Task } from "../api/providers/Db.ts";
 
-export class Level {
+export class CharacterInfo {
 	levels = [
 		1080, 2200, 4800, 8400, 13000, 19000, 27000, 37000, 49000, 63000, 79000,
 		97000, 117000, 139000, 163000, 189000, 217000, 247000,
@@ -23,16 +23,18 @@ export class Level {
 
 	getXpFromTask(task: Task) {
 		const priority =
-			task.priority === "high" ? 350 : task.priority === "medium" ? 180 : 80;
+			task.priority === "high" ? 300 : task.priority === "medium" ? 180 : 80;
 		return task.complexity * 150 + priority;
 	}
 
 	getLevelByXp(xp: number): number {
 		if (xp < 0) return 0;
-		if (xp >= this.levels[this.levels.length - 1]) return this.levels.length;
 
+		let acc = 0;
 		for (let i = 0; i < this.levels.length; i++) {
-			if (xp < this.levels[i]) {
+			acc += this.levels[i];
+
+			if (xp < acc) {
 				return i + 1;
 			}
 		}
@@ -41,8 +43,7 @@ export class Level {
 	}
 
 	getNextXpForLevel(xp: number): number {
-		const level = this.getLevelByXp(xp);
-		return this.getMaxXpForLevel(level) - this.getCurrentXpForLevel(level, xp);
+		return this.geGlobalMaxXpForLevel(this.getLevelByXp(xp)) - xp;
 	}
 
 	getMaxXpForLevel(level: number): number {
@@ -53,10 +54,22 @@ export class Level {
 		return this.levels[index];
 	}
 
+	geGlobalMaxXpForLevel(level: number): number {
+		const index = level - 1;
+		if (index < 0 || index >= this.levels.length) {
+			throw new Error(`Invalid level: ${level}`);
+		}
+		let acc = 0;
+		for (let i = 0; i <= index; i++) {
+			acc += this.levels[i];
+		}
+		return acc;
+	}
+
 	getCurrentXpForLevel(level: number, xp: number): number {
 		if (level === 1) {
 			return xp;
 		}
-		return xp - this.getMaxXpForLevel(level - 1);
+		return xp - this.geGlobalMaxXpForLevel(level - 1);
 	}
 }

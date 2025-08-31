@@ -141,14 +141,8 @@ export class AppRouter {
 			this.alepha.state("tasks", []);
 		},
 		animation: {
-			enter: {
-				name: "fadeInUp",
-				duration: 400,
-				timing: "cubic-bezier(0.22, 1, 0.36, 1)",
-			},
-			exit: {
-				name: "fadeOutDown",
-			},
+			enter: "fadeInUp",
+			exit: "backOutDown",
 		},
 	});
 
@@ -170,7 +164,7 @@ export class AppRouter {
 	projectSettings = $page({
 		path: "/settings",
 		lazy: () => import("./components/project/ProjectSettings.tsx"),
-		animation: "fadeInUp",
+		animation: "fadeInUpLight",
 	});
 
 	projectTask = $page({
@@ -180,15 +174,35 @@ export class AppRouter {
 				taskId: t.int(),
 			}),
 		},
-		animation: {
-			enter: {
-				name: "genieIn",
-				duration: 500,
-				timing: "cubic-bezier(0.22, 1, 0.36, 1)",
-			},
-			exit: {
-				name: "fadeOutDown",
-			},
+		animation: ({ meta }) => {
+			if (meta.completed) {
+				return {
+					exit: {
+						name: "zoomOutUp",
+						duration: 800,
+					},
+				};
+			}
+
+			if (meta.deleted) {
+				return {
+					exit: {
+						name: "zoomOut",
+						duration: 400,
+					},
+				};
+			}
+
+			return {
+				enter: {
+					name: "genieIn",
+					duration: 500,
+					timing: "cubic-bezier(0.22, 1, 0.36, 1)",
+				},
+				exit: {
+					name: "fadeOutDownLight",
+				},
+			};
 		},
 		lazy: () => import("./components/project/task/TaskView.tsx"),
 		resolve: async ({ params }) => {
@@ -197,7 +211,11 @@ export class AppRouter {
 					id: params.taskId,
 				},
 			});
+			this.alepha.state("task", task);
 			return { task };
+		},
+		onLeave: () => {
+			this.alepha.state("task", null);
 		},
 		errorHandler: (error) => {
 			if (HttpError.is(error, 404)) {

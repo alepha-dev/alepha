@@ -3,7 +3,7 @@ import { AlephaServer, type ServerRequest } from "@alepha/server";
 import { AlephaServerCache } from "@alepha/server-cache";
 import { AlephaServerLinks } from "@alepha/server-links";
 import type { ReactNode } from "react";
-import { $page } from "./descriptors/$page.ts";
+import { $page, type PageAnimation } from "./descriptors/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import {
 	ReactPageProvider,
@@ -46,6 +46,7 @@ declare module "@alepha/core" {
 		"react:transition:begin": {
 			previous: ReactRouterState;
 			state: ReactRouterState;
+			animation?: PageAnimation;
 		};
 		"react:transition:success": {
 			state: ReactRouterState;

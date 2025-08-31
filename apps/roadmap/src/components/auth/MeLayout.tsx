@@ -100,7 +100,13 @@ const MeMenu = () => {
 
 const ActionNavLink = (props: ActionProps & { href: string }) => {
 	return (
-		<Action size={"xs"} justify={"flex-start"} variant={"minimal"} {...props}>
+		<Action
+			size={"xs"}
+			textVisibleFrom={"sm"}
+			justify={"flex-start"}
+			variant={"minimal"}
+			{...props}
+		>
 			{props.children}
 		</Action>
 	);

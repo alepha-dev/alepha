@@ -43,6 +43,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 	public async transition(
 		url: URL,
 		previous: PreviousLayerData[] = [],
+		meta = {},
 	): Promise<string | void> {
 		const { pathname, search } = url;
 
@@ -52,6 +53,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			params: {},
 			layers: [],
 			onError: () => null,
+			meta,
 		};
 
 		const state = entry as ReactRouterState;

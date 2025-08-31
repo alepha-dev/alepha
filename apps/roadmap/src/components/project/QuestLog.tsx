@@ -67,7 +67,7 @@ const QuestLog = () => {
 								position="bottom-start"
 							>
 								<Menu.Target>
-									<ActionIcon variant={"subtle"}>
+									<ActionIcon disabled variant={"subtle"}>
 										<IconDots size={theme.icon.size.md} />
 									</ActionIcon>
 								</Menu.Target>

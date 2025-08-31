@@ -148,6 +148,7 @@ export class ReactBrowserProvider {
 		await this.render({
 			url,
 			previous: options.force ? [] : this.state.layers,
+			meta: options.meta,
 		});
 
 		// when redirecting in browser
@@ -159,9 +160,7 @@ export class ReactBrowserProvider {
 		this.pushState(url, options.replace);
 	}
 
-	protected async render(
-		options: { url?: string; previous?: PreviousLayerData[] } = {},
-	): Promise<void> {
+	protected async render(options: RouterRenderOptions = {}): Promise<void> {
 		const previous = options.previous ?? this.state.layers;
 		const url = options.url ?? this.url;
 		const start = this.dateTimeProvider.now();
@@ -178,6 +177,7 @@ export class ReactBrowserProvider {
 		const redirect = await this.router.transition(
 			new URL(`http://localhost${url}`),
 			previous,
+			options.meta,
 		);
 
 		if (redirect) {
@@ -240,7 +240,7 @@ export class ReactBrowserProvider {
 
 			const element = this.router.root(this.state);
 
-			this.alepha.emit("react:browser:render", {
+			await this.alepha.emit("react:browser:render", {
 				element,
 				root: this.getRootElement(),
 				hydration,
@@ -271,6 +271,7 @@ export interface RouterGoOptions {
 	match?: TransitionOptions;
 	params?: Record<string, string>;
 	query?: Record<string, string>;
+	meta?: Record<string, any>;
 
 	/**
 	 * Recreate the whole page, ignoring the current state.
@@ -283,3 +284,9 @@ export type ReactHydrationState = {
 } & {
 	[key: string]: any;
 };
+
+export interface RouterRenderOptions {
+	url?: string;
+	previous?: PreviousLayerData[];
+	meta?: Record<string, any>;
+}

@@ -68,9 +68,6 @@ const TaskCreate = (props: TaskCreateProps) => {
 				},
 			});
 		},
-		onChange: (key, value) => {
-			console.log("change", { key, value });
-		},
 	});
 
 	return (

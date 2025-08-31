@@ -31,6 +31,18 @@ const ProjectActions = () => {
 
 	return (
 		<Card flex={1} py={"xs"} px={"sm"} withBorder radius={"md"}>
+			<div
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					right: 0,
+					bottom: 1,
+					opacity: 0.05,
+					transform: "rotate(2deg) translateY(-25px)",
+					background: "#ffffff",
+				}}
+			/>
 			<Group flex={1}>
 				<Flex gap={"xs"}>
 					<TabAction

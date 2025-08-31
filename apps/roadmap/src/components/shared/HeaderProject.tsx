@@ -38,7 +38,7 @@ const HeaderProject = () => {
 	};
 
 	return (
-		<Flex gap={"xs"} align="center" justify="center">
+		<Flex visibleFrom={"sm"} gap={"xs"} align="center" justify="center">
 			<Flex visibleFrom={"sm"}>
 				<IconSlash size={16} />
 			</Flex>
