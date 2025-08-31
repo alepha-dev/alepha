@@ -13,7 +13,7 @@
 	"dependencies": {
 		"@alepha/core": "0.9.4",
 		"@alepha/logger": "0.9.4",
-		"dayjs": "^1.11.13"
+		"dayjs": "^1.11.18"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.2",

@@ -23,11 +23,11 @@
 		"@alepha/server": "0.9.4",
 		"@alepha/server-cookies": "0.9.4",
 		"@alepha/server-links": "0.9.4",
-		"openid-client": "^6.6.4"
+		"openid-client": "^6.7.1"
 	},
 	"devDependencies": {
 		"@alepha/server-security": "0.9.4",
-		"@types/react": "^19.1.11",
+		"@types/react": "^19.1.12",
 		"react": "^19.1.1",
 		"tsdown": "^0.14.2",
 		"typescript": "^5.9.2",
