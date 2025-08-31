@@ -3,6 +3,7 @@ import { useAlepha, useClient } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { Card, Flex } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { Project } from "../../api/providers/Db.ts";
@@ -23,7 +24,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 	const form = useForm({
 		initialValues: props.project,
 		schema: t.object({
-			title: t.optional(t.string()),
+			title: t.optional(
+				t.string({
+					minLength: 3,
+					maxLength: 24,
+				}),
+			),
 			public: t.optional(t.boolean()),
 		}),
 		handler: async (values) => {

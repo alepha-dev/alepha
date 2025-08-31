@@ -47,7 +47,7 @@ const Control = (props: ControlProps) => {
 
 	// shared props
 
-	const disabled = form.loading;
+	const disabled = false; // form.loading;
 	const id = props.input.props.id;
 	const label =
 		props.title ?? props.input.schema?.title ?? prettyName(props.input.path);
@@ -144,6 +144,7 @@ const Control = (props: ControlProps) => {
 			<Switch
 				{...inputProps}
 				id={id}
+				color={"blue"}
 				defaultChecked={props.input.props.defaultValue}
 				{...props.input.props}
 				{...switchProps}
