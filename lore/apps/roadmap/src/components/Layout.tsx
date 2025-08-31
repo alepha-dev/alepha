@@ -14,6 +14,7 @@ declare module "@alepha/core" {
 		tasks?: Task[];
 		project?: Project | null;
 		character?: Character | null;
+		task?: Task | null;
 		"user.projects"?: Project[];
 	}
 }

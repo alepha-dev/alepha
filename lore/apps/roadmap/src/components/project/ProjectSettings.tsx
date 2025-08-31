@@ -1,6 +1,6 @@
 import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
-import { Card, Flex, Stack, Text } from "@mantine/core";
+import { Card, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
@@ -52,15 +52,24 @@ const ProjectSettings = () => {
 					bg={theme.colors.card}
 					p={"sm"}
 				>
-					<Flex justify={"space-between"} align={"center"}>
+					<SimpleGrid
+						cols={{
+							base: 1,
+							xs: 2,
+						}}
+					>
 						<Stack gap={0}>
 							<Text size={"sm"}>{tr("project.settings.actions.delete")}</Text>
 							<Text size="xs" c={"dimmed"}>
 								{tr("project.settings.actions.delete.helper")}
 							</Text>
 						</Stack>
-						<Flex>
+						<Flex justify={"end"} align={"center"}>
 							<Action
+								flex={{
+									base: 1,
+									xs: "unset",
+								}}
 								color={"red"}
 								onClick={async () => {
 									const confirmed = await openDeleteModal();
@@ -87,7 +96,7 @@ const ProjectSettings = () => {
 								{tr("project.settings.actions.delete")}
 							</Action>
 						</Flex>
-					</Flex>
+					</SimpleGrid>
 				</Card>
 			</Stack>
 		</Stack>

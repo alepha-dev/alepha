@@ -3,11 +3,11 @@ import { useI18n } from "@alepha/react-i18n";
 import { Card, Flex, Stack, Text } from "@mantine/core";
 import { IconCircleFilled, IconMoneybag } from "@tabler/icons-react";
 import { theme } from "../../constants/theme.ts";
-import { Level } from "../../services/Level.ts";
+import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 const ProjectBanner = () => {
 	const [character] = useStore("character");
-	const helper = useInject(Level);
+	const helper = useInject(CharacterInfo);
 	const i18n = useI18n();
 	if (!character) {
 		return null;

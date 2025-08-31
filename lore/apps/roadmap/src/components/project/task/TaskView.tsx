@@ -24,8 +24,8 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { theme } from "../../../constants/theme.ts";
+import { CharacterInfo } from "../../../services/CharacterInfo.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import { Level } from "../../../services/Level.ts";
 import Action from "../../ui/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
@@ -39,7 +39,7 @@ const TaskView = (props: TaskViewProps) => {
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
 	const router = useRouter<AppRouter>();
-	const level = useInject(Level);
+	const level = useInject(CharacterInfo);
 	const { tr } = useI18n<I18n, "en">();
 	const [showDialog, setShowDialog] = useState(false);
 
@@ -106,7 +106,12 @@ const TaskView = (props: TaskViewProps) => {
 					>
 						<Flex gap={"xs"} align="center" justify="center">
 							<IconTag size={theme.icon.size.lg} />
-							<Text size="lg" fw={"bold"} style={{ textWrap: "nowrap" }}>
+							<Text
+								size="lg"
+								fw={"bold"}
+								style={{ textWrap: "nowrap" }}
+								className={"cinzel-400"}
+							>
 								{task.title}
 							</Text>
 							<EditTaskButton
@@ -142,7 +147,7 @@ const TaskView = (props: TaskViewProps) => {
 						<Stack gap={0}>
 							<Flex gap={"xs"} align="center" justify="center">
 								<IconFileText size={theme.icon.size.lg} />
-								<Text size="lg" fw={"bold"}>
+								<Text size="lg" fw={"bold"} className={"cinzel-400"}>
 									{tr("task.view.description")}
 								</Text>
 								<Flex
@@ -160,7 +165,7 @@ const TaskView = (props: TaskViewProps) => {
 
 						<Flex gap={"xs"} align="center" justify="center">
 							<IconPigMoney size={theme.icon.size.lg} />
-							<Text size="lg" fw={"bold"}>
+							<Text className={"cinzel-400"} size="lg" fw={"bold"}>
 								{tr("task.view.rewards")}
 							</Text>
 							<Flex
@@ -218,7 +223,7 @@ const TaskView = (props: TaskViewProps) => {
 						radius={"md"}
 						className={"shadow"}
 					>
-						<Group>
+						<Flex justify={"space-between"}>
 							<Action
 								c={"red"}
 								variant={"subtle"}
@@ -240,12 +245,15 @@ const TaskView = (props: TaskViewProps) => {
 											(t) => t.id !== task.id,
 										),
 									);
-									await router.go("projectBoard");
+									await router.go("projectBoard", {
+										meta: {
+											deleted: true,
+										},
+									});
 								}}
 							>
 								{tr("task.view.actions.abandon")}
 							</Action>
-							<Flex flex={1} />
 							<Action
 								c={"green"}
 								variant={"subtle"}
@@ -262,12 +270,16 @@ const TaskView = (props: TaskViewProps) => {
 											(t) => t.id !== task.id,
 										),
 									);
-									await router.go("projectBoard");
+									await router.go("projectBoard", {
+										meta: {
+											completed: true,
+										},
+									});
 								}}
 							>
 								{tr("task.view.actions.complete")}
 							</Action>
-						</Group>
+						</Flex>
 					</Card>
 				</Flex>
 			</Stack>
