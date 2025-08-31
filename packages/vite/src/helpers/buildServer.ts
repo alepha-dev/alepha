@@ -10,6 +10,7 @@ import {
 	type VercelConfig,
 	viteAlephaBuildVercel,
 } from "../viteAlephaBuildVercel.ts";
+import { viteAlephaExternalsVersion } from "../viteAlephaExternalsVersion.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildServerOptions {
@@ -23,7 +24,9 @@ export interface BuildServerOptions {
 
 export const buildServer = async (opts: BuildServerOptions) => {
 	const { build: viteBuild, mergeConfig } = await importVite();
-	const plugins: any[] = [];
+	const plugins: any[] = [
+		viteAlephaExternalsVersion({ distDir: opts.distDir }),
+	];
 
 	if (opts.vercel) {
 		const config = typeof opts.vercel === "boolean" ? {} : opts.vercel;

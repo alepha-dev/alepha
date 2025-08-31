@@ -356,9 +356,7 @@ export class AuthDescriptor extends Descriptor<AuthDescriptorOptions> {
 	public async prepare() {
 		const addons: Array<(config: Configuration) => void> = [];
 
-		if (!this.alepha.isProduction()) {
-			addons.push(allowInsecureRequests);
-		}
+		addons.push(allowInsecureRequests);
 
 		if ("oidc" in this.options) {
 			const { oidc } = this.options;
