@@ -129,6 +129,7 @@ pre > code {
 
 .mantine-Drawer-content {
 	border-left: 1px solid var(--paper-border-color);
+	border-right: 1px solid var(--paper-border-color);
 }
 .mantine-Modal-content {
 	border: 1px solid var(--border-color);
@@ -136,6 +137,9 @@ pre > code {
 .mantine-SegmentedControl-root {
 	background-color: var(--panel-bg-color);
 	border: 1px solid var(--border-color);
+}
+.mantine-Action-iconOnly .mantine-Button-section {
+	margin-right: 0;
 }
 
 .tiptap.ProseMirror {

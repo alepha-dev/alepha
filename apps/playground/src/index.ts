@@ -1,16 +1,17 @@
-import { run } from "@alepha/core";
+import { run, t } from "@alepha/core";
+import { $permission, permissionSchema } from "@alepha/security";
 import { $action } from "@alepha/server";
 
 class App {
+	test = $permission();
 	ok = $action({
-		handler() {
-			return "Hello, world!";
+		schema: {
+			response: t.array(permissionSchema),
+		},
+		handler: () => {
+			return [this.test];
 		},
 	});
 }
 
-run(App, {
-	env: {
-		NODE_ENV: "production",
-	},
-});
+run(App);

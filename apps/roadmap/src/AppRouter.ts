@@ -7,29 +7,20 @@ import { $client } from "@alepha/server-links";
 import { createElement } from "react";
 import type { ProjectApi } from "./api/ProjectApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
-import type { UserApi } from "./api/UserApi.ts";
 import { MeRouter } from "./components/auth/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
-import { Theme } from "./services/Theme.ts";
 
 export class AppRouter {
-	theme = $inject(Theme);
 	alepha = $inject(Alepha);
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
-	userApi = $client<UserApi>();
 	router = $inject(ReactRouter);
 	auth = $inject(ReactAuth);
 	meRouter = $inject(MeRouter);
 
-	head = $head(() => {
-		return {
-			title: "Roadmap",
-			bodyAttributes: {
-				class: this.theme.getColorSchemeClass(),
-			},
-		};
-	});
+	head = $head(() => ({
+		title: "Roadmap",
+	}));
 
 	login = $page({
 		path: "/login",

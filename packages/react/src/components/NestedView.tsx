@@ -50,7 +50,7 @@ const NestedView = (props: NestedViewProps) => {
 			onBegin: async ({ previous, state }) => {
 				// --------- Animations Begin ---------
 				const layer = previous.layers[index];
-				if (state.url.pathname.startsWith(layer?.path)) {
+				if (`${state.url.pathname}/`.startsWith(`${layer?.path}/`)) {
 					return;
 				}
 
@@ -59,8 +59,8 @@ const NestedView = (props: NestedViewProps) => {
 					state,
 					"exit",
 				);
-				const isChild = state.url.pathname.startsWith(previous.url.pathname);
-				if (animationExit && !isChild) {
+
+				if (animationExit) {
 					const duration = animationExit.duration || 200;
 					animationExitNow.current = Date.now();
 					animationExitDuration.current = duration;
@@ -125,7 +125,6 @@ const NestedView = (props: NestedViewProps) => {
 				}}
 			>
 				<div
-					key={animation}
 					style={{ height: "100%", width: "100%", display: "flex", animation }}
 				>
 					{element}

@@ -73,21 +73,28 @@ export class NodeHttpServerProvider extends ServerProvider {
 			};
 		});
 
-		res.writeHead(response.status, response.headers);
-
-		// empty body, just end the response
+		// empty body - just send status & headers
 		if (!response.body) {
-			res.end();
+			res.writeHead(response.status, response.headers).end();
 			return;
 		}
 
-		if (typeof response.body === "string") {
-			res.end(response.body);
+		// if response.body is string or buffer
+		if (typeof response.body === "string" || Buffer.isBuffer(response.body)) {
+			res.writeHead(response.status, response.headers).end(response.body);
+			return;
+		}
+
+		// if response.body is node stream
+		if (response.body instanceof Readable) {
+			res.writeHead(response.status, response.headers);
+			response.body.pipe(res);
 			return;
 		}
 
 		// if response.body is web stream
 		if (response.body instanceof ReadableStream) {
+			res.writeHead(response.status, response.headers);
 			try {
 				for await (const chunk of response.body) {
 					res.write(chunk);
@@ -100,14 +107,11 @@ export class NodeHttpServerProvider extends ServerProvider {
 			return;
 		}
 
-		// if response.body is stream
-		if (response.body instanceof Readable) {
-			response.body.pipe(res);
-			return;
-		}
+		// not supported response body type
 
-		// else
-		res.end(response.body);
+		this.log.error("Unknown response body type:", typeof response.body);
+		res.writeHead(500, { "content-type": "text/plain" });
+		res.end("Internal Server Error");
 	}
 
 	public createRouterRequest(

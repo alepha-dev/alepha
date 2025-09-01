@@ -139,13 +139,16 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			return;
 		}
 
-		// request is ready to be used
+		// request is ready to be used -> inject to context
 		this.alepha.context.set<ServerRequest>("request", request as ServerRequest);
 
-		// validate
+		// validate request
 		this.serverTimingProvider.beginTiming("validateRequest");
-		this.validateRequest(route, request);
-		this.serverTimingProvider.endTiming("validateRequest");
+		try {
+			this.validateRequest(route, request);
+		} finally {
+			this.serverTimingProvider.endTiming("validateRequest");
+		}
 
 		// call the handler only if the body is not set yet
 		this.serverTimingProvider.beginTiming("runHandler");
@@ -158,9 +161,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			this.serverTimingProvider.endTiming("runHandler");
 		}
 
+		// serialize response
 		this.serverTimingProvider.beginTiming("serializeResponse");
-		this.serializeResponse(route, request.reply, responseKind);
-		this.serverTimingProvider.endTiming("serializeResponse");
+		try {
+			this.serializeResponse(route, request.reply, responseKind);
+		} finally {
+			this.serverTimingProvider.endTiming("serializeResponse");
+		}
 	}
 
 	public serializeResponse(
@@ -261,6 +268,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		request: ServerRequest,
 		error: Error,
 	) {
+		// reset body, which is probably invalid,
+		// it can be filled by server:onError hook or by the default handler below
+		request.reply.body = null;
+
 		await this.alepha.emit(
 			"server:onError",
 			{

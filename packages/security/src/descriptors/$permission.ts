@@ -44,7 +44,11 @@ export class PermissionDescriptor extends Descriptor<PermissionDescriptorOptions
 	}
 
 	protected onInit() {
-		this.securityProvider.createPermission(this);
+		this.securityProvider.createPermission({
+			name: this.name,
+			group: this.group,
+			description: this.options.description,
+		});
 	}
 
 	/**

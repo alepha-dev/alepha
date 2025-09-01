@@ -13,8 +13,7 @@ export const importAlepha = async (
 	},
 ): Promise<Alepha> => {
 	if (global.__alepha) {
-		const alepha = global.__alepha as Alepha;
-		return alepha;
+		return global.__alepha as Alepha;
 	}
 
 	const { loadEnv } = await importVite();

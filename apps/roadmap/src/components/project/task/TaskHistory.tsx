@@ -2,7 +2,6 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useStore } from "@alepha/react";
 import { Flex, Text, Timeline, Transition } from "@mantine/core";
 import { IconEdit, IconSunset2 } from "@tabler/icons-react";
-import { useEffect } from "react";
 import type { Task } from "../../../api/providers/Db.ts";
 
 const TaskHistory = () => {
