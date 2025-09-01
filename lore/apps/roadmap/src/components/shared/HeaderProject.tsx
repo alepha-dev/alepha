@@ -1,11 +1,6 @@
 import { useRouter, useRouterState, useStore } from "@alepha/react";
 import { Flex, Menu } from "@mantine/core";
-import {
-	IconPlus,
-	IconSlash,
-	IconSquare,
-	IconSquareCheck,
-} from "@tabler/icons-react";
+import { IconPlus, IconSquare, IconSquareCheck } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import Action from "../ui/Action.tsx";
 
@@ -39,9 +34,6 @@ const HeaderProject = () => {
 
 	return (
 		<Flex visibleFrom={"sm"} gap={"xs"} align="center" justify="center">
-			<Flex visibleFrom={"sm"}>
-				<IconSlash size={16} />
-			</Flex>
 			<Menu withArrow arrowSize={12} trigger="hover" position="bottom">
 				<Menu.Target>
 					<Action variant={"subtle"}>{project.title}</Action>

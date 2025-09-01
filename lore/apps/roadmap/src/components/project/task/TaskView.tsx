@@ -7,7 +7,7 @@ import {
 	useStore,
 } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
-import { Card, Drawer, Flex, Group, Stack, Text } from "@mantine/core";
+import { Card, Drawer, Flex, Stack, Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
 	IconCircleFilled,

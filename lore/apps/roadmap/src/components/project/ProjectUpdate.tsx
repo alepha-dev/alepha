@@ -3,7 +3,6 @@ import { useAlepha, useClient } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { Card, Flex } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { Project } from "../../api/providers/Db.ts";

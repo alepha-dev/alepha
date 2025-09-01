@@ -8,7 +8,13 @@ export type ActionProps = ButtonProps & {
 	textVisibleFrom?: "xs" | "sm" | "md" | "lg" | "xl";
 } & (ActiveHrefProps | ActionClickProps | ActionSubmitProps | {});
 
-const Action = (props: ActionProps) => {
+const Action = (_props: ActionProps) => {
+	const props = { variant: "subtle", ..._props };
+	if (props.leftSection && !props.children) {
+		props.className ??= "mantine-Action-iconOnly";
+		props.p ??= "xs";
+	}
+
 	if (props.textVisibleFrom) {
 		const { children, textVisibleFrom, leftSection, ...rest } = props;
 		return (

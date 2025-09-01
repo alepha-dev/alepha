@@ -1,10 +1,8 @@
 import { useRouter, useRouterEvents, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
 import { Burger, Container, Drawer, Flex } from "@mantine/core";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { theme } from "../../constants/theme.ts";
-import type { I18n } from "../../services/I18n.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
 import Action from "../ui/Action.tsx";
@@ -13,8 +11,6 @@ import HeaderProject from "./HeaderProject.tsx";
 import StupidLogo from "./StupidLogo.tsx";
 
 const Header = () => {
-	const { tr } = useI18n<I18n, "en">();
-
 	const router = useRouter<AppRouter>();
 
 	return (
@@ -31,17 +27,13 @@ const Header = () => {
 				<Flex flex={1} gap={"xs"}>
 					<Flex align="center" justify="center" gap={"xs"}>
 						<MobileQuestLog />
-						<Flex visibleFrom={"lg"}>
-							<StupidLogo />
-						</Flex>
 						<Flex>
 							<Action
 								variant={"subtle"}
 								href={router.path("home")}
 								active={false}
-							>
-								{tr("header.title")}
-							</Action>
+								leftSection={<StupidLogo />}
+							/>
 						</Flex>
 						<HeaderProject />
 					</Flex>
@@ -81,6 +73,9 @@ const MobileQuestLog = () => {
 				onClose={() => setShow(false)}
 				position={"left"}
 				opened={show}
+				style={{
+					borderRight: "1px solid var(--mantine-color-dark-4)",
+				}}
 			>
 				<QuestLog />
 			</Drawer>
