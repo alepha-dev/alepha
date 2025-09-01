@@ -203,15 +203,6 @@ const TaskView = (props: TaskViewProps) => {
 							</Text>
 						</Flex>
 					</Flex>
-
-					<Flex px={1}>
-						<Flex flex={1} />
-						<Flex>
-							<Text size="sm" c={"dimmed"}>
-								{tr("task.view.created")} {dt.of(task.createdAt).fromNow()}
-							</Text>
-						</Flex>
-					</Flex>
 				</Stack>
 
 				<Flex p={"xs"}>

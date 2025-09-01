@@ -1,6 +1,6 @@
 import { useClient, useRouter, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
-import { Card, Drawer, Flex, Group } from "@mantine/core";
+import { Card, Drawer, Flex, Group, Transition } from "@mantine/core";
 import {
 	IconChartLine,
 	IconPlus,
@@ -21,59 +21,66 @@ const ProjectActions = () => {
 	const router = useRouter<AppRouter>();
 	const { tr } = useI18n<I18n, "en">();
 
-	if (!project) {
-		return null;
-	}
-
 	const opts = {
-		params: { projectId: String(project.id) },
+		params: { projectId: String(project?.id) },
 	};
 
 	return (
-		<Card flex={1} py={"xs"} px={"sm"} withBorder radius={"md"}>
-			<div
-				style={{
-					position: "absolute",
-					top: 0,
-					left: 0,
-					right: 0,
-					bottom: 1,
-					opacity: 0.05,
-					transform: "rotate(2deg) translateY(-25px)",
-					background: "#ffffff",
-				}}
-			/>
-			<Group flex={1}>
-				<Flex gap={"xs"}>
-					<TabAction
-						leftSection={<IconTable size={theme.icon.size.sm} />}
-						href={router.path("projectBoard", opts)}
-					>
-						{tr("project.menu.board")}
-					</TabAction>
-					<TabAction
-						leftSection={<IconUsers size={theme.icon.size.sm} />}
-						href={router.path("projectPlayers", opts)}
-					>
-						{tr("project.menu.players")}
-					</TabAction>
-					<TabAction
-						leftSection={<IconChartLine size={theme.icon.size.sm} />}
-						href={router.path("projectAnalytics", opts)}
-					>
-						{tr("project.menu.analytics")}
-					</TabAction>
-					<TabAction
-						leftSection={<IconSettings size={theme.icon.size.sm} />}
-						href={router.path("projectSettings", opts)}
-					>
-						{tr("project.menu.settings")}
-					</TabAction>
-				</Flex>
-				<Flex flex={1} />
-				<CreateTaskButton />
-			</Group>
-		</Card>
+		<Transition mounted={!!project} transition={"fade-down"}>
+			{(styles) => (
+				<Card
+					style={styles}
+					flex={1}
+					py={"xs"}
+					px={"sm"}
+					withBorder
+					radius={"md"}
+				>
+					<div
+						style={{
+							position: "absolute",
+							top: 0,
+							left: 0,
+							right: 0,
+							bottom: 1,
+							opacity: 0.05,
+							transform: "rotate(2deg) translateY(-25px)",
+							background: "#ffffff",
+						}}
+					/>
+					<Group flex={1}>
+						<Flex gap={"xs"}>
+							<TabAction
+								leftSection={<IconTable size={theme.icon.size.sm} />}
+								href={router.path("projectBoard", opts)}
+							>
+								{tr("project.menu.board")}
+							</TabAction>
+							<TabAction
+								leftSection={<IconUsers size={theme.icon.size.sm} />}
+								href={router.path("projectPlayers", opts)}
+							>
+								{tr("project.menu.players")}
+							</TabAction>
+							<TabAction
+								leftSection={<IconChartLine size={theme.icon.size.sm} />}
+								href={router.path("projectAnalytics", opts)}
+							>
+								{tr("project.menu.analytics")}
+							</TabAction>
+							<TabAction
+								leftSection={<IconSettings size={theme.icon.size.sm} />}
+								href={router.path("projectSettings", opts)}
+							>
+								{tr("project.menu.settings")}
+							</TabAction>
+						</Flex>
+						<Flex flex={1} />
+						<CreateTaskButton />
+					</Group>
+				</Card>
+			)}
+		</Transition>
 	);
 };
 
