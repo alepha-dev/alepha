@@ -18,7 +18,7 @@ const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
 			radius={"md"}
 		>
 			<Modal opened={opened} onClose={close} size={"xl"}>
-				<Typography>
+				<Typography px={"xl"}>
 					<div
 						// biome-ignore lint/security/noDangerouslySetInnerHtml: ...
 						dangerouslySetInnerHTML={{
