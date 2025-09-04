@@ -72,7 +72,6 @@ class ServiceWorker { w = $thread() }
 
 ServiceWorker will become the source of truth for the thread.
 If you have 2 ServiceWorkers, we won't be able to reuse the thread.
-If you don't use classes (aka alepha.use($thread, {}), each thread will have its own context.
 
 	 */
 

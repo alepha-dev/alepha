@@ -14,7 +14,8 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.9.4",
-		"@alepha/server": "0.9.4"
+		"@alepha/server": "0.9.4",
+		"@alepha/cache": "0.9.4"
 	},
 	"devDependencies": {
 		"tsdown": "^0.14.2",

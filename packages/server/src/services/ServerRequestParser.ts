@@ -54,6 +54,11 @@ export class ServerRequestParser {
 				: forwardedFor.split(",")[0].trim();
 		}
 
+		const xRealIP = request.headers["x-real-ip"];
+		if (xRealIP) {
+			return Array.isArray(xRealIP) ? xRealIP[0] : xRealIP;
+		}
+
 		// If 'x-forwarded-for' is not present, fall back to the 'ip' property.
 		if (request.raw.node?.req.socket?.remoteAddress) {
 			return request.raw.node?.req.socket.remoteAddress;
