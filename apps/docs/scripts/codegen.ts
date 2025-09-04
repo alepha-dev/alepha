@@ -115,6 +115,10 @@ class App {
 				});
 
 				for await (const file of files) {
+					if (file.includes("node_modules")) {
+						continue;
+					}
+
 					const filepath = join(rootDir, file);
 					const pkgFile = await readFile(
 						filepath.replace("README.md", "package.json"),

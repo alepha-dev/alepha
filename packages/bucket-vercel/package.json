@@ -1,0 +1,49 @@
+{
+	"name": "@alepha/bucket-vercel",
+	"description": "Vercel Blob Storage implementation for the bucket file storage.",
+	"keywords": [
+		"alepha",
+		"bucket",
+		"file-storage",
+		"file",
+		"vercel",
+		"blob"
+	],
+	"author": "Feunard",
+	"version": "0.9.4",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/bucket": "0.9.4",
+		"@alepha/core": "0.9.4",
+		"@alepha/datetime": "0.9.4",
+		"@alepha/file": "0.9.4",
+		"@alepha/logger": "0.9.4",
+		"@vercel/blob": "^1.1.1"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"tsdown": "^0.14.2",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"homepage": "https://github.com/feunard/alepha"
+}

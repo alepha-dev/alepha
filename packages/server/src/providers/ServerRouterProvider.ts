@@ -195,7 +195,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			reply.headers["content-type"] = reply.body.type;
 			reply.headers["content-disposition"] =
 				`attachment; filename="${reply.body.name.replaceAll('"', "")}"`;
-			reply.body = reply.body.stream() as NodeWebStream;
+			reply.body = reply.body.stream();
 			return;
 		}
 

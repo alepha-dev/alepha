@@ -1,5 +1,5 @@
 import type { Readable } from "node:stream";
-import type { ReadableStream as NodeWebStream } from "node:stream/web";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import type {
 	ArrayOptions,
 	IntegerOptions,
@@ -534,20 +534,11 @@ export const isFileLike = (value: any): value is FileLike => {
 
 export type StreamLike =
 	| ReadableStream
-	| NodeWebStream
+	| WebReadableStream
 	| Readable
 	| NodeJS.ReadableStream;
 
 export type TStream = TUnsafe<StreamLike>;
-
-export const isTypeStream = (value: TSchema): value is TStream => {
-	return (
-		value &&
-		value[Kind] === "Any" &&
-		value.type === "string" &&
-		value.format === "stream"
-	);
-};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
