@@ -1,29 +1,53 @@
+import { AlephaError } from "@alepha/core";
+
 export abstract class RouterProvider<T extends Route = Route> {
-	protected routePathRegex: RegExp = /^(\/[:*]?[.\-_a-zA-Z0-9]*)*$/;
+	protected routePathRegex: RegExp = /^\/[A-Za-z0-9._~!$&%'()*+,;=:@{}?/-]*$/;
+
 	protected tree: Tree<T> = { children: {} };
 
 	public match(path: string): RouteMatch<T> {
 		return this.mapParams(this.createRouteMatch(path));
 	}
 
-	protected push(route: T): void {
-		if (!this.routePathRegex.test(route.path)) {
-			throw new Error(`Route "${route.path}" is not valid`);
+	protected test(path: string): void {
+		if (!this.routePathRegex.test(path)) {
+			throw new AlephaError(`Route '${path}' is not valid`);
 		}
+	}
 
-		const parts = this.createParts(route.path);
+	protected push(route: T): void {
+		const path = route.path.replaceAll("//", "/");
+
+		this.test(path);
+
+		const parts = this.createParts(path);
 
 		let cursor = this.tree;
 		for (let i = 0; i < parts.length; i++) {
 			const isLast = i === parts.length - 1;
-			const part = parts[i].toLowerCase(); // url is case-insensitive
-			if (part === "*") {
+			let part = parts[i].toLowerCase(); // url is case-insensitive
+			if (part === "*" && isLast) {
 				cursor.wildcard = { route };
 				break;
 			}
 
+			if (part.includes("*")) {
+				throw new AlephaError(`Route '${path}' has an invalid wildcard syntax`);
+			}
+
+			if (part.includes("{") || part.includes("}")) {
+				if (part.startsWith("{") && part.endsWith("}")) {
+					part = `:${part.slice(1, -1)}`; // convert {param} to :param
+				} else {
+					throw new AlephaError(`Route '${path}' has an invalid param syntax`);
+				}
+			}
+
 			if (part.startsWith(":")) {
-				const name = parts[i].slice(1);
+				const name = parts[i].slice(1).replaceAll("}", "");
+				if (!name) {
+					throw new AlephaError(`Route '${path}' has an empty param name`);
+				}
 				if (!cursor.param) {
 					cursor.param = { name, children: {} };
 				} else if (cursor.param.name !== name) {
@@ -55,7 +79,7 @@ export abstract class RouterProvider<T extends Route = Route> {
 
 	protected createRouteMatch(path: string): RouteMatch<T> {
 		if (path[0] !== "/") {
-			throw new Error(`Path "${path}" must start with "/"`);
+			throw new AlephaError(`Path '${path}' must start with "/"`);
 		}
 
 		const parts = this.createParts(path);

@@ -1,6 +1,4 @@
-import { Card, Flex, Table } from "@mantine/core";
-import { IconSortAscending, IconTag } from "@tabler/icons-react";
-import Action from "../ui/Action.tsx";
+import { Flex } from "@mantine/core";
 
 const ProjectBoard = () => {
 	return (

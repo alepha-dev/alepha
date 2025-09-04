@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noShorthandPropertyOverrides: <explanation> */
+/** biome-ignore-all lint/suspicious/noShorthandPropertyOverrides: fine */
 @import "@mantine/core/styles.css";
 @import "@mantine/nprogress/styles.css";
 @import "@mantine/spotlight/styles.css";

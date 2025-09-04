@@ -3,7 +3,6 @@ import { $logger } from "@alepha/logger";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { HttpClient } from "@alepha/server";
-import { LinkProvider } from "@alepha/server-links";
 import type { TokenResponse } from "../schemas/tokenResponseSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
 import type { UserinfoResponse } from "../schemas/userinfoResponseSchema.ts";
@@ -14,7 +13,6 @@ import type { UserinfoResponse } from "../schemas/userinfoResponseSchema.ts";
 export class ReactAuth {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
-	protected readonly linkProvider = $inject(LinkProvider);
 	protected readonly httpClient = $inject(HttpClient);
 
 	static path = {
@@ -100,13 +98,17 @@ export class ReactAuth {
 			window.location.href = `${ReactAuth.path.login}?provider=${provider}&redirect_uri=${redirect}`;
 
 			if (browser.transitioning) {
-				throw new Redirection(browser.state.url.pathname);
+				throw new Redirection(
+					`${ReactAuth.path.login}?provider=${provider}&redirect_uri=${redirect}`,
+				);
 			}
 
 			return {} as Tokens;
 		}
 
-		throw new Redirection(ReactAuth.path.login);
+		throw new Redirection(
+			`${ReactAuth.path.login}?provider=${provider}&redirect_uri=${options.redirect || "/"}`,
+		);
 	}
 
 	public logout() {

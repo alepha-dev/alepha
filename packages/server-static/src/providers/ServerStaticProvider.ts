@@ -44,7 +44,7 @@ export class ServerStaticProvider {
 			files.map(async (file) => {
 				const path = file.replace(root, "").replace(/\\/g, "/");
 				return {
-					path: join(prefix, path).replace(/\\/g, "/"),
+					path: join(prefix, encodeURI(path)),
 					handler: await this.createFileHandler(join(root, path), options),
 				};
 			}),

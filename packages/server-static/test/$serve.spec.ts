@@ -14,6 +14,7 @@ import {
 // --- Test Setup: Create a temporary directory for static files ---
 
 const tempTestDir = join(tmpdir(), `alepha-static-test-${Date.now()}`);
+const tempWeirdFileName = "weird file 02020&&&&&éééé";
 
 beforeAll(async () => {
 	await mkdir(tempTestDir, { recursive: true });
@@ -23,6 +24,7 @@ beforeAll(async () => {
 	await writeFile(join(tempTestDir, "style.css"), "body { color: red; }");
 	await writeFile(join(tempTestDir, "script.js"), "console.log('test');");
 	await writeFile(join(tempTestDir, ".secret"), "should-not-be-served");
+	await writeFile(join(tempTestDir, tempWeirdFileName), "ok");
 
 	// Create pre-compressed versions
 	const cssContent = "body { color: blue; }";
@@ -68,6 +70,17 @@ describe("@alepha/server-static", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("content-type")).toBe("text/css");
 		expect(await response.text()).toBe("body { color: red; }");
+	});
+
+	test("should serve a file with invalid character", async () => {
+		const { hostname } = await setupServer({});
+		const r1 = await fetch(`${hostname}/${tempWeirdFileName}`);
+		expect(r1.status).toBe(200);
+		expect(await r1.text()).toBe("ok");
+
+		const r2 = await fetch(`${hostname}/${encodeURI(tempWeirdFileName)}`);
+		expect(r2.status).toBe(200);
+		expect(await r2.text()).toBe("ok");
 	});
 
 	test("should serve index.html for root path", async () => {

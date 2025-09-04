@@ -367,6 +367,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/router@workspace:packages/router"
   dependencies:
+    "@alepha/core": "npm:^0.9.4"
     tsdown: "npm:^0.14.2"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"

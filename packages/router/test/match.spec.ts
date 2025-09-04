@@ -228,8 +228,16 @@ describe("match", () => {
 		test("should throw an error for invalid route paths during push", () => {
 			// Does not start with '/'
 			expect(() => add("no-slash", "invalid")).toThrow();
-			// Contains invalid characters
-			expect(() => add("/a?b", "invalid")).toThrow();
+			// Invalid character '*'
+			expect(() => add("/invalid*path", "invalid")).toThrow();
+			// Parameter without a name
+			expect(() => add("/users/:/details", "invalid")).toThrow();
+			// Wildcard not at the end
+			expect(() => add("/files/*/more", "invalid")).toThrow();
+			// Double wildcard
+			expect(() => add("/files/**", "invalid")).toThrow();
+			// Empty parameter name
+			expect(() => add("/items/{}/info", "invalid")).toThrow();
 		});
 
 		test("should throw an error for invalid paths during match", () => {
