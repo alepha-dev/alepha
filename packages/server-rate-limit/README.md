@@ -16,3 +16,17 @@ Alternatively, you can install it individually:
 npm install @alepha/core @alepha/server-rate-limit
 ```
 
+## Module
+
+Rate limiting configuration for this action.
+		When specified, the action will be rate limited according to these settings.
+
+## API Reference
+
+### Descriptors
+
+#### $rateLimit()
+
+Declares rate limiting for server actions or custom usage.
+This descriptor provides methods to check rate limits and configure behavior
+within the server request/response cycle.

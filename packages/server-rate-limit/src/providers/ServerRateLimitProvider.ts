@@ -79,6 +79,52 @@ export class ServerRateLimitProvider {
 		},
 	});
 
+	public readonly onActionRequest = $hook({
+		on: "action:onRequest",
+		handler: async ({ action, request }) => {
+			// Check if this action has rate limiting enabled
+			const rateLimit = (action as any).options?.rateLimit;
+			if (!rateLimit) {
+				return; // No rate limiting for this action
+			}
+
+			const result = await this.checkLimit(request, rateLimit);
+
+			if (!result.allowed) {
+				// Set rate limit headers
+				request.reply?.setHeader("X-RateLimit-Limit", result.limit.toString());
+				request.reply?.setHeader(
+					"X-RateLimit-Remaining",
+					result.remaining.toString(),
+				);
+				request.reply?.setHeader(
+					"X-RateLimit-Reset",
+					Math.ceil(result.resetTime / 1000).toString(),
+				);
+
+				if (result.retryAfter) {
+					request.reply?.setHeader("Retry-After", result.retryAfter.toString());
+				}
+
+				throw new HttpError({
+					status: 429,
+					message: "Too Many Requests",
+				});
+			}
+
+			// Set success headers for allowed requests
+			request.reply?.setHeader("X-RateLimit-Limit", result.limit.toString());
+			request.reply?.setHeader(
+				"X-RateLimit-Remaining",
+				result.remaining.toString(),
+			);
+			request.reply?.setHeader(
+				"X-RateLimit-Reset",
+				Math.ceil(result.resetTime / 1000).toString(),
+			);
+		},
+	});
+
 	public async checkLimit(
 		req: ServerRequest,
 		options: RateLimitOptions = {},
