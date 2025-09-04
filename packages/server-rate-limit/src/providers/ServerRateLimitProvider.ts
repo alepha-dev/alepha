@@ -1,6 +1,6 @@
 import { $cache } from "@alepha/cache";
-import { $env, t } from "@alepha/core";
-import type { ServerRequest } from "@alepha/server";
+import { $env, $hook, t } from "@alepha/core";
+import { HttpError, type ServerRequest } from "@alepha/server";
 
 export interface RateLimitResult {
 	allowed: boolean;
@@ -35,6 +35,48 @@ export class ServerRateLimitProvider {
 	private readonly cache = $cache<RateLimitData>({
 		name: "server-rate-limit",
 		ttl: [this.env.RATE_LIMIT_WINDOW_MS, "milliseconds"],
+	});
+
+	public options: RateLimitOptions = {};
+
+	public readonly onRequest = $hook({
+		on: "server:onRequest",
+		handler: async ({ request }) => {
+			const result = await this.checkLimit(request, this.options);
+
+			if (!result.allowed) {
+				// Set rate limit headers
+				request.reply.setHeader("X-RateLimit-Limit", result.limit.toString());
+				request.reply.setHeader(
+					"X-RateLimit-Remaining",
+					result.remaining.toString(),
+				);
+				request.reply.setHeader(
+					"X-RateLimit-Reset",
+					Math.ceil(result.resetTime / 1000).toString(),
+				);
+
+				if (result.retryAfter) {
+					request.reply.setHeader("Retry-After", result.retryAfter.toString());
+				}
+
+				throw new HttpError({
+					status: 429,
+					message: "Too Many Requests",
+				});
+			}
+
+			// Set success headers for allowed requests
+			request.reply.setHeader("X-RateLimit-Limit", result.limit.toString());
+			request.reply.setHeader(
+				"X-RateLimit-Remaining",
+				result.remaining.toString(),
+			);
+			request.reply.setHeader(
+				"X-RateLimit-Reset",
+				Math.ceil(result.resetTime / 1000).toString(),
+			);
+		},
 	});
 
 	public async checkLimit(

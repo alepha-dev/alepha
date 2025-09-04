@@ -134,7 +134,7 @@ export abstract class Module {
 
 	public abstract register(alepha: Alepha): void;
 
-	static NAME_REGEX = /^[a-z]+(\.[a-z][a-z0-9]*)*$/;
+	static NAME_REGEX = /^[a-z]+(\.[a-z][a-z0-9-]*)*$/;
 
 	/**
 	 * Check if a Service is a Module.

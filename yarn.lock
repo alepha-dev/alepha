@@ -543,6 +543,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/server-rate-limit@workspace:packages/server-rate-limit"
   dependencies:
+    "@alepha/cache": "npm:0.9.4"
     "@alepha/core": "npm:0.9.4"
     "@alepha/server": "npm:0.9.4"
     tsdown: "npm:^0.14.2"

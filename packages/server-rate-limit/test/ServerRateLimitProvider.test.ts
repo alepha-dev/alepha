@@ -1,7 +1,8 @@
 import { AlephaCache } from "@alepha/cache";
 import { Alepha } from "@alepha/core";
-import type { ServerRequest } from "@alepha/server";
+import { $action, AlephaServer, type ServerRequest } from "@alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { AlephaServerRateLimit } from "../src/index.ts";
 import { ServerRateLimitProvider } from "../src/providers/ServerRateLimitProvider.ts";
 
 describe("ServerRateLimitProvider", () => {
@@ -93,5 +94,61 @@ describe("ServerRateLimitProvider", () => {
 
 		const result = await provider.checkLimit(req, { max: 5, windowMs: 60000 });
 		expect(result.allowed).toBe(true);
+	});
+});
+
+describe("ServerRateLimitProvider Module Integration", () => {
+	let alepha: Alepha;
+	let provider: ServerRateLimitProvider;
+
+	class TestApp {
+		test = $action({
+			handler: () => "success",
+		});
+	}
+
+	beforeEach(async () => {
+		alepha = Alepha.create()
+			.with(AlephaCache)
+			.with(AlephaServer)
+			.with(AlephaServerRateLimit)
+			.with(TestApp);
+		provider = alepha.inject(ServerRateLimitProvider);
+		await alepha.start();
+	});
+
+	afterEach(async () => {
+		await alepha.stop();
+	});
+
+	it("should integrate with Alepha framework successfully", async () => {
+		expect(provider).toBeDefined();
+		expect(provider).toBeInstanceOf(ServerRateLimitProvider);
+		expect(provider.options).toBeDefined();
+		expect(typeof provider.checkLimit).toBe("function");
+	});
+
+	it("should have configurable options", async () => {
+		const newOptions = { max: 50, windowMs: 30000 };
+		provider.options = newOptions;
+
+		expect(provider.options).toEqual(newOptions);
+	});
+
+	it("should work with real action requests", async () => {
+		// Configure rate limit for testing
+		provider.options = { max: 10, windowMs: 60000 };
+
+		const app = alepha.inject(TestApp);
+
+		// First request should succeed
+		const result = await app.test.run({});
+		expect(result).toBe("success");
+
+		// Multiple requests should still work within limit
+		for (let i = 0; i < 5; i++) {
+			const result = await app.test.run({});
+			expect(result).toBe("success");
+		}
 	});
 });
