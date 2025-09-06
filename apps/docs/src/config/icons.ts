@@ -14,6 +14,7 @@ import {
 	IconDatabase,
 	IconFile,
 	IconFileZip,
+	IconFlag2Off,
 	IconForms,
 	IconHeartbeat,
 	IconHelmet,
@@ -31,6 +32,7 @@ import {
 	IconServerSpark,
 	IconShieldCheck,
 	IconTestPipe,
+	IconTower,
 	IconUserCheck,
 	IconWorldWww,
 } from "@tabler/icons-react";
@@ -83,6 +85,7 @@ const keywordToIconMap: Record<string, any> = {
 
 	// Concrete Implementations (drivers)
 	azure: IconBucket, // Inherits from bucket
+	vercel: IconBucket, // Inherits from bucket
 	redis: IconDatabase, // Represents a data store
 
 	// Server Plugins
@@ -91,6 +94,7 @@ const keywordToIconMap: Record<string, any> = {
 	cors: IconArrowsExchange,
 	health: IconHeartbeat,
 	helmet: IconHelmet,
+	limit: IconTower,
 	links: IconLink,
 	metrics: IconChartBar,
 	multipart: IconFile, // Represents file uploads
