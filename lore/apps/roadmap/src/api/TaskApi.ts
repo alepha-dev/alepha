@@ -58,6 +58,78 @@ export class TaskApi {
 		},
 	});
 
+	getTasksByStatus = $action({
+		schema: {
+			params: t.object({
+				projectId: t.int(),
+			}),
+			query: t.object({
+				status: t.optional(t.enum(["new", "accepted", "completed"])),
+			}),
+			response: t.array(tasks.$schema),
+		},
+		handler: async ({ params, query, user }) => {
+			await this.db.characters.findOne({
+				projectId: { eq: params.projectId },
+				userId: { eq: user.id },
+			});
+
+			let where: any = {
+				projectId: { eq: params.projectId },
+			};
+
+			if (query.status === "new") {
+				where = {
+					...where,
+					acceptedAt: { isNull: true },
+					completedAt: { isNull: true },
+				};
+			} else if (query.status === "accepted") {
+				where = {
+					...where,
+					acceptedAt: { isNotNull: true },
+					completedAt: { isNull: true },
+				};
+			} else if (query.status === "completed") {
+				where = {
+					...where,
+					completedAt: { isNotNull: true },
+				};
+			}
+
+			return this.db.tasks.find({
+				limit: 100,
+				where,
+			});
+		},
+	});
+
+	acceptTask = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: tasks.$schema,
+		},
+		handler: async ({ params, user }) => {
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+				acceptedAt: { isNull: true },
+				completedAt: { isNull: true },
+			});
+
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
+
+			task.acceptedAt = this.dt.nowISOString();
+			task.acceptedBy = user.id;
+
+			return await this.db.tasks.save(task);
+		},
+	});
+
 	completeTask = $action({
 		schema: {
 			params: t.object({
