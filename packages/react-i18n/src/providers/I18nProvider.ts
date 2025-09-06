@@ -149,8 +149,17 @@ export class I18nProvider<
 
 	public readonly tr = (
 		key: keyof ServiceDictionary<S>[K] | string,
-		args?: string[],
-	) => this.translate(key as string, args);
+		options: {
+			args?: string[];
+			default?: string;
+		} = {},
+	) => {
+		const translation = this.translate(key as string, options.args || []);
+		if (translation === key && options.default) {
+			return options.default;
+		}
+		return translation;
+	};
 
 	protected render(item: string, args: string[]): string {
 		let result = item;

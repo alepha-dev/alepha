@@ -41,7 +41,7 @@ const ProjectView = () => {
 							<Flex hiddenFrom={"lg"} w={"100%"}>
 								<ProjectActions />
 							</Flex>
-							<Flex>
+							<Flex visibleFrom={"xs"}>
 								<ProjectBanner />
 							</Flex>
 							<NestedView />

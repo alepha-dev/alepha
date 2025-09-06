@@ -393,7 +393,7 @@ export class RepositoryDescriptor<
 	public async paginate(
 		pagination: PageQuery = {},
 		query: PgQuery<EntitySchema> = {},
-		opts: StatementOptions & { skipCount?: boolean } = {},
+		opts: StatementOptions & { count?: boolean } = {},
 	): Promise<Page<Static<EntitySchema>>> {
 		const limit = query.limit ?? pagination.size ?? 10;
 		const page = pagination.page ?? 0;
@@ -432,7 +432,7 @@ export class RepositoryDescriptor<
 			}),
 		);
 
-		if (!opts.skipCount) {
+		if (opts.count) {
 			const where = isSQLWrapper(query.where)
 				? query.where
 				: query.where
@@ -452,8 +452,6 @@ export class RepositoryDescriptor<
 		const response = this.createPagination(entities, limit, offset);
 
 		response.page.totalElements = countResult;
-		response.page.countDuration = timers.count;
-		response.page.queryDuration = timers.query;
 
 		return response;
 	}

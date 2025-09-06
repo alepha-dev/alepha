@@ -1,4 +1,5 @@
 import { DateTimeProvider } from "@alepha/datetime";
+import type { Page } from "@alepha/postgres";
 import { useClient, useInject, useRouter, useStore } from "@alepha/react";
 import {
 	Badge,
@@ -13,11 +14,9 @@ import {
 	TextInput,
 } from "@mantine/core";
 import {
-	IconCheck,
 	IconDots,
-	IconLayoutBoard,
 	IconSearch,
-	IconSortAZ,
+	IconSignature,
 	IconTrash,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -32,25 +31,30 @@ type TaskStatus = "new" | "accepted" | "completed";
 
 const ProjectBoard = () => {
 	const [project] = useStore("project");
-	const client = useClient<TaskApi>();
+	const taskApi = useClient<TaskApi>();
 	const [status, setStatus] = useState<TaskStatus>("new");
-	const [tasks, setTasks] = useState<Task[]>([]);
+	const [result, setResult] = useState<Page<Task> | undefined>();
 	const dateFormatter = useInject(DateTimeProvider);
 	const [loading, setLoading] = useState(false);
+	const router = useRouter<AppRouter>();
+	const next = result?.can.next ? result.page.number + 1 : undefined;
+	const tasks = result?.content || [];
+	const [sortValue, setSortValue] = useState<string | undefined>(undefined);
 
 	const loadTasks = async () => {
 		if (!project?.id) return;
 
+		setSortValue(undefined);
 		setLoading(true);
 		try {
 			const [result] = await Promise.all([
-				await client.getTasksByStatus({
+				await taskApi.getTasks({
 					params: { projectId: project.id },
 					query: { status },
 				}),
-				new Promise((resolve) => setTimeout(resolve, 500)),
+				new Promise((resolve) => setTimeout(resolve, 200)),
 			]);
-			setTasks(result);
+			setResult(result);
 		} catch (error) {
 			console.error("Error loading tasks:", error);
 		} finally {
@@ -62,7 +66,51 @@ const ProjectBoard = () => {
 		loadTasks();
 	}, [project?.id, status]);
 
-	const router = useRouter<AppRouter>();
+	const actions = {
+		acceptTask: {
+			can: () => taskApi.acceptTask.can(),
+			onClick: async () => {},
+		},
+		deleteTask: {
+			can: () => taskApi.deleteTask.can(),
+			onClick: async () => {},
+		},
+		sortBy: (key: string) => ({
+			onClick: async () => {
+				if (!project?.id) return;
+
+				const sort =
+					sortValue === `${key},asc`
+						? `${key},desc`
+						: sortValue === `${key},desc`
+							? undefined
+							: `${key},asc`;
+
+				const result = await taskApi.getTasks({
+					params: { projectId: project.id },
+					query: { status, page: next, sort },
+				});
+
+				setResult(result);
+				setSortValue(sort);
+			},
+		}),
+		more: {
+			onClick: async () => {
+				if (!project?.id) return;
+
+				const more = await taskApi.getTasks({
+					params: { projectId: project.id },
+					query: { status, page: next },
+				});
+
+				setResult({
+					...more,
+					content: [...tasks, ...more.content],
+				});
+			},
+		},
+	};
 
 	const getPriorityColor = (priority: string) => {
 		switch (priority) {
@@ -107,6 +155,7 @@ const ProjectBoard = () => {
 								leftSection={<IconSearch size={theme.icon.size.xs} />}
 							/>
 							<SegmentedControl
+								disabled={loading}
 								size={"xs"}
 								value={status}
 								onChange={(value) => setStatus(value as TaskStatus)}
@@ -127,36 +176,55 @@ const ProjectBoard = () => {
 				) : tasks.length === 0 ? (
 					<Card w={"100%"} p={"md"} c="dimmed" flex={1}>
 						<Flex flex={1} align={"center"} justify={"center"}>
-							<Text c="dimmed">No {status} tasks found</Text>
+							<Text c="dimmed">No {status} quests found</Text>
 						</Flex>
 					</Card>
 				) : (
-					<Card p={0} className="overflow-auto">
+					<Card flex={1} p={0} className="overflow-auto">
 						<Table stickyHeader>
 							<Table.Thead>
 								<Table.Tr>
+									{status === "accepted" && (
+										<Table.Th>
+											<Action
+												h={"auto"}
+												p={"xs"}
+												{...actions.sortBy("assignedAt")}
+											></Action>
+										</Table.Th>
+									)}
 									<Table.Th>
-										<Action h={"auto"} p={"xs"}>
+										<Action h={"auto"} p={"xs"} {...actions.sortBy("title")}>
 											Quest
 										</Action>
 									</Table.Th>
 									<Table.Th>
-										<Action h={"auto"} p={"xs"}>
+										<Action h={"auto"} p={"xs"} {...actions.sortBy("priority")}>
 											Priority
 										</Action>
 									</Table.Th>
 									<Table.Th>
-										<Action h={"auto"} p={"xs"}>
+										<Action
+											h={"auto"}
+											p={"xs"}
+											{...actions.sortBy("complexity")}
+										>
 											Rank
 										</Action>
 									</Table.Th>
 									<Table.Th>
-										<Action h={"auto"} p={"xs"}>
+										<Action h={"auto"} p={"xs"} {...actions.sortBy("package")}>
 											Zone
 										</Action>
 									</Table.Th>
 									<Table.Th>
-										<Action h={"auto"} p={"xs"}>
+										<Action
+											h={"auto"}
+											p={"xs"}
+											{...actions.sortBy(
+												status === "completed" ? "completedAt" : "createdAt",
+											)}
+										>
 											{status === "completed" ? "Completed" : "Created"}
 										</Action>
 									</Table.Th>
@@ -166,7 +234,22 @@ const ProjectBoard = () => {
 							<Table.Tbody>
 								{tasks.map((task) => (
 									<Table.Tr key={task.id}>
-										<Table.Td>
+										{status === "accepted" && (
+											<Table.Td align={"center"}>
+												<img
+													alt={"picture"}
+													style={{
+														height: "24px",
+														width: "24px",
+														borderRadius: "50%",
+													}}
+													src={
+														"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"
+													}
+												/>
+											</Table.Td>
+										)}
+										<Table.Td maw={"254px"}>
 											<Action
 												w={"100%"}
 												px={"xs"}
@@ -180,7 +263,15 @@ const ProjectBoard = () => {
 													meta: { transition: "fadeInUp" },
 												}}
 											>
-												<Flex direction={"column"} align={"start"} flex={1}>
+												<Flex
+													direction={"column"}
+													align={"start"}
+													flex={1}
+													style={{
+														overflow: "hidden",
+														whiteSpace: "nowrap",
+													}}
+												>
 													<Text
 														td={task.completedAt ? "line-through" : undefined}
 														c={task.completedAt ? "dimmed" : undefined}
@@ -191,11 +282,15 @@ const ProjectBoard = () => {
 														{task.title}
 													</Text>
 													{task.description && (
-														<Text size="xs" c="dimmed" lineClamp={2}>
+														<Text
+															style={{ textOverflow: "ellipsis" }}
+															size="xs"
+															c="dimmed"
+														>
 															{task.description
-																.replace(/<[^>]*>/g, "")
-																.slice(0, 80)}
-															{task.description.length > 80 ? "..." : ""}
+																.slice(0, 100)
+																.replaceAll("<p>", "")
+																.replaceAll("</p>", " ")}
 														</Text>
 													)}
 												</Flex>
@@ -210,7 +305,7 @@ const ProjectBoard = () => {
 												{task.priority}
 											</Badge>
 										</Table.Td>
-										<Table.Td align={"center"}>
+										<Table.Td>
 											<TaskComplexity complexity={task.complexity} />
 										</Table.Td>
 										<Table.Td>
@@ -243,12 +338,12 @@ const ProjectBoard = () => {
 													{!task.acceptedAt && (
 														<Menu.Item
 															variant={"light"}
-															color="green"
+															color="blue"
 															leftSection={
-																<IconCheck size={theme.icon.size.xs} />
+																<IconSignature size={theme.icon.size.xs} />
 															}
 														>
-															Take Quest
+															Accept Quest
 														</Menu.Item>
 													)}
 													{!task.acceptedAt && <Menu.Divider />}
@@ -267,6 +362,13 @@ const ProjectBoard = () => {
 								))}
 							</Table.Tbody>
 						</Table>
+						{next && (
+							<Flex p={"md"} justify={"center"} align={"center"}>
+								<Action variant="subtle" size="xs" {...actions.more}>
+									Load More
+								</Action>
+							</Flex>
+						)}
 					</Card>
 				)}
 			</Card>

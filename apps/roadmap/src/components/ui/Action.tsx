@@ -30,7 +30,7 @@ const Action = (_props: ActionProps) => {
 					</Action>
 				</Flex>
 				<Flex w={"100%"} hiddenFrom={textVisibleFrom}>
-					<Action {...rest} px={"xs"}>
+					<Action px={"xs"} {...rest}>
 						{leftSection}
 					</Action>
 				</Flex>

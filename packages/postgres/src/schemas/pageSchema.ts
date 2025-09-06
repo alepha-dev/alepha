@@ -31,8 +31,6 @@ export const pageSchema = <T extends TObject | TIntersect | TRecord>(
 				number: t.int(),
 				size: t.int(),
 				totalElements: t.optional(t.int()),
-				queryDuration: t.optional(t.int()),
-				countDuration: t.optional(t.int()),
 			}),
 		},
 		{
@@ -48,8 +46,6 @@ export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
 		number: TInteger;
 		size: TInteger;
 		totalElements: TOptionalWithFlag<TInteger, true>;
-		queryDuration: TOptionalWithFlag<TInteger, true>;
-		countDuration: TOptionalWithFlag<TInteger, true>;
 	}>;
 }>;
 
@@ -60,7 +56,5 @@ export type Page<T> = {
 		number: number;
 		size: number;
 		totalElements?: number;
-		queryDuration?: number;
-		countDuration?: number;
 	};
 };

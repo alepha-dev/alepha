@@ -16,7 +16,7 @@ const TaskComplexity = ({ complexity }: { complexity: number }) => {
 	const renderComplexityText = (n: number) => {
 		return (
 			<Text size="md" fw={"bold"} lh={"24px"}>
-				{info.getDifficultyLetter(n)}
+				{info.getRank(n)}
 			</Text>
 		);
 	};
