@@ -140,6 +140,10 @@ export class AppRouter {
 	projectBoard = $page({
 		path: "/",
 		lazy: () => import("./components/project/ProjectBoard.tsx"),
+		animation: {
+			enter: "fadeInUpLight",
+			exit: "fadeOutDownLight",
+		},
 	});
 
 	projectPlayers = $page({

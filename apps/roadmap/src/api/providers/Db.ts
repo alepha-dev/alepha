@@ -84,6 +84,7 @@ export const tasks = $entity({
 		package: t.string(),
 		priority: t.enum(["optional", "low", "medium", "high"]),
 		complexity: t.int({ minimum: 1, maximum: 5 }),
+		acceptedAt: t.optional(t.datetime()),
 		completedAt: t.optional(t.datetime()),
 		projectId: pg.ref(t.int(), () => projects.id, {
 			onDelete: "cascade",
@@ -92,6 +93,9 @@ export const tasks = $entity({
 			onDelete: "cascade",
 		}),
 		assignedTo: pg.ref(t.optional(t.uuid()), () => users.id, {
+			onDelete: "set null",
+		}),
+		acceptedBy: pg.ref(t.optional(t.uuid()), () => users.id, {
 			onDelete: "set null",
 		}),
 		completedBy: pg.ref(t.optional(t.uuid()), () => users.id, {

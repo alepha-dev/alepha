@@ -14,7 +14,6 @@ import {
 	IconDatabase,
 	IconFile,
 	IconFileZip,
-	IconFlag2Off,
 	IconForms,
 	IconHeartbeat,
 	IconHelmet,
