@@ -10,7 +10,6 @@
 @import "./styles/code-github-dark.css";
 
 @import "components/auth/Login.css";
-@import "components/shared/StupidLogo.css";
 @import "components/misc/ExperienceBar.css";
 
 :root {
@@ -57,9 +56,16 @@
 	--mantine-spacing-xs: 8px;
 }
 
+html {
+	font-size: 16px;
+}
+
 @media (max-width: 767px) {
 	:root {
 		--mantine-spacing-xs: 4px;
+	}
+	html {
+		font-size: 14px;
 	}
 }
 
@@ -131,6 +137,7 @@ html {
 
 pre > code {
 	background-color: transparent !important;
+	padding: 0 !important;
 }
 
 .mantine-Drawer-content {

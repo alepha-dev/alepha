@@ -1,7 +1,7 @@
 import { $inject, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import type { UserAccountToken } from "@alepha/security";
+import { pageQuerySchema, pg } from "@alepha/postgres";
 import { $action } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
@@ -40,33 +40,13 @@ export class TaskApi {
 			params: t.object({
 				projectId: t.int(),
 			}),
-			response: t.array(tasks.$schema),
-		},
-		handler: async ({ params, user }) => {
-			await this.db.characters.findOne({
-				projectId: { eq: params.projectId },
-				userId: { eq: user.id },
-			});
-
-			return this.db.tasks.find({
-				limit: 100,
-				where: {
-					projectId: { eq: params.projectId },
-					completedAt: { isNull: true },
-				},
-			});
-		},
-	});
-
-	getTasksByStatus = $action({
-		schema: {
-			params: t.object({
-				projectId: t.int(),
-			}),
-			query: t.object({
-				status: t.optional(t.enum(["new", "accepted", "completed"])),
-			}),
-			response: t.array(tasks.$schema),
+			query: t.composite([
+				t.object({
+					status: t.optional(t.enum(["new", "accepted", "completed"])),
+				}),
+				pageQuerySchema,
+			]),
+			response: pg.page(tasks.$schema),
 		},
 		handler: async ({ params, query, user }) => {
 			await this.db.characters.findOne({
@@ -74,9 +54,9 @@ export class TaskApi {
 				userId: { eq: user.id },
 			});
 
-			let where: any = {
+			let where = this.db.tasks.createQueryWhere({
 				projectId: { eq: params.projectId },
-			};
+			});
 
 			if (query.status === "new") {
 				where = {
@@ -95,10 +75,12 @@ export class TaskApi {
 					...where,
 					completedAt: { isNotNull: true },
 				};
+				query.sort ??= "completedAt,desc";
 			}
 
-			return this.db.tasks.find({
-				limit: 100,
+			query.sort ??= "updatedAt,desc";
+
+			return this.db.tasks.paginate(query, {
 				where,
 			});
 		},
@@ -148,9 +130,11 @@ export class TaskApi {
 					{
 						id: { eq: params.id },
 						completedAt: { isNull: true },
+						acceptedAt: { isNotNull: true },
 					},
 					{ tx },
 				);
+
 				const character = await this.db.characters.findOne(
 					{
 						projectId: { eq: task.projectId },
@@ -188,7 +172,15 @@ export class TaskApi {
 			response: tasks.$schema,
 		},
 		handler: async ({ params, user }) => {
-			const { task } = await this.check(user, params.id);
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+			});
+
+			// check if the user has access to the project
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
 
 			return task;
 		},
@@ -211,7 +203,18 @@ export class TaskApi {
 			response: tasks.$schema,
 		},
 		handler: async ({ params, body, user }) => {
-			await this.check(user, params.id);
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+				completedAt: { isNull: true },
+			});
+
+			// check if the user has access to the project
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
+
+			// TODO: character.can("edit:task", projectId)
 
 			if (body.description) {
 				// sanitize HTML content
@@ -230,32 +233,21 @@ export class TaskApi {
 			response: t.boolean(),
 		},
 		handler: async ({ params, user }) => {
-			await this.check(user, params.id);
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+			});
+
+			// check if the user has access to the project
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
+
+			// TODO: character.can("delete:task", projectId)
 
 			await this.db.tasks.deleteById(params.id);
 
 			return true;
 		},
 	});
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Act like a security check and load task + character.
-	 */
-	check = async (user: UserAccountToken, taskId: number) => {
-		// 1. load the task
-		const task = await this.db.tasks.findOne({
-			id: { eq: taskId },
-		});
-
-		// 2. load the character associated to the project AND the user
-		// if no match => no access
-		const character = await this.db.characters.findOne({
-			projectId: { eq: task.projectId },
-			userId: { eq: user.id },
-		});
-
-		return { task, character };
-	};
 }

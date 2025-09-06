@@ -30,7 +30,6 @@ const TextEditor: React.FC<TextEditorProps> = (props) => {
 					<RichTextEditor.ClearFormatting />
 					<RichTextEditor.Highlight />
 					<RichTextEditor.CodeBlock />
-					<RichTextEditor.Code />
 				</RichTextEditor.ControlsGroup>
 
 				<RichTextEditor.ControlsGroup>

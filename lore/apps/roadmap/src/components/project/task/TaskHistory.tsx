@@ -1,7 +1,7 @@
 import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useStore } from "@alepha/react";
 import { Flex, Text, Timeline, Transition } from "@mantine/core";
-import { IconEdit, IconSunset2 } from "@tabler/icons-react";
+import { IconSignature, IconSunset2, IconSwords } from "@tabler/icons-react";
 import type { Task } from "../../../api/providers/Db.ts";
 
 const TaskHistory = () => {
@@ -42,7 +42,13 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 
 	return (
 		<Timeline active={1} bulletSize={24} lineWidth={2}>
-			<Timeline.Item bullet={<IconSunset2 size={12} />} title="A New Dawn">
+			<Timeline.Item
+				style={{
+					animation: "fadeInUpLight 0.3s ease forwards",
+				}}
+				bullet={<IconSunset2 size={12} />}
+				title="A New Dawn"
+			>
 				<Text c="dimmed" size="sm">
 					Quest has been created by
 					<Text variant="link" component="span" inherit>
@@ -56,14 +62,16 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 				</Text>
 			</Timeline.Item>
 
-			{task.complexity <= 3 && (
+			{task.acceptedAt && (
 				<Timeline.Item
-					bullet={<IconEdit size={12} />}
-					title="Unexpected Journey"
-					lineVariant="dashed"
+					style={{
+						animation: "fadeInUpLight 0.3s ease forwards",
+					}}
+					title="Courageous Choice"
+					bullet={<IconSignature size={12} />}
 				>
 					<Text c="dimmed" size="sm">
-						Quest description has been updated by{" "}
+						Quest has been accepted by
 						<Text variant="link" component="span" inherit>
 							{" "}
 							You
@@ -71,27 +79,32 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 						.
 					</Text>
 					<Text size="xs" mt={4}>
-						{dt.of(task.updatedAt).fromNow()}
+						{dt.of(task.acceptedAt).fromNow()}
 					</Text>
 				</Timeline.Item>
 			)}
 
-			<Timeline.Item
-				title="Courageous Choice"
-				bullet={<IconSunset2 size={12} />}
-			>
-				<Text c="dimmed" size="sm">
-					Quest has been accepted by
-					<Text variant="link" component="span" inherit>
-						{" "}
-						You
+			{task.completedAt && (
+				<Timeline.Item
+					style={{
+						animation: "fadeInUpLight 0.3s ease forwards",
+					}}
+					title="At Long Last"
+					bullet={<IconSwords size={12} />}
+				>
+					<Text c="dimmed" size="sm">
+						Quest has been completed by
+						<Text variant="link" component="span" inherit>
+							{" "}
+							You
+						</Text>
+						.
 					</Text>
-					.
-				</Text>
-				<Text size="xs" mt={4}>
-					{dt.of(task.updatedAt).fromNow()}
-				</Text>
-			</Timeline.Item>
+					<Text size="xs" mt={4}>
+						{dt.of(task.completedAt).fromNow()}
+					</Text>
+				</Timeline.Item>
+			)}
 		</Timeline>
 	);
 };

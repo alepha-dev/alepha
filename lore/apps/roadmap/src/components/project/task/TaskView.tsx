@@ -14,6 +14,7 @@ import {
 	IconEdit,
 	IconFileText,
 	IconPigMoney,
+	IconSignature,
 	IconSwords,
 	IconTag,
 	IconTrash,
@@ -39,7 +40,7 @@ const TaskView = (props: TaskViewProps) => {
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
 	const router = useRouter<AppRouter>();
-	const level = useInject(CharacterInfo);
+	const info = useInject(CharacterInfo);
 	const { tr } = useI18n<I18n, "en">();
 	const [showDialog, setShowDialog] = useState(false);
 
@@ -53,7 +54,7 @@ const TaskView = (props: TaskViewProps) => {
 		return null;
 	}
 
-	const money = level.getMoneyFromTask(task);
+	const money = info.getMoneyFromTask(task);
 
 	const openDeleteModal = () =>
 		new Promise<boolean>((resolve) =>
@@ -73,6 +74,30 @@ const TaskView = (props: TaskViewProps) => {
 				onConfirm: () => resolve(true),
 			}),
 		);
+
+	const abandonTask = {
+		can: () => taskApi.deleteTask.can(),
+		onClick: async () => {
+			const confirm = await openDeleteModal();
+			if (!confirm) {
+				return;
+			}
+
+			await taskApi.deleteTask({
+				params: { id: task.id },
+			});
+
+			alepha.state(
+				"tasks",
+				(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
+			);
+			await router.go("projectBoard", {
+				meta: {
+					deleted: true,
+				},
+			});
+		},
+	};
 
 	return (
 		<Card
@@ -130,18 +155,9 @@ const TaskView = (props: TaskViewProps) => {
 							/>
 						</Flex>
 						<Text size={"sm"}>
-							{tr("task.view.summary", [
-								task.priority,
-								task.complexity === 5
-									? "S"
-									: task.complexity === 4
-										? "A"
-										: task.complexity === 3
-											? "B"
-											: task.complexity === 2
-												? "C"
-												: "F",
-							])}
+							{tr("task.view.summary", {
+								args: [task.priority, info.getRank(task.complexity)],
+							})}
 						</Text>
 
 						<Stack gap={0}>
@@ -181,14 +197,14 @@ const TaskView = (props: TaskViewProps) => {
 							<Text size={"sm"}>{tr("task.view.receive")}</Text>
 							<Flex gap={"xs"} align={"center"}>
 								<Flex align={"center"} gap={2}>
-									<Text size={"sm"}>{level.getGold(money)}</Text>
+									<Text size={"sm"}>{info.getGold(money)}</Text>
 									<IconCircleFilled
 										color={"var(--color-gold)"}
 										size={theme.icon.size.xs}
 									/>
 								</Flex>
 								<Flex align={"center"} gap={2}>
-									<Text size={"sm"}>{level.getSilver(money)}</Text>
+									<Text size={"sm"}>{info.getSilver(money)}</Text>
 									<IconCircleFilled
 										color={"var(--color-silver)"}
 										size={theme.icon.size.xs}
@@ -199,80 +215,92 @@ const TaskView = (props: TaskViewProps) => {
 						<Flex gap={"sm"}>
 							<Text size={"sm"}>{tr("task.view.experience")}</Text>
 							<Text size={"sm"} fw={"bold"}>
-								{level.getXpFromTask(task)} XP
+								{info.getXpFromTask(task)} XP
 							</Text>
 						</Flex>
 					</Flex>
 				</Stack>
 
-				<Flex p={"xs"}>
-					<Card
-						w={"100%"}
-						p={"xs"}
-						bg={theme.colors.panel}
-						withBorder
-						radius={"md"}
-						className={"shadow"}
-					>
-						<Flex justify={"space-between"}>
-							<Action
-								c={"red"}
-								variant={"subtle"}
-								leftSection={<IconTrash size={theme.icon.size.md} />}
-								disabled={!taskApi.deleteTask.can()}
-								onClick={async () => {
-									const confirm = await openDeleteModal();
-									if (!confirm) {
-										return;
-									}
-
-									await taskApi.deleteTask({
-										params: { id: task.id },
-									});
-
-									alepha.state(
-										"tasks",
-										(alepha.state("tasks") ?? []).filter(
-											(t) => t.id !== task.id,
-										),
-									);
-									await router.go("projectBoard", {
-										meta: {
-											deleted: true,
-										},
-									});
-								}}
-							>
-								{tr("task.view.actions.abandon")}
-							</Action>
-							<Action
-								c={"green"}
-								variant={"subtle"}
-								leftSection={<IconSwords size={theme.icon.size.md} />}
-								disabled={!taskApi.deleteTask.can()}
-								onClick={async () => {
-									const { character } = await taskApi.completeTask({
-										params: { id: task.id },
-									});
-									alepha.state("character", character);
-									alepha.state(
-										"tasks",
-										(alepha.state("tasks") ?? []).filter(
-											(t) => t.id !== task.id,
-										),
-									);
-									await router.go("projectBoard", {
-										meta: {
-											completed: true,
-										},
-									});
-								}}
-							>
-								{tr("task.view.actions.complete")}
-							</Action>
-						</Flex>
-					</Card>
-				</Flex>
+				{!task.completedAt && (
+					<Flex p={"xs"}>
+						<Card
+							w={"100%"}
+							p={"xs"}
+							bg={theme.colors.panel}
+							withBorder
+							radius={"md"}
+							className={"shadow"}
+						>
+							{!task.acceptedAt && (
+								<Flex justify={"center"}>
+									<Action
+										c={"blue"}
+										variant={"subtle"}
+										leftSection={<IconSignature size={theme.icon.size.md} />}
+										disabled={!taskApi.acceptTask.can()}
+										onClick={async () => {
+											const updatedTask = await taskApi.acceptTask({
+												params: { id: task.id },
+											});
+											setTask(updatedTask);
+											alepha.state("task", updatedTask);
+											alepha.state("tasks", [
+												...(alepha.state("tasks") ?? []),
+												updatedTask,
+											]);
+										}}
+									>
+										{tr("task.view.actions.accept", {
+											default: "Sign and Accept the Quest",
+										})}
+									</Action>
+								</Flex>
+							)}
+							{task.acceptedAt && (
+								<Flex justify={"space-between"} gap={"xs"}>
+									<Flex>
+										<Action
+											px={"sm"}
+											textVisibleFrom={"sm"}
+											c={"red"}
+											variant={"subtle"}
+											leftSection={<IconTrash size={theme.icon.size.md} />}
+											disabled={!taskApi.deleteTask.can()}
+											{...abandonTask}
+										>
+											{tr("task.view.actions.abandon")}
+										</Action>
+									</Flex>
+									<Action
+										c={"green"}
+										variant={"subtle"}
+										leftSection={<IconSwords size={theme.icon.size.md} />}
+										disabled={!taskApi.deleteTask.can()}
+										onClick={async () => {
+											const { character } = await taskApi.completeTask({
+												params: { id: task.id },
+											});
+											alepha.state("character", character);
+											alepha.state(
+												"tasks",
+												(alepha.state("tasks") ?? []).filter(
+													(t) => t.id !== task.id,
+												),
+											);
+											await router.go("projectBoard", {
+												meta: {
+													completed: true,
+												},
+											});
+										}}
+									>
+										{tr("task.view.actions.complete")}
+									</Action>
+								</Flex>
+							)}
+						</Card>
+					</Flex>
+				)}
 			</Stack>
 		</Card>
 	);

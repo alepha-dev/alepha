@@ -115,6 +115,7 @@ export class ProjectApi {
 				where: {
 					projectId: { eq: params.id },
 					completedAt: { isNull: true },
+					acceptedBy: { eq: user.id },
 				},
 			});
 

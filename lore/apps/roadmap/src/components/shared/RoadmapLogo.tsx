@@ -1,6 +1,7 @@
 import { Flex } from "@mantine/core";
+import "./RoadmapLogo.css";
 
-const StupidLogo = () => {
+const RoadmapLogo = () => {
 	return (
 		<Flex style={{ position: "relative" }}>
 			<Flex
@@ -25,4 +26,4 @@ const StupidLogo = () => {
 	);
 };
 
-export default StupidLogo;
+export default RoadmapLogo;

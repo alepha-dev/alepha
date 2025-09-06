@@ -6,7 +6,7 @@ import { HttpError } from "@alepha/server";
 import { Card, Center, Flex, Group, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconLock, IconMail } from "@tabler/icons-react";
-import StupidLogo from "../shared/StupidLogo.tsx";
+import RoadmapLogo from "../shared/RoadmapLogo.tsx";
 import Action from "../ui/Action.tsx";
 import Control from "../ui/Control.tsx";
 
@@ -51,7 +51,7 @@ const Login = () => {
 			<Stack gap={"sm"} w={360}>
 				<Center p={"sm"}>
 					<Group gap={"xs"}>
-						<StupidLogo />
+						<RoadmapLogo />
 						<Text size="xl">Roadmap</Text>
 					</Group>
 				</Center>

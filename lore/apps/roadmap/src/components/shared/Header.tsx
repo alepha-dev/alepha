@@ -8,7 +8,7 @@ import QuestLog from "../project/QuestLog.tsx";
 import Action from "../ui/Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import HeaderProject from "./HeaderProject.tsx";
-import StupidLogo from "./StupidLogo.tsx";
+import RoadmapLogo from "./RoadmapLogo.tsx";
 
 const Header = () => {
 	const router = useRouter<AppRouter>();
@@ -19,7 +19,7 @@ const Header = () => {
 			p={"xs"}
 			px={"md"}
 			gap={"xs"}
-			style={{ height: 64 }}
+			mah={64}
 			align="center"
 			justify="center"
 		>
@@ -32,13 +32,13 @@ const Header = () => {
 								variant={"subtle"}
 								href={router.path("home")}
 								active={false}
-								leftSection={<StupidLogo />}
+								leftSection={<RoadmapLogo />}
 							/>
 						</Flex>
 						<HeaderProject />
 					</Flex>
 				</Flex>
-				<Container w={theme.container} visibleFrom={"lg"} p={"xs"}>
+				<Container w={theme.container} visibleFrom={"lg"} p={0}>
 					<ProjectActions />
 				</Container>
 				<Flex flex={1}>
