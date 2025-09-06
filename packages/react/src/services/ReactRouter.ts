@@ -116,17 +116,14 @@ export class ReactRouter<T extends object> {
 		await this.browser?.go(path as string, options);
 	}
 
-	public anchor(
-		path: string,
-		options?: { params?: Record<string, any> },
-	): AnchorProps;
+	public anchor(path: string, options?: RouterGoOptions): AnchorProps;
 	public anchor(
 		path: keyof VirtualRouter<T>,
-		options?: { params?: Record<string, any> },
+		options?: RouterGoOptions,
 	): AnchorProps;
 	public anchor(
 		path: string | keyof VirtualRouter<T>,
-		options: { params?: Record<string, any> } = {},
+		options: RouterGoOptions = {},
 	): AnchorProps {
 		let href = path as string;
 

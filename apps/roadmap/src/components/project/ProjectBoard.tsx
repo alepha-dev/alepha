@@ -1,29 +1,41 @@
-import { useClient, useRouter, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { DateTimeProvider } from "@alepha/datetime";
+import { useClient, useInject, useRouter, useStore } from "@alepha/react";
 import {
 	Badge,
 	Card,
 	Flex,
+	Loader,
+	Menu,
 	SegmentedControl,
 	Stack,
 	Table,
 	Text,
+	TextInput,
 } from "@mantine/core";
+import {
+	IconCheck,
+	IconDots,
+	IconLayoutBoard,
+	IconSearch,
+	IconSortAZ,
+	IconTrash,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { Task } from "../../api/providers/Db.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
-import type { I18n } from "../../services/I18n.ts";
+import { theme } from "../../constants/theme.ts";
 import Action from "../ui/Action.tsx";
+import TaskComplexity from "./task/TaskComplexity.tsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
 
 const ProjectBoard = () => {
 	const [project] = useStore("project");
 	const client = useClient<TaskApi>();
-	const { tr } = useI18n<I18n, "en">();
 	const [status, setStatus] = useState<TaskStatus>("new");
 	const [tasks, setTasks] = useState<Task[]>([]);
+	const dateFormatter = useInject(DateTimeProvider);
 	const [loading, setLoading] = useState(false);
 
 	const loadTasks = async () => {
@@ -31,10 +43,13 @@ const ProjectBoard = () => {
 
 		setLoading(true);
 		try {
-			const result = await client.getTasksByStatus({
-				params: { projectId: project.id },
-				query: { status },
-			});
+			const [result] = await Promise.all([
+				await client.getTasksByStatus({
+					params: { projectId: project.id },
+					query: { status },
+				}),
+				new Promise((resolve) => setTimeout(resolve, 500)),
+			]);
 			setTasks(result);
 		} catch (error) {
 			console.error("Error loading tasks:", error);
@@ -76,24 +91,39 @@ const ProjectBoard = () => {
 					}}
 				>
 					<Flex justify="space-between" align="center" p={"sm"}>
-						<Text fw={500} size="lg">
-							Task Board
-						</Text>
-						<SegmentedControl
-							size={"xs"}
-							value={status}
-							onChange={(value) => setStatus(value as TaskStatus)}
-							data={[
-								{ label: "New", value: "new" },
-								{ label: "Accepted", value: "accepted" },
-								{ label: "Completed", value: "completed" },
-							]}
-						/>
+						<Flex
+							visibleFrom={"sm"}
+							gap={"xs"}
+							justify={"center"}
+							align={"center"}
+						>
+							<Text fw={400} size="lg"></Text>
+						</Flex>
+						<Flex gap={"sm"} align={"center"}>
+							<TextInput
+								disabled
+								placeholder="Search quests..."
+								size={"xs"}
+								leftSection={<IconSearch size={theme.icon.size.xs} />}
+							/>
+							<SegmentedControl
+								size={"xs"}
+								value={status}
+								onChange={(value) => setStatus(value as TaskStatus)}
+								data={[
+									{ label: "New", value: "new" },
+									{ label: "Accepted", value: "accepted" },
+									{ label: "Completed", value: "completed" },
+								]}
+							/>
+						</Flex>
 					</Flex>
 				</Card>
 
 				{loading ? (
-					<Text c="dimmed"></Text>
+					<Flex flex={1} align={"center"} justify={"center"}>
+						<Loader type={"dots"} />
+					</Flex>
 				) : tasks.length === 0 ? (
 					<Card w={"100%"} p={"md"} c="dimmed" flex={1}>
 						<Flex flex={1} align={"center"} justify={"center"}>
@@ -105,13 +135,32 @@ const ProjectBoard = () => {
 						<Table stickyHeader>
 							<Table.Thead>
 								<Table.Tr>
-									<Table.Th>Task</Table.Th>
-									<Table.Th>Priority</Table.Th>
-									<Table.Th>Difficulty</Table.Th>
-									<Table.Th>Zone</Table.Th>
 									<Table.Th>
-										{status === "completed" ? "Completed" : "Created"}
+										<Action h={"auto"} p={"xs"}>
+											Quest
+										</Action>
 									</Table.Th>
+									<Table.Th>
+										<Action h={"auto"} p={"xs"}>
+											Priority
+										</Action>
+									</Table.Th>
+									<Table.Th>
+										<Action h={"auto"} p={"xs"}>
+											Rank
+										</Action>
+									</Table.Th>
+									<Table.Th>
+										<Action h={"auto"} p={"xs"}>
+											Zone
+										</Action>
+									</Table.Th>
+									<Table.Th>
+										<Action h={"auto"} p={"xs"}>
+											{status === "completed" ? "Completed" : "Created"}
+										</Action>
+									</Table.Th>
+									<Table.Th></Table.Th>
 								</Table.Tr>
 							</Table.Thead>
 							<Table.Tbody>
@@ -119,12 +168,17 @@ const ProjectBoard = () => {
 									<Table.Tr key={task.id}>
 										<Table.Td>
 											<Action
+												w={"100%"}
+												px={"xs"}
+												justify={"start"}
 												href={router.path("projectTask", {
 													params: {
 														taskId: task.id,
 													},
 												})}
-												flex={1}
+												routerGoOptions={{
+													meta: { transition: "fadeInUp" },
+												}}
 											>
 												<Flex direction={"column"} align={"start"} flex={1}>
 													<Text
@@ -140,7 +194,8 @@ const ProjectBoard = () => {
 														<Text size="xs" c="dimmed" lineClamp={2}>
 															{task.description
 																.replace(/<[^>]*>/g, "")
-																.slice(0, 50)}
+																.slice(0, 80)}
+															{task.description.length > 80 ? "..." : ""}
 														</Text>
 													)}
 												</Flex>
@@ -155,20 +210,58 @@ const ProjectBoard = () => {
 												{task.priority}
 											</Badge>
 										</Table.Td>
-										<Table.Td>
-											<Text size="sm">{task.complexity}/5</Text>
+										<Table.Td align={"center"}>
+											<TaskComplexity complexity={task.complexity} />
 										</Table.Td>
 										<Table.Td>
 											<Text size="xs">{task.package}</Text>
 										</Table.Td>
 										<Table.Td>
 											<Text size="xs" c="dimmed">
-												{new Date(
-													status === "completed"
-														? task.completedAt!
-														: task.createdAt,
-												).toLocaleDateString()}
+												{dateFormatter
+													.of(task.completedAt ?? task.createdAt)
+													.fromNow()}
 											</Text>
+										</Table.Td>
+										<Table.Td>
+											<Menu
+												position="right"
+												withArrow
+												trigger={"click"}
+												arrowSize={12}
+												transitionProps={{
+													transition: "fade-right",
+													duration: 200,
+												}}
+											>
+												<Menu.Target>
+													<Action px={"xs"} variant="subtle" size="xs">
+														<IconDots size={theme.icon.size.sm} />
+													</Action>
+												</Menu.Target>
+												<Menu.Dropdown>
+													{!task.acceptedAt && (
+														<Menu.Item
+															variant={"light"}
+															color="green"
+															leftSection={
+																<IconCheck size={theme.icon.size.xs} />
+															}
+														>
+															Take Quest
+														</Menu.Item>
+													)}
+													{!task.acceptedAt && <Menu.Divider />}
+													<Menu.Item
+														color="red"
+														leftSection={
+															<IconTrash size={theme.icon.size.xs} />
+														}
+													>
+														Delete Quest
+													</Menu.Item>
+												</Menu.Dropdown>
+											</Menu>
 										</Table.Td>
 									</Table.Tr>
 								))}

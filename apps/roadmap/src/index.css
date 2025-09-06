@@ -57,6 +57,12 @@
 	--mantine-spacing-xs: 8px;
 }
 
+@media (max-width: 767px) {
+	:root {
+		--mantine-spacing-xs: 4px;
+	}
+}
+
 html[data-mantine-color-scheme="dark"] {
 	--panel-bg-color: var(--panel-bg-color-dark);
 	--card-bg-color: var(--card-bg-color-dark);
