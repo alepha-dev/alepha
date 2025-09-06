@@ -170,6 +170,10 @@ export class AppRouter {
 			}),
 		},
 		animation: ({ meta }) => {
+			if (meta.transition) {
+				return meta.transition;
+			}
+
 			if (meta.completed) {
 				return {
 					exit: {

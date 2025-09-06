@@ -6,6 +6,14 @@ export class CharacterInfo {
 		97000, 117000, 139000, 163000, 189000, 217000, 247000,
 	];
 
+	getDifficultyLetter(n: number): string {
+		if (n === 2) return "C";
+		if (n === 3) return "B";
+		if (n === 4) return "A";
+		if (n === 5) return "S";
+		return "F";
+	}
+
 	getMoneyFromTask(task: Task): number {
 		const baseMoney = task.complexity * 40;
 		const priorityBonus =

@@ -1,10 +1,10 @@
 import { useActive, useRouter } from "@alepha/react";
-import { Card, Flex, HoverCard, Text } from "@mantine/core";
+import { Flex, HoverCard, Text } from "@mantine/core";
 import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { Task } from "../../../api/providers/Db.ts";
-import { theme } from "../../../constants/theme.ts";
 import Action from "../../ui/Action.tsx";
+import TaskComplexity from "./TaskComplexity.tsx";
 
 const TaskItem = (props: { task: Task }) => {
 	const { task } = props;
@@ -13,79 +13,6 @@ const TaskItem = (props: { task: Task }) => {
 	const { isActive, anchorProps } = useActive(
 		router.path("projectTask", { params: { taskId: task.id } }),
 	);
-
-	const renderComplexityText = (letter: string) => {
-		return (
-			<Text size="md" fw={"bold"} lh={"24px"}>
-				{letter}
-			</Text>
-		);
-	};
-
-	const renderComplexity = (complexity: number) => {
-		if (complexity === 5)
-			return (
-				<Card
-					p={0}
-					w={25}
-					h={25}
-					radius={"md"}
-					withBorder
-					className={"shadow-2"}
-					style={{ borderColor: theme.colors.gold }}
-					bg={theme.colors.panel}
-				>
-					{renderComplexityText("S")}
-				</Card>
-			);
-		if (complexity === 4)
-			return (
-				<Card
-					p={0}
-					w={25}
-					h={25}
-					radius={"md"}
-					withBorder
-					className={"shadow"}
-					style={{ borderColor: theme.colors.silver }}
-					bg={theme.colors.panel}
-				>
-					{renderComplexityText("A")}
-				</Card>
-			);
-		if (complexity === 3)
-			return (
-				<Card
-					p={0}
-					w={25}
-					h={25}
-					radius={"md"}
-					withBorder
-					className={"shadow"}
-					bg={theme.colors.panel}
-				>
-					{renderComplexityText("B")}
-				</Card>
-			);
-		if (complexity === 2)
-			return (
-				<Card
-					p={0}
-					w={25}
-					h={25}
-					radius={"md"}
-					withBorder
-					bg={theme.colors.panel}
-				>
-					{renderComplexityText("C")}
-				</Card>
-			);
-		return (
-			<Card p={0} w={25} h={25} radius={"md"} withBorder bg={theme.colors.card}>
-				{renderComplexityText("F")}
-			</Card>
-		);
-	};
 
 	return (
 		<Action
@@ -132,7 +59,7 @@ const TaskItem = (props: { task: Task }) => {
 			}
 		>
 			<Flex flex={1} align={"center"} gap={"sm"}>
-				{renderComplexity(task.complexity)}
+				<TaskComplexity complexity={task.complexity} />
 				{task.title}
 			</Flex>
 		</Action>
