@@ -97,7 +97,7 @@ export class TaskApi {
 		handler: async ({ params, user }) => {
 			const task = await this.db.tasks.findOne({
 				id: { eq: params.id },
-				acceptedAt: { isNull: true },
+				acceptedAt: { isNotNull: true },
 				completedAt: { isNull: true },
 			});
 
