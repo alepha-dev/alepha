@@ -4,6 +4,7 @@ import { ReactAuth } from "@alepha/react-auth";
 import { $head } from "@alepha/react-head";
 import { HttpError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
+import { notifications } from "@mantine/notifications";
 import { createElement } from "react";
 import type { ProjectApi } from "./api/ProjectApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
@@ -80,6 +81,19 @@ export class AppRouter {
 				this.alepha.state("user", undefined);
 				await this.router.go(`/login?r=${this.router.state.url.pathname}`);
 			}
+		},
+	});
+
+	onFormError = $hook({
+		on: "form:submit:error",
+		handler: async ({ error }) => {
+			notifications.show({
+				title: (error as HttpError).error ?? error.name ?? "Error",
+				message: error.message || "An error occurred",
+				color: "red",
+				position: "top-center",
+				autoClose: 5000,
+			});
 		},
 	});
 

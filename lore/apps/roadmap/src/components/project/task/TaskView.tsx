@@ -76,14 +76,14 @@ const TaskView = (props: TaskViewProps) => {
 		);
 
 	const abandonTask = {
-		can: () => taskApi.deleteTask.can(),
+		can: () => taskApi.abandonTask.can(),
 		onClick: async () => {
 			const confirm = await openDeleteModal();
 			if (!confirm) {
 				return;
 			}
 
-			await taskApi.deleteTask({
+			await taskApi.abandonTask({
 				params: { id: task.id },
 			});
 
@@ -139,12 +139,17 @@ const TaskView = (props: TaskViewProps) => {
 							>
 								{task.title}
 							</Text>
-							<EditTaskButton
-								task={task}
-								onUpdate={setTask}
-								showDialog={showDialog}
-								setShowDialog={setShowDialog}
-							/>
+							{!task.completedAt && (
+								<EditTaskButton
+									task={task}
+									onUpdate={(it) => {
+										setTask(it);
+										alepha.state("task", it);
+									}}
+									showDialog={showDialog}
+									setShowDialog={setShowDialog}
+								/>
+							)}
 							<Flex
 								w={"100%"}
 								style={{
@@ -265,7 +270,6 @@ const TaskView = (props: TaskViewProps) => {
 											c={"red"}
 											variant={"subtle"}
 											leftSection={<IconTrash size={theme.icon.size.md} />}
-											disabled={!taskApi.deleteTask.can()}
 											{...abandonTask}
 										>
 											{tr("task.view.actions.abandon")}

@@ -1,14 +1,25 @@
 import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useStore } from "@alepha/react";
 import { Flex, Text, Timeline, Transition } from "@mantine/core";
-import { IconSignature, IconSunset2, IconSwords } from "@tabler/icons-react";
+import {
+	IconCross,
+	IconEdit,
+	IconSignature,
+	IconSunset2,
+	IconSwords,
+} from "@tabler/icons-react";
 import type { Task } from "../../../api/providers/Db.ts";
 
 const TaskHistory = () => {
 	const [task] = useStore("task");
 
 	return (
-		<Flex flex={1} p={"xs"} style={{ paddingLeft: 0, perspective: 1000 }}>
+		<Flex
+			flex={1}
+			p={"xs"}
+			style={{ paddingLeft: 0, perspective: 1000 }}
+			className={"overflow-auto"}
+		>
 			<Transition
 				mounted={!!task}
 				transition="fade-right"
@@ -24,9 +35,6 @@ const TaskHistory = () => {
 						direction={"column"}
 						style={styles}
 					>
-						<Text size={"xs"} c={"dimmed"} fs={"italic"}>
-							History is currently limited.
-						</Text>
 						{task ? <TaskTimeline task={task} /> : null}
 					</Flex>
 				)}
@@ -39,13 +47,14 @@ export default TaskHistory;
 
 const TaskTimeline = ({ task }: { task: Task }) => {
 	const dt = useInject(DateTimeProvider);
+	const style = {
+		animation: "fadeInUpLight 0.3s ease forwards",
+	};
 
 	return (
 		<Timeline active={1} bulletSize={24} lineWidth={2}>
 			<Timeline.Item
-				style={{
-					animation: "fadeInUpLight 0.3s ease forwards",
-				}}
+				style={style}
 				bullet={<IconSunset2 size={12} />}
 				title="A New Dawn"
 			>
@@ -62,16 +71,29 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 				</Text>
 			</Timeline.Item>
 
-			{task.acceptedAt && (
+			{task.history.map((it) => (
 				<Timeline.Item
-					style={{
-						animation: "fadeInUpLight 0.3s ease forwards",
-					}}
-					title="Courageous Choice"
-					bullet={<IconSignature size={12} />}
+					key={it.at}
+					style={style}
+					title={
+						it.action === "assigned"
+							? "Courageous Choice"
+							: it.action === "unassigned"
+								? "Fateful Decision"
+								: "Notable Change"
+					}
+					bullet={
+						it.action === "assigned" ? (
+							<IconSignature size={12} />
+						) : it.action === "unassigned" ? (
+							<IconCross size={12} />
+						) : (
+							<IconEdit size={12} />
+						)
+					}
 				>
 					<Text c="dimmed" size="sm">
-						Quest has been accepted by
+						Quest has been {it.action} by
 						<Text variant="link" component="span" inherit>
 							{" "}
 							You
@@ -79,16 +101,14 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 						.
 					</Text>
 					<Text size="xs" mt={4}>
-						{dt.of(task.acceptedAt).fromNow()}
+						{dt.of(it.at).fromNow()}
 					</Text>
 				</Timeline.Item>
-			)}
+			))}
 
 			{task.completedAt && (
 				<Timeline.Item
-					style={{
-						animation: "fadeInUpLight 0.3s ease forwards",
-					}}
+					style={style}
 					title="At Long Last"
 					bullet={<IconSwords size={12} />}
 				>
