@@ -8,7 +8,7 @@ import {
 	type Service,
 	t,
 } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
+import { type DateTime, DateTimeProvider } from "@alepha/datetime";
 import type { Static, TObject, TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import {
@@ -64,12 +64,9 @@ import { PgConflictError } from "../errors/PgConflictError.ts";
 import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
-import type { NullifyIfOptional } from "../helpers/nullToUndefined.ts";
-import { nullToUndefined } from "../helpers/nullToUndefined.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
-import type { InferInsert } from "../interfaces/InferInsert.ts";
 import type { PgQuery, PgQueryResult } from "../interfaces/PgQuery.ts";
 import type {
 	PgQueryWhere,
@@ -79,8 +76,10 @@ import {
 	PostgresProvider,
 	type SQLLike,
 } from "../providers/drivers/PostgresProvider.ts";
+import type { StaticInsert } from "../schemas/insertSchema.ts";
 import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
+import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 
 /**
  * @stability 3
@@ -480,7 +479,7 @@ export class RepositoryDescriptor<
 	 * @returns The ID of the created entity.
 	 */
 	public async create(
-		data: InferInsert<EntitySchema>,
+		data: StaticInsert<EntitySchema>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		return await this.insert(opts)
@@ -500,7 +499,7 @@ export class RepositoryDescriptor<
 	 * @returns The created entities.
 	 */
 	public async createMany(
-		values: Array<InferInsert<EntitySchema>>,
+		values: Array<StaticInsert<EntitySchema>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>[]> {
 		return await this.insert(opts)
@@ -519,18 +518,19 @@ export class RepositoryDescriptor<
 	 */
 	public async updateOne(
 		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
-		data: Partial<NullifyIfOptional<Static<EntitySchema>>>,
+		data: Partial<Static<TObjectUpdate<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		const set = data as any;
-		const id = set[this.id.key];
 
 		// do not update the ID field
 		delete set[this.id.key];
 
 		const updatedAtField = getAttrFields(this.schema, PG_UPDATED_AT)?.[0];
 		if (updatedAtField) {
-			set[updatedAtField.key] = this.dateTimeProvider.now().toISOString();
+			set[updatedAtField.key] = (
+				opts.now ?? this.dateTimeProvider.now()
+			).toISOString();
 		}
 
 		where = this.withDeletedAt(where, opts);
@@ -560,15 +560,17 @@ export class RepositoryDescriptor<
 	 * @example
 	 * ```ts
 	 * const entity = await repository.findById(1);
-	 * entity.name = "New Name";
+	 * entity.name = "New Name"; // update a field
+	 * delete entity.description; // delete a field
 	 * await repository.save(entity);
 	 * ```
 	 *
 	 * Difference with `updateById/updateOne`:
 	 *
-	 * - requires the entity to be fetched first
-	 * - check pg.version() if present - optimistic locking
+	 * - requires the entity to be fetched first (whole object is expected)
+	 * - check pg.version() if present -> optimistic locking
 	 * - validate entity against schema
+	 * - undefined values will be set to null, not ignored!
 	 *
 	 * @see {@link PostgresTypeProvider#version}
 	 * @see {@link PgVersionMismatchError}
@@ -579,6 +581,13 @@ export class RepositoryDescriptor<
 	): Promise<Static<EntitySchema>> {
 		const set = this.alepha.parse(this.schema, entity) as any;
 		const id = set[this.id.key];
+
+		// in save mode, we do not ignore undefined values, but set them to null
+		for (const key of Object.keys(this.schema.properties)) {
+			if (set[key] === undefined) {
+				set[key] = null;
+			}
+		}
 
 		let where = this.createQueryWhere({
 			id,
@@ -616,7 +625,7 @@ export class RepositoryDescriptor<
 	 */
 	public async updateById(
 		id: string | number,
-		data: Partial<NullifyIfOptional<Static<EntitySchema>>>,
+		data: Partial<Static<TObjectUpdate<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		return await this.updateOne(this.getWhereId(id), data, opts);
@@ -627,7 +636,7 @@ export class RepositoryDescriptor<
 	 */
 	public async updateMany(
 		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
-		data: Partial<NullifyIfOptional<Static<EntitySchema>>>,
+		data: Partial<Static<TObjectUpdate<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<void> {
 		where = this.withDeletedAt(where, opts);
@@ -652,7 +661,9 @@ export class RepositoryDescriptor<
 			await this.updateMany(
 				where,
 				{
-					[deletedAt.key]: this.dateTimeProvider.now().toISOString(),
+					[deletedAt.key]: (
+						opts.now ?? this.dateTimeProvider.now()
+					).toISOString(),
 				} as any,
 				opts,
 			);
@@ -683,6 +694,11 @@ export class RepositoryDescriptor<
 		opts: StatementOptions = {},
 	) {
 		const id = (entity as any)[this.id.key];
+		const deletedAt = this.deletedAt();
+		if (deletedAt && !opts.force) {
+			opts.now ??= this.dateTimeProvider.now();
+			(entity as any)[deletedAt.key] = opts.now.toISOString();
+		}
 		await this.deleteById(id, opts);
 	}
 
@@ -1008,7 +1024,7 @@ export class RepositoryDescriptor<
 		row: any,
 		schema?: T,
 	): Static<T> {
-		const entity = nullToUndefined(row) as Static<T>;
+		const entity = row as Static<T>;
 		const schemaRef = schema ?? this.schema;
 
 		// convert PG date-time and date to ISO strings
@@ -1095,4 +1111,9 @@ export interface StatementOptions {
 	 * If true, ignore soft delete.
 	 */
 	force?: boolean;
+
+	/**
+	 * Force the current time.
+	 */
+	now?: DateTime;
 }

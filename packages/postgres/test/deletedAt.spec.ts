@@ -58,8 +58,7 @@ describe("deletedAt", () => {
 			PgEntityNotFoundError,
 		);
 		await repository.save(it, { force: true });
-		const found = await repository.findById(it.id, { force: true });
-		expect(found).toEqual({
+		expect(await repository.findById(it.id, { force: true })).toEqual({
 			id: it.id,
 			deletedAt: now.toISOString(),
 			name: "Toby",

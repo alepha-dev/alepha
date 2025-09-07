@@ -14,7 +14,8 @@ import {
 	PG_UPDATED_AT,
 	type PgIdentityOptions,
 } from "../constants/PG_SYMBOLS.ts";
-import type { TInsertObject } from "../interfaces/TInsertObject.ts";
+import type { TObjectInsert } from "../schemas/insertSchema.ts";
+import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";
 
@@ -225,9 +226,6 @@ export type PgTableWithColumnsAndSchema<
 > = PgTableWithColumns<T> & {
 	get $table(): PgTableWithColumns<T>;
 	get $schema(): R;
-	get $insertSchema(): TInsertObject<R>;
+	get $insertSchema(): TObjectInsert<R>;
+	get $updateSchema(): TObjectUpdate<R>;
 };
-
-export interface TableLike<T extends TObject = TObject> {
-	$schema: T;
-}

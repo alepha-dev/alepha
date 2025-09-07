@@ -29,7 +29,6 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
-import type { TInsertObject } from "../interfaces/TInsertObject.ts";
 import type { TPage } from "../schemas/pageSchema.ts";
 import { pageSchema } from "../schemas/pageSchema.ts";
 
@@ -188,37 +187,6 @@ export class PostgresTypeProvider {
 	};
 
 	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Convert a schema to a schema for INSERT operations.
-	 * It means that:
-	 * - All pg.default() will be optional
-	 *
-	 * @internal
-	 */
-	public readonly insert = <T extends TObject>(obj: T): TInsertObject<T> => {
-		const properties: Record<string, TSchema> = {};
-		const required: string[] = [];
-
-		for (const key in obj.properties) {
-			const prop = obj.properties[key];
-
-			if (PG_DEFAULT in prop) {
-				properties[key] = t.optional(prop);
-			} else {
-				properties[key] = prop;
-				if (obj.required?.includes(key)) {
-					required.push(key);
-				}
-			}
-		}
-
-		return {
-			...obj,
-			required,
-			properties,
-		} as unknown as TInsertObject<T>;
-	};
 
 	/**
 	 * Creates a page schema for a given object schema.

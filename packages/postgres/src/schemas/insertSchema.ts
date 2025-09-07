@@ -1,21 +1,23 @@
-import type {
-	Evaluate,
+import { t } from "@alepha/core";
+import {
+	type Evaluate,
 	Kind,
-	ObjectOptions,
-	Static,
-	TAdditionalProperties,
-	TObject,
-	TOptional,
-	TProperties,
-	TReadonly,
-	TSchema,
+	type ObjectOptions,
+	OptionalKind,
+	type Static,
+	type TAdditionalProperties,
+	type TObject,
+	type TOptional,
+	type TProperties,
+	type TReadonly,
+	type TSchema,
 } from "@sinclair/typebox";
-import type { PG_DEFAULT } from "../constants/PG_SYMBOLS.ts";
+import { PG_DEFAULT } from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Fork of the original typebox schema "TObject".
  */
-export interface TInsertObject<T extends TObject>
+export interface TObjectInsert<T extends TObject>
 	extends TSchema,
 		ObjectOptions {
 	[Kind]: "Object";
@@ -92,3 +94,55 @@ type ObjectStatic<
 		[K in keyof T]: Static<T[K], P>;
 	}
 >;
+
+export const insertSchema = <T extends TObject>(obj: T): TObjectInsert<T> => {
+	const properties: Record<string, TSchema> = {};
+	const required: string[] = [];
+
+	for (const key in obj.properties) {
+		const prop = obj.properties[key];
+
+		if (PG_DEFAULT in prop) {
+			properties[key] = t.optional(prop);
+		} else {
+			properties[key] = prop;
+			if (obj.required?.includes(key)) {
+				required.push(key);
+			}
+		}
+	}
+
+	return {
+		...obj,
+		required,
+		properties,
+	} as unknown as TObjectInsert<T>;
+};
+
+/**
+ * Enhance Typebox with a support of "Default" (PG_DEFAULT).
+ */
+export type StaticInsert<T extends TObject> = StaticEntry<T> &
+	StaticDefaultEntry<T>;
+
+export type StaticDefaultEntry<T extends TObject> = {
+	[K in keyof T["properties"] as T["properties"][K] extends
+		| {
+				[PG_DEFAULT]: any;
+		  }
+		| {
+				[OptionalKind]: "Optional";
+		  }
+		? K
+		: never]?: Static<T["properties"][K]>;
+};
+
+export type StaticEntry<T extends TObject> = {
+	[K in keyof T["properties"] as T["properties"][K] extends
+		| {
+				[PG_DEFAULT]: any;
+		  }
+		| { [OptionalKind]: "Optional" }
+		? never
+		: K]: Static<T["properties"][K]>;
+};

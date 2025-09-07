@@ -13,6 +13,7 @@ import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import { Descriptor } from "./helpers/descriptor.ts";
+import { nullToUndefined } from "./helpers/nullToUndefined.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import type {
@@ -988,6 +989,11 @@ export class Alepha {
 		value?: any,
 		opts: {
 			/**
+			 * Convert `null` to `undefined`
+			 * @default true
+			 */
+			convertNullToUndefined?: boolean;
+			/**
 			 * Clone the value before parsing.
 			 * @default true
 			 */
@@ -1021,6 +1027,10 @@ export class Alepha {
 		}
 
 		const actions = [];
+
+		if (opts.convertNullToUndefined !== false) {
+			actions.push(nullToUndefined);
+		}
 
 		if (opts.clean !== false) {
 			actions.push(v.Clean);

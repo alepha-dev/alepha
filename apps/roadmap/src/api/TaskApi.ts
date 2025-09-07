@@ -6,7 +6,7 @@ import { $action } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
-import { characters, Db, tasks } from "./providers/Db.ts";
+import { characters, Db, type TaskUpdate, tasks } from "./providers/Db.ts";
 
 export class TaskApi {
 	log = $logger();
@@ -31,6 +31,7 @@ export class TaskApi {
 			return await this.db.tasks.create({
 				...body,
 				createdBy: user.id,
+				history: [],
 			});
 		},
 	});
@@ -86,6 +87,37 @@ export class TaskApi {
 		},
 	});
 
+	abandonTask = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: tasks.$schema,
+		},
+		handler: async ({ params, user }) => {
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+				acceptedAt: { isNull: true },
+				completedAt: { isNull: true },
+			});
+
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
+
+			task.acceptedAt = undefined;
+			task.acceptedBy = undefined;
+			task.history.push({
+				at: this.dt.nowISOString(),
+				by: user.id,
+				action: "unassigned",
+			});
+
+			return await this.db.tasks.save(task);
+		},
+	});
+
 	acceptTask = $action({
 		schema: {
 			params: t.object({
@@ -107,6 +139,11 @@ export class TaskApi {
 
 			task.acceptedAt = this.dt.nowISOString();
 			task.acceptedBy = user.id;
+			task.history.push({
+				at: this.dt.nowISOString(),
+				by: user.id,
+				action: "assigned",
+			});
 
 			return await this.db.tasks.save(task);
 		},
@@ -221,7 +258,17 @@ export class TaskApi {
 				body.description = sanitizeHtml(body.description);
 			}
 
-			return await this.db.tasks.updateById(params.id, body);
+			return await this.db.tasks.updateById(params.id, {
+				...body,
+				history: [
+					...task.history,
+					{
+						at: this.dt.nowISOString(),
+						by: user.id,
+						action: "updated",
+					},
+				],
+			});
 		},
 	});
 

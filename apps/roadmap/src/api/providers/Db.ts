@@ -101,7 +101,20 @@ export const tasks = $entity({
 		completedBy: pg.ref(t.optional(t.uuid()), () => users.id, {
 			onDelete: "set null",
 		}),
+		history: t.array(
+			t.object({
+				at: t.datetime(),
+				by: t.uuid(),
+				action: t.enum(["updated", "assigned", "unassigned"]),
+			}),
+			{ default: [] },
+		),
 	}),
+	indexes: [
+		{
+			columns: ["projectId", "deletedAt"],
+		},
+	],
 });
 
 export const characters = $entity({
@@ -124,6 +137,7 @@ export const characters = $entity({
 export type Character = Static<typeof characters.$schema>;
 export type User = Static<typeof users.$schema>;
 export type Task = Static<typeof tasks.$schema>;
+export type TaskUpdate = Static<typeof tasks.$updateSchema>;
 export type Project = Static<typeof projects.$schema>;
 export type TaskInsert = Static<typeof tasks.$insertSchema>;
 export type Session = Static<typeof sessions.$schema>;

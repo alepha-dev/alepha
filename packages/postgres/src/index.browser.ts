@@ -3,7 +3,6 @@ import { $module } from "@alepha/core";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./errors/PgEntityNotFoundError.ts";
-export * from "./helpers/nullToUndefined.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";

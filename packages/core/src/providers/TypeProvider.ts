@@ -43,6 +43,7 @@ export type {
 	TAny,
 	TArray,
 	TBoolean,
+	TNull,
 	TNumber,
 	TObject,
 	TOptional,
@@ -50,6 +51,7 @@ export type {
 	TRecord,
 	TSchema,
 	TString,
+	TUnion,
 } from "@sinclair/typebox";
 export { TypeGuard } from "@sinclair/typebox";
 

@@ -13,7 +13,8 @@ import {
 	type PgTableWithColumnsAndSchema,
 	schemaToPgColumns,
 } from "../helpers/schemaToPgColumns.ts";
-import { pg } from "../providers/PostgresTypeProvider.ts";
+import { insertSchema } from "../schemas/insertSchema.ts";
+import { updateSchema } from "../schemas/updateSchema.ts";
 
 /**
  * Declare a new entity in the database.
@@ -216,7 +217,10 @@ const pgTableSchema = <
 		get: () => schema,
 	});
 	Object.defineProperty(table, "$insertSchema", {
-		get: () => pg.insert(schema),
+		get: () => insertSchema(schema),
+	});
+	Object.defineProperty(table, "$updateSchema", {
+		get: () => updateSchema(schema),
 	});
 
 	return table;

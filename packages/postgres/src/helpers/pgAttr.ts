@@ -2,10 +2,9 @@ import type { TObject, TSchema } from "@alepha/core";
 import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
 
 /**
- * Decorates a schema with a Postgres attribute.
- * It's just a fancy way to add Symbols to a field...
+ * Decorates a typebox schema with a Postgres attribute.
  *
- * @internal
+ * > It's just a fancy way to add Symbols to a field.
  *
  * @example
  * ```ts
