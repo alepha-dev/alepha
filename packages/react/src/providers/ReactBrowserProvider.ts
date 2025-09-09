@@ -213,7 +213,8 @@ export class ReactBrowserProvider {
 		handler: () => {
 			if (
 				this.options.scrollRestoration === "top" &&
-				typeof window !== "undefined"
+				typeof window !== "undefined" &&
+				!this.alepha.isTest()
 			) {
 				this.log.trace("Restoring scroll position to top");
 				window.scrollTo(0, 0);
