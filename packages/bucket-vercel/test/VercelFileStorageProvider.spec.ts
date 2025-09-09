@@ -19,14 +19,14 @@ import { AlephaBucketVercel, VercelFileStorageProvider } from "../src";
 vi.mock("@vercel/blob", async () => {
 	const mockStorage = new Map<string, any>();
 
+	const log = (...args: any[]) => {
+		//	log("[@vercel/blob mock]", ...args);
+	};
+
 	return {
 		put: vi.fn(async (pathname: string, body: any, options: any = {}) => {
 			// Handle ReadableStream from file.stream()
-			console.log(
-				"Mock put received body type:",
-				typeof body,
-				body.constructor?.name,
-			);
+			log("Mock put received body type:", typeof body, body.constructor?.name);
 			let data: Buffer;
 
 			if (body && typeof body.getReader === "function") {
@@ -78,7 +78,7 @@ vi.mock("@vercel/blob", async () => {
 				url: `https://mock-blob.vercel-storage.com${pathname}`,
 			};
 
-			console.log("Mock put storing blob:", {
+			log("Mock put storing blob:", {
 				pathname,
 				dataLength: data.length,
 				dataContent: data.toString().slice(0, 50),

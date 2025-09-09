@@ -29,6 +29,39 @@ export class BrowserHeadProvider {
 		},
 	});
 
+	public getHead(document: Document): Head {
+		return {
+			get title() {
+				return document.title;
+			},
+			get htmlAttributes() {
+				const attrs: Record<string, string> = {};
+				for (const attr of document.documentElement.attributes) {
+					attrs[attr.name] = attr.value;
+				}
+				return attrs;
+			},
+			get bodyAttributes() {
+				const attrs: Record<string, string> = {};
+				for (const attr of document.body.attributes) {
+					attrs[attr.name] = attr.value;
+				}
+				return attrs;
+			},
+			get meta() {
+				const metas: { name: string; content: string }[] = [];
+				for (const meta of document.head.querySelectorAll("meta[name]")) {
+					const name = meta.getAttribute("name");
+					const content = meta.getAttribute("content");
+					if (name && content) {
+						metas.push({ name, content });
+					}
+				}
+				return metas;
+			},
+		};
+	}
+
 	public renderHead(document: Document, head: Head): void {
 		if (head.title) {
 			document.title = head.title;

@@ -1,17 +1,14 @@
-import { run, t } from "@alepha/core";
-import { $permission, permissionSchema } from "@alepha/security";
-import { $action } from "@alepha/server";
+import { Alepha, run } from "@alepha/core";
+import { $page } from "@alepha/react";
+import { AlephaReactHead } from "@alepha/react-head";
+import App from "./App.tsx";
 
-class App {
-	test = $permission();
-	ok = $action({
-		schema: {
-			response: t.array(permissionSchema),
-		},
-		handler: () => {
-			return [this.test];
-		},
+class AppRouter {
+	root = $page({
+		path: "/",
+		component: App,
 	});
 }
+const alepha = Alepha.create().with(AlephaReactHead).with(AppRouter);
 
-run(App);
+run(alepha);

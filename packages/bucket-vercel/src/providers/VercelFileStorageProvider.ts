@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 import {
 	$bucket,
@@ -71,7 +70,9 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		file: FileLike,
 		fileId?: string,
 	): Promise<string> {
-		fileId = file.name ?? this.createId();
+		// force file id as filename for Vercel because we can't store filename as metadata
+		// it's bad, but we have no choice for now
+		fileId = file.name;
 
 		this.log.trace(
 			`Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
@@ -110,7 +111,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		const pathname = `${storeName}/${fileId}`;
 
 		try {
-			// First check if the file exists and get metadata
+			// check if the file exists and get metadata
 			const headResult = await head(pathname, {
 				token: this.env.BLOB_READ_WRITE_TOKEN,
 			});
@@ -121,7 +122,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 				);
 			}
 
-			// Fetch the actual file content
+			// fetch the actual file content
 			const response = await fetch(headResult.url);
 
 			if (!response.ok) {
@@ -193,9 +194,5 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 			}
 			throw error;
 		}
-	}
-
-	protected createId(): string {
-		return randomUUID();
 	}
 }

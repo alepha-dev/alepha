@@ -6,7 +6,7 @@ import { $action } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
-import { characters, Db, type TaskUpdate, tasks } from "./providers/Db.ts";
+import { characters, Db, tasks } from "./providers/Db.ts";
 
 export class TaskApi {
 	log = $logger();

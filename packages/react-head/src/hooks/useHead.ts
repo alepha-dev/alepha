@@ -1,5 +1,8 @@
-import { useAlepha } from "@alepha/react";
+import { Alepha } from "@alepha/core";
+import { useInject } from "@alepha/react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { Head } from "../interfaces/Head.ts";
+import { BrowserHeadProvider } from "../providers/BrowserHeadProvider.ts";
 
 /**
  * ```tsx
@@ -18,10 +21,37 @@ import type { Head } from "../interfaces/Head.ts";
  * }
  * ```
  */
-export const useHead = (options?: UseHeadOptions): void => {
-	const alepha = useAlepha();
+export const useHead = (options?: UseHeadOptions): UseHeadReturn => {
+	const alepha = useInject(Alepha);
 
-	// TODO
+	const current = useMemo(() => {
+		if (!alepha.isBrowser()) {
+			return {};
+		}
+
+		return alepha.inject(BrowserHeadProvider).getHead(window.document);
+	}, []);
+
+	const setHead = useCallback((head?: Head | ((previous?: Head) => Head)) => {
+		if (!alepha.isBrowser()) {
+			return;
+		}
+
+		alepha
+			.inject(BrowserHeadProvider)
+			.renderHead(
+				window.document,
+				typeof head === "function" ? head(current) : head || {},
+			);
+	}, []);
+
+	useEffect(() => {
+		if (options) {
+			setHead(options);
+		}
+	}, []);
+
+	return [current, setHead];
 };
 
 export type UseHeadOptions = Head | ((previous?: Head) => Head);

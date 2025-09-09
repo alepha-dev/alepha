@@ -42,19 +42,15 @@ export class ConsoleColorProvider {
 	}
 
 	public isEnabled(): boolean {
-		if (this.env.FORCE_COLOR) {
-			return true;
-		}
-
 		if (this.env.NO_COLOR) {
 			return false;
 		}
 
-		if (this.alepha.isProduction()) {
-			return false;
+		if (this.env.FORCE_COLOR) {
+			return true;
 		}
 
-		return true;
+		return !this.alepha.isProduction();
 	}
 
 	public colorize(
