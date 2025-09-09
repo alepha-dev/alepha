@@ -1,4 +1,3 @@
-import { DateTimeProvider } from "@alepha/datetime";
 import {
 	useAlepha,
 	useClient,
@@ -36,7 +35,6 @@ export interface TaskViewProps {
 }
 
 const TaskView = (props: TaskViewProps) => {
-	const dt = useInject(DateTimeProvider);
 	const alepha = useAlepha();
 	const taskApi = useClient<TaskApi>();
 	const router = useRouter<AppRouter>();
@@ -237,8 +235,9 @@ const TaskView = (props: TaskViewProps) => {
 							className={"shadow"}
 						>
 							{!task.acceptedAt && (
-								<Flex justify={"center"}>
+								<Flex justify={"center"} flex={1}>
 									<Action
+										w={"100%"}
 										c={"blue"}
 										variant={"subtle"}
 										leftSection={<IconSignature size={theme.icon.size.md} />}

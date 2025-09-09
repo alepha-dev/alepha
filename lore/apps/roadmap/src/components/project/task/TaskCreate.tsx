@@ -58,7 +58,6 @@ const TaskCreate = (props: TaskCreateProps) => {
 				},
 			});
 
-			alepha.state("tasks", [task, ...(alepha.state("tasks") ?? [])]);
 			props.onSubmit(task);
 
 			await router.go("projectTask", {
