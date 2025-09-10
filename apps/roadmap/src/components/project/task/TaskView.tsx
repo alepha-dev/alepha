@@ -12,8 +12,6 @@ import {
 	IconCircleFilled,
 	IconEdit,
 	IconFileText,
-	IconLibraryPlus,
-	IconListCheck,
 	IconPigMoney,
 	IconSignature,
 	IconSwords,

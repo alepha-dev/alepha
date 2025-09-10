@@ -7,11 +7,13 @@ export const taskCreateSchema = t.object({
 	priority: t.enum(["optional", "low", "medium", "high"]),
 	complexity: t.int({ minimum: 1, maximum: 5 }),
 	projectId: t.int(),
-	objectives: t.optional(t.array(
-		t.object({
-			title: t.string(),
-			completed: t.boolean(),
-		}),
-		{ default: [] }
-	)),
+	objectives: t.optional(
+		t.array(
+			t.object({
+				title: t.string(),
+				completed: t.boolean(),
+			}),
+			{ default: [] },
+		),
+	),
 });
