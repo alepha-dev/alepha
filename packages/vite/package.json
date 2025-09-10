@@ -27,6 +27,7 @@
 		}
 	},
 	"scripts": {
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",
 		"check": "tsc"
 	},

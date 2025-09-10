@@ -23,6 +23,7 @@
 		"typescript": "^5.9.2"
 	},
 	"scripts": {
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",
 		"check": "tsc"
 	},

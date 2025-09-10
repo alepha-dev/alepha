@@ -27,6 +27,7 @@
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",
 		"check": "tsc",
 		"test": "vitest run"

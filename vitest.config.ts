@@ -12,6 +12,7 @@ export default defineConfig({
 				"apps/**",
 				"scripts/**",
 				// experimental packages
+				"packages/vite",
 				"packages/react-i18n",
 				"packages/cli",
 				"packages/thread",
