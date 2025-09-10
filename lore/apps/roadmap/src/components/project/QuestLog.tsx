@@ -14,7 +14,7 @@ import type { I18n } from "../../services/I18n.ts";
 import TaskList from "./task/TaskList.tsx";
 
 const QuestLog = () => {
-	const [tasks = []] = useStore("tasks");
+	const [tasks = []] = useStore("current_assigned_tasks");
 	const { tr } = useI18n<I18n, "en">();
 	return (
 		<Card

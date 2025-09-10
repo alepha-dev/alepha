@@ -6,7 +6,7 @@ import { theme } from "../../constants/theme.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 const ProjectBanner = () => {
-	const [character] = useStore("character");
+	const [character] = useStore("current_project_character");
 	const helper = useInject(CharacterInfo);
 	const i18n = useI18n();
 	if (!character) {

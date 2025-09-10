@@ -54,7 +54,7 @@ export default Header;
 
 const MobileQuestLog = () => {
 	const [show, setShow] = useState(false);
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 
 	useRouterEvents({
 		onEnd: () => setShow(false),

@@ -159,6 +159,9 @@ pre > code {
 	height: 100%;
 	min-height: 200px;
 }
+.mantine-Notification-root {
+	border: 1px solid var(--border-color);
+}
 
 /**
  * ---------------------------------------------------------------------------------------------------------------------

@@ -5,7 +5,7 @@ import type { AppRouter } from "../../AppRouter.ts";
 import Action from "../ui/Action.tsx";
 
 const HeaderProject = () => {
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 	const router = useRouter<AppRouter>();
 	const { params } = useRouterState();
 	const [projects = []] = useStore("user.projects");

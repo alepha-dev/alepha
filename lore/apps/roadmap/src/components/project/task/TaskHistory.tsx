@@ -2,6 +2,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { useInject, useStore } from "@alepha/react";
 import { Flex, Text, Timeline, Transition } from "@mantine/core";
 import {
+	IconCheckbox,
 	IconCross,
 	IconEdit,
 	IconSignature,
@@ -9,9 +10,10 @@ import {
 	IconSwords,
 } from "@tabler/icons-react";
 import type { Task } from "../../../api/providers/Db.ts";
+import action from "../../ui/Action.tsx";
 
 const TaskHistory = () => {
-	const [task] = useStore("task");
+	const [task] = useStore("current_task");
 
 	return (
 		<Flex
@@ -51,65 +53,56 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 		animation: "fadeInUpLight 0.3s ease forwards",
 	};
 
-	return (
-		<Timeline active={1} bulletSize={24} lineWidth={2}>
-			<Timeline.Item
-				style={style}
-				bullet={<IconSunset2 size={12} />}
-				title="A New Dawn"
-			>
+	const title = (action: string) => {
+		if (action === "assigned") {
+			return "Courageous Choice";
+		}
+		if (action === "unassigned") {
+			return "Fateful Decision";
+		}
+		if (action === "completed") {
+			return "At Long Last";
+		}
+		if (action === "created") {
+			return "A New Dawn";
+		}
+		if (action === "objective_completed") {
+			return "Objective Achieved";
+		}
+		return "Notable Change";
+	};
+
+	const description = (action: string) => {
+		if (action === "objective_completed") {
+			return (
 				<Text c="dimmed" size="sm">
-					Quest has been created by
+					Objective has been completed by
 					<Text variant="link" component="span" inherit>
 						{" "}
 						You
 					</Text>
 					.
 				</Text>
-				<Text size="xs" mt={4}>
-					{dt.of(task.createdAt).fromNow()}
+			);
+		}
+		return (
+			<Text c="dimmed" size="sm">
+				Quest has been {action} by
+				<Text variant="link" component="span" inherit>
+					{" "}
+					You
 				</Text>
-			</Timeline.Item>
+				.
+			</Text>
+		);
+	};
 
-			{task.history.map((it) => (
-				<Timeline.Item
-					key={it.at}
-					style={style}
-					title={
-						it.action === "assigned"
-							? "Courageous Choice"
-							: it.action === "unassigned"
-								? "Fateful Decision"
-								: "Notable Change"
-					}
-					bullet={
-						it.action === "assigned" ? (
-							<IconSignature size={12} />
-						) : it.action === "unassigned" ? (
-							<IconCross size={12} />
-						) : (
-							<IconEdit size={12} />
-						)
-					}
-				>
-					<Text c="dimmed" size="sm">
-						Quest has been {it.action} by
-						<Text variant="link" component="span" inherit>
-							{" "}
-							You
-						</Text>
-						.
-					</Text>
-					<Text size="xs" mt={4}>
-						{dt.of(it.at).fromNow()}
-					</Text>
-				</Timeline.Item>
-			))}
-
+	return (
+		<Timeline active={1} bulletSize={24} lineWidth={2}>
 			{task.completedAt && (
 				<Timeline.Item
 					style={style}
-					title="At Long Last"
+					title={title("completed")}
 					bullet={<IconSwords size={12} />}
 				>
 					<Text c="dimmed" size="sm">
@@ -125,6 +118,46 @@ const TaskTimeline = ({ task }: { task: Task }) => {
 					</Text>
 				</Timeline.Item>
 			)}
+			{task.history.toReversed().map((it) => (
+				<Timeline.Item
+					key={it.at}
+					style={style}
+					title={title(it.action)}
+					bullet={
+						it.action === "assigned" ? (
+							<IconSignature size={12} />
+						) : it.action === "objective_completed" ? (
+							<IconCheckbox size={12} />
+						) : it.action === "unassigned" ? (
+							<IconCross size={12} />
+						) : (
+							<IconEdit size={12} />
+						)
+					}
+				>
+					{description(it.action)}
+					<Text size="xs" mt={4}>
+						{dt.of(it.at).fromNow()}
+					</Text>
+				</Timeline.Item>
+			))}
+			<Timeline.Item
+				style={style}
+				bullet={<IconSunset2 size={12} />}
+				title={title("created")}
+			>
+				<Text c="dimmed" size="sm">
+					Quest has been created by
+					<Text variant="link" component="span" inherit>
+						{" "}
+						You
+					</Text>
+					.
+				</Text>
+				<Text size="xs" mt={4}>
+					{dt.of(task.createdAt).fromNow()}
+				</Text>
+			</Timeline.Item>
 		</Timeline>
 	);
 };

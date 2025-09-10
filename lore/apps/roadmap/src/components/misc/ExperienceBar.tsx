@@ -8,7 +8,7 @@ import LevelUpAnimation from "./LevelUpAnimation.tsx";
 
 const ExperienceBar = () => {
 	const auth = useAuth();
-	const [character] = useStore("character");
+	const [character] = useStore("current_project_character");
 	const info = useInject(CharacterInfo);
 
 	if (!auth.user || !character) {

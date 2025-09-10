@@ -30,7 +30,7 @@ import TaskComplexity from "./task/TaskComplexity.tsx";
 type TaskStatus = "new" | "accepted" | "completed";
 
 const ProjectBoard = () => {
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 	const taskApi = useClient<TaskApi>();
 	const [status, setStatus] = useState<TaskStatus>("new");
 	const [result, setResult] = useState<Page<Task> | undefined>();

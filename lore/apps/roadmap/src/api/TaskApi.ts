@@ -2,7 +2,7 @@ import { $inject, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { pageQuerySchema, pg } from "@alepha/postgres";
-import { $action } from "@alepha/server";
+import { $action, BadRequestError } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
@@ -172,6 +172,18 @@ export class TaskApi {
 					{ tx },
 				);
 
+				// Check if all objectives are completed
+				if (task.objectives.length > 0) {
+					const incompleteObjectives = task.objectives.filter(
+						(obj) => !obj.completed,
+					);
+					if (incompleteObjectives.length > 0) {
+						throw new BadRequestError(
+							`Cannot complete task: ${incompleteObjectives.length} objective(s) remain incomplete`,
+						);
+					}
+				}
+
 				const character = await this.db.characters.findOne(
 					{
 						projectId: { eq: task.projectId },
@@ -235,6 +247,7 @@ export class TaskApi {
 					"package",
 					"complexity",
 					"priority",
+					"objectives",
 				]),
 			),
 			response: tasks.$schema,
@@ -260,6 +273,97 @@ export class TaskApi {
 
 			return await this.db.tasks.updateById(params.id, {
 				...body,
+				history: [
+					...task.history,
+					{
+						at: this.dt.nowISOString(),
+						by: user.id,
+						action: "updated",
+					},
+				],
+			});
+		},
+	});
+
+	completeObjective = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			body: t.object({
+				index: t.int(),
+			}),
+			response: tasks.$schema,
+		},
+		handler: async ({ params, user, body }) => {
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+				completedAt: { isNull: true },
+				acceptedAt: { isNotNull: true },
+			});
+
+			// check if the user has access to the project
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
+
+			if (body.index < 0 || body.index >= task.objectives.length) {
+				throw new BadRequestError("Invalid objective index");
+			}
+
+			if (task.objectives[body.index].completed) {
+				return task; // Objective already completed, no changes needed
+			}
+
+			// Mark the specific objective as completed
+			task.objectives[body.index].completed = true;
+
+			return await this.db.tasks.updateById(params.id, {
+				objectives: task.objectives,
+				history: [
+					...task.history,
+					{
+						at: this.dt.nowISOString(),
+						by: user.id,
+						action: "objective_completed",
+					},
+				],
+			});
+		},
+	});
+
+	updateTaskObjectives = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			body: t.object({
+				objectives: t.array(
+					t.object({
+						title: t.string(),
+						completed: t.boolean(),
+					}),
+				),
+			}),
+			response: tasks.$schema,
+		},
+		handler: async ({ params, body, user }) => {
+			const task = await this.db.tasks.findOne({
+				id: { eq: params.id },
+				completedAt: { isNull: true },
+			});
+
+			// check if the user has access to the project
+			await this.db.characters.findOne({
+				projectId: { eq: task.projectId },
+				userId: { eq: user.id },
+			});
+
+			// TODO: character.can("edit:task", projectId)
+
+			return await this.db.tasks.updateById(params.id, {
+				objectives: body.objectives,
 				history: [
 					...task.history,
 					{

@@ -6,6 +6,7 @@ import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
 import {
 	IconDeviceFloppy,
 	IconFileText,
+	IconListCheck,
 	IconPlus,
 	IconTag,
 	IconTent,
@@ -18,6 +19,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
 import Action from "../../ui/Action.tsx";
 import Control from "../../ui/Control.tsx";
+import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
 
 export interface TaskCreateProps {
 	onSubmit: (task: Task) => void;
@@ -41,9 +43,9 @@ const TaskCreate = (props: TaskCreateProps) => {
 					params: { id: props.task.id },
 					body: data,
 				});
-				alepha.state("tasks", [
+				alepha.state("current_assigned_tasks", [
 					resp,
-					...(alepha.state("tasks") ?? []).filter(
+					...(alepha.state("current_assigned_tasks") ?? []).filter(
 						(task) => task.id !== resp.id,
 					),
 				]);
@@ -163,6 +165,16 @@ const TaskCreate = (props: TaskCreateProps) => {
 						}}
 					/>
 				</SimpleGrid>
+
+				<Control
+					title={tr("task.create.objectives", { default: "Objectives" })}
+					description={tr("task.create.objectives.helper", {
+						default: "Define specific goals or requirements for this task",
+					})}
+					custom={TaskCreateObjectives}
+					input={form.input.objectives}
+					icon={<IconListCheck />}
+				/>
 
 				<Space />
 

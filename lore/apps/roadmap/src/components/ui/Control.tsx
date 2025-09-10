@@ -16,7 +16,7 @@ import {
 	TextInput,
 	type TextInputProps,
 } from "@mantine/core";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 export interface ControlProps {
 	input: InputField;
@@ -33,10 +33,7 @@ export interface ControlProps {
 	switch?: boolean | SwitchProps;
 	segmented?: boolean | Partial<SegmentedControlProps>;
 
-	custom?: React.ComponentType<{
-		defaultValue: string;
-		onChange: (value: any) => void;
-	}>;
+	custom?: ComponentType<CustomControlProps>;
 }
 
 const Control = (props: ControlProps) => {
@@ -206,4 +203,9 @@ const prettyName = (name: string) => {
 
 const capitalize = (str: string) => {
 	return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+export type CustomControlProps = {
+	defaultValue: any;
+	onChange: (value: any) => void;
 };

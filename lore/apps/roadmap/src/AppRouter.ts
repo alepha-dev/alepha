@@ -88,7 +88,7 @@ export class AppRouter {
 		on: "form:submit:error",
 		handler: async ({ error }) => {
 			notifications.show({
-				title: (error as HttpError).error ?? error.name ?? "Error",
+				title: "Invalid Request",
 				message: error.message || "An error occurred",
 				color: "red",
 				position: "top-center",
@@ -132,18 +132,18 @@ export class AppRouter {
 					},
 				});
 
-			this.alepha.state("project", project);
-			this.alepha.state("character", character);
-			this.alepha.state("tasks", tasks);
+			this.alepha.state("current_project", project);
+			this.alepha.state("current_project_character", character);
+			this.alepha.state("current_assigned_tasks", tasks);
 
 			return {
 				project,
 			};
 		},
 		onLeave: () => {
-			this.alepha.state("character", null);
-			this.alepha.state("project", null);
-			this.alepha.state("tasks", []);
+			this.alepha.state("current_project_character", null);
+			this.alepha.state("current_project", null);
+			this.alepha.state("current_assigned_tasks", []);
 		},
 		animation: {
 			enter: "fadeInUp",
@@ -224,11 +224,11 @@ export class AppRouter {
 					id: params.taskId,
 				},
 			});
-			this.alepha.state("task", task);
+			this.alepha.state("current_task", task);
 			return { task };
 		},
 		onLeave: () => {
-			this.alepha.state("task", null);
+			this.alepha.state("current_task", null);
 		},
 		errorHandler: (error) => {
 			if (HttpError.is(error, 404)) {
