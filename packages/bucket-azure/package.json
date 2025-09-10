@@ -28,10 +28,10 @@
 		"@alepha/datetime": "0.9.4",
 		"@alepha/file": "0.9.4",
 		"@alepha/logger": "0.9.4",
-		"@azure/storage-blob": "^12.28.0"
+		"@azure/storage-blob": "^12.29.0"
 	},
 	"devDependencies": {
-		"tsdown": "^0.14.2",
+		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

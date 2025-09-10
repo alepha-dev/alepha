@@ -21,7 +21,7 @@
 		"@alepha/topic-redis": "0.9.4"
 	},
 	"devDependencies": {
-		"tsdown": "^0.14.2",
+		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

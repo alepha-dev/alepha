@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
-import { $page, ReactRouter } from "@alepha/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { $page } from "@alepha/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AlephaReactHead } from "../src/index.browser.ts";
 import type { Head } from "../src/interfaces/Head.ts";
 import { BrowserHeadProvider } from "../src/providers/BrowserHeadProvider.ts";
@@ -230,6 +230,10 @@ describe("BrowserHeadProvider", () => {
 				component: () => "Complex content",
 			});
 		}
+
+		afterEach(() => {
+			document.body.querySelector("#root")?.remove();
+		});
 
 		it("should render simple page head configuration", async () => {
 			const alepha = Alepha.create().with(AlephaReactHead).with(TestApp);

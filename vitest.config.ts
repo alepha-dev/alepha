@@ -38,7 +38,7 @@ export default defineConfig({
 				extends: true,
 				test: {
 					include: ['packages/*/test/**/*.browser.spec.ts'],
-					name: 'browser',
+					name: { label: 'browser', color: 'cyan' },
 					environment: 'jsdom'
 				},
 				resolve: {
