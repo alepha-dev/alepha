@@ -10,7 +10,6 @@ import {
 	IconSwords,
 } from "@tabler/icons-react";
 import type { Task } from "../../../api/providers/Db.ts";
-import action from "../../ui/Action.tsx";
 
 const TaskHistory = () => {
 	const [task] = useStore("current_task");
