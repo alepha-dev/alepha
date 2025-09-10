@@ -2,6 +2,7 @@ import {
 	type RouterGoOptions,
 	type UseActiveOptions,
 	useActive,
+	useAlepha,
 	useRouter,
 } from "@alepha/react";
 import { type FormModel, useFormState } from "@alepha/react-form";
@@ -15,6 +16,7 @@ export type ActionProps = ButtonProps & {
 
 const Action = (_props: ActionProps) => {
 	const props = { variant: "subtle", ..._props };
+
 	if (props.leftSection && !props.children) {
 		props.className ??= "mantine-Action-iconOnly";
 		props.p ??= "xs";
@@ -92,6 +94,7 @@ export interface ActionClickProps extends ButtonProps {
 
 const ActionClick = (props: ActionClickProps) => {
 	const [pending, setPending] = useState(false);
+	const alepha = useAlepha();
 
 	const onClick = async (e: any) => {
 		setPending(true);
@@ -99,13 +102,22 @@ const ActionClick = (props: ActionClickProps) => {
 			await props.onClick(e);
 		} catch (e) {
 			console.error(e);
+			await alepha.emit("form:submit:error", {
+				id: "action",
+				error: e as Error,
+			});
 		} finally {
 			setPending(false);
 		}
 	};
 
 	return (
-		<Button {...props} disabled={pending} loading={pending} onClick={onClick}>
+		<Button
+			{...props}
+			disabled={pending || props.disabled}
+			loading={pending}
+			onClick={onClick}
+		>
 			{props.children}
 		</Button>
 	);

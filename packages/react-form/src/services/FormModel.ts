@@ -360,7 +360,7 @@ export class FormModel<T extends TObject> {
 			return value.toISOString().slice(0, 16); // For datetime-local input
 		}
 
-		return String(value);
+		return value;
 	}
 }
 

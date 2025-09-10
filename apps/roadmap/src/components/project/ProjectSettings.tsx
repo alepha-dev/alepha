@@ -14,7 +14,7 @@ const ProjectSettings = () => {
 	const { tr } = useI18n<I18n, "en">();
 	const projectApi = useClient<ProjectApi>();
 	const router = useRouter<AppRouter>();
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 
 	if (!project) {
 		return null;

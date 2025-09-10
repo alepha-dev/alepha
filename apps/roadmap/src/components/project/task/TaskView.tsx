@@ -12,6 +12,8 @@ import {
 	IconCircleFilled,
 	IconEdit,
 	IconFileText,
+	IconLibraryPlus,
+	IconListCheck,
 	IconPigMoney,
 	IconSignature,
 	IconSwords,
@@ -29,6 +31,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import Action from "../../ui/Action.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
+import TaskViewObjectives from "./TaskViewObjectives.tsx";
 
 export interface TaskViewProps {
 	task: Task;
@@ -47,7 +50,7 @@ const TaskView = (props: TaskViewProps) => {
 		setTask(props.task);
 	}, [props.task]);
 
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 	if (!project) {
 		return null;
 	}
@@ -74,7 +77,7 @@ const TaskView = (props: TaskViewProps) => {
 		);
 
 	const abandonTask = {
-		can: () => taskApi.abandonTask.can(),
+		disabled: !taskApi.abandonTask.can(),
 		onClick: async () => {
 			const confirm = await openDeleteModal();
 			if (!confirm) {
@@ -86,8 +89,10 @@ const TaskView = (props: TaskViewProps) => {
 			});
 
 			alepha.state(
-				"tasks",
-				(alepha.state("tasks") ?? []).filter((t) => t.id !== task.id),
+				"current_assigned_tasks",
+				(alepha.state("current_assigned_tasks") ?? []).filter(
+					(t) => t.id !== task.id,
+				),
 			);
 			await router.go("projectBoard", {
 				meta: {
@@ -142,7 +147,7 @@ const TaskView = (props: TaskViewProps) => {
 									task={task}
 									onUpdate={(it) => {
 										setTask(it);
-										alepha.state("task", it);
+										alepha.state("current_task", it);
 									}}
 									showDialog={showDialog}
 									setShowDialog={setShowDialog}
@@ -181,6 +186,14 @@ const TaskView = (props: TaskViewProps) => {
 						</Stack>
 
 						<TaskDescription task={task} onEdit={() => setShowDialog(true)} />
+
+						<TaskViewObjectives
+							task={task}
+							onTaskUpdate={(updatedTask) => {
+								setTask(updatedTask);
+								alepha.state("current_task", updatedTask);
+							}}
+						/>
 
 						<Flex gap={"xs"} align="center" justify="center">
 							<IconPigMoney size={theme.icon.size.lg} />
@@ -247,9 +260,9 @@ const TaskView = (props: TaskViewProps) => {
 												params: { id: task.id },
 											});
 											setTask(updatedTask);
-											alepha.state("task", updatedTask);
-											alepha.state("tasks", [
-												...(alepha.state("tasks") ?? []),
+											alepha.state("current_task", updatedTask);
+											alepha.state("current_assigned_tasks", [
+												...(alepha.state("current_assigned_tasks") ?? []),
 												updatedTask,
 											]);
 										}}
@@ -278,15 +291,18 @@ const TaskView = (props: TaskViewProps) => {
 										c={"green"}
 										variant={"subtle"}
 										leftSection={<IconSwords size={theme.icon.size.md} />}
-										disabled={!taskApi.deleteTask.can()}
+										disabled={
+											!taskApi.completeTask.can() ||
+											task.objectives.some((o) => !o.completed)
+										}
 										onClick={async () => {
 											const { character } = await taskApi.completeTask({
 												params: { id: task.id },
 											});
-											alepha.state("character", character);
+											alepha.state("current_project_character", character);
 											alepha.state(
-												"tasks",
-												(alepha.state("tasks") ?? []).filter(
+												"current_assigned_tasks",
+												(alepha.state("current_assigned_tasks") ?? []).filter(
 													(t) => t.id !== task.id,
 												),
 											);
@@ -320,7 +336,7 @@ const EditTaskButton = (props: {
 	const { showDialog = false, setShowDialog = () => {} } = props;
 
 	const client = useClient<TaskApi>();
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 	if (!project) {
 		return null;
 	}

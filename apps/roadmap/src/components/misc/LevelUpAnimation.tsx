@@ -9,7 +9,7 @@ export default function LevelUpAnimation() {
 	const [active, setActive] = useState(false);
 	const lastCharacter = useRef<Character | undefined>(undefined);
 	const info = useInject(CharacterInfo);
-	const [character] = useStore("character");
+	const [character] = useStore("current_project_character");
 
 	useEffect(() => {
 		if (character) {

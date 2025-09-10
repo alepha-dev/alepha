@@ -86,6 +86,15 @@ export const tasks = $entity({
 		complexity: t.int({ minimum: 1, maximum: 5 }),
 		acceptedAt: t.optional(t.datetime()),
 		completedAt: t.optional(t.datetime()),
+		objectives: pg.default(
+			t.array(
+				t.object({
+					title: t.string(),
+					completed: t.boolean(),
+				}),
+			),
+			[],
+		),
 		projectId: pg.ref(t.int(), () => projects.id, {
 			onDelete: "cascade",
 		}),
@@ -105,7 +114,12 @@ export const tasks = $entity({
 			t.object({
 				at: t.datetime(),
 				by: t.uuid(),
-				action: t.enum(["updated", "assigned", "unassigned"]),
+				action: t.enum([
+					"updated",
+					"assigned",
+					"unassigned",
+					"objective_completed",
+				]),
 			}),
 			{ default: [] },
 		),

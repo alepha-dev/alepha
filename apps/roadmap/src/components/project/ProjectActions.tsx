@@ -17,7 +17,7 @@ import Action, { type ActionProps } from "../ui/Action.tsx";
 import TaskCreate from "./task/TaskCreate.tsx";
 
 const ProjectActions = () => {
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 	const router = useRouter<AppRouter>();
 	const { tr } = useI18n<I18n, "en">();
 
@@ -95,7 +95,7 @@ const CreateTaskButton = () => {
 	const { tr } = useI18n<I18n, "en">();
 	const client = useClient<TaskApi>();
 
-	const [project] = useStore("project");
+	const [project] = useStore("current_project");
 	if (!project) {
 		return null;
 	}

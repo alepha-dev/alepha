@@ -8,6 +8,7 @@ export const theme = {
 			light: 9,
 			dark: 8,
 		},
+		cursorType: "pointer",
 	} as MantineTheme,
 	container: {
 		base: "100%",

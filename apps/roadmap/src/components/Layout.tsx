@@ -11,10 +11,10 @@ import Header from "./shared/Header.tsx";
 
 declare module "@alepha/core" {
 	interface State {
-		tasks?: Task[];
-		project?: Project | null;
-		character?: Character | null;
-		task?: Task | null;
+		current_assigned_tasks?: Task[];
+		current_project?: Project | null;
+		current_project_character?: Character | null;
+		current_task?: Task | null;
 		"user.projects"?: Project[];
 	}
 }
