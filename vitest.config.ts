@@ -10,7 +10,11 @@ export default defineConfig({
 			],
 			exclude: [
 				"apps/**",
-				"scripts/**"
+				"scripts/**",
+				// experimental packages
+				"packages/react-i18n",
+				"packages/cli",
+				"packages/thread",
 			],
 			reporter: ["cobertura", "text", "html"],
 		},
@@ -28,8 +32,8 @@ export default defineConfig({
 				extends: true,
 				test: {
 					name: { label: 'node', color: 'green' },
-					include: ['packages/*/test/**/*.spec.ts'],
-					exclude: ['packages/*/test/**/*.browser.spec.ts'],
+					include: ['**/test/**/*.spec.{ts,tsx}'],
+					exclude: ['**/test/**/*.browser.spec.{ts,tsx}', 'node_modules'],
 					environment: 'node'
 				}
 			},
@@ -37,7 +41,7 @@ export default defineConfig({
 				// browser tests
 				extends: true,
 				test: {
-					include: ['packages/*/test/**/*.browser.spec.ts'],
+					include: ['**/test/**/*.browser.spec.{ts,tsx}'],
 					name: { label: 'browser', color: 'cyan' },
 					environment: 'jsdom'
 				},
