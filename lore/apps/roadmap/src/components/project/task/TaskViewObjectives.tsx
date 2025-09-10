@@ -43,6 +43,10 @@ const TaskViewObjectives = ({
 		}
 	};
 
+	if (task.objectives.length === 0) {
+		return null;
+	}
+
 	return (
 		<>
 			<Flex gap={"xs"} align="center" justify="center">
