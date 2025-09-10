@@ -20,6 +20,7 @@
 		"@alepha/command": "^0.9.4",
 		"@alepha/core": "^0.9.4",
 		"@alepha/logger": "^0.9.4",
+		"@biomejs/biome": "^2.2.4",
 		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2"
 	},

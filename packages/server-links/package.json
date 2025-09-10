@@ -24,12 +24,14 @@
 		"@alepha/server-security": "0.9.4"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",
 		"check": "tsc"
 	},

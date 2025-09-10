@@ -23,6 +23,7 @@
 		"openapi-types": "^12.1.3"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"swagger-ui-dist": "^5.29.0",
 		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2",
@@ -31,6 +32,7 @@
 	"scripts": {
 		"copy": "node scripts/copy.ts",
 		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts && yarn copy",
 		"check": "tsc"
 	},

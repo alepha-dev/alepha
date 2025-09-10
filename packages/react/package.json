@@ -26,6 +26,7 @@
 		"react-dom": "^19.1.1"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"@types/react": "^19.1.12",
 		"@types/react-dom": "^19.1.9",
 		"react": "^19.1.1",
@@ -39,6 +40,7 @@
 	"scripts": {
 		"check": "tsc",
 		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",

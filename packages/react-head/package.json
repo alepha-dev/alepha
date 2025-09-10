@@ -20,6 +20,7 @@
 		"@alepha/server": "0.9.4"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"@types/react": "^19.1.12",
 		"react": "^19.1.1",
 		"tsdown": "^0.15.0",
@@ -32,6 +33,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",
 		"check": "tsc"
 	},

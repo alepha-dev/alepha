@@ -26,6 +26,7 @@
 		"postgres": "^3.4.7"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"drizzle-kit": "0.31.4",
 		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2",
@@ -33,6 +34,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",
 		"check": "tsc"
 	},

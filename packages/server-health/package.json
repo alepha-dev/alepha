@@ -19,13 +19,15 @@
 		"@alepha/server": "0.9.4"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"tsdown": "^0.15.0",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"build": "tsdown -c ../../tsdown.config.ts",
-		"check": "tsc"
+		"check": "tsc",
+		"test": "vitest run"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {
