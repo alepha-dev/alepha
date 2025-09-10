@@ -9,3 +9,4 @@ CLAUDE.md
 node_modules
 dist
 coverage
+.claude

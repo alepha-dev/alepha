@@ -1,4 +1,13 @@
-import { $env, $hook, $inject, Alepha, type Static, t } from "@alepha/core";
+import {
+	$env,
+	$hook,
+	$inject,
+	Alepha,
+	type Static,
+	type TSchema,
+	TypeGuard,
+	t,
+} from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { createElement, type ReactNode, StrictMode } from "react";
 import ClientOnly from "../components/ClientOnly.tsx";
@@ -99,6 +108,30 @@ export class ReactPageProvider {
 		return root;
 	}
 
+	protected convertStringObjectToObject = (
+		schema?: TSchema,
+		value?: any,
+	): any => {
+		if (TypeGuard.IsObject(schema) && typeof value === "object") {
+			for (const key in schema.properties) {
+				if (
+					TypeGuard.IsObject(schema.properties[key]) &&
+					typeof value[key] === "string"
+				) {
+					try {
+						value[key] = this.alepha.parse(
+							schema.properties[key],
+							decodeURIComponent(value[key]),
+						);
+					} catch (e) {
+						// ignore
+					}
+				}
+			}
+		}
+		return value;
+	};
+
 	/**
 	 * Create a new RouterState based on a given route and request.
 	 * This method resolves the layers for the route, applying any query and params schemas defined in the route.
@@ -126,6 +159,7 @@ export class ReactPageProvider {
 			const config: Record<string, any> = {};
 
 			try {
+				this.convertStringObjectToObject(route.schema?.query, state.query);
 				config.query = route.schema?.query
 					? this.alepha.parse(route.schema.query, state.query)
 					: {};
@@ -331,6 +365,12 @@ export class ReactPageProvider {
 		page: PageRoute,
 		props: Record<string, any>,
 	): Promise<ReactNode> {
+		if (page.lazy && page.component) {
+			this.log.warn(
+				`Page ${page.name} has both lazy and component options, lazy will be used`,
+			);
+		}
+
 		if (page.lazy) {
 			const component = await page.lazy(); // load component
 			return createElement(component.default, props);

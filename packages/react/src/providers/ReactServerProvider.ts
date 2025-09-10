@@ -12,6 +12,7 @@ import {
 import { $logger } from "@alepha/logger";
 import {
 	type ServerHandler,
+	ServerProvider,
 	ServerRouterProvider,
 	ServerTimingProvider,
 } from "@alepha/server";
@@ -21,6 +22,7 @@ import { renderToString } from "react-dom/server";
 import {
 	$page,
 	type PageDescriptorRenderOptions,
+	type PageDescriptorRenderResult,
 } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
@@ -53,6 +55,7 @@ export class ReactServerProvider {
 	protected readonly log = $logger();
 	protected readonly alepha = $inject(Alepha);
 	protected readonly pageApi = $inject(ReactPageProvider);
+	protected readonly serverProvider = $inject(ServerProvider);
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly serverTimingProvider = $inject(ServerTimingProvider);
@@ -74,6 +77,19 @@ export class ReactServerProvider {
 
 			for (const page of pages) {
 				page.render = this.createRenderFunction(page.name);
+				page.fetch = async (options) => {
+					const response = await fetch(
+						`${this.serverProvider.hostname}/${page.pathname(options)}`,
+					);
+					const html = await response.text();
+					if (options?.html) return { html, response };
+					// take only text inside the root div
+					const match = html.match(this.ROOT_DIV_REGEX);
+					if (match) {
+						return { html: match[3], response };
+					}
+					throw new AlephaError("Invalid HTML response");
+				};
 			}
 
 			// development mode
@@ -194,7 +210,9 @@ export class ReactServerProvider {
 	 * For testing purposes, creates a render function that can be used.
 	 */
 	protected createRenderFunction(name: string, withIndex = false) {
-		return async (options: PageDescriptorRenderOptions = {}) => {
+		return async (
+			options: PageDescriptorRenderOptions = {},
+		): Promise<PageDescriptorRenderResult> => {
 			const page = this.pageApi.page(name);
 			const url = new URL(this.pageApi.url(name, options));
 
@@ -223,7 +241,7 @@ export class ReactServerProvider {
 			);
 
 			if (redirect) {
-				throw new AlephaError("Redirection is not supported in this context");
+				return { state, html: "", redirect };
 			}
 
 			if (!withIndex && !options.html) {
@@ -242,7 +260,7 @@ export class ReactServerProvider {
 			);
 
 			if (html instanceof Redirection) {
-				throw new Error("Redirection is not supported in this context");
+				return { state, html: "", redirect };
 			}
 
 			const result = {

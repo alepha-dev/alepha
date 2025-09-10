@@ -1,4 +1,5 @@
 import {
+	AlephaError,
 	type Async,
 	createDescriptor,
 	Descriptor,
@@ -255,7 +256,18 @@ export class PageDescriptor<
 	public async render(
 		options?: PageDescriptorRenderOptions,
 	): Promise<PageDescriptorRenderResult> {
-		throw new Error("render method is not implemented in this environment");
+		throw new AlephaError(
+			"render() method is not implemented in this environment",
+		);
+	}
+
+	public async fetch(options?: PageDescriptorRenderOptions): Promise<{
+		html: string;
+		response: Response;
+	}> {
+		throw new AlephaError(
+			"fetch() method is not implemented in this environment",
+		);
 	}
 
 	public match(url: string): boolean {
@@ -285,6 +297,13 @@ export type TPropsParentDefault = {};
 export interface PageDescriptorRenderOptions {
 	params?: Record<string, string>;
 	query?: Record<string, string>;
+
+	/**
+	 * If true, the HTML layout will be included in the response.
+	 * If false, only the page content will be returned.
+	 *
+	 * @default true
+	 */
 	html?: boolean;
 	hydration?: boolean;
 }
@@ -292,6 +311,7 @@ export interface PageDescriptorRenderOptions {
 export interface PageDescriptorRenderResult {
 	html: string;
 	state: ReactRouterState;
+	redirect?: string;
 }
 
 export interface PageRequestConfig<
