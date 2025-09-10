@@ -61,7 +61,7 @@ const TaskItem = (props: { task: Task }) => {
 			<Flex flex={1} align={"center"} gap={"sm"}>
 				<TaskComplexity complexity={task.complexity} />
 				{task.title}
-				{task.objectives.length && (
+				{!!task.objectives.length && (
 					<Text size={"10px"}>
 						{task.objectives.filter((it) => it.completed).length}/
 						{task.objectives.length}
