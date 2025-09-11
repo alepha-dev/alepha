@@ -1,6 +1,8 @@
 import { TypeBoxError } from "@alepha/core";
 import { type InputField, useFormState } from "@alepha/react-form";
 import {
+	Autocomplete,
+	type AutocompleteProps,
 	Flex,
 	Input,
 	PasswordInput,
@@ -29,6 +31,7 @@ export interface ControlProps {
 	text?: TextInputProps;
 	area?: boolean | TextareaProps;
 	select?: boolean | SelectProps;
+	autocomplete?: boolean | AutocompleteProps;
 	password?: boolean | PasswordInputProps;
 	switch?: boolean | SwitchProps;
 	segmented?: boolean | Partial<SegmentedControlProps>;
@@ -108,6 +111,22 @@ const Control = (props: ControlProps) => {
 			</Input.Wrapper>
 		);
 	}
+
+	// region <Autocomplete/>
+	if (props.autocomplete) {
+		const autocompleteProps = typeof props.autocomplete === "object" ? props.autocomplete : {};
+		
+		return (
+			<Autocomplete
+				{...inputProps}
+				id={id}
+				leftSection={icon}
+				{...props.input.props}
+				{...autocompleteProps}
+			/>
+		);
+	}
+	// endregion
 
 	// region <Select/>
 	if (props.input.schema?.enum || props.select) {

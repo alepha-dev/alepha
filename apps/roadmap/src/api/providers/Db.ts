@@ -14,6 +14,7 @@ export const projects = $entity({
 		}),
 		createdBy: t.uuid(),
 		public: t.optional(t.boolean()),
+		packages: pg.default(t.array(t.string()), []),
 	}),
 });
 

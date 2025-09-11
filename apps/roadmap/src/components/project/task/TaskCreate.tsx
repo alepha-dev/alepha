@@ -1,5 +1,5 @@
 import { t } from "@alepha/core";
-import { useAlepha, useClient, useRouter } from "@alepha/react";
+import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import { useI18n } from "@alepha/react-i18n";
 import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
@@ -12,6 +12,7 @@ import {
 	IconTent,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
+import { ProjectApi } from "../../../api/ProjectApi.ts";
 import type { Project, Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";
@@ -32,6 +33,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 	const alepha = useAlepha();
 	const router = useRouter<AppRouter>();
 	const { tr } = useI18n<I18n, "en">();
+	const [currentProject, setCurrentProject] = useStore("current_project");
 
 	const form = useForm({
 		id: "task-create",
@@ -59,6 +61,18 @@ const TaskCreate = (props: TaskCreateProps) => {
 					projectId: props.project.id,
 				},
 			});
+
+			if (
+				data.package &&
+				!props.project.packages?.includes(data.package) &&
+				currentProject
+			) {
+				const updatedPackages = [
+					...(currentProject.packages || []),
+					data.package,
+				];
+				setCurrentProject({ ...currentProject, packages: updatedPackages });
+			}
 
 			props.onSubmit(task);
 
@@ -92,6 +106,11 @@ const TaskCreate = (props: TaskCreateProps) => {
 						description={tr("task.create.package.helper")}
 						input={form.input.package}
 						icon={<IconTent />}
+						autocomplete={{
+							data: currentProject?.packages || [],
+							placeholder: "Enter or select a zone...",
+							limit: 5,
+						}}
 					/>
 				</SimpleGrid>
 

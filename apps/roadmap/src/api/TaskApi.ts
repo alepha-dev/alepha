@@ -28,6 +28,17 @@ export class TaskApi {
 			// sanitize HTML content
 			body.description = sanitizeHtml(body.description);
 
+			const project = await this.db.projects.findOne({
+				id: { eq: body.projectId },
+			});
+
+			if (body.package && !project.packages.includes(body.package)) {
+				project.packages.push(body.package);
+				await this.db.projects.updateById(project.id, {
+					packages: project.packages,
+				});
+			}
+
 			return await this.db.tasks.create({
 				...body,
 				createdBy: user.id,
@@ -321,18 +332,21 @@ export class TaskApi {
 			}
 
 			// Mark the specific objective as completed
-			task.objectives[body.index].completed = !task.objectives[body.index].completed;
+			task.objectives[body.index].completed =
+				!task.objectives[body.index].completed;
 
 			return await this.db.tasks.updateById(params.id, {
 				objectives: task.objectives,
-				history: task.objectives[body.index].completed ? [
-					...task.history,
-					{
-						at: this.dt.nowISOString(),
-						by: user.id,
-						action: "objective_completed",
-					},
-				] : task.history,
+				history: task.objectives[body.index].completed
+					? [
+							...task.history,
+							{
+								at: this.dt.nowISOString(),
+								by: user.id,
+								action: "objective_completed",
+							},
+						]
+					: task.history,
 			});
 		},
 	});
