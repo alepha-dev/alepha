@@ -14,6 +14,7 @@ export class CharacterApi {
 					projectTitle: t.string(),
 					xp: t.int(),
 					balance: t.int(),
+					owner: t.optional(t.boolean()),
 					createdAt: t.datetime(),
 					updatedAt: t.datetime(),
 				}),
@@ -43,6 +44,7 @@ export class CharacterApi {
 							projectTitle: project?.title ?? "Unknown Project",
 							xp: character.xp,
 							balance: character.balance,
+							owner: character.owner,
 							createdAt: character.createdAt,
 							updatedAt: character.updatedAt,
 						};
