@@ -1,4 +1,4 @@
-import { type ReactNode, use, useRef, useState } from "react";
+import { memo, type ReactNode, use, useRef, useState } from "react";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import type { PageAnimation } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
@@ -159,7 +159,7 @@ const NestedView = (props: NestedViewProps) => {
 	);
 };
 
-export default NestedView;
+export default memo(NestedView);
 
 function parseAnimation(
 	animationLike: PageAnimation | undefined,

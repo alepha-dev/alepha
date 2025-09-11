@@ -124,11 +124,11 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			}
 		}
 
+		this.alepha.state("react.router.state", state);
+
 		await this.alepha.emit("react:transition:end", {
 			state,
 		});
-
-		this.alepha.state("react.router.state", state);
 	}
 
 	public root(state: ReactRouterState): ReactNode {
