@@ -163,6 +163,16 @@ export class AppRouter {
 	projectPlayers = $page({
 		path: "/players",
 		lazy: () => import("./components/project/ProjectPlayers.tsx"),
+		resolve: async ({ params }) => {
+			const players = await this.projectApi.getProjectPlayers({
+				params: {
+					id: this.alepha.state("current_project")?.id ?? -1,
+				},
+			});
+			return {
+				players,
+			};
+		},
 	});
 
 	projectAnalytics = $page({

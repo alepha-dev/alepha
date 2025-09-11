@@ -132,6 +132,73 @@ export class ProjectApi {
 		},
 	});
 
+	getProjectPlayers = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: t.array(
+				t.object({
+					id: t.int(),
+					userId: t.uuid(),
+					userName: t.optional(t.string()),
+					userEmail: t.string(),
+					userPicture: t.optional(t.string()),
+					xp: t.int(),
+					balance: t.int(),
+					owner: t.boolean(),
+					createdAt: t.datetime(),
+					updatedAt: t.datetime(),
+				}),
+			),
+		},
+		handler: async ({ params, user }) => {
+			const project = await this.db.projects.findOne({
+				id: { eq: params.id },
+			});
+
+			// Check if user has access to this project
+			if (project.createdBy !== user.id && user.ownership && !project.public) {
+				throw new ForbiddenError(
+					`You do not have permission to access project with id ${params.id}`,
+				);
+			}
+
+			const projectCharacters = await this.db.characters.find({
+				where: { projectId: { eq: params.id } },
+			});
+
+			// Get user details for each character
+			const charactersWithUsers = await Promise.all(
+				projectCharacters.map(async (character) => {
+					const characterUser = await this.db.users.findOne({
+						id: { eq: character.userId },
+					});
+
+					return {
+						id: character.id,
+						userId: character.userId,
+						userName: characterUser.name,
+						userEmail: characterUser.email,
+						userPicture: characterUser.picture,
+						xp: character.xp,
+						balance: character.balance,
+						owner: character.owner,
+						createdAt: character.createdAt,
+						updatedAt: character.updatedAt,
+					};
+				}),
+			);
+
+			// Sort by owner first, then by creation date
+			return charactersWithUsers.sort((a, b) => {
+				if (a.owner && !b.owner) return -1;
+				if (!a.owner && b.owner) return 1;
+				return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+			});
+		},
+	});
+
 	deleteProjectById = $action({
 		schema: {
 			params: t.object({
