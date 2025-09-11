@@ -1,4 +1,4 @@
-import { Card, Modal, Typography } from "@mantine/core";
+import {Card, Flex, Modal, Typography} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconMaximize } from "@tabler/icons-react";
 import type { Task } from "../../../api/providers/Db.ts";
@@ -12,10 +12,12 @@ const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
 		<Card
 			withBorder
 			bg={theme.colors.panel}
-			className={"overflow-auto"}
 			p={"sm"}
 			px={"md"}
 			radius={"md"}
+			style={{
+				overflow: "unset"
+			}}
 		>
 			<Modal opened={opened} onClose={close} size={"xl"}>
 				<Typography px={"xl"}>
@@ -26,6 +28,7 @@ const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
 						}}
 					/>
 				</Typography>
+				<Flex p={"md"}/>
 			</Modal>
 			<Action
 				px={"xs"}
