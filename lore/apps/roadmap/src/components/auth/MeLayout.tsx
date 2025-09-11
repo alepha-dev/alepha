@@ -1,7 +1,12 @@
 import { NestedView, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
-import { IconAntenna, IconMapRoute, IconUser } from "@tabler/icons-react";
+import {
+	IconAntenna,
+	IconMapRoute,
+	IconShield,
+	IconUser,
+} from "@tabler/icons-react";
 import { theme } from "../../constants/theme.ts";
 import Action, { type ActionProps } from "../ui/Action.tsx";
 import type { MeRouter } from "./MeRouter.ts";
@@ -9,7 +14,7 @@ import type { MeRouter } from "./MeRouter.ts";
 const MeLayout = () => {
 	const auth = useAuth();
 	return (
-		<Container w={theme.container} flex={1}>
+		<Container w={theme.container} flex={1} className={"overflow-auto"}>
 			<Stack flex={1} w={"100%"}>
 				<Card
 					withBorder
@@ -23,6 +28,7 @@ const MeLayout = () => {
 					<Text size={"xs"}>{auth.user?.email}</Text>
 				</Card>
 				<Flex
+					className={"overflow-auto"}
 					flex={1}
 					gap={"lg"}
 					direction={{
@@ -39,7 +45,9 @@ const MeLayout = () => {
 					>
 						<MeMenu />
 					</Flex>
-					<NestedView />
+					<Flex flex={1} className={"overflow-auto"}>
+						<NestedView />
+					</Flex>
 				</Flex>
 			</Stack>
 		</Container>
@@ -87,6 +95,12 @@ const MeMenu = () => {
 				<Text visibleFrom={"md"} size="xs">
 					Security
 				</Text>
+				<ActionNavLink
+					leftSection={<IconShield size={20} />}
+					href={meRouter.path("identities")}
+				>
+					Identities
+				</ActionNavLink>
 				<ActionNavLink
 					leftSection={<IconAntenna size={20} />}
 					href={meRouter.path("sessions")}

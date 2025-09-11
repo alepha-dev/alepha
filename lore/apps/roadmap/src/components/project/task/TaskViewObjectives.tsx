@@ -23,10 +23,6 @@ const TaskViewObjectives = ({
 	);
 
 	const handleObjectiveToggle = async (index: number) => {
-		if (task.objectives[index].completed) {
-			return;
-		}
-
 		try {
 			const updatedTask = await taskApi.completeObjective({
 				params: { id: task.id },
@@ -75,7 +71,7 @@ const TaskViewObjectives = ({
 							checked={objective.completed}
 							onChange={() => handleObjectiveToggle(index)}
 							disabled={
-								objective.completed || !!task.completedAt || !task.acceptedAt
+								!!task.completedAt || !task.acceptedAt
 							}
 							label={
 								<Text

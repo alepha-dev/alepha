@@ -150,6 +150,12 @@ export class ProjectApi {
 			}
 
 			await this.db.projects.deleteById(params.id);
+			await this.db.characters.deleteMany({
+				projectId: { eq: params.id },
+			});
+			await this.db.tasks.deleteMany({
+				projectId: { eq: params.id },
+			});
 
 			return true;
 		},
