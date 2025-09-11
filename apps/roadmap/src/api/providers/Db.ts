@@ -1,5 +1,5 @@
-import { type Static, t } from "@alepha/core";
-import { $entity, $repository, pg } from "@alepha/postgres";
+import { $inject, type Static, t } from "@alepha/core";
+import { $entity, $repository, PostgresProvider, pg } from "@alepha/postgres";
 
 export const projects = $entity({
 	name: "projects",
@@ -164,4 +164,7 @@ export class Db {
 	identities = $repository(identities);
 	sessions = $repository(sessions);
 	characters = $repository(characters);
+
+	provider = $inject(PostgresProvider);
+	query = this.provider.execute.bind(this.provider);
 }
