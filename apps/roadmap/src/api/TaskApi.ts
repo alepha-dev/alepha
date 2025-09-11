@@ -44,6 +44,7 @@ export class TaskApi {
 			query: t.composite([
 				t.object({
 					status: t.optional(t.enum(["new", "accepted", "completed"])),
+					search: t.optional(t.string()),
 				}),
 				pageQuerySchema,
 			]),
@@ -58,6 +59,13 @@ export class TaskApi {
 			let where = this.db.tasks.createQueryWhere({
 				projectId: { eq: params.projectId },
 			});
+
+			if (query.search) {
+				where = {
+					...where,
+					title: { ilike: `%${query.search}%` },
+				};
+			}
 
 			if (query.status === "new") {
 				where = {
