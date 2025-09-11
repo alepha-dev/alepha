@@ -111,27 +111,17 @@ const TaskView = (props: TaskViewProps) => {
 			m={2}
 		>
 			<Stack flex={1} className={"overflow-auto"} gap={0}>
-				<Stack flex={1} className={"overflow-auto"} p={"xs"} gap={0}>
-					<Flex justify={"end"}>
-						<Action
-							px={"xs"}
-							href={router.path("projectBoard", {
-								params: { projectId: String(project.id) },
-							})}
-						>
-							<IconX size={theme.icon.size.md} />
-						</Action>
-					</Flex>
-
+				<Stack flex={1} className={"overflow-auto"} gap={0}>
 					<Flex
-						px={"md"}
+						px={"lg"}
+						py={"md"}
 						direction={"column"}
 						gap={"md"}
 						flex={1}
 						className={"overflow-auto"}
 					>
 						<Flex gap={"xs"} align="center" justify="center">
-							<IconTag size={theme.icon.size.lg} />
+							<IconTag size={theme.icon.size.md} />
 							<Text
 								size="lg"
 								fw={"bold"}
@@ -152,13 +142,21 @@ const TaskView = (props: TaskViewProps) => {
 								/>
 							)}
 							<Flex
-								w={"100%"}
+								flex={1}
 								style={{
 									opacity: 0.1,
 									height: 1,
 									backgroundColor: "var(--text-color)",
 								}}
 							/>
+							<Action
+								px={"xs"}
+								href={router.path("projectBoard", {
+									params: { projectId: String(project.id) },
+								})}
+							>
+								<IconX size={theme.icon.size.md} />
+							</Action>
 						</Flex>
 						<Text size={"sm"}>
 							{tr("task.view.summary", {
@@ -234,7 +232,6 @@ const TaskView = (props: TaskViewProps) => {
 						</Flex>
 					</Flex>
 				</Stack>
-
 				{!task.completedAt && (
 					<Flex p={"xs"}>
 						<Card
