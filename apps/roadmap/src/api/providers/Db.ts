@@ -145,11 +145,7 @@ export const characters = $entity({
 		}),
 		xp: t.int(),
 		balance: pg.default(t.int(), 0),
-		owner: t.optional(
-			t.boolean({
-				description: "Whether the user is the owner of the project",
-			}),
-		),
+		owner: pg.default(t.boolean(), true),
 	}),
 });
 

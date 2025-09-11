@@ -35,6 +35,7 @@ export interface ProfileProps {
 		projectTitle: string;
 		xp: number;
 		balance: number;
+		owner?: boolean;
 		createdAt: string;
 		updatedAt: string;
 	}>;

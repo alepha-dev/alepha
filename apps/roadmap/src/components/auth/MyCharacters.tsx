@@ -20,6 +20,7 @@ export interface MyCharactersProps {
 		projectTitle: string;
 		xp: number;
 		balance: number;
+		owner?: boolean;
 		createdAt: string;
 		updatedAt: string;
 	}>;
@@ -35,6 +36,7 @@ const CharacterXPBar = ({
 		projectTitle: string;
 		xp: number;
 		balance: number;
+		owner?: boolean;
 		createdAt: string;
 		updatedAt: string;
 	};
@@ -193,7 +195,6 @@ const MyCharacters = (props: MyCharactersProps) => {
 					const level = characterInfo.getLevelByXp(character.xp);
 					const gold = characterInfo.getGold(character.balance);
 					const silver = characterInfo.getSilver(character.balance);
-					const rank = characterInfo.getRank(level);
 
 					return (
 						<Card
@@ -211,22 +212,11 @@ const MyCharacters = (props: MyCharactersProps) => {
 											<Badge variant="light" color="blue">
 												Level {level}
 											</Badge>
-											<Badge
-												variant="light"
-												color={
-													rank === "S"
-														? "purple"
-														: rank === "A"
-															? "red"
-															: rank === "B"
-																? "orange"
-																: rank === "C"
-																	? "yellow"
-																	: "gray"
-												}
-											>
-												Rank {rank}
-											</Badge>
+											{character.owner && (
+												<Badge variant="light" color="green">
+													Owner
+												</Badge>
+											)}
 										</Group>
 										<Text size="sm" c="dimmed">
 											Created:{" "}

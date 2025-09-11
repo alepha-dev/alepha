@@ -36,6 +36,7 @@ export class ProjectApi {
 				userId: user.id,
 				xp: 0,
 				balance: 0,
+				owner: true,
 			});
 
 			return project;
