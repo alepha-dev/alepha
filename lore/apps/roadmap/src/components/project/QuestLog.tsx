@@ -8,7 +8,9 @@ import {
 	IconSearch,
 	IconSelector,
 	IconSortAZ,
+	IconX,
 } from "@tabler/icons-react";
+import { useMemo, useState } from "react";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import TaskList from "./task/TaskList.tsx";
@@ -16,6 +18,26 @@ import TaskList from "./task/TaskList.tsx";
 const QuestLog = () => {
 	const [tasks = []] = useStore("current_assigned_tasks");
 	const { tr } = useI18n<I18n, "en">();
+	const [searchValue, setSearchValue] = useState<string>("");
+
+	// Client-side filtering of tasks based on search
+	const filteredTasks = useMemo(() => {
+		if (!searchValue.trim()) {
+			return tasks;
+		}
+		
+		return tasks.filter((task) =>
+			task.title.toLowerCase().includes(searchValue.toLowerCase().trim())
+		);
+	}, [tasks, searchValue]);
+
+	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setSearchValue(event.currentTarget.value);
+	};
+
+	const handleClearSearch = () => {
+		setSearchValue("");
+	};
 	return (
 		<Card
 			flex={1}
@@ -52,7 +74,7 @@ const QuestLog = () => {
 								px={6}
 								style={{ padding: "0 4px" }}
 							>
-								<Text size="xs">{tasks.length}/25</Text>
+								<Text size="xs">{filteredTasks.length}/25</Text>
 							</Card>
 						</Flex>
 						<Flex flex={1} />
@@ -90,7 +112,21 @@ const QuestLog = () => {
 					disabled={tasks.length === 0}
 					placeholder={tr("quest-log.search")}
 					flex={1}
+					value={searchValue}
+					onChange={handleSearchChange}
 					leftSection={<IconSearch size={theme.icon.size.xs} />}
+					rightSection={
+						searchValue && (
+							<ActionIcon
+								size="xs"
+								variant="subtle"
+								onClick={handleClearSearch}
+								color="gray"
+							>
+								<IconX size={theme.icon.size.xs} />
+							</ActionIcon>
+						)
+					}
 				/>
 			</Flex>
 			<Flex
@@ -99,7 +135,7 @@ const QuestLog = () => {
 				className={"overflow-auto"}
 				p={"xs"}
 			>
-				<TaskList tasks={tasks} />
+				<TaskList tasks={filteredTasks} />
 			</Flex>
 		</Card>
 	);

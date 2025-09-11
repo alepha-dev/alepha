@@ -2,6 +2,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import type { Page } from "@alepha/postgres";
 import { useClient, useInject, useRouter, useStore } from "@alepha/react";
 import {
+	ActionIcon,
 	Badge,
 	Card,
 	Flex,
@@ -18,6 +19,7 @@ import {
 	IconSearch,
 	IconSignature,
 	IconTrash,
+	IconX,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
@@ -40,6 +42,8 @@ const ProjectBoard = () => {
 	const next = result?.can.next ? result.page.number + 1 : undefined;
 	const tasks = result?.content || [];
 	const [sortValue, setSortValue] = useState<string | undefined>(undefined);
+	const [searchValue, setSearchValue] = useState<string>("");
+	const [searchQuery, setSearchQuery] = useState<string>("");
 
 	const loadTasks = async () => {
 		if (!project?.id) return;
@@ -50,7 +54,10 @@ const ProjectBoard = () => {
 			const [result] = await Promise.all([
 				await taskApi.getTasks({
 					params: { projectId: project.id },
-					query: { status },
+					query: { 
+						status,
+						search: searchQuery || undefined,
+					},
 				}),
 				new Promise((resolve) => setTimeout(resolve, 200)),
 			]);
@@ -64,7 +71,7 @@ const ProjectBoard = () => {
 
 	useEffect(() => {
 		loadTasks();
-	}, [project?.id, status]);
+	}, [project?.id, status, searchQuery]);
 
 	const actions = {
 		acceptTask: {
@@ -88,7 +95,12 @@ const ProjectBoard = () => {
 
 				const result = await taskApi.getTasks({
 					params: { projectId: project.id },
-					query: { status, page: next, sort },
+					query: { 
+						status, 
+						page: next, 
+						sort,
+						search: searchQuery || undefined,
+					},
 				});
 
 				setResult(result);
@@ -101,7 +113,11 @@ const ProjectBoard = () => {
 
 				const more = await taskApi.getTasks({
 					params: { projectId: project.id },
-					query: { status, page: next },
+					query: { 
+						status, 
+						page: next,
+						search: searchQuery || undefined,
+					},
 				});
 
 				setResult({
@@ -110,6 +126,20 @@ const ProjectBoard = () => {
 				});
 			},
 		},
+	};
+
+	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setSearchValue(event.currentTarget.value);
+	};
+
+	const handleSearchSubmit = (event: React.FormEvent) => {
+		event.preventDefault();
+		setSearchQuery(searchValue.trim());
+	};
+
+	const handleClearSearch = () => {
+		setSearchValue("");
+		setSearchQuery("");
 	};
 
 	const getPriorityColor = (priority: string) => {
@@ -148,12 +178,27 @@ const ProjectBoard = () => {
 							<Text fw={400} size="lg"></Text>
 						</Flex>
 						<Flex gap={"sm"} align={"center"}>
-							<TextInput
-								disabled
-								placeholder="Search quests..."
-								size={"xs"}
-								leftSection={<IconSearch size={theme.icon.size.xs} />}
-							/>
+							<form onSubmit={handleSearchSubmit}>
+								<TextInput
+									value={searchValue}
+									onChange={handleSearchChange}
+									placeholder="Search quests..."
+									size={"xs"}
+									leftSection={<IconSearch size={theme.icon.size.xs} />}
+									rightSection={
+										searchQuery && (
+											<ActionIcon
+												size="xs"
+												variant="subtle"
+												onClick={handleClearSearch}
+												color="gray"
+											>
+												<IconX size={theme.icon.size.xs} />
+											</ActionIcon>
+										)
+									}
+								/>
+							</form>
 							<SegmentedControl
 								disabled={loading}
 								size={"xs"}
