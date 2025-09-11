@@ -119,9 +119,9 @@ const ProjectBoard = () => {
 			case "medium":
 				return "orange";
 			case "low":
-				return "yellow";
-			default:
 				return "gray";
+			default:
+				return "dark";
 		}
 	};
 
