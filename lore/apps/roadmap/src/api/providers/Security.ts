@@ -50,6 +50,10 @@ export class Security {
 						name: "CharacterApi:*",
 						ownership: true,
 					},
+					{
+						name: "ProjectStatsApi:*",
+						ownership: true,
+					},
 				],
 			},
 			{

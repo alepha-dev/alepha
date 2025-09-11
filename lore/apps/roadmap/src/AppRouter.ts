@@ -7,6 +7,7 @@ import { $client } from "@alepha/server-links";
 import { notifications } from "@mantine/notifications";
 import { createElement } from "react";
 import type { ProjectApi } from "./api/ProjectApi.ts";
+import type { ProjectStatsApi } from "./api/ProjectStatsApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
 import { MeRouter } from "./components/auth/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
@@ -15,6 +16,7 @@ export class AppRouter {
 	alepha = $inject(Alepha);
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
+	projectStatsApi = $client<ProjectStatsApi>();
 	router = $inject(ReactRouter);
 	auth = $inject(ReactAuth);
 	meRouter = $inject(MeRouter);
@@ -178,6 +180,16 @@ export class AppRouter {
 	projectAnalytics = $page({
 		path: "/analytics",
 		lazy: () => import("./components/project/ProjectStats.tsx"),
+		resolve: async ({ params }) => {
+			const stats = await this.projectStatsApi.getProjectStats({
+				params: {
+					id: this.alepha.state("current_project")?.id ?? -1,
+				},
+			});
+			return {
+				stats,
+			};
+		},
 	});
 
 	projectSettings = $page({
