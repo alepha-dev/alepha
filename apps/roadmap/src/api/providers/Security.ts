@@ -42,6 +42,14 @@ export class Security {
 						name: "SessionApi:*",
 						ownership: true,
 					},
+					{
+						name: "IdentityApi:*",
+						ownership: true,
+					},
+					{
+						name: "CharacterApi:*",
+						ownership: true,
+					},
 				],
 			},
 			{

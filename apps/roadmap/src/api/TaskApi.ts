@@ -312,23 +312,19 @@ export class TaskApi {
 				throw new BadRequestError("Invalid objective index");
 			}
 
-			if (task.objectives[body.index].completed) {
-				return task; // Objective already completed, no changes needed
-			}
-
 			// Mark the specific objective as completed
-			task.objectives[body.index].completed = true;
+			task.objectives[body.index].completed = !task.objectives[body.index].completed;
 
 			return await this.db.tasks.updateById(params.id, {
 				objectives: task.objectives,
-				history: [
+				history: task.objectives[body.index].completed ? [
 					...task.history,
 					{
 						at: this.dt.nowISOString(),
 						by: user.id,
 						action: "objective_completed",
 					},
-				],
+				] : task.history,
 			});
 		},
 	});
