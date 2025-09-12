@@ -15,7 +15,7 @@ declare module "@alepha/core" {
 		current_project?: Project | null;
 		current_project_character?: Character | null;
 		current_task?: Task | null;
-		"user.projects"?: Project[];
+		user_projects?: Project[];
 	}
 }
 

@@ -19,7 +19,7 @@ export interface HomeProps {
 
 const Home = () => {
 	const { tr } = useI18n<I18n, "en">();
-	const [projects = []] = useStore("user.projects");
+	const [projects = []] = useStore("user_projects");
 	const router = useRouter<AppRouter>();
 	const dt = useInject(DateTimeProvider);
 

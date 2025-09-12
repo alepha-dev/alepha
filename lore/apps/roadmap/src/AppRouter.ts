@@ -53,7 +53,7 @@ export class AppRouter {
 		resolve: async ({ user }) => {
 			if (user) {
 				this.alepha.state(
-					"user.projects",
+					"user_projects",
 					await this.projectApi.getMyProjects(),
 				);
 			}
@@ -153,19 +153,11 @@ export class AppRouter {
 			this.alepha.state("current_project", null);
 			this.alepha.state("current_assigned_tasks", []);
 		},
-		animation: {
-			enter: "fadeInUp",
-			exit: "backOutDown",
-		},
 	});
 
 	projectBoard = $page({
 		path: "/",
 		lazy: () => import("./components/project/ProjectBoard.tsx"),
-		animation: {
-			enter: "fadeInUpLight",
-			exit: "fadeOutDownLight",
-		},
 	});
 
 	projectPlayers = $page({
@@ -194,7 +186,6 @@ export class AppRouter {
 				),
 			};
 		},
-		animation: "fadeInUpLight",
 	});
 
 	projectAnalytics = $page({
@@ -210,19 +201,16 @@ export class AppRouter {
 				stats,
 			};
 		},
-		animation: "fadeInUpLight",
 	});
 
 	projectSettings = $page({
 		path: "/settings",
 		lazy: () => import("./components/project/ProjectSettings.tsx"),
-		animation: "fadeInUpLight",
 	});
 
 	projectShop = $page({
 		path: "/shop",
 		lazy: () => import("./components/project/ProjectShop.tsx"),
-		animation: "fadeInUpLight",
 	});
 
 	projectTask = $page({
@@ -254,17 +242,6 @@ export class AppRouter {
 					},
 				};
 			}
-
-			return {
-				enter: {
-					name: "genieIn",
-					duration: 500,
-					timing: "cubic-bezier(0.22, 1, 0.36, 1)",
-				},
-				exit: {
-					name: "fadeOutDownLight",
-				},
-			};
 		},
 		lazy: () => import("./components/project/task/TaskView.tsx"),
 		resolve: async ({ params }) => {

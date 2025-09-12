@@ -83,8 +83,8 @@ const ProjectSettings = () => {
 										})
 										.then(() => {
 											alepha.state(
-												"user.projects",
-												(alepha.state("user.projects") ?? []).filter(
+												"user_projects",
+												(alepha.state("user_projects") ?? []).filter(
 													(p) => p.id !== project.id,
 												),
 											);

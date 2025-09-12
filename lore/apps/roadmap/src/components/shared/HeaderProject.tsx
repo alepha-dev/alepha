@@ -8,7 +8,7 @@ const HeaderProject = () => {
 	const [project] = useStore("current_project");
 	const router = useRouter<AppRouter>();
 	const { params } = useRouterState();
-	const [projects = []] = useStore("user.projects");
+	const [projects = []] = useStore("user_projects");
 
 	if (!project) {
 		return null;
