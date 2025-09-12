@@ -88,7 +88,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
 	}));
 
 	const timelineData = stats.activityTimeline
-		.reverse()
+		.toReversed()
 		.slice(-14) // Last 14 days
 		.map((item) => ({
 			date: new Date(item.date).toLocaleDateString("en-US", {

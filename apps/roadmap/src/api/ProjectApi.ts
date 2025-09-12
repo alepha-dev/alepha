@@ -1,6 +1,6 @@
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { pageQuerySchema } from "@alepha/postgres";
+import { pageQuerySchema, sql } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";
 import { characters, Db, projects, tasks } from "./providers/Db.ts";
 
@@ -80,10 +80,13 @@ export class ProjectApi {
 			response: t.array(projects.$schema),
 		},
 		handler: async ({ user }) => {
-			return this.db.projects.find({
-				where: {
-					createdBy: { eq: user.id },
-				},
+			const characters = await this.db.characters.find({
+				where: { userId: { eq: user.id } },
+			});
+			const characterProjectIds = characters.map((it) => it.projectId);
+			return await this.db.projects.find({
+				where: { id: { inArray: characterProjectIds } },
+				limit: characterProjectIds.length,
 			});
 		},
 	});

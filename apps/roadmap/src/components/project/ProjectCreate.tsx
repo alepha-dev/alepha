@@ -64,8 +64,8 @@ const ProjectCreate = () => {
 				params: { projectId: String(project.id) },
 			});
 
-			alepha.state("user.projects", [
-				...(alepha.state("user.projects") || []),
+			alepha.state("user_projects", [
+				...(alepha.state("user_projects") || []),
 				project,
 			]);
 		},

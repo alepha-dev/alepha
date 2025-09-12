@@ -78,9 +78,5 @@ export class MeRouter {
 				sessions: await this.sessionApi.getMySessions(),
 			};
 		},
-		animation: {
-			enter: "fadeInUpLight",
-			exit: "fadeOutDownLight",
-		},
 	});
 }

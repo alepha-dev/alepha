@@ -196,9 +196,28 @@ export class RepositoryDescriptor<
 			);
 		}
 
-		return await this.provider.execute(raw).then((rows) => {
-			return rows.map((it: any) => this.clean(it, schema) as Static<T>);
-		});
+		return await this.provider
+			.execute(raw)
+			.then((rows) =>
+				rows.map(
+					(it: any) =>
+						this.clean(this.mapRawFieldsToEntity(it), schema) as Static<T>,
+				),
+			);
+	}
+
+	protected mapRawFieldsToEntity(row: any[]) {
+		const entity: any = {};
+		for (const key of Object.keys(row)) {
+			entity[key] = row[key as any];
+			for (const colKey of Object.keys(this.table)) {
+				if (this.table[colKey].name === key) {
+					entity[colKey] = row[key as any];
+					break;
+				}
+			}
+		}
+		return entity;
 	}
 
 	/**
