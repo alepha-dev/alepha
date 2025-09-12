@@ -1,4 +1,5 @@
 import { $module } from "@alepha/core";
+import { AdminApi } from "./AdminApi.ts";
 import { CharacterApi } from "./CharacterApi.ts";
 import { IdentityApi } from "./IdentityApi.ts";
 import { InvitationApi } from "./InvitationApi.ts";
@@ -23,5 +24,6 @@ export const RoadmapApi = $module({
 		IdentityApi,
 		ProjectStatsApi,
 		InvitationApi,
+		AdminApi,
 	],
 });

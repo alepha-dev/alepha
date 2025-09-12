@@ -1,5 +1,4 @@
 import { useClient } from "@alepha/react";
-import { $client } from "@alepha/server-links";
 import {
 	Badge,
 	Button,

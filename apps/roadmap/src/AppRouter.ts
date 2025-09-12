@@ -10,6 +10,7 @@ import type { InvitationApi } from "./api/InvitationApi.ts";
 import type { ProjectApi } from "./api/ProjectApi.ts";
 import type { ProjectStatsApi } from "./api/ProjectStatsApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
+import { AdminRouter } from "./components/admin/AdminRouter.ts";
 import { MeRouter } from "./components/auth/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
@@ -22,6 +23,7 @@ export class AppRouter {
 	router = $inject(ReactRouter);
 	auth = $inject(ReactAuth);
 	meRouter = $inject(MeRouter);
+	adminRouter = $inject(AdminRouter);
 
 	head = $head(() => ({
 		title: "Roadmap",
@@ -44,6 +46,7 @@ export class AppRouter {
 			this.project,
 			this.projectCreate,
 			this.meRouter.me,
+			this.adminRouter.admin,
 			this.notFound,
 		],
 		lazy: () => import("./components/Layout.tsx"),
