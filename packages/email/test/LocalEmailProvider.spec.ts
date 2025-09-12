@@ -125,7 +125,9 @@ describe("LocalEmailProvider", () => {
 			expect(htmlContent).toContain("<!DOCTYPE html>");
 			expect(htmlContent).toContain("Test &lt;Subject&gt;"); // escaped subject
 			expect(htmlContent).toContain("test@example.com");
-			expect(htmlContent).toContain("<p>Test body with <strong>HTML</strong></p>"); // body not escaped
+			expect(htmlContent).toContain(
+				"<p>Test body with <strong>HTML</strong></p>",
+			); // body not escaped
 			expect(htmlContent).toContain("Sent:");
 		});
 
@@ -137,7 +139,9 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await expect(provider.send(to, subject, body)).rejects.toThrow(EmailError);
+			await expect(provider.send(to, subject, body)).rejects.toThrow(
+				EmailError,
+			);
 			await expect(provider.send(to, subject, body)).rejects.toThrow(
 				"Failed to save email to local file: Permission denied",
 			);
@@ -152,7 +156,9 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await expect(provider.send(to, subject, body)).rejects.toThrow(EmailError);
+			await expect(provider.send(to, subject, body)).rejects.toThrow(
+				EmailError,
+			);
 			await expect(provider.send(to, subject, body)).rejects.toThrow(
 				"Failed to save email to local file: Disk full",
 			);
@@ -166,7 +172,9 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await expect(provider.send(to, subject, body)).rejects.toThrow(EmailError);
+			await expect(provider.send(to, subject, body)).rejects.toThrow(
+				EmailError,
+			);
 			await expect(provider.send(to, subject, body)).rejects.toThrow(
 				"Failed to save email to local file: String error",
 			);
@@ -220,7 +228,9 @@ describe("LocalEmailProvider", () => {
 
 			const html = (provider as any).createEmailHtml(to, subject, body);
 
-			expect(html).toContain("<p>Test body with <strong>HTML</strong> & entities</p>");
+			expect(html).toContain(
+				"<p>Test body with <strong>HTML</strong> & entities</p>",
+			);
 		});
 
 		test("should include CSS styles", () => {
@@ -269,8 +279,12 @@ describe("LocalEmailProvider", () => {
 		});
 
 		test("should escape multiple special characters", () => {
-			const result = (provider as any).escapeHtml('<script>alert("Hello & goodbye")</script>');
-			expect(result).toBe("&lt;script&gt;alert(&quot;Hello &amp; goodbye&quot;)&lt;/script&gt;");
+			const result = (provider as any).escapeHtml(
+				'<script>alert("Hello & goodbye")</script>',
+			);
+			expect(result).toBe(
+				"&lt;script&gt;alert(&quot;Hello &amp; goodbye&quot;)&lt;/script&gt;",
+			);
 		});
 
 		test("should handle empty string", () => {

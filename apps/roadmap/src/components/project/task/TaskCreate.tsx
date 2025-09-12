@@ -12,7 +12,6 @@ import {
 	IconTent,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
-import { ProjectApi } from "../../../api/ProjectApi.ts";
 import type { Project, Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";

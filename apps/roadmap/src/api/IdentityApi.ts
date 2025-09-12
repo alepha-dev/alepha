@@ -1,7 +1,7 @@
 import { $inject, t } from "@alepha/core";
-import { $action } from "@alepha/server";
 import { CryptoProvider } from "@alepha/security";
-import { Db, identities } from "./providers/Db.ts";
+import { $action } from "@alepha/server";
+import { Db } from "./providers/Db.ts";
 
 export class IdentityApi {
 	db = $inject(Db);

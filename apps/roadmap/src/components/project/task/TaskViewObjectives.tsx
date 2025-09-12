@@ -70,9 +70,7 @@ const TaskViewObjectives = ({
 							key={index}
 							checked={objective.completed}
 							onChange={() => handleObjectiveToggle(index)}
-							disabled={
-								!!task.completedAt || !task.acceptedAt
-							}
+							disabled={!!task.completedAt || !task.acceptedAt}
 							label={
 								<Text
 									size={"sm"}

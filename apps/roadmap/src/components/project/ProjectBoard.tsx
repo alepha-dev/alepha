@@ -54,7 +54,7 @@ const ProjectBoard = () => {
 			const [result] = await Promise.all([
 				await taskApi.getTasks({
 					params: { projectId: project.id },
-					query: { 
+					query: {
 						status,
 						search: searchQuery || undefined,
 					},
@@ -95,9 +95,9 @@ const ProjectBoard = () => {
 
 				const result = await taskApi.getTasks({
 					params: { projectId: project.id },
-					query: { 
-						status, 
-						page: next, 
+					query: {
+						status,
+						page: next,
 						sort,
 						search: searchQuery || undefined,
 					},
@@ -113,8 +113,8 @@ const ProjectBoard = () => {
 
 				const more = await taskApi.getTasks({
 					params: { projectId: project.id },
-					query: { 
-						status, 
+					query: {
+						status,
 						page: next,
 						search: searchQuery || undefined,
 					},
