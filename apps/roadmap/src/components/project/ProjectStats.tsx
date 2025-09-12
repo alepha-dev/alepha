@@ -112,15 +112,8 @@ const ProjectStats = (props: ProjectStatsProps) => {
 		},
 	];
 
-	const priorityColors = {
-		High: "red.6",
-		Medium: "orange.6",
-		Low: "blue.6",
-		Optional: "gray.6",
-	};
-
 	return (
-		<Flex flex={1} p="lg">
+		<Flex flex={1} p="lg" className={"overflow-auto"}>
 			<Stack w="100%" maw={1200}>
 				<Group gap="sm" align="center">
 					<IconChartBar size={24} />
