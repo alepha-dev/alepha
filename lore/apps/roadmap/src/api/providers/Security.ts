@@ -54,6 +54,10 @@ export class Security {
 						name: "ProjectStatsApi:*",
 						ownership: true,
 					},
+					{
+						name: "InvitationApi:*",
+						ownership: true,
+					},
 				],
 			},
 			{

@@ -194,6 +194,7 @@ export class AppRouter {
 				),
 			};
 		},
+		animation: "fadeInUpLight",
 	});
 
 	projectAnalytics = $page({
@@ -209,6 +210,7 @@ export class AppRouter {
 				stats,
 			};
 		},
+		animation: "fadeInUpLight",
 	});
 
 	projectSettings = $page({
