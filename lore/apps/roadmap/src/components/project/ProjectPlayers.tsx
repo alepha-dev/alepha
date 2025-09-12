@@ -1,6 +1,5 @@
 import { useClient, useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
-import { $client } from "@alepha/server-links";
 import {
 	Avatar,
 	Badge,
