@@ -3,6 +3,7 @@ import { useAuth } from "@alepha/react-auth";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import {
 	IconAntenna,
+	IconMail,
 	IconMapRoute,
 	IconShield,
 	IconUser,
@@ -91,6 +92,12 @@ const MeMenu = () => {
 					href={meRouter.path("characters")}
 				>
 					Campaigns
+				</ActionNavLink>
+				<ActionNavLink
+					leftSection={<IconMail size={20} />}
+					href={meRouter.path("invitations")}
+				>
+					Invitations
 				</ActionNavLink>
 				<Text visibleFrom={"md"} size="xs">
 					Security

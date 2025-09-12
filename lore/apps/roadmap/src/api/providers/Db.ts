@@ -150,6 +150,29 @@ export const characters = $entity({
 	}),
 });
 
+export const invitations = $entity({
+	name: "invitations",
+	schema: t.object({
+		id: pg.primaryKey(t.uuid()),
+		createdAt: pg.createdAt(),
+		updatedAt: pg.updatedAt(),
+		projectId: pg.ref(t.int(), () => projects.id, {
+			onDelete: "cascade",
+		}),
+		invitedBy: pg.ref(t.uuid(), () => users.id, {
+			onDelete: "cascade",
+		}),
+		invitedEmail: t.string({ format: "email" }),
+		status: t.enum(["pending", "accepted", "rejected"], { default: "pending" }),
+	}),
+	indexes: [
+		{
+			columns: ["projectId", "invitedEmail"],
+			unique: true,
+		},
+	],
+});
+
 export type Character = Static<typeof characters.$schema>;
 export type User = Static<typeof users.$schema>;
 export type Task = Static<typeof tasks.$schema>;
@@ -157,6 +180,7 @@ export type TaskUpdate = Static<typeof tasks.$updateSchema>;
 export type Project = Static<typeof projects.$schema>;
 export type TaskInsert = Static<typeof tasks.$insertSchema>;
 export type Session = Static<typeof sessions.$schema>;
+export type Invitation = Static<typeof invitations.$schema>;
 
 export class Db {
 	tasks = $repository(tasks);
@@ -165,6 +189,7 @@ export class Db {
 	identities = $repository(identities);
 	sessions = $repository(sessions);
 	characters = $repository(characters);
+	invitations = $repository(invitations);
 
 	provider = $inject(PostgresProvider);
 	query = this.provider.execute.bind(this.provider);

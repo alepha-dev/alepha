@@ -114,8 +114,9 @@ const Control = (props: ControlProps) => {
 
 	// region <Autocomplete/>
 	if (props.autocomplete) {
-		const autocompleteProps = typeof props.autocomplete === "object" ? props.autocomplete : {};
-		
+		const autocompleteProps =
+			typeof props.autocomplete === "object" ? props.autocomplete : {};
+
 		return (
 			<Autocomplete
 				{...inputProps}

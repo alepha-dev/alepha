@@ -1,4 +1,4 @@
-import {Card, Flex, Modal, Typography} from "@mantine/core";
+import { Card, Flex, Modal, Typography } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconMaximize } from "@tabler/icons-react";
 import type { Task } from "../../../api/providers/Db.ts";
@@ -16,7 +16,7 @@ const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
 			px={"md"}
 			radius={"md"}
 			style={{
-				overflow: "unset"
+				overflow: "unset",
 			}}
 		>
 			<Modal opened={opened} onClose={close} size={"xl"}>
@@ -28,7 +28,7 @@ const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
 						}}
 					/>
 				</Typography>
-				<Flex p={"md"}/>
+				<Flex p={"md"} />
 			</Modal>
 			<Action
 				px={"xs"}

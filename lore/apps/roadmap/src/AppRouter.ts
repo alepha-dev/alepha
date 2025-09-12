@@ -6,6 +6,7 @@ import { HttpError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
 import { notifications } from "@mantine/notifications";
 import { createElement } from "react";
+import type { InvitationApi } from "./api/InvitationApi.ts";
 import type { ProjectApi } from "./api/ProjectApi.ts";
 import type { ProjectStatsApi } from "./api/ProjectStatsApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
@@ -17,6 +18,7 @@ export class AppRouter {
 	taskApi = $client<TaskApi>();
 	projectApi = $client<ProjectApi>();
 	projectStatsApi = $client<ProjectStatsApi>();
+	invitationApi = $client<InvitationApi>();
 	router = $inject(ReactRouter);
 	auth = $inject(ReactAuth);
 	meRouter = $inject(MeRouter);
@@ -167,13 +169,26 @@ export class AppRouter {
 		path: "/players",
 		lazy: () => import("./components/project/ProjectPlayers.tsx"),
 		resolve: async ({ params }) => {
-			const players = await this.projectApi.getProjectPlayers({
-				params: {
-					id: this.alepha.state("current_project")?.id ?? -1,
-				},
-			});
+			const project = this.alepha.state("current_project");
+			const projectId = project?.id ?? -1;
+
+			const [players, pendingInvitations] = await Promise.all([
+				this.projectApi.getProjectPlayers({
+					params: { id: projectId },
+				}),
+				this.invitationApi
+					.getProjectInvitations({
+						params: { projectId },
+					})
+					.catch(() => []), // Fail gracefully if no permission
+			]);
+
 			return {
 				players,
+				project,
+				pendingInvitations: pendingInvitations.filter(
+					(inv) => inv.status === "pending",
+				),
 			};
 		},
 	});

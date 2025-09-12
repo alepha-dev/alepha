@@ -194,7 +194,9 @@ export class ProjectApi {
 			return charactersWithUsers.sort((a, b) => {
 				if (a.owner && !b.owner) return -1;
 				if (!a.owner && b.owner) return 1;
-				return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+				return (
+					new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+				);
 			});
 		},
 	});

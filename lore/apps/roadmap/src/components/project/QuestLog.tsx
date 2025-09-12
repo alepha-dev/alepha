@@ -25,9 +25,9 @@ const QuestLog = () => {
 		if (!searchValue.trim()) {
 			return tasks;
 		}
-		
+
 		return tasks.filter((task) =>
-			task.title.toLowerCase().includes(searchValue.toLowerCase().trim())
+			task.title.toLowerCase().includes(searchValue.toLowerCase().trim()),
 		);
 	}, [tasks, searchValue]);
 

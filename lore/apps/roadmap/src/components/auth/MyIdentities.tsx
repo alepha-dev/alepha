@@ -1,10 +1,25 @@
+import { t } from "@alepha/core";
 import { useClient } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
-import { t } from "@alepha/core";
-import { Badge, Card, Flex, Group, Modal, Stack, Text, Title } from "@mantine/core";
+import {
+	Badge,
+	Card,
+	Flex,
+	Group,
+	Modal,
+	Stack,
+	Text,
+	Title,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconBrandGithub, IconBrandGoogle, IconKey, IconLock, IconUser } from "@tabler/icons-react";
+import {
+	IconBrandGithub,
+	IconBrandGoogle,
+	IconKey,
+	IconLock,
+	IconUser,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import type { IdentityApi } from "../../api/IdentityApi.ts";
 import Action from "../ui/Action.tsx";
@@ -26,7 +41,9 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 	const [localIdentities, setLocalIdentities] = useState(identities);
 	const identityApi = useClient<IdentityApi>();
 
-	const hasPasswordIdentity = localIdentities.some((identity) => identity.provider === "usernamePassword");
+	const hasPasswordIdentity = localIdentities.some(
+		(identity) => identity.provider === "usernamePassword",
+	);
 
 	const passwordForm = useForm({
 		schema: t.object({
@@ -119,7 +136,11 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 				<Group justify="space-between">
 					<Title order={2}>My Identities</Title>
 					{!hasPasswordIdentity && (
-						<Action variant="light" leftSection={<IconLock size={16} />} onClick={open}>
+						<Action
+							variant="light"
+							leftSection={<IconLock size={16} />}
+							onClick={open}
+						>
 							Set Password
 						</Action>
 					)}
@@ -131,15 +152,19 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
 				<Stack gap="md">
 					{localIdentities.map((identity) => (
-						<Card key={identity.id} shadow="sm" padding="lg" radius="md" withBorder>
+						<Card
+							key={identity.id}
+							shadow="sm"
+							padding="lg"
+							radius="md"
+							withBorder
+						>
 							<Group justify="space-between" align="center">
 								<Group gap="md">
 									{getProviderIcon(identity.provider)}
 									<Stack gap={0}>
 										<Group gap="sm">
-											<Text fw={500}>
-												{getProviderName(identity.provider)}
-											</Text>
+											<Text fw={500}>{getProviderName(identity.provider)}</Text>
 											<Badge
 												variant="light"
 												color={getProviderColor(identity.provider)}
@@ -170,7 +195,8 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 										No identities found
 									</Text>
 									<Text c="dimmed" size="sm" ta="center">
-										This shouldn't normally happen. Please contact support if you see this.
+										This shouldn't normally happen. Please contact support if
+										you see this.
 									</Text>
 								</Stack>
 							</Flex>
@@ -178,16 +204,12 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 					)}
 				</Stack>
 
-				<Modal
-					opened={opened}
-					onClose={close}
-					title="Set Password"
-					centered
-				>
+				<Modal opened={opened} onClose={close} title="Set Password" centered>
 					<form onSubmit={passwordForm.onSubmit}>
 						<Stack gap="md">
 							<Text size="sm" c="dimmed">
-								Set up a username and password to sign in without external providers.
+								Set up a username and password to sign in without external
+								providers.
 							</Text>
 
 							<Control
@@ -224,9 +246,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 								<Action variant="subtle" onClick={close}>
 									Cancel
 								</Action>
-								<Action form={passwordForm}>
-									Set Password
-								</Action>
+								<Action form={passwordForm}>Set Password</Action>
 							</Group>
 						</Stack>
 					</form>
