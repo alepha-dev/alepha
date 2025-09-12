@@ -1,4 +1,4 @@
-import { useClient } from "@alepha/react";
+import { useAlepha, useClient } from "@alepha/react";
 import {
 	Badge,
 	Button,
@@ -13,6 +13,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import type { InvitationApi } from "../../api/InvitationApi.ts";
+import type { ProjectApi } from "../../api/ProjectApi.ts";
 
 export interface MyInvitationsProps {
 	invitations: Array<{
@@ -28,11 +29,13 @@ export interface MyInvitationsProps {
 }
 
 const MyInvitations = (props: MyInvitationsProps) => {
-	const { invitations } = props;
+	const [invitations, setInvitations] = useState(props.invitations);
 	const invitationApi = useClient<InvitationApi>();
+	const projectApi = useClient<ProjectApi>();
 	const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
 		{},
 	);
+	const alepha = useAlepha();
 
 	const handleAccept = async (invitationId: string) => {
 		setLoadingStates((prev) => ({ ...prev, [invitationId]: true }));
@@ -41,15 +44,15 @@ const MyInvitations = (props: MyInvitationsProps) => {
 				params: { id: invitationId },
 			});
 
+			setInvitations(await invitationApi.getMyInvitations());
+			alepha.state("user_projects", await projectApi.getMyProjects());
+
 			notifications.show({
 				title: "Invitation Accepted",
 				message:
 					"You have joined the project! A character has been created for you.",
 				color: "green",
 			});
-
-			// Refresh the page to update the list
-			window.location.reload();
 		} catch (error: any) {
 			notifications.show({
 				title: "Error",
@@ -68,14 +71,13 @@ const MyInvitations = (props: MyInvitationsProps) => {
 				params: { id: invitationId },
 			});
 
+			setInvitations(await invitationApi.getMyInvitations());
+
 			notifications.show({
 				title: "Invitation Rejected",
 				message: "The invitation has been declined.",
 				color: "orange",
 			});
-
-			// Refresh the page to update the list
-			window.location.reload();
 		} catch (error: any) {
 			notifications.show({
 				title: "Error",
