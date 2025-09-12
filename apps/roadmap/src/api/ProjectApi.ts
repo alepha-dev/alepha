@@ -1,8 +1,16 @@
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { pageQuerySchema, sql } from "@alepha/postgres";
+import { pageQuerySchema } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";
-import { characters, Db, projects, tasks } from "./providers/Db.ts";
+import {
+	type Character,
+	characters,
+	Db,
+	projects,
+	tasks,
+	type User,
+	users,
+} from "./providers/Db.ts";
 
 export class ProjectApi {
 	log = $logger();
@@ -109,11 +117,15 @@ export class ProjectApi {
 				id: { eq: params.id },
 			});
 
-			if (project.createdBy !== user.id && user.ownership && !project.public) {
-				throw new ForbiddenError(
-					`You do not have permission to access project with id ${params.id}`,
-				);
-			}
+			const character = await this.db.characters
+				.findOne({
+					projectId: { eq: params.id },
+					userId: { eq: user.id },
+				})
+				.catch((err) => {
+					if (project.public) return undefined;
+					throw err;
+				});
 
 			const tasks = await this.db.tasks.find({
 				where: {
@@ -123,15 +135,7 @@ export class ProjectApi {
 				},
 			});
 
-			if (user.id === project.createdBy) {
-				const character = await this.db.characters.findOne({
-					projectId: { eq: params.id },
-					userId: { eq: user.id },
-				});
-				return { ...project, tasks, character };
-			}
-
-			return { ...project, tasks, character: undefined };
+			return { ...project, tasks, character };
 		},
 	});
 
@@ -141,18 +145,12 @@ export class ProjectApi {
 				id: t.int(),
 			}),
 			response: t.array(
-				t.object({
-					id: t.int(),
-					userId: t.uuid(),
-					userName: t.optional(t.string()),
-					userEmail: t.string(),
-					userPicture: t.optional(t.string()),
-					xp: t.int(),
-					balance: t.int(),
-					owner: t.boolean(),
-					createdAt: t.datetime(),
-					updatedAt: t.datetime(),
-				}),
+				t.composite([
+					characters.$schema,
+					t.object({
+						user: users.$schema,
+					}),
+				]),
 			),
 		},
 		handler: async ({ params, user }) => {
@@ -161,37 +159,43 @@ export class ProjectApi {
 			});
 
 			// Check if user has access to this project
-			if (project.createdBy !== user.id && user.ownership && !project.public) {
-				throw new ForbiddenError(
-					`You do not have permission to access project with id ${params.id}`,
-				);
+			if (project.createdBy !== user.id && !project.public && user.ownership) {
+				await this.db.characters.findOne({
+					projectId: { eq: params.id },
+					userId: { eq: user.id },
+				});
 			}
 
 			const projectCharacters = await this.db.characters.find({
 				where: { projectId: { eq: params.id } },
 			});
 
-			// Get user details for each character
-			const charactersWithUsers = await Promise.all(
-				projectCharacters.map(async (character) => {
-					const characterUser = await this.db.users.findOne({
-						id: { eq: character.userId },
-					});
+			const users = await this.db.users.find({
+				limit: projectCharacters.length,
+				where: {
+					id: { inArray: projectCharacters.map((char) => char.userId) },
+				},
+			});
 
-					return {
-						id: character.id,
-						userId: character.userId,
-						userName: characterUser.name,
-						userEmail: characterUser.email,
-						userPicture: characterUser.picture,
-						xp: character.xp,
-						balance: character.balance,
-						owner: character.owner,
-						createdAt: character.createdAt,
-						updatedAt: character.updatedAt,
-					};
-				}),
-			);
+			const charactersWithUsers: Array<
+				Character & {
+					user: User;
+				}
+			> = [];
+
+			for (const character of projectCharacters) {
+				const characterUser = users.find((it) => it.id === character.userId);
+				if (!characterUser) {
+					this.log.warn(
+						`User with id ${character.userId} not found for character ${character.id}`,
+					);
+					continue;
+				}
+				charactersWithUsers.push({
+					...character,
+					user: characterUser,
+				});
+			}
 
 			// Sort by owner first, then by creation date
 			return charactersWithUsers.sort((a, b) => {

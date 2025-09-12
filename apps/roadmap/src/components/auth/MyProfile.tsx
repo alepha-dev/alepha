@@ -6,7 +6,6 @@ import {
 	Flex,
 	Grid,
 	Group,
-	Progress,
 	Stack,
 	Text,
 	Title,
@@ -17,12 +16,9 @@ import {
 	IconCalendar,
 	IconKey,
 	IconMail,
-	IconMapRoute,
 	IconShield,
-	IconStar,
 	IconTrophy,
 	IconUser,
-	IconUsersGroup,
 } from "@tabler/icons-react";
 import type { User } from "../../api/providers/Db.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
@@ -106,14 +102,7 @@ const MyProfile = (props: ProfileProps) => {
 				{/* Header Card */}
 				<Card shadow="sm" padding="xl" radius="md" withBorder>
 					<Group gap="xl" align="flex-start">
-						<Avatar
-							src={user.picture}
-							size={120}
-							radius="md"
-							style={{
-								border: "3px solid var(--mantine-color-blue-6)",
-							}}
-						>
+						<Avatar src={user.picture} size={120} radius="md">
 							<IconUser size={60} />
 						</Avatar>
 
@@ -163,7 +152,7 @@ const MyProfile = (props: ProfileProps) => {
 										<Text size="sm" fw={500}>
 											Total Experience
 										</Text>
-										<Text size="sm" c="blue.6" fw={600}>
+										<Text size="sm" fw={600}>
 											{totalXP.toLocaleString()} XP
 										</Text>
 									</Group>
@@ -190,9 +179,7 @@ const MyProfile = (props: ProfileProps) => {
 										<Text size="sm" fw={500}>
 											Highest Level
 										</Text>
-										<Badge variant="light" color="purple">
-											Level {highestLevel}
-										</Badge>
+										<Badge variant="light">Level {highestLevel}</Badge>
 									</Group>
 
 									{characters.length > 1 && (
@@ -200,9 +187,7 @@ const MyProfile = (props: ProfileProps) => {
 											<Text size="sm" fw={500}>
 												Average Level
 											</Text>
-											<Badge variant="light" color="blue">
-												Level {averageLevel}
-											</Badge>
+											<Badge variant="light">Level {averageLevel}</Badge>
 										</Group>
 									)}
 								</Stack>
@@ -241,11 +226,7 @@ const MyProfile = (props: ProfileProps) => {
 																identity.provider.slice(1)}
 													</Text>
 												</Group>
-												<Badge
-													variant="light"
-													color={getProviderColor(identity.provider)}
-													size="xs"
-												>
+												<Badge variant="light" size="xs">
 													Active
 												</Badge>
 											</Group>
@@ -257,120 +238,6 @@ const MyProfile = (props: ProfileProps) => {
 										{new Date(user.updatedAt).toLocaleDateString()}
 									</Text>
 								</Stack>
-							</Stack>
-						</Card>
-					</Grid.Col>
-
-					{/* Recent Characters */}
-					<Grid.Col span={12}>
-						<Card shadow="sm" padding="lg" radius="md" withBorder>
-							<Stack gap="md">
-								<Group gap="sm">
-									<IconMapRoute size={20} />
-									<Title order={4}>My Characters</Title>
-									{characters.length > 0 && (
-										<Badge variant="light">
-											{characters.length} characters
-										</Badge>
-									)}
-								</Group>
-
-								{characters.length === 0 ? (
-									<Group justify="center" py="xl">
-										<Stack align="center" gap="md">
-											<IconUsersGroup size={48} opacity={0.5} />
-											<Text c="dimmed" ta="center">
-												No characters yet
-											</Text>
-											<Text size="sm" c="dimmed" ta="center">
-												Join a project to create your first character!
-											</Text>
-										</Stack>
-									</Group>
-								) : (
-									<Stack gap="md">
-										{characters.slice(0, 3).map((character) => {
-											const level = characterInfo.getLevelByXp(character.xp);
-											const maxXp = characterInfo.getMaxXpForLevel(level);
-											const currentXp = characterInfo.getCurrentXpForLevel(
-												level,
-												character.xp,
-											);
-											const xpPercentage = Math.floor(
-												(currentXp * 100) / maxXp,
-											);
-											const gold = characterInfo.getGold(character.balance);
-											const rank = characterInfo.getRank(level);
-
-											return (
-												<Card
-													key={character.id}
-													withBorder
-													p="md"
-													bg="var(--app-bg-color)"
-												>
-													<Group justify="space-between" align="flex-start">
-														<Stack gap="xs" flex={1}>
-															<Group gap="sm">
-																<Text fw={500} size="sm">
-																	{character.projectTitle}
-																</Text>
-																<Badge variant="light" color="blue" size="sm">
-																	Level {level}
-																</Badge>
-																<Badge
-																	variant="light"
-																	color={
-																		rank === "S"
-																			? "purple"
-																			: rank === "A"
-																				? "red"
-																				: rank === "B"
-																					? "orange"
-																					: rank === "C"
-																						? "yellow"
-																						: "gray"
-																	}
-																	size="sm"
-																>
-																	{rank}
-																</Badge>
-															</Group>
-
-															<Group gap="md">
-																<Group gap="xs">
-																	<IconStar size={14} />
-																	<Text size="xs" c="dimmed">
-																		{currentXp}/{maxXp} XP
-																	</Text>
-																</Group>
-																<Group gap="xs">
-																	<IconTrophy size={14} />
-																	<Text size="xs" c="yellow.6">
-																		{gold}g
-																	</Text>
-																</Group>
-															</Group>
-
-															<Progress
-																value={xpPercentage}
-																size="sm"
-																color="blue"
-																radius="xl"
-															/>
-														</Stack>
-													</Group>
-												</Card>
-											);
-										})}
-
-										{characters.length > 3 && (
-											<Text size="sm" c="dimmed" ta="center">
-												And {characters.length - 3} more characters...
-											</Text>
-										)}
-									</Stack>
-								)}
 							</Stack>
 						</Card>
 					</Grid.Col>
