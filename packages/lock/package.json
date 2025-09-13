@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/lock",
 	"description": "Distributed mutex and semaphore for resource locking and synchronization.",
-	"version": "0.9.4",
+	"version": "0.9.5",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,10 +14,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.4",
-		"@alepha/datetime": "0.9.4",
-		"@alepha/logger": "0.9.4",
-		"@alepha/topic": "0.9.4"
+		"@alepha/core": "0.9.5",
+		"@alepha/datetime": "0.9.5",
+		"@alepha/logger": "0.9.5",
+		"@alepha/topic": "0.9.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",

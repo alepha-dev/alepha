@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/protobuf",
-	"version": "0.9.4",
+	"version": "0.9.5",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -13,7 +13,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.4",
+		"@alepha/core": "0.9.5",
 		"protobufjs": "^7.5.4"
 	},
 	"devDependencies": {

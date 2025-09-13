@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cli",
-	"version": "0.9.4",
+	"version": "0.9.5",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -17,9 +17,9 @@
 		"alepha": "./dist/index.cjs"
 	},
 	"devDependencies": {
-		"@alepha/command": "^0.9.4",
-		"@alepha/core": "^0.9.4",
-		"@alepha/logger": "^0.9.4",
+		"@alepha/command": "^0.9.5",
+		"@alepha/core": "^0.9.5",
+		"@alepha/logger": "^0.9.5",
 		"@biomejs/biome": "^2.2.4",
 		"tsdown": "^0.15.1",
 		"typescript": "^5.9.2"

@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-helmet",
 	"description": "Essential, configurable security headers for all server responses.",
-	"version": "0.9.4",
+	"version": "0.9.5",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,8 +14,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.4",
-		"@alepha/server": "0.9.4"
+		"@alepha/core": "0.9.5",
+		"@alepha/server": "0.9.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
