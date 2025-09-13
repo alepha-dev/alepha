@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/queue
-```
-
 ## Module
 
 Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.
@@ -123,7 +117,7 @@ class NotificationService {
   notificationQueue = $queue({
     name: "notifications",
     schema: t.object({
-      type: t.union([t.literal("email"), t.literal("sms"), t.literal("push")]),
+      type: t.enum(["email", "sms", "push"]),
       recipient: t.string(),
       message: t.string(),
       metadata: t.optional(t.record(t.string(), t.any()))
@@ -331,8 +325,8 @@ Perfect for decoupling application components and handling asynchronous tasks:
 
 **Basic queue with automatic processing:**
 ```ts
-import { $queue } from "@alepha/queue";
-import { t } from "@alepha/core";
+import { $queue } from "alepha/queue";
+import { t } from "alepha";
 
 class NotificationService {
   emailQueue = $queue({
@@ -341,7 +335,7 @@ class NotificationService {
       to: t.string(),
       subject: t.string(),
       body: t.string(),
-      priority: t.optional(t.union([t.literal("high"), t.literal("normal")]))
+      priority: t.optional(t.enum(["high", "normal"]))
     }),
     handler: async (message) => {
       // This runs in a background worker
@@ -454,7 +448,7 @@ class DevTaskProcessor {
     name: "dev-tasks",
     provider: "memory",  // Use in-memory queue for development
     schema: t.object({
-      taskType: t.union([t.literal("cleanup"), t.literal("backup"), t.literal("report")]),
+      taskType: t.enum(["cleanup", "backup", "report"]),
       data: t.record(t.string(), t.any()),
       scheduledAt: t.optional(t.string())
     }),

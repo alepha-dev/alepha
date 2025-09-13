@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/server-cookies
-```
-
 ## Module
 
 Provides HTTP cookie management capabilities for server requests and responses with type-safe cookie descriptors.

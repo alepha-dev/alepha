@@ -11,7 +11,7 @@ The `Alepha` class is the core of the Alepha framework. It serves as the main en
 ### Factory
 
 ```ts
-import { Alepha } from "@alepha/core";
+import { Alepha } from "alepha";
 
 const alepha = Alepha.create();
 ```

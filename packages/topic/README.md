@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/topic
-```
-
 ## Module
 
 Generic interface for pub/sub messaging.
@@ -82,7 +76,7 @@ class UserActivityService {
     schema: {
       payload: t.object({
         userId: t.string(),
-        action: t.union([t.literal("login"), t.literal("logout"), t.literal("purchase")]),
+        action: t.enum(["login", "logout", "purchase"]),
         timestamp: t.number(),
         metadata: t.optional(t.record(t.string(), t.any()))
       })
@@ -197,7 +191,7 @@ class NotificationSubscriber {
     schema: {
       payload: t.object({
         eventType: t.string(),
-        severity: t.union([t.literal("info"), t.literal("warning"), t.literal("error")]),
+        severity: t.enum(["info", "warning", "error"]),
         serviceId: t.string(),
         message: t.string(),
         data: t.optional(t.record(t.string(), t.any()))
@@ -363,7 +357,7 @@ class NotificationService {
     schema: {
       payload: t.object({
         userId: t.string(),
-        action: t.union([t.literal("login"), t.literal("logout"), t.literal("purchase")]),
+        action: t.enum(["login", "logout", "purchase"]),
         timestamp: t.number(),
         metadata: t.optional(t.record(t.string(), t.any()))
       })
@@ -408,7 +402,7 @@ class ChatService {
         userId: t.string(),
         content: t.string(),
         timestamp: t.number(),
-        messageType: t.union([t.literal("text"), t.literal("image"), t.literal("file")])
+        messageType: t.enum(["text", "image", "file"])
       })
     }
   });

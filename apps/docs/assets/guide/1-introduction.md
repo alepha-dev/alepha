@@ -22,11 +22,11 @@ While much of Alepha is a fresh rewrite, it also stands on the shoulders of gian
 The framework's philosophy is to build where unique value can be added and integrate where it makes sense.
 To provide a seamless, end-to-end typed experience, Alepha is built upon a mandatory foundation of three exceptional tools:
 
-1.  **[React](https://react.dev/) for UIs:** The `@alepha/react` package provides a powerful routing and data-fetching system inspired by the golden era of Next.js—before Server Components. It offers a straightforward and effective model for building Server-Side Rendered (SSR) applications.
+1.  **[React](https://react.dev/) for UIs:** The `alepha/react` package provides a powerful routing and data-fetching system inspired by the golden era of Next.js—before Server Components. It offers a straightforward and effective model for building Server-Side Rendered (SSR) applications.
 
 2.  **[Drizzle ORM](https://orm.drizzle.team/) for Databases:** Alepha uses Drizzle as its foundation for database interaction. You can use Drizzle's powerful query builder directly, or leverage Alepha's type-safe repository layer (`$repository`), which provides a streamlined and integrated experience for PostgreSQL and SQLite.
 
-3.  **[Vite](https://vitejs.dev/) for Building:** Alepha applications are built and bundled using Vite. The `@alepha/vite` plugin provides a seamless build process for both your server and client code, with out-of-the-box support for deploying to Docker or Serverless.
+3.  **[Vite](https://vitejs.dev/) for Building:** Alepha applications are built and bundled using Vite. The `alepha/vite` plugin provides a seamless build process for both your server and client code, with out-of-the-box support for deploying to Docker or Serverless.
 
 These three technologies are not optional pillars; they are the core of the Alepha experience.
 
@@ -34,4 +34,4 @@ These three technologies are not optional pillars; they are the core of the Alep
 
 Alepha is optimized for Node.js but also runs seamlessly on Bun. While a native Bun integration is planned for the future, the current version performs robustly in the Bun runtime.
 
-Many packages, especially `@alepha/react`, are designed for both server and browser environments, making it a true full-stack solution.
+Many packages, especially `alepha/react`, are designed for both server and browser environments, making it a true full-stack solution.

@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/postgres
-```
-
 ## Module
 
 Postgres client based on Drizzle ORM, Alepha type-safe friendly.
@@ -175,7 +169,7 @@ const AuditLog = $entity({
     id: pg.primaryKey(t.uuid()),
     tableName: t.string(),
     recordId: t.string(),
-    action: t.union([t.literal("CREATE"), t.literal("UPDATE"), t.literal("DELETE")]),
+    action: t.enum(["CREATE", "UPDATE", "DELETE"]),
     userId: t.optional(t.string({ format: "uuid" })),
     oldValues: t.optional(t.record(t.string(), t.any())),
     newValues: t.optional(t.record(t.string(), t.any())),
@@ -246,7 +240,7 @@ const Order = $entity({
     id: pg.primaryKey(t.uuid()),
     orderNumber: t.string(),
     customerId: t.string({ format: "uuid" }),
-    status: t.union([t.literal("pending"), t.literal("processing"), t.literal("shipped"), t.literal("delivered")]),
+    status: t.enum(["pending", "processing", "shipped", "delivered"]),
     totalAmount: t.number({ minimum: 0 }),
     currency: t.string({ default: "USD" }),
     notes: t.optional(t.string()),

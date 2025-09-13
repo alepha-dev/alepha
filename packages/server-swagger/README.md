@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/server-swagger
-```
-
 ## Module
 
 Plugin for Alepha Server that provides Swagger documentation capabilities.

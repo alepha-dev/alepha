@@ -152,7 +152,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/email@workspace:packages/email":
+"@alepha/email@npm:0.9.4, @alepha/email@workspace:packages/email":
   version: 0.0.0-use.local
   resolution: "@alepha/email@workspace:packages/email"
   dependencies:
@@ -5815,6 +5815,7 @@ __metadata:
     "@alepha/command": "npm:0.9.4"
     "@alepha/core": "npm:0.9.4"
     "@alepha/datetime": "npm:0.9.4"
+    "@alepha/email": "npm:0.9.4"
     "@alepha/file": "npm:0.9.4"
     "@alepha/lock": "npm:0.9.4"
     "@alepha/lock-redis": "npm:0.9.4"

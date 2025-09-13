@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/server-rate-limit
-```
-
 ## Module
 
 Provides rate limiting capabilities for server actions with configurable limits and windows.

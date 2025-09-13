@@ -235,7 +235,7 @@ export async function generateReadmes(root: string, log = console.log) {
 			// --- Build the README content ---
 			let readmeContent = `# Alepha ${formattedName}\n\n${pkgJson.description}\n`;
 
-			readmeContent += `\n## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\nAlternatively, you can install it individually:\n\n\`\`\`bash\nnpm install ${pkgJson.name === "@alepha/core" ? pkgJson.name : `@alepha/core ${pkgJson.name}`}\n\`\`\`\n\n`;
+			readmeContent += `\n## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\n`;
 
 			if (moduleDescription) {
 				readmeContent += `## Module\n\n`;

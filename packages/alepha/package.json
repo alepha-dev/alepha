@@ -22,6 +22,7 @@
 		"@alepha/command": "0.9.4",
 		"@alepha/core": "0.9.4",
 		"@alepha/datetime": "0.9.4",
+		"@alepha/email": "0.9.4",
 		"@alepha/file": "0.9.4",
 		"@alepha/lock": "0.9.4",
 		"@alepha/lock-redis": "0.9.4",
@@ -109,6 +110,11 @@
 			"import": "./datetime.js",
 			"require": "./datetime.cjs",
 			"types": "./datetime.d.ts"
+		},
+		"./email": {
+			"import": "./email.js",
+			"require": "./email.cjs",
+			"types": "./email.d.ts"
 		},
 		"./file": {
 			"import": "./file.js",
@@ -290,6 +296,7 @@
 		"command",
 		"core",
 		"datetime",
+		"email",
 		"file",
 		"lock",
 		"lock-redis",

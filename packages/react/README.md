@@ -10,12 +10,6 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
-Alternatively, you can install it individually:
-
-```bash
-npm install @alepha/core @alepha/react
-```
-
 ## Module
 
 Provides full-stack React development with declarative routing, server-side rendering, and client-side hydration.
