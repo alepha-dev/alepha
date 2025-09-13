@@ -1,4 +1,4 @@
-import { useActive } from "@alepha/react";
+import { useActive, useRouter } from "@alepha/react";
 import {
 	Flex,
 	NavLink,
@@ -8,7 +8,12 @@ import {
 	useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconHeartHandshake, IconMap2, IconPackage } from "@tabler/icons-react";
+import {
+	IconHeartHandshake,
+	IconMap2,
+	IconPackage,
+	IconRobot,
+} from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { docs } from "../config/docs.ts";
 import { iconByName } from "../config/icons.ts";
@@ -51,6 +56,7 @@ const MyNavLink = (
 };
 
 const Sidebar = (props: Props) => {
+	const router = useRouter();
 	const navLinks = useMemo(
 		() => [
 			{
@@ -109,6 +115,12 @@ const Sidebar = (props: Props) => {
 							))}
 						</NavLink>
 					))}
+					<NavLink
+						component={"a"}
+						href={router.base("/llms.txt")}
+						label={"LLM"}
+						leftSection={<IconRobot />}
+					/>
 				</Flex>
 			</Flex>
 		</ScrollArea>
