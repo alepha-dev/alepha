@@ -223,14 +223,7 @@ export class InvitationApi {
 			params: t.object({
 				projectId: t.int(),
 			}),
-			response: t.array(
-				t.object({
-					id: t.uuid(),
-					invitedEmail: t.string(),
-					status: t.enum(["pending", "accepted", "rejected"]),
-					createdAt: t.datetime(),
-				}),
-			),
+			response: t.array(invitations.$schema),
 		},
 		handler: async ({ params, user }) => {
 			// Check if user has permission to view invitations for this project
