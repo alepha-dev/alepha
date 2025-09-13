@@ -72,8 +72,12 @@ function main() {
 		mkdirSync(OUTPUT_DIR, { recursive: true });
 	}
 
+	const pkg = readFileSync(join(__dirname, "../package.json"), "utf-8");
+	const { dependencies } = JSON.parse(pkg);
+	const version = dependencies["@alepha/core"];
+
 	// Concatenate all markdown content
-	let concatenatedContent = `# Alepha Framework Documentation\n\nThis file contains all documentation for the Alepha framework, concatenated for LLM context.\n\nGenerated on: ${new Date().toISOString()}\n\n---\n`;
+	let concatenatedContent = `# Alepha Framework Documentation\n\nThis file contains all documentation for the Alepha framework, concatenated for LLM context.\n\nLatest version: ${version}\nGenerated on: ${new Date().toISOString()}\n\n---\n`;
 
 	for (const filePath of markdownFiles) {
 		console.log(`📖 Reading: ${filePath.replace(`${DOCS_DIR}/`, "")}`);
