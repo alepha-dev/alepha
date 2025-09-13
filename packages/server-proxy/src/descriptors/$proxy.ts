@@ -9,7 +9,7 @@ import type { ServerRequest } from "@alepha/server";
  * useful for microservice architectures, API gateways, or when you need to aggregate multiple
  * services behind a single endpoint.
  *
- * ## Key Features
+ * **Key Features**
  *
  * - **Path-based routing**: Match specific paths or patterns to proxy
  * - **Dynamic targets**: Support both static and dynamic target resolution
@@ -24,9 +24,9 @@ import type { ServerRequest } from "@alepha/server";
  *
  * class ApiGateway {
  *   // Forward all /api/* requests to external service
- *   api = $proxy({ 
- *     path: "/api/*", 
- *     target: "https://api.example.com" 
+ *   api = $proxy({
+ *     path: "/api/*",
+ *     target: "https://api.example.com"
  *   });
  * }
  * ```
@@ -38,7 +38,7 @@ import type { ServerRequest } from "@alepha/server";
  *   // Route to different environments based on configuration
  *   api = $proxy({
  *     path: "/api/*",
- *     target: () => process.env.NODE_ENV === "production" 
+ *     target: () => process.env.NODE_ENV === "production"
  *       ? "https://api.prod.example.com"
  *       : "https://api.dev.example.com"
  *   });
@@ -91,12 +91,12 @@ export const $proxy = (options: ProxyDescriptorOptions): ProxyDescriptor => {
 export type ProxyDescriptorOptions = {
 	/**
 	 * Path pattern to match for proxying requests.
-	 * 
+	 *
 	 * Supports wildcards and path parameters:
 	 * - `/api/*` - Matches all paths starting with `/api/`
 	 * - `/api/v1/*` - Matches all paths starting with `/api/v1/`
 	 * - `/users/:id` - Matches `/users/123`, `/users/abc`, etc.
-	 * 
+	 *
 	 * @example "/api/*"
 	 * @example "/secure/admin/*"
 	 * @example "/users/:id/posts"
@@ -105,13 +105,13 @@ export type ProxyDescriptorOptions = {
 
 	/**
 	 * Target URL to which matching requests should be forwarded.
-	 * 
+	 *
 	 * Can be either:
 	 * - **Static string**: A fixed URL like `"https://api.example.com"`
 	 * - **Dynamic function**: A function that returns the URL, enabling runtime target resolution
-	 * 
+	 *
 	 * The target URL will be combined with the remaining path from the original request.
-	 * 
+	 *
 	 * @example "https://api.example.com"
 	 * @example () => process.env.API_URL || "http://localhost:3001"
 	 */
@@ -119,10 +119,10 @@ export type ProxyDescriptorOptions = {
 
 	/**
 	 * Whether this proxy is disabled.
-	 * 
+	 *
 	 * When `true`, requests matching the path will not be proxied and will be handled
 	 * by other routes or return 404. Useful for feature toggles or conditional proxying.
-	 * 
+	 *
 	 * @default false
 	 * @example !process.env.ENABLE_PROXY
 	 */
@@ -130,16 +130,16 @@ export type ProxyDescriptorOptions = {
 
 	/**
 	 * Hook called before forwarding the request to the target server.
-	 * 
+	 *
 	 * Use this to:
 	 * - Add authentication headers
 	 * - Modify request headers or body
 	 * - Add request tracking/logging
 	 * - Transform the request before forwarding
-	 * 
+	 *
 	 * @param request - The original incoming server request
 	 * @param proxyRequest - The request that will be sent to the target (modifiable)
-	 * 
+	 *
 	 * @example
 	 * ```ts
 	 * beforeRequest: async (request, proxyRequest) => {
@@ -158,21 +158,21 @@ export type ProxyDescriptorOptions = {
 
 	/**
 	 * Hook called after receiving the response from the target server.
-	 * 
+	 *
 	 * Use this to:
 	 * - Log response details for monitoring
 	 * - Add custom headers to the response
 	 * - Transform response data
 	 * - Handle error responses
-	 * 
+	 *
 	 * @param request - The original incoming server request
 	 * @param proxyResponse - The response received from the target server
-	 * 
+	 *
 	 * @example
 	 * ```ts
 	 * afterResponse: async (request, proxyResponse) => {
 	 *   console.log(`Proxy ${request.method} ${request.url} -> ${proxyResponse.status}`);
-	 *   
+	 *
 	 *   if (!proxyResponse.ok) {
 	 *     await logError(`Proxy error: ${proxyResponse.status}`, { request, response: proxyResponse });
 	 *   }
@@ -186,17 +186,17 @@ export type ProxyDescriptorOptions = {
 
 	/**
 	 * Function to rewrite the URL before sending to the target server.
-	 * 
+	 *
 	 * Use this to:
 	 * - Remove or add path prefixes
 	 * - Transform path parameters
 	 * - Modify query parameters
 	 * - Change the URL structure entirely
-	 * 
+	 *
 	 * The function receives a mutable URL object and should modify it in-place.
-	 * 
+	 *
 	 * @param url - The URL object to modify (mutable)
-	 * 
+	 *
 	 * @example
 	 * ```ts
 	 * // Remove /api prefix when forwarding
@@ -204,7 +204,7 @@ export type ProxyDescriptorOptions = {
 	 *   url.pathname = url.pathname.replace('/api', '');
 	 * }
 	 * ```
-	 * 
+	 *
 	 * @example
 	 * ```ts
 	 * // Add version prefix

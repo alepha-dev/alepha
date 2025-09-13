@@ -10,7 +10,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  * leverage multiple CPU cores and avoid blocking the main event loop. It provides a pool-based
  * approach with intelligent thread reuse and automatic lifecycle management.
  *
- * ## Key Features
+ * **Key Features**
  *
  * - **Thread Pool Management**: Automatically manages a pool of worker threads with configurable limits
  * - **Thread Reuse**: Reuses existing threads to avoid expensive initialization overhead
@@ -19,7 +19,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  * - **CPU-Aware Defaults**: Pool size defaults to CPU count × 2 for optimal performance
  * - **Error Handling**: Proper error propagation and thread cleanup on failures
  *
- * ## Use Cases
+ * **Use Cases**
  *
  * Perfect for CPU-intensive tasks that would otherwise block the main thread:
  * - Image/video processing
@@ -45,7 +45,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  *       return { result, timestamp: Date.now() };
  *     }
  *   });
- * 
+ *
  *   async processData() {
  *     // Execute in worker thread without blocking main thread
  *     const result = await this.heavyComputation.execute();
@@ -74,7 +74,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  * **Thread with data validation:**
  * ```ts
  * import { t } from "@alepha/core";
- * 
+ *
  * class CryptoService {
  *   encrypt = $thread({
  *     name: "encryption",
@@ -83,14 +83,14 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  *       return await encryptData();
  *     }
  *   });
- * 
+ *
  *   async encryptSensitiveData(data: { text: string; key: string }) {
  *     // Validate input data before sending to thread
  *     const schema = t.object({
  *       text: t.string(),
  *       key: t.string()
  *     });
- * 
+ *
  *     return await this.encrypt.execute(data, schema);
  *   }
  * }
@@ -107,7 +107,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  *       return await processBatchItem();
  *     }
  *   });
- * 
+ *
  *   async processBatch(items: any[]) {
  *     // Process multiple items in parallel across different threads
  *     const promises = items.map(() => this.processor.execute());
@@ -126,14 +126,14 @@ export const $thread = (options: ThreadDescriptorOptions): ThreadDescriptor => {
 export interface ThreadDescriptorOptions {
 	/**
 	 * Unique name for this thread worker.
-	 * 
+	 *
 	 * Used for:
 	 * - Thread pool identification (threads with same name share the same pool)
 	 * - Logging and debugging
 	 * - Error messages and stack traces
-	 * 
+	 *
 	 * If not provided, defaults to the property key of the descriptor.
-	 * 
+	 *
 	 * @example "image-processor"
 	 * @example "crypto-worker"
 	 * @example "data-analysis"
@@ -142,18 +142,18 @@ export interface ThreadDescriptorOptions {
 
 	/**
 	 * The function to execute in the worker thread.
-	 * 
+	 *
 	 * This function:
 	 * - Runs in a separate Node.js worker thread
 	 * - Should contain the CPU-intensive logic
 	 * - Can be async and return any serializable data
 	 * - Has access to standard Node.js APIs and modules
 	 * - Cannot directly access the main thread's memory or variables
-	 * 
+	 *
 	 * **Important**: The handler function is serialized and sent to the worker thread,
 	 * so it cannot reference variables from the parent scope (closures won't work).
 	 * All required data must be passed via the `execute()` method.
-	 * 
+	 *
 	 * @example
 	 * ```ts
 	 * handler: async () => {
@@ -167,18 +167,18 @@ export interface ThreadDescriptorOptions {
 
 	/**
 	 * Maximum number of worker threads in the pool.
-	 * 
+	 *
 	 * Controls how many threads can run concurrently for this named thread worker.
 	 * When all threads are busy, additional `execute()` calls will queue until a thread becomes available.
-	 * 
+	 *
 	 * **Default**: `cpus().length * 2` (number of CPU cores × 2)
-	 * 
+	 *
 	 * **Guidelines**:
 	 * - For CPU-bound tasks: Set to number of CPU cores
 	 * - For I/O-bound tasks in workers: Can be higher (2x CPU cores)
 	 * - For memory-intensive tasks: Set lower to avoid memory pressure
 	 * - For short-lived tasks: Can be higher for better throughput
-	 * 
+	 *
 	 * @default cpus().length * 2
 	 * @example 4    // Limit to 4 concurrent threads
 	 * @example 1    // Single worker thread (sequential processing)
@@ -188,18 +188,18 @@ export interface ThreadDescriptorOptions {
 
 	/**
 	 * Time in milliseconds before idle worker threads are terminated.
-	 * 
+	 *
 	 * When a worker thread has been idle (not executing any tasks) for this duration,
 	 * it will be automatically terminated to free up system resources. New threads
 	 * will be created as needed when new tasks are submitted.
-	 * 
+	 *
 	 * **Default**: 60000 (60 seconds)
-	 * 
+	 *
 	 * **Considerations**:
 	 * - Shorter timeouts: Save memory but increase thread creation overhead
 	 * - Longer timeouts: Keep threads ready but consume more memory
 	 * - Very short timeouts may cause constant thread creation/destruction
-	 * 
+	 *
 	 * @default 60000
 	 * @example 30000   // 30 seconds
 	 * @example 120000  // 2 minutes

@@ -19,7 +19,7 @@ import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
  * by storing frequently accessed data in memory or external cache stores like Redis. It supports both
  * function result caching and manual cache operations with intelligent serialization and TTL management.
  *
- * ## Key Features
+ * **Key Features**
  *
  * - **Function Result Caching**: Automatically cache function results based on input parameters
  * - **Multiple Storage Backends**: Support for in-memory, Redis, and custom cache providers
@@ -58,7 +58,7 @@ import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
  *       return await database.users.findById(userId);
  *     }
  *   });
- * 
+ *
  *   async getUser(id: string) {
  *     // This will hit cache on subsequent calls with same ID
  *     return await this.getUserData(id);
@@ -91,15 +91,15 @@ import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
  *     ttl: [1, "hour"],
  *     provider: "memory"  // Use memory cache for sessions
  *   });
- * 
+ *
  *   async storeSession(sessionId: string, session: UserSession) {
  *     await this.sessionCache.set(sessionId, session);
  *   }
- * 
+ *
  *   async getSession(sessionId: string): Promise<UserSession | undefined> {
  *     return await this.sessionCache.get(sessionId);
  *   }
- * 
+ *
  *   async invalidateUserSessions(userId: string) {
  *     // Invalidate all sessions for a user using wildcards
  *     await this.sessionCache.invalidate(`user:${userId}:*`);
@@ -119,11 +119,11 @@ import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
  *       return await this.database.products.findById(productId);
  *     }
  *   });
- * 
+ *
  *   async invalidateProduct(productId: string) {
  *     await this.productCache.invalidate(productId);
  *   }
- * 
+ *
  *   async invalidateAllProducts() {
  *     await this.productCache.invalidate("*");
  *   }

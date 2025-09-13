@@ -15,7 +15,7 @@ import type { QueueDescriptor } from "./$queue.ts";
  * message production from consumption, enabling scalable architectures where multiple
  * consumers can process messages from the same queue.
  *
- * ## Key Features
+ * **Key Features**
  *
  * - **Queue Integration**: Seamlessly connects to any $queue descriptor
  * - **Type Safety**: Full TypeScript support inherited from the connected queue's schema
@@ -24,7 +24,7 @@ import type { QueueDescriptor } from "./$queue.ts";
  * - **Error Handling**: Built-in error handling and retry mechanisms from the queue system
  * - **Scalability**: Multiple consumers can process the same queue for horizontal scaling
  *
- * ## Use Cases
+ * **Use Cases**
  *
  * Perfect for creating specialized message processors:
  * - Dedicated email sending services

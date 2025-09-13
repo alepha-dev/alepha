@@ -28,7 +28,7 @@ import {
  * and multiple subscribers to receive them, creating flexible event-driven architectures with
  * support for real-time messaging and asynchronous event processing.
  *
- * ## Key Features
+ * **Key Features**
  *
  * - **Publish/Subscribe Pattern**: Decoupled communication between publishers and subscribers
  * - **Multiple Subscribers**: One-to-many message distribution with automatic fan-out
@@ -39,7 +39,7 @@ import {
  * - **Multiple Backends**: Support for in-memory, Redis, and custom topic providers
  * - **Error Resilience**: Built-in error handling and message processing recovery
  *
- * ## Use Cases
+ * **Use Cases**
  *
  * Perfect for event-driven architectures and real-time communication:
  * - User activity notifications
@@ -184,16 +184,16 @@ import {
  *     try {
  *       const paymentEvent = await this.orderEvents.wait({
  *         timeout: [5, "minutes"],
- *         filter: (message) => 
- *           message.payload.orderId === orderId && 
+ *         filter: (message) =>
+ *           message.payload.orderId === orderId &&
  *           message.payload.status === "paid"
  *       });
  *
  *       console.log(`Order ${orderId} was paid at ${paymentEvent.payload.timestamp}`);
- *       
+ *
  *       // Continue with shipping...
  *       await this.initiateShipping(orderId);
- *       
+ *
  *     } catch (error) {
  *       if (error instanceof TopicTimeoutError) {
  *         console.log(`Payment timeout for order ${orderId}`);
@@ -252,7 +252,7 @@ import {
  *           message.payload.serviceId,
  *           message.payload.data.healthy
  *         );
- *         
+ *
  *         if (!message.payload.data.healthy) {
  *           await this.alertOnCall(`Service ${message.payload.serviceId} is down`);
  *         }
@@ -416,11 +416,11 @@ export interface TopicDescriptorOptions<T extends TopicMessageSchema> {
 	 * ```ts
 	 * handler: async (message) => {
 	 *   const { eventType, data, timestamp } = message.payload;
-	 *   
+	 *
 	 *   try {
 	 *     // Log message receipt
 	 *     this.logger.info(`Processing ${eventType} event`, { timestamp, data });
-	 *     
+	 *
 	 *     // Process based on event type
 	 *     switch (eventType) {
 	 *       case "created":
@@ -432,9 +432,9 @@ export interface TopicDescriptorOptions<T extends TopicMessageSchema> {
 	 *       default:
 	 *         this.logger.warn(`Unknown event type: ${eventType}`);
 	 *     }
-	 *     
+	 *
 	 *     this.logger.info(`Successfully processed ${eventType} event`);
-	 *     
+	 *
 	 *   } catch (error) {
 	 *     // Log error but don't re-throw to avoid affecting other subscribers
 	 *     this.logger.error(`Failed to process ${eventType} event`, {
