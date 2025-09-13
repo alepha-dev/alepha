@@ -206,7 +206,7 @@ const UserRole = $entity({
     roleId: t.string({ format: "uuid" }),
     assignedBy: t.string({ format: "uuid" }),
     assignedAt: pg.createdAt(),
-    expiresAt: t.optional(t.string({ format: "date-time" }))
+    expiresAt: t.optional(t.datetime())
   }),
   indexes: [
     "userId",

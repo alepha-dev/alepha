@@ -17,6 +17,8 @@ export type Docs = Record<
 		name: string;
 		description: string;
 		content: string;
+		originalContent: string;
+		originalName: string;
 		path: string;
 	}>
 >;
@@ -97,11 +99,16 @@ class App {
 					);
 
 					for await (const file of files) {
+						const filepath = join(rootDir, file);
+						const originalContent = await readFile(filepath, "utf-8");
+						const content = await this.renderContent(originalContent);
 						const name = basename(file.replace(".md", ""));
 						docs[category].push({
 							slug: `${this.slug(name)}`,
 							name: this.pretty(name),
-							content: await this.renderFile(join(rootDir, file)),
+							content,
+							originalContent,
+							originalName: basename(file),
 							description: "",
 							path: file,
 						});
@@ -134,11 +141,16 @@ class App {
 						continue; // skip "alepha"
 					}
 
+					const originalContent = await readFile(filepath, "utf-8");
+					const content = await this.renderContent(originalContent);
+
 					docs.packages.push({
 						slug: this.slug(name),
 						name: this.pretty(name),
 						description,
-						content: await this.renderFile(filepath),
+						content,
+						originalContent,
+						originalName: `${this.slug(name)}.md`,
 						path: file,
 					});
 
@@ -165,6 +177,10 @@ class App {
 						await writeFile(
 							path.join(outputDir, filename),
 							`export default \`${content}\``,
+						);
+						await writeFile(
+							path.join(outputDir, `${key}-${it.originalName}`),
+							it.originalContent,
 						);
 
 						result.push({
@@ -214,13 +230,8 @@ class App {
 			.join(" ");
 	}
 
-	async renderFile(filepath: string) {
-		const content = await readFile(filepath, "utf8");
-		return await this.renderContent(content);
-	}
-
-	async renderContent(content: string) {
-		return await this.marked.parse(content);
+	renderContent(content: string) {
+		return this.marked.parse(content);
 	}
 }
 

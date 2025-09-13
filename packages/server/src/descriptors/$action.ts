@@ -84,7 +84,7 @@ import {
  *           id: t.string(),
  *           name: t.string(),
  *           email: t.string(),
- *           createdAt: t.string({ format: "date-time" })
+ *           createdAt: t.datetime()
  *         })),
  *         total: t.number(),
  *         hasMore: t.boolean()
@@ -117,7 +117,7 @@ import {
  *         name: t.string(),
  *         email: t.string(),
  *         role: t.string(),
- *         createdAt: t.string({ format: "date-time" })
+ *         createdAt: t.datetime()
  *       })
  *     },
  *     handler: async ({ body }) => {
@@ -185,7 +185,7 @@ import {
  *         id: t.string(),
  *         name: t.string(),
  *         email: t.string(),
- *         updatedAt: t.string({ format: "date-time" })
+ *         updatedAt: t.datetime()
  *       })
  *     },
  *     handler: async ({ params, body }) => {
@@ -215,7 +215,7 @@ import {
  *         url: t.string({ format: "uri" }),
  *         size: t.number(),
  *         mimeType: t.string(),
- *         uploadedAt: t.string({ format: "date-time" })
+ *         uploadedAt: t.datetime()
  *       })
  *     },
  *     handler: async ({ body }) => {
@@ -301,8 +301,8 @@ import {
  *           t.literal("cancelled")
  *         ])),
  *         customerId: t.optional(t.string()),
- *         dateFrom: t.optional(t.string({ format: "date" })),
- *         dateTo: t.optional(t.string({ format: "date" })),
+ *         dateFrom: t.optional(t.date()),
+ *         dateTo: t.optional(t.date()),
  *         minAmount: t.optional(t.number({ minimum: 0 })),
  *         maxAmount: t.optional(t.number({ minimum: 0 })),
  *         sortBy: t.optional(t.union([
@@ -320,7 +320,7 @@ import {
  *           customerName: t.string(),
  *           status: t.string(),
  *           totalAmount: t.number(),
- *           createdAt: t.string({ format: "date-time" }),
+ *           createdAt: t.datetime(),
  *           itemCount: t.number()
  *         })),
  *         pagination: t.object({
@@ -371,12 +371,12 @@ import {
  *       response: t.object({
  *         orderId: t.string(),
  *         status: t.string(),
- *         processedAt: t.string({ format: "date-time" }),
- *         estimatedFulfillment: t.string({ format: "date-time" }),
+ *         processedAt: t.datetime(),
+ *         estimatedFulfillment: t.datetime(),
  *         trackingInfo: t.optional(t.object({
  *           trackingNumber: t.string(),
  *           carrier: t.string(),
- *           estimatedDelivery: t.string({ format: "date" })
+ *           estimatedDelivery: t.date()
  *         }))
  *       })
  *     },
@@ -454,7 +454,7 @@ import {
  *           byRegistrationSource: t.record(t.string(), t.number())
  *         }),
  *         trends: t.array(t.object({
- *           date: t.string({ format: "date" }),
+ *           date: t.date(),
  *           registrations: t.number(),
  *           activations: t.number()
  *         }))

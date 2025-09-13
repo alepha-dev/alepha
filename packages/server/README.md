@@ -94,7 +94,7 @@ class UserController {
           id: t.string(),
           name: t.string(),
           email: t.string(),
-          createdAt: t.string({ format: "date-time" })
+          createdAt: t.datetime()
         })),
         total: t.number(),
         hasMore: t.boolean()
@@ -127,7 +127,7 @@ class UserController {
         name: t.string(),
         email: t.string(),
         role: t.string(),
-        createdAt: t.string({ format: "date-time" })
+        createdAt: t.datetime()
       })
     },
     handler: async ({ body }) => {
@@ -195,7 +195,7 @@ class UserController {
         id: t.string(),
         name: t.string(),
         email: t.string(),
-        updatedAt: t.string({ format: "date-time" })
+        updatedAt: t.datetime()
       })
     },
     handler: async ({ params, body }) => {
@@ -224,7 +224,7 @@ class FileController {
         url: t.string({ format: "uri" }),
         size: t.number(),
         mimeType: t.string(),
-        uploadedAt: t.string({ format: "date-time" })
+        uploadedAt: t.datetime()
       })
     },
     handler: async ({ body }) => {
@@ -309,8 +309,8 @@ class OrderController {
           t.literal("cancelled")
         ])),
         customerId: t.optional(t.string()),
-        dateFrom: t.optional(t.string({ format: "date" })),
-        dateTo: t.optional(t.string({ format: "date" })),
+        dateFrom: t.optional(t.date()),
+        dateTo: t.optional(t.date()),
         minAmount: t.optional(t.number({ minimum: 0 })),
         maxAmount: t.optional(t.number({ minimum: 0 })),
         sortBy: t.optional(t.union([
@@ -328,7 +328,7 @@ class OrderController {
           customerName: t.string(),
           status: t.string(),
           totalAmount: t.number(),
-          createdAt: t.string({ format: "date-time" }),
+          createdAt: t.datetime(),
           itemCount: t.number()
         })),
         pagination: t.object({
@@ -379,12 +379,12 @@ class OrderController {
       response: t.object({
         orderId: t.string(),
         status: t.string(),
-        processedAt: t.string({ format: "date-time" }),
-        estimatedFulfillment: t.string({ format: "date-time" }),
+        processedAt: t.datetime(),
+        estimatedFulfillment: t.datetime(),
         trackingInfo: t.optional(t.object({
           trackingNumber: t.string(),
           carrier: t.string(),
-          estimatedDelivery: t.string({ format: "date" })
+          estimatedDelivery: t.date()
         }))
       })
     },
@@ -461,7 +461,7 @@ class AdminController {
           byRegistrationSource: t.record(t.string(), t.number())
         }),
         trends: t.array(t.object({
-          date: t.string({ format: "date" }),
+          date: t.date(),
           registrations: t.number(),
           activations: t.number()
         }))

@@ -26,9 +26,10 @@
 	},
 	"scripts": {
 		"dev": "yarn copy && vite --host",
-		"build": "vite build",
+		"build": "vite build && yarn codegen:llms",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",
+		"codegen:llms": "node scripts/codegen-llms.ts",
 		"preview": "vite build --base=/alepha && vite preview --outDir dist/public --base=/alepha",
 		"check": "tsc"
 	}

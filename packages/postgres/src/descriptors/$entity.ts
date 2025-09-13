@@ -159,7 +159,7 @@ import { updateSchema } from "../schemas/updateSchema.ts";
  *     roleId: t.string({ format: "uuid" }),
  *     assignedBy: t.string({ format: "uuid" }),
  *     assignedAt: pg.createdAt(),
- *     expiresAt: t.optional(t.string({ format: "date-time" }))
+ *     expiresAt: t.optional(t.datetime())
  *   }),
  *   indexes: [
  *     "userId",
