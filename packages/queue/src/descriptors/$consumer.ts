@@ -87,7 +87,7 @@ import type { QueueDescriptor } from "./$queue.ts";
  *   notificationQueue = $queue({
  *     name: "notifications",
  *     schema: t.object({
- *       type: t.union([t.literal("email"), t.literal("sms"), t.literal("push")]),
+ *       type: t.enum(["email", "sms", "push"]),
  *       recipient: t.string(),
  *       message: t.string(),
  *       metadata: t.optional(t.record(t.string(), t.any()))

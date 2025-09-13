@@ -110,7 +110,7 @@ import {
  *         name: t.string({ minLength: 2, maxLength: 100 }),
  *         email: t.string({ format: "email" }),
  *         password: t.string({ minLength: 8 }),
- *         role: t.optional(t.union([t.literal("user"), t.literal("admin")]))
+ *         role: t.optional(t.enum(["user", "admin"]))
  *       }),
  *       response: t.object({
  *         id: t.string(),
@@ -253,14 +253,14 @@ import {
  *       }),
  *       response: t.file()
  *     },
- *     handler: async ({ params, query, reply }) => {
+ *     handler: async ({ params, query, reply, user }) => {
  *       const file = await this.fileService.findById(params.id);
  *       if (!file) {
  *         throw new Error("File not found");
  *       }
  *
  *       // Check permissions
- *       await this.fileService.checkAccess(params.id, request.user?.id);
+ *       await this.fileService.checkAccess(params.id, user.id);
  *
  *       const fileBuffer = query.thumbnail
  *         ? await this.fileService.getThumbnail(file.id)
@@ -310,7 +310,7 @@ import {
  *           t.literal("amount"),
  *           t.literal("status")
  *         ])),
- *         sortOrder: t.optional(t.union([t.literal("asc"), t.literal("desc")]))
+ *         sortOrder: t.optional(t.enum(["asc", "desc"]))
  *       }),
  *       response: t.object({
  *         orders: t.array(t.object({
@@ -380,7 +380,7 @@ import {
  *         }))
  *       })
  *     },
- *     handler: async ({ params, body }) => {
+ *     handler: async ({ params, body, user }) => {
  *       // Validate order can be processed
  *       const order = await this.orderService.findById(params.id);
  *       if (!order || order.status !== "pending") {
@@ -405,7 +405,7 @@ import {
  *
  *       // Update order status
  *       await this.orderService.updateStatus(params.id, "processing", {
- *         processedBy: request.user?.id,
+ *         processedBy: user.id,
  *         processedAt: new Date(),
  *         notes: body.notes
  *       });
@@ -460,12 +460,12 @@ import {
  *         }))
  *       })
  *     },
- *     handler: async ({ query, request }) => {
- *       // request.user is available through security integration
+ *     handler: async ({ query, user }) => {
+ *       // user is available through security integration
  *       this.auditLogger.log({
  *         action: "admin.getUserStats",
- *         userId: request.user.id,
- *         userRole: request.user.role,
+ *         userId: user.id,
+ *         userRole: user.role,
  *         timestamp: new Date()
  *       });
  *
@@ -506,13 +506,13 @@ import {
  *         auditLogId: t.string()
  *       })
  *     },
- *     handler: async ({ body, request }) => {
+ *     handler: async ({ body, user }) => {
  *       const results = { updated: 0, failed: 0, errors: [] };
  *
  *       // Create audit log entry
  *       const auditLogId = await this.auditService.logBulkOperation({
  *         operation: "bulk_user_update",
- *         initiatedBy: request.user.id,
+ *         initiatedBy: user.id,
  *         targetCount: body.userIds.length,
  *         reason: body.reason,
  *         changes: body.updates

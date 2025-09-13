@@ -90,9 +90,9 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  *   notificationBatch = $batch({
  *     schema: t.object({
  *       userId: t.string(),
- *       type: t.union([t.literal("email"), t.literal("sms"), t.literal("push")]),
+ *       type: t.enum(["email", "sms", "push"]),
  *       message: t.string(),
- *       priority: t.union([t.literal("high"), t.literal("normal"), t.literal("low")])
+ *       priority: t.enum(["high", "normal", "low"])
  *     }),
  *     maxSize: 100,
  *     maxDuration: [10, "seconds"],
@@ -148,7 +148,7 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  *   logBatch = $batch({
  *     schema: t.object({
  *       timestamp: t.number(),
- *       level: t.union([t.literal("info"), t.literal("warn"), t.literal("error")]),
+ *       level: t.enum(["info", "warn", "error"]),
  *       message: t.string(),
  *       metadata: t.optional(t.record(t.string(), t.any())),
  *       source: t.string()
@@ -213,13 +213,13 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  *   fileProcessingBatch = $batch({
  *     schema: t.object({
  *       filePath: t.string(),
- *       fileType: t.union([t.literal("image"), t.literal("video"), t.literal("document")]),
+ *       fileType: t.enum(["image", "video", "document"]),
  *       processingOptions: t.object({
- *         quality: t.optional(t.union([t.literal("low"), t.literal("medium"), t.literal("high")])),
+ *         quality: t.optional(t.enum(["low", "medium", "high"])),
  *         format: t.optional(t.string()),
  *         compress: t.optional(t.boolean())
  *       }),
- *       priority: t.union([t.literal("urgent"), t.literal("normal"), t.literal("background")])
+ *       priority: t.enum(["urgent", "normal", "background"])
  *     }),
  *     maxSize: 20,         // Smaller batches for file processing
  *     maxDuration: [2, "minutes"],  // Reasonable time for file accumulation
@@ -310,10 +310,10 @@ export interface BatchDescriptorOptions<
 	 * ```ts
 	 * t.object({
 	 *   id: t.string(),
-	 *   operation: t.union([t.literal("create"), t.literal("update")]),
+	 *   operation: t.enum(["create", "update"]),
 	 *   data: t.record(t.string(), t.any()),
 	 *   timestamp: t.optional(t.number()),
-	 *   priority: t.optional(t.union([t.literal("high"), t.literal("normal")]))
+	 *   priority: t.optional(t.enum(["high", "normal"]))
 	 * })
 	 * ```
 	 */

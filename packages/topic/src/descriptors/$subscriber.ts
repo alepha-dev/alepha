@@ -45,7 +45,7 @@ import type {
  *     schema: {
  *       payload: t.object({
  *         userId: t.string(),
- *         action: t.union([t.literal("login"), t.literal("logout"), t.literal("purchase")]),
+ *         action: t.enum(["login", "logout", "purchase"]),
  *         timestamp: t.number(),
  *         metadata: t.optional(t.record(t.string(), t.any()))
  *       })
@@ -162,7 +162,7 @@ import type {
  *     schema: {
  *       payload: t.object({
  *         eventType: t.string(),
- *         severity: t.union([t.literal("info"), t.literal("warning"), t.literal("error")]),
+ *         severity: t.enum(["info", "warning", "error"]),
  *         serviceId: t.string(),
  *         message: t.string(),
  *         data: t.optional(t.record(t.string(), t.any()))

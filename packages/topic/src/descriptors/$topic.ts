@@ -62,7 +62,7 @@ import {
  *     schema: {
  *       payload: t.object({
  *         userId: t.string(),
- *         action: t.union([t.literal("login"), t.literal("logout"), t.literal("purchase")]),
+ *         action: t.enum(["login", "logout", "purchase"]),
  *         timestamp: t.number(),
  *         metadata: t.optional(t.record(t.string(), t.any()))
  *       })
@@ -108,7 +108,7 @@ import {
  *         userId: t.string(),
  *         content: t.string(),
  *         timestamp: t.number(),
- *         messageType: t.union([t.literal("text"), t.literal("image"), t.literal("file")])
+ *         messageType: t.enum(["text", "image", "file"])
  *       })
  *     }
  *   });
@@ -370,7 +370,7 @@ export interface TopicDescriptorOptions<T extends TopicMessageSchema> {
 	 * {
 	 *   payload: t.object({
 	 *     eventId: t.string(),
-	 *     eventType: t.union([t.literal("created"), t.literal("updated")]),
+	 *     eventType: t.enum(["created", "updated"]),
 	 *     data: t.record(t.string(), t.any()),
 	 *     timestamp: t.number(),
 	 *     userId: t.optional(t.string())
