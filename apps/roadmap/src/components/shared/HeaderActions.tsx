@@ -49,15 +49,19 @@ const AuthButton = () => {
 						ta={"left"}
 						variant={"subtle"}
 						leftSection={
-							<img
-								alt={"picture"}
-								style={{
-									height: "24px",
-									width: "24px",
-									borderRadius: "50%",
-								}}
-								src={"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"}
-							/>
+							auth.user.picture ? (
+								<img
+									alt={"picture"}
+									style={{
+										height: "24px",
+										width: "24px",
+										borderRadius: "50%",
+									}}
+									src={auth.user.picture}
+								/>
+							) : (
+								<IconUser size={theme.icon.size.sm} />
+							)
 						}
 					>
 						{auth.user.name}

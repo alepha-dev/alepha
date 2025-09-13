@@ -2,7 +2,7 @@ import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { $page, NotFound, ReactRouter, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react-auth";
 import { $head } from "@alepha/react-head";
-import { HttpError } from "@alepha/server";
+import { HttpError, NotFoundError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
 import { notifications } from "@mantine/notifications";
 import { createElement } from "react";
@@ -165,15 +165,17 @@ export class AppRouter {
 		lazy: () => import("./components/project/ProjectPlayers.tsx"),
 		resolve: async ({ params }) => {
 			const project = this.alepha.state("current_project");
-			const projectId = project?.id ?? -1;
+			if (!project) {
+				throw new NotFoundError("Project not found");
+			}
 
 			const [players, pendingInvitations] = await Promise.all([
 				this.projectApi.getProjectPlayers({
-					params: { id: projectId },
+					params: { id: project.id },
 				}),
 				this.invitationApi
 					.getProjectInvitations({
-						params: { projectId },
+						params: { projectId: project.id },
 					})
 					.catch(() => []), // Fail gracefully if no permission
 			]);

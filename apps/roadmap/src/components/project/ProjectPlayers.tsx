@@ -26,34 +26,18 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { InvitationApi } from "../../api/InvitationApi.ts";
+import type {
+	Character,
+	Invitation,
+	Project,
+	User,
+} from "../../api/providers/Db.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 export interface ProjectPlayersProps {
-	players: Array<{
-		id: number;
-		userId: string;
-		userName?: string;
-		userEmail: string;
-		userPicture?: string;
-		xp: number;
-		balance: number;
-		owner: boolean;
-		createdAt: string;
-		updatedAt: string;
-	}>;
-	project:
-		| {
-				id: number;
-				title: string;
-				createdBy: string;
-		  }
-		| null
-		| undefined;
-	pendingInvitations?: Array<{
-		id: string;
-		invitedEmail: string;
-		createdAt: string;
-	}>;
+	players: Array<Character & { user: User }>;
+	project?: Project;
+	pendingInvitations?: Array<Invitation>;
 }
 
 const ProjectPlayers = (props: ProjectPlayersProps) => {
@@ -206,7 +190,7 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
 								>
 									<Group gap="lg" align="flex-start">
 										<Avatar
-											src={player.userPicture}
+											src={player.user.picture}
 											size={60}
 											radius="md"
 											style={{
@@ -221,7 +205,7 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
 										<Stack gap="xs" flex={1}>
 											<Group gap="sm" align="center">
 												<Text fw={500} size="lg">
-													{player.userName || "Anonymous User"}
+													{player.user.name || "Anonymous User"}
 												</Text>
 												{player.owner && (
 													<Badge
@@ -238,7 +222,7 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
 											</Group>
 
 											<Text size="sm" c="dimmed">
-												{player.userEmail}
+												{player.user.email}
 											</Text>
 
 											<Group gap="lg">
