@@ -19,13 +19,244 @@ import { LockProvider } from "../providers/LockProvider.ts";
 import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
 
 /**
- * Lock descriptor
+ * Creates a distributed lock descriptor for ensuring single-instance execution across processes.
  *
- * Make sure that only one instance of the handler is running at a time.
+ * This descriptor provides a powerful distributed locking mechanism that prevents multiple instances
+ * of the same operation from running simultaneously. It's essential for maintaining data consistency
+ * and preventing race conditions in distributed applications, scheduled tasks, and critical sections
+ * that must execute atomically.
  *
- * When connected to a remote store, the lock is shared across all processes.
+ * **Key Features**
  *
- * @param options
+ * - **Distributed Coordination**: Works across multiple processes, servers, and containers
+ * - **Automatic Expiration**: Locks expire automatically to prevent deadlocks
+ * - **Graceful Handling**: Configurable wait behavior for different use cases
+ * - **Grace Periods**: Optional lock extension after completion for additional safety
+ * - **Topic Integration**: Uses pub/sub for efficient lock release notifications
+ * - **Unique Instance IDs**: Prevents lock conflicts between different instances
+ * - **Timeout Management**: Configurable durations with intelligent retry logic
+ *
+ * **Use Cases**
+ *
+ * Perfect for ensuring single execution in distributed environments:
+ * - Database migrations and schema updates
+ * - Scheduled job execution (cron-like tasks)
+ * - File processing and batch operations
+ * - Critical section protection
+ * - Resource initialization and cleanup
+ * - Singleton service operations
+ * - Cache warming and maintenance tasks
+ *
+ * @example
+ * **Basic lock for scheduled tasks:**
+ * ```ts
+ * import { $lock } from "@alepha/lock";
+ *
+ * class ScheduledTaskService {
+ *   dailyReport = $lock({
+ *     handler: async () => {
+ *       // This will only run on one server even if multiple servers
+ *       // trigger the task simultaneously
+ *       console.log('Generating daily report...');
+ *
+ *       const report = await this.generateDailyReport();
+ *       await this.sendReportToManagement(report);
+ *
+ *       console.log('Daily report completed');
+ *     }
+ *   });
+ *
+ *   async runDailyReport() {
+ *     // Multiple servers can call this, but only one will execute
+ *     await this.dailyReport.run();
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Migration lock with wait behavior:**
+ * ```ts
+ * class DatabaseService {
+ *   migration = $lock({
+ *     wait: true,  // Wait for other instances to complete migration
+ *     maxDuration: [10, "minutes"],  // Migration timeout
+ *     handler: async (version: string) => {
+ *       console.log(`Running migration to version ${version}`);
+ *
+ *       const currentVersion = await this.getCurrentSchemaVersion();
+ *       if (currentVersion >= version) {
+ *         console.log(`Already at version ${version}, skipping`);
+ *         return;
+ *       }
+ *
+ *       await this.runMigrationScripts(version);
+ *       await this.updateSchemaVersion(version);
+ *
+ *       console.log(`Migration to ${version} completed`);
+ *     }
+ *   });
+ *
+ *   async migrateToVersion(version: string) {
+ *     // All instances will wait for the first one to complete
+ *     // before continuing with their startup process
+ *     await this.migration.run(version);
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Dynamic lock keys with grace periods:**
+ * ```ts
+ * class FileProcessor {
+ *   processFile = $lock({
+ *     name: (filePath: string) => `file-processing:${filePath}`,
+ *     wait: false,  // Don't wait, skip if already processing
+ *     maxDuration: [30, "minutes"],
+ *     gracePeriod: [5, "minutes"],  // Keep lock for 5min after completion
+ *     handler: async (filePath: string) => {
+ *       console.log(`Processing file: ${filePath}`);
+ *
+ *       try {
+ *         const fileData = await this.readFile(filePath);
+ *         const processedData = await this.processData(fileData);
+ *         await this.saveProcessedData(filePath, processedData);
+ *         await this.moveToCompleted(filePath);
+ *
+ *         console.log(`File processing completed: ${filePath}`);
+ *       } catch (error) {
+ *         console.error(`File processing failed: ${filePath}`, error);
+ *         await this.moveToError(filePath, error.message);
+ *         throw error;
+ *       }
+ *     }
+ *   });
+ *
+ *   async processUploadedFile(filePath: string) {
+ *     // Each file gets its own lock, preventing duplicate processing
+ *     // Grace period prevents immediate reprocessing of the same file
+ *     await this.processFile.run(filePath);
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Resource initialization with conditional grace periods:**
+ * ```ts
+ * class CacheService {
+ *   warmCache = $lock({
+ *     name: (cacheKey: string) => `cache-warming:${cacheKey}`,
+ *     wait: true,  // Wait for cache to be warmed before continuing
+ *     maxDuration: [15, "minutes"],
+ *     gracePeriod: (cacheKey: string) => {
+ *       // Dynamic grace period based on cache importance
+ *       const criticalCaches = ['user-sessions', 'product-catalog'];
+ *       return criticalCaches.includes(cacheKey)
+ *         ? [30, "minutes"]  // Longer grace for critical caches
+ *         : [5, "minutes"];   // Shorter grace for regular caches
+ *     },
+ *     handler: async (cacheKey: string, force: boolean = false) => {
+ *       console.log(`Warming cache: ${cacheKey}`);
+ *
+ *       if (!force && await this.isCacheWarm(cacheKey)) {
+ *         console.log(`Cache ${cacheKey} is already warm`);
+ *         return;
+ *       }
+ *
+ *       const startTime = Date.now();
+ *
+ *       switch (cacheKey) {
+ *         case 'user-sessions':
+ *           await this.warmUserSessionsCache();
+ *           break;
+ *         case 'product-catalog':
+ *           await this.warmProductCatalogCache();
+ *           break;
+ *         case 'configuration':
+ *           await this.warmConfigurationCache();
+ *           break;
+ *         default:
+ *           throw new Error(`Unknown cache key: ${cacheKey}`);
+ *       }
+ *
+ *       const duration = Date.now() - startTime;
+ *       console.log(`Cache warming completed for ${cacheKey} in ${duration}ms`);
+ *
+ *       await this.markCacheAsWarm(cacheKey);
+ *     }
+ *   });
+ *
+ *   async ensureCacheWarmed(cacheKey: string, force: boolean = false) {
+ *     // Multiple instances can call this, but cache warming happens only once
+ *     // All instances wait for completion before proceeding
+ *     await this.warmCache.run(cacheKey, force);
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Critical section protection with custom timeout handling:**
+ * ```ts
+ * class InventoryService {
+ *   updateInventory = $lock({
+ *     name: (productId: string) => `inventory-update:${productId}`,
+ *     wait: true,  // Ensure all inventory updates are sequential
+ *     maxDuration: [2, "minutes"],
+ *     gracePeriod: [30, "seconds"],  // Brief grace to prevent immediate conflicts
+ *     handler: async (productId: string, quantity: number, operation: 'add' | 'subtract') => {
+ *       console.log(`Updating inventory for product ${productId}: ${operation} ${quantity}`);
+ *
+ *       try {
+ *         // Start transaction for inventory update
+ *         await this.db.transaction(async (tx) => {
+ *           const currentInventory = await tx.getInventory(productId);
+ *
+ *           if (operation === 'subtract' && currentInventory.quantity < quantity) {
+ *             throw new Error(`Insufficient inventory for product ${productId}. Available: ${currentInventory.quantity}, Requested: ${quantity}`);
+ *           }
+ *
+ *           const newQuantity = operation === 'add'
+ *             ? currentInventory.quantity + quantity
+ *             : currentInventory.quantity - quantity;
+ *
+ *           await tx.updateInventory(productId, newQuantity);
+ *
+ *           // Log inventory change for audit
+ *           await tx.logInventoryChange({
+ *             productId,
+ *             operation,
+ *             quantity,
+ *             previousQuantity: currentInventory.quantity,
+ *             newQuantity,
+ *             timestamp: new Date()
+ *           });
+ *
+ *           console.log(`Inventory updated for product ${productId}: ${currentInventory.quantity} -> ${newQuantity}`);
+ *         });
+ *
+ *         // Notify other services about inventory change
+ *         await this.inventoryChangeNotifier.notify({
+ *           productId,
+ *           operation,
+ *           quantity,
+ *           timestamp: new Date()
+ *         });
+ *
+ *       } catch (error) {
+ *         console.error(`Inventory update failed for product ${productId}`, error);
+ *         throw error;
+ *       }
+ *     }
+ *   });
+ *
+ *   async addInventory(productId: string, quantity: number) {
+ *     await this.updateInventory.run(productId, quantity, 'add');
+ *   }
+ *
+ *   async subtractInventory(productId: string, quantity: number) {
+ *     await this.updateInventory.run(productId, quantity, 'subtract');
+ *   }
+ * }
+ * ```
  */
 export const $lock = <TFunc extends AsyncFn>(
 	options: LockDescriptorOptions<TFunc>,
@@ -37,50 +268,208 @@ export const $lock = <TFunc extends AsyncFn>(
 
 export interface LockDescriptorOptions<TFunc extends AsyncFn> {
 	/**
-	 * Function executed when the lock is acquired.
+	 * The function to execute when the lock is successfully acquired.
+	 *
+	 * This function:
+	 * - Only executes on the instance that successfully acquires the lock
+	 * - Has exclusive access to the protected resource during execution
+	 * - Should contain the critical section logic that must not run concurrently
+	 * - Can be async and perform any operations needed
+	 * - Will automatically release the lock upon completion or error
+	 * - Has access to the full Alepha dependency injection container
+	 *
+	 * **Handler Design Guidelines**:
+	 * - Keep critical sections as short as possible to minimize lock contention
+	 * - Include proper error handling to ensure locks are released
+	 * - Use timeouts for external operations to prevent deadlocks
+	 * - Log important operations for debugging and monitoring
+	 * - Consider idempotency for handlers that might be retried
+	 *
+	 * @param ...args - The arguments passed to the lock execution
+	 * @returns Promise that resolves when the protected operation is complete
+	 *
+	 * @example
+	 * ```ts
+	 * handler: async (batchId: string) => {
+	 *   console.log(`Processing batch ${batchId} - only one instance will run this`);
+	 *
+	 *   const batch = await this.getBatchData(batchId);
+	 *   const results = await this.processBatchItems(batch.items);
+	 *   await this.saveBatchResults(batchId, results);
+	 *
+	 *   console.log(`Batch ${batchId} completed successfully`);
+	 * }
+	 * ```
 	 */
 	handler: TFunc;
 
 	/**
-	 * If true, the handler will wait for the lock to be released.
+	 * Whether the lock should wait for other instances to complete before giving up.
 	 *
-	 * To understand:
+	 * **wait = false (default)**:
+	 * - Non-blocking behavior - if lock is held, immediately return without executing
+	 * - Perfect for scheduled tasks where you only want one execution per trigger
+	 * - Use when multiple triggers are acceptable but concurrent execution is not
+	 * - Examples: periodic cleanup, cron jobs, background maintenance
 	 *
-	 * ### wait = false
-	 * You have 3 servers running scheduled tasks, you want to ensure that only one of them runs the task at a time.
-	 * But you don't want the other servers to wait for the lock to be released before they run the task.
+	 * **wait = true**:
+	 * - Blocking behavior - wait for the current lock holder to finish
+	 * - All instances will eventually execute (one after another)
+	 * - Perfect for initialization tasks where all instances need the work completed
+	 * - Examples: database migrations, cache warming, resource initialization
 	 *
-	 * Problem with not waiting:
-	 * If the lock is released before a new late trigger, handler will be executed multiple times.
-	 * Aka, if you have 3 servers but not clock synchronized.
-	 *
-	 * ### wait = true
-	 * You have 3 servers running a migration script on startup, migration script must be run only once.
-	 * You want to wait the end of migration for each server as they all require the migration to be completed.
-	 *
+	 * **Trade-offs**:
+	 * - Non-waiting: Better performance, may miss executions if timing is off
+	 * - Waiting: Guaranteed execution order, slower overall throughput
 	 *
 	 * @default false
+	 *
+	 * @example
+	 * ```ts
+	 * // Scheduled task - don't wait, just skip if already running
+	 * scheduledCleanup = $lock({
+	 *   wait: false,  // Skip if cleanup already running
+	 *   handler: async () => { } // perform cleanup
+	 * });
+	 *
+	 * // Migration - wait for completion before proceeding
+	 * migration = $lock({
+	 *   wait: true,   // All instances wait for migration to complete
+	 *   handler: async () => { } // perform migration
+	 * });
+	 * ```
 	 */
 	wait?: boolean;
 
 	/**
-	 * Create you own unique key for the lock.
+	 * The unique identifier for the lock.
+	 *
+	 * Can be either:
+	 * - **Static string**: A fixed identifier for the lock
+	 * - **Dynamic function**: A function that generates the lock key based on arguments
+	 *
+	 * **Dynamic Lock Keys**:
+	 * - Enable per-resource locking (e.g., per-user, per-file, per-product)
+	 * - Allow fine-grained concurrency control
+	 * - Prevent unnecessary blocking between unrelated operations
+	 *
+	 * **Key Design Guidelines**:
+	 * - Use descriptive names that indicate the protected resource
+	 * - Include relevant identifiers for dynamic keys
+	 * - Keep keys reasonably short but unique
+	 * - Consider using hierarchical naming (e.g., "service:operation:resource")
+	 *
+	 * If not provided, defaults to `{serviceName}:{propertyKey}`.
+	 *
+	 * @example "user-migration"
+	 * @example "daily-report-generation"
+	 * @example (userId: string) => `user-profile-update:${userId}`
+	 * @example (fileId: string, operation: string) => `file-${operation}:${fileId}`
+	 *
+	 * @example
+	 * ```ts
+	 * // Static lock key - all instances compete for the same lock
+	 * globalCleanup = $lock({
+	 *   name: "system-cleanup",
+	 *   handler: async () => { } // perform cleanup
+	 * });
+	 *
+	 * // Dynamic lock key - per-user locks, users don't block each other
+	 * updateUserProfile = $lock({
+	 *   name: (userId: string) => `user-update:${userId}`,
+	 *   handler: async (userId: string, data: UserData) => {
+	 *     // Only one update per user at a time, but different users can update concurrently
+	 *   }
+	 * });
+	 * ```
 	 */
 	name?: string | ((...args: Parameters<TFunc>) => string);
 
 	/**
-	 * Lock timeout.
+	 * Maximum duration the lock can be held before it expires automatically.
 	 *
-	 * @default 5 minutes
+	 * This prevents deadlocks when a process dies while holding a lock or when
+	 * operations take longer than expected. The lock will be automatically released
+	 * after this duration, allowing other instances to proceed.
+	 *
+	 * **Duration Guidelines**:
+	 * - Set based on expected operation duration plus safety margin
+	 * - Too short: Operations may be interrupted by early expiration
+	 * - Too long: Failed processes block others for extended periods
+	 * - Consider worst-case scenarios and external dependency timeouts
+	 *
+	 * **Typical Values**:
+	 * - Quick operations: 30 seconds - 2 minutes
+	 * - Database operations: 5 - 15 minutes
+	 * - File processing: 10 - 30 minutes
+	 * - Large migrations: 30 minutes - 2 hours
+	 *
+	 * @default [5, "minutes"]
+	 *
+	 * @example [30, "seconds"]    // Quick operations
+	 * @example [10, "minutes"]    // Database migrations
+	 * @example [1, "hour"]        // Long-running batch jobs
+	 *
+	 * @example
+	 * ```ts
+	 * quickTask = $lock({
+	 *   maxDuration: [2, "minutes"],  // Quick timeout for fast operations
+	 *   handler: async () => { } // perform quick task
+	 * });
+	 *
+	 * heavyProcessing = $lock({
+	 *   maxDuration: [30, "minutes"], // Longer timeout for heavy work
+	 *   handler: async () => { } // perform heavy processing
+	 * });
+	 * ```
 	 */
 	maxDuration?: DurationLike;
 
 	/**
-	 * Additional lifetime of the lock after the handler has finished executing.
+	 * Additional time to keep the lock active after the handler completes successfully.
 	 *
-	 * This is useful to ensure that the lock is not released too early
+	 * This provides a "cooling off" period that can be useful for:
+	 * - Preventing immediate re-execution of the same operation
+	 * - Giving time for related systems to process the results
+	 * - Avoiding race conditions with dependent operations
+	 * - Providing a buffer for cleanup operations
 	 *
-	 * @default null
+	 * Can be either:
+	 * - **Static duration**: Fixed grace period for all executions
+	 * - **Dynamic function**: Grace period determined by execution arguments
+	 * - **undefined**: No grace period, lock released immediately after completion
+	 *
+	 * **Grace Period Use Cases**:
+	 * - File processing: Prevent immediate reprocessing of uploaded files
+	 * - Cache updates: Allow time for cache propagation
+	 * - Batch operations: Prevent overlapping batch processing
+	 * - External API calls: Respect rate limiting requirements
+	 *
+	 * @default undefined (no grace period)
+	 *
+	 * @example [5, "minutes"]     // Fixed 5-minute grace period
+	 * @example [30, "seconds"]    // Short grace for quick operations
+	 * @example (userId: string) => userId.startsWith("premium") ? [10, "minutes"] : [2, "minutes"]
+	 *
+	 * @example
+	 * ```ts
+	 * fileProcessor = $lock({
+	 *   gracePeriod: [10, "minutes"],  // Prevent reprocessing same file immediately
+	 *   handler: async (filePath: string) => {
+	 *     await this.processFile(filePath);
+	 *   }
+	 * });
+	 *
+	 * userOperation = $lock({
+	 *   gracePeriod: (userId: string, operation: string) => {
+	 *     // Dynamic grace based on operation type
+	 *     return operation === 'migration' ? [30, "minutes"] : [5, "minutes"];
+	 *   },
+	 *   handler: async (userId: string, operation: string) => {
+	 *     await this.performUserOperation(userId, operation);
+	 *   }
+	 * });
+	 * ```
 	 */
 	gracePeriod?:
 		| ((...args: Parameters<TFunc>) => DurationLike | undefined)

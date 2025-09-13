@@ -82,6 +82,316 @@ import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 
 /**
+ * Creates a repository descriptor for database operations on a defined entity.
+ *
+ * This descriptor provides a comprehensive, type-safe interface for performing all
+ * database operations on entities defined with $entity. It offers a rich set of
+ * CRUD operations, advanced querying capabilities, pagination, transactions, and
+ * built-in support for audit trails and soft deletes.
+ *
+ * **Key Features**
+ *
+ * - **Complete CRUD Operations**: Create, read, update, delete with full type safety
+ * - **Advanced Querying**: Complex WHERE conditions, sorting, pagination, and aggregations
+ * - **Transaction Support**: Database transactions for consistency and atomicity
+ * - **Soft Delete Support**: Built-in soft delete functionality with `pg.deletedAt()` fields
+ * - **Optimistic Locking**: Version-based conflict resolution with `pg.version()` fields
+ * - **Audit Trail Integration**: Automatic handling of `createdAt`, `updatedAt` timestamps
+ * - **Raw SQL Support**: Execute custom SQL queries when needed
+ * - **Pagination**: Built-in pagination with metadata and navigation
+ *
+ * **Important Requirements**
+ * - Must be used with an entity created by $entity
+ * - Entity schema must include exactly one primary key field
+ * - Database tables must be created via migrations before use
+ *
+ * **Use Cases**
+ *
+ * Essential for all database-driven applications:
+ * - User management and authentication systems
+ * - E-commerce product and order management
+ * - Content management and blogging platforms
+ * - Financial and accounting applications
+ * - Any application requiring persistent data storage
+ *
+ * @example
+ * **Basic repository with CRUD operations:**
+ * ```ts
+ * import { $entity, $repository } from "@alepha/postgres";
+ * import { pg, t } from "@alepha/core";
+ *
+ * // First, define the entity
+ * const User = $entity({
+ *   name: "users",
+ *   schema: t.object({
+ *     id: pg.primaryKey(t.uuid()),
+ *     email: t.string({ format: "email" }),
+ *     firstName: t.string(),
+ *     lastName: t.string(),
+ *     isActive: t.boolean({ default: true }),
+ *     createdAt: pg.createdAt(),
+ *     updatedAt: pg.updatedAt()
+ *   }),
+ *   indexes: [{ column: "email", unique: true }]
+ * });
+ *
+ * class UserService {
+ *   users = $repository({ table: User });
+ *
+ *   async createUser(userData: { email: string; firstName: string; lastName: string }) {
+ *     return await this.users.create({
+ *       id: generateUUID(),
+ *       email: userData.email,
+ *       firstName: userData.firstName,
+ *       lastName: userData.lastName,
+ *       isActive: true
+ *     });
+ *   }
+ *
+ *   async getUserByEmail(email: string) {
+ *     return await this.users.findOne({ email });
+ *   }
+ *
+ *   async updateUser(id: string, updates: { firstName?: string; lastName?: string }) {
+ *     return await this.users.updateById(id, updates);
+ *   }
+ *
+ *   async deactivateUser(id: string) {
+ *     return await this.users.updateById(id, { isActive: false });
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Advanced querying and filtering:**
+ * ```ts
+ * const Product = $entity({
+ *   name: "products",
+ *   schema: t.object({
+ *     id: pg.primaryKey(t.uuid()),
+ *     name: t.string(),
+ *     price: t.number({ minimum: 0 }),
+ *     categoryId: t.string({ format: "uuid" }),
+ *     inStock: t.boolean(),
+ *     tags: t.optional(t.array(t.string())),
+ *     createdAt: pg.createdAt(),
+ *     updatedAt: pg.updatedAt()
+ *   }),
+ *   indexes: ["categoryId", "inStock", "price"]
+ * });
+ *
+ * class ProductService {
+ *   products = $repository({ table: Product });
+ *
+ *   async searchProducts(filters: {
+ *     categoryId?: string;
+ *     minPrice?: number;
+ *     maxPrice?: number;
+ *     inStock?: boolean;
+ *     searchTerm?: string;
+ *   }, page: number = 0, size: number = 20) {
+ *     const query = this.products.createQuery({
+ *       where: {
+ *         and: [
+ *           filters.categoryId ? { categoryId: filters.categoryId } : {},
+ *           filters.inStock !== undefined ? { inStock: filters.inStock } : {},
+ *           filters.minPrice ? { price: { gte: filters.minPrice } } : {},
+ *           filters.maxPrice ? { price: { lte: filters.maxPrice } } : {},
+ *           filters.searchTerm ? { name: { ilike: `%${filters.searchTerm}%` } } : {}
+ *         ]
+ *       },
+ *       sort: { createdAt: "desc" }
+ *     });
+ *
+ *     return await this.products.paginate({ page, size }, query, { count: true });
+ *   }
+ *
+ *   async getTopSellingProducts(limit: number = 10) {
+ *     // Custom SQL query for complex analytics
+ *     return await this.products.query(
+ *       (table, db) => db
+ *         .select({
+ *           id: table.id,
+ *           name: table.name,
+ *           price: table.price,
+ *           salesCount: sql<number>`COALESCE(sales.count, 0)`
+ *         })
+ *         .from(table)
+ *         .leftJoin(
+ *           sql`(
+ *             SELECT product_id, COUNT(*) as count
+ *             FROM order_items
+ *             WHERE created_at > NOW() - INTERVAL '30 days'
+ *             GROUP BY product_id
+ *           ) sales`,
+ *           sql`sales.product_id = ${table.id}`
+ *         )
+ *         .orderBy(sql`sales.count DESC NULLS LAST`)
+ *         .limit(limit)
+ *     );
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Transaction handling and data consistency:**
+ * ```ts
+ * class OrderService {
+ *   orders = $repository({ table: Order });
+ *   orderItems = $repository({ table: OrderItem });
+ *   products = $repository({ table: Product });
+ *
+ *   async createOrderWithItems(orderData: {
+ *     customerId: string;
+ *     items: Array<{ productId: string; quantity: number; price: number }>;
+ *   }) {
+ *     return await this.orders.transaction(async (tx) => {
+ *       // Create the order
+ *       const order = await this.orders.create({
+ *         id: generateUUID(),
+ *         customerId: orderData.customerId,
+ *         status: 'pending',
+ *         totalAmount: orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+ *       }, { tx });
+ *
+ *       // Create order items and update product inventory
+ *       for (const itemData of orderData.items) {
+ *         await this.orderItems.create({
+ *           id: generateUUID(),
+ *           orderId: order.id,
+ *           productId: itemData.productId,
+ *           quantity: itemData.quantity,
+ *           unitPrice: itemData.price
+ *         }, { tx });
+ *
+ *         // Update product inventory using optimistic locking
+ *         const product = await this.products.findById(itemData.productId, { tx });
+ *         if (product.stockQuantity < itemData.quantity) {
+ *           throw new Error(`Insufficient stock for product ${itemData.productId}`);
+ *         }
+ *
+ *         await this.products.save({
+ *           ...product,
+ *           stockQuantity: product.stockQuantity - itemData.quantity
+ *         }, { tx });
+ *       }
+ *
+ *       return order;
+ *     });
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Soft delete and audit trail:**
+ * ```ts
+ * const Document = $entity({
+ *   name: "documents",
+ *   schema: t.object({
+ *     id: pg.primaryKey(t.uuid()),
+ *     title: t.string(),
+ *     content: t.string(),
+ *     authorId: t.string({ format: "uuid" }),
+ *     version: pg.version(),
+ *     createdAt: pg.createdAt(),
+ *     updatedAt: pg.updatedAt(),
+ *     deletedAt: pg.deletedAt()  // Enables soft delete
+ *   })
+ * });
+ *
+ * class DocumentService {
+ *   documents = $repository({ table: Document });
+ *
+ *   async updateDocument(id: string, updates: { title?: string; content?: string }) {
+ *     // This uses optimistic locking via the version field
+ *     const document = await this.documents.findById(id);
+ *     return await this.documents.save({
+ *       ...document,
+ *       ...updates  // updatedAt will be set automatically
+ *     });
+ *   }
+ *
+ *   async softDeleteDocument(id: string) {
+ *     // Soft delete - sets deletedAt timestamp
+ *     await this.documents.deleteById(id);
+ *   }
+ *
+ *   async permanentDeleteDocument(id: string) {
+ *     // Hard delete - actually removes from database
+ *     await this.documents.deleteById(id, { force: true });
+ *   }
+ *
+ *   async getActiveDocuments() {
+ *     // Automatically excludes soft-deleted records
+ *     return await this.documents.find({
+ *       where: { authorId: { isNotNull: true } },
+ *       sort: { updatedAt: "desc" }
+ *     });
+ *   }
+ *
+ *   async getAllDocumentsIncludingDeleted() {
+ *     // Include soft-deleted records
+ *     return await this.documents.find({}, { force: true });
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * **Complex filtering and aggregation:**
+ * ```ts
+ * class AnalyticsService {
+ *   users = $repository({ table: User });
+ *   orders = $repository({ table: Order });
+ *
+ *   async getUserStatistics(filters: {
+ *     startDate?: string;
+ *     endDate?: string;
+ *     isActive?: boolean;
+ *   }) {
+ *     const whereConditions = [];
+ *
+ *     if (filters.startDate) {
+ *       whereConditions.push({ createdAt: { gte: filters.startDate } });
+ *     }
+ *     if (filters.endDate) {
+ *       whereConditions.push({ createdAt: { lte: filters.endDate } });
+ *     }
+ *     if (filters.isActive !== undefined) {
+ *       whereConditions.push({ isActive: filters.isActive });
+ *     }
+ *
+ *     const totalUsers = await this.users.count({
+ *       and: whereConditions
+ *     });
+ *
+ *     const activeUsers = await this.users.count({
+ *       and: [...whereConditions, { isActive: true }]
+ *     });
+ *
+ *     // Complex aggregation query
+ *     const recentActivity = await this.users.query(
+ *       sql`
+ *         SELECT
+ *           DATE_TRUNC('day', created_at) as date,
+ *           COUNT(*) as new_users,
+ *           COUNT(*) FILTER (WHERE is_active = true) as active_users
+ *         FROM users
+ *         WHERE created_at >= NOW() - INTERVAL '30 days'
+ *         GROUP BY DATE_TRUNC('day', created_at)
+ *         ORDER BY date DESC
+ *       `
+ *     );
+ *
+ *     return {
+ *       totalUsers,
+ *       activeUsers,
+ *       inactiveUsers: totalUsers - activeUsers,
+ *       recentActivity
+ *     };
+ *   }
+ * }
+ * ```
+ *
  * @stability 3
  */
 export const $repository = <
@@ -116,12 +426,62 @@ export interface RepositoryDescriptorOptions<
 	EntitySchema extends TObject,
 > {
 	/**
-	 * The table to create the repository for.
+	 * The entity table definition created with $entity.
+	 *
+	 * This table:
+	 * - Must be created using the $entity descriptor
+	 * - Defines the schema, indexes, and constraints for the repository
+	 * - Provides type information for all repository operations
+	 * - Must include exactly one primary key field
+	 *
+	 * The repository will automatically:
+	 * - Generate typed CRUD operations based on the entity schema
+	 * - Handle audit fields like createdAt, updatedAt, deletedAt
+	 * - Support optimistic locking if version field is present
+	 * - Provide soft delete functionality if deletedAt field exists
+	 *
+	 * **Entity Requirements**:
+	 * - Must have been created with $entity descriptor
+	 * - Schema must include a primary key field marked with `pg.primaryKey()`
+	 * - Corresponding database table must exist (created via migrations)
+	 *
+	 * @example
+	 * ```ts
+	 * const User = $entity({
+	 *   name: "users",
+	 *   schema: t.object({
+	 *     id: pg.primaryKey(t.uuid()),
+	 *     email: t.string({ format: "email" }),
+	 *     name: t.string()
+	 *   })
+	 * });
+	 *
+	 * const userRepository = $repository({ table: User });
+	 * ```
 	 */
 	table: PgTableWithColumnsAndSchema<EntityTableConfig, EntitySchema>;
 
 	/**
-	 * Override default provider.
+	 * Override the default PostgreSQL database provider.
+	 *
+	 * By default, the repository will use the injected PostgresProvider from the
+	 * dependency injection container. Use this option to:
+	 * - Connect to a different database
+	 * - Use a specific connection pool
+	 * - Implement custom database behavior
+	 * - Support multi-tenant architectures with database per tenant
+	 *
+	 * **Common Use Cases**:
+	 * - Multi-database applications
+	 * - Read replicas for query optimization
+	 * - Different databases for different entity types
+	 * - Testing with separate test databases
+	 *
+	 * @default Uses injected PostgresProvider
+	 *
+	 * @example ReadOnlyPostgresProvider
+	 * @example TenantSpecificPostgresProvider
+	 * @example TestDatabaseProvider
 	 */
 	provider?: Service<PostgresProvider>;
 }
