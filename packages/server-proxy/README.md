@@ -53,7 +53,7 @@ services behind a single endpoint.
 
 **Basic proxy setup:**
 ```ts
-import { $proxy } from "@alepha/server-proxy";
+import { $proxy } from "alepha/server-proxy";
 
 class ApiGateway {
   // Forward all /api/* requests to external service

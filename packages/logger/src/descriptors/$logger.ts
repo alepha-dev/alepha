@@ -8,7 +8,7 @@ import { Logger } from "../services/Logger.ts";
  *
  * @example
  * ```ts
- * import { $logger } from "@alepha/core";
+ * import { $logger } from "alepha";
  *
  * class MyService {
  * 	log = $logger();

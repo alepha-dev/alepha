@@ -62,7 +62,7 @@ Perfect for CPU-intensive tasks that would otherwise block the main thread:
 
 **Basic thread usage:**
 ```ts
-import { $thread } from "@alepha/thread";
+import { $thread } from "alepha/thread";
 
 class DataProcessor {
   heavyComputation = $thread({
@@ -102,7 +102,7 @@ class ImageProcessor {
 
 **Thread with data validation:**
 ```ts
-import { t } from "@alepha/core";
+import { t } from "alepha";
 
 class CryptoService {
   encrypt = $thread({

@@ -100,8 +100,8 @@ Essential for defining database schema in type-safe applications:
 
 **Basic entity with indexes:**
 ```ts
-import { $entity } from "@alepha/postgres";
-import { pg, t } from "@alepha/core";
+import { $entity } from "alepha/postgres";
+import { pg, t } from "alepha";
 
 const User = $entity({
   name: "users",
@@ -305,8 +305,8 @@ Essential for all database-driven applications:
 
 **Basic repository with CRUD operations:**
 ```ts
-import { $entity, $repository } from "@alepha/postgres";
-import { pg, t } from "@alepha/core";
+import { $entity, $repository } from "alepha/postgres";
+import { pg, t } from "alepha";
 
 // First, define the entity
 const User = $entity({
@@ -606,7 +606,7 @@ Perfect for generating unique identifiers in concurrent environments:
 
 **Basic sequence for order numbers:**
 ```ts
-import { $sequence } from "@alepha/postgres";
+import { $sequence } from "alepha/postgres";
 
 class OrderService {
   orderNumbers = $sequence({
@@ -828,7 +828,7 @@ Essential for operations requiring atomicity and consistency:
 
 **Basic transaction for financial operations:**
 ```ts
-import { $transaction } from "@alepha/postgres";
+import { $transaction } from "alepha/postgres";
 
 class BankingService {
   transfer = $transaction({

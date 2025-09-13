@@ -14,7 +14,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"tsdown": "^0.15.0",
+		"tsdown": "^0.15.1",
 		"typescript": "^5.9.2",
 		"vite": "^7.1.5"
 	},

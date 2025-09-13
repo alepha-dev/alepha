@@ -19,7 +19,7 @@ export interface NestedViewProps {
  *
  * @example
  * ```tsx
- * import { NestedView } from "@alepha/react";
+ * import { NestedView } from "alepha/react";
  *
  * class App {
  *   parent = $page({

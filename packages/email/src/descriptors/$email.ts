@@ -16,8 +16,8 @@ import { TemplateService } from "../services/TemplateService.ts";
  *
  * @example
  * ```ts
- * import { $email } from "@alepha/email";
- * import { Type } from "@alepha/core";
+ * import { $email } from "alepha/email";
+ * import { t } from "alepha";
  *
  * class App {
  *   welcome = $email({

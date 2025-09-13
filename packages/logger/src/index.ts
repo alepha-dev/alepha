@@ -29,7 +29,7 @@ export * from "./services/Logger.ts";
  * It offers a global logger interface (info, warn, ...) via the `$logger` descriptor.
  *
  * ```ts
- * import { $logger } from "@alepha/logger";
+ * import { $logger } from "alepha/logger";
  *
  * class App {
  *   log = $logger();

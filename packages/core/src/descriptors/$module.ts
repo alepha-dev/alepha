@@ -14,7 +14,7 @@ import type { Service } from "../interfaces/Service.ts";
  *
  * @example
  * ```ts
- * import { $module } from "@alepha/core";
+ * import { $module } from "alepha";
  * import { MyService } from "./MyService.ts";
  *
  * // export MyService, so it can be used everywhere

@@ -10,7 +10,7 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  *
  * @example
  * ```tsx
- * import { t } from "@alepha/core";
+ * import { t } from "alepha";
  *
  * const form = useForm({
  *   schema: t.object({

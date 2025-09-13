@@ -5,8 +5,7 @@ Small applications can be built with a single file, but as your application grow
 Modules are a way to group related services, providers, and descriptors together.
 
 ```ts
-import { Alepha, run } from "alepha";
-import { $module } from "@alepha/core";
+import { Alepha, run, $module } from "alepha";
 
 const MyUserModule = $module({
   name: "com.example.user",

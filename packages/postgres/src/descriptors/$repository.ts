@@ -117,8 +117,8 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
  * @example
  * **Basic repository with CRUD operations:**
  * ```ts
- * import { $entity, $repository } from "@alepha/postgres";
- * import { pg, t } from "@alepha/core";
+ * import { $entity, $repository } from "alepha/postgres";
+ * import { pg, t } from "alepha";
  *
  * // First, define the entity
  * const User = $entity({

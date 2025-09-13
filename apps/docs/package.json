@@ -15,7 +15,7 @@
 		"react-dom": "^19.1.1"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.12",
+		"@types/react": "^19.1.13",
 		"@vitejs/plugin-react": "^5.0.2",
 		"highlight.js": "^11.11.1",
 		"marked": "^16.2.1",

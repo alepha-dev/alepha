@@ -8,7 +8,7 @@ import type { Service } from "../interfaces/Service.ts";
  * This should be used inside a descriptor only.
  *
  * ```ts
- * import { $cursor } from "@alepha/core";
+ * import { $cursor } from "alepha";
  *
  * const $ = () => {
  *

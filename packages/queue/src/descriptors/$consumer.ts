@@ -37,8 +37,8 @@ import type { QueueDescriptor } from "./$queue.ts";
  * @example
  * **Basic consumer setup:**
  * ```ts
- * import { $queue, $consumer } from "@alepha/queue";
- * import { t } from "@alepha/core";
+ * import { $queue, $consumer } from "alepha/queue";
+ * import { t } from "alepha";
  *
  * class EmailService {
  *   // Define the queue

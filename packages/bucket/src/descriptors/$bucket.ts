@@ -42,7 +42,7 @@ import { MemoryFileStorageProvider } from "../providers/MemoryFileStorageProvide
  * @example
  * **Basic file upload bucket:**
  * ```ts
- * import { $bucket } from "@alepha/bucket";
+ * import { $bucket } from "alepha/bucket";
  *
  * class MediaService {
  *   images = $bucket({
@@ -522,6 +522,7 @@ export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
 			}
 		}
 
+		// check size in bytes, convert MB to bytes
 		if (file.size > maxSize * 1024 * 1024) {
 			throw new InvalidFileError(
 				`File size ${file.size} exceeds the maximum size of ${this.options.maxSize} MB in bucket ${this.name}`,

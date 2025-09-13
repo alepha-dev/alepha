@@ -32,7 +32,7 @@ import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
  * @example
  * **Basic sequence for order numbers:**
  * ```ts
- * import { $sequence } from "@alepha/postgres";
+ * import { $sequence } from "alepha/postgres";
  *
  * class OrderService {
  *   orderNumbers = $sequence({

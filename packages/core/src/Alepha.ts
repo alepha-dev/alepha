@@ -32,7 +32,7 @@ import { AlsProvider } from "./providers/AlsProvider.ts";
  *
  * @example
  * ```ts
- * import { Alepha, run } from "@alepha/core";
+ * import { Alepha, run } from "alepha";
  *
  * class MyService {
  *   // business logic here
@@ -96,7 +96,7 @@ import { AlsProvider } from "./providers/AlsProvider.ts";
  * You can register a module using the `$module` descriptor.
  *
  * ```ts
- * import { $module } from "@alepha/core";
+ * import { $module } from "alepha";
  *
  * class MyLib {}
  *
@@ -114,7 +114,7 @@ import { AlsProvider } from "./providers/AlsProvider.ts";
  * You can register a hook using the `$hook` descriptor.
  *
  * ```ts
- * import { $hook } from "@alepha/core";
+ * import { $hook } from "alepha";
  *
  * class App {
  * 	 log = $logger();

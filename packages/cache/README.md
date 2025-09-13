@@ -72,7 +72,7 @@ Direct cache operations for custom caching logic and data storage.
 
 **Basic function result caching:**
 ```ts
-import { $cache } from "@alepha/cache";
+import { $cache } from "alepha/cache";
 
 class DataService {
   // Cache expensive database queries

@@ -69,7 +69,7 @@ Perfect for ensuring single execution in distributed environments:
 
 **Basic lock for scheduled tasks:**
 ```ts
-import { $lock } from "@alepha/lock";
+import { $lock } from "alepha/lock";
 
 class ScheduledTaskService {
   dailyReport = $lock({

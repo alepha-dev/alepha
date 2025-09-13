@@ -68,8 +68,8 @@ Perfect for creating specialized message processors:
 
 **Basic consumer setup:**
 ```ts
-import { $queue, $consumer } from "@alepha/queue";
-import { t } from "@alepha/core";
+import { $queue, $consumer } from "alepha/queue";
+import { t } from "alepha";
 
 class EmailService {
   // Define the queue

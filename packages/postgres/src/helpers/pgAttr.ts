@@ -8,7 +8,7 @@ import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
  *
  * @example
  * ```ts
- * import { t } from "@alepha/core";
+ * import { t } from "alepha";
  * import { PG_UPDATED_AT } from "../constants/PG_SYMBOLS";
  *
  * export const updatedAtSchema = pgAttr(

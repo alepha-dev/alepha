@@ -43,8 +43,8 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  * @example
  * **Basic database batch operations:**
  * ```ts
- * import { $batch } from "@alepha/batch";
- * import { t } from "@alepha/core";
+ * import { $batch } from "alepha/batch";
+ * import { t } from "alepha";
  *
  * class UserService {
  *   userBatch = $batch({

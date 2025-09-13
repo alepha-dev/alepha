@@ -50,7 +50,7 @@ import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
  * @example
  * **Basic lock for scheduled tasks:**
  * ```ts
- * import { $lock } from "@alepha/lock";
+ * import { $lock } from "alepha/lock";
  *
  * class ScheduledTaskService {
  *   dailyReport = $lock({

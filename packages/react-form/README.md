@@ -44,7 +44,7 @@ This hook uses TypeBox schemas to define the structure and validation rules for 
 It provides a way to handle form submission, field creation, and value management.
 
 ```tsx
-import { t } from "@alepha/core";
+import { t } from "alepha";
 
 const form = useForm({
   schema: t.object({

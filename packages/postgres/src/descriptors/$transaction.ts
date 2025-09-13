@@ -36,7 +36,7 @@ import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
  * @example
  * **Basic transaction for financial operations:**
  * ```ts
- * import { $transaction } from "@alepha/postgres";
+ * import { $transaction } from "alepha/postgres";
  *
  * class BankingService {
  *   transfer = $transaction({

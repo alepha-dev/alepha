@@ -53,8 +53,8 @@ import {
  * @example
  * **Basic topic with publish/subscribe:**
  * ```ts
- * import { $topic } from "@alepha/topic";
- * import { t } from "@alepha/core";
+ * import { $topic } from "alepha/topic";
+ * import { t } from "alepha";
  *
  * class NotificationService {
  *   userActivity = $topic({

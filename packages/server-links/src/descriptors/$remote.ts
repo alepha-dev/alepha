@@ -23,8 +23,8 @@ export interface RemoteDescriptorOptions {
 	 *
 	 * @example
 	 * ```ts
-	 * import { $remote } from "@alepha/server";
-	 * import { $inject, t } from "@alepha/core";
+	 * import { $remote } from "alepha/server";
+	 * import { $inject, t } from "alepha";
 	 *
 	 * class App {
 	 *   env = $env(t.object({

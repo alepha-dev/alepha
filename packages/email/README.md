@@ -43,8 +43,8 @@ For more details, see the [Descriptors documentation](https://feunard.github.io/
 Create an email descriptor for sending templated emails.
 
 ```ts
-import { $email } from "@alepha/email";
-import { Type } from "@alepha/core";
+import { $email } from "alepha/email";
+import { t } from "alepha";
 
 class App {
   welcome = $email({

@@ -12,7 +12,7 @@ import type { AccessTokenResponse, RealmDescriptor } from "./$realm.ts";
  *
  * @example
  * ```ts
- * import { $serviceAccount } from "@alepha/security";
+ * import { $serviceAccount } from "alepha/security";
  *
  * class MyService {
  *   serviceAccount = $serviceAccount({

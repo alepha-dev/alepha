@@ -31,7 +31,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  * @example
  * **Basic thread usage:**
  * ```ts
- * import { $thread } from "@alepha/thread";
+ * import { $thread } from "alepha/thread";
  *
  * class DataProcessor {
  *   heavyComputation = $thread({
@@ -73,7 +73,7 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  * @example
  * **Thread with data validation:**
  * ```ts
- * import { t } from "@alepha/core";
+ * import { t } from "alepha";
  *
  * class CryptoService {
  *   encrypt = $thread({

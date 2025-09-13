@@ -44,7 +44,7 @@ It allows you to define a set of translations for a specific language.
 Entry can be lazy-loaded, which is useful for large dictionaries or when translations are not needed immediately.
 
 ```ts
-import { $dictionary } from "@alepha/react-i18n";
+import { $dictionary } from "alepha/react-i18n";
 
 const Example = () => {
   const { tr } = useI18n<App, "en">();

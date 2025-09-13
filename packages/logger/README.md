@@ -26,7 +26,7 @@ Create a logger.
 `name` is optional, by default it will use the name of the service.
 
 ```ts
-import { $logger } from "@alepha/core";
+import { $logger } from "alepha";
 
 class MyService {
 	log = $logger();

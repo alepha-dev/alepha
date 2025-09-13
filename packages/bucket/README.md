@@ -70,7 +70,7 @@ Perfect for handling file storage requirements across applications:
 
 **Basic file upload bucket:**
 ```ts
-import { $bucket } from "@alepha/bucket";
+import { $bucket } from "alepha/bucket";
 
 class MediaService {
   images = $bucket({

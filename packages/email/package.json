@@ -23,12 +23,12 @@
 	"dependencies": {
 		"@alepha/core": "0.9.4",
 		"@alepha/logger": "0.9.4",
-		"nodemailer": "^6.9.15"
+		"nodemailer": "^7.0.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"@types/nodemailer": "^6.4.19",
-		"tsdown": "^0.15.0",
+		"@types/nodemailer": "^7.0.1",
+		"tsdown": "^0.15.1",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

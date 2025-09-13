@@ -23,14 +23,14 @@
 		"@alepha/server": "0.9.4",
 		"@alepha/server-cookies": "0.9.4",
 		"@alepha/server-links": "0.9.4",
-		"openid-client": "^6.7.1"
+		"openid-client": "^6.8.0"
 	},
 	"devDependencies": {
 		"@alepha/server-security": "0.9.4",
 		"@biomejs/biome": "^2.2.4",
-		"@types/react": "^19.1.12",
+		"@types/react": "^19.1.13",
 		"react": "^19.1.1",
-		"tsdown": "^0.15.0",
+		"tsdown": "^0.15.1",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

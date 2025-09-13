@@ -35,8 +35,8 @@ import type {
  * @example
  * **Basic subscriber setup:**
  * ```ts
- * import { $topic, $subscriber } from "@alepha/topic";
- * import { t } from "@alepha/core";
+ * import { $topic, $subscriber } from "alepha/topic";
+ * import { t } from "alepha";
  *
  * class UserActivityService {
  *   // Define the topic

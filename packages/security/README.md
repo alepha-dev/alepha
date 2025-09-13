@@ -59,7 +59,7 @@ You have some options to configure the service account:
 - a JWT secret shared between the services
 
 ```ts
-import { $serviceAccount } from "@alepha/security";
+import { $serviceAccount } from "alepha/security";
 
 class MyService {
   serviceAccount = $serviceAccount({

@@ -94,8 +94,8 @@ Perfect for optimizing high-throughput operations:
 
 **Basic database batch operations:**
 ```ts
-import { $batch } from "@alepha/batch";
-import { t } from "@alepha/core";
+import { $batch } from "alepha/batch";
+import { t } from "alepha";
 
 class UserService {
   userBatch = $batch({

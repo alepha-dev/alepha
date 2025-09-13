@@ -66,8 +66,8 @@ Perfect for creating specialized event handlers:
 
 **Basic subscriber setup:**
 ```ts
-import { $topic, $subscriber } from "@alepha/topic";
-import { t } from "@alepha/core";
+import { $topic, $subscriber } from "alepha/topic";
+import { t } from "alepha";
 
 class UserActivityService {
   // Define the topic
@@ -348,8 +348,8 @@ Perfect for event-driven architectures and real-time communication:
 
 **Basic topic with publish/subscribe:**
 ```ts
-import { $topic } from "@alepha/topic";
-import { t } from "@alepha/core";
+import { $topic } from "alepha/topic";
+import { t } from "alepha";
 
 class NotificationService {
   userActivity = $topic({

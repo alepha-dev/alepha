@@ -50,8 +50,8 @@ import { updateSchema } from "../schemas/updateSchema.ts";
  * @example
  * **Basic entity with indexes:**
  * ```ts
- * import { $entity } from "@alepha/postgres";
- * import { pg, t } from "@alepha/core";
+ * import { $entity } from "alepha/postgres";
+ * import { pg, t } from "alepha";
  *
  * const User = $entity({
  *   name: "users",
