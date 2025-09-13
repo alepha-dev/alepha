@@ -66,6 +66,8 @@ run(alepha);
 
 Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
+For more details, see the [Descriptors documentation](https://feunard.github.io/alepha/docs/descriptors).
+
 #### $batch()
 
 Creates a batch processor. This is useful for grouping multiple operations
