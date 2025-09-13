@@ -20,9 +20,23 @@ npm install @alepha/core @alepha/bucket-azure
 
 Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaBucketAzure } from "alepha/bucket/azure";
+
+const alepha = Alepha.create()
+	.with(AlephaBucketAzure);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 #### AzureFileStorageProvider
 

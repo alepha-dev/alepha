@@ -24,9 +24,23 @@ The email module enables declarative email sending through the `$email` descript
 emails through different providers: memory (for testing), local file system, or SMTP via Nodemailer.
 It supports HTML email content and automatic provider selection based on environment configuration.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaEmail } from "alepha/email";
+
+const alepha = Alepha.create()
+	.with(AlephaEmail);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $email()
 

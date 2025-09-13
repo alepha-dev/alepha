@@ -24,15 +24,31 @@ The React module enables building modern React applications using the `$page` de
 It delivers seamless server-side rendering, automatic code splitting, and client-side navigation with full
 type safety and schema validation for route parameters and data.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaReact } from "alepha/react";
+
+const alepha = Alepha.create()
+	.with(AlephaReact);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $page()
 
 Main descriptor for defining a React route in the application.
 
 ### Hooks
+
+Hooks provide a way to tap into various lifecycle events and extend functionality. They follow the convention of starting with `use` and return configured hook instances.
 
 #### useAlepha()
 

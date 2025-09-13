@@ -24,9 +24,23 @@ The server module enables building REST APIs and web applications using `$route`
 on class properties. It provides automatic request/response handling, schema validation, middleware support,
 and seamless integration with other Alepha modules for a complete backend solution.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServer } from "alepha/server";
+
+const alepha = Alepha.create()
+	.with(AlephaServer);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $action()
 
@@ -52,6 +66,8 @@ Create a basic endpoint.
 It's a low level descriptor. You probably want to use `$action` instead.
 
 ### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 #### ServerNotReadyProvider
 

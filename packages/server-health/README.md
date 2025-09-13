@@ -20,9 +20,23 @@ npm install @alepha/core @alepha/server-health
 
 Plugin for Alepha Server that provides health-check endpoints.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerHealth } from "alepha/server/health";
+
+const alepha = Alepha.create()
+	.with(AlephaServerHealth);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 #### ServerHealthProvider
 

@@ -22,9 +22,23 @@ Add i18n support to your Alepha React application. SSR and CSR compatible.
 
 It supports lazy loading of translations and provides a context to access the current language.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaReactI18n } from "alepha/react/i18n";
+
+const alepha = Alepha.create()
+	.with(AlephaReactI18n);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $dictionary()
 
@@ -58,6 +72,8 @@ run(App);
 ```
 
 ### Hooks
+
+Hooks provide a way to tap into various lifecycle events and extend functionality. They follow the convention of starting with `use` and return configured hook instances.
 
 #### useI18n()
 

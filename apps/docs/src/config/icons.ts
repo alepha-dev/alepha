@@ -21,6 +21,7 @@ import {
 	IconLineDashed,
 	IconLink,
 	IconLock,
+	IconMail,
 	IconMessage2,
 	IconMessageCircle,
 	IconNotes,
@@ -111,4 +112,6 @@ const keywordToIconMap: Record<string, any> = {
 	protobuf: IconComponents, // Represents data structures/components
 	testing: IconTestPipe,
 	vite: IconBolt,
+
+	email: IconMail,
 };

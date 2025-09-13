@@ -20,9 +20,23 @@ npm install @alepha/core @alepha/redis
 
 Redis client provider for Alepha applications.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaRedis } from "alepha/redis";
+
+const alepha = Alepha.create()
+	.with(AlephaRedis);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 #### RedisProvider
 

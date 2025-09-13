@@ -19,3 +19,15 @@ npm install @alepha/core @alepha/lock-redis
 ## Module
 
 Plugin for Alepha that provides a locking mechanism.
+
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaLockRedis } from "alepha/lock/redis";
+
+const alepha = Alepha.create()
+	.with(AlephaLockRedis);
+
+run(alepha);
+```

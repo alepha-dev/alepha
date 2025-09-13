@@ -52,9 +52,23 @@ Migrations are supported via Drizzle ORM, you need to use the `drizzle-kit` CLI 
 
 Relations are **NOT SUPPORTED** yet. If you need relations, please use the `drizzle-orm` package directly.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaPostgres } from "alepha/postgres";
+
+const alepha = Alepha.create()
+	.with(AlephaPostgres);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $entity()
 

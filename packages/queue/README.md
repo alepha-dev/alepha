@@ -24,9 +24,23 @@ The queue module enables reliable background job processing and message passing 
 on class properties. It supports schema validation, automatic retries, and multiple queue backends for
 building scalable, decoupled applications with robust error handling.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaQueue } from "alepha/queue";
+
+const alepha = Alepha.create()
+	.with(AlephaQueue);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $consumer()
 

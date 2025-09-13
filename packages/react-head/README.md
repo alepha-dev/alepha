@@ -20,15 +20,31 @@ npm install @alepha/core @alepha/react-head
 
 Fill `<head>` server & client side.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaReactHead } from "alepha/react/head";
+
+const alepha = Alepha.create()
+	.with(AlephaReactHead);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $head()
 
 Set global `<head>` options for the application.
 
 ### Hooks
+
+Hooks provide a way to tap into various lifecycle events and extend functionality. They follow the convention of starting with `use` and return configured hook instances.
 
 #### useHead()
 

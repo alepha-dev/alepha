@@ -24,9 +24,23 @@ The server-cookies module enables declarative cookie handling using the `$cookie
 It offers automatic cookie parsing, secure cookie configuration, and seamless integration with server routes
 for managing user sessions, preferences, and authentication tokens.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerCookies } from "alepha/server/cookies";
+
+const alepha = Alepha.create()
+	.with(AlephaServerCookies);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $cookie()
 

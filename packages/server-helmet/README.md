@@ -21,9 +21,23 @@ npm install @alepha/core @alepha/server-helmet
 Automatically adds important HTTP security headers to every response
 to help protect your application from common web vulnerabilities.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerHelmet } from "alepha/server/helmet";
+
+const alepha = Alepha.create()
+	.with(AlephaServerHelmet);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 #### ServerHelmetProvider
 

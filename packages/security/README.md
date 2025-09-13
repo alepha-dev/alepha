@@ -24,9 +24,23 @@ The security module enables building secure applications using descriptors like 
 on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
 integration with various authentication providers and user management systems.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaSecurity } from "alepha/security";
+
+const alepha = Alepha.create()
+	.with(AlephaSecurity);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $permission()
 
@@ -69,6 +83,8 @@ class MyService {
 ```
 
 ### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 #### JwtProvider
 

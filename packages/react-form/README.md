@@ -25,9 +25,23 @@ This module provides a set of hooks to simplify form handling, validation, and s
 It includes:
 - `useForm`: A hook for managing form state, validation, and submission.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaReactForm } from "alepha/react/form";
+
+const alepha = Alepha.create()
+	.with(AlephaReactForm);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Hooks
+
+Hooks provide a way to tap into various lifecycle events and extend functionality. They follow the convention of starting with `use` and return configured hook instances.
 
 #### useForm()
 

@@ -78,15 +78,19 @@ async function extractDescriptorInfo(
 		const regex = hook
 			? /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport const (use\w+)/
 			: /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport const (\$\w+)/;
-		const match = content.match(regex);
 
-		if (!match) return null;
-		if (match[1].includes("@internal")) return null;
+		const matches = Array.from(content.matchAll(new RegExp(regex.source, "g")));
 
-		return {
-			name: match[2],
-			description: cleanJsDoc(match[1]),
-		};
+		for (const match of matches) {
+			if (match[1].includes("@internal")) continue;
+
+			return {
+				name: match[2],
+				description: cleanJsDoc(match[1]),
+			};
+		}
+
+		return null;
 	} catch (error) {
 		console.error(`\n❌ Error parsing descriptor file ${filePath}:`, error);
 		return null;
@@ -103,14 +107,19 @@ async function extractProviderInfo(
 	try {
 		const content = await fs.readFile(filePath, "utf-8");
 		const regex = /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport class (\w+)/;
-		const match = content.match(regex);
 
-		if (!match) return null;
+		const matches = Array.from(content.matchAll(new RegExp(regex.source, "g")));
 
-		return {
-			name: match[2],
-			description: cleanJsDoc(match[1]),
-		};
+		for (const match of matches) {
+			if (match[1].includes("@internal")) continue;
+
+			return {
+				name: match[2],
+				description: cleanJsDoc(match[1]),
+			};
+		}
+
+		return null;
 	} catch (error) {
 		console.error(`\n❌ Error parsing provider file ${filePath}:`, error);
 		return null;
@@ -231,6 +240,7 @@ export async function generateReadmes(root: string, log = console.log) {
 			if (moduleDescription) {
 				readmeContent += `## Module\n\n`;
 				readmeContent += `${moduleDescription}\n`;
+				readmeContent += `\nThis module can be imported and used as follows:\n\n\`\`\`typescript\nimport { Alepha, run } from "alepha";\nimport { ${moduleName} } from "${pkgJson.name.replace("@", "").replace("-", "/")}";\n\nconst alepha = Alepha.create()\n\t.with(${moduleName});\n\nrun(alepha);\n\`\`\`\n`;
 			}
 
 			if (descriptors.length > 0 || providers.length > 0 || hooks.length > 0) {
@@ -238,21 +248,21 @@ export async function generateReadmes(root: string, log = console.log) {
 			}
 
 			if (descriptors.length > 0) {
-				readmeContent += `\n### Descriptors\n`;
+				readmeContent += `\n### Descriptors\n\nDescriptors are functions that define and configure various aspects of your application. They follow the convention of starting with \`$\` and return configured descriptor instances.\n`;
 				for (const desc of descriptors) {
 					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
 				}
 			}
 
 			if (hooks.length > 0) {
-				readmeContent += `\n### Hooks\n`;
+				readmeContent += `\n### Hooks\n\nHooks provide a way to tap into various lifecycle events and extend functionality. They follow the convention of starting with \`use\` and return configured hook instances.\n`;
 				for (const desc of hooks) {
 					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
 				}
 			}
 
 			if (providers.length > 0) {
-				readmeContent += `\n### Providers\n`;
+				readmeContent += `\n### Providers\n\nProviders are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.\n`;
 				providers.forEach((provider) => {
 					readmeContent += `\n#### ${provider.name}\n\n${provider.description}\n`;
 				});

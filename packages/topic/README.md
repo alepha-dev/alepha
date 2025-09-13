@@ -22,9 +22,23 @@ Generic interface for pub/sub messaging.
 Gives you the ability to create topics and subscribers.
 This module provides only a memory implementation of the topic provider.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaTopic } from "alepha/topic";
+
+const alepha = Alepha.create()
+	.with(AlephaTopic);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $subscriber()
 

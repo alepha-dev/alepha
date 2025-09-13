@@ -40,3 +40,15 @@ const alepha = Alepha.create()
 
 run(alepha);
 ```
+
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerCache } from "alepha/server/cache";
+
+const alepha = Alepha.create()
+	.with(AlephaServerCache);
+
+run(alepha);
+```

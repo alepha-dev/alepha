@@ -21,6 +21,8 @@ npm install @alepha/core @alepha/retry
 
 ### Descriptors
 
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
+
 #### $retry()
 
 Creates a function that automatically retries a handler upon failure,

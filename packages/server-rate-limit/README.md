@@ -23,9 +23,23 @@ Provides rate limiting capabilities for server actions with configurable limits 
 The server-rate-limit module enables per-action rate limiting using the `rateLimit` option in action descriptors.
 It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerRateLimit } from "alepha/server/rate-limit";
+
+const alepha = Alepha.create()
+	.with(AlephaServerRateLimit);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $rateLimit()
 

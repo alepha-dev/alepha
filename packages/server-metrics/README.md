@@ -20,3 +20,15 @@ npm install @alepha/core @alepha/server-metrics
 
 This module provides prometheus metrics for the Alepha server.
 Metrics are exposed at the `/metrics` endpoint.
+
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerMetrics } from "alepha/server/metrics";
+
+const alepha = Alepha.create()
+	.with(AlephaServerMetrics);
+
+run(alepha);
+```

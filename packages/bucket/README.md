@@ -24,9 +24,23 @@ The bucket module enables unified file operations across different storage syste
 on class properties. It abstracts storage provider differences, offering consistent APIs for local filesystem,
 cloud storage, or in-memory storage for testing environments.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaBucket } from "alepha/bucket";
+
+const alepha = Alepha.create()
+	.with(AlephaBucket);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $bucket()
 

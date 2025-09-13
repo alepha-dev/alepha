@@ -20,9 +20,23 @@ npm install @alepha/core @alepha/thread
 
 Simple interface for managing worker threads in Alepha.
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaThread } from "alepha/thread";
+
+const alepha = Alepha.create()
+	.with(AlephaThread);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $thread()
 

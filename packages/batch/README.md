@@ -48,9 +48,23 @@ class LoggingService {
 }
 ```
 
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaBatch } from "alepha/batch";
+
+const alepha = Alepha.create()
+	.with(AlephaBatch);
+
+run(alepha);
+```
+
 ## API Reference
 
 ### Descriptors
+
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
 
 #### $batch()
 

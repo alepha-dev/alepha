@@ -21,3 +21,15 @@ npm install @alepha/core @alepha/server-security
 Plugin for Alepha Server that provides security features. Based on the Alepha Security module.
 
 By default, all $action will be guarded by a permission check.
+
+This module can be imported and used as follows:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaServerSecurity } from "alepha/server/security";
+
+const alepha = Alepha.create()
+	.with(AlephaServerSecurity);
+
+run(alepha);
+```
