@@ -143,6 +143,8 @@ import { AlsProvider } from "./providers/AlsProvider.ts";
  * 		}
  * 	}
  * 	```
+ *
+ * 	@module alepha
  */
 export class Alepha {
 	/**

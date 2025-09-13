@@ -16,8 +16,3 @@ Alternatively, you can install it individually:
 npm install @alepha/core @alepha/server-compress
 ```
 
-## Module
-
-Plugin for Alepha Server that provides server-side compression capabilities.
-
-Compresses responses using gzip, brotli, or zstd based on the `Accept-Encoding` header.

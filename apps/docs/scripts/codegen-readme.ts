@@ -33,22 +33,28 @@ function cleanJsDoc(jsDocBlock: string): string {
 }
 
 /**
- * Reads the `src/index.ts` file of a package and extracts the first JSDoc comment.
+ * Reads the `src/index.ts` file of a package and extracts the JSDoc comment
+ * that contains "@module".
  * @param filePath - The full path to the index.ts file.
- * @returns The extracted description string, or null if not found.
+ * @returns The extracted description string, or null if not found or no @module tag.
  */
 async function extractModuleDescription(
 	filePath: string,
 ): Promise<string | null> {
 	try {
 		const content = await fs.readFile(filePath, "utf-8");
-		// Regex to find the first JSDoc block in the file.
-		const regex = /\/\*\*\s*\n([\s\S]*?)\s*\*\//;
-		const match = content.match(regex);
+		// Regex to find all JSDoc blocks in the file.
+		const regex = /\/\*\*\s*\n([\s\S]*?)\s*\*\//g;
+		const matches = Array.from(content.matchAll(regex));
 
-		if (!match) return null;
+		// Search through all JSDoc comments to find one with "@module"
+		for (const match of matches) {
+			if (match[1].includes("@module")) {
+				return cleanJsDoc(match[1]);
+			}
+		}
 
-		return cleanJsDoc(match[1]);
+		return null;
 	} catch (error: any) {
 		if (error.code === "ENOENT") return null; // File doesn't exist, which is fine.
 		console.error(

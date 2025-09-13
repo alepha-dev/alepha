@@ -18,7 +18,6 @@ npm install @alepha/core @alepha/server-security
 
 ## Module
 
-Real (or fake) user account, used for internal actions.
-		
-		If you define this, you assume that all actions are executed by this user by default.
-		> To force a different user, you need to pass it explicitly in the options.
+Plugin for Alepha Server that provides security features. Based on the Alepha Security module.
+
+By default, all $action will be guarded by a permission check.

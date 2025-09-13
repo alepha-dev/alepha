@@ -18,8 +18,11 @@ npm install @alepha/core @alepha/bucket
 
 ## Module
 
-Triggered when a file is uploaded to a bucket.
-		Can be used to perform actions after a file is uploaded, like creating a database record!
+Provides file storage capabilities through declarative bucket descriptors with support for multiple storage backends.
+
+The bucket module enables unified file operations across different storage systems using the `$bucket` descriptor
+on class properties. It abstracts storage provider differences, offering consistent APIs for local filesystem,
+cloud storage, or in-memory storage for testing environments.
 
 ## API Reference
 

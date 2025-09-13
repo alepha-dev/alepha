@@ -137,6 +137,8 @@ Alepha.create()
 	}
 	```
 
+	@module alepha
+
 ## API Reference
 
 ### Descriptors

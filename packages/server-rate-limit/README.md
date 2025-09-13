@@ -18,8 +18,10 @@ npm install @alepha/core @alepha/server-rate-limit
 
 ## Module
 
-Rate limiting configuration for this action.
-		When specified, the action will be rate limited according to these settings.
+Provides rate limiting capabilities for server actions with configurable limits and windows.
+
+The server-rate-limit module enables per-action rate limiting using the `rateLimit` option in action descriptors.
+It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
 
 ## API Reference
 
