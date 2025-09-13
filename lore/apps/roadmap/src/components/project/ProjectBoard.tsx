@@ -78,10 +78,15 @@ const ProjectBoard = () => {
 			can: () => taskApi.acceptTask.can(),
 			onClick: async () => {},
 		},
-		deleteTask: {
+		deleteTask: (id: number) => ({
 			can: () => taskApi.deleteTask.can(),
-			onClick: async () => {},
-		},
+			onClick: async () => {
+				await taskApi.deleteTask({
+					params: { id },
+				});
+				await loadTasks();
+			},
+		}),
 		sortBy: (key: string) => ({
 			onClick: async () => {
 				if (!project?.id) return;
@@ -394,6 +399,7 @@ const ProjectBoard = () => {
 													{!task.acceptedAt && <Menu.Divider />}
 													<Menu.Item
 														color="red"
+														{...actions.deleteTask(task.id)}
 														leftSection={
 															<IconTrash size={theme.icon.size.xs} />
 														}
