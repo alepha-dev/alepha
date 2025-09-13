@@ -41,8 +41,8 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  * @example
  * **Basic queue with automatic processing:**
  * ```ts
- * import { $queue } from "@alepha/queue";
- * import { t } from "@alepha/core";
+ * import { $queue } from "alepha/queue";
+ * import { t } from "alepha";
  *
  * class NotificationService {
  *   emailQueue = $queue({
@@ -51,7 +51,7 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  *       to: t.string(),
  *       subject: t.string(),
  *       body: t.string(),
- *       priority: t.optional(t.union([t.literal("high"), t.literal("normal")]))
+ *       priority: t.optional(t.enum(["high", "normal"]))
  *     }),
  *     handler: async (message) => {
  *       // This runs in a background worker
@@ -167,7 +167,7 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  *     name: "dev-tasks",
  *     provider: "memory",  // Use in-memory queue for development
  *     schema: t.object({
- *       taskType: t.union([t.literal("cleanup"), t.literal("backup"), t.literal("report")]),
+ *       taskType: t.enum(["cleanup", "backup", "report"]),
  *       data: t.record(t.string(), t.any()),
  *       scheduledAt: t.optional(t.string())
  *     }),
@@ -271,7 +271,7 @@ export interface QueueDescriptorOptions<T extends TSchema> {
 	 * ```ts
 	 * t.object({
 	 *   userId: t.string(),
-	 *   action: t.union([t.literal("create"), t.literal("update")]),
+	 *   action: t.enum(["create", "update"]),
 	 *   data: t.record(t.string(), t.any()),
 	 *   timestamp: t.optional(t.number())
 	 * })

@@ -66,8 +66,8 @@ import {
  * @example
  * **Basic CRUD operations:**
  * ```ts
- * import { $action } from "@alepha/server";
- * import { t } from "@alepha/core";
+ * import { $action } from "alepha/server";
+ * import { t } from "alepha";
  *
  * class UserController {
  *   // GET /api/users
