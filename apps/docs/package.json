@@ -26,7 +26,7 @@
 	},
 	"scripts": {
 		"dev": "yarn copy && vite --host",
-		"build": "vite build && yarn codegen:llms",
+		"build": "vite build",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",
 		"codegen:llms": "node scripts/codegen-llms.ts",
