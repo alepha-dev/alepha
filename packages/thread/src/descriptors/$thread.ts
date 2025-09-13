@@ -1,7 +1,7 @@
 import { cpus } from "node:os";
 import { MessageChannel, type MessagePort, Worker } from "node:worker_threads";
+import type { TSchema } from "@alepha/core";
 import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
-import type { TSchema } from "@sinclair/typebox";
 
 /**
  *
