@@ -1,4 +1,5 @@
-import { $inject, t } from "@alepha/core";
+import { $hook, $inject, t } from "@alepha/core";
+import { createFile } from "@alepha/file";
 import { sql } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";
 import { Db, tasks } from "./providers/Db.ts";
@@ -248,6 +249,69 @@ export class ProjectStatsApi {
 				activityTimeline,
 				completionRate,
 			};
+		},
+	});
+
+	exportTasksCsv = $action({
+		path: "/projects/:id/export",
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: t.file(),
+		},
+		handler: async ({ params, user }) => {
+			// Verify project access
+			const project = await this.db.projects.findOne({
+				id: { eq: params.id },
+			});
+
+			await this.db.characters.findOne({
+				userId: user.id,
+				projectId: project.id,
+			});
+
+			const tasks = await this.db.tasks.find({
+				where: { projectId: { eq: params.id } },
+				sort: { createdAt: "desc" },
+				limit: 1000,
+			});
+
+			const fields = [
+				"id",
+				"title",
+				"package",
+				"priority",
+				"complexity",
+				"createdAt",
+				"acceptedAt",
+				"completedAt",
+			];
+
+			let csvContent = `${fields.join(",")}\n`;
+			for (const task of tasks) {
+				const row = fields.map((field) => {
+					let value = (task as any)[field] ?? "";
+					if (value instanceof Date) {
+						value = value.toISOString();
+					} else if (typeof value === "string") {
+						// Escape double quotes in strings
+						value = value.replace(/"/g, '""');
+						// Wrap string values in double quotes
+						value = `"${value}"`;
+					} else if (typeof value === "object") {
+						// For objects/arrays, stringify them
+						value = `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+					}
+					return value;
+				});
+				csvContent += `${row.join(",")}\n`;
+			}
+
+			return createFile(csvContent, {
+				name: `tasks-export-${project.title}-${new Date().toISOString().split("T")[0]}.csv`,
+				type: "text/csv",
+			});
 		},
 	});
 }
