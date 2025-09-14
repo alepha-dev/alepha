@@ -19,11 +19,13 @@ import {
 	IconSearch,
 	IconSignature,
 	IconTrash,
+	IconUser,
 	IconX,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
-import type { Task } from "../../api/providers/Db.ts";
+import type { ProjectApi } from "../../api/ProjectApi.ts";
+import type { Task, User } from "../../api/providers/Db.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
 import { theme } from "../../constants/theme.ts";
 import Action from "../ui/Action.tsx";
@@ -34,6 +36,7 @@ type TaskStatus = "new" | "accepted" | "completed";
 const ProjectBoard = () => {
 	const [project] = useStore("current_project");
 	const taskApi = useClient<TaskApi>();
+	const projectApi = useClient<ProjectApi>();
 	const [status, setStatus] = useState<TaskStatus>("new");
 	const [result, setResult] = useState<Page<Task> | undefined>();
 	const dateFormatter = useInject(DateTimeProvider);
@@ -44,6 +47,17 @@ const ProjectBoard = () => {
 	const [sortValue, setSortValue] = useState<string | undefined>(undefined);
 	const [searchValue, setSearchValue] = useState<string>("");
 	const [searchQuery, setSearchQuery] = useState<string>("");
+	const [users, setUsers] = useState<Array<User>>([]);
+
+	const loadUsers = async () => {
+		if (!project?.id) return;
+
+		setUsers(
+			await projectApi.getProjectUsers({
+				params: { id: project.id },
+			}),
+		);
+	};
 
 	const loadTasks = async () => {
 		if (!project?.id) return;
@@ -51,16 +65,13 @@ const ProjectBoard = () => {
 		setSortValue(undefined);
 		setLoading(true);
 		try {
-			const [result] = await Promise.all([
-				await taskApi.getTasks({
-					params: { projectId: project.id },
-					query: {
-						status,
-						search: searchQuery || undefined,
-					},
-				}),
-				new Promise((resolve) => setTimeout(resolve, 200)),
-			]);
+			const result = await taskApi.getTasks({
+				params: { projectId: project.id },
+				query: {
+					status,
+					search: searchQuery || undefined,
+				},
+			});
 			setResult(result);
 		} catch (error) {
 			console.error("Error loading tasks:", error);
@@ -70,7 +81,11 @@ const ProjectBoard = () => {
 	};
 
 	useEffect(() => {
-		loadTasks();
+		loadUsers().catch(() => null);
+	}, [project?.id]);
+
+	useEffect(() => {
+		loadTasks().catch(() => null);
 	}, [project?.id, status, searchQuery]);
 
 	const actions = {
@@ -158,6 +173,28 @@ const ProjectBoard = () => {
 			default:
 				return "dark";
 		}
+	};
+
+	const renderAvatar = (userId?: string) => {
+		if (userId) {
+			const user = users.find((u) => u.id === userId);
+			if (user) {
+				if (user.picture) {
+					return (
+						<img
+							alt={"picture"}
+							style={{
+								height: "24px",
+								width: "24px",
+								borderRadius: "50%",
+							}}
+							src={user.picture}
+						/>
+					);
+				}
+			}
+		}
+		return <IconUser />;
 	};
 
 	return (
@@ -286,17 +323,7 @@ const ProjectBoard = () => {
 									<Table.Tr key={task.id}>
 										{status === "accepted" && (
 											<Table.Td align={"center"}>
-												<img
-													alt={"picture"}
-													style={{
-														height: "24px",
-														width: "24px",
-														borderRadius: "50%",
-													}}
-													src={
-														"https://api.dicebear.com/9.x/pixel-art/svg?seed=Vivian"
-													}
-												/>
+												{renderAvatar(task.acceptedBy)}
 											</Table.Td>
 										)}
 										<Table.Td maw={"254px"}>

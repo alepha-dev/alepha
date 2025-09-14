@@ -1,9 +1,14 @@
 import { $env, $inject, Alepha, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $auth, type OAuth2Profile } from "@alepha/react-auth";
-import { $realm, CryptoProvider, type UserAccount } from "@alepha/security";
+import {
+	$realm,
+	CryptoProvider,
+	type UserAccount,
+	type UserAccountToken,
+} from "@alepha/security";
 import { type ServerRequest, UnauthorizedError } from "@alepha/server";
-import { Db } from "./Db.ts";
+import { type Character, Db, type Project } from "./Db.ts";
 
 export class Security {
 	dateTimeProvider = $inject(DateTimeProvider);
@@ -274,4 +279,30 @@ export class Security {
 
 		return newUser;
 	}
+
+	async checkOwnership(
+		projectId: number,
+		user: UserAccountToken,
+	): Promise<ProjectGuard> {
+		const project = await this.db.projects.findOne({
+			id: { eq: projectId },
+		});
+
+		if (project.createdBy !== user.id && !project.public && user.ownership) {
+			return {
+				project,
+				character: await this.db.characters.findOne({
+					projectId: { eq: projectId },
+					userId: { eq: user.id },
+				}),
+			};
+		}
+
+		return { project };
+	}
+}
+
+export interface ProjectGuard {
+	project: Project;
+	character?: Character;
 }

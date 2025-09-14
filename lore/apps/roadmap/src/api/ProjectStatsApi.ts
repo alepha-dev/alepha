@@ -1,4 +1,4 @@
-import { $hook, $inject, t } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
 import { createFile } from "@alepha/file";
 import { sql } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";

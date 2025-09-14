@@ -24,16 +24,21 @@ export class CharacterApi {
 			const userCharacters = await this.db.characters.find({
 				where: { userId: { eq: user.id } },
 			});
+			const userCharacterIds = userCharacters.map((c) => c.id);
+
+			if (userCharacterIds.length === 0) {
+				return [];
+			}
+
+			// Fetch projects for each character
+			const projects = await this.db.projects.find({
+				where: { id: { inArray: userCharacters.map((c) => c.projectId) } },
+			});
 
 			return (
 				await Promise.all(
 					userCharacters.map(async (character) => {
-						const project = await this.db.projects
-							.findOne({
-								id: { eq: character.projectId },
-							})
-							.catch(() => null);
-
+						const project = projects.find((p) => p.id === character.projectId);
 						if (!project) {
 							return;
 						}

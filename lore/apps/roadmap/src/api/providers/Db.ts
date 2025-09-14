@@ -102,9 +102,6 @@ export const tasks = $entity({
 		createdBy: pg.ref(t.uuid(), () => users.id, {
 			onDelete: "cascade",
 		}),
-		assignedTo: pg.ref(t.optional(t.uuid()), () => users.id, {
-			onDelete: "set null",
-		}),
 		acceptedBy: pg.ref(t.optional(t.uuid()), () => users.id, {
 			onDelete: "set null",
 		}),
