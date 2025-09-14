@@ -1,6 +1,7 @@
 import {
 	$inject,
 	Alepha,
+	AlephaError,
 	type LoggerInterface,
 	type LogLevel,
 } from "@alepha/core";
@@ -66,7 +67,9 @@ export class Logger implements LoggerInterface {
 					try {
 						return this.asLogLevel(trimmedLevel);
 					} catch (error) {
-						throw new Error(`Invalid log level "${levelValue?.trim()}" for module pattern "${trimmedModule}"`);
+						throw new AlephaError(
+							`Invalid log level '${levelValue?.trim()}' for module pattern '${trimmedModule}'`,
+						);
 					}
 				}
 			}
@@ -92,9 +95,7 @@ export class Logger implements LoggerInterface {
 	private matchesPattern(moduleName: string, pattern: string): boolean {
 		if (pattern.includes("*")) {
 			// Convert wildcard pattern to regex
-			const regexPattern = pattern
-				.replace(/\./g, "\\.")
-				.replace(/\*/g, ".*");
+			const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*");
 			return new RegExp(`^${regexPattern}`).test(moduleName);
 		}
 

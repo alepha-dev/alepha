@@ -1,12 +1,12 @@
 import { Alepha } from "@alepha/core";
 import { describe, it } from "vitest";
-import { Logger } from "../src/services/Logger.ts";
 import {
 	LogDestinationProvider,
 	LogFormatterProvider,
 	MemoryDestinationProvider,
 	SimpleFormatterProvider,
 } from "../src";
+import { Logger } from "../src/services/Logger.ts";
 
 describe("Logger", () => {
 	const createLogger = (service = "TestService", module = "test.module") => {
@@ -29,11 +29,15 @@ describe("Logger", () => {
 	};
 
 	describe("parseLevel", () => {
-		it("should return global level when no matching module found", ({ expect }) => {
+		it("should return global level when no matching module found", ({
+			expect,
+		}) => {
 			const logger = createLogger();
 			// When no module-specific config matches, it falls back to global level
 			expect(logger.parseLevel("debug", "non.matching.module")).toBe("debug");
-			expect(logger.parseLevel("specific.module:trace,warn", "non.matching.module")).toBe("warn");
+			expect(
+				logger.parseLevel("specific.module:trace,warn", "non.matching.module"),
+			).toBe("warn");
 		});
 
 		it("should parse simple global level", ({ expect }) => {
@@ -45,18 +49,30 @@ describe("Logger", () => {
 			expect(logger.parseLevel("silent", "any.module")).toBe("silent");
 		});
 
-		it("should parse module-specific level with colon separator", ({ expect }) => {
+		it("should parse module-specific level with colon separator", ({
+			expect,
+		}) => {
 			const logger = createLogger();
 			expect(logger.parseLevel("test:debug,info", "test.module")).toBe("debug");
-			expect(logger.parseLevel("alepha:trace,warn", "alepha.core")).toBe("trace");
-			expect(logger.parseLevel("my.app:error,info", "my.app.service")).toBe("error");
+			expect(logger.parseLevel("alepha:trace,warn", "alepha.core")).toBe(
+				"trace",
+			);
+			expect(logger.parseLevel("my.app:error,info", "my.app.service")).toBe(
+				"error",
+			);
 		});
 
-		it("should parse module-specific level with equals separator", ({ expect }) => {
+		it("should parse module-specific level with equals separator", ({
+			expect,
+		}) => {
 			const logger = createLogger();
 			expect(logger.parseLevel("test=debug,info", "test.module")).toBe("debug");
-			expect(logger.parseLevel("alepha=trace,warn", "alepha.core")).toBe("trace");
-			expect(logger.parseLevel("my.app=error,info", "my.app.service")).toBe("error");
+			expect(logger.parseLevel("alepha=trace,warn", "alepha.core")).toBe(
+				"trace",
+			);
+			expect(logger.parseLevel("my.app=error,info", "my.app.service")).toBe(
+				"error",
+			);
 		});
 
 		it("should handle multiple module configurations", ({ expect }) => {
@@ -111,7 +127,9 @@ describe("Logger", () => {
 			expect(logger.parseLevel(config, "other")).toBe("info");
 		});
 
-		it("should fall back to global level when no module match", ({ expect }) => {
+		it("should fall back to global level when no module match", ({
+			expect,
+		}) => {
 			const logger = createLogger();
 			const config = "specific.module:debug,trace";
 
@@ -122,33 +140,57 @@ describe("Logger", () => {
 			const logger = createLogger();
 			// Empty parts are now skipped gracefully
 			expect(logger.parseLevel(",,debug,,", "any.module")).toBe("debug");
-			expect(logger.parseLevel("alepha:trace,,info", "alepha.core")).toBe("trace");
+			expect(logger.parseLevel("alepha:trace,,info", "alepha.core")).toBe(
+				"trace",
+			);
 			expect(logger.parseLevel("alepha:trace,,", "other.module")).toBe("info");
-			expect(logger.parseLevel("   ,  , debug ,  ", "any.module")).toBe("debug");
+			expect(logger.parseLevel("   ,  , debug ,  ", "any.module")).toBe(
+				"debug",
+			);
 		});
 
 		it("should provide better error messages", ({ expect }) => {
 			const logger = createLogger();
-			expect(() => logger.parseLevel("alepha:invalid,info", "alepha.core")).toThrow('Invalid log level "invalid" for module pattern "alepha"');
-			expect(() => logger.parseLevel("badlevel", "any.module")).toThrow('Invalid global log level "badlevel"');
+			expect(() =>
+				logger.parseLevel("alepha:invalid,info", "alepha.core"),
+			).toThrow("Invalid log level 'invalid' for module pattern 'alepha'");
+			expect(() => logger.parseLevel("badlevel", "any.module")).toThrow(
+				'Invalid global log level "badlevel"',
+			);
 		});
 
 		it("should support wildcard patterns", ({ expect }) => {
 			const logger = createLogger();
 
 			// Basic wildcard matching
-			expect(logger.parseLevel("alepha.*:debug,info", "alepha.core")).toBe("debug");
-			expect(logger.parseLevel("alepha.*:debug,info", "alepha.server")).toBe("debug");
-			expect(logger.parseLevel("alepha.*:debug,info", "other.module")).toBe("info");
+			expect(logger.parseLevel("alepha.*:debug,info", "alepha.core")).toBe(
+				"debug",
+			);
+			expect(logger.parseLevel("alepha.*:debug,info", "alepha.server")).toBe(
+				"debug",
+			);
+			expect(logger.parseLevel("alepha.*:debug,info", "other.module")).toBe(
+				"info",
+			);
 
 			// More specific patterns
-			expect(logger.parseLevel("*.test:silent,*.core:trace,info", "alepha.test")).toBe("silent");
-			expect(logger.parseLevel("*.test:silent,*.core:trace,info", "my.core")).toBe("trace");
-			expect(logger.parseLevel("*.test:silent,*.core:trace,info", "other.module")).toBe("info");
+			expect(
+				logger.parseLevel("*.test:silent,*.core:trace,info", "alepha.test"),
+			).toBe("silent");
+			expect(
+				logger.parseLevel("*.test:silent,*.core:trace,info", "my.core"),
+			).toBe("trace");
+			expect(
+				logger.parseLevel("*.test:silent,*.core:trace,info", "other.module"),
+			).toBe("info");
 
 			// Exact prefix match still works (existing behavior)
-			expect(logger.parseLevel("alepha.core:debug,info", "alepha.core")).toBe("debug");
-			expect(logger.parseLevel("alepha.core:debug,info", "alepha.core.service")).toBe("debug"); // startsWith behavior
+			expect(logger.parseLevel("alepha.core:debug,info", "alepha.core")).toBe(
+				"debug",
+			);
+			expect(
+				logger.parseLevel("alepha.core:debug,info", "alepha.core.service"),
+			).toBe("debug"); // startsWith behavior
 		});
 
 		it("should prioritize more specific wildcard matches", ({ expect }) => {
@@ -182,9 +224,13 @@ describe("Logger", () => {
 
 		it("should throw error for invalid levels", ({ expect }) => {
 			const logger = createLogger();
-			expect(() => logger.asLogLevel("invalid")).toThrow("Invalid log level: invalid");
+			expect(() => logger.asLogLevel("invalid")).toThrow(
+				"Invalid log level: invalid",
+			);
 			expect(() => logger.asLogLevel("")).toThrow("Invalid log level: ");
-			expect(() => logger.asLogLevel("DEBUG")).toThrow("Invalid log level: DEBUG");
+			expect(() => logger.asLogLevel("DEBUG")).toThrow(
+				"Invalid log level: DEBUG",
+			);
 		});
 	});
 

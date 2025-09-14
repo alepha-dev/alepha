@@ -76,6 +76,25 @@ describe("ServerCacheProvider", () => {
 			expect(afterInvalidation.status).toBe(200);
 			expect(afterInvalidation.data).toBe("cached-1");
 		});
+
+		test("should set etag property on route and handle caching correctly", async ({
+			expect,
+		}) => {
+			// Make first request to trigger caching
+			const response = await app.cachedAction.fetch();
+			expect(response.status).toBe(200);
+			expect(response.data).toBe("cached-0");
+
+			// Subsequent request should return 304 (cached with etag check)
+			const cachedResponse = await app.cachedAction.fetch();
+			expect(cachedResponse.status).toBe(304);
+
+			// Cache invalidation should work
+			await cacheProvider.invalidate(app.cachedAction.route);
+			const afterInvalidation = await app.cachedAction.fetch();
+			expect(afterInvalidation.status).toBe(200);
+			expect(afterInvalidation.data).toBe("cached-1");
+		});
 	});
 
 	describe("Cache behavior", () => {

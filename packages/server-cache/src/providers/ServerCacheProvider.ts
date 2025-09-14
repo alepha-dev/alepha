@@ -13,6 +13,7 @@ import {
 declare module "@alepha/server" {
 	interface ServerRoute {
 		cache?: ServerRouteCache;
+		etag?: string;
 	}
 
 	interface ActionDescriptor<TConfig extends RequestConfigSchema> {
@@ -109,6 +110,7 @@ export class ServerCacheProvider {
 				contentType: contentType,
 				hash: etag,
 			});
+			action.route.etag = etag; // Set etag on the route itself
 		},
 	});
 
@@ -184,6 +186,7 @@ export class ServerCacheProvider {
 				});
 				response.headers ??= {};
 				response.headers.etag = etag;
+				route.etag = etag; // Set etag on the route itself
 			}
 		},
 	});
