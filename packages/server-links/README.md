@@ -34,9 +34,9 @@ run(alepha);
 
 ### Descriptors
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with `$` and return configured descriptor instances.
+Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
 
-For more details, see the [Descriptors documentation](https://feunard.github.io/alepha/docs/descriptors).
+For more details, see the [Descriptors documentation](/docs/descriptors).
 
 #### $client()
 
@@ -55,6 +55,8 @@ You can add a service account if you want to use a security layer.
 ### Providers
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/providers).
 
 #### LinkProvider
 

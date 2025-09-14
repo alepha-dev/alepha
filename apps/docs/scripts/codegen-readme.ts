@@ -248,7 +248,7 @@ export async function generateReadmes(root: string, log = console.log) {
 			}
 
 			if (descriptors.length > 0) {
-				readmeContent += `\n### Descriptors\n\nDescriptors are functions that define and configure various aspects of your application. They follow the convention of starting with \`$\` and return configured descriptor instances.\n\nFor more details, see the [Descriptors documentation](/docs/descriptors).\n`;
+				readmeContent += `\n### Descriptors\n\nDescriptors are functions that define and configure various aspects of your application. They follow the convention of starting with \` $ \` and return configured descriptor instances.\n\nFor more details, see the [Descriptors documentation](/docs/descriptors).\n`;
 				for (const desc of descriptors) {
 					readmeContent += `\n#### ${desc.name}()\n\n${desc.description}\n`;
 				}

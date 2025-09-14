@@ -457,6 +457,7 @@ export class ReactServerProvider {
 		app: string,
 		script: string,
 	) {
+		// TODO: replace Regexp with a preparsed template on startup, for performance and because replace() is unsafe ($& problem)
 		if (this.ROOT_DIV_REGEX.test(response.html)) {
 			// replace contents of the existing <div id="root">
 			response.html = response.html.replace(
