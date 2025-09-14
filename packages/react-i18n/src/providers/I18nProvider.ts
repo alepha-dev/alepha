@@ -44,7 +44,7 @@ export class I18nProvider<
 		on: "server:onRequest",
 		priority: "last",
 		handler: async ({ request }) => {
-			this.alepha.state("react.i18n.lang", this.cookie.get(request));
+			this.alepha.state.set("react.i18n.lang", this.cookie.get(request));
 		},
 	});
 
@@ -55,7 +55,7 @@ export class I18nProvider<
 				// get cookie lang
 				const cookieLang = this.cookie.get();
 				if (cookieLang) {
-					this.alepha.state("react.i18n.lang", cookieLang);
+					this.alepha.state.set("react.i18n.lang", cookieLang);
 				}
 
 				for (const item of this.registry) {
@@ -92,7 +92,7 @@ export class I18nProvider<
 			this.cookie.set(lang);
 		}
 
-		this.alepha.state("react.i18n.lang", lang);
+		this.alepha.state.set("react.i18n.lang", lang);
 	}
 
 	protected readonly mutate = $hook({
@@ -113,14 +113,16 @@ export class I18nProvider<
 				this.createFormatters();
 
 				if (hasChanged) {
-					this.alepha.state("react.i18n.lang", value);
+					this.alepha.state.set("react.i18n.lang", value);
 				}
 			}
 		},
 	});
 
 	public get lang(): string {
-		return this.alepha.state("react.i18n.lang") || this.options.fallbackLang;
+		return (
+			this.alepha.state.get("react.i18n.lang") || this.options.fallbackLang
+		);
 	}
 
 	public translate = (key: string, args: string[] = []) => {

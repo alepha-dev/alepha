@@ -65,7 +65,7 @@ export class ServerSecurityProvider {
 					options,
 					permission,
 				);
-				this.alepha.state(
+				this.alepha.state.set(
 					"user",
 					this.alepha.parse(userAccountInfoSchema, request.user),
 				);
@@ -102,7 +102,7 @@ export class ServerSecurityProvider {
 					{ permission },
 				);
 
-				this.alepha.state(
+				this.alepha.state.set(
 					"user",
 					// remove sensitive info
 					this.alepha.parse(userAccountInfoSchema, request.user),
@@ -151,7 +151,7 @@ export class ServerSecurityProvider {
 		let user: UserAccountToken | undefined;
 
 		const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
-		const fromSystem = this.alepha.state("server.security.system.user");
+		const fromSystem = this.alepha.state.get("server.security.system.user");
 
 		if (type === "system") {
 			user = fromSystem;

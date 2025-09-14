@@ -11,9 +11,9 @@ test("$hook - basic", async () => {
 	const alepha = Alepha.create().with(App);
 	await alepha.start();
 	expect(alepha.inject(App).hook.called).toBe(0);
-	await alepha.emit("echo", {});
+	await alepha.events.emit("echo", {});
 	expect(alepha.inject(App).hook.called).toBe(1);
-	await alepha.emit("echo", {});
+	await alepha.events.emit("echo", {});
 	expect(alepha.inject(App).hook.called).toBe(2);
 });
 

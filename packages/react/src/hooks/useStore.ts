@@ -12,19 +12,19 @@ export const useStore = <Key extends keyof State>(
 	const alepha = useAlepha();
 
 	useMemo(() => {
-		if (defaultValue != null && alepha.state(key) == null) {
-			alepha.state(key, defaultValue);
+		if (defaultValue != null && alepha.state.get(key) == null) {
+			alepha.state.set(key, defaultValue);
 		}
 	}, [defaultValue]);
 
-	const [state, setState] = useState(alepha.state(key));
+	const [state, setState] = useState(alepha.state.get(key));
 
 	useEffect(() => {
 		if (!alepha.isBrowser()) {
 			return;
 		}
 
-		return alepha.on("state:mutate", (ev) => {
+		return alepha.events.on("state:mutate", (ev) => {
 			if (ev.key === key) {
 				setState(ev.value);
 			}
@@ -34,7 +34,7 @@ export const useStore = <Key extends keyof State>(
 	return [
 		state,
 		(value: State[Key]) => {
-			alepha.state(key, value);
+			alepha.state.set(key, value);
 		},
 	] as const;
 };

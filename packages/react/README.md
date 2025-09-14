@@ -138,7 +138,7 @@ With Alepha, you can access the core functionalities of the framework:
 
 - alepha.state() for state management
 - alepha.inject() for dependency injection
-- alepha.emit() for event handling
+- alepha.events.emit() for event handling
 etc...
 
 #### useClient()

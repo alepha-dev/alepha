@@ -62,7 +62,7 @@ export async function viteAlephaBuildVercel(
 // This file is the entry point for Vercel serverless functions.
 export default async function (req, res) {
 \tawait __alepha.start();
-\t__alepha.emit("node:request", { req, res });
+\t__alepha.events.emit("node:request", { req, res });
 }
 `,
 			);

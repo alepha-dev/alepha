@@ -1,18 +1,20 @@
 import { test } from "vitest";
 import { Alepha } from "../src";
 
-test("Alepha#emit - catch", async ({ expect }) => {
+test("alepha.events.emit - catch", async ({ expect }) => {
 	const alepha = Alepha.create();
 
-	alepha.on("echo", () => {
+	alepha.events.on("echo", () => {
 		throw new Error("Error in echo");
 	});
 
 	await alepha.start();
 
-	await expect(() => alepha.emit("echo", {})).rejects.toThrowError(
+	await expect(() => alepha.events.emit("echo", {})).rejects.toThrowError(
 		"Error in echo",
 	);
 
-	expect(await alepha.emit("echo", {}, { catch: true })).toEqual(undefined);
+	expect(await alepha.events.emit("echo", {}, { catch: true })).toEqual(
+		undefined,
+	);
 });

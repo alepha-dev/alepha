@@ -45,7 +45,7 @@ export const importAlepha = async (
 		throw new Error("Alepha instance not found. Ensure Alepha is initialized.");
 	}
 
-	await alepha.emit("configure", alepha);
+	await alepha.events.emit("configure", alepha);
 
 	return alepha;
 };

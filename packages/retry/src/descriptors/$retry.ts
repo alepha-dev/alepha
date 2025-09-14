@@ -82,7 +82,7 @@ export class RetryDescriptor<
 		super(args);
 
 		this.appAbortController = new AbortController();
-		this.alepha.on("stop", () => {
+		this.alepha.events.on("stop", () => {
 			this.appAbortController.abort();
 		});
 	}

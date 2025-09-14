@@ -42,7 +42,7 @@ export class HttpClient {
 		const headers: Record<string, string> = {};
 		const url = this.url(host, route, config);
 
-		await this.alepha.emit("client:onRequest", {
+		await this.alepha.events.emit("client:onRequest", {
 			route,
 			config,
 			options,
@@ -96,7 +96,7 @@ export class HttpClient {
 			}
 		}
 
-		await this.alepha.emit("client:beforeFetch", {
+		await this.alepha.events.emit("client:beforeFetch", {
 			url,
 			options,
 			request,
@@ -266,7 +266,7 @@ export class HttpClient {
 				const jsonError = this.alepha.parse(errorSchema, json);
 				const error = new HttpError(jsonError);
 
-				await this.alepha.emit("client:onError", {
+				await this.alepha.events.emit("client:onError", {
 					error,
 				});
 
@@ -286,7 +286,7 @@ export class HttpClient {
 				message: `An error occurred while fetching the resource. (${response.statusText})`,
 			});
 
-			await this.alepha.emit("client:onError", {
+			await this.alepha.events.emit("client:onError", {
 				error,
 			});
 

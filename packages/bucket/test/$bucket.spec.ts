@@ -56,7 +56,7 @@ describe("$bucket", () => {
 		let uploadEventCalled = false;
 		let deleteEventCalled = false;
 
-		alepha.on("bucket:file:uploaded", ({ id, file, options }) => {
+		alepha.events.on("bucket:file:uploaded", ({ id, file, options }) => {
 			expect(id).toBeDefined();
 			expect(file.name).toBe("test.png");
 			expect(file.type).toBe("image/png");
@@ -68,7 +68,7 @@ describe("$bucket", () => {
 			uploadEventCalled = true;
 		});
 
-		alepha.on("bucket:file:deleted", ({ id }) => {
+		alepha.events.on("bucket:file:deleted", ({ id }) => {
 			expect(id).toBeDefined();
 			deleteEventCalled = true;
 		});

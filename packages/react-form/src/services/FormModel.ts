@@ -34,7 +34,7 @@ export class FormModel<T extends TObject> {
 
 	public readonly onSubmit = async (event: FormEventLike) => {
 		event.preventDefault();
-		this.alepha.emit("form:submit:begin", {
+		this.alepha.events.emit("form:submit:begin", {
 			id: this.id,
 		});
 		const options = this.options;
@@ -55,7 +55,7 @@ export class FormModel<T extends TObject> {
 			} else {
 				await options.handler(values, args); // for now, trust
 			}
-			this.alepha.emit("form:submit:success", {
+			this.alepha.events.emit("form:submit:success", {
 				id: this.id,
 			});
 		} catch (error) {
@@ -63,10 +63,10 @@ export class FormModel<T extends TObject> {
 
 			options.onError?.(error as Error, args);
 
-			this.alepha.emit("form:submit:error", { error, id: this.id });
+			this.alepha.events.emit("form:submit:error", { error, id: this.id });
 		}
 
-		this.alepha.emit("form:submit:end", {
+		this.alepha.events.emit("form:submit:end", {
 			id: this.id,
 		});
 	};
@@ -215,7 +215,7 @@ export class FormModel<T extends TObject> {
 				options.onChange(key, value, context.store);
 			}
 
-			this.alepha.emit("form:change", {
+			this.alepha.events.emit("form:change", {
 				id: this.id,
 				path: path,
 			});

@@ -116,7 +116,7 @@ class App {
 Alepha.create()
 	 .with(App)
 	 .start()
-	 .then(alepha => alepha.emit("my:custom:hook"));
+	 .then(alepha => alepha.events.emit("my:custom:hook"));
 ```
 
 	Hooks are fully typed. You can create your own hooks by using module augmentation:
@@ -203,7 +203,7 @@ declare module "@alepha/core" {
   }
 }
 
-await alepha.emit("my:custom:hook", { arg1: "value" });
+await alepha.events.emit("my:custom:hook", { arg1: "value" });
 ```
 
 #### $inject()

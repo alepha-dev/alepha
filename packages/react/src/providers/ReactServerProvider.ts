@@ -74,7 +74,7 @@ export class ReactServerProvider {
 			const ssrEnabled =
 				pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
-			this.alepha.state("react.server.ssr", ssrEnabled);
+			this.alepha.state.set("react.server.ssr", ssrEnabled);
 
 			for (const page of pages) {
 				page.render = this.createRenderFunction(page.name);
@@ -238,7 +238,7 @@ export class ReactServerProvider {
 				url,
 			});
 
-			await this.alepha.emit("react:server:render:begin", {
+			await this.alepha.events.emit("react:server:render:begin", {
 				state,
 			});
 
@@ -252,7 +252,7 @@ export class ReactServerProvider {
 			}
 
 			if (!withIndex && !options.html) {
-				this.alepha.state("react.router.state", state);
+				this.alepha.state.set("react.router.state", state);
 
 				return {
 					state,
@@ -272,7 +272,7 @@ export class ReactServerProvider {
 				html,
 			};
 
-			await this.alepha.emit("react:server:render:end", result);
+			await this.alepha.events.emit("react:server:render:end", result);
 
 			return result;
 		};
@@ -304,7 +304,7 @@ export class ReactServerProvider {
 			const state = entry as ReactRouterState;
 
 			if (this.alepha.has(ServerLinksProvider)) {
-				this.alepha.state(
+				this.alepha.state.set(
 					"api",
 					await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
 						user: (serverRequest as any).user, // TODO: fix type
@@ -335,7 +335,7 @@ export class ReactServerProvider {
 			// 	return;
 			// }
 
-			await this.alepha.emit("react:server:render:begin", {
+			await this.alepha.events.emit("react:server:render:begin", {
 				request: serverRequest,
 				state,
 			});
@@ -375,7 +375,7 @@ export class ReactServerProvider {
 				html,
 			};
 
-			await this.alepha.emit("react:server:render:end", event);
+			await this.alepha.events.emit("react:server:render:end", event);
 
 			route.onServerResponse?.(serverRequest);
 
@@ -395,7 +395,7 @@ export class ReactServerProvider {
 		const element = this.pageApi.root(state);
 
 		// attach react router state to the http request context
-		this.alepha.state("react.router.state", state);
+		this.alepha.state.set("react.router.state", state);
 
 		this.serverTimingProvider.beginTiming("renderToString");
 		let app = "";

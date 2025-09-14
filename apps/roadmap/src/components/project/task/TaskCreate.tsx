@@ -44,9 +44,9 @@ const TaskCreate = (props: TaskCreateProps) => {
 					params: { id: props.task.id },
 					body: data,
 				});
-				alepha.state("current_assigned_tasks", [
+				alepha.state.set("current_assigned_tasks", [
 					resp,
-					...(alepha.state("current_assigned_tasks") ?? []).filter(
+					...(alepha.state.get("current_assigned_tasks") ?? []).filter(
 						(task) => task.id !== resp.id,
 					),
 				]);

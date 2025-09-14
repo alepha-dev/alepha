@@ -38,7 +38,7 @@ import type { Async } from "../interfaces/Async.ts";
  *   }
  * }
  *
- * await alepha.emit("my:custom:hook", { arg1: "value" });
+ * await alepha.events.emit("my:custom:hook", { arg1: "value" });
  * ```
  *
  */
@@ -82,7 +82,7 @@ export class HookDescriptor<T extends keyof Hooks> extends Descriptor<
 	public called = 0;
 
 	protected onInit() {
-		this.alepha.on(this.options.on, {
+		this.alepha.events.on(this.options.on, {
 			caller: this.config.service,
 			priority: this.options.priority,
 			callback: async (args: any) => {

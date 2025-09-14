@@ -30,7 +30,7 @@ export const useFormState = <T extends TObject>(
 
 		if (events.includes("change") || events.includes("error")) {
 			listeners.push(
-				alepha.on("form:change", (event) => {
+				alepha.events.on("form:change", (event) => {
 					if (event.id === form.id) {
 						if (!path || event.path === path) {
 							setDirty(true);
@@ -38,7 +38,7 @@ export const useFormState = <T extends TObject>(
 						}
 					}
 				}),
-				alepha.on("form:submit:success", (event) => {
+				alepha.events.on("form:submit:success", (event) => {
 					if (event.id === form.id) {
 						setDirty(false);
 					}
@@ -48,12 +48,12 @@ export const useFormState = <T extends TObject>(
 
 		if (events.includes("submit")) {
 			listeners.push(
-				alepha.on("form:submit:begin", (event) => {
+				alepha.events.on("form:submit:begin", (event) => {
 					if (event.id === form.id) {
 						setLoading(true);
 					}
 				}),
-				alepha.on("form:submit:end", (event) => {
+				alepha.events.on("form:submit:end", (event) => {
 					if (event.id === form.id) {
 						setLoading(false);
 					}
@@ -63,7 +63,7 @@ export const useFormState = <T extends TObject>(
 
 		if (events.includes("error")) {
 			listeners.push(
-				alepha.on("form:submit:error", (event) => {
+				alepha.events.on("form:submit:error", (event) => {
 					if (event.id === form.id) {
 						if (
 							!path ||

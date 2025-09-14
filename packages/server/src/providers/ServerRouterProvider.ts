@@ -76,7 +76,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			return this.errorHandler(route, request, error as Error);
 		});
 
-		await this.alepha.emit(
+		await this.alepha.events.emit(
 			"server:onSend",
 			{
 				request,
@@ -94,7 +94,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			body: request.reply.body as any,
 		};
 
-		await this.alepha.emit(
+		await this.alepha.events.emit(
 			"server:onResponse",
 			{
 				request,
@@ -119,7 +119,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		// - ServerSecurityProvider (build user from headers)
 		// - ServerLoggerProvider (log request)
 
-		await this.alepha.emit(
+		await this.alepha.events.emit(
 			"server:onRequest", // this hook will fill request.user and request.cookies
 			{
 				request,
@@ -272,7 +272,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		// it can be filled by server:onError hook or by the default handler below
 		request.reply.body = null;
 
-		await this.alepha.emit(
+		await this.alepha.events.emit(
 			"server:onError",
 			{
 				request,

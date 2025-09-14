@@ -11,7 +11,7 @@ import { AlephaContext } from "../contexts/AlephaContext.ts";
  *
  * - alepha.state() for state management
  * - alepha.inject() for dependency injection
- * - alepha.emit() for event handling
+ * - alepha.events.emit() for event handling
  * etc...
  */
 export const useAlepha = (): Alepha => {

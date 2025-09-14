@@ -78,7 +78,7 @@ export class LinkProvider {
 	}
 
 	public get links(): HttpClientLink[] {
-		return this.alepha.state("api")?.links ?? this.serverLinks ?? [];
+		return this.alepha.state.get("api")?.links ?? this.serverLinks ?? [];
 	}
 
 	/**
@@ -95,7 +95,7 @@ export class LinkProvider {
 			},
 		);
 
-		this.alepha.state("api", data);
+		this.alepha.state.set("api", data);
 
 		return data.links;
 	}
@@ -254,7 +254,7 @@ export class LinkProvider {
 		name: string,
 		options: ClientScope = {},
 	): Promise<HttpClientLink> {
-		if (this.alepha.isBrowser() && !this.alepha.state("api")) {
+		if (this.alepha.isBrowser() && !this.alepha.state.get("api")) {
 			await this.fetchLinks();
 		}
 
@@ -268,7 +268,7 @@ export class LinkProvider {
 		if (!link) {
 			const error = new UnauthorizedError(`Action ${name} not found.`);
 			// mimic http error handling
-			await this.alepha.emit("client:onError", {
+			await this.alepha.events.emit("client:onError", {
 				route: link,
 				error,
 			});

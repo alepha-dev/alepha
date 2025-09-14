@@ -78,7 +78,7 @@ export * from "./services/Logger.ts";
  *
  * Log level is also available in the state as `logLevel`, which can be used to dynamically change the log level at runtime.
  * ```ts
- * alepha.state("logLevel", "debug");
+ * alepha.state.set("logLevel", "debug");
  * ```
  *
  * Log level is $module aware, meaning you can set different log levels for different modules.
@@ -123,8 +123,8 @@ export const AlephaLogger = $module({
 				};
 
 				try {
-					alepha.state("afterEach")?.(printOnError);
-					alepha.state("onTestFinished")?.(printOnError);
+					alepha.state.get("afterEach")?.(printOnError);
+					alepha.state.get("onTestFinished")?.(printOnError);
 				} catch {
 					// ignore
 				}
@@ -165,7 +165,7 @@ export const AlephaLogger = $module({
 			use: getLogFormatterProvider(),
 		});
 
-		alepha.state(
+		alepha.state.set(
 			"log",
 			alepha.inject(Logger, {
 				lifetime: "transient",
@@ -173,7 +173,7 @@ export const AlephaLogger = $module({
 			}),
 		);
 
-		alepha.state(
+		alepha.state.set(
 			"logLevel",
 			env.LOG_LEVEL ?? (alepha.isTest() ? "trace" : "info"),
 		);

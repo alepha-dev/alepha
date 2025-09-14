@@ -61,7 +61,7 @@ export class ReactBrowserProvider {
 	};
 
 	public get state(): ReactRouterState {
-		return this.alepha.state("react.router.state")!;
+		return this.alepha.state.get("react.router.state")!;
 	}
 
 	/**
@@ -232,7 +232,7 @@ export class ReactBrowserProvider {
 				// low budget, but works for now
 				for (const [key, value] of Object.entries(hydration)) {
 					if (key !== "layers") {
-						this.alepha.state(key as keyof State, value);
+						this.alepha.state.set(key as keyof State, value);
 					}
 				}
 			}
@@ -241,7 +241,7 @@ export class ReactBrowserProvider {
 
 			const element = this.router.root(this.state);
 
-			await this.alepha.emit("react:browser:render", {
+			await this.alepha.events.emit("react:browser:render", {
 				element,
 				root: this.getRootElement(),
 				hydration,

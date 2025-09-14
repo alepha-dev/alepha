@@ -58,8 +58,8 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
 		const state = entry as ReactRouterState;
 
-		await this.alepha.emit("react:transition:begin", {
-			previous: this.alepha.state("react.router.state")!,
+		await this.alepha.events.emit("react:transition:begin", {
+			previous: this.alepha.state.get("react.router.state")!,
 			state,
 		});
 
@@ -96,7 +96,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				});
 			}
 
-			await this.alepha.emit("react:transition:success", { state });
+			await this.alepha.events.emit("react:transition:success", { state });
 		} catch (e) {
 			this.log.error("Transition has failed", e);
 			state.layers = [
@@ -108,7 +108,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 				},
 			];
 
-			await this.alepha.emit("react:transition:error", {
+			await this.alepha.events.emit("react:transition:error", {
 				error: e as Error,
 				state,
 			});
@@ -124,9 +124,9 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 			}
 		}
 
-		this.alepha.state("react.router.state", state);
+		this.alepha.state.set("react.router.state", state);
 
-		await this.alepha.emit("react:transition:end", {
+		await this.alepha.events.emit("react:transition:end", {
 			state,
 		});
 	}

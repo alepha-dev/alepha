@@ -7,13 +7,14 @@ import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { InjectOptions } from "./descriptors/$inject.ts";
 import { Module, type WithModule } from "./descriptors/$module.ts";
-import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import { Descriptor } from "./helpers/descriptor.ts";
+import { EventManager } from "./helpers/EventManager.ts";
 import { nullToUndefined } from "./helpers/nullToUndefined.ts";
+import { StateManager } from "./helpers/StateManager.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import type {
@@ -129,7 +130,7 @@ import { AlsProvider } from "./providers/AlsProvider.ts";
  * Alepha.create()
  * 	 .with(App)
  * 	 .start()
- * 	 .then(alepha => alepha.emit("my:custom:hook"));
+ * 	 .then(alepha => alepha.events.emit("my:custom:hook"));
  * ```
  *
  * 	Hooks are fully typed. You can create your own hooks by using module augmentation:
@@ -184,10 +185,11 @@ export class Alepha {
 				// ignore
 			}
 
-			alepha.state("beforeAll", beforeAll);
-			alepha.state("afterAll", afterAll);
-			alepha.state("afterEach", afterEach);
-			alepha.state("onTestFinished", onTestFinished);
+			alepha.state
+				.set("beforeAll", beforeAll)
+				.set("afterAll", afterAll)
+				.set("afterEach", afterEach)
+				.set("onTestFinished", onTestFinished);
 		}
 
 		return alepha;
@@ -272,11 +274,6 @@ export class Alepha {
 	protected cacheTypeCheck: Map<TSchema, TypeCheck<TSchema>> = new Map();
 
 	/**
-	 * List of events that can be triggered. Powered by $hook().
-	 */
-	protected events: Record<string, Array<Hook>> = {};
-
-	/**
 	 * List of modules that are registered in the container.
 	 *
 	 * Modules are used to group services and provide a way to register them in the container.
@@ -305,7 +302,7 @@ export class Alepha {
 	 * Get logger instance.
 	 */
 	public get log(): LoggerInterface | undefined {
-		return this.state("log");
+		return this.state.get("log");
 	}
 
 	/**
@@ -319,37 +316,8 @@ export class Alepha {
 		this.store = state;
 	}
 
-	/**
-	 * State accessor and mutator.
-	 */
-	public state<Key extends keyof State>(
-		key: Key,
-		value?: State[Key],
-	): State[Key] {
-		if (!this.isBrowser() && this.context.exists()) {
-			if (value !== undefined) {
-				this.context.set(key, value);
-			}
-			return this.context.get<State[Key]>(key) ?? this.store[key];
-		}
-
-		if (value !== undefined) {
-			if (this.isReady()) {
-				this.emit(
-					"state:mutate",
-					{
-						key,
-						value,
-						prevValue: this.store[key],
-					},
-					{ catch: true },
-				);
-			}
-			this.store[key] = value;
-		}
-
-		return this.store[key];
-	}
+	public events = new EventManager(() => this.log);
+	public state = new StateManager<State>(this.events);
 
 	// -------------------------------------------------------------------------------------------------------------------
 
@@ -471,7 +439,7 @@ export class Alepha {
 			this.inject(key);
 		}
 
-		const target = this.state("target");
+		const target = this.state.get("target");
 		if (target) {
 			this.registry = new Map();
 			this.descriptorRegistry = new Map();
@@ -480,15 +448,15 @@ export class Alepha {
 
 		this.locked = true;
 
-		await this.emit("configure", this, { log: true });
+		await this.events.emit("configure", this, { log: true });
 
 		this.configured = true;
 
-		await this.emit("start", this, { log: true });
+		await this.events.emit("start", this, { log: true });
 
 		this.started = true;
 
-		await this.emit("ready", this, { log: true });
+		await this.events.emit("ready", this, { log: true });
 
 		this.log?.info(`App is now ready [${Date.now() - now}ms]`);
 
@@ -518,7 +486,7 @@ export class Alepha {
 		}
 
 		this.log?.info("Stopping App...");
-		await this.emit("stop", this, { reverse: true, log: true });
+		await this.events.emit("stop", this, { reverse: true, log: true });
 		this.log?.info("App is now off");
 
 		this.started = false;
@@ -824,159 +792,6 @@ export class Alepha {
 		}
 
 		return this;
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	// public use<T extends Descriptor>(
-	// 	factory: () => T,
-	// 	context: {
-	// 		propertyKey?: string;
-	// 		service?: Service;
-	// 		module?: Module;
-	// 	} = {},
-	// ): T {
-	// 	if (this.isLocked()) {
-	// 		throw new ContainerLockedError(
-	// 			`Container is locked. No more descriptors can be added.`,
-	// 		);
-	// 	}
-	//
-	// 	const outside = !__alephaRef.context;
-	// 	if (outside) {
-	// 		__alephaRef.context = this;
-	// 		__alephaRef.definition = context.service;
-	// 		__alephaRef.module =
-	// 			this.modules.find((it) => it.$name === context?.module?.name) ??
-	// 			(context.service
-	// 				? this.registry.get(context.service)?.module
-	// 				: undefined);
-	// 	}
-	//
-	// 	const value = factory();
-	// 	if (value instanceof Descriptor) {
-	// 		this.processDescriptor(value, context.propertyKey);
-	// 	}
-	//
-	// 	if (outside) {
-	// 		__alephaRef.context = undefined;
-	// 		__alephaRef.definition = undefined;
-	// 		__alephaRef.module = undefined;
-	// 	}
-	//
-	// 	return value as T;
-	// }
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Registers a hook for the specified event.
-	 */
-	public on<T extends keyof Hooks>(
-		event: T,
-		hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
-	): () => void {
-		if (!this.events[event]) {
-			this.events[event] = [];
-		}
-
-		const hook =
-			typeof hookOrFunc === "function" ? { callback: hookOrFunc } : hookOrFunc;
-
-		if (hook.priority === "first") {
-			this.events[event].unshift(hook);
-		} else if (hook.priority === "last") {
-			this.events[event].push(hook);
-		} else {
-			const index = this.events[event].findIndex(
-				(it) => it.priority === "last",
-			);
-			if (index !== -1) {
-				this.events[event].splice(index, 0, hook);
-			} else {
-				this.events[event].push(hook);
-			}
-		}
-
-		return () => {
-			this.events[event] = this.events[event].filter(
-				(it) => it.callback !== hook.callback,
-			);
-		};
-	}
-
-	/**
-	 * Emits the specified event with the given payload.
-	 */
-	public async emit<T extends keyof Hooks>(
-		func: keyof Hooks,
-		payload: Hooks[T],
-		options: {
-			/**
-			 * If true, the hooks will be executed in reverse order.
-			 * This is useful for "stop" hooks that should be executed in reverse order.
-			 *
-			 * @default false
-			 */
-			reverse?: boolean;
-			/**
-			 * If true, the hooks will be logged with their execution time.
-			 *
-			 * @default false
-			 */
-			log?: boolean;
-			/**
-			 * If true, errors will be caught and logged instead of throwing.
-			 *
-			 * @default false
-			 */
-			catch?: boolean;
-		} = {},
-	): Promise<void> {
-		const ctx: any = {};
-
-		if (options.log) {
-			ctx.now = Date.now();
-			this.log?.trace(`${func} ...`);
-		}
-
-		let events = this.events[func] ?? [];
-
-		if (options.reverse) {
-			events = events.toReversed();
-		}
-
-		for (const hook of events) {
-			const name = hook.caller?.name ?? "unknown";
-			if (options.log) {
-				ctx.now2 = Date.now();
-				this.log?.trace(`${func}(${name}) ...`);
-			}
-
-			try {
-				await hook.callback(payload);
-			} catch (error) {
-				if (options.catch) {
-					this.log?.error(`${func}(${name}) ERROR`, error);
-					continue;
-				}
-				if (options.log) {
-					throw new AlephaError(
-						`Failed during '${func}()' hook for service: ${name}`,
-						{ cause: error },
-					);
-				}
-				throw error;
-			}
-
-			if (options.log) {
-				this.log?.debug(`${func}(${name}) OK [${Date.now() - ctx.now2}ms]`);
-			}
-		}
-
-		if (options.log) {
-			this.log?.debug(`${func} OK [${Date.now() - ctx.now}ms]`);
-		}
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------

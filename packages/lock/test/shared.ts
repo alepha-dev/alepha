@@ -165,7 +165,7 @@ export const testLockGracePeriod = async (
 			});
 		}
 		const fn = alepha.inject(TestApp).fn;
-		alepha.on("ready", () => fn.run());
+		alepha.events.on("ready", () => fn.run());
 		return alepha;
 	};
 

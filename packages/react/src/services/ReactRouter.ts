@@ -15,7 +15,7 @@ export class ReactRouter<T extends object> {
 	protected readonly pageApi = $inject(ReactPageProvider);
 
 	public get state(): ReactRouterState {
-		return this.alepha.state("react.router.state")!;
+		return this.alepha.state.get("react.router.state")!;
 	}
 
 	public get pages() {

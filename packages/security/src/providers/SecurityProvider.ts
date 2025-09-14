@@ -368,7 +368,7 @@ export class SecurityProvider {
 
 		info.roles = roles;
 
-		await this.alepha.emit("security:user:created", {
+		await this.alepha.events.emit("security:user:created", {
 			realm,
 			user: info,
 		});

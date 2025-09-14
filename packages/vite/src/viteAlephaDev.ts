@@ -118,7 +118,7 @@ export async function viteAlephaDev(
 			// forward vite request to alepha server
 			server.middlewares.use((req, res, next) => {
 				if (state.started && state.app && req.url && !isViteFile(req.url)) {
-					state.app.emit("node:request" as any, { req, res }).then(next);
+					state.app.events.emit("node:request" as any, { req, res }).then(next);
 					return;
 				}
 				next();
@@ -159,7 +159,7 @@ interface ViteAlephaDevState {
 
 const ssr = (state: ViteAlephaDevState) => {
 	if (!state.app) return false;
-	return state.app.state("react.server.ssr" as keyof State) ?? false;
+	return state.app.state.get("react.server.ssr" as keyof State) ?? false;
 };
 
 const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {

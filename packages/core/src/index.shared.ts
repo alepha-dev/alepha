@@ -16,6 +16,7 @@ export * from "./errors/ContainerLockedError.ts";
 export * from "./errors/TooLateSubstitutionError.ts";
 export * from "./errors/TypeBoxError.ts";
 export * from "./helpers/descriptor.ts";
+export * from "./helpers/StateManager.ts";
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/LoggerInterface.ts";
 export * from "./interfaces/Service.ts";

@@ -45,7 +45,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
 			});
 
 			setInvitations(await invitationApi.getMyInvitations());
-			alepha.state("user_projects", await projectApi.getMyProjects());
+			alepha.state.set("user_projects", await projectApi.getMyProjects());
 
 			notifications.show({
 				title: "Invitation Accepted",

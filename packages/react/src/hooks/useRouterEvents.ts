@@ -42,19 +42,19 @@ export const useRouterEvents = (
 		const onSuccess = opts.onSuccess;
 
 		if (onBegin) {
-			subs.push(alepha.on("react:transition:begin", cb(onBegin)));
+			subs.push(alepha.events.on("react:transition:begin", cb(onBegin)));
 		}
 
 		if (onEnd) {
-			subs.push(alepha.on("react:transition:end", cb(onEnd)));
+			subs.push(alepha.events.on("react:transition:end", cb(onEnd)));
 		}
 
 		if (onError) {
-			subs.push(alepha.on("react:transition:error", cb(onError)));
+			subs.push(alepha.events.on("react:transition:error", cb(onError)));
 		}
 
 		if (onSuccess) {
-			subs.push(alepha.on("react:transition:success", cb(onSuccess)));
+			subs.push(alepha.events.on("react:transition:success", cb(onSuccess)));
 		}
 
 		return () => {

@@ -531,7 +531,7 @@ export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
 
 		const id = await this.provider.upload(this.name, file);
 
-		await this.alepha.emit("bucket:file:uploaded", {
+		await this.alepha.events.emit("bucket:file:uploaded", {
 			id,
 			bucket: this,
 			file,
@@ -546,7 +546,7 @@ export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
 	 */
 	public async delete(fileId: string): Promise<void> {
 		await this.provider.delete(this.name, fileId);
-		await this.alepha.emit("bucket:file:deleted", {
+		await this.alepha.events.emit("bucket:file:deleted", {
 			id: fileId,
 			bucket: this,
 		});

@@ -790,7 +790,7 @@ export class ActionDescriptor<
 			raw: {},
 		};
 
-		await this.alepha.emit("action:onRequest", {
+		await this.alepha.events.emit("action:onRequest", {
 			action: this,
 			request: serverActionRequest as ServerRequest,
 			options,
@@ -821,7 +821,7 @@ export class ActionDescriptor<
 			);
 		}
 
-		await this.alepha.emit("action:onResponse", {
+		await this.alepha.events.emit("action:onResponse", {
 			action: this,
 			request: serverActionRequest as ServerRequest,
 			options,
