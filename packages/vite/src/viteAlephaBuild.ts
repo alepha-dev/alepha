@@ -1,9 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
 import { extractFirstModuleScriptSrc, prerender } from "./helpers/prerender.ts";
+import { generateSitemap } from "./helpers/sitemap.ts";
 import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
 import type { VercelConfig } from "./viteAlephaBuildVercel.ts";
 
@@ -107,6 +108,16 @@ export async function viteAlephaBuild(
 					vercel: options.vercel,
 					docker: options.docker,
 				});
+			}
+
+			if (buildClientOptions.sitemap && entry) {
+				await writeFile(
+					`${distDir}/${clientDir}/sitemap.xml`,
+					await generateSitemap({
+						entry: `${distDir}/index.mjs`,
+						baseUrl: buildClientOptions.sitemap.hostname,
+					}),
+				);
 			}
 
 			if (buildClientOptions.prerender && template) {

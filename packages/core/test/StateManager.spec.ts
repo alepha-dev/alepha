@@ -181,7 +181,10 @@ describe("StateManager", () => {
 		});
 
 		it("should use ALS when available and context exists", () => {
-			mockAls.getStore.mockReturnValue({ name: "ALS Value", context: "test-context" });
+			mockAls.getStore.mockReturnValue({
+				name: "ALS Value",
+				context: "test-context",
+			});
 			alsProvider.exists = vi.fn().mockReturnValue(true);
 
 			const typedManager = new StateManager<TestState>(undefined, alsProvider);
@@ -191,7 +194,7 @@ describe("StateManager", () => {
 		});
 
 		it("should fallback to local store when ALS has no value", () => {
-			const store = { context: "test-context" }; // ALS exists but no 'name' key
+			const store: any = { context: "test-context" }; // ALS exists but no 'name' key
 			mockAls.getStore.mockReturnValue(store);
 			alsProvider.exists = vi.fn().mockReturnValue(true);
 
@@ -214,7 +217,7 @@ describe("StateManager", () => {
 		});
 
 		it("should set values in ALS when context exists", () => {
-			const store = { context: "test-context" };
+			const store: any = { context: "test-context" };
 			mockAls.getStore.mockReturnValue(store);
 			alsProvider.exists = vi.fn().mockReturnValue(true);
 

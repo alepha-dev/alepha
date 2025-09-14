@@ -16,6 +16,13 @@ export interface BuildClientOptions {
 	 */
 	prerender?: boolean;
 
+	/**
+	 * Build a sitemap.xml file based on the $pages routes.
+	 */
+	sitemap?: {
+		hostname: string;
+	};
+
 	config?: UserConfig;
 }
 

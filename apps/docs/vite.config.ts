@@ -11,6 +11,9 @@ export default defineConfig({
 			client: {
 				precompress: true,
 				prerender: true,
+				sitemap: {
+					hostname: "https://alepha.dev",
+				},
 			},
 		}),
 	],
