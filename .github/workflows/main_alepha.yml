@@ -108,7 +108,7 @@ jobs:
         run: yarn
 
       - name: Build Documentation
-        run: cd apps/docs && yarn build --base=/alepha && node scripts/codegen-llms.ts
+        run: cd apps/docs && yarn build && node scripts/codegen-llms.ts
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
