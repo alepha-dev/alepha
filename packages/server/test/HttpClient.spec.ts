@@ -50,6 +50,7 @@ describe("HttpClient", () => {
 			error: "BadRequestError",
 			message: "Invalid request body",
 			status: 400,
+			requestId: expect.any(String),
 		});
 	});
 

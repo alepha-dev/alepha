@@ -288,7 +288,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			if (error instanceof HttpError) {
 				request.reply.status = error.status;
 				request.reply.headers["content-type"] = "application/json";
-				request.reply.body = JSON.stringify(HttpError.toJSON(error));
+				request.reply.body = JSON.stringify({
+					...HttpError.toJSON(error),
+					requestId: request.requestId,
+				});
 			} else {
 				if (
 					"status" in error &&
@@ -301,6 +304,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 						status: error.status,
 						error: errorNameByStatus[error.status],
 						message: (error as Error).message,
+						requestId: request.requestId,
 					});
 					return;
 				}
@@ -311,6 +315,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 					status: 500,
 					error: "InternalServerError",
 					message: (error as Error).message,
+					requestId: request.requestId,
 				});
 			}
 		}

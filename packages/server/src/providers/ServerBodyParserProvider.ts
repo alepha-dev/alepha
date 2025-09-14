@@ -45,11 +45,13 @@ export class ServerBodyParserProvider {
 						throw error;
 					}
 
-					throw new HttpError({
-						status: 400,
-						message: "Failed to parse request body",
-						cause: error,
-					});
+					throw new HttpError(
+						{
+							status: 400,
+							message: "Failed to parse request body",
+						},
+						error,
+					);
 				}
 			}
 		},

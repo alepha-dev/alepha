@@ -48,6 +48,7 @@ describe("ServerSecurityProvider", () => {
 			error: "UnauthorizedError",
 			message: "Invalid authorization header, maybe token is missing ?",
 			status: 401,
+			requestId: expect.any(String),
 		});
 	});
 
@@ -109,6 +110,7 @@ describe("ServerSecurityProvider", () => {
 			new HttpError({
 				status: 403,
 				message: "User is not allowed to access 'read:admin'",
+				requestId: expect.any(String),
 			}),
 		);
 

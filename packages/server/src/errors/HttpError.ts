@@ -1,4 +1,5 @@
 import { AlephaError } from "@alepha/core";
+import type { ErrorSchema } from "../schemas/errorSchema.ts";
 
 export const isHttpError = (
 	error: unknown,
@@ -28,50 +29,39 @@ export class HttpError extends AlephaError {
 
 	static is = isHttpError;
 
-	static toJSON(error: HttpError) {
-		if (error.reason) {
-			return {
-				status: error.status,
-				error: error.error,
-				message: error.message,
-				cause: error.reason,
-			};
-		}
-		return {
-			status: error.status,
+	static toJSON(error: HttpError): ErrorSchema {
+		const json: Record<string, unknown> = {
 			error: error.error,
+			status: error.status,
 			message: error.message,
 		};
+
+		if (error.details) json.details = error.details;
+		if (error.requestId) json.requestId = error.requestId;
+		if (error.reason) json.cause = error.reason;
+
+		return json as ErrorSchema;
 	}
 
+	public readonly error: string;
 	public readonly status: number;
-	public readonly error?: string;
+
+	public readonly requestId?: string;
+	public readonly details?: string;
 	public readonly reason?: {
 		name: string;
 		message: string;
 	};
 
-	// TODO: refactoring, it's too complex and not very readable
-	constructor(
-		options: {
-			error?: string;
-			message: string;
-			status: number;
-			cause?:
-				| {
-						name: string;
-						message: string;
-				  }
-				| unknown;
-		},
-		cause?: unknown,
-	) {
+	constructor(options: Partial<ErrorSchema>, cause?: unknown) {
 		super(options.message, {
 			cause:
 				cause ?? (options.cause instanceof Error ? options.cause : undefined),
 		});
 
-		this.status = options.status;
+		this.status = options.status ?? 500;
+		this.details = options.details;
+		this.requestId = options.requestId;
 
 		if (options.cause instanceof Error) {
 			this.reason = {

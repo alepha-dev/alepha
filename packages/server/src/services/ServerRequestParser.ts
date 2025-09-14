@@ -22,6 +22,7 @@ export class ServerRequestParser {
 			// body will be filled by body parser middleware
 			body: null,
 			metadata: {},
+			requestId: this.getRequestId(rawRequest) || crypto.randomUUID(),
 			reply: this.alepha.inject(ServerReply, { lifetime: "transient" }),
 			get ip() {
 				return self.getRequestIp(rawRequest);

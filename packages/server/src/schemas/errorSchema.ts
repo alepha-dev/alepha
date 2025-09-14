@@ -1,4 +1,4 @@
-import { t } from "@alepha/core";
+import { type Static, t } from "@alepha/core";
 
 export const errorSchema = t.object(
 	{
@@ -16,6 +16,7 @@ export const errorSchema = t.object(
 				size: "rich",
 			}),
 		),
+		requestId: t.optional(t.string()),
 		cause: t.optional(
 			t.object({
 				name: t.string(),
@@ -31,3 +32,5 @@ export const errorSchema = t.object(
 		description: "Generic response after a failed operation",
 	},
 );
+
+export type ErrorSchema = Static<typeof errorSchema>;

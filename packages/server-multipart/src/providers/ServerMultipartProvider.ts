@@ -87,11 +87,13 @@ export class ServerMultipartProvider {
 		try {
 			result = await this.parseMultipart(stream, {});
 		} catch (error) {
-			throw new HttpError({
-				status: 400,
-				message: "Malformed multipart/form-data",
-				cause: error,
-			});
+			throw new HttpError(
+				{
+					status: 400,
+					message: "Malformed multipart/form-data",
+				},
+				error,
+			);
 		}
 
 		const body: any = {};

@@ -87,6 +87,7 @@ describe("ServerBodyParserProvider", () => {
 			error: "PayloadTooLargeError",
 			status: 413,
 			message: "Request body size limit exceeded",
+			requestId: expect.any(String),
 		});
 	});
 });

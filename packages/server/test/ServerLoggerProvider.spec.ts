@@ -74,6 +74,7 @@ test("ServerLoggerProvider - error", async ({ expect }) => {
 		message: "Sorry",
 		status: 400,
 		error: "BadRequestError",
+		requestId: expect.any(String),
 	});
 	expect(log.logs[0].message).toBe("Incoming request");
 	expect(log.logs[1].message).toBe("Request has failed");
