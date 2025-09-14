@@ -12,27 +12,109 @@ import { MemoryEmailProvider } from "../providers/MemoryEmailProvider.ts";
 import { TemplateService } from "../services/TemplateService.ts";
 
 /**
- * Create an email descriptor for sending templated emails.
+ * Creates an email descriptor for sending type-safe templated emails.
  *
- * @example
- * ```ts
- * import { $email } from "alepha/email";
- * import { t } from "alepha";
+ * The $email descriptor provides a powerful templating system for creating and sending emails
+ * with full type safety and validation. It supports multiple email providers, template variable
+ * validation, and automatic HTML rendering.
  *
- * class App {
- *   welcome = $email({
- *     subject: "Welcome {{name}}!",
- *     body: "<h1>Welcome {{name}}!</h1><p>Your role is {{role}}.</p>",
- *     schema: t.object({
- *       name: t.string(),
- *       role: t.string()
- *     })
- *   });
+ * **Template Engine**
+ * - Simple {{variable}} syntax for dynamic content
+ * - Automatic template variable validation at runtime
+ * - Support for nested object properties in templates
+ * - HTML email support with rich formatting
  *
- *   async sendWelcome(userEmail: string, name: string, role: string) {
- *     await this.welcome.send(userEmail, { name, role });
- *   }
- * }
+ * **Type Safety**
+ * - Full TypeScript support with schema validation using TypeBox
+ * - Compile-time type checking for template variables
+ * - Runtime validation of email data before sending
+ * - Automatic type inference from schema definitions
+ *
+ * **Provider Flexibility**
+ * - Memory provider for development and testing
+ * - Support for SMTP, SendGrid, AWS SES, and other providers
+ * - Custom provider implementation for specialized services
+ * - Automatic fallback and error handling
+ *
+ * **Template Management**
+ * - Reusable email templates across your application
+ * - Centralized template configuration and maintenance
+ * - Template variable documentation through schemas
+ * - Easy testing and preview capabilities
+ *
+ * **Development Experience**
+ * - Clear error messages for missing template variables
+ * - Comprehensive logging for debugging email delivery
+ * - Memory provider captures emails for testing
+ * - Template validation before sending
+ *
+ * @example Welcome email template
+ * ```typescript
+ * const welcomeEmail = $email({
+ *   subject: "Welcome to {{companyName}}, {{firstName}}!",
+ *   body: `
+ *     <h1>Welcome {{firstName}} {{lastName}}!</h1>
+ *     <p>Thank you for joining {{companyName}}.</p>
+ *     <p>Your account role is: <strong>{{role}}</strong></p>
+ *     <p>Get started by visiting your <a href="{{dashboardUrl}}">dashboard</a>.</p>
+ *   `,
+ *   schema: t.object({
+ *     firstName: t.string(),
+ *     lastName: t.string(),
+ *     companyName: t.string(),
+ *     role: t.enum(["admin", "user", "manager"]),
+ *     dashboardUrl: t.string()
+ *   })
+ * });
+ *
+ * // Send with full type safety
+ * await welcomeEmail.send("user@example.com", {
+ *   firstName: "John",
+ *   lastName: "Doe",
+ *   companyName: "Acme Corp",
+ *   role: "user",
+ *   dashboardUrl: "https://app.acme.com/dashboard"
+ * });
+ * ```
+ *
+ * @example Order confirmation email
+ * ```typescript
+ * const orderConfirmation = $email({
+ *   subject: "Order #{{orderNumber}} confirmed - {{totalAmount}}",
+ *   body: `
+ *     <h1>Order Confirmed!</h1>
+ *     <p>Hi {{customerName}},</p>
+ *     <p>Your order #{{orderNumber}} has been confirmed.</p>
+ *     <h2>Order Details:</h2>
+ *     <p><strong>Total: {{totalAmount}}</strong></p>
+ *     <p>Estimated delivery: {{deliveryDate}}</p>
+ *   `,
+ *   schema: t.object({
+ *     customerName: t.string(),
+ *     orderNumber: t.string(),
+ *     totalAmount: t.string(),
+ *     deliveryDate: t.string()
+ *   })
+ * });
+ * ```
+ *
+ * @example Development with memory provider
+ * ```typescript
+ * const testEmail = $email({
+ *   subject: "Test: {{subject}}",
+ *   body: "<p>{{message}}</p>",
+ *   provider: "memory", // Captures emails for testing
+ *   schema: t.object({
+ *     subject: t.string(),
+ *     message: t.string()
+ *   })
+ * });
+ *
+ * // In tests - emails are captured, not actually sent
+ * await testEmail.send("test@example.com", {
+ *   subject: "Unit Test",
+ *   message: "This email was captured for testing"
+ * });
  * ```
  */
 export const $email = <T extends TSchema>(

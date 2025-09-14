@@ -300,173 +300,107 @@ class DataProcessor {
 
 Creates a queue descriptor for asynchronous message processing with background workers.
 
-This descriptor provides a powerful message queue system that enables decoupled, asynchronous
-communication between different parts of your application. It supports multiple storage backends,
-type-safe message handling, and automatic worker processing with intelligent retry mechanisms.
+The $queue descriptor enables powerful asynchronous communication patterns in your application.
+It provides type-safe message queuing with automatic worker processing, making it perfect for
+decoupling components and handling background tasks efficiently.
 
-**Key Features**
+**Background Processing**
+- Automatic worker threads for non-blocking message processing
+- Built-in retry mechanisms and error handling
+- Dead letter queues for failed message handling
+- Graceful shutdown and worker lifecycle management
 
-- **Type-Safe Messages**: Full TypeScript support with schema validation using TypeBox
-- **Multiple Storage Backends**: Support for in-memory, Redis, and custom queue providers
-- **Background Processing**: Automatic worker threads for message processing
-- **Reliable Delivery**: Built-in retry mechanisms and error handling
-- **Scalable Architecture**: Horizontal scaling support with distributed queue backends
-- **Dead Letter Queues**: Failed message handling with configurable retry policies
+**Type Safety**
+- Full TypeScript support with schema validation using TypeBox
+- Type-safe message payloads with automatic inference
+- Runtime validation of all queued messages
+- Compile-time errors for invalid message structures
 
-**Use Cases**
+**Storage Flexibility**
+- Memory provider for development and testing
+- Redis provider for production scalability and persistence
+- Custom provider support for specialized backends
+- Automatic failover and connection pooling
 
-Perfect for decoupling application components and handling asynchronous tasks:
-- Background job processing
-- Email and notification sending
-- Image/file processing pipelines
-- Event-driven architectures
-- Microservice communication
-- Long-running data operations
+**Performance & Scalability**
+- Batch processing support for high-throughput scenarios
+- Horizontal scaling with distributed queue backends
+- Configurable concurrency and worker pools
+- Efficient serialization and message routing
 
-**Basic queue with automatic processing:**
-```ts
-import { $queue } from "alepha/queue";
-import { t } from "alepha";
+**Reliability**
+- Message persistence across application restarts
+- Automatic retry with exponential backoff
+- Dead letter handling for permanently failed messages
+- Comprehensive logging and monitoring integration
 
-class NotificationService {
-  emailQueue = $queue({
-    name: "email-notifications",
-    schema: t.object({
-      to: t.string(),
-      subject: t.string(),
-      body: t.string(),
-      priority: t.optional(t.enum(["high", "normal"]))
-    }),
-    handler: async (message) => {
-      // This runs in a background worker
-      await this.sendEmail(message.payload);
-      console.log(`Email sent to ${message.payload.to}`);
-    }
-  });
-
-  async sendWelcomeEmail(userEmail: string) {
-    // Push message to queue for background processing
-    await this.emailQueue.push({
-      to: userEmail,
-      subject: "Welcome to our platform!",
-      body: "Thank you for joining us...",
-      priority: "high"
-    });
+```typescript
+const emailQueue = $queue({
+  name: "email-notifications",
+  schema: t.object({
+    to: t.string(),
+    subject: t.string(),
+    body: t.string(),
+    priority: t.optional(t.enum(["high", "normal"]))
+  }),
+  handler: async (message) => {
+    await emailService.send(message.payload);
+    console.log(`Email sent to ${message.payload.to}`);
   }
-}
+});
+
+// Push messages for background processing
+await emailQueue.push({
+  to: "user@example.com",
+  subject: "Welcome!",
+  body: "Welcome to our platform",
+  priority: "high"
+});
 ```
 
-**Batch processing with multiple messages:**
-```ts
-class ImageProcessor {
-  imageQueue = $queue({
-    name: "image-processing",
-    description: "Process uploaded images for optimization and thumbnails",
-    schema: t.object({
-      imageId: t.string(),
-      originalUrl: t.string(),
-      userId: t.string(),
-      operations: t.array(t.union([
-        t.literal("resize"),
-        t.literal("compress"),
-        t.literal("thumbnail")
-      ]))
-    }),
-    handler: async (message) => {
-      const { imageId, originalUrl, operations } = message.payload;
-
-      for (const operation of operations) {
-        await this.processImage(imageId, originalUrl, operation);
-      }
-
-      console.log(`Processed image ${imageId} with operations: ${operations.join(", ")}`);
+```typescript
+const imageQueue = $queue({
+  name: "image-processing",
+  provider: RedisQueueProvider,
+  schema: t.object({
+    imageId: t.string(),
+    operations: t.array(t.enum(["resize", "compress", "thumbnail"]))
+  }),
+  handler: async (message) => {
+    for (const op of message.payload.operations) {
+      await processImage(message.payload.imageId, op);
     }
-  });
-
-  async processUploadedImages(images: Array<{id: string; url: string; userId: string}>) {
-    // Process multiple images in parallel
-    const messages = images.map(img => ({
-      imageId: img.id,
-      originalUrl: img.url,
-      userId: img.userId,
-      operations: ["resize", "compress", "thumbnail"] as const
-    }));
-
-    // Push all messages at once for efficient batch processing
-    await this.imageQueue.push(...messages);
   }
-}
+});
+
+// Batch processing multiple images
+await imageQueue.push(
+  { imageId: "img1", operations: ["resize", "thumbnail"] },
+  { imageId: "img2", operations: ["compress"] },
+  { imageId: "img3", operations: ["resize", "compress", "thumbnail"] }
+);
 ```
 
-**Redis-backed queue for production scalability:**
-```ts
-class OrderProcessor {
-  orderQueue = $queue({
-    name: "order-processing",
-    provider: RedisQueueProvider,  // Use Redis for distributed processing
-    schema: t.object({
-      orderId: t.string(),
-      customerId: t.string(),
-      items: t.array(t.object({
-        productId: t.string(),
-        quantity: t.number(),
-        price: t.number()
-      })),
-      paymentMethod: t.string(),
-      shippingAddress: t.object({
-        street: t.string(),
-        city: t.string(),
-        zipCode: t.string(),
-        country: t.string()
-      })
-    }),
-    handler: async (message) => {
-      const { orderId, customerId, items } = message.payload;
-
-      // Process payment
-      await this.processPayment(orderId, items);
-
-      // Update inventory
-      await this.updateInventory(items);
-
-      // Send confirmation email
-      await this.sendOrderConfirmation(customerId, orderId);
-
-      // Schedule shipping
-      await this.scheduleShipping(orderId, message.payload.shippingAddress);
-
-      console.log(`Order ${orderId} processed successfully`);
+```typescript
+const taskQueue = $queue({
+  name: "dev-tasks",
+  provider: "memory",
+  schema: t.object({
+    taskType: t.enum(["cleanup", "backup", "report"]),
+    data: t.record(t.string(), t.any())
+  }),
+  handler: async (message) => {
+    switch (message.payload.taskType) {
+      case "cleanup":
+        await performCleanup(message.payload.data);
+        break;
+      case "backup":
+        await createBackup(message.payload.data);
+        break;
+      case "report":
+        await generateReport(message.payload.data);
+        break;
     }
-  });
-}
-```
-
-**Memory-only queue for development and testing:**
-```ts
-class DevTaskProcessor {
-  taskQueue = $queue({
-    name: "dev-tasks",
-    provider: "memory",  // Use in-memory queue for development
-    schema: t.object({
-      taskType: t.enum(["cleanup", "backup", "report"]),
-      data: t.record(t.string(), t.any()),
-      scheduledAt: t.optional(t.string())
-    }),
-    handler: async (message) => {
-      const { taskType, data } = message.payload;
-
-      switch (taskType) {
-        case "cleanup":
-          await this.performCleanup(data);
-          break;
-        case "backup":
-          await this.createBackup(data);
-          break;
-        case "report":
-          await this.generateReport(data);
-          break;
-      }
-    }
-  });
-}
+  }
+});
 ```

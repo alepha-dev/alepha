@@ -16,8 +16,8 @@ If you're new to TypeScript, don't worry! Alepha is designed to be beginner-frie
 Let's begin by creating a new project directory and initializing it.
 
 ```bash
-mkdir my-alepha-app
-cd my-alepha-app
+mkdir my-app
+cd my-app
 ```
 
 Next, we'll install Alepha as dependency.
@@ -54,11 +54,11 @@ You'll also need to update your `package.json` to specify that your project uses
 
 ### 3. Create Your First Server
 
-Now for the fun part! Create an `src/index.ts` file. This will be the entry point for your application.
+Now for the fun part! Create an `src/server.ts` file. This will be the entry point for your application.
 
 We'll define a simple server with a single route that responds with "Hello World!". Notice that we are using standard TypeScript classes and methods—**no decorator shims or complex syntax required.**
 
-**`src/index.ts`**
+**`src/server.ts`**
 ```typescript
 import { run } from "alepha";
 import { $route } from "alepha/server";
@@ -89,7 +89,7 @@ You're all set. You can run your server directly with Node.js or Bun. No extra b
 
 **Using Node.js:**
 ```bash
-node src/index.ts
+node src/server.ts
 ```
 
 You should see a message indicating that the server has started:
