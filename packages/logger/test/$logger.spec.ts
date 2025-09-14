@@ -74,4 +74,33 @@ describe("$logger", () => {
 		app.log.info("Test log message");
 		expect(output.logs.length).toBe(1);
 	});
+
+	it("should emit log events for external listeners", ({ expect }) => {
+		const alepha = Alepha.create({
+			env: {
+				LOG_LEVEL: "info",
+			},
+		}).with({
+			provide: LogDestinationProvider,
+			use: MemoryDestinationProvider,
+		});
+
+		const app = alepha.inject(App);
+		const logEvents: any[] = [];
+
+		alepha.on("log", (event) => {
+			logEvents.push(event);
+		});
+
+		app.log.info("Test event emission", { testData: "value" });
+
+		expect(logEvents).toHaveLength(1);
+		expect(logEvents[0].message).toMatch(/Test event emission/);
+		expect(logEvents[0].entry.message).toBe("Test event emission");
+		expect(logEvents[0].entry.level).toBe("info");
+		expect(logEvents[0].entry.service).toBe("App");
+		expect(logEvents[0].entry.module).toBe("app");
+		expect(logEvents[0].entry.data).toEqual({ testData: "value" });
+		expect(logEvents[0].entry.timestamp).toBeInstanceOf(Date);
+	});
 });

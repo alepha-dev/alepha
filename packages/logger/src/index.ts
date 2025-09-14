@@ -7,7 +7,7 @@ import { LogFormatterProvider } from "./providers/LogFormatterProvider.ts";
 import { MemoryDestinationProvider } from "./providers/MemoryDestinationProvider.ts";
 import { RawFormatterProvider } from "./providers/RawFormatterProvider.ts";
 import { SimpleFormatterProvider } from "./providers/SimpleFormatterProvider.ts";
-import { Logger } from "./services/Logger.ts";
+import { type LogEntry, Logger } from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -48,6 +48,22 @@ export * from "./services/Logger.ts";
  * - JsonFormatterProvider: formats logs as JSON.
  * - SimpleFormatterProvider: formats logs as simple text (with colors when possible).
  * - RawFormatterProvider: formats logs as raw text without any formatting.
+ *
+ * ### Event Emission
+ *
+ * The logger emits 'log' events that can be listened to by external code, allowing for custom log processing and destinations.
+ *
+ * ```ts
+ * class CustomDestination {
+ *   onLog = $hook({
+ *     on: "log",
+ *     handler: (ev) => {
+ *       // ev.message (formatted message)
+ *       // ev.entry (level, raw message, ...)
+ *     }
+ *   });
+ * }
+ * ```
  *
  * ### Log Level
  *
@@ -190,5 +206,12 @@ declare module "@alepha/core" {
 
 	export interface State {
 		logLevel?: string;
+	}
+
+	export interface Hooks {
+		log: {
+			message: string;
+			entry: LogEntry;
+		};
 	}
 }

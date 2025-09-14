@@ -130,6 +130,13 @@ export class Logger implements LoggerInterface {
 
 		const formatted = this.formatter.format(logEntry);
 
+		this.alepha
+			.emit("log", {
+				message: formatted,
+				entry: logEntry,
+			})
+			.catch(() => null);
+
 		this.destination.write(formatted, logEntry);
 	}
 }
