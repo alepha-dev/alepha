@@ -60,9 +60,9 @@ const Sidebar = (props: Props) => {
 	const navLinks = useMemo(
 		() => [
 			{
-				name: "Guide",
+				name: "Guides",
 				icon: <IconMap2 />,
-				items: docs.filter((it) => it.category === "guide"),
+				items: docs.filter((it) => it.category === "guides"),
 			},
 			{
 				name: "Core Concepts",
