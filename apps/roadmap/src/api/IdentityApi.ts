@@ -1,4 +1,4 @@
-import { $inject, t } from "@alepha/core";
+import { $inject, AlephaError, t } from "@alepha/core";
 import { CryptoProvider } from "@alepha/security";
 import { $action } from "@alepha/server";
 import { Db } from "./providers/Db.ts";
@@ -56,7 +56,7 @@ export class IdentityApi {
 				.catch(() => null);
 
 			if (existingIdentity) {
-				throw new Error("Password identity already exists for this user");
+				throw new AlephaError("Password identity already exists for this user");
 			}
 
 			// Check if username is already taken
@@ -68,7 +68,7 @@ export class IdentityApi {
 				.catch(() => null);
 
 			if (existingUsername) {
-				throw new Error("Username is already taken");
+				throw new AlephaError("Username is already taken");
 			}
 
 			// Hash the password

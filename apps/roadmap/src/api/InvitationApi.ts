@@ -1,11 +1,13 @@
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { $action, BadRequestError, ForbiddenError } from "@alepha/server";
+import { $action, BadRequestError } from "@alepha/server";
 import { Db, invitations } from "./providers/Db.ts";
+import { Security } from "./providers/Security.ts";
 
 export class InvitationApi {
 	log = $logger();
 	db = $inject(Db);
+	security = $inject(Security);
 
 	createInvitation = $action({
 		schema: {
@@ -17,15 +19,7 @@ export class InvitationApi {
 		},
 		handler: async ({ body, user }) => {
 			// Check if user has permission to invite to this project
-			const project = await this.db.projects.findOne({
-				id: { eq: body.projectId },
-			});
-
-			if (project.createdBy !== user.id && user.ownership) {
-				throw new ForbiddenError(
-					`You do not have permission to invite to project with id ${body.projectId}`,
-				);
-			}
+			await this.security.checkOwnership(body.projectId, user);
 
 			// Check if user is trying to invite themselves
 			if (body.invitedEmail === user.email) {
@@ -76,6 +70,8 @@ export class InvitationApi {
 			});
 		},
 	});
+
+	// -------------------------------------------------------------------------------------------------------------------
 
 	getMyInvitations = $action({
 		schema: {
@@ -133,21 +129,9 @@ export class InvitationApi {
 		handler: async ({ params, user }) => {
 			const invitation = await this.db.invitations.findOne({
 				id: { eq: params.id },
+				invitedEmail: { eq: user.email },
+				status: { eq: "pending" },
 			});
-
-			// Check if the invitation belongs to the current user
-			if (invitation.invitedEmail !== user.email) {
-				throw new ForbiddenError(
-					"You do not have permission to accept this invitation",
-				);
-			}
-
-			// Check if invitation is pending
-			if (invitation.status !== "pending") {
-				throw new BadRequestError(
-					`Invitation has already been ${invitation.status}`,
-				);
-			}
 
 			// Check if user is already a member of the project
 			const existingCharacter = await this.db.characters
@@ -195,21 +179,9 @@ export class InvitationApi {
 		handler: async ({ params, user }) => {
 			const invitation = await this.db.invitations.findOne({
 				id: { eq: params.id },
+				invitedEmail: { eq: user.email },
+				status: { eq: "pending" },
 			});
-
-			// Check if the invitation belongs to the current user
-			if (invitation.invitedEmail !== user.email) {
-				throw new ForbiddenError(
-					"You do not have permission to reject this invitation",
-				);
-			}
-
-			// Check if invitation is pending
-			if (invitation.status !== "pending") {
-				throw new BadRequestError(
-					`Invitation has already been ${invitation.status}`,
-				);
-			}
 
 			// Delete the invitation
 			await this.db.invitations.deleteById(invitation.id);
@@ -226,16 +198,7 @@ export class InvitationApi {
 			response: t.array(invitations.$schema),
 		},
 		handler: async ({ params, user }) => {
-			// Check if user has permission to view invitations for this project
-			const project = await this.db.projects.findOne({
-				id: { eq: params.projectId },
-			});
-
-			if (project.createdBy !== user.id && user.ownership) {
-				throw new ForbiddenError(
-					`You do not have permission to view invitations for project with id ${params.projectId}`,
-				);
-			}
+			await this.security.checkOwnership(params.projectId, user);
 
 			return await this.db.invitations.find({
 				where: { projectId: { eq: params.projectId } },

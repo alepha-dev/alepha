@@ -7,12 +7,14 @@ import sanitizeHtml from "sanitize-html";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
 import { characters, Db, tasks } from "./providers/Db.ts";
+import { Security } from "./providers/Security.ts";
 
 export class TaskApi {
 	log = $logger();
 	db = $inject(Db);
 	characterInfo = $inject(CharacterInfo);
 	dt = $inject(DateTimeProvider);
+	security = $inject(Security);
 
 	createTask = $action({
 		schema: {
@@ -20,17 +22,13 @@ export class TaskApi {
 			response: tasks.$schema,
 		},
 		handler: async ({ body, user }) => {
-			await this.db.characters.findOne({
-				projectId: { eq: body.projectId },
-				userId: { eq: user.id },
-			});
+			const { project } = await this.security.checkOwnership(
+				body.projectId,
+				user,
+			);
 
 			// sanitize HTML content
 			body.description = sanitizeHtml(body.description);
-
-			const project = await this.db.projects.findOne({
-				id: { eq: body.projectId },
-			});
 
 			if (body.package && !project.packages.includes(body.package)) {
 				project.packages.push(body.package);
@@ -62,10 +60,7 @@ export class TaskApi {
 			response: pg.page(tasks.$schema),
 		},
 		handler: async ({ params, query, user }) => {
-			await this.db.characters.findOne({
-				projectId: { eq: params.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(params.projectId, user);
 
 			let where = this.db.tasks.createQueryWhere({
 				projectId: { eq: params.projectId },
@@ -120,10 +115,7 @@ export class TaskApi {
 				completedAt: { isNull: true },
 			});
 
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			task.acceptedAt = undefined;
 			task.acceptedBy = undefined;
@@ -151,10 +143,7 @@ export class TaskApi {
 				completedAt: { isNull: true },
 			});
 
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			task.acceptedAt = this.dt.nowISOString();
 			task.acceptedBy = user.id;
@@ -190,6 +179,8 @@ export class TaskApi {
 					},
 					{ tx },
 				);
+
+				await this.security.checkOwnership(task.projectId, user);
 
 				// Check if all objectives are completed
 				if (task.objectives.length > 0) {
@@ -244,11 +235,7 @@ export class TaskApi {
 				id: { eq: params.id },
 			});
 
-			// check if the user has access to the project
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			return task;
 		},
@@ -277,11 +264,7 @@ export class TaskApi {
 				completedAt: { isNull: true },
 			});
 
-			// check if the user has access to the project
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			// TODO: character.can("edit:task", projectId)
 
@@ -321,11 +304,7 @@ export class TaskApi {
 				acceptedAt: { isNotNull: true },
 			});
 
-			// check if the user has access to the project
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			if (body.index < 0 || body.index >= task.objectives.length) {
 				throw new BadRequestError("Invalid objective index");
@@ -372,11 +351,7 @@ export class TaskApi {
 				completedAt: { isNull: true },
 			});
 
-			// check if the user has access to the project
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			// TODO: character.can("edit:task", projectId)
 
@@ -406,11 +381,7 @@ export class TaskApi {
 				id: { eq: params.id },
 			});
 
-			// check if the user has access to the project
-			await this.db.characters.findOne({
-				projectId: { eq: task.projectId },
-				userId: { eq: user.id },
-			});
+			await this.security.checkOwnership(task.projectId, user);
 
 			// TODO: character.can("delete:task", projectId)
 

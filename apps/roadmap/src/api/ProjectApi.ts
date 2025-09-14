@@ -11,10 +11,12 @@ import {
 	type User,
 	users,
 } from "./providers/Db.ts";
+import { Security } from "./providers/Security.ts";
 
 export class ProjectApi {
 	log = $logger();
 	db = $inject(Db);
+	security = $inject(Security);
 
 	createProject = $action({
 		schema: {
@@ -51,36 +53,6 @@ export class ProjectApi {
 		},
 	});
 
-	updateProjectById = $action({
-		schema: {
-			params: t.object({
-				id: t.int(),
-			}),
-			body: t.partial(t.pick(projects.$insertSchema, ["title", "public"])),
-			response: projects.$schema,
-		},
-		handler: async ({ params, body, user }) => {
-			const project = await this.db.projects.findOne(params);
-
-			// for now, only the project creator or an admin can update a project
-			if (user.ownership && project.createdBy !== user.id) {
-				throw new ForbiddenError(
-					`You do not have permission to update project with id ${params.id}`,
-				);
-			}
-
-			if (body.title) {
-				project.title = body.title.trim();
-			}
-
-			if (body.public != null) {
-				project.public = body.public;
-			}
-
-			return await this.db.projects.save(project);
-		},
-	});
-
 	getMyProjects = $action({
 		description: "Get all projects for the authenticated user",
 		schema: {
@@ -91,11 +63,61 @@ export class ProjectApi {
 			const characters = await this.db.characters.find({
 				where: { userId: { eq: user.id } },
 			});
+
 			const characterProjectIds = characters.map((it) => it.projectId);
+
 			return await this.db.projects.find({
 				where: { id: { inArray: characterProjectIds } },
 				limit: characterProjectIds.length,
 			});
+		},
+	});
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	getProjectUsers = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			response: t.array(users.$schema),
+		},
+		handler: async ({ params, user }) => {
+			await this.security.checkOwnership(params.id, user);
+
+			const characters = await this.db.characters.find({
+				where: { projectId: { eq: params.id } },
+			});
+
+			const userIds = characters.map((it) => it.userId);
+
+			return await this.db.users.find({
+				where: { id: { inArray: userIds } },
+				limit: userIds.length,
+			});
+		},
+	});
+
+	updateProjectById = $action({
+		schema: {
+			params: t.object({
+				id: t.int(),
+			}),
+			body: t.partial(t.pick(projects.$insertSchema, ["title", "public"])),
+			response: projects.$schema,
+		},
+		handler: async ({ params, body, user }) => {
+			const { project } = await this.security.checkOwnership(params.id, user);
+
+			if (body.title) {
+				project.title = body.title.trim();
+			}
+
+			if (body.public != null) {
+				project.public = body.public;
+			}
+
+			return await this.db.projects.save(project);
 		},
 	});
 
@@ -113,9 +135,7 @@ export class ProjectApi {
 			]),
 		},
 		handler: async ({ params, user }) => {
-			const project = await this.db.projects.findOne({
-				id: { eq: params.id },
-			});
+			const { project } = await this.security.checkOwnership(params.id, user);
 
 			const character = await this.db.characters
 				.findOne({
@@ -154,17 +174,7 @@ export class ProjectApi {
 			),
 		},
 		handler: async ({ params, user }) => {
-			const project = await this.db.projects.findOne({
-				id: { eq: params.id },
-			});
-
-			// Check if user has access to this project
-			if (project.createdBy !== user.id && !project.public && user.ownership) {
-				await this.db.characters.findOne({
-					projectId: { eq: params.id },
-					userId: { eq: user.id },
-				});
-			}
+			await this.security.checkOwnership(params.id, user);
 
 			const projectCharacters = await this.db.characters.find({
 				where: { projectId: { eq: params.id } },
@@ -216,15 +226,7 @@ export class ProjectApi {
 			response: t.boolean(),
 		},
 		handler: async ({ params, user }) => {
-			const project = await this.db.projects.findOne({
-				id: { eq: params.id },
-			});
-
-			if (user.ownership && project.createdBy !== user.id) {
-				throw new ForbiddenError(
-					`You do not have permission to delete project with id ${params.id}`,
-				);
-			}
+			await this.security.checkOwnership(params.id, user);
 
 			await this.db.projects.deleteById(params.id);
 			await this.db.characters.deleteMany({
