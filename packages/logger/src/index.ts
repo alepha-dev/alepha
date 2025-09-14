@@ -82,7 +82,18 @@ export * from "./services/Logger.ts";
  * ```
  *
  * Log level is $module aware, meaning you can set different log levels for different modules.
- * For example, you can set `LOG_LEVEL=my.module.name:debug,info` to set the log level to debug for `my.module.name` and info for all other modules.
+ *
+ * **Module-specific configuration:**
+ * - `LOG_LEVEL=my.module.name:debug,info` - debug for `my.module.name` (and submodules), info for others
+ * - `LOG_LEVEL=alepha:trace,my.app:error,info` - trace for alepha modules, error for my.app modules, info for others
+ *
+ * **Wildcard patterns (NEW):**
+ * - `LOG_LEVEL=alepha.*:debug,info` - debug for all alepha submodules
+ * - `LOG_LEVEL=*.test:silent,*.core:trace,info` - silent for test modules, trace for core modules
+ *
+ * **Robust parsing:**
+ * - Empty parts are gracefully skipped: `LOG_LEVEL=",,debug,,"` works fine
+ * - Better error messages: "Invalid log level 'bad' for module pattern 'alepha'"
  */
 export const AlephaLogger = $module({
 	name: "alepha.logger",

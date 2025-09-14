@@ -49,22 +49,57 @@ export class Logger implements LoggerInterface {
 
 	public parseLevel(level: string, app: string): LogLevel {
 		const parts = level.toLowerCase().split(/[,;]/);
+
+		// First pass: check for module-specific configurations
 		for (const part of parts) {
-			if (part.includes(":") || part.includes("=")) {
-				const [module, level] = part.split(/[:=]/);
-				if (app.startsWith(module.trim())) {
-					return this.asLogLevel(level);
+			const trimmedPart = part.trim();
+			if (!trimmedPart) continue; // Skip empty parts
+
+			if (trimmedPart.includes(":") || trimmedPart.includes("=")) {
+				const [modulePattern, levelValue] = trimmedPart.split(/[:=]/);
+				const trimmedModule = modulePattern.trim();
+				const trimmedLevel = levelValue?.trim();
+
+				if (!trimmedLevel) continue; // Skip if no level specified
+
+				if (this.matchesPattern(app, trimmedModule)) {
+					try {
+						return this.asLogLevel(trimmedLevel);
+					} catch (error) {
+						throw new Error(`Invalid log level "${levelValue?.trim()}" for module pattern "${trimmedModule}"`);
+					}
 				}
 			}
 		}
 
+		// Second pass: look for global level
 		for (const part of parts) {
-			if (!part.includes(":") && !part.includes("=")) {
-				return this.asLogLevel(part);
+			const trimmedPart = part.trim();
+			if (!trimmedPart) continue; // Skip empty parts
+
+			if (!trimmedPart.includes(":") && !trimmedPart.includes("=")) {
+				try {
+					return this.asLogLevel(trimmedPart);
+				} catch (error) {
+					throw new Error(`Invalid global log level "${trimmedPart}"`);
+				}
 			}
 		}
 
 		return "info";
+	}
+
+	private matchesPattern(moduleName: string, pattern: string): boolean {
+		if (pattern.includes("*")) {
+			// Convert wildcard pattern to regex
+			const regexPattern = pattern
+				.replace(/\./g, "\\.")
+				.replace(/\*/g, ".*");
+			return new RegExp(`^${regexPattern}`).test(moduleName);
+		}
+
+		// Exact prefix match (existing behavior)
+		return moduleName.startsWith(pattern);
 	}
 
 	public asLogLevel(something: string): LogLevel {
