@@ -48,7 +48,7 @@ The `AppRouter` is the heart of your full-stack application. It defines all your
 
 **`src/AppRouter.ts`**
 ```typescript
-import { $page } from "@alepha/react";
+import { $page } from "alepha/react";
 import { t } from "alepha";
 
 export class AppRouter {
@@ -75,28 +75,9 @@ export class AppRouter {
     },
   });
 
-  // About page with URL parameters
   about = $page({
-    path: "/about/:section?",
-    schema: {
-      params: t.object({
-        section: t.optional(t.string()),
-      }),
-      query: t.object({
-        detailed: t.optional(t.boolean()),
-      }),
-    },
-    lazy: () => import("./components/About.tsx"),
-    resolve: async ({ params, query }) => {
-      const section = params.section || "general";
-      const isDetailed = query.detailed || false;
-
-      return {
-        section,
-        isDetailed,
-        content: `This is the ${section} section of our about page.`,
-      };
-    },
+    path: "/about",
+    lazy: () => import("./components/About.tsx")
   });
 }
 ```
@@ -107,7 +88,7 @@ Let's create clean React components with simple CSS styling.
 
 **`src/components/Layout.tsx`**
 ```tsx
-import { Link, NestedView, useRouterEvents } from "@alepha/react";
+import { Link, NestedView, useRouterEvents } from "alepha/react";
 import { useState } from "react";
 
 const Layout = () => {
@@ -118,10 +99,8 @@ const Layout = () => {
         <nav>
           <Link href="/">Home</Link>
           <Link href="/about">About</Link>
-          <Link href="/about/team">Team</Link>
         </nav>
       </header>
-
       <main>
         <NestedView />
       </main>
@@ -133,79 +112,47 @@ export default Layout;
 ```
 
 **`src/components/Home.tsx`**
+
 ```tsx
-import { Link } from "@alepha/react";
+import { Link } from "alepha/react";
 
 interface HomeProps {
   message: string;
   timestamp: string;
 }
 
-export default function Home({ message, timestamp }: HomeProps) {
-  return (
-    <div>
-      <h1>Full-Stack Alepha Application</h1>
-      <p>{message}</p>
-      <p>Rendered at: {new Date(timestamp).toLocaleString()}</p>
+const Home = ({message, timestamp}: HomeProps) => (
+  <div>
+    <h1>Full-Stack Alepha Application</h1>
+    <p>{message}</p>
+    <p>Rendered at: {timestamp}</p>
 
-      <h2>Features</h2>
-      <ul>
-        <li>Server-Side Rendering (SSR)</li>
-        <li>Type-safe routing with $page descriptors</li>
-        <li>Automatic code splitting</li>
-        <li>Data fetching with resolve functions</li>
-        <li>Static generation for performance</li>
-      </ul>
+    <h2>Features</h2>
+    <ul>
+      <li>Server-Side Rendering (SSR)</li>
+      <li>Type-safe routing with $page descriptors</li>
+      <li>Automatic code splitting</li>
+      <li>Data fetching with resolve functions</li>
+      <li>Static generation for performance</li>
+    </ul>
+  </div>
+);
 
-      <h2>Try Navigation</h2>
-      <nav>
-        <Link href="/about">About page</Link>
-        <Link href="/about/team?detailed=true">Team section (detailed)</Link>
-        <Link href="/nonexistent">404 page</Link>
-      </nav>
-    </div>
-  );
-}
+export default Home
 ```
 
 **`src/components/About.tsx`**
+
 ```tsx
-import { Link } from "@alepha/react";
+import { Link } from "alepha/react";
 
-interface AboutProps {
-  section: string;
-  isDetailed: boolean;
-  content: string;
-}
+const About = () => (
+  <div>
+    <h1>About Our Application</h1>
+  </div>
+);
 
-export default function About({ section, isDetailed, content }: AboutProps) {
-  return (
-    <div>
-      <h1>About Our Application</h1>
-      <h2>Section: {section}</h2>
-      <p>{content}</p>
-
-      {isDetailed && (
-        <div style={{ background: "#f0f0f0", padding: "1rem", margin: "1rem 0" }}>
-          <h3>Detailed Information</h3>
-          <p>You requested detailed information for the <strong>{section}</strong> section.</p>
-          <p>This demonstrates how query parameters can control content visibility.</p>
-        </div>
-      )}
-
-      <h3>URL Information</h3>
-      <p>Current section: <code>{section}</code></p>
-      <p>Detailed view: <code>{isDetailed.toString()}</code></p>
-
-      <h3>Try Different URLs</h3>
-      <nav>
-        <Link href="/about">General section</Link>
-        <Link href="/about/team">Team section</Link>
-        <Link href="/about/team?detailed=true">Team section (detailed)</Link>
-      </nav>
-    </div>
-  );
-}
+export default About
 ```
 
 ### 5. Create Simple Styles
@@ -317,7 +264,7 @@ Vite handles the build process and development server for your full-stack applic
 
 **`vite.config.ts`**
 ```typescript
-import { viteAlepha } from "@alepha/vite";
+import { viteAlepha } from "alepha/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -347,7 +294,7 @@ Add the necessary scripts and update your package.json:
 }
 ```
 
-### 10. Run Your Full-Stack Application
+### 11. Run Your Full-Stack Application
 
 Now you can run your application in development mode:
 
@@ -391,10 +338,10 @@ Congratulations! 🎉 You've created a complete full-stack application with:
 From here, you can:
 
 - Add more complex pages with nested routing
-- Integrate databases with `@alepha/postgres`
-- Add email functionality with `@alepha/email`
-- Implement background jobs with `@alepha/queue`
-- Add authentication with `@alepha/security`
+- Integrate databases with `alepha/postgres`
+- Add email functionality with `alepha/email`
+- Implement background jobs with `alepha/queue`
+- Add authentication with `alepha/security`
 - Deploy to production platforms like Vercel or Railway
 
 Your full-stack Alepha application is now ready for real-world development!
