@@ -133,18 +133,6 @@ Alepha.create()
 
 	@module alepha
 
-This module can be imported and used as follows:
-
-```typescript
-import { Alepha, run } from "alepha";
-import { AlephaCore } from "alepha/core";
-
-const alepha = Alepha.create()
-	.with(AlephaCore);
-
-run(alepha);
-```
-
 ## API Reference
 
 ### Descriptors

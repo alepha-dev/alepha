@@ -240,7 +240,9 @@ export async function generateReadmes(root: string, log = console.log) {
 			if (moduleDescription) {
 				readmeContent += `## Module\n\n`;
 				readmeContent += `${moduleDescription}\n`;
-				readmeContent += `\nThis module can be imported and used as follows:\n\n\`\`\`typescript\nimport { Alepha, run } from "alepha";\nimport { ${moduleName} } from "${pkgJson.name.replace("@", "").replace("-", "/")}";\n\nconst alepha = Alepha.create()\n\t.with(${moduleName});\n\nrun(alepha);\n\`\`\`\n`;
+				if (nameSegment !== "core") {
+					readmeContent += `\nThis module can be imported and used as follows:\n\n\`\`\`typescript\nimport { Alepha, run } from "alepha";\nimport { ${moduleName} } from "${pkgJson.name.replace("@", "").replace("-", "/")}";\n\nconst alepha = Alepha.create()\n\t.with(${moduleName});\n\nrun(alepha);\n\`\`\`\n`;
+				}
 			}
 
 			if (descriptors.length > 0 || providers.length > 0 || hooks.length > 0) {
