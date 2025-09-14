@@ -102,7 +102,7 @@ const ActionClick = (props: ActionClickProps) => {
 			await props.onClick(e);
 		} catch (e) {
 			console.error(e);
-			await alepha.emit("form:submit:error", {
+			await alepha.events.emit("form:submit:error", {
 				id: "action",
 				error: e as Error,
 			});

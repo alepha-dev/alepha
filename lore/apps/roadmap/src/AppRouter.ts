@@ -52,7 +52,7 @@ export class AppRouter {
 		lazy: () => import("./components/Layout.tsx"),
 		resolve: async ({ user }) => {
 			if (user) {
-				this.alepha.state(
+				this.alepha.state.set(
 					"user_projects",
 					await this.projectApi.getMyProjects(),
 				);
@@ -85,7 +85,7 @@ export class AppRouter {
 				HttpError.is(error, 401) &&
 				this.router.state.url.pathname !== "/login"
 			) {
-				this.alepha.state("user", undefined);
+				this.alepha.state.set("user", undefined);
 				await this.router.go(`/login?r=${this.router.state.url.pathname}`);
 			}
 		},
@@ -140,18 +140,18 @@ export class AppRouter {
 					},
 				});
 
-			this.alepha.state("current_project", project);
-			this.alepha.state("current_project_character", character);
-			this.alepha.state("current_assigned_tasks", tasks);
+			this.alepha.state.set("current_project", project);
+			this.alepha.state.set("current_project_character", character);
+			this.alepha.state.set("current_assigned_tasks", tasks);
 
 			return {
 				project,
 			};
 		},
 		onLeave: () => {
-			this.alepha.state("current_project_character", null);
-			this.alepha.state("current_project", null);
-			this.alepha.state("current_assigned_tasks", []);
+			this.alepha.state.set("current_project_character", null);
+			this.alepha.state.set("current_project", null);
+			this.alepha.state.set("current_assigned_tasks", []);
 		},
 	});
 
@@ -164,7 +164,7 @@ export class AppRouter {
 		path: "/players",
 		lazy: () => import("./components/project/ProjectPlayers.tsx"),
 		resolve: async ({ params }) => {
-			const project = this.alepha.state("current_project");
+			const project = this.alepha.state.get("current_project");
 			if (!project) {
 				throw new NotFoundError("Project not found");
 			}
@@ -196,7 +196,7 @@ export class AppRouter {
 		resolve: async ({ params }) => {
 			const stats = await this.projectStatsApi.getProjectStats({
 				params: {
-					id: this.alepha.state("current_project")?.id ?? -1,
+					id: this.alepha.state.get("current_project")?.id ?? -1,
 				},
 			});
 			return {
@@ -252,11 +252,11 @@ export class AppRouter {
 					id: params.taskId,
 				},
 			});
-			this.alepha.state("current_task", task);
+			this.alepha.state.set("current_task", task);
 			return { task };
 		},
 		onLeave: () => {
-			this.alepha.state("current_task", null);
+			this.alepha.state.set("current_task", null);
 		},
 		errorHandler: (error) => {
 			if (HttpError.is(error, 404)) {

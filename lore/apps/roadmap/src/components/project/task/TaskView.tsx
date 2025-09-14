@@ -86,9 +86,9 @@ const TaskView = (props: TaskViewProps) => {
 				params: { id: task.id },
 			});
 
-			alepha.state(
+			alepha.state.set(
 				"current_assigned_tasks",
-				(alepha.state("current_assigned_tasks") ?? []).filter(
+				(alepha.state.get("current_assigned_tasks") ?? []).filter(
 					(t) => t.id !== task.id,
 				),
 			);
@@ -135,7 +135,7 @@ const TaskView = (props: TaskViewProps) => {
 									task={task}
 									onUpdate={(it) => {
 										setTask(it);
-										alepha.state("current_task", it);
+										alepha.state.set("current_task", it);
 									}}
 									showDialog={showDialog}
 									setShowDialog={setShowDialog}
@@ -187,7 +187,7 @@ const TaskView = (props: TaskViewProps) => {
 							task={task}
 							onTaskUpdate={(updatedTask) => {
 								setTask(updatedTask);
-								alepha.state("current_task", updatedTask);
+								alepha.state.set("current_task", updatedTask);
 							}}
 						/>
 
@@ -255,9 +255,9 @@ const TaskView = (props: TaskViewProps) => {
 												params: { id: task.id },
 											});
 											setTask(updatedTask);
-											alepha.state("current_task", updatedTask);
-											alepha.state("current_assigned_tasks", [
-												...(alepha.state("current_assigned_tasks") ?? []),
+											alepha.state.set("current_task", updatedTask);
+											alepha.state.set("current_assigned_tasks", [
+												...(alepha.state.get("current_assigned_tasks") ?? []),
 												updatedTask,
 											]);
 										}}
@@ -294,12 +294,12 @@ const TaskView = (props: TaskViewProps) => {
 											const { character } = await taskApi.completeTask({
 												params: { id: task.id },
 											});
-											alepha.state("current_project_character", character);
-											alepha.state(
+											alepha.state.set("current_project_character", character);
+											alepha.state.set(
 												"current_assigned_tasks",
-												(alepha.state("current_assigned_tasks") ?? []).filter(
-													(t) => t.id !== task.id,
-												),
+												(
+													alepha.state.get("current_assigned_tasks") ?? []
+												).filter((t) => t.id !== task.id),
 											);
 											await router.go("projectBoard", {
 												meta: {
