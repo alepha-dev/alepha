@@ -289,6 +289,8 @@ export class Alepha {
 		Array<Descriptor>
 	>();
 
+	// -------------------------------------------------------------------------------------------------------------------
+
 	/**
 	 * Node.js feature that allows to store context across asynchronous calls.
 	 *
@@ -296,7 +298,19 @@ export class Alepha {
 	 *
 	 * Mocked for browser environments.
 	 */
-	public readonly context: AlsProvider = new AlsProvider();
+	public readonly context = new AlsProvider();
+
+	/**
+	 * Event manager to handle lifecycle events and custom events.
+	 */
+	public readonly events = new EventManager(() => this.log);
+
+	/**
+	 * State manager to store arbitrary values.
+	 */
+	public readonly state = new StateManager<State>(this.events, this.context);
+
+	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
 	 * Get logger instance.
@@ -315,11 +329,6 @@ export class Alepha {
 	constructor(state: Partial<State> = {}) {
 		this.store = state;
 	}
-
-	public events = new EventManager(() => this.log);
-	public state = new StateManager<State>(this.events);
-
-	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
 	 * True when start() is called.
