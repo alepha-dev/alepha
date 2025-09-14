@@ -64,6 +64,7 @@ export class ReactServerProvider {
 		`<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
 		"is",
 	);
+	protected preprocessedTemplate: PreprocessedTemplate | null = null;
 
 	public readonly onConfigure = $hook({
 		on: "configure",
@@ -150,6 +151,12 @@ export class ReactServerProvider {
 	}
 
 	protected async registerPages(templateLoader: TemplateLoader) {
+		// Preprocess template once
+		const template = await templateLoader();
+		if (template) {
+			this.preprocessedTemplate = this.preprocessTemplate(template);
+		}
+
 		for (const page of this.pageApi.getPages()) {
 			if (page.children?.length) {
 				continue;
@@ -253,11 +260,8 @@ export class ReactServerProvider {
 				};
 			}
 
-			const html = this.renderToHtml(
-				this.template ?? "",
-				state,
-				options.hydration,
-			);
+			const template = this.template ?? "";
+			const html = this.renderToHtml(template, state, options.hydration);
 
 			if (html instanceof Redirection) {
 				return { state, html: "", redirect };
@@ -452,37 +456,80 @@ export class ReactServerProvider {
 		return response.html;
 	}
 
+	protected preprocessTemplate(template: string): PreprocessedTemplate {
+		// Find the body close tag for script injection
+		const bodyCloseMatch = template.match(/<\/body>/i);
+		const bodyCloseIndex = bodyCloseMatch?.index ?? template.length;
+
+		const beforeScript = template.substring(0, bodyCloseIndex);
+		const afterScript = template.substring(bodyCloseIndex);
+
+		// Check if there's an existing root div
+		const rootDivMatch = beforeScript.match(this.ROOT_DIV_REGEX);
+
+		if (rootDivMatch) {
+			// Split around the existing root div content
+			const beforeDiv = beforeScript.substring(0, rootDivMatch.index!);
+			const afterDivStart = rootDivMatch.index! + rootDivMatch[0].length;
+			const afterDiv = beforeScript.substring(afterDivStart);
+
+			const beforeApp = `${beforeDiv}<div${rootDivMatch[1]} id="${this.env.REACT_ROOT_ID}"${rootDivMatch[2]}>`;
+			const afterApp = `</div>${afterDiv}`;
+
+			return { beforeApp, afterApp, beforeScript: "", afterScript };
+		}
+
+		// No existing root div, find body tag to inject new div
+		const bodyMatch = beforeScript.match(/<body([^>]*)>/i);
+		if (bodyMatch) {
+			const beforeBody = beforeScript.substring(
+				0,
+				bodyMatch.index! + bodyMatch[0].length,
+			);
+			const afterBody = beforeScript.substring(
+				bodyMatch.index! + bodyMatch[0].length,
+			);
+
+			const beforeApp = `${beforeBody}<div id="${this.env.REACT_ROOT_ID}">`;
+			const afterApp = `</div>${afterBody}`;
+
+			return { beforeApp, afterApp, beforeScript: "", afterScript };
+		}
+
+		// Fallback: no body tag found, just wrap everything
+		return {
+			beforeApp: `<div id="${this.env.REACT_ROOT_ID}">`,
+			afterApp: `</div>`,
+			beforeScript,
+			afterScript,
+		};
+	}
+
 	protected fillTemplate(
 		response: { html: string },
 		app: string,
 		script: string,
 	) {
-		// TODO: replace Regexp with a preparsed template on startup, for performance and because replace() is unsafe ($& problem)
-		if (this.ROOT_DIV_REGEX.test(response.html)) {
-			// replace contents of the existing <div id="root">
-			response.html = response.html.replace(
-				this.ROOT_DIV_REGEX,
-				(_match, beforeId, afterId) => {
-					return `<div${beforeId} id="${this.env.REACT_ROOT_ID}"${afterId}>${app}</div>`;
-				},
-			);
-		} else {
-			const bodyOpenTag = /<body([^>]*)>/i;
-			if (bodyOpenTag.test(response.html)) {
-				response.html = response.html.replace(bodyOpenTag, (match) => {
-					return `${match}<div id="${this.env.REACT_ROOT_ID}">${app}</div>`;
-				});
-			}
+		if (!this.preprocessedTemplate) {
+			// Fallback to old logic if preprocessing failed
+			this.preprocessedTemplate = this.preprocessTemplate(response.html);
 		}
 
-		const bodyCloseTagRegex = /<\/body>/i;
-		if (bodyCloseTagRegex.test(response.html)) {
-			response.html = response.html.replace(
-				bodyCloseTagRegex,
-				`${script}</body>`,
-			);
-		}
+		// Pure concatenation - no regex replacements needed
+		response.html =
+			this.preprocessedTemplate.beforeApp +
+			app +
+			this.preprocessedTemplate.afterApp +
+			script +
+			this.preprocessedTemplate.afterScript;
 	}
 }
 
 type TemplateLoader = () => Promise<string | undefined>;
+
+interface PreprocessedTemplate {
+	beforeApp: string;
+	afterApp: string;
+	beforeScript: string;
+	afterScript: string;
+}
