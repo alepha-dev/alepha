@@ -309,7 +309,7 @@ Visit `http://localhost:5173` in your browser. You'll see:
 - **Type Safety**: Full TypeScript support throughout your application
 - **Data Fetching**: Server-side data loading with automatic serialization
 
-### 11. Build for Production
+### 12. Build for Production
 
 When you're ready to deploy, build your application:
 
