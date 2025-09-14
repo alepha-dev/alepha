@@ -1,6 +1,9 @@
+import { blob } from "node:stream/consumers";
+import { useAlepha, useClient } from "@alepha/react";
 import { AreaChart, BarChart, DonutChart } from "@mantine/charts";
 import {
 	Badge,
+	Button,
 	Card,
 	Flex,
 	Grid,
@@ -10,15 +13,19 @@ import {
 	Text,
 	Title,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
 	IconChartBar,
 	IconCrown,
+	IconDownload,
 	IconStar,
 	IconTarget,
 	IconTrendingUp,
 	IconTrophy,
 	IconUsers,
 } from "@tabler/icons-react";
+import type { ProjectStatsApi } from "../../api/ProjectStatsApi.ts";
+import Action from "../ui/Action.tsx";
 
 export interface ProjectStatsProps {
 	stats: {
@@ -61,6 +68,50 @@ export interface ProjectStatsProps {
 
 const ProjectStats = (props: ProjectStatsProps) => {
 	const { stats } = props;
+	const alepha = useAlepha();
+	const projectStatsApi = useClient<ProjectStatsApi>();
+	const currentProject = alepha.state.get("current_project");
+
+	const handleExportCsv = async () => {
+		if (!currentProject) {
+			notifications.show({
+				title: "Error",
+				message: "No project selected",
+				color: "red",
+			});
+			return;
+		}
+
+		try {
+			const csvData = await projectStatsApi.exportTasksCsv({
+				params: { id: currentProject.id },
+			});
+
+			// Create blob and download
+			const url = window.URL.createObjectURL(
+				new Blob([await csvData.text()], { type: "text/csv" }),
+			);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = csvData.name;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			window.URL.revokeObjectURL(url);
+
+			notifications.show({
+				title: "Success",
+				message: "Tasks exported to CSV successfully",
+				color: "green",
+			});
+		} catch (error: any) {
+			notifications.show({
+				title: "Export Failed",
+				message: error?.message || "Failed to export tasks",
+				color: "red",
+			});
+		}
+	};
 
 	// Prepare data for charts
 	const priorityData = stats.tasksByPriority.map((item) => ({
@@ -115,9 +166,19 @@ const ProjectStats = (props: ProjectStatsProps) => {
 	return (
 		<Flex flex={1} p="lg" className={"overflow-auto"}>
 			<Stack w="100%" maw={1200}>
-				<Group gap="sm" align="center">
-					<IconChartBar size={24} />
-					<Title order={2}>Project Analytics</Title>
+				<Group justify="space-between" align="center">
+					<Group gap="sm" align="center">
+						<IconChartBar size={24} />
+						<Title order={2}>Project Analytics</Title>
+					</Group>
+					<Action
+						variant="light"
+						leftSection={<IconDownload size={16} />}
+						onClick={handleExportCsv}
+						size="sm"
+					>
+						Export CSV
+					</Action>
 				</Group>
 
 				<Text c="dimmed" size="sm">
