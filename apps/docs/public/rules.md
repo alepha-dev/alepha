@@ -327,7 +327,6 @@ class UserProfile {
 
 const Home = ({user}: {user: User}) => {
     const userApi = useClient<UserController>();
-
     return <div>Welcome, {user.name}</div>;
 };
 ```
@@ -432,20 +431,11 @@ run(alepha);
 {
   "type": "module",
   "dependencies": {
-    "alepha": "latest",
-    "react": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^5.0.0",
-    "vitest": "^1.0.0",
-    "typescript": "^5.0.0"
+    "alepha": "latest"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node dist/server/index.js",
     "test": "vitest"
   }
 }
@@ -462,7 +452,7 @@ run(alepha);
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "allowImportingTsExtensions": true
   }
 }
 ```
@@ -473,7 +463,6 @@ run(alepha);
 2. **Create services** with `$repository` for data access
 3. **Add business logic** in service classes
 4. **Expose APIs** with `$action` in controllers
-5. **Wire everything** in the main entry point with `Alepha.create().with()`
 6. **For full-stack**, add `$page` descriptors and React components
 
 ## 💡 Pro Tips
@@ -486,5 +475,7 @@ run(alepha);
 - Use transactions with `$transaction()` for data consistency
 - Implement `$lock()` for distributed systems
 - Always type your schemas with TypeBox (`t`)
+  - t.uuid() for UUID
+  - t.datetime() for date-time
 
 Remember: Alepha is about **declarative, class-based services** with **descriptor-driven functionality**. Think in terms of services, not routes or middleware!
