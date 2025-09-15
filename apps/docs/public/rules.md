@@ -62,11 +62,11 @@ class UserController {
   userService = $inject(UserService);
 
   getUser = $action({
-    schema: t.object({
+    schema: {
       params: t.object({
         id: t.string()
       })
-    }),
+    },
     handler: async ({ params }) => {
       this.log.info(`Getting user ${params.id}`);
       return await this.userService.findById(params.id);
@@ -105,8 +105,8 @@ run(UserController);
 import { t } from "alepha"; // TypeBox, NOT zod!
 
 // ✅ CORRECT - TypeBox schemas
-const UserSchema = t.object({
-  id: t.string({ format: "uuid" }),
+const userSchema = t.object({
+  id: t.uuid(),
   email: t.string({ format: "email" }),
   age: t.number({ minimum: 0, maximum: 120 }),
   isActive: t.boolean({ default: true })
@@ -161,9 +161,9 @@ import { t } from "alepha";
 class ProductController {
   // GET /products
   listProducts = $action({
-    schema: t.object({
+    schema: {
       response: t.array(productSchema), // response schema is mandatory for json response
-    }),
+    },
     handler: async () => {
       return await this.products.find();
     }
@@ -172,13 +172,13 @@ class ProductController {
   // POST /products
   createProduct = $action({
     method: "POST",
-    schema: t.object({
+    schema: {
       body: t.object({ // body schema is mandatory for request json body
         name: t.string(),
         price: t.number({ minimum: 0 })
       }),
       response: productSchema,
-    }),
+    },
     handler: async ({ body }) => {
       return await this.products.create(body);
     }
@@ -187,12 +187,12 @@ class ProductController {
   // GET /products/:id
   getProduct = $action({
     path: "/products/:id",
-    schema: t.object({
+    schema: {
       params: t.object({
         id: t.string()
       }),
       response: productSchema,
-    }),
+    },
     handler: async ({ params }) => {
       return await this.products.findById(params.id);
     }
@@ -208,13 +208,13 @@ import { $page } from "alepha/react";
 
 export class AppRouter {
   layout = $page({
-    lazy: () => import("./components/Layout"),
+    lazy: () => import("./components/Layout.tsx"),
     children: () => [this.home, this.about]
   });
 
   home = $page({
     path: "/",
-    lazy: () => import("./components/Home"),
+    lazy: () => import("./components/Home.tsx"),
     resolve: async () => {
       // Server-side data fetching
       const data = await fetchHomeData();
@@ -224,7 +224,7 @@ export class AppRouter {
 
   about = $page({
     path: "/about",
-    lazy: () => import("./components/About")
+    lazy: () => import("./components/About.tsx")
   });
 }
 
@@ -406,11 +406,11 @@ class EntityController {
 
   create = $action({
     method: "POST",
-    schema: t.object({
+    schema: {
       body: t.object({
         // ... fields
       })
-    }),
+    },
     handler: async ({ body }) => {
       return await this.service.create(body);
     }
