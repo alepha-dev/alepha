@@ -1,7 +1,17 @@
 import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
-import { Card, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
+import {
+	Button,
+	Card,
+	Flex,
+	Group,
+	SimpleGrid,
+	Stack,
+	Text,
+	TextInput,
+} from "@mantine/core";
 import { modals } from "@mantine/modals";
+import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
 import { theme } from "../../constants/theme.ts";
@@ -21,21 +31,18 @@ const ProjectSettings = () => {
 	}
 
 	const openDeleteModal = () =>
-		new Promise<boolean>((resolve) =>
-			modals.openConfirmModal({
+		new Promise<boolean>((resolve) => {
+			modals.open({
 				id: "delete-campaign-modal",
 				title: "Delete Campaign",
 				centered: true,
-				children: (
-					<Text size="sm">Are you sure you want to delete this campaign?</Text>
-				),
-				labels: { cancel: "Cancel", confirm: "Delete Campaign" },
-				confirmProps: { color: "red" },
+				children: <ConfirmationModal resolve={resolve} project={project} />,
+				withCloseButton: false,
+				closeOnClickOutside: false,
+				closeOnEscape: false,
 				onClose: () => resolve(false),
-				onCancel: () => resolve(false),
-				onConfirm: () => resolve(true),
-			}),
-		);
+			});
+		});
 
 	return (
 		<Stack flex={1} p={"md"}>
@@ -104,3 +111,53 @@ const ProjectSettings = () => {
 };
 
 export default ProjectSettings;
+
+const ConfirmationModal = ({
+	project,
+	resolve,
+}: {
+	project: { title: string };
+	resolve: (value: boolean) => void;
+}) => {
+	const [inputValue, setInputValue] = useState("");
+	const isValid = inputValue === project.title;
+
+	return (
+		<Stack gap="md">
+			<Text size="sm">
+				This action cannot be undone. This will permanently delete the project
+				and all associated data.
+			</Text>
+			<Text size="sm">
+				Please type <strong>{project.title}</strong> to confirm:
+			</Text>
+			<TextInput
+				value={inputValue}
+				onChange={(event) => setInputValue(event.currentTarget.value)}
+				placeholder={project.title}
+				data-autofocus
+			/>
+			<Group justify="flex-end" gap="sm">
+				<Button
+					variant="default"
+					onClick={() => {
+						modals.closeAll();
+						resolve(false);
+					}}
+				>
+					Cancel
+				</Button>
+				<Button
+					color="red"
+					disabled={!isValid}
+					onClick={() => {
+						modals.closeAll();
+						resolve(true);
+					}}
+				>
+					Delete Campaign
+				</Button>
+			</Group>
+		</Stack>
+	);
+};
