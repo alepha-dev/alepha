@@ -1,5 +1,3 @@
-# Alepha Framework - AI Code Generation Rules
-
 ## 🎯 Framework Overview
 
 Alepha is a convention-driven, class-based TypeScript framework that uses **descriptors** (factory functions starting with `$`) to define application components.
@@ -12,7 +10,7 @@ It's NOT a wrapper around Express/Fastify but a complete framework built from sc
 4. **Type-safe from database to frontend** - Full TypeScript with TypeBox schemas
 5. **Convention over configuration** - Opinionated structure with clear patterns
 
-### Key Features
+### Rules Summary
 
 - use TypeScript (strict mode)
 - use Biome for formatting and linting
@@ -22,8 +20,11 @@ It's NOT a wrapper around Express/Fastify but a complete framework built from sc
 - use Postgres for database (with built-in support)
 - use TypeBox for schema definitions (not Zod!), using `t` from Alepha, not importing TypeBox directly
 - use documentation: https://alepha.dev/llms.txt
-- one file one class
-- descriptors are always a class property, except for `$entity` to be Drizzle-compatible
+- one file = one class
+- descriptors are always a class property, except for `$entity` to be drizzle-kit compatible
+- no decorators, no functional services, no Express/Fastify patterns
+- no manual instantiation, always use DI
+- use import with file extensions (e.g. `import { User } from "./User.ts"`)
 
 ## 📋 Essential Rules for Code Generation
 
@@ -53,7 +54,8 @@ my-app/
 
 ```typescript
 // ✅ CORRECT - Alepha way
-import { $action, $inject, $logger } from "alepha";
+import { $action, $inject } from "alepha";
+import { $logger } from "alepha/logger";
 
 class UserController {
   log = $logger();
@@ -79,7 +81,7 @@ router.get('/users/:id', async (req, res) => {
 });
 ```
 
-### Rule 3: Entry Point Pattern
+### Rule 3: Entry Point Pattern (server and browser)
 
 ```typescript
 // Server entry (src/index.server.ts)
@@ -117,8 +119,8 @@ import { z } from "zod"; // DON'T USE THIS!
 ### Rule 5: Database with Postgres Module
 
 ```typescript
-import { $entity, $repository } from "alepha/postgres";
-import { pg, t } from "alepha";
+import { pg, $entity, $repository } from "alepha/postgres";
+import { t } from "alepha";
 
 // Define entity with TypeBox schema
 const users = $entity({
@@ -159,6 +161,9 @@ import { t } from "alepha";
 class ProductController {
   // GET /products
   listProducts = $action({
+    schema: t.object({
+      response: t.array(productSchema), // response schema is mandatory for json response
+    }),
     handler: async () => {
       return await this.products.find();
     }
@@ -168,10 +173,11 @@ class ProductController {
   createProduct = $action({
     method: "POST",
     schema: t.object({
-      body: t.object({
+      body: t.object({ // body schema is mandatory for request json body
         name: t.string(),
         price: t.number({ minimum: 0 })
-      })
+      }),
+      response: productSchema,
     }),
     handler: async ({ body }) => {
       return await this.products.create(body);
@@ -184,7 +190,8 @@ class ProductController {
     schema: t.object({
       params: t.object({
         id: t.string()
-      })
+      }),
+      response: productSchema,
     }),
     handler: async ({ params }) => {
       return await this.products.findById(params.id);
@@ -274,31 +281,55 @@ $page({ path?, lazy, resolve?, children? }) // Page definition
 
 ### Rule 9: Service Communication
 
-```typescript
+```tsx
 // Within same module - use $inject
 class ServiceA {
-  serviceB = $inject(ServiceB);
+    serviceB = $inject(ServiceB);
 
-  async doSomething() {
-    return await this.serviceB.process();
-  }
+    async doSomething() {
+        return await this.serviceB.process();
+    }
 }
 
 // Between modules - use $client
-import { $client } from "alepha/server/links";
-import type { NotificationController } from "@company/notifications";
+import {$client} from "alepha/server/links";
+import type {UserController} from "../server/controllers/UserController.ts";
 
 class UserController {
-  notifications = $client<NotificationController>();
+    notifications = $client<NotificationController>();
 
-  createUser = $action({
-    handler: async (data) => {
-      const user = await this.users.create(data);
-      await this.notifications.sendWelcome(user.email);
-      return user;
-    }
-  });
+    createUser = $action({
+        handler: async (data) => {
+            const user = await this.users.create(data);
+            await this.notifications.sendWelcome(user.email);
+            return user;
+        }
+    });
 }
+
+// Between frontend and backend - use $client
+import {$client} from "alepha/server/links";
+import type {UserController} from "../server/controllers/UserController.ts";
+import type {User} from "../server/entities/users.ts";
+class UserProfile {
+    userApi = $client<UserController>();
+
+    home = $page({
+        path: "/",
+        lazy: () => import("./Home.tsx"),
+        resolve: async () => {
+            return {
+                user: await this.userApi.getMyUserProfile(data)
+            };
+        }
+    })
+}
+
+const Home = ({user}: {user: User}) => {
+    const userApi = useClient<UserController>();
+
+    return <div>Welcome, {user.name}</div>;
+};
 ```
 
 ### Rule 10: Testing Pattern
@@ -342,7 +373,7 @@ import { $entity, $repository } from "alepha/postgres";
 import { pg } from "alepha";
 
 // 2. Define entities
-const EntityName = $entity({
+const users = $entity({
   name: "table_name",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
@@ -355,12 +386,12 @@ const EntityName = $entity({
 
 // 3. Create repository service
 class EntityService {
-  entities = $repository({ table: EntityName });
+  userRepo = $repository(users);
   log = $logger();
 
   async create(data: any) {
     this.log.info("Creating entity");
-    return await this.entities.create(data);
+    return await this.userRepo.create(data);
   }
 }
 
@@ -402,10 +433,10 @@ run(alepha);
   "type": "module",
   "dependencies": {
     "alepha": "latest",
-    "react": "^18.0.0"
+    "react": "^19.0.0"
   },
   "devDependencies": {
-    "@types/react": "^18.0.0",
+    "@types/react": "^19.0.0",
     "@vitejs/plugin-react": "^4.0.0",
     "vite": "^5.0.0",
     "vitest": "^1.0.0",

@@ -79,6 +79,9 @@ function main() {
 	// Concatenate all markdown content
 	let concatenatedContent = `# Alepha Framework Documentation\n\nThis file contains all documentation for the Alepha framework, concatenated for LLM context.\n\nLatest version: ${version}\nGenerated on: ${new Date().toISOString()}\n\n---\n`;
 
+	const rules = readFileSync(join(__dirname, "../public/rules.md"), "utf-8");
+	concatenatedContent += `\n# Important Guidelines\n\n${rules}\n\n---\n`;
+
 	for (const filePath of markdownFiles) {
 		console.log(`📖 Reading: ${filePath.replace(`${DOCS_DIR}/`, "")}`);
 		concatenatedContent += readMarkdownContent(filePath);
