@@ -36,7 +36,6 @@ my-app/
 │   │   ├── controllers/  # API controllers with $action
 │   │   ├── services/     # Business logic
 │   │   ├── entities/     # Entities with $entity
-│   │   ├── repositories/ # Database with $repository
 │   │   └── providers/    # External service providers
 │   ├── client/           # Frontend (if full-stack)
 │   │   ├── components/   # React components
@@ -122,7 +121,7 @@ import { $entity, $repository } from "alepha/postgres";
 import { pg, t } from "alepha";
 
 // Define entity with TypeBox schema
-const User = $entity({
+const users = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
@@ -139,14 +138,14 @@ const User = $entity({
 
 // Use in service
 class UserService {
-  users = $repository({ table: User });
+  userRepository = $repository(users);
 
   async createUser(data: any) {
-    return await this.users.create(data);
+    return await this.userRepository.create(data);
   }
 
   async findByEmail(email: string) {
-    return await this.users.findOne({ email });
+    return await this.userRepository.findOne({ email });
   }
 }
 ```
@@ -254,7 +253,7 @@ $middleware({ handler })                      // Middleware
 
 // Database (postgres)
 $entity({ name, schema, indexes })     // Table definition
-$repository({ table })                  // Repository for entity
+$repository(entity)                    // Repository for entity
 $transaction({ handler })               // Database transaction
 $sequence({ name, start, increment })   // ID sequence
 
