@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/complexity/useLiteralKeys: testing */
 import { Alepha, t } from "@alepha/core";
 import { describe, expect, test, vi } from "vitest";
 import { $consumer, $queue, MemoryQueueProvider, QueueProvider } from "../src";
