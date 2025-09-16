@@ -9,8 +9,8 @@ import {
 	IconUser,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
-import type { Security } from "../../api/providers/Security.ts";
 import { theme } from "../../constants/theme.ts";
+import type { Security } from "../../providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";
 import type { MeRouter } from "../auth/MeRouter.ts";
 import Action from "../ui/Action.tsx";

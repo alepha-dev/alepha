@@ -2,9 +2,9 @@ import { useClient, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
 import { Checkbox, Flex, Stack, Text } from "@mantine/core";
 import { IconListCheck } from "@tabler/icons-react";
-import type { Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { theme } from "../../../constants/theme.ts";
+import type { Task } from "../../../providers/Db.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 interface TaskViewObjectivesProps {

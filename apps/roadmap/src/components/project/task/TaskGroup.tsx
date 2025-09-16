@@ -1,7 +1,7 @@
 import { Flex, Stack, Text } from "@mantine/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
-import type { Task } from "../../../api/providers/Db.ts";
+import type { Task } from "../../../providers/Db.ts";
 import TaskItem from "./TaskItem.tsx";
 
 interface TaskGroupProps {

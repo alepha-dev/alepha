@@ -10,8 +10,8 @@ import {
 	tasks,
 	type User,
 	users,
-} from "./providers/Db.ts";
-import { Security } from "./providers/Security.ts";
+} from "../providers/Db.ts";
+import { Security } from "../providers/Security.ts";
 
 export class ProjectApi {
 	log = $logger();

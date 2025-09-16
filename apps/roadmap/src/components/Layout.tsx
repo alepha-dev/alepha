@@ -5,8 +5,8 @@ import { Notifications } from "@mantine/notifications";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import type { Character, Project, Task } from "../api/providers/Db.ts";
 import { theme } from "../constants/theme.ts";
+import type { Character, Project, Task } from "../providers/Db.ts";
 import Header from "./shared/Header.tsx";
 
 declare module "@alepha/core" {

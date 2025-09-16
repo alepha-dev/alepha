@@ -1,8 +1,8 @@
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { $action, BadRequestError } from "@alepha/server";
-import { Db, invitations } from "./providers/Db.ts";
-import { Security } from "./providers/Security.ts";
+import { Db, invitations } from "../providers/Db.ts";
+import { Security } from "../providers/Security.ts";
 
 export class InvitationApi {
 	log = $logger();

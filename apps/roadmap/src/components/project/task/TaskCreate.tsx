@@ -12,8 +12,8 @@ import {
 	IconTent,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
-import type { Project, Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
+import type { Project, Task } from "../../../providers/Db.ts";
 import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";

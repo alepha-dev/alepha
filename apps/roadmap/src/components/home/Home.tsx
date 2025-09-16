@@ -8,8 +8,8 @@ import {
 	IconMapRoute,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
-import type { Project } from "../../api/providers/Db.ts";
 import { theme } from "../../constants/theme.ts";
+import type { Project } from "../../providers/Db.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.tsx";
 

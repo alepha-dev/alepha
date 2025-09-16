@@ -9,7 +9,7 @@ import {
 	IconSunset2,
 	IconSwords,
 } from "@tabler/icons-react";
-import type { Task } from "../../../api/providers/Db.ts";
+import type { Task } from "../../../providers/Db.ts";
 
 const TaskHistory = () => {
 	const [task] = useStore("current_task");

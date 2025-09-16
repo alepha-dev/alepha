@@ -31,7 +31,7 @@ import type {
 	Invitation,
 	Project,
 	User,
-} from "../../api/providers/Db.ts";
+} from "../../providers/Db.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 export interface ProjectPlayersProps {

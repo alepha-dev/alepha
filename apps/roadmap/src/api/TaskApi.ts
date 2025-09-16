@@ -4,10 +4,10 @@ import { $logger } from "@alepha/logger";
 import { pageQuerySchema, pg } from "@alepha/postgres";
 import { $action, BadRequestError } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
+import { characters, Db, tasks } from "../providers/Db.ts";
+import { Security } from "../providers/Security.ts";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
-import { characters, Db, tasks } from "./providers/Db.ts";
-import { Security } from "./providers/Security.ts";
 
 export class TaskApi {
 	log = $logger();
