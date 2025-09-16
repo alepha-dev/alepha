@@ -134,7 +134,7 @@ const HomeButton = () => {
 				<Flex>
 					<Image
 						style={{ marginBottom: -32 }}
-						src={router.base("/alepha.png")}
+						src={router.base("/favicon.png")}
 						alt={"logo"}
 						width={50}
 						height={50}
