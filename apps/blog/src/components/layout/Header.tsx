@@ -46,7 +46,7 @@ const Header = () => {
 					}}
 				>
 					<img
-						src={"/alepha.png"}
+						src={"/favicon.png"}
 						style={{
 							height: 50,
 							width: 50,
