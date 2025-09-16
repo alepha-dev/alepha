@@ -20,7 +20,7 @@ import {
 	IconTrophy,
 	IconUser,
 } from "@tabler/icons-react";
-import type { User } from "../../api/providers/Db.ts";
+import type { User } from "../../providers/Db.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 export interface ProfileProps {

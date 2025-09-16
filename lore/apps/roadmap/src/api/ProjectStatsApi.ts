@@ -2,7 +2,7 @@ import { $inject, t } from "@alepha/core";
 import { createFile } from "@alepha/file";
 import { sql } from "@alepha/postgres";
 import { $action, ForbiddenError } from "@alepha/server";
-import { Db, tasks } from "./providers/Db.ts";
+import { Db, tasks } from "../providers/Db.ts";
 
 export class ProjectStatsApi {
 	db = $inject(Db);

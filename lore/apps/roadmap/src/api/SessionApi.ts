@@ -1,7 +1,7 @@
 import { $inject, type Static, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $action, $route } from "@alepha/server";
-import { Db, sessions } from "./providers/Db.ts";
+import { Db, sessions } from "../providers/Db.ts";
 
 export const userSession = t.composite([
 	sessions.$schema,

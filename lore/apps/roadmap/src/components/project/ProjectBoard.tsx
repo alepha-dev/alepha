@@ -25,9 +25,9 @@ import {
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
-import type { Task, User } from "../../api/providers/Db.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
 import { theme } from "../../constants/theme.ts";
+import type { Task, User } from "../../providers/Db.ts";
 import Action from "../ui/Action.tsx";
 import TaskComplexity from "./task/TaskComplexity.tsx";
 

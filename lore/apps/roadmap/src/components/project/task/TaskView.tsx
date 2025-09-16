@@ -21,9 +21,9 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
-import type { Task } from "../../../api/providers/Db.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { theme } from "../../../constants/theme.ts";
+import type { Task } from "../../../providers/Db.ts";
 import { CharacterInfo } from "../../../services/CharacterInfo.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import Action from "../../ui/Action.tsx";

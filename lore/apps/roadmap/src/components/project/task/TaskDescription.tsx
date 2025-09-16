@@ -1,8 +1,8 @@
 import { Card, Flex, Modal, Typography } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconMaximize } from "@tabler/icons-react";
-import type { Task } from "../../../api/providers/Db.ts";
 import { theme } from "../../../constants/theme.ts";
+import type { Task } from "../../../providers/Db.ts";
 import Action from "../../ui/Action.tsx";
 
 const TaskDescription = (props: { task: Task; onEdit: () => void }) => {

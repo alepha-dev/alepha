@@ -1,6 +1,6 @@
 import { $inject, t } from "@alepha/core";
 import { $action } from "@alepha/server";
-import { Db } from "./providers/Db.ts";
+import { Db } from "../providers/Db.ts";
 
 export class CharacterApi {
 	db = $inject(Db);

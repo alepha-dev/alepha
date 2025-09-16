@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import "./LevelUpAnimation.css";
 import { useInject, useStore } from "@alepha/react";
-import type { Character } from "../../api/providers/Db.ts";
+import type { Character } from "../../providers/Db.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 export default function LevelUpAnimation() {

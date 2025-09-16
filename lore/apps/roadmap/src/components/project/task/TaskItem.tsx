@@ -2,7 +2,7 @@ import { useActive, useRouter } from "@alepha/react";
 import { Flex, HoverCard, Text } from "@mantine/core";
 import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
-import type { Task } from "../../../api/providers/Db.ts";
+import type { Task } from "../../../providers/Db.ts";
 import Action from "../../ui/Action.tsx";
 import TaskComplexity from "./TaskComplexity.tsx";
 

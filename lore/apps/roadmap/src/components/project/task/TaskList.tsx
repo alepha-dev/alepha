@@ -1,7 +1,7 @@
 import { useI18n } from "@alepha/react-i18n";
 import { Flex, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
-import type { Task } from "../../../api/providers/Db.ts";
+import type { Task } from "../../../providers/Db.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TaskGroup from "./TaskGroup.tsx";
 
