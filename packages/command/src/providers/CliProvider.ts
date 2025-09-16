@@ -1,3 +1,5 @@
+import * as fs from "node:fs/promises";
+import { glob } from "node:fs/promises";
 import {
 	$env,
 	$hook,
@@ -83,20 +85,27 @@ export class CliProvider {
 			}
 
 			const commandFlags = this.parseCommandFlags(argv, command.flags);
+			const commandArgs = this.parseCommandArgs(argv, command.options.args);
 
 			await this.alepha.context.run(async () => {
 				this.log.debug(`Executing command '${command.name}'...`, {
 					flags: commandFlags,
+					args: commandArgs,
 				});
 
 				const runner = this.runner;
 
 				const args = {
 					flags: commandFlags,
+					args: commandArgs,
 					run: runner.run,
+					fs,
+					glob,
 				};
 
-				await command.options.handler(args as CommandHandlerArgs<TObject>);
+				await command.options.handler(
+					args as CommandHandlerArgs<TObject, TSchema>,
+				);
 
 				if (command.options.summary !== false) {
 					runner.summary();
@@ -175,13 +184,134 @@ export class CliProvider {
 		return result;
 	}
 
+	protected parseCommandArgs(argv: string[], schema?: TSchema): any {
+		if (!schema) {
+			return undefined;
+		}
+
+		// Extract positional arguments (non-flag arguments)
+		const positionalArgs = argv.filter((arg) => !arg.startsWith("-"));
+		// Remove the command name from the positional args
+		const argsOnly = positionalArgs.slice(1);
+
+		try {
+			if (TypeGuard.IsOptional(schema)) {
+				// Handle optional args: t.optional(t.string())
+				if (argsOnly.length === 0) {
+					return undefined;
+				}
+				return this.parseArgumentValue(argsOnly[0], schema.schema);
+			} else if (TypeGuard.IsTuple(schema) && schema.items) {
+				// Handle tuple args: t.tuple([t.string(), t.number()])
+				const result: any[] = [];
+				const items = schema.items;
+				for (let i = 0; i < items.length; i++) {
+					const itemSchema = items[i];
+					if (i < argsOnly.length) {
+						result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
+					} else if (TypeGuard.IsOptional(itemSchema)) {
+						result.push(undefined);
+					} else {
+						throw new CommandError(
+							`Missing required argument at position ${i + 1}`,
+						);
+					}
+				}
+				return result;
+			} else {
+				// Handle single arg: t.string(), t.number(), etc.
+				if (argsOnly.length === 0) {
+					throw new CommandError("Missing required argument");
+				}
+				return this.parseArgumentValue(argsOnly[0], schema);
+			}
+		} catch (error) {
+			if (error instanceof TypeBoxError) {
+				throw new CommandError(`Invalid argument: ${error.value.message}`);
+			}
+			throw error;
+		}
+	}
+
+	protected parseArgumentValue(value: string, schema: TSchema): any {
+		if (TypeGuard.IsOptional(schema)) {
+			return this.parseArgumentValue(value, schema.schema);
+		}
+
+		if (TypeGuard.IsString(schema)) {
+			return value;
+		}
+
+		if (TypeGuard.IsNumber(schema) || TypeGuard.IsInteger(schema)) {
+			const num = Number(value);
+			if (Number.isNaN(num)) {
+				throw new CommandError(`Expected number, got "${value}"`);
+			}
+			if (TypeGuard.IsInteger(schema) && !Number.isInteger(num)) {
+				throw new CommandError(`Expected integer, got "${value}"`);
+			}
+			return num;
+		}
+
+		if (TypeGuard.IsBoolean(schema)) {
+			const lower = value.toLowerCase();
+			if (lower === "true" || lower === "1") return true;
+			if (lower === "false" || lower === "0") return false;
+			throw new CommandError(`Expected boolean, got "${value}"`);
+		}
+
+		// For other types, return the string value and let TypeBox validate it
+		return value;
+	}
+
+	protected generateArgsUsage(schema?: TSchema): string {
+		if (!schema) {
+			return "";
+		}
+
+		if (TypeGuard.IsOptional(schema)) {
+			const typeName = this.getTypeName(schema);
+			return ` [arg1: ${typeName}]`;
+		}
+
+		if (TypeGuard.IsTuple(schema) && schema.items) {
+			const items = schema.items;
+			const args = items.map((item, index) => {
+				const argName = `arg${index + 1}`;
+				const typeName = this.getTypeName(item);
+				if (TypeGuard.IsOptional(item)) {
+					return `[${argName}: ${typeName}]`;
+				}
+				return `<${argName}: ${typeName}>`;
+			});
+			return ` ${args.join(" ")}`;
+		}
+
+		const typeName = this.getTypeName(schema);
+		return ` <arg1: ${typeName}>`;
+	}
+
+	protected getTypeName(schema: TSchema): string {
+		if (!schema) return "any";
+
+		// Check TypeBox type guards first
+		if (TypeGuard.IsString(schema)) return "string";
+		if (TypeGuard.IsNumber(schema)) return "number";
+		if (TypeGuard.IsInteger(schema)) return "integer";
+		if (TypeGuard.IsBoolean(schema)) return "boolean";
+
+		return schema.type || "any";
+	}
+
 	public printHelp(command?: CommandDescriptor<any>): void {
 		const cliName = this.options.name || "cli";
 		this.log.info(""); // Newline
 
 		if (command?.name) {
 			// Command-specific help
-			this.log.info(`Usage: \`${(`${cliName} ${command.name}`).trim()}\``);
+			const argsUsage = this.generateArgsUsage(command.options.args);
+			const usage = `${cliName} ${command.name}${argsUsage}`.trim();
+			this.log.info(`Usage: \`${usage}\``);
 
 			if (command.options.description) {
 				this.log.info(``);

@@ -7,6 +7,7 @@ import {
 	KIND,
 	type Static,
 	type TObject,
+	type TSchema,
 	t,
 } from "@alepha/core";
 import type { RunnerMethod } from "../helpers/Runner.ts";
@@ -17,17 +18,20 @@ import type { RunnerMethod } from "../helpers/Runner.ts";
  * This descriptor allows you to define a command, its flags, and its handler
  * within your Alepha application structure.
  */
-export const $command = <T extends TObject>(
-	options: CommandDescriptorOptions<T>,
-) => createDescriptor(CommandDescriptor<T>, options);
+export const $command = <T extends TObject, A extends TSchema>(
+	options: CommandDescriptorOptions<T, A>,
+) => createDescriptor(CommandDescriptor<T, A>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CommandDescriptorOptions<T extends TObject> {
+export interface CommandDescriptorOptions<
+	T extends TObject,
+	A extends TSchema,
+> {
 	/**
 	 * The handler function to execute when the command is matched.
 	 */
-	handler: (args: CommandHandlerArgs<T>) => Async<void>;
+	handler: (args: CommandHandlerArgs<T, A>) => Async<void>;
 
 	/**
 	 * The name of the command. If omitted, the property key is used.
@@ -52,6 +56,24 @@ export interface CommandDescriptorOptions<T extends TObject> {
 	flags?: T;
 
 	/**
+	 * An optional TypeBox schema defining the arguments for the command.
+	 *
+	 * @example
+	 * args: t.string()
+	 * my-cli command <arg1: string>
+	 *
+	 * args: t.optional(t.string())
+	 * my-cli command [arg1: string]
+	 *
+	 * args: t.tuple([t.string(), t.number()])
+	 * my-cli command <arg1: string> <arg2: number>
+	 *
+	 * args: t.tuple([t.string(), t.optional(t.number())])
+	 * my-cli command <arg1: string> [arg2: number]
+	 */
+	args?: A;
+
+	/**
 	 * If false, skip summary message at the end of the command execution.
 	 */
 	summary?: boolean;
@@ -59,9 +81,10 @@ export interface CommandDescriptorOptions<T extends TObject> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class CommandDescriptor<T extends TObject = TObject> extends Descriptor<
-	CommandDescriptorOptions<T>
-> {
+export class CommandDescriptor<
+	T extends TObject = TObject,
+	A extends TSchema = TSchema,
+> extends Descriptor<CommandDescriptorOptions<T, A>> {
 	public readonly flags = this.options.flags ?? t.object({});
 	public readonly aliases = this.options.aliases ?? [];
 
@@ -74,8 +97,12 @@ $command[KIND] = CommandDescriptor;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CommandHandlerArgs<T extends TObject> {
+export interface CommandHandlerArgs<
+	T extends TObject,
+	A extends TSchema = TSchema,
+> {
 	flags: Static<T>;
+	args: A extends TSchema ? Static<A> : undefined;
 	run: RunnerMethod;
 	glob: typeof glob;
 	fs: typeof fs;

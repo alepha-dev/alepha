@@ -235,4 +235,334 @@ describe("$command", () => {
 			expect(output).toContain("-h, --help");
 		});
 	});
+
+	describe("Arguments Parsing", () => {
+		test("should parse single string argument", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with string arg",
+					args: t.string(),
+					handler: mockHandler,
+				});
+			}
+
+			const { alepha } = await setupTestCommands(["cmd", "hello"], (a) =>
+				a.with(TestCommand),
+			);
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			const [callArgs] = mockHandler.mock.calls[0];
+			expect(callArgs.args).toBe("hello");
+		});
+
+		test("should parse single number argument", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with number arg",
+					args: t.number(),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "42.5"], (a) => a.with(TestCommand));
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toBe(42.5);
+		});
+
+		test("should parse single integer argument", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with integer arg",
+					args: t.int(),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "42"], (a) => a.with(TestCommand));
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toBe(42);
+		});
+
+		test("should parse single boolean argument", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with boolean arg",
+					args: t.boolean(),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "true"], (a) => a.with(TestCommand));
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toBe(true);
+
+			mockHandler.mockClear();
+			await setupTestCommands(["cmd", "false"], (a) => a.with(TestCommand));
+			expect(mockHandler.mock.calls[0][0].args).toBe(false);
+		});
+
+		test("should handle optional string argument when provided", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with optional string arg",
+					args: t.optional(t.string()),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "optional-value"], (a) =>
+				a.with(TestCommand),
+			);
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toBe("optional-value");
+		});
+
+		test("should handle optional string argument when not provided", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with optional string arg",
+					args: t.optional(t.string()),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd"], (a) => a.with(TestCommand));
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toBeUndefined();
+		});
+
+		test("should parse tuple arguments with multiple types", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with tuple args",
+					args: t.tuple([t.string(), t.number()]),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "hello", "42"], (a) =>
+				a.with(TestCommand),
+			);
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toEqual(["hello", 42]);
+		});
+
+		test("should parse tuple with optional arguments", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with tuple containing optional arg",
+					args: t.tuple([t.string(), t.optional(t.number())]),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "hello"], (a) => a.with(TestCommand));
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			expect(mockHandler.mock.calls[0][0].args).toEqual(["hello", undefined]);
+		});
+
+		test("should handle arguments with flags mixed in", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with args and flags",
+					flags: t.object({
+						verbose: t.optional(t.boolean()),
+					}),
+					args: t.tuple([t.string(), t.number()]),
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd", "--verbose", "hello", "42"], (a) =>
+				a.with(TestCommand),
+			);
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			const [callArgs] = mockHandler.mock.calls[0];
+			expect(callArgs.flags).toEqual({ verbose: true });
+			expect(callArgs.args).toEqual(["hello", 42]);
+		});
+
+		test("should pass fs and glob to handler", async () => {
+			const mockHandler = vi.fn();
+
+			class TestCommand {
+				cmd = $command({
+					description: "Test command to check fs and glob",
+					handler: mockHandler,
+				});
+			}
+
+			await setupTestCommands(["cmd"], (a) => a.with(TestCommand));
+
+			expect(mockHandler).toHaveBeenCalledOnce();
+			const [callArgs] = mockHandler.mock.calls[0];
+			expect(callArgs.fs).toBeDefined();
+			expect(callArgs.glob).toBeDefined();
+		});
+	});
+
+	describe("Arguments Error Handling", () => {
+		test("should throw error for missing required argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with required arg",
+					args: t.string(),
+					handler: vi.fn(),
+				});
+			}
+
+			await expect(() =>
+				setupTestCommands(["cmd"], (a) => a.with(TestCommand)),
+			).rejects.toThrow("Missing required argument");
+		});
+
+		test("should throw error for invalid number argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with number arg",
+					args: t.number(),
+					handler: vi.fn(),
+				});
+			}
+
+			await expect(() =>
+				setupTestCommands(["cmd", "not-a-number"], (a) => a.with(TestCommand)),
+			).rejects.toThrow('Expected number, got "not-a-number"');
+		});
+
+		test("should throw error for invalid integer argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with integer arg",
+					args: t.int(),
+					handler: vi.fn(),
+				});
+			}
+
+			await expect(() =>
+				setupTestCommands(["cmd", "42.5"], (a) => a.with(TestCommand)),
+			).rejects.toThrow('Expected integer, got "42.5"');
+		});
+
+		test("should throw error for invalid boolean argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with boolean arg",
+					args: t.boolean(),
+					handler: vi.fn(),
+				});
+			}
+
+			await expect(() =>
+				setupTestCommands(["cmd", "not-a-boolean"], (a) => a.with(TestCommand)),
+			).rejects.toThrow('Expected boolean, got "not-a-boolean"');
+		});
+
+		test("should throw error for missing required tuple argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with tuple args",
+					args: t.tuple([t.string(), t.number()]),
+					handler: vi.fn(),
+				});
+			}
+
+			await expect(() =>
+				setupTestCommands(["cmd", "hello"], (a) => a.with(TestCommand)),
+			).rejects.toThrow("Missing required argument at position 2");
+		});
+	});
+
+	describe("Help Message with Arguments", () => {
+		test("should show argument usage in help for single string argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with string arg",
+					args: t.string(),
+					handler: vi.fn(),
+				});
+			}
+
+			const { mockLogger } = await setupTestCommands(
+				["cmd", "--help"],
+				(alepha) => {
+					alepha.configure(CliProvider, { name: "test-cli" });
+					alepha.with(TestCommand);
+				},
+			);
+
+			const output = mockLogger.logs.map((l) => l.message).join("\n");
+			expect(output).toContain("Usage: `test-cli cmd <arg1: string>`");
+		});
+
+		test("should show argument usage in help for optional argument", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with optional arg",
+					args: t.optional(t.string()),
+					handler: vi.fn(),
+				});
+			}
+
+			const { mockLogger } = await setupTestCommands(
+				["cmd", "--help"],
+				(alepha) => {
+					alepha.configure(CliProvider, { name: "test-cli" });
+					alepha.with(TestCommand);
+				},
+			);
+
+			const output = mockLogger.logs.map((l) => l.message).join("\n");
+			expect(output).toContain("Usage: `test-cli cmd [arg1: string]`");
+		});
+
+		test("should show argument usage in help for tuple arguments", async () => {
+			class TestCommand {
+				cmd = $command({
+					description: "Test command with tuple args",
+					args: t.tuple([t.string(), t.optional(t.number())]),
+					handler: vi.fn(),
+				});
+			}
+
+			const { mockLogger } = await setupTestCommands(
+				["cmd", "--help"],
+				(alepha) => {
+					alepha.configure(CliProvider, { name: "test-cli" });
+					alepha.with(TestCommand);
+				},
+			);
+
+			const output = mockLogger.logs.map((l) => l.message).join("\n");
+			expect(output).toContain(
+				"Usage: `test-cli cmd <arg1: string> [arg2: number]`",
+			);
+		});
+	});
 });

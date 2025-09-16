@@ -51,6 +51,7 @@ export type {
 	TRecord,
 	TSchema,
 	TString,
+	TTuple,
 	TUnion,
 } from "@sinclair/typebox";
 export { TypeGuard } from "@sinclair/typebox";
@@ -115,6 +116,7 @@ export class TypeProvider {
 	public union = Type.Union;
 	public composite = Type.Composite;
 	public pick = Type.Pick;
+	public tuple = Type.Tuple;
 
 	/**
 	 * Create a schema for an object.
