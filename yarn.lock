@@ -6316,32 +6316,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"blog-0cb386@workspace:apps/blog":
-  version: 0.0.0-use.local
-  resolution: "blog-0cb386@workspace:apps/blog"
-  dependencies:
-    "@alepha/core": "npm:0.9.5"
-    "@alepha/react": "npm:0.9.5"
-    "@alepha/server": "npm:0.9.5"
-    "@alepha/server-links": "npm:0.9.5"
-    "@alepha/server-security": "npm:0.9.5"
-    "@mantine/core": "npm:^8.3.1"
-    "@mantine/form": "npm:^8.3.1"
-    "@mantine/hooks": "npm:^8.3.1"
-    "@mantine/nprogress": "npm:^8.3.1"
-    "@tabler/icons-react": "npm:^3.34.1"
-    "@types/react": "npm:^19.1.13"
-    "@vitejs/plugin-react": "npm:^5.0.2"
-    drizzle-kit: "npm:^0.31.4"
-    react: "npm:^19.1.1"
-    react-dom: "npm:^19.1.1"
-    typescript: "npm:^5.9.2"
-    vercel: "npm:^48.0.0"
-    vite: "npm:^7.1.5"
-    vite-bundle-analyzer: "npm:^1.2.3"
-  languageName: unknown
-  linkType: soft
-
 "body-parser@npm:^2.2.0":
   version: 2.2.0
   resolution: "body-parser@npm:2.2.0"
@@ -7304,6 +7278,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dev-cb062e@workspace:apps/dev":
+  version: 0.0.0-use.local
+  resolution: "dev-cb062e@workspace:apps/dev"
+  dependencies:
+    "@alepha/command": "npm:0.9.5"
+    "@alepha/core": "npm:0.9.5"
+  languageName: unknown
+  linkType: soft
+
 "diff@npm:^4.0.1":
   version: 4.0.2
   resolution: "diff@npm:4.0.2"
@@ -7409,7 +7392,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"drizzle-kit@npm:0.31.4, drizzle-kit@npm:^0.31.4":
+"drizzle-kit@npm:0.31.4":
   version: 0.31.4
   resolution: "drizzle-kit@npm:0.31.4"
   dependencies:

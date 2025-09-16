@@ -23,7 +23,7 @@
 		"w": "yarn workspace",
 		"v": "yarn alepha verify",
 		"postinstall": "yarn copy",
-		"alepha": "node scripts/index.ts",
+		"alepha": "node apps/dev/src/index.ts",
 		"clean": "yarn alepha clean",
 		"copy": "yarn workspaces foreach -Apt run copy",
 		"convert": "node scripts/convert.ts",
