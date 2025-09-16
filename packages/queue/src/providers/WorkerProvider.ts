@@ -51,10 +51,14 @@ export class WorkerProvider {
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
 	protected workerPromises: Array<Promise<void>> = [];
-	protected isWorkersRunning = false;
+	protected workersRunning = 0;
 	protected abortController = new AbortController();
 	protected workerIntervals: Record<number, number> = {};
 	protected consumers: Array<Consumer> = [];
+
+	public get isRunning(): boolean {
+		return this.workersRunning > 0;
+	}
 
 	protected readonly start = $hook({
 		on: "start",
@@ -94,27 +98,36 @@ export class WorkerProvider {
 	 * This method will create an endless loop that will check for new messages!
 	 */
 	protected startWorkers(): void {
-		if (this.isWorkersRunning) {
-			return;
-		}
+		const workerToStart =
+			this.env.QUEUE_WORKER_CONCURRENCY - this.workersRunning;
 
-		this.isWorkersRunning = true;
-		for (let i = 0; i < this.env.QUEUE_WORKER_CONCURRENCY; i++) {
+		for (let i = 0; i < workerToStart; i++) {
+			this.workersRunning += 1;
 			this.log.debug(`Starting worker n-${i}`);
-			this.workerPromises.push(
-				(async () => {
-					while (this.isWorkersRunning) {
-						this.log.trace(`Worker n-${i} is checking for new messages.`);
-						const next = await this.getNextMessage();
-						if (next) {
-							this.workerIntervals[i] = 0;
-							await this.processMessage(next);
-						} else {
-							await this.waitForNextMessage(i);
-						}
+
+			const workerLoop = async () => {
+				while (this.workersRunning > 0) {
+					this.log.trace(`Worker n-${i} is checking for new messages`);
+					const next = await this.getNextMessage();
+					if (next) {
+						this.workerIntervals[i] = 0;
+						await this.processMessage(next);
+					} else {
+						await this.waitForNextMessage(i);
 					}
-				})().catch((error) => {
-					this.log.error(error);
+				}
+				this.log.info(`Worker n-${i} has stopped`);
+				// Only decrement if we're not already at 0 (shutdown case)
+				if (this.workersRunning > 0) {
+					this.workersRunning -= 1;
+				}
+			};
+
+			this.workerPromises.push(
+				workerLoop().catch((e) => {
+					this.log.error(`Worker n-${i} has crashed`, e);
+					// Always decrement on crash, regardless of shutdown state
+					this.workersRunning -= 1;
 				}),
 			);
 		}
@@ -198,7 +211,7 @@ export class WorkerProvider {
 	 * This method will stop the workers and wait for them to finish processing.
 	 */
 	protected async stopWorkers() {
-		this.isWorkersRunning = false;
+		this.workersRunning = 0;
 
 		this.log.trace("Stopping workers...");
 		this.abortController.abort();
@@ -208,12 +221,15 @@ export class WorkerProvider {
 	}
 
 	/**
-	 * Force the workers to get back to work. zug zug!
+	 * Force the workers to get back to work.
 	 */
 	public wakeUp(): void {
 		this.log.debug("Waking up workers...");
 		this.abortController.abort();
 		this.abortController = new AbortController();
+
+		// if no workers are running, start them, (should not happen, but just in case)
+		this.startWorkers();
 	}
 }
 
