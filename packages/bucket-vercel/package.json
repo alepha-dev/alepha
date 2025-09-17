@@ -28,12 +28,12 @@
 		"@alepha/datetime": "0.9.5",
 		"@alepha/file": "0.9.5",
 		"@alepha/logger": "0.9.5",
-		"@vercel/blob": "^1.1.1"
+		"@vercel/blob": "^2.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"@types/node": "^24.3.3",
-		"tsdown": "^0.15.1",
+		"@types/node": "^24.5.1",
+		"tsdown": "^0.15.2",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

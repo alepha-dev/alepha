@@ -60,7 +60,7 @@
 		"react": "^19.1.1"
 	},
 	"devDependencies": {
-		"tsdown": "^0.15.1"
+		"tsdown": "^0.15.2"
 	},
 	"scripts": {
 		"build": "node build.ts"
