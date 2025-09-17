@@ -146,8 +146,16 @@ export class ServerSwaggerProvider {
 				operation.security = [{ bearerAuth: [] }];
 			}
 
-			if (TypeGuard.IsObject(route.options.schema.body)) {
-				if (this.isBodyMultipart(route.options.schema.body)) {
+			const g = TypeGuard;
+
+			if (
+				g.IsObject(route.options.schema.body) ||
+				g.IsArray(route.options.schema.body)
+			) {
+				if (
+					g.IsObject(route.options.schema.body) &&
+					this.isBodyMultipart(route.options.schema.body)
+				) {
 					operation.requestBody = {
 						required: true,
 						content: {
@@ -168,7 +176,7 @@ export class ServerSwaggerProvider {
 				}
 			}
 
-			if (TypeGuard.IsObject(route.options.schema.query)) {
+			if (g.IsObject(route.options.schema.query)) {
 				operation.parameters ??= [];
 				for (const [key, value] of Object.entries(
 					route.options.schema.query.properties,
@@ -182,7 +190,7 @@ export class ServerSwaggerProvider {
 				}
 			}
 
-			if (TypeGuard.IsObject(route.options.schema.params)) {
+			if (g.IsObject(route.options.schema.params)) {
 				operation.parameters ??= [];
 				for (const [key, value] of Object.entries(
 					route.options.schema.params.properties,
