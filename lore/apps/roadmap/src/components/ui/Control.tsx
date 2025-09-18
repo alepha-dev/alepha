@@ -50,8 +50,18 @@ const Control = (props: ControlProps) => {
 	const disabled = false; // form.loading;
 	const id = props.input.props.id;
 	const label =
-		props.title ?? props.input.schema?.title ?? prettyName(props.input.path);
-	const description = props.description ?? props.input.schema?.description;
+		props.title ??
+		("title" in props.input.schema &&
+		typeof props.input.schema.title === "string"
+			? props.input.schema.title
+			: undefined) ??
+		prettyName(props.input.path);
+	const description =
+		props.description ??
+		("description" in props.input.schema &&
+		typeof props.input.schema.description === "string"
+			? props.input.schema.description
+			: undefined);
 	const error =
 		form.error && form.error instanceof TypeBoxError
 			? form.error.value.message
@@ -90,11 +100,14 @@ const Control = (props: ControlProps) => {
 			typeof props.segmented === "object" ? props.segmented : {};
 		const data =
 			segmentedControlProps.data ??
-			props.input.schema.enum?.map((value: string) => ({
-				value,
-				label: value,
-			})) ??
-			[];
+			(props.input.schema &&
+			"enum" in props.input.schema &&
+			Array.isArray(props.input.schema.enum)
+				? props.input.schema.enum?.map((value: string) => ({
+						value,
+						label: value,
+					}))
+				: []);
 		return (
 			<Input.Wrapper {...inputProps}>
 				<Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
@@ -130,12 +143,21 @@ const Control = (props: ControlProps) => {
 	// endregion
 
 	// region <Select/>
-	if (props.input.schema?.enum || props.select) {
+	if (
+		(props.input.schema &&
+			"enum" in props.input.schema &&
+			props.input.schema.enum) ||
+		props.select
+	) {
 		const data =
-			props.input.schema.enum?.map((value: string) => ({
-				value,
-				label: value,
-			})) ?? [];
+			props.input.schema &&
+			"enum" in props.input.schema &&
+			Array.isArray(props.input.schema.enum)
+				? props.input.schema.enum?.map((value: string) => ({
+						value,
+						label: value,
+					}))
+				: [];
 
 		const selectProps = typeof props.select === "object" ? props.select : {};
 
@@ -154,7 +176,12 @@ const Control = (props: ControlProps) => {
 
 	// region <Switch/>
 
-	if (props.input.schema?.type === "boolean" || props.switch) {
+	if (
+		(props.input.schema &&
+			"type" in props.input.schema &&
+			props.input.schema.type === "boolean") ||
+		props.switch
+	) {
 		const switchProps = typeof props.switch === "object" ? props.switch : {};
 
 		return (

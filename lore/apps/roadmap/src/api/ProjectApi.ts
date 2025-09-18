@@ -1,7 +1,7 @@
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { pageQuerySchema } from "@alepha/postgres";
-import { $action, ForbiddenError } from "@alepha/server";
+import { $action, ForbiddenError, okSchema } from "@alepha/server";
 import {
 	type Character,
 	characters,
@@ -126,13 +126,10 @@ export class ProjectApi {
 			params: t.object({
 				id: t.int(),
 			}),
-			response: t.composite([
-				projects.$schema,
-				t.object({
-					character: t.optional(characters.$schema),
-					tasks: t.array(tasks.$schema),
-				}),
-			]),
+			response: t.interface([projects.$schema], {
+				character: t.optional(characters.$schema),
+				tasks: t.array(tasks.$schema),
+			}),
 		},
 		handler: async ({ params, user }) => {
 			const { project } = await this.security.checkOwnership(params.id, user);
@@ -165,12 +162,9 @@ export class ProjectApi {
 				id: t.int(),
 			}),
 			response: t.array(
-				t.composite([
-					characters.$schema,
-					t.object({
-						user: users.$schema,
-					}),
-				]),
+				t.interface([characters.$schema], {
+					user: users.$schema,
+				}),
 			),
 		},
 		handler: async ({ params, user }) => {
@@ -223,7 +217,7 @@ export class ProjectApi {
 			params: t.object({
 				id: t.int(),
 			}),
-			response: t.boolean(),
+			response: okSchema,
 		},
 		handler: async ({ params, user }) => {
 			await this.security.checkOwnership(params.id, user);
@@ -236,7 +230,7 @@ export class ProjectApi {
 				projectId: { eq: params.id },
 			});
 
-			return true;
+			return { ok: true };
 		},
 	});
 }

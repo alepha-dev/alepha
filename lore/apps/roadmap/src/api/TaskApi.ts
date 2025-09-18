@@ -2,7 +2,7 @@ import { $inject, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { pageQuerySchema, pg } from "@alepha/postgres";
-import { $action, BadRequestError } from "@alepha/server";
+import { $action, BadRequestError, okSchema } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { characters, Db, tasks } from "../providers/Db.ts";
 import { Security } from "../providers/Security.ts";
@@ -50,13 +50,10 @@ export class TaskApi {
 			params: t.object({
 				projectId: t.int(),
 			}),
-			query: t.composite([
-				t.object({
-					status: t.optional(t.enum(["new", "accepted", "completed"])),
-					search: t.optional(t.string()),
-				}),
-				pageQuerySchema,
-			]),
+			query: t.interface([pageQuerySchema], {
+				status: t.optional(t.enum(["new", "accepted", "completed"])),
+				search: t.optional(t.string()),
+			}),
 			response: pg.page(tasks.$schema),
 		},
 		handler: async ({ params, query, user }) => {
@@ -162,12 +159,9 @@ export class TaskApi {
 			params: t.object({
 				id: t.int(),
 			}),
-			response: t.composite([
-				tasks.$schema,
-				t.object({
-					character: characters.$schema,
-				}),
-			]),
+			response: t.interface([tasks.$schema], {
+				character: characters.$schema,
+			}),
 		},
 		handler: async ({ params, user }) => {
 			return this.db.tasks.transaction(async (tx) => {
@@ -374,7 +368,7 @@ export class TaskApi {
 			params: t.object({
 				id: t.int(),
 			}),
-			response: t.boolean(),
+			response: okSchema,
 		},
 		handler: async ({ params, user }) => {
 			const task = await this.db.tasks.findOne({
@@ -387,7 +381,7 @@ export class TaskApi {
 
 			await this.db.tasks.deleteById(params.id);
 
-			return true;
+			return { ok: true };
 		},
 	});
 }
