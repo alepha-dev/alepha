@@ -6,14 +6,17 @@ import {
 	isFileLike,
 	type TObject,
 	type TSchema,
-	t,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import type { ClientRequestOptions } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
-import type { ServerRequestConfigEntry } from "../interfaces/ServerRequest.ts";
+import type {
+	ServerRequestConfigEntry,
+	TRequestBody,
+	TResponseBody,
+} from "../interfaces/ServerRequest.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 export class HttpClient {
@@ -23,10 +26,6 @@ export class HttpClient {
 	public readonly cache = $cache<HttpClientCache>();
 
 	protected readonly pendingRequests: HttpClientPendingRequests = {};
-
-	public async clear() {
-		await this.cache.invalidate();
-	}
 
 	public async fetchAction(args: FetchActionArgs): Promise<FetchResponse> {
 		const route = args.action; // our link to fetch
@@ -152,15 +151,6 @@ export class HttpClient {
 			});
 
 		return this.pendingRequests[key];
-	}
-
-	public async json<T = any>(url: string, options?: RequestInit): Promise<T> {
-		const it = await this.fetch<T>(
-			url,
-			{ method: "GET", ...options },
-			{ schema: t.any() },
-		);
-		return it.data;
 	}
 
 	protected url(
@@ -435,7 +425,7 @@ export interface HttpAction {
 	schema?: {
 		params?: TObject;
 		query?: TObject;
-		body?: TSchema;
-		response?: TSchema;
+		body?: TRequestBody;
+		response?: TResponseBody;
 	};
 }

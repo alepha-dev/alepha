@@ -3,12 +3,12 @@ import { t } from "@alepha/core";
 
 export const pageQuerySchema = t.object({
 	page: t.optional(
-		t.uint({
+		t.int({
 			description: "The page number to retrieve.",
 		}),
 	),
 	size: t.optional(
-		t.uint({
+		t.int({
 			minimum: 1,
 			maximum: 100,
 			description: "The number of items per page.",

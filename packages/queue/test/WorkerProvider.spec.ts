@@ -6,7 +6,7 @@ import { WorkerProvider } from "../src/providers/WorkerProvider.ts";
 
 const payloadSchema = t.object({
 	id: t.string(),
-	count: t.uint(),
+	count: t.int(),
 });
 
 describe("WorkerProvider", () => {

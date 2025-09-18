@@ -3,24 +3,26 @@ import { eq } from "drizzle-orm";
 import { expect, test } from "vitest";
 import { $entity, $repository, pg, sql } from "../src";
 
-const userEntity = $entity({
-	name: "users",
-	schema: t.object({
-		id: pg.primaryKey(t.bigint()),
-		name: t.string(),
-		guildId: t.optional(t.int()),
-	}),
-	indexes: [{ column: "name", unique: true }],
-});
-
-class App {
-	users = $repository(userEntity);
-}
-
-const alepha = Alepha.create();
-const app = alepha.inject(App);
-
 test("execute - basic", async () => {
+	const userEntity = $entity({
+		name: "users",
+		schema: t.object({
+			id: pg.primaryKey(t.int64()),
+			name: t.string(),
+			guildId: t.optional(t.int()),
+		}),
+		indexes: [{ column: "name", unique: true }],
+	});
+
+	class App {
+		users = $repository(userEntity);
+	}
+
+	const alepha = Alepha.create();
+	const app = alepha.inject(App);
+
+	await alepha.start();
+
 	const name = "Alepha";
 	await app.users.create({
 		name,

@@ -16,10 +16,6 @@ export const tokensSchema = t.object({
 	),
 	id_token: t.optional(t.string({ size: "rich" })),
 	scope: t.optional(t.string()),
-
-	// TODO: remove this in the future
-	token: t.optional(t.string({ size: "rich" })),
-	realm: t.optional(t.string()),
 });
 
 export type Tokens = Static<typeof tokensSchema>;

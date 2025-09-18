@@ -1,5 +1,5 @@
+import type { Static, TObject } from "@alepha/core";
 import { $inject, Alepha } from "@alepha/core";
-import type { Static, TObject } from "@sinclair/typebox";
 import type { SQLWrapper } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 
@@ -14,7 +14,7 @@ export abstract class PostgresProvider {
 
 	public abstract get dialect(): string;
 
-	public abstract execute<T extends TObject = any>(
+	public abstract execute<T extends TObject | undefined = undefined>(
 		query: SQLLike,
 		schema?: T,
 	): Promise<Array<T extends TObject ? Static<T> : any>>;

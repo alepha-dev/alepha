@@ -9,7 +9,6 @@ import {
 	type TObject,
 	type TSchema,
 	TypeBoxError,
-	TypeGuard,
 	t,
 } from "@alepha/core";
 import { $logger } from "@alepha/logger";
@@ -144,7 +143,7 @@ export class CliProvider {
 		} catch (error) {
 			if (error instanceof TypeBoxError) {
 				throw new CommandError(
-					`Invalid flag: ${error.value.path} - ${error.value.message}`,
+					`Invalid flag: ${error.cause.instancePath} - ${error.cause.message}`,
 				);
 			}
 			throw error;
@@ -164,11 +163,11 @@ export class CliProvider {
 			const def = flagDefs.find((d) => d.aliases.includes(rawKey));
 			if (!def) continue;
 
-			if (TypeGuard.IsBoolean(def.schema)) {
+			if (t.schema.isBoolean(def.schema)) {
 				result[def.key] = true;
 			} else if (value) {
 				try {
-					if (TypeGuard.IsObject(def.schema) || TypeGuard.IsArray(def.schema)) {
+					if (t.schema.isObject(def.schema) || t.schema.isArray(def.schema)) {
 						result[def.key] = JSON.parse(value);
 					} else {
 						result[def.key] = value;
@@ -195,13 +194,13 @@ export class CliProvider {
 		const argsOnly = positionalArgs.slice(1);
 
 		try {
-			if (TypeGuard.IsOptional(schema)) {
+			if (t.schema.isOptional(schema)) {
 				// Handle optional args: t.optional(t.string())
 				if (argsOnly.length === 0) {
 					return undefined;
 				}
-				return this.parseArgumentValue(argsOnly[0], schema.schema);
-			} else if (TypeGuard.IsTuple(schema) && schema.items) {
+				return this.parseArgumentValue(argsOnly[0], schema);
+			} else if (t.schema.isTuple(schema) && schema.items) {
 				// Handle tuple args: t.tuple([t.string(), t.number()])
 				const result: any[] = [];
 				const items = schema.items;
@@ -209,7 +208,7 @@ export class CliProvider {
 					const itemSchema = items[i];
 					if (i < argsOnly.length) {
 						result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
-					} else if (TypeGuard.IsOptional(itemSchema)) {
+					} else if (t.schema.isOptional(itemSchema)) {
 						result.push(undefined);
 					} else {
 						throw new CommandError(
@@ -234,26 +233,22 @@ export class CliProvider {
 	}
 
 	protected parseArgumentValue(value: string, schema: TSchema): any {
-		if (TypeGuard.IsOptional(schema)) {
-			return this.parseArgumentValue(value, schema.schema);
-		}
-
-		if (TypeGuard.IsString(schema)) {
+		if (t.schema.isString(schema)) {
 			return value;
 		}
 
-		if (TypeGuard.IsNumber(schema) || TypeGuard.IsInteger(schema)) {
+		if (t.schema.isNumber(schema) || t.schema.isInteger(schema)) {
 			const num = Number(value);
 			if (Number.isNaN(num)) {
 				throw new CommandError(`Expected number, got "${value}"`);
 			}
-			if (TypeGuard.IsInteger(schema) && !Number.isInteger(num)) {
+			if (t.schema.isInteger(schema) && !Number.isInteger(num)) {
 				throw new CommandError(`Expected integer, got "${value}"`);
 			}
 			return num;
 		}
 
-		if (TypeGuard.IsBoolean(schema)) {
+		if (t.schema.isBoolean(schema)) {
 			const lower = value.toLowerCase();
 			if (lower === "true" || lower === "1") return true;
 			if (lower === "false" || lower === "0") return false;
@@ -269,17 +264,17 @@ export class CliProvider {
 			return "";
 		}
 
-		if (TypeGuard.IsOptional(schema)) {
+		if (t.schema.isOptional(schema)) {
 			const typeName = this.getTypeName(schema);
 			return ` [arg1: ${typeName}]`;
 		}
 
-		if (TypeGuard.IsTuple(schema) && schema.items) {
+		if (t.schema.isTuple(schema) && schema.items) {
 			const items = schema.items;
 			const args = items.map((item, index) => {
 				const argName = `arg${index + 1}`;
 				const typeName = this.getTypeName(item);
-				if (TypeGuard.IsOptional(item)) {
+				if (t.schema.isOptional(item)) {
 					return `[${argName}: ${typeName}]`;
 				}
 				return `<${argName}: ${typeName}>`;
@@ -295,12 +290,12 @@ export class CliProvider {
 		if (!schema) return "any";
 
 		// Check TypeBox type guards first
-		if (TypeGuard.IsString(schema)) return "string";
-		if (TypeGuard.IsNumber(schema)) return "number";
-		if (TypeGuard.IsInteger(schema)) return "integer";
-		if (TypeGuard.IsBoolean(schema)) return "boolean";
+		if (t.schema.isString(schema)) return "string";
+		if (t.schema.isNumber(schema)) return "number";
+		if (t.schema.isInteger(schema)) return "integer";
+		if (t.schema.isBoolean(schema)) return "boolean";
 
-		return schema.type || "any";
+		return "any";
 	}
 
 	public printHelp(command?: CommandDescriptor<any>): void {

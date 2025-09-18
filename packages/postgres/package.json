@@ -21,7 +21,6 @@
 		"@alepha/lock": "0.9.5",
 		"@alepha/logger": "0.9.5",
 		"@alepha/retry": "0.9.5",
-		"@sinclair/typebox": "^0.34.41",
 		"drizzle-orm": "^0.44.5",
 		"postgres": "^3.4.7"
 	},

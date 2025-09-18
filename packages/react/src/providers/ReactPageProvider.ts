@@ -5,7 +5,6 @@ import {
 	Alepha,
 	type Static,
 	type TSchema,
-	TypeGuard,
 	t,
 } from "@alepha/core";
 import { $logger } from "@alepha/logger";
@@ -112,10 +111,10 @@ export class ReactPageProvider {
 		schema?: TSchema,
 		value?: any,
 	): any => {
-		if (TypeGuard.IsObject(schema) && typeof value === "object") {
+		if (t.schema.isObject(schema) && typeof value === "object") {
 			for (const key in schema.properties) {
 				if (
-					TypeGuard.IsObject(schema.properties[key]) &&
+					t.schema.isObject(schema.properties[key]) &&
 					typeof value[key] === "string"
 				) {
 					try {

@@ -3,7 +3,6 @@ import {
 	type TObject,
 	type TOptional,
 	type TUnion,
-	TypeGuard,
 	t,
 } from "@alepha/core";
 
@@ -26,13 +25,20 @@ export const updateSchema = <T extends TObject>(
 	schema: T,
 ): TObjectUpdate<T> => {
 	const newProperties: Record<string, any> = {};
+
 	for (const key in schema.properties) {
 		const prop = schema.properties[key];
-		if (TypeGuard.IsOptional(prop)) {
+		if (t.schema.isOptional(prop)) {
 			newProperties[key] = t.optional(t.union([prop, t.raw.Null()]));
 		} else {
 			newProperties[key] = prop;
 		}
 	}
-	return t.object(newProperties, schema.options) as TObjectUpdate<T>;
+
+	return t.object(
+		newProperties,
+		"options" in schema && typeof schema.options === "object"
+			? { ...schema.options }
+			: {},
+	) as TObjectUpdate<T>;
 };

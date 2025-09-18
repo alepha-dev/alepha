@@ -1,32 +1,6 @@
 import { expect, test } from "vitest";
 import { Alepha, TypeBoxError, t } from "../src";
 
-test("TypeProvider#uchar", () => {
-	const a = Alepha.create();
-	const m = t.uchar();
-
-	expect(a.parse(m, 0)).toBe(0);
-	expect(a.parse(m, 1.1)).toBe(1);
-	expect(a.parse(m, "0")).toBe(0);
-	expect(a.parse(m, 255)).toBe(255);
-	expect(() => a.parse(m, -1)).toThrow(TypeBoxError);
-	expect(() => a.parse(m, -1)).toThrow(TypeBoxError);
-	expect(() => a.parse(m, 256)).toThrow(TypeBoxError);
-});
-
-test("TypeProvider#uint", () => {
-	const a = Alepha.create();
-	const m = t.uint();
-
-	expect(a.parse(m, 0)).toBe(0);
-	expect(a.parse(m, "0")).toBe(0);
-	expect(a.parse(m, 4294967296)).toBe(4294967296);
-	expect(() => a.parse(m, 1.1)).toThrow(TypeBoxError);
-	expect(() => a.parse(m, 1.0001)).toThrow(TypeBoxError);
-	expect(() => a.parse(m, -1)).toThrow(TypeBoxError);
-	expect(() => a.parse(m, 4294967297)).toThrow(TypeBoxError);
-});
-
 test("TypeProvider#int", () => {
 	const a = Alepha.create();
 	const m = t.int();
@@ -80,8 +54,7 @@ test("TypeProvider#array", () => {
 
 	expect(a.parse(m, ["a", "b"])).toEqual(["a", "b"]);
 	expect(a.parse(m, ["a", 1])).toEqual(["a", "1"]);
-	expect(a.parse(m, "a")).toEqual(["a"]);
-	expect(a.parse(m, 1)).toEqual(["1"]);
+	expect(a.parse(m, [1])).toEqual(["1"]);
 });
 
 test("TypeProvider#enum", () => {

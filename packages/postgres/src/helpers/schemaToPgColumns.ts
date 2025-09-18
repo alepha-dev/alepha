@@ -1,4 +1,4 @@
-import { PRIMITIVE, type TObject, type TSchema, TypeGuard } from "@alepha/core";
+import { AlephaError, type TObject, type TSchema, t } from "@alepha/core";
 import type { TableConfig } from "drizzle-orm";
 import type {
 	PgColumnBuilderBase,
@@ -29,8 +29,8 @@ export const schemaToPgColumns = <T extends TObject>(
 		(columns, [key, value]) => {
 			let col = mapFieldToColumn(key, value);
 
-			if (value.default != null) {
-				col = col.default(value.default);
+			if ("default" in value && value.default != null) {
+				col = col.default(value.default as any);
 			}
 
 			if (PG_PRIMARY_KEY in value) {
@@ -67,14 +67,16 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 
 	if (
 		// is nullish ?
-		value.anyOf?.length === 2 &&
-		value.anyOf.some((it: TSchema) => it.type === "null")
+		"anyOf" in value &&
+		Array.isArray(value.anyOf) &&
+		value.anyOf.length === 2 &&
+		value.anyOf.some((it: TSchema) => t.schema.isNull(it))
 	) {
 		// then, remove nullish
-		value = value.anyOf.find((it: TSchema) => it.type !== "null")!;
+		value = value.anyOf.find((it: TSchema) => !t.schema.isNull(it))!;
 	}
 
-	if (TypeGuard.IsInteger(value)) {
+	if (t.schema.isInteger(value)) {
 		if (PG_SERIAL in value) {
 			return pg.serial(key);
 		}
@@ -90,7 +92,19 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 		return pg.integer(key);
 	}
 
-	if (TypeGuard.IsNumber(value)) {
+	if (t.schema.isBigInt(value)) {
+		if (PG_IDENTITY in value) {
+			const options = value[PG_IDENTITY] as PgIdentityOptions;
+			if (options.mode === "byDefault") {
+				return pg
+					.bigint({ mode: "bigint" })
+					.generatedByDefaultAsIdentity(options);
+			}
+			return pg.bigint({ mode: "bigint" }).generatedAlwaysAsIdentity(options);
+		}
+	}
+
+	if (t.schema.isNumber(value)) {
 		if (PG_IDENTITY in value) {
 			const options = value[PG_IDENTITY] as PgIdentityOptions;
 			if (options.mode === "byDefault") {
@@ -101,62 +115,60 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 			return pg.bigint({ mode: "number" }).generatedAlwaysAsIdentity(options);
 		}
 
-		if (PRIMITIVE in value && value[PRIMITIVE] === "bigint") {
+		if (value.format === "int64") {
 			return pg.bigint(key, { mode: "number" });
 		}
 
 		return pg.numeric(key);
 	}
 
-	if (TypeGuard.IsDate(value)) {
+	if (t.schema.isDate(value)) {
 		return pg.timestamp(key);
 	}
 
-	if (TypeGuard.IsString(value)) {
+	if (t.schema.isString(value)) {
 		return mapStringToColumn(key, value);
 	}
 
-	if (TypeGuard.IsBoolean(value)) {
+	if (t.schema.isBoolean(value)) {
 		return pg.boolean(key);
 	}
 
-	if (TypeGuard.IsObject(value)) {
+	if (t.schema.isObject(value)) {
 		return schema(key, value);
 	}
 
-	if (TypeGuard.IsRecord(value)) {
+	if (t.schema.isRecord(value)) {
 		return schema(key, value);
 	}
 
-	if (TypeGuard.IsArray(value)) {
-		if (TypeGuard.IsObject(value.items)) {
+	if (t.schema.isArray(value)) {
+		if (t.schema.isObject(value.items)) {
 			return schema(key, value);
 		}
-		if (TypeGuard.IsRecord(value.items)) {
+		if (t.schema.isRecord(value.items)) {
 			return schema(key, value);
 		}
-		if (TypeGuard.IsString(value.items)) {
+		if (t.schema.isString(value.items)) {
 			return pg.text(key).array();
 		}
-		if (TypeGuard.IsInteger(value.items)) {
+		if (t.schema.isInteger(value.items)) {
 			return pg.integer(key).array();
 		}
-		if (TypeGuard.IsNumber(value.items)) {
+		if (t.schema.isNumber(value.items)) {
 			return pg.numeric(key).array();
 		}
-		if (TypeGuard.IsBoolean(value.items)) {
+		if (t.schema.isBoolean(value.items)) {
 			return pg.boolean(key).array();
 		}
 	}
 
-	if (TypeGuard.IsUnsafe(value)) {
-		if (value.type === "string") {
-			// t.enum()
-			return mapStringToColumn(key, value);
-		}
+	if (t.schema.isUnsafe(value) && "type" in value && value.type === "string") {
+		// t.enum()
+		return mapStringToColumn(key, value);
 	}
 
-	throw new Error(
+	throw new AlephaError(
 		`Unsupported schema type for ${name} as ${JSON.stringify(value)}`,
 	);
 };
@@ -168,34 +180,36 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
  * @param value The value of the field.
  */
 export const mapStringToColumn = (key: string, value: TSchema) => {
-	if (value.format === "uuid") {
-		if (PG_PRIMARY_KEY in value) {
-			return pg.uuid(key).defaultRandom();
+	if ("format" in value) {
+		if (value.format === "uuid") {
+			if (PG_PRIMARY_KEY in value) {
+				return pg.uuid(key).defaultRandom();
+			}
+
+			return pg.uuid(key);
 		}
 
-		return pg.uuid(key);
-	}
-
-	if (value.format === "byte") {
-		return byte(key);
-	}
-
-	if (value.format === "date-time") {
-		if (PG_CREATED_AT in value) {
-			return pg
-				.timestamp(key, { mode: "string", withTimezone: true })
-				.defaultNow();
+		if (value.format === "byte") {
+			return byte(key);
 		}
-		if (PG_UPDATED_AT in value) {
-			return pg
-				.timestamp(key, { mode: "string", withTimezone: true })
-				.defaultNow();
-		}
-		return pg.timestamp(key, { mode: "string", withTimezone: true });
-	}
 
-	if (value.format === "date") {
-		return pg.date(key, { mode: "string" });
+		if (value.format === "date-time") {
+			if (PG_CREATED_AT in value) {
+				return pg
+					.timestamp(key, { mode: "string", withTimezone: true })
+					.defaultNow();
+			}
+			if (PG_UPDATED_AT in value) {
+				return pg
+					.timestamp(key, { mode: "string", withTimezone: true })
+					.defaultNow();
+			}
+			return pg.timestamp(key, { mode: "string", withTimezone: true });
+		}
+
+		if (value.format === "date") {
+			return pg.date(key, { mode: "string" });
+		}
 	}
 
 	return pg.text(key);

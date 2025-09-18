@@ -246,7 +246,7 @@ export class LinkProvider {
 			host: link.host,
 			config,
 			options,
-			action,
+			action: action as any, // schema.body TAny is not accepted
 		});
 	}
 

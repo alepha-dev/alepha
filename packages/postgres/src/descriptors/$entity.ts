@@ -1,5 +1,5 @@
+import type { Static, TObject } from "@alepha/core";
 import { KIND } from "@alepha/core";
-import type { Static, TObject } from "@sinclair/typebox";
 import type { BuildColumns, BuildExtraConfigColumns, SQL } from "drizzle-orm";
 import {
 	type AnyPgColumn,

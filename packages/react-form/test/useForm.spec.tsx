@@ -1,4 +1,5 @@
 import { Alepha, t } from "@alepha/core";
+import { AlephaLogger } from "@alepha/logger";
 import { AlephaContext } from "@alepha/react";
 import { dom } from "@alepha/testing";
 import type { ReactNode } from "react";
@@ -16,9 +17,10 @@ describe("useForm", () => {
 		);
 	};
 
-	it("should run handler on submit", ({ expect }) => {
-		const alepha = Alepha.create();
+	it("should run handler on submit", async ({ expect }) => {
+		const alepha = Alepha.create().with(AlephaLogger);
 		const fn = vi.fn();
+		const calls: Array<any> = [];
 		const Form = () => {
 			const form = useForm({
 				id: "test",
@@ -32,7 +34,9 @@ describe("useForm", () => {
 						}),
 					}),
 				}),
-				handler: fn,
+				handler: (values, args) => {
+					calls.push(values);
+				},
 			});
 
 			return (
@@ -45,6 +49,8 @@ describe("useForm", () => {
 				</form>
 			);
 		};
+
+		await alepha.start();
 
 		const ui = renderWithAlepha(alepha, <Form />);
 
@@ -66,21 +72,17 @@ describe("useForm", () => {
 
 		dom.fireEvent.submit(ui.getByText("Submit"));
 
-		expect(fn).toHaveBeenCalledTimes(1);
-		expect(fn).toHaveBeenCalledWith(
-			{
-				str: "testuser",
-				int: 123,
-				nested: {
-					str: "nestedvalue",
-					another: {
-						level: "anothervalue",
-					},
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		expect(calls[0]).toEqual({
+			str: "testuser",
+			int: 123,
+			nested: {
+				str: "nestedvalue",
+				another: {
+					level: "anothervalue",
 				},
 			},
-			{
-				form: ui.getByTestId("test-form"),
-			},
-		);
+		});
 	});
 });

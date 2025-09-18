@@ -5,7 +5,7 @@ import { WorkerProvider } from "../src/providers/WorkerProvider.ts";
 
 export const payloadSchema = t.object({
 	id: t.string(),
-	count: t.uint(),
+	count: t.int(),
 });
 
 export const queueList: Record<string, string[]> = {};
@@ -75,7 +75,7 @@ export const testQueueHasConsumer = async (
 	let count = 0;
 	class A {
 		q = $queue({
-			schema: t.object({ n: t.uint() }),
+			schema: t.object({ n: t.int() }),
 			handler: async ({ payload }) => {
 				count += payload.n;
 			},

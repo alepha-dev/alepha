@@ -28,15 +28,15 @@
 	"devDependencies": {
 		"@alepha/server-security": "0.9.5",
 		"@biomejs/biome": "^2.2.4",
-		"@types/react": "^19.1.13",
 		"react": "^19.1.1",
+		"react-dom": "^19.1.1",
 		"tsdown": "^0.15.2",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
-		"@types/react": "^19",
-		"react": "^19"
+		"react": "*",
+		"react-dom": "*"
 	},
 	"scripts": {
 		"lint": "biome check --write --unsafe",

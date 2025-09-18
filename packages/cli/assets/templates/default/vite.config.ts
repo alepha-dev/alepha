@@ -6,7 +6,7 @@ export default defineConfig({
 	plugins: [
 		viteReact(),
 		viteAlepha({
-			serverEntry: "src/index.ts",
+			serverEntry: "src/index.server.ts",
 		}),
 	],
 });

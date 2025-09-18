@@ -1,3 +1,4 @@
+import type { Static, TObject, TSchema } from "@alepha/core";
 import {
 	$inject,
 	Alepha,
@@ -9,8 +10,6 @@ import {
 	t,
 } from "@alepha/core";
 import { type DateTime, DateTimeProvider } from "@alepha/datetime";
-import type { Static, TObject, TSchema } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import {
 	and,
 	arrayContained,
@@ -54,6 +53,7 @@ import type {
 	SelectedFields,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
+import postgres from "postgres";
 import {
 	PG_DELETED_AT,
 	PG_PRIMARY_KEY,
@@ -67,7 +67,7 @@ import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
-import type { PgQuery, PgQueryResult } from "../interfaces/PgQuery.ts";
+import type { PgQuery } from "../interfaces/PgQuery.ts";
 import type {
 	PgQueryWhere,
 	PgQueryWhereOrSQL,
@@ -76,10 +76,12 @@ import {
 	PostgresProvider,
 	type SQLLike,
 } from "../providers/drivers/PostgresProvider.ts";
-import type { StaticInsert } from "../schemas/insertSchema.ts";
+import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
+
+import value = postgres.toPascal.value;
 
 /**
  * Creates a repository descriptor for database operations on a defined entity.
@@ -495,9 +497,9 @@ export class RepositoryDescriptor<
 	RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 > {
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	public readonly provider = $inject(PostgresProvider);
 	protected readonly alepha = $inject(Alepha);
 
+	public readonly provider = $inject(PostgresProvider);
 	public readonly schema = this.options.table.$schema;
 	public readonly schemaInsert = this.options.table.$insertSchema;
 
@@ -556,14 +558,9 @@ export class RepositoryDescriptor<
 			);
 		}
 
-		return await this.provider
-			.execute(raw)
-			.then((rows) =>
-				rows.map(
-					(it: any) =>
-						this.clean(this.mapRawFieldsToEntity(it), schema) as Static<T>,
-				),
-			);
+		const rows: any[] = await this.provider.execute(raw);
+
+		return rows.map((it) => this.clean(this.mapRawFieldsToEntity(it), schema));
 	}
 
 	protected mapRawFieldsToEntity(row: any[]) {
@@ -670,29 +667,12 @@ export class RepositoryDescriptor<
 	 * @param opts The statement options.
 	 * @returns The found entities.
 	 */
-	public async find<Select extends (keyof Static<EntitySchema>)[]>(
-		query: PgQuery<EntitySchema, Select> = {},
+	public async find(
+		query: PgQuery<EntitySchema> = {},
 		opts: StatementOptions = {},
-	): Promise<Static<PgQueryResult<EntitySchema, Select>>[]> {
-		let schema: TObject | undefined;
-
-		if (typeof query.columns === "object") {
-			schema = t.pick(this.schema, query.columns) as TObject;
-		}
-
+	): Promise<Static<EntitySchema>[]> {
 		const builder = query.distinct
-			? this.selectDistinct(
-					opts,
-					typeof query.columns === "undefined"
-						? {}
-						: query.columns.reduce((acc, key) => {
-								const col = this.col(key);
-								return {
-									...acc,
-									[col.name]: col,
-								};
-							}, {} as SelectedFields),
-				)
+			? this.selectDistinct(opts, {} as SelectedFields)
 			: this.select(opts);
 
 		const where = this.withDeletedAt(query.where ?? {}, opts);
@@ -708,14 +688,14 @@ export class RepositoryDescriptor<
 
 		if (query.sort) {
 			builder.orderBy(
-				...Object.entries(query.sort ?? {}).map(([k, v]) =>
-					v === "asc" ? asc(this.col(k)) : desc(this.col(k)),
+				...Object.entries(query.sort ?? {}).map(([key, v]) =>
+					v === "asc" ? asc(this.col(key)) : desc(this.col(key)),
 				),
 			);
 		}
 
 		if (query.groupBy) {
-			builder.groupBy(...query.groupBy.map((key) => this.col(key)));
+			builder.groupBy(...query.groupBy.map((key) => this.col(key as string)));
 		}
 
 		if (opts.for) {
@@ -728,7 +708,7 @@ export class RepositoryDescriptor<
 
 		try {
 			const rows = await builder.execute();
-			return rows.map((row) => this.clean(row, schema));
+			return rows.map((row) => this.clean(row));
 		} catch (error) {
 			throw new PgError("Query select has failed", error as Error);
 		}
@@ -858,7 +838,7 @@ export class RepositoryDescriptor<
 	 * @returns The ID of the created entity.
 	 */
 	public async create(
-		data: StaticInsert<EntitySchema>,
+		data: Static<TObjectInsert<EntitySchema>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		return await this.insert(opts)
@@ -878,7 +858,7 @@ export class RepositoryDescriptor<
 	 * @returns The created entities.
 	 */
 	public async createMany(
-		values: Array<StaticInsert<EntitySchema>>,
+		values: Array<Static<TObjectInsert<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>[]> {
 		return await this.insert(opts)
@@ -981,9 +961,9 @@ export class RepositoryDescriptor<
 						[versionField.key]: {
 							eq: set[versionField.key],
 						},
-					} as PgQueryWhere<Static<EntitySchema>>,
+					},
 				],
-			};
+			} as PgQueryWhere<Static<EntitySchema>>;
 			set[versionField.key] += 1;
 		}
 
@@ -1379,11 +1359,22 @@ export class RepositoryDescriptor<
 	): PgInsertValue<PgTableWithColumns<EntityTableConfig>> {
 		const schema = insert
 			? this.schemaInsert // insert
-			: t.partial(this.schema); // update
+			: (t.partial(this.schema) as TObject); // update
 
+		// delete undefined values but null values are allowed
 		for (const key of Object.keys(data)) {
 			if (data[key] === undefined) {
 				delete data[key];
+			}
+		}
+
+		for (const key of Object.keys(schema.properties)) {
+			// convert BigInt-string to BigInt
+			if (
+				t.schema.isBigInt(schema.properties[key]) &&
+				typeof data[key] === "string"
+			) {
+				(data as any)[key] = BigInt(data[key]);
 			}
 		}
 
@@ -1406,19 +1397,26 @@ export class RepositoryDescriptor<
 		const entity = row as Static<T>;
 		const schemaRef = schema ?? this.schema;
 
-		// convert PG date-time and date to ISO strings
 		for (const key of Object.keys(schemaRef.properties)) {
 			const value = schemaRef.properties[key];
-			if (value.format === "date-time" && typeof entity[key] === "string") {
-				(entity as any)[key] = this.dateTimeProvider
-					.of(entity[key])
-					.toISOString();
+
+			// convert PG date-time and date to ISO strings
+			if (typeof entity[key] === "string") {
+				if (t.schema.isDatetime(value)) {
+					(entity as any)[key] = this.dateTimeProvider
+						.of(entity[key])
+						.toISOString();
+				} else if (t.schema.isDate(value)) {
+					(entity as any)[key] = this.dateTimeProvider
+						.of(entity[key])
+						.toISOString()
+						.split("T")[0];
+				}
 			}
-			if (value.format === "date" && typeof entity[key] === "string") {
-				(entity as any)[key] = this.dateTimeProvider
-					.of(entity[key])
-					.toISOString()
-					.split("T")[0];
+
+			// convert BigInt to string
+			if (typeof entity[key] === "bigint" && t.schema.isBigInt(value)) {
+				(entity as any)[key] = entity[key].toString();
 			}
 		}
 
@@ -1438,7 +1436,9 @@ export class RepositoryDescriptor<
 		id: string | number,
 	): PgQueryWhere<Static<EntitySchema>> {
 		return {
-			[this.id.key]: { eq: Value.Convert(this.id.type, id) },
+			[this.id.key]: {
+				eq: t.schema.isString(this.id.type) ? String(id) : Number(id),
+			},
 		} as PgQueryWhere<Static<EntitySchema>>;
 	}
 

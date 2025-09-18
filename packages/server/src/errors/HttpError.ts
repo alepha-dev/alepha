@@ -55,23 +55,22 @@ export class HttpError extends AlephaError {
 
 	constructor(options: Partial<ErrorSchema>, cause?: unknown) {
 		super(options.message, {
-			cause:
-				cause ?? (options.cause instanceof Error ? options.cause : undefined),
+			cause,
 		});
 
 		this.status = options.status ?? 500;
 		this.details = options.details;
 		this.requestId = options.requestId;
 
-		if (options.cause instanceof Error) {
-			this.reason = {
-				name: options.cause.name,
-				message: options.cause.message,
-			};
-		} else if (typeof options.cause === "object") {
+		if (typeof options.cause === "object") {
 			this.reason = {
 				name: (options.cause as { name: string }).name,
 				message: (options.cause as { message: string }).message,
+			};
+		} else if (cause instanceof Error) {
+			this.reason = {
+				name: cause.name,
+				message: cause.message,
 			};
 		}
 

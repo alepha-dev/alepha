@@ -1,5 +1,4 @@
-import type { Static } from "@alepha/core";
-import type { TSchema } from "@sinclair/typebox";
+import type { Static, TSchema } from "@alepha/core";
 import { customType } from "drizzle-orm/pg-core";
 
 /**

@@ -1,29 +1,6 @@
 import { expect, test } from "vitest";
 import { Alepha, TypeBoxError, t } from "../src";
 
-test("TypeProvider#map", () => {
-	const user = t.object({
-		id: t.string(),
-		name: t.string(),
-		age: t.int(),
-	});
-
-	const userCreate = t.map(user, {
-		omit: ["id"],
-		optional: ["age"],
-	});
-
-	const app = Alepha.create();
-	expect(
-		app.parse(userCreate, {
-			id: "1",
-			name: "John",
-		}),
-	).toEqual({
-		name: "John",
-	});
-});
-
 test("TypeProvider#optional", () => {
 	const a = Alepha.create();
 	const m = t.object({

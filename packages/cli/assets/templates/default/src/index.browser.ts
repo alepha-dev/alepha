@@ -6,16 +6,10 @@ const alepha = Alepha.create({
 	env: {},
 });
 
-// alepha is bundled with some fancy modules
+// alepha is bundled with modules
 alepha.with(AlephaReactHead);
 
 // you can add also you own services
 alepha.with(AppRouter);
-
-// server-side specific imports must be done conditionally
-// to avoid bundling them in the client-side code
-if (import.meta.env.SSR) {
-	alepha.with(await import("./api/TodoApi.js"));
-}
 
 run(alepha);

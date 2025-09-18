@@ -3,12 +3,9 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { $action, $route } from "@alepha/server";
 import { Db, sessions } from "../providers/Db.ts";
 
-export const userSession = t.composite([
-	sessions.$schema,
-	t.object({
-		current: t.boolean(),
-	}),
-]);
+export const userSession = t.interface([sessions.$schema], {
+	current: t.boolean(),
+});
 
 export type UserSession = Static<typeof userSession>;
 

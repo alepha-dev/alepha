@@ -21,20 +21,20 @@ const envSchema = t.object({
 	/**
 	 * The interval in milliseconds to wait before checking for new messages.
 	 */
-	QUEUE_WORKER_INTERVAL: t.uint({
+	QUEUE_WORKER_INTERVAL: t.int({
 		default: 1000,
 	}),
 	/**
 	 * The maximum interval in milliseconds to wait before checking for new messages.
 	 */
-	QUEUE_WORKER_MAX_INTERVAL: t.uint({
+	QUEUE_WORKER_MAX_INTERVAL: t.int({
 		default: 32000,
 	}),
 	/**
 	 * The number of workers to run concurrently. Defaults to 1.
 	 * Useful only if you are doing a lot of I/O.
 	 */
-	QUEUE_WORKER_CONCURRENCY: t.uint({
+	QUEUE_WORKER_CONCURRENCY: t.int({
 		default: 1,
 	}),
 });

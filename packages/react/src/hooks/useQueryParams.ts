@@ -9,14 +9,14 @@ import { useRouter } from "./useRouter.ts";
 export const useQueryParams = <T extends TObject>(
 	schema: T,
 	options: UseQueryParamsHookOptions = {},
-): [Static<T>, (data: Static<T>) => void] => {
+): [Partial<Static<T>>, (data: Static<T>) => void] => {
 	const alepha = useAlepha();
 
 	const key = options.key ?? "q";
 	const router = useRouter();
 	const querystring = router.query[key];
 
-	const [queryParams, setQueryParams] = useState(
+	const [queryParams = {}, setQueryParams] = useState<Static<T> | undefined>(
 		decode(alepha, schema, router.query[key]),
 	);
 
@@ -47,10 +47,14 @@ const encode = (alepha: Alepha, schema: TObject, data: any) => {
 	return btoa(JSON.stringify(alepha.parse(schema, data)));
 };
 
-const decode = (alepha: Alepha, schema: TObject, data: any) => {
+const decode = <T extends TObject>(
+	alepha: Alepha,
+	schema: T,
+	data: any,
+): Static<T> | undefined => {
 	try {
 		return alepha.parse(schema, JSON.parse(atob(decodeURIComponent(data))));
-	} catch (_error) {
-		return {};
+	} catch {
+		return;
 	}
 };

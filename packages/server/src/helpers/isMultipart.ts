@@ -1,5 +1,8 @@
 import type { RequestConfigSchema } from "../interfaces/ServerRequest.ts";
 
+/**
+ * Checks if the route has multipart/form-data request body.
+ */
 export const isMultipart = (options: {
 	schema?: RequestConfigSchema;
 	requestBodyType?: string;
@@ -8,11 +11,12 @@ export const isMultipart = (options: {
 		return true;
 	}
 
-	if (options.schema?.body) {
-		for (const key in options.schema.body.properties) {
+	if (options.schema?.body && "properties" in options.schema.body) {
+		const properties: Record<string, any> = options.schema.body.properties;
+		for (const key in properties) {
 			if (
-				options.schema.body.properties[key].type === "string" &&
-				options.schema.body.properties[key].format === "binary"
+				properties[key].type === "string" &&
+				properties[key].format === "binary"
 			) {
 				return true;
 			}

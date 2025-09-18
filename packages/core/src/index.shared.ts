@@ -3,7 +3,6 @@
 export * from "./Alepha.ts";
 export * from "./constants/KIND.ts";
 export * from "./constants/OPTIONS.ts";
-export * from "./constants/PRIMITIVE.ts";
 export * from "./descriptors/$cursor.ts";
 export * from "./descriptors/$env.ts";
 export * from "./descriptors/$hook.ts";
@@ -16,6 +15,7 @@ export * from "./errors/ContainerLockedError.ts";
 export * from "./errors/TooLateSubstitutionError.ts";
 export * from "./errors/TypeBoxError.ts";
 export * from "./helpers/descriptor.ts";
+export * from "./helpers/FileLike.ts";
 export * from "./helpers/StateManager.ts";
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/LoggerInterface.ts";

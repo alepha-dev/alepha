@@ -1,15 +1,4 @@
-import {
-	$env,
-	$hook,
-	$inject,
-	Alepha,
-	type Static,
-	type TNumber,
-	type TObject,
-	type TOptional,
-	type TString,
-	t,
-} from "@alepha/core";
+import { $env, $hook, $inject, Alepha, type Static, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import {
 	createClient,
@@ -18,12 +7,8 @@ import {
 	type SetOptions,
 } from "@redis/client";
 
-const envSchema: TObject<{
-	REDIS_PORT: TNumber;
-	REDIS_HOST: TString;
-	REDIS_PASSWORD: TOptional<TString>;
-}> = t.object({
-	REDIS_PORT: t.uint({
+const envSchema = t.object({
+	REDIS_PORT: t.int({
 		default: "6379",
 	}),
 	REDIS_HOST: t.string({

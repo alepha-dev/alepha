@@ -1,4 +1,5 @@
 import { stat } from "node:fs/promises";
+import type { TObject } from "@alepha/core";
 import {
 	$env,
 	$hook,
@@ -10,7 +11,6 @@ import {
 } from "@alepha/core";
 import { $lock } from "@alepha/lock";
 import { $logger } from "@alepha/logger";
-import type { TObject } from "@sinclair/typebox";
 import { sql } from "drizzle-orm";
 import type { MigrationConfig } from "drizzle-orm/migrator";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
@@ -161,12 +161,12 @@ export class NodePostgresProvider extends PostgresProvider {
 		},
 	});
 
-	public async execute<T extends TObject = any>(
+	public async execute<T extends TObject | undefined = undefined>(
 		query: SQLLike,
 		schema?: T,
 	): Promise<Array<T extends TObject ? Static<T> : any>> {
 		if (schema) {
-			return this.mapResult(await this.db.execute(query));
+			return this.mapResult(await this.db.execute(query), schema);
 		}
 		return (await this.db.execute(query)) as Array<any>;
 	}

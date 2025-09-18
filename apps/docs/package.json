@@ -4,7 +4,7 @@
 	"dependencies": {
 		"@alepha/core": "0.9.5",
 		"@alepha/react": "0.9.5",
-		"@fontsource/inter": "^5.2.7",
+		"@fontsource/inter": "^5.2.8",
 		"@mantine/core": "^8.3.1",
 		"@mantine/form": "^8.3.1",
 		"@mantine/hooks": "^8.3.1",
@@ -21,7 +21,7 @@
 		"marked": "^16.3.0",
 		"marked-highlight": "^2.2.2",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.5",
+		"vite": "^7.1.6",
 		"vite-bundle-analyzer": "^1.2.3"
 	},
 	"scripts": {

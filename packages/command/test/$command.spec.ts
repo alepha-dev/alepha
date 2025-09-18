@@ -196,7 +196,7 @@ describe("$command", () => {
 		test("should throw a CommandError for invalid flag types", async () => {
 			await expect(() =>
 				setupTestCommands(["greet", "--name=Test", "--times=not-a-number"]),
-			).rejects.toThrow("Invalid flag: /times - Expected integer");
+			).rejects.toThrow("Invalid flag: /times - must be integer");
 		});
 	});
 

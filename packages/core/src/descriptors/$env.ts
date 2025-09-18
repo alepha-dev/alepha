@@ -1,6 +1,6 @@
-import type { Static, TObject } from "@sinclair/typebox";
+import type { Static, TObject } from "typebox";
 import { AlephaError } from "../errors/AlephaError.ts";
-import { TypeGuard } from "../providers/TypeProvider.ts";
+import { t } from "../providers/TypeProvider.ts";
 import { $cursor } from "./$cursor.ts";
 
 /**
@@ -33,9 +33,9 @@ export const $env = <T extends TObject>(type: T): Static<T> => {
 	const { context: alepha } = $cursor();
 
 	// allow to inject TypeBox schemas
-	if (!TypeGuard.IsObject(type)) {
+	if (!t.schema.isObject(type)) {
 		throw new AlephaError("Type must be an TObject");
 	}
 
-	return alepha.parseEnv(type) as T;
+	return alepha.parseEnv(type) as Static<T>;
 };

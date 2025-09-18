@@ -10,7 +10,7 @@ import {
 	type FileLike,
 	type HookDescriptor,
 	isTypeFile,
-	TypeGuard,
+	t,
 } from "@alepha/core";
 import { bufferToArrayBuffer } from "@alepha/file";
 import { HttpError, isMultipart, type ServerRoute } from "@alepha/server";
@@ -98,12 +98,14 @@ export class ServerMultipartProvider {
 
 		const body: any = {};
 
-		for (const [key, value] of Object.entries(route.schema!.body!.properties)) {
-			if (TypeGuard.IsSchema(value)) {
-				if (isTypeFile(value)) {
-					body[key] = result.files[key];
-				} else {
-					body[key] = this.alepha.parse(value, result.fields[key]);
+		if (route.schema?.body && t.schema.isObject(route.schema.body)) {
+			for (const [key, value] of Object.entries(route.schema.body.properties)) {
+				if (t.schema.isSchema(value)) {
+					if (isTypeFile(value)) {
+						body[key] = result.files[key];
+					} else {
+						body[key] = this.alepha.parse(value, result.fields[key]);
+					}
 				}
 			}
 		}

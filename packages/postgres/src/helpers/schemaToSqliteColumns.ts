@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { Static } from "@alepha/core";
-import { type TObject, type TSchema, TypeGuard } from "@alepha/core";
-import { Value } from "@sinclair/typebox/value";
+import {
+	type Static,
+	type TObject,
+	type TSchema,
+	type TString,
+	t,
+} from "@alepha/core";
 import { sql } from "drizzle-orm";
 import * as pg from "drizzle-orm/sqlite-core";
 import {
@@ -31,8 +35,8 @@ export const schemaToSqliteColumns = <T extends TObject>(
 		(columns, [key, value]) => {
 			let col = mapFieldToSqliteColumn(key, value);
 
-			if (value.default != null) {
-				col = col.default(value.default);
+			if ("default" in value && value.default != null) {
+				col = col.default(value.default as any);
 			}
 
 			if (PG_PRIMARY_KEY in value) {
@@ -69,14 +73,16 @@ export const mapFieldToSqliteColumn = (name: string, value: TSchema) => {
 
 	if (
 		// is nullish ?
-		value.anyOf?.length === 2 &&
-		value.anyOf.some((it: TSchema) => it.type === "null")
+		"anyOf" in value &&
+		Array.isArray(value.anyOf) &&
+		value.anyOf.length === 2 &&
+		value.anyOf.some((it: TSchema) => t.schema.isNull(it))
 	) {
 		// then, remove nullish
-		value = value.anyOf.find((it: TSchema) => it.type !== "null")!;
+		value = value.anyOf.find((it: TSchema) => !t.schema.isNull(it))!;
 	}
 
-	if (TypeGuard.IsInteger(value)) {
+	if (t.schema.isInteger(value)) {
 		if (PG_SERIAL in value || PG_IDENTITY in value) {
 			return pg
 				.integer(key, { mode: "number" })
@@ -86,7 +92,7 @@ export const mapFieldToSqliteColumn = (name: string, value: TSchema) => {
 		return pg.integer(key);
 	}
 
-	if (TypeGuard.IsNumber(value)) {
+	if (t.schema.isNumber(value)) {
 		if (PG_IDENTITY in value) {
 			return pg
 				.integer(key, { mode: "number" })
@@ -96,52 +102,49 @@ export const mapFieldToSqliteColumn = (name: string, value: TSchema) => {
 		return pg.numeric(key);
 	}
 
-	if (TypeGuard.IsDate(value)) {
+	if (t.schema.isDate(value)) {
 		return pg.integer(key, { mode: "timestamp" });
 	}
 
-	if (TypeGuard.IsString(value)) {
+	if (t.schema.isString(value)) {
 		return mapStringToSqliteColumn(key, value);
 	}
 
-	if (TypeGuard.IsBoolean(value)) {
+	if (t.schema.isBoolean(value)) {
 		return sqliteBool(key, value);
 	}
 
-	if (TypeGuard.IsObject(value)) {
+	if (t.schema.isObject(value)) {
 		return sqliteJson(key, value);
 	}
 
-	if (TypeGuard.IsRecord(value)) {
+	if (t.schema.isRecord(value)) {
 		return sqliteJson(key, value);
 	}
 
-	if (TypeGuard.IsArray(value)) {
-		if (TypeGuard.IsObject(value.items)) {
+	if (t.schema.isArray(value)) {
+		if (t.schema.isObject(value.items)) {
 			return sqliteJson(key, value);
 		}
-		if (TypeGuard.IsRecord(value.items)) {
+		if (t.schema.isRecord(value.items)) {
 			return sqliteJson(key, value);
 		}
-		if (TypeGuard.IsString(value.items)) {
+		if (t.schema.isString(value.items)) {
 			return sqliteJson(key, value);
 		}
-		if (TypeGuard.IsInteger(value.items)) {
+		if (t.schema.isInteger(value.items)) {
 			return sqliteJson(key, value);
 		}
-		if (TypeGuard.IsNumber(value.items)) {
+		if (t.schema.isNumber(value.items)) {
 			return sqliteJson(key, value);
 		}
-		if (TypeGuard.IsBoolean(value.items)) {
+		if (t.schema.isBoolean(value.items)) {
 			return sqliteJson(key, value);
 		}
 	}
 
-	if (TypeGuard.IsUnsafe(value)) {
-		if (value.type === "string") {
-			// t.enum()
-			return mapStringToSqliteColumn(key, value);
-		}
+	if (t.schema.isUnsafe(value) && "type" in value && value.type === "string") {
+		return mapStringToSqliteColumn(key, value as any);
 	}
 
 	throw new Error(
@@ -155,7 +158,7 @@ export const mapFieldToSqliteColumn = (name: string, value: TSchema) => {
  * @param key The key of the field.
  * @param value The value of the field.
  */
-export const mapStringToSqliteColumn = (key: string, value: TSchema) => {
+export const mapStringToSqliteColumn = (key: string, value: TString) => {
 	if (value.format === "uuid") {
 		if (PG_PRIMARY_KEY in value) {
 			return pg
@@ -200,15 +203,9 @@ export const sqliteJson = <TDocument extends TSchema>(
 			configRequired: true;
 		}>({
 			dataType: () => "text",
-			toDriver: (value) => JSON.stringify(Value.Encode(document, value)),
+			toDriver: (value) => JSON.stringify(value),
 			fromDriver: (value: TDocument | string) => {
-				return Value.Decode(
-					document,
-					Value.Cast(
-						document,
-						value && typeof value === "string" ? JSON.parse(value) : value,
-					),
-				);
+				return value && typeof value === "string" ? JSON.parse(value) : value;
 			},
 		})(name, { document })
 		.$type<Static<TDocument>>();

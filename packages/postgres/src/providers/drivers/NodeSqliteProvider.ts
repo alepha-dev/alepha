@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
+import type { Static, TObject } from "@alepha/core";
 import { $env, $hook, $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import type { Static, TObject } from "@sinclair/typebox";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
@@ -41,10 +41,10 @@ export class NodeSqliteProvider extends PostgresProvider {
 		path: this.env.DATABASE_URL || ":memory:",
 	};
 
-	public async execute<T extends TObject = any>(
+	public async execute<T extends TObject | undefined = undefined>(
 		query: SQLLike,
 		schema?: T,
-	): Promise<Array<T extends TObject ? Static<T> : any>> {
+	): Promise<Array<T extends TObject ? Static<T> : any[]>> {
 		const all = (this.db as unknown as SqliteRemoteDatabase).all(query);
 		const { sql, params, method } = all.getQuery();
 		this.log.trace(`${sql}`, params);
@@ -54,9 +54,10 @@ export class NodeSqliteProvider extends PostgresProvider {
 			statement.run(...(params as any[]));
 			return [];
 		}
+
 		if (method === "get") {
 			const data = statement.get(...(params as any[]));
-			return this.mapResult(data ? [{ ...data }] : []);
+			return this.mapResult(data ? [{ ...data }] : [], schema);
 		}
 
 		const rows = statement.all(...(params as any[]));
@@ -109,7 +110,7 @@ export class NodeSqliteProvider extends PostgresProvider {
 		},
 	});
 
-	protected mapResult<T extends TObject = any>(
+	protected mapResult<T extends TObject | undefined = undefined>(
 		result: Array<any>,
 		schema?: T,
 	): Array<T extends TObject ? Static<T> : any> {

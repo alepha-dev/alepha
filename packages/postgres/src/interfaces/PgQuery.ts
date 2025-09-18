@@ -1,11 +1,7 @@
-import type { Static, TObject, TPick } from "@sinclair/typebox";
+import type { Static, TKeysToIndexer, TObject, TPick } from "@alepha/core";
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
-export interface PgQuery<
-	T extends TObject,
-	Select extends (keyof Static<T>)[] = [],
-> {
-	columns?: Select;
+export interface PgQuery<T extends TObject> {
 	distinct?: boolean;
 	where?: PgQueryWhereOrSQL<Static<T>>;
 	limit?: number;
@@ -19,4 +15,4 @@ export interface PgQuery<
 export type PgQueryResult<
 	T extends TObject,
 	Select extends (keyof Static<T>)[],
-> = TPick<T, Select>;
+> = TPick<T, TKeysToIndexer<Select>>;

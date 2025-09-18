@@ -40,12 +40,12 @@ describe("$route", () => {
 		await alepha.with(TestApp).start();
 
 		const resp = await fetch(
-			`${alepha.inject(ServerProvider).hostname}/hello?a=1&b=HELLO,WORLD`,
+			`${alepha.inject(ServerProvider).hostname}/hello?a=1&b=["HELLO","WORLD"]`,
 		);
 		expect(await resp.json()).toEqual({
 			query: {
 				a: "1",
-				b: ["HELLO,WORLD"], // TODO: Fix this, it should be ["HELLO", "WORLD"]
+				b: ["HELLO", "WORLD"],
 			},
 		});
 	});

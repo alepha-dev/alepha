@@ -532,7 +532,10 @@ export class TopicDescriptor<T extends TopicMessageSchema> extends Descriptor<
 	protected parseMessage(message: string): TopicMessage<T> {
 		const { payload } = JSON.parse(message);
 		return {
-			payload: this.alepha.parse(this.options.schema.payload, payload),
+			payload: this.alepha.parse<T["payload"]>(
+				this.options.schema.payload,
+				payload,
+			),
 		};
 	}
 }
@@ -551,7 +554,6 @@ export interface TopicWaitOptions<T extends TopicMessageSchema> {
 }
 
 export interface TopicMessageSchema {
-	headers?: TSchema;
 	payload: TSchema;
 }
 

@@ -93,7 +93,8 @@ export class ProjectStatsApi {
 			};
 
 			// Get tasks by priority
-			const priorityQuery = await this.db.query(sql`
+			const priorityQuery = await this.db.query(
+				sql`
 				SELECT
 					${tasks.priority},
 					COUNT(*) as count,
@@ -108,7 +109,13 @@ export class ProjectStatsApi {
 						WHEN 'low' THEN 3
 						WHEN 'optional' THEN 4
 					END
-			`);
+			`,
+				t.object({
+					priority: t.string(),
+					count: t.string(),
+					completed: t.string(),
+				}),
+			);
 
 			const tasksByPriority = priorityQuery.map((row) => ({
 				priority: row.priority,
@@ -117,7 +124,8 @@ export class ProjectStatsApi {
 			}));
 
 			// Get tasks by complexity
-			const complexityQuery = await this.db.query(sql`
+			const complexityQuery = await this.db.query(
+				sql`
 				SELECT
 					${tasks.complexity},
 					COUNT(*) as count,
@@ -132,7 +140,13 @@ export class ProjectStatsApi {
 				WHERE ${tasks.projectId} = ${params.id} AND ${tasks.deletedAt} IS NULL
 				GROUP BY ${tasks.complexity}
 				ORDER BY ${tasks.complexity}
-			`);
+			`,
+				t.object({
+					complexity: t.string(),
+					count: t.string(),
+					average_xp: t.string(),
+				}),
+			);
 
 			const tasksByComplexity = complexityQuery.map((row) => ({
 				complexity: Number(row.complexity),
@@ -141,7 +155,8 @@ export class ProjectStatsApi {
 			}));
 
 			// Get player progress
-			const playerQuery = await this.db.query(sql`
+			const playerQuery = await this.db.query(
+				sql`
 				SELECT
 					u.name as player_name,
 					c.xp,
@@ -155,7 +170,14 @@ export class ProjectStatsApi {
 				WHERE c.project_id = ${params.id}
 				GROUP BY c.id, u.name, c.xp, c.owner
 				ORDER BY c.owner DESC, c.xp DESC
-			`);
+			`,
+				t.object({
+					player_name: t.string(),
+					xp: t.string(),
+					tasks_completed: t.string(),
+					is_owner: t.boolean(),
+				}),
+			);
 
 			const playerProgress = playerQuery.map((row) => {
 				const xp = Number(row.xp) || 0;
@@ -185,7 +207,8 @@ export class ProjectStatsApi {
 			});
 
 			// Get activity timeline (last 30 days)
-			const timelineQuery = await this.db.query(sql`
+			const timelineQuery = await this.db.query(
+				sql`
 				SELECT
 					DATE(${tasks.completedAt}) as date,
 					COUNT(*) as tasks_completed,
@@ -203,7 +226,13 @@ export class ProjectStatsApi {
 				GROUP BY DATE(${tasks.completedAt})
 				ORDER BY date DESC
 				LIMIT 30
-			`);
+			`,
+				t.object({
+					date: t.string(),
+					tasks_completed: t.string(),
+					xp_gained: t.string(),
+				}),
+			);
 
 			const activityTimeline = timelineQuery.map((row) => ({
 				date: row.date,

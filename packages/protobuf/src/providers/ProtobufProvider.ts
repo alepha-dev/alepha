@@ -1,12 +1,17 @@
-import type { Static, TObject, TProperties, TSchema } from "@alepha/core";
-import { $inject, Alepha, PRIMITIVE, TypeGuard } from "@alepha/core";
+import {
+	$inject,
+	Alepha,
+	type Static,
+	type TObject,
+	type TSchema,
+	t,
+} from "@alepha/core";
 import type { Type } from "protobufjs";
 import protobufjs from "protobufjs";
 
 export class ProtobufProvider {
 	protected readonly alepha = $inject(Alepha);
-	protected readonly schemas: Map<string | TObject<TProperties>, Type> =
-		new Map();
+	protected readonly schemas: Map<string | TObject, Type> = new Map();
 	protected readonly protobuf: typeof protobufjs = protobufjs;
 
 	/**
@@ -54,7 +59,7 @@ export class ProtobufProvider {
 			fieldIndex: 1,
 		};
 
-		if (TypeGuard.IsObject(schema)) {
+		if (t.schema.isObject(schema)) {
 			const { message, subMessages } = this.parseObjectWithDependencies(
 				schema,
 				mainMessageName,
@@ -75,7 +80,7 @@ export class ProtobufProvider {
 		obj: TSchema,
 		parentName: string,
 	): { message: string; subMessages: string[] } {
-		if (!TypeGuard.IsObject(obj)) {
+		if (!t.schema.isObject(obj)) {
 			return { message: "", subMessages: [] };
 		}
 
@@ -85,9 +90,12 @@ export class ProtobufProvider {
 
 		for (const [key, value] of Object.entries(obj.properties)) {
 			// Handle arrays
-			if (TypeGuard.IsArray(value)) {
-				if (TypeGuard.IsObject(value.items)) {
-					const subMessageName = value.items.title ?? `${parentName}_${key}`;
+			if (t.schema.isArray(value)) {
+				if (t.schema.isObject(value.items)) {
+					const subMessageName =
+						"title" in value.items && typeof value.items.title === "string"
+							? value.items.title
+							: `${parentName}_${key}`;
 					const { message: subMessage, subMessages: nestedSubMessages } =
 						this.parseObjectWithDependencies(value.items, subMessageName);
 					subMessages.push(...nestedSubMessages);
@@ -102,8 +110,11 @@ export class ProtobufProvider {
 			}
 
 			// Handle nested objects
-			if (TypeGuard.IsObject(value)) {
-				const subMessageName = value.title ?? `${parentName}_${key}`;
+			if (t.schema.isObject(value)) {
+				const subMessageName =
+					"title" in value && typeof value.title === "string"
+						? value.title
+						: `${parentName}_${key}`;
 				const { message: subMessage, subMessages: nestedSubMessages } =
 					this.parseObjectWithDependencies(value, subMessageName);
 				subMessages.push(...nestedSubMessages);
@@ -113,13 +124,16 @@ export class ProtobufProvider {
 			}
 
 			// Handle union types (nullable fields)
-			if (TypeGuard.IsUnion(value)) {
+			if (t.schema.isUnion(value)) {
 				const nonNullType = value.anyOf.find(
-					(type: TSchema) => !TypeGuard.IsNull(type),
+					(type: TSchema) => !t.schema.isNull(type),
 				);
 				if (nonNullType) {
-					if (TypeGuard.IsObject(nonNullType)) {
-						const subMessageName = nonNullType.title ?? `${parentName}_${key}`;
+					if (t.schema.isObject(nonNullType)) {
+						const subMessageName =
+							"title" in nonNullType && typeof nonNullType.title === "string"
+								? nonNullType.title
+								: `${parentName}_${key}`;
 						const { message: subMessage, subMessages: nestedSubMessages } =
 							this.parseObjectWithDependencies(nonNullType, subMessageName);
 						subMessages.push(...nestedSubMessages);
@@ -134,10 +148,11 @@ export class ProtobufProvider {
 			}
 
 			// Handle records (maps)
-			if (TypeGuard.IsRecord(value)) {
+			if (t.schema.isRecord(value)) {
 				// TypeBox records use additionalProperties or patternProperties for the value type
 				let valueSchema: TSchema | undefined;
 				if (
+					"additionalProperties" in value &&
 					value.additionalProperties &&
 					typeof value.additionalProperties === "object"
 				) {
@@ -173,35 +188,18 @@ export class ProtobufProvider {
 	 * Convert a primitive TypeBox schema type to a Protobuf spec type.
 	 */
 	protected convertType(schema: TSchema): string {
-		// Handle primitives by PRIMITIVE symbol (for enhanced TypeProvider types)
-		if (schema && typeof schema === "object" && PRIMITIVE in schema) {
-			const primitive = schema[PRIMITIVE];
-			switch (primitive) {
-				case "string":
-					return "string";
-				case "bool":
-					return "bool";
-				case "float":
-					return "double";
-				case "uchar":
-					return "uint32"; // Proto3 doesn't have uint8, use uint32
-				case "uint32":
-					return "uint32";
-				case "int32":
-					return "int32";
-				case "bigint":
-					return "int64";
-				default:
-					// For custom primitives like date-time, uuid, etc., treat as string
-					return "string";
-			}
-		}
+		if (t.schema.isBoolean(schema)) return "bool";
+		if (t.schema.isNumber(schema) && schema.format === "int64") return "int64";
+		if (t.schema.isNumber(schema)) return "double";
+		if (t.schema.isInteger(schema)) return "int32";
+		if (t.schema.isBigInt(schema)) return "int64";
+		if (t.schema.isString(schema)) return "string";
 
 		// Handle union types (nullable)
-		if (TypeGuard.IsUnion(schema)) {
+		if (t.schema.isUnion(schema)) {
 			// Find the non-null type in the union
 			const nonNullType = schema.anyOf.find(
-				(type: TSchema) => !TypeGuard.IsNull(type),
+				(type: TSchema) => !t.schema.isNull(type),
 			);
 			if (nonNullType) {
 				return this.convertType(nonNullType);
@@ -209,25 +207,15 @@ export class ProtobufProvider {
 		}
 
 		// Handle optional types
-		if (TypeGuard.IsOptional(schema)) {
+		if (t.schema.isOptional(schema)) {
 			return this.convertType(schema);
 		}
 
 		// Handle unsafe types (like enums)
-		if (TypeGuard.IsUnsafe(schema)) {
-			// Check if it's an enum
-			if (schema.enum) {
-				return "string"; // Proto3 enums are more complex, use string for simplicity
-			}
-			// Other unsafe types default to string
+		if (t.schema.isUnsafe(schema)) {
+			// if it's an enum or other unsafe types, default to string
 			return "string";
 		}
-
-		// Fallback to TypeGuard checks for basic types
-		if (TypeGuard.IsInteger(schema)) return "int32";
-		if (TypeGuard.IsNumber(schema)) return "double";
-		if (TypeGuard.IsString(schema)) return "string";
-		if (TypeGuard.IsBoolean(schema)) return "bool";
 
 		throw new Error(`Unsupported type: ${JSON.stringify(schema)}`);
 	}

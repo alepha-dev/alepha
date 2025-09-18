@@ -382,7 +382,7 @@ export interface ConsumerDescriptorOptions<T extends TSchema> {
 	 * }
 	 * ```
 	 */
-	handler: (message: { payload: Static<T["payload"]> }) => Promise<void>;
+	handler: (message: { payload: Static<T> }) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

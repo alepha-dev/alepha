@@ -3,7 +3,7 @@ import { type Static, t } from "@alepha/core";
 export const errorSchema = t.object(
 	{
 		error: t.string({ description: "HTTP error name" }),
-		status: t.uint({
+		status: t.int({
 			description: "HTTP status code",
 		}),
 		message: t.string({

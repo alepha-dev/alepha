@@ -4,7 +4,7 @@ import {
 	type Static,
 	type TObject,
 	type TSchema,
-	TypeGuard,
+	t,
 } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
@@ -34,28 +34,29 @@ export class FormModel<T extends TObject> {
 
 	public readonly onSubmit = async (event: FormEventLike) => {
 		event.preventDefault();
-		this.alepha.events.emit("form:submit:begin", {
+
+		await this.alepha.events.emit("form:submit:begin", {
 			id: this.id,
 		});
+
 		const options = this.options;
-
 		const form = event.currentTarget;
-		const values: Record<string, any> = this.parseValuesFromFormElement(
-			options,
-			this.values,
-		);
-
 		const args = {
 			form,
 		};
 
 		try {
-			if (TypeGuard.IsSchema(options.schema)) {
+			const values: Record<string, any> = this.parseValuesFromFormElement(
+				options,
+				this.values,
+			);
+
+			if (t.schema.isSchema(options.schema)) {
 				await options.handler(this.alepha.parse(options.schema, values), args);
 			} else {
-				await options.handler(values, args); // for now, trust
+				await options.handler(values as any, args); // for now, trust
 			}
-			this.alepha.events.emit("form:submit:success", {
+			await this.alepha.events.emit("form:submit:success", {
 				id: this.id,
 			});
 		} catch (error) {
@@ -63,10 +64,13 @@ export class FormModel<T extends TObject> {
 
 			options.onError?.(error as Error, args);
 
-			this.alepha.events.emit("form:submit:error", { error, id: this.id });
+			await this.alepha.events.emit("form:submit:error", {
+				error,
+				id: this.id,
+			});
 		}
 
-		this.alepha.events.emit("form:submit:end", {
+		await this.alepha.events.emit("form:submit:end", {
 			id: this.id,
 		});
 	};
@@ -113,7 +117,7 @@ export class FormModel<T extends TObject> {
 			currentObjectLevel = currentObjectLevel[segment];
 
 			if (
-				currentSchemaLevel?.type === "object" &&
+				t.schema.isObject(currentSchemaLevel) &&
 				currentSchemaLevel.properties[segment]
 			) {
 				currentSchemaLevel = currentSchemaLevel.properties[segment];
@@ -125,10 +129,9 @@ export class FormModel<T extends TObject> {
 		}
 
 		// find the schema for the final property.
-		const finalPropertySchema =
-			currentSchemaLevel && currentSchemaLevel.type === "object"
-				? currentSchemaLevel.properties[finalPropertyKey]
-				: undefined;
+		const finalPropertySchema = t.schema.isObject(currentSchemaLevel)
+			? currentSchemaLevel?.properties[finalPropertyKey]
+			: undefined;
 
 		if (finalPropertySchema) {
 			currentObjectLevel[finalPropertyKey] = this.getValueFromInput(
@@ -149,11 +152,11 @@ export class FormModel<T extends TObject> {
 		const parent = context.parent || "";
 		return new Proxy<SchemaToInput<T>>({} as SchemaToInput<T>, {
 			get: (_, prop: string) => {
-				if (!options.schema) {
+				if (!options.schema || !t.schema.isObject(schema)) {
 					return {};
 				}
 				if (prop in schema.properties) {
-					if (schema.properties[prop].type === "object") {
+					if (t.schema.isObject(schema.properties[prop])) {
 						return this.createProxyFromSchema(
 							options,
 							schema.properties[prop],
@@ -178,7 +181,7 @@ export class FormModel<T extends TObject> {
 	protected createInputFromSchema<T extends TObject>(
 		name: keyof Static<T> & string,
 		options: FormCtrlOptions<T>,
-		schema: TSchema,
+		schema: TObject,
 		required: boolean,
 		context: {
 			parent: string;
@@ -230,7 +233,7 @@ export class FormModel<T extends TObject> {
 					return;
 				}
 
-				if (field.type === "boolean") {
+				if (t.schema.isBoolean(field)) {
 					set(event.target.checked);
 				} else {
 					set(event.target.value);
@@ -243,17 +246,19 @@ export class FormModel<T extends TObject> {
 			(attr as any)["data-testid"] = attr.id;
 		}
 
-		if (field.maxLength != null) {
-			attr.maxLength = Number(field.maxLength);
-		}
+		if (t.schema.isString(field)) {
+			if (field.maxLength != null) {
+				attr.maxLength = Number(field.maxLength);
+			}
 
-		if (field.minLength != null) {
-			attr.minLength = Number(field.minLength);
+			if (field.minLength != null) {
+				attr.minLength = Number(field.minLength);
+			}
 		}
 
 		if (options.initialValues?.[name] != null) {
 			attr.defaultValue = this.valueToInputEntry(options.initialValues[name]);
-		} else if (field.default != null) {
+		} else if ("default" in field && field.default != null) {
 			attr.defaultValue = this.valueToInputEntry(field.default);
 		}
 
@@ -261,11 +266,11 @@ export class FormModel<T extends TObject> {
 			attr.required = true;
 		}
 
-		if (field.description) {
+		if ("description" in field && typeof field.description === "string") {
 			attr["aria-label"] = field.description;
 		}
 
-		if (field.type === "number" || field.type === "integer") {
+		if (t.schema.isInteger(field) || t.schema.isNumber(field)) {
 			attr.type = "number";
 		} else if (name === "password") {
 			attr.type = "password";
@@ -273,7 +278,7 @@ export class FormModel<T extends TObject> {
 			attr.type = "email";
 		} else if (name === "url") {
 			attr.type = "url";
-		} else if (field.type === "string") {
+		} else if (t.schema.isString(field)) {
 			if (field.format === "binary") {
 				attr.type = "file";
 			} else if (field.format === "date") {
@@ -285,7 +290,7 @@ export class FormModel<T extends TObject> {
 			} else {
 				attr.type = "text";
 			}
-		} else if (field.type === "boolean") {
+		} else if (t.schema.isBoolean(field)) {
 			attr.type = "checkbox";
 		}
 
@@ -304,26 +309,29 @@ export class FormModel<T extends TObject> {
 		};
 	}
 
+	/**
+	 * Convert an input value from HTML to the correct type based on the schema.
+	 */
 	protected getValueFromInput(input: FormDataEntryValue, schema: TSchema): any {
 		if (input instanceof File) {
-			// For file inputs, return the File object directly
-			if (schema.format === "binary") {
+			// for file inputs, return the File object directly
+			if (t.schema.isString(schema) && schema.format === "binary") {
 				return input;
 			}
 			// for now, ignore other formats
 			return null;
 		}
 
-		if (schema.type === "boolean") {
+		if (t.schema.isBoolean(schema)) {
 			return !!input;
 		}
 
-		if (schema.type === "number" || schema.type === "integer") {
+		if (t.schema.isNumber(schema)) {
 			const num = Number(input);
 			return Number.isNaN(num) ? null : num;
 		}
 
-		if (schema.type === "string") {
+		if (t.schema.isString(schema)) {
 			if (schema.format === "date") {
 				return new Date(input).toISOString().slice(0, 10); // For date input
 			}
@@ -336,7 +344,7 @@ export class FormModel<T extends TObject> {
 			return String(input);
 		}
 
-		return input; // Fallback for other types
+		return input; // fallback for other types
 	}
 
 	protected valueToInputEntry(value: any): string | number | boolean {

@@ -1,12 +1,6 @@
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
-import {
-	$inject,
-	Alepha,
-	isFileLike,
-	isTypeFile,
-	TypeGuard,
-} from "@alepha/core";
+import { $inject, Alepha, isFileLike, isTypeFile, t } from "@alepha/core";
 import { RouterProvider } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
@@ -178,7 +172,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		if (responseKind === "json" && route.schema?.response) {
 			reply.headers["content-type"] = "application/json";
 			reply.body = JSON.stringify(
-				this.alepha.parse<any>(route.schema.response, reply.body, {
+				this.alepha.parse(route.schema.response, reply.body, {
 					clone: true, // clone is required, as parse() will modify the object
 				}),
 			);
@@ -233,20 +227,18 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	protected getResponseType(schema?: RequestConfigSchema): ResponseKind {
 		if (schema?.response) {
 			if (
-				TypeGuard.IsObject(schema.response) ||
-				TypeGuard.IsIntersect(schema.response) ||
-				TypeGuard.IsRecord(schema.response) ||
-				TypeGuard.IsArray(schema.response)
+				t.schema.isObject(schema.response) ||
+				t.schema.isRecord(schema.response) ||
+				t.schema.isArray(schema.response)
 			) {
 				return "json";
 			}
 
 			if (
-				TypeGuard.IsString(schema.response) ||
-				TypeGuard.IsInteger(schema.response) ||
-				TypeGuard.IsNumber(schema.response) ||
-				TypeGuard.IsBoolean(schema.response) ||
-				TypeGuard.IsDate(schema.response)
+				t.schema.isString(schema.response) ||
+				t.schema.isInteger(schema.response) ||
+				t.schema.isNumber(schema.response) ||
+				t.schema.isBoolean(schema.response)
 			) {
 				return "text";
 			}
@@ -255,7 +247,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 				return "file";
 			}
 
-			if (TypeGuard.IsVoid(schema.response)) {
+			if (t.schema.isVoid(schema.response)) {
 				return "void";
 			}
 		}
@@ -327,10 +319,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 	) {
 		if (route.schema?.params) {
 			try {
-				request.params = this.alepha.parse<any>(
+				request.params = this.alepha.parse(
 					route.schema.params,
 					request.params,
-				);
+				) as any;
 			} catch (error) {
 				throw new ValidationError("Invalid request params", error);
 			}
@@ -338,21 +330,28 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
 		if (route.schema?.query) {
 			try {
-				request.query = this.alepha.parse<any>(
-					route.schema.query,
-					request.query,
-				);
+				const query: Record<string, any> = {};
+				for (const key in route.schema.query.properties) {
+					if (typeof request.query[key] === "string") {
+						query[key] = this.alepha.parse(
+							route.schema.query.properties[key],
+							request.query[key],
+						);
+					}
+				}
+				request.query = this.alepha.parse(route.schema.query, query) as any;
 			} catch (error) {
+				console.log(error);
 				throw new ValidationError("Invalid request query", error);
 			}
 		}
 
 		if (route.schema?.headers) {
 			try {
-				request.headers = this.alepha.parse<any>(
+				request.headers = this.alepha.parse(
 					route.schema.headers,
 					request.headers,
-				);
+				) as any;
 			} catch (error) {
 				throw new ValidationError("Invalid request header", error);
 			}
@@ -360,7 +359,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
 		if (route.schema?.body) {
 			try {
-				request.body = this.alepha.parse<any>(route.schema.body, request.body, {
+				request.body = this.alepha.parse(route.schema.body, request.body, {
 					clone: false, // clone can be slow for big objects
 					convert: false, // same
 				});

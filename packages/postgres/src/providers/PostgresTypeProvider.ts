@@ -1,17 +1,17 @@
-import { TypeGuard, t } from "@alepha/core";
-import { PRIMITIVE } from "@alepha/core/src/constants/PRIMITIVE.ts";
-import type {
-	IntegerOptions,
-	NumberOptions,
-	ObjectOptions,
-	Static,
-	StringOptions,
-	TInteger,
-	TNumber,
-	TObject,
-	TSchema,
-	TString,
-} from "@sinclair/typebox";
+import {
+	AlephaError,
+	type Static,
+	type TBigInt,
+	type TInteger,
+	type TNumber,
+	type TNumberOptions,
+	type TObject,
+	type TObjectOptions,
+	type TSchema,
+	type TString,
+	type TStringOptions,
+	t,
+} from "@alepha/core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 import {
 	PG_CREATED_AT,
@@ -32,12 +32,6 @@ import { pgAttr } from "../helpers/pgAttr.ts";
 import type { TPage } from "../schemas/pageSchema.ts";
 import { pageSchema } from "../schemas/pageSchema.ts";
 
-declare module "@alepha/core" {
-	interface TypeProvider {
-		pg: PostgresTypeProvider;
-	}
-}
-
 export class PostgresTypeProvider {
 	public readonly attr = pgAttr;
 
@@ -46,7 +40,7 @@ export class PostgresTypeProvider {
 	 */
 	public readonly identityPrimaryKey = (
 		identity?: PgIdentityOptions,
-		options?: IntegerOptions,
+		options?: TNumberOptions,
 	) =>
 		pgAttr(
 			pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
@@ -58,10 +52,10 @@ export class PostgresTypeProvider {
 	 */
 	public readonly bigIdentityPrimaryKey = (
 		identity?: PgIdentityOptions,
-		options?: NumberOptions,
+		options?: TNumberOptions,
 	) =>
 		pgAttr(
-			pgAttr(pgAttr(t.bigint(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+			pgAttr(pgAttr(t.int64(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
 			PG_DEFAULT,
 		);
 
@@ -80,35 +74,51 @@ export class PostgresTypeProvider {
 	public primaryKey(): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
 		type: TString,
-		options?: StringOptions,
+		options?: TStringOptions,
 	): PgAttr<PgAttr<TString, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
 		type: TInteger,
-		options?: IntegerOptions,
+		options?: TNumberOptions,
 		identity?: PgIdentityOptions,
 	): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
 		type: TNumber,
-		options?: NumberOptions,
+		options?: TNumberOptions,
 		identity?: PgIdentityOptions,
 	): PgAttr<PgAttr<TNumber, PgPrimaryKey>, PgDefault>;
 	public primaryKey(
+		type: TBigInt,
+		options?: TNumberOptions,
+		identity?: PgIdentityOptions,
+	): PgAttr<PgAttr<TBigInt, PgPrimaryKey>, PgDefault>;
+	public primaryKey(
 		type?: TSchema,
-		options?: IntegerOptions | NumberOptions | StringOptions,
+		options?: TNumberOptions | TStringOptions,
 		identity?: PgIdentityOptions,
 	): PgAttr<PgAttr<TSchema, PgPrimaryKey>, PgDefault> {
-		if (!type || TypeGuard.IsInteger(type)) {
+		if (!type || t.schema.isInteger(type)) {
 			return pgAttr(
 				pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
 				PG_DEFAULT,
 			);
-		} else if (TypeGuard.IsString(type) && type.format === "uuid") {
+		}
+
+		if (t.schema.isString(type) && type.format === "uuid") {
 			return pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
-		} else if (
-			TypeGuard.IsNumber(type) &&
-			PRIMITIVE in type &&
-			type[PRIMITIVE] === "bigint"
-		) {
+		}
+
+		if (t.schema.isNumber(type) && type.format === "int64") {
+			return pgAttr(
+				pgAttr(
+					pgAttr(t.number(options), PG_PRIMARY_KEY),
+					PG_IDENTITY,
+					identity,
+				),
+				PG_DEFAULT,
+			);
+		}
+
+		if (t.schema.isBigInt(type)) {
 			return pgAttr(
 				pgAttr(
 					pgAttr(t.bigint(options), PG_PRIMARY_KEY),
@@ -118,7 +128,8 @@ export class PostgresTypeProvider {
 				PG_DEFAULT,
 			);
 		}
-		throw new Error(`Unsupported type for primary key: ${type}`);
+
+		throw new AlephaError(`Unsupported type for primary key: ${type}`);
 	}
 
 	/**
@@ -146,19 +157,19 @@ export class PostgresTypeProvider {
 	 * @see {@link RepositoryDescriptor#save}
 	 * @see {@link PgVersionMismatchError}
 	 */
-	public readonly version = (options: IntegerOptions = {}) =>
+	public readonly version = (options: TNumberOptions = {}) =>
 		this.default(pgAttr(t.int(options), PG_VERSION), 0);
 
 	/**
 	 * Creates a column Created At. So just a datetime column with a default value of the current timestamp.
 	 */
-	public readonly createdAt = (options?: StringOptions) =>
+	public readonly createdAt = (options?: TStringOptions) =>
 		pgAttr(pgAttr(t.datetime(options), PG_CREATED_AT), PG_DEFAULT);
 
 	/**
 	 * Creates a column Updated At. Like createdAt, but it is updated on every update of the row.
 	 */
-	public readonly updatedAt = (options?: StringOptions) =>
+	public readonly updatedAt = (options?: TStringOptions) =>
 		pgAttr(pgAttr(t.datetime(options), PG_UPDATED_AT), PG_DEFAULT);
 
 	/**
@@ -166,7 +177,7 @@ export class PostgresTypeProvider {
 	 * This is used to mark rows as deleted without actually removing them from the database.
 	 * The column is nullable - NULL means not deleted, timestamp means deleted.
 	 */
-	public readonly deletedAt = (options?: StringOptions) =>
+	public readonly deletedAt = (options?: TStringOptions) =>
 		pgAttr(t.optional(t.datetime(options)), PG_DELETED_AT);
 
 	/**
@@ -194,7 +205,7 @@ export class PostgresTypeProvider {
 	 */
 	public readonly page = <T extends TObject>(
 		resource: T,
-		options?: ObjectOptions,
+		options?: TObjectOptions,
 	): TPage<T> => {
 		return pageSchema(resource, options);
 	};

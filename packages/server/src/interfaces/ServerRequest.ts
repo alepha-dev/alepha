@@ -4,24 +4,45 @@ import type {
 } from "node:http";
 import type { Readable as NodeStream } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
-import type { Async, Static, StreamLike, TObject, TSchema } from "@alepha/core";
+import type {
+	Async,
+	Static,
+	StreamLike,
+	TArray,
+	TFile,
+	TObject,
+	TRecord,
+	TStream,
+	TString,
+	TVoid,
+} from "@alepha/core";
 import type { Route } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerReply } from "../helpers/ServerReply.ts";
 import type { UserAgentInfo } from "../services/UserAgentParser.ts";
 
+export type TRequestBody = TObject | TString | TArray | TRecord | TStream;
+export type TResponseBody =
+	| TObject
+	| TString
+	| TRecord
+	| TFile
+	| TArray
+	| TStream
+	| TVoid;
+
 export interface RequestConfigSchema {
-	body?: TSchema;
+	body?: TRequestBody;
 	params?: TObject;
 	query?: TObject;
 	headers?: TObject;
-	response?: TSchema;
+	response?: TResponseBody;
 }
 
 export interface ServerRequestConfig<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > {
-	body: TConfig["body"] extends TSchema ? Static<TConfig["body"]> : any;
+	body: TConfig["body"] extends TRequestBody ? Static<TConfig["body"]> : any;
 
 	headers: TConfig["headers"] extends TObject
 		? Static<TConfig["headers"]>
@@ -116,29 +137,19 @@ export interface ServerRoute<
 
 export type ServerResponseBody<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = TConfig["response"] extends TSchema
+> = TConfig["response"] extends TResponseBody
 	? Static<TConfig["response"]>
 	: ResponseBodyType;
 
 export type ResponseKind = "json" | "text" | "void" | "file" | "any";
 
 export type ResponseBodyType =
-	| string
-	| Buffer
-	| StreamLike
-	| undefined
-	| null
-	| void;
+	// not: object is not allowed, you want object ? add schema !
+	string | Buffer | StreamLike | undefined | null | void;
 
 export type ServerHandler<
 	TConfig extends RequestConfigSchema = RequestConfigSchema,
 > = (request: ServerRequest<TConfig>) => Async<ServerResponseBody<TConfig>>;
-
-export type ServerMiddlewareHandler<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = (
-	request: ServerRequest<TConfig>,
-) => Async<ServerResponseBody<TConfig> | undefined>;
 
 export interface ServerResponse {
 	body: string | Buffer | ArrayBuffer | NodeStream | NodeWebStream;

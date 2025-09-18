@@ -56,8 +56,7 @@
 		"@alepha/server-swagger": "0.9.5",
 		"@alepha/topic": "0.9.5",
 		"@alepha/topic-redis": "0.9.5",
-		"@alepha/vite": "0.9.5",
-		"react": "^19.1.1"
+		"@alepha/vite": "0.9.5"
 	},
 	"devDependencies": {
 		"tsdown": "^0.15.2"
@@ -70,6 +69,18 @@
 		"**/*.cjs",
 		"**/*.d.ts"
 	],
+	"peerDependencies": {
+		"react": "*",
+		"react-dom": "*"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		},
+		"react-dom": {
+			"optional": true
+		}
+	},
 	"exports": {
 		".": {
 			"import": "./core.js",

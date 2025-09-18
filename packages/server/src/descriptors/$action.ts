@@ -681,7 +681,7 @@ export class ActionDescriptor<
 
 	public get route(): ServerRoute {
 		return {
-			...this.options,
+			...(this.options as any), // TODO: fix schema.header mapping
 			method: this.method,
 			path: `${this.prefix}${this.path}`,
 		} as ServerRoute;
@@ -742,18 +742,18 @@ export class ActionDescriptor<
 				return "multipart/form-data";
 			}
 
-			if (this.options.schema.body.type === "string") {
+			if (t.schema.isString(this.options.schema.body)) {
 				// if body is a string, we assume it's plain text
 				return "text/plain";
 			}
 
 			if (
-				this.options.schema.body.type === "object" ||
-				this.options.schema.body.type === "array"
-			) {
+				t.schema.isObject(this.options.schema.body) ||
+				t.schema.isArray(this.options.schema.body) ||
+				t.schema.isRecord(this.options.schema.body)
+			)
 				// if body is an object or array, we assume it's JSON
 				return "application/json";
-			}
 		}
 	}
 
@@ -805,7 +805,7 @@ export class ActionDescriptor<
 			serverActionRequest as ServerRequest,
 		);
 
-		let response = await handler(
+		let response: any = await handler(
 			serverActionRequest as ServerActionRequest<TConfig>,
 		);
 
@@ -815,10 +815,7 @@ export class ActionDescriptor<
 			// skip validation if response is expected as file
 			!isTypeFile(this.options.schema.response)
 		) {
-			response = this.alepha.parse<any>(
-				this.options.schema?.response,
-				response,
-			);
+			response = this.alepha.parse(this.options.schema.response, response);
 		}
 
 		await this.alepha.events.emit("action:onResponse", {

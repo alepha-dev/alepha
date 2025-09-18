@@ -14,8 +14,8 @@ describe("ProtobufProvider", () => {
 				isActive: t.boolean(),
 				score: t.number(),
 				bigNumber: t.bigint(),
-				level: t.uchar(),
-				points: t.uint(),
+				level: t.int(),
+				points: t.int(),
 			});
 
 			const schema = protobuf.createProtobufSchema(userSchema);
@@ -30,8 +30,8 @@ message Target {
   bool isActive = 4;
   double score = 5;
   int64 bigNumber = 6;
-  uint32 level = 7;
-  uint32 points = 8;
+  int32 level = 7;
+  int32 points = 8;
 }
 `,
 			);

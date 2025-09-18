@@ -7,7 +7,6 @@ import {
 	isTypeFile,
 	type TObject,
 	type TSchema,
-	TypeGuard,
 	t,
 } from "@alepha/core";
 import { AlephaSecurity } from "@alepha/security";
@@ -96,7 +95,7 @@ export class ServerSwaggerProvider {
 		const excludeTags = doc.excludeTags ?? [];
 		const schemas: Record<string, any> = {};
 		const schema = (source: TSchema) => {
-			if (source.title) {
+			if ("title" in source && typeof source.title === "string") {
 				schemas[source.title] = source;
 				return { $ref: `#/components/schemas/${source.title}` };
 			}
@@ -146,7 +145,7 @@ export class ServerSwaggerProvider {
 				operation.security = [{ bearerAuth: [] }];
 			}
 
-			const g = TypeGuard;
+			const g = t.raw;
 
 			if (
 				g.IsObject(route.options.schema.body) ||
@@ -195,7 +194,10 @@ export class ServerSwaggerProvider {
 				for (const [key, value] of Object.entries(
 					route.options.schema.params.properties,
 				)) {
-					const description = value.description;
+					const description =
+						"description" in value && typeof value.description === "string"
+							? value.description
+							: undefined;
 					const ref = copy(schema(value));
 					delete ref.description;
 					operation.parameters.push({
@@ -251,7 +253,7 @@ export class ServerSwaggerProvider {
 			};
 		}
 
-		if (TypeGuard.IsObject(schema) || TypeGuard.IsArray(schema)) {
+		if (t.schema.isObject(schema) || t.schema.isArray(schema)) {
 			return {
 				schema,
 				status: 200,
@@ -259,7 +261,7 @@ export class ServerSwaggerProvider {
 			};
 		}
 
-		if (TypeGuard.IsString(schema)) {
+		if (t.schema.isString(schema)) {
 			return {
 				schema,
 				status: 200,
@@ -276,10 +278,10 @@ export class ServerSwaggerProvider {
 		}
 
 		const status = Object.keys(schema)[0];
-		if (TypeGuard.IsObject(schema[status]) || isTypeFile(schema[status])) {
+		if (t.schema.isObject(schema[status]) || isTypeFile(schema[status])) {
 			return {
 				schema,
-				type: TypeGuard.IsObject(schema[status])
+				type: t.schema.isObject(schema[status])
 					? "application/json"
 					: "application/octet-stream",
 				status: Number(status),

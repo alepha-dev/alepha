@@ -1,7 +1,5 @@
-import type { Static, TObject, TSchema } from "@sinclair/typebox";
-import type { TypeCheck } from "@sinclair/typebox/compiler";
-import { TypeCompiler } from "@sinclair/typebox/compiler";
-import { Value as v } from "@sinclair/typebox/value";
+import type { Static, TObject } from "typebox";
+import { Compile, type Validator } from "typebox/compile";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
@@ -23,6 +21,7 @@ import type {
 	ServiceEntry,
 } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
+import { type TSchema, t } from "./providers/TypeProvider.ts";
 
 /**
  * Core container of the Alepha framework.
@@ -271,7 +270,7 @@ export class Alepha {
 	 * Cache for TypeBox type checks.
 	 * > It allows us to avoid compiling the same schema multiple times.
 	 */
-	protected cacheTypeCheck: Map<TSchema, TypeCheck<TSchema>> = new Map();
+	protected cacheTypeCheck: Map<TSchema, Validator> = new Map();
 
 	/**
 	 * List of modules that are registered in the container.
@@ -812,13 +811,8 @@ export class Alepha {
 	 */
 	public parse<T extends TSchema>(
 		schema: T,
-		value?: any,
+		value?: unknown,
 		opts: {
-			/**
-			 * Convert `null` to `undefined`
-			 * @default true
-			 */
-			convertNullToUndefined?: boolean;
 			/**
 			 * Clone the value before parsing.
 			 * @default true
@@ -840,6 +834,11 @@ export class Alepha {
 			 */
 			convert?: boolean;
 			/**
+			 * Convert `null` to `undefined`
+			 * @default true
+			 */
+			convertNullToUndefined?: boolean;
+			/**
 			 * Prepare value after being deserialized.
 			 * @default true
 			 */
@@ -847,71 +846,68 @@ export class Alepha {
 		} = {},
 	): Static<T> {
 		const exists = this.cacheTypeCheck.get(schema);
-		const check = exists ?? TypeCompiler.Compile(schema);
+		const vl = exists ?? Compile(schema);
 		if (!exists) {
-			this.cacheTypeCheck.set(schema, check);
+			this.cacheTypeCheck.set(schema, vl);
 		}
 
-		const actions = [];
-
-		if (opts.convertNullToUndefined !== false) {
-			actions.push(nullToUndefined);
+		let alreadyCloned = false;
+		if (
+			(t.schema.isObject(schema) || t.schema.isArray(schema)) &&
+			typeof value === "string"
+		) {
+			try {
+				value = JSON.parse(value);
+				alreadyCloned = true;
+			} catch {
+				// ignore json parsing error and let typebox handle it
+			}
 		}
+
+		value =
+			typeof value === "object" && opts.clone !== false && !alreadyCloned
+				? // do NOT use structuredClone() or TypeBox v.Clone() here
+					// we need to remove also all functions, undefined, ...
+					// JSON is FINE for small objects
+					// REMEMBER: alepha.parse is JSON safe, so no Date, Map, Set, BigInt ...
+					JSON.parse(JSON.stringify(value))
+				: value;
 
 		if (opts.clean !== false) {
-			actions.push(v.Clean);
+			value = vl.Clean(value);
 
-			for (const key in value) {
-				if (value[key] === undefined) {
-					delete value[key];
+			if (typeof value === "object") {
+				for (const key in value) {
+					if ((value as Record<any, any>)[key] === undefined) {
+						delete (value as Record<any, any>)[key];
+					}
 				}
 			}
 		}
 
 		if (opts.default !== false) {
-			actions.push(v.Default);
+			value = vl.Default(value);
+		}
+
+		if (opts.convertNullToUndefined !== false) {
+			value = nullToUndefined(schema, value);
 		}
 
 		if (opts.convert !== false) {
-			actions.push(v.Convert);
+			value = vl.Convert(value);
 		}
-
-		let alreadyParsed = false;
-		if (
-			(schema.type === "object" || schema.type === "array") &&
-			typeof value === "string"
-		) {
-			try {
-				value = JSON.parse(value);
-				alreadyParsed = true;
-			} catch (_error) {
-				// ignore json parsing and let typebox handle it
-			}
-		}
-
-		const copy =
-			typeof value === "object" && opts.clone !== false && !alreadyParsed
-				? // we clone simple objects to avoid mutation - most of the time...
-					// -> Why not using structuredClone()?
-					// "structuredClone()" will fail when the object contains functions to remove - which is the case for some internal projects.
-					// so, keep using JSON.stringify/parse or make an option to use structuredClone
-					// > it's kinda slow for huge JSON objects, but it's a trade-off
-					JSON.parse(JSON.stringify(value))
-				: value;
-
-		const data = actions.reduce((acc, fn) => fn(schema, acc), copy);
 
 		if (opts.check !== false) {
-			const valid = check.Check(data);
+			const valid = vl.Check(value);
 			if (!valid) {
-				const error = check.Errors(data).First();
+				const error = vl.Errors(value)?.[0];
 				if (error) {
-					throw new TypeBoxError(error);
+					throw new TypeBoxError(error, value);
 				}
 			}
 		}
 
-		return data;
+		return value as Static<T>;
 	}
 
 	/**
@@ -942,7 +938,7 @@ export class Alepha {
 
 		this.cacheEnv.set(schema, config);
 
-		return config;
+		return config as Static<T>;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------

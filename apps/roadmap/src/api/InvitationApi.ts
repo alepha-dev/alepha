@@ -1,6 +1,6 @@
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { $action, BadRequestError } from "@alepha/server";
+import { $action, BadRequestError, okSchema } from "@alepha/server";
 import { Db, invitations } from "../providers/Db.ts";
 import { Security } from "../providers/Security.ts";
 
@@ -124,7 +124,7 @@ export class InvitationApi {
 			params: t.object({
 				id: t.uuid(),
 			}),
-			response: t.boolean(),
+			response: okSchema,
 		},
 		handler: async ({ params, user }) => {
 			const invitation = await this.db.invitations.findOne({
@@ -147,7 +147,9 @@ export class InvitationApi {
 					...invitation,
 					status: "accepted",
 				});
-				return true;
+				return {
+					ok: true,
+				};
 			}
 
 			// Create character for the user
@@ -165,7 +167,9 @@ export class InvitationApi {
 				status: "accepted",
 			});
 
-			return true;
+			return {
+				ok: true,
+			};
 		},
 	});
 
@@ -174,7 +178,7 @@ export class InvitationApi {
 			params: t.object({
 				id: t.uuid(),
 			}),
-			response: t.boolean(),
+			response: okSchema,
 		},
 		handler: async ({ params, user }) => {
 			const invitation = await this.db.invitations.findOne({
@@ -186,7 +190,9 @@ export class InvitationApi {
 			// Delete the invitation
 			await this.db.invitations.deleteById(invitation.id);
 
-			return true;
+			return {
+				ok: true,
+			};
 		},
 	});
 

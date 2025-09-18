@@ -10,7 +10,7 @@ const envSchema = t.object({
 		default: true,
 		description: "Enable decompression of request body.",
 	}),
-	SERVER_BODY_PARSER_LIMIT: t.uint({
+	SERVER_BODY_PARSER_LIMIT: t.int({
 		default: 100_000, // 100KB
 		min: 0,
 		description: "Maximum size of request body in bytes.",

@@ -1,38 +1,30 @@
-import type { Readable } from "node:stream";
-import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import type {
-	ArrayOptions,
-	IntegerOptions,
-	NumberOptions,
-	ObjectOptions,
-	SchemaOptions,
-	StringOptions,
 	TAny,
 	TArray,
+	TArrayOptions,
 	TBoolean,
-	TComposite,
 	TInteger,
-	TIntersect,
 	TNull,
 	TNumber,
+	TNumberOptions,
 	TObject,
-	TOmit,
-	TOptionalWithFlag,
-	TPartial,
-	TPick,
+	TObjectOptions,
+	TOptionalAdd,
 	TProperties,
 	TRecord,
 	TSchema,
+	TSchemaOptions,
 	TString,
+	TStringOptions,
 	TUnion,
 	TUnsafe,
-	UnsafeOptions,
-} from "@sinclair/typebox";
-import * as TypeBox from "@sinclair/typebox";
-import { FormatRegistry, Kind, Type } from "@sinclair/typebox";
-import * as TypeBoxValue from "@sinclair/typebox/value";
+} from "typebox";
+import * as TypeBox from "typebox";
+import { Type } from "typebox";
+import Format from "typebox/format";
+import * as TypeBoxValue from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
-import { PRIMITIVE } from "../constants/PRIMITIVE.ts";
+import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
 export { TypeBox, TypeBoxValue };
 
@@ -42,23 +34,100 @@ export type {
 	StaticEncode,
 	TAny,
 	TArray,
+	TBigInt,
 	TBoolean,
+	TInteger,
+	TKeysToIndexer,
 	TNull,
 	TNumber,
+	TNumberOptions,
 	TObject,
+	TObjectOptions,
 	TOptional,
+	TOptionalAdd,
+	TPick,
 	TProperties,
 	TRecord,
 	TSchema,
 	TString,
+	TStringOptions,
 	TTuple,
 	TUnion,
-} from "@sinclair/typebox";
-export { TypeGuard } from "@sinclair/typebox";
+	TVoid,
+} from "typebox";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export class TypeGuard {
+	isSchema = TypeBox.IsSchema;
+	isObject = TypeBox.IsObject;
+	isNumber = TypeBox.IsNumber;
+	isString = TypeBox.IsString;
+	isBoolean = TypeBox.IsBoolean;
+	isAny = TypeBox.IsAny;
+	isArray = TypeBox.IsArray;
+	isOptional = TypeBox.IsOptional;
+	isUnion = TypeBox.IsUnion;
+	isInteger = TypeBox.IsInteger;
+	isNull = TypeBox.IsNull;
+	isUndefined = TypeBox.IsUndefined;
+	isUnsafe = TypeBox.IsUnsafe;
+	isRecord = TypeBox.IsRecord;
+	isTuple = TypeBox.IsTuple;
+	isVoid = TypeBox.IsVoid;
+	// -------------------------------------------------------------------------------------------------------------------
+	isFile = isTypeFile;
+	// -------------------------------------------------------------------------------------------------------------------
+	isBigInt = (value: TSchema): value is TString =>
+		TypeBox.IsString(value) && "format" in value && value.format === "int64";
+	isDate = (value: TSchema): value is TString =>
+		TypeBox.IsString(value) && "format" in value && value.format === "date";
+	isDatetime = (value: TSchema): value is TString =>
+		TypeBox.IsString(value) &&
+		"format" in value &&
+		value.format === "date-time";
+	isUuid = (value: TSchema): value is TString =>
+		TypeBox.IsString(value) && "format" in value && value.format === "uuid";
+}
+
+declare module "typebox" {
+	interface TString {
+		format?: string;
+		minLength?: number;
+		maxLength?: number;
+	}
+	interface TNumber {
+		format?: "int64";
+	}
+}
+
 export class TypeProvider {
+	static format = Format;
+
+	static {
+		Format.Set("int64", (value: string | number) =>
+			TypeProvider.isValidBigInt(value),
+		);
+	}
+
+	static isValidBigInt(value: string | number) {
+		if (typeof value === "number") {
+			return Number.isInteger(value);
+		}
+
+		// Reject empty or whitespace-only strings
+		if (!value.trim()) return false;
+		// Regex: optional minus, then digits only
+		if (!/^-?\d+$/.test(value)) return false;
+
+		try {
+			BigInt(value); // Will throw if invalid
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	/**
 	 * Default maximum length for strings.
 	 *
@@ -70,6 +139,9 @@ export class TypeProvider {
 	 */
 	static DEFAULT_STRING_MAX_LENGTH: number | undefined = 255;
 
+	/**
+	 * Maximum length for short strings, such as names or titles.
+	 */
 	static DEFAULT_SHORT_STRING_MAX_LENGTH: number | undefined = 64;
 
 	/**
@@ -104,8 +176,6 @@ export class TypeProvider {
 	 */
 	static DEFAULT_ARRAY_MAX_ITEMS = 1000;
 
-	static FormatRegistry: typeof FormatRegistry = FormatRegistry;
-
 	public raw = Type;
 	public any = Type.Any;
 	public void = Type.Void;
@@ -114,19 +184,20 @@ export class TypeProvider {
 	public omit = Type.Omit;
 	public partial = Type.Partial;
 	public union = Type.Union;
-	public composite = Type.Composite;
 	public pick = Type.Pick;
 	public tuple = Type.Tuple;
+	public interface = Type.Interface;
+
+	public readonly schema = new TypeGuard();
+
+	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
 	 * Create a schema for an object.
-	 *
-	 * @param properties The properties of the object.
-	 * @param options The options for the object.
 	 */
 	public object<T extends TProperties>(
 		properties: T,
-		options?: ObjectOptions,
+		options?: TObjectOptions,
 	): TObject<T> {
 		return Type.Object(properties, {
 			additionalProperties: false,
@@ -142,7 +213,7 @@ export class TypeProvider {
 	 */
 	public array<T extends TSchema>(
 		schema: T,
-		options?: ArrayOptions,
+		options?: TArrayOptions,
 	): TArray<T> {
 		return Type.Array(schema, {
 			maxItems: TypeProvider.DEFAULT_ARRAY_MAX_ITEMS,
@@ -152,8 +223,6 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for a string.
-	 *
-	 * @param options
 	 */
 	public string(options: AlephaStringOptions = {}): TString {
 		const { size, ...rest } = options;
@@ -167,7 +236,6 @@ export class TypeProvider {
 						: TypeProvider.DEFAULT_STRING_MAX_LENGTH;
 
 		return Type.String({
-			[PRIMITIVE]: "string",
 			maxLength,
 			...rest,
 		});
@@ -175,60 +243,26 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for a JSON object.
-	 *
-	 * @param options
+	 * This is a record with string keys and any values.
 	 */
-	public json(options?: SchemaOptions): TRecord<TString, TAny> {
+	public json(options?: TSchemaOptions): TRecord<string, TAny> {
 		return t.record(t.string(), t.any(), options);
 	}
 
 	/**
 	 * Create a schema for a boolean.
-	 *
-	 * @param options
 	 */
-	public boolean(options?: SchemaOptions): TBoolean {
+	public boolean(options?: TSchemaOptions): TBoolean {
 		return Type.Boolean({
-			[PRIMITIVE]: "bool",
 			...options,
 		});
 	}
 
 	/**
 	 * Create a schema for a number.
-	 *
-	 * @param options
 	 */
-	public number(options?: NumberOptions): TNumber {
+	public number(options?: TNumberOptions): TNumber {
 		return Type.Number({
-			[PRIMITIVE]: "float",
-			...options,
-		});
-	}
-
-	/**
-	 * Create a schema for an unsigned 8-bit integer.
-	 *
-	 * @param options
-	 */
-	public uchar(options?: IntegerOptions): TInteger {
-		return Type.Integer({
-			[PRIMITIVE]: "uchar",
-			minimum: 0,
-			maximum: 255,
-			...options,
-		});
-	}
-
-	/**
-	 * Create a schema for an unsigned 32-bit integer.
-	 */
-	public uint(options?: IntegerOptions): TNumber {
-		return Type.Number({
-			[PRIMITIVE]: "uint32",
-			multipleOf: 1,
-			minimum: 0,
-			maximum: 4294967296,
 			...options,
 		});
 	}
@@ -236,9 +270,8 @@ export class TypeProvider {
 	/**
 	 * Create a schema for a signed 32-bit integer.
 	 */
-	public int(options?: IntegerOptions): TInteger {
+	public int(options?: TNumberOptions): TInteger {
 		return Type.Integer({
-			[PRIMITIVE]: "int32",
 			minimum: -2147483647,
 			maximum: 2147483647,
 			...options,
@@ -246,19 +279,15 @@ export class TypeProvider {
 	}
 
 	/**
-	 * Create a schema for a signed 32-bit integer.
+	 * Mimic a signed 64-bit integer.
+	 *
+	 * This is NOT a true int64, as JavaScript cannot represent all int64 values.
+	 * It is a number that is an integer and between -9007199254740991 and 9007199254740991.
+	 * Use `t.bigint()` for true int64 values represented as strings.
 	 */
-	public integer(options?: IntegerOptions): TInteger {
-		return this.int(options);
-	}
-
-	/**
-	 * Create a schema for a bigint. Bigint is a 64-bit integer.
-	 * This is a workaround for TypeBox, which does not support bigint natively.
-	 */
-	public bigint(options?: NumberOptions): TNumber {
+	public int64(options?: TNumberOptions): TNumber {
 		return Type.Number({
-			[PRIMITIVE]: "bigint",
+			format: "int64",
 			multipleOf: 1,
 			minimum: -9007199254740991,
 			maximum: 9007199254740991,
@@ -268,92 +297,67 @@ export class TypeProvider {
 
 	/**
 	 * Make a schema optional.
-	 *
-	 * @param schema The schema to make optional.
 	 */
-	public optional<T extends TSchema>(schema: T): TOptionalWithFlag<T, true> {
+	public optional<T extends TSchema>(schema: T): TOptionalAdd<T> {
 		return Type.Optional(schema);
 	}
 
 	/**
 	 * Make a schema nullable.
-	 *
-	 * @param schema The schema to make nullable.
-	 * @param options The options for the schema.
 	 */
 	public nullable<T extends TSchema>(
 		schema: T,
-		options?: ObjectOptions,
+		options?: TObjectOptions,
 	): TUnion<[TNull, T]> {
 		return Type.Union([Type.Null(), schema], options);
 	}
 
-	public nullify = <T extends TSchema>(schema: T, options?: ObjectOptions) =>
-		Type.Mapped(
-			Type.KeyOf(schema),
-			(K) => this.nullable(Type.Index(schema, K), options),
-			options,
-		);
-
 	/**
-	 * Map a schema to another schema.
-	 *
-	 * @param schema The schema to map.
-	 * @param operations The operations to perform on the schema.
-	 * @param options The options for the schema.
-	 * @returns The mapped schema.
+	 * Create a schema that maps all properties of an object schema to nullable.
 	 */
-	public map<
-		T extends TObject | TIntersect,
-		Omit extends (keyof T["properties"])[],
-		Optional extends (keyof T["properties"])[],
-	>(
-		schema: T,
-		operations: {
-			omit: readonly [...Omit];
-			optional: [...Optional];
-		},
-		options?: ObjectOptions,
-	): TComposite<
-		[TOmit<T, [...Omit, ...Optional]>, TPartial<TPick<T, Optional>>]
-	> {
-		const omit: readonly [...Omit] = operations.omit;
-		const optional: [...Optional] = operations.optional;
-		return Type.Composite(
-			[
-				Type.Omit(schema, [...omit, ...optional]),
-				Type.Partial(Type.Pick(schema, optional)),
-			],
+	public nullify = <T extends TSchema>(schema: T, options?: TObjectOptions) =>
+		Type.Mapped(
+			Type.Identifier("K"),
+			Type.KeyOf(schema),
+			Type.Ref("K"),
+			Type.Union([Type.Index(schema, Type.Ref("K")), Type.Null()]),
 			options,
 		);
-	}
 
 	/**
 	 * Create a schema for a string enum.
-	 *
-	 * @param values
-	 * @param options
 	 */
 	public enum<T extends string[]>(
 		values: [...T],
-		options?: StringOptions,
+		options?: TStringOptions,
 	): TUnsafe<T[number]> {
-		return Type.Unsafe<T[number]>({
-			[PRIMITIVE]: "string",
-			[Kind]: "String",
-			type: "string",
-			enum: values,
-			pattern: values.map((v) => `^${v}$`).join("|"),
+		return Type.Unsafe<T[number]>(
+			t.string({
+				enum: values,
+				pattern: values.map((v) => `^${v}$`).join("|"),
+				...options,
+			}),
+		);
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Create a schema for a bigint.
+	 * This is NOT a BigInt object, but a string that represents a bigint.
+	 */
+	public bigint(options?: TStringOptions): TString {
+		return this.string({
 			...options,
+			format: "int64",
 		});
 	}
 
 	/**
 	 * Create a schema for a datetime.
-	 *
-	 * @param options The options for the date.
+	 * This is NOT a Date object, but a string in ISO 8601 format.
 	 */
-	public datetime(options?: StringOptions): TString {
+	public datetime(options?: TStringOptions): TString {
 		return this.string({
 			...options,
 			format: "date-time",
@@ -362,10 +366,9 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for a date.
-	 *
-	 * @param options
+	 * This is NOT a Date object, but a string in ISO 8601 date format (YYYY-MM-DD).
 	 */
-	public date(options?: StringOptions): TString {
+	public date(options?: TStringOptions): TString {
 		return this.string({
 			...options,
 			format: "date",
@@ -373,37 +376,51 @@ export class TypeProvider {
 	}
 
 	/**
-	 * Create a schema for uuid.
-	 *
-	 * @param options The options for the duration.
+	 * Create a schema for a url.
 	 */
-	public uuid(options?: StringOptions): TString {
+	public url(options?: TStringOptions): TString {
+		return this.string({
+			...options,
+			format: "url",
+		});
+	}
+
+	/**
+	 * Create a schema for uuid.
+	 */
+	public uuid(options?: TStringOptions): TString {
 		return this.string({
 			...options,
 			format: "uuid",
 		});
 	}
 
-	public unsafe<T>(kind: string, options: UnsafeOptions = {}): TUnsafe<T> {
-		return Type.Unsafe<T>({
-			[Kind]: kind,
-			...options,
-		});
+	/**
+	 * Create a schema for a file-like object.
+	 *
+	 * File like mimics the File API in browsers, but is adapted to work in Node.js as well.
+	 *
+	 * Implementation of file-like objects is handled by "alepha/file" package.
+	 */
+	public file(options?: { maxSize?: number }): TFile {
+		return Type.Unsafe(
+			Type.Any({
+				[OPTIONS]: options,
+				format: "binary",
+			}),
+		);
 	}
 
-	public file(options?: { max?: number }): TFile {
-		return t.unsafe<FileLike>("Any", {
-			[OPTIONS]: options,
-			format: "binary",
-			type: "string",
-		});
-	}
-
+	/**
+	 * @experimental
+	 */
 	public stream(): TStream {
-		return t.unsafe<StreamLike>("Any", {
-			format: "stream",
-			type: "string",
-		});
+		return Type.Unsafe(
+			Type.Any({
+				format: "stream",
+				type: "string",
+			}),
+		);
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -414,7 +431,7 @@ export class TypeProvider {
 	 *
 	 * @param options
 	 */
-	public snakeCase = (options?: StringOptions) =>
+	public snakeCase = (options?: TStringOptions) =>
 		this.string({
 			pattern: "^[A-Z_-]+$",
 			...options,
@@ -423,7 +440,7 @@ export class TypeProvider {
 	/**
 	 * Create a schema for an object with a value and label.
 	 */
-	public valueLabel = (options?: ObjectOptions) =>
+	public valueLabel = (options?: TObjectOptions) =>
 		this.object(
 			{
 				value: this.snakeCase({
@@ -445,187 +462,12 @@ export class TypeProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface FileLike {
-	/**
-	 * Filename.
-	 * @default "file"
-	 */
-	name: string;
-
-	/**
-	 * Mandatory MIME type of the file.
-	 * @default "application/octet-stream"
-	 */
-	type: string;
-
-	/**
-	 * Size of the file in bytes.
-	 *
-	 * Always 0 for streams, as the size is not known until the stream is fully read.
-	 *
-	 * @default 0
-	 */
-	size: number;
-
-	/**
-	 * Last modified timestamp in milliseconds since epoch.
-	 *
-	 * Always the current timestamp for streams, as the last modified time is not known.
-	 * We use this field to ensure compatibility with File API.
-	 *
-	 * @default Date.now()
-	 */
-	lastModified: number;
-
-	/**
-	 * Returns a ReadableStream or Node.js Readable stream of the file content.
-	 *
-	 * For streams, this is the original stream.
-	 */
-	stream(): StreamLike;
-
-	/**
-	 * Returns the file content as an ArrayBuffer.
-	 *
-	 * For streams, this reads the entire stream into memory.
-	 */
-	arrayBuffer(): Promise<ArrayBuffer>;
-
-	/**
-	 * Returns the file content as a string.
-	 *
-	 * For streams, this reads the entire stream into memory and converts it to a string.
-	 */
-	text(): Promise<string>;
-
-	// -- node specific fields --
-
-	/**
-	 * Optional file path, if the file is stored on disk.
-	 *
-	 * This is not from the File API, but rather a custom field to indicate where the file is stored.
-	 */
-	filepath?: string;
-}
-
-/**
- * TypeBox view of FileLike.
- */
-export type TFile = TUnsafe<FileLike>;
-
-export const isTypeFile = (value: TSchema): value is TFile => {
-	return (
-		value &&
-		value[Kind] === "Any" &&
-		value.type === "string" &&
-		value.format === "binary"
-	);
-};
-
-export const isFileLike = (value: any): value is FileLike => {
-	return (
-		!!value &&
-		typeof value === "object" &&
-		!Array.isArray(value) &&
-		typeof value.name === "string" &&
-		typeof value.type === "string" &&
-		typeof value.size === "number" &&
-		typeof value.stream.bind(value) === "function"
-	);
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export type StreamLike =
-	| ReadableStream
-	| WebReadableStream
-	| Readable
-	| NodeJS.ReadableStream;
-
-export type TStream = TUnsafe<StreamLike>;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 export type TextLength = "short" | "long" | "rich";
 
-export interface AlephaStringOptions extends StringOptions {
+export interface AlephaStringOptions extends TStringOptions {
 	size?: TextLength;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const t: TypeProvider = new TypeProvider();
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-FormatRegistry.Set("date", isISODate);
-FormatRegistry.Set("date-time", isISODateTime);
-FormatRegistry.Set("time", isISOTime);
-FormatRegistry.Set("uuid", isUUID);
-FormatRegistry.Set("email", isEmail);
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-const DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
-const DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-const TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
-const DATE_TIME_SEPARATOR = /t|\s/i;
-const UUID = /^(?:urn:uuid:)?[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-const EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/i;
-
-function isLeapYear(year: number): boolean {
-	// https://tools.ietf.org/html/rfc3339#appendix-C
-	return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
-
-function isISOTime(value: string): boolean {
-	const matches: string[] | null = TIME.exec(value);
-	if (!matches) return false;
-	const hr: number = +matches[1];
-	const min: number = +matches[2];
-	const sec: number = +matches[3];
-	const tz: string | undefined = matches[4];
-	const tzSign: number = matches[5] === "-" ? -1 : 1;
-	const tzH: number = +(matches[6] || 0);
-	const tzM: number = +(matches[7] || 0);
-	if (tzH > 23 || tzM > 59 || !tz) return false;
-	if (hr <= 23 && min <= 59 && sec < 60) return true;
-	// leap second
-	const utcMin = min - tzM * tzSign;
-	const utcHr = hr - tzH * tzSign - (utcMin < 0 ? 1 : 0);
-	return (
-		(utcHr === 23 || utcHr === -1) &&
-		(utcMin === 59 || utcMin === -1) &&
-		sec < 61
-	);
-}
-
-export function isISODate(str: string): boolean {
-	// full-date from http://tools.ietf.org/html/rfc3339#section-5.6
-	const matches: string[] | null = DATE.exec(str);
-	if (!matches) return false;
-	const year: number = +matches[1];
-	const month: number = +matches[2];
-	const day: number = +matches[3];
-	return (
-		month >= 1 &&
-		month <= 12 &&
-		day >= 1 &&
-		day <= (month === 2 && isLeapYear(year) ? 29 : DAYS[month])
-	);
-}
-
-export function isISODateTime(value: string): boolean {
-	const dateTime: string[] = value.split(DATE_TIME_SEPARATOR);
-	return (
-		dateTime.length === 2 && isISODate(dateTime[0]) && isISOTime(dateTime[1])
-	);
-}
-
-export function isUUID(value: string): boolean {
-	return UUID.test(value);
-}
-
-export function isEmail(value: string): boolean {
-	return EMAIL.test(value);
-}

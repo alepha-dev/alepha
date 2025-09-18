@@ -1,24 +1,26 @@
-import { t } from "@alepha/core";
 import type {
-	ObjectOptions,
 	TArray,
 	TBoolean,
 	TInteger,
-	TIntersect,
 	TObject,
-	TOptionalWithFlag,
+	TObjectOptions,
+	TOptionalAdd,
 	TRecord,
-} from "@sinclair/typebox";
+} from "@alepha/core";
+import { t } from "@alepha/core";
 
 /**
- * Page Schema
+ * Create a pagination schema for the given object schema.
  *
- * @param objectSchema
- * @param options
+ * @example
+ * const userSchema = t.object({ id: t.int(), name: t.string() });
+ * const pagedUserSchema = pageSchema(userSchema);
+ *
+ * @see {@link $repository#paginate}
  */
-export const pageSchema = <T extends TObject | TIntersect | TRecord>(
+export const pageSchema = <T extends TObject | TRecord>(
 	objectSchema: T,
-	options?: ObjectOptions,
+	options?: TObjectOptions,
 ): TPage<T> =>
 	t.object(
 		{
@@ -33,19 +35,16 @@ export const pageSchema = <T extends TObject | TIntersect | TRecord>(
 				totalElements: t.optional(t.int()),
 			}),
 		},
-		{
-			title: objectSchema.title ? `${objectSchema.title}Page` : undefined,
-			...options,
-		},
+		options,
 	);
 
-export type TPage<T extends TObject | TIntersect | TRecord> = TObject<{
+export type TPage<T extends TObject | TRecord> = TObject<{
 	content: TArray<T>;
 	can: TObject<{ next: TBoolean; previous: TBoolean }>;
 	page: TObject<{
 		number: TInteger;
 		size: TInteger;
-		totalElements: TOptionalWithFlag<TInteger, true>;
+		totalElements: TOptionalAdd<TInteger>;
 	}>;
 }>;
 
