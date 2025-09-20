@@ -762,7 +762,7 @@ export class ActionDescriptor<
 	 * There is no HTTP layer involved.
 	 */
 	public async run(
-		config: ClientRequestEntry<TConfig>,
+		config?: ClientRequestEntry<TConfig>,
 		options: ClientRequestOptions = {}, // most of the options are ignored here
 	): Promise<ClientRequestResponse<TConfig>> {
 		const handler = this.options.handler;
@@ -771,7 +771,7 @@ export class ActionDescriptor<
 			params = {},
 			query = {},
 			headers = {},
-		} = config as ClientRequestEntryContainer<RequestConfigSchema>;
+		} = (config ?? {}) as ClientRequestEntryContainer<RequestConfigSchema>;
 		const reply = new ServerReply();
 		const method = this.method;
 

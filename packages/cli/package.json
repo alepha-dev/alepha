@@ -21,7 +21,7 @@
 		"@alepha/core": "^0.9.5",
 		"@alepha/logger": "^0.9.5",
 		"@biomejs/biome": "^2.2.4",
-		"tsdown": "^0.15.2",
+		"tsdown": "^0.15.3",
 		"typescript": "^5.9.2"
 	},
 	"scripts": {

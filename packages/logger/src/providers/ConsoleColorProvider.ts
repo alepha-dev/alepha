@@ -13,10 +13,7 @@ const envSchema = t.object({
 });
 
 export class ConsoleColorProvider {
-	protected readonly env = $env(envSchema);
-	protected readonly alepha = $inject(Alepha);
-
-	public readonly colors = {
+	static readonly COLORS = {
 		reset: "\x1b[0m",
 		grey: "\x1b[90m",
 		red: "\x1b[31m",
@@ -34,6 +31,9 @@ export class ConsoleColorProvider {
 		debug: "\x1b[34m",
 		trace: "\x1b[90m",
 	};
+
+	protected readonly env = $env(envSchema);
+	protected readonly alepha = $inject(Alepha);
 
 	protected enabled = true;
 
@@ -54,14 +54,14 @@ export class ConsoleColorProvider {
 	}
 
 	public colorize(
-		color: keyof typeof this.colors,
+		color: keyof typeof ConsoleColorProvider.COLORS,
 		text: string,
-		reset: string = this.colors.reset,
+		reset: string = ConsoleColorProvider.COLORS.reset,
 	): string {
 		if (!this.enabled) {
 			return text;
 		}
 
-		return `${this.colors[color]}${text}${reset}`;
+		return `${ConsoleColorProvider.COLORS[color]}${text}${reset}`;
 	}
 }

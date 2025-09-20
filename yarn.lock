@@ -14,7 +14,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/retry": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -31,7 +31,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@azure/storage-blob": "npm:^12.29.0"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -49,7 +49,7 @@ __metadata:
     "@biomejs/biome": "npm:^2.2.4"
     "@types/node": "npm:^24.5.2"
     "@vercel/blob": "npm:^2.0.0"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -63,7 +63,7 @@ __metadata:
     "@alepha/file": "npm:0.9.5"
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -78,7 +78,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/redis": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -92,7 +92,7 @@ __metadata:
     "@alepha/datetime": "npm:0.9.5"
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -106,7 +106,7 @@ __metadata:
     "@alepha/core": "npm:^0.9.5"
     "@alepha/logger": "npm:^0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
   bin:
     alepha: ./dist/index.cjs
@@ -120,7 +120,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/logger": "npm:^0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -131,8 +131,8 @@ __metadata:
   resolution: "@alepha/core@workspace:packages/core"
   dependencies:
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
-    typebox: "npm:^1.0.8"
+    tsdown: "npm:^0.15.3"
+    typebox: "npm:^1.0.12"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -146,7 +146,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     dayjs: "npm:^1.11.18"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -161,7 +161,7 @@ __metadata:
     "@biomejs/biome": "npm:^2.2.4"
     "@types/nodemailer": "npm:^7.0.1"
     nodemailer: "npm:^7.0.6"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -173,7 +173,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -189,7 +189,7 @@ __metadata:
     "@alepha/redis": "npm:0.9.5"
     "@alepha/topic-redis": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -204,7 +204,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/topic": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -216,7 +216,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:^0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -235,7 +235,7 @@ __metadata:
     drizzle-kit: "npm:0.31.4"
     drizzle-orm: "npm:^0.44.5"
     postgres: "npm:^3.4.7"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -248,7 +248,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     protobufjs: "npm:^7.5.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -262,7 +262,7 @@ __metadata:
     "@alepha/queue": "npm:0.9.5"
     "@alepha/redis": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -276,7 +276,7 @@ __metadata:
     "@alepha/datetime": "npm:0.9.5"
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -299,7 +299,7 @@ __metadata:
     openid-client: "npm:^6.8.0"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   peerDependencies:
@@ -320,7 +320,7 @@ __metadata:
     "@types/react": "npm:^19.1.13"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   peerDependencies:
@@ -340,7 +340,7 @@ __metadata:
     "@types/react": "npm:^19.1.13"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   peerDependencies:
@@ -360,7 +360,7 @@ __metadata:
     "@biomejs/biome": "npm:^2.2.4"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   peerDependencies:
@@ -386,7 +386,7 @@ __metadata:
     "@types/react-dom": "npm:^19.1.9"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   peerDependencies:
@@ -403,7 +403,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     "@redis/client": "npm:^5.8.2"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -416,7 +416,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/datetime": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -428,7 +428,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:^0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -445,7 +445,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     cron-schedule: "npm:^5.0.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -460,7 +460,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     jose: "npm:^6.1.0"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -476,7 +476,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -489,7 +489,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -504,7 +504,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -517,7 +517,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -531,7 +531,7 @@ __metadata:
     "@alepha/datetime": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -544,7 +544,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -562,7 +562,7 @@ __metadata:
     "@alepha/server-proxy": "npm:0.9.5"
     "@alepha/server-security": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -576,7 +576,7 @@ __metadata:
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     prom-client: "npm:^15.1.3"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -591,7 +591,7 @@ __metadata:
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
     "@fastify/busboy": "npm:^3.2.0"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -605,7 +605,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -619,7 +619,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -634,7 +634,7 @@ __metadata:
     "@alepha/security": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -650,7 +650,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/server": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -668,7 +668,7 @@ __metadata:
     "@biomejs/biome": "npm:^2.2.4"
     openapi-types: "npm:^12.1.3"
     swagger-ui-dist: "npm:^5.29.0"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -685,7 +685,7 @@ __metadata:
     "@alepha/logger": "npm:0.9.5"
     "@alepha/router": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -702,7 +702,7 @@ __metadata:
     jsdom: "npm:^27.0.0"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
   languageName: unknown
   linkType: soft
@@ -714,7 +714,7 @@ __metadata:
     "@alepha/core": "npm:0.9.5"
     "@alepha/logger": "npm:^0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -729,7 +729,7 @@ __metadata:
     "@alepha/redis": "npm:0.9.5"
     "@alepha/topic": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -743,7 +743,7 @@ __metadata:
     "@alepha/datetime": "npm:0.9.5"
     "@alepha/logger": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -755,7 +755,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.9.5"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
     typescript: "npm:^5.9.2"
     vite: "npm:^7.1.6"
   peerDependencies:
@@ -4649,14 +4649,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/express@npm:0.0.16":
-  version: 0.0.16
-  resolution: "@vercel/express@npm:0.0.16"
+"@vercel/express@npm:0.0.17":
+  version: 0.0.17
+  resolution: "@vercel/express@npm:0.0.17"
   dependencies:
-    "@vercel/node": "npm:5.3.22"
+    "@vercel/node": "npm:5.3.23"
     "@vercel/static-config": "npm:3.1.2"
     ts-morph: "npm:12.0.0"
-  checksum: 10c0/30f80296d02a19ec12857c0c66f383ee7a681a8b0794be9defc28b52e02ffd084f3822ed565d885b9e26196e8fbda72907b294c927001e2430cddcf3aa79c063
+  checksum: 10c0/3463734298febd7e11b2667eaf6a335b3c27ea8bd4afeaddb38a18d29ebc3c9dbbd3ada9345d630d027e78c8b5091e659c7e01346c2497019ddfc1fd1096ae4b
   languageName: node
   linkType: hard
 
@@ -4715,24 +4715,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/h3@npm:0.1.0":
-  version: 0.1.0
-  resolution: "@vercel/h3@npm:0.1.0"
+"@vercel/h3@npm:0.1.1":
+  version: 0.1.1
+  resolution: "@vercel/h3@npm:0.1.1"
   dependencies:
-    "@vercel/node": "npm:5.3.22"
+    "@vercel/node": "npm:5.3.23"
     "@vercel/static-config": "npm:3.1.2"
-  checksum: 10c0/a2ee7a31f5ad48b6f068d17d63918ddcbd39a6fdf9ea33c14e29c15e5d2c2a99c74a68203e61ef681500f59c67e2c3d601f9f56b91e5139d7370655be424daed
+  checksum: 10c0/165effce93da7703f4326d173cc25fd612587b69fd323cc4c8f0a06ce345da81db487ae939c95b79c965240b14418c61e0cbbdc86a0371c003094e709fedee9f
   languageName: node
   linkType: hard
 
-"@vercel/hono@npm:0.1.0":
-  version: 0.1.0
-  resolution: "@vercel/hono@npm:0.1.0"
+"@vercel/hono@npm:0.1.1":
+  version: 0.1.1
+  resolution: "@vercel/hono@npm:0.1.1"
   dependencies:
-    "@vercel/node": "npm:5.3.22"
+    "@vercel/node": "npm:5.3.23"
     "@vercel/static-config": "npm:3.1.2"
     ts-morph: "npm:12.0.0"
-  checksum: 10c0/744112461c02de4dfdc3aca0d5fbeaad540d65e145da22e613fa7aad253bd0b285ea1987c1bd6a5bf06c981581d4e5db16112696b63977b77d0e04978361b821
+  checksum: 10c0/6964488ad5d3324b66c980672b1c5e0fc975b757829b5ffe448f8e3806c30618934145f51ced4b12ce569892c04e220b2b8473d20d3c5c0d8c1b97f6204704f3
   languageName: node
   linkType: hard
 
@@ -4746,12 +4746,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/next@npm:4.12.5":
-  version: 4.12.5
-  resolution: "@vercel/next@npm:4.12.5"
+"@vercel/next@npm:4.12.6":
+  version: 4.12.6
+  resolution: "@vercel/next@npm:4.12.6"
   dependencies:
     "@vercel/nft": "npm:0.30.1"
-  checksum: 10c0/ed424639b295165a7577735070c1044de97427ebe20fc591f10cd18f9ded35de4fbebcd4fc382a525b5ae60e089dc268c7bf4443c12a0482f803e2b257665a81
+  checksum: 10c0/ddb636f692248621508868122397c666e5e1d75101547d9f8f819ab9e36e7968972c1c8cb3146e6a06dabdf9fd97d25c3f6ca5549317729f5b6c79e9b8e3a54d
   languageName: node
   linkType: hard
 
@@ -4777,9 +4777,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/node@npm:5.3.22":
-  version: 5.3.22
-  resolution: "@vercel/node@npm:5.3.22"
+"@vercel/node@npm:5.3.23":
+  version: 5.3.23
+  resolution: "@vercel/node@npm:5.3.23"
   dependencies:
     "@edge-runtime/node-utils": "npm:2.3.0"
     "@edge-runtime/primitives": "npm:4.1.0"
@@ -4803,14 +4803,14 @@ __metadata:
     ts-node: "npm:10.9.1"
     typescript: "npm:4.9.5"
     undici: "npm:5.28.4"
-  checksum: 10c0/22fa75665fead75cd23a0073ca23c30a8daa918c9ea8f901c116f0673abb79a1263858242757dc3a5683074cd30de25d4887d0acaf6c80c2ad768b054b8e5203
+  checksum: 10c0/15c11792b20df20d7dfd9d926a2ef06c942045adb7bba7c9a32e07cebd33e748e66812530106c79b58e2e7a2e8ffb4e161f1911a675b0aed58e61932da8ee34e
   languageName: node
   linkType: hard
 
-"@vercel/python@npm:5.0.4":
-  version: 5.0.4
-  resolution: "@vercel/python@npm:5.0.4"
-  checksum: 10c0/b9e5732d58d2652077ece23457236a5b368a02f04eaf6c7e7c5bff5efc060461cde4a41361e7c2e0ecccba386fdbe0ef1728c77f72dba93ade8850f7b4d45262
+"@vercel/python@npm:5.0.5":
+  version: 5.0.5
+  resolution: "@vercel/python@npm:5.0.5"
+  checksum: 10c0/00e665c0f579b84b3834a417a2dc404b4cd9e9bd853276a2d188df4572bd3d712e004b78c3bb869b6fd3a301115c5ce7be1ea1595a8b819e10259d67f2d5b935
   languageName: node
   linkType: hard
 
@@ -5333,7 +5333,7 @@ __metadata:
     "@alepha/topic": "npm:0.9.5"
     "@alepha/topic-redis": "npm:0.9.5"
     "@alepha/vite": "npm:0.9.5"
-    tsdown: "npm:^0.15.2"
+    tsdown: "npm:^0.15.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -7855,9 +7855,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"framer-motion@npm:^12.23.15":
-  version: 12.23.15
-  resolution: "framer-motion@npm:12.23.15"
+"framer-motion@npm:^12.23.16":
+  version: 12.23.16
+  resolution: "framer-motion@npm:12.23.16"
   dependencies:
     motion-dom: "npm:^12.23.12"
     motion-utils: "npm:^12.23.6"
@@ -7873,7 +7873,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/472bd4a0c9d293f1a309109fbe055b83cf5524af03fb01afa05a7d34dc425b00906df8b4d4797cf6a18d31f6dcde925b3e28c4325ec7e7f67a8cfcdb5a440ee7
+  checksum: 10c0/a154b614581f9e4d359a16cd590da7331e27857ac099c83908b5ec2b6bd7092d12192d989ecf17029355e64290d119e508342b5a6b0db69462df36727c674781
   languageName: node
   linkType: hard
 
@@ -11054,13 +11054,13 @@ __metadata:
     "@vitejs/plugin-react": "npm:^5.0.3"
     animate.css: "npm:^4.1.1"
     drizzle-kit: "npm:0.31.4"
-    framer-motion: "npm:^12.23.15"
+    framer-motion: "npm:^12.23.16"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
     recharts: "npm:^3.2.1"
     sanitize-html: "npm:^2.17.0"
     typescript: "npm:^5.9.2"
-    vercel: "npm:^48.0.3"
+    vercel: "npm:^48.1.0"
     vite: "npm:^7.1.6"
   languageName: unknown
   linkType: soft
@@ -12301,9 +12301,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsdown@npm:^0.15.2":
-  version: 0.15.2
-  resolution: "tsdown@npm:0.15.2"
+"tsdown@npm:^0.15.3":
+  version: 0.15.3
+  resolution: "tsdown@npm:0.15.3"
   dependencies:
     ansis: "npm:^4.1.0"
     cac: "npm:^6.7.14"
@@ -12338,7 +12338,7 @@ __metadata:
       optional: true
   bin:
     tsdown: dist/run.mjs
-  checksum: 10c0/bce0343d24a2495003c2dc9849de95c8adbfcb6873ba9ec422bc7f408f6de7f1e6736fcca7044f41c87e588428c53d4d44ec2d7e350e85587b5786e4e1a7b0d1
+  checksum: 10c0/d73a7713bd32c180f53cdca58930323304308b082442ae0cb8f9738175ebf6082317e4c3858c55281adadd0956bef7c59c192b9b60bb772b0ebf033cd93b580d
   languageName: node
   linkType: hard
 
@@ -12367,10 +12367,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.8":
-  version: 1.0.8
-  resolution: "typebox@npm:1.0.8"
-  checksum: 10c0/86884ea457e1fc0f58ffe54fc3dbccdf547f74b6c808f8891ac641adc06db4165146e9a48b11c9b3e31829420efcab5468fd3230f9cab00988fbcdfdb6703890
+"typebox@npm:^1.0.12":
+  version: 1.0.12
+  resolution: "typebox@npm:1.0.12"
+  checksum: 10c0/aef27178c957648f1bb98f7800286ce75ebe5c6c04b43cb548da96b50f7c39243e4e677d09033d107c7c3c40779f7e4de258857d55dfb9310b5a6d3bd4d75c09
   languageName: node
   linkType: hard
 
@@ -12746,22 +12746,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vercel@npm:^48.0.3":
-  version: 48.0.3
-  resolution: "vercel@npm:48.0.3"
+"vercel@npm:^48.1.0":
+  version: 48.1.0
+  resolution: "vercel@npm:48.1.0"
   dependencies:
     "@vercel/blob": "npm:1.0.2"
     "@vercel/build-utils": "npm:12.1.0"
     "@vercel/detect-agent": "npm:0.2.0"
-    "@vercel/express": "npm:0.0.16"
+    "@vercel/express": "npm:0.0.17"
     "@vercel/fun": "npm:1.1.6"
     "@vercel/go": "npm:3.2.3"
-    "@vercel/h3": "npm:0.1.0"
-    "@vercel/hono": "npm:0.1.0"
+    "@vercel/h3": "npm:0.1.1"
+    "@vercel/hono": "npm:0.1.1"
     "@vercel/hydrogen": "npm:1.2.4"
-    "@vercel/next": "npm:4.12.5"
-    "@vercel/node": "npm:5.3.22"
-    "@vercel/python": "npm:5.0.4"
+    "@vercel/next": "npm:4.12.6"
+    "@vercel/node": "npm:5.3.23"
+    "@vercel/python": "npm:5.0.5"
     "@vercel/redwood": "npm:2.3.6"
     "@vercel/remix-builder": "npm:5.4.12"
     "@vercel/ruby": "npm:2.2.1"
@@ -12771,7 +12771,7 @@ __metadata:
   bin:
     vc: dist/vc.js
     vercel: dist/vc.js
-  checksum: 10c0/8ebc18afbb68f39daa81687782cfbe0581dbb13cbbe67d1e53ef026cbe751a75677b5bd187e28ca890e9077205cb05d81acc6a75f73bd9f72ba78376a95726e2
+  checksum: 10c0/c44c6d88604a4ca9de38175f5da6ef23e1fe01acd5dafb2a5af25f0c3b73eb7e4aea6a900d31e23765b31d78e15007e6a118e01fa7ff0d1b8cce542a3cc98fb0
   languageName: node
   linkType: hard
 

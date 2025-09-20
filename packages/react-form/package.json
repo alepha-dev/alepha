@@ -24,7 +24,7 @@
 		"@types/react": "^19.1.13",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1",
-		"tsdown": "^0.15.2",
+		"tsdown": "^0.15.3",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

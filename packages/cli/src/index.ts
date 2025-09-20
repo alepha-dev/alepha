@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cp, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, run, t } from "@alepha/core";
@@ -21,50 +21,42 @@ class AlephaCli {
 	create = $command({
 		name: "create",
 		description: "Create a new Alepha project",
-		flags: t.object({
-			name: t.optional(
-				t.string({
-					description: "Name of the project",
-				}),
-			),
-		}),
+		args: t.string(),
 		summary: false,
-		handler: async ({ run, flags }) => {
-			const name = flags.name ?? "my-alepha-project";
-			const source = join(
-				import.meta.dirname,
-				"..",
-				"assets",
-				"templates",
-				"default",
-			);
-			const dest = join(process.cwd(), name);
+		handler: async ({ run, args }) => {
+			const name = args;
 
-			await run("📂 Copying files", async () => {
-				await cp(source, dest, { recursive: true });
+			await run(`git clone https://github.com/feunard/alepha-starter ${name}`);
 
-				// change alepha version in package.json
-				const packageJsonPath = join(dest, "package.json");
+			// Remove .git directory to start fresh
+			await run(`rm -rf ${name}/.git`);
+
+			await run("update versions", async () => {
+				const packageJsonPath = join(process.cwd(), name, "package.json");
 				const packageJsonContent = await readFile(packageJsonPath, "utf-8");
 				await writeFile(
 					packageJsonPath,
 					packageJsonContent.replace(
-						`"alepha": "*"`,
+						/"alepha": "[^"]*"/,
 						`"alepha": "^${pkg.version}"`,
 					),
 					"utf-8",
 				);
 			});
 
-			// with emoji
 			await run(`cd ${name} && npm install`, undefined, {
 				alias: "📦 Installing dependencies",
 			});
 
+			await run(`cd ${name} && npm run lint`);
+			await run(`cd ${name} && npm run check`);
+			await run(`cd ${name} && npm run test`);
+			await run(`cd ${name} && npm run build`);
+
 			this.log.info(
 				`\n🎉 Project created successfully!
 
-			  $ cd ${name} && npm run dev
+$ cd ${name} && npm run dev
 			`,
 			);
 		},
