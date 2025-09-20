@@ -266,7 +266,8 @@ export class CliProvider {
 
 		if (t.schema.isOptional(schema)) {
 			const typeName = this.getTypeName(schema);
-			return ` [arg1: ${typeName}]`;
+			const key = "title" in schema ? (schema as any).title : "arg1";
+			return ` [${key}${typeName}]`;
 		}
 
 		if (t.schema.isTuple(schema) && schema.items) {
@@ -275,27 +276,28 @@ export class CliProvider {
 				const argName = `arg${index + 1}`;
 				const typeName = this.getTypeName(item);
 				if (t.schema.isOptional(item)) {
-					return `[${argName}: ${typeName}]`;
+					return `[${argName}${typeName}]`;
 				}
-				return `<${argName}: ${typeName}>`;
+				return `<${argName}${typeName}>`;
 			});
 			return ` ${args.join(" ")}`;
 		}
 
 		const typeName = this.getTypeName(schema);
-		return ` <arg1: ${typeName}>`;
+		const key = "title" in schema ? (schema as any).title : "arg1";
+		return ` <${key}${typeName}>`;
 	}
 
 	protected getTypeName(schema: TSchema): string {
-		if (!schema) return "any";
+		if (!schema) return "";
 
 		// Check TypeBox type guards first
-		if (t.schema.isString(schema)) return "string";
-		if (t.schema.isNumber(schema)) return "number";
-		if (t.schema.isInteger(schema)) return "integer";
-		if (t.schema.isBoolean(schema)) return "boolean";
+		if (t.schema.isString(schema)) return "";
+		if (t.schema.isNumber(schema)) return ": number";
+		if (t.schema.isInteger(schema)) return ": integer";
+		if (t.schema.isBoolean(schema)) return ": boolean";
 
-		return "any";
+		return "";
 	}
 
 	public printHelp(command?: CommandDescriptor<any>): void {
@@ -345,15 +347,17 @@ export class CliProvider {
 			this.log.info("Commands:");
 			const maxCmdLength = this.getMaxCmdLength(this.commands);
 
-			for (const { name, aliases, options } of this.commands) {
+			for (const command of this.commands) {
 				// skip root command in list
-				if (name === "") {
+				if (command.name === "") {
 					continue;
 				}
 
-				const cmdStr = [name, ...aliases].join(", ");
+				const cmdStr = [command.name, ...command.aliases].join(", ");
+				const argsUsage = this.generateArgsUsage(command.options.args);
+				const fullCmdStr = `${cmdStr}${argsUsage}`;
 				this.log.info(
-					`    ${cliName} ${cmdStr.padEnd(maxCmdLength)} # ${options.description ?? ""}`,
+					`    ${cliName} ${fullCmdStr.padEnd(maxCmdLength)} # ${command.options.description ?? ""}`,
 				);
 			}
 
@@ -375,7 +379,11 @@ export class CliProvider {
 
 	private getMaxCmdLength(commands: CommandDescriptor[]): number {
 		return Math.max(
-			...commands.map((c) => [c.name, ...c.aliases].join(", ").length),
+			...commands.map((c) => {
+				const cmdStr = [c.name, ...c.aliases].join(", ");
+				const argsUsage = this.generateArgsUsage(c.options.args);
+				return `${cmdStr}${argsUsage}`.length;
+			}),
 		);
 	}
 

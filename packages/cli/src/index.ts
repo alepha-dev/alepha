@@ -21,7 +21,7 @@ class AlephaCli {
 	create = $command({
 		name: "create",
 		description: "Create a new Alepha project",
-		args: t.string(),
+		args: t.string({ title: "name" }),
 		summary: false,
 		handler: async ({ run, args }) => {
 			const name = args;
