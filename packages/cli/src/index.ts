@@ -26,35 +26,50 @@ class AlephaCli {
 		handler: async ({ run, args }) => {
 			const name = args;
 
-			await run(`git clone https://github.com/feunard/alepha-starter ${name}`);
+			await run(
+				`git clone https://github.com/feunard/alepha-starter ${name}`,
+				undefined,
+				{ alias: "📥 Cloning repository" },
+			);
 
 			// Remove .git directory to start fresh
-			await run(`rm -rf ${name}/.git`);
-
-			await run("update versions", async () => {
-				const packageJsonPath = join(process.cwd(), name, "package.json");
-				const packageJsonContent = await readFile(packageJsonPath, "utf-8");
-				await writeFile(
-					packageJsonPath,
-					packageJsonContent.replace(
-						/"alepha": "[^"]*"/,
-						`"alepha": "^${pkg.version}"`,
-					),
-					"utf-8",
-				);
+			await run(`rm -rf ${name}/.git`, undefined, {
+				alias: "🔧 Setting up project",
 			});
+
+			const packageJsonPath = join(process.cwd(), name, "package.json");
+			const packageJsonContent = await readFile(packageJsonPath, "utf-8");
+			await writeFile(
+				packageJsonPath,
+				packageJsonContent.replace(
+					/"alepha": "[^"]*"/,
+					`"alepha": "^${pkg.version}"`,
+				),
+				"utf-8",
+			);
 
 			await run(`cd ${name} && npm install`, undefined, {
 				alias: "📦 Installing dependencies",
 			});
 
-			await run(`cd ${name} && npm run lint`);
-			await run(`cd ${name} && npm run check`);
-			await run(`cd ${name} && npm run test`);
-			await run(`cd ${name} && npm run build`);
+			await run(`cd ${name} && npm run lint`, undefined, {
+				alias: "🔍 Linting code",
+			});
+
+			await run(`cd ${name} && npm run check`, undefined, {
+				alias: "✅ Type checking",
+			});
+
+			await run(`cd ${name} && npm run test`, undefined, {
+				alias: "🧪 Running tests",
+			});
+
+			await run(`cd ${name} && npm run build`, undefined, {
+				alias: "🏗️ Building project",
+			});
 
 			this.log.info(
-				`\n🎉 Project created successfully!
+				`\n🎉 Project is ready!
 
 $ cd ${name} && npm run dev
 			`,

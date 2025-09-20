@@ -7,6 +7,15 @@ export class RawFormatterProvider extends LogFormatterProvider {
 
 		output += `${entry.message}`;
 
+		if (entry.data instanceof Error) {
+			output += `\n${entry.data.message}`;
+			let cause = entry.data.cause;
+			while (cause instanceof Error) {
+				output += `\nCaused by: ${cause.message}`;
+				cause = cause.cause;
+			}
+		}
+
 		return output;
 	}
 }
