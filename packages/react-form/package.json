@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/react-form",
 	"description": "Manages form state and validation in React applications.",
-	"version": "0.9.5",
+	"version": "0.10.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,12 +14,12 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.5",
-		"@alepha/logger": "0.9.5",
-		"@alepha/react": "0.9.5"
+		"@alepha/core": "0.10.0",
+		"@alepha/logger": "0.10.0",
+		"@alepha/react": "0.10.0"
 	},
 	"devDependencies": {
-		"@alepha/testing": "0.9.5",
+		"@alepha/testing": "0.10.0",
 		"@biomejs/biome": "^2.2.4",
 		"@types/react": "^19.1.13",
 		"react": "^19.1.1",

@@ -2,8 +2,8 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
-		"@alepha/core": "0.9.5",
-		"@alepha/react": "0.9.5",
+		"@alepha/core": "0.10.0",
+		"@alepha/react": "0.10.0",
 		"@fontsource/inter": "^5.2.8",
 		"@mantine/core": "^8.3.1",
 		"@mantine/form": "^8.3.1",

@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/scheduler",
 	"description": "Schedule recurring tasks using cron expressions or fixed intervals.",
-	"version": "0.9.5",
+	"version": "0.10.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,14 +14,14 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.9.5",
-		"@alepha/datetime": "0.9.5",
-		"@alepha/lock": "0.9.5",
-		"@alepha/logger": "0.9.5",
+		"@alepha/core": "0.10.0",
+		"@alepha/datetime": "0.10.0",
+		"@alepha/lock": "0.10.0",
+		"@alepha/logger": "0.10.0",
 		"cron-schedule": "^5.0.4"
 	},
 	"devDependencies": {
-		"@alepha/lock-redis": "0.9.5",
+		"@alepha/lock-redis": "0.10.0",
 		"@biomejs/biome": "^2.2.4",
 		"tsdown": "^0.15.3",
 		"typescript": "^5.9.2",
