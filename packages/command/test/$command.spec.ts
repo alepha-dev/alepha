@@ -518,7 +518,7 @@ describe("$command", () => {
 			);
 
 			const output = mockLogger.logs.map((l) => l.message).join("\n");
-			expect(output).toContain("Usage: `test-cli cmd <arg1: string>`");
+			expect(output).toContain("Usage: `test-cli cmd <arg1>`");
 		});
 
 		test("should show argument usage in help for optional argument", async () => {
@@ -539,7 +539,7 @@ describe("$command", () => {
 			);
 
 			const output = mockLogger.logs.map((l) => l.message).join("\n");
-			expect(output).toContain("Usage: `test-cli cmd [arg1: string]`");
+			expect(output).toContain("Usage: `test-cli cmd [arg1]`");
 		});
 
 		test("should show argument usage in help for tuple arguments", async () => {
@@ -560,9 +560,7 @@ describe("$command", () => {
 			);
 
 			const output = mockLogger.logs.map((l) => l.message).join("\n");
-			expect(output).toContain(
-				"Usage: `test-cli cmd <arg1: string> [arg2: number]`",
-			);
+			expect(output).toContain("Usage: `test-cli cmd <arg1> [arg2: number]`");
 		});
 	});
 });
