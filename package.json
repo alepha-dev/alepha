@@ -22,6 +22,7 @@
 	"scripts": {
 		"w": "yarn workspace",
 		"v": "yarn alepha verify",
+		"verify": "yarn alepha verify",
 		"postinstall": "yarn copy",
 		"alepha": "node apps/dev/src/index.ts",
 		"clean": "yarn alepha clean",

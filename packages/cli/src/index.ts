@@ -37,17 +37,6 @@ class AlephaCli {
 				alias: "🔧 Setting up project",
 			});
 
-			const packageJsonPath = join(process.cwd(), name, "package.json");
-			const packageJsonContent = await readFile(packageJsonPath, "utf-8");
-			await writeFile(
-				packageJsonPath,
-				packageJsonContent.replace(
-					/"alepha": "[^"]*"/,
-					`"alepha": "^${pkg.version}"`,
-				),
-				"utf-8",
-			);
-
 			await run(`cd ${name} && npm install`, undefined, {
 				alias: "📦 Installing dependencies",
 			});

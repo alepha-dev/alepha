@@ -5,6 +5,7 @@
 **/.env.local
 **/.env.*.local
 CLAUDE.md
+AGENTS.md
 .DS_Store
 node_modules
 dist
