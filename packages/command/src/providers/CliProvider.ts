@@ -18,6 +18,7 @@ import {
 	type CommandHandlerArgs,
 } from "../descriptors/$command.ts";
 import { CommandError } from "../errors/CommandError.ts";
+import { Asker } from "../helpers/Asker.ts";
 import { Runner } from "../helpers/Runner.ts";
 
 const envSchema = t.object({
@@ -40,6 +41,7 @@ export class CliProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
 	protected readonly runner = $inject(Runner);
+	protected readonly asker = $inject(Asker);
 
 	public options = {
 		name: this.env.CLI_NAME,
@@ -98,6 +100,7 @@ export class CliProvider {
 					flags: commandFlags,
 					args: commandArgs,
 					run: runner.run,
+					ask: this.asker.ask,
 					fs,
 					glob,
 				};

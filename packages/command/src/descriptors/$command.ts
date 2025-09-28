@@ -10,6 +10,7 @@ import {
 	type TSchema,
 	t,
 } from "@alepha/core";
+import type { AskMethod } from "../helpers/Asker.ts";
 import type { RunnerMethod } from "../helpers/Runner.ts";
 
 /**
@@ -104,6 +105,7 @@ export interface CommandHandlerArgs<
 	flags: Static<T>;
 	args: A extends TSchema ? Static<A> : undefined;
 	run: RunnerMethod;
+	ask: AskMethod;
 	glob: typeof glob;
 	fs: typeof fs;
 }
