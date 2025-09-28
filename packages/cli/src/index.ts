@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, run, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
@@ -26,34 +24,32 @@ class AlephaCli {
 		handler: async ({ run, args }) => {
 			const name = args;
 
-			await run(
-				`git clone https://github.com/feunard/alepha-starter ${name}`,
-				undefined,
-				{ alias: "📥 Cloning repository" },
-			);
+			await run(`git clone https://github.com/feunard/alepha-starter ${name}`, {
+				alias: "📥 Cloning repository",
+			});
 
 			// Remove .git directory to start fresh
-			await run(`rm -rf ${name}/.git`, undefined, {
+			await run(`rm -rf ${name}/.git`, {
 				alias: "🔧 Setting up project",
 			});
 
-			await run(`cd ${name} && npm install`, undefined, {
+			await run(`cd ${name} && npm install`, {
 				alias: "📦 Installing dependencies",
 			});
 
-			await run(`cd ${name} && npm run lint`, undefined, {
+			await run(`cd ${name} && npm run lint`, {
 				alias: "🔍 Linting code",
 			});
 
-			await run(`cd ${name} && npm run check`, undefined, {
+			await run(`cd ${name} && npm run check`, {
 				alias: "✅ Type checking",
 			});
 
-			await run(`cd ${name} && npm run test`, undefined, {
+			await run(`cd ${name} && npm run test`, {
 				alias: "🧪 Running tests",
 			});
 
-			await run(`cd ${name} && npm run build`, undefined, {
+			await run(`cd ${name} && npm run build`, {
 				alias: "🏗️ Building project",
 			});
 
@@ -65,11 +61,6 @@ $ cd ${name} && npm run dev
 			);
 		},
 	});
-
-	public async runTemplate(template: string) {
-		// best template engine ever
-		return template.replace(/{{\s*alepha.version\s*}}/g, pkg.version);
-	}
 }
 
 run(AlephaCli, {

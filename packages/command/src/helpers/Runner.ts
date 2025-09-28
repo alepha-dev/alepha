@@ -18,18 +18,12 @@ export interface RunOptions {
 	 * Rename the command for logging purposes.
 	 */
 	alias?: string;
-
-	/**
-	 * If true, the command will not be logged.
-	 */
-	silent?: boolean; // TODO: implement
 }
 
 export interface RunnerMethod {
 	(
-		cmd: string | Array<string | Task>,
-		fn?: () => any,
-		options?: RunOptions,
+		cmd: string | Task | Array<string | Task>,
+		options?: RunOptions | (() => any),
 	): Promise<string>;
 	rm: (glob: string | string[], options?: RunOptions) => Promise<string>;
 	cp: (source: string, dest: string, options?: RunOptions) => Promise<string>;
@@ -47,9 +41,8 @@ export class Runner {
 
 	protected createRunMethod() {
 		const runFn: RunnerMethod = async (
-			cmd: string | Array<string | Task>,
-			fn?: () => any,
-			options: RunOptions = {},
+			cmd: string | Task | Array<string | Task>,
+			options?: RunOptions | (() => any),
 		) => {
 			if (Array.isArray(cmd)) {
 				return await this.execute(
@@ -61,9 +54,18 @@ export class Runner {
 				);
 			}
 
+			const alias = typeof options === "object" ? options.alias : undefined;
+			const name = alias ?? (typeof cmd === "string" ? cmd : cmd.name);
+			const handler =
+				typeof options === "function"
+					? options
+					: typeof cmd === "string"
+						? () => this.exec(cmd)
+						: cmd.handler;
+
 			return await this.execute({
-				name: options.alias ?? cmd,
-				handler: fn ? fn : () => this.exec(cmd),
+				name,
+				handler,
 			});
 		};
 
@@ -72,17 +74,21 @@ export class Runner {
 			options: RunOptions = {},
 		): Promise<string> => {
 			if (Array.isArray(files)) {
-				return runFn(options.alias ?? `rm -rf ${files.join(" ")}`, async () => {
-					for await (const file of glob(files)) {
-						this.log.trace(`Removing ${file}`);
-						await rm(file, { recursive: true, force: true });
-					}
+				return runFn({
+					name: options.alias ?? `rm -rf ${files.join(" ")}`,
+					handler: async () => {
+						for await (const file of glob(files)) {
+							this.log.trace(`Removing ${file}`);
+							await rm(file, { recursive: true, force: true });
+						}
+					},
 				});
 			}
 			this.log.trace(`Removing ${files}`);
-			return runFn(`rm -rf ${files}`, () =>
-				rm(files, { recursive: true, force: true }),
-			);
+			return runFn({
+				name: `rm -rf ${files}`,
+				handler: () => rm(files, { recursive: true, force: true }),
+			});
 		};
 
 		runFn.cp = async (
@@ -91,8 +97,12 @@ export class Runner {
 			options: RunOptions = {},
 		): Promise<string> => {
 			this.log.trace(`Copying ${source} to ${dist}`);
-			return runFn(options.alias ?? `cp -r ${source} ${dist}`, () =>
-				cp(source, dist, { recursive: true }),
+			return runFn(
+				{
+					name: options.alias ?? `cp -r ${source} ${dist}`,
+					handler: () => cp(source, dist, { recursive: true }),
+				},
+				options,
 			);
 		};
 
