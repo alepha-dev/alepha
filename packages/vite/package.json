@@ -14,9 +14,9 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"tsdown": "^0.15.3",
+		"tsdown": "^0.15.5",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.6"
+		"vite": "^7.1.7"
 	},
 	"peerDependencies": {
 		"vite": "*"

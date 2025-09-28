@@ -21,10 +21,10 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"@types/react": "^19.1.13",
+		"@types/react": "^19.1.15",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1",
-		"tsdown": "^0.15.3",
+		"tsdown": "^0.15.5",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

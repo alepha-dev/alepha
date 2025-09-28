@@ -15,11 +15,11 @@
 		"src"
 	],
 	"dependencies": {
-		"typebox": "^1.0.12"
+		"typebox": "^1.0.20"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"tsdown": "^0.15.3",
+		"tsdown": "^0.15.5",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
