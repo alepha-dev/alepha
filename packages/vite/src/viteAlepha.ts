@@ -10,5 +10,8 @@ export type ViteAlephaOptions = ViteAlephaDevOptions & ViteAlephaBuildOptions;
 export function viteAlepha(
 	options: ViteAlephaOptions = {},
 ): (Plugin | Promise<Plugin>)[] {
+	if (process.env.NODE_ENV === "test") {
+		return [];
+	}
 	return [viteAlephaDev(options), viteAlephaBuild(options)];
 }
