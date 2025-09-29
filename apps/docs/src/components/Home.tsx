@@ -52,10 +52,9 @@ const FeatureGrid = () => (
 		<SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
 			{features.map((feature) => (
 				<UnstyledButton
-					style={{ opacity: feature.disabled ? 0.3 : 1 }}
 					size={"xl"}
 					component={Link}
-					href={feature.disabled ? "/" : `/docs/alepha-${feature.slug}`}
+					href={`/docs/alepha-${feature.slug}`}
 					flex={1}
 					key={feature.title}
 				>
@@ -76,38 +75,6 @@ const FeatureGrid = () => (
 	</Container>
 );
 
-const AlephaWarning = () => {
-	const [hideWarning, setHideWarning] = useState(false);
-	if (hideWarning) return null;
-	return (
-		<Container size="lg" my="xl">
-			<Alert
-				withCloseButton
-				onClose={() => setHideWarning(true)}
-				icon={<IconAlertTriangle size={24} />}
-				title="Early Access Warning"
-				color="orange"
-				radius="md"
-			>
-				<Text>
-					Welcome, early adopter! While the documentation is taking shape,
-					Alepha itself is in an early and active development stage. The API is
-					subject to change, and it is not yet recommended for production use.
-				</Text>
-				<Text mt="xs">
-					Your feedback is invaluable. Please feel free to{" "}
-					<Anchor
-						href="https://github.com/feunard/alepha/issues"
-						target="_blank"
-					>
-						report issues or suggest features
-					</Anchor>{" "}
-					on GitHub.
-				</Text>
-			</Alert>
-		</Container>
-	);
-};
 const HeroSection = () => (
 	<Container size="xl" style={{ minHeight: "85vh", display: "flex" }}>
 		<Flex direction="column" justify="center">
