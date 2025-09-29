@@ -7,6 +7,7 @@ import {
 	IconDatabase,
 	IconLink,
 	IconLock,
+	IconMail,
 	IconMessage2,
 	IconMessageCircle,
 	IconNotification,
@@ -134,10 +135,9 @@ export const features = [
 		slug: "command",
 	},
 	{
-		icon: IconNotification,
-		disabled: true,
-		title: "Notification",
-		description: "Create and send templated email or mobile notifications.",
-		slug: "notification",
+		icon: IconMail,
+		title: "Email",
+		description: "Create and send templated email.",
+		slug: "email",
 	},
 ];
