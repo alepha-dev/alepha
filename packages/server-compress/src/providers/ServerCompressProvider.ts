@@ -13,7 +13,7 @@ const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
 
 export class ServerCompressProvider {
-	public compressors: Record<
+	static compressors: Record<
 		string,
 		| {
 				compress: (...args: any[]) => Promise<Buffer>;
@@ -67,7 +67,10 @@ export class ServerCompressProvider {
 			}
 
 			for (const encoding of ["zstd", "br", "gzip"] as const) {
-				if (acceptEncoding.includes(encoding) && this.compressors[encoding]) {
+				if (
+					acceptEncoding.includes(encoding) &&
+					ServerCompressProvider.compressors[encoding]
+				) {
 					await this.compress(encoding, response);
 					return;
 				}
@@ -88,12 +91,12 @@ export class ServerCompressProvider {
 	}
 
 	protected async compress(
-		encoding: keyof typeof this.compressors,
+		encoding: keyof typeof ServerCompressProvider.compressors,
 		response: ServerResponse,
 	): Promise<void> {
 		const body = response.body; // can be string or Buffer or ArrayBuffer or Readable
 
-		const compressor = this.compressors[encoding];
+		const compressor = ServerCompressProvider.compressors[encoding];
 		if (!compressor) {
 			return;
 		}
@@ -127,7 +130,7 @@ export class ServerCompressProvider {
 	}
 
 	protected getParams(
-		encoding: keyof typeof this.compressors,
+		encoding: keyof typeof ServerCompressProvider.compressors,
 	): Record<number, any> {
 		if (encoding === "zstd") {
 			return {
@@ -145,7 +148,7 @@ export class ServerCompressProvider {
 
 	protected setHeaders(
 		response: ServerResponse,
-		encoding: keyof typeof this.compressors,
+		encoding: keyof typeof ServerCompressProvider.compressors,
 	): void {
 		response.headers.vary = "content-encoding";
 		response.headers["content-encoding"] = encoding;
