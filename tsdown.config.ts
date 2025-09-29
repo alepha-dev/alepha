@@ -6,7 +6,7 @@ export default async () => {
 		return [
 			{
 				entry: "src/index.ts",
-				format: ["esm", "cjs"],
+				format: ["esm"],
 				sourcemap: true,
 			},
 			{
@@ -20,7 +20,7 @@ export default async () => {
 	return [
 		{
 			entry: "src/index.ts",
-			format: ["esm", "cjs"],
+			format: ["esm"],
 			platform: pkg.engines?.node ? "node" : "neutral",
 			sourcemap: true,
 		},

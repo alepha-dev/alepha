@@ -10,7 +10,6 @@
 Alepha
 </h1>
 <p style="max-width: 512px">
-🚧
 </p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="npm"/></a>
@@ -19,17 +18,23 @@ Alepha
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
-Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe applications, from serverless APIs to full-stack React apps.
+A convention-driven TypeScript framework for building type-safe full-stack applications.
 
-## Installation
+## Quick Start
+
+```bash
+npx @alepha/cli create my-app
+```
+
+Or manually:
 
 ```bash
 npm install alepha
 ```
 
-## Usage
+## What is this?
 
-Minimalist http server with a single endpoint.
+Alepha is an opinionated framework that handles everything from database to frontend. It uses a descriptor-based architecture (`$action`, `$page`, `$repository`, etc.) and enforces type safety across the entire stack.
 
 ```ts
 import { run } from "alepha";
@@ -44,4 +49,84 @@ class App {
 run(App);
 ```
 
+## Examples
+
+### Type-safe API endpoint
+
+```ts
+import { $action } from "alepha/server";
+import { t } from "alepha/core";
+
+class UserController {
+  getUser = $action({
+    schema: {
+      params: t.object({ id: t.string() }),
+      response: t.object({
+        name: t.string(),
+        email: t.string()
+      })
+    },
+    handler: async ({ params }) => {
+      return { name: "John", email: "john@example.com" };
+    }
+  });
+}
+```
+
+### Database with Drizzle ORM
+
+```ts
+import {$entity, $repository, pg} from "alepha/postgres";
+import {t, Static} from "alepha";
+
+export const users = $entity({
+  id: pg.primaryKey(),
+  name: t.string(),
+  email: t.string()
+});
+
+type CreateUser = Static<typeof users.$insertSchema>;
+
+class UserService {
+  users = $repository(users);
+
+  async create(data: CreateUser) {
+    return await this.users.create(data);
+  }
+}
+```
+
+### React SSR Page
+
+```tsx
+import { $page } from "alepha/react";
+
+class HomePage {
+  index = $page({
+    component: () => <div>Hello from React SSR!</div>
+  });
+}
+```
+
+## Core Concepts
+
+- **Descriptors**: Define your app logic with `$action`, `$page`, `$repository`, `$cache`, `$email`, etc.
+- **Type Safety**: TypeBox schemas validate data from DB to API to frontend
+- **DI Container**: Built-in dependency injection using `$inject()`
+- **Convention over Config**: Minimal boilerplate, sensible defaults
+- **Full-Stack**: React SSR, Vite, class-based router with type-safe routing
+
+## Stack
+
+- Node.js 22+
+- TypeScript
+- React (SSR)
+- Vite
+- Drizzle ORM
+- PostgreSQL
+
 👉 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
+
+## License
+
+MIT
