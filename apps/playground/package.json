@@ -10,6 +10,6 @@
 		"check": "tsc"
 	},
 	"dependencies": {
-		"alepha": "0.10.0"
+		"alepha": "0.10.1"
 	}
 }

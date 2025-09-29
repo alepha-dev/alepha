@@ -8,7 +8,7 @@
 		"smtp"
 	],
 	"author": "Feunard",
-	"version": "0.10.0",
+	"version": "0.10.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -21,8 +21,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.0",
-		"@alepha/logger": "0.10.0",
+		"@alepha/core": "0.10.1",
+		"@alepha/logger": "0.10.1",
 		"nodemailer": "^7.0.6"
 	},
 	"devDependencies": {

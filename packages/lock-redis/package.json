@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/lock-redis",
 	"description": "Redis implementation for the distributed locking mechanism.",
-	"version": "0.10.0",
+	"version": "0.10.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,11 +14,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.0",
-		"@alepha/lock": "0.10.0",
-		"@alepha/logger": "0.10.0",
-		"@alepha/redis": "0.10.0",
-		"@alepha/topic-redis": "0.10.0"
+		"@alepha/core": "0.10.1",
+		"@alepha/lock": "0.10.1",
+		"@alepha/logger": "0.10.1",
+		"@alepha/redis": "0.10.1",
+		"@alepha/topic-redis": "0.10.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",

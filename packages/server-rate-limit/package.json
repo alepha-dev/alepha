@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-rate-limit",
 	"description": "Blocks requests that exceed a defined rate limit.",
-	"version": "0.10.0",
+	"version": "0.10.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,9 +14,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.10.0",
-		"@alepha/core": "0.10.0",
-		"@alepha/server": "0.10.0"
+		"@alepha/cache": "0.10.1",
+		"@alepha/core": "0.10.1",
+		"@alepha/server": "0.10.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",

@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/datetime",
 	"description": "Date, time, and duration utilities based on Day.js.",
-	"version": "0.10.0",
+	"version": "0.10.1",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,8 +11,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.0",
-		"@alepha/logger": "0.10.0",
+		"@alepha/core": "0.10.1",
+		"@alepha/logger": "0.10.1",
 		"dayjs": "^1.11.18"
 	},
 	"devDependencies": {
