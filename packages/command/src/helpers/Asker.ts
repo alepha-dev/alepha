@@ -77,7 +77,10 @@ export class Asker {
 				try {
 					const answer = await rl.question(`${question}\n> `);
 					if (options.schema) {
-						value = this.alepha.parse(options.schema, answer ? answer.trim() : undefined);
+						value = this.alepha.parse(
+							options.schema,
+							answer ? answer.trim() : undefined,
+						);
 					} else {
 						value = String(answer.trim());
 					}

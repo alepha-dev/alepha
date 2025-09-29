@@ -62,10 +62,7 @@ describe("Asker", () => {
 	});
 
 	test("retries until schema validation passes", async () => {
-		const { question, close } = mockPromptInterface([
-			"abc",
-			"41",
-		]);
+		const { question, close } = mockPromptInterface(["abc", "41"]);
 
 		const result = await asker.ask("Enter a number", {
 			schema: t.number(),
@@ -90,10 +87,7 @@ describe("Asker", () => {
 	});
 
 	test("retries when custom validation throws an AlephaError", async () => {
-		const { question, close } = mockPromptInterface([
-			"wrong",
-			"right",
-		]);
+		const { question, close } = mockPromptInterface(["wrong", "right"]);
 
 		const result = await asker.ask("Provide the secret", {
 			schema: t.string(),

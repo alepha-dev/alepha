@@ -1,7 +1,5 @@
 import { Link } from "@alepha/react";
 import {
-	Alert,
-	Anchor,
 	Button,
 	Container,
 	Flex,
@@ -15,7 +13,6 @@ import {
 	UnstyledButton,
 } from "@mantine/core";
 import {
-	IconAlertTriangle,
 	IconBook,
 	IconBrandReact,
 	IconDatabase,
@@ -24,7 +21,6 @@ import {
 	IconServer,
 	IconTools,
 } from "@tabler/icons-react";
-import { useState } from "react";
 import { snippets } from "../config/docs.ts";
 import { features } from "../config/features.ts";
 

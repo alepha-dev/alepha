@@ -10,7 +10,6 @@ import {
 	IconMail,
 	IconMessage2,
 	IconMessageCircle,
-	IconNotification,
 	IconPackage,
 	IconRepeat,
 	IconSeo,
