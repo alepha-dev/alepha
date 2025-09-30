@@ -73,3 +73,59 @@ test("Repository - id uuid", async () => {
 
 	expect(await app.repository.count()).toBe(0);
 });
+
+test("Repository - multiple operators (gte & lte)", async () => {
+	const schema = t.object({
+		id: pg.primaryKey(),
+		name: t.string(),
+		age: t.number(),
+	});
+	const entity = $entity({
+		name: "test_range",
+		schema,
+	});
+	class App {
+		repository = $repository(entity);
+	}
+
+	const alepha = Alepha.create();
+	const app = alepha.inject(App);
+	await alepha.start();
+
+	// Create test data
+	await app.repository.create({ name: "Alice", age: 20 });
+	await app.repository.create({ name: "Bob", age: 25 });
+	await app.repository.create({ name: "Charlie", age: 30 });
+	await app.repository.create({ name: "David", age: 35 });
+	await app.repository.create({ name: "Eve", age: 40 });
+
+	// Test range query with both gte and lte
+	const results = await app.repository.find({
+		where: {
+			age: { gte: 25, lte: 35 },
+		},
+	});
+
+	expect(results).toHaveLength(3);
+	expect(results.map((r) => r.name).sort()).toEqual(["Bob", "Charlie", "David"]);
+
+	// Test with only gte
+	const resultsGte = await app.repository.find({
+		where: {
+			age: { gte: 35 },
+		},
+	});
+
+	expect(resultsGte).toHaveLength(2);
+	expect(resultsGte.map((r) => r.name).sort()).toEqual(["David", "Eve"]);
+
+	// Test with only lte
+	const resultsLte = await app.repository.find({
+		where: {
+			age: { lte: 25 },
+		},
+	});
+
+	expect(resultsLte).toHaveLength(2);
+	expect(resultsLte.map((r) => r.name).sort()).toEqual(["Alice", "Bob"]);
+});

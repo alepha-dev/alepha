@@ -1245,84 +1245,97 @@ export class RepositoryDescriptor<
 			return eq(column, operator);
 		}
 
+		const conditions: SQL[] = [];
+
 		if (operator?.eq != null) {
-			return eq(column, operator.eq);
+			conditions.push(eq(column, operator.eq));
 		}
 
 		if (operator?.ne != null) {
-			return ne(column, operator.ne);
+			conditions.push(ne(column, operator.ne));
 		}
 
 		if (operator?.gt != null) {
-			return gt(column, operator.gt);
+			conditions.push(gt(column, operator.gt));
 		}
 
 		if (operator?.gte != null) {
-			return gte(column, operator.gte);
+			conditions.push(gte(column, operator.gte));
 		}
 
 		if (operator?.lt != null) {
-			return lt(column, operator.lt);
+			conditions.push(lt(column, operator.lt));
 		}
 
 		if (operator?.lte != null) {
-			return lte(column, operator.lte);
+			conditions.push(lte(column, operator.lte));
 		}
 
 		if (operator?.inArray != null) {
-			return inArray(column, operator.inArray);
+			conditions.push(inArray(column, operator.inArray));
 		}
 
 		if (operator?.notInArray != null) {
-			return notInArray(column, operator.notInArray);
+			conditions.push(notInArray(column, operator.notInArray));
 		}
 
 		if (operator?.isNull != null) {
-			return isNull(column);
+			conditions.push(isNull(column));
 		}
 
 		if (operator?.isNotNull != null) {
-			return isNotNull(column);
+			conditions.push(isNotNull(column));
 		}
 
 		if (operator?.like != null) {
-			return like(column, operator.like);
+			conditions.push(like(column, operator.like));
 		}
 
 		if (operator?.notLike != null) {
-			return notLike(column, operator.notLike);
+			conditions.push(notLike(column, operator.notLike));
 		}
 
 		if (operator?.ilike != null) {
 			if (this.provider.dialect === "sqlite") {
-				return like(column, operator.ilike);
+				conditions.push(like(column, operator.ilike));
+			} else {
+				conditions.push(ilike(column, operator.ilike));
 			}
-			return ilike(column, operator.ilike);
 		}
 
 		if (operator?.notIlike != null) {
-			return notIlike(column, operator.notIlike);
+			conditions.push(notIlike(column, operator.notIlike));
 		}
 
 		if (operator?.between != null) {
-			return between(column, operator.between[0], operator.between[1]);
+			conditions.push(between(column, operator.between[0], operator.between[1]));
 		}
 
 		if (operator?.notBetween != null) {
-			return notBetween(column, operator.notBetween[0], operator.notBetween[1]);
+			conditions.push(notBetween(column, operator.notBetween[0], operator.notBetween[1]));
 		}
 
 		if (operator?.arrayContains != null) {
-			return arrayContains(column, operator.arrayContains);
+			conditions.push(arrayContains(column, operator.arrayContains));
 		}
 
 		if (operator?.arrayContained != null) {
-			return arrayContained(column, operator.arrayContains);
+			conditions.push(arrayContained(column, operator.arrayContained));
 		}
 
 		if (operator?.arrayOverlaps != null) {
-			return arrayOverlaps(column, operator.arrayContains);
+			conditions.push(arrayOverlaps(column, operator.arrayOverlaps));
 		}
+
+		if (conditions.length === 0) {
+			return undefined;
+		}
+
+		if (conditions.length === 1) {
+			return conditions[0];
+		}
+
+		return and(...conditions);
 	}
 
 	/**
