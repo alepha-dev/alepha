@@ -80,9 +80,12 @@ import {$entity, $repository, pg} from "alepha/postgres";
 import {t, Static} from "alepha";
 
 export const users = $entity({
-  id: pg.primaryKey(),
-  name: t.string(),
-  email: t.string()
+  name: "users",
+  schema: t.object({
+    id: pg.primaryKey(),
+    name: t.string(),
+    email: t.string(),
+  }),
 });
 
 type CreateUser = Static<typeof users.$insertSchema>;
