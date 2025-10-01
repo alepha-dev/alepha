@@ -80,8 +80,9 @@ import { $action } from "alepha/server";
 import { t } from "alepha";
 
 class UserController {
-  // GET /api/users
+
   getUsers = $action({
+    path: "/users",
     description: "Retrieve all users with pagination",
     schema: {
       query: t.object({
@@ -112,8 +113,9 @@ class UserController {
     }
   });
 
-  // POST /api/users
   createUser = $action({
+    method: "POST",
+    path: "/users",
     description: "Create a new user account",
     schema: {
       body: t.object({
@@ -148,8 +150,8 @@ class UserController {
     }
   });
 
-  // GET /api/users/:id
   getUser = $action({
+    path: "/users/:id",
     description: "Retrieve user by ID",
     schema: {
       params: t.object({
@@ -176,9 +178,9 @@ class UserController {
     }
   });
 
-  // PUT /api/users/:id
   updateUser = $action({
     method: "PUT",
+    path: "/users/:id",
     description: "Update user information",
     schema: {
       params: t.object({ id: t.string() }),
@@ -206,360 +208,6 @@ class UserController {
 }
 ```
 
-**File upload with multipart form data:**
-```ts
-class FileController {
-  uploadAvatar = $action({
-    method: "POST",
-    description: "Upload user avatar image",
-    schema: {
-      body: t.object({
-        file: t.file({
-          maxSize: 5 * 1024 * 1024, // 5MB
-          allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"]
-        }),
-        userId: t.string()
-      }),
-      response: t.object({
-        url: t.string({ format: "uri" }),
-        size: t.number(),
-        mimeType: t.string(),
-        uploadedAt: t.datetime()
-      })
-    },
-    handler: async ({ body }) => {
-      const { file, userId } = body;
-
-      // Validate file
-      await this.fileService.validateImage(file);
-
-      // Generate unique filename
-      const filename = `avatars/${userId}/${Date.now()}-${file.name}`;
-
-      // Upload to storage
-      const uploadResult = await this.storageService.upload(filename, file);
-
-      // Update user profile
-      await this.userService.updateAvatar(userId, uploadResult.url);
-
-      return {
-        url: uploadResult.url,
-        size: file.size,
-        mimeType: file.type,
-        uploadedAt: new Date().toISOString()
-      };
-    }
-  });
-
-  downloadFile = $action({
-    method: "GET",
-    description: "Download file by ID",
-    schema: {
-      params: t.object({ id: t.string() }),
-      query: t.object({
-        download: t.optional(t.boolean()),
-        thumbnail: t.optional(t.boolean())
-      }),
-      response: t.file()
-    },
-    handler: async ({ params, query, reply, user }) => {
-      const file = await this.fileService.findById(params.id);
-      if (!file) {
-        throw new Error("File not found");
-      }
-
-      // Check permissions
-      await this.fileService.checkAccess(params.id, user.id);
-
-      const fileBuffer = query.thumbnail
-        ? await this.fileService.getThumbnail(file.id)
-        : await this.fileService.getBuffer(file.path);
-
-      // Set appropriate headers
-      reply.header("Content-Type", file.mimeType);
-      reply.header("Content-Length", fileBuffer.length);
-
-      if (query.download) {
-        reply.header("Content-Disposition", `attachment; filename="${file.name}"`);
-      }
-
-      return fileBuffer;
-    }
-  });
-}
-```
-
-**Advanced API with custom paths and grouped operations:**
-```ts
-class OrderController {
-  group = "orders"; // Groups all actions under "orders" tag
-
-  // GET /api/orders/search
-  searchOrders = $action({
-    name: "search",
-    path: "/orders/search", // Custom path
-    description: "Advanced order search with filtering",
-    schema: {
-      query: t.object({
-        status: t.optional(t.union([
-          t.literal("pending"),
-          t.literal("processing"),
-          t.literal("shipped"),
-          t.literal("delivered"),
-          t.literal("cancelled")
-        ])),
-        customerId: t.optional(t.string()),
-        dateFrom: t.optional(t.date()),
-        dateTo: t.optional(t.date()),
-        minAmount: t.optional(t.number({ minimum: 0 })),
-        maxAmount: t.optional(t.number({ minimum: 0 })),
-        sortBy: t.optional(t.union([
-          t.literal("createdAt"),
-          t.literal("amount"),
-          t.literal("status")
-        ])),
-        sortOrder: t.optional(t.enum(["asc", "desc"]))
-      }),
-      response: t.object({
-        orders: t.array(t.object({
-          id: t.string(),
-          orderNumber: t.string(),
-          customerId: t.string(),
-          customerName: t.string(),
-          status: t.string(),
-          totalAmount: t.number(),
-          createdAt: t.datetime(),
-          itemCount: t.number()
-        })),
-        pagination: t.object({
-          page: t.number(),
-          limit: t.number(),
-          total: t.number(),
-          hasMore: t.boolean()
-        }),
-        filters: t.object({
-          appliedFilters: t.array(t.string()),
-          availableStatuses: t.array(t.string())
-        })
-      })
-    },
-    handler: async ({ query }) => {
-      // Build dynamic query based on filters
-      const searchCriteria = this.orderService.buildSearchCriteria(query);
-      const results = await this.orderService.searchOrders(searchCriteria);
-
-      return {
-        orders: results.orders,
-        pagination: results.pagination,
-        filters: {
-          appliedFilters: Object.keys(query).filter(key => query[key] !== undefined),
-          availableStatuses: await this.orderService.getAvailableStatuses()
-        }
-      };
-    }
-  });
-
-  // POST /api/orders/:id/process
-  processOrder = $action({
-    method: "POST",
-    path: "/orders/:id/process",
-    description: "Process an order through the fulfillment workflow",
-    schema: {
-      params: t.object({ id: t.string() }),
-      body: t.object({
-        notes: t.optional(t.string()),
-        priority: t.optional(t.union([
-          t.literal("low"),
-          t.literal("normal"),
-          t.literal("high"),
-          t.literal("urgent")
-        ])),
-        assignToWarehouse: t.optional(t.string())
-      }),
-      response: t.object({
-        orderId: t.string(),
-        status: t.string(),
-        processedAt: t.datetime(),
-        estimatedFulfillment: t.datetime(),
-        trackingInfo: t.optional(t.object({
-          trackingNumber: t.string(),
-          carrier: t.string(),
-          estimatedDelivery: t.date()
-        }))
-      })
-    },
-    handler: async ({ params, body, user }) => {
-      // Validate order can be processed
-      const order = await this.orderService.findById(params.id);
-      if (!order || order.status !== "pending") {
-        throw new Error("Order cannot be processed in current status");
-      }
-
-      // Check inventory availability
-      const inventoryCheck = await this.inventoryService.checkAvailability(order.items);
-      if (!inventoryCheck.available) {
-        throw new Error(`Insufficient inventory: ${inventoryCheck.missingItems.join(", ")}`);
-      }
-
-      // Process the order
-      const processResult = await this.fulfillmentService.processOrder({
-        orderId: params.id,
-        options: {
-          notes: body.notes,
-          priority: body.priority || "normal",
-          warehouse: body.assignToWarehouse
-        }
-      });
-
-      // Update order status
-      await this.orderService.updateStatus(params.id, "processing", {
-        processedBy: user.id,
-        processedAt: new Date(),
-        notes: body.notes
-      });
-
-      // Send notification
-      await this.notificationService.sendOrderUpdate(order.customerId, {
-        orderId: params.id,
-        status: "processing",
-        message: "Your order is now being processed"
-      });
-
-      return {
-        orderId: params.id,
-        status: "processing",
-        processedAt: new Date().toISOString(),
-        estimatedFulfillment: processResult.estimatedCompletion,
-        trackingInfo: processResult.trackingInfo
-      };
-    }
-  });
-}
-```
-
-**Actions with security integration and role-based access:**
-```ts
-class AdminController {
-  group = "admin";
-
-  // Only accessible to users with "admin:users:read" permission
-  getUserStats = $action({
-    description: "Get comprehensive user statistics",
-    security: { permissions: ["admin:users:read"] },
-    schema: {
-      query: t.object({
-        includeInactive: t.optional(t.boolean())
-      }),
-      response: t.object({
-        totalUsers: t.number(),
-        activeUsers: t.number(),
-        newUsers: t.number(),
-        userGrowth: t.number(),
-        breakdown: t.object({
-          byRole: t.record(t.string(), t.number()),
-          byStatus: t.record(t.string(), t.number()),
-          byRegistrationSource: t.record(t.string(), t.number())
-        }),
-        trends: t.array(t.object({
-          date: t.date(),
-          registrations: t.number(),
-          activations: t.number()
-        }))
-      })
-    },
-    handler: async ({ query, user }) => {
-      // user is available through security integration
-      this.auditLogger.log({
-        action: "admin.getUserStats",
-        userId: user.id,
-        userRole: user.role,
-        timestamp: new Date()
-      });
-
-      const period = query.period || "month";
-      const stats = await this.analyticsService.getUserStatistics({
-        period,
-        includeInactive: query.includeInactive || false
-      });
-
-      return stats;
-    }
-  });
-
-  // Bulk operations with transaction support
-  bulkUpdateUsers = $action({
-    method: "POST",
-    path: "/admin/users/bulk-update",
-    description: "Bulk update user properties",
-    security: { permissions: ["admin:users:write"] },
-    schema: {
-      body: t.object({
-        userIds: t.array(t.string(), { minItems: 1, maxItems: 1000 }),
-        updates: t.object({
-          status: t.optional(t.union([t.literal("active"), t.literal("inactive")])),
-          role: t.optional(t.string()),
-          tags: t.optional(t.array(t.string())),
-          customFields: t.optional(t.record(t.string(), t.any()))
-        }),
-        reason: t.string({ minLength: 10, maxLength: 500 })
-      }),
-      response: t.object({
-        updated: t.number(),
-        failed: t.number(),
-        errors: t.array(t.object({
-          userId: t.string(),
-          error: t.string()
-        })),
-        auditLogId: t.string()
-      })
-    },
-    handler: async ({ body, user }) => {
-      const results = { updated: 0, failed: 0, errors: [] };
-
-      // Create audit log entry
-      const auditLogId = await this.auditService.logBulkOperation({
-        operation: "bulk_user_update",
-        initiatedBy: user.id,
-        targetCount: body.userIds.length,
-        reason: body.reason,
-        changes: body.updates
-      });
-
-      // Process in batches to avoid overwhelming the database
-      const batchSize = 50;
-      for (let i = 0; i < body.userIds.length; i += batchSize) {
-        const batch = body.userIds.slice(i, i + batchSize);
-
-        try {
-          const updateResult = await this.userService.bulkUpdate(batch, body.updates);
-          results.updated += updateResult.success;
-          results.failed += updateResult.failed;
-          results.errors.push(...updateResult.errors);
-        } catch (error) {
-          // Log batch failure but continue processing
-          this.logger.error(`Bulk update batch failed`, {
-            batch: i / batchSize + 1,
-            userIds: batch,
-            error: error.message
-          });
-
-          results.failed += batch.length;
-          results.errors.push(...batch.map(userId => ({
-            userId,
-            error: error.message
-          })));
-        }
-      }
-
-      // Update audit log with results
-      await this.auditService.updateBulkOperationResults(auditLogId, results);
-
-      return { ...results, auditLogId };
-    }
-  });
-}
-```
-
 **Important Notes**:
 - Actions are automatically registered with the HTTP server when the service is initialized
 - Use `run()` for direct invocation (testing, internal calls, or remote services)
@@ -567,7 +215,6 @@ class AdminController {
 - Schema validation occurs automatically for all requests and responses
 - Path parameters are automatically extracted from schema definitions
 - Content-Type headers are automatically set based on schema types
-- Actions can be disabled via the `disabled` option for maintenance or feature flags
 
 #### $route()
 

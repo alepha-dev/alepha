@@ -107,7 +107,11 @@ test("Repository - multiple operators (gte & lte)", async () => {
 	});
 
 	expect(results).toHaveLength(3);
-	expect(results.map((r) => r.name).sort()).toEqual(["Bob", "Charlie", "David"]);
+	expect(results.map((r) => r.name).sort()).toEqual([
+		"Bob",
+		"Charlie",
+		"David",
+	]);
 
 	// Test with only gte
 	const resultsGte = await app.repository.find({

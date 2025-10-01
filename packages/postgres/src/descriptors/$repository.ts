@@ -1308,11 +1308,15 @@ export class RepositoryDescriptor<
 		}
 
 		if (operator?.between != null) {
-			conditions.push(between(column, operator.between[0], operator.between[1]));
+			conditions.push(
+				between(column, operator.between[0], operator.between[1]),
+			);
 		}
 
 		if (operator?.notBetween != null) {
-			conditions.push(notBetween(column, operator.notBetween[0], operator.notBetween[1]));
+			conditions.push(
+				notBetween(column, operator.notBetween[0], operator.notBetween[1]),
+			);
 		}
 
 		if (operator?.arrayContains != null) {
