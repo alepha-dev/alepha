@@ -143,9 +143,9 @@ node app.ts
 
 ### React SSR Page
 
-Alepha has built-in React CSR & SSR support.
+Alepha has built-in React **CSR** & **SSR** support.
 
-React is required as a dependency:
+[React](https://react.dev) is required as a `dependency`:
 
 ```bash
 npm install react react-dom
@@ -180,7 +180,7 @@ class HomePage {
 run(HomePage);
 ```
 
-Vite is required as a dev dependency for bundling:
+[Vite](https://vite.dev) is required as a `devDependencies`:
 
 ```bash
 npm install -D vite
@@ -199,6 +199,7 @@ export default defineConfig({
 ```
 
 ```html
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>

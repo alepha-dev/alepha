@@ -661,6 +661,7 @@ __metadata:
   resolution: "@alepha/server-swagger@workspace:packages/server-swagger"
   dependencies:
     "@alepha/core": "npm:0.10.1"
+    "@alepha/logger": "npm:0.10.1"
     "@alepha/security": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@alepha/server-security": "npm:0.10.1"
