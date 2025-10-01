@@ -59,7 +59,7 @@
 		"@alepha/vite": "0.10.1"
 	},
 	"devDependencies": {
-		"tsdown": "^0.15.5"
+		"tsdown": "^0.15.6"
 	},
 	"scripts": {
 		"build": "node build.ts"

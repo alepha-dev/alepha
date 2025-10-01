@@ -19,8 +19,8 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"tsdown": "^0.15.5",
-		"typescript": "^5.9.2"
+		"tsdown": "^0.15.6",
+		"typescript": "^5.9.3"
 	},
 	"scripts": {
 		"lint": "biome check --write --unsafe",

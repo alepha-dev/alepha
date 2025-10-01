@@ -14,8 +14,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/retry": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -31,8 +31,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@azure/storage-blob": "npm:^12.29.0"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -47,10 +47,10 @@ __metadata:
     "@alepha/file": "npm:0.10.1"
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    "@types/node": "npm:^24.5.2"
+    "@types/node": "npm:^24.6.1"
     "@vercel/blob": "npm:^2.0.0"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -63,8 +63,8 @@ __metadata:
     "@alepha/file": "npm:0.10.1"
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -78,8 +78,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/redis": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -92,8 +92,8 @@ __metadata:
     "@alepha/datetime": "npm:0.10.1"
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -106,8 +106,8 @@ __metadata:
     "@alepha/core": "npm:^0.10.1"
     "@alepha/logger": "npm:^0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
   bin:
     alepha: ./dist/index.cjs
   languageName: unknown
@@ -120,8 +120,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/logger": "npm:^0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -131,9 +131,9 @@ __metadata:
   resolution: "@alepha/core@workspace:packages/core"
   dependencies:
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typebox: "npm:^1.0.20"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typebox: "npm:^1.0.25"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -146,8 +146,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     dayjs: "npm:^1.11.18"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -167,8 +167,8 @@ __metadata:
     "@alepha/server": "npm:0.10.1"
     "@alepha/topic": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -180,10 +180,10 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    "@types/nodemailer": "npm:^7.0.1"
+    "@types/nodemailer": "npm:^7.0.2"
     nodemailer: "npm:^7.0.6"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -194,8 +194,8 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -210,8 +210,8 @@ __metadata:
     "@alepha/redis": "npm:0.10.1"
     "@alepha/topic-redis": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -225,8 +225,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/topic": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -237,8 +237,8 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:^0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -256,8 +256,8 @@ __metadata:
     drizzle-kit: "npm:0.31.5"
     drizzle-orm: "npm:^0.44.5"
     postgres: "npm:^3.4.7"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -269,8 +269,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     protobufjs: "npm:^7.5.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -283,8 +283,8 @@ __metadata:
     "@alepha/queue": "npm:0.10.1"
     "@alepha/redis": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -297,8 +297,8 @@ __metadata:
     "@alepha/datetime": "npm:0.10.1"
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -320,8 +320,8 @@ __metadata:
     openid-client: "npm:^6.8.1"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   peerDependencies:
     react: "*"
@@ -338,11 +338,11 @@ __metadata:
     "@alepha/react": "npm:0.10.1"
     "@alepha/testing": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    "@types/react": "npm:^19.1.15"
+    "@types/react": "npm:^19.1.17"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   peerDependencies:
     react: "*"
@@ -358,11 +358,11 @@ __metadata:
     "@alepha/react": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    "@types/react": "npm:^19.1.15"
+    "@types/react": "npm:^19.1.17"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   peerDependencies:
     react: "*"
@@ -381,8 +381,8 @@ __metadata:
     "@biomejs/biome": "npm:^2.2.4"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   peerDependencies:
     react: "*"
@@ -403,12 +403,12 @@ __metadata:
     "@alepha/server-links": "npm:0.10.1"
     "@alepha/server-static": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    "@types/react": "npm:^19.1.15"
-    "@types/react-dom": "npm:^19.1.9"
+    "@types/react": "npm:^19.1.17"
+    "@types/react-dom": "npm:^19.1.11"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   peerDependencies:
     react: "*"
@@ -424,8 +424,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     "@redis/client": "npm:^5.8.2"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -437,8 +437,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/datetime": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -449,8 +449,8 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:^0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -466,8 +466,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     cron-schedule: "npm:^5.0.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -481,8 +481,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     jose: "npm:^6.1.0"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -497,8 +497,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -510,8 +510,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -525,8 +525,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -538,8 +538,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -552,8 +552,8 @@ __metadata:
     "@alepha/datetime": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -565,8 +565,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -583,8 +583,8 @@ __metadata:
     "@alepha/server-proxy": "npm:0.10.1"
     "@alepha/server-security": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -597,8 +597,8 @@ __metadata:
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     prom-client: "npm:^15.1.3"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -612,8 +612,8 @@ __metadata:
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     "@fastify/busboy": "npm:^3.2.0"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -626,8 +626,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -640,8 +640,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -655,8 +655,8 @@ __metadata:
     "@alepha/security": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -671,8 +671,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/server": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -689,9 +689,9 @@ __metadata:
     "@alepha/server-static": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     openapi-types: "npm:^12.1.3"
-    swagger-ui-dist: "npm:^5.29.0"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    swagger-ui-dist: "npm:^5.29.1"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -707,8 +707,8 @@ __metadata:
     "@alepha/logger": "npm:0.10.1"
     "@alepha/router": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -724,8 +724,8 @@ __metadata:
     jsdom: "npm:^27.0.0"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
   languageName: unknown
   linkType: soft
 
@@ -736,8 +736,8 @@ __metadata:
     "@alepha/core": "npm:0.10.1"
     "@alepha/logger": "npm:^0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -751,8 +751,8 @@ __metadata:
     "@alepha/redis": "npm:0.10.1"
     "@alepha/topic": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -765,8 +765,8 @@ __metadata:
     "@alepha/datetime": "npm:0.10.1"
     "@alepha/logger": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -777,8 +777,8 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
-    tsdown: "npm:^0.15.5"
-    typescript: "npm:^5.9.2"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
     vite: "npm:^7.1.7"
   peerDependencies:
     vite: "*"
@@ -3838,22 +3838,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.5.2":
-  version: 24.5.2
-  resolution: "@types/node@npm:24.5.2"
+"@types/node@npm:^24.6.1":
+  version: 24.6.1
+  resolution: "@types/node@npm:24.6.1"
   dependencies:
-    undici-types: "npm:~7.12.0"
-  checksum: 10c0/96baaca6564d39c6f7f6eddd73ce41e2a7594ef37225cd52df3be36fad31712af8ae178387a72d0b80f2e2799e7fd30c014bc0ae9eb9f962d9079b691be00c48
+    undici-types: "npm:~7.13.0"
+  checksum: 10c0/f2f8aea441d72139345cfa2e392af51bc27d12eb5f74b9b4d202046a2e82ab70d6da89c46a2ac7feea98854c2919e53070869d4af9d448e173a77249fcb7bca3
   languageName: node
   linkType: hard
 
-"@types/nodemailer@npm:^7.0.1":
-  version: 7.0.1
-  resolution: "@types/nodemailer@npm:7.0.1"
+"@types/nodemailer@npm:^7.0.2":
+  version: 7.0.2
+  resolution: "@types/nodemailer@npm:7.0.2"
   dependencies:
     "@aws-sdk/client-sesv2": "npm:^3.839.0"
     "@types/node": "npm:*"
-  checksum: 10c0/7e420b0f1a1119b8633f0d6777d17a66000291baaaa92ee3e7777f616089d401e4052af9c871d25e1e6bc84f2a72468ccb116c62ac5e4f3da07814bf862b5470
+  checksum: 10c0/3466f155b87a4543b83d71d4eef91fe47a41b04a277557e71713913fabeef048f9c3149e8a8eff18facf3ed46be7cd6d84b18c560c36904e85b0e6c4c8fe0e77
   languageName: node
   linkType: hard
 
@@ -3864,21 +3864,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:^19.1.9":
-  version: 19.1.9
-  resolution: "@types/react-dom@npm:19.1.9"
+"@types/react-dom@npm:^19.1.11":
+  version: 19.1.11
+  resolution: "@types/react-dom@npm:19.1.11"
   peerDependencies:
     "@types/react": ^19.0.0
-  checksum: 10c0/34c8dda86c1590b3ef0e7ecd38f9663a66ba2dd69113ba74fb0adc36b83bbfb8c94c1487a2505282a5f7e5e000d2ebf36f4c0fd41b3b672f5178fd1d4f1f8f58
+  checksum: 10c0/417da6414f43ea2e416ab19666f78f8a29b349f4273ee6d8d468516606c65ee0e6f31939cd3255dfaf466a50a5cdf16b6fd988cf7e9aaf678c61d1fff81e5c20
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19.1.15":
-  version: 19.1.15
-  resolution: "@types/react@npm:19.1.15"
+"@types/react@npm:^19.1.17":
+  version: 19.1.17
+  resolution: "@types/react@npm:19.1.17"
   dependencies:
     csstype: "npm:^3.0.2"
-  checksum: 10c0/f72cb36cb12a0c8aeba4df5a52d6b8a66509983c109201582c156676e8f1a6f5f2b74103f996ae756a04154d3722154350bd606cb87df211bbacda93139225b2
+  checksum: 10c0/8a8369ea00fc961f0884be4d1da4a039b2b6445de9c8b690ed0ebe15acfb0b1f27005278fef1fe39a1722a30f4415778b790d0089e2b30019371c61355ea316f
   languageName: node
   linkType: hard
 
@@ -4319,7 +4319,7 @@ __metadata:
     "@alepha/topic": "npm:0.10.1"
     "@alepha/topic-redis": "npm:0.10.1"
     "@alepha/vite": "npm:0.10.1"
-    tsdown: "npm:^0.15.5"
+    tsdown: "npm:^0.15.6"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -5324,14 +5324,14 @@ __metadata:
     "@mantine/nprogress": "npm:^8.3.2"
     "@mantine/spotlight": "npm:^8.3.2"
     "@tabler/icons-react": "npm:^3.35.0"
-    "@types/react": "npm:^19.1.15"
+    "@types/react": "npm:^19.1.17"
     "@vitejs/plugin-react": "npm:^5.0.4"
     highlight.js: "npm:^11.11.1"
     marked: "npm:^16.3.0"
     marked-highlight: "npm:^2.2.2"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
-    typescript: "npm:^5.9.2"
+    typescript: "npm:^5.9.3"
     vite: "npm:^7.1.7"
     vite-bundle-analyzer: "npm:^1.2.3"
   languageName: unknown
@@ -8759,11 +8759,11 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.2.4"
-    "@types/node": "npm:^24.5.2"
+    "@types/node": "npm:^24.6.1"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
     depcheck: "npm:^1.4.7"
-    typescript: "npm:^5.9.2"
+    typescript: "npm:^5.9.3"
     vite-plugin-dts: "npm:^4.5.4"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -9432,12 +9432,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:^5.29.0":
-  version: 5.29.0
-  resolution: "swagger-ui-dist@npm:5.29.0"
+"swagger-ui-dist@npm:^5.29.1":
+  version: 5.29.1
+  resolution: "swagger-ui-dist@npm:5.29.1"
   dependencies:
     "@scarf/scarf": "npm:=1.4.0"
-  checksum: 10c0/9d004acf487e70b4b9d665807e76997bb7f48d4103d26ff168e91def49b4027822a11c10d28535977adc0e21566e66522cd44f44612df7d2abaff56888a86b26
+  checksum: 10c0/b99b0171f3af5b37552c0b6da6e2e1fcf02e373876b0f8e6c0fdc522f00837c8b50c7800a71832f495e282579bd844e4a5160730035f9443903aeed2bf88a4d4
   languageName: node
   linkType: hard
 
@@ -9649,9 +9649,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsdown@npm:^0.15.5":
-  version: 0.15.5
-  resolution: "tsdown@npm:0.15.5"
+"tsdown@npm:^0.15.6":
+  version: 0.15.6
+  resolution: "tsdown@npm:0.15.6"
   dependencies:
     ansis: "npm:^4.1.0"
     cac: "npm:^6.7.14"
@@ -9686,7 +9686,7 @@ __metadata:
       optional: true
   bin:
     tsdown: dist/run.mjs
-  checksum: 10c0/eb137cc2d7e8e8e781b9f541d6581198ecc8d9d3fe86ec085609642805c4050c32922ee302769213c0b009a9659af18f57d2faef20fdaaf6ec317e4c9a8a7b88
+  checksum: 10c0/fb8f11a34bbce6d11b318eed6920e87f1a82bf738354a36d59de85bd9ff016f1553530e4e22927e9eca4bf1ecf0b822988d7f289b1405adc6bdd4346f550d312
   languageName: node
   linkType: hard
 
@@ -9715,10 +9715,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.20":
-  version: 1.0.20
-  resolution: "typebox@npm:1.0.20"
-  checksum: 10c0/0eade8bbbc3572ddda0ab03dafd668afbfbafc64ab7f520df2e313c2537a19a7b5dfdb7833d013de3cee6e96a792586e41fa7aafa860c65df57a06c101b29e88
+"typebox@npm:^1.0.25":
+  version: 1.0.25
+  resolution: "typebox@npm:1.0.25"
+  checksum: 10c0/4e4728be8f796e89d6dc1f14e79d5119328a913c0899ab148825d494f450885b48182dc9b0a1f4475a5b79a885a5179728a085a2ca9243306b873692b5a24d4c
   languageName: node
   linkType: hard
 
@@ -9785,13 +9785,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.9.2":
-  version: 5.9.2
-  resolution: "typescript@npm:5.9.2"
+"typescript@npm:^5.9.3":
+  version: 5.9.3
+  resolution: "typescript@npm:5.9.3"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 10c0/cd635d50f02d6cf98ed42de2f76289701c1ec587a363369255f01ed15aaf22be0813226bff3c53e99d971f9b540e0b3cc7583dbe05faded49b1b0bed2f638a18
+  checksum: 10c0/6bd7552ce39f97e711db5aa048f6f9995b53f1c52f7d8667c1abdc1700c68a76a308f579cd309ce6b53646deb4e9a1be7c813a93baaf0a28ccd536a30270e1c5
   languageName: node
   linkType: hard
 
@@ -9805,13 +9805,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.9.2#optional!builtin<compat/typescript>":
-  version: 5.9.2
-  resolution: "typescript@patch:typescript@npm%3A5.9.2#optional!builtin<compat/typescript>::version=5.9.2&hash=5786d5"
+"typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+  version: 5.9.3
+  resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 10c0/34d2a8e23eb8e0d1875072064d5e1d9c102e0bdce56a10a25c0b917b8aa9001a9cf5c225df12497e99da107dc379360bc138163c66b55b95f5b105b50578067e
+  checksum: 10c0/ad09fdf7a756814dce65bc60c1657b40d44451346858eea230e10f2e95a289d9183b6e32e5c11e95acc0ccc214b4f36289dcad4bf1886b0adb84d711d336a430
   languageName: node
   linkType: hard
 
@@ -9853,10 +9853,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~7.12.0":
-  version: 7.12.0
-  resolution: "undici-types@npm:7.12.0"
-  checksum: 10c0/326e455bbc0026db1d6b81c76a1cf10c63f7e2f9821db2e24fdc258f482814e5bfa8481f8910d07c68e305937c5c049610fdc441c5e8b7bb0daca7154fb8a306
+"undici-types@npm:~7.13.0":
+  version: 7.13.0
+  resolution: "undici-types@npm:7.13.0"
+  checksum: 10c0/44bbb0935425291351bfd8039571f017295b5d6dc5727045d0a4fea8c6ffe73a6703b48ce010f9cb539b9041a75b463f8cfe1e7309cab7486452505fb0d66151
   languageName: node
   linkType: hard
 
