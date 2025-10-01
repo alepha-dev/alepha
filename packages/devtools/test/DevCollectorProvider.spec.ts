@@ -138,6 +138,39 @@ describe("DevCollectorProvider", () => {
 		expect(Array.isArray(pages)).toBe(true);
 	});
 
+	it("should collect providers metadata", async () => {
+		const app = Alepha.create().with(AlephaDevtools);
+		const devtools = app.inject(DevCollectorProvider);
+		await app.start();
+
+		const providers = devtools.getProviders();
+
+		expect(Array.isArray(providers)).toBe(true);
+		expect(providers.length).toBeGreaterThan(0);
+
+		// Check structure of a provider entry
+		const provider = providers[0];
+		expect(provider).toHaveProperty("name");
+		expect(provider).toHaveProperty("dependencies");
+		expect(Array.isArray(provider.dependencies)).toBe(true);
+	});
+
+	it("should collect modules metadata", async () => {
+		const app = Alepha.create().with(AlephaDevtools);
+		const devtools = app.inject(DevCollectorProvider);
+		await app.start();
+
+		const modules = devtools.getModules();
+
+		expect(Array.isArray(modules)).toBe(true);
+		expect(modules.length).toBeGreaterThan(0);
+
+		// Should include AlephaDevtools module
+		const devtoolsModule = modules.find((m) => m.name === "alepha.devtools");
+		expect(devtoolsModule).toBeDefined();
+		expect(Array.isArray(devtoolsModule?.providers)).toBe(true);
+	});
+
 	it("should return complete metadata object", async () => {
 		const app = Alepha.create().with(AlephaDevtools);
 		const devtools = app.inject(DevCollectorProvider);
@@ -153,6 +186,8 @@ describe("DevCollectorProvider", () => {
 		expect(metadata).toHaveProperty("realms");
 		expect(metadata).toHaveProperty("caches");
 		expect(metadata).toHaveProperty("pages");
+		expect(metadata).toHaveProperty("providers");
+		expect(metadata).toHaveProperty("modules");
 
 		expect(Array.isArray(metadata.logs)).toBe(true);
 		expect(Array.isArray(metadata.actions)).toBe(true);
@@ -163,5 +198,7 @@ describe("DevCollectorProvider", () => {
 		expect(Array.isArray(metadata.realms)).toBe(true);
 		expect(Array.isArray(metadata.caches)).toBe(true);
 		expect(Array.isArray(metadata.pages)).toBe(true);
+		expect(Array.isArray(metadata.providers)).toBe(true);
+		expect(Array.isArray(metadata.modules)).toBe(true);
 	});
 });

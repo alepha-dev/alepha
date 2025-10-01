@@ -13,7 +13,9 @@ import type { DevBucketMetadata } from "./schemas/DevBucketMetadata.ts";
 import type { DevCacheMetadata } from "./schemas/DevCacheMetadata.ts";
 import type { DevLogEntry } from "./schemas/DevLogEntry.ts";
 import { type DevMetadata, devMetadataSchema } from "./schemas/DevMetadata.ts";
+import type { DevModuleMetadata } from "./schemas/DevModuleMetadata.ts";
 import type { DevPageMetadata } from "./schemas/DevPageMetadata.ts";
+import type { DevProviderMetadata } from "./schemas/DevProviderMetadata.ts";
 import type { DevQueueMetadata } from "./schemas/DevQueueMetadata.ts";
 import type { DevRealmMetadata } from "./schemas/DevRealmMetadata.ts";
 import type { DevSchedulerMetadata } from "./schemas/DevSchedulerMetadata.ts";
@@ -171,6 +173,37 @@ export class DevCollectorProvider {
 		}));
 	}
 
+	public getProviders(): DevProviderMetadata[] {
+		const graph = this.alepha.graph();
+
+		return Object.entries(graph).map(([name, info]) => ({
+			name,
+			module: info.module,
+			dependencies: info.from,
+			aliases: info.as,
+		}));
+	}
+
+	public getModules(): DevModuleMetadata[] {
+		const graph = this.alepha.graph();
+		const moduleMap = new Map<string, Set<string>>();
+
+		// Group providers by module
+		for (const [providerName, info] of Object.entries(graph)) {
+			if (info.module) {
+				if (!moduleMap.has(info.module)) {
+					moduleMap.set(info.module, new Set());
+				}
+				moduleMap.get(info.module)!.add(providerName);
+			}
+		}
+
+		return Array.from(moduleMap.entries()).map(([name, providers]) => ({
+			name,
+			providers: Array.from(providers),
+		}));
+	}
+
 	public getMetadata(): DevMetadata {
 		return {
 			logs: this.getLogs(),
@@ -182,6 +215,8 @@ export class DevCollectorProvider {
 			realms: this.getRealms(),
 			caches: this.getCaches(),
 			pages: this.getPages(),
+			providers: this.getProviders(),
+			modules: this.getModules(),
 		};
 	}
 
