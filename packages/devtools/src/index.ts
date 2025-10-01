@@ -1,9 +1,19 @@
 import { $module } from "@alepha/core";
-import { DevtoolsProvider } from "./DevtoolsProvider.ts";
+import { DevCollectorProvider } from "./DevCollectorProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./DevtoolsProvider.ts";
+export * from "./DevCollectorProvider.ts";
+export * from "./schemas/DevActionMetadata.ts";
+export * from "./schemas/DevBucketMetadata.ts";
+export * from "./schemas/DevCacheMetadata.ts";
+export * from "./schemas/DevLogEntry.ts";
+export * from "./schemas/DevMetadata.ts";
+export * from "./schemas/DevPageMetadata.ts";
+export * from "./schemas/DevQueueMetadata.ts";
+export * from "./schemas/DevRealmMetadata.ts";
+export * from "./schemas/DevSchedulerMetadata.ts";
+export * from "./schemas/DevTopicMetadata.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -13,11 +23,11 @@ export * from "./DevtoolsProvider.ts";
  * This module provides comprehensive data collection capabilities for tracking application behavior,
  * performance metrics, and debugging information in real-time.
  *
- * @see {@link DevtoolsProvider}
+ * @see {@link DevCollectorProvider}
  * @module alepha.devtools
  */
 export const AlephaDevtools = $module({
 	name: "alepha.devtools",
 	descriptors: [],
-	services: [DevtoolsProvider],
+	services: [DevCollectorProvider],
 });
