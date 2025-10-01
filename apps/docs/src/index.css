@@ -38,6 +38,11 @@
 	border-top: 1px solid var(--layout-border-color);
 }
 
+#root .mantine-Typography-root {
+	text-align: justify;
+	line-height: 32px;
+}
+
 #root pre a {
 	color: var(--mantine-color-blue-8);
 	text-decoration: none;
