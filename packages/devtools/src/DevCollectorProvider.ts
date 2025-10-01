@@ -164,9 +164,10 @@ export class DevCollectorProvider {
 			hasChildren: !!page.options.children,
 			hasParent: !!page.options.parent,
 			hasErrorHandler: !!page.options.errorHandler,
-			static: typeof page.options.static === "boolean"
-				? page.options.static
-				: !!page.options.static,
+			static:
+				typeof page.options.static === "boolean"
+					? page.options.static
+					: !!page.options.static,
 			cache: page.options.cache,
 			client: page.options.client,
 			animation: page.options.animation,

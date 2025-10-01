@@ -156,7 +156,16 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
+    "@alepha/bucket": "npm:0.10.1"
+    "@alepha/cache": "npm:0.10.1"
     "@alepha/core": "npm:0.10.1"
+    "@alepha/logger": "npm:0.10.1"
+    "@alepha/queue": "npm:0.10.1"
+    "@alepha/react": "npm:0.10.1"
+    "@alepha/scheduler": "npm:0.10.1"
+    "@alepha/security": "npm:0.10.1"
+    "@alepha/server": "npm:0.10.1"
+    "@alepha/topic": "npm:0.10.1"
     "@biomejs/biome": "npm:^2.2.4"
     tsdown: "npm:^0.15.5"
     typescript: "npm:^5.9.2"
