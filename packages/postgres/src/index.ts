@@ -34,6 +34,7 @@ export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
 export * from "./schemas/pageQuerySchema.ts";
 export * from "./schemas/pageSchema.ts";
+export * from "./schemas/updateSchema.ts";
 export * from "./types/schema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

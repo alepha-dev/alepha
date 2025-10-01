@@ -11,11 +11,11 @@
 		"@mantine/nprogress": "^8.3.2",
 		"@mantine/spotlight": "^8.3.2",
 		"@tabler/icons-react": "^3.35.0",
-		"react": "^19.1.1",
-		"react-dom": "^19.1.1"
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0"
 	},
 	"devDependencies": {
-		"@types/react": "^19.1.17",
+		"@types/react": "^19.2.0",
 		"@vitejs/plugin-react": "^5.0.4",
 		"highlight.js": "^11.11.1",
 		"marked": "^16.3.0",

@@ -21,12 +21,18 @@ import type {
 } from "typebox";
 import * as TypeBox from "typebox";
 import { Type } from "typebox";
-import Format from "typebox/format";
+import TypeBoxFormat from "typebox/format";
 import * as TypeBoxValue from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
-export { TypeBox, TypeBoxValue };
+export { TypeBox, TypeBoxValue, TypeBoxFormat };
+
+export const isUUID = TypeBoxFormat.IsUuid;
+export const isDateTime = TypeBoxFormat.IsDateTime;
+export const isDate = TypeBoxFormat.IsDate;
+export const isEmail = TypeBoxFormat.IsEmail;
+export const isURL = TypeBoxFormat.IsUrl;
 
 export type {
 	Static,
@@ -102,10 +108,10 @@ declare module "typebox" {
 }
 
 export class TypeProvider {
-	static format = Format;
+	static format = TypeBoxFormat;
 
 	static {
-		Format.Set("int64", (value: string | number) =>
+		TypeBoxFormat.Set("int64", (value: string | number) =>
 			TypeProvider.isValidBigInt(value),
 		);
 	}
