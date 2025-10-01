@@ -9,6 +9,7 @@ import {
 	type TSchema,
 	t,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { AlephaSecurity } from "@alepha/security";
 import {
 	$action,
@@ -27,6 +28,7 @@ export class ServerSwaggerProvider {
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 	protected readonly alepha = $inject(Alepha);
+	protected readonly log = $logger();
 
 	public json?: OpenAPIV3.Document;
 
@@ -301,6 +303,7 @@ export class ServerSwaggerProvider {
 			},
 			handler: () => json,
 		});
+		this.log.info(`Swagger API available at ${prefix}/json`);
 	}
 
 	protected async configureSwaggerUi(
@@ -351,5 +354,7 @@ window.onload = function() {
 				return initializer;
 			},
 		});
+
+		this.log.info(`Swagger UI available at ${prefix}/`);
 	}
 }

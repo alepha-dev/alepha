@@ -23,10 +23,21 @@ export interface SwaggerDescriptorOptions {
 	 */
 	disabled?: boolean;
 
+	/**
+	 * Tags to exclude from the documentation.
+	 */
 	excludeTags?: string[];
 
+	/**
+	 * Enable Swagger UI.
+	 *
+	 * @default true
+	 */
 	ui?: boolean | SwaggerUiOptions;
 
+	/**
+	 * Function to rewrite the OpenAPI document before serving it.
+	 */
 	rewrite?: (doc: OpenAPIV3.Document) => void;
 }
 
