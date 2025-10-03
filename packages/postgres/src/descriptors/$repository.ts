@@ -762,11 +762,7 @@ export class RepositoryDescriptor<
 
 		let orderBy = query.orderBy;
 		if (!query.orderBy && pagination.sort) {
-			const [field, type] = pagination.sort.split(",");
-			orderBy = {
-				column: field,
-				direction: type === "desc" ? "desc" : "asc",
-			} as any;
+			orderBy = this.parsePaginationSort(pagination.sort) as any;
 		}
 
 		const now = Date.now();
@@ -1444,6 +1440,39 @@ export class RepositoryDescriptor<
 
 	// -------------------------------------------------------------------------------------------------------------------
 	// INTERNAL METHODS
+
+	/**
+	 * Parse pagination sort string to orderBy format.
+	 * Format: "firstName,-lastName" -> [{ column: "firstName", direction: "asc" }, { column: "lastName", direction: "desc" }]
+	 * - Columns separated by comma
+	 * - Prefix with '-' for DESC direction
+	 *
+	 * @param sort Pagination sort string
+	 * @returns OrderBy array or single object
+	 */
+	protected parsePaginationSort(
+		sort: string,
+	):
+		| Array<{ column: string; direction: "asc" | "desc" }>
+		| { column: string; direction: "asc" | "desc" } {
+		const fields = sort.split(",").map((field) => field.trim());
+
+		const orderByClauses = fields.map((field) => {
+			if (field.startsWith("-")) {
+				return {
+					column: field.substring(1),
+					direction: "desc" as const,
+				};
+			}
+			return {
+				column: field,
+				direction: "asc" as const,
+			};
+		});
+
+		// Return single object if only one field, array if multiple
+		return orderByClauses.length === 1 ? orderByClauses[0] : orderByClauses;
+	}
 
 	/**
 	 * Normalize orderBy parameter to array format.

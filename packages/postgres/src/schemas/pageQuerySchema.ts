@@ -5,18 +5,22 @@ export const pageQuerySchema = t.object({
 	page: t.optional(
 		t.int({
 			description: "The page number to retrieve.",
+			minimum: 0,
+			default: 0,
 		}),
 	),
 	size: t.optional(
 		t.int({
+			description: "The number of items per page.",
 			minimum: 1,
 			maximum: 100,
-			description: "The number of items per page.",
+			default: 10,
 		}),
 	),
 	sort: t.optional(
 		t.string({
-			description: "Sort by field, e.g. 'field,asc' or 'field,desc'.",
+			description:
+				"Sort by field(s). Multiple columns separated by comma. Prefix with '-' for DESC. Examples: 'name' (ASC), '-createdAt' (DESC), 'role,-name' (role ASC, name DESC)",
 		}),
 	),
 });
