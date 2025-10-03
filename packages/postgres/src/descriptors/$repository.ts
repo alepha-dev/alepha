@@ -202,7 +202,7 @@ import value = postgres.toPascal.value;
  *           filters.searchTerm ? { name: { ilike: `%${filters.searchTerm}%` } } : {}
  *         ]
  *       },
- *       sort: { createdAt: "desc" }
+ *       orderBy: [{ column: "createdAt", direction: "desc" }]
  *     });
  *
  *     return await this.products.paginate({ page, size }, query, { count: true });
@@ -327,7 +327,7 @@ import value = postgres.toPascal.value;
  *     // Automatically excludes soft-deleted records
  *     return await this.documents.find({
  *       where: { authorId: { isNotNull: true } },
- *       sort: { updatedAt: "desc" }
+ *       orderBy: [{ column: "updatedAt", direction: "desc" }]
  *     });
  *   }
  *
@@ -686,10 +686,13 @@ export class RepositoryDescriptor<
 			builder.limit(query.limit);
 		}
 
-		if (query.sort) {
+		if (query.orderBy) {
+			const orderByClauses = this.normalizeOrderBy(query.orderBy);
 			builder.orderBy(
-				...Object.entries(query.sort ?? {}).map(([key, v]) =>
-					v === "asc" ? asc(this.col(key)) : desc(this.col(key)),
+				...orderByClauses.map((clause) =>
+					clause.direction === "desc"
+						? desc(this.col(clause.column as string))
+						: asc(this.col(clause.column as string)),
 				),
 			);
 		}
@@ -757,14 +760,13 @@ export class RepositoryDescriptor<
 		const page = pagination.page ?? 0;
 		const offset = query.offset ?? page * limit;
 
-		let sort = query.sort;
-		if (!query.sort) {
-			if (pagination.sort) {
-				const [field, type] = pagination.sort.split(",");
-				sort = { [field]: type === "desc" ? "desc" : "asc" } as any;
-			} else {
-				sort = {};
-			}
+		let orderBy = query.orderBy;
+		if (!query.orderBy && pagination.sort) {
+			const [field, type] = pagination.sort.split(",");
+			orderBy = {
+				column: field,
+				direction: type === "desc" ? "desc" : "asc",
+			} as any;
 		}
 
 		const now = Date.now();
@@ -781,7 +783,7 @@ export class RepositoryDescriptor<
 					where: query.where,
 					offset,
 					limit: limit + 1,
-					sort,
+					orderBy,
 				},
 				opts,
 			).then((it) => {
@@ -1442,6 +1444,45 @@ export class RepositoryDescriptor<
 
 	// -------------------------------------------------------------------------------------------------------------------
 	// INTERNAL METHODS
+
+	/**
+	 * Normalize orderBy parameter to array format.
+	 * Supports 3 modes:
+	 * 1. String: "name" -> [{ column: "name", direction: "asc" }]
+	 * 2. Object: { column: "name", direction: "desc" } -> [{ column: "name", direction: "desc" }]
+	 * 3. Array: [{ column: "name" }, { column: "age", direction: "desc" }] -> normalized array
+	 *
+	 * @param orderBy The orderBy parameter
+	 * @returns Normalized array of order by clauses
+	 */
+	protected normalizeOrderBy(
+		orderBy: any,
+	): Array<{ column: string; direction: "asc" | "desc" }> {
+		// Mode 1: String -> single column, ASC by default
+		if (typeof orderBy === "string") {
+			return [{ column: orderBy, direction: "asc" }];
+		}
+
+		// Mode 2: Single object -> convert to array
+		if (!Array.isArray(orderBy) && typeof orderBy === "object") {
+			return [
+				{
+					column: orderBy.column,
+					direction: orderBy.direction ?? "asc",
+				},
+			];
+		}
+
+		// Mode 3: Array -> normalize each item with default direction
+		if (Array.isArray(orderBy)) {
+			return orderBy.map((item) => ({
+				column: item.column,
+				direction: item.direction ?? "asc",
+			}));
+		}
+
+		return [];
+	}
 
 	/**
 	 * Get the where clause for an ID.
