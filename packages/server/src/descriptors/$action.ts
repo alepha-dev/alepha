@@ -7,6 +7,7 @@ import {
 	isTypeFile,
 	KIND,
 	type Static,
+	type TObject,
 	type TSchema,
 	t,
 } from "@alepha/core";
@@ -518,17 +519,17 @@ export type ClientRequestEntry<
 };
 
 export type ClientRequestEntryContainer<TConfig extends RequestConfigSchema> = {
-	body: TConfig["body"] extends TSchema ? Static<TConfig["body"]> : undefined;
+	body: TConfig["body"] extends TObject ? Static<TConfig["body"]> : undefined;
 
-	params: TConfig["params"] extends TSchema
+	params: TConfig["params"] extends TObject
 		? Static<TConfig["params"]>
 		: undefined;
 
-	headers?: TConfig["headers"] extends TSchema
+	headers?: TConfig["headers"] extends TObject
 		? Static<TConfig["headers"]>
 		: undefined;
 
-	query?: TConfig["query"] extends TSchema
+	query?: TConfig["query"] extends TObject
 		? Partial<Static<TConfig["query"]>>
 		: undefined;
 };
