@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/logger",
 	"description": "A simple logger for Alepha applications",
-	"version": "0.10.1",
+	"version": "0.10.2",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,7 +14,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "^0.10.1"
+		"@alepha/core": "^0.10.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
