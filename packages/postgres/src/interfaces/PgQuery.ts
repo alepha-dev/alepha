@@ -20,10 +20,7 @@ export interface OrderByClause<T> {
  * 2. Single object: orderBy: { column: "name", direction: "desc" }
  * 3. Array: orderBy: [{ column: "name", direction: "asc" }, { column: "age", direction: "desc" }]
  */
-export type OrderBy<T> =
-	| keyof T
-	| OrderByClause<T>
-	| Array<OrderByClause<T>>;
+export type OrderBy<T> = keyof T | OrderByClause<T> | Array<OrderByClause<T>>;
 
 export interface PgQuery<T extends TObject> {
 	distinct?: boolean;

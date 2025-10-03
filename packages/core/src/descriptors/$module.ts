@@ -52,7 +52,9 @@ import type { Service } from "../interfaces/Service.ts";
  * Modules are more useful when the application grows and needs to be structured.
  * If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
  */
-export const $module = (options: ModuleDescriptorOptions): Service<Module> => {
+export const $module = <T extends object>(
+	options: ModuleDescriptorOptions<T>,
+): Service<Module<T>> => {
 	const { services = [], descriptors = [], name } = options;
 
 	if (!name || !Module.NAME_REGEX.test(name)) {
@@ -61,12 +63,13 @@ export const $module = (options: ModuleDescriptorOptions): Service<Module> => {
 		);
 	}
 
-	const $ = class extends Module {
-		options = options;
+	const $ = class extends Module<T> {
+		config = options;
+		options = {} as T;
 
 		register(alepha: Alepha): void {
 			if (typeof options.register === "function") {
-				options.register(alepha);
+				options.register(alepha, this.options);
 				return;
 			}
 
@@ -100,7 +103,7 @@ export const $module = (options: ModuleDescriptorOptions): Service<Module> => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ModuleDescriptorOptions {
+export interface ModuleDescriptorOptions<T extends object> {
 	/**
 	 * Name of the module.
 	 *
@@ -123,18 +126,20 @@ export interface ModuleDescriptorOptions {
 	 * You can override this behavior by providing a register function.
 	 * It's useful when you want to register services conditionally or in a specific order.
 	 */
-	register?: (alepha: Alepha) => void;
+	register?: (alepha: Alepha, options: T) => void;
 }
 
 /**
  * Base class for all modules.
  */
-export abstract class Module {
-	public abstract readonly options: ModuleDescriptorOptions;
+export abstract class Module<T extends object = any> {
+	public abstract readonly config: ModuleDescriptorOptions<T>;
 
 	public abstract register(alepha: Alepha): void;
 
 	static NAME_REGEX = /^[a-z]+(\.[a-z][a-z0-9-]*)*$/;
+
+	public options: T = {} as T;
 
 	/**
 	 * Check if a Service is a Module.

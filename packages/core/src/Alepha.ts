@@ -601,10 +601,12 @@ export class Alepha {
 	 * > If you are interested in configuring a service, use Alepha#configure() instead.
 	 *
 	 * @param serviceEntry - The service to register in the container.
+	 * @param configure - Optional configuration object to merge with the service's options.
 	 * @return Current instance of Alepha.
 	 */
-	public with<T extends object>(
+	public with<T extends { options?: object } & object>(
 		serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
+		configure?: Partial<T["options"]>,
 	): this {
 		const entry: ServiceEntry<T> =
 			"default" in serviceEntry ? serviceEntry.default : serviceEntry;
@@ -642,6 +644,10 @@ export class Alepha {
 				throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
 			}
 			return this;
+		}
+
+		if (configure && typeof entry === "function") {
+			this.configure(entry, configure);
 		}
 
 		this.inject(entry);
@@ -789,12 +795,19 @@ export class Alepha {
 	 * }
 	 * ```
 	 */
-	public configure<T extends { options: object }>(
+	public configure<T extends { options?: object }>(
 		service: Service<T>,
 		state: Partial<T["options"]>,
 	): this {
 		if (this.has(service)) {
-			Object.assign(this.inject(service).options, state);
+			const instance = this.inject(service);
+			if (
+				"options" in instance &&
+				instance.options &&
+				typeof instance.options === "object"
+			) {
+				Object.assign(instance.options, state);
+			}
 		} else {
 			this.configurations.set(service, state);
 		}

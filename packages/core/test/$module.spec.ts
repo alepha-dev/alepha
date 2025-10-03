@@ -87,4 +87,32 @@ describe("$module", () => {
 		expect(stack).toBe("B2");
 		expect(alepha.inject(A).a).toBe("2");
 	});
+
+	test("should be configurable", async ({ expect }) => {
+		type MyServiceOptions = {
+			name: string;
+		};
+
+		class MyService {
+			options: MyServiceOptions = {
+				name: "default",
+			};
+			hello() {
+				return `Hello, ${this.options.name}`;
+			}
+		}
+
+		const MyModule = $module<MyServiceOptions>({
+			name: "my.module",
+			services: [MyService],
+			register: (alepha, options) => {
+				alepha.with(MyService, options); // load only B explicitly
+			},
+		});
+
+		const alepha = Alepha.create();
+		alepha.with(MyModule, { name: "Alepha" });
+
+		expect(alepha.inject(MyService).hello()).toBe("Hello, Alepha");
+	});
 });
