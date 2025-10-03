@@ -208,8 +208,20 @@ import {
  */
 export const $action = <TConfig extends RequestConfigSchema>(
 	options: ActionDescriptorOptions<TConfig>,
-): ActionDescriptor<TConfig> => {
-	return createDescriptor(ActionDescriptor<TConfig>, options);
+): ActionDescriptorFn<TConfig> => {
+	const instance = createDescriptor(ActionDescriptor<TConfig>, options);
+	const fn = (
+		config?: ClientRequestEntry<TConfig>,
+		options?: ClientRequestOptions,
+	) => {
+		return instance.run(config, options);
+	};
+	Object.defineProperty(fn, "name", {
+		get(): string {
+			return instance.options.name || instance.config.propertyKey;
+		},
+	});
+	return Object.setPrototypeOf(fn, instance) as ActionDescriptorFn<TConfig>;
 };
 
 // ----------------------------------------------------------------------------------------------------------
@@ -484,6 +496,14 @@ export class ActionDescriptor<
 			options,
 		});
 	}
+}
+
+export interface ActionDescriptorFn<TConfig extends RequestConfigSchema>
+	extends ActionDescriptor<TConfig> {
+	(
+		config?: ClientRequestEntry<TConfig>,
+		options?: ClientRequestOptions,
+	): Promise<ClientRequestResponse<TConfig>>;
 }
 
 $action[KIND] = ActionDescriptor;

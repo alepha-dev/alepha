@@ -122,6 +122,7 @@ describe("$action", () => {
 		const app = alepha.inject(TestApp);
 		await alepha.start();
 
+		expect(await app.test()).toStrictEqual({ ok: true });
 		expect(await app.test.run({})).toStrictEqual({ ok: true });
 		expect(await app.test.fetch({}).then((it) => it.data)).toStrictEqual({
 			ok: true,
@@ -145,7 +146,8 @@ describe("$action", () => {
 		const app = alepha.inject(TestApp);
 		await alepha.start();
 
-		expect(await app.test.run({}).then((it) => it.text())).toBe("hello");
+		expect(await app.test().then((it) => it.text())).toBe("hello");
+		expect(await app.test.run().then((it) => it.text())).toBe("hello");
 		expect(await app.test.fetch({}).then((it) => it.data.text())).toBe("hello");
 
 		const file = await app.test.run({});

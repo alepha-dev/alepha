@@ -1,6 +1,8 @@
 import { $module } from "@alepha/core";
-import { AlephaServer } from "@alepha/server";
-import { ServerCorsProvider } from "./providers/ServerCorsProvider.ts";
+import {
+	ServerCorsProvider,
+	type ServerCorsProviderOptions,
+} from "./providers/ServerCorsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -11,7 +13,8 @@ export * from "./providers/ServerCorsProvider.ts";
 /**
  * Plugin for configuring CORS on the Alepha server.
  */
-export const AlephaServerCors = $module({
+export const AlephaServerCors = $module<ServerCorsProviderOptions>({
 	name: "alepha.server.cors",
-	services: [AlephaServer, ServerCorsProvider],
+	services: [ServerCorsProvider],
+	register: (alepha, options) => alepha.with(ServerCorsProvider, options),
 });

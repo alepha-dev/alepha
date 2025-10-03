@@ -52,7 +52,7 @@ import type { Service } from "../interfaces/Service.ts";
  * Modules are more useful when the application grows and needs to be structured.
  * If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
  */
-export const $module = <T extends object>(
+export const $module = <T extends object = {}>(
 	options: ModuleDescriptorOptions<T>,
 ): Service<Module<T>> => {
 	const { services = [], descriptors = [], name } = options;
@@ -132,7 +132,7 @@ export interface ModuleDescriptorOptions<T extends object> {
 /**
  * Base class for all modules.
  */
-export abstract class Module<T extends object = any> {
+export abstract class Module<T extends object = {}> {
 	public abstract readonly config: ModuleDescriptorOptions<T>;
 
 	public abstract register(alepha: Alepha): void;
