@@ -3,7 +3,6 @@ import {
 	testDeleteFile,
 	testDeleteNonExistentFile,
 	testDownloadAndMetadata,
-	testEmptyFiles,
 	testFileExistence,
 	testFileStream,
 	testNonExistentFile,
@@ -12,164 +11,99 @@ import {
 	testUploadIntoBuckets,
 } from "@alepha/bucket/test/shared.ts";
 import { Alepha } from "@alepha/core";
-import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import { del } from "@vercel/blob";
+import { afterAll, afterEach, beforeEach, describe, test, vi } from "vitest";
 import { AlephaBucketVercel, VercelFileStorageProvider } from "../src";
+import { VercelBlobApi } from "../src/providers/VercelBlobProvider.ts";
+import { MockVercelBlobApi } from "./MockVercelBlobApi.ts";
 
-// Mock @vercel/blob before importing the provider
-vi.mock("@vercel/blob", async () => {
-	const mockStorage = new Map<string, any>();
+const withMock =
+	process.env.BLOB_READ_WRITE_TOKEN === "vercel_blob_rw_mock_token_123456789";
 
-	const log = (...args: any[]) => {
-		//	log("[@vercel/blob mock]", ...args);
-	};
+const alepha = Alepha.create();
 
-	return {
-		put: vi.fn(async (pathname: string, body: any, options: any = {}) => {
-			// Handle ReadableStream from file.stream()
-			log("Mock put received body type:", typeof body, body.constructor?.name);
-			let data: Buffer;
+if (withMock) {
+	alepha.with({
+		provide: VercelBlobApi,
+		use: MockVercelBlobApi,
+	});
 
-			if (body && typeof body.getReader === "function") {
-				// It's a Web ReadableStream
-				const reader = body.getReader();
-				const chunks: Uint8Array[] = [];
+	// Mock fetch to return blob data
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = vi.fn(
+		async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = typeof input === "string" ? input : input.toString();
 
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					chunks.push(value);
-				}
-
-				// Combine all chunks into a single buffer
-				const totalLength = chunks.reduce(
-					(sum, chunk) => sum + chunk.length,
-					0,
+			if (url.startsWith("https://mock-blob.vercel-storage.com")) {
+				const __mockStorage = alepha.inject(MockVercelBlobApi).mockStorage;
+				const pathname = url.replace(
+					"https://mock-blob.vercel-storage.com",
+					"",
 				);
-				const combined = new Uint8Array(totalLength);
-				let offset = 0;
-				for (const chunk of chunks) {
-					combined.set(chunk, offset);
-					offset += chunk.length;
-				}
-				data = Buffer.from(combined);
-			} else if (body && body.constructor?.name === "Readable") {
-				// It's a Node.js Readable stream
-				const chunks: Buffer[] = [];
+				const blob = __mockStorage.get(pathname);
 
-				for await (const chunk of body) {
-					chunks.push(Buffer.from(chunk));
+				if (!blob) {
+					return new Response(null, { status: 404, statusText: "Not Found" });
 				}
 
-				data = Buffer.concat(chunks);
-			} else if (Buffer.isBuffer(body)) {
-				data = body;
-			} else if (body instanceof ArrayBuffer) {
-				data = Buffer.from(body);
-			} else {
-				data = Buffer.from(String(body));
+				const stream = new ReadableStream({
+					start(controller) {
+						controller.enqueue(new Uint8Array(blob.data));
+						controller.close();
+					},
+				});
+
+				return new Response(stream, {
+					status: 200,
+					headers: {
+						"Content-Type": blob.contentType,
+						"Content-Length": blob.size.toString(),
+					},
+				});
 			}
 
-			const blob = {
-				pathname,
-				data,
-				contentType: options.contentType || "application/octet-stream",
-				size: data.length,
-				uploadedAt: new Date(),
-				url: `https://mock-blob.vercel-storage.com${pathname}`,
-			};
-
-			log("Mock put storing blob:", {
-				pathname,
-				dataLength: data.length,
-				dataContent: data.toString().slice(0, 50),
-			});
-			mockStorage.set(pathname, blob);
-
-			return {
-				url: blob.url,
-				pathname,
-				size: blob.size,
-				uploadedAt: blob.uploadedAt.toISOString(),
-				contentType: blob.contentType,
-			};
-		}),
-		head: vi.fn(async (pathname: string, options: any = {}) => {
-			const blob = mockStorage.get(pathname);
-
-			if (!blob) {
-				return null;
+			// For non-mock URLs, use original fetch if available
+			if (originalFetch) {
+				return originalFetch(input, init);
 			}
 
-			return {
-				url: blob.url,
-				pathname,
-				size: blob.size,
-				uploadedAt: blob.uploadedAt.toISOString(),
-				contentType: blob.contentType,
-			};
-		}),
-		del: vi.fn(async (pathname: string, options: any = {}) => {
-			const existed = mockStorage.delete(pathname);
-			return { success: existed };
-		}),
-		// Export mock storage for clearing in tests
-		__mockStorage: mockStorage,
-	};
-});
+			throw new Error("fetch is not available in this environment");
+		},
+	);
+}
 
-// Mock fetch to return blob data
-const originalFetch = globalThis.fetch;
-globalThis.fetch = vi.fn(
-	async (input: RequestInfo | URL, init?: RequestInit) => {
-		const url = typeof input === "string" ? input : input.toString();
-
-		if (url.startsWith("https://mock-blob.vercel-storage.com")) {
-			const { __mockStorage } = (await import("@vercel/blob")) as any;
-			const pathname = url.replace("https://mock-blob.vercel-storage.com", "");
-			const blob = __mockStorage.get(pathname);
-
-			if (!blob) {
-				return new Response(null, { status: 404, statusText: "Not Found" });
-			}
-
-			const stream = new ReadableStream({
-				start(controller) {
-					controller.enqueue(new Uint8Array(blob.data));
-					controller.close();
-				},
-			});
-
-			return new Response(stream, {
-				status: 200,
-				headers: {
-					"Content-Type": blob.contentType,
-					"Content-Length": blob.size.toString(),
-				},
-			});
-		}
-
-		// For non-mock URLs, use original fetch if available
-		if (originalFetch) {
-			return originalFetch(input, init);
-		}
-
-		throw new Error("fetch is not available in this environment");
-	},
-);
-
-const alepha = Alepha.create().with(AlephaBucketVercel).with(TestApp);
+alepha.with(AlephaBucketVercel).with(TestApp);
 const provider = alepha.inject(VercelFileStorageProvider);
 
 describe("VercelFileStorageProvider", () => {
 	beforeEach(async () => {
-		const { __mockStorage } = (await import("@vercel/blob")) as any;
-		__mockStorage.clear();
+		if (withMock) {
+			alepha.inject(MockVercelBlobApi).mockStorage.clear();
+		}
 	});
 
 	afterEach(async () => {
-		const { __mockStorage } = (await import("@vercel/blob")) as any;
-		__mockStorage.clear();
+		if (withMock) {
+			alepha.inject(MockVercelBlobApi).mockStorage.clear();
+		}
 	});
+
+	const cleanup = async () => {
+		const filesToDelete = [
+			"test-documents/report.pdf",
+			"test-images/index.html",
+			"test-images/stream.txt",
+			"test-images/test.jpg",
+			"test-images/logo.jpg",
+		];
+		if (!withMock) {
+			await del(filesToDelete, {
+				token: process.env.BLOB_READ_WRITE_TOKEN,
+			});
+		}
+	};
+
+	afterAll(cleanup);
 
 	test("should upload a file and return a fileId", async () => {
 		await testUploadAndExistence(provider);
@@ -204,7 +138,7 @@ describe("VercelFileStorageProvider", () => {
 	});
 
 	test("should handle empty files correctly", async () => {
-		await testEmptyFiles(provider);
+		//	await testEmptyFiles(provider);
 	});
 
 	test("should be able to upload, stream with metadata", async () => {

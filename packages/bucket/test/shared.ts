@@ -2,12 +2,14 @@ import { createFile } from "@alepha/file";
 import { expect } from "vitest";
 import { $bucket, FileNotFoundError, type FileStorageProvider } from "../src";
 
+export const TEST_IMAGES_BUCKET = "test-images";
+export const TEST_DOCUMENTS_BUCKET = "test-documents";
 export class TestApp {
-	images = $bucket({ name: "images" });
-	documents = $bucket({ name: "documents" });
+	images = $bucket({ name: TEST_IMAGES_BUCKET });
+	documents = $bucket({ name: TEST_DOCUMENTS_BUCKET });
 }
 
-const BUCKET_NAME = "images";
+const BUCKET_NAME = TEST_IMAGES_BUCKET;
 
 export const testUploadAndExistence = async (provider: FileStorageProvider) => {
 	const content = "This is a test image.";
@@ -94,15 +96,15 @@ export const testUploadIntoBuckets = async (provider: FileStorageProvider) => {
 	const docFile = createFile("report", { name: "report.pdf" });
 	const imgFile = createFile("logo", { name: "logo.png" });
 
-	const docId = await provider.upload("documents", docFile);
-	const imgId = await provider.upload("images", imgFile);
+	const docId = await provider.upload(TEST_DOCUMENTS_BUCKET, docFile);
+	const imgId = await provider.upload(TEST_IMAGES_BUCKET, imgFile);
 
-	expect(await provider.exists("documents", docId)).toBe(true);
-	expect(await provider.exists("images", imgId)).toBe(true);
+	expect(await provider.exists(TEST_DOCUMENTS_BUCKET, docId)).toBe(true);
+	expect(await provider.exists(TEST_IMAGES_BUCKET, imgId)).toBe(true);
 
 	// Ensure files are in separate directories and not mixed up
-	expect(await provider.exists("documents", imgId)).toBe(false);
-	expect(await provider.exists("images", docId)).toBe(false);
+	expect(await provider.exists(TEST_DOCUMENTS_BUCKET, imgId)).toBe(false);
+	expect(await provider.exists(TEST_IMAGES_BUCKET, docId)).toBe(false);
 };
 
 export const testFileStream = async (provider: FileStorageProvider) => {

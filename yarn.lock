@@ -523,6 +523,7 @@ __metadata:
     "@alepha/core": "npm:0.10.2"
     "@alepha/datetime": "npm:0.10.2"
     "@alepha/logger": "npm:0.10.2"
+    "@alepha/security": "npm:0.10.2"
     "@alepha/server": "npm:0.10.2"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"

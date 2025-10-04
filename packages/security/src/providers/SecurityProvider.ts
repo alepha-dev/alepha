@@ -21,8 +21,12 @@ import type { Role } from "../schemas/roleSchema.ts";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 
+const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // 32 chars
+
 const envSchema = t.object({
-	SECURITY_SECRET_KEY: t.string({ default: "replace-me-with-a-secret-key" }),
+	APP_SECRET: t.string({
+		default: DEFAULT_APP_SECRET,
+	}),
 });
 
 declare module "@alepha/core" {
@@ -39,6 +43,10 @@ export class SecurityProvider {
 	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
 
+	public get secretKey() {
+		return this.env.APP_SECRET;
+	}
+
 	/**
 	 * The permissions configured for the security provider.
 	 */
@@ -50,7 +58,7 @@ export class SecurityProvider {
 	protected readonly realms: Realm[] = [
 		{
 			name: "default",
-			secret: this.env.SECURITY_SECRET_KEY,
+			secret: this.env.APP_SECRET,
 			roles: [
 				{
 					name: "admin",
@@ -67,6 +75,12 @@ export class SecurityProvider {
 	protected start = $hook({
 		on: "start",
 		handler: async () => {
+			if (this.alepha.isProduction() && this.secretKey === DEFAULT_APP_SECRET) {
+				this.log.warn(
+					"Using default APP_SECRET in production is not recommended. Please set a strong APP_SECRET value.",
+				);
+			}
+
 			for (const realm of this.realms) {
 				if (realm.secret) {
 					const secret =

@@ -7,16 +7,15 @@ import {
 } from "node:crypto";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
-	$env,
 	$hook,
 	$inject,
 	Alepha,
 	type Static,
 	type TSchema,
-	t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
+import { SecurityProvider } from "@alepha/security";
 import type { ServerRequest } from "@alepha/server";
 import type {
 	Cookie,
@@ -25,27 +24,12 @@ import type {
 } from "../descriptors/$cookie.ts";
 import { CookieParser } from "../services/CookieParser.ts";
 
-const envSchema = t.object({
-	/**
-	 *  A 32-byte secret key used for cookie encryption and signing. MUST be set for `encrypt` or `sign` to work.
-	 */
-	COOKIE_SECRET: t.optional(
-		t.string({
-			minLength: 32,
-		}),
-	),
-});
-
-declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
-}
-
 export class ServerCookiesProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
-	protected readonly env = $env(envSchema);
 	protected readonly cookieParser = $inject(CookieParser);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+	protected readonly securityProvider = $inject(SecurityProvider);
 
 	// crypto constants
 	protected readonly ALGORITHM = "aes-256-gcm";
@@ -239,19 +223,7 @@ export class ServerCookiesProvider {
 	}
 
 	public secretKey(): string {
-		const key = this.env.COOKIE_SECRET;
-		if (!key) {
-			if (this.alepha.isTest()) {
-				this.log.warn(
-					"COOKIE_SECRET is not set, generating a random key for tests.",
-				);
-				return randomBytes(32).toString("hex").slice(0, 32);
-			}
-			throw new Error(
-				"COOKIE_SECRET environment variable is not set. It must be a 32-character string.",
-			);
-		}
-		return key;
+		return this.securityProvider.secretKey;
 	}
 
 	protected sign(data: string): string {

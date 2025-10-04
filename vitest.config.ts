@@ -1,4 +1,19 @@
 import { defineConfig } from "vitest/config";
+import { existsSync, readFileSync } from "node:fs";
+
+let env: Record<string, string> = {};
+
+// if .env, read and load to var "env"
+if (existsSync(".env")) {
+	env = readFileSync(".env", "utf-8")
+		.split("\n")
+		.map(e => e.trim().split("="))
+		.filter(e => e.length === 2)
+		.reduce((acc, cur) => {
+			acc[cur[0].trim()] = cur[1].trim();
+			return acc;
+		}, {} as Record<string, string>);
+}
 
 export default defineConfig({
 	test: {
@@ -25,7 +40,7 @@ export default defineConfig({
 				"AccountName=devstoreaccount1;" +
 				"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
 				"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",
-			BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_mock_token_123456789"
+			BLOB_READ_WRITE_TOKEN: env.BLOB_READ_WRITE_TOKEN ?? "vercel_blob_rw_mock_token_123456789"
 		},
 		projects: [
 			{

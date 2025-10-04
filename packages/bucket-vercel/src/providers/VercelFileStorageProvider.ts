@@ -17,7 +17,7 @@ import {
 import { DateTimeProvider } from "@alepha/datetime";
 import { createFile } from "@alepha/file";
 import { $logger } from "@alepha/logger";
-import { del, head, put } from "@vercel/blob";
+import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
 const envSchema = t.object({
 	BLOB_READ_WRITE_TOKEN: t.string({
@@ -38,6 +38,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly time = $inject(DateTimeProvider);
 	protected readonly stores: Set<string> = new Set();
+	protected readonly vercelBlobApi = $inject(VercelBlobApi);
 
 	protected readonly onStart = $hook({
 		on: "start",
@@ -82,11 +83,16 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		const pathname = `${storeName}/${fileId}`;
 
 		try {
-			const result = await put(pathname, file.stream() as Readable, {
-				access: "public",
-				contentType: file.type,
-				token: this.env.BLOB_READ_WRITE_TOKEN,
-			});
+			const result = await this.vercelBlobApi.put(
+				pathname,
+				file.stream() as Readable,
+				{
+					access: "public",
+					contentType: file.type,
+					token: this.env.BLOB_READ_WRITE_TOKEN,
+					allowOverwrite: true,
+				},
+			);
 
 			this.log.trace(`File uploaded successfully: ${result.url}`);
 			return fileId;
@@ -112,7 +118,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 
 		try {
 			// check if the file exists and get metadata
-			const headResult = await head(pathname, {
+			const headResult = await this.vercelBlobApi.head(pathname, {
 				token: this.env.BLOB_READ_WRITE_TOKEN,
 			});
 
@@ -167,7 +173,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		const pathname = `${storeName}/${fileId}`;
 
 		try {
-			const result = await head(pathname, {
+			const result = await this.vercelBlobApi.head(pathname, {
 				token: this.env.BLOB_READ_WRITE_TOKEN,
 			});
 			return result !== null;
@@ -184,7 +190,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		const pathname = `${storeName}/${fileId}`;
 
 		try {
-			await del(pathname, {
+			await this.vercelBlobApi.del(pathname, {
 				token: this.env.BLOB_READ_WRITE_TOKEN,
 			});
 		} catch (error) {
