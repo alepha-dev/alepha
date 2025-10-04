@@ -194,8 +194,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 		}
 
 		if (responseKind === "text") {
-			reply.headers["content-type"] = "text/plain";
 			reply.body = String(reply.body);
+			if (reply.body.startsWith("<!DOCTYPE html>")) {
+				reply.headers["content-type"] ??= "text/html; charset=UTF-8";
+			} else {
+				reply.headers["content-type"] ??= "text/plain";
+			}
 			return;
 		}
 
