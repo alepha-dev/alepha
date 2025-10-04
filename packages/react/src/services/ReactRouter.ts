@@ -46,6 +46,21 @@ export class ReactRouter<T extends object> {
 		});
 	}
 
+	/**
+	 * Reload the current page.
+	 * This is equivalent to calling `go()` with the current pathname and search.
+	 */
+	public async reload() {
+		if (!this.browser) {
+			return;
+		}
+
+		await this.go(this.location.pathname + this.location.search, {
+			replace: true,
+			force: true,
+		});
+	}
+
 	public getURL(): URL {
 		if (!this.browser) {
 			return this.state.url;
