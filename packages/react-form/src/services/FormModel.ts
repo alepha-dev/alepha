@@ -427,7 +427,7 @@ export type FormCtrlOptions<T extends TObject> = {
 	 * Optional initial values for the form fields.
 	 * This can be used to pre-populate the form with existing data.
 	 */
-	initialValues?: Static<T>;
+	initialValues?: Partial<Static<T>>;
 
 	/**
 	 * Optional function to create custom field attributes.
