@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/redis",
 	"description": "A Redis client for caching, pub/sub, and more.",
-	"version": "0.10.2",
+	"version": "0.10.3",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,8 +14,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.2",
-		"@alepha/logger": "0.10.2",
+		"@alepha/core": "0.10.3",
+		"@alepha/logger": "0.10.3",
 		"@redis/client": "^5.8.3"
 	},
 	"devDependencies": {

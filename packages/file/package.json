@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/file",
 	"description": "Helpers for creating and managing file-like objects seamlessly.",
-	"version": "0.10.2",
+	"version": "0.10.3",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,7 +14,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.2"
+		"@alepha/core": "0.10.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",

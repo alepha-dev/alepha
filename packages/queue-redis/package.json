@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/queue-redis",
 	"description": "Redis implementation for the message queueing system.",
-	"version": "0.10.2",
+	"version": "0.10.3",
 	"license": "MIT",
 	"type": "module",
 	"engines": {
@@ -14,9 +14,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.2",
-		"@alepha/queue": "0.10.2",
-		"@alepha/redis": "0.10.2"
+		"@alepha/core": "0.10.3",
+		"@alepha/queue": "0.10.3",
+		"@alepha/redis": "0.10.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",
