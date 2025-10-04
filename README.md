@@ -128,8 +128,8 @@ class Db {
     handler: async () => {
       await this.users.create({
         name: "John Doe",
-      })
-      this.log.info("Users:", await this.users.find())
+      });
+      this.log.info("Users:", await this.users.find());
     }
   })
 }
@@ -141,7 +141,7 @@ run(Db)
 node app.ts
 ```
 
-### React SSR Page
+### React Application
 
 Alepha has built-in React **CSR** & **SSR** support.
 
@@ -158,8 +158,8 @@ import { run, t } from "alepha";
 import { $page } from "alepha/react";
 import { useState } from "react";
 
-const Hello = (props: { start: number }) => {
-  const [ count, setCount ] = useState(props.start);
+const Hello = (props: { count: number }) => {
+  const [ count, setCount ] = useState(props.count);
   return <button onClick={() => setCount(count + 1)}>Clicked: {count}</button>
 }
 
@@ -167,12 +167,12 @@ class HomePage {
   index = $page({
     schema: {
       query: t.object({
-        s: t.number({ default: 0 }),
+        start: t.number({ default: 0 }),
       })
     },
     component: Hello,
     resolve: (req) => {
-      return { start: req.query.s };
+      return { count: req.query.start };
     },
   });
 }
@@ -186,6 +186,8 @@ run(HomePage);
 npm install -D vite
 ```
 
+Add the Alepha Vite plugin to your Vite config:
+
 ```ts
 // vite.config.ts
 import { viteAlepha } from "alepha/vite";
@@ -197,6 +199,8 @@ export default defineConfig({
   ]
 });
 ```
+
+Create an `index.html` file:
 
 ```html
 <!-- index.html -->
@@ -212,17 +216,11 @@ export default defineConfig({
 </html>
 ```
 
+Then run Vite:
+
 ```bash
 npx vite
 ```
-
-## Core Concepts
-
-- **Descriptors**: Define your app logic with `$action`, `$page`, `$repository`, `$cache`, `$email`, etc.
-- **Type Safety**: TypeBox schemas validate data from DB to API to frontend
-- **DI Container**: Built-in dependency injection using `$inject()`
-- **Convention over Config**: Minimal boilerplate, sensible defaults
-- **Full-Stack**: React SSR, Vite, class-based router with type-safe routing
 
 Plenty of other features are available, please check the [documentation](https://feunard.github.io/alepha/).
 
