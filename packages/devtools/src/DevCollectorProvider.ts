@@ -1,6 +1,6 @@
 import { $bucket } from "@alepha/bucket";
 import { $cache } from "@alepha/cache";
-import { $hook, $inject, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha, t } from "@alepha/core";
 import type { LogEntry } from "@alepha/logger";
 import { $queue } from "@alepha/queue";
 import { $page } from "@alepha/react";
@@ -8,6 +8,7 @@ import { $scheduler } from "@alepha/scheduler";
 import { $realm } from "@alepha/security";
 import { $action, $route } from "@alepha/server";
 import { $topic } from "@alepha/topic";
+import { ui } from "./constants/ui.ts";
 import type { DevActionMetadata } from "./schemas/DevActionMetadata.ts";
 import type { DevBucketMetadata } from "./schemas/DevBucketMetadata.ts";
 import type { DevCacheMetadata } from "./schemas/DevCacheMetadata.ts";
@@ -38,6 +39,28 @@ export class DevCollectorProvider {
 			if (this.logs.length > this.maxLogs) {
 				this.logs.shift();
 			}
+		},
+	});
+
+	protected readonly uiRoute = $route({
+		method: "GET",
+		path: "/devtools",
+		schema: {
+			response: t.string(),
+		},
+		handler: () => {
+			return ui;
+		},
+	});
+
+	protected readonly metadataRoute = $route({
+		method: "GET",
+		path: "/devtools/metadata",
+		schema: {
+			response: devMetadataSchema,
+		},
+		handler: () => {
+			return this.getMetadata();
 		},
 	});
 
@@ -220,17 +243,6 @@ export class DevCollectorProvider {
 			modules: this.getModules(),
 		};
 	}
-
-	protected readonly metadataRoute = $route({
-		method: "GET",
-		path: "/_devtools/metadata",
-		schema: {
-			response: devMetadataSchema,
-		},
-		handler: () => {
-			return this.getMetadata();
-		},
-	});
 
 	protected getProviderName(provider?: "memory" | any): string {
 		if (!provider) {
