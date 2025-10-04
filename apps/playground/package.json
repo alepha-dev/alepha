@@ -2,14 +2,11 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"start": "node dist",
-		"build&start": "yarn build && yarn start",
-		"preview": "yarn build && vite preview --outDit=dist/public",
-		"check": "tsc"
+		"dev": "vite",
+		"build": "vite build"
 	},
 	"dependencies": {
-		"alepha": "0.10.2"
+		"alepha": "0.10.2",
+		"vite": "^7.1.9"
 	}
 }

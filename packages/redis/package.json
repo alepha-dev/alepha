@@ -16,10 +16,10 @@
 	"dependencies": {
 		"@alepha/core": "0.10.2",
 		"@alepha/logger": "0.10.2",
-		"@redis/client": "^5.8.2"
+		"@redis/client": "^5.8.3"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.4",
+		"@biomejs/biome": "^2.2.5",
 		"tsdown": "^0.15.6",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"

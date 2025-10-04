@@ -21,11 +21,11 @@
 		"@alepha/lock": "0.10.2",
 		"@alepha/logger": "0.10.2",
 		"@alepha/retry": "0.10.2",
-		"drizzle-orm": "^0.44.5",
+		"drizzle-orm": "^0.44.6",
 		"postgres": "^3.4.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.4",
+		"@biomejs/biome": "^2.2.5",
 		"drizzle-kit": "0.31.5",
 		"tsdown": "^0.15.6",
 		"typescript": "^5.9.3",

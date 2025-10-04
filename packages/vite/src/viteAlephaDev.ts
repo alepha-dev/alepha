@@ -118,8 +118,22 @@ export async function viteAlephaDev(
 			// forward vite request to alepha server
 			server.middlewares.use((req, res, next) => {
 				if (state.started && state.app && req.url && !isViteFile(req.url)) {
-					state.app.events.emit("node:request" as any, { req, res }).then(next);
-					return;
+					// patch res.end to detect if alepha handled the request
+					// if not, we call next() to let vite handle it (e.g. for static files)
+					const end = res.end.bind(res);
+					let ended = false;
+					res.end = (...args: any[]) => {
+						ended = true;
+						return end(...args);
+					};
+
+					return state.app.events
+						.emit("node:request" as any, { req, res })
+						.then(() => {
+							if (!ended) {
+								next();
+							}
+						});
 				}
 				next();
 			});

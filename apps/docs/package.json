@@ -5,11 +5,11 @@
 		"@alepha/core": "0.10.2",
 		"@alepha/react": "0.10.2",
 		"@fontsource/inter": "^5.2.8",
-		"@mantine/core": "^8.3.2",
-		"@mantine/form": "^8.3.2",
-		"@mantine/hooks": "^8.3.2",
-		"@mantine/nprogress": "^8.3.2",
-		"@mantine/spotlight": "^8.3.2",
+		"@mantine/core": "^8.3.3",
+		"@mantine/form": "^8.3.3",
+		"@mantine/hooks": "^8.3.3",
+		"@mantine/nprogress": "^8.3.3",
+		"@mantine/spotlight": "^8.3.3",
 		"@tabler/icons-react": "^3.35.0",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"
@@ -21,7 +21,7 @@
 		"marked": "^16.3.0",
 		"marked-highlight": "^2.2.2",
 		"typescript": "^5.9.3",
-		"vite": "^7.1.7",
+		"vite": "^7.1.9",
 		"vite-bundle-analyzer": "^1.2.3"
 	},
 	"scripts": {

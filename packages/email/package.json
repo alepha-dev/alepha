@@ -26,7 +26,7 @@
 		"nodemailer": "^7.0.6"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.4",
+		"@biomejs/biome": "^2.2.5",
 		"@types/nodemailer": "^7.0.2",
 		"tsdown": "^0.15.6",
 		"typescript": "^5.9.3",
