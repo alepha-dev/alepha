@@ -47,7 +47,7 @@ __metadata:
     "@alepha/file": "npm:0.10.3"
     "@alepha/logger": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
-    "@types/node": "npm:^24.6.2"
+    "@types/node": "npm:^24.7.1"
     "@vercel/blob": "npm:^2.0.0"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -132,7 +132,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
-    typebox: "npm:^1.0.26"
+    typebox: "npm:^1.0.32"
     typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -181,7 +181,7 @@ __metadata:
     "@alepha/logger": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     "@types/nodemailer": "npm:^7.0.2"
-    nodemailer: "npm:^7.0.6"
+    nodemailer: "npm:^7.0.9"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
@@ -338,7 +338,7 @@ __metadata:
     "@alepha/react": "npm:0.10.3"
     "@alepha/testing": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
-    "@types/react": "npm:^19.2.0"
+    "@types/react": "npm:^19.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.6"
@@ -358,7 +358,7 @@ __metadata:
     "@alepha/react": "npm:0.10.3"
     "@alepha/server": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
-    "@types/react": "npm:^19.2.0"
+    "@types/react": "npm:^19.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.6"
@@ -403,8 +403,8 @@ __metadata:
     "@alepha/server-links": "npm:0.10.3"
     "@alepha/server-static": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
-    "@types/react": "npm:^19.2.0"
-    "@types/react-dom": "npm:^19.2.0"
+    "@types/react": "npm:^19.2.2"
+    "@types/react-dom": "npm:^19.2.1"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.6"
@@ -690,7 +690,7 @@ __metadata:
     "@alepha/server-static": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     openapi-types: "npm:^12.1.3"
-    swagger-ui-dist: "npm:^5.29.3"
+    swagger-ui-dist: "npm:^5.29.4"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
@@ -2559,9 +2559,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mantine/core@npm:^8.3.3":
-  version: 8.3.3
-  resolution: "@mantine/core@npm:8.3.3"
+"@mantine/core@npm:^8.3.4":
+  version: 8.3.4
+  resolution: "@mantine/core@npm:8.3.4"
   dependencies:
     "@floating-ui/react": "npm:^0.27.16"
     clsx: "npm:^2.1.1"
@@ -2570,68 +2570,68 @@ __metadata:
     react-textarea-autosize: "npm:8.5.9"
     type-fest: "npm:^4.41.0"
   peerDependencies:
-    "@mantine/hooks": 8.3.3
+    "@mantine/hooks": 8.3.4
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/5ce82c59a3199e7364997aef3e578b06c4dabfba3c030970097d19874a0628f540d7752d00f275f4d3fbc09067b01f9277846ce2e376c7aa1ecadf534b187a0e
+  checksum: 10c0/4a3fb1509d59ebb05b26659c349c871a8507377bf317c15d4694edd2c33b11ba4ff3548dfabd9b3c0327b3269dc1e8cdb045fd03e83ddbe3c7fdb3032d7fd9a3
   languageName: node
   linkType: hard
 
-"@mantine/form@npm:^8.3.3":
-  version: 8.3.3
-  resolution: "@mantine/form@npm:8.3.3"
+"@mantine/form@npm:^8.3.4":
+  version: 8.3.4
+  resolution: "@mantine/form@npm:8.3.4"
   dependencies:
     fast-deep-equal: "npm:^3.1.3"
     klona: "npm:^2.0.6"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/8cbd63a79d4aafc2d3312c9bf07c22700962aa2719ca807960b8732077de4849e7a12fbe4b30aede7f2d1074f81559b34f62063e026b5df0a5d4fe1d11427a78
+  checksum: 10c0/cd7e05e6d8c2c4dc7b349904e79838da3747a7a496b84157138f67723d66d282cb88d10f3e2383c6ca84838832ee578a55a500f918ddebd8c2b49fd87848c618
   languageName: node
   linkType: hard
 
-"@mantine/hooks@npm:^8.3.3":
-  version: 8.3.3
-  resolution: "@mantine/hooks@npm:8.3.3"
+"@mantine/hooks@npm:^8.3.4":
+  version: 8.3.4
+  resolution: "@mantine/hooks@npm:8.3.4"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/9bc5f9bc7fad06be530a32a1450f7dfbcb61676080e364966a3fdf5d45de2e53330efa88000b019596818b7f3b4d18c0ed04e3964bdfe9b8dec20128cf2a69bb
+  checksum: 10c0/5ec0c45a615a6673aa2597702809cc9d23885b986cf383f07f15f76831f2ac5f34933a44aada2b11361c5ede0f5c9496b550269258a3e3d12395541cd4d27aea
   languageName: node
   linkType: hard
 
-"@mantine/nprogress@npm:^8.3.3":
-  version: 8.3.3
-  resolution: "@mantine/nprogress@npm:8.3.3"
+"@mantine/nprogress@npm:^8.3.4":
+  version: 8.3.4
+  resolution: "@mantine/nprogress@npm:8.3.4"
   dependencies:
-    "@mantine/store": "npm:8.3.3"
+    "@mantine/store": "npm:8.3.4"
   peerDependencies:
-    "@mantine/core": 8.3.3
-    "@mantine/hooks": 8.3.3
+    "@mantine/core": 8.3.4
+    "@mantine/hooks": 8.3.4
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/ab76fbf86cfb964fa38129757464d17ad4946bebe453c8e2fd9229208ecf340f4acb4b7e470e25e0a1ec26017ed0c7dac257af7c8ea01b7be8a6576e9d276111
+  checksum: 10c0/503fe5e36d7a1de0b6449b786d2977fee31a202f3b0895edd7e5a72bedb983916d31617ed052bcf2b560cd940f56b0dd6492ed1ea19f9b64b98f69e675e32998
   languageName: node
   linkType: hard
 
-"@mantine/spotlight@npm:^8.3.3":
-  version: 8.3.3
-  resolution: "@mantine/spotlight@npm:8.3.3"
+"@mantine/spotlight@npm:^8.3.4":
+  version: 8.3.4
+  resolution: "@mantine/spotlight@npm:8.3.4"
   dependencies:
-    "@mantine/store": "npm:8.3.3"
+    "@mantine/store": "npm:8.3.4"
   peerDependencies:
-    "@mantine/core": 8.3.3
-    "@mantine/hooks": 8.3.3
+    "@mantine/core": 8.3.4
+    "@mantine/hooks": 8.3.4
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
-  checksum: 10c0/0583d2cb583d58e095117c4ad7434d842f6b72313d97966c5af76024f5df3270141473d9635d79e9a094365b94fa5aea23235b56d241deaf3214c519afa5b057
+  checksum: 10c0/009cac5a98b99b2c0d63b20bafd8f2e8f39dce36b88aed383bc9526ba4e99c3a472233dc3e286d8641ea205bbe069fccb3e6fdf00d1dec63ed41fba0abf2c602
   languageName: node
   linkType: hard
 
-"@mantine/store@npm:8.3.3":
-  version: 8.3.3
-  resolution: "@mantine/store@npm:8.3.3"
+"@mantine/store@npm:8.3.4":
+  version: 8.3.4
+  resolution: "@mantine/store@npm:8.3.4"
   peerDependencies:
     react: ^18.x || ^19.x
-  checksum: 10c0/af3add047d59fca620ea69ed739fb37dd8b96a5f1f536f3845c72201f37549525c12e10a1fcd7a1d111b3f1288468e1f2adcfc8cf7e47ad52ac226819212e70b
+  checksum: 10c0/0299b9a6f79367d3d81d62ab98ec30a70ec7add66aece765ca5d5977d3c2eb14ac59520c2d7fb6588e564f1589b05114390eb23b6a8d98c400a7ac82ba416fc7
   languageName: node
   linkType: hard
 
@@ -3839,12 +3839,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.6.2":
-  version: 24.6.2
-  resolution: "@types/node@npm:24.6.2"
+"@types/node@npm:^24.7.1":
+  version: 24.7.1
+  resolution: "@types/node@npm:24.7.1"
   dependencies:
-    undici-types: "npm:~7.13.0"
-  checksum: 10c0/d029757711be85ec468686f66cd8eca78f5996d7e2b1a5b818436e0299b19925b0fb4f7509a6b62750abdc72d66f5750ce22fb8b55559baca86df89a9c44722e
+    undici-types: "npm:~7.14.0"
+  checksum: 10c0/2525f2aa865d78b1c75faaf8c6bf2af51c930962d8078306620d9a76eafcbbea035142cf2cdc2fcf1b4010cd3958a1c6c59b67aba1ac205dc1e5f895ef6af673
   languageName: node
   linkType: hard
 
@@ -3865,21 +3865,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:^19.2.0":
-  version: 19.2.0
-  resolution: "@types/react-dom@npm:19.2.0"
+"@types/react-dom@npm:^19.2.1":
+  version: 19.2.1
+  resolution: "@types/react-dom@npm:19.2.1"
   peerDependencies:
     "@types/react": ^19.2.0
-  checksum: 10c0/73ba326c8bc53e7bb597aa8e66ce4aabd79e501f744e1386278f0c63f1be6d78cca71a8269af3565206f296675116109a3ccbed4038409614fabf8405e54c6ef
+  checksum: 10c0/0dbbc5b7ecd74681bfac95a413133b26118a70b8840748277abafa47e5c7a037beae6a660e6a21fb53f5cbdb0b2d33e117ea7bbd976a888c298392a8a96bc68f
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19.2.0":
-  version: 19.2.0
-  resolution: "@types/react@npm:19.2.0"
+"@types/react@npm:^19.2.2":
+  version: 19.2.2
+  resolution: "@types/react@npm:19.2.2"
   dependencies:
     csstype: "npm:^3.0.2"
-  checksum: 10c0/a280e146df2abd3b06eaa2f5332dade9f7ebe916334a40699ee11139c5f22aeb49b5b78b6de8c55b53ef2fa94285e1bc2feaf4fbce6fe259a7de92dc1bf67b17
+  checksum: 10c0/f830b1204aca4634ce3c6cb3477b5d3d066b80a4dd832a4ee0069acb504b6debd2416548a43a11c1407c12bc60e2dc6cf362934a18fe75fe06a69c0a98cba8ab
   languageName: node
   linkType: hard
 
@@ -5319,16 +5319,16 @@ __metadata:
     "@alepha/core": "npm:0.10.3"
     "@alepha/react": "npm:0.10.3"
     "@fontsource/inter": "npm:^5.2.8"
-    "@mantine/core": "npm:^8.3.3"
-    "@mantine/form": "npm:^8.3.3"
-    "@mantine/hooks": "npm:^8.3.3"
-    "@mantine/nprogress": "npm:^8.3.3"
-    "@mantine/spotlight": "npm:^8.3.3"
+    "@mantine/core": "npm:^8.3.4"
+    "@mantine/form": "npm:^8.3.4"
+    "@mantine/hooks": "npm:^8.3.4"
+    "@mantine/nprogress": "npm:^8.3.4"
+    "@mantine/spotlight": "npm:^8.3.4"
     "@tabler/icons-react": "npm:^3.35.0"
-    "@types/react": "npm:^19.2.0"
+    "@types/react": "npm:^19.2.2"
     "@vitejs/plugin-react": "npm:^5.0.4"
     highlight.js: "npm:^11.11.1"
-    marked: "npm:^16.3.0"
+    marked: "npm:^16.4.0"
     marked-highlight: "npm:^2.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
@@ -7405,12 +7405,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"marked@npm:^16.3.0":
-  version: 16.3.0
-  resolution: "marked@npm:16.3.0"
+"marked@npm:^16.4.0":
+  version: 16.4.0
+  resolution: "marked@npm:16.4.0"
   bin:
     marked: bin/marked.js
-  checksum: 10c0/5a3d7da93d7692014c8764c31dc741fa6ee16d8573788a3b28d041c440e79177c46d786ad7c1fc2b3f5e301d6db32e22da45efd4c00ddbc31caf87bd8e9a673b
+  checksum: 10c0/5d5e34a913e888b3ec42b9ad69409cc674d3fb91c75fd66749280c5f0c6cf69de9f3a2076af2a952ca577dd226f05b2f3d00d6850df71c37e662f3492377a582
   languageName: node
   linkType: hard
 
@@ -7715,10 +7715,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:^7.0.6":
-  version: 7.0.6
-  resolution: "nodemailer@npm:7.0.6"
-  checksum: 10c0/84d3bdca7baa048df538506726a3e63a116276b9ee1ad1e3cd55a8ccbdbf3dea34af0d9bfbe2fdb63cc83f9abe2dbab1737cd58562955e42cbf6cd46e82da49a
+"nodemailer@npm:^7.0.9":
+  version: 7.0.9
+  resolution: "nodemailer@npm:7.0.9"
+  checksum: 10c0/029af0c89d64a521aa9969196e44c13ef289c7f419264eed8d63682610999e06205b0fc264ab8ac65941dc3eefd3c435f23337a32880614cc199744c9be6209a
   languageName: node
   linkType: hard
 
@@ -8761,7 +8761,7 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.2.5"
-    "@types/node": "npm:^24.6.2"
+    "@types/node": "npm:^24.7.1"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
     depcheck: "npm:^1.4.7"
@@ -9434,12 +9434,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:^5.29.3":
-  version: 5.29.3
-  resolution: "swagger-ui-dist@npm:5.29.3"
+"swagger-ui-dist@npm:^5.29.4":
+  version: 5.29.4
+  resolution: "swagger-ui-dist@npm:5.29.4"
   dependencies:
     "@scarf/scarf": "npm:=1.4.0"
-  checksum: 10c0/18649da5ffdd79471dba64d19d0c9064fcd45ff5e1b1b7c9cc9afc000f10d35692c6e8155256789b6d40834804891a9db7b1ac388f0a0de8840a7aa46632806c
+  checksum: 10c0/6be6f3824311160f51ead82b490c692ba0ef0cf2caf7dde222fbde349ebb45be1aa65ad98228667a08f1c7a6382feaebb78a0f99e5ed4d6f6908e6cb71dbf999
   languageName: node
   linkType: hard
 
@@ -9717,10 +9717,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.26":
-  version: 1.0.26
-  resolution: "typebox@npm:1.0.26"
-  checksum: 10c0/4e9757a348867a6acb102030fe83b735bdb4b87b19e4a8c1fcbd0af60e7181b3f24620936d6932e790ecc750343d8799922bfd13cf957c1a9692d1244f9bbef0
+"typebox@npm:^1.0.32":
+  version: 1.0.32
+  resolution: "typebox@npm:1.0.32"
+  checksum: 10c0/0fdddc6cb5acac371d13bd6310d86dc856a91e121005f8d41468577faa185718fe5ffdf5134de75b45b927917e1a70468ccf1a31d2fb858f1896b6707342dcba
   languageName: node
   linkType: hard
 
@@ -9855,10 +9855,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~7.13.0":
-  version: 7.13.0
-  resolution: "undici-types@npm:7.13.0"
-  checksum: 10c0/44bbb0935425291351bfd8039571f017295b5d6dc5727045d0a4fea8c6ffe73a6703b48ce010f9cb539b9041a75b463f8cfe1e7309cab7486452505fb0d66151
+"undici-types@npm:~7.14.0":
+  version: 7.14.0
+  resolution: "undici-types@npm:7.14.0"
+  checksum: 10c0/e7f3214b45d788f03c51ceb33817be99c65dae203863aa9386b3ccc47201a245a7955fc721fb581da9c888b6ebad59fa3f53405214afec04c455a479908f0f14
   languageName: node
   linkType: hard
 

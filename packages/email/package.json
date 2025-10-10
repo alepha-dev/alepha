@@ -23,7 +23,7 @@
 	"dependencies": {
 		"@alepha/core": "0.10.3",
 		"@alepha/logger": "0.10.3",
-		"nodemailer": "^7.0.6"
+		"nodemailer": "^7.0.9"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",
