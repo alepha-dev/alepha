@@ -191,9 +191,14 @@ export class PostgresTypeProvider {
 			onDelete?: UpdateDeleteAction;
 		},
 	): PgAttr<T, PgRef> => {
+		// If actions are not provided, set default onDelete based on type
+		const finalActions = actions ?? {
+			onDelete: t.schema.isOptional(type) ? "set null" : "cascade",
+		};
+
 		return this.attr(type, PG_REF, {
 			ref,
-			actions,
+			actions: finalActions,
 		});
 	};
 

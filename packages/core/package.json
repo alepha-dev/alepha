@@ -15,7 +15,7 @@
 		"src"
 	],
 	"dependencies": {
-		"typebox": "^1.0.32"
+		"typebox": "^1.0.33"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",
