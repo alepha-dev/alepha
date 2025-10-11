@@ -8,11 +8,11 @@ export const userEntity = $entity({
 		id: pg.primaryKey(),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
-		name: t.string(),
+		name: t.text(),
 		profile: t.object({
 			age: t.number(),
 		}),
-		role: pg.default(t.string(), "user"),
+		role: pg.default(t.text(), "user"),
 	}),
 	config: (table) => [uniqueIndex("name").on(table.name)],
 });

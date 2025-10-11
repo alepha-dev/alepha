@@ -19,8 +19,8 @@ const users = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(),
-    name: t.string(),
-    email: t.string(),
+    name: t.text(),
+    email: t.text(),
   }),
 });
 
@@ -107,10 +107,10 @@ const User = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    email: t.string({ format: "email" }),
-    username: t.string({ minLength: 3, maxLength: 30 }),
-    firstName: t.string(),
-    lastName: t.string(),
+    email: t.text({ format: "email" }),
+    username: t.text({ minLength: 3, maxLength: 30 }),
+    firstName: t.text(),
+    lastName: t.text(),
     isActive: t.boolean({ default: true }),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
@@ -131,15 +131,15 @@ const Product = $entity({
   name: "products",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    sku: t.string({ minLength: 3 }),
-    name: t.string({ minLength: 1, maxLength: 200 }),
-    description: t.optional(t.string()),
+    sku: t.text({ minLength: 3 }),
+    name: t.text({ minLength: 1, maxLength: 200 }),
+    description: t.optional(t.text()),
     price: t.number({ minimum: 0 }),
-    categoryId: t.string({ format: "uuid" }),
+    categoryId: t.text({ format: "uuid" }),
     inStock: t.boolean({ default: true }),
     stockQuantity: t.integer({ minimum: 0, default: 0 }),
-    tags: t.optional(t.array(t.string())), // PostgreSQL array column
-    metadata: t.optional(t.record(t.string(), t.any())), // JSONB column
+    tags: t.optional(t.array(t.text())), // PostgreSQL array column
+    metadata: t.optional(t.record(t.text(), t.any())), // JSONB column
     version: pg.version(),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt()
@@ -167,15 +167,15 @@ const AuditLog = $entity({
   name: "audit_logs",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    tableName: t.string(),
-    recordId: t.string(),
+    tableName: t.text(),
+    recordId: t.text(),
     action: t.enum(["CREATE", "UPDATE", "DELETE"]),
-    userId: t.optional(t.string({ format: "uuid" })),
-    oldValues: t.optional(t.record(t.string(), t.any())),
-    newValues: t.optional(t.record(t.string(), t.any())),
+    userId: t.optional(t.text({ format: "uuid" })),
+    oldValues: t.optional(t.record(t.text(), t.any())),
+    newValues: t.optional(t.record(t.text(), t.any())),
     timestamp: pg.createdAt(),
-    ipAddress: t.optional(t.string()),
-    userAgent: t.optional(t.string())
+    ipAddress: t.optional(t.text()),
+    userAgent: t.optional(t.text())
   }),
   indexes: [
     "tableName",
@@ -202,9 +202,9 @@ const UserRole = $entity({
   name: "user_roles",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    userId: t.string({ format: "uuid" }),
-    roleId: t.string({ format: "uuid" }),
-    assignedBy: t.string({ format: "uuid" }),
+    userId: t.text({ format: "uuid" }),
+    roleId: t.text({ format: "uuid" }),
+    assignedBy: t.text({ format: "uuid" }),
     assignedAt: pg.createdAt(),
     expiresAt: t.optional(t.datetime())
   }),
@@ -238,12 +238,12 @@ const Order = $entity({
   name: "orders",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    orderNumber: t.string(),
-    customerId: t.string({ format: "uuid" }),
+    orderNumber: t.text(),
+    customerId: t.text({ format: "uuid" }),
     status: t.enum(["pending", "processing", "shipped", "delivered"]),
     totalAmount: t.number({ minimum: 0 }),
-    currency: t.string({ default: "USD" }),
-    notes: t.optional(t.string()),
+    currency: t.text({ default: "USD" }),
+    notes: t.optional(t.text()),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     version: pg.version()
@@ -313,9 +313,9 @@ const User = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    email: t.string({ format: "email" }),
-    firstName: t.string(),
-    lastName: t.string(),
+    email: t.text({ format: "email" }),
+    firstName: t.text(),
+    lastName: t.text(),
     isActive: t.boolean({ default: true }),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt()
@@ -356,11 +356,11 @@ const Product = $entity({
   name: "products",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    name: t.string(),
+    name: t.text(),
     price: t.number({ minimum: 0 }),
-    categoryId: t.string({ format: "uuid" }),
+    categoryId: t.text({ format: "uuid" }),
     inStock: t.boolean(),
-    tags: t.optional(t.array(t.string())),
+    tags: t.optional(t.array(t.text())),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt()
   }),
@@ -474,9 +474,9 @@ const Document = $entity({
   name: "documents",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    title: t.string(),
-    content: t.string(),
-    authorId: t.string({ format: "uuid" }),
+    title: t.text(),
+    content: t.text(),
+    authorId: t.text({ format: "uuid" }),
     version: pg.version(),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),

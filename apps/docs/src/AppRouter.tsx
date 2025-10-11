@@ -37,7 +37,7 @@ export class AppRouter {
 		component: Content,
 		schema: {
 			params: t.object({
-				slug: t.string(),
+				slug: t.text(),
 			}),
 		},
 		static: {

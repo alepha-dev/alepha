@@ -14,8 +14,8 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  *
  * const form = useForm({
  *   schema: t.object({
- *     username: t.string(),
- *     password: t.string(),
+ *     username: t.text(),
+ *     password: t.text(),
  *   }),
  *   handler: (values) => {
  *     console.log("Form submitted with values:", values);

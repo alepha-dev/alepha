@@ -1,14 +1,14 @@
 import { type Static, t } from "@alepha/core";
 
 export const devActionMetadataSchema = t.object({
-	name: t.string(),
-	group: t.string(),
-	method: t.string(),
-	path: t.string(),
-	prefix: t.string(),
-	fullPath: t.string(),
-	description: t.optional(t.string()),
-	summary: t.optional(t.string()),
+	name: t.text(),
+	group: t.text(),
+	method: t.text(),
+	path: t.text(),
+	prefix: t.text(),
+	fullPath: t.text(),
+	description: t.optional(t.text()),
+	summary: t.optional(t.text()),
 	disabled: t.optional(t.boolean()),
 	secure: t.optional(t.boolean()),
 	hide: t.optional(t.boolean()),
@@ -16,7 +16,7 @@ export const devActionMetadataSchema = t.object({
 	params: t.optional(t.any()),
 	query: t.optional(t.any()),
 	response: t.optional(t.any()),
-	bodyContentType: t.optional(t.string()),
+	bodyContentType: t.optional(t.text()),
 });
 
 export type DevActionMetadata = Static<typeof devActionMetadataSchema>;

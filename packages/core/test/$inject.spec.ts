@@ -51,8 +51,8 @@ test("$env", () => {
 	class A {
 		env = $env(
 			t.object({
-				N1: t.string(),
-				N2: t.string({ default: "$N1" }),
+				N1: t.text(),
+				N2: t.text({ default: "$N1" }),
 			}),
 		);
 	}

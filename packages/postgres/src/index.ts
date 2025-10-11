@@ -47,8 +47,8 @@ export * from "./types/schema.ts";
  *   name: "users",
  *   schema: t.object({
  *     id: pg.primaryKey(),
- *     name: t.string(),
- *     email: t.string(),
+ *     name: t.text(),
+ *     email: t.text(),
  *   }),
  * });
  *
@@ -92,7 +92,7 @@ export const AlephaPostgres = $module({
 	register: (alepha: Alepha) => {
 		const env = alepha.parseEnv(
 			t.object({
-				DATABASE_URL: t.string({
+				DATABASE_URL: t.text({
 					default: ":memory:",
 				}),
 			}),

@@ -4,7 +4,7 @@ import { Alepha, TypeBoxError, t } from "../src";
 test("TypeProvider#optional", () => {
 	const a = Alepha.create();
 	const m = t.object({
-		a: t.optional(t.string()),
+		a: t.optional(t.text()),
 	});
 
 	expect(a.parse(m, {})).toEqual({});
@@ -16,7 +16,7 @@ test("TypeProvider#optional", () => {
 test("TypeProvider#snake_case", () => {
 	const a = Alepha.create();
 	const m = t.object({
-		foo_bar: t.string(),
+		foo_bar: t.text(),
 	});
 
 	expect(a.parse(m, { foo_bar: "hello" })).toEqual({ foo_bar: "hello" });

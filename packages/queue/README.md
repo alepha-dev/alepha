@@ -76,10 +76,10 @@ class EmailService {
   emailQueue = $queue({
     name: "emails",
     schema: t.object({
-      to: t.string(),
-      subject: t.string(),
-      body: t.string(),
-      template: t.optional(t.string())
+      to: t.text(),
+      subject: t.text(),
+      body: t.text(),
+      template: t.optional(t.text())
     })
   });
 
@@ -118,9 +118,9 @@ class NotificationService {
     name: "notifications",
     schema: t.object({
       type: t.enum(["email", "sms", "push"]),
-      recipient: t.string(),
-      message: t.string(),
-      metadata: t.optional(t.record(t.string(), t.any()))
+      recipient: t.text(),
+      message: t.text(),
+      metadata: t.optional(t.record(t.text(), t.any()))
     })
   });
 
@@ -173,10 +173,10 @@ class OrderProcessor {
   orderQueue = $queue({
     name: "order-processing",
     schema: t.object({
-      orderId: t.string(),
-      customerId: t.string(),
+      orderId: t.text(),
+      customerId: t.text(),
       items: t.array(t.object({
-        productId: t.string(),
+        productId: t.text(),
         quantity: t.number(),
         price: t.number()
       }))
@@ -235,10 +235,10 @@ class DataProcessor {
   dataQueue = $queue({
     name: "data-processing",
     schema: t.object({
-      batchId: t.string(),
+      batchId: t.text(),
       records: t.array(t.object({
-        id: t.string(),
-        data: t.record(t.string(), t.any())
+        id: t.text(),
+        data: t.record(t.text(), t.any())
       })),
       processingOptions: t.object({
         validateData: t.boolean(),
@@ -338,9 +338,9 @@ decoupling components and handling background tasks efficiently.
 const emailQueue = $queue({
   name: "email-notifications",
   schema: t.object({
-    to: t.string(),
-    subject: t.string(),
-    body: t.string(),
+    to: t.text(),
+    subject: t.text(),
+    body: t.text(),
     priority: t.optional(t.enum(["high", "normal"]))
   }),
   handler: async (message) => {
@@ -363,7 +363,7 @@ const imageQueue = $queue({
   name: "image-processing",
   provider: RedisQueueProvider,
   schema: t.object({
-    imageId: t.string(),
+    imageId: t.text(),
     operations: t.array(t.enum(["resize", "compress", "thumbnail"]))
   }),
   handler: async (message) => {
@@ -387,7 +387,7 @@ const taskQueue = $queue({
   provider: "memory",
   schema: t.object({
     taskType: t.enum(["cleanup", "backup", "report"]),
-    data: t.record(t.string(), t.any())
+    data: t.record(t.text(), t.any())
   }),
   handler: async (message) => {
     switch (message.payload.taskType) {

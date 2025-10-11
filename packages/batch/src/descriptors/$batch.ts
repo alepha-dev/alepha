@@ -49,10 +49,10 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  * class UserService {
  *   userBatch = $batch({
  *     schema: t.object({
- *       id: t.string(),
- *       name: t.string(),
- *       email: t.string(),
- *       createdAt: t.optional(t.string())
+ *       id: t.text(),
+ *       name: t.text(),
+ *       email: t.text(),
+ *       createdAt: t.optional(t.text())
  *     }),
  *     maxSize: 50,          // Process up to 50 users at once
  *     maxDuration: [5, "seconds"],  // Or flush every 5 seconds
@@ -89,9 +89,9 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  * class NotificationService {
  *   notificationBatch = $batch({
  *     schema: t.object({
- *       userId: t.string(),
+ *       userId: t.text(),
  *       type: t.enum(["email", "sms", "push"]),
- *       message: t.string(),
+ *       message: t.text(),
  *       priority: t.enum(["high", "normal", "low"])
  *     }),
  *     maxSize: 100,
@@ -149,9 +149,9 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  *     schema: t.object({
  *       timestamp: t.number(),
  *       level: t.enum(["info", "warn", "error"]),
- *       message: t.string(),
- *       metadata: t.optional(t.record(t.string(), t.any())),
- *       source: t.string()
+ *       message: t.text(),
+ *       metadata: t.optional(t.record(t.text(), t.any())),
+ *       source: t.text()
  *     }),
  *     maxSize: 1000,       // Large batches for log efficiency
  *     maxDuration: [30, "seconds"],  // Longer duration for log aggregation
@@ -212,11 +212,11 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  * class FileProcessingService {
  *   fileProcessingBatch = $batch({
  *     schema: t.object({
- *       filePath: t.string(),
+ *       filePath: t.text(),
  *       fileType: t.enum(["image", "video", "document"]),
  *       processingOptions: t.object({
  *         quality: t.optional(t.enum(["low", "medium", "high"])),
- *         format: t.optional(t.string()),
+ *         format: t.optional(t.text()),
  *         compress: t.optional(t.boolean())
  *       }),
  *       priority: t.enum(["urgent", "normal", "background"])
@@ -309,9 +309,9 @@ export interface BatchDescriptorOptions<
 	 * @example
 	 * ```ts
 	 * t.object({
-	 *   id: t.string(),
+	 *   id: t.text(),
 	 *   operation: t.enum(["create", "update"]),
-	 *   data: t.record(t.string(), t.any()),
+	 *   data: t.record(t.text(), t.any()),
 	 *   timestamp: t.optional(t.number()),
 	 *   priority: t.optional(t.enum(["high", "normal"]))
 	 * })

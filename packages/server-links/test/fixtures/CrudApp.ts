@@ -3,7 +3,7 @@ import { $action, NotFoundError } from "@alepha/server";
 
 export const userSchema = t.object({
 	id: t.int(),
-	name: t.string(),
+	name: t.text(),
 });
 
 export type User = Static<typeof userSchema>;
@@ -44,7 +44,7 @@ export class CrudApp {
 		path: "/users",
 		schema: {
 			query: t.object({
-				name: t.optional(t.string()),
+				name: t.optional(t.text()),
 			}),
 			response: t.array(userSchema),
 		},
@@ -80,7 +80,7 @@ export class CrudApp {
 				id: t.int(),
 			}),
 			body: t.object({
-				name: t.string(),
+				name: t.text(),
 			}),
 			response: userSchema,
 		},
@@ -96,7 +96,7 @@ export class CrudApp {
 		path: "/users",
 		schema: {
 			body: t.object({
-				name: t.string(),
+				name: t.text(),
 			}),
 			response: userSchema,
 		},

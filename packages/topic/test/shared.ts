@@ -10,7 +10,7 @@ import {
 } from "../src";
 
 export const payloadSchema = t.object({
-	id: t.string(),
+	id: t.text(),
 	count: t.int(),
 });
 

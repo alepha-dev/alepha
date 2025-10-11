@@ -127,9 +127,9 @@ import value = postgres.toPascal.value;
  *   name: "users",
  *   schema: t.object({
  *     id: pg.primaryKey(t.uuid()),
- *     email: t.string({ format: "email" }),
- *     firstName: t.string(),
- *     lastName: t.string(),
+ *     email: t.text({ format: "email" }),
+ *     firstName: t.text(),
+ *     lastName: t.text(),
  *     isActive: t.boolean({ default: true }),
  *     createdAt: pg.createdAt(),
  *     updatedAt: pg.updatedAt()
@@ -171,11 +171,11 @@ import value = postgres.toPascal.value;
  *   name: "products",
  *   schema: t.object({
  *     id: pg.primaryKey(t.uuid()),
- *     name: t.string(),
+ *     name: t.text(),
  *     price: t.number({ minimum: 0 }),
- *     categoryId: t.string({ format: "uuid" }),
+ *     categoryId: t.text({ format: "uuid" }),
  *     inStock: t.boolean(),
- *     tags: t.optional(t.array(t.string())),
+ *     tags: t.optional(t.array(t.text())),
  *     createdAt: pg.createdAt(),
  *     updatedAt: pg.updatedAt()
  *   }),
@@ -291,9 +291,9 @@ import value = postgres.toPascal.value;
  *   name: "documents",
  *   schema: t.object({
  *     id: pg.primaryKey(t.uuid()),
- *     title: t.string(),
- *     content: t.string(),
- *     authorId: t.string({ format: "uuid" }),
+ *     title: t.text(),
+ *     content: t.text(),
+ *     authorId: t.text({ format: "uuid" }),
  *     version: pg.version(),
  *     createdAt: pg.createdAt(),
  *     updatedAt: pg.updatedAt(),
@@ -453,8 +453,8 @@ export interface RepositoryDescriptorOptions<
 	 *   name: "users",
 	 *   schema: t.object({
 	 *     id: pg.primaryKey(t.uuid()),
-	 *     email: t.string({ format: "email" }),
-	 *     name: t.string()
+	 *     email: t.text({ format: "email" }),
+	 *     name: t.text()
 	 *   })
 	 * });
 	 *

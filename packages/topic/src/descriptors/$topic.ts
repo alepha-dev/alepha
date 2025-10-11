@@ -61,10 +61,10 @@ import {
  *     name: "user-activity",
  *     schema: {
  *       payload: t.object({
- *         userId: t.string(),
+ *         userId: t.text(),
  *         action: t.enum(["login", "logout", "purchase"]),
  *         timestamp: t.number(),
- *         metadata: t.optional(t.record(t.string(), t.any()))
+ *         metadata: t.optional(t.record(t.text(), t.any()))
  *       })
  *     },
  *     handler: async (message) => {
@@ -103,10 +103,10 @@ import {
  *     description: "Real-time chat messages for all rooms",
  *     schema: {
  *       payload: t.object({
- *         messageId: t.string(),
- *         roomId: t.string(),
- *         userId: t.string(),
- *         content: t.string(),
+ *         messageId: t.text(),
+ *         roomId: t.text(),
+ *         userId: t.text(),
+ *         content: t.text(),
  *         timestamp: t.number(),
  *         messageType: t.enum(["text", "image", "file"])
  *       })
@@ -158,7 +158,7 @@ import {
  *     name: "order-events",
  *     schema: {
  *       payload: t.object({
- *         orderId: t.string(),
+ *         orderId: t.text(),
  *         status: t.union([
  *           t.literal("created"),
  *           t.literal("paid"),
@@ -167,7 +167,7 @@ import {
  *           t.literal("cancelled")
  *         ]),
  *         timestamp: t.number(),
- *         data: t.optional(t.record(t.string(), t.any()))
+ *         data: t.optional(t.record(t.text(), t.any()))
  *       })
  *     }
  *   });
@@ -223,11 +223,11 @@ import {
  *     provider: RedisTopicProvider,  // Use Redis for cross-service communication
  *     schema: {
  *       payload: t.object({
- *         eventType: t.string(),
- *         serviceId: t.string(),
- *         data: t.record(t.string(), t.any()),
+ *         eventType: t.text(),
+ *         serviceId: t.text(),
+ *         data: t.record(t.text(), t.any()),
  *         timestamp: t.number(),
- *         correlationId: t.optional(t.string())
+ *         correlationId: t.optional(t.text())
  *       })
  *     },
  *     handler: async (message) => {
@@ -369,15 +369,15 @@ export interface TopicDescriptorOptions<T extends TopicMessageSchema> {
 	 * ```ts
 	 * {
 	 *   payload: t.object({
-	 *     eventId: t.string(),
+	 *     eventId: t.text(),
 	 *     eventType: t.enum(["created", "updated"]),
-	 *     data: t.record(t.string(), t.any()),
+	 *     data: t.record(t.text(), t.any()),
 	 *     timestamp: t.number(),
-	 *     userId: t.optional(t.string())
+	 *     userId: t.optional(t.text())
 	 *   }),
 	 *   headers: t.optional(t.object({
-	 *     source: t.string(),
-	 *     correlationId: t.string()
+	 *     source: t.text(),
+	 *     correlationId: t.text()
 	 *   }))
 	 * }
 	 * ```

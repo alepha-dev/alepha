@@ -8,16 +8,16 @@ test("$proxy", async () => {
 		hello = $action({
 			schema: {
 				headers: t.object({
-					prefix: t.optional(t.string()),
+					prefix: t.optional(t.text()),
 				}),
 				query: t.object({
 					transform: t.optional(t.enum(["uppercase"])),
 				}),
 				body: t.object({
-					name: t.string(),
+					name: t.text(),
 				}),
 				response: t.object({
-					message: t.string(),
+					message: t.text(),
 				}),
 			},
 			handler: ({ body, query, headers, reply }) => {

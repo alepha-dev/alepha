@@ -64,7 +64,7 @@ class UserController {
   getUser = $action({
     schema: {
       params: t.object({
-        id: t.string()
+        id: t.text()
       })
     },
     handler: async ({ params }) => {
@@ -107,7 +107,7 @@ import { t } from "alepha"; // TypeBox, NOT zod!
 // ✅ CORRECT - TypeBox schemas
 const userSchema = t.object({
   id: t.uuid(),
-  email: t.string({ format: "email" }),
+  email: t.text({ format: "email" }),
   age: t.number({ minimum: 0, maximum: 120 }),
   isActive: t.boolean({ default: true })
 });
@@ -127,8 +127,8 @@ const users = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
-    email: t.string({ format: "email" }),
-    name: t.string(),
+    email: t.text({ format: "email" }),
+    name: t.text(),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     deletedAt: pg.deletedAt() // Soft delete
@@ -174,7 +174,7 @@ class ProductController {
     method: "POST",
     schema: {
       body: t.object({ // body schema is mandatory for request json body
-        name: t.string(),
+        name: t.text(),
         price: t.number({ minimum: 0 })
       }),
       response: productSchema,
@@ -189,7 +189,7 @@ class ProductController {
     path: "/products/:id",
     schema: {
       params: t.object({
-        id: t.string()
+        id: t.text()
       }),
       response: productSchema,
     },

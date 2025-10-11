@@ -44,10 +44,10 @@ import type {
  *     name: "user-activity",
  *     schema: {
  *       payload: t.object({
- *         userId: t.string(),
+ *         userId: t.text(),
  *         action: t.enum(["login", "logout", "purchase"]),
  *         timestamp: t.number(),
- *         metadata: t.optional(t.record(t.string(), t.any()))
+ *         metadata: t.optional(t.record(t.text(), t.any()))
  *       })
  *     }
  *   });
@@ -90,15 +90,15 @@ import type {
  *     name: "order-events",
  *     schema: {
  *       payload: t.object({
- *         orderId: t.string(),
- *         customerId: t.string(),
+ *         orderId: t.text(),
+ *         customerId: t.text(),
  *         status: t.union([
  *           t.literal("created"),
  *           t.literal("paid"),
  *           t.literal("shipped"),
  *           t.literal("delivered")
  *         ]),
- *         data: t.optional(t.record(t.string(), t.any()))
+ *         data: t.optional(t.record(t.text(), t.any()))
  *       })
  *     }
  *   });
@@ -161,11 +161,11 @@ import type {
  *     name: "system-events",
  *     schema: {
  *       payload: t.object({
- *         eventType: t.string(),
+ *         eventType: t.text(),
  *         severity: t.enum(["info", "warning", "error"]),
- *         serviceId: t.string(),
- *         message: t.string(),
- *         data: t.optional(t.record(t.string(), t.any()))
+ *         serviceId: t.text(),
+ *         message: t.text(),
+ *         data: t.optional(t.record(t.text(), t.any()))
  *       })
  *     }
  *   });
@@ -234,12 +234,12 @@ import type {
  *     name: "user-metrics",
  *     schema: {
  *       payload: t.object({
- *         userId: t.string(),
- *         sessionId: t.string(),
- *         eventType: t.string(),
+ *         userId: t.text(),
+ *         sessionId: t.text(),
+ *         eventType: t.text(),
  *         timestamp: t.number(),
  *         duration: t.optional(t.number()),
- *         metadata: t.optional(t.record(t.string(), t.any()))
+ *         metadata: t.optional(t.record(t.text(), t.any()))
  *       })
  *     }
  *   });
@@ -318,7 +318,7 @@ export interface SubscriberDescriptorOptions<T extends TopicMessageSchema> {
 	 * userEvents = $topic({
 	 *   name: "user-activity",
 	 *   schema: {
-	 *     payload: t.object({ userId: t.string(), action: t.string() })
+	 *     payload: t.object({ userId: t.text(), action: t.text() })
 	 *   }
 	 * });
 	 *

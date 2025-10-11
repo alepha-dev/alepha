@@ -24,7 +24,7 @@ import { JwtProvider } from "./JwtProvider.ts";
 const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // 32 chars
 
 const envSchema = t.object({
-	APP_SECRET: t.string({
+	APP_SECRET: t.text({
 		default: DEFAULT_APP_SECRET,
 	}),
 });

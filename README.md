@@ -75,10 +75,10 @@ class Api {
     path: "/hello/:name",
     schema: {
       params: t.object({
-        name: t.string()
+        name: t.text()
       }),
       response: t.object({
-        message: t.string(),
+        message: t.text(),
       })
     },
     handler: async ({ params }) => {
@@ -114,7 +114,7 @@ export const users = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(),
-    name: t.string(),
+    name: t.text(),
   }),
 });
 

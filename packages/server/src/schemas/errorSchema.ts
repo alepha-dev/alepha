@@ -2,25 +2,25 @@ import { type Static, t } from "@alepha/core";
 
 export const errorSchema = t.object(
 	{
-		error: t.string({ description: "HTTP error name" }),
+		error: t.text({ description: "HTTP error name" }),
 		status: t.int({
 			description: "HTTP status code",
 		}),
-		message: t.string({
+		message: t.text({
 			description: "Short text which describe the error",
 			size: "rich",
 		}),
 		details: t.optional(
-			t.string({
+			t.text({
 				description: "Detailed description of the error",
 				size: "rich",
 			}),
 		),
-		requestId: t.optional(t.string()),
+		requestId: t.optional(t.text()),
 		cause: t.optional(
 			t.object({
-				name: t.string(),
-				message: t.string({
+				name: t.text(),
+				message: t.text({
 					description: "Cause Error message",
 					size: "rich",
 				}),

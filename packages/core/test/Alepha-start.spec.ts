@@ -19,7 +19,7 @@ test("Alepha#start - lock", async () => {
 		a = "a";
 		e = $env(
 			t.object({
-				HELLO: t.string(),
+				HELLO: t.text(),
 			}),
 		);
 	}

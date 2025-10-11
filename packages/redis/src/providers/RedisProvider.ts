@@ -11,10 +11,10 @@ const envSchema = t.object({
 	REDIS_PORT: t.int({
 		default: "6379",
 	}),
-	REDIS_HOST: t.string({
+	REDIS_HOST: t.text({
 		default: "localhost",
 	}),
-	REDIS_PASSWORD: t.optional(t.string()),
+	REDIS_PASSWORD: t.optional(t.text()),
 });
 
 declare module "@alepha/core" {

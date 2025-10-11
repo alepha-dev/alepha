@@ -8,7 +8,7 @@ import {
 } from "@alepha/topic";
 
 const envSchema = t.object({
-	REDIS_TOPIC_PREFIX: t.string({
+	REDIS_TOPIC_PREFIX: t.text({
 		default: "topic",
 	}),
 });

@@ -25,9 +25,7 @@ import {
 } from "@azure/storage-blob";
 
 const envSchema = t.object({
-	AZ_STORAGE_CONNECTION_STRING: t.string({
-		size: "long",
-	}),
+	AZ_STORAGE_CONNECTION_STRING: t.string(),
 });
 
 declare module "@alepha/core" {

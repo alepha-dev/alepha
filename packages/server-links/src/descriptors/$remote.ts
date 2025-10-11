@@ -28,7 +28,7 @@ export interface RemoteDescriptorOptions {
 	 *
 	 * class App {
 	 *   env = $env(t.object({
-	 *     REMOTE_URL: t.string({default: "http://localhost:3000"}),
+	 *     REMOTE_URL: t.text({default: "http://localhost:3000"}),
 	 *   }));
 	 *   remote = $remote({
 	 *     url: this.env.REMOTE_URL,

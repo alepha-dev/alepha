@@ -152,7 +152,7 @@ describe("ServerCacheProvider", () => {
 
 			expect(initialResponse.data).toBe(cachedResponse.data);
 
-			app.cachedAction.invalidate();
+			await app.cachedAction.invalidate();
 
 			const afterInvalidation = await app.cachedAction.fetch();
 			expect(afterInvalidation.data).not.toBe(initialResponse.data);

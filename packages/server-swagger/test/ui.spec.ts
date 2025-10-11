@@ -17,7 +17,7 @@ class App {
 	hello = $action({
 		schema: {
 			response: t.object({
-				message: t.string(),
+				message: t.text(),
 			}),
 		},
 		handler: async () => {

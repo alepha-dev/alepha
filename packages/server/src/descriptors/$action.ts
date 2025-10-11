@@ -79,13 +79,13 @@ import {
  *       query: t.object({
  *         page: t.optional(t.number({ default: 1 })),
  *         limit: t.optional(t.number({ default: 10, maximum: 100 })),
- *         search: t.optional(t.string())
+ *         search: t.optional(t.text())
  *       }),
  *       response: t.object({
  *         users: t.array(t.object({
- *           id: t.string(),
- *           name: t.string(),
- *           email: t.string(),
+ *           id: t.text(),
+ *           name: t.text(),
+ *           email: t.text(),
  *           createdAt: t.datetime()
  *         })),
  *         total: t.number(),
@@ -110,16 +110,16 @@ import {
  *     description: "Create a new user account",
  *     schema: {
  *       body: t.object({
- *         name: t.string({ minLength: 2, maxLength: 100 }),
- *         email: t.string({ format: "email" }),
- *         password: t.string({ minLength: 8 }),
+ *         name: t.text({ minLength: 2, maxLength: 100 }),
+ *         email: t.text({ format: "email" }),
+ *         password: t.text({ minLength: 8 }),
  *         role: t.optional(t.enum(["user", "admin"]))
  *       }),
  *       response: t.object({
- *         id: t.string(),
- *         name: t.string(),
- *         email: t.string(),
- *         role: t.string(),
+ *         id: t.text(),
+ *         name: t.text(),
+ *         email: t.text(),
+ *         role: t.text(),
  *         createdAt: t.datetime()
  *       })
  *     },
@@ -146,17 +146,17 @@ import {
  *     description: "Retrieve user by ID",
  *     schema: {
  *       params: t.object({
- *         id: t.string()
+ *         id: t.text()
  *       }),
  *       response: t.object({
- *         id: t.string(),
- *         name: t.string(),
- *         email: t.string(),
- *         role: t.string(),
+ *         id: t.text(),
+ *         name: t.text(),
+ *         email: t.text(),
+ *         role: t.text(),
  *         profile: t.optional(t.object({
- *           bio: t.string(),
- *           avatar: t.string({ format: "uri" }),
- *           location: t.string()
+ *           bio: t.text(),
+ *           avatar: t.text({ format: "uri" }),
+ *           location: t.text()
  *         }))
  *       })
  *     },
@@ -174,20 +174,20 @@ import {
  *     path: "/users/:id",
  *     description: "Update user information",
  *     schema: {
- *       params: t.object({ id: t.string() }),
+ *       params: t.object({ id: t.text() }),
  *       body: t.object({
- *         name: t.optional(t.string({ minLength: 2 })),
- *         email: t.optional(t.string({ format: "email" })),
+ *         name: t.optional(t.text({ minLength: 2 })),
+ *         email: t.optional(t.text({ format: "email" })),
  *         profile: t.optional(t.object({
- *           bio: t.optional(t.string()),
- *           avatar: t.optional(t.string({ format: "uri" })),
- *           location: t.optional(t.string())
+ *           bio: t.optional(t.text()),
+ *           avatar: t.optional(t.text({ format: "uri" })),
+ *           location: t.optional(t.text())
  *         }))
  *       }),
  *       response: t.object({
- *         id: t.string(),
- *         name: t.string(),
- *         email: t.string(),
+ *         id: t.text(),
+ *         name: t.text(),
+ *         email: t.text(),
  *         updatedAt: t.datetime()
  *       })
  *     },
@@ -305,7 +305,7 @@ export interface ActionDescriptorOptions<TConfig extends RequestConfigSchema>
 // ----------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-	SERVER_API_PREFIX: t.string({
+	SERVER_API_PREFIX: t.text({
 		description: "Prefix for all API routes (e.g. $action).",
 		default: "/api",
 	}),

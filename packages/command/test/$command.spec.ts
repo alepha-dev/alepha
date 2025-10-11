@@ -22,7 +22,7 @@ describe("$command", () => {
 				description: "A simple greeting command.",
 				aliases: ["g"],
 				flags: t.object({
-					name: t.string({ description: "Name to greet." }),
+					name: t.text({ description: "Name to greet." }),
 					times: t.optional(t.int({ default: 1 })),
 				}),
 				handler: mockHandlers.greet,
@@ -34,7 +34,7 @@ describe("$command", () => {
 					production: t.optional(
 						t.boolean({ description: "Deploy to production." }),
 					),
-					"api-key": t.string({
+					"api-key": t.text({
 						description: "API key for deployment.",
 						alias: ["key"],
 					}),
@@ -243,7 +243,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with string arg",
-					args: t.string(),
+					args: t.text(),
 					handler: mockHandler,
 				});
 			}
@@ -318,7 +318,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with optional string arg",
-					args: t.optional(t.string()),
+					args: t.optional(t.text()),
 					handler: mockHandler,
 				});
 			}
@@ -337,7 +337,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with optional string arg",
-					args: t.optional(t.string()),
+					args: t.optional(t.text()),
 					handler: mockHandler,
 				});
 			}
@@ -354,7 +354,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with tuple args",
-					args: t.tuple([t.string(), t.number()]),
+					args: t.tuple([t.text(), t.number()]),
 					handler: mockHandler,
 				});
 			}
@@ -373,7 +373,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with tuple containing optional arg",
-					args: t.tuple([t.string(), t.optional(t.number())]),
+					args: t.tuple([t.text(), t.optional(t.number())]),
 					handler: mockHandler,
 				});
 			}
@@ -393,7 +393,7 @@ describe("$command", () => {
 					flags: t.object({
 						verbose: t.optional(t.boolean()),
 					}),
-					args: t.tuple([t.string(), t.number()]),
+					args: t.tuple([t.text(), t.number()]),
 					handler: mockHandler,
 				});
 			}
@@ -432,7 +432,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with required arg",
-					args: t.string(),
+					args: t.text(),
 					handler: vi.fn(),
 				});
 			}
@@ -488,7 +488,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with tuple args",
-					args: t.tuple([t.string(), t.number()]),
+					args: t.tuple([t.text(), t.number()]),
 					handler: vi.fn(),
 				});
 			}
@@ -504,7 +504,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with string arg",
-					args: t.string(),
+					args: t.text(),
 					handler: vi.fn(),
 				});
 			}
@@ -525,7 +525,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with optional arg",
-					args: t.optional(t.string()),
+					args: t.optional(t.text()),
 					handler: vi.fn(),
 				});
 			}
@@ -546,7 +546,7 @@ describe("$command", () => {
 			class TestCommand {
 				cmd = $command({
 					description: "Test command with tuple args",
-					args: t.tuple([t.string(), t.optional(t.number())]),
+					args: t.tuple([t.text(), t.optional(t.number())]),
 					handler: vi.fn(),
 				});
 			}

@@ -9,7 +9,7 @@ describe("deletedAt", () => {
 		schema: t.object({
 			id: pg.primaryKey(),
 			deletedAt: pg.deletedAt(),
-			name: t.optional(t.string()),
+			name: t.optional(t.text()),
 		}),
 	});
 

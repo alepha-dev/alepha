@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { Alepha, t } from "../src";
 
 const model = t.object({
-	id: t.string(),
+	id: t.text(),
 	date: t.datetime(),
 });
 
@@ -40,7 +40,7 @@ test("Alepha#parse - cast", () => {
 test("Alepha#parse - object", () => {
 	const app = Alepha.create();
 	const schema = t.object({
-		a: t.string(),
+		a: t.text(),
 		b: t.number(),
 	});
 	const value = app.parse(schema, {
@@ -73,7 +73,7 @@ test("Alepha#parse - array", () => {
 test("Alepha#parse - unexpected", () => {
 	const app = Alepha.create();
 
-	expect(() => app.parse(t.string(), () => null)).toThrow(Error);
+	expect(() => app.parse(t.text(), () => null)).toThrow(Error);
 });
 
 test("Alepha#parse - magic parsing", () => {

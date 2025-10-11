@@ -7,7 +7,7 @@ const users = $entity({
 	schema: t.object({
 		id: pg.identityPrimaryKey(),
 		__v: pg.version(),
-		name: t.string(),
+		name: t.text(),
 		currentPostId: pg.ref(t.optional(t.int()), () => posts.id, {
 			onDelete: "set null",
 		}),

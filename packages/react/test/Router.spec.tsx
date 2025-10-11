@@ -71,7 +71,7 @@ test("Router - NestedView", async ({ expect }) => {
 				path: "/hello/:name",
 				schema: {
 					params: t.object({
-						name: t.string(),
+						name: t.text(),
 					}),
 				},
 				resolve: ({ params }) => params,
@@ -124,7 +124,7 @@ test("Router - All routes", async ({ expect }) => {
 					},
 					{
 						path: ":id",
-						schema: { params: t.object({ id: t.string() }) },
+						schema: { params: t.object({ id: t.text() }) },
 						resolve: ({ params }) => {
 							if (params.id === "boom") throw new Error("boom");
 							return params;

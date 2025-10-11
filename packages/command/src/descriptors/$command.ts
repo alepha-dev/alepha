@@ -60,16 +60,16 @@ export interface CommandDescriptorOptions<
 	 * An optional TypeBox schema defining the arguments for the command.
 	 *
 	 * @example
-	 * args: t.string()
+	 * args: t.text()
 	 * my-cli command <arg1: string>
 	 *
-	 * args: t.optional(t.string())
+	 * args: t.optional(t.text())
 	 * my-cli command [arg1: string]
 	 *
-	 * args: t.tuple([t.string(), t.number()])
+	 * args: t.tuple([t.text(), t.number()])
 	 * my-cli command <arg1: string> <arg2: number>
 	 *
-	 * args: t.tuple([t.string(), t.optional(t.number())])
+	 * args: t.tuple([t.text(), t.optional(t.number())])
 	 * my-cli command <arg1: string> [arg2: number]
 	 */
 	args?: A;

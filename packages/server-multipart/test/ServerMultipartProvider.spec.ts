@@ -9,7 +9,7 @@ class App {
 			body: t.object({
 				file: t.file(),
 			}),
-			response: t.string(),
+			response: t.text(),
 		},
 		handler: ({ body }) => {
 			expect(body.file).toBeDefined();

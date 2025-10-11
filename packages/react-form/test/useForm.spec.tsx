@@ -25,12 +25,12 @@ describe("useForm", () => {
 			const form = useForm({
 				id: "test",
 				schema: t.object({
-					str: t.string(),
+					str: t.text(),
 					int: t.int(),
 					nested: t.object({
-						str: t.string(),
+						str: t.text(),
 						another: t.object({
-							level: t.string(),
+							level: t.text(),
 						}),
 					}),
 				}),

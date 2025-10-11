@@ -2,37 +2,37 @@ import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 
 export const userAccountInfoSchema = t.object({
-	id: t.string({
+	id: t.text({
 		description: "Unique identifier for the user.",
 	}),
 
 	name: t.optional(
-		t.string({
+		t.text({
 			description: "Full name of the user.",
 		}),
 	),
 
 	email: t.optional(
-		t.string({
+		t.text({
 			description: "Email address of the user.",
 			format: "email",
 		}),
 	),
 
 	username: t.optional(
-		t.string({
+		t.text({
 			description: "Preferred username of the user.",
 		}),
 	),
 
 	picture: t.optional(
-		t.string({
+		t.text({
 			description: "URL to the user's profile picture.",
 		}),
 	),
 
 	sessionId: t.optional(
-		t.string({
+		t.text({
 			description: "Session identifier for the user, if applicable.",
 		}),
 	),
@@ -40,13 +40,13 @@ export const userAccountInfoSchema = t.object({
 	// -------------------------------------------------------------------------------------------------------------------
 
 	organizations: t.optional(
-		t.array(t.string(), {
+		t.array(t.text(), {
 			description: "List of organizations the user belongs to.",
 		}),
 	),
 
 	roles: t.optional(
-		t.array(t.string(), {
+		t.array(t.text(), {
 			description: "List of roles assigned to the user.",
 		}),
 	),

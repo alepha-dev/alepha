@@ -22,11 +22,11 @@ import { Asker } from "../helpers/Asker.ts";
 import { Runner } from "../helpers/Runner.ts";
 
 const envSchema = t.object({
-	CLI_NAME: t.string({
+	CLI_NAME: t.text({
 		default: "cli",
 		description: "Name of the CLI application.",
 	}),
-	CLI_DESCRIPTION: t.string({
+	CLI_DESCRIPTION: t.text({
 		default: "",
 		description: "Description of the CLI application.",
 	}),
@@ -198,13 +198,13 @@ export class CliProvider {
 
 		try {
 			if (t.schema.isOptional(schema)) {
-				// Handle optional args: t.optional(t.string())
+				// Handle optional args: t.optional(t.text())
 				if (argsOnly.length === 0) {
 					return undefined;
 				}
 				return this.parseArgumentValue(argsOnly[0], schema);
 			} else if (t.schema.isTuple(schema) && schema.items) {
-				// Handle tuple args: t.tuple([t.string(), t.number()])
+				// Handle tuple args: t.tuple([t.text(), t.number()])
 				const result: any[] = [];
 				const items = schema.items;
 				for (let i = 0; i < items.length; i++) {
@@ -221,7 +221,7 @@ export class CliProvider {
 				}
 				return result;
 			} else {
-				// Handle single arg: t.string(), t.number(), etc.
+				// Handle single arg: t.text(), t.number(), etc.
 				if (argsOnly.length === 0) {
 					throw new CommandError("Missing required argument");
 				}

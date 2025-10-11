@@ -68,7 +68,7 @@ export type SchedulerDescriptorOptions = {
 
 const envSchema = t.object({
 	SCHEDULER_PREFIX: t.optional(
-		t.string({
+		t.text({
 			description: "Prefix store key",
 		}),
 	),

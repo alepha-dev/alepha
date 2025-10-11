@@ -11,7 +11,7 @@ import {
 import { LinkProvider } from "./LinkProvider.ts";
 
 const envSchema = t.object({
-	SERVER_API_PREFIX: t.string({
+	SERVER_API_PREFIX: t.text({
 		description: "Prefix for all API routes (e.g. $action).",
 		default: "/api",
 	}),

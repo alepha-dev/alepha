@@ -45,10 +45,10 @@ import type { QueueDescriptor } from "./$queue.ts";
  *   emailQueue = $queue({
  *     name: "emails",
  *     schema: t.object({
- *       to: t.string(),
- *       subject: t.string(),
- *       body: t.string(),
- *       template: t.optional(t.string())
+ *       to: t.text(),
+ *       subject: t.text(),
+ *       body: t.text(),
+ *       template: t.optional(t.text())
  *     })
  *   });
  *
@@ -88,9 +88,9 @@ import type { QueueDescriptor } from "./$queue.ts";
  *     name: "notifications",
  *     schema: t.object({
  *       type: t.enum(["email", "sms", "push"]),
- *       recipient: t.string(),
- *       message: t.string(),
- *       metadata: t.optional(t.record(t.string(), t.any()))
+ *       recipient: t.text(),
+ *       message: t.text(),
+ *       metadata: t.optional(t.record(t.text(), t.any()))
  *     })
  *   });
  *
@@ -144,10 +144,10 @@ import type { QueueDescriptor } from "./$queue.ts";
  *   orderQueue = $queue({
  *     name: "order-processing",
  *     schema: t.object({
- *       orderId: t.string(),
- *       customerId: t.string(),
+ *       orderId: t.text(),
+ *       customerId: t.text(),
  *       items: t.array(t.object({
- *         productId: t.string(),
+ *         productId: t.text(),
  *         quantity: t.number(),
  *         price: t.number()
  *       }))
@@ -207,10 +207,10 @@ import type { QueueDescriptor } from "./$queue.ts";
  *   dataQueue = $queue({
  *     name: "data-processing",
  *     schema: t.object({
- *       batchId: t.string(),
+ *       batchId: t.text(),
  *       records: t.array(t.object({
- *         id: t.string(),
- *         data: t.record(t.string(), t.any())
+ *         id: t.text(),
+ *         data: t.record(t.text(), t.any())
  *       })),
  *       processingOptions: t.object({
  *         validateData: t.boolean(),
@@ -297,7 +297,7 @@ export interface ConsumerDescriptorOptions<T extends TSchema> {
 	 * // First, define a queue
 	 * emailQueue = $queue({
 	 *   name: "emails",
-	 *   schema: t.object({ to: t.string(), subject: t.string() })
+	 *   schema: t.object({ to: t.text(), subject: t.text() })
 	 * });
 	 *
 	 * // Then, create a consumer for that queue

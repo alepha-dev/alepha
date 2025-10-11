@@ -36,11 +36,11 @@ export class ReactAuthProvider {
 		ttl: [15, "minutes"],
 		httpOnly: true,
 		schema: t.object({
-			provider: t.string(),
-			codeVerifier: t.optional(t.string({ size: "long" })),
-			redirectUri: t.optional(t.string({ size: "long" })),
-			state: t.optional(t.string()),
-			nonce: t.optional(t.string()),
+			provider: t.text(),
+			codeVerifier: t.optional(t.text({ size: "long" })),
+			redirectUri: t.optional(t.text({ size: "long" })),
+			state: t.optional(t.text()),
+			nonce: t.optional(t.text()),
 		}),
 	});
 
@@ -255,14 +255,14 @@ export class ReactAuthProvider {
 		method: "POST",
 		schema: {
 			query: t.object({
-				provider: t.string(),
+				provider: t.text(),
 			}),
 			body: t.object({
-				refresh_token: t.string({
+				refresh_token: t.text({
 					size: "rich",
 				}),
 				access_token: t.optional(
-					t.string({
+					t.text({
 						size: "rich",
 						description:
 							"Required if provider has stateless refresh token on credentials mode",
@@ -294,11 +294,11 @@ export class ReactAuthProvider {
 		method: "POST",
 		schema: {
 			query: t.object({
-				provider: t.string(),
+				provider: t.text(),
 			}),
 			body: t.object({
-				username: t.string(),
-				password: t.string(),
+				username: t.text(),
+				password: t.text(),
 			}),
 			response: tokenResponseSchema,
 		},
@@ -357,8 +357,8 @@ export class ReactAuthProvider {
 		path: ReactAuth.path.login,
 		schema: {
 			query: t.object({
-				provider: t.string(),
-				redirect_uri: t.optional(t.string({ size: "rich" })),
+				provider: t.text(),
+				redirect_uri: t.optional(t.text({ size: "rich" })),
 			}),
 		},
 		handler: async ({ query, url, reply }) => {
@@ -503,7 +503,7 @@ export class ReactAuthProvider {
 		method: "GET",
 		schema: {
 			query: t.object({
-				post_logout_redirect_uri: t.optional(t.string()),
+				post_logout_redirect_uri: t.optional(t.text()),
 			}),
 		},
 		handler: async ({ query, reply, cookies }) => {

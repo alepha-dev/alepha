@@ -4,7 +4,7 @@ import { $consumer, $queue, MemoryQueueProvider, QueueProvider } from "../src";
 import { WorkerProvider } from "../src/providers/WorkerProvider.ts";
 
 export const payloadSchema = t.object({
-	id: t.string(),
+	id: t.text(),
 	count: t.int(),
 });
 

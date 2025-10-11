@@ -8,7 +8,7 @@ describe("ProtobufProvider", () => {
 	describe("Basic types", () => {
 		test("should handle primitive types", async ({ expect }) => {
 			const userSchema = t.object({
-				username: t.string(),
+				username: t.text(),
 				createdAt: t.datetime(),
 				age: t.int(),
 				isActive: t.boolean(),
@@ -39,7 +39,7 @@ message Target {
 
 		test("should encode and decode primitive types", async ({ expect }) => {
 			const userSchema = t.object({
-				username: t.string(),
+				username: t.text(),
 				createdAt: t.datetime(),
 				age: t.int(),
 				isActive: t.boolean(),
@@ -62,7 +62,7 @@ message Target {
 	describe("Arrays", () => {
 		test("should handle arrays of primitives", async ({ expect }) => {
 			const schema = t.object({
-				tags: t.array(t.string()),
+				tags: t.array(t.text()),
 				scores: t.array(t.number()),
 				flags: t.array(t.boolean()),
 			});
@@ -85,7 +85,7 @@ message Target {
 			const schema = t.object({
 				users: t.array(
 					t.object({
-						name: t.string(),
+						name: t.text(),
 						age: t.int(),
 					}),
 				),
@@ -109,10 +109,10 @@ message Target {
 
 		test("should encode and decode arrays", async ({ expect }) => {
 			const schema = t.object({
-				tags: t.array(t.string()),
+				tags: t.array(t.text()),
 				users: t.array(
 					t.object({
-						name: t.string(),
+						name: t.text(),
 						age: t.int(),
 					}),
 				),
@@ -139,11 +139,11 @@ message Target {
 			const schema = t.object({
 				user: t.object({
 					profile: t.object({
-						name: t.string(),
-						bio: t.string(),
+						name: t.text(),
+						bio: t.text(),
 					}),
 					settings: t.object({
-						theme: t.string(),
+						theme: t.text(),
 						notifications: t.boolean(),
 					}),
 				}),
@@ -177,8 +177,8 @@ message Target {
 			const schema = t.object({
 				user: t.object({
 					profile: t.object({
-						name: t.string(),
-						bio: t.string(),
+						name: t.text(),
+						bio: t.text(),
 					}),
 					age: t.int(),
 				}),
@@ -205,8 +205,8 @@ message Target {
 	describe("Optional and nullable types", () => {
 		test("should handle nullable types", async ({ expect }) => {
 			const schema = t.object({
-				name: t.string(),
-				email: t.nullable(t.string()),
+				name: t.text(),
+				email: t.nullable(t.text()),
 				age: t.nullable(t.int()),
 			});
 
@@ -226,8 +226,8 @@ message Target {
 
 		test("should encode and decode nullable types", async ({ expect }) => {
 			const schema = t.object({
-				name: t.string(),
-				email: t.nullable(t.string()),
+				name: t.text(),
+				email: t.nullable(t.text()),
 			});
 
 			const data1 = {
@@ -277,9 +277,9 @@ message Target {
 				id: t.uuid(),
 				createdAt: t.datetime(),
 				birthDate: t.date(),
-				shortText: t.string({ size: "short" }),
-				longText: t.string({ size: "long" }),
-				richText: t.string({ size: "rich" }),
+				shortText: t.text({ size: "short" }),
+				longText: t.text({ size: "long" }),
+				richText: t.text({ size: "rich" }),
 			});
 
 			const protoSchema = protobuf.createProtobufSchema(schema);
@@ -302,7 +302,7 @@ message Target {
 		test("should encode and decode enums", async ({ expect }) => {
 			const schema = t.object({
 				status: t.enum(["ACTIVE", "INACTIVE"]),
-				name: t.string(),
+				name: t.text(),
 			});
 
 			const data = {
@@ -320,8 +320,8 @@ message Target {
 	describe("Records (maps)", () => {
 		test("should handle records", async ({ expect }) => {
 			const schema = t.object({
-				metadata: t.record(t.string(), t.string()),
-				scores: t.record(t.string(), t.number()),
+				metadata: t.record(t.text(), t.text()),
+				scores: t.record(t.text(), t.number()),
 			});
 
 			const protoSchema = protobuf.createProtobufSchema(schema);
@@ -339,7 +339,7 @@ message Target {
 
 		test("should encode and decode records", async ({ expect }) => {
 			const schema = t.object({
-				metadata: t.record(t.string(), t.string()),
+				metadata: t.record(t.text(), t.text()),
 			});
 
 			const data = {
@@ -362,15 +362,15 @@ message Target {
 				user: t.object({
 					id: t.uuid(),
 					profile: t.object({
-						name: t.string(),
+						name: t.text(),
 						age: t.nullable(t.int()),
-						tags: t.array(t.string()),
+						tags: t.array(t.text()),
 					}),
 					posts: t.array(
 						t.object({
-							title: t.string(),
-							content: t.string({ size: "rich" }),
-							metadata: t.record(t.string(), t.string()),
+							title: t.text(),
+							content: t.text({ size: "rich" }),
+							metadata: t.record(t.text(), t.text()),
 						}),
 					),
 				}),

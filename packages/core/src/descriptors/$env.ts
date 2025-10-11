@@ -20,7 +20,7 @@ import { $cursor } from "./$cursor.ts";
  *
  *   // program expect a var env "HELLO" as string to works
  *   env = $env(t.object({
- *     HELLO: t.string()
+ *     HELLO: t.text()
  *   }));
  *
  *   sayHello = () => this.log.info("Hello ${this.env.HELLO}")

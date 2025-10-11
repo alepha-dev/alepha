@@ -199,7 +199,7 @@ const envSchema = t.object({
 	 * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
 	 * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
 	 */
-	LOG_LEVEL: t.optional(t.string()),
+	LOG_LEVEL: t.optional(t.text()),
 
 	/**
 	 * Built-in log formats.

@@ -12,7 +12,7 @@ export class I18nProvider<
 
 	protected cookie = $cookie({
 		name: "lang",
-		schema: t.string(),
+		schema: t.text(),
 	});
 
 	public readonly registry: Array<{

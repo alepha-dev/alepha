@@ -8,7 +8,7 @@ class App {
 		hide: true,
 		schema: {
 			response: t.object({
-				message: t.string(),
+				message: t.text(),
 			}),
 		},
 		handler: async () => {
@@ -22,7 +22,7 @@ class App {
 		hide: true,
 		schema: {
 			response: t.object({
-				message: t.string(),
+				message: t.text(),
 			}),
 		},
 		handler: async () => {
@@ -34,7 +34,7 @@ class App {
 
 	text = $action({
 		schema: {
-			response: t.string(),
+			response: t.text(),
 		},
 		handler: async () => {
 			return "Hello world";
@@ -48,17 +48,17 @@ class App {
 		group: "app",
 		schema: {
 			params: t.object({
-				name: t.string(),
+				name: t.text(),
 			}),
 			query: t.object({
 				age: t.optional(t.number()),
 			}),
 			body: t.object({
-				name: t.string(),
+				name: t.text(),
 			}),
 			response: t.object(
 				{
-					message: t.string(),
+					message: t.text(),
 				},
 				{
 					title: "HelloResponse",

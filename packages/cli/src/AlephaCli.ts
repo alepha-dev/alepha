@@ -17,7 +17,7 @@ export class AlephaCli {
 	create = $command({
 		name: "create",
 		description: "Create a new Alepha project",
-		args: t.string({ title: "name" }),
+		args: t.text({ title: "name" }),
 		flags: t.object({
 			yarn: t.boolean({ description: "Use Yarn package manager" }),
 			pnpm: t.boolean({ description: "Use pnpm package manager" }),

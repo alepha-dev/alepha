@@ -86,11 +86,11 @@ const welcomeEmail = $email({
     <p>Get started by visiting your <a href="{{dashboardUrl}}">dashboard</a>.</p>
   `,
   schema: t.object({
-    firstName: t.string(),
-    lastName: t.string(),
-    companyName: t.string(),
+    firstName: t.text(),
+    lastName: t.text(),
+    companyName: t.text(),
     role: t.enum(["admin", "user", "manager"]),
-    dashboardUrl: t.string()
+    dashboardUrl: t.text()
   })
 });
 
@@ -116,10 +116,10 @@ const orderConfirmation = $email({
     <p>Estimated delivery: {{deliveryDate}}</p>
   `,
   schema: t.object({
-    customerName: t.string(),
-    orderNumber: t.string(),
-    totalAmount: t.string(),
-    deliveryDate: t.string()
+    customerName: t.text(),
+    orderNumber: t.text(),
+    totalAmount: t.text(),
+    deliveryDate: t.text()
   })
 });
 ```
@@ -130,8 +130,8 @@ const testEmail = $email({
   body: "<p>{{message}}</p>",
   provider: "memory", // Captures emails for testing
   schema: t.object({
-    subject: t.string(),
-    message: t.string()
+    subject: t.text(),
+    message: t.text()
   })
 });
 

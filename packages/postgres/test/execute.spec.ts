@@ -8,7 +8,7 @@ test("execute - basic", async () => {
 		name: "users",
 		schema: t.object({
 			id: pg.primaryKey(t.int64()),
-			name: t.string(),
+			name: t.text(),
 			guildId: t.optional(t.int()),
 		}),
 		indexes: [{ column: "name", unique: true }],

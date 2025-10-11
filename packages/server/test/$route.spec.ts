@@ -29,8 +29,8 @@ describe("$route", () => {
 				path: "/hello",
 				schema: {
 					query: t.object({
-						a: t.optional(t.string()),
-						b: t.optional(t.array(t.string())),
+						a: t.optional(t.text()),
+						b: t.optional(t.array(t.text())),
 					}),
 				},
 				handler: ({ query }) => JSON.stringify({ query }),

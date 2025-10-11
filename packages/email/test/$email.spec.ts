@@ -9,8 +9,8 @@ describe("@alepha/email - $email descriptor", () => {
 				subject: "Welcome {{name}}!",
 				body: "<h1>Welcome {{name}}!</h1><p>Your role is {{role}}.</p>",
 				schema: t.object({
-					name: t.string(),
-					role: t.string(),
+					name: t.text(),
+					role: t.text(),
 				}),
 				provider: "memory",
 			});
@@ -49,7 +49,7 @@ describe("@alepha/email - $email descriptor", () => {
 				body: "<h2>Newsletter #{{issue}}</h2><p>Hello {{firstName}}, we have {{articleCount}} articles for you!</p>",
 				schema: t.object({
 					issue: t.number(),
-					firstName: t.string(),
+					firstName: t.text(),
 					articleCount: t.number(),
 				}),
 				provider: "memory",
@@ -114,8 +114,8 @@ describe("@alepha/email - $email descriptor", () => {
 				subject: "Welcome {{name}}!",
 				body: "<h1>Welcome {{name}}!</h1><p>Your role is {{role}}.</p>",
 				schema: t.object({
-					name: t.string(),
-					role: t.string(),
+					name: t.text(),
+					role: t.text(),
 				}),
 				provider: "memory",
 			});
@@ -144,7 +144,7 @@ describe("@alepha/email - $email descriptor", () => {
 				body: "<h2>Newsletter #{{issue}}</h2><p>Hello {{firstName}}, we have {{articleCount}} articles for you!</p>",
 				schema: t.object({
 					issue: t.number(),
-					firstName: t.string(),
+					firstName: t.text(),
 					articleCount: t.number(),
 				}),
 				provider: "memory",
@@ -174,8 +174,8 @@ describe("@alepha/email - $email descriptor", () => {
 				subject: "Hello {{name}}!",
 				body: "Hello {{name}}!",
 				schema: t.object({
-					name: t.string(),
-					extra: t.string(), // Not used in templates
+					name: t.text(),
+					extra: t.text(), // Not used in templates
 				}),
 				provider: "memory",
 			});
@@ -248,7 +248,7 @@ describe("@alepha/email - $email descriptor", () => {
 				subject: "Welcome {{name}}!",
 				body: "Hello {{name}}!",
 				schema: t.object({
-					name: t.string(),
+					name: t.text(),
 				}),
 				provider: "memory",
 			});

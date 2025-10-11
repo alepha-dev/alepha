@@ -72,7 +72,7 @@ describe("$thread", () => {
 
 	it("should validate data with TypeBox schema", async ({ expect }) => {
 		const schema = t.object({
-			name: t.string(),
+			name: t.text(),
 			age: t.number(),
 		});
 

@@ -84,7 +84,7 @@ import { type TSchema, t } from "./providers/TypeProvider.ts";
  * class App {
  *   env = $env(
  *     t.object({
- *  	   MY_VAR: t.string(),
+ *  	   MY_VAR: t.text(),
  *     })
  *   );
  * }

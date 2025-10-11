@@ -85,7 +85,7 @@ const userProfile = $page({
   path: "/users/:id",
   schema: {
     params: t.object({ id: t.int() }),
-    query: t.object({ tab: t.optional(t.string()) })
+    query: t.object({ tab: t.optional(t.text()) })
   },
   resolve: async ({ params }) => {
     const user = await userApi.getUser(params.id);

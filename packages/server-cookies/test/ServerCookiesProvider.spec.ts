@@ -12,27 +12,27 @@ class CookieTestApp {
 	// 1. Basic Cookie
 	session = $cookie({
 		name: "session",
-		schema: t.object({ userId: t.number(), role: t.string() }),
+		schema: t.object({ userId: t.number(), role: t.text() }),
 	});
 
 	// 2. Signed Cookie
 	signed = $cookie({
 		name: "signed_session",
-		schema: t.string(),
+		schema: t.text(),
 		sign: true,
 	});
 
 	// 3. Encrypted Cookie
 	encrypted = $cookie({
 		name: "encrypted_secret",
-		schema: t.object({ apiKey: t.string() }),
+		schema: t.object({ apiKey: t.text() }),
 		encrypt: true,
 	});
 
 	// 4. Compressed, Signed, and Encrypted Cookie with TTL
 	secure_all = $cookie({
 		name: "ultra_secure",
-		schema: t.object({ data: t.string() }),
+		schema: t.object({ data: t.text() }),
 		compress: true,
 		sign: true,
 		encrypt: true,
@@ -45,8 +45,8 @@ class CookieTestApp {
 			response: t.object({
 				incomingSession: t.optional(this.session.options.schema),
 				reqCookies: t.object({
-					req: t.record(t.string(), t.string()),
-					res: t.record(t.string(), t.any()),
+					req: t.record(t.text(), t.text()),
+					res: t.record(t.text(), t.any()),
 				}),
 			}),
 		},
@@ -198,7 +198,7 @@ describe("ServerCookiesProvider", () => {
 		class AttrApp {
 			advanced = $cookie({
 				name: "advanced",
-				schema: t.string(),
+				schema: t.text(),
 				path: "/admin",
 				ttl: [30, "minutes"],
 				httpOnly: true,
@@ -236,7 +236,7 @@ describe("ServerCookiesProvider", () => {
 	// 	class AppWithMissingSecret {
 	// 		badCookie = $cookie({
 	// 			name: "bad",
-	// 			schema: t.string(),
+	// 			schema: t.text(),
 	// 			sign: true,
 	// 		});
 	// 	}

@@ -18,7 +18,7 @@ import type {
 } from "./ReactPageProvider.ts";
 
 const envSchema = t.object({
-	REACT_ROOT_ID: t.string({ default: "root" }),
+	REACT_ROOT_ID: t.text({ default: "root" }),
 });
 
 declare module "@alepha/core" {

@@ -13,7 +13,7 @@ import { t } from "@alepha/core";
  * Create a pagination schema for the given object schema.
  *
  * @example
- * const userSchema = t.object({ id: t.int(), name: t.string() });
+ * const userSchema = t.object({ id: t.int(), name: t.text() });
  * const pagedUserSchema = pageSchema(userSchema);
  *
  * @see {@link $repository#paginate}

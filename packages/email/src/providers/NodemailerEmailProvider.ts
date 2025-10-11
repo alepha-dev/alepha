@@ -6,20 +6,20 @@ import { EmailError } from "../errors/EmailError.ts";
 import type { EmailProvider } from "./EmailProvider.ts";
 
 const envSchema = t.object({
-	EMAIL_HOST: t.string({
+	EMAIL_HOST: t.text({
 		description: "SMTP server host",
 	}),
 	EMAIL_PORT: t.number({
 		default: 587,
 		description: "SMTP server port",
 	}),
-	EMAIL_USER: t.string({
+	EMAIL_USER: t.text({
 		description: "SMTP authentication username",
 	}),
-	EMAIL_PASS: t.string({
+	EMAIL_PASS: t.text({
 		description: "SMTP authentication password",
 	}),
-	EMAIL_FROM: t.string({
+	EMAIL_FROM: t.text({
 		description: "Default from email address",
 	}),
 	EMAIL_SECURE: t.boolean({

@@ -46,7 +46,7 @@ export class DevCollectorProvider {
 		method: "GET",
 		path: "/devtools",
 		schema: {
-			response: t.string(),
+			response: t.text(),
 		},
 		handler: () => {
 			return ui;

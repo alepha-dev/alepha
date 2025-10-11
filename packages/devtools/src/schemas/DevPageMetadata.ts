@@ -1,9 +1,9 @@
 import { type Static, t } from "@alepha/core";
 
 export const devPageMetadataSchema = t.object({
-	name: t.string(),
-	description: t.optional(t.string()),
-	path: t.optional(t.string()),
+	name: t.text(),
+	description: t.optional(t.text()),
+	path: t.optional(t.text()),
 	params: t.optional(t.any()),
 	query: t.optional(t.any()),
 	hasComponent: t.boolean(),

@@ -8,7 +8,7 @@ test("sqlite", async () => {
 		name: "users",
 		schema: t.object({
 			id: pg.primaryKey(t.int()),
-			name: t.string(),
+			name: t.text(),
 		}),
 	});
 

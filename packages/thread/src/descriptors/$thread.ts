@@ -87,8 +87,8 @@ import { createDescriptor, Descriptor, KIND, TypeBoxValue } from "@alepha/core";
  *   async encryptSensitiveData(data: { text: string; key: string }) {
  *     // Validate input data before sending to thread
  *     const schema = t.object({
- *       text: t.string(),
- *       key: t.string()
+ *       text: t.text(),
+ *       key: t.text()
  *     });
  *
  *     return await this.encrypt.execute(data, schema);

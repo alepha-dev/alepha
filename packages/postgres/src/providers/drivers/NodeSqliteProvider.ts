@@ -32,7 +32,7 @@ export class NodeSqliteProvider extends PostgresProvider {
 	protected readonly log = $logger();
 	protected readonly env = $env(
 		t.object({
-			DATABASE_URL: t.optional(t.string()),
+			DATABASE_URL: t.optional(t.text()),
 		}),
 	);
 

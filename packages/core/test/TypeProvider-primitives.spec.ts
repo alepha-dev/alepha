@@ -39,7 +39,7 @@ test("TypeProvider#boolean", () => {
 
 test("TypeProvider#string", () => {
 	const a = Alepha.create();
-	const m = t.string();
+	const m = t.text();
 
 	expect(a.parse(m, "a")).toBe("a");
 	expect(a.parse(m, 1)).toBe("1");
@@ -50,7 +50,7 @@ test("TypeProvider#string", () => {
 
 test("TypeProvider#array", () => {
 	const a = Alepha.create();
-	const m = t.array(t.string());
+	const m = t.array(t.text());
 
 	expect(a.parse(m, ["a", "b"])).toEqual(["a", "b"]);
 	expect(a.parse(m, ["a", 1])).toEqual(["a", "1"]);

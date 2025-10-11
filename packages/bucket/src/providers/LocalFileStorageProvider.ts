@@ -164,7 +164,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 }
 
 export const fileMetadataSchema = t.object({
-	name: t.string(),
-	type: t.string(),
+	name: t.text(),
+	type: t.text(),
 	size: t.number(),
 });

@@ -4,12 +4,12 @@ const envSchema = t.object({
 	/**
 	 * Disable colors in the console output.
 	 */
-	NO_COLOR: t.optional(t.string()),
+	NO_COLOR: t.optional(t.text()),
 
 	/**
 	 * Force color output for the application.
 	 */
-	FORCE_COLOR: t.optional(t.string()),
+	FORCE_COLOR: t.optional(t.text()),
 });
 
 export class ConsoleColorProvider {

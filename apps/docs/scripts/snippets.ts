@@ -7,7 +7,7 @@ class Api {
   // define a type-safe API action
   // accessible via HTTP GET /api/greet?name=John
   greet = $action({
-    schema: { query: t.object({ name: t.string() }) },
+    schema: { query: t.object({ name: t.text() }) },
     handler: async ({ query }) => \`Hello, \${query.name}!\`,
   });
 }
@@ -39,7 +39,7 @@ export const users = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(),
-    name: t.string(),
+    name: t.text(),
   })
 });
 
@@ -54,7 +54,7 @@ import { $queue } from "alepha/queue";
 class App {
   sendEmail = $queue({
     schema: t.object({
-      email: t.string()
+      email: t.text()
     }),
     handler: async ({ payload }) => { /* worker */ }
   });

@@ -33,14 +33,14 @@ const envSchema = t.object({
 	 * or
 	 * Example: postgres://user:password@localhost:5432/database?sslmode=require
 	 */
-	DATABASE_URL: t.optional(t.string()),
+	DATABASE_URL: t.optional(t.text()),
 
 	/**
 	 * In addition to the DATABASE_URL, you can specify the postgres schema name.
 	 *
 	 * It will monkey patch drizzle tables.
 	 */
-	POSTGRES_SCHEMA: t.optional(t.string()),
+	POSTGRES_SCHEMA: t.optional(t.text()),
 
 	/**
 	 * Synchronize the database schema with the models.

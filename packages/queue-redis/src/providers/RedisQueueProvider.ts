@@ -3,7 +3,7 @@ import type { QueueProvider } from "@alepha/queue";
 import { RedisProvider } from "@alepha/redis";
 
 const envSchema = t.object({
-	REDIS_QUEUE_PREFIX: t.string({
+	REDIS_QUEUE_PREFIX: t.text({
 		default: "queue",
 	}),
 });

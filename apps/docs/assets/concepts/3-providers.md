@@ -24,7 +24,7 @@ import { createTransport } from "nodemailer";
 class EmailProvider {
   // configure provider with environment variables
   env = $env(t.object({
-    SMTP_HOST: t.string(),
+    SMTP_HOST: t.text(),
   }));
 
   transporter = createTransport({

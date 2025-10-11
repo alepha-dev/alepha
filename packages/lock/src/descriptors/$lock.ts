@@ -479,7 +479,7 @@ export interface LockDescriptorOptions<TFunc extends AsyncFn> {
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-	LOCK_PREFIX_KEY: t.string({ default: "lock" }),
+	LOCK_PREFIX_KEY: t.text({ default: "lock" }),
 });
 
 declare module "@alepha/core" {
@@ -503,7 +503,7 @@ export class LockDescriptor<TFunc extends AsyncFn> extends Descriptor<
 		provider: LockTopicProvider,
 		schema: {
 			payload: t.object({
-				name: t.string(),
+				name: t.text(),
 			}),
 		},
 	});

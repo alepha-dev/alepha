@@ -58,11 +58,11 @@ describe("$page descriptor tests", () => {
 				path: "/user/:id",
 				schema: {
 					params: t.object({
-						id: t.string(),
+						id: t.text(),
 					}),
 					query: t.object({
-						tab: t.string({ default: "profile" }),
-						sort: t.optional(t.string()),
+						tab: t.text({ default: "profile" }),
+						sort: t.optional(t.text()),
 					}),
 				},
 				resolve: ({ params, query }) => ({ params, query }),
@@ -142,7 +142,7 @@ describe("$page descriptor tests", () => {
 				path: "/async/:id",
 				schema: {
 					params: t.object({
-						id: t.string(),
+						id: t.text(),
 					}),
 				},
 				resolve: async ({ params }) => {
@@ -340,7 +340,7 @@ describe("$page descriptor tests", () => {
 				path: "/static/:id",
 				schema: {
 					params: t.object({
-						id: t.string(),
+						id: t.text(),
 					}),
 				},
 				static: {
@@ -555,13 +555,13 @@ describe("$page descriptor tests", () => {
 				path: "/complex/:userId",
 				schema: {
 					params: t.object({
-						userId: t.string(),
+						userId: t.text(),
 					}),
 					query: t.object({
 						filters: t.optional(
 							t.object({
-								status: t.string({ default: "active" }),
-								category: t.optional(t.string()),
+								status: t.text({ default: "active" }),
+								category: t.optional(t.text()),
 							}),
 						),
 						page: t.number({ default: 1 }),

@@ -92,7 +92,7 @@ export class TypeGuard {
 		TypeBox.IsString(value) &&
 		"format" in value &&
 		value.format === "date-time";
-	isUuid = (value: TSchema): value is TString =>
+	isUUID = (value: TSchema): value is TString =>
 		TypeBox.IsString(value) && "format" in value && value.format === "uuid";
 }
 
@@ -182,7 +182,8 @@ export class TypeProvider {
 	 */
 	static DEFAULT_ARRAY_MAX_ITEMS = 1000;
 
-	public raw = Type;
+	// -------------------------------------------------------------------------------------------------------------------
+	public raw = Type; // typebox reference
 	public any = Type.Any;
 	public void = Type.Void;
 	public undefined = Type.Undefined;
@@ -193,13 +194,34 @@ export class TypeProvider {
 	public pick = Type.Pick;
 	public tuple = Type.Tuple;
 	public interface = Type.Interface;
+	// -------------------------------------------------------------------------------------------------------------------
 
+	/**
+	 * Type guards to check the type of schema.
+	 * This is not a runtime type check, but a compile-time type guard.
+	 *
+	 * @example
+	 * ```ts
+	 * if (t.schema.isString(schema)) {
+	 *   // schema is TString
+	 * }
+	 * ```
+	 */
 	public readonly schema = new TypeGuard();
 
 	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
 	 * Create a schema for an object.
+	 * By default, additional properties are not allowed.
+	 *
+	 * @example
+	 * ```ts
+	 * const userSchema = t.object({
+	 *   id: t.int(),
+	 *   name: t.string(),
+	 * });
+	 * ```
 	 */
 	public object<T extends TProperties>(
 		properties: T,
@@ -213,9 +235,9 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for an array.
+	 * By default, the maximum number of items is limited to prevent excessive memory usage.
 	 *
-	 * @param schema
-	 * @param options
+	 * @see TypeProvider.DEFAULT_ARRAY_MAX_ITEMS
 	 */
 	public array<T extends TSchema>(
 		schema: T,
@@ -229,8 +251,21 @@ export class TypeProvider {
 
 	/**
 	 * Create a schema for a string.
+	 * For db or input fields, consider using `t.text()` instead, which has length limits.
+	 *
+	 * If you need a string with specific format (e.g. email, uuid, date), consider using the corresponding method (e.g. `t.email()`, `t.uuid()`, `t.date()`).
 	 */
-	public string(options: AlephaStringOptions = {}): TString {
+	public string(options: TStringOptions = {}): TString {
+		return Type.String({
+			...options,
+		});
+	}
+
+	/**
+	 * Create a schema for a string with length limits.
+	 * For internal strings without length limits, consider using `t.string()` instead.
+	 */
+	public text(options: TTextOptions = {}): TString {
 		const { size, ...rest } = options;
 		const maxLength =
 			size === "short"
@@ -252,7 +287,7 @@ export class TypeProvider {
 	 * This is a record with string keys and any values.
 	 */
 	public json(options?: TSchemaOptions): TRecord<string, TAny> {
-		return t.record(t.string(), t.any(), options);
+		return t.record(t.text(), t.any(), options);
 	}
 
 	/**
@@ -338,7 +373,7 @@ export class TypeProvider {
 		options?: TStringOptions,
 	): TUnsafe<T[number]> {
 		return Type.Unsafe<T[number]>(
-			t.string({
+			t.text({
 				enum: values,
 				pattern: values.map((v) => `^${v}$`).join("|"),
 				...options,
@@ -468,10 +503,29 @@ export class TypeProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type TextLength = "short" | "long" | "rich";
+export type TextLength = "short" | "regular" | "long" | "rich";
 
-export interface AlephaStringOptions extends TStringOptions {
+export interface TTextOptions extends TStringOptions {
+	/**
+	 * Predefined size of the text.
+	 *
+	 * - `short` - short text, such as names or titles. Default max length is 64 characters.
+	 * - `regular` - regular text, such as single-line input. Default max length is 255 characters.
+	 * - `long` - long text, such as descriptions or comments. Default max length is 1024 characters.
+	 * - `rich` - rich text, such as HTML or Markdown. Default max length is 65535 characters.
+	 *
+	 * You can override the default max length by specifying `maxLength` in the options.
+	 *
+	 * @default "regular"
+	 */
 	size?: TextLength;
+
+	/**
+	 * Trim whitespace from both ends of the string.
+	 *
+	 * @default true
+	 */
+	trim?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

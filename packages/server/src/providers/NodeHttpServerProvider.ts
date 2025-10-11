@@ -16,7 +16,7 @@ const envSchema = t.object({
 		max: 65535,
 		description: "Set 0 to listen on a random port.",
 	}),
-	SERVER_HOST: t.string({
+	SERVER_HOST: t.text({
 		default: "localhost",
 		description: "Set 0.0.0.0 to listen on all interfaces.",
 	}),

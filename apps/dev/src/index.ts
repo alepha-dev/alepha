@@ -60,7 +60,7 @@ class AlephaDevCli {
 		description: "Release packages version (default: minor)",
 		flags: t.object({
 			registry: t.optional(
-				t.string({
+				t.text({
 					when: ["--registry"],
 					description: "NPM registry URL.",
 				}),

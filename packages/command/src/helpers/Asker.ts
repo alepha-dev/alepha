@@ -15,7 +15,7 @@ export interface AskOptions<T extends TSchema = TString> {
 	 * Response schema expected.
 	 *
 	 * Recommended schemas:
-	 * - t.string() - for free text input
+	 * - t.text() - for free text input
 	 * - t.number() - for numeric input
 	 * - t.boolean() - for yes/no input (accepts "true", "false", "1", "0")
 	 * - t.enum(["option1", "option2"]) - for predefined options
@@ -24,7 +24,7 @@ export interface AskOptions<T extends TSchema = TString> {
 	 *
 	 * @example
 	 * ```ts
-	 * ask("What is your name?", { schema: t.string({ default: "John Doe" }) })
+	 * ask("What is your name?", { schema: t.text({ default: "John Doe" }) })
 	 * ```
 	 *
 	 * @default TString

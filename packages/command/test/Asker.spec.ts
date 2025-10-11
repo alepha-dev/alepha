@@ -78,7 +78,7 @@ describe("Asker", () => {
 		const { question, close } = mockPromptInterface([""]);
 
 		const result = await asker.ask("What is your favorite color?", {
-			schema: t.string({ default: "blue" }),
+			schema: t.text({ default: "blue" }),
 		});
 
 		expect(result).toBe("blue");
@@ -90,7 +90,7 @@ describe("Asker", () => {
 		const { question, close } = mockPromptInterface(["wrong", "right"]);
 
 		const result = await asker.ask("Provide the secret", {
-			schema: t.string(),
+			schema: t.text(),
 			validate: (value) => {
 				if (value !== "right") {
 					throw new AlephaError("Invalid secret");
@@ -113,7 +113,7 @@ describe("Asker", () => {
 
 		await expect(
 			asker.ask("Trigger failure", {
-				schema: t.string(),
+				schema: t.text(),
 				validate: () => {
 					throw unexpectedError;
 				},

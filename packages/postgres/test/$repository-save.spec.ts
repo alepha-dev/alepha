@@ -8,7 +8,7 @@ describe("$repository - save", () => {
 			name: "Dummy",
 			schema: t.object({
 				id: pg.primaryKey(),
-				name: t.optional(t.string()),
+				name: t.optional(t.text()),
 			}),
 		});
 

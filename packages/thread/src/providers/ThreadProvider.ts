@@ -14,7 +14,7 @@ export class ThreadProvider {
 	protected readonly log = $logger();
 	protected readonly env = $env(
 		t.object({
-			ALEPHA_WORKER: t.optional(t.string()),
+			ALEPHA_WORKER: t.optional(t.text()),
 		}),
 	);
 

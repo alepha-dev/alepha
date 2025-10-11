@@ -27,7 +27,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 3,
 				handler: mockHandler,
 			});
@@ -52,7 +52,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 10,
 				maxDuration: [5, "seconds"],
 				handler: mockHandler,
@@ -78,7 +78,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.object({ id: t.number(), value: t.string() }),
+				schema: t.object({ id: t.number(), value: t.text() }),
 				maxSize: 2,
 				partitionBy: (item) => `partition-${item.id}`,
 				handler: mockHandler,
@@ -121,7 +121,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 10,
 				handler: mockHandler,
 			});
@@ -146,7 +146,7 @@ describe("$batch descriptor", () => {
 
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 1,
 				handler: failingHandler,
 				retry: { max: 2 }, // Try a total of 2 times
@@ -169,7 +169,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 1,
 				handler: mockHandler,
 			});
@@ -196,7 +196,7 @@ describe("$batch descriptor", () => {
 
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 1,
 				concurrency: 2,
 				handler: slowHandler,
@@ -224,7 +224,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.object({ id: t.number(), value: t.string() }),
+				schema: t.object({ id: t.number(), value: t.text() }),
 				maxSize: 5,
 				partitionBy: (item) => `p-${item.id}`,
 				handler: mockHandler,
@@ -263,7 +263,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.object({ id: t.number(), value: t.string() }),
+				schema: t.object({ id: t.number(), value: t.text() }),
 				maxSize: 5,
 				partitionBy: (item) => `p-${item.id}`,
 				handler: mockHandler,
@@ -313,7 +313,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 5,
 				handler: mockHandler,
 			});
@@ -331,7 +331,7 @@ describe("$batch descriptor", () => {
 		const mockHandler = createMockHandler();
 		class TestApp {
 			batcher = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 5,
 				maxDuration: [1, "second"],
 				partitionBy: (item) => item,
@@ -349,7 +349,7 @@ describe("$batch descriptor", () => {
 
 		class TestApp {
 			httpBatch = $batch({
-				schema: t.string(),
+				schema: t.text(),
 				maxSize: 10,
 				maxDuration: [100, "milliseconds"],
 				handler: async (urls) => {

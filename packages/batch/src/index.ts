@@ -18,7 +18,7 @@ export * from "./descriptors/$batch.ts";
  * class LoggingService {
  *   // define the batch processor
  *   logBatch = $batch({
- *     schema: t.string(),
+ *     schema: t.text(),
  *     maxSize: 10,
  *     maxDuration: [5, "seconds"],
  *     handler: async (items) => {

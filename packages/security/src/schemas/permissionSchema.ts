@@ -2,18 +2,18 @@ import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 
 export const permissionSchema = t.object({
-	name: t.string({
+	name: t.text({
 		description: "Name of the permission.",
 	}),
 
 	group: t.optional(
-		t.string({
+		t.text({
 			description: "Group of the permission.",
 		}),
 	),
 
 	description: t.optional(
-		t.string({
+		t.text({
 			description: "Describe the permission.",
 		}),
 	),
@@ -21,13 +21,13 @@ export const permissionSchema = t.object({
 	// HTTP Only
 
 	method: t.optional(
-		t.string({
+		t.text({
 			description: "HTTP method of the permission. When available.",
 		}),
 	),
 
 	path: t.optional(
-		t.string({
+		t.text({
 			description: "Pathname of the permission. When available.",
 		}),
 	),

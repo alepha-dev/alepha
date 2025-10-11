@@ -20,7 +20,7 @@ import { $logger } from "@alepha/logger";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
 const envSchema = t.object({
-	BLOB_READ_WRITE_TOKEN: t.string({
+	BLOB_READ_WRITE_TOKEN: t.text({
 		size: "long",
 	}),
 });

@@ -33,12 +33,12 @@ import {
 } from "./ReactPageProvider.ts";
 
 const envSchema = t.object({
-	REACT_SERVER_DIST: t.string({ default: "public" }),
-	REACT_SERVER_PREFIX: t.string({ default: "" }),
+	REACT_SERVER_DIST: t.text({ default: "public" }),
+	REACT_SERVER_PREFIX: t.text({ default: "" }),
 	REACT_SSR_ENABLED: t.optional(t.boolean()),
-	REACT_ROOT_ID: t.string({ default: "root" }),
+	REACT_ROOT_ID: t.text({ default: "root" }),
 	REACT_SERVER_TEMPLATE: t.optional(
-		t.string({
+		t.text({
 			size: "rich",
 		}),
 	),

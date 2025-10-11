@@ -54,9 +54,9 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  * const emailQueue = $queue({
  *   name: "email-notifications",
  *   schema: t.object({
- *     to: t.string(),
- *     subject: t.string(),
- *     body: t.string(),
+ *     to: t.text(),
+ *     subject: t.text(),
+ *     body: t.text(),
  *     priority: t.optional(t.enum(["high", "normal"]))
  *   }),
  *   handler: async (message) => {
@@ -80,7 +80,7 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  *   name: "image-processing",
  *   provider: RedisQueueProvider,
  *   schema: t.object({
- *     imageId: t.string(),
+ *     imageId: t.text(),
  *     operations: t.array(t.enum(["resize", "compress", "thumbnail"]))
  *   }),
  *   handler: async (message) => {
@@ -105,7 +105,7 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  *   provider: "memory",
  *   schema: t.object({
  *     taskType: t.enum(["cleanup", "backup", "report"]),
- *     data: t.record(t.string(), t.any())
+ *     data: t.record(t.text(), t.any())
  *   }),
  *   handler: async (message) => {
  *     switch (message.payload.taskType) {
@@ -203,9 +203,9 @@ export interface QueueDescriptorOptions<T extends TSchema> {
 	 * @example
 	 * ```ts
 	 * t.object({
-	 *   userId: t.string(),
+	 *   userId: t.text(),
 	 *   action: t.enum(["create", "update"]),
-	 *   data: t.record(t.string(), t.any()),
+	 *   data: t.record(t.text(), t.any()),
 	 *   timestamp: t.optional(t.number())
 	 * })
 	 * ```

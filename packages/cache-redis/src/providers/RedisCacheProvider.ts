@@ -5,7 +5,7 @@ import { RedisProvider } from "@alepha/redis";
 
 const envSchema = t.object({
 	REDIS_CACHE_PREFIX: t.optional(
-		t.string({
+		t.text({
 			description:
 				"Force a prefix for all cache keys in Redis. Useful for testing or multi-tenant applications.",
 		}),

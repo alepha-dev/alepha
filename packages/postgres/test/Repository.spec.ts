@@ -4,7 +4,7 @@ import { $entity, $repository, pg } from "../src";
 
 const testSchema = t.object({
 	id: pg.primaryKey(),
-	name: t.string(),
+	name: t.text(),
 });
 
 const testEntity = $entity({
@@ -42,7 +42,7 @@ test("Repository - id serial", async () => {
 test("Repository - id uuid", async () => {
 	const schema = t.object({
 		uuid: pg.uuidPrimaryKey(),
-		name: t.string(),
+		name: t.text(),
 	});
 	const entity = $entity({
 		name: "test",
@@ -77,7 +77,7 @@ test("Repository - id uuid", async () => {
 test("Repository - multiple operators (gte & lte)", async () => {
 	const schema = t.object({
 		id: pg.primaryKey(),
-		name: t.string(),
+		name: t.text(),
 		age: t.number(),
 	});
 	const entity = $entity({

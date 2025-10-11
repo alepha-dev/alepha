@@ -71,7 +71,7 @@ console.log(alepha.env.MY_VAR); // "value"
 class App {
   env = $env(
     t.object({
- 	   MY_VAR: t.string(),
+ 	   MY_VAR: t.text(),
     })
   );
 }
@@ -158,7 +158,7 @@ class App {
 
   // program expect a var env "HELLO" as string to works
   env = $env(t.object({
-    HELLO: t.string()
+    HELLO: t.text()
   }));
 
   sayHello = () => this.log.info("Hello ${this.env.HELLO}")

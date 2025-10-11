@@ -18,7 +18,7 @@ export const pageQuerySchema = t.object({
 		}),
 	),
 	sort: t.optional(
-		t.string({
+		t.text({
 			description:
 				"Sort by field(s). Multiple columns separated by comma. Prefix with '-' for DESC. Examples: 'name' (ASC), '-createdAt' (DESC), 'role,-name' (role ASC, name DESC)",
 		}),

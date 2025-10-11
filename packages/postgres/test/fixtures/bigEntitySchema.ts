@@ -7,28 +7,28 @@ export const bigEntity = $entity({
 	schema: t.object({
 		id: pg.primaryKey(t.bigint()),
 		type: t.enum(["big_entity"]),
-		a: t.string(),
+		a: t.text(),
 		b: t.number(),
 		c: t.int(),
 		d: t.boolean(),
 		e: t.object({
-			a: t.string(),
+			a: t.text(),
 			b: t.number(),
 			c: t.int(),
 			d: t.boolean(),
 			e: t.object({
-				a: t.string(),
+				a: t.text(),
 				b: t.number(),
 				c: t.int(),
 				d: t.boolean(),
 				j: t.array(
 					t.object({
-						a: t.string(),
+						a: t.text(),
 						b: t.number(),
 						c: t.int(),
 						d: t.boolean(),
 						e: t.object({
-							a: t.string(),
+							a: t.text(),
 							b: t.number(),
 							c: t.int(),
 							d: t.boolean(),
@@ -37,18 +37,18 @@ export const bigEntity = $entity({
 				),
 			}),
 		}),
-		f: t.array(t.string()),
+		f: t.array(t.text()),
 		g: t.array(t.number()),
 		h: t.array(t.int()),
 		i: t.array(t.boolean()),
 		j: t.array(
 			t.object({
-				a: t.string(),
+				a: t.text(),
 				b: t.number(),
 				c: t.int(),
 				d: t.boolean(),
 				e: t.object({
-					a: t.string(),
+					a: t.text(),
 					b: t.number(),
 					c: t.int(),
 					d: t.boolean(),

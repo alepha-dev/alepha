@@ -15,7 +15,7 @@ export class ServerHealthProvider {
 		path: "/health",
 		schema: {
 			response: t.object({
-				message: t.string(),
+				message: t.text(),
 				uptime: t.number(),
 				date: t.datetime(),
 				ready: t.boolean(),

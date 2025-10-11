@@ -2,12 +2,12 @@ import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 
 export const roleSchema = t.object({
-	name: t.string({
+	name: t.text({
 		description: "Name of the role.",
 	}),
 
 	description: t.optional(
-		t.string({
+		t.text({
 			description: "Describe the role.",
 		}),
 	),
@@ -21,7 +21,7 @@ export const roleSchema = t.object({
 
 	permissions: t.array(
 		t.object({
-			name: t.string({
+			name: t.text({
 				description: "Name of the permission.",
 			}),
 			ownership: t.optional(
@@ -31,7 +31,7 @@ export const roleSchema = t.object({
 				}),
 			),
 			exclude: t.optional(
-				t.array(t.string(), {
+				t.array(t.text(), {
 					description:
 						"Exclude some permissions. Useful when 'name' is a wildcard.",
 				}),

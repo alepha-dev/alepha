@@ -9,13 +9,13 @@ describe("$action", () => {
 			hello = $action({
 				schema: {
 					params: t.object({
-						name: t.string(),
+						name: t.text(),
 					}),
 					query: t.object({
 						transform: t.optional(t.enum(["uppercase"])),
 					}),
 					response: t.object({
-						message: t.string(),
+						message: t.text(),
 					}),
 				},
 				handler: ({ params, query }) => {

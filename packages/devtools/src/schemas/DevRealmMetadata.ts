@@ -1,8 +1,8 @@
 import { type Static, t } from "@alepha/core";
 
 export const devRealmMetadataSchema = t.object({
-	name: t.string(),
-	description: t.optional(t.string()),
+	name: t.text(),
+	description: t.optional(t.text()),
 	roles: t.optional(t.array(t.any())),
 	type: t.enum(["internal", "external"]),
 	settings: t.optional(

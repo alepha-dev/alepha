@@ -21,7 +21,7 @@ import { LinkProvider } from "./LinkProvider.ts";
 import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
 
 const envSchema = t.object({
-	SERVER_API_PREFIX: t.string({
+	SERVER_API_PREFIX: t.text({
 		description: "Prefix for all API routes (e.g. $action).",
 		default: "/api",
 	}),
@@ -90,7 +90,7 @@ export class ServerLinksProvider {
 		path: LinkProvider.path.apiSchema,
 		schema: {
 			params: t.object({
-				name: t.string(),
+				name: t.text(),
 			}),
 			response: t.json(),
 		},

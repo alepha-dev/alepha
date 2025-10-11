@@ -10,19 +10,19 @@ describe("ServerBodyParserProvider", () => {
 			json = $action({
 				schema: {
 					body: t.object({
-						message: t.string(),
+						message: t.text(),
 					}),
 					response: t.object({
-						received: t.string(),
+						received: t.text(),
 					}),
 				},
 				handler: ({ body }) => ({ received: body.message }),
 			});
 			string = $action({
 				schema: {
-					body: t.string(),
+					body: t.text(),
 					response: t.object({
-						received: t.string(),
+						received: t.text(),
 					}),
 				},
 				handler: ({ body }) => ({ received: body }),
@@ -60,12 +60,12 @@ describe("ServerBodyParserProvider", () => {
 			test = $action({
 				schema: {
 					body: t.object({
-						message: t.string({
+						message: t.text({
 							maxLength: 1000000, // allow up to 1 million characters (for http client validation)
 						}),
 					}),
 					response: t.object({
-						received: t.string(),
+						received: t.text(),
 					}),
 				},
 				handler: ({ body }) => {
