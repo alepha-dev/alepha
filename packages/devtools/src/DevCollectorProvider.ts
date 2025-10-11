@@ -25,7 +25,7 @@ import type { DevTopicMetadata } from "./schemas/DevTopicMetadata.ts";
 export class DevCollectorProvider {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly logs: DevLogEntry[] = [];
-	protected readonly maxLogs = 1000;
+	protected readonly maxLogs = 10000;
 
 	protected readonly onLog = $hook({
 		on: "log",
@@ -35,7 +35,7 @@ export class DevCollectorProvider {
 				entry: ev.entry,
 			});
 
-			// Keep only the last 1000 logs
+			// Keep only the last 10000 logs
 			if (this.logs.length > this.maxLogs) {
 				this.logs.shift();
 			}
@@ -61,6 +61,22 @@ export class DevCollectorProvider {
 		},
 		handler: () => {
 			return this.getMetadata();
+		},
+	});
+
+	protected readonly logsRoute = $route({
+		method: "GET",
+		path: "/devtools/logs",
+		schema: {
+			response: t.array(
+				t.object({
+					formatted: t.text(),
+					entry: t.any(),
+				}),
+			),
+		},
+		handler: () => {
+			return this.getLogs();
 		},
 	});
 
@@ -230,7 +246,6 @@ export class DevCollectorProvider {
 
 	public getMetadata(): DevMetadata {
 		return {
-			logs: this.getLogs(),
 			actions: this.getActions(),
 			queues: this.getQueues(),
 			schedulers: this.getSchedulers(),

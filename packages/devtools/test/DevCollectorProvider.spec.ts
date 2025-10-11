@@ -31,13 +31,13 @@ describe("DevCollectorProvider", () => {
 		expect(lastLog.entry.message).toBe("Test log");
 	});
 
-	it("should limit logs to 1000 entries", async () => {
+	it("should limit logs to 10000 entries", async () => {
 		const app = Alepha.create().with(AlephaDevtools);
 		const devtools = app.inject(DevCollectorProvider);
 		await app.start();
 
-		// Emit 1500 log events
-		for (let i = 0; i < 1500; i++) {
+		// Emit 11000 log events
+		for (let i = 0; i < 11000; i++) {
 			await app.events.emit("log", {
 				message: `Log ${i}`,
 				entry: {
@@ -51,10 +51,10 @@ describe("DevCollectorProvider", () => {
 		}
 
 		const logs = devtools.getLogs();
-		expect(logs).toHaveLength(1000);
-		// Should have the last 1000 logs (500-1499)
-		expect(logs[0].entry.message).toBe("Message 500");
-		expect(logs[999].entry.message).toBe("Message 1499");
+		expect(logs).toHaveLength(10000);
+		// Should have the last 10000 logs (1000-10999)
+		expect(logs[0].entry.message).toBe("Message 1000");
+		expect(logs[9999].entry.message).toBe("Message 10999");
 	});
 
 	it("should collect actions metadata", async () => {
@@ -177,7 +177,6 @@ describe("DevCollectorProvider", () => {
 		await app.start();
 		const metadata = devtools.getMetadata();
 
-		expect(metadata).toHaveProperty("logs");
 		expect(metadata).toHaveProperty("actions");
 		expect(metadata).toHaveProperty("queues");
 		expect(metadata).toHaveProperty("schedulers");
@@ -189,7 +188,6 @@ describe("DevCollectorProvider", () => {
 		expect(metadata).toHaveProperty("providers");
 		expect(metadata).toHaveProperty("modules");
 
-		expect(Array.isArray(metadata.logs)).toBe(true);
 		expect(Array.isArray(metadata.actions)).toBe(true);
 		expect(Array.isArray(metadata.queues)).toBe(true);
 		expect(Array.isArray(metadata.schedulers)).toBe(true);
