@@ -320,3 +320,58 @@ export const testSimpleKeyMappingHandler = async (
 	expect(await app.run("B")).toBe("B=2");
 	expect(await app.run("C")).toBe("C=3");
 };
+
+export const testCacheProviderClear = async (
+	env: Env = {},
+	cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+	class TestClearCache {
+		cursor_a = 0;
+		cursor_b = 0;
+
+		a = $cache({
+			key: (args) => args.name,
+			ttl: [5, "seconds"],
+			handler: async (user: { name: string }) => {
+				return `${user.name}:${this.cursor_a++}`;
+			},
+		});
+
+		b = $cache({
+			key: (args) => args.name,
+			handler: async (user: { name: string }) => {
+				return `${user.name}:${this.cursor_b++}`;
+			},
+		});
+	}
+
+	const app = Alepha.create({
+		env,
+	}).with({
+		provide: CacheProvider,
+		use: cacheProvider,
+	});
+
+	const test = app.inject(TestClearCache);
+	const provider = app.inject(CacheProvider);
+	await app.start();
+
+	// Set some cache values
+	expect(await test.a({ name: "A" })).toBe("A:0");
+	expect(await test.a({ name: "A" })).toBe("A:0");
+	expect(await test.a({ name: "B" })).toBe("B:1");
+	expect(await test.b({ name: "C" })).toBe("C:0");
+	expect(await test.b({ name: "C" })).toBe("C:0");
+
+	// Verify cache is working
+	expect(await test.a({ name: "A" })).toBe("A:0");
+	expect(await test.b({ name: "C" })).toBe("C:0");
+
+	// Clear all cache
+	await provider.clear();
+
+	// Verify cache was cleared - new values should be generated
+	expect(await test.a({ name: "A" })).toBe("A:2");
+	expect(await test.a({ name: "B" })).toBe("B:3");
+	expect(await test.b({ name: "C" })).toBe("C:1");
+};

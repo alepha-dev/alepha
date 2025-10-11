@@ -87,6 +87,13 @@ export class RedisCacheProvider implements CacheProvider {
 		return this.redisProvider.keys(`${this.prefix(name)}:*`);
 	}
 
+	public async clear(): Promise<void> {
+		this.log.debug("Clearing all cache");
+		const pattern = `${this.prefix()}:*`;
+		const keys = await this.redisProvider.keys(pattern);
+		await this.redisProvider.del(keys);
+	}
+
 	protected prefix(...path: string[]): string {
 		const parts = ["cache", ...path];
 

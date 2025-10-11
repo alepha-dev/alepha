@@ -100,4 +100,20 @@ export class MemoryCacheProvider implements CacheProvider {
 		}
 		return keys;
 	}
+
+	public async clear(): Promise<void> {
+		this.log.debug("Clearing all cache");
+
+		// Clear all timeouts before clearing the store
+		for (const name of Object.keys(this.store)) {
+			for (const key of Object.keys(this.store[name])) {
+				const timeout = this.store[name][key]?.timeout;
+				if (timeout) {
+					this.dateTimeProvider.clearTimeout(timeout);
+				}
+			}
+		}
+
+		this.store = {};
+	}
 }

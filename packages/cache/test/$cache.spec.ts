@@ -13,6 +13,7 @@ import {
 	testCacheInvalidateByKey,
 	testCacheKeys,
 	testCacheMissingProvider,
+	testCacheProviderClear,
 	testCacheReturnTypes,
 	testCacheStop,
 	testSimpleKeyMappingHandler,
@@ -101,4 +102,8 @@ test("$cache - unique key", async () => {
 
 test("$cache - unique key with args", async () => {
 	await testSimpleKeyMappingHandler();
+});
+
+test("$cache - provider clear", async () => {
+	await testCacheProviderClear();
 });
