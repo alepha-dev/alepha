@@ -363,6 +363,9 @@ export class HttpClient {
 				if (query[key] === undefined) {
 					delete query[key];
 				}
+				if (typeof query[key] === "object") {
+					query[key] = JSON.stringify(query[key]);
+				}
 			}
 
 			return `${url}?${new URLSearchParams(

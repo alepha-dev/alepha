@@ -31,6 +31,11 @@ describe("$route", () => {
 					query: t.object({
 						a: t.optional(t.text()),
 						b: t.optional(t.array(t.text())),
+						c: t.optional(
+							t.object({
+								d: t.text(),
+							}),
+						),
 					}),
 				},
 				handler: ({ query }) => JSON.stringify({ query }),
@@ -40,12 +45,20 @@ describe("$route", () => {
 		await alepha.with(TestApp).start();
 
 		const resp = await fetch(
-			`${alepha.inject(ServerProvider).hostname}/hello?a=1&b=["HELLO","WORLD"]`,
+			`${alepha.inject(ServerProvider).hostname}/hello?a=1&b=["HELLO","WORLD"]&c=${encodeURIComponent(
+				JSON.stringify({
+					d: "e",
+				}),
+			)}`,
 		);
+
 		expect(await resp.json()).toEqual({
 			query: {
 				a: "1",
 				b: ["HELLO", "WORLD"],
+				c: {
+					d: "e",
+				},
 			},
 		});
 	});

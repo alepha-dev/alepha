@@ -336,7 +336,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 			try {
 				const query: Record<string, any> = {};
 				for (const key in route.schema.query.properties) {
-					if (typeof request.query[key] === "string") {
+					if (request.query[key] != null) {
 						query[key] = this.alepha.parse(
 							route.schema.query.properties[key],
 							request.query[key],
@@ -345,7 +345,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 				}
 				request.query = this.alepha.parse(route.schema.query, query) as any;
 			} catch (error) {
-				console.log(error);
 				throw new ValidationError("Invalid request query", error);
 			}
 		}

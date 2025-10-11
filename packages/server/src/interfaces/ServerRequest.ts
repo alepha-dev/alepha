@@ -54,7 +54,7 @@ export interface ServerRequestConfig<
 
 	query: TConfig["query"] extends TObject
 		? Static<TConfig["query"]>
-		: Record<string, string>;
+		: Record<string, any>;
 }
 
 export type ServerRequestConfigEntry<

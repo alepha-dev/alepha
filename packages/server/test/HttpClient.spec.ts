@@ -99,4 +99,25 @@ describe("HttpClient", () => {
 			),
 		).toEqual("?a=b");
 	});
+
+	test("should handle json", async ({ expect }) => {
+		const alepha = Alepha.create();
+		const client = alepha.inject(HttpClient);
+		await alepha.start();
+
+		expect(
+			client.queryParams(
+				"",
+				{},
+				{
+					query: {
+						tags: ["a", "b"],
+						user: { name: "john" },
+					},
+				},
+			),
+		).toEqual(
+			`?tags=${encodeURIComponent(JSON.stringify(["a", "b"]))}&user=${encodeURIComponent(JSON.stringify({ name: "john" }))}`,
+		);
+	});
 });
