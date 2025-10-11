@@ -1,11 +1,11 @@
 {
-	"name": "@alepha/api-parameters",
-	"description": "Parameter management API endpoints for Alepha applications.",
+	"name": "@alepha/api-verifications",
+	"description": "Verification management API endpoints for Alepha applications.",
 	"keywords": [
 		"alepha",
 		"api",
-		"parameters",
-		"configuration"
+		"verifications",
+		"validation"
 	],
 	"author": "Feunard",
 	"version": "0.10.3",
@@ -22,8 +22,7 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.10.3",
-		"@alepha/postgres": "0.10.3",
-		"@alepha/security": "0.10.3"
+		"@alepha/postgres": "0.10.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",

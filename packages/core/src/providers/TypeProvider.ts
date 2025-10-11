@@ -264,6 +264,8 @@ export class TypeProvider {
 	/**
 	 * Create a schema for a string with length limits.
 	 * For internal strings without length limits, consider using `t.string()` instead.
+	 *
+	 * Default size is "regular", which has a max length of 255 characters.
 	 */
 	public text(options: TTextOptions = {}): TString {
 		const { size, ...rest } = options;

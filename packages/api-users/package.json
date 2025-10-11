@@ -21,7 +21,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.3"
+		"@alepha/core": "0.10.3",
+		"@alepha/postgres": "0.10.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",

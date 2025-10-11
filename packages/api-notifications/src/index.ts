@@ -1,5 +1,11 @@
 import { $module } from "@alepha/core";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./entities/notifications.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Provides notification management API endpoints for Alepha applications.
  *

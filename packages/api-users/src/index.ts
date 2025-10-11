@@ -1,5 +1,13 @@
 import { $module } from "@alepha/core";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./entities/identities.ts";
+export * from "./entities/sessions.ts";
+export * from "./entities/users.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Provides user management API endpoints for Alepha applications.
  *

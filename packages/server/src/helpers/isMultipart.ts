@@ -14,10 +14,7 @@ export const isMultipart = (options: {
 	if (options.schema?.body && "properties" in options.schema.body) {
 		const properties: Record<string, any> = options.schema.body.properties;
 		for (const key in properties) {
-			if (
-				properties[key].type === "string" &&
-				properties[key].format === "binary"
-			) {
+			if (properties[key].format === "binary") {
 				return true;
 			}
 		}

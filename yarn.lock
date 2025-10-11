@@ -9,7 +9,18 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/api-files@workspace:packages/api-files"
   dependencies:
+    "@alepha/bucket": "npm:0.10.3"
+    "@alepha/bucket-azure": "npm:0.10.3"
     "@alepha/core": "npm:0.10.3"
+    "@alepha/datetime": "npm:0.10.3"
+    "@alepha/file": "npm:0.10.3"
+    "@alepha/logger": "npm:0.10.3"
+    "@alepha/postgres": "npm:0.10.3"
+    "@alepha/scheduler": "npm:0.10.3"
+    "@alepha/security": "npm:0.10.3"
+    "@alepha/server": "npm:0.10.3"
+    "@alepha/server-multipart": "npm:0.10.3"
+    "@alepha/server-security": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -22,6 +33,7 @@ __metadata:
   resolution: "@alepha/api-jobs@workspace:packages/api-jobs"
   dependencies:
     "@alepha/core": "npm:0.10.3"
+    "@alepha/postgres": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -34,6 +46,7 @@ __metadata:
   resolution: "@alepha/api-notifications@workspace:packages/api-notifications"
   dependencies:
     "@alepha/core": "npm:0.10.3"
+    "@alepha/postgres": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -46,6 +59,8 @@ __metadata:
   resolution: "@alepha/api-parameters@workspace:packages/api-parameters"
   dependencies:
     "@alepha/core": "npm:0.10.3"
+    "@alepha/postgres": "npm:0.10.3"
+    "@alepha/security": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -58,6 +73,20 @@ __metadata:
   resolution: "@alepha/api-users@workspace:packages/api-users"
   dependencies:
     "@alepha/core": "npm:0.10.3"
+    "@alepha/postgres": "npm:0.10.3"
+    "@biomejs/biome": "npm:^2.2.5"
+    tsdown: "npm:^0.15.6"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
+"@alepha/api-verifications@workspace:packages/api-verifications":
+  version: 0.0.0-use.local
+  resolution: "@alepha/api-verifications@workspace:packages/api-verifications"
+  dependencies:
+    "@alepha/core": "npm:0.10.3"
+    "@alepha/postgres": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -80,7 +109,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/bucket-azure@workspace:packages/bucket-azure":
+"@alepha/bucket-azure@npm:0.10.3, @alepha/bucket-azure@workspace:packages/bucket-azure":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-azure@workspace:packages/bucket-azure"
   dependencies:

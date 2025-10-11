@@ -1,4 +1,46 @@
+import { AlephaBucket } from "@alepha/bucket";
 import { $module } from "@alepha/core";
+import type { DurationLike } from "@alepha/datetime";
+import type { UserAccountToken } from "@alepha/security";
+import { AlephaServerMultipart } from "@alepha/server-multipart";
+import { FileController } from "./controllers/FileController.ts";
+import { FileJobs } from "./jobs/FileJobs.ts";
+import { FileService } from "./services/FileService.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./entities/files.ts";
+export * from "./services/FileService.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/bucket" {
+	interface BucketFileOptions {
+		/**
+		 * Time to live for the files in the bucket.
+		 */
+		ttl?: DurationLike;
+
+		/**
+		 * Tags for the bucket.
+		 */
+		tags?: string[];
+
+		/**
+		 * User performing the operation.
+		 */
+		user?: UserAccountToken;
+
+		/**
+		 * Whether to persist the file metadata in the database.
+		 *
+		 * @default true
+		 */
+		persist?: boolean;
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Provides file management API endpoints for Alepha applications.
@@ -10,5 +52,12 @@ import { $module } from "@alepha/core";
  */
 export const AlephaApiFiles = $module({
 	name: "alepha.api.files",
-	services: [],
+	services: [FileController, FileJobs, FileService],
+	register: (alepha) => {
+		alepha
+			.with(AlephaBucket)
+			.with(AlephaServerMultipart)
+			.with(FileController)
+			.with(FileJobs);
+	},
 });
