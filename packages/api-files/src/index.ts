@@ -4,7 +4,7 @@ import type { DurationLike } from "@alepha/datetime";
 import type { UserAccountToken } from "@alepha/security";
 import { AlephaServerMultipart } from "@alepha/server-multipart";
 import { FileController } from "./controllers/FileController.ts";
-import { FileJobs } from "./jobs/FileJobs.ts";
+import { FileJobRegistry } from "./jobs/FileJobRegistry.ts";
 import { FileService } from "./services/FileService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -52,12 +52,12 @@ declare module "@alepha/bucket" {
  */
 export const AlephaApiFiles = $module({
 	name: "alepha.api.files",
-	services: [FileController, FileJobs, FileService],
+	services: [FileController, FileJobRegistry, FileService],
 	register: (alepha) => {
 		alepha
 			.with(AlephaBucket)
 			.with(AlephaServerMultipart)
 			.with(FileController)
-			.with(FileJobs);
+			.with(FileJobRegistry);
 	},
 });

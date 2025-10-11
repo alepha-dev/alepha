@@ -65,7 +65,7 @@ export class FileService {
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	public async findFiles(q: FileQuery): Promise<Page<FileEntity>> {
+	public async findFiles(q: FileQuery = {}): Promise<Page<FileEntity>> {
 		q.sort ??= "-createdAt";
 
 		const where = this.fileRepository.createQueryWhere();
@@ -77,17 +77,19 @@ export class FileService {
 			where.tags = { arrayContains: q.tags };
 		}
 
-		return await this.fileRepository.paginate(q, { where }).then((page) => {
-			return {
-				...page,
-				content: page.content.map((it) => this.entityToResource(it)),
-			};
-		});
+		return await this.fileRepository
+			.paginate(q, { where }, { count: true })
+			.then((page) => {
+				return {
+					...page,
+					content: page.content.map((it) => this.entityToResource(it)),
+				};
+			});
 	}
 
 	public async findExpiredFiles(): Promise<FileEntity[]> {
 		return await this.fileRepository.find({
-			limit: 100,
+			limit: 1000,
 			where: {
 				expirationDate: { lte: this.dateTimeProvider.nowISOString() },
 			},
@@ -106,7 +108,7 @@ export class FileService {
 	public async uploadFile(
 		file: FileLike,
 		options: {
-			expirationDate?: string;
+			expirationDate?: string | Date;
 			container?: string;
 			user?: UserAccountToken;
 			tags?: string[];
@@ -116,6 +118,17 @@ export class FileService {
 
 		const blobId = await storage.upload(file, { persist: false });
 
+		let expirationDate: string | undefined;
+		if (options.expirationDate) {
+			if (options.expirationDate instanceof Date) {
+				expirationDate = options.expirationDate.toISOString();
+			} else {
+				expirationDate = new Date(options.expirationDate).toISOString();
+			}
+		} else if (storage.options.ttl) {
+			expirationDate = this.getExpirationDate(storage.options.ttl);
+		}
+
 		return await this.fileRepository.create({
 			blobId: blobId,
 			mimeType: file.type,
@@ -124,7 +137,7 @@ export class FileService {
 			creator: options.user?.id,
 			creatorRealm: options.user?.realm,
 			creatorName: options.user?.name,
-			expirationDate: options.expirationDate,
+			expirationDate,
 			container: storage.name,
 			tags: options.tags,
 		});

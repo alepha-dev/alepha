@@ -48,7 +48,10 @@ export class FileController {
 			response: fileResourceSchema,
 		},
 		handler: async ({ body, user, query }) =>
-			this.fileService.uploadFile(body.file, { user, ...query }),
+			this.fileService.uploadFile(body.file, {
+				user,
+				...query,
+			}),
 	});
 
 	public readonly streamFile = $action({
