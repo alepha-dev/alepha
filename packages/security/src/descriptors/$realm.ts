@@ -44,6 +44,9 @@ export type RealmDescriptorOptions = {
 	 */
 	roles?: Array<string | Role>;
 
+	/**
+	 * Realm settings.
+	 */
 	settings?: RealmSettings;
 
 	/**

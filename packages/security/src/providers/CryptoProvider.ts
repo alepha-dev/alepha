@@ -1,4 +1,4 @@
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
 const scryptAsync = promisify(scrypt);
@@ -20,5 +20,9 @@ export class CryptoProvider {
 
 		// Important: prevent timing attacks
 		return timingSafeEqual(derivedKey, originalKey);
+	}
+
+	public randomUUID(): string {
+		return randomUUID();
 	}
 }

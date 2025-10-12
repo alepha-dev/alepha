@@ -1,10 +1,18 @@
 import { $module } from "@alepha/core";
+import { AlephaReactAuth } from "@alepha/react-auth";
+import { AlephaServerSecurity } from "@alepha/server-security";
+import { SessionService } from "./services/SessionService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./descriptors/$authApple.ts";
+export * from "./descriptors/$authGithub.ts";
+export * from "./descriptors/$authGoogle.ts";
+export * from "./descriptors/$realmUsers.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
+export * from "./services/SessionService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -18,5 +26,5 @@ export * from "./entities/users.ts";
  */
 export const AlephaApiUsers = $module({
 	name: "alepha.api.users",
-	services: [],
+	services: [AlephaServerSecurity, AlephaReactAuth, SessionService],
 });

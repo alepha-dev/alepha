@@ -43,6 +43,10 @@ export class PermissionDescriptor extends Descriptor<PermissionDescriptorOptions
 		return this.options.group || this.config.service.name;
 	}
 
+	public toString(): string {
+		return `${this.group}:${this.name}`;
+	}
+
 	protected onInit() {
 		this.securityProvider.createPermission({
 			name: this.name,

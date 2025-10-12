@@ -9,7 +9,6 @@ export const identities = $entity({
 		version: pg.version(),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
-
 		userId: pg.ref(t.uuid(), () => users.id),
 		provider: t.string(),
 		providerUserId: t.string(),

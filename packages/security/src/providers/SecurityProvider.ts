@@ -318,11 +318,27 @@ export class SecurityProvider {
 					rolePermission.name === groupWildcard || // if permission is group:* (wildcard)
 					rolePermission.name === permission // or if permission is the exact permission
 				) {
-					// [feature]: exclude permissions
-					// TODO: exclude ["group:*"]
-					if (rolePermission.exclude?.includes(permission)) {
-						// if permission is excluded, we can skip it
-						continue;
+					// [feature]: exclude permissions including wildcards
+					if (rolePermission.exclude) {
+						let isExcluded = false;
+						for (const excludePattern of rolePermission.exclude) {
+							if (excludePattern === permission) {
+								// Exact match exclusion
+								isExcluded = true;
+								break;
+							}
+							// Check for wildcard exclusion (e.g., "admin:*")
+							if (excludePattern.endsWith(":*")) {
+								const excludeGroup = excludePattern.slice(0, -2);
+								if (permission.startsWith(`${excludeGroup}:`)) {
+									isExcluded = true;
+									break;
+								}
+							}
+						}
+						if (isExcluded) {
+							continue;
+						}
 					}
 
 					result.isAuthorized = true; // OK !

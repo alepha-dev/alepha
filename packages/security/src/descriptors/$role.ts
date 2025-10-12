@@ -1,5 +1,6 @@
 import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
+import type { PermissionDescriptor } from "./$permission.ts";
 import type { RealmDescriptor } from "./$realm.ts";
 
 /**
@@ -29,6 +30,7 @@ export interface RoleDescriptorOptions {
 		| {
 				name: string;
 				ownership?: boolean;
+				exclude?: string[];
 		  }
 	>;
 }
@@ -62,6 +64,14 @@ export class RoleDescriptor extends Descriptor<RoleDescriptorOptions> {
 	 */
 	public get realm(): string | RealmDescriptor | undefined {
 		return this.options.realm;
+	}
+
+	public can(permission: string | PermissionDescriptor): boolean {
+		return this.securityProvider.can(this.name, permission);
+	}
+
+	public check(permission: string | PermissionDescriptor) {
+		return this.securityProvider.checkPermission(permission, this.name);
 	}
 }
 

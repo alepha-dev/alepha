@@ -9,7 +9,6 @@ export const sessions = $entity({
 		version: pg.version(),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
-
 		refreshToken: t.uuid(),
 		userId: pg.ref(t.uuid(), () => users.id),
 		expiresAt: t.datetime(),

@@ -24,7 +24,7 @@ export interface UserAgentInfo {
 		| "Samsung Browser"
 		| "UC Browser"
 		| "Yandex";
-	device: "Mobile" | "Desktop" | "Tablet";
+	device: "MOBILE" | "DESKTOP" | "TABLET";
 }
 
 /**
@@ -40,7 +40,7 @@ export class UserAgentParser {
 		// Default values
 		let os: UserAgentInfo["os"] = "Windows";
 		let browser: UserAgentInfo["browser"] = "Chrome";
-		let device: UserAgentInfo["device"] = "Desktop";
+		let device: UserAgentInfo["device"] = "DESKTOP";
 
 		// Detect OS - Order matters for specificity
 		if (ua.includes("windows phone")) {
@@ -149,11 +149,11 @@ export class UserAgentParser {
 		const isMobile = mobileKeywords.some((keyword) => ua.includes(keyword));
 
 		if (isTablet) {
-			device = "Tablet";
+			device = "TABLET";
 		} else if (isMobile) {
-			device = "Mobile";
+			device = "MOBILE";
 		} else {
-			device = "Desktop";
+			device = "DESKTOP";
 		}
 
 		return { os, browser, device };
