@@ -83,6 +83,8 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 
 import value = postgres.toPascal.value;
 
+import { aggregateRowsByRelation, withJoins } from "../helpers/relations.ts";
+
 /**
  * Creates a repository descriptor for database operations on a defined entity.
  *
@@ -443,7 +445,11 @@ export class RepositoryDescriptor<
 			? this.selectDistinct(opts, {} as SelectedFields)
 			: this.select(opts);
 
-		const where = this.withDeletedAt(query.where ?? {}, opts);
+		const where = this.withDeletedAt(
+			(query.where ?? {}) as PgQueryWhere<EntitySchema>,
+			opts,
+		);
+
 		builder.where(() => this.jsonQueryToSql(where));
 
 		if (query.offset) {
@@ -477,8 +483,22 @@ export class RepositoryDescriptor<
 			}
 		}
 
+		const pgManyFields = withJoins(
+			builder,
+			query as any,
+			this.schema,
+			this.id.col,
+		);
+
 		try {
-			const rows = await builder.execute();
+			let rows = await builder.execute();
+			rows = aggregateRowsByRelation(
+				rows,
+				pgManyFields,
+				query as any,
+				this.tableName,
+				this.id.key as string,
+			);
 			return rows.map((row) => this.clean(row));
 		} catch (error) {
 			throw new PgError("Query select has failed", error as Error);
@@ -492,8 +512,8 @@ export class RepositoryDescriptor<
 	 * @param opts The statement options.
 	 * @returns The found entity.
 	 */
-	public async findOne<T extends Static<EntitySchema> = Static<EntitySchema>>(
-		where: PgQueryWhere<T>,
+	public async findOne<T extends EntitySchema = EntitySchema>(
+		where: PgQueryWhereOrSQL<T>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
 		const [entity] = await this.find({ where: where as any, limit: 1 }, opts);
@@ -560,7 +580,7 @@ export class RepositoryDescriptor<
 			const where = isSQLWrapper(query.where)
 				? query.where
 				: query.where
-					? this.jsonQueryToSql(query.where)
+					? this.jsonQueryToSql(query.where as PgQueryWhere<EntitySchema>)
 					: undefined;
 
 			tasks.push(
@@ -587,8 +607,8 @@ export class RepositoryDescriptor<
 	}
 
 	public createQueryWhere(
-		where: PgQueryWhere<Static<EntitySchema>> = {},
-	): PgQueryWhere<Static<EntitySchema>> {
+		where: PgQueryWhere<EntitySchema> = {},
+	): PgQueryWhere<EntitySchema> {
 		return {
 			...where,
 		};
@@ -642,7 +662,7 @@ export class RepositoryDescriptor<
 	 * Find an entity and update it.
 	 */
 	public async updateOne(
-		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
+		where: PgQueryWhereOrSQL<EntitySchema>,
 		data: Partial<Static<TObjectUpdate<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
@@ -729,7 +749,8 @@ export class RepositoryDescriptor<
 						},
 					},
 				],
-			} as PgQueryWhere<Static<EntitySchema>>;
+			} as PgQueryWhere<EntitySchema>;
+
 			set[versionField.key] += 1;
 		}
 
@@ -760,7 +781,7 @@ export class RepositoryDescriptor<
 	 * Find many entities and update all of them.
 	 */
 	public async updateMany(
-		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
+		where: PgQueryWhereOrSQL<EntitySchema>,
 		data: Partial<Static<TObjectUpdate<EntitySchema>>>,
 		opts: StatementOptions = {},
 	): Promise<void> {
@@ -778,7 +799,7 @@ export class RepositoryDescriptor<
 	 * Find many and delete all of them.
 	 */
 	public async deleteMany(
-		where: PgQueryWhere<Static<EntitySchema>> = {},
+		where: PgQueryWhereOrSQL<EntitySchema> = {},
 		opts: StatementOptions = {},
 	): Promise<void> {
 		const deletedAt = this.deletedAt();
@@ -831,7 +852,7 @@ export class RepositoryDescriptor<
 	 * Find an entity and delete it.
 	 */
 	public async deleteOne(
-		where: PgQueryWhere<Static<EntitySchema>> = {},
+		where: PgQueryWhereOrSQL<EntitySchema> = {},
 		opts: StatementOptions = {},
 	): Promise<void> {
 		await this.deleteMany(where, opts);
@@ -851,13 +872,17 @@ export class RepositoryDescriptor<
 	 * Count entities.
 	 */
 	public async count(
-		where: PgQueryWhereOrSQL<Static<EntitySchema>> = {},
+		where: PgQueryWhereOrSQL<EntitySchema> = {},
 		opts: StatementOptions = {},
 	): Promise<number> {
 		where = this.withDeletedAt(where, opts);
 		return (opts.tx ?? this.db).$count(
 			this.table,
-			this.jsonQueryToSql(where, this.schema, (key) => this.col(key)),
+			this.jsonQueryToSql(
+				where as PgQueryWhereOrSQL<EntitySchema>,
+				this.schema,
+				(key) => this.col(key),
+			),
 		);
 	}
 
@@ -882,11 +907,11 @@ export class RepositoryDescriptor<
 	}
 
 	protected withDeletedAt(
-		where: PgQueryWhereOrSQL<Static<EntitySchema>>,
+		where: PgQueryWhereOrSQL<EntitySchema>,
 		opts: {
 			force?: boolean;
 		} = {},
-	) {
+	): PgQueryWhereOrSQL<EntitySchema> {
 		if (opts.force) {
 			return where;
 		}
@@ -905,7 +930,7 @@ export class RepositoryDescriptor<
 					},
 				} as any,
 			],
-		} as PgQueryWhere<Static<EntitySchema>>;
+		} as PgQueryWhereOrSQL<EntitySchema>;
 	}
 
 	protected get organization() {
@@ -929,7 +954,7 @@ export class RepositoryDescriptor<
 	 * @param col The column to use.
 	 */
 	protected jsonQueryToSql(
-		query: PgQueryWhereOrSQL<Static<EntitySchema>>,
+		query: PgQueryWhereOrSQL<EntitySchema>,
 		schema: TObject = this.schema,
 		col: (key: string) => PgColumn = (key) => this.col(key),
 	): SQL | undefined {
@@ -939,11 +964,11 @@ export class RepositoryDescriptor<
 			conditions.push(query as SQL);
 		} else {
 			const keys = Object.keys(query) as Array<
-				keyof PgQueryWhere<Static<EntitySchema>> & string
+				keyof PgQueryWhere<EntitySchema> & string
 			>;
 
 			for (const key of keys) {
-				const operator = query[key];
+				const operator = query[key] as SQL;
 
 				if (Array.isArray(operator)) {
 					const operations: SQL[] = operator
@@ -952,7 +977,7 @@ export class RepositoryDescriptor<
 								return it as SQL;
 							}
 							return this.jsonQueryToSql(
-								it as PgQueryWhere<Static<EntitySchema>>,
+								it as PgQueryWhere<EntitySchema>,
 								schema,
 								col,
 							);
@@ -970,7 +995,7 @@ export class RepositoryDescriptor<
 
 				if (key === "not") {
 					const where = this.jsonQueryToSql(
-						operator as PgQueryWhere<Static<EntitySchema>>,
+						operator as PgQueryWhere<EntitySchema>,
 						schema,
 						col,
 					);
@@ -1283,14 +1308,12 @@ export class RepositoryDescriptor<
 	 * @param id The ID to get the where clause for.
 	 * @returns The where clause for the ID.
 	 */
-	protected getWhereId(
-		id: string | number,
-	): PgQueryWhere<Static<EntitySchema>> {
+	protected getWhereId(id: string | number): PgQueryWhereOrSQL<EntitySchema> {
 		return {
 			[this.id.key]: {
 				eq: t.schema.isString(this.id.type) ? String(id) : Number(id),
 			},
-		} as PgQueryWhere<Static<EntitySchema>>;
+		} as PgQueryWhereOrSQL<EntitySchema>;
 	}
 
 	/**

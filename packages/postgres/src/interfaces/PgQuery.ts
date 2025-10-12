@@ -1,5 +1,6 @@
-import type { Static, TKeysToIndexer, TObject, TPick } from "@alepha/core";
-import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
+import type { Static, TObject } from "@alepha/core";
+import type { SQLWrapper } from "drizzle-orm";
+import type { PgQueryWhereWithMany, PgQueryWithMap } from "./PgQueryWhere.ts";
 
 /**
  * Order direction for sorting
@@ -22,16 +23,12 @@ export interface OrderByClause<T> {
  */
 export type OrderBy<T> = keyof T | OrderByClause<T> | Array<OrderByClause<T>>;
 
-export interface PgQuery<T extends TObject> {
+export interface PgQuery<T extends TObject = TObject> {
 	distinct?: boolean;
-	where?: PgQueryWhereOrSQL<Static<T>>;
+	where?: PgQueryWhereWithMany<T> | SQLWrapper;
 	limit?: number;
 	offset?: number;
 	orderBy?: OrderBy<Static<T>>;
 	groupBy?: (keyof Static<T>)[];
+	relations?: PgQueryWithMap<T>;
 }
-
-export type PgQueryResult<
-	T extends TObject,
-	Select extends (keyof Static<T>)[],
-> = TPick<T, TKeysToIndexer<Select>>;

@@ -1,9 +1,10 @@
+import type { Static, TArray, TObject } from "@alepha/core";
 import type { SQLWrapper } from "drizzle-orm";
+import type { PG_MANY } from "../constants/PG_SYMBOLS.ts";
 import type { FilterOperators } from "./FilterOperators.ts";
 
-export type PgQueryWhereOrSQL<T extends object> = SQLWrapper | PgQueryWhere<T>;
-export type PgQueryWhere<T extends object> = {
-	[Key in keyof T]?: FilterOperators<T[Key]> | T[Key];
+export type PgQueryWhere<T extends TObject> = {
+	[Key in keyof Static<T>]?: FilterOperators<Static<T>[Key]> | Static<T>[Key];
 } & {
 	/**
 	 * Combine a list of conditions with the `and` operator. Conditions
@@ -76,3 +77,64 @@ export type PgQueryWhere<T extends object> = {
 	 */
 	exists?: SQLWrapper;
 };
+
+export type PgQueryWhereOrSQL<T extends TObject> = SQLWrapper | PgQueryWhere<T>;
+
+export type PgQueryWhereWithManyOrSQL<T extends TObject> =
+	| SQLWrapper
+	| PgQueryWhereWithMany<T>;
+
+export type PgQueryWhereWithMany<T extends TObject> = PgQueryWhere<
+	RemoveManyRelations<T>
+> &
+	ExtractManyRelations<T>;
+
+export type ExtractManyRelations<T extends TObject> = {
+	[K in keyof T["properties"] as T["properties"][K] extends {
+		[PG_MANY]: any;
+	}
+		? T["properties"][K] extends TArray
+			? T["properties"][K]["items"] extends TObject
+				? K
+				: never
+			: never
+		: never]?: PgQueryWhere<
+		T["properties"][K] extends TArray
+			? T["properties"][K]["items"] extends TObject
+				? T["properties"][K]["items"]
+				: TObject
+			: TObject
+	>;
+};
+
+export type RemoveManyRelations<T extends TObject> = TObject<{
+	[K in keyof T["properties"] as T["properties"][K] extends {
+		[PG_MANY]: any;
+	}
+		? never
+		: K]: T["properties"][K];
+}>;
+
+export type PgQueryWithMap<T extends TObject> = {
+	[K in keyof T["properties"] as T["properties"][K] extends {
+		[PG_MANY]: any;
+	}
+		? K
+		: never]?: T["properties"][K] extends TObject
+		? PgQueryWith<T["properties"][K]>
+		: T["properties"][K] extends TArray
+			? PgQueryWith<T["properties"][K]>
+			: never;
+};
+
+export type PgQueryWith<T extends TObject | TArray> =
+	| true
+	| {
+			// limit?: number;
+			// offset?: number;
+			// sort?:
+			// columns?: (keyof Static<T>)[];
+			relations?: {
+				[key: string]: PgQueryWith<T>;
+			};
+	  };

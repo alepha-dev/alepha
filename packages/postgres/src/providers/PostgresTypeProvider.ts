@@ -1,34 +1,42 @@
 import {
 	AlephaError,
 	type Static,
+	type TArray,
 	type TBigInt,
 	type TInteger,
 	type TNumber,
 	type TNumberOptions,
 	type TObject,
 	type TObjectOptions,
+	type TOptionalAdd,
 	type TSchema,
 	type TString,
 	type TStringOptions,
 	t,
 } from "@alepha/core";
+import type { TableConfig } from "drizzle-orm";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 import {
 	PG_CREATED_AT,
 	PG_DEFAULT,
 	PG_DELETED_AT,
 	PG_IDENTITY,
+	PG_MANY,
+	PG_ONE,
 	PG_PRIMARY_KEY,
 	PG_REF,
 	PG_UPDATED_AT,
 	PG_VERSION,
 	type PgDefault,
 	type PgIdentityOptions,
+	type PgMany,
+	type PgOne,
 	type PgPrimaryKey,
 	type PgRef,
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
+import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { TPage } from "../schemas/pageSchema.ts";
 import { pageSchema } from "../schemas/pageSchema.ts";
 
@@ -213,6 +221,39 @@ export class PostgresTypeProvider {
 		options?: TObjectOptions,
 	): TPage<T> => {
 		return pageSchema(resource, options);
+	};
+
+	// -------------------------------------------------------------------------------------------------------------------
+	// Experimental - Relations / Joins
+
+	public readonly many = <T extends TObject, Config extends TableConfig>(
+		table: PgTableWithColumnsAndSchema<Config, T>,
+		foreignKey: keyof T["properties"],
+	): TOptionalAdd<PgAttr<PgAttr<TArray<T>, PgMany>, PgDefault>> => {
+		return this.attr(
+			this.attr(t.optional(t.array(table.$schema)), PG_DEFAULT),
+			PG_MANY,
+			{
+				table,
+				schema: table.$schema,
+				foreignKey: foreignKey as string,
+			},
+		);
+	};
+
+	public readonly one = <T extends TObject, Config extends TableConfig>(
+		table: PgTableWithColumnsAndSchema<Config, T>,
+		foreignKey: keyof T["properties"],
+	): TOptionalAdd<PgAttr<PgAttr<TArray<T>, PgOne>, PgDefault>> => {
+		return this.attr(
+			this.attr(t.optional(t.array(table.$schema)), PG_DEFAULT),
+			PG_ONE,
+			{
+				table,
+				schema: table.$schema,
+				foreignKey: foreignKey as string,
+			},
+		);
 	};
 }
 
