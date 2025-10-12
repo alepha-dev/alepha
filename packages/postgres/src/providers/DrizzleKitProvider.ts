@@ -3,6 +3,8 @@ import { $inject, Alepha } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql, Table } from "drizzle-orm";
+import { sqliteTable } from "drizzle-orm/sqlite-core";
+import { schemaToSqliteColumns } from "../helpers/schemaToSqliteColumns.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 import { RepositoryProvider } from "./RepositoryProvider.ts";
 
@@ -205,6 +207,42 @@ export class DrizzleKitProvider {
 			throw new Error(
 				"Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
 			);
+		}
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+
+	public async synchronizeSqlite(provider: PostgresProvider): Promise<void> {
+		const repositories = this.repositoryProvider.getRepositories(provider);
+		const tables: Record<string, any> = {};
+
+		for (const repository of repositories) {
+			// extract TypeBox schema and convert it to SQLite columns
+			const table = sqliteTable(
+				repository.tableName,
+				schemaToSqliteColumns(repository.schema) as any,
+			);
+			// then, swap the PG Table with the SQLite one (yes)
+			(repository as any).options.table = table;
+			tables[repository.tableName] = table;
+		}
+
+		if (Object.keys(tables).length > 0) {
+			const kit = this.importDrizzleKit();
+			const curr = await kit.generateSQLiteDrizzleJson(tables);
+			const prev = await kit.generateSQLiteDrizzleJson({});
+			const statements = await kit.generateSQLiteMigration(prev, curr);
+
+			for (const statement of statements) {
+				if ("run" in provider.db && typeof provider.db.run === "function") {
+					const statementFixed = statement.replace(
+						"CREATE TABLE",
+						"CREATE TABLE IF NOT EXISTS",
+					);
+
+					await provider.db.run(sql.raw(statementFixed));
+				}
+			}
 		}
 	}
 }

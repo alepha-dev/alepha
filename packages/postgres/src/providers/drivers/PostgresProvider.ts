@@ -10,6 +10,8 @@ export abstract class PostgresProvider {
 
 	public abstract get db(): PgDatabase<any>;
 
+	public readonly dialect: "postgres" | "sqlite" = "postgres";
+
 	public get schema() {
 		return "public";
 	}

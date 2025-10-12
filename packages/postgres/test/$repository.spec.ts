@@ -32,6 +32,16 @@ test("$repository - pg.attr", async () => {
 	await testPgAttr(Alepha.create());
 });
 
+test("$repository - pg.attr (sqlite)", async () => {
+	await testPgAttr(
+		Alepha.create({
+			env: {
+				DATABASE_URL: "sqlite//:memory:",
+			},
+		}),
+	);
+});
+
 const testAllTypes = async (alepha: Alepha) => {
 	const app = alepha.inject(App);
 	await alepha.start();
@@ -108,4 +118,14 @@ const testAllTypes = async (alepha: Alepha) => {
 
 test("$repository - all types", async () => {
 	await testAllTypes(Alepha.create());
+});
+
+test("$repository - all types (sqlite)", async () => {
+	await testAllTypes(
+		Alepha.create({
+			env: {
+				DATABASE_URL: "sqlite//:memory:",
+			},
+		}),
+	);
 });
