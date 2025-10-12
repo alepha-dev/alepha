@@ -26,6 +26,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",
+		"@electric-sql/pglite": "^0.3.10",
 		"drizzle-kit": "0.31.5",
 		"tsdown": "^0.15.6",
 		"typescript": "^5.9.3",

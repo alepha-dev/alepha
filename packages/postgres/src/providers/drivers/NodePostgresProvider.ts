@@ -1,5 +1,4 @@
 import { stat } from "node:fs/promises";
-import type { TObject } from "@alepha/core";
 import {
 	$env,
 	$hook,
@@ -19,7 +18,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import { PgMigrationError } from "../../errors/PgMigrationError.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
-import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
+import { PostgresProvider } from "./PostgresProvider.ts";
 
 declare module "@alepha/core" {
 	interface Env extends Partial<Static<typeof envSchema>> {}
@@ -77,6 +76,7 @@ export class NodePostgresProvider extends PostgresProvider {
 		"prefer",
 		"verify-full",
 	] as const;
+
 	protected readonly log = $logger();
 	protected readonly env = $env(envSchema);
 	protected readonly alepha = $inject(Alepha);
@@ -97,7 +97,7 @@ export class NodePostgresProvider extends PostgresProvider {
 	/**
 	 * Get Postgres schema.
 	 */
-	public get schema(): string {
+	public override get schema(): string {
 		if (this.schemaForTesting) {
 			return this.schemaForTesting;
 		}
@@ -116,7 +116,7 @@ export class NodePostgresProvider extends PostgresProvider {
 		return this.pg;
 	}
 
-	protected readonly configure = $hook({
+	protected readonly onStart = $hook({
 		on: "start",
 		handler: async () => {
 			await this.connect();
@@ -139,7 +139,7 @@ export class NodePostgresProvider extends PostgresProvider {
 		},
 	});
 
-	protected readonly stop = $hook({
+	protected readonly onStop = $hook({
 		on: "stop",
 		handler: async () => {
 			if (
@@ -160,16 +160,6 @@ export class NodePostgresProvider extends PostgresProvider {
 			await this.close();
 		},
 	});
-
-	public async execute<T extends TObject | undefined = undefined>(
-		query: SQLLike,
-		schema?: T,
-	): Promise<Array<T extends TObject ? Static<T> : any>> {
-		if (schema) {
-			return this.mapResult(await this.db.execute(query), schema);
-		}
-		return (await this.db.execute(query)) as Array<any>;
-	}
 
 	public async connect(): Promise<void> {
 		this.log.debug("Connect ..");
@@ -252,20 +242,6 @@ export class NodePostgresProvider extends PostgresProvider {
 		},
 	});
 
-	protected createClient() {
-		const client = postgres(this.getClientOptions());
-		const db = drizzle(client, {
-			logger: {
-				// forward logs
-				logQuery: (query: string, params: unknown[]) => {
-					this.log.trace(query, { params });
-				},
-			},
-		});
-
-		return { client, db };
-	}
-
 	/**
 	 * Generate a minimal migration configuration.
 	 */
@@ -313,9 +289,6 @@ export class NodePostgresProvider extends PostgresProvider {
 	 * For testing purposes, generate a unique schema name.
 	 * The schema name will be generated based on the current date and time.
 	 * It will be in the format of `test_YYYYMMDD_HHMMSS_randomSuffix`.
-	 *
-	 * TODO: investigate for adding the test file name to the schema name if possible.
-	 * TODO: options to skip deletion on failure, in order to inspect the schema?
 	 */
 	protected generateTestSchemaName(): string {
 		const pad = (n: number) => n.toString().padStart(2, "0");
@@ -333,16 +306,5 @@ export class NodePostgresProvider extends PostgresProvider {
 		const randomSuffix = Math.random().toString(36).slice(2, 6); // 4 alphanumeric chars
 
 		return `test_${timestamp}_${randomSuffix}`;
-	}
-
-	protected mapResult<T extends TObject = any>(
-		result: Array<any>,
-		schema?: T,
-	): Array<T extends TObject ? Static<T> : any> {
-		if (!schema) {
-			return result;
-		}
-
-		return result.map((row) => this.alepha.parse(schema, row)) as Array<any>;
 	}
 }

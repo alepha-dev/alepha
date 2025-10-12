@@ -126,13 +126,3 @@ const testPaginationSort = async (alepha: Alepha) => {
 test("$repository - pagination sort with new format", async () => {
 	await testPaginationSort(Alepha.create());
 });
-
-test("$repository - pagination sort with new format (sqlite)", async () => {
-	await testPaginationSort(
-		Alepha.create({
-			env: {
-				DATABASE_URL: ":memory:",
-			},
-		}),
-	);
-});

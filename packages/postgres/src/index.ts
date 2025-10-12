@@ -1,11 +1,11 @@
-import { $module, type Alepha, t } from "@alepha/core";
+import { $module, type Alepha, AlephaError, t } from "@alepha/core";
 import * as drizzle from "drizzle-orm";
 import { $entity } from "./descriptors/$entity.ts";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
-import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
+import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 
@@ -86,29 +86,34 @@ export const AlephaPostgres = $module({
 		RepositoryProvider,
 		PostgresProvider,
 		NodePostgresProvider,
-		NodeSqliteProvider,
+		PglitePostgresProvider,
 		DrizzleKitProvider,
 	],
 	register: (alepha: Alepha) => {
 		const env = alepha.parseEnv(
 			t.object({
-				DATABASE_URL: t.text({
-					default: ":memory:",
-				}),
+				DATABASE_URL: t.optional(t.text()),
 			}),
 		);
 
 		alepha.with(RepositoryProvider);
 		alepha.with(DrizzleKitProvider);
 
-		const memory = env.DATABASE_URL.includes(":memory:");
-		const sqlite = env.DATABASE_URL.startsWith("sqlite://");
+		const url = env.DATABASE_URL;
+		const hasPGlite = !!PglitePostgresProvider.importPglite();
+		const isNodePg = url?.startsWith("postgres://");
 
-		if (sqlite || memory) {
+		if (!url && !hasPGlite) {
+			throw new AlephaError(
+				"Missing DATABASE_URL environment variable. Please, set it to a valid Postgres connection string or install @electric-sql/pglite to use a local database.",
+			);
+		}
+
+		if (hasPGlite && !isNodePg) {
 			alepha.with({
 				optional: true,
 				provide: PostgresProvider,
-				use: NodeSqliteProvider,
+				use: PglitePostgresProvider,
 			});
 		} else {
 			alepha.with({

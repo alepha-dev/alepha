@@ -352,6 +352,7 @@ __metadata:
     "@alepha/logger": "npm:0.10.3"
     "@alepha/retry": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
+    "@electric-sql/pglite": "npm:^0.3.10"
     drizzle-kit: "npm:0.31.5"
     drizzle-orm: "npm:^0.44.6"
     postgres: "npm:^3.4.7"
@@ -2080,6 +2081,13 @@ __metadata:
   version: 0.10.2
   resolution: "@drizzle-team/brocli@npm:0.10.2"
   checksum: 10c0/3d8b99d680f0b14fea32b45c59b938b6665e0840cc67f04801b1aa3c6747da3c7d01c00e321645034fa100abdba7e0c20ce07cf46fc2ca769ee4cafd97562484
+  languageName: node
+  linkType: hard
+
+"@electric-sql/pglite@npm:^0.3.10":
+  version: 0.3.10
+  resolution: "@electric-sql/pglite@npm:0.3.10"
+  checksum: 10c0/59f82e6bb83ab6d9558cffcc04120ee9b7bada0158a4fdaba7b959f2f16e8373ea86fe1856e37c7623353197f836a8ccfbfb0740ef6e40d6b2a3b36e569cf955
   languageName: node
   linkType: hard
 

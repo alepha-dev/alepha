@@ -114,13 +114,3 @@ const testOrderByModes = async (alepha: Alepha) => {
 test("$repository - orderBy all 3 modes", async () => {
 	await testOrderByModes(Alepha.create());
 });
-
-test("$repository - orderBy all 3 modes (sqlite)", async () => {
-	await testOrderByModes(
-		Alepha.create({
-			env: {
-				DATABASE_URL: ":memory:",
-			},
-		}),
-	);
-});

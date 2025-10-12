@@ -3,8 +3,6 @@ import { $inject, Alepha } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql, Table } from "drizzle-orm";
-import { sqliteTable } from "drizzle-orm/sqlite-core";
-import { schemaToSqliteColumns } from "../helpers/schemaToSqliteColumns.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
 import { RepositoryProvider } from "./RepositoryProvider.ts";
 
@@ -17,7 +15,7 @@ export class DrizzleKitProvider {
 		provider: PostgresProvider,
 		schema: string = provider.schema,
 	): Promise<void> {
-		const kit = await this.importDrizzleKit();
+		const kit = this.importDrizzleKit();
 		const tables = await this.getTables(provider, schema);
 		const result = await kit.pushSchema(tables, provider.db, [
 			"public",
@@ -63,7 +61,7 @@ export class DrizzleKitProvider {
 		const tables = await this.getTables(provider, schema);
 
 		if (Object.keys(tables).length > 0) {
-			const kit = await this.importDrizzleKit();
+			const kit = this.importDrizzleKit();
 			if (this.alepha.isTest()) {
 				// testing area, generate migrations from scratch - no need to push schema
 				const prev = kit.generateDrizzleJson({});
@@ -86,40 +84,9 @@ export class DrizzleKitProvider {
 		this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
 	}
 
-	public async synchronizeSqlite(provider: PostgresProvider): Promise<void> {
-		const repositories = this.repositoryProvider.getRepositories(provider);
-		const tables: Record<string, any> = {};
-
-		for (const repository of repositories) {
-			// extract TypeBox schema and convert it to SQLite columns
-			const table = sqliteTable(
-				repository.tableName,
-				schemaToSqliteColumns(repository.schema) as any,
-			);
-			// then, swap the PG Table with the SQLite one (yes)
-			(repository as any).options.table = table;
-			tables[repository.tableName] = table;
-		}
-
-		if (Object.keys(tables).length > 0) {
-			const kit = await this.importDrizzleKit();
-			const curr = await kit.generateSQLiteDrizzleJson(tables);
-			const prev = await kit.generateSQLiteDrizzleJson({});
-			const statements = await kit.generateSQLiteMigration(prev, curr);
-
-			for (const statement of statements) {
-				if ("run" in provider.db && typeof provider.db.run === "function") {
-					const statementFixed = statement.replace(
-						"CREATE TABLE",
-						"CREATE TABLE IF NOT EXISTS",
-					);
-
-					await provider.db.run(sql.raw(statementFixed));
-				}
-			}
-		}
-	}
-
+	/**
+	 * Get all tables from the provider's repositories.
+	 */
 	protected async getTables(
 		provider: PostgresProvider,
 		schema?: string,
@@ -138,8 +105,8 @@ export class DrizzleKitProvider {
 
 	protected async loadMigrationSnapshot(provider: PostgresProvider) {
 		const app = this.alepha.env.APP_NAME ?? "app";
+		await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS "drizzle";`);
 		await provider.execute(sql`
-					CREATE SCHEMA IF NOT EXISTS "drizzle";
 					CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_dev_migrations" (
 						"id" SERIAL PRIMARY KEY,
 						"name" TEXT NOT NULL,
@@ -148,11 +115,11 @@ export class DrizzleKitProvider {
 					);
 				`);
 
-		const [entry] = await provider.execute(sql`
+		const rows = await provider.execute(sql`
 			SELECT * FROM "drizzle"."__drizzle_dev_migrations" WHERE "name" = ${app} LIMIT 1;
 		`);
 
-		return entry;
+		return rows[0];
 	}
 
 	protected async saveMigrationSnapshot(
@@ -231,7 +198,7 @@ export class DrizzleKitProvider {
 	 * Try to load the official Drizzle Kit API.
 	 * If not available, fallback to the local kit import.
 	 */
-	protected async importDrizzleKit(): Promise<typeof DrizzleKit> {
+	protected importDrizzleKit(): typeof DrizzleKit {
 		try {
 			return createRequire(import.meta.url)("drizzle-kit/api");
 		} catch (_) {

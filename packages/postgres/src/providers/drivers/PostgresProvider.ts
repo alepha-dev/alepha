@@ -10,12 +10,31 @@ export abstract class PostgresProvider {
 
 	public abstract get db(): PgDatabase<any>;
 
-	public abstract get schema(): string;
+	public get schema() {
+		return "public";
+	}
 
-	public abstract get dialect(): string;
-
-	public abstract execute<T extends TObject | undefined = undefined>(
+	public async execute<T extends TObject | undefined>(
 		query: SQLLike,
 		schema?: T,
-	): Promise<Array<T extends TObject ? Static<T> : any>>;
+	): Promise<Array<T extends TObject ? Static<T> : any>> {
+		if (schema) {
+			return this.mapResult(await this.db.execute(query), schema);
+		}
+
+		return (await this.db.execute(query)) as Array<
+			T extends TObject ? Static<T> : any
+		>;
+	}
+
+	protected mapResult<T extends TObject = any>(
+		result: Array<any>,
+		schema?: T,
+	): Array<T extends TObject ? Static<T> : any> {
+		if (!schema) {
+			return result;
+		}
+
+		return result.map((row) => this.alepha.parse(schema, row)) as Array<any>;
+	}
 }
