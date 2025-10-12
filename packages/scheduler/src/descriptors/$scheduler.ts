@@ -111,18 +111,43 @@ export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> 
 			return;
 		}
 
-		await this.alepha.context.run(async () => {
-			try {
-				const now = this.dateTimeProvider.now();
-				if (this.options.lock !== false) {
-					await this.schedulerLock.run({ now });
-				} else {
-					await this.options.handler({ now });
+		const context = this.alepha.context.createContextId();
+
+		await this.alepha.context.run(
+			async () => {
+				try {
+					const now = this.dateTimeProvider.now();
+					await this.alepha.events.emit("scheduler:begin", {
+						name: this.name,
+						now,
+						context,
+					});
+					if (this.options.lock !== false) {
+						await this.schedulerLock.run({ now });
+					} else {
+						await this.options.handler({ now });
+					}
+					await this.alepha.events.emit("scheduler:success", {
+						name: this.name,
+						context,
+					});
+				} catch (error) {
+					await this.alepha.events.emit("scheduler:error", {
+						name: this.name,
+						error: error as Error,
+						context,
+					});
+					this.log.error("Error running scheduler:", error);
 				}
-			} catch (error) {
-				this.log.error("Error running scheduler:", error);
-			}
-		});
+				await this.alepha.events.emit("scheduler:end", {
+					name: this.name,
+					context,
+				});
+			},
+			{
+				context,
+			},
+		);
 	}
 
 	protected schedulerLock = $lock({
@@ -130,22 +155,6 @@ export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> 
 			await this.options.handler(args);
 		},
 	});
-
-	protected prefix(key: string) {
-		const parts = ["scheduler", key];
-
-		if (this.env.SCHEDULER_PREFIX) {
-			parts.unshift(this.env.SCHEDULER_PREFIX);
-		}
-
-		return parts.join(":");
-	}
-
-	protected getLockGracePeriod(options: SchedulerDescriptorOptions) {
-		return options.interval
-			? this.dateTimeProvider.duration(options.interval).as("milliseconds") / 2
-			: 500;
-	}
 }
 
 $scheduler[KIND] = SchedulerDescriptor;
