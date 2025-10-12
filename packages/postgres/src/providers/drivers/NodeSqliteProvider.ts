@@ -112,21 +112,16 @@ export class NodeSqliteProvider extends PostgresProvider {
 			const { DatabaseSync } = await import("node:sqlite");
 			const filepath = this.options.path.replace("sqlite://", "");
 
-			this.log.info(`Using SQLite database at ${filepath}`);
-
 			const dirname = filepath.split("/").slice(0, -1).join("/");
 			if (dirname) {
 				await mkdir(dirname, { recursive: true });
 			}
-			this.sqlite = new DatabaseSync(filepath);
-		},
-	});
 
-	protected readonly start = $hook({
-		on: "start",
-		handler: async () => {
+			this.sqlite = new DatabaseSync(filepath);
+
 			await this.kit.synchronizeSqlite(this);
-			this.log.info("Sqlite OK");
+
+			this.log.info(`Using SQLite database at ${filepath}`);
 		},
 	});
 

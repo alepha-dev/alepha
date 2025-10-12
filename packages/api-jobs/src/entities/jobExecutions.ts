@@ -9,7 +9,6 @@ export const jobExecutions = $entity({
 		version: pg.version(),
 		createdAt: pg.createdAt(),
 		updatedAt: pg.updatedAt(),
-		log: t.optional(t.string()),
 		finishedAt: t.optional(t.datetime()),
 		job: t.string(),
 		status: t.enum(["STARTED", "FAILED", "COMPLETED"]),
