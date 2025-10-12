@@ -3,10 +3,12 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "vite build"
+		"build": "vite build",
+		"studio": "drizzle-kit studio"
 	},
 	"dependencies": {
 		"alepha": "0.10.3",
+		"drizzle-kit": "^0.31.5",
 		"vite": "^7.1.9"
 	}
 }
