@@ -15,6 +15,9 @@
 	"main": "./core.js",
 	"types": "./core.d.ts",
 	"dependencies": {
+		"@alepha/api-files": "0.10.3",
+		"@alepha/api-jobs": "0.10.3",
+		"@alepha/api-users": "0.10.3",
 		"@alepha/batch": "0.10.3",
 		"@alepha/bucket": "0.10.3",
 		"@alepha/cache": "0.10.3",
@@ -22,6 +25,7 @@
 		"@alepha/command": "0.10.3",
 		"@alepha/core": "0.10.3",
 		"@alepha/datetime": "0.10.3",
+		"@alepha/devtools": "0.10.3",
 		"@alepha/email": "0.10.3",
 		"@alepha/file": "0.10.3",
 		"@alepha/lock": "0.10.3",
@@ -87,6 +91,21 @@
 			"require": "./core.cjs",
 			"types": "./core.d.ts"
 		},
+		"./api/files": {
+			"import": "./api/files.js",
+			"require": "./api/files.cjs",
+			"types": "./api/files.d.ts"
+		},
+		"./api/jobs": {
+			"import": "./api/jobs.js",
+			"require": "./api/jobs.cjs",
+			"types": "./api/jobs.d.ts"
+		},
+		"./api/users": {
+			"import": "./api/users.js",
+			"require": "./api/users.cjs",
+			"types": "./api/users.d.ts"
+		},
 		"./batch": {
 			"import": "./batch.js",
 			"require": "./batch.cjs",
@@ -121,6 +140,11 @@
 			"import": "./datetime.js",
 			"require": "./datetime.cjs",
 			"types": "./datetime.d.ts"
+		},
+		"./devtools": {
+			"import": "./devtools.js",
+			"require": "./devtools.cjs",
+			"types": "./devtools.d.ts"
 		},
 		"./email": {
 			"import": "./email.js",
@@ -300,6 +324,9 @@
 	},
 	"keywords": [
 		"alepha",
+		"api-files",
+		"api-jobs",
+		"api-users",
 		"batch",
 		"bucket",
 		"cache",
@@ -307,6 +334,7 @@
 		"command",
 		"core",
 		"datetime",
+		"devtools",
 		"email",
 		"file",
 		"lock",

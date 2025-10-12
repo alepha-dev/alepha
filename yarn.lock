@@ -5,7 +5,7 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@alepha/api-files@workspace:packages/api-files":
+"@alepha/api-files@npm:0.10.3, @alepha/api-files@workspace:packages/api-files":
   version: 0.0.0-use.local
   resolution: "@alepha/api-files@workspace:packages/api-files"
   dependencies:
@@ -28,7 +28,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-jobs@workspace:packages/api-jobs":
+"@alepha/api-jobs@npm:0.10.3, @alepha/api-jobs@workspace:packages/api-jobs":
   version: 0.0.0-use.local
   resolution: "@alepha/api-jobs@workspace:packages/api-jobs"
   dependencies:
@@ -73,12 +73,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-users@workspace:packages/api-users":
+"@alepha/api-users@npm:0.10.3, @alepha/api-users@workspace:packages/api-users":
   version: 0.0.0-use.local
   resolution: "@alepha/api-users@workspace:packages/api-users"
   dependencies:
     "@alepha/core": "npm:0.10.3"
+    "@alepha/datetime": "npm:0.10.3"
     "@alepha/postgres": "npm:0.10.3"
+    "@alepha/react-auth": "npm:0.10.3"
+    "@alepha/security": "npm:0.10.3"
+    "@alepha/server": "npm:0.10.3"
+    "@alepha/server-security": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -245,7 +250,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools@workspace:packages/devtools":
+"@alepha/devtools@npm:0.10.3, @alepha/devtools@workspace:packages/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
@@ -4431,6 +4436,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
+    "@alepha/api-files": "npm:0.10.3"
+    "@alepha/api-jobs": "npm:0.10.3"
+    "@alepha/api-users": "npm:0.10.3"
     "@alepha/batch": "npm:0.10.3"
     "@alepha/bucket": "npm:0.10.3"
     "@alepha/cache": "npm:0.10.3"
@@ -4438,6 +4446,7 @@ __metadata:
     "@alepha/command": "npm:0.10.3"
     "@alepha/core": "npm:0.10.3"
     "@alepha/datetime": "npm:0.10.3"
+    "@alepha/devtools": "npm:0.10.3"
     "@alepha/email": "npm:0.10.3"
     "@alepha/file": "npm:0.10.3"
     "@alepha/lock": "npm:0.10.3"
