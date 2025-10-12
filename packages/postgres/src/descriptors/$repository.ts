@@ -501,6 +501,7 @@ export class RepositoryDescriptor<
 			);
 			return rows.map((row) => this.clean(row));
 		} catch (error) {
+			console.log(error);
 			throw new PgError("Query select has failed", error as Error);
 		}
 	}

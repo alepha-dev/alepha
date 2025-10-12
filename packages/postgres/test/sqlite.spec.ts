@@ -18,7 +18,7 @@ test("sqlite", async () => {
 			use: NodeSqliteProvider,
 		})
 		.configure(NodeSqliteProvider, {
-			path: "sqlite//:memory:",
+			path: "sqlite://:memory:",
 		});
 
 	class TestApp {

@@ -112,7 +112,9 @@ export class NodeSqliteProvider extends PostgresProvider {
 			const { DatabaseSync } = await import("node:sqlite");
 			const filepath = this.options.path.replace("sqlite://", "");
 
-			if (filepath !== ":memory:") {
+			console.log(filepath);
+
+			if (filepath !== ":memory:" && filepath !== "") {
 				const dirname = filepath.split("/").slice(0, -1).join("/");
 				if (dirname) {
 					await mkdir(dirname, { recursive: true });

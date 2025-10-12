@@ -1,10 +1,14 @@
-import type { TObject, TSchema } from "@alepha/core";
+import { AlephaError, type TObject, type TSchema } from "@alepha/core";
 import { eq, getTableName, isSQLWrapper } from "drizzle-orm";
 import type { PgColumn, PgSelectJoinFn } from "drizzle-orm/pg-core";
-import type { PgManyOptions } from "../constants/PG_SYMBOLS.ts";
-import { PG_MANY, PG_PRIMARY_KEY } from "../constants/PG_SYMBOLS.ts";
+import {
+	PG_MANY,
+	PG_ONE,
+	PG_PRIMARY_KEY,
+	type PgManyOptions,
+} from "../constants/PG_SYMBOLS.ts";
 import type { PgQuery } from "../interfaces/PgQuery.ts";
-import type { PgQueryWith } from "../interfaces/PgQueryWhere.ts";
+import type { PgQueryWithMap } from "../interfaces/PgQueryWhere.ts";
 import { getAttrFields, type PgAttrField } from "./pgAttr.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -44,13 +48,14 @@ export const aggregateRowsByRelation = (
 		for (const relation of pgManyFields) {
 			const withQuery = query.relations?.[relation.key];
 			if (withQuery) {
-				parseRelation(row, target, relation, withQuery);
+				parseRelation(row, target, relation, withQuery as any);
 			}
 		}
 	}
 
 	return newRows;
 };
+
 /**
  * @experimental
  */
@@ -104,7 +109,7 @@ export const withJoins = (
 		return [];
 	}
 
-	const pgManyFields = getAttrFields(schema, PG_MANY);
+	const pgManyFields = [...getAttrFields(schema, PG_MANY)];
 
 	for (const pgManyField of pgManyFields) {
 		const withQuery = (query.relations as any)?.[pgManyField.key];
@@ -142,6 +147,21 @@ export const withJoins = (
 		pgManyFields.splice(pgManyFields.indexOf(pgManyField), 1);
 	}
 
+	const pgOneFields = [...getAttrFields(schema, PG_ONE)];
+	for (const pgOneField of pgOneFields) {
+		const withQuery = (query.relations as any)?.[pgOneField.key];
+		if (withQuery) {
+			builder.leftJoin(
+				pgOneField.data.table,
+				eq(id, pgOneField.data.table[pgOneField.data.foreignKey]),
+			);
+			pgManyFields.push({
+				...pgOneField,
+				one: true,
+			});
+		}
+	}
+
 	return pgManyFields;
 };
 
@@ -154,7 +174,7 @@ const parseRelation = (
 	row: any,
 	root: any,
 	relation: PgManyField,
-	pgQuery: PgQueryWith<any>,
+	pgQuery: PgQueryWithMap<any> | boolean,
 ) => {
 	const virtualKey = relation.key; // user.posts
 	const relationTable = relation.data.table; // Drizzle "posts"
@@ -167,32 +187,36 @@ const parseRelation = (
 		return;
 	}
 
-	if (!root[virtualKey]) {
-		root[virtualKey] = [];
-	}
+	if (relation.one) {
+		root[virtualKey] = object;
+	} else {
+		if (!root[virtualKey]) {
+			root[virtualKey] = [];
+		}
 
-	const exists = root[virtualKey].find(
-		(it: any) => it[relationIdKey] === object[relationIdKey],
-	);
+		const exists = root[virtualKey].find(
+			(it: any) => it[relationIdKey] === object[relationIdKey],
+		);
 
-	if (!exists) {
-		root[virtualKey].push(object);
-	}
+		if (!exists) {
+			root[virtualKey].push(object);
+		}
 
-	const target = exists ?? object;
+		const target = exists ?? object;
 
-	if (relation.nested) {
-		for (const nestedRelation of relation.nested) {
-			if (
-				typeof pgQuery === "object" &&
-				pgQuery.relations?.[nestedRelation.key]
-			) {
-				parseRelation(
-					row,
-					target,
-					nestedRelation,
-					pgQuery.relations[nestedRelation.key],
-				);
+		if (relation.nested) {
+			for (const nestedRelation of relation.nested) {
+				if (
+					typeof pgQuery === "object" &&
+					(pgQuery.relations as any)?.[nestedRelation.key]
+				) {
+					parseRelation(
+						row,
+						target,
+						nestedRelation,
+						(pgQuery.relations as any)[nestedRelation.key],
+					);
+				}
 			}
 		}
 	}
@@ -208,7 +232,7 @@ const getPrimaryKey = (schema: TObject) => {
 			return key;
 		}
 	}
-	throw new Error("Primary key not found in schema");
+	throw new AlephaError("Primary key not found in schema");
 };
 
 /**
@@ -238,4 +262,5 @@ export interface PgManyField {
 	type: TSchema;
 	data: PgManyOptions; // table, schema, foreignKey
 	nested?: PgAttrField[];
+	one?: boolean;
 }

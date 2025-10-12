@@ -244,16 +244,12 @@ export class PostgresTypeProvider {
 	public readonly one = <T extends TObject, Config extends TableConfig>(
 		table: PgTableWithColumnsAndSchema<Config, T>,
 		foreignKey: keyof T["properties"],
-	): TOptionalAdd<PgAttr<PgAttr<TArray<T>, PgOne>, PgDefault>> => {
-		return this.attr(
-			this.attr(t.optional(t.array(table.$schema)), PG_DEFAULT),
-			PG_ONE,
-			{
-				table,
-				schema: table.$schema,
-				foreignKey: foreignKey as string,
-			},
-		);
+	): PgAttr<PgAttr<TOptionalAdd<T>, PgOne>, PgDefault> => {
+		return this.attr(this.attr(t.optional(table.$schema), PG_DEFAULT), PG_ONE, {
+			table,
+			schema: table.$schema,
+			foreignKey: foreignKey as string,
+		});
 	};
 }
 

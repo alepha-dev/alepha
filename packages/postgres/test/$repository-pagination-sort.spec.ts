@@ -131,7 +131,7 @@ test("$repository - pagination sort with new format (sqlite)", async () => {
 	await testPaginationSort(
 		Alepha.create({
 			env: {
-				DATABASE_URL: "sqlite//:memory:",
+				DATABASE_URL: "sqlite://:memory:",
 			},
 		}),
 	);

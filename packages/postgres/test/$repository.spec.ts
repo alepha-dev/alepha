@@ -36,7 +36,7 @@ test("$repository - pg.attr (sqlite)", async () => {
 	await testPgAttr(
 		Alepha.create({
 			env: {
-				DATABASE_URL: "sqlite//:memory:",
+				DATABASE_URL: "sqlite://:memory:",
 			},
 		}),
 	);
@@ -124,7 +124,7 @@ test("$repository - all types (sqlite)", async () => {
 	await testAllTypes(
 		Alepha.create({
 			env: {
-				DATABASE_URL: "sqlite//:memory:",
+				DATABASE_URL: "sqlite://:memory:",
 			},
 		}),
 	);

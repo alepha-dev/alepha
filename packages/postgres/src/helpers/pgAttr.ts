@@ -60,4 +60,5 @@ export interface PgAttrField {
 	type: TSchema;
 	data: any;
 	nested?: any[];
+	one?: boolean;
 }
