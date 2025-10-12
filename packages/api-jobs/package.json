@@ -22,7 +22,12 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.10.3",
-		"@alepha/postgres": "0.10.3"
+		"@alepha/datetime": "0.10.3",
+		"@alepha/logger": "0.10.3",
+		"@alepha/postgres": "0.10.3",
+		"@alepha/scheduler": "0.10.3",
+		"@alepha/server": "0.10.3",
+		"@alepha/server-security": "0.10.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",

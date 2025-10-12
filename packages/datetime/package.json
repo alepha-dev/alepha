@@ -12,7 +12,6 @@
 	],
 	"dependencies": {
 		"@alepha/core": "0.10.3",
-		"@alepha/logger": "0.10.3",
 		"dayjs": "^1.11.18"
 	},
 	"devDependencies": {

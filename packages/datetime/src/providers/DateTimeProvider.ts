@@ -2,7 +2,6 @@ import "dayjs/plugin/relativeTime.js";
 import "dayjs/plugin/duration.js";
 
 import { $hook, $inject, Alepha } from "@alepha/core";
-import { $logger } from "@alepha/logger";
 import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
@@ -17,7 +16,6 @@ export type DurationLike =
 
 export class DateTimeProvider {
 	protected alepha = $inject(Alepha);
-	protected log = $logger();
 	protected ref: DateTime | null = null;
 	protected readonly timeouts: Timeout[] = [];
 	protected readonly intervals: Interval[] = [];

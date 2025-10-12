@@ -71,7 +71,7 @@ describe("Asker", () => {
 		expect(result).toBe(41);
 		expect(question).toHaveBeenCalledTimes(2);
 		expect(close).toHaveBeenCalledTimes(1);
-		expect(mockLogger.logs.some((log) => log.level === "error")).toBe(true);
+		expect(mockLogger.logs.some((log) => log.level === "ERROR")).toBe(true);
 	});
 
 	test("uses schema defaults when the user provides an empty answer", async () => {
@@ -102,7 +102,7 @@ describe("Asker", () => {
 		expect(question).toHaveBeenCalledTimes(2);
 		expect(close).toHaveBeenCalledTimes(1);
 
-		const errorLogs = mockLogger.logs.filter((log) => log.level === "error");
+		const errorLogs = mockLogger.logs.filter((log) => log.level === "ERROR");
 		expect(errorLogs).toHaveLength(1);
 		expect(errorLogs[0].message).toContain("Invalid secret");
 	});
@@ -122,6 +122,6 @@ describe("Asker", () => {
 
 		expect(question).toHaveBeenCalledTimes(1);
 		expect(close).toHaveBeenCalledTimes(1);
-		expect(mockLogger.logs.some((log) => log.level === "error")).toBe(false);
+		expect(mockLogger.logs.some((log) => log.level === "ERROR")).toBe(false);
 	});
 });

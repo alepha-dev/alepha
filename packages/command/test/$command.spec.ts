@@ -180,7 +180,7 @@ describe("$command", () => {
 		test("should log an error for an unknown command", async () => {
 			const { mockLogger } = await setupTestCommands(["non-existent-command"]);
 
-			const errorLog = mockLogger.logs.find((l) => l.level === "error");
+			const errorLog = mockLogger.logs.find((l) => l.level === "ERROR");
 			expect(errorLog).toBeDefined();
 			expect(errorLog?.message).toBe("Unknown command: 'non-existent-command'");
 			// It should also print help

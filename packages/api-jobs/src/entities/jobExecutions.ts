@@ -1,4 +1,5 @@
 import { type Static, t } from "@alepha/core";
+import { logEntrySchema } from "@alepha/logger";
 import { $entity, pg } from "@alepha/postgres";
 
 export const jobExecutions = $entity({
@@ -11,7 +12,9 @@ export const jobExecutions = $entity({
 		log: t.optional(t.string()),
 		finishedAt: t.optional(t.datetime()),
 		job: t.string(),
-		status: t.enum(["pending", "running", "failed", "completed"]),
+		status: t.enum(["STARTED", "FAILED", "COMPLETED"]),
+		error: t.optional(t.string()),
+		logs: t.optional(t.array(logEntrySchema)),
 	}),
 });
 

@@ -5,6 +5,7 @@ import {
 	type LoggerInterface,
 	type LogLevel,
 } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { LogDestinationProvider } from "../providers/LogDestinationProvider.ts";
 import { LogFormatterProvider } from "../providers/LogFormatterProvider.ts";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
@@ -13,6 +14,7 @@ export class Logger implements LoggerInterface {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly formatter = $inject(LogFormatterProvider);
 	protected readonly destination = $inject(LogDestinationProvider);
+	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
 	protected readonly levels: Record<string, number> = {
 		SILENT: -1,
@@ -162,7 +164,7 @@ export class Logger implements LoggerInterface {
 			service: this.service,
 			module: this.module,
 			app: this.app,
-			timestamp: new Date().toISOString(),
+			timestamp: this.dateTimeProvider.nowISOString(),
 		};
 
 		const formatted = this.formatter.format(logEntry);

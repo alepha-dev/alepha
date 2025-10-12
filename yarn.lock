@@ -33,7 +33,12 @@ __metadata:
   resolution: "@alepha/api-jobs@workspace:packages/api-jobs"
   dependencies:
     "@alepha/core": "npm:0.10.3"
+    "@alepha/datetime": "npm:0.10.3"
+    "@alepha/logger": "npm:0.10.3"
     "@alepha/postgres": "npm:0.10.3"
+    "@alepha/scheduler": "npm:0.10.3"
+    "@alepha/server": "npm:0.10.3"
+    "@alepha/server-security": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"
@@ -227,12 +232,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/datetime@npm:0.10.3, @alepha/datetime@workspace:packages/datetime":
+"@alepha/datetime@npm:0.10.3, @alepha/datetime@npm:^0.10.3, @alepha/datetime@workspace:packages/datetime":
   version: 0.0.0-use.local
   resolution: "@alepha/datetime@workspace:packages/datetime"
   dependencies:
     "@alepha/core": "npm:0.10.3"
-    "@alepha/logger": "npm:0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     dayjs: "npm:^1.11.18"
     tsdown: "npm:^0.15.6"
@@ -325,6 +329,7 @@ __metadata:
   resolution: "@alepha/logger@workspace:packages/logger"
   dependencies:
     "@alepha/core": "npm:^0.10.3"
+    "@alepha/datetime": "npm:^0.10.3"
     "@biomejs/biome": "npm:^2.2.5"
     tsdown: "npm:^0.15.6"
     typescript: "npm:^5.9.3"

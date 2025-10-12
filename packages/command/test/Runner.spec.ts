@@ -36,12 +36,12 @@ describe("Runner", () => {
 		const finishLog = mockLogger.logs[1];
 
 		expect(startLog.message).toBe("Starting 'echo \"hello\"' ...");
-		expect(startLog.level).toBe("info");
+		expect(startLog.level).toBe("INFO");
 
 		expect(finishLog.message).toMatch(
 			/^Finished 'echo "hello"' after \d+\.\d{2}s$/,
 		);
-		expect(finishLog.level).toBe("info");
+		expect(finishLog.level).toBe("INFO");
 
 		const timers = (runner as any).timers;
 		expect(timers).toHaveLength(1);

@@ -117,32 +117,55 @@ export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> 
 			async () => {
 				try {
 					const now = this.dateTimeProvider.now();
+
 					await this.alepha.events.emit("scheduler:begin", {
 						name: this.name,
 						now,
 						context,
 					});
+
 					if (this.options.lock !== false) {
 						await this.schedulerLock.run({ now });
 					} else {
 						await this.options.handler({ now });
 					}
-					await this.alepha.events.emit("scheduler:success", {
-						name: this.name,
-						context,
-					});
+
+					await this.alepha.events.emit(
+						"scheduler:success",
+						{
+							name: this.name,
+							context,
+						},
+						{
+							catch: true,
+						},
+					);
 				} catch (error) {
-					await this.alepha.events.emit("scheduler:error", {
-						name: this.name,
-						error: error as Error,
-						context,
-					});
+					await this.alepha.events.emit(
+						"scheduler:error",
+						{
+							name: this.name,
+							error: error as Error,
+							context,
+						},
+						{
+							catch: true,
+						},
+					);
+
 					this.log.error("Error running scheduler:", error);
 				}
-				await this.alepha.events.emit("scheduler:end", {
-					name: this.name,
-					context,
-				});
+
+				await this.alepha.events.emit(
+					"scheduler:end",
+					{
+						name: this.name,
+						context,
+					},
+					{
+						catch: true,
+					},
+				);
 			},
 			{
 				context,
