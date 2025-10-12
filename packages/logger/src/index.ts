@@ -7,7 +7,8 @@ import { LogFormatterProvider } from "./providers/LogFormatterProvider.ts";
 import { MemoryDestinationProvider } from "./providers/MemoryDestinationProvider.ts";
 import { RawFormatterProvider } from "./providers/RawFormatterProvider.ts";
 import { SimpleFormatterProvider } from "./providers/SimpleFormatterProvider.ts";
-import { type LogEntry, Logger } from "./services/Logger.ts";
+import type { LogEntry } from "./schemas/logEntrySchema.ts";
+import { Logger } from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -19,6 +20,7 @@ export * from "./providers/LogDestinationProvider.ts";
 export * from "./providers/LogFormatterProvider.ts";
 export * from "./providers/MemoryDestinationProvider.ts";
 export * from "./providers/SimpleFormatterProvider.ts";
+export * from "./schemas/logEntrySchema.ts";
 export * from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

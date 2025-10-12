@@ -1,4 +1,4 @@
-import type { LogEntry } from "../services/Logger.ts";
+import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";
 
 export class JsonFormatterProvider extends LogFormatterProvider {
@@ -10,7 +10,7 @@ export class JsonFormatterProvider extends LogFormatterProvider {
 			service: entry.service,
 			module: entry.module,
 			app: entry.app,
-			date: entry.timestamp.toISOString(),
+			date: entry.timestamp,
 		};
 
 		if (entry.data instanceof Error) {

@@ -14,22 +14,22 @@ const envSchema = t.object({
 
 export class ConsoleColorProvider {
 	static readonly COLORS = {
-		reset: "\x1b[0m",
-		grey: "\x1b[90m",
-		red: "\x1b[31m",
-		orange: "\x1b[33m", // using yellow for orange-ish
-		green: "\x1b[32m",
-		blue: "\x1b[34m",
-		white: "\x1b[37m",
-		cyan: "\x1b[36m",
-		darkGrey: "\x1b[90m", // same as grey for terminal standard
+		RESET: "\x1b[0m",
+		GREY: "\x1b[90m",
+		RED: "\x1b[31m",
+		ORANGE: "\x1b[33m", // using yellow for orange-ish
+		GREEN: "\x1b[32m",
+		BLUE: "\x1b[34m",
+		WHITE: "\x1b[37m",
+		CYAN: "\x1b[36m",
+		DARK_GREY: "\x1b[90m", // same as grey for terminal standard
 		// levels
-		silent: "",
-		error: "\x1b[31m",
-		warn: "\x1b[33m",
-		info: "\x1b[32m",
-		debug: "\x1b[34m",
-		trace: "\x1b[90m",
+		SILENT: "",
+		ERROR: "\x1b[31m",
+		WARN: "\x1b[33m",
+		INFO: "\x1b[32m",
+		DEBUG: "\x1b[34m",
+		TRACE: "\x1b[90m",
 	};
 
 	protected readonly env = $env(envSchema);
@@ -53,10 +53,10 @@ export class ConsoleColorProvider {
 		return !this.alepha.isProduction();
 	}
 
-	public colorize(
+	public set(
 		color: keyof typeof ConsoleColorProvider.COLORS,
 		text: string,
-		reset: string = ConsoleColorProvider.COLORS.reset,
+		reset: string = ConsoleColorProvider.COLORS.RESET,
 	): string {
 		if (!this.enabled) {
 			return text;

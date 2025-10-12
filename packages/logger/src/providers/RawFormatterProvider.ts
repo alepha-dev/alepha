@@ -1,4 +1,4 @@
-import type { LogEntry } from "../services/Logger.ts";
+import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";
 
 export class RawFormatterProvider extends LogFormatterProvider {

@@ -7,6 +7,7 @@ import {
 } from "@alepha/core";
 import { LogDestinationProvider } from "../providers/LogDestinationProvider.ts";
 import { LogFormatterProvider } from "../providers/LogFormatterProvider.ts";
+import type { LogEntry } from "../schemas/logEntrySchema.ts";
 
 export class Logger implements LoggerInterface {
 	protected readonly alepha = $inject(Alepha);
@@ -14,20 +15,20 @@ export class Logger implements LoggerInterface {
 	protected readonly destination = $inject(LogDestinationProvider);
 
 	protected readonly levels: Record<string, number> = {
-		silent: -1,
-		error: 0,
-		warn: 1,
-		info: 2,
-		debug: 3,
-		trace: 4,
+		SILENT: -1,
+		ERROR: 0,
+		WARN: 1,
+		INFO: 2,
+		DEBUG: 3,
+		TRACE: 4,
 	};
 
 	protected readonly service: string;
 	protected readonly module: string;
 	protected readonly app?: string;
 
-	protected appLogLevel: string = "info";
-	protected logLevel: LogLevel = "info";
+	protected appLogLevel: string = "INFO";
+	protected logLevel: LogLevel = "INFO";
 
 	constructor(service: string, module: string) {
 		this.service = service;
@@ -89,7 +90,7 @@ export class Logger implements LoggerInterface {
 			}
 		}
 
-		return "info";
+		return "INFO";
 	}
 
 	private matchesPattern(moduleName: string, pattern: string): boolean {
@@ -104,34 +105,34 @@ export class Logger implements LoggerInterface {
 	}
 
 	public asLogLevel(something: string): LogLevel {
-		const level = something.trim();
+		const level = something.trim().toUpperCase();
 		if (this.levels[level] !== undefined) {
 			return level as LogLevel;
 		}
 
-		throw new Error(`Invalid log level: ${something}`);
+		throw new AlephaError(`Invalid log level: ${something}`);
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
 
 	public error(message: string, data?: unknown): void {
-		this.log("error", message, data);
+		this.log("ERROR", message, data);
 	}
 
 	public warn(message: string, data?: unknown): void {
-		this.log("warn", message, data);
+		this.log("WARN", message, data);
 	}
 
 	public info(message: string, data?: unknown): void {
-		this.log("info", message, data);
+		this.log("INFO", message, data);
 	}
 
 	public debug(message: string, data?: unknown): void {
-		this.log("debug", message, data);
+		this.log("DEBUG", message, data);
 	}
 
 	public trace(message: string, data?: unknown): void {
-		this.log("trace", message, data);
+		this.log("TRACE", message, data);
 	}
 
 	protected log(level: LogLevel, message: string, data?: unknown): void {
@@ -161,7 +162,7 @@ export class Logger implements LoggerInterface {
 			service: this.service,
 			module: this.module,
 			app: this.app,
-			timestamp: new Date(),
+			timestamp: new Date().toISOString(),
 		};
 
 		const formatted = this.formatter.format(logEntry);
@@ -181,15 +182,4 @@ export class Logger implements LoggerInterface {
 
 		this.destination.write(formatted, logEntry);
 	}
-}
-
-export interface LogEntry {
-	level: LogLevel;
-	message: string;
-	service: string;
-	module: string;
-	context?: string;
-	data?: object | Error | string;
-	app?: string;
-	timestamp: Date;
 }

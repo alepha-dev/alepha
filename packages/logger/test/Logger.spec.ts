@@ -34,31 +34,31 @@ describe("Logger", () => {
 		}) => {
 			const logger = createLogger();
 			// When no module-specific config matches, it falls back to global level
-			expect(logger.parseLevel("debug", "non.matching.module")).toBe("debug");
+			expect(logger.parseLevel("debug", "non.matching.module")).toBe("DEBUG");
 			expect(
 				logger.parseLevel("specific.module:trace,warn", "non.matching.module"),
-			).toBe("warn");
+			).toBe("WARN");
 		});
 
 		it("should parse simple global level", ({ expect }) => {
 			const logger = createLogger();
-			expect(logger.parseLevel("debug", "any.module")).toBe("debug");
-			expect(logger.parseLevel("trace", "any.module")).toBe("trace");
-			expect(logger.parseLevel("warn", "any.module")).toBe("warn");
-			expect(logger.parseLevel("error", "any.module")).toBe("error");
-			expect(logger.parseLevel("silent", "any.module")).toBe("silent");
+			expect(logger.parseLevel("debug", "any.module")).toBe("DEBUG");
+			expect(logger.parseLevel("trace", "any.module")).toBe("TRACE");
+			expect(logger.parseLevel("warn", "any.module")).toBe("WARN");
+			expect(logger.parseLevel("error", "any.module")).toBe("ERROR");
+			expect(logger.parseLevel("silent", "any.module")).toBe("SILENT");
 		});
 
 		it("should parse module-specific level with colon separator", ({
 			expect,
 		}) => {
 			const logger = createLogger();
-			expect(logger.parseLevel("test:debug,info", "test.module")).toBe("debug");
+			expect(logger.parseLevel("test:debug,info", "test.module")).toBe("DEBUG");
 			expect(logger.parseLevel("alepha:trace,warn", "alepha.core")).toBe(
-				"trace",
+				"TRACE",
 			);
 			expect(logger.parseLevel("my.app:error,info", "my.app.service")).toBe(
-				"error",
+				"ERROR",
 			);
 		});
 
@@ -66,12 +66,12 @@ describe("Logger", () => {
 			expect,
 		}) => {
 			const logger = createLogger();
-			expect(logger.parseLevel("test=debug,info", "test.module")).toBe("debug");
-			expect(logger.parseLevel("alepha=trace,warn", "alepha.core")).toBe(
-				"trace",
+			expect(logger.parseLevel("test=debug,info", "test.module")).toBe("DEBUG");
+			expect(logger.parseLevel("alepha=TRACE,warn", "alepha.core")).toBe(
+				"TRACE",
 			);
 			expect(logger.parseLevel("my.app=error,info", "my.app.service")).toBe(
-				"error",
+				"ERROR",
 			);
 		});
 
@@ -79,29 +79,29 @@ describe("Logger", () => {
 			const logger = createLogger();
 			const config = "alepha.core:trace,alepha.server:debug,my.app:error,info";
 
-			expect(logger.parseLevel(config, "alepha.core")).toBe("trace");
-			expect(logger.parseLevel(config, "alepha.server")).toBe("debug");
-			expect(logger.parseLevel(config, "my.app")).toBe("error");
-			expect(logger.parseLevel(config, "other.module")).toBe("info");
+			expect(logger.parseLevel(config, "alepha.core")).toBe("TRACE");
+			expect(logger.parseLevel(config, "alepha.server")).toBe("DEBUG");
+			expect(logger.parseLevel(config, "my.app")).toBe("ERROR");
+			expect(logger.parseLevel(config, "other.module")).toBe("INFO");
 		});
 
 		it("should handle semicolon separators", ({ expect }) => {
 			const logger = createLogger();
 			const config = "alepha:trace;my.app:error;info";
 
-			expect(logger.parseLevel(config, "alepha.core")).toBe("trace");
-			expect(logger.parseLevel(config, "my.app")).toBe("error");
-			expect(logger.parseLevel(config, "other.module")).toBe("info");
+			expect(logger.parseLevel(config, "alepha.core")).toBe("TRACE");
+			expect(logger.parseLevel(config, "my.app")).toBe("ERROR");
+			expect(logger.parseLevel(config, "other.module")).toBe("INFO");
 		});
 
 		it("should use startsWith matching for modules", ({ expect }) => {
 			const logger = createLogger();
 			const config = "alepha:debug,info";
 
-			expect(logger.parseLevel(config, "alepha")).toBe("debug");
-			expect(logger.parseLevel(config, "alepha.core")).toBe("debug");
-			expect(logger.parseLevel(config, "alepha.server.cache")).toBe("debug");
-			expect(logger.parseLevel(config, "other.alepha")).toBe("info");
+			expect(logger.parseLevel(config, "alepha")).toBe("DEBUG");
+			expect(logger.parseLevel(config, "alepha.core")).toBe("DEBUG");
+			expect(logger.parseLevel(config, "alepha.server.cache")).toBe("DEBUG");
+			expect(logger.parseLevel(config, "other.alepha")).toBe("INFO");
 		});
 
 		it("should prioritize first matching module", ({ expect }) => {
@@ -109,22 +109,22 @@ describe("Logger", () => {
 			const config = "alepha:debug,alepha.core:trace,info";
 
 			// alepha.core matches both "alepha" and "alepha.core", but first match wins
-			expect(logger.parseLevel(config, "alepha.core")).toBe("debug");
+			expect(logger.parseLevel(config, "alepha.core")).toBe("DEBUG");
 		});
 
 		it("should handle case insensitive levels", ({ expect }) => {
 			const logger = createLogger();
-			expect(logger.parseLevel("DEBUG", "any.module")).toBe("debug");
-			expect(logger.parseLevel("Test:TRACE,INFO", "test.module")).toBe("trace");
+			expect(logger.parseLevel("DEBUG", "any.module")).toBe("DEBUG");
+			expect(logger.parseLevel("Test:TRACE,INFO", "test.module")).toBe("TRACE");
 		});
 
 		it("should handle whitespace around separators", ({ expect }) => {
 			const logger = createLogger();
 			const config = " alepha : debug , my.app : error , info ";
 
-			expect(logger.parseLevel(config, "alepha.core")).toBe("debug");
-			expect(logger.parseLevel(config, "my.app")).toBe("error");
-			expect(logger.parseLevel(config, "other")).toBe("info");
+			expect(logger.parseLevel(config, "alepha.core")).toBe("DEBUG");
+			expect(logger.parseLevel(config, "my.app")).toBe("ERROR");
+			expect(logger.parseLevel(config, "other")).toBe("INFO");
 		});
 
 		it("should fall back to global level when no module match", ({
@@ -133,19 +133,19 @@ describe("Logger", () => {
 			const logger = createLogger();
 			const config = "specific.module:debug,trace";
 
-			expect(logger.parseLevel(config, "other.module")).toBe("trace");
+			expect(logger.parseLevel(config, "other.module")).toBe("TRACE");
 		});
 
 		it("should handle empty parts gracefully", ({ expect }) => {
 			const logger = createLogger();
 			// Empty parts are now skipped gracefully
-			expect(logger.parseLevel(",,debug,,", "any.module")).toBe("debug");
+			expect(logger.parseLevel(",,debug,,", "any.module")).toBe("DEBUG");
 			expect(logger.parseLevel("alepha:trace,,info", "alepha.core")).toBe(
-				"trace",
+				"TRACE",
 			);
-			expect(logger.parseLevel("alepha:trace,,", "other.module")).toBe("info");
+			expect(logger.parseLevel("alepha:trace,,", "other.module")).toBe("INFO");
 			expect(logger.parseLevel("   ,  , debug ,  ", "any.module")).toBe(
-				"debug",
+				"DEBUG",
 			);
 		});
 
@@ -164,62 +164,62 @@ describe("Logger", () => {
 
 			// Basic wildcard matching
 			expect(logger.parseLevel("alepha.*:debug,info", "alepha.core")).toBe(
-				"debug",
+				"DEBUG",
 			);
 			expect(logger.parseLevel("alepha.*:debug,info", "alepha.server")).toBe(
-				"debug",
+				"DEBUG",
 			);
 			expect(logger.parseLevel("alepha.*:debug,info", "other.module")).toBe(
-				"info",
+				"INFO",
 			);
 
 			// More specific patterns
 			expect(
 				logger.parseLevel("*.test:silent,*.core:trace,info", "alepha.test"),
-			).toBe("silent");
+			).toBe("SILENT");
 			expect(
 				logger.parseLevel("*.test:silent,*.core:trace,info", "my.core"),
-			).toBe("trace");
+			).toBe("TRACE");
 			expect(
 				logger.parseLevel("*.test:silent,*.core:trace,info", "other.module"),
-			).toBe("info");
+			).toBe("INFO");
 
 			// Exact prefix match still works (existing behavior)
 			expect(logger.parseLevel("alepha.core:debug,info", "alepha.core")).toBe(
-				"debug",
+				"DEBUG",
 			);
 			expect(
 				logger.parseLevel("alepha.core:debug,info", "alepha.core.service"),
-			).toBe("debug"); // startsWith behavior
+			).toBe("DEBUG"); // startsWith behavior
 		});
 
 		it("should prioritize more specific wildcard matches", ({ expect }) => {
 			const logger = createLogger();
 			// First match wins, so order matters
 			const config = "alepha.*:debug,alepha.core.*:trace,info";
-			expect(logger.parseLevel(config, "alepha.core.service")).toBe("debug"); // matches alepha.* first
+			expect(logger.parseLevel(config, "alepha.core.service")).toBe("DEBUG"); // matches alepha.* first
 
 			// Reverse order
 			const config2 = "alepha.core.*:trace,alepha.*:debug,info";
-			expect(logger.parseLevel(config2, "alepha.core.service")).toBe("trace"); // matches alepha.core.* first
+			expect(logger.parseLevel(config2, "alepha.core.service")).toBe("TRACE"); // matches alepha.core.* first
 		});
 	});
 
 	describe("asLogLevel", () => {
 		it("should return valid log levels", ({ expect }) => {
 			const logger = createLogger();
-			expect(logger.asLogLevel("trace")).toBe("trace");
-			expect(logger.asLogLevel("debug")).toBe("debug");
-			expect(logger.asLogLevel("info")).toBe("info");
-			expect(logger.asLogLevel("warn")).toBe("warn");
-			expect(logger.asLogLevel("error")).toBe("error");
-			expect(logger.asLogLevel("silent")).toBe("silent");
+			expect(logger.asLogLevel("trace")).toBe("TRACE");
+			expect(logger.asLogLevel("debug")).toBe("DEBUG");
+			expect(logger.asLogLevel("info")).toBe("INFO");
+			expect(logger.asLogLevel("warn")).toBe("WARN");
+			expect(logger.asLogLevel("error")).toBe("ERROR");
+			expect(logger.asLogLevel("silent")).toBe("SILENT");
 		});
 
 		it("should handle whitespace", ({ expect }) => {
 			const logger = createLogger();
-			expect(logger.asLogLevel(" debug ")).toBe("debug");
-			expect(logger.asLogLevel("  trace  ")).toBe("trace");
+			expect(logger.asLogLevel(" debug ")).toBe("DEBUG");
+			expect(logger.asLogLevel("  trace  ")).toBe("TRACE");
 		});
 
 		it("should throw error for invalid levels", ({ expect }) => {
@@ -228,8 +228,8 @@ describe("Logger", () => {
 				"Invalid log level: invalid",
 			);
 			expect(() => logger.asLogLevel("")).toThrow("Invalid log level: ");
-			expect(() => logger.asLogLevel("DEBUG")).toThrow(
-				"Invalid log level: DEBUG",
+			expect(() => logger.asLogLevel("DEBUqG")).toThrow(
+				"Invalid log level: DEBUqG",
 			);
 		});
 	});
@@ -254,15 +254,15 @@ describe("Logger", () => {
 			});
 
 			// Initial state
-			expect(logger.level).toBe("info");
+			expect(logger.level).toBe("INFO");
 
 			// Change state
 			alepha.state.set("logLevel", "debug");
-			expect(logger.level).toBe("debug");
+			expect(logger.level).toBe("DEBUG");
 
 			// Change to module-specific config
 			alepha.state.set("logLevel", "test:trace,warn");
-			expect(logger.level).toBe("trace");
+			expect(logger.level).toBe("TRACE");
 		});
 
 		it("should cache parsed level until state changes", ({ expect }) => {
@@ -287,8 +287,8 @@ describe("Logger", () => {
 			const level1 = logger.level;
 			const level2 = logger.level;
 
-			expect(level1).toBe("debug");
-			expect(level2).toBe("debug");
+			expect(level1).toBe("DEBUG");
+			expect(level2).toBe("DEBUG");
 			expect(level1).toBe(level2); // Should be same instance/value
 		});
 	});

@@ -1,5 +1,5 @@
 import { $inject, Alepha } from "@alepha/core";
-import type { LogEntry } from "../services/Logger.ts";
+import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { ConsoleColorProvider } from "./ConsoleColorProvider.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";
 
@@ -24,29 +24,26 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
 			}
 		}
 
-		output += this.color.colorize(
-			"grey",
-			`[${this.formatTimestamp(timestamp)}]`,
-		);
+		output += this.color.set("GREY", `[${this.formatTimestamp(timestamp)}]`);
 		output += " ";
 
-		output += this.color.colorize(entry.level, entry.level.toUpperCase());
+		output += this.color.set(entry.level, entry.level.toUpperCase());
 		output += " ";
 
 		if (entry.app) {
-			output += this.color.colorize("grey", `${entry.app}`);
+			output += this.color.set("GREY", `${entry.app}`);
 			output += " ";
 		}
 
 		if (entry.context) {
-			output += this.color.colorize("grey", `(${entry.context})`);
+			output += this.color.set("GREY", `(${entry.context})`);
 			output += " ";
 		}
 
-		output += `<${this.color.colorize("white", `${entry.module}.`)}${this.color.colorize("reset", entry.service)}>`;
+		output += `<${this.color.set("WHITE", `${entry.module}.`)}${this.color.set("RESET", entry.service)}>`;
 
 		if (entry.message) {
-			output += `: ${this.color.colorize("cyan", entry.message)}`;
+			output += `: ${this.color.set("CYAN", entry.message)}`;
 		} else {
 			output += ":";
 		}
@@ -55,14 +52,15 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
 			if (isError) {
 				output += ` \n${details}`;
 			} else {
-				output += ` ${this.color.colorize("darkGrey", details)}`;
+				output += ` ${this.color.set("DARK_GREY", details)}`;
 			}
 		}
 
 		return output;
 	}
 
-	public formatTimestamp(d: Date): string {
+	public formatTimestamp(iso: string): string {
+		const d = new Date(iso);
 		const h = d.getHours();
 		const m = d.getMinutes();
 		const s = d.getSeconds();

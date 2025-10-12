@@ -1,4 +1,4 @@
-import type { LogEntry } from "../services/Logger.ts";
+import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { LogDestinationProvider } from "./LogDestinationProvider.ts";
 
 export class MemoryDestinationProvider extends LogDestinationProvider {

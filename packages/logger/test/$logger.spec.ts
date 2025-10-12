@@ -1,4 +1,5 @@
 import { Alepha } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { describe, it } from "vitest";
 import {
 	$logger,
@@ -26,7 +27,7 @@ describe("$logger", () => {
 		app.log.info("Test log message");
 
 		expect(output.logs[0].message).toBe("Test log message");
-		expect(output.logs[0].level).toBe("info");
+		expect(output.logs[0].level).toBe("INFO");
 		expect(output.logs[0].service).toBe("App");
 		expect(output.logs[0].module).toBe("app");
 		expect(output.logs[0].app).toBeUndefined();
@@ -75,7 +76,7 @@ describe("$logger", () => {
 		expect(output.logs.length).toBe(1);
 	});
 
-	it("should emit log events for external listeners", ({ expect }) => {
+	it("should emit log events for external listeners", async ({ expect }) => {
 		const alepha = Alepha.create({
 			env: {
 				LOG_LEVEL: "info",
@@ -85,6 +86,7 @@ describe("$logger", () => {
 			use: MemoryDestinationProvider,
 		});
 
+		const now = alepha.inject(DateTimeProvider).pause();
 		const app = alepha.inject(App);
 		const logEvents: any[] = [];
 
@@ -97,10 +99,10 @@ describe("$logger", () => {
 		expect(logEvents).toHaveLength(1);
 		expect(logEvents[0].message).toMatch(/Test event emission/);
 		expect(logEvents[0].entry.message).toBe("Test event emission");
-		expect(logEvents[0].entry.level).toBe("info");
+		expect(logEvents[0].entry.level).toBe("INFO");
 		expect(logEvents[0].entry.service).toBe("App");
 		expect(logEvents[0].entry.module).toBe("app");
 		expect(logEvents[0].entry.data).toEqual({ testData: "value" });
-		expect(logEvents[0].entry.timestamp).toBeInstanceOf(Date);
+		expect(logEvents[0].entry.timestamp).toBe(now.toISOString());
 	});
 });
