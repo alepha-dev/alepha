@@ -22,6 +22,7 @@ export * from "./descriptors/$repository.ts";
 export * from "./descriptors/$sequence.ts";
 export * from "./descriptors/$transaction.ts";
 export * from "./errors/PgEntityNotFoundError.ts";
+export * from "./helpers/pgAttr.ts";
 export * from "./helpers/schemaToPgColumns.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";

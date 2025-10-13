@@ -15,7 +15,7 @@ export class FileService {
 	protected readonly log = $logger();
 	protected readonly fileRepository = $repository(files);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly defaultBucket = $bucket({ name: "files" });
+	protected readonly defaultBucket = $bucket({ name: "default" });
 
 	protected onUploadFile = $hook({
 		on: "bucket:file:uploaded",

@@ -6,6 +6,7 @@ import { SessionService } from "./services/SessionService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$authApple.ts";
+export * from "./descriptors/$authCredentials.ts";
 export * from "./descriptors/$authGithub.ts";
 export * from "./descriptors/$authGoogle.ts";
 export * from "./descriptors/$realmUsers.ts";
