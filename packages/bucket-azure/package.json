@@ -10,7 +10,7 @@
 		"storage-blob"
 	],
 	"author": "Feunard",
-	"version": "0.10.3",
+	"version": "0.10.4",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -23,11 +23,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.10.3",
-		"@alepha/core": "0.10.3",
-		"@alepha/datetime": "0.10.3",
-		"@alepha/file": "0.10.3",
-		"@alepha/logger": "0.10.3",
+		"@alepha/bucket": "0.10.4",
+		"@alepha/core": "0.10.4",
+		"@alepha/datetime": "0.10.4",
+		"@alepha/file": "0.10.4",
+		"@alepha/logger": "0.10.4",
 		"@azure/storage-blob": "^12.29.0"
 	},
 	"devDependencies": {

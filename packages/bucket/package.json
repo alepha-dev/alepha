@@ -8,7 +8,7 @@
 		"file"
 	],
 	"author": "Feunard",
-	"version": "0.10.3",
+	"version": "0.10.4",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -21,9 +21,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.3",
-		"@alepha/file": "0.10.3",
-		"@alepha/logger": "0.10.3"
+		"@alepha/core": "0.10.4",
+		"@alepha/file": "0.10.4",
+		"@alepha/logger": "0.10.4"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.5",
