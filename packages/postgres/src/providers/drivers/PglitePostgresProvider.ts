@@ -11,7 +11,7 @@ import {
 } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { PGlite } from "@electric-sql/pglite";
-import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
+import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
 
@@ -56,6 +56,8 @@ export class PglitePostgresProvider extends PostgresProvider {
 					"@electric-sql/pglite is not installed. Please install it to use the pglite driver.",
 				);
 			}
+
+			const { drizzle } = createRequire(import.meta.url)("drizzle-orm/pglite");
 
 			const path = this.getDatabasePath();
 			this.log.info(`Using PGlite database at ${path}`);
