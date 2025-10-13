@@ -43,11 +43,11 @@ const testFileServiceOperations = async (
 
 	const files = await ctrl.findFiles.run({});
 
-	expect(files.content[0].container).toBe(assets.images.name);
+	expect(files.content[0].bucket).toBe(assets.images.name);
 
 	await ctrl.uploadFile.run({
 		query: {
-			container: assets.images.name,
+			bucket: assets.images.name,
 		},
 		body: {
 			file: createFile("Hello World 2"),
@@ -56,7 +56,7 @@ const testFileServiceOperations = async (
 
 	await ctrl.uploadFile.fetch({
 		query: {
-			container: assets.images.name,
+			bucket: assets.images.name,
 		},
 		body: {
 			file: createFile("Hello World 3"),
@@ -65,7 +65,7 @@ const testFileServiceOperations = async (
 
 	await ctrl.uploadFile.fetch({
 		query: {
-			container: assets.images.name,
+			bucket: assets.images.name,
 		},
 		body: {
 			file: createFile("Hello World 4"),

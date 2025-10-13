@@ -43,7 +43,7 @@ export class FileController {
 			}),
 			query: t.object({
 				expirationDate: t.optional(t.datetime()),
-				container: t.optional(t.string()),
+				bucket: t.optional(t.string()),
 			}),
 			response: fileResourceSchema,
 		},

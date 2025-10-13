@@ -12,7 +12,7 @@ export const files = $entity({
 		creator: t.optional(t.uuid()),
 		creatorRealm: t.optional(t.string()),
 		creatorName: t.optional(t.string()),
-		container: t.text(),
+		bucket: t.text(),
 		expirationDate: t.optional(t.string()),
 		name: t.text(),
 		size: t.number(),

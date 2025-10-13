@@ -3,7 +3,7 @@ import { t } from "@alepha/core";
 import { pageQuerySchema } from "@alepha/postgres";
 
 export const fileQuerySchema = t.interface([pageQuerySchema], {
-	container: t.optional(t.string()),
+	bucket: t.optional(t.string()),
 	tags: t.optional(t.array(t.string())),
 });
 

@@ -32,7 +32,7 @@ export class FileService {
 				creator: options.user?.id,
 				creatorRealm: options.user?.realm,
 				expirationDate: this.getExpirationDate(options.ttl),
-				container: bucket.name,
+				bucket: bucket.name,
 			});
 		},
 	});
@@ -42,25 +42,25 @@ export class FileService {
 		handler: async ({ bucket, id }) => {
 			await this.fileRepository.deleteMany({
 				blobId: { eq: id },
-				container: { eq: bucket.name },
+				bucket: { eq: bucket.name },
 			});
 		},
 	});
 
 	// -------------------------------------------------------------------------------------------------------------------
 
-	public storage(
-		storageName: string = this.defaultBucket.name,
+	public bucket(
+		bucketName: string = this.defaultBucket.name,
 	): BucketDescriptor {
-		const storage = this.alepha
+		const bucket = this.alepha
 			.descriptors($bucket)
-			.find((it) => it.name === storageName);
+			.find((it) => it.name === bucketName);
 
-		if (!storage) {
-			throw new NotFoundError(`Storage '${storageName}' not found.`);
+		if (!bucket) {
+			throw new NotFoundError(`Bucket '${bucketName}' not found.`);
 		}
 
-		return storage;
+		return bucket;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -69,8 +69,8 @@ export class FileService {
 		q.sort ??= "-createdAt";
 
 		const where = this.fileRepository.createQueryWhere();
-		if (q.container) {
-			where.container = { eq: q.container };
+		if (q.bucket) {
+			where.bucket = { eq: q.bucket };
 		}
 
 		if (q.tags) {
@@ -109,14 +109,14 @@ export class FileService {
 		file: FileLike,
 		options: {
 			expirationDate?: string | Date;
-			container?: string;
+			bucket?: string;
 			user?: UserAccountToken;
 			tags?: string[];
 		} = {},
 	): Promise<FileEntity> {
-		const storage = this.storage(options.container);
+		const bucket = this.bucket(options.bucket);
 
-		const blobId = await storage.upload(file, { persist: false });
+		const blobId = await bucket.upload(file, { persist: false });
 
 		let expirationDate: string | undefined;
 		if (options.expirationDate) {
@@ -125,8 +125,8 @@ export class FileService {
 			} else {
 				expirationDate = new Date(options.expirationDate).toISOString();
 			}
-		} else if (storage.options.ttl) {
-			expirationDate = this.getExpirationDate(storage.options.ttl);
+		} else if (bucket.options.ttl) {
+			expirationDate = this.getExpirationDate(bucket.options.ttl);
 		}
 
 		return await this.fileRepository.create({
@@ -138,7 +138,7 @@ export class FileService {
 			creatorRealm: options.user?.realm,
 			creatorName: options.user?.name,
 			expirationDate,
-			container: storage.name,
+			bucket: bucket.name,
 			tags: options.tags,
 		});
 	}
@@ -146,20 +146,20 @@ export class FileService {
 	public async streamFile(id: string): Promise<FileLike> {
 		const file = await this.getFileById(id);
 
-		const storage = this.storage(file.container);
+		const bucket = this.bucket(file.bucket);
 
-		return await storage.download(file.blobId);
+		return await bucket.download(file.blobId);
 	}
 
 	public async deleteFile(id: string): Promise<Ok> {
 		const file = await this.getFileById(id);
 
 		try {
-			const storage = this.storage(file.container);
-			await storage.delete(file.blobId);
+			const bucket = this.bucket(file.bucket);
+			await bucket.delete(file.blobId);
 		} catch (e) {
-			// sometimes, file is already deleted in the storage
-			this.log.warn("Failed to delete file from storage", e);
+			// sometimes, file is already deleted in the bucket
+			this.log.warn("Failed to delete file from bucket", e);
 			await this.fileRepository.deleteById(file.id);
 		}
 

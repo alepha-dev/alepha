@@ -23,11 +23,11 @@ describe("FileController", () => {
 	};
 
 	describe("findFiles", () => {
-		it("should return files from specific container", async () => {
+		it("should return files from specific bucket", async () => {
 			const { app, ctrl } = await setup();
 			await app.images.upload(createFile("test"));
 			const files = await ctrl.findFiles({
-				query: { container: app.images.name },
+				query: { bucket: app.images.name },
 			});
 			expect(files.content.length).toEqual(1);
 		});
@@ -39,7 +39,7 @@ describe("FileController", () => {
 			expect(files.page.totalElements).toBe(0);
 		});
 
-		it("should return files from all containers when no container filter", async () => {
+		it("should return files from all buckets when no bucket filter", async () => {
 			const { app, ctrl } = await setup();
 			await app.images.upload(createFile("image.png"));
 			await app.documents.upload(createFile("doc.pdf"));
@@ -48,22 +48,22 @@ describe("FileController", () => {
 			expect(files.content.length).toEqual(2);
 		});
 
-		it("should filter files by container", async () => {
+		it("should filter files by bucket", async () => {
 			const { app, ctrl } = await setup();
 			await app.images.upload(createFile("image.png"));
 			await app.documents.upload(createFile("doc.pdf"));
 
 			const imagesFiles = await ctrl.findFiles({
-				query: { container: app.images.name },
+				query: { bucket: app.images.name },
 			});
 			expect(imagesFiles.content.length).toEqual(1);
-			expect(imagesFiles.content[0].container).toBe(app.images.name);
+			expect(imagesFiles.content[0].bucket).toBe(app.images.name);
 
 			const docsFiles = await ctrl.findFiles({
-				query: { container: app.documents.name },
+				query: { bucket: app.documents.name },
 			});
 			expect(docsFiles.content.length).toEqual(1);
-			expect(docsFiles.content[0].container).toBe(app.documents.name);
+			expect(docsFiles.content[0].bucket).toBe(app.documents.name);
 		});
 
 		it("should filter files by tags", async () => {
@@ -89,14 +89,14 @@ describe("FileController", () => {
 			await app.images.upload(createFile("file3.txt"));
 
 			const page1 = await ctrl.findFiles({
-				query: { container: app.images.name, size: 2, page: 0 },
+				query: { bucket: app.images.name, size: 2, page: 0 },
 			});
 
 			expect(page1.content.length).toEqual(2);
 			expect(page1.page.totalElements).toBe(3);
 
 			const page2 = await ctrl.findFiles({
-				query: { container: app.images.name, size: 2, page: 1 },
+				query: { bucket: app.images.name, size: 2, page: 1 },
 			});
 			expect(page2.content.length).toEqual(1);
 			expect(page2.page.totalElements).toBe(3);
@@ -109,7 +109,7 @@ describe("FileController", () => {
 			const file3 = await app.images.upload(createFile("third.txt"));
 
 			const files = await ctrl.findFiles({
-				query: { container: app.images.name },
+				query: { bucket: app.images.name },
 			});
 
 			expect(files.content[0].blobId).toBe(file3);
@@ -119,7 +119,7 @@ describe("FileController", () => {
 	});
 
 	describe("uploadFile", () => {
-		it("should upload file to default container", async () => {
+		it("should upload file to default bucket", async () => {
 			const { ctrl } = await setup();
 			const file = createFile("Hello, World!", {
 				name: "test.txt",
@@ -137,7 +137,7 @@ describe("FileController", () => {
 			expect(result.blobId).toBeDefined();
 		});
 
-		it("should upload file to specific container", async () => {
+		it("should upload file to specific bucket", async () => {
 			const { app, ctrl } = await setup();
 			const file = createFile("Document content", {
 				name: "doc.pdf",
@@ -146,10 +146,10 @@ describe("FileController", () => {
 
 			const result = await ctrl.uploadFile({
 				body: { file },
-				query: { container: app.documents.name },
+				query: { bucket: app.documents.name },
 			});
 
-			expect(result.container).toBe(app.documents.name);
+			expect(result.bucket).toBe(app.documents.name);
 			expect(result.name).toBe("doc.pdf");
 		});
 
