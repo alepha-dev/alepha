@@ -17,8 +17,8 @@
 		"protobufjs": "^7.5.4"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.5",
-		"tsdown": "^0.15.6",
+		"@biomejs/biome": "^2.2.6",
+		"tsdown": "^0.15.7",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"
 	},

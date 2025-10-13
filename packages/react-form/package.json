@@ -20,11 +20,11 @@
 	},
 	"devDependencies": {
 		"@alepha/testing": "0.10.5",
-		"@biomejs/biome": "^2.2.5",
+		"@biomejs/biome": "^2.2.6",
 		"@types/react": "^19.2.2",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
-		"tsdown": "^0.15.6",
+		"tsdown": "^0.15.7",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"
 	},

@@ -22,18 +22,18 @@
 		"@alepha/core": "0.10.5",
 		"@alepha/react": "0.10.5",
 		"@alepha/react-form": "0.10.5",
-		"@mantine/core": "^8.3.3",
-		"@mantine/hooks": "^8.3.3",
-		"@mantine/modals": "^8.3.3",
-		"@mantine/notifications": "^8.3.3",
-		"@mantine/nprogress": "^8.3.3",
-		"@mantine/spotlight": "^8.3.3"
+		"@mantine/core": "^8.3.4",
+		"@mantine/hooks": "^8.3.4",
+		"@mantine/modals": "^8.3.4",
+		"@mantine/notifications": "^8.3.4",
+		"@mantine/nprogress": "^8.3.4",
+		"@mantine/spotlight": "^8.3.4"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.5",
+		"@biomejs/biome": "^2.2.6",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
-		"tsdown": "^0.15.6",
+		"tsdown": "^0.15.7",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"
 	},
