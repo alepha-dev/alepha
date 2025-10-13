@@ -101,7 +101,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 				fileBuffer as unknown as Readable,
 				{
 					access: "public",
-					contentType: "application/octet-stream",
+					contentType: file.type || "application/octet-stream",
 					token: this.env.BLOB_READ_WRITE_TOKEN,
 					allowOverwrite: true,
 				},
