@@ -38,24 +38,14 @@ Alepha is an opinionated framework that handles everything from database to fron
 
 It uses a descriptor-based architecture (`$action`, `$page`, `$repository`, etc.) and enforces type safety across the entire stack.
 
-```ts
-import { run } from "alepha";
-import { $action } from "alepha/server";
-
-class App {
-  hello = $action({
-    handler: () => "Hello world!",
-  })
-}
-
-run(App);
-```
-
-👉 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
+For more information, please visit the [documentation](https://feunard.github.io/alepha/).
 
 ## Examples
 
 ### Type-safe API endpoint
+
+Write type-safe API endpoints with automatic OpenAPI documentation and more.
+
 
 ```ts
 // app.ts
@@ -96,9 +86,9 @@ node app.ts
 
 ### Database with Drizzle ORM
 
-Drizzle ORM is a type-safe ORM for TypeScript, bundled inside Alepha.
+[Drizzle ORM](https://orm.drizzle.team/) is a type-safe ORM for TypeScript, bundled inside Alepha.
 
-Drizzle Kit CLI is required as dev dependencies:
+You need `drizzle-kit` CLI as dev dependencies:
 
 ```bash
 npm install -D drizzle-kit
@@ -143,7 +133,7 @@ node app.ts
 
 ### React Application
 
-Alepha has built-in React **CSR** & **SSR** support.
+Build full-stack React applications, with server-side rendering (SSR) and client-side rendering (CSR).
 
 [React](https://react.dev) is required as a `dependency`:
 
@@ -221,8 +211,6 @@ Then run Vite:
 ```bash
 npx vite
 ```
-
-Plenty of other features are available, please check the [documentation](https://feunard.github.io/alepha/).
 
 ## License
 

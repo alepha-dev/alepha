@@ -17,12 +17,13 @@ import { createFile } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
+import { FileMetadataService } from "../services/FileMetadataService.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 export class LocalFileStorageProvider implements FileStorageProvider {
-	public static METADATA_HEADER_LENGTH = 4;
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
+	protected readonly metadataService = $inject(FileMetadataService);
 
 	public options = {
 		storagePath: this.alepha.isTest()
@@ -58,19 +59,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 	): Promise<string> {
 		fileId ??= this.createId();
 
-		const metadata = Buffer.from(
-			JSON.stringify({
-				name: file.name,
-				type: file.type,
-			}),
-			"utf8",
-		);
-
-		// file = [metadata.length] [metadata] <Buffer -- content -- />
-		const header = Buffer.alloc(
-			LocalFileStorageProvider.METADATA_HEADER_LENGTH,
-		);
-		header.writeUInt32BE(metadata.byteLength, 0);
+		const { header, metadata } = this.metadataService.encodeMetadata(file);
 
 		return new Promise((resolve, reject) => {
 			const writeStream = createWriteStream(this.path(bucketName, fileId));
@@ -90,18 +79,8 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 		try {
 			fileHandle = await open(filePath, "r");
 
-			const headerLength = LocalFileStorageProvider.METADATA_HEADER_LENGTH;
-
-			// read the header to get metadata length
-			const headerBuffer = Buffer.alloc(headerLength);
-			await fileHandle.read(headerBuffer, 0, headerLength, 0);
-			const metadataLength = headerBuffer.readUInt32BE(0);
-			const contentStart = headerLength + metadataLength;
-
-			// read the metadata block
-			const metadataBuffer = Buffer.alloc(metadataLength);
-			await fileHandle.read(metadataBuffer, 0, metadataLength, headerLength);
-			const metadata = JSON.parse(metadataBuffer.toString("utf8"));
+			const { metadata, contentStart } =
+				await this.metadataService.decodeMetadata(fileHandle);
 
 			// get the total file size
 			const stats = await fileHandle.stat();
@@ -146,16 +125,16 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 		}
 	}
 
-	protected stat(container: string, fileId: string): Promise<fs.Stats> {
-		return stat(this.path(container, fileId));
+	protected stat(bucket: string, fileId: string): Promise<fs.Stats> {
+		return stat(this.path(bucket, fileId));
 	}
 
 	protected createId(): string {
 		return randomUUID();
 	}
 
-	protected path(container: string, fileId = ""): string {
-		return join(this.options.storagePath, container, fileId);
+	protected path(bucket: string, fileId = ""): string {
+		return join(this.options.storagePath, bucket, fileId);
 	}
 
 	protected isErrorNoEntry(error: unknown): boolean {
