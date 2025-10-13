@@ -22,7 +22,6 @@
 	],
 	"dependencies": {
 		"@alepha/bucket": "0.10.4",
-		"@alepha/bucket-azure": "0.10.4",
 		"@alepha/core": "0.10.4",
 		"@alepha/datetime": "0.10.4",
 		"@alepha/file": "0.10.4",
@@ -35,6 +34,7 @@
 		"@alepha/server-security": "0.10.4"
 	},
 	"devDependencies": {
+		"@alepha/bucket-azure": "0.10.4",
 		"@biomejs/biome": "^2.2.5",
 		"tsdown": "^0.15.6",
 		"typescript": "^5.9.3",
