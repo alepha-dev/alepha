@@ -120,11 +120,12 @@ export async function viteAlephaDev(
 				if (state.started && state.app && req.url && !isViteFile(req.url)) {
 					// patch res.end to detect if alepha handled the request
 					// if not, we call next() to let vite handle it (e.g. for static files)
-					const end = res.end.bind(res);
 					let ended = false;
-					res.end = (...args: any[]) => {
+
+					const writeHead = res.writeHead.bind(res);
+					res.writeHead = (...args: any[]) => {
 						ended = true;
-						return end(...args);
+						return writeHead(args[0], args[1], args[2]);
 					};
 
 					return state.app.events
