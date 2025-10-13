@@ -7,7 +7,7 @@
 		"studio": "drizzle-kit studio"
 	},
 	"dependencies": {
-		"alepha": "0.10.4",
+		"alepha": "0.10.5",
 		"drizzle-kit": "^0.31.5",
 		"vite": "^7.1.9"
 	}
