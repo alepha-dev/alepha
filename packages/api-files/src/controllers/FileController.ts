@@ -57,6 +57,7 @@ export class FileController {
 	public readonly streamFile = $action({
 		path: `${this.url}/:id`,
 		group: this.group,
+		etag: true,
 		schema: {
 			params: t.object({
 				id: t.uuid(),

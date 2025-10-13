@@ -1,6 +1,6 @@
 # Alepha Server Cache
 
-Adds ETag and Cache-Control headers to server responses.
+Cache responses and manage ETag headers.
 
 ## Installation
 

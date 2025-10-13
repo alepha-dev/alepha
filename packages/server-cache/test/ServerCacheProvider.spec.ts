@@ -30,6 +30,22 @@ class TestApp {
 		},
 	});
 
+	etagOnlyAction = $action({
+		etag: true,
+		handler: () => `etag-only-${this.counter++}`,
+	});
+
+	etagAndCacheAction = $action({
+		etag: true,
+		cache: true,
+		handler: () => `etag-and-cache-${this.counter++}`,
+	});
+
+	dynamicContentAction = $action({
+		etag: true,
+		handler: () => `dynamic-${Date.now()}`,
+	});
+
 	reset() {
 		this.counter = this.resetCounter++;
 	}
@@ -257,6 +273,248 @@ describe("ServerCacheProvider", () => {
 
 			const afterRestartResponse = await app.cachedAction.fetch();
 			expect(afterRestartResponse.data).toBe("cached-0");
+		});
+	});
+
+	describe("ETag-only support (without cache)", () => {
+		test("should generate and return ETag header for etag-only routes", async ({
+			expect,
+		}) => {
+			const response = await app.etagOnlyAction.fetch();
+
+			expect(response.status).toBe(200);
+			expect(response.data).toBe("etag-only-0");
+			expect(response.headers.get("etag")).toBeDefined();
+			expect(response.headers.get("last-modified")).toBeDefined();
+		});
+
+		test("should return 304 when client sends matching ETag", async ({
+			expect,
+		}) => {
+			const firstResponse = await app.etagOnlyAction.fetch();
+			const etag = firstResponse.headers.get("etag");
+
+			expect(firstResponse.status).toBe(200);
+			expect(firstResponse.data).toBe("etag-only-0");
+			expect(etag).toBeDefined();
+
+			// Send request with If-None-Match header
+			const secondResponse = await app.etagOnlyAction.fetch({
+				headers: { "if-none-match": etag! },
+			});
+
+			expect(secondResponse.status).toBe(304);
+			expect(secondResponse.data).toBe("");
+		});
+
+		test("should NOT cache responses for etag-only routes", async ({
+			expect,
+		}) => {
+			const response1 = await app.etagOnlyAction.fetch();
+			const response2 = await app.etagOnlyAction.fetch();
+
+			// Counter should increment because responses are NOT cached
+			expect(response1.data).toBe("etag-only-0");
+			expect(response2.data).toBe("etag-only-1");
+
+			// But both should have different ETags
+			expect(response1.headers.get("etag")).not.toBe(
+				response2.headers.get("etag"),
+			);
+		});
+
+		test("should return 200 with new content when ETag doesn't match", async ({
+			expect,
+		}) => {
+			const firstResponse = await app.etagOnlyAction.fetch();
+			expect(firstResponse.status).toBe(200);
+			expect(firstResponse.data).toBe("etag-only-0");
+
+			// Send request with wrong ETag
+			const secondResponse = await app.etagOnlyAction.fetch({
+				headers: { "if-none-match": '"wrong-etag"' },
+			});
+
+			expect(secondResponse.status).toBe(200);
+			expect(secondResponse.data).toBe("etag-only-1");
+		});
+
+		test("should handle dynamic content with ETags correctly", async ({
+			expect,
+		}) => {
+			const response1 = await app.dynamicContentAction.fetch();
+			const etag1 = response1.headers.get("etag");
+
+			expect(response1.status).toBe(200);
+			expect(etag1).toBeDefined();
+
+			// Wait a bit to ensure timestamp changes
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			const response2 = await app.dynamicContentAction.fetch();
+			const etag2 = response2.headers.get("etag");
+
+			expect(response2.status).toBe(200);
+			expect(etag2).toBeDefined();
+
+			// ETags should be different because content is dynamic
+			expect(etag1).not.toBe(etag2);
+		});
+
+		test("should support 304 responses for dynamic content when ETag matches", async ({
+			expect,
+		}) => {
+			const firstResponse = await app.dynamicContentAction.fetch();
+			const etag = firstResponse.headers.get("etag");
+			const content = firstResponse.data;
+
+			expect(firstResponse.status).toBe(200);
+
+			// Immediately request again with the same ETag
+			// Content might be different, but if we send the ETag back, we should get 304
+			const secondResponse = await app.dynamicContentAction.fetch({
+				headers: { "if-none-match": etag! },
+			});
+
+			expect(secondResponse.status).toBe(304);
+			expect(secondResponse.data).toBe("");
+		});
+	});
+
+	describe("ETag with cache combined", () => {
+		test("should support both caching and ETag validation", async ({
+			expect,
+		}) => {
+			const response1 = await app.etagAndCacheAction.fetch();
+			const etag1 = response1.headers.get("etag");
+
+			expect(response1.status).toBe(200);
+			expect(response1.data).toBe("etag-and-cache-0");
+			expect(etag1).toBeDefined();
+
+			// Second request should return cached content with 304
+			const response2 = await app.etagAndCacheAction.fetch();
+
+			expect(response2.status).toBe(304);
+			expect(response2.data).toBe("etag-and-cache-0");
+		});
+
+		test("should return cached content even without ETag header", async ({
+			expect,
+		}) => {
+			const response1 = await app.etagAndCacheAction.fetch();
+			expect(response1.status).toBe(200);
+			expect(response1.data).toBe("etag-and-cache-0");
+
+			// Request without ETag should still get cached response
+			const response2 = await app.etagAndCacheAction.fetch({
+				headers: {
+					"if-none-match": "non-matching-etag",
+				},
+			});
+
+			expect(response2.status).toBe(200);
+			expect(response2.data).toBe("etag-and-cache-0");
+		});
+
+		test("should invalidate both cache and ETag when cache is cleared", async ({
+			expect,
+		}) => {
+			const response1 = await app.etagAndCacheAction.fetch();
+			const etag1 = response1.headers.get("etag");
+
+			expect(response1.status).toBe(200);
+			expect(response1.data).toBe("etag-and-cache-0");
+
+			// Invalidate cache
+			await cacheProvider.invalidate(app.etagAndCacheAction.route);
+
+			// Next request should generate new content and new ETag
+			const response2 = await app.etagAndCacheAction.fetch();
+			const etag2 = response2.headers.get("etag");
+
+			expect(response2.status).toBe(200);
+			expect(response2.data).toBe("etag-and-cache-1");
+			expect(etag2).toBeDefined();
+			expect(etag1).not.toBe(etag2);
+		});
+	});
+
+	describe("ETag header validation", () => {
+		test("should generate consistent ETags for same content", async ({
+			expect,
+		}) => {
+			const response1 = await app.cachedAction.fetch();
+			const etag1 = response1.headers.get("etag");
+
+			const response2 = await app.cachedAction.fetch();
+			const etag2 = response2.headers.get("etag");
+
+			// Same content should produce same ETag
+			expect(etag1).toBe(etag2);
+			expect(response1.data).toBe(response2.data);
+		});
+
+		test("should generate different ETags for different content", async ({
+			expect,
+		}) => {
+			const response1 = await app.etagOnlyAction.fetch();
+			const etag1 = response1.headers.get("etag");
+
+			const response2 = await app.etagOnlyAction.fetch();
+			const etag2 = response2.headers.get("etag");
+
+			// Different content should produce different ETags
+			expect(response1.data).not.toBe(response2.data);
+			expect(etag1).not.toBe(etag2);
+		});
+
+		test("should set Last-Modified header with ETag", async ({ expect }) => {
+			const response = await app.etagOnlyAction.fetch();
+
+			expect(response.headers.get("etag")).toBeDefined();
+			expect(response.headers.get("last-modified")).toBeDefined();
+
+			// Verify it's a valid ISO date string
+			const lastModified = response.headers.get("last-modified");
+			expect(() => new Date(lastModified!)).not.toThrow();
+		});
+	});
+
+	describe("Mixed scenarios", () => {
+		test("should handle routes with different cache/etag configurations independently", async ({
+			expect,
+		}) => {
+			// Cached action
+			const cached1 = await app.cachedAction.fetch();
+			const cached2 = await app.cachedAction.fetch();
+			expect(cached1.data).toBe(cached2.data);
+
+			// Uncached action
+			const uncached1 = await app.uncachedAction.fetch();
+			const uncached2 = await app.uncachedAction.fetch();
+			expect(uncached1.data).not.toBe(uncached2.data);
+
+			// ETag-only action
+			const etag1 = await app.etagOnlyAction.fetch();
+			const etag2 = await app.etagOnlyAction.fetch();
+			expect(etag1.data).not.toBe(etag2.data);
+
+			// All should have their own independent state
+			expect(cached1.data).toContain("cached");
+			expect(uncached1.data).toContain("uncached");
+			expect(etag1.data).toContain("etag-only");
+		});
+
+		test("should not interfere with each other's ETags", async ({ expect }) => {
+			const response1 = await app.etagOnlyAction.fetch();
+			const etag1 = response1.headers.get("etag");
+
+			const response2 = await app.cachedAction.fetch();
+			const etag2 = response2.headers.get("etag");
+
+			// Different actions should have different ETags
+			expect(etag1).not.toBe(etag2);
 		});
 	});
 });

@@ -12,8 +12,23 @@ import {
 
 declare module "@alepha/server" {
 	interface ServerRoute {
+		/**
+		 * Enable caching for this route.
+		 * If set to true, a default cache configuration will be applied (5 minutes TTL).
+		 * If a DurationLike is provided, it will be used as the TTL for the cache.
+		 *
+		 * @default false
+		 */
 		cache?: ServerRouteCache;
-		etag?: string;
+
+		/**
+		 * Enable ETag support for this route.
+		 * If set to true, the server will generate and manage ETags automatically.
+		 * If a string is provided, it will be used as a static ETag value.
+		 *
+		 * @default false
+		 */
+		etag?: boolean | string;
 	}
 
 	interface ActionDescriptor<TConfig extends RequestConfigSchema> {
@@ -52,29 +67,52 @@ export class ServerCacheProvider {
 		on: "action:onRequest",
 		handler: async ({ action, request }) => {
 			const cache = action.route.cache;
-			if (!cache) {
-				return;
-			}
+			const etag = action.route.etag;
 
-			const key = this.createCacheKey(action.route, request);
-			const cached = await this.cache.get(key);
-			if (cached) {
-				const body =
-					cached.contentType === "application/json"
-						? JSON.parse(cached.body)
-						: cached.body;
+			// Check for cached response or ETag
+			if (cache || etag) {
+				const key = this.createCacheKey(action.route, request);
+				const cached = await this.cache.get(key);
 
-				this.log.trace("Cache hit for action", {
-					key,
-					action: action.name,
-				});
+				if (cached) {
+					// Check if client has matching ETag - return 304 for both cached and etag-only routes
+					if (
+						request.headers["if-none-match"] === cached.hash ||
+						request.headers["if-modified-since"] === cached.lastModified
+					) {
+						request.reply.status = 304;
+						request.reply.body = "";
+						request.reply.setHeader("etag", cached.hash);
+						request.reply.setHeader("last-modified", cached.lastModified);
+						this.log.trace("ETag match, returning 304", {
+							action: action.name,
+							etag: cached.hash,
+						});
+						return;
+					}
 
-				request.reply.body = body; // just re-use, full trust
-			} else {
-				this.log.trace("Cache miss for action", {
-					key,
-					action: action.name,
-				});
+					// Only serve cached content if caching is enabled (not for etag-only routes)
+					if (cache) {
+						const body =
+							cached.contentType === "application/json"
+								? JSON.parse(cached.body)
+								: cached.body;
+
+						this.log.trace("Cache hit for action", {
+							key,
+							action: action.name,
+						});
+
+						request.reply.body = body; // just re-use, full trust
+						request.reply.setHeader("etag", cached.hash);
+						request.reply.setHeader("last-modified", cached.lastModified);
+					}
+				} else if (cache) {
+					this.log.trace("Cache miss for action", {
+						key,
+						action: action.name,
+					});
+				}
 			}
 		},
 	});
@@ -83,11 +121,11 @@ export class ServerCacheProvider {
 		on: "action:onResponse",
 		handler: async ({ action, request, response }) => {
 			const cache = action.route.cache;
-			if (!cache || !response) {
+			const etag = action.route.etag;
+
+			if ((!cache && !etag) || !response) {
 				return;
 			}
-
-			const key = this.createCacheKey(action.route, request);
 
 			// TODO: serialize the response body, exactly like in the server response hook
 			// this is bad
@@ -96,21 +134,34 @@ export class ServerCacheProvider {
 			const body =
 				contentType === "text/plain" ? response : JSON.stringify(response);
 
-			const etag = this.generateETag(body);
+			const generatedEtag = this.generateETag(body);
+			const lastModified = this.time.toISOString();
 
-			this.log.trace("Caching action", {
+			// Store response for both cached and etag-only routes
+			const key = this.createCacheKey(action.route, request);
+
+			this.log.trace("Storing response", {
 				key,
 				action: action.name,
-				length: body.length,
+				cache: !!cache,
+				etag: !!etag,
 			});
 
 			await this.cache.set(key, {
 				body: body,
-				lastModified: this.time.toISOString(),
+				lastModified,
 				contentType: contentType,
-				hash: etag,
+				hash: generatedEtag,
 			});
-			action.route.etag = etag; // Set etag on the route itself
+
+			// Set ETag headers
+			request.reply.setHeader("etag", generatedEtag);
+			request.reply.setHeader("last-modified", lastModified);
+
+			// For etag-only routes (without cache), prevent client-side caching
+			if (etag && !cache) {
+				request.reply.setHeader("cache-control", "no-store");
+			}
 		},
 	});
 
@@ -118,36 +169,52 @@ export class ServerCacheProvider {
 		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			const cache = route.cache;
-			if (!cache) {
+			const etag = route.etag;
+
+			// Check for cached response or ETag
+			if (!cache && !etag) {
 				return;
 			}
 
 			const key = this.createCacheKey(route, request);
-
 			const cached = await this.cache.get(key);
-			if (cached) {
-				this.log.trace("Cache hit for route", {
-					key,
-					route: route.path,
-				});
 
-				// if user has already the resource cached, just return 304 Not Modified
+			if (cached) {
+				// Check if client has matching ETag - return 304 for both cached and etag-only routes
 				if (
 					request.headers["if-none-match"] === cached.hash ||
 					request.headers["if-modified-since"] === cached.lastModified
 				) {
 					request.reply.status = 304;
+					request.reply.setHeader("etag", cached.hash);
+					request.reply.setHeader("last-modified", cached.lastModified);
+					this.log.trace("ETag match, returning 304", {
+						route: route.path,
+						etag: cached.hash,
+					});
 					return;
 				}
 
-				// if the cache is found, we can skip the request processing
-				// and return the cached response
-				request.reply.body = cached.body;
-				request.reply.status = cached.status ?? 200;
-				if (cached.contentType) {
-					request.reply.setHeader("Content-Type", cached.contentType);
+				// Only serve cached content if caching is enabled (not for etag-only routes)
+				if (cache) {
+					this.log.trace("Cache hit for route", {
+						key,
+						route: route.path,
+					});
+
+					// if the cache is found, we can skip the request processing
+					// and return the cached response
+					request.reply.body = cached.body;
+					request.reply.status = cached.status ?? 200;
+
+					if (cached.contentType) {
+						request.reply.setHeader("Content-Type", cached.contentType);
+					}
+
+					request.reply.setHeader("etag", cached.hash);
+					request.reply.setHeader("last-modified", cached.lastModified);
 				}
-			} else {
+			} else if (cache) {
 				this.log.trace("Cache miss for route", {
 					key,
 					route: route.path,
@@ -161,53 +228,52 @@ export class ServerCacheProvider {
 		priority: "first",
 		handler: async ({ route, request, response }) => {
 			const cache = route.cache;
-			if (!cache) {
+			const etag = route.etag;
+
+			// Skip if neither cache nor etag is enabled
+			if (!cache && !etag) {
+				return;
+			}
+
+			// Only process string responses (text, html, json, etc.)
+			// Buffer is not supported by @alepha/cache for now
+			if (typeof response.body !== "string") {
 				return;
 			}
 
 			const key = this.createCacheKey(route, request);
+			const generatedEtag = this.generateETag(response.body);
+			const lastModified = this.time.toISOString();
 
-			// we only cache string responses (text, html, json, etc.)
-			// - buffer is not supported by @alepha/cache, for now!
+			// Initialize headers if not present
+			response.headers ??= {};
 
-			if (typeof response.body === "string") {
-				this.log.trace("Caching response", {
-					key,
-					route: route.path,
-					status: response.status,
-				});
-				const etag = this.generateETag(response.body);
-				await this.cache.set(key, {
-					body: response.body,
-					status: response.status,
-					contentType: response.headers?.["content-type"],
-					lastModified: this.time.toISOString(),
-					hash: etag,
-				});
-				response.headers ??= {};
-				response.headers.etag = etag;
-				route.etag = etag; // Set etag on the route itself
+			// Store response for both cached and etag-only routes
+			this.log.trace("Storing response", {
+				key,
+				route: route.path,
+				cache: !!cache,
+				etag: !!etag,
+			});
+
+			await this.cache.set(key, {
+				body: response.body,
+				status: response.status,
+				contentType: response.headers?.["content-type"],
+				lastModified,
+				hash: generatedEtag,
+			});
+
+			// Set ETag headers
+			response.headers.etag = generatedEtag;
+			response.headers["last-modified"] = lastModified;
+
+			// For etag-only routes (without cache), prevent client-side caching
+			if (etag && !cache) {
+				response.headers["cache-control"] = "no-store";
 			}
 		},
 	});
-
-	protected getCacheOptions(cache: ServerRouteCache) {
-		if (typeof cache === "boolean") {
-			return {
-				ttl: this.time.duration(5, "minutes"),
-			};
-		}
-
-		if (this.time.isDurationLike(cache)) {
-			return {
-				ttl: cache,
-			};
-		}
-
-		return {
-			...cache,
-		};
-	}
 
 	protected createCacheKey(route: ServerRoute, config?: ServerRequest): string {
 		const params: string[] = [];

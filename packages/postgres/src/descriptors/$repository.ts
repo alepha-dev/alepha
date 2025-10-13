@@ -893,7 +893,7 @@ export class RepositoryDescriptor<
 		"duplicate key value violates unique constraint";
 
 	protected handleError(error: unknown, message: string): PgError {
-		if (!(error instanceof PgError)) {
+		if (!(error instanceof Error)) {
 			return new PgError(message);
 		}
 

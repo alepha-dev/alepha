@@ -80,11 +80,14 @@ export class HttpClient {
 			options,
 		});
 
+		// Only add automatic ETag if user didn't explicitly provide headers
 		const cached = await this.cache.get(url);
 		if (cached && request.method === "GET") {
 			if (cached.etag) {
 				request.headers = new Headers(request.headers);
-				request.headers.set("if-none-match", cached.etag);
+				if (!request.headers.has("if-none-match")) {
+					request.headers.set("if-none-match", cached.etag);
+				}
 			} else {
 				return {
 					data: cached.data as T,
@@ -134,8 +137,13 @@ export class HttpClient {
 
 				if (request.method === "GET") {
 					const etag = response.headers.get("etag") ?? undefined;
+					const cacheControl = response.headers.get("cache-control");
 
-					if (options.cache != null || etag) {
+					// Don't cache if server says no-store
+					const shouldCache =
+						cacheControl !== "no-store" && (options.cache != null || etag);
+
+					if (shouldCache) {
 						await this.cache.set(
 							url,
 							{ data: fetchResponse.data, etag },
@@ -231,10 +239,14 @@ export class HttpClient {
 			if (typeof window !== "undefined") {
 				cacheKey = cacheKey.replace(window.location.origin, "");
 			}
+
 			const cached = await this.cache.get(cacheKey);
 			if (cached) {
 				return cached.data;
 			}
+
+			// if no cached data (etag-only routes), return empty string
+			return "";
 		}
 
 		if (response.status === 204) {

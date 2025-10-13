@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/server-cache",
-	"description": "Adds ETag and Cache-Control headers to server responses.",
+	"description": "Cache responses and manage ETag headers.",
 	"version": "0.10.5",
 	"type": "module",
 	"engines": {

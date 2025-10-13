@@ -19,6 +19,7 @@ __metadata:
     "@alepha/scheduler": "npm:0.10.5"
     "@alepha/security": "npm:0.10.5"
     "@alepha/server": "npm:0.10.5"
+    "@alepha/server-cache": "npm:0.10.5"
     "@alepha/server-multipart": "npm:0.10.5"
     "@alepha/server-security": "npm:0.10.5"
     "@biomejs/biome": "npm:^2.2.5"
