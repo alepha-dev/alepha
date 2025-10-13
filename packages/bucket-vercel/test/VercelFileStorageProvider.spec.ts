@@ -1,4 +1,6 @@
 import {
+	TEST_DOCUMENTS_BUCKET,
+	TEST_IMAGES_BUCKET,
 	TestApp,
 	testDeleteFile,
 	testDeleteNonExistentFile,
@@ -76,6 +78,21 @@ alepha.with(AlephaBucketVercel).with(TestApp);
 const provider = alepha.inject(VercelFileStorageProvider);
 
 describe("VercelFileStorageProvider", () => {
+	const uploadedFiles: string[] = [];
+
+	const cleanup = async () => {
+		if (!withMock && uploadedFiles.length > 0) {
+			try {
+				await del(uploadedFiles, {
+					token: process.env.BLOB_READ_WRITE_TOKEN,
+				});
+			} catch (error) {
+				// Ignore cleanup errors
+			}
+		}
+		uploadedFiles.length = 0;
+	};
+
 	beforeEach(async () => {
 		if (withMock) {
 			alepha.inject(MockVercelBlobApi).mockStorage.clear();
@@ -86,31 +103,24 @@ describe("VercelFileStorageProvider", () => {
 		if (withMock) {
 			alepha.inject(MockVercelBlobApi).mockStorage.clear();
 		}
+		await cleanup();
 	});
-
-	const cleanup = async () => {
-		const filesToDelete = [
-			"test-documents/report.pdf",
-			"test-images/index.html",
-			"test-images/stream.txt",
-			"test-images/test.jpg",
-			"test-images/logo.jpg",
-		];
-		if (!withMock) {
-			await del(filesToDelete, {
-				token: process.env.BLOB_READ_WRITE_TOKEN,
-			});
-		}
-	};
 
 	afterAll(cleanup);
 
+	const trackFileId = (bucketName: string, fileId: string) => {
+		const storeName = provider.convertName(bucketName);
+		uploadedFiles.push(`${storeName}/${fileId}`);
+	};
+
 	test("should upload a file and return a fileId", async () => {
-		await testUploadAndExistence(provider);
+		const fileId = await testUploadAndExistence(provider);
+		trackFileId(TEST_IMAGES_BUCKET, fileId);
 	});
 
 	test("should download a file and restore its metadata", async () => {
-		await testDownloadAndMetadata(provider);
+		const fileId = await testDownloadAndMetadata(provider);
+		trackFileId(TEST_IMAGES_BUCKET, fileId);
 	});
 
 	test("exists() should return false for a non-existent file", async () => {
@@ -118,7 +128,8 @@ describe("VercelFileStorageProvider", () => {
 	});
 
 	test("exists() should return true for an existing file", async () => {
-		await testFileExistence(provider);
+		const fileId = await testFileExistence(provider);
+		trackFileId(TEST_IMAGES_BUCKET, fileId);
 	});
 
 	test("should delete a file", async () => {
@@ -134,7 +145,9 @@ describe("VercelFileStorageProvider", () => {
 	});
 
 	test("should handle uploading to different buckets", async () => {
-		await testUploadIntoBuckets(provider);
+		const { docId, imgId } = await testUploadIntoBuckets(provider);
+		trackFileId(TEST_DOCUMENTS_BUCKET, docId);
+		trackFileId(TEST_IMAGES_BUCKET, imgId);
 	});
 
 	test("should handle empty files correctly", async () => {
@@ -142,6 +155,7 @@ describe("VercelFileStorageProvider", () => {
 	});
 
 	test("should be able to upload, stream with metadata", async () => {
-		await testFileStream(provider);
+		const fileId = await testFileStream(provider);
+		trackFileId(TEST_IMAGES_BUCKET, fileId);
 	});
 });

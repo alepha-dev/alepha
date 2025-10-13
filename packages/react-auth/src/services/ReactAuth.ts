@@ -43,6 +43,11 @@ export class ReactAuth {
 		},
 	});
 
+	/**
+	 * Get the current authenticated user.
+	 *
+	 * Alias for `alepha.state.get("user")`
+	 */
 	public get user(): UserAccountToken | undefined {
 		return this.alepha.state.get("user");
 	}

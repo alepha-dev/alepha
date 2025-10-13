@@ -11,7 +11,9 @@ export class TestApp {
 
 const BUCKET_NAME = TEST_IMAGES_BUCKET;
 
-export const testUploadAndExistence = async (provider: FileStorageProvider) => {
+export const testUploadAndExistence = async (
+	provider: FileStorageProvider,
+): Promise<string> => {
 	const content = "This is a test image.";
 	const file = createFile(content, { name: "test.jpg", type: "image/jpeg" });
 
@@ -23,11 +25,13 @@ export const testUploadAndExistence = async (provider: FileStorageProvider) => {
 	// Verify the file physically exists
 	const fileExists = await provider.exists(BUCKET_NAME, fileId);
 	expect(fileExists).toBe(true);
+
+	return fileId;
 };
 
 export const testDownloadAndMetadata = async (
 	provider: FileStorageProvider,
-) => {
+): Promise<string> => {
 	const content = "<h1>Hello Alepha</h1>";
 	const originalFile = createFile(content, {
 		name: "index.html",
@@ -45,13 +49,18 @@ export const testDownloadAndMetadata = async (
 	// Check content
 	const downloadedContent = await downloadedFile.text();
 	expect(downloadedContent).toBe(content);
+
+	return fileId;
 };
 
-export const testFileExistence = async (provider: FileStorageProvider) => {
+export const testFileExistence = async (
+	provider: FileStorageProvider,
+): Promise<string> => {
 	const file = createFile("exists", { name: "exists.txt" });
 	const fileId = await provider.upload(BUCKET_NAME, file);
 	const fileExists = await provider.exists(BUCKET_NAME, fileId);
 	expect(fileExists).toBe(true);
+	return fileId;
 };
 
 export const testNonExistentFile = async (provider: FileStorageProvider) => {
@@ -92,7 +101,9 @@ export const testNonExistentFileError = async (
 	).rejects.toThrow(FileNotFoundError);
 };
 
-export const testUploadIntoBuckets = async (provider: FileStorageProvider) => {
+export const testUploadIntoBuckets = async (
+	provider: FileStorageProvider,
+): Promise<{ docId: string; imgId: string }> => {
 	const docFile = createFile("report", { name: "report.pdf" });
 	const imgFile = createFile("logo", { name: "logo.png" });
 
@@ -105,9 +116,13 @@ export const testUploadIntoBuckets = async (provider: FileStorageProvider) => {
 	// Ensure files are in separate directories and not mixed up
 	expect(await provider.exists(TEST_DOCUMENTS_BUCKET, imgId)).toBe(false);
 	expect(await provider.exists(TEST_IMAGES_BUCKET, docId)).toBe(false);
+
+	return { docId, imgId };
 };
 
-export const testFileStream = async (provider: FileStorageProvider) => {
+export const testFileStream = async (
+	provider: FileStorageProvider,
+): Promise<string> => {
 	const content = "Streaming content test.";
 	const file = createFile(content, { name: "stream.txt", type: "text/plain" });
 
@@ -119,6 +134,8 @@ export const testFileStream = async (provider: FileStorageProvider) => {
 
 	const streamContent = await stream.text();
 	expect(streamContent).toBe(content);
+
+	return fileId;
 };
 
 export const testEmptyFiles = async (provider: FileStorageProvider) => {

@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 import {
 	$bucket,
+	FileMetadataService,
 	FileNotFoundError,
 	type FileStorageProvider,
 } from "@alepha/bucket";
@@ -39,6 +41,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 	protected readonly time = $inject(DateTimeProvider);
 	protected readonly stores: Set<string> = new Set();
 	protected readonly vercelBlobApi = $inject(VercelBlobApi);
+	protected readonly metadataService = $inject(FileMetadataService);
 
 	protected readonly onStart = $hook({
 		on: "start",
@@ -66,14 +69,16 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		return name.replaceAll("/", "-").toLowerCase();
 	}
 
+	protected createId(): string {
+		return randomUUID();
+	}
+
 	public async upload(
 		bucketName: string,
 		file: FileLike,
 		fileId?: string,
 	): Promise<string> {
-		// force file id as filename for Vercel because we can't store filename as metadata
-		// it's bad, but we have no choice for now
-		fileId = file.name;
+		fileId ??= this.createId();
 
 		this.log.trace(
 			`Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
@@ -83,12 +88,20 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 		const pathname = `${storeName}/${fileId}`;
 
 		try {
+			// Create a buffer with metadata and content
+			const contentBuffer = Buffer.from(await file.arrayBuffer());
+			const fileBuffer = this.metadataService.createFileBuffer(
+				file,
+				contentBuffer,
+			);
+
+			// Upload the complete buffer (metadata + content) to Vercel Blob
 			const result = await this.vercelBlobApi.put(
 				pathname,
-				file.stream() as Readable,
+				fileBuffer as unknown as Readable,
 				{
 					access: "public",
-					contentType: file.type,
+					contentType: "application/octet-stream",
 					token: this.env.BLOB_READ_WRITE_TOKEN,
 					allowOverwrite: true,
 				},
@@ -128,7 +141,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 				);
 			}
 
-			// fetch the actual file content
+			// fetch the actual file content (with metadata)
 			const response = await fetch(headResult.url);
 
 			if (!response.ok) {
@@ -137,18 +150,23 @@ export class VercelFileStorageProvider implements FileStorageProvider {
 				);
 			}
 
-			const stream = response.body;
-			if (!stream) {
+			const arrayBuffer = await response.arrayBuffer();
+			if (!arrayBuffer) {
 				throw new FileNotFoundError("File not found - empty response body");
 			}
 
-			const originalType =
-				response.headers.get("Content-Type") || "application/octet-stream";
+			// Decode metadata from the buffer
+			const buffer = Buffer.from(arrayBuffer);
+			const { metadata, contentStart } =
+				this.metadataService.decodeMetadataFromBuffer(buffer);
 
-			return createFile(stream, {
-				name: fileId,
-				type: originalType,
-				size: headResult.size,
+			// Extract the actual content
+			const content = buffer.subarray(contentStart);
+
+			return createFile(content, {
+				name: metadata.name,
+				type: metadata.type,
+				size: content.length,
 			});
 		} catch (error) {
 			if (error instanceof FileNotFoundError) {
