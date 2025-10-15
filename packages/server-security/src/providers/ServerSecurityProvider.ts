@@ -48,7 +48,8 @@ export class ServerSecurityProvider {
 		on: "action:onRequest",
 		handler: async ({ action, request, options }) => {
 			// if you set explicitly secure: false, we assume you don't want any security check
-			if (action.options.secure === false) {
+			// but only if no user is provided in options
+			if (action.options.secure === false && !options.user) {
 				this.log.trace("Skipping security check for route");
 				return;
 			}
