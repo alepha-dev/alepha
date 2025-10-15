@@ -102,9 +102,14 @@ export class ReactAuth {
 					? window.location.origin + browser.transitioning.to
 					: window.location.href);
 
-			throw new Redirection(
-				`${window.location.origin}${ReactAuth.path.login}?provider=${provider}&redirect_uri=${redirect}`,
-			);
+			const href = `${window.location.origin}${ReactAuth.path.login}?provider=${provider}&redirect_uri=${encodeURIComponent(redirect)}`;
+
+			if (browser.transitioning) {
+				throw new Redirection(href);
+			} else {
+				window.location.href = href;
+				return {} as Tokens;
+			}
 		}
 
 		throw new Redirection(
