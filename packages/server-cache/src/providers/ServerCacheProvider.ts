@@ -226,7 +226,6 @@ export class ServerCacheProvider {
 			// -> this is only relevant for etag-only routes, not cached routes <-
 			if (!route.cache && route.etag && request.reply.body != null) {
 				const generatedEtag = this.generateETag(request.reply.body);
-				const lastModified = this.time.toISOString();
 
 				if (request.headers["if-none-match"] === generatedEtag) {
 					request.reply.status = 304;
