@@ -53,7 +53,6 @@ import type {
 	SelectedFields,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
-import postgres from "postgres";
 import {
 	PG_DELETED_AT,
 	PG_PRIMARY_KEY,
@@ -65,6 +64,7 @@ import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
+import { aggregateRowsByRelation, withJoins } from "../helpers/relations.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { PgQuery } from "../interfaces/PgQuery.ts";
@@ -80,10 +80,6 @@ import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
-
-import value = postgres.toPascal.value;
-
-import { aggregateRowsByRelation, withJoins } from "../helpers/relations.ts";
 
 /**
  * Creates a repository descriptor for database operations on a defined entity.
