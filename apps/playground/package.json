@@ -9,6 +9,6 @@
 	"dependencies": {
 		"alepha": "0.10.5",
 		"drizzle-kit": "^0.31.5",
-		"vite": "^7.1.9"
+		"vite": "^7.1.10"
 	}
 }
