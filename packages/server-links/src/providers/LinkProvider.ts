@@ -14,6 +14,7 @@ import {
 	type ServerRequestConfigEntry,
 	UnauthorizedError,
 } from "@alepha/server";
+import type { ServerRouteSecure } from "@alepha/server-security";
 import {
 	type ApiLink,
 	type ApiLinksResponse,
@@ -289,7 +290,7 @@ export class LinkProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface HttpClientLink extends ApiLink {
-	secured?: boolean;
+	secured?: boolean | ServerRouteSecure;
 	prefix?: string;
 	// -- server only --
 	// only for remote actions

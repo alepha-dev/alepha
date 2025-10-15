@@ -48,7 +48,7 @@ export class ServerLinksProvider {
 					group: action.group,
 					schema: action.options.schema,
 					requestBodyType: action.getBodyContentType(),
-					secured: action.options.secure !== false,
+					secured: action.options.secure ?? true,
 					method: action.method === "GET" ? undefined : action.method,
 					prefix: action.prefix,
 					path: action.path,
@@ -176,8 +176,14 @@ export class ServerLinksProvider {
 					continue;
 				}
 
-				// small permissions check, can be optimized later ... :')
-				if (permissions) {
+				if (typeof link.secured === "object" && link.secured.realm) {
+					// realm check
+					if (user.realm !== link.secured.realm) {
+						continue;
+					}
+				} else if (permissions) {
+					// small permissions check, can be optimized later ... :')
+
 					if (
 						!permissions.some(
 							(permission) =>
