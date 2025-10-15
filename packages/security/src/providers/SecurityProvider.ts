@@ -361,9 +361,6 @@ export class SecurityProvider {
 
 	/**
 	 * Creates a user account from the provided payload.
-	 *
-	 * @param headerOrToken
-	 * @param permissionLike
 	 */
 	public async createUserFromToken(
 		headerOrToken?: string,

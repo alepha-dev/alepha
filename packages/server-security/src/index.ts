@@ -8,7 +8,10 @@ import {
 	type UserAccountToken,
 } from "@alepha/security";
 import { AlephaServer, type FetchOptions } from "@alepha/server";
-import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
+import {
+	type ServerRouteSecure,
+	ServerSecurityProvider,
+} from "./providers/ServerSecurityProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -43,7 +46,7 @@ declare module "@alepha/server" {
 		 * If true, the route will be protected by the security provider.
 		 * All actions are secure by default, but you can disable it for specific actions.
 		 */
-		secure?: boolean;
+		secure?: boolean | ServerRouteSecure;
 	}
 
 	interface ClientRequestOptions extends FetchOptions {

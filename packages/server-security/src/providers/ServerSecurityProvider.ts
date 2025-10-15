@@ -32,12 +32,15 @@ export class ServerSecurityProvider {
 					continue;
 				}
 
-				this.securityProvider.createPermission({
-					name: action.name,
-					group: action.group,
-					method: action.route.method,
-					path: action.route.path,
-				});
+				const secure = action.options.secure;
+				if (typeof secure !== "object") {
+					this.securityProvider.createPermission({
+						name: action.name,
+						group: action.group,
+						method: action.route.method,
+						path: action.route.path,
+					});
+				}
 			}
 		},
 	});
@@ -66,6 +69,12 @@ export class ServerSecurityProvider {
 					options,
 					permission,
 				);
+
+				const route = action.route;
+				if (typeof route.secure === "object") {
+					this.check(request.user, route.secure);
+				}
+
 				this.alepha.state.set(
 					"user",
 					this.alepha.parse(userAccountInfoSchema, request.user),
@@ -103,6 +112,10 @@ export class ServerSecurityProvider {
 					{ permission },
 				);
 
+				if (typeof route.secure === "object") {
+					this.check(request.user, route.secure);
+				}
+
 				this.alepha.state.set(
 					"user",
 					// remove sensitive info
@@ -128,6 +141,16 @@ export class ServerSecurityProvider {
 	});
 
 	// -------------------------------------------------------------------------------------------------------------------
+
+	protected check(user: UserAccountToken, secure: ServerRouteSecure) {
+		if (secure.realm) {
+			if (user.realm !== secure.realm) {
+				throw new ForbiddenError(
+					`User must belong to realm '${secure.realm}' to access this route`,
+				);
+			}
+		}
+	}
 
 	/**
 	 * Get the user account token for a local action call.
@@ -231,26 +254,20 @@ export class ServerSecurityProvider {
 				const sub = user?.id ?? test.id;
 				const roles = user?.roles ?? test.roles;
 
-				request.headers.set(
-					"authorization",
-					`Bearer ${await this.jwtProvider.create(
-						{
-							sub,
-							roles,
-						},
-						this.securityProvider.getRealms()[0]?.name,
-					)}`,
+				const token = await this.jwtProvider.create(
+					{
+						sub,
+						roles,
+					},
+					user?.realm ?? this.securityProvider.getRealms()[0]?.name,
 				);
+
+				request.headers.set("authorization", `Bearer ${token}`);
 			}
 		},
 	});
 }
 
-export type ServerRouteSecure =
-	| boolean
-	| {
-			permissions?: string[];
-			roles?: string[];
-			realms?: string[];
-			organizations?: string[];
-	  };
+export type ServerRouteSecure = {
+	realm?: string;
+};
