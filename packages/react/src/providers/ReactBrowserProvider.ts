@@ -184,7 +184,14 @@ export class ReactBrowserProvider {
 			this.log.info("Redirecting to", {
 				redirect,
 			});
-			return await this.render({ url: redirect });
+
+			// if redirect is an absolute URL, use window.location.href (full page reload)
+			if (redirect.startsWith("http")) {
+				window.location.href = redirect;
+			} else {
+				// if redirect is a relative URL, use render() (single page app)
+				return await this.render({ url: redirect });
+			}
 		}
 
 		const ms = this.dateTimeProvider.now().diff(start);

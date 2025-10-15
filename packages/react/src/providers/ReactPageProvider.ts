@@ -217,12 +217,9 @@ export class ReactPageProvider {
 			}
 
 			try {
-				const props =
-					(await route.resolve?.({
-						...state, // request
-						...config, // params, query
-						...context, // previous props
-					} as any)) ?? {};
+				const args = Object.create(state);
+				Object.assign(args, config, context);
+				const props = (await route.resolve?.(args)) ?? {};
 
 				// save props
 				it.props = {

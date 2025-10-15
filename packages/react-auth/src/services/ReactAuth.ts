@@ -27,8 +27,10 @@ export class ReactAuth {
 	protected readonly onBeginTransition = $hook({
 		on: "react:transition:begin",
 		handler: async (event) => {
-			if (this.alepha.isBrowser() && this.user) {
-				event.state.user = this.user;
+			if (this.alepha.isBrowser()) {
+				Object.defineProperty(event.state, "user", {
+					get: () => this.user,
+				});
 			}
 		},
 	});
@@ -100,9 +102,9 @@ export class ReactAuth {
 					? window.location.origin + browser.transitioning.to
 					: window.location.href);
 
-			window.location.href = `${ReactAuth.path.login}?provider=${provider}&redirect_uri=${redirect}`;
-
-			return {} as Tokens;
+			throw new Redirection(
+				`${window.location.origin}${ReactAuth.path.login}?provider=${provider}&redirect_uri=${redirect}`,
+			);
 		}
 
 		throw new Redirection(
