@@ -7,6 +7,7 @@ export const bigEntity = $entity({
 	schema: t.object({
 		id: pg.primaryKey(t.bigint()),
 		type: t.enum(["big_entity"]),
+		date: t.date(),
 		a: t.text(),
 		b: t.number(),
 		c: t.int(),

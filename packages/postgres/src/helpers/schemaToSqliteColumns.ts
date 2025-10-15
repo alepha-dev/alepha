@@ -103,7 +103,7 @@ export const mapFieldToSqliteColumn = (name: string, value: TSchema) => {
 	}
 
 	if (t.schema.isDate(value)) {
-		return pg.integer(key, { mode: "timestamp" });
+		return sqliteDate(key, {});
 	}
 
 	if (t.schema.isString(value)) {

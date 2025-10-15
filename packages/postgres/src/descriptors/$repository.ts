@@ -1209,7 +1209,7 @@ export class RepositoryDescriptor<
 						.toISOString();
 				} else if (t.schema.isDate(value)) {
 					(entity as any)[key] = this.dateTimeProvider
-						.of(entity[key])
+						.of(`${entity[key]}T00:00:00Z`)
 						.toISOString()
 						.split("T")[0];
 				}

@@ -123,7 +123,7 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
 	}
 
 	if (t.schema.isDate(value)) {
-		return pg.timestamp(key);
+		return pg.date(key, { mode: "string" });
 	}
 
 	if (t.schema.isString(value)) {
