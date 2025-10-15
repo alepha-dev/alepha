@@ -157,11 +157,6 @@ export class ServerCacheProvider {
 			// Set ETag headers
 			request.reply.setHeader("etag", generatedEtag);
 			request.reply.setHeader("last-modified", lastModified);
-
-			// For etag-only routes (without cache), prevent client-side caching
-			if (etag && !cache) {
-				request.reply.setHeader("cache-control", "no-store");
-			}
 		},
 	});
 
@@ -223,6 +218,30 @@ export class ServerCacheProvider {
 		},
 	});
 
+	protected readonly onSend = $hook({
+		on: "server:onSend",
+		handler: async ({ route, request }) => {
+			// before sending the response, check if the ETag matches
+			// and if so, return a 304 Not Modified response
+			// -> this is only relevant for etag-only routes, not cached routes <-
+			if (!route.cache && route.etag && request.reply.body != null) {
+				const generatedEtag = this.generateETag(request.reply.body);
+				const lastModified = this.time.toISOString();
+
+				if (request.headers["if-none-match"] === generatedEtag) {
+					request.reply.status = 304;
+					request.reply.body = undefined;
+					request.reply.setHeader("etag", generatedEtag);
+					this.log.trace("ETag match on send, returning 304", {
+						route: route.path,
+						etag: generatedEtag,
+					});
+					return;
+				}
+			}
+		},
+	});
+
 	protected readonly onResponse = $hook({
 		on: "server:onResponse",
 		priority: "first",
@@ -256,22 +275,19 @@ export class ServerCacheProvider {
 				etag: !!etag,
 			});
 
-			await this.cache.set(key, {
-				body: response.body,
-				status: response.status,
-				contentType: response.headers?.["content-type"],
-				lastModified,
-				hash: generatedEtag,
-			});
+			if (cache) {
+				await this.cache.set(key, {
+					body: response.body,
+					status: response.status,
+					contentType: response.headers?.["content-type"],
+					lastModified,
+					hash: generatedEtag,
+				});
+			}
 
 			// Set ETag headers
 			response.headers.etag = generatedEtag;
 			response.headers["last-modified"] = lastModified;
-
-			// For etag-only routes (without cache), prevent client-side caching
-			if (etag && !cache) {
-				response.headers["cache-control"] = "no-store";
-			}
 		},
 	});
 

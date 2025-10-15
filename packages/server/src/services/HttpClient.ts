@@ -136,19 +136,18 @@ export class HttpClient {
 				};
 
 				if (request.method === "GET") {
-					const etag = response.headers.get("etag") ?? undefined;
-					const cacheControl = response.headers.get("cache-control");
-
-					// Don't cache if server says no-store
-					const shouldCache =
-						cacheControl !== "no-store" && (options.cache != null || etag);
-
-					if (shouldCache) {
+					if (options.cache) {
 						await this.cache.set(
 							url,
-							{ data: fetchResponse.data, etag },
+							{ data: fetchResponse.data },
 							typeof options.cache === "boolean" ? undefined : options.cache,
 						);
+					} else if (!this.alepha.isBrowser()) {
+						// only cache etag on server, browser can handle etag itself
+						const etag = response.headers.get("etag") ?? undefined;
+						if (etag) {
+							await this.cache.set(url, { data: fetchResponse.data, etag });
+						}
 					}
 				}
 

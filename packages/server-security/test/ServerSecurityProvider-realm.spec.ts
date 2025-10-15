@@ -212,7 +212,9 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 		// so a user without a realm will succeed if the first realm matches the required realm.
 		// This is expected test helper behavior for convenience.
 		expect(
-			await app.actionA.fetch({}, { user: userWithoutRealm }).then((it) => it.data),
+			await app.actionA
+				.fetch({}, { user: userWithoutRealm })
+				.then((it) => it.data),
 		).toBe("REALM_A");
 	});
 
