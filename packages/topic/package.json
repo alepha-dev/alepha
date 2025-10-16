@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/topic",
 	"description": "A publish-subscribe (pub/sub) messaging interface for eventing.",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -10,9 +10,9 @@
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"dependencies": {
-		"@alepha/core": "0.10.5",
-		"@alepha/datetime": "0.10.5",
-		"@alepha/logger": "0.10.5"
+		"@alepha/core": "0.10.6",
+		"@alepha/datetime": "0.10.6",
+		"@alepha/logger": "0.10.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

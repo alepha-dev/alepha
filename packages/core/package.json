@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/core",
 	"description": "The essential dependency injection and application lifecycle engine.",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"

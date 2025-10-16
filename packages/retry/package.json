@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/retry",
 	"description": "Simple, declarative, and powerful automatic retry for failed operations.",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -11,8 +11,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.5",
-		"@alepha/datetime": "0.10.5"
+		"@alepha/core": "0.10.6",
+		"@alepha/datetime": "0.10.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

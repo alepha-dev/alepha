@@ -6,7 +6,7 @@
 		"mantine"
 	],
 	"author": "Feunard",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -19,9 +19,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.5",
-		"@alepha/react": "0.10.5",
-		"@alepha/react-form": "0.10.5",
+		"@alepha/core": "0.10.6",
+		"@alepha/react": "0.10.6",
+		"@alepha/react-form": "0.10.6",
 		"@mantine/core": "^8.3.5",
 		"@mantine/hooks": "^8.3.5",
 		"@mantine/modals": "^8.3.5",

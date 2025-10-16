@@ -10,7 +10,7 @@
 		"blob"
 	],
 	"author": "Feunard",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -23,11 +23,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.10.5",
-		"@alepha/core": "0.10.5",
-		"@alepha/datetime": "0.10.5",
-		"@alepha/file": "0.10.5",
-		"@alepha/logger": "0.10.5",
+		"@alepha/bucket": "0.10.6",
+		"@alepha/core": "0.10.6",
+		"@alepha/datetime": "0.10.6",
+		"@alepha/file": "0.10.6",
+		"@alepha/logger": "0.10.6",
 		"@vercel/blob": "^2.0.0"
 	},
 	"devDependencies": {

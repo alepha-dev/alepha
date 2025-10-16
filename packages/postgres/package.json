@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/postgres",
 	"description": "A type-safe SQL query builder and ORM using Drizzle.",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -16,11 +16,11 @@
 		"libs"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.5",
-		"@alepha/datetime": "0.10.5",
-		"@alepha/lock": "0.10.5",
-		"@alepha/logger": "0.10.5",
-		"@alepha/retry": "0.10.5",
+		"@alepha/core": "0.10.6",
+		"@alepha/datetime": "0.10.6",
+		"@alepha/lock": "0.10.6",
+		"@alepha/logger": "0.10.6",
+		"@alepha/retry": "0.10.6",
 		"drizzle-orm": "^0.44.6",
 		"postgres": "^3.4.7"
 	},

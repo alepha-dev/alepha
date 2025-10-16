@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-compress",
 	"description": "Gzip and Brotli compression for server responses.",
-	"version": "0.10.5",
+	"version": "0.10.6",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,8 +14,8 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.5",
-		"@alepha/server": "0.10.5"
+		"@alepha/core": "0.10.6",
+		"@alepha/server": "0.10.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",
