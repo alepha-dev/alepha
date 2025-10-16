@@ -46,6 +46,34 @@ class TestApp {
 		handler: () => `dynamic-${Date.now()}`,
 	});
 
+	errorAction = $action({
+		cache: true,
+		handler: ({ reply }) => {
+			reply.status = 500;
+			return `error-${this.counter++}`;
+		},
+	});
+
+	notFoundAction = $action({
+		cache: true,
+		handler: ({ reply }) => {
+			reply.status = 404;
+			return `not-found-${this.counter++}`;
+		},
+	});
+
+	conditionalErrorAction = $action({
+		cache: true,
+		handler: ({ reply }) => {
+			if (this.counter === 0) {
+				reply.status = 500;
+				this.counter++;
+				return "error-0";
+			}
+			return `success-${this.counter++}`;
+		},
+	});
+
 	reset() {
 		this.counter = this.resetCounter++;
 	}
@@ -496,6 +524,81 @@ describe("ServerCacheProvider", () => {
 
 			// Different actions should have different ETags
 			expect(etag1).not.toBe(etag2);
+		});
+	});
+
+	describe("Error response caching", () => {
+		test("should NOT cache 500 error responses", async ({ expect }) => {
+			const response1 = await app.errorAction.fetch();
+			expect(response1.status).toBe(500);
+			expect(response1.data).toBe("error-0");
+
+			// Second request should execute handler again (not cached)
+			const response2 = await app.errorAction.fetch();
+			expect(response2.status).toBe(500);
+			expect(response2.data).toBe("error-1");
+
+			// Verify counter incremented (handler was called)
+			expect(response1.data).not.toBe(response2.data);
+		});
+
+		test("should NOT cache 404 error responses", async ({ expect }) => {
+			const response1 = await app.notFoundAction.fetch();
+			expect(response1.status).toBe(404);
+			expect(response1.data).toBe("not-found-0");
+
+			// Second request should execute handler again (not cached)
+			const response2 = await app.notFoundAction.fetch();
+			expect(response2.status).toBe(404);
+			expect(response2.data).toBe("not-found-1");
+
+			// Verify counter incremented (handler was called)
+			expect(response1.data).not.toBe(response2.data);
+		});
+
+		test("should cache successful responses after error responses", async ({
+			expect,
+		}) => {
+			// First request returns 500 error
+			const errorResponse = await app.conditionalErrorAction.fetch();
+			expect(errorResponse.status).toBe(500);
+			expect(errorResponse.data).toBe("error-0");
+
+			// Second request returns success and should be cached
+			const successResponse1 = await app.conditionalErrorAction.fetch();
+			expect(successResponse1.status).toBe(200);
+			expect(successResponse1.data).toBe("success-1");
+
+			// Third request should return cached response
+			const successResponse2 = await app.conditionalErrorAction.fetch();
+			expect(successResponse2.status).toBe(304);
+			expect(successResponse2.data).toBe("success-1");
+		});
+
+		test("should NOT cache 4xx client errors", async ({ expect }) => {
+			// Test with 400 Bad Request
+			const alepha = Alepha.create();
+			const badRequestAction = alepha.inject(
+				class TestBadRequest {
+					action = $action({
+						cache: true,
+						handler: ({ reply }) => {
+							reply.status = 400;
+							return `bad-request-${app.counter++}`;
+						},
+					});
+				},
+			).action;
+			await alepha.start();
+
+			const response1 = await badRequestAction.fetch();
+			expect(response1.status).toBe(400);
+
+			const response2 = await badRequestAction.fetch();
+			expect(response2.status).toBe(400);
+
+			// Verify responses are different (not cached)
+			expect(response1.data).not.toBe(response2.data);
 		});
 	});
 });

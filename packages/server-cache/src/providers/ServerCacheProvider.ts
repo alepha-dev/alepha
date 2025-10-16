@@ -127,6 +127,11 @@ export class ServerCacheProvider {
 				return;
 			}
 
+			// Don't cache error responses (status >= 400)
+			if (request.reply.status && request.reply.status >= 400) {
+				return;
+			}
+
 			// TODO: serialize the response body, exactly like in the server response hook
 			// this is bad
 			const contentType =
@@ -256,6 +261,11 @@ export class ServerCacheProvider {
 			// Only process string responses (text, html, json, etc.)
 			// Buffer is not supported by @alepha/cache for now
 			if (typeof response.body !== "string") {
+				return;
+			}
+
+			// Don't cache error responses (status >= 400)
+			if (response.status && response.status >= 400) {
 				return;
 			}
 
