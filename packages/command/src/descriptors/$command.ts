@@ -103,7 +103,7 @@ export interface CommandHandlerArgs<
 	A extends TSchema = TSchema,
 > {
 	flags: Static<T>;
-	args: A extends TSchema ? Static<A> : undefined;
+	args: A extends TSchema ? Static<A> : Array<string>;
 	run: RunnerMethod;
 	ask: AskMethod;
 	glob: typeof glob;

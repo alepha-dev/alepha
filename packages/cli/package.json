@@ -14,7 +14,7 @@
 		"assets"
 	],
 	"bin": {
-		"alepha": "./dist/index.cjs"
+		"alepha": "./dist/index.js"
 	},
 	"devDependencies": {
 		"@alepha/command": "^0.10.5",

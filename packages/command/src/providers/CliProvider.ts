@@ -105,9 +105,7 @@ export class CliProvider {
 					glob,
 				};
 
-				await command.options.handler(
-					args as CommandHandlerArgs<TObject, TSchema>,
-				);
+				await command.options.handler(args as CommandHandlerArgs<TObject>);
 
 				if (command.options.summary !== false) {
 					runner.summary();
