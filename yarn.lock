@@ -209,7 +209,7 @@ __metadata:
     tsdown: "npm:^0.15.7"
     typescript: "npm:^5.9.3"
   bin:
-    alepha: ./dist/index.cjs
+    alepha: ./dist/index.js
   languageName: unknown
   linkType: soft
 
