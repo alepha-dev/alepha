@@ -48,8 +48,10 @@ export class JobService {
 		handler: async ({ name, error, context }) => {
 			const logs = this.logs.get(context) || [];
 			const exec = await this.executionRepository.findOne({
-				job: name,
-				status: "STARTED",
+				where: {
+					job: name,
+					status: "STARTED",
+				},
 			});
 
 			exec.status = "FAILED";
@@ -66,8 +68,10 @@ export class JobService {
 		handler: async ({ name, context }) => {
 			const logs = this.logs.get(context) || [];
 			const exec = await this.executionRepository.findOne({
-				job: name,
-				status: "STARTED",
+				where: {
+					job: name,
+					status: "STARTED",
+				},
 			});
 
 			exec.status = "COMPLETED";

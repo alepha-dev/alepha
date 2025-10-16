@@ -19,8 +19,10 @@ export class SessionService {
 
 	public async login(provider: string, username: string, password: string) {
 		const identity = await this.identities.findOne({
-			provider: { eq: provider },
-			providerUserId: { eq: username },
+			where: {
+				provider: { eq: provider },
+				providerUserId: { eq: username },
+			},
 		});
 
 		const valid = await this.cryptoProvider.verifyPassword(
@@ -33,7 +35,9 @@ export class SessionService {
 		}
 
 		return await this.users.findOne({
-			id: { eq: identity.userId },
+			where: {
+				id: { eq: identity.userId },
+			},
 		});
 	}
 
@@ -62,7 +66,9 @@ export class SessionService {
 
 	public async refreshSession(refreshToken: string) {
 		const session = await this.sessions.findOne({
-			refreshToken: { eq: refreshToken },
+			where: {
+				refreshToken: { eq: refreshToken },
+			},
 		});
 
 		const now = this.dateTimeProvider.now();
@@ -74,7 +80,9 @@ export class SessionService {
 		}
 
 		const user = await this.users.findOne({
-			id: { eq: session.userId },
+			where: {
+				id: { eq: session.userId },
+			},
 		});
 
 		return {
@@ -93,14 +101,18 @@ export class SessionService {
 	public async link(provider: string, profile: OAuth2Profile) {
 		const identity = await this.identities
 			.findOne({
-				provider,
-				providerUserId: profile.sub,
+				where: {
+					provider,
+					providerUserId: profile.sub,
+				},
 			})
 			.catch(() => undefined);
 
 		if (identity) {
 			return this.users.findOne({
-				id: identity.userId,
+				where: {
+					id: identity.userId,
+				},
 			});
 		}
 
@@ -113,7 +125,9 @@ export class SessionService {
 
 		const existing = await this.users
 			.findOne({
-				email: profile.email,
+				where: {
+					email: profile.email,
+				},
 			})
 			.catch(() => undefined);
 

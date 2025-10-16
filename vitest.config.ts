@@ -1,22 +1,11 @@
 import { defineConfig } from "vitest/config";
 import { existsSync, readFileSync } from "node:fs";
 
-let env: Record<string, string> = {};
-
-// if .env, read and load to var "env"
-if (existsSync(".env")) {
-	env = readFileSync(".env", "utf-8")
-		.split("\n")
-		.map(e => e.trim().split("="))
-		.filter(e => e.length === 2)
-		.reduce((acc, cur) => {
-			acc[cur[0].trim()] = cur[1].trim();
-			return acc;
-		}, {} as Record<string, string>);
-}
+const env = loadEnv();
 
 export default defineConfig({
 	test: {
+		pool: "forks",
 		globals: true,
 		coverage: {
 			include: [
@@ -69,3 +58,19 @@ export default defineConfig({
 		]
 	},
 });
+
+function loadEnv(): Record<string, string> {
+	// if .env, read and load to var "env"
+	if (existsSync(".env")) {
+		return  readFileSync(".env", "utf-8")
+			.split("\n")
+			.map(e => e.trim().split("="))
+			.filter(e => e.length === 2)
+			.reduce((acc, cur) => {
+				acc[cur[0].trim()] = cur[1].trim();
+				return acc;
+			}, {} as Record<string, string>);
+	}
+
+	return {}
+}

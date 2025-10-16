@@ -34,7 +34,9 @@ test("sqlite", async () => {
 	});
 
 	const user = await repository.findOne({
-		name: { eq: "John Doe" },
+		where: {
+			name: { eq: "John Doe" },
+		},
 	});
 
 	expect(user).toStrictEqual({

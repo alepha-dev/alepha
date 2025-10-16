@@ -1,6 +1,5 @@
 import type { Static, TObject } from "@alepha/core";
-import type { SQLWrapper } from "drizzle-orm";
-import type { PgQueryWhereWithMany, PgQueryWithMap } from "./PgQueryWhere.ts";
+import type { PgQueryWhere } from "./PgQueryWhere.ts";
 
 /**
  * Order direction for sorting
@@ -23,12 +22,14 @@ export interface OrderByClause<T> {
  */
 export type OrderBy<T> = keyof T | OrderByClause<T> | Array<OrderByClause<T>>;
 
+/**
+ * Generic query interface for PostgreSQL entities
+ */
 export interface PgQuery<T extends TObject = TObject> {
 	distinct?: boolean;
-	where?: PgQueryWhereWithMany<T> | SQLWrapper;
+	where?: PgQueryWhere<T>;
 	limit?: number;
 	offset?: number;
 	orderBy?: OrderBy<Static<T>>;
 	groupBy?: (keyof Static<T>)[];
-	relations?: PgQueryWithMap<T>;
 }

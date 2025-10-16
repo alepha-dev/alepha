@@ -64,7 +64,6 @@ import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
-import { aggregateRowsByRelation, withJoins } from "../helpers/relations.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { PgQuery } from "../interfaces/PgQuery.ts";
@@ -381,13 +380,14 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Start a SELECT query on the table.
-	 *
-	 * @returns The SELECT query builder.
 	 */
 	protected select(opts: StatementOptions = {}) {
 		return (opts.tx ?? this.db).select().from(this.table as PgTable);
 	}
 
+	/**
+	 * Start a SELECT DISTINCT query on the table.
+	 */
 	protected selectDistinct(
 		opts: StatementOptions = {},
 		fields: SelectedFields,
@@ -399,8 +399,6 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Start an INSERT query on the table.
-	 *
-	 * @returns The INSERT query builder.
 	 */
 	protected insert(opts: StatementOptions = {}) {
 		return (opts.tx ?? this.db).insert(this.table);
@@ -408,8 +406,6 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Start an UPDATE query on the table.
-	 *
-	 * @returns The UPDATE query builder.
 	 */
 	protected update(opts: StatementOptions = {}) {
 		return (opts.tx ?? this.db).update(this.table);
@@ -417,8 +413,6 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Start a DELETE query on the table.
-	 *
-	 * @returns The DELETE query builder.
 	 */
 	protected delete(opts: StatementOptions = {}) {
 		return (opts.tx ?? this.db).delete(this.table);
@@ -427,11 +421,9 @@ export class RepositoryDescriptor<
 	// -------------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * Find entities.
+	 * Create a Drizzle `select` query based on a JSON query object.
 	 *
-	 * @param query The find query.
-	 * @param opts The statement options.
-	 * @returns The found entities.
+	 * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
 	 */
 	public async find(
 		query: PgQuery<EntitySchema> = {},
@@ -479,41 +471,22 @@ export class RepositoryDescriptor<
 			}
 		}
 
-		const pgManyFields = withJoins(
-			builder,
-			query as any,
-			this.schema,
-			this.id.col,
-		);
-
 		try {
-			let rows = await builder.execute();
-			rows = aggregateRowsByRelation(
-				rows,
-				pgManyFields,
-				query as any,
-				this.tableName,
-				this.id.key as string,
-			);
+			const rows = await builder.execute();
 			return rows.map((row) => this.clean(row));
 		} catch (error) {
-			console.log(error);
 			throw new PgError("Query select has failed", error as Error);
 		}
 	}
 
 	/**
 	 * Find a single entity.
-	 *
-	 * @param where The where clause.
-	 * @param opts The statement options.
-	 * @returns The found entity.
 	 */
-	public async findOne<T extends EntitySchema = EntitySchema>(
-		where: PgQueryWhereOrSQL<T>,
+	public async findOne(
+		query: Pick<PgQuery<EntitySchema>, "where">,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
-		const [entity] = await this.find({ where: where as any, limit: 1 }, opts);
+		const [entity] = await this.find({ limit: 1, ...query }, opts);
 
 		if (!entity) {
 			// TODO: enhance error message when finding by ID
@@ -525,16 +498,25 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Find an entity by ID.
+	 *
+	 * This is a convenience method for `findOne` with a where clause on the primary key.
+	 * If you need more complex queries, use `findOne` instead.
 	 */
 	public async findById(
 		id: string | number,
 		opts: StatementOptions = {},
 	): Promise<Static<EntitySchema>> {
-		return await this.findOne(this.getWhereId(id), opts);
+		const query = this.createQuery();
+		query.where = this.getWhereId(id);
+		return await this.findOne(query, opts);
 	}
 
 	/**
-	 * Paginate entities.
+	 * Find entities with pagination.
+	 *
+	 * It uses the same parameters as `find()`, but adds pagination metadata to the response.
+	 *
+	 * > Pagination CAN also do a count query to get the total number of elements.
 	 */
 	public async paginate(
 		pagination: PageQuery = {},
@@ -561,10 +543,10 @@ export class RepositoryDescriptor<
 		tasks.push(
 			this.find(
 				{
-					where: query.where,
 					offset,
 					limit: limit + 1,
 					orderBy,
+					...query,
 				},
 				opts,
 			).then((it) => {
@@ -597,18 +579,18 @@ export class RepositoryDescriptor<
 		return response;
 	}
 
-	public createQuery(query: PgQuery<EntitySchema> = {}): PgQuery<EntitySchema> {
-		return {
-			...query,
-		};
+	/**
+	 * Helper to create a type-safe query object.
+	 */
+	public createQuery(): PgQuery<EntitySchema> {
+		return {};
 	}
 
-	public createQueryWhere(
-		where: PgQueryWhere<EntitySchema> = {},
-	): PgQueryWhere<EntitySchema> {
-		return {
-			...where,
-		};
+	/**
+	 * Helper to create a type-safe where clause.
+	 */
+	public createQueryWhere(): PgQueryWhere<EntitySchema> {
+		return {};
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -731,9 +713,9 @@ export class RepositoryDescriptor<
 			}
 		}
 
-		let where = this.createQueryWhere({
-			id,
-		});
+		let where: any = this.createQueryWhere();
+
+		where.id = { eq: id };
 
 		const versionField = getAttrFields(this.schema, PG_VERSION)?.[0];
 		if (versionField && typeof set[versionField.key] === "number") {
@@ -1305,12 +1287,12 @@ export class RepositoryDescriptor<
 	 * @param id The ID to get the where clause for.
 	 * @returns The where clause for the ID.
 	 */
-	protected getWhereId(id: string | number): PgQueryWhereOrSQL<EntitySchema> {
+	protected getWhereId(id: string | number): PgQueryWhere<EntitySchema> {
 		return {
 			[this.id.key]: {
 				eq: t.schema.isString(this.id.type) ? String(id) : Number(id),
 			},
-		} as PgQueryWhereOrSQL<EntitySchema>;
+		} as PgQueryWhere<EntitySchema>;
 	}
 
 	/**
