@@ -297,7 +297,7 @@ type WithOptionalRelations<
 type WithLoadedRelations<
 	EntitySchema extends TObject,
 	Relations extends RepositoryRelations,
-	With extends WithConfig | undefined,
+	With extends WithConfig<Relations> | undefined,
 > = With extends Record<string, unknown>
 	? Static<EntitySchema> & {
 			[K in keyof Relations]?: K extends keyof With
@@ -498,7 +498,7 @@ export class RepositoryDescriptor<
 	 *
 	 * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
 	 */
-	public async find<With extends WithConfig | undefined = undefined>(
+	public async find<With extends WithConfig<Relations> | undefined = undefined>(
 		query: PgQuery<EntitySchema> & { with?: With } = {},
 		opts: StatementOptions = {},
 	): Promise<WithLoadedRelations<EntitySchema, Relations, With>[]> {
@@ -565,7 +565,9 @@ export class RepositoryDescriptor<
 	/**
 	 * Find a single entity.
 	 */
-	public async findOne<With extends WithConfig | undefined = undefined>(
+	public async findOne<
+		With extends WithConfig<Relations> | undefined = undefined,
+	>(
 		query: Pick<PgQuery<EntitySchema>, "where"> & { with?: With },
 		opts: StatementOptions = {},
 	): Promise<WithLoadedRelations<EntitySchema, Relations, With>> {
@@ -585,7 +587,9 @@ export class RepositoryDescriptor<
 	 * This is a convenience method for `findOne` with a where clause on the primary key.
 	 * If you need more complex queries, use `findOne` instead.
 	 */
-	public async findById<With extends WithConfig | undefined = undefined>(
+	public async findById<
+		With extends WithConfig<Relations> | undefined = undefined,
+	>(
 		id: string | number,
 		opts: StatementOptions & { with?: With } = {},
 	): Promise<WithLoadedRelations<EntitySchema, Relations, With>> {
@@ -603,7 +607,9 @@ export class RepositoryDescriptor<
 	 *
 	 * > Pagination CAN also do a count query to get the total number of elements.
 	 */
-	public async paginate<With extends WithConfig | undefined = undefined>(
+	public async paginate<
+		With extends WithConfig<Relations> | undefined = undefined,
+	>(
 		pagination: PageQuery = {},
 		query: PgQuery<EntitySchema> & { with?: With } = {},
 		opts: StatementOptions & { count?: boolean } = {},
@@ -1301,7 +1307,7 @@ export class RepositoryDescriptor<
 	 */
 	private async loadRelationsForEntities<TEntity extends Record<string, any>>(
 		entities: TEntity | TEntity[],
-		withConfig: WithConfig,
+		withConfig: WithConfig<Relations>,
 	): Promise<TEntity | TEntity[]> {
 		const context: RelationLoadContext = {
 			primaryKey: this.id.key as string,

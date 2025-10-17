@@ -11,10 +11,10 @@ export class RelationManager {
 	/**
 	 * Load relations for a single entity or multiple entities.
 	 */
-	async loadRelations(
+	async loadRelations<Relations extends RepositoryRelations>(
 		entities: any,
-		withConfig: WithConfig,
-		relations: RepositoryRelations,
+		withConfig: WithConfig<Relations>,
+		relations: Relations,
 		context: RelationLoadContext,
 	): Promise<any> {
 		const isArray = Array.isArray(entities);
@@ -241,22 +241,28 @@ export class RelationManager {
 
 /**
  * Configuration for loading relations in a query.
+ * This type provides type-safe relation loading options.
  */
-export type WithRelations = {
-	[relationName: string]:
+export type WithRelations<Relations extends RepositoryRelations = {}> = {
+	[K in keyof Relations]?:
 		| true
 		| {
-				where?: any;
+				where?: Relations[K] extends { from: { $schema: infer S } }
+					? S extends TObject
+						? PgQueryWhere<S>
+						: never
+					: never;
 				orderBy?: string | any;
 				limit?: number;
-				with?: any; // Nested relations
+				with?: any; // Nested relations (would need recursive typing)
 		  };
 };
 
 /**
  * Configuration for loading relations.
  */
-export type WithConfig = WithRelations;
+export type WithConfig<Relations extends RepositoryRelations = {}> =
+	WithRelations<Relations>;
 
 /**
  * Options for loading a single relation.
@@ -265,7 +271,7 @@ export interface RelationOptions {
 	where?: PgQueryWhere<TObject>;
 	orderBy?: string | any;
 	limit?: number;
-	with?: WithConfig; // Nested relations
+	with?: WithConfig<any>; // Nested relations
 }
 
 /**
@@ -287,7 +293,7 @@ export interface RelationLoadContext {
 			orderBy?: string | any;
 			limit?: number;
 		},
-		nestedWith?: WithConfig,
+		nestedWith?: WithConfig<any>,
 		relationRegistry?: RelationRegistry,
 	) => Promise<any[]>;
 
