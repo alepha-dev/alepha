@@ -1,5 +1,5 @@
 import type { Static, TObject } from "@alepha/core";
-import type { WithRelations } from "../helpers/RelationManager.ts";
+import type { WithRelations } from "../helpers/PgRelationManager.ts";
 import type { PgQueryWhere } from "./PgQueryWhere.ts";
 
 /**

@@ -2,8 +2,33 @@ import type { Static, TObject } from "@alepha/core";
 import type { SQLWrapper } from "drizzle-orm";
 import type { FilterOperators } from "./FilterOperators.ts";
 
+/**
+ * Recursively allow nested queries for JSONB object/array types
+ */
+type NestedJsonbQuery<T> = T extends object
+	? T extends Array<infer U>
+		? // For arrays, allow querying array element properties
+			U extends object
+			? {
+					[K in keyof U]?: FilterOperators<U[K]> | U[K];
+				}
+			: FilterOperators<U> | U
+		: // For objects, allow nested queries
+			{
+				[K in keyof T]?:
+					| FilterOperators<T[K]>
+					| T[K]
+					| (T[K] extends object ? NestedJsonbQuery<T[K]> : never);
+			}
+	: FilterOperators<T> | T;
+
 export type PgQueryWhere<T extends TObject> = {
-	[Key in keyof Static<T>]?: FilterOperators<Static<T>[Key]> | Static<T>[Key];
+	[Key in keyof Static<T>]?:
+		| FilterOperators<Static<T>[Key]>
+		| Static<T>[Key]
+		| (Static<T>[Key] extends object
+				? NestedJsonbQuery<Static<T>[Key]>
+				: never);
 } & {
 	/**
 	 * Combine a list of conditions with the `and` operator. Conditions

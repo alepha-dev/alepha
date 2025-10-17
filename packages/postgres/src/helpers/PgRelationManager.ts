@@ -7,7 +7,7 @@ import { getAttrFields } from "./pgAttr.ts";
  * Manages relation loading for repositories.
  * Handles one-to-one, one-to-many, and inverse (belongsTo) relations.
  */
-export class RelationManager {
+export class PgRelationManager {
 	/**
 	 * Load relations for a single entity or multiple entities.
 	 */

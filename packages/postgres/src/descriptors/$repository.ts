@@ -11,31 +11,9 @@ import {
 } from "@alepha/core";
 import { type DateTime, DateTimeProvider } from "@alepha/datetime";
 import {
-	and,
-	arrayContained,
-	arrayContains,
-	arrayOverlaps,
 	asc,
-	between,
 	desc,
-	eq,
 	getTableName,
-	gt,
-	gte,
-	ilike,
-	inArray,
-	isNotNull,
-	isNull,
-	like,
-	lt,
-	lte,
-	ne,
-	not,
-	notBetween,
-	notIlike,
-	notInArray,
-	notLike,
-	or,
 	type SQL,
 	type TableConfig,
 } from "drizzle-orm";
@@ -63,15 +41,15 @@ import { PgConflictError } from "../errors/PgConflictError.ts";
 import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
-import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
+import { PgQueryManager } from "../helpers/PgQueryManager.ts";
 import {
+	PgRelationManager,
 	type RelationLoadContext,
-	RelationManager,
 	type RepositoryRelations,
 	type WithConfig,
-} from "../helpers/RelationManager.ts";
+} from "../helpers/PgRelationManager.ts";
+import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
-import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { PgQuery } from "../interfaces/PgQuery.ts";
 import type {
 	PgQueryWhere,
@@ -323,7 +301,8 @@ export class RepositoryDescriptor<
 > extends Descriptor<
 	RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 > {
-	protected readonly relationManager = $inject(RelationManager);
+	protected readonly relationManager = $inject(PgRelationManager);
+	protected readonly queryManager = $inject(PgQueryManager);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly alepha = $inject(Alepha);
 
@@ -377,6 +356,17 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Execute a SQL query.
+	 *
+	 * This method allows executing raw SQL queries against the database.
+	 * This is by far the easiest way to run custom queries that are not covered by the repository's built-in methods!
+	 *
+	 * You must use the `sql` tagged template function from Drizzle ORM to create the query. https://orm.drizzle.team/docs/sql
+	 *
+	 * @example
+	 * ```ts
+	 * const users = $entity({ ... });
+	 * const result = await repository.query(sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`, users.$schema);
+	 * ```
 	 */
 	public async query<T extends TObject = EntitySchema>(
 		query:
@@ -401,6 +391,9 @@ export class RepositoryDescriptor<
 		return rows.map((it) => this.clean(this.mapRawFieldsToEntity(it), schema));
 	}
 
+	/**
+	 * Map raw database fields to entity fields. (handles column name differences)
+	 */
 	protected mapRawFieldsToEntity(row: any[]) {
 		const entity: any = {};
 		for (const key of Object.keys(row)) {
@@ -417,9 +410,6 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Get a Drizzle column from the table by his name.
-	 *
-	 * @param name - The name of the column to get.
-	 * @returns The column from the table.
 	 */
 	protected col(
 		name: keyof PgTableWithColumns<EntityTableConfig>["_"]["columns"],
@@ -436,9 +426,6 @@ export class RepositoryDescriptor<
 
 	/**
 	 * Run a transaction.
-	 *
-	 * @param transaction
-	 * @param config
 	 */
 	public async transaction<T>(
 		transaction: (
@@ -511,7 +498,7 @@ export class RepositoryDescriptor<
 			opts,
 		);
 
-		builder.where(() => this.jsonQueryToSql(where));
+		builder.where(() => this.toSQL(where));
 
 		if (query.offset) {
 			builder.offset(query.offset);
@@ -650,7 +637,7 @@ export class RepositoryDescriptor<
 			const where = isSQLWrapper(query.where)
 				? query.where
 				: query.where
-					? this.jsonQueryToSql(query.where as PgQueryWhere<EntitySchema>)
+					? this.toSQL(query.where)
 					: undefined;
 
 			tasks.push(
@@ -754,7 +741,7 @@ export class RepositoryDescriptor<
 
 		const response = await this.update(opts)
 			.set(set)
-			.where(this.jsonQueryToSql(where))
+			.where(this.toSQL(where))
 			.returning(this.table)
 			.catch((error) => {
 				throw this.handleError(error, "Update query has failed");
@@ -861,7 +848,7 @@ export class RepositoryDescriptor<
 		try {
 			await this.update(opts)
 				.set(data as PgUpdateSetSource<PgTableWithColumns<EntityTableConfig>>)
-				.where(this.jsonQueryToSql(where));
+				.where(this.toSQL(where));
 		} catch (error) {
 			throw this.handleError(error, "Update query has failed");
 		}
@@ -889,7 +876,7 @@ export class RepositoryDescriptor<
 		}
 
 		try {
-			await this.delete(opts).where(this.jsonQueryToSql(where));
+			await this.delete(opts).where(this.toSQL(where));
 		} catch (error) {
 			throw new PgError("Delete query has failed", error as Error);
 		}
@@ -948,14 +935,7 @@ export class RepositoryDescriptor<
 		opts: StatementOptions = {},
 	): Promise<number> {
 		where = this.withDeletedAt(where, opts);
-		return (opts.tx ?? this.db).$count(
-			this.table,
-			this.jsonQueryToSql(
-				where as PgQueryWhereOrSQL<EntitySchema>,
-				this.schema,
-				(key) => this.col(key),
-			),
-		);
+		return (opts.tx ?? this.db).$count(this.table, this.toSQL(where));
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------
@@ -1016,189 +996,6 @@ export class RepositoryDescriptor<
 			return deletedAtFields[0];
 		}
 		return undefined;
-	}
-
-	/**
-	 * Convert a query object to a SQL query.
-	 *
-	 * @param query The query object.
-	 * @param schema The schema to use.
-	 * @param col The column to use.
-	 */
-	protected jsonQueryToSql(
-		query: PgQueryWhereOrSQL<EntitySchema>,
-		schema: TObject = this.schema,
-		col: (key: string) => PgColumn = (key) => this.col(key),
-	): SQL | undefined {
-		const conditions: SQL[] = [];
-
-		if (isSQLWrapper(query)) {
-			conditions.push(query as SQL);
-		} else {
-			const keys = Object.keys(query) as Array<
-				keyof PgQueryWhere<EntitySchema> & string
-			>;
-
-			for (const key of keys) {
-				const operator = query[key] as SQL;
-
-				if (Array.isArray(operator)) {
-					const operations: SQL[] = operator
-						.map((it) => {
-							if (isSQLWrapper(it)) {
-								return it as SQL;
-							}
-							return this.jsonQueryToSql(
-								it as PgQueryWhere<EntitySchema>,
-								schema,
-								col,
-							);
-						})
-						.filter((it) => it != null);
-
-					if (key === "and") {
-						return and(...operations);
-					}
-
-					if (key === "or") {
-						return or(...operations);
-					}
-				}
-
-				if (key === "not") {
-					const where = this.jsonQueryToSql(
-						operator as PgQueryWhere<EntitySchema>,
-						schema,
-						col,
-					);
-					if (where) {
-						return not(where);
-					}
-				}
-
-				if (operator) {
-					const column = col(key);
-					const sql = this.mapOperatorToSql(operator, column);
-					if (sql) {
-						conditions.push(sql);
-					}
-				}
-			}
-		}
-
-		if (conditions.length === 1) {
-			return conditions[0];
-		}
-
-		return and(...conditions);
-	}
-
-	/**
-	 * Map a filter operator to a SQL query.
-	 *
-	 * @param operator
-	 * @param column
-	 * @protected
-	 */
-	protected mapOperatorToSql(
-		operator: FilterOperators<any> | any,
-		column: PgColumn,
-	): SQL | undefined {
-		if (typeof operator !== "object") {
-			return eq(column, operator);
-		}
-
-		const conditions: SQL[] = [];
-
-		if (operator?.eq != null) {
-			conditions.push(eq(column, operator.eq));
-		}
-
-		if (operator?.ne != null) {
-			conditions.push(ne(column, operator.ne));
-		}
-
-		if (operator?.gt != null) {
-			conditions.push(gt(column, operator.gt));
-		}
-
-		if (operator?.gte != null) {
-			conditions.push(gte(column, operator.gte));
-		}
-
-		if (operator?.lt != null) {
-			conditions.push(lt(column, operator.lt));
-		}
-
-		if (operator?.lte != null) {
-			conditions.push(lte(column, operator.lte));
-		}
-
-		if (operator?.inArray != null) {
-			conditions.push(inArray(column, operator.inArray));
-		}
-
-		if (operator?.notInArray != null) {
-			conditions.push(notInArray(column, operator.notInArray));
-		}
-
-		if (operator?.isNull != null) {
-			conditions.push(isNull(column));
-		}
-
-		if (operator?.isNotNull != null) {
-			conditions.push(isNotNull(column));
-		}
-
-		if (operator?.like != null) {
-			conditions.push(like(column, operator.like));
-		}
-
-		if (operator?.notLike != null) {
-			conditions.push(notLike(column, operator.notLike));
-		}
-
-		if (operator?.ilike != null) {
-			conditions.push(ilike(column, operator.ilike));
-		}
-
-		if (operator?.notIlike != null) {
-			conditions.push(notIlike(column, operator.notIlike));
-		}
-
-		if (operator?.between != null) {
-			conditions.push(
-				between(column, operator.between[0], operator.between[1]),
-			);
-		}
-
-		if (operator?.notBetween != null) {
-			conditions.push(
-				notBetween(column, operator.notBetween[0], operator.notBetween[1]),
-			);
-		}
-
-		if (operator?.arrayContains != null) {
-			conditions.push(arrayContains(column, operator.arrayContains));
-		}
-
-		if (operator?.arrayContained != null) {
-			conditions.push(arrayContained(column, operator.arrayContained));
-		}
-
-		if (operator?.arrayOverlaps != null) {
-			conditions.push(arrayOverlaps(column, operator.arrayOverlaps));
-		}
-
-		if (conditions.length === 0) {
-			return undefined;
-		}
-
-		if (conditions.length === 1) {
-			return conditions[0];
-		}
-
-		return and(...conditions);
 	}
 
 	/**
@@ -1349,6 +1146,14 @@ export class RepositoryDescriptor<
 		);
 	}
 
+	protected toSQL(where: PgQueryWhereOrSQL<EntitySchema>): SQL | undefined {
+		return this.queryManager.jsonQueryToSql(
+			where as PgQueryWhereOrSQL<EntitySchema>,
+			this.schema,
+			(name) => this.col(name),
+		);
+	}
+
 	/**
 	 * Create a temporary repository for a related table.
 	 */
@@ -1367,7 +1172,7 @@ export class RepositoryDescriptor<
 
 				if (query.where) {
 					selectBuilder.where(() =>
-						this.jsonQueryToSql(
+						this.queryManager.jsonQueryToSql(
 							query.where,
 							table.$schema,
 							(key) => targetTable[key],
