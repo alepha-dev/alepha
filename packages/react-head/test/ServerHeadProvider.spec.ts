@@ -1,12 +1,15 @@
 import { Alepha } from "@alepha/core";
-import { test } from "vitest";
+import { describe, it } from "vitest";
 import { ServerHeadProvider } from "../src/providers/ServerHeadProvider.ts";
 
 const alepha = Alepha.create();
 const serverHeadProvider = alepha.inject(ServerHeadProvider);
 
-test("ServerHeadProvider - basic", ({ expect }) => {
-	const template = `
+describe("ServerHeadProvider", () => {
+	it("should render head with custom attributes and meta tags", ({
+		expect,
+	}) => {
+		const template = `
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -18,17 +21,17 @@ test("ServerHeadProvider - basic", ({ expect }) => {
 	</html>
 	`;
 
-	const head = {
-		title: "Test Title",
-		htmlAttributes: { lang: "fr", style: "color: red;" },
-		bodyAttributes: { class: "test-class" },
-		meta: [
-			{ name: "description", content: "Test description" },
-			{ name: "keywords", content: "test, example" },
-		],
-	};
+		const head = {
+			title: "Test Title",
+			htmlAttributes: { lang: "fr", style: "color: red;" },
+			bodyAttributes: { class: "test-class" },
+			meta: [
+				{ name: "description", content: "Test description" },
+				{ name: "keywords", content: "test, example" },
+			],
+		};
 
-	const expectedOutput = `
+		const expectedOutput = `
 	<!DOCTYPE html>
 	<html lang="fr" style="color: red;">
 	<head>
@@ -41,10 +44,11 @@ test("ServerHeadProvider - basic", ({ expect }) => {
 	</body>
 	</html>
 	`
-		.trim()
-		.replace(/\s+/g, " ");
+			.trim()
+			.replace(/\s+/g, " ");
 
-	expect(
-		serverHeadProvider.renderHead(template, head).replace(/\s+/g, " "),
-	).toBe(expectedOutput);
+		expect(
+			serverHeadProvider.renderHead(template, head).replace(/\s+/g, " "),
+		).toBe(expectedOutput);
+	});
 });

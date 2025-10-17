@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $repository } from "../src";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
 import { userEntity } from "./fixtures/userEntitySchema.ts";
@@ -111,16 +111,18 @@ const testOrderByModes = async (alepha: Alepha) => {
 	await app.users.clear({ force: true });
 };
 
-test("$repository - orderBy all 3 modes", async () => {
-	await testOrderByModes(Alepha.create());
-});
+describe("$repository - orderBy", () => {
+	it("should support all 3 orderBy modes", async () => {
+		await testOrderByModes(Alepha.create());
+	});
 
-test("$repository - orderBy all 3 modes (sqlite)", async () => {
-	await testOrderByModes(
-		Alepha.create({
-			env: {
-				DATABASE_URL: "sqlite://:memory:",
-			},
-		}),
-	);
+	it("should support all 3 orderBy modes (sqlite)", async () => {
+		await testOrderByModes(
+			Alepha.create({
+				env: {
+					DATABASE_URL: "sqlite://:memory:",
+				},
+			}),
+		);
+	});
 });

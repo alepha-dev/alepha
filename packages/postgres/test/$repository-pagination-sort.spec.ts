@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $repository } from "../src";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
 import { userEntity } from "./fixtures/userEntitySchema.ts";
@@ -123,16 +123,18 @@ const testPaginationSort = async (alepha: Alepha) => {
 	await app.users.clear({ force: true });
 };
 
-test("$repository - pagination sort with new format", async () => {
-	await testPaginationSort(Alepha.create());
-});
+describe("$repository - pagination sort", () => {
+	it("should support pagination with new sort format", async () => {
+		await testPaginationSort(Alepha.create());
+	});
 
-test("$repository - pagination sort with new format (sqlite)", async () => {
-	await testPaginationSort(
-		Alepha.create({
-			env: {
-				DATABASE_URL: "sqlite://:memory:",
-			},
-		}),
-	);
+	it("should support pagination with new sort format (sqlite)", async () => {
+		await testPaginationSort(
+			Alepha.create({
+				env: {
+					DATABASE_URL: "sqlite://:memory:",
+				},
+			}),
+		);
+	});
 });

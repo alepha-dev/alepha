@@ -9,7 +9,7 @@ import {
 import { AzureFileStorageProvider } from "@alepha/bucket-azure";
 import { Alepha, type Service } from "@alepha/core";
 import { createFile } from "@alepha/file";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../src";
 
 class A {
@@ -65,14 +65,16 @@ const testStorageOperations = async (
 	);
 };
 
-test("$bucket - basic", async () => {
-	await testStorageOperations(MemoryFileStorageProvider);
-});
+describe("$bucket", () => {
+	it("should handle basic storage operations with memory provider", async () => {
+		await testStorageOperations(MemoryFileStorageProvider);
+	});
 
-test("$bucket - basic (local)", async () => {
-	await testStorageOperations(LocalFileStorageProvider);
-});
+	it("should handle basic storage operations with local provider", async () => {
+		await testStorageOperations(LocalFileStorageProvider);
+	});
 
-test("$bucket - basic (azure)", async () => {
-	await testStorageOperations(AzureFileStorageProvider);
+	it("should handle basic storage operations with azure provider", async () => {
+		await testStorageOperations(AzureFileStorageProvider);
+	});
 });

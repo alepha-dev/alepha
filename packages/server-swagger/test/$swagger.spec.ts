@@ -1,6 +1,6 @@
 import { Alepha, t } from "@alepha/core";
 import { $action } from "@alepha/server";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $swagger, ServerSwaggerProvider } from "../src";
 
 class App {
@@ -84,108 +84,110 @@ class App {
 
 const alepha = Alepha.create().with(App);
 
-test("$swagger", () => {
-	const swagger = alepha.inject(ServerSwaggerProvider).json;
+describe("$swagger", () => {
+	it("should generate OpenAPI spec from actions", () => {
+		const swagger = alepha.inject(ServerSwaggerProvider).json;
 
-	expect(swagger).toEqual({
-		openapi: "3.0.0",
-		info: {
-			title: "My API",
-			version: "1.0.0",
-		},
-		paths: {
-			"/api/hello/{name}": {
-				post: {
-					operationId: "hello",
-					parameters: [
-						{
-							in: "query",
-							name: "age",
-							required: false,
-							schema: {
-								type: "number",
+		expect(swagger).toEqual({
+			openapi: "3.0.0",
+			info: {
+				title: "My API",
+				version: "1.0.0",
+			},
+			paths: {
+				"/api/hello/{name}": {
+					post: {
+						operationId: "hello",
+						parameters: [
+							{
+								in: "query",
+								name: "age",
+								required: false,
+								schema: {
+									type: "number",
+								},
+							},
+							{
+								in: "path",
+								name: "name",
+								required: true,
+								schema: {
+									maxLength: 255,
+									type: "string",
+								},
+							},
+						],
+						description: "Hello world",
+						tags: ["app"],
+						responses: {
+							"200": {
+								description: "",
+								content: {
+									"application/json": {
+										schema: {
+											$ref: "#/components/schemas/HelloResponse",
+										},
+									},
+								},
 							},
 						},
-						{
-							in: "path",
-							name: "name",
+						requestBody: {
 							required: true,
-							schema: {
-								maxLength: 255,
-								type: "string",
-							},
-						},
-					],
-					description: "Hello world",
-					tags: ["app"],
-					responses: {
-						"200": {
-							description: "",
 							content: {
 								"application/json": {
 									schema: {
-										$ref: "#/components/schemas/HelloResponse",
+										additionalProperties: false,
+										type: "object",
+										properties: {
+											name: {
+												maxLength: 255,
+												type: "string",
+											},
+										},
+										required: ["name"],
 									},
 								},
 							},
 						},
 					},
-					requestBody: {
-						required: true,
-						content: {
-							"application/json": {
-								schema: {
-									additionalProperties: false,
-									type: "object",
-									properties: {
-										name: {
+				},
+				"/api/text": {
+					get: {
+						operationId: "text",
+						responses: {
+							"200": {
+								content: {
+									"text/plain": {
+										schema: {
 											maxLength: 255,
 											type: "string",
 										},
 									},
-									required: ["name"],
 								},
+								description: "",
 							},
 						},
+						tags: ["App"],
 					},
 				},
 			},
-			"/api/text": {
-				get: {
-					operationId: "text",
-					responses: {
-						"200": {
-							content: {
-								"text/plain": {
-									schema: {
-										maxLength: 255,
-										type: "string",
-									},
-								},
+			components: {
+				schemas: {
+					HelloResponse: {
+						additionalProperties: false,
+						description: "Hello response",
+						properties: {
+							message: {
+								maxLength: 255,
+								type: "string",
 							},
-							description: "",
 						},
+						required: ["message"],
+						title: "HelloResponse",
+						type: "object",
 					},
-					tags: ["App"],
 				},
 			},
-		},
-		components: {
-			schemas: {
-				HelloResponse: {
-					additionalProperties: false,
-					description: "Hello response",
-					properties: {
-						message: {
-							maxLength: 255,
-							type: "string",
-						},
-					},
-					required: ["message"],
-					title: "HelloResponse",
-					type: "object",
-				},
-			},
-		},
+		});
 	});
 });

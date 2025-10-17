@@ -1,9 +1,9 @@
 import { Alepha, t } from "@alepha/core";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $email, AlephaEmail, MemoryEmailProvider } from "../src";
 
 describe("@alepha/email - $email descriptor", () => {
-	test("should send a simple templated email", async () => {
+	it("should send a simple templated email", async () => {
 		class TestApp {
 			welcome = $email({
 				subject: "Welcome {{name}}!",
@@ -42,7 +42,7 @@ describe("@alepha/email - $email descriptor", () => {
 		expect(email.sentAt).toBeInstanceOf(Date);
 	});
 
-	test("should send email with number templates", async () => {
+	it("should send email with number templates", async () => {
 		class TestApp {
 			newsletter = $email({
 				subject: "Newsletter #{{issue}}",
@@ -80,7 +80,7 @@ describe("@alepha/email - $email descriptor", () => {
 		);
 	});
 
-	test("should send email without template variables", async () => {
+	it("should send email without template variables", async () => {
 		class TestApp {
 			simple = $email({
 				subject: "Simple email",
@@ -108,7 +108,7 @@ describe("@alepha/email - $email descriptor", () => {
 		expect(email!.body).toBe("This is a simple email without templates.");
 	});
 
-	test("should throw error for missing template variables", async () => {
+	it("should throw error for missing template variables", async () => {
 		class TestApp {
 			welcome = $email({
 				subject: "Welcome {{name}}!",
@@ -137,7 +137,7 @@ describe("@alepha/email - $email descriptor", () => {
 		).rejects.toThrow();
 	});
 
-	test("should throw error for schema validation failure", async () => {
+	it("should throw error for schema validation failure", async () => {
 		class TestApp {
 			newsletter = $email({
 				subject: "Newsletter #{{issue}}",
@@ -168,7 +168,7 @@ describe("@alepha/email - $email descriptor", () => {
 		).rejects.toThrow();
 	});
 
-	test("should handle extra schema properties that are not used in templates", async () => {
+	it("should handle extra schema properties that are not used in templates", async () => {
 		class TestApp {
 			partial = $email({
 				subject: "Hello {{name}}!",
@@ -201,7 +201,7 @@ describe("@alepha/email - $email descriptor", () => {
 		expect(email!.body).toBe("Hello John!");
 	});
 
-	test("should use descriptor property key as default name", async () => {
+	it("should use descriptor property key as default name", async () => {
 		class TestApp {
 			myCustomEmail = $email({
 				subject: "Test",
@@ -221,7 +221,7 @@ describe("@alepha/email - $email descriptor", () => {
 		expect(app.myCustomEmail.name).toBe("myCustomEmail");
 	});
 
-	test("should use custom name when provided", async () => {
+	it("should use custom name when provided", async () => {
 		class TestApp {
 			email = $email({
 				name: "Custom Email Template",
@@ -242,7 +242,7 @@ describe("@alepha/email - $email descriptor", () => {
 		expect(app.email.name).toBe("Custom Email Template");
 	});
 
-	test("should send multiple emails and track them", async () => {
+	it("should send multiple emails and track them", async () => {
 		class TestApp {
 			welcome = $email({
 				subject: "Welcome {{name}}!",

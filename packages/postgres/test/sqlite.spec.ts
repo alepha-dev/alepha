@@ -1,46 +1,48 @@
 import { Alepha, t } from "@alepha/core";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $entity, $repository, PostgresProvider, pg } from "../src";
 import { NodeSqliteProvider } from "../src/providers/drivers/NodeSqliteProvider.ts";
 
-test("sqlite", async () => {
-	const users = $entity({
-		name: "users",
-		schema: t.object({
-			id: pg.primaryKey(t.int()),
-			name: t.text(),
-		}),
-	});
-
-	const alepha = Alepha.create()
-		.with({
-			provide: PostgresProvider,
-			use: NodeSqliteProvider,
-		})
-		.configure(NodeSqliteProvider, {
-			path: "sqlite://:memory:",
+describe("sqlite", () => {
+	it("should create and query entities using SQLite", async () => {
+		const users = $entity({
+			name: "users",
+			schema: t.object({
+				id: pg.primaryKey(t.int()),
+				name: t.text(),
+			}),
 		});
 
-	class TestApp {
-		userRepository = $repository(users);
-	}
+		const alepha = Alepha.create()
+			.with({
+				provide: PostgresProvider,
+				use: NodeSqliteProvider,
+			})
+			.configure(NodeSqliteProvider, {
+				path: "sqlite://:memory:",
+			});
 
-	const repository = alepha.inject(TestApp).userRepository;
+		class TestApp {
+			userRepository = $repository(users);
+		}
 
-	await alepha.start();
+		const repository = alepha.inject(TestApp).userRepository;
 
-	await repository.create({
-		name: "John Doe",
-	});
+		await alepha.start();
 
-	const user = await repository.findOne({
-		where: {
-			name: { eq: "John Doe" },
-		},
-	});
+		await repository.create({
+			name: "John Doe",
+		});
 
-	expect(user).toStrictEqual({
-		id: 1,
-		name: "John Doe",
+		const user = await repository.findOne({
+			where: {
+				name: { eq: "John Doe" },
+			},
+		});
+
+		expect(user).toStrictEqual({
+			id: 1,
+			name: "John Doe",
+		});
 	});
 });

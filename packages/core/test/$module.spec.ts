@@ -1,8 +1,8 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $inject, $module, Alepha } from "../src";
 
 describe("$module", () => {
-	test("should create a module with services", () => {
+	it("should create a module with services", () => {
 		class VeryRandomService {}
 		class RandomService {
 			very = $inject(VeryRandomService);
@@ -37,7 +37,7 @@ describe("$module", () => {
 		});
 	});
 
-	test("should auto inject all dependencies", async ({ expect }) => {
+	it("should auto inject all dependencies", async ({ expect }) => {
 		let stack = "";
 
 		class A {
@@ -88,7 +88,7 @@ describe("$module", () => {
 		expect(alepha.inject(A).a).toBe("2");
 	});
 
-	test("should be configurable", async ({ expect }) => {
+	it("should be configurable", async ({ expect }) => {
 		type MyServiceOptions = {
 			name: string;
 		};

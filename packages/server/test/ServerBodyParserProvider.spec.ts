@@ -1,9 +1,9 @@
 import { Alepha, t } from "@alepha/core";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 import { $action, HttpError } from "../src";
 
 describe("ServerBodyParserProvider", () => {
-	test("should handle simple body", async ({ expect }) => {
+	it("should handle simple body", async ({ expect }) => {
 		const alepha = Alepha.create();
 
 		class TestApp {
@@ -53,7 +53,7 @@ describe("ServerBodyParserProvider", () => {
 		expect(app.string.getBodyContentType()).toBe("text/plain");
 	});
 
-	test("should reject big payload", async ({ expect }) => {
+	it("should reject big payload", async ({ expect }) => {
 		const alepha = Alepha.create();
 
 		class TestApp {

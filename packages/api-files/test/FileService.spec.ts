@@ -8,7 +8,7 @@ import {
 import { AzureFileStorageProvider } from "@alepha/bucket-azure";
 import { Alepha, type Service } from "@alepha/core";
 import { createFile } from "@alepha/file";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../src";
 import { FileController } from "../src/controllers/FileController.ts";
 
@@ -89,14 +89,16 @@ const testFileServiceOperations = async (
 	expect(await response2.data.text()).toBe("Hello World 4");
 };
 
-test("FileService - basic", async () => {
-	await testFileServiceOperations(MemoryFileStorageProvider);
-});
+describe("FileService", () => {
+	it("should handle basic file operations with memory storage", async () => {
+		await testFileServiceOperations(MemoryFileStorageProvider);
+	});
 
-test("FileService - basic (local)", async () => {
-	await testFileServiceOperations(LocalFileStorageProvider);
-});
+	it("should handle basic file operations with local storage", async () => {
+		await testFileServiceOperations(LocalFileStorageProvider);
+	});
 
-test("FileService - basic (azure)", async () => {
-	await testFileServiceOperations(AzureFileStorageProvider);
+	it("should handle basic file operations with azure storage", async () => {
+		await testFileServiceOperations(AzureFileStorageProvider);
+	});
 });

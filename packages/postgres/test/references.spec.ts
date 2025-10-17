@@ -1,5 +1,5 @@
 import { Alepha, t } from "@alepha/core";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $entity, $repository, pg } from "../src";
 
 const users = $entity({
@@ -33,68 +33,70 @@ class App {
 	posts = $repository(posts);
 }
 
-test("references - delete cascade", async () => {
-	const alepha = Alepha.create();
-	const app = alepha.inject(App);
-	await alepha.start();
+describe("references", () => {
+	it("should handle delete cascade", async () => {
+		const alepha = Alepha.create();
+		const app = alepha.inject(App);
+		await alepha.start();
 
-	const user = await app.users.create({ name: "John" });
-	const post1 = await app.posts.create({ userId: user.id });
-	const post2 = await app.posts.create({
-		userId: user.id,
-		postParentId: post1.id,
+		const user = await app.users.create({ name: "John" });
+		const post1 = await app.posts.create({ userId: user.id });
+		const post2 = await app.posts.create({
+			userId: user.id,
+			postParentId: post1.id,
+		});
+
+		expect(await app.users.find()).toEqual([
+			{ id: user.id, name: "John", __v: 0 },
+		]);
+		expect(await app.posts.find()).toEqual([
+			{ id: post1.id, userId: user.id, __v: 0 },
+			{ id: post2.id, userId: user.id, postParentId: post1.id, __v: 0 },
+		]);
+
+		await app.users.deleteById(user.id);
+
+		expect(await app.users.find()).toEqual([]);
+		expect(await app.posts.find()).toEqual([]);
 	});
 
-	expect(await app.users.find()).toEqual([
-		{ id: user.id, name: "John", __v: 0 },
-	]);
-	expect(await app.posts.find()).toEqual([
-		{ id: post1.id, userId: user.id, __v: 0 },
-		{ id: post2.id, userId: user.id, postParentId: post1.id, __v: 0 },
-	]);
+	it("should handle delete null", async () => {
+		const alepha = Alepha.create();
+		const app = alepha.inject(App);
+		await alepha.start();
 
-	await app.users.deleteById(user.id);
+		const user = await app.users.create({ name: "John" });
+		const post1 = await app.posts.create({ userId: user.id });
+		const post2 = await app.posts.create({
+			userId: user.id,
+			postParentId: post1.id,
+		});
+		const post3 = await app.posts.create({
+			userId: user.id,
+		});
 
-	expect(await app.users.find()).toEqual([]);
-	expect(await app.posts.find()).toEqual([]);
-});
+		user.currentPostId = post2.id;
 
-test("references - delete null", async () => {
-	const alepha = Alepha.create();
-	const app = alepha.inject(App);
-	await alepha.start();
+		await app.users.save(user);
 
-	const user = await app.users.create({ name: "John" });
-	const post1 = await app.posts.create({ userId: user.id });
-	const post2 = await app.posts.create({
-		userId: user.id,
-		postParentId: post1.id,
+		expect(await app.users.find()).toEqual([
+			{ id: user.id, name: "John", __v: 1, currentPostId: post2.id },
+		]);
+
+		expect(await app.posts.find()).toEqual([
+			{ id: post1.id, userId: user.id, __v: 0 },
+			{ id: post2.id, userId: user.id, postParentId: post1.id, __v: 0 },
+			{ id: post3.id, userId: user.id, __v: 0 },
+		]);
+
+		await app.posts.deleteById(post1.id);
+
+		expect(await app.users.find()).toEqual([
+			{ id: user.id, name: "John", __v: 1 },
+		]);
+
+		expect(await app.posts.find()).toEqual([
+			{ id: post3.id, userId: user.id, __v: 0 },
+		]);
 	});
-	const post3 = await app.posts.create({
-		userId: user.id,
-	});
-
-	user.currentPostId = post2.id;
-
-	await app.users.save(user);
-
-	expect(await app.users.find()).toEqual([
-		{ id: user.id, name: "John", __v: 1, currentPostId: post2.id },
-	]);
-
-	expect(await app.posts.find()).toEqual([
-		{ id: post1.id, userId: user.id, __v: 0 },
-		{ id: post2.id, userId: user.id, postParentId: post1.id, __v: 0 },
-		{ id: post3.id, userId: user.id, __v: 0 },
-	]);
-
-	await app.posts.deleteById(post1.id);
-
-	expect(await app.users.find()).toEqual([
-		{ id: user.id, name: "John", __v: 1 },
-	]);
-
-	expect(await app.posts.find()).toEqual([
-		{ id: post3.id, userId: user.id, __v: 0 },
-	]);
 });

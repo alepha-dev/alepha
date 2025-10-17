@@ -135,6 +135,8 @@ node app.ts
 
 Build full-stack React applications, with server-side rendering (SSR) and client-side rendering (CSR).
 
+> RSC is not supported and will never be.
+
 [React](https://react.dev) is required as a `dependency`:
 
 ```bash

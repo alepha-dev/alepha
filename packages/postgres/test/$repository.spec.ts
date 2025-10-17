@@ -1,5 +1,5 @@
 import { Alepha, type Static } from "@alepha/core";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $repository } from "../src";
 import { bigEntity } from "./fixtures/bigEntitySchema.ts";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
@@ -28,18 +28,20 @@ const testPgAttr = async (alepha: Alepha) => {
 	expect(entity.profile.age).toEqual(30);
 };
 
-test("$repository - pg.attr", async () => {
-	await testPgAttr(Alepha.create());
-});
+describe("$repository - pg.attr", () => {
+	it("should filter out attributes not defined in schema", async () => {
+		await testPgAttr(Alepha.create());
+	});
 
-test("$repository - pg.attr (sqlite)", async () => {
-	await testPgAttr(
-		Alepha.create({
-			env: {
-				DATABASE_URL: "sqlite://:memory:",
-			},
-		}),
-	);
+	it("should filter out attributes not defined in schema (sqlite)", async () => {
+		await testPgAttr(
+			Alepha.create({
+				env: {
+					DATABASE_URL: "sqlite://:memory:",
+				},
+			}),
+		);
+	});
 });
 
 const testAllTypes = async (alepha: Alepha) => {
@@ -117,16 +119,18 @@ const testAllTypes = async (alepha: Alepha) => {
 	expect(it).toHaveLength(1);
 };
 
-test("$repository - all types", async () => {
-	await testAllTypes(Alepha.create());
-});
+describe("$repository - all types", () => {
+	it("should handle all supported data types", async () => {
+		await testAllTypes(Alepha.create());
+	});
 
-test("$repository - all types (sqlite)", async () => {
-	await testAllTypes(
-		Alepha.create({
-			env: {
-				DATABASE_URL: "sqlite://:memory:",
-			},
-		}),
-	);
+	it("should handle all supported data types (sqlite)", async () => {
+		await testAllTypes(
+			Alepha.create({
+				env: {
+					DATABASE_URL: "sqlite://:memory:",
+				},
+			}),
+		);
+	});
 });

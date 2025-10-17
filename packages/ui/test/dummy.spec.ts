@@ -1,5 +1,7 @@
-import { test } from "vitest";
+import { describe, it } from "vitest";
 
-test("dummy test", () => {
-	// This is a dummy test to ensure the test suite runs
+describe("dummy", () => {
+	it("should run a dummy test", () => {
+		// This is a dummy test to ensure the test suite runs
+	});
 });

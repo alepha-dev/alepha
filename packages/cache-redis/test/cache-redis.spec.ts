@@ -13,56 +13,58 @@ import {
 	testCacheStop,
 	testSimpleKeyMappingHandler,
 } from "@alepha/cache/test/shared.ts";
-import { test } from "vitest";
+import { describe, it } from "vitest";
 import { RedisCacheProvider } from "../src/providers/RedisCacheProvider.ts";
 
 const provider = RedisCacheProvider;
 const env = () => ({ REDIS_CACHE_PREFIX: randomUUID() });
 
-test("$cache - basic", async () => {
-	await testCacheBasic(env(), provider);
-});
+describe("$cache - redis", () => {
+	it("should handle basic caching", async () => {
+		await testCacheBasic(env(), provider);
+	});
 
-test("$cache - stop (redis)", async () => {
-	await testCacheStop(env(), provider);
-});
+	it("should handle stop lifecycle", async () => {
+		await testCacheStop(env(), provider);
+	});
 
-test("$cache - missing provider (redis)", async () => {
-	await testCacheMissingProvider(env(), provider);
-});
+	it("should handle missing provider", async () => {
+		await testCacheMissingProvider(env(), provider);
+	});
 
-test("$cache - disabled (redis)", async () => {
-	await testCacheDisabled(env(), provider);
-});
+	it("should handle disabled cache", async () => {
+		await testCacheDisabled(env(), provider);
+	});
 
-test("$cache - invalidate by key (redis)", async () => {
-	await testCacheInvalidateByKey(env(), provider);
-});
+	it("should invalidate by key", async () => {
+		await testCacheInvalidateByKey(env(), provider);
+	});
 
-test("$cache - invalidate by args (redis)", async () => {
-	await testCacheInvalidateByArgs(env(), provider);
-});
+	it("should invalidate by args", async () => {
+		await testCacheInvalidateByArgs(env(), provider);
+	});
 
-test("$cache - invalidate all (redis)", async () => {
-	await testCacheInvalidateAll(env(), provider);
-});
+	it("should invalidate all entries", async () => {
+		await testCacheInvalidateAll(env(), provider);
+	});
 
-test("$cache - clear (redis)", async () => {
-	await testCacheClear(env(), provider);
-});
+	it("should clear cache", async () => {
+		await testCacheClear(env(), provider);
+	});
 
-test("$cache - types (redis)", async () => {
-	await testCacheReturnTypes(env(), provider);
-});
+	it("should handle different return types", async () => {
+		await testCacheReturnTypes(env(), provider);
+	});
 
-test("$cache - keys (redis)", async () => {
-	await testCacheKeys(env(), provider);
-});
+	it("should generate cache keys correctly", async () => {
+		await testCacheKeys(env(), provider);
+	});
 
-test("$cache - unique key with args (redis)", async () => {
-	await testSimpleKeyMappingHandler();
-});
+	it("should handle unique key with args", async () => {
+		await testSimpleKeyMappingHandler();
+	});
 
-test("$cache - provider clear (redis)", async () => {
-	await testCacheProviderClear(env(), provider);
+	it("should clear provider cache", async () => {
+		await testCacheProviderClear(env(), provider);
+	});
 });

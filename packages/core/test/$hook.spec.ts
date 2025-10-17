@@ -1,128 +1,130 @@
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $hook, $inject, Alepha } from "../src";
 
-test("$hook - basic", async () => {
-	class App {
-		hook = $hook({
-			on: "echo",
-			handler: () => {},
-		});
-	}
-	const alepha = Alepha.create().with(App);
-	await alepha.start();
-	expect(alepha.inject(App).hook.called).toBe(0);
-	await alepha.events.emit("echo", {});
-	expect(alepha.inject(App).hook.called).toBe(1);
-	await alepha.events.emit("echo", {});
-	expect(alepha.inject(App).hook.called).toBe(2);
-});
-
-test("$hook - with swapping", async () => {
-	let count = 0;
-
-	class Interface {
-		n = 10;
-		c = $hook({
-			on: "configure",
-			handler: () => {
-				count += this.n;
-			},
-		});
-	}
-
-	const app = new Alepha();
-
-	expect(count).toBe(0);
-
-	class Impl extends Interface {
-		n = 1;
-		id = Math.random();
-	}
-
-	app.with({
-		provide: Interface,
-		use: Impl, // expects to be swapped, event from "Interface" will be deleted
+describe("$hook", () => {
+	it("should track hook calls", async () => {
+		class App {
+			hook = $hook({
+				on: "echo",
+				handler: () => {},
+			});
+		}
+		const alepha = Alepha.create().with(App);
+		await alepha.start();
+		expect(alepha.inject(App).hook.called).toBe(0);
+		await alepha.events.emit("echo", {});
+		expect(alepha.inject(App).hook.called).toBe(1);
+		await alepha.events.emit("echo", {});
+		expect(alepha.inject(App).hook.called).toBe(2);
 	});
 
-	expect(count).toBe(0);
+	it("should handle service substitution", async () => {
+		let count = 0;
 
-	await app.start();
+		class Interface {
+			n = 10;
+			c = $hook({
+				on: "configure",
+				handler: () => {
+					count += this.n;
+				},
+			});
+		}
 
-	expect(count).toBe(1);
-});
+		const app = new Alepha();
 
-test("$hook - priority/before/after", async () => {
-	let stack = "";
+		expect(count).toBe(0);
 
-	class A {
-		_ = $hook({
-			on: "configure",
-			handler: () => {
-				stack += "A";
-			},
+		class Impl extends Interface {
+			n = 1;
+			id = Math.random();
+		}
+
+		app.with({
+			provide: Interface,
+			use: Impl, // expects to be swapped, event from "Interface" will be deleted
 		});
-	}
 
-	class B {
-		a = $inject(A);
-		_ = $hook({
-			on: "configure",
-			after: [this.a],
-			handler: () => {
-				stack += "B";
-			},
-		});
-	}
+		expect(count).toBe(0);
 
-	class C {
-		b = $inject(B);
-		_ = $hook({
-			on: "configure",
-			after: [this.b],
-			handler: () => {
-				stack += "C";
-			},
-		});
-	}
+		await app.start();
 
-	class D {
-		b = $inject(B);
-		c = $inject(C);
-		_ = $hook({
-			on: "configure",
-			after: [this.b, this.c],
-			handler: () => {
-				stack += "D";
-			},
-		});
-	}
+		expect(count).toBe(1);
+	});
 
-	class E {
-		d = $inject(D);
-		f = $inject(F);
-		_ = $hook({
-			on: "configure",
-			after: [this.d],
-			before: [this.f],
-			handler: () => {
-				stack += "E";
-			},
-		});
-	}
+	it("should respect priority, before, and after ordering", async () => {
+		let stack = "";
 
-	class F {
-		_ = $hook({
-			priority: "last",
-			on: "configure",
-			handler: () => {
-				stack += "F";
-			},
-		});
-	}
+		class A {
+			_ = $hook({
+				on: "configure",
+				handler: () => {
+					stack += "A";
+				},
+			});
+		}
 
-	const alepha = Alepha.create().with(F).with(B).with(E);
+		class B {
+			a = $inject(A);
+			_ = $hook({
+				on: "configure",
+				after: [this.a],
+				handler: () => {
+					stack += "B";
+				},
+			});
+		}
 
-	await alepha.start();
+		class C {
+			b = $inject(B);
+			_ = $hook({
+				on: "configure",
+				after: [this.b],
+				handler: () => {
+					stack += "C";
+				},
+			});
+		}
 
-	expect(stack).toBe("ABCDEF");
+		class D {
+			b = $inject(B);
+			c = $inject(C);
+			_ = $hook({
+				on: "configure",
+				after: [this.b, this.c],
+				handler: () => {
+					stack += "D";
+				},
+			});
+		}
+
+		class E {
+			d = $inject(D);
+			f = $inject(F);
+			_ = $hook({
+				on: "configure",
+				after: [this.d],
+				before: [this.f],
+				handler: () => {
+					stack += "E";
+				},
+			});
+		}
+
+		class F {
+			_ = $hook({
+				priority: "last",
+				on: "configure",
+				handler: () => {
+					stack += "F";
+				},
+			});
+		}
+
+		const alepha = Alepha.create().with(F).with(B).with(E);
+
+		await alepha.start();
+
+		expect(stack).toBe("ABCDEF");
+	});
 });
