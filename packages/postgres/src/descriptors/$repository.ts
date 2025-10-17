@@ -1,4 +1,4 @@
-import type { Static, TObject, TSchema } from "@alepha/core";
+import type { DescriptorArgs, Static, TObject, TSchema } from "@alepha/core";
 import {
 	$inject,
 	Alepha,
@@ -64,6 +64,12 @@ import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
+import {
+	type RelationLoadContext,
+	RelationManager,
+	type RepositoryRelations,
+	type WithConfig,
+} from "../helpers/RelationManager.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
 import type { PgQuery } from "../interfaces/PgQuery.ts";
@@ -81,7 +87,7 @@ import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 
 /**
- * Creates a repository descriptor for database operations on a defined entity.
+ * Creates a repository for database operations on a defined entity.
  *
  * This descriptor provides a comprehensive, type-safe interface for performing all
  * database operations on entities defined with $entity. It offers a rich set of
@@ -104,15 +110,6 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
  * - Entity schema must include exactly one primary key field
  * - Database tables must be created via migrations before use
  *
- * **Use Cases**
- *
- * Essential for all database-driven applications:
- * - User management and authentication systems
- * - E-commerce product and order management
- * - Content management and blogging platforms
- * - Financial and accounting applications
- * - Any application requiring persistent data storage
- *
  * @example
  * **Basic repository with CRUD operations:**
  * ```ts
@@ -120,14 +117,14 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
  * import { pg, t } from "alepha";
  *
  * // First, define the entity
- * const User = $entity({
+ * const users = $entity({
  *   name: "users",
  *   schema: t.object({
  *     id: pg.primaryKey(t.uuid()),
  *     email: t.text({ format: "email" }),
  *     firstName: t.text(),
  *     lastName: t.text(),
- *     isActive: t.boolean({ default: true }),
+ *     isActive: pg.default(t.boolean(), true),
  *     createdAt: pg.createdAt(),
  *     updatedAt: pg.updatedAt()
  *   }),
@@ -135,15 +132,14 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
  * });
  *
  * class UserService {
- *   users = $repository({ table: User });
+ *   users = $repository(users);
  *
  *   async createUser(userData: { email: string; firstName: string; lastName: string }) {
  *     return await this.users.create({
  *       id: generateUUID(),
  *       email: userData.email,
  *       firstName: userData.firstName,
- *       lastName: userData.lastName,
- *       isActive: true
+ *       lastName: userData.lastName
  *     });
  *   }
  *
@@ -164,11 +160,13 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 export const $repository = <
 	EntityTableConfig extends TableConfig,
 	EntitySchema extends TObject,
+	Relations extends RepositoryRelations = {},
 >(
 	optionsOrTable:
 		| RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 		| PgTableWithColumnsAndSchema<EntityTableConfig, EntitySchema>,
-): RepositoryDescriptor<EntityTableConfig, EntitySchema> => {
+	relations?: Relations,
+): RepositoryDescriptor<EntityTableConfig, EntitySchema, Relations> => {
 	const options =
 		"table" in optionsOrTable
 			? (optionsOrTable as RepositoryDescriptorOptions<
@@ -178,10 +176,18 @@ export const $repository = <
 			: ({
 					table: optionsOrTable,
 					provider: PostgresProvider,
+					relations: relations || {},
 				} as RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>);
 
+	// Ensure relations are stored
+	if (!("table" in optionsOrTable)) {
+		(options as any).relations = relations || {};
+	} else if (relations) {
+		(options as any).relations = relations;
+	}
+
 	return createDescriptor(
-		RepositoryDescriptor<EntityTableConfig, EntitySchema>,
+		RepositoryDescriptor<EntityTableConfig, EntitySchema, Relations>,
 		options,
 	);
 };
@@ -251,22 +257,89 @@ export interface RepositoryDescriptorOptions<
 	 * @example TestDatabaseProvider
 	 */
 	provider?: Service<PostgresProvider>;
+
+	/**
+	 * Relations configuration for this repository.
+	 */
+	relations?: RepositoryRelations;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Helper type to infer the type of a related entity from a relation definition.
+ */
+type InferRelationType<Rel> = Rel extends { from: { $schema: infer S } }
+	? S extends TObject
+		? Static<S>
+		: never
+	: never;
+
+/**
+ * Helper type to add all possible relation properties to an entity as optional.
+ * This makes TypeScript aware of relation properties even when they're not loaded.
+ */
+type WithOptionalRelations<
+	EntitySchema extends TObject,
+	Relations extends RepositoryRelations,
+> = Static<EntitySchema> & {
+	[K in keyof Relations]?: Relations[K] extends { type: "many" }
+		? InferRelationType<Relations[K]>[]
+		: Relations[K] extends { type: "one" | "inverse" }
+			? InferRelationType<Relations[K]> | undefined
+			: never;
+};
+
+/**
+ * Helper type to merge entity with loaded relations.
+ * When `with` is provided, it marks those specific relation properties as loaded (non-undefined).
+ */
+type WithLoadedRelations<
+	EntitySchema extends TObject,
+	Relations extends RepositoryRelations,
+	With extends WithConfig | undefined,
+> = With extends Record<string, unknown>
+	? Static<EntitySchema> & {
+			[K in keyof Relations]?: K extends keyof With
+				? Relations[K] extends { type: "many" }
+					? InferRelationType<Relations[K]>[]
+					: Relations[K] extends { type: "one" | "inverse" }
+						? InferRelationType<Relations[K]> | undefined
+						: never
+				: Relations[K] extends { type: "many" }
+					? InferRelationType<Relations[K]>[]
+					: Relations[K] extends { type: "one" | "inverse" }
+						? InferRelationType<Relations[K]> | undefined
+						: never;
+		}
+	: WithOptionalRelations<EntitySchema, Relations>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RepositoryDescriptor<
 	EntityTableConfig extends TableConfig,
 	EntitySchema extends TObject,
+	Relations extends RepositoryRelations = {},
 > extends Descriptor<
 	RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 > {
+	protected readonly relationManager = $inject(RelationManager);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly alepha = $inject(Alepha);
 
 	public readonly provider = $inject(PostgresProvider);
 	public readonly schema = this.options.table.$schema;
 	public readonly schemaInsert = this.options.table.$insertSchema;
+	protected readonly relations: RepositoryRelations;
+
+	constructor(
+		args: DescriptorArgs<
+			RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
+		>,
+	) {
+		super(args);
+		this.relations = args.options.relations || {};
+	}
 
 	/**
 	 * Represents the primary key of the table.
@@ -425,10 +498,10 @@ export class RepositoryDescriptor<
 	 *
 	 * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
 	 */
-	public async find(
-		query: PgQuery<EntitySchema> = {},
+	public async find<With extends WithConfig | undefined = undefined>(
+		query: PgQuery<EntitySchema> & { with?: With } = {},
 		opts: StatementOptions = {},
-	): Promise<Static<EntitySchema>[]> {
+	): Promise<WithLoadedRelations<EntitySchema, Relations, With>[]> {
 		const builder = query.distinct
 			? this.selectDistinct(opts, {} as SelectedFields)
 			: this.select(opts);
@@ -473,7 +546,17 @@ export class RepositoryDescriptor<
 
 		try {
 			const rows = await builder.execute();
-			return rows.map((row) => this.clean(row));
+			let entities = rows.map((row) => this.clean(row));
+
+			// Load relations if specified
+			if (query.with && Object.keys(query.with).length > 0) {
+				entities = (await this.loadRelationsForEntities(
+					entities,
+					query.with,
+				)) as Static<EntitySchema>[];
+			}
+
+			return entities as WithLoadedRelations<EntitySchema, Relations, With>[];
 		} catch (error) {
 			throw new PgError("Query select has failed", error as Error);
 		}
@@ -482,11 +565,11 @@ export class RepositoryDescriptor<
 	/**
 	 * Find a single entity.
 	 */
-	public async findOne(
-		query: Pick<PgQuery<EntitySchema>, "where">,
+	public async findOne<With extends WithConfig | undefined = undefined>(
+		query: Pick<PgQuery<EntitySchema>, "where"> & { with?: With },
 		opts: StatementOptions = {},
-	): Promise<Static<EntitySchema>> {
-		const [entity] = await this.find({ limit: 1, ...query }, opts);
+	): Promise<WithLoadedRelations<EntitySchema, Relations, With>> {
+		const [entity] = await this.find<With>({ limit: 1, ...query }, opts);
 
 		if (!entity) {
 			// TODO: enhance error message when finding by ID
@@ -502,13 +585,15 @@ export class RepositoryDescriptor<
 	 * This is a convenience method for `findOne` with a where clause on the primary key.
 	 * If you need more complex queries, use `findOne` instead.
 	 */
-	public async findById(
+	public async findById<With extends WithConfig | undefined = undefined>(
 		id: string | number,
-		opts: StatementOptions = {},
-	): Promise<Static<EntitySchema>> {
-		const query = this.createQuery();
-		query.where = this.getWhereId(id);
-		return await this.findOne(query, opts);
+		opts: StatementOptions & { with?: With } = {},
+	): Promise<WithLoadedRelations<EntitySchema, Relations, With>> {
+		const query = {
+			where: this.getWhereId(id),
+			with: opts.with,
+		};
+		return await this.findOne<With>(query, opts);
 	}
 
 	/**
@@ -518,11 +603,11 @@ export class RepositoryDescriptor<
 	 *
 	 * > Pagination CAN also do a count query to get the total number of elements.
 	 */
-	public async paginate(
+	public async paginate<With extends WithConfig | undefined = undefined>(
 		pagination: PageQuery = {},
-		query: PgQuery<EntitySchema> = {},
+		query: PgQuery<EntitySchema> & { with?: With } = {},
 		opts: StatementOptions & { count?: boolean } = {},
-	): Promise<Page<Static<EntitySchema>>> {
+	): Promise<Page<WithLoadedRelations<EntitySchema, Relations, With>>> {
 		const limit = query.limit ?? pagination.size ?? 10;
 		const page = pagination.page ?? 0;
 		const offset = query.offset ?? page * limit;
@@ -541,7 +626,7 @@ export class RepositoryDescriptor<
 		const tasks: Promise<any>[] = [];
 
 		tasks.push(
-			this.find(
+			this.find<With>(
 				{
 					offset,
 					limit: limit + 1,
@@ -572,7 +657,9 @@ export class RepositoryDescriptor<
 
 		const [entities, countResult] = await Promise.all(tasks);
 
-		const response = this.createPagination(entities, limit, offset);
+		const response = this.createPagination<
+			WithLoadedRelations<EntitySchema, Relations, With>
+		>(entities, limit, offset);
 
 		response.page.totalElements = countResult;
 
@@ -1115,11 +1202,11 @@ export class RepositoryDescriptor<
 	 * @param limit The limit of the pagination.
 	 * @param offset The offset of the pagination.
 	 */
-	protected createPagination(
-		entities: Static<EntitySchema>[],
+	protected createPagination<T>(
+		entities: T[],
 		limit = 10,
 		offset = 0,
-	): Page<Static<EntitySchema>> {
+	): Page<T> {
 		return {
 			content: entities.slice(0, limit),
 			can: {
@@ -1204,6 +1291,117 @@ export class RepositoryDescriptor<
 		}
 
 		return this.alepha.parse(schemaRef, entity) as Static<T>;
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------
+	// RELATIONS
+
+	/**
+	 * Load relations for entities using the RelationManager.
+	 */
+	private async loadRelationsForEntities<TEntity extends Record<string, any>>(
+		entities: TEntity | TEntity[],
+		withConfig: WithConfig,
+	): Promise<TEntity | TEntity[]> {
+		const context: RelationLoadContext = {
+			primaryKey: this.id.key as string,
+			findRelated: async (table, query, nestedWith) => {
+				// Find the repository for the related table
+				const relatedRepo = this.createRelatedRepository(table);
+
+				// Execute the query with nested relations if specified
+				const fullQuery: any = {
+					...query,
+					...(nestedWith ? { with: nestedWith } : {}),
+				};
+
+				return await relatedRepo.find(fullQuery);
+			},
+			resolveInverseTable: (foreignKey) => {
+				// Get the column from the table
+				const column = this.table[foreignKey as keyof typeof this.table];
+				if (!column || !("references" in column)) {
+					return undefined;
+				}
+
+				// Extract the referenced table from the column's references
+				const ref = (column as any).references;
+				if (!ref || typeof ref !== "function") {
+					return undefined;
+				}
+
+				const referencedTable = ref();
+				return referencedTable;
+			},
+		};
+
+		return await this.relationManager.loadRelations(
+			entities,
+			withConfig,
+			this.relations,
+			context,
+		);
+	}
+
+	/**
+	 * Create a temporary repository for a related table.
+	 */
+	private createRelatedRepository(table: { $schema: TObject }): any {
+		// Instead of creating a new repository, use a simple finder that reuses this repository's dependencies
+		return {
+			find: async (query: any) => {
+				const builder = query.distinct
+					? this.selectDistinct({}, {} as SelectedFields)
+					: this.select({});
+
+				// Cast table to the correct type for querying
+				const targetTable = table as any;
+				const db = this.provider.db;
+				const selectBuilder = db.select().from(targetTable);
+
+				if (query.where) {
+					selectBuilder.where(() =>
+						this.jsonQueryToSql(
+							query.where,
+							table.$schema,
+							(key) => targetTable[key],
+						),
+					);
+				}
+
+				if (query.offset) {
+					selectBuilder.offset(query.offset);
+				}
+
+				if (query.limit) {
+					selectBuilder.limit(query.limit);
+				}
+
+				if (query.orderBy) {
+					const orderByClauses = this.normalizeOrderBy(query.orderBy);
+					selectBuilder.orderBy(
+						...orderByClauses.map((clause) =>
+							clause.direction === "desc"
+								? desc(targetTable[clause.column])
+								: asc(targetTable[clause.column]),
+						),
+					);
+				}
+
+				const rows = await selectBuilder.execute();
+				let entities = rows.map((row) => this.clean(row, table.$schema));
+
+				// Load nested relations if specified
+				if (query.with && Object.keys(query.with).length > 0) {
+					entities = (await this.loadRelationsForEntities(
+						entities,
+						query.with,
+					)) as any[];
+				}
+
+				return entities;
+			},
+		};
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------

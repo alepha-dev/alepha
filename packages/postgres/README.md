@@ -271,7 +271,7 @@ const Order = $entity({
 
 #### $repository()
 
-Creates a repository descriptor for database operations on a defined entity.
+Creates a repository for database operations on a defined entity.
 
 This descriptor provides a comprehensive, type-safe interface for performing all
 database operations on entities defined with $entity. It offers a rich set of
@@ -294,29 +294,20 @@ built-in support for audit trails and soft deletes.
 - Entity schema must include exactly one primary key field
 - Database tables must be created via migrations before use
 
-**Use Cases**
-
-Essential for all database-driven applications:
-- User management and authentication systems
-- E-commerce product and order management
-- Content management and blogging platforms
-- Financial and accounting applications
-- Any application requiring persistent data storage
-
 **Basic repository with CRUD operations:**
 ```ts
 import { $entity, $repository } from "alepha/postgres";
 import { pg, t } from "alepha";
 
 // First, define the entity
-const User = $entity({
+const users = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
     email: t.text({ format: "email" }),
     firstName: t.text(),
     lastName: t.text(),
-    isActive: t.boolean({ default: true }),
+    isActive: pg.default(t.boolean(), true),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt()
   }),
@@ -324,15 +315,14 @@ const User = $entity({
 });
 
 class UserService {
-  users = $repository({ table: User });
+  users = $repository(users);
 
   async createUser(userData: { email: string; firstName: string; lastName: string }) {
     return await this.users.create({
       id: generateUUID(),
       email: userData.email,
       firstName: userData.firstName,
-      lastName: userData.lastName,
-      isActive: true
+      lastName: userData.lastName
     });
   }
 

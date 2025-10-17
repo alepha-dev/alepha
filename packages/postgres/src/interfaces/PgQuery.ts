@@ -1,4 +1,5 @@
 import type { Static, TObject } from "@alepha/core";
+import type { WithRelations } from "../helpers/RelationManager.ts";
 import type { PgQueryWhere } from "./PgQueryWhere.ts";
 
 /**
@@ -32,4 +33,5 @@ export interface PgQuery<T extends TObject = TObject> {
 	offset?: number;
 	orderBy?: OrderBy<Static<T>>;
 	groupBy?: (keyof Static<T>)[];
+	with?: WithRelations;
 }
