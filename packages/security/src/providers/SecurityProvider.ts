@@ -35,8 +35,8 @@ declare module "@alepha/core" {
 
 export class SecurityProvider {
 	protected readonly UNKNOWN_USER_NAME = "Anonymous User";
-	protected readonly PERMISSION_REGEXP = /^[\w-]+(:[\w-]+)?$/;
-	protected readonly PERMISSION_REGEXP_WILDCARD = /^[\w-]+(:[\w-]+)?|(:\*)$/;
+	protected readonly PERMISSION_REGEXP = /^[\w-]+((:[\w-]+)+)?$/;
+	protected readonly PERMISSION_REGEXP_WILDCARD = /^[\w-]+((:[\w-]+)+)?|(:\*)$/;
 
 	protected readonly log = $logger();
 	protected readonly jwt = $inject(JwtProvider);
@@ -150,13 +150,27 @@ export class SecurityProvider {
 			}
 
 			const parts = raw.split(":");
-			if (!parts[1]) {
+			if (parts.length === 1) {
+				// No group, just name (e.g., "read")
 				permission = { name: parts[0] };
 			} else {
-				permission = {
-					group: parts[0],
-					name: parts[1],
-				};
+				// Has group(s) (e.g., "users:read" or "admin:api:users:read")
+				// The last part is the name, everything else is the group
+				const name = parts[parts.length - 1];
+				const groupParts = parts.slice(0, -1);
+
+				if (groupParts.length === 1) {
+					permission = {
+						group: groupParts[0],
+						name,
+					};
+				} else {
+					// Multi-layer group
+					permission = {
+						group: groupParts.join(":"),
+						name,
+					};
+				}
 			}
 		} else {
 			permission = raw;
@@ -305,35 +319,37 @@ export class SecurityProvider {
 			ownership: undefined,
 		};
 
-		// check if the user has the permission
-		const [group] = permission.split(":");
-		const groupWildcard = `${group}:*`;
+		// Helper function to check if a permission matches a pattern with multi-layer wildcard support
+		const matchesPattern = (
+			permissionName: string,
+			pattern: string,
+		): boolean => {
+			if (pattern === "*") return true;
+			if (pattern === permissionName) return true;
+
+			// Handle multi-layer wildcards (e.g., "admin:api:*" matches "admin:api:users:read")
+			if (pattern.endsWith(":*")) {
+				const patternPrefix = pattern.slice(0, -2);
+				// Check if permission starts with the pattern prefix
+				if (permissionName === patternPrefix) return false; // "admin:api" doesn't match "admin:api:*"
+				return permissionName.startsWith(`${patternPrefix}:`);
+			}
+
+			return false;
+		};
 
 		for (const role of roles) {
 			// for each role candidate
 			for (const rolePermission of role.permissions) {
 				// for each permission in the role
-				if (
-					rolePermission.name === "*" || // if permission is * (wildcard)
-					rolePermission.name === groupWildcard || // if permission is group:* (wildcard)
-					rolePermission.name === permission // or if permission is the exact permission
-				) {
+				if (matchesPattern(permission, rolePermission.name)) {
 					// [feature]: exclude permissions including wildcards
 					if (rolePermission.exclude) {
 						let isExcluded = false;
 						for (const excludePattern of rolePermission.exclude) {
-							if (excludePattern === permission) {
-								// Exact match exclusion
+							if (matchesPattern(permission, excludePattern)) {
 								isExcluded = true;
 								break;
-							}
-							// Check for wildcard exclusion (e.g., "admin:*")
-							if (excludePattern.endsWith(":*")) {
-								const excludeGroup = excludePattern.slice(0, -2);
-								if (permission.startsWith(`${excludeGroup}:`)) {
-									isExcluded = true;
-									break;
-								}
 							}
 						}
 						if (isExcluded) {
@@ -456,7 +472,12 @@ export class SecurityProvider {
 			return permission.name;
 		}
 
-		return `${permission.group}:${permission.name}`;
+		// Handle multi-layer groups (e.g., "admin:api" or "management:users")
+		const groupParts = Array.isArray(permission.group)
+			? permission.group
+			: [permission.group];
+
+		return `${groupParts.join(":")}:${permission.name}`;
 	}
 
 	// accessors
@@ -512,17 +533,36 @@ export class SecurityProvider {
 					if (permission.name === "*") {
 						ref.push(...this.permissions);
 					} else if (permission.name.includes(":")) {
-						const [group, name] = permission.name.split(":");
+						// Handle multi-layer wildcards (e.g., "admin:api:*" or "users:read")
+						const parts = permission.name.split(":");
+						const lastPart = parts[parts.length - 1];
 
-						// all permissions in the group
-						if (name === "*") {
-							ref.push(...this.permissions.filter((it) => it.group === group));
-						} else {
-							// specific permission
+						if (lastPart === "*") {
+							// Wildcard at any level (e.g., "admin:*", "admin:api:*")
+							const groupPrefix = parts.slice(0, -1).join(":");
+
 							ref.push(
-								...this.permissions.filter(
-									(it) => it.name === name && it.group === group,
-								),
+								...this.permissions.filter((it) => {
+									if (!it.group) return false;
+									// Match exact group or any sub-group
+									return (
+										it.group === groupPrefix ||
+										it.group.startsWith(`${groupPrefix}:`)
+									);
+								}),
+							);
+						} else {
+							// Specific permission (e.g., "users:read" or "admin:api:users:read")
+							const name = lastPart;
+							const groupParts = parts.slice(0, -1);
+							const group = groupParts.join(":");
+
+							ref.push(
+								...this.permissions.filter((it) => {
+									if (it.name !== name) return false;
+									if (!it.group) return false;
+									return it.group === group;
+								}),
 							);
 						}
 					} else {
@@ -535,10 +575,18 @@ export class SecurityProvider {
 					}
 					const exclude = permission.exclude;
 					if (exclude) {
-						// exclude permissions
-						ref = ref.filter(
-							(it) => !exclude.includes(this.permissionToString(it)),
-						);
+						// exclude permissions with multi-layer wildcard support
+						ref = ref.filter((it) => {
+							const permString = this.permissionToString(it);
+							return !exclude.some((excludePattern) => {
+								if (excludePattern === permString) return true;
+								if (excludePattern.endsWith(":*")) {
+									const excludePrefix = excludePattern.slice(0, -2);
+									return permString.startsWith(`${excludePrefix}:`);
+								}
+								return false;
+							});
+						});
 					}
 					permissions.push(...ref);
 				}
