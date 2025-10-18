@@ -57,7 +57,7 @@ describe("MyService", () => {
   it("should do something", async () => {
     const alepha = Alepha.create();
     class TestApp {
-      // Define services, actions, etc.
+      // Define services, controllers, etc.
     }
     const app = alepha.inject(TestApp);
     await alepha.start();

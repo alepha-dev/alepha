@@ -1,13 +1,13 @@
-import { Alepha, t } from "@alepha/core";
+import { Alepha } from "@alepha/core";
 import { AlephaDateTime, DateTimeProvider } from "@alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "@alepha/email";
 import { AlephaPostgres } from "@alepha/postgres";
 import { AlephaSecurity, CryptoProvider } from "@alepha/security";
 import { AlephaServer, BadRequestError } from "@alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import {
 	AlephaApiUsers,
-	PasswordResetActions,
+	PasswordResetController,
 	SessionService,
 } from "../src/index.ts";
 
@@ -31,7 +31,7 @@ const setup = async () => {
 		cryptoProvider: alepha.inject(CryptoProvider),
 		dateTimeProvider: alepha.inject(DateTimeProvider),
 		emailProvider: alepha.inject(MemoryEmailProvider),
-		actions: alepha.inject(PasswordResetActions),
+		actions: alepha.inject(PasswordResetController),
 	};
 };
 

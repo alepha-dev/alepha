@@ -47,7 +47,7 @@ with full type safety and validation. It supports multiple email providers, temp
 validation, and automatic HTML rendering.
 
 **Template Engine**
-- Simple {{variable}} syntax for dynamic content
+- Simple {{variable}} or {{ variable }} syntax for dynamic content
 - Automatic template variable validation at runtime
 - Support for nested object properties in templates
 - HTML email support with rich formatting

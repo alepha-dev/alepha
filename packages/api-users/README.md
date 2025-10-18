@@ -15,7 +15,7 @@ npm install alepha
 Provides user management API endpoints for Alepha applications.
 
 This module includes user CRUD operations, authentication endpoints,
-and user profile management capabilities.
+password reset functionality, and user profile management capabilities.
 
 This module can be imported and used as follows:
 

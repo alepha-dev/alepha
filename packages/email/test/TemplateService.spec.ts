@@ -74,6 +74,28 @@ describe("TemplateService", () => {
 			const result = templateService.compile(template, values);
 			expect(result).toBe("Count: 0, Price: $0");
 		});
+
+		test("should compile template with spaces around variables", () => {
+			const template = "Hello {{ name }}! You have {{ count }} messages.";
+			const values = { name: "Jane", count: 5 };
+			const result = templateService.compile(template, values);
+			expect(result).toBe("Hello Jane! You have 5 messages.");
+		});
+
+		test("should compile template with mixed spacing styles", () => {
+			const template =
+				"Hello {{name}}! You have {{ count }} messages from {{ sender}}.";
+			const values = { name: "John", count: 3, sender: "Alice" };
+			const result = templateService.compile(template, values);
+			expect(result).toBe("Hello John! You have 3 messages from Alice.");
+		});
+
+		test("should compile template with multiple spaces", () => {
+			const template = "Hello {{  name  }}!";
+			const values = { name: "Bob" };
+			const result = templateService.compile(template, values);
+			expect(result).toBe("Hello Bob!");
+		});
 	});
 
 	describe("extractVariables", () => {
@@ -105,6 +127,18 @@ describe("TemplateService", () => {
 			const template = "{{firstName}} {{lastName123}} {{item_count}}";
 			const variables = templateService.extractVariables(template);
 			expect(variables).toEqual(["firstName", "lastName123", "item_count"]);
+		});
+
+		test("should extract variables with spaces", () => {
+			const template = "Hello {{ name }}! You have {{ count }} messages.";
+			const variables = templateService.extractVariables(template);
+			expect(variables).toEqual(["name", "count"]);
+		});
+
+		test("should extract variables with mixed spacing", () => {
+			const template = "{{name}} {{ email }} {{  phone  }}";
+			const variables = templateService.extractVariables(template);
+			expect(variables).toEqual(["name", "email", "phone"]);
 		});
 	});
 
@@ -150,6 +184,13 @@ describe("TemplateService", () => {
 			const values = { name: "John", extra: "unused" };
 			const missing = templateService.validateTemplate(template, values);
 			expect(missing).toEqual([]);
+		});
+
+		test("should validate template with spaces around variables", () => {
+			const template = "Hello {{ name }}! You have {{ count }} messages.";
+			const values = { name: "John" };
+			const missing = templateService.validateTemplate(template, values);
+			expect(missing).toEqual(["count"]);
 		});
 	});
 });

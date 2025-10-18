@@ -1,6 +1,6 @@
 import { $inject, t } from "@alepha/core";
+import { $email } from "@alepha/email";
 import { $action } from "@alepha/server";
-import { $passwordResetEmail } from "../descriptors/$passwordResetEmail.ts";
 import { SessionService } from "../services/SessionService.ts";
 
 /**
@@ -11,9 +11,34 @@ import { SessionService } from "../services/SessionService.ts";
  * - Validating a reset token
  * - Resetting the password with a valid token
  */
-export class PasswordResetActions {
+export class PasswordResetController {
 	protected readonly sessionService = $inject(SessionService);
-	protected readonly passwordResetEmail = $passwordResetEmail();
+
+	public readonly passwordResetEmail = $email({
+		name: "Password Reset",
+		subject: "Reset your password",
+		// language=Mustache
+		body: `
+			<h1>Reset Your Password</h1>
+			<p>Hi {{ email }},</p>
+			<p>We received a request to reset your password. Click the link below to create a new password:</p>
+			<p>
+				<a href="{{ resetUrl }}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px;">
+					Reset Password
+				</a>
+			</p>
+			<p>Or copy and paste this link into your browser:</p>
+			<p>{{ resetUrl }}</p>
+			<p>This link will expire in {{ expiresInMinutes }} minutes.</p>
+			<p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+			<p>Best regards,<br>The Team</p>
+		`,
+		schema: t.object({
+			email: t.string({ format: "email" }),
+			resetUrl: t.string(),
+			expiresInMinutes: t.number(),
+		}),
+	});
 
 	/**
 	 * Request a password reset.

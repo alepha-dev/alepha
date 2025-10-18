@@ -1,6 +1,6 @@
 /**
  * Minimal template service with Handlebars-like syntax for email templating.
- * Supports simple variable substitution with {{variableName}} syntax.
+ * Supports simple variable substitution with {{variableName}} or {{ variableName }} syntax.
  */
 export class TemplateService {
 	/**
@@ -15,10 +15,13 @@ export class TemplateService {
 	 * const service = new TemplateService();
 	 * const result = service.compile("Hello {{name}}!", { name: "John" });
 	 * // Result: "Hello John!"
+	 *
+	 * const result2 = service.compile("Hello {{ name }}!", { name: "Jane" });
+	 * // Result: "Hello Jane!"
 	 * ```
 	 */
 	public compile(template: string, values: Record<string, unknown>): string {
-		return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+		return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
 			const value = values[key];
 			return value !== undefined ? String(value) : match;
 		});
@@ -46,11 +49,11 @@ export class TemplateService {
 	 * @returns Array of variable names found in the template
 	 */
 	public extractVariables(template: string): string[] {
-		const matches = template.match(/\{\{(\w+)\}\}/g);
+		const matches = template.match(/\{\{\s*(\w+)\s*\}\}/g);
 		if (!matches) return [];
 
 		return matches
-			.map((match) => match.slice(2, -2))
+			.map((match) => match.replace(/\{\{\s*|\s*\}\}/g, ""))
 			.filter((value, index, array) => array.indexOf(value) === index);
 	}
 }
