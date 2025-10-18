@@ -3,6 +3,7 @@ import { AlephaEmail } from "@alepha/email";
 import { AlephaReactAuth } from "@alepha/react-auth";
 import { AlephaServerSecurity } from "@alepha/server-security";
 import { UserController } from "./controllers/UserController.ts";
+import { CredentialService } from "./services/CredentialService.ts";
 import { SessionService } from "./services/SessionService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -16,6 +17,7 @@ export * from "./descriptors/$realmUsers.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
+export * from "./services/CredentialService.ts";
 export * from "./services/SessionService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -35,6 +37,7 @@ export const AlephaApiUsers = $module({
 		AlephaReactAuth,
 		AlephaEmail,
 		SessionService,
+		CredentialService,
 		UserController,
 	],
 });

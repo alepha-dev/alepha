@@ -7,6 +7,7 @@ import { BadRequestError } from "@alepha/server";
 import { describe, it } from "vitest";
 import {
 	AlephaApiUsers,
+	CredentialService,
 	SessionService,
 	UserController,
 } from "../src/index.ts";
@@ -28,6 +29,7 @@ const setup = async () => {
 
 	return {
 		alepha,
+		credentialService: alepha.inject(CredentialService),
 		sessionService: alepha.inject(SessionService),
 		cryptoProvider: alepha.inject(CryptoProvider),
 		dateTimeProvider: alepha.inject(DateTimeProvider),
@@ -47,17 +49,17 @@ describe("@alepha/api-users - Password Reset", () => {
 	it("should successfully request password reset and send email", async ({
 		expect,
 	}) => {
-		const { sessionService, cryptoProvider, emailProvider, actions } =
+		const { credentialService, cryptoProvider, emailProvider, actions } =
 			await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -104,15 +106,15 @@ describe("@alepha/api-users - Password Reset", () => {
 	});
 
 	it("should not send email for OAuth-only users", async ({ expect }) => {
-		const { sessionService, emailProvider, actions } = await setup();
+		const { credentialService, emailProvider, actions } = await setup();
 
 		// Create a user with only OAuth identity (no credentials)
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "oauth@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "google",
 			providerUserId: "google-123",
@@ -132,17 +134,17 @@ describe("@alepha/api-users - Password Reset", () => {
 	});
 
 	it("should validate a valid reset token", async ({ expect }) => {
-		const { sessionService, cryptoProvider, emailProvider, actions } =
+		const { credentialService, cryptoProvider, emailProvider, actions } =
 			await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -150,7 +152,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -185,7 +187,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 	it("should reject expired reset token", async ({ expect }) => {
 		const {
-			sessionService,
+			credentialService,
 			cryptoProvider,
 			dateTimeProvider,
 			emailProvider,
@@ -194,12 +196,12 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -207,7 +209,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -231,17 +233,22 @@ describe("@alepha/api-users - Password Reset", () => {
 	it("should successfully reset password with valid token", async ({
 		expect,
 	}) => {
-		const { sessionService, cryptoProvider, emailProvider, actions } =
-			await setup();
+		const {
+			credentialService,
+			sessionService,
+			cryptoProvider,
+			emailProvider,
+			actions,
+		} = await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -249,7 +256,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -301,7 +308,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 	it("should reject password reset with expired token", async ({ expect }) => {
 		const {
-			sessionService,
+			credentialService,
 			cryptoProvider,
 			dateTimeProvider,
 			emailProvider,
@@ -310,12 +317,12 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -323,7 +330,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -350,17 +357,17 @@ describe("@alepha/api-users - Password Reset", () => {
 	it("should not allow token reuse after successful password reset", async ({
 		expect,
 	}) => {
-		const { sessionService, cryptoProvider, emailProvider, actions } =
+		const { credentialService, cryptoProvider, emailProvider, actions } =
 			await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -368,7 +375,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -401,17 +408,22 @@ describe("@alepha/api-users - Password Reset", () => {
 	it("should invalidate all sessions after password reset", async ({
 		expect,
 	}) => {
-		const { sessionService, cryptoProvider, emailProvider, actions } =
-			await setup();
+		const {
+			credentialService,
+			sessionService,
+			cryptoProvider,
+			emailProvider,
+			actions,
+		} = await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -429,7 +441,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(existingSessions).toHaveLength(2);
 
 		// Request password reset and reset password
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -453,17 +465,17 @@ describe("@alepha/api-users - Password Reset", () => {
 	});
 
 	it("should enforce minimum password length", async ({ expect }) => {
-		const { sessionService, cryptoProvider, emailProvider, actions } =
+		const { credentialService, cryptoProvider, emailProvider, actions } =
 			await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",
@@ -471,7 +483,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		await sessionService.requestPasswordReset(
+		await credentialService.requestPasswordReset(
 			"test@example.com",
 			"https://example.com/reset",
 		);
@@ -495,7 +507,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect,
 	}) => {
 		const {
-			sessionService,
+			credentialService,
 			cryptoProvider,
 			dateTimeProvider,
 			emailProvider,
@@ -504,12 +516,12 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
+		const user = await credentialService.users.create({
 			email: "test@example.com",
 			roles: ["user"],
 		});
 
-		await sessionService.identities.create({
+		await credentialService.identities.create({
 			userId: user.id,
 			provider: "credentials",
 			providerUserId: "test@example.com",

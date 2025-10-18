@@ -1,10 +1,10 @@
 import { $inject, t } from "@alepha/core";
 import { $action } from "@alepha/server";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
-import { SessionService } from "../services/SessionService.ts";
+import { CredentialService } from "../services/CredentialService.ts";
 
 export class UserController {
-	protected readonly sessionService = $inject(SessionService);
+	protected readonly credentialService = $inject(CredentialService);
 	protected readonly userNotifications = $inject(UserNotifications);
 
 	/**
@@ -27,7 +27,10 @@ export class UserController {
 		handler: async ({ body }) => {
 			// Request password reset using verification service
 			// This handles user validation, token generation, email sending, rate limiting, etc.
-			await this.sessionService.requestPasswordReset(body.email, body.resetUrl);
+			await this.credentialService.requestPasswordReset(
+				body.email,
+				body.resetUrl,
+			);
 
 			// Always return success to prevent email enumeration
 			return {
@@ -57,7 +60,7 @@ export class UserController {
 		},
 		handler: async ({ query }) => {
 			try {
-				const email = await this.sessionService.validateResetToken(
+				const email = await this.credentialService.validateResetToken(
 					query.email,
 					query.token,
 				);
@@ -92,7 +95,7 @@ export class UserController {
 			}),
 		},
 		handler: async ({ body }) => {
-			await this.sessionService.resetPassword(
+			await this.credentialService.resetPassword(
 				body.email,
 				body.token,
 				body.newPassword,
