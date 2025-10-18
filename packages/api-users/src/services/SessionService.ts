@@ -223,21 +223,13 @@ export class SessionService {
 
 	/**
 	 * Validate a password reset token.
-	 *
-	 * @param token - The reset token
-	 * @returns The user's email if token is valid
-	 * @throws BadRequestError if token is invalid or expired
 	 */
 	public async validateResetToken(token: string): Promise<string> {
-		const identity = await this.identities
-			.findOne({
-				where: {
-					resetToken: { eq: token },
-				},
-			})
-			.catch(() => {
-				throw new BadRequestError("Invalid or expired reset token");
-			});
+		const identity = await this.identities.findOne({
+			where: {
+				resetToken: { eq: token },
+			},
+		});
 
 		// Check if token has expired
 		const now = this.dateTimeProvider.now();
@@ -259,10 +251,6 @@ export class SessionService {
 
 	/**
 	 * Reset a user's password using a valid reset token.
-	 *
-	 * @param token - The reset token
-	 * @param newPassword - The new password
-	 * @throws BadRequestError if token is invalid or expired
 	 */
 	public async resetPassword(
 		token: string,
@@ -283,7 +271,7 @@ export class SessionService {
 		const now = this.dateTimeProvider.now();
 		const expiresAt = identity.resetTokenExpiresAt
 			? this.dateTimeProvider.of(identity.resetTokenExpiresAt)
-			: null;
+			: undefined;
 
 		if (!expiresAt || expiresAt < now) {
 			throw new BadRequestError("Invalid or expired reset token");

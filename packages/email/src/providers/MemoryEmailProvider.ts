@@ -10,14 +10,14 @@ export interface EmailRecord {
 
 export class MemoryEmailProvider implements EmailProvider {
 	protected readonly log = $logger();
-	protected emails: EmailRecord[] = [];
+	public records: EmailRecord[] = [];
 
 	public async send(options: EmailSendOptions): Promise<void> {
 		const { to, subject, body } = options;
 		this.log.debug("Sending email to memory store", { to, subject });
 
 		for (const recipient of Array.isArray(to) ? to : [to]) {
-			this.emails.push({
+			this.records.push({
 				to: recipient,
 				subject,
 				body,
@@ -27,23 +27,9 @@ export class MemoryEmailProvider implements EmailProvider {
 	}
 
 	/**
-	 * Get all emails sent through this provider (for testing purposes).
-	 */
-	public getEmails(): EmailRecord[] {
-		return [...this.emails];
-	}
-
-	/**
-	 * Clear all stored emails (for testing purposes).
-	 */
-	public clearEmails(): void {
-		this.emails = [];
-	}
-
-	/**
 	 * Get the last email sent (for testing purposes).
 	 */
-	public getLastEmail(): EmailRecord | undefined {
-		return this.emails[this.emails.length - 1];
+	public get last(): EmailRecord | undefined {
+		return this.records[this.records.length - 1];
 	}
 }

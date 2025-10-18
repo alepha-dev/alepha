@@ -14,7 +14,7 @@ export const notifications = $entity({
 
 		// -----------------------------------------------------------------------------------------------------------------
 
-		type: t.enum(["email"]),
+		type: t.enum(["email", "sms"]),
 
 		template: t.text(), // e.g. 'resetPassword'
 
@@ -41,7 +41,7 @@ export const notifications = $entity({
 
 		// -----------------------------------------------------------------------------------------------------------------
 
-		contact: t.text(), // e.g. email address or phone number or user ID
+		contact: t.text(), // e.g. email address or phone number or user ID or whatever
 
 		variables: t.optional(t.record(t.text(), t.any())),
 

@@ -10,13 +10,13 @@ export class UserController {
 	/**
 	 * Request a password reset.
 	 * Generates a reset token and sends an email to the user.
-	 *
-	 * POST /api/password-reset/request
 	 */
 	public requestPasswordReset = $action({
+		path: "/users/password-reset/request",
+		group: "users",
 		schema: {
 			body: t.object({
-				email: t.string({ format: "email" }),
+				email: t.email(),
 				resetUrl: t.string(),
 			}),
 			response: t.object({
@@ -58,17 +58,17 @@ export class UserController {
 	/**
 	 * Validate a password reset token.
 	 * Checks if the token is valid and not expired.
-	 *
-	 * GET /api/password-reset/validate
 	 */
 	public validateResetToken = $action({
+		path: "/users/password-reset/validate",
+		group: "users",
 		schema: {
 			query: t.object({
 				token: t.string(),
 			}),
 			response: t.object({
 				valid: t.boolean(),
-				email: t.optional(t.string({ format: "email" })),
+				email: t.optional(t.email()),
 			}),
 		},
 		handler: async ({ query }) => {
@@ -78,7 +78,7 @@ export class UserController {
 					valid: true,
 					email,
 				};
-			} catch (_error) {
+			} catch {
 				return {
 					valid: false,
 				};
@@ -89,10 +89,10 @@ export class UserController {
 	/**
 	 * Reset password with a valid token.
 	 * Updates the user's password and invalidates all sessions.
-	 *
-	 * POST /api/password-reset/reset
 	 */
 	public resetPassword = $action({
+		path: "/users/password-reset/reset",
+		group: "users",
 		schema: {
 			body: t.object({
 				token: t.string(),

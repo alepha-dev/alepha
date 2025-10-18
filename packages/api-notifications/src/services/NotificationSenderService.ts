@@ -8,6 +8,7 @@ import {
 	type NotificationEntity,
 	notifications,
 } from "../entities/notifications.ts";
+import { SmsProvider } from "../providers/SmsProvider.ts";
 
 export class NotificationSenderService {
 	protected readonly alepha = $inject(Alepha);
@@ -15,6 +16,7 @@ export class NotificationSenderService {
 	protected readonly notificationRepository = $repository(notifications);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly emailProvider = $inject(EmailProvider);
+	protected readonly smsProvider = $inject(SmsProvider);
 
 	public async send(notificationId: string | NotificationEntity) {
 		const notification =
@@ -34,10 +36,9 @@ export class NotificationSenderService {
 				await this.emailProvider.send(this.renderEmail(notification));
 				notification.sentAt = this.dateTimeProvider.nowISOString();
 			}
-			// else if (sms)
-			// else if (push)
-			// else if (whatsapp)
-			// ...
+			if (notification.type === "sms") {
+				await this.smsProvider.send(this.renderSms(notification));
+			}
 		} catch (e) {
 			this.log.error("Failed to process notification", e);
 			if (e instanceof Error) {
@@ -52,22 +53,34 @@ export class NotificationSenderService {
 		}
 	}
 
-	public renderEmail(notification: NotificationEntity) {
-		if (notification.type !== "email") {
-			throw new AlephaError("Notification is not of type email");
-		}
+	public renderSms(notification: NotificationEntity) {
+		const { variables, contact, template } = this.load(notification);
 
-		const variables = notification.variables || {};
-		const contact = notification.contact;
-		const template = this.alepha
-			.descriptors($notification)
-			.find((it) => it.name === notification.template);
-
-		if (!template) {
+		const sms = template.options.sms;
+		if (!sms) {
 			throw new AlephaError(
-				`No notification template found for ${notification.template}`,
+				`Notification template ${notification.template} has no sms defined`,
 			);
 		}
+
+		this.log.debug(
+			`Rendering sms for template ${notification.template} to ${contact}`,
+			{ variables },
+		);
+
+		const message =
+			typeof sms.message === "function"
+				? sms.message(variables as any)
+				: sms.message;
+
+		return {
+			to: contact,
+			message,
+		};
+	}
+
+	public renderEmail(notification: NotificationEntity) {
+		const { variables, contact, template } = this.load(notification);
 
 		const email = template.options.email;
 		if (!email) {
@@ -92,6 +105,26 @@ export class NotificationSenderService {
 			to: contact,
 			subject,
 			body,
+		};
+	}
+
+	protected load(notification: NotificationEntity) {
+		const variables = notification.variables || {};
+		const contact = notification.contact;
+		const template = this.alepha
+			.descriptors($notification)
+			.find((it) => it.name === notification.template);
+
+		if (!template) {
+			throw new AlephaError(
+				`No notification template found for ${notification.template}`,
+			);
+		}
+
+		return {
+			template,
+			variables,
+			contact,
 		};
 	}
 }

@@ -2,6 +2,8 @@ import { $module } from "@alepha/core";
 import { NotificationController } from "./controllers/NotificationController.ts";
 import { $notification } from "./descriptors/$notification.ts";
 import { NotificationJobs } from "./jobs/NotificationJobs.ts";
+import { MemorySmsProvider } from "./providers/MemorySmsProvider.ts";
+import { SmsProvider } from "./providers/SmsProvider.ts";
 import { NotificationQueues } from "./queues/NotificationQueues.ts";
 import { NotificationSenderService } from "./services/NotificationSenderService.ts";
 import { NotificationService } from "./services/NotificationService.ts";
@@ -12,6 +14,8 @@ export * from "./controllers/NotificationController.ts";
 export * from "./descriptors/$notification.ts";
 export * from "./entities/notifications.ts";
 export * from "./jobs/NotificationJobs.ts";
+export * from "./providers/MemorySmsProvider.ts";
+export * from "./providers/SmsProvider.ts";
 export * from "./queues/NotificationQueues.ts";
 export * from "./schemas/notificationContactPreferencesSchema.ts";
 export * from "./schemas/notificationCreateSchema.ts";
@@ -37,5 +41,21 @@ export const AlephaApiNotifications = $module({
 		NotificationSenderService,
 		NotificationQueues,
 		NotificationJobs,
+		SmsProvider,
+		MemorySmsProvider,
 	],
+	register: (alepha) => {
+		alepha.with({
+			optional: true,
+			provide: SmsProvider,
+			use: MemorySmsProvider,
+		});
+
+		alepha
+			.with(NotificationController)
+			.with(NotificationService)
+			.with(NotificationSenderService)
+			.with(NotificationQueues)
+			.with(NotificationJobs);
+	},
 });

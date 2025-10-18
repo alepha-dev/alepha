@@ -21,16 +21,12 @@ const setup = async () => {
 
 	await alepha.start();
 
-	const emailProvider = alepha.inject(MemoryEmailProvider);
-
-	emailProvider.clearEmails();
-
 	return {
 		alepha,
 		sessionService: alepha.inject(SessionService),
 		cryptoProvider: alepha.inject(CryptoProvider),
 		dateTimeProvider: alepha.inject(DateTimeProvider),
-		emailProvider,
+		emailProvider: alepha.inject(MemoryEmailProvider),
 		actions: alepha.inject(UserController),
 	};
 };
@@ -68,7 +64,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(result.message).toContain("password reset link has been sent");
 
 		// Verify email was sent
-		const emails = emailProvider.getEmails();
+		const emails = emailProvider.records;
 		expect(emails.length).toBe(1);
 		const email = emails[0];
 		expect(email.to).toBe("test@example.com");
@@ -83,7 +79,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		const { emailProvider, actions } = await setup();
 
 		// Request password reset for non-existent email
-		const result = await actions.requestPasswordReset.run({
+		const result = await actions.requestPasswordReset({
 			body: {
 				email: "nonexistent@example.com",
 				resetUrl: "https://example.com/reset-password",
@@ -95,7 +91,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(result.message).toContain("password reset link has been sent");
 
 		// But no email should be sent
-		const emails = emailProvider.getEmails();
+		const emails = emailProvider.records;
 		expect(emails).toHaveLength(0);
 	});
 
@@ -115,7 +111,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		const result = await actions.requestPasswordReset.run({
+		const result = await actions.requestPasswordReset({
 			body: {
 				email: "oauth@example.com",
 				resetUrl: "https://example.com/reset-password",
@@ -125,7 +121,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		// Should return success but not send email
 		expect(result.success).toBe(true);
 
-		const emails = emailProvider.getEmails();
+		const emails = emailProvider.records;
 		expect(emails).toHaveLength(0);
 	});
 
@@ -154,7 +150,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(token.length).toBeGreaterThan(0);
 
 		// Validate token
-		const result = await actions.validateResetToken.run({
+		const result = await actions.validateResetToken({
 			query: { token },
 		});
 
@@ -166,7 +162,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		const { actions } = await setup();
 
 		// Validate invalid token
-		const result = await actions.validateResetToken.run({
+		const result = await actions.validateResetToken({
 			query: { token: "invalid-token-123" },
 		});
 
@@ -199,7 +195,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		dateTimeProvider.travel(61, "minutes");
 
 		// Validate expired token
-		const result = await actions.validateResetToken.run({
+		const result = await actions.validateResetToken({
 			query: { token },
 		});
 
@@ -230,7 +226,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		const token = await sessionService.requestPasswordReset("test@example.com");
 
 		// Reset password
-		const result = await actions.resetPassword.run({
+		const result = await actions.resetPassword({
 			body: {
 				token,
 				newPassword: "NewPassword456",
@@ -259,7 +255,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Attempt to reset password with invalid token
 		await expect(
-			actions.resetPassword.run({
+			actions.resetPassword({
 				body: {
 					token: "invalid-token-123",
 					newPassword: "NewPassword456",
@@ -294,7 +290,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Attempt to reset password with expired token
 		await expect(
-			actions.resetPassword.run({
+			actions.resetPassword({
 				body: {
 					token,
 					newPassword: "NewPassword456",
@@ -326,7 +322,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		const token = await sessionService.requestPasswordReset("test@example.com");
 
 		// Reset password
-		await actions.resetPassword.run({
+		await actions.resetPassword({
 			body: {
 				token,
 				newPassword: "NewPassword456",
@@ -335,7 +331,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Attempt to use the same token again should fail
 		await expect(
-			actions.resetPassword.run({
+			actions.resetPassword({
 				body: {
 					token,
 					newPassword: "AnotherPassword789",
@@ -375,7 +371,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Request password reset and reset password
 		const token = await sessionService.requestPasswordReset("test@example.com");
-		await actions.resetPassword.run({
+		await actions.resetPassword({
 			body: {
 				token,
 				newPassword: "NewPassword456",
@@ -411,7 +407,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Attempt to reset with short password (less than 8 characters)
 		await expect(
-			actions.resetPassword.run({
+			actions.resetPassword({
 				body: {
 					token,
 					newPassword: "Short1", // Only 6 characters
@@ -439,20 +435,20 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset multiple times
-		await actions.requestPasswordReset.run({
+		await actions.requestPasswordReset({
 			body: {
 				email: "test@example.com",
 				resetUrl: "https://example.com/reset-password",
 			},
 		});
 
-		await actions.requestPasswordReset.run({
+		await actions.requestPasswordReset({
 			body: {
 				email: "test@example.com",
 				resetUrl: "https://example.com/reset-password",
 			},
 		});
 
-		expect(emailProvider.getEmails()).toHaveLength(2);
+		expect(emailProvider.records).toHaveLength(2);
 	});
 });

@@ -58,8 +58,8 @@ describe("VerificationController", () => {
 			maxVerificationAttempts: parameters.maxAttempts,
 		});
 
-		await expect.poll(() => emailProvider.getEmails().length).toEqual(1);
-		const [email] = emailProvider.getEmails();
+		await expect.poll(() => emailProvider.records.length).toEqual(1);
+		const [email] = emailProvider.records;
 
 		expect(email.to).toEqual(target);
 		const code = email.body;
