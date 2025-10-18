@@ -280,6 +280,9 @@ export class TypeProvider {
 
 		return Type.String({
 			maxLength,
+			[OPTIONS]: {
+				trim: options.trim ?? true,
+			},
 			...rest,
 		});
 	}
@@ -469,13 +472,67 @@ export class TypeProvider {
 	// -------------------------------------------------------------------------------------------------------------------
 	// Exotic types
 
+	public email(options?: TStringOptions): TString {
+		return this.text({
+			...options,
+			format: "email",
+		});
+	}
+
+	public e164(options?: TStringOptions): TString {
+		return this.text({
+			...options,
+			description: "Phone number in E.164 format, e.g. +1234567890.",
+			pattern: "^\\+[1-9]\\d{1,14}$",
+		});
+	}
+
+	public bcp47(options?: TStringOptions): TString {
+		return this.text({
+			...options,
+			description: "BCP 47 language tag, e.g. en, en-US, fr, fr-CA.",
+			pattern: "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+		});
+	}
+
+	/**
+	 * Create a schema for short text, such as names or titles.
+	 * Default max length is 64 characters.
+	 */
+	public shortText(options?: TStringOptions): TString {
+		return this.text({
+			size: "short",
+			...options,
+		});
+	}
+
+	/**
+	 * Create a schema for long text, such as descriptions or comments.
+	 * Default max length is 1024 characters.
+	 */
+	public longText(options?: TStringOptions): TString {
+		return this.text({
+			size: "long",
+			...options,
+		});
+	}
+
+	/**
+	 * Create a schema for rich text, such as HTML or Markdown.
+	 * Default max length is 65535 characters.
+	 */
+	public richText(options?: TStringOptions): TString {
+		return this.text({
+			size: "rich",
+			...options,
+		});
+	}
+
 	/**
 	 * Create a schema for a string enum e.g. LIKE_THIS.
-	 *
-	 * @param options
 	 */
 	public snakeCase = (options?: TStringOptions) =>
-		this.string({
+		this.text({
 			pattern: "^[A-Z_-]+$",
 			...options,
 		});
@@ -489,13 +546,13 @@ export class TypeProvider {
 				value: this.snakeCase({
 					description: "Machine-readable value.",
 				}),
-				label: this.string({
+				label: this.text({
 					description: "Human-readable label.",
 				}),
 				description: this.optional(
-					this.string({
+					this.text({
 						description: "Description of the value.",
-						maxLength: 1024,
+						size: "long",
 					}),
 				),
 			},

@@ -19,7 +19,7 @@ export interface NotificationDescriptorOptions<T extends TObject>
 	name?: string;
 	description?: string;
 	category?: string;
-	urgent?: boolean;
+	critical?: boolean;
 	sensitive?: boolean;
 	translations?: {
 		// e.g., "en", "fr", even "en-US"
@@ -48,6 +48,10 @@ export class NotificationDescriptor<T extends TObject> extends Descriptor<
 			});
 		}
 	}
+
+	public configure(options: Partial<NotificationDescriptorOptions<T>>) {
+		Object.assign(this.options, options);
+	}
 }
 
 $notification[KIND] = NotificationDescriptor;
@@ -65,6 +69,6 @@ export interface NotificationMessage<T extends TObject> {
 		body: string | ((variables: Static<T>) => string);
 	};
 	sms?: {
-		message: string;
+		message: string | ((variables: Static<T>) => string);
 	};
 }

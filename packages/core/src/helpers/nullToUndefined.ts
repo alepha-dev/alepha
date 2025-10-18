@@ -1,3 +1,5 @@
+import { OPTIONS } from "../constants/OPTIONS.ts";
+
 /**
  * Converts null values to undefined.
  */
@@ -11,6 +13,16 @@ export const nullToUndefined = (schema: any, value: any): any => {
 	if (Array.isArray(value)) {
 		return value.map((it) => nullToUndefined(schema.items, it));
 	}
+
+	// TODO: move trim logic to a dedicated sanitizer ?
+	if (
+		typeof value === "string" &&
+		schema.type === "string" &&
+		schema[OPTIONS]?.trim
+	) {
+		return String(value).trim();
+	}
+
 	if (typeof value === "object" && value !== null) {
 		const obj: any = {};
 		for (const key in value) {

@@ -28,6 +28,10 @@ export class ConfigDescriptor<T extends TObject> extends Descriptor<
 		return undefined;
 	}
 
+	public get<Key extends keyof Static<T>>(key: Key): Static<T>[Key] {
+		return this.current[key];
+	}
+
 	/**
 	 * Apply a new configuration object.
 	 */
