@@ -13,16 +13,16 @@ const createTest = async () => {
 	const alepha = Alepha.create().with(AlephaApiVerification);
 	const parameters = alepha
 		.inject(VerificationParameters)
-		.settings.get("policy");
+		.settings.get("email");
 	const controller = alepha.inject(VerificationController);
 	const dateTimeProvider = alepha.inject(DateTimeProvider);
-	const target = "+33633115544";
+	const target = "test@example.com";
 	const emailProvider = alepha.inject(MemoryEmailProvider);
 
 	alepha.inject(VerificationNotifications).verifyEmail.configure({
 		email: {
-			subject: "",
-			body: (it) => it.code,
+			subject: "Verify your email",
+			body: (it) => `Verify: ${it.verifyUrl}`,
 		},
 	});
 
@@ -38,8 +38,8 @@ const createTest = async () => {
 	};
 };
 
-describe("VerificationController", () => {
-	it("should verify code correctly", async ({ expect }) => {
+describe("EmailVerification", () => {
+	it("should verify email with UUID token correctly", async ({ expect }) => {
 		const { parameters, controller, target, emailProvider } =
 			await createTest();
 
@@ -49,6 +49,7 @@ describe("VerificationController", () => {
 			},
 			body: {
 				target,
+				verifyUrl: "https://example.com/verify",
 			},
 		});
 
@@ -62,7 +63,17 @@ describe("VerificationController", () => {
 		const [email] = emailProvider.records;
 
 		expect(email.to).toEqual(target);
-		const code = email.body;
+		expect(email.body).toContain("https://example.com/verify?token=");
+
+		// Extract UUID token from email body
+		const tokenMatch = email.body.match(/token=([a-f0-9-]+)/);
+		expect(tokenMatch).toBeTruthy();
+		const token = tokenMatch![1];
+
+		// UUID format validation
+		expect(token).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+		);
 
 		expect(
 			await controller.validateVerificationCode({
@@ -71,7 +82,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
-					code,
+					token,
 				},
 			}),
 		).toEqual({
@@ -85,7 +96,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
-					code,
+					token,
 				},
 			}),
 		).toEqual({
@@ -94,7 +105,22 @@ describe("VerificationController", () => {
 		});
 	});
 
-	it("should handle invalid code", async ({ expect }) => {
+	it("should require verifyUrl for email verification", async ({ expect }) => {
+		const { controller, target } = await createTest();
+
+		await expect(() =>
+			controller.requestVerificationCode({
+				params: {
+					type: "email",
+				},
+				body: {
+					target,
+				},
+			}),
+		).rejects.toThrowError("verifyUrl is required for email verification");
+	});
+
+	it("should handle invalid token", async ({ expect }) => {
 		const { controller, target } = await createTest();
 
 		await controller.requestVerificationCode({
@@ -103,6 +129,7 @@ describe("VerificationController", () => {
 			},
 			body: {
 				target,
+				verifyUrl: "https://example.com/verify",
 			},
 		});
 
@@ -113,7 +140,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
-					code: "aaaaaa",
+					token: "550e8400-e29b-41d4-a716-446655440000",
 				},
 			}),
 		).rejects.toThrowError("Invalid verification code");
@@ -128,6 +155,7 @@ describe("VerificationController", () => {
 			},
 			body: {
 				target,
+				verifyUrl: "https://example.com/verify",
 			},
 		});
 
@@ -139,7 +167,7 @@ describe("VerificationController", () => {
 					},
 					body: {
 						target,
-						code: "aaaaaa",
+						token: "550e8400-e29b-41d4-a716-446655440000",
 					},
 				})
 				.catch(() => null);
@@ -152,7 +180,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
-					code: "aaaaaa",
+					token: "550e8400-e29b-41d4-a716-446655440000",
 				},
 			}),
 		).rejects.toThrowError("Maximum number of attempts reached");
@@ -168,6 +196,7 @@ describe("VerificationController", () => {
 			},
 			body: {
 				target,
+				verifyUrl: "https://example.com/verify",
 			},
 		});
 
@@ -178,6 +207,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
+					verifyUrl: "https://example.com/verify",
 				},
 			}),
 		).rejects.toThrowError("Verification is on cooldown for ");
@@ -194,6 +224,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
+					verifyUrl: "https://example.com/verify",
 				},
 			}),
 		).toEqual({
@@ -203,8 +234,7 @@ describe("VerificationController", () => {
 		});
 	});
 
-	// note: this test will fail if you run it between 23:50 and 00:00
-	it("it should respect rate limit", async ({ expect }) => {
+	it("should respect rate limit per day", async ({ expect }) => {
 		const { parameters, controller, dateTimeProvider, target } =
 			await createTest();
 
@@ -215,6 +245,7 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
+					verifyUrl: "https://example.com/verify",
 				},
 			});
 			await dateTimeProvider.travel(
@@ -230,10 +261,70 @@ describe("VerificationController", () => {
 				},
 				body: {
 					target,
+					verifyUrl: "https://example.com/verify",
 				},
 			}),
 		).rejects.toThrowError(
 			`Maximum number of verification requests per day reached (${parameters.limitPerDay})`,
 		);
+	});
+
+	it("should handle token expiration", async ({ expect }) => {
+		const { parameters, controller, dateTimeProvider, target, emailProvider } =
+			await createTest();
+
+		await controller.requestVerificationCode({
+			params: {
+				type: "email",
+			},
+			body: {
+				target,
+				verifyUrl: "https://example.com/verify",
+			},
+		});
+
+		await expect.poll(() => emailProvider.records.length).toEqual(1);
+		const [email] = emailProvider.records;
+
+		const tokenMatch = email.body.match(/token=([a-f0-9-]+)/);
+		const token = tokenMatch![1];
+
+		// Travel past expiration
+		await dateTimeProvider.travel(parameters.codeExpiration + 1, "seconds");
+
+		await expect(() =>
+			controller.validateVerificationCode({
+				params: {
+					type: "email",
+				},
+				body: {
+					target,
+					token,
+				},
+			}),
+		).rejects.toThrowError("Verification code has expired");
+	});
+
+	it("should include expiration time in email", async ({ expect }) => {
+		const { parameters, controller, target, emailProvider } =
+			await createTest();
+
+		const expectedMinutes = Math.floor(parameters.codeExpiration / 60);
+
+		await controller.requestVerificationCode({
+			params: {
+				type: "email",
+			},
+			body: {
+				target,
+				verifyUrl: "https://example.com/verify",
+			},
+		});
+
+		await expect.poll(() => emailProvider.records.length).toEqual(1);
+		const [email] = emailProvider.records;
+
+		expect(email.subject).toBe("Verify your email");
+		expect(email.body).toContain("https://example.com/verify?token=");
 	});
 });

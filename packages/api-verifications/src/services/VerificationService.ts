@@ -1,4 +1,4 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { $inject } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $repository } from "@alepha/postgres";
@@ -63,8 +63,9 @@ export class VerificationService {
 
 	public async createVerification(
 		entry: VerificationEntry,
+		verifyUrl?: string,
 	): Promise<RequestVerificationResponse> {
-		const settings = this.verificationParameters.settings.get("policy");
+		const settings = this.verificationParameters.settings.get(entry.type);
 
 		const recents = await this.findRecentsByEntry(entry);
 		if (recents.length >= settings.limitPerDay) {
@@ -88,26 +89,35 @@ export class VerificationService {
 			}
 		}
 
-		const code = this.generateCode();
+		const token = this.generateToken(entry.type);
 
 		await this.verificationRepository.create({
 			type: entry.type,
 			target: entry.target,
-			code: this.hashCode(code),
+			code: this.hashCode(token),
 		});
 
 		if (entry.type === "phone") {
 			await this.verificationNotifications.verifyPhoneNumber.push({
 				contact: entry.target,
 				variables: {
-					code,
+					code: token,
 				},
 			});
 		} else if (entry.type === "email") {
+			if (!verifyUrl) {
+				throw new BadRequestError(
+					"verifyUrl is required for email verification",
+				);
+			}
+
+			const verifyUrlWithToken = `${verifyUrl}?token=${token}`;
+
 			await this.verificationNotifications.verifyEmail.push({
 				contact: entry.target,
 				variables: {
-					code,
+					verifyUrl: verifyUrlWithToken,
+					expiresInMinutes: Math.floor(settings.codeExpiration / 60),
 				},
 			});
 		} else {
@@ -125,7 +135,7 @@ export class VerificationService {
 		entry: VerificationEntry,
 		code: string,
 	): Promise<ValidateVerificationCodeResponse> {
-		const settings = this.verificationParameters.settings.get("policy");
+		const settings = this.verificationParameters.settings.get(entry.type);
 
 		const verification = await this.findByEntry(entry);
 		if (verification.verifiedAt) {
@@ -173,12 +183,17 @@ export class VerificationService {
 		return createHash("sha256").update(code).digest("hex");
 	}
 
-	public generateCode(): string {
-		const settings = this.verificationParameters.settings.get("policy");
+	public generateToken(type: VerificationTypeEnum): string {
+		if (type === "phone") {
+			const settings = this.verificationParameters.settings.get("phone");
+			return randomInt(0, 1_000_000)
+				.toString()
+				.padStart(settings.codeLength, "0");
+		} else if (type === "email") {
+			return randomUUID();
+		}
 
-		return randomInt(0, 1_000_000)
-			.toString()
-			.padStart(settings.codeLength, "0");
+		throw new BadRequestError(`Invalid verification type: ${type}`);
 	}
 }
 
