@@ -3,7 +3,11 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { $repository } from "@alepha/postgres";
 import type { OAuth2Profile } from "@alepha/react-auth";
 import { CryptoProvider, type UserAccount } from "@alepha/security";
-import { type ServerRequest, UnauthorizedError } from "@alepha/server";
+import {
+	BadRequestError,
+	type ServerRequest,
+	UnauthorizedError,
+} from "@alepha/server";
 import { identities } from "../entities/identities.ts";
 import { sessions } from "../entities/sessions.ts";
 import { users } from "../entities/users.ts";
@@ -154,5 +158,153 @@ export class SessionService {
 		});
 
 		return newUser;
+	}
+
+	/**
+	 * Request a password reset for a user by email.
+	 * Generates a secure token and stores it with an expiration time.
+	 *
+	 * @param email - User's email address
+	 * @param expiresInMinutes - Token expiration time in minutes (default: 60)
+	 * @returns The reset token
+	 */
+	public async requestPasswordReset(
+		email: string,
+		expiresInMinutes = 60,
+	): Promise<string> {
+		// Find user by email
+		const user = await this.users
+			.findOne({
+				where: { email: { eq: email } },
+			})
+			.catch(() => {
+				// Don't reveal if the email exists or not for security
+				// Return success but don't actually send email
+				return undefined;
+			});
+
+		if (!user) {
+			// Silent fail - don't reveal that email doesn't exist
+			return "";
+		}
+
+		// Find the credentials identity for this user
+		const identity = await this.identities
+			.findOne({
+				where: {
+					userId: { eq: user.id },
+					provider: { eq: "credentials" },
+				},
+			})
+			.catch(() => undefined);
+
+		if (!identity) {
+			// User doesn't have credentials identity (maybe OAuth only)
+			return "";
+		}
+
+		// Generate secure reset token
+		const resetToken = this.cryptoProvider.randomUUID();
+
+		// Calculate expiration time
+		const expiresAt = this.dateTimeProvider
+			.now()
+			.add(expiresInMinutes, "minutes")
+			.toISOString();
+
+		// Store token and expiration
+		await this.identities.updateById(identity.id, {
+			resetToken,
+			resetTokenExpiresAt: expiresAt,
+		});
+
+		return resetToken;
+	}
+
+	/**
+	 * Validate a password reset token.
+	 *
+	 * @param token - The reset token
+	 * @returns The user's email if token is valid
+	 * @throws BadRequestError if token is invalid or expired
+	 */
+	public async validateResetToken(token: string): Promise<string> {
+		const identity = await this.identities
+			.findOne({
+				where: {
+					resetToken: { eq: token },
+				},
+			})
+			.catch(() => {
+				throw new BadRequestError("Invalid or expired reset token");
+			});
+
+		// Check if token has expired
+		const now = this.dateTimeProvider.now();
+		const expiresAt = identity.resetTokenExpiresAt
+			? this.dateTimeProvider.of(identity.resetTokenExpiresAt)
+			: null;
+
+		if (!expiresAt || expiresAt < now) {
+			throw new BadRequestError("Invalid or expired reset token");
+		}
+
+		// Get user email
+		const user = await this.users.findOne({
+			where: { id: { eq: identity.userId } },
+		});
+
+		return user.email;
+	}
+
+	/**
+	 * Reset a user's password using a valid reset token.
+	 *
+	 * @param token - The reset token
+	 * @param newPassword - The new password
+	 * @throws BadRequestError if token is invalid or expired
+	 */
+	public async resetPassword(
+		token: string,
+		newPassword: string,
+	): Promise<void> {
+		// Validate token and get identity
+		const identity = await this.identities
+			.findOne({
+				where: {
+					resetToken: { eq: token },
+				},
+			})
+			.catch(() => {
+				throw new BadRequestError("Invalid or expired reset token");
+			});
+
+		// Check if token has expired
+		const now = this.dateTimeProvider.now();
+		const expiresAt = identity.resetTokenExpiresAt
+			? this.dateTimeProvider.of(identity.resetTokenExpiresAt)
+			: null;
+
+		if (!expiresAt || expiresAt < now) {
+			throw new BadRequestError("Invalid or expired reset token");
+		}
+
+		// Hash the new password
+		const hashedPassword = await this.cryptoProvider.hashPassword(newPassword);
+
+		// Update the identity with new password and clear reset token
+		await this.identities.updateById(identity.id, {
+			providerData: {
+				...(identity.providerData as Record<string, unknown>),
+				password: hashedPassword,
+			},
+			resetToken: null,
+			resetTokenExpiresAt: null,
+		});
+
+		// Invalidate all existing sessions for this user
+		await this.sessions.deleteMany({
+			userId: { eq: identity.userId },
+		});
 	}
 }

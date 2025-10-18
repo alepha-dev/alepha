@@ -23,6 +23,7 @@
 	"dependencies": {
 		"@alepha/core": "0.10.6",
 		"@alepha/datetime": "0.10.6",
+		"@alepha/email": "0.10.6",
 		"@alepha/postgres": "0.10.6",
 		"@alepha/react-auth": "0.10.6",
 		"@alepha/security": "0.10.6",

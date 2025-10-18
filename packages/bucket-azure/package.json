@@ -28,7 +28,7 @@
 		"@alepha/datetime": "0.10.6",
 		"@alepha/file": "0.10.6",
 		"@alepha/logger": "0.10.6",
-		"@azure/storage-blob": "^12.29.0"
+		"@azure/storage-blob": "^12.29.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",
