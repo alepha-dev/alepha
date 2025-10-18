@@ -5,6 +5,7 @@ import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { InjectOptions } from "./descriptors/$inject.ts";
 import { Module, type WithModule } from "./descriptors/$module.ts";
+import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
@@ -327,6 +328,11 @@ export class Alepha {
 
 	constructor(state: Partial<State> = {}) {
 		this.store = state;
+		this.events.on("configure", () => {
+			if (this.configured) {
+				throw new AlephaError("App is already configured");
+			}
+		});
 	}
 
 	/**
@@ -373,21 +379,26 @@ export class Alepha {
 	}
 
 	/**
-	 * Returns whether the App is running in a serverless environment.
-	 *
-	 * > Vite developer mode is also considered serverless.
+	 * Returns whether the App is running in Vite dev mode.
 	 */
-	public isServerless(): boolean | "vite" | "vercel" {
+	public isViteDev(): boolean {
+		if (this.isBrowser()) {
+			return false;
+		}
+
+		return !!this.env.VITE_ALEPHA_DEV || !!process.env.VITE_ALEPHA_DEV;
+	}
+
+	/**
+	 * Returns whether the App is running in a serverless environment.
+	 */
+	public isServerless(): boolean | "vercel" {
 		if (this.isBrowser()) {
 			return false;
 		}
 
 		if (this.env.VERCEL_REGION || process.env.VERCEL_REGION) {
 			return "vercel";
-		}
-
-		if (this.env.VITE_ALEPHA_DEV || process.env.VITE_ALEPHA_DEV) {
-			return "vite";
 		}
 
 		return false;
@@ -701,7 +712,7 @@ export class Alepha {
 			const match = registry.get(service);
 
 			// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
-			if (!match && this.isServerless() === "vite") {
+			if (!match && this.isViteDev()) {
 				for (const [_, definition] of registry.entries()) {
 					if (definition.instance?.constructor.name === service.name) {
 						this.log?.debug(`Hot reload detected for ${service.name}`);

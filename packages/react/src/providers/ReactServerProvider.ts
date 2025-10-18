@@ -94,7 +94,7 @@ export class ReactServerProvider {
 			}
 
 			// development mode
-			if (this.alepha.isServerless() === "vite") {
+			if (this.alepha.isViteDev()) {
 				await this.configureVite(ssrEnabled);
 				return;
 			}

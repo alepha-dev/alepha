@@ -6,13 +6,25 @@ import { NodemailerEmailProvider } from "./providers/NodemailerEmailProvider.ts"
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$email.ts";
 export * from "./errors/EmailError.ts";
 export * from "./providers/EmailProvider.ts";
 export * from "./providers/LocalEmailProvider.ts";
 export * from "./providers/MemoryEmailProvider.ts";
 export * from "./providers/NodemailerEmailProvider.ts";
-export * from "./services/TemplateService.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+	interface Hooks {
+		"email:sending": {
+			to: string | string[];
+			template: string;
+			variables: Record<string, unknown>;
+			provider: EmailProvider;
+			abort(): void;
+		};
+	}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 

@@ -3,6 +3,7 @@ import {
 	$hook,
 	$inject,
 	Alepha,
+	AlephaError,
 	type Static,
 	type TSchema,
 	t,
@@ -526,7 +527,7 @@ export class ReactPageProvider {
 
 	public add(entry: PageRouteEntry) {
 		if (this.alepha.isReady()) {
-			throw new Error("Router is already initialized");
+			throw new AlephaError("Router is already initialized");
 		}
 
 		entry.name ??= this.nextId();

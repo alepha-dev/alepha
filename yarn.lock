@@ -47,12 +47,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-notifications@workspace:packages/api-notifications":
+"@alepha/api-notifications@npm:0.10.6, @alepha/api-notifications@workspace:packages/api-notifications":
   version: 0.0.0-use.local
   resolution: "@alepha/api-notifications@workspace:packages/api-notifications"
   dependencies:
+    "@alepha/batch": "npm:0.10.6"
     "@alepha/core": "npm:0.10.6"
+    "@alepha/datetime": "npm:0.10.6"
+    "@alepha/email": "npm:0.10.6"
+    "@alepha/logger": "npm:0.10.6"
     "@alepha/postgres": "npm:0.10.6"
+    "@alepha/queue": "npm:0.10.6"
     "@biomejs/biome": "npm:^2.2.6"
     tsdown: "npm:^0.15.7"
     typescript: "npm:^5.9.3"
@@ -78,6 +83,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/api-users@workspace:packages/api-users"
   dependencies:
+    "@alepha/api-notifications": "npm:0.10.6"
     "@alepha/core": "npm:0.10.6"
     "@alepha/datetime": "npm:0.10.6"
     "@alepha/email": "npm:0.10.6"

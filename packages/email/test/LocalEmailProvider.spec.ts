@@ -59,7 +59,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await provider.send(to, subject, body);
+			await provider.send({
+				to,
+				subject,
+				body,
+			});
 
 			expect(mockedFs.mkdir).toHaveBeenCalledWith("test-emails", {
 				recursive: true,
@@ -83,7 +87,11 @@ describe("LocalEmailProvider", () => {
 			const mockDate = new Date("2023-01-01T12:00:00.000Z");
 			vi.setSystemTime(mockDate);
 
-			await provider.send(to, subject, body);
+			await provider.send({
+				to,
+				subject,
+				body,
+			});
 
 			expect(mockedPath.join).toHaveBeenCalledWith(
 				"test-emails",
@@ -101,7 +109,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await provider.send(to, subject, body);
+			await provider.send({
+				to,
+				subject,
+				body,
+			});
 
 			expect(mockedPath.join).toHaveBeenCalledWith(
 				"test-emails",
@@ -117,7 +129,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test <Subject>";
 			const body = "<p>Test body with <strong>HTML</strong></p>";
 
-			await provider.send(to, subject, body);
+			await provider.send({
+				to,
+				subject,
+				body,
+			});
 
 			const writeCall = mockedFs.writeFile.mock.calls[0];
 			const htmlContent = writeCall[1] as string;
@@ -139,10 +155,20 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await expect(provider.send(to, subject, body)).rejects.toThrow(
-				EmailError,
-			);
-			await expect(provider.send(to, subject, body)).rejects.toThrow(
+			await expect(
+				provider.send({
+					to,
+					subject,
+					body,
+				}),
+			).rejects.toThrow(EmailError);
+			await expect(
+				provider.send({
+					to,
+					subject,
+					body,
+				}),
+			).rejects.toThrow(
 				"Failed to save email to local file: Permission denied",
 			);
 		});
@@ -156,12 +182,20 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await expect(provider.send(to, subject, body)).rejects.toThrow(
-				EmailError,
-			);
-			await expect(provider.send(to, subject, body)).rejects.toThrow(
-				"Failed to save email to local file: Disk full",
-			);
+			await expect(
+				provider.send({
+					to,
+					subject,
+					body,
+				}),
+			).rejects.toThrow(EmailError);
+			await expect(
+				provider.send({
+					to,
+					subject,
+					body,
+				}),
+			).rejects.toThrow("Failed to save email to local file: Disk full");
 		});
 
 		test("should handle non-Error exceptions", async () => {
@@ -172,12 +206,20 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			await expect(provider.send(to, subject, body)).rejects.toThrow(
-				EmailError,
-			);
-			await expect(provider.send(to, subject, body)).rejects.toThrow(
-				"Failed to save email to local file: String error",
-			);
+			await expect(
+				provider.send({
+					to,
+					subject,
+					body,
+				}),
+			).rejects.toThrow(EmailError);
+			await expect(
+				provider.send({
+					to,
+					subject,
+					body,
+				}),
+			).rejects.toThrow("Failed to save email to local file: String error");
 		});
 	});
 
@@ -194,7 +236,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			const html = (provider as any).createEmailHtml(to, subject, body);
+			const html = provider.createEmailHtml({
+				to,
+				subject,
+				body,
+			});
 
 			expect(html).toContain("<!DOCTYPE html>");
 			expect(html).toContain('<html lang="en">');
@@ -213,7 +259,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test <Subject> & More";
 			const body = "<p>Test body</p>";
 
-			const html = (provider as any).createEmailHtml(to, subject, body);
+			const html = provider.createEmailHtml({
+				to,
+				subject,
+				body,
+			});
 
 			expect(html).toContain("test&lt;script&gt;@example.com");
 			expect(html).toContain("Test &lt;Subject&gt; &amp; More");
@@ -226,7 +276,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body with <strong>HTML</strong> & entities</p>";
 
-			const html = (provider as any).createEmailHtml(to, subject, body);
+			const html = provider.createEmailHtml({
+				to,
+				subject,
+				body,
+			});
 
 			expect(html).toContain(
 				"<p>Test body with <strong>HTML</strong> & entities</p>",
@@ -238,7 +292,11 @@ describe("LocalEmailProvider", () => {
 			const subject = "Test Subject";
 			const body = "<p>Test body</p>";
 
-			const html = (provider as any).createEmailHtml(to, subject, body);
+			const html = provider.createEmailHtml({
+				to,
+				subject,
+				body,
+			});
 
 			expect(html).toContain("<style>");
 			expect(html).toContain("font-family: Arial, sans-serif");
@@ -254,32 +312,32 @@ describe("LocalEmailProvider", () => {
 		});
 
 		test("should escape ampersands", () => {
-			const result = (provider as any).escapeHtml("Tom & Jerry");
+			const result = provider.escapeHtml("Tom & Jerry");
 			expect(result).toBe("Tom &amp; Jerry");
 		});
 
 		test("should escape less than signs", () => {
-			const result = (provider as any).escapeHtml("5 < 10");
+			const result = provider.escapeHtml("5 < 10");
 			expect(result).toBe("5 &lt; 10");
 		});
 
 		test("should escape greater than signs", () => {
-			const result = (provider as any).escapeHtml("10 > 5");
+			const result = provider.escapeHtml("10 > 5");
 			expect(result).toBe("10 &gt; 5");
 		});
 
 		test("should escape double quotes", () => {
-			const result = (provider as any).escapeHtml('Say "Hello"');
+			const result = provider.escapeHtml('Say "Hello"');
 			expect(result).toBe("Say &quot;Hello&quot;");
 		});
 
 		test("should escape single quotes", () => {
-			const result = (provider as any).escapeHtml("Don't worry");
+			const result = provider.escapeHtml("Don't worry");
 			expect(result).toBe("Don&#39;t worry");
 		});
 
 		test("should escape multiple special characters", () => {
-			const result = (provider as any).escapeHtml(
+			const result = provider.escapeHtml(
 				'<script>alert("Hello & goodbye")</script>',
 			);
 			expect(result).toBe(
@@ -288,12 +346,12 @@ describe("LocalEmailProvider", () => {
 		});
 
 		test("should handle empty string", () => {
-			const result = (provider as any).escapeHtml("");
+			const result = provider.escapeHtml("");
 			expect(result).toBe("");
 		});
 
 		test("should handle string with no special characters", () => {
-			const result = (provider as any).escapeHtml("Hello World");
+			const result = provider.escapeHtml("Hello World");
 			expect(result).toBe("Hello World");
 		});
 	});

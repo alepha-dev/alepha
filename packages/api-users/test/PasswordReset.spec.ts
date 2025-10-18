@@ -1,9 +1,8 @@
 import { Alepha } from "@alepha/core";
-import { AlephaDateTime, DateTimeProvider } from "@alepha/datetime";
+import { DateTimeProvider } from "@alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "@alepha/email";
-import { AlephaPostgres } from "@alepha/postgres";
 import { AlephaSecurity, CryptoProvider } from "@alepha/security";
-import { AlephaServer, BadRequestError } from "@alepha/server";
+import { BadRequestError } from "@alepha/server";
 import { describe, it } from "vitest";
 import {
 	AlephaApiUsers,
@@ -16,21 +15,22 @@ const setup = async () => {
 		env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
 	});
 
-	alepha.with(AlephaPostgres);
 	alepha.with(AlephaSecurity);
-	alepha.with(AlephaDateTime);
 	alepha.with(AlephaEmail);
-	alepha.with(AlephaServer);
 	alepha.with(AlephaApiUsers);
 
 	await alepha.start();
+
+	const emailProvider = alepha.inject(MemoryEmailProvider);
+
+	emailProvider.clearEmails();
 
 	return {
 		alepha,
 		sessionService: alepha.inject(SessionService),
 		cryptoProvider: alepha.inject(CryptoProvider),
 		dateTimeProvider: alepha.inject(DateTimeProvider),
-		emailProvider: alepha.inject(MemoryEmailProvider),
+		emailProvider,
 		actions: alepha.inject(UserController),
 	};
 };
@@ -57,7 +57,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		const result = await actions.requestPasswordReset.run({
+		const result = await actions.requestPasswordReset({
 			body: {
 				email: "test@example.com",
 				resetUrl: "https://example.com/reset-password",
@@ -69,8 +69,7 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Verify email was sent
 		const emails = emailProvider.getEmails();
-		expect(emails).toHaveLength(1);
-
+		expect(emails.length).toBe(1);
 		const email = emails[0];
 		expect(email.to).toBe("test@example.com");
 		expect(email.subject).toBe("Reset your password");
@@ -454,8 +453,6 @@ describe("@alepha/api-users - Password Reset", () => {
 			},
 		});
 
-		// Verify multiple emails were sent
-		const emails = emailProvider.getEmails();
-		expect(emails.length).toBeGreaterThanOrEqual(2);
+		expect(emailProvider.getEmails()).toHaveLength(2);
 	});
 });

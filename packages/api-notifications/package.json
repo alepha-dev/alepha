@@ -21,8 +21,13 @@
 		"src"
 	],
 	"dependencies": {
+		"@alepha/batch": "0.10.6",
 		"@alepha/core": "0.10.6",
-		"@alepha/postgres": "0.10.6"
+		"@alepha/datetime": "0.10.6",
+		"@alepha/email": "0.10.6",
+		"@alepha/logger": "0.10.6",
+		"@alepha/postgres": "0.10.6",
+		"@alepha/queue": "0.10.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

@@ -3,7 +3,7 @@ import { $logger } from "@alepha/logger";
 import type { Transporter } from "nodemailer";
 import nodemailer from "nodemailer";
 import { EmailError } from "../errors/EmailError.ts";
-import type { EmailProvider } from "./EmailProvider.ts";
+import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
 
 const envSchema = t.object({
 	EMAIL_HOST: t.text({
@@ -66,18 +66,17 @@ export class NodemailerEmailProvider implements EmailProvider {
 		this.transporter = this.createTransporter();
 	}
 
-	public async send(to: string, subject: string, body: string): Promise<void> {
+	public async send(options: EmailSendOptions): Promise<void> {
+		const { to, subject, body } = options;
 		this.log.debug("Sending email via Nodemailer", { to, subject });
 
 		try {
-			const mailOptions = {
+			const result = await this.transporter.sendMail({
 				from: this.fromAddress,
 				to,
 				subject,
 				html: body,
-			};
-
-			const result = await this.transporter.sendMail(mailOptions);
+			});
 
 			this.log.info("Email sent successfully", {
 				to,

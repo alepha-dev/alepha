@@ -65,7 +65,7 @@ export class FormModel<T extends TObject> {
 			options.onError?.(error as Error, args);
 
 			await this.alepha.events.emit("form:submit:error", {
-				error,
+				error: error as Error,
 				id: this.id,
 			});
 		}

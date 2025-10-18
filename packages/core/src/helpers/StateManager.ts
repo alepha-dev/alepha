@@ -40,7 +40,7 @@ export class StateManager<S extends Record<string, any> = State> {
 		this.events
 			?.emit(
 				"state:mutate",
-				{ key: key as string, value, prevValue },
+				{ key: key as keyof State, value, prevValue },
 				{ catch: true },
 			)
 			.catch(() => null);

@@ -59,7 +59,7 @@ export class EventManager {
 	 * Emits the specified event with the given payload.
 	 */
 	public async emit<T extends keyof Hooks>(
-		func: keyof Hooks,
+		func: T,
 		payload: Hooks[T],
 		options: {
 			/**

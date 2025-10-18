@@ -36,10 +36,13 @@ export class UserController {
 				// Build the full reset URL with token
 				const resetUrlWithToken = `${body.resetUrl}?token=${token}`;
 
-				await this.userNotifications.passwordReset.send(body.email, {
-					email: body.email,
-					resetUrl: resetUrlWithToken,
-					expiresInMinutes,
+				await this.userNotifications.passwordReset.push({
+					contact: body.email,
+					variables: {
+						email: body.email,
+						resetUrl: resetUrlWithToken,
+						expiresInMinutes,
+					},
 				});
 			}
 

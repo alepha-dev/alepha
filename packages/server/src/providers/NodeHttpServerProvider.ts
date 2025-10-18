@@ -162,7 +162,7 @@ export class NodeHttpServerProvider extends ServerProvider {
 		on: "start",
 		handler: async () => {
 			// do not start the server in serverless mode
-			if (this.alepha.isServerless()) {
+			if (this.alepha.isServerless() || this.alepha.isViteDev()) {
 				return;
 			}
 
@@ -174,7 +174,7 @@ export class NodeHttpServerProvider extends ServerProvider {
 		on: "stop",
 		handler: async () => {
 			// do not stop the server in serverless mode
-			if (this.alepha.isServerless()) {
+			if (this.alepha.isServerless() || this.alepha.isViteDev()) {
 				return;
 			}
 

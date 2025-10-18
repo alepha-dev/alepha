@@ -43,7 +43,7 @@ export const run = (
 
 	(globalThis as any).__alepha = alepha;
 
-	if (alepha.isServerless()) {
+	if (alepha.isServerless() || alepha.isViteDev()) {
 		return;
 	}
 

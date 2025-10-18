@@ -12,7 +12,7 @@ export abstract class ServerProvider {
 		params?: Record<string, string>,
 	): boolean {
 		return (
-			this.alepha.isServerless() === "vite" &&
+			this.alepha.isViteDev() &&
 			(!route || (!!params?.["*"] && `/${params?.["*"]}` === url)) &&
 			(!route || !!url?.includes("."))
 		);

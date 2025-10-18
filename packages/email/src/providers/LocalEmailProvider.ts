@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { $logger } from "@alepha/logger";
 import { EmailError } from "../errors/EmailError.ts";
-import type { EmailProvider } from "./EmailProvider.ts";
+import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
 
 export interface LocalEmailProviderOptions {
 	/**
@@ -20,7 +20,9 @@ export class LocalEmailProvider implements EmailProvider {
 		this.directory = options.directory ?? "email";
 	}
 
-	public async send(to: string, subject: string, body: string): Promise<void> {
+	public async send(options: EmailSendOptions): Promise<void> {
+		const { to, subject, body } = options;
+
 		this.log.debug("Sending email to local file", {
 			to,
 			subject,
@@ -33,17 +35,23 @@ export class LocalEmailProvider implements EmailProvider {
 
 			// Create filename: emailcontact+date
 			const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-			const sanitizedEmail = to.replace(/[^a-zA-Z0-9@.-]/g, "_");
-			const filename = `${sanitizedEmail}+${timestamp}.html`;
-			const filepath = path.join(this.directory, filename);
+			for (const recipient of Array.isArray(to) ? to : [to]) {
+				const sanitizedEmail = recipient.replace(/[^a-zA-Z0-9@.-]/g, "_");
+				const filename = `${sanitizedEmail}+${timestamp}.html`;
+				const filepath = path.join(this.directory, filename);
 
-			// Create HTML content
-			const htmlContent = this.createEmailHtml(to, subject, body);
+				// Create HTML content
+				const htmlContent = this.createEmailHtml({
+					to: recipient,
+					subject,
+					body,
+				});
 
-			// Write to file
-			await fs.writeFile(filepath, htmlContent, "utf8");
+				// Write to file
+				await fs.writeFile(filepath, htmlContent, "utf8");
 
-			this.log.info("Email saved to local file", { filepath, to, subject });
+				this.log.info("Email saved to local file", { filepath, to, subject });
+			}
 		} catch (error) {
 			const message = `Failed to save email to local file: ${error instanceof Error ? error.message : String(error)}`;
 			this.log.error(message, { to, subject, directory: this.directory });
@@ -51,7 +59,12 @@ export class LocalEmailProvider implements EmailProvider {
 		}
 	}
 
-	protected createEmailHtml(to: string, subject: string, body: string): string {
+	public createEmailHtml(options: {
+		to: string;
+		subject: string;
+		body: string;
+	}): string {
+		const { to, subject, body } = options;
 		const timestamp = new Date().toISOString();
 
 		return `<!DOCTYPE html>
@@ -80,7 +93,7 @@ export class LocalEmailProvider implements EmailProvider {
 </html>`;
 	}
 
-	protected escapeHtml(text: string): string {
+	public escapeHtml(text: string): string {
 		return text
 			.replace(/&/g, "&amp;")
 			.replace(/</g, "&lt;")

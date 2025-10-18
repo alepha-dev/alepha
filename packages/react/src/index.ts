@@ -38,7 +38,7 @@ declare module "@alepha/core" {
 		};
 		// -----------------------------------------------------------------------------------------------------------------
 		"react:browser:render": {
-			root: HTMLDivElement;
+			root: HTMLElement;
 			element: ReactNode;
 			state: ReactRouterState;
 			hydration?: ReactHydrationState;

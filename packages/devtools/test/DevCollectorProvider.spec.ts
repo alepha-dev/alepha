@@ -15,11 +15,11 @@ describe("DevCollectorProvider", () => {
 		await app.events.emit("log", {
 			message: "Test log message",
 			entry: {
-				level: "info",
+				level: "INFO",
 				message: "Test log",
 				service: "TestService",
 				module: "test.module",
-				timestamp: new Date(),
+				timestamp: new Date().toISOString(),
 			},
 		});
 
@@ -27,7 +27,7 @@ describe("DevCollectorProvider", () => {
 		expect(logs).toHaveLength(initialLogCount + 1);
 		const lastLog = logs[logs.length - 1];
 		expect(lastLog.formatted).toBe("Test log message");
-		expect(lastLog.entry.level).toBe("info");
+		expect(lastLog.entry.level).toBe("INFO");
 		expect(lastLog.entry.message).toBe("Test log");
 	});
 
@@ -41,11 +41,11 @@ describe("DevCollectorProvider", () => {
 			await app.events.emit("log", {
 				message: `Log ${i}`,
 				entry: {
-					level: "info",
+					level: "INFO",
 					message: `Message ${i}`,
 					service: "TestService",
 					module: "test.module",
-					timestamp: new Date(),
+					timestamp: new Date().toISOString(),
 				},
 			});
 		}

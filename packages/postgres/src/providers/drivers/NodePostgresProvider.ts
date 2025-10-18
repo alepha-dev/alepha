@@ -126,10 +126,7 @@ export class NodePostgresProvider extends PostgresProvider {
 			}
 
 			// never migrate in serverless mode (vercel, netlify, ...)
-			const provider = this.alepha.isServerless();
-
-			// except for vite
-			if (!provider || provider === "vite") {
+			if (!this.alepha.isServerless()) {
 				try {
 					await this.migrate.run();
 				} catch (error) {

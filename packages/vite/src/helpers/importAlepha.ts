@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { Alepha } from "@alepha/core";
+import { type Alepha, AlephaError } from "@alepha/core";
 import { importVite } from "./importVite.ts";
 
 /**
@@ -42,7 +42,9 @@ export const importAlepha = async (
 
 	const alepha = global.__alepha as Alepha | undefined;
 	if (!alepha) {
-		throw new Error("Alepha instance not found. Ensure Alepha is initialized.");
+		throw new AlephaError(
+			"Alepha instance not found. Ensure Alepha is initialized.",
+		);
 	}
 
 	await alepha.events.emit("configure", alepha);
