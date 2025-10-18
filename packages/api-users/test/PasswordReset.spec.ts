@@ -7,8 +7,8 @@ import { AlephaServer, BadRequestError } from "@alepha/server";
 import { describe, it } from "vitest";
 import {
 	AlephaApiUsers,
-	PasswordResetController,
 	SessionService,
+	UserController,
 } from "../src/index.ts";
 
 const setup = async () => {
@@ -31,7 +31,7 @@ const setup = async () => {
 		cryptoProvider: alepha.inject(CryptoProvider),
 		dateTimeProvider: alepha.inject(DateTimeProvider),
 		emailProvider: alepha.inject(MemoryEmailProvider),
-		actions: alepha.inject(PasswordResetController),
+		actions: alepha.inject(UserController),
 	};
 };
 

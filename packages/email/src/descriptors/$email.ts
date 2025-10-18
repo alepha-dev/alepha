@@ -1,4 +1,5 @@
 import {
+	AlephaError,
 	createDescriptor,
 	Descriptor,
 	KIND,
@@ -19,7 +20,7 @@ import { TemplateService } from "../services/TemplateService.ts";
  * validation, and automatic HTML rendering.
  *
  * **Template Engine**
- * - Simple {{variable}} syntax for dynamic content
+ * - Simple {{variable}} or {{ variable }} syntax for dynamic content
  * - Automatic template variable validation at runtime
  * - Support for nested object properties in templates
  * - HTML email support with rich formatting
@@ -129,12 +130,12 @@ export interface EmailDescriptorOptions<T extends TSchema> {
 	/**
 	 * Email subject template. Supports {{variableName}} syntax.
 	 */
-	subject: string;
+	subject: string | ((payload: Static<T>) => string);
 
 	/**
 	 * Email body template (HTML content). Supports {{variableName}} syntax.
 	 */
-	body: string;
+	body: string | ((payload: Static<T>) => string);
 
 	/**
 	 * Schema defining the structure of template variables.
@@ -181,32 +182,9 @@ export class EmailDescriptor<T extends TSchema> extends Descriptor<
 		// Validate and parse the values using the schema
 		const parsedValues = this.alepha.parse(this.options.schema, values);
 
-		// Validate template variables
-		const subjectMissing = this.templateService.validateTemplate(
-			this.options.subject,
-			parsedValues as Record<string, unknown>,
-		);
-		const bodyMissing = this.templateService.validateTemplate(
-			this.options.body,
-			parsedValues as Record<string, unknown>,
-		);
-
-		if (subjectMissing.length > 0 || bodyMissing.length > 0) {
-			const missing = [...new Set([...subjectMissing, ...bodyMissing])];
-			throw new Error(
-				`Missing template variables for email ${this.name}: ${missing.join(", ")}`,
-			);
-		}
-
 		// Compile templates
-		const subject = this.templateService.compile(
-			this.options.subject,
-			parsedValues as Record<string, unknown>,
-		);
-		const body = this.templateService.compile(
-			this.options.body,
-			parsedValues as Record<string, unknown>,
-		);
+		const subject = this.compileTemplate(this.options.subject, parsedValues);
+		const body = this.compileTemplate(this.options.body, parsedValues);
 
 		// Send the email
 		await this.provider.send(to, subject, body);
@@ -215,6 +193,32 @@ export class EmailDescriptor<T extends TSchema> extends Descriptor<
 			subject,
 			values: parsedValues,
 		});
+	}
+
+	protected compileTemplate(
+		template: string | ((payload: Static<T>) => string),
+		payload: Static<T>,
+	): string {
+		if (typeof template === "function") {
+			return template(payload);
+		}
+
+		const keysMissing = this.templateService.validateTemplate(
+			template,
+			payload,
+		);
+
+		if (keysMissing.length > 0) {
+			const missing = [...new Set([...keysMissing])];
+			throw new AlephaError(
+				`Missing template variables for email ${this.name}: ${missing.join(", ")}`,
+			);
+		}
+
+		return this.templateService.compile(
+			template,
+			payload as Record<string, unknown>,
+		);
 	}
 
 	protected $provider() {

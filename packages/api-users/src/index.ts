@@ -2,12 +2,12 @@ import { $module } from "@alepha/core";
 import { AlephaEmail } from "@alepha/email";
 import { AlephaReactAuth } from "@alepha/react-auth";
 import { AlephaServerSecurity } from "@alepha/server-security";
-import { PasswordResetController } from "./controllers/PasswordResetController.ts";
+import { UserController } from "./controllers/UserController.ts";
 import { SessionService } from "./services/SessionService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./controllers/PasswordResetController.ts";
+export * from "./controllers/UserController.ts";
 export * from "./descriptors/$authApple.ts";
 export * from "./descriptors/$authCredentials.ts";
 export * from "./descriptors/$authGithub.ts";
@@ -35,6 +35,6 @@ export const AlephaApiUsers = $module({
 		AlephaReactAuth,
 		AlephaEmail,
 		SessionService,
-		PasswordResetController,
+		UserController,
 	],
 });
