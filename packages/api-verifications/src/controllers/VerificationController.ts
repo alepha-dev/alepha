@@ -22,18 +22,22 @@ export class VerificationController {
 			body: t.object({
 				target: t.text(),
 				verifyUrl: t.optional(
-					t.string({
-						description: "Required for email verification - the URL to redirect to after clicking the verification link",
+					t.text({
+						description:
+							"Required for email verification - the URL to redirect to after clicking the verification link",
 					}),
 				),
 			}),
 			response: requestVerificationCodeResponseSchema,
 		},
 		handler: async ({ body, params }) => {
-			return await this.verificationService.createVerification({
-				type: params.type,
-				target: body.target,
-			}, body.verifyUrl);
+			return await this.verificationService.createVerification(
+				{
+					type: params.type,
+					target: body.target,
+				},
+				body.verifyUrl,
+			);
 		},
 	});
 
@@ -48,7 +52,8 @@ export class VerificationController {
 			body: t.object({
 				target: t.text(),
 				token: t.text({
-					description: "The verification token (6-digit code for phone, UUID for email).",
+					description:
+						"The verification token (6-digit code for phone, UUID for email).",
 				}),
 			}),
 			response: validateVerificationCodeResponseSchema,

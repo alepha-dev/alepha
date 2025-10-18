@@ -1,15 +1,17 @@
 import { $module } from "@alepha/core";
 import { VerificationController } from "./controllers/VerificationController.ts";
 import { VerificationJobs } from "./jobs/VerificationJobs.ts";
+import { VerificationNotifications } from "./notifications/VerificationNotifications.ts";
+import { VerificationService } from "./services/VerificationService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./controllers/VerificationController.ts";
-export * from "./events/VerificationEvents.ts";
 export * from "./notifications/VerificationNotifications.ts";
 export * from "./schemas/requestVerificationCodeResponseSchema.ts";
 export * from "./schemas/validateVerificationCodeResponseSchema.ts";
 export * from "./schemas/verificationTypeEnumSchema.ts";
+export * from "./services/VerificationService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -23,5 +25,10 @@ export * from "./schemas/verificationTypeEnumSchema.ts";
  */
 export const AlephaApiVerification = $module({
 	name: "alepha.api.verifications",
-	services: [VerificationController, VerificationJobs],
+	services: [
+		VerificationController,
+		VerificationJobs,
+		VerificationService,
+		VerificationNotifications,
+	],
 });

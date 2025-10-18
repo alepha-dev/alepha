@@ -9,7 +9,7 @@ export class UserController {
 
 	/**
 	 * Request a password reset.
-	 * Generates a reset token and sends an email to the user.
+	 * Generates a reset token using verification service and sends an email to the user.
 	 */
 	public requestPasswordReset = $action({
 		path: "/users/password-reset/request",
@@ -25,26 +25,9 @@ export class UserController {
 			}),
 		},
 		handler: async ({ body }) => {
-			const expiresInMinutes = 60;
-			const token = await this.sessionService.requestPasswordReset(
-				body.email,
-				expiresInMinutes,
-			);
-
-			// Only send email if token was generated (user exists)
-			if (token) {
-				// Build the full reset URL with token
-				const resetUrlWithToken = `${body.resetUrl}?token=${token}`;
-
-				await this.userNotifications.passwordReset.push({
-					contact: body.email,
-					variables: {
-						email: body.email,
-						resetUrl: resetUrlWithToken,
-						expiresInMinutes,
-					},
-				});
-			}
+			// Request password reset using verification service
+			// This handles user validation, token generation, email sending, rate limiting, etc.
+			await this.sessionService.requestPasswordReset(body.email, body.resetUrl);
 
 			// Always return success to prevent email enumeration
 			return {
@@ -64,6 +47,7 @@ export class UserController {
 		group: "users",
 		schema: {
 			query: t.object({
+				email: t.email(),
 				token: t.string(),
 			}),
 			response: t.object({
@@ -73,7 +57,10 @@ export class UserController {
 		},
 		handler: async ({ query }) => {
 			try {
-				const email = await this.sessionService.validateResetToken(query.token);
+				const email = await this.sessionService.validateResetToken(
+					query.email,
+					query.token,
+				);
 				return {
 					valid: true,
 					email,
@@ -95,6 +82,7 @@ export class UserController {
 		group: "users",
 		schema: {
 			body: t.object({
+				email: t.email(),
 				token: t.string(),
 				newPassword: t.string({ minLength: 8 }),
 			}),
@@ -104,7 +92,11 @@ export class UserController {
 			}),
 		},
 		handler: async ({ body }) => {
-			await this.sessionService.resetPassword(body.token, body.newPassword);
+			await this.sessionService.resetPassword(
+				body.email,
+				body.token,
+				body.newPassword,
+			);
 
 			return {
 				success: true,

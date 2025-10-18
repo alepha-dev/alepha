@@ -7,7 +7,6 @@ import {
 	type VerificationEntity,
 	verifications,
 } from "../entities/verifications.ts";
-import { VerificationEvents } from "../events/VerificationEvents.ts";
 import { VerificationNotifications } from "../notifications/VerificationNotifications.ts";
 import { VerificationParameters } from "../parameters/VerificationParameters.ts";
 import type { RequestVerificationResponse } from "../schemas/requestVerificationCodeResponseSchema.ts";
@@ -16,7 +15,6 @@ import type { VerificationTypeEnum } from "../schemas/verificationTypeEnumSchema
 
 export class VerificationService {
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly verificationEvents = $inject(VerificationEvents);
 	protected readonly verificationParameters = $inject(VerificationParameters);
 	protected readonly verificationRepository = $repository(verifications);
 	protected readonly verificationNotifications = $inject(
@@ -172,11 +170,23 @@ export class VerificationService {
 			verifiedAt: this.dateTimeProvider.nowISOString(),
 		});
 
-		await this.verificationEvents.onVerified.publish({
-			verification,
-		});
-
 		return { ok: true };
+	}
+
+	/**
+	 * Verify a code silently - returns false instead of throwing errors.
+	 * Useful for password reset where we don't want to reveal if email exists.
+	 */
+	public async verifyCodeSilent(
+		entry: VerificationEntry,
+		code: string,
+	): Promise<boolean> {
+		try {
+			const result = await this.verifyCode(entry, code);
+			return result.ok;
+		} catch {
+			return false;
+		}
 	}
 
 	public hashCode(code: string): string {

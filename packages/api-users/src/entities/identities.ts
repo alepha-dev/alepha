@@ -13,8 +13,6 @@ export const identities = $entity({
 		provider: t.string(),
 		providerUserId: t.string(),
 		providerData: t.optional(t.json()),
-		resetToken: t.optional(t.string()),
-		resetTokenExpiresAt: t.optional(t.string()),
 	}),
 });
 

@@ -6,10 +6,12 @@ export const requestVerificationCodeResponseSchema = t.object({
 		description: "Time in seconds before your verification token expires.",
 	}),
 	verificationCooldown: t.int({
-		description: "Cooldown period in seconds before you can request another verification.",
+		description:
+			"Cooldown period in seconds before you can request another verification.",
 	}),
 	maxVerificationAttempts: t.int({
-		description: "Maximum number of verification attempts allowed before the token is locked.",
+		description:
+			"Maximum number of verification attempts allowed before the token is locked.",
 	}),
 });
 

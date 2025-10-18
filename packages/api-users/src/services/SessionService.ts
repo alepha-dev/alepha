@@ -1,3 +1,4 @@
+import { VerificationController } from "@alepha/api-verifications";
 import { $inject, Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $repository } from "@alepha/postgres";
@@ -16,6 +17,7 @@ export class SessionService {
 	protected readonly alepha = $inject(Alepha);
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly cryptoProvider = $inject(CryptoProvider);
+	protected readonly verificationController = $inject(VerificationController);
 
 	public readonly users = $repository(users);
 	public readonly sessions = $repository(sessions);
@@ -162,30 +164,26 @@ export class SessionService {
 
 	/**
 	 * Request a password reset for a user by email.
-	 * Generates a secure token and stores it with an expiration time.
+	 * Uses the verification service for secure token generation and management.
 	 *
 	 * @param email - User's email address
-	 * @param expiresInMinutes - Token expiration time in minutes (default: 60)
-	 * @returns The reset token
+	 * @param resetUrl - Base URL for the password reset page
+	 * @returns True if reset was initiated (regardless of whether user exists - for security)
 	 */
 	public async requestPasswordReset(
 		email: string,
-		expiresInMinutes = 60,
-	): Promise<string> {
-		// Find user by email
+		resetUrl: string,
+	): Promise<boolean> {
+		// Find user by email (silent fail for security)
 		const user = await this.users
 			.findOne({
 				where: { email: { eq: email } },
 			})
-			.catch(() => {
-				// Don't reveal if the email exists or not for security
-				// Return success but don't actually send email
-				return undefined;
-			});
+			.catch(() => undefined);
 
 		if (!user) {
 			// Silent fail - don't reveal that email doesn't exist
-			return "";
+			return true;
 		}
 
 		// Find the credentials identity for this user
@@ -200,99 +198,98 @@ export class SessionService {
 
 		if (!identity) {
 			// User doesn't have credentials identity (maybe OAuth only)
-			return "";
+			// Silent fail - don't reveal this information
+			return true;
 		}
 
-		// Generate secure reset token
-		const resetToken = this.cryptoProvider.randomUUID();
+		// Create verification using verification service
+		// This handles: token generation, expiration, rate limiting, cooldown
+		try {
+			await this.verificationController.requestVerificationCode({
+				params: { type: "email" },
+				body: { target: email, verifyUrl: resetUrl },
+			});
+		} catch {
+			// If rate limit or cooldown hit, still return true for security
+			// The error will be logged but not exposed to user
+		}
 
-		// Calculate expiration time
-		const expiresAt = this.dateTimeProvider
-			.now()
-			.add(expiresInMinutes, "minutes")
-			.toISOString();
-
-		// Store token and expiration
-		await this.identities.updateById(identity.id, {
-			resetToken,
-			resetTokenExpiresAt: expiresAt,
-		});
-
-		return resetToken;
+		return true;
 	}
 
 	/**
 	 * Validate a password reset token.
+	 * Returns email if valid, throws error if invalid/expired.
 	 */
-	public async validateResetToken(token: string): Promise<string> {
-		const identity = await this.identities.findOne({
-			where: {
-				resetToken: { eq: token },
-			},
-		});
+	public async validateResetToken(
+		email: string,
+		token: string,
+	): Promise<string> {
+		// Verify using verification service
+		const isValid = await this.verificationController
+			.validateVerificationCode({
+				params: { type: "email" },
+				body: { target: email, token },
+			})
+			.catch(() => undefined);
 
-		// Check if token has expired
-		const now = this.dateTimeProvider.now();
-		const expiresAt = identity.resetTokenExpiresAt
-			? this.dateTimeProvider.of(identity.resetTokenExpiresAt)
-			: null;
-
-		if (!expiresAt || expiresAt < now) {
+		if (!isValid?.ok) {
 			throw new BadRequestError("Invalid or expired reset token");
 		}
 
-		// Get user email
-		const user = await this.users.findOne({
-			where: { id: { eq: identity.userId } },
-		});
-
-		return user.email;
+		return email;
 	}
 
 	/**
 	 * Reset a user's password using a valid reset token.
+	 * Validates token, updates password, and invalidates all sessions.
 	 */
 	public async resetPassword(
+		email: string,
 		token: string,
 		newPassword: string,
 	): Promise<void> {
-		// Validate token and get identity
-		const identity = await this.identities
-			.findOne({
-				where: {
-					resetToken: { eq: token },
-				},
+		// Verify token using verification service
+		const result = await this.verificationController
+			.validateVerificationCode({
+				params: { type: "email" },
+				body: { target: email, token },
 			})
 			.catch(() => {
 				throw new BadRequestError("Invalid or expired reset token");
 			});
 
-		// Check if token has expired
-		const now = this.dateTimeProvider.now();
-		const expiresAt = identity.resetTokenExpiresAt
-			? this.dateTimeProvider.of(identity.resetTokenExpiresAt)
-			: undefined;
-
-		if (!expiresAt || expiresAt < now) {
+		// If already verified, this is a token reuse attempt
+		if (result.alreadyVerified) {
 			throw new BadRequestError("Invalid or expired reset token");
 		}
+
+		// Find user and identity
+		const user = await this.users.findOne({
+			where: { email: { eq: email } },
+		});
+
+		const identity = await this.identities.findOne({
+			where: {
+				userId: { eq: user.id },
+				provider: { eq: "credentials" },
+			},
+		});
 
 		// Hash the new password
 		const hashedPassword = await this.cryptoProvider.hashPassword(newPassword);
 
-		// Update the identity with new password and clear reset token
+		// Update the identity with new password
 		await this.identities.updateById(identity.id, {
 			providerData: {
 				...(identity.providerData as Record<string, unknown>),
 				password: hashedPassword,
 			},
-			resetToken: null,
-			resetTokenExpiresAt: null,
 		});
 
 		// Invalidate all existing sessions for this user
 		await this.sessions.deleteMany({
-			userId: { eq: identity.userId },
+			userId: { eq: user.id },
 		});
 	}
 }

@@ -1,3 +1,4 @@
+import { AlephaApiVerification } from "@alepha/api-verifications";
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "@alepha/email";
@@ -17,18 +18,29 @@ const setup = async () => {
 
 	alepha.with(AlephaSecurity);
 	alepha.with(AlephaEmail);
+	alepha.with(AlephaApiVerification);
 	alepha.with(AlephaApiUsers);
 
 	await alepha.start();
+
+	const emailProvider = alepha.inject(MemoryEmailProvider);
+	emailProvider.records = [];
 
 	return {
 		alepha,
 		sessionService: alepha.inject(SessionService),
 		cryptoProvider: alepha.inject(CryptoProvider),
 		dateTimeProvider: alepha.inject(DateTimeProvider),
-		emailProvider: alepha.inject(MemoryEmailProvider),
+		emailProvider,
 		actions: alepha.inject(UserController),
 	};
+};
+
+// Helper to extract token from email
+const extractToken = (emailBody: string): string => {
+	const match = emailBody.match(/token=([a-f0-9-]+)/);
+	if (!match) throw new Error("Token not found in email");
+	return match[1];
 };
 
 describe("@alepha/api-users - Password Reset", () => {
@@ -63,16 +75,13 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(result.success).toBe(true);
 		expect(result.message).toContain("password reset link has been sent");
 
-		// Verify email was sent
-		const emails = emailProvider.records;
-		expect(emails.length).toBe(1);
-		const email = emails[0];
+		// Verify email was sent via verification service
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const email = emailProvider.records[0];
 		expect(email.to).toBe("test@example.com");
-		expect(email.subject).toBe("Reset your password");
-		expect(email.body).toContain("Reset Your Password");
-		expect(email.body).toContain("test@example.com");
+		expect(email.subject).toBe("Verify your email address");
 		expect(email.body).toContain("https://example.com/reset-password?token=");
-		expect(email.body).toContain("60 minutes");
+		expect(email.body).toContain("30 minutes"); // Default email verification expiration
 	});
 
 	it("should not reveal if email does not exist", async ({ expect }) => {
@@ -91,8 +100,7 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(result.message).toContain("password reset link has been sent");
 
 		// But no email should be sent
-		const emails = emailProvider.records;
-		expect(emails).toHaveLength(0);
+		expect(emailProvider.records).toHaveLength(0);
 	});
 
 	it("should not send email for OAuth-only users", async ({ expect }) => {
@@ -120,58 +128,11 @@ describe("@alepha/api-users - Password Reset", () => {
 
 		// Should return success but not send email
 		expect(result.success).toBe(true);
-
-		const emails = emailProvider.records;
-		expect(emails).toHaveLength(0);
+		expect(emailProvider.records).toHaveLength(0);
 	});
 
 	it("should validate a valid reset token", async ({ expect }) => {
-		const { sessionService, cryptoProvider, actions } = await setup();
-
-		// Create a test user with credentials
-		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
-			email: "test@example.com",
-			roles: ["user"],
-		});
-
-		await sessionService.identities.create({
-			userId: user.id,
-			provider: "credentials",
-			providerUserId: "test@example.com",
-			providerData: { password: hashedPassword },
-		});
-
-		// Request password reset
-		const token = await sessionService.requestPasswordReset("test@example.com");
-
-		// Token should be generated for valid user
-		expect(token).toBeTruthy();
-		expect(token.length).toBeGreaterThan(0);
-
-		// Validate token
-		const result = await actions.validateResetToken({
-			query: { token },
-		});
-
-		expect(result.valid).toBe(true);
-		expect(result.email).toBe("test@example.com");
-	});
-
-	it("should reject invalid reset token", async ({ expect }) => {
-		const { actions } = await setup();
-
-		// Validate invalid token
-		const result = await actions.validateResetToken({
-			query: { token: "invalid-token-123" },
-		});
-
-		expect(result.valid).toBe(false);
-		expect(result.email).toBeUndefined();
-	});
-
-	it("should reject expired reset token", async ({ expect }) => {
-		const { sessionService, cryptoProvider, dateTimeProvider, actions } =
+		const { sessionService, cryptoProvider, emailProvider, actions } =
 			await setup();
 
 		// Create a test user with credentials
@@ -189,24 +150,47 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		const token = await sessionService.requestPasswordReset("test@example.com");
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
 
-		// Travel forward in time to expire the token (default expiration is 60 minutes)
-		dateTimeProvider.travel(61, "minutes");
+		// Extract token from email
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
 
-		// Validate expired token
+		// Validate token
 		const result = await actions.validateResetToken({
-			query: { token },
+			query: { email: "test@example.com", token },
+		});
+
+		expect(result.valid).toBe(true);
+		expect(result.email).toBe("test@example.com");
+	});
+
+	it("should reject invalid reset token", async ({ expect }) => {
+		const { actions } = await setup();
+
+		// Validate invalid token
+		const result = await actions.validateResetToken({
+			query: {
+				email: "test@example.com",
+				token: "550e8400-e29b-41d4-a716-446655440000",
+			},
 		});
 
 		expect(result.valid).toBe(false);
 		expect(result.email).toBeUndefined();
 	});
 
-	it("should successfully reset password with valid token", async ({
-		expect,
-	}) => {
-		const { sessionService, cryptoProvider, actions } = await setup();
+	it("should reject expired reset token", async ({ expect }) => {
+		const {
+			sessionService,
+			cryptoProvider,
+			dateTimeProvider,
+			emailProvider,
+			actions,
+		} = await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
@@ -223,11 +207,61 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		const token = await sessionService.requestPasswordReset("test@example.com");
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
+
+		// Extract token
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
+
+		// Travel forward in time to expire the token (default expiration is 30 minutes for email verification)
+		dateTimeProvider.travel(31, "minutes");
+
+		// Validate expired token
+		const result = await actions.validateResetToken({
+			query: { email: "test@example.com", token },
+		});
+
+		expect(result.valid).toBe(false);
+		expect(result.email).toBeUndefined();
+	});
+
+	it("should successfully reset password with valid token", async ({
+		expect,
+	}) => {
+		const { sessionService, cryptoProvider, emailProvider, actions } =
+			await setup();
+
+		// Create a test user with credentials
+		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
+		const user = await sessionService.users.create({
+			email: "test@example.com",
+			roles: ["user"],
+		});
+
+		await sessionService.identities.create({
+			userId: user.id,
+			provider: "credentials",
+			providerUserId: "test@example.com",
+			providerData: { password: hashedPassword },
+		});
+
+		// Request password reset
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
+
+		// Extract token
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
 
 		// Reset password
 		const result = await actions.resetPassword({
 			body: {
+				email: "test@example.com",
 				token,
 				newPassword: "NewPassword456",
 			},
@@ -257,7 +291,8 @@ describe("@alepha/api-users - Password Reset", () => {
 		await expect(
 			actions.resetPassword({
 				body: {
-					token: "invalid-token-123",
+					email: "test@example.com",
+					token: "550e8400-e29b-41d4-a716-446655440000",
 					newPassword: "NewPassword456",
 				},
 			}),
@@ -265,8 +300,13 @@ describe("@alepha/api-users - Password Reset", () => {
 	});
 
 	it("should reject password reset with expired token", async ({ expect }) => {
-		const { sessionService, cryptoProvider, dateTimeProvider, actions } =
-			await setup();
+		const {
+			sessionService,
+			cryptoProvider,
+			dateTimeProvider,
+			emailProvider,
+			actions,
+		} = await setup();
 
 		// Create a test user with credentials
 		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
@@ -283,15 +323,23 @@ describe("@alepha/api-users - Password Reset", () => {
 		});
 
 		// Request password reset
-		const token = await sessionService.requestPasswordReset("test@example.com");
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
 
-		// Travel forward in time to expire the token (default expiration is 60 minutes)
-		dateTimeProvider.travel(61, "minutes");
+		// Extract token
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
+
+		// Travel forward in time to expire the token
+		dateTimeProvider.travel(31, "minutes");
 
 		// Attempt to reset password with expired token
 		await expect(
 			actions.resetPassword({
 				body: {
+					email: "test@example.com",
 					token,
 					newPassword: "NewPassword456",
 				},
@@ -299,124 +347,9 @@ describe("@alepha/api-users - Password Reset", () => {
 		).rejects.toThrowError(BadRequestError);
 	});
 
-	it("should clear reset token after successful password reset", async ({
+	it("should not allow token reuse after successful password reset", async ({
 		expect,
 	}) => {
-		const { sessionService, cryptoProvider, actions } = await setup();
-
-		// Create a test user with credentials
-		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
-			email: "test@example.com",
-			roles: ["user"],
-		});
-
-		await sessionService.identities.create({
-			userId: user.id,
-			provider: "credentials",
-			providerUserId: "test@example.com",
-			providerData: { password: hashedPassword },
-		});
-
-		// Request password reset
-		const token = await sessionService.requestPasswordReset("test@example.com");
-
-		// Reset password
-		await actions.resetPassword({
-			body: {
-				token,
-				newPassword: "NewPassword456",
-			},
-		});
-
-		// Attempt to use the same token again should fail
-		await expect(
-			actions.resetPassword({
-				body: {
-					token,
-					newPassword: "AnotherPassword789",
-				},
-			}),
-		).rejects.toThrowError(BadRequestError);
-	});
-
-	it("should invalidate all sessions after password reset", async ({
-		expect,
-	}) => {
-		const { sessionService, cryptoProvider, actions } = await setup();
-
-		// Create a test user with credentials
-		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
-			email: "test@example.com",
-			roles: ["user"],
-		});
-
-		await sessionService.identities.create({
-			userId: user.id,
-			provider: "credentials",
-			providerUserId: "test@example.com",
-			providerData: { password: hashedPassword },
-		});
-
-		// Create some sessions
-		const session1 = await sessionService.createSession(user, 3600);
-		const session2 = await sessionService.createSession(user, 3600);
-
-		// Verify sessions exist
-		const existingSessions = await sessionService.sessions.find({
-			where: { userId: { eq: user.id } },
-		});
-		expect(existingSessions).toHaveLength(2);
-
-		// Request password reset and reset password
-		const token = await sessionService.requestPasswordReset("test@example.com");
-		await actions.resetPassword({
-			body: {
-				token,
-				newPassword: "NewPassword456",
-			},
-		});
-
-		// Verify all sessions are deleted
-		const remainingSessions = await sessionService.sessions.find({
-			where: { userId: { eq: user.id } },
-		});
-		expect(remainingSessions).toHaveLength(0);
-	});
-
-	it("should enforce minimum password length", async ({ expect }) => {
-		const { sessionService, cryptoProvider, actions } = await setup();
-
-		// Create a test user with credentials
-		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
-		const user = await sessionService.users.create({
-			email: "test@example.com",
-			roles: ["user"],
-		});
-
-		await sessionService.identities.create({
-			userId: user.id,
-			provider: "credentials",
-			providerUserId: "test@example.com",
-			providerData: { password: hashedPassword },
-		});
-
-		// Request password reset
-		const token = await sessionService.requestPasswordReset("test@example.com");
-
-		// Attempt to reset with short password (less than 8 characters)
-		await expect(
-			actions.resetPassword({
-				body: {
-					token,
-					newPassword: "Short1", // Only 6 characters
-				},
-			}),
-		).rejects.toThrow();
-	});
-
-	it("should allow multiple password reset requests", async ({ expect }) => {
 		const { sessionService, cryptoProvider, emailProvider, actions } =
 			await setup();
 
@@ -434,7 +367,156 @@ describe("@alepha/api-users - Password Reset", () => {
 			providerData: { password: hashedPassword },
 		});
 
-		// Request password reset multiple times
+		// Request password reset
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
+
+		// Extract token
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
+
+		// Reset password
+		await actions.resetPassword({
+			body: {
+				email: "test@example.com",
+				token,
+				newPassword: "NewPassword456",
+			},
+		});
+
+		// Attempt to use the same token again should fail
+		await expect(
+			actions.resetPassword({
+				body: {
+					email: "test@example.com",
+					token,
+					newPassword: "AnotherPassword789",
+				},
+			}),
+		).rejects.toThrowError(BadRequestError);
+	});
+
+	it("should invalidate all sessions after password reset", async ({
+		expect,
+	}) => {
+		const { sessionService, cryptoProvider, emailProvider, actions } =
+			await setup();
+
+		// Create a test user with credentials
+		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
+		const user = await sessionService.users.create({
+			email: "test@example.com",
+			roles: ["user"],
+		});
+
+		await sessionService.identities.create({
+			userId: user.id,
+			provider: "credentials",
+			providerUserId: "test@example.com",
+			providerData: { password: hashedPassword },
+		});
+
+		// Create some sessions
+		await sessionService.createSession(user, 3600);
+		await sessionService.createSession(user, 3600);
+
+		// Verify sessions exist
+		const existingSessions = await sessionService.sessions.find({
+			where: { userId: { eq: user.id } },
+		});
+		expect(existingSessions).toHaveLength(2);
+
+		// Request password reset and reset password
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
+
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
+
+		await actions.resetPassword({
+			body: {
+				email: "test@example.com",
+				token,
+				newPassword: "NewPassword456",
+			},
+		});
+
+		// Verify all sessions are deleted
+		const remainingSessions = await sessionService.sessions.find({
+			where: { userId: { eq: user.id } },
+		});
+		expect(remainingSessions).toHaveLength(0);
+	});
+
+	it("should enforce minimum password length", async ({ expect }) => {
+		const { sessionService, cryptoProvider, emailProvider, actions } =
+			await setup();
+
+		// Create a test user with credentials
+		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
+		const user = await sessionService.users.create({
+			email: "test@example.com",
+			roles: ["user"],
+		});
+
+		await sessionService.identities.create({
+			userId: user.id,
+			provider: "credentials",
+			providerUserId: "test@example.com",
+			providerData: { password: hashedPassword },
+		});
+
+		// Request password reset
+		await sessionService.requestPasswordReset(
+			"test@example.com",
+			"https://example.com/reset",
+		);
+
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+		const token = extractToken(emailProvider.records[0].body);
+
+		// Attempt to reset with short password (less than 8 characters)
+		await expect(
+			actions.resetPassword({
+				body: {
+					email: "test@example.com",
+					token,
+					newPassword: "Short1", // Only 6 characters
+				},
+			}),
+		).rejects.toThrow();
+	});
+
+	it("should respect rate limiting on password reset requests", async ({
+		expect,
+	}) => {
+		const {
+			sessionService,
+			cryptoProvider,
+			dateTimeProvider,
+			emailProvider,
+			actions,
+		} = await setup();
+
+		// Create a test user with credentials
+		const hashedPassword = await cryptoProvider.hashPassword("OldPassword123");
+		const user = await sessionService.users.create({
+			email: "test@example.com",
+			roles: ["user"],
+		});
+
+		await sessionService.identities.create({
+			userId: user.id,
+			provider: "credentials",
+			providerUserId: "test@example.com",
+			providerData: { password: hashedPassword },
+		});
+
+		// Request password reset multiple times within cooldown period
 		await actions.requestPasswordReset({
 			body: {
 				email: "test@example.com",
@@ -442,6 +524,9 @@ describe("@alepha/api-users - Password Reset", () => {
 			},
 		});
 
+		await expect.poll(() => emailProvider.records.length).toBe(1);
+
+		// Second request should be silently ignored (cooldown)
 		await actions.requestPasswordReset({
 			body: {
 				email: "test@example.com",
@@ -449,6 +534,20 @@ describe("@alepha/api-users - Password Reset", () => {
 			},
 		});
 
-		expect(emailProvider.records).toHaveLength(2);
+		// Still only 1 email
+		expect(emailProvider.records.length).toBe(1);
+
+		// Wait for cooldown to pass (90 seconds default)
+		dateTimeProvider.travel(91, "seconds");
+
+		// Now should work
+		await actions.requestPasswordReset({
+			body: {
+				email: "test@example.com",
+				resetUrl: "https://example.com/reset-password",
+			},
+		});
+
+		await expect.poll(() => emailProvider.records.length).toBe(2);
 	});
 });

@@ -84,6 +84,7 @@ __metadata:
   resolution: "@alepha/api-users@workspace:packages/api-users"
   dependencies:
     "@alepha/api-notifications": "npm:0.10.6"
+    "@alepha/api-verifications": "npm:0.10.6"
     "@alepha/core": "npm:0.10.6"
     "@alepha/datetime": "npm:0.10.6"
     "@alepha/email": "npm:0.10.6"
@@ -95,6 +96,22 @@ __metadata:
     "@biomejs/biome": "npm:^2.2.6"
     tsdown: "npm:^0.15.7"
     typescript: "npm:^5.9.3"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
+"@alepha/api-verifications@npm:0.10.6, @alepha/api-verifications@workspace:packages/api-verifications":
+  version: 0.0.0-use.local
+  resolution: "@alepha/api-verifications@workspace:packages/api-verifications"
+  dependencies:
+    "@alepha/api-notifications": "npm:0.10.6"
+    "@alepha/api-parameters": "npm:0.10.6"
+    "@alepha/core": "npm:0.10.6"
+    "@alepha/datetime": "npm:0.10.6"
+    "@alepha/email": "npm:0.10.6"
+    "@alepha/postgres": "npm:0.10.6"
+    "@alepha/scheduler": "npm:0.10.6"
+    "@alepha/server": "npm:0.10.6"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -3351,21 +3368,6 @@ __metadata:
   checksum: 10c0/332118bb488e7a70eaad068fb1a33f016d30442fb0498b37a80cb425c1e741853a5de1a04dce03526ed6265481ecf744aa6e13f072178d19e6b94b19f623ae1c
   languageName: node
   linkType: hard
-
-"@sds/api-verifications@workspace:packages/api-verifications":
-  version: 0.0.0-use.local
-  resolution: "@sds/api-verifications@workspace:packages/api-verifications"
-  dependencies:
-    "@alepha/api-notifications": "npm:0.10.6"
-    "@alepha/api-parameters": "npm:0.10.6"
-    "@alepha/core": "npm:0.10.6"
-    "@alepha/datetime": "npm:0.10.6"
-    "@alepha/postgres": "npm:0.10.6"
-    "@alepha/server": "npm:0.10.6"
-    "@alepha/topic": "npm:0.10.6"
-    vitest: "npm:^3.2.4"
-  languageName: unknown
-  linkType: soft
 
 "@smithy/abort-controller@npm:^4.1.1":
   version: 4.1.1

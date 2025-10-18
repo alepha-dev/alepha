@@ -22,6 +22,7 @@
 	],
 	"dependencies": {
 		"@alepha/api-notifications": "0.10.6",
+		"@alepha/api-verifications": "0.10.6",
 		"@alepha/core": "0.10.6",
 		"@alepha/datetime": "0.10.6",
 		"@alepha/email": "0.10.6",
