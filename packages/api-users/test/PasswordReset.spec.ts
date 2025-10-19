@@ -14,7 +14,7 @@ import {
 
 const setup = async () => {
 	const alepha = Alepha.create({
-		env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
+		env: { LOG_LEVEL: "error" },
 	});
 
 	alepha.with(AlephaSecurity);
