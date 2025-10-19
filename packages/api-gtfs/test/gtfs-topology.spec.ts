@@ -3,13 +3,13 @@ import * as path from "node:path";
 import { Alepha } from "@alepha/core";
 import { describe, it } from "vitest";
 import {
-	AlephaApiGTFS,
+	AlephaApiGtfs,
 	GtfsDatasetController,
 	GtfsTopologyController,
 } from "../src";
 
 const createTest = async () => {
-	const alepha = Alepha.create().with(AlephaApiGTFS);
+	const alepha = Alepha.create().with(AlephaApiGtfs);
 	const datasetController = alepha.inject(GtfsDatasetController);
 	const topologyController = alepha.inject(GtfsTopologyController);
 

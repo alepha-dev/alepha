@@ -39,7 +39,7 @@ export * from "./services/GtfsQueryService.ts";
  *
  * @module alepha.api.gtfs
  */
-export const AlephaApiGTFS = $module({
+export const AlephaApiGtfs = $module({
 	name: "alepha.api.gtfs",
 	services: [
 		AlephaServerMultipart,

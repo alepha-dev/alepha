@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { $inject, AlephaError } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { parse } from "csv-parse/sync";
-import JSZip, { file } from "jszip";
+import JSZip from "jszip";
 import type { GTFSImportResult } from "../schemas/gtfsImportResultSchema.ts";
 import { GtfsDatabaseService } from "./GtfsDatabaseService.ts";
 
@@ -132,19 +132,44 @@ export class GtfsImportService {
 		const file = zip.file(filename);
 		if (!file) {
 			// Calendar dates is optional
+			if (filename === "calendar.txt") {
+				return [];
+			}
+			// Calendar dates is optional
 			if (filename === "calendar_dates.txt") {
 				return [];
 			}
-			throw new Error(`Required file ${filename} not found in GTFS archive`);
+			throw new AlephaError(
+				`Required file ${filename} not found in GTFS archive`,
+			);
 		}
 
 		const content = await file.async("text");
 		return parse(content, {
-			columns: true,
+			columns: (header) => {
+				// Trim whitespace from column names to handle malformed GTFS files
+				return header.map((column: string) => column.trim());
+			},
 			skip_empty_lines: true,
 			trim: true,
-			cast: true,
-			cast_date: false,
+			cast: (value, context) => {
+				// Don't cast date fields (start_date, end_date, date)
+				if (
+					context.column === "start_date" ||
+					context.column === "end_date" ||
+					context.column === "date"
+				) {
+					return value;
+				}
+				// Cast other fields automatically
+				if (value === "") return null;
+				// Try to parse as number
+				const num = Number(value);
+				if (!Number.isNaN(num) && value.trim() === num.toString()) {
+					return num;
+				}
+				return value;
+			},
 			relax_column_count: true,
 		});
 	}
@@ -154,16 +179,16 @@ export class GtfsImportService {
 	 */
 	private validateStops(stops: any[]): void {
 		if (stops.length === 0) {
-			throw new Error("No stops found in GTFS data");
+			throw new AlephaError("No stops found in GTFS data");
 		}
 
 		for (const stop of stops) {
 			// Validate required fields
 			if (!stop.stop_id) {
-				throw new Error("Stop missing required field: stop_id");
+				throw new AlephaError("Stop missing required field: stop_id");
 			}
 			if (!stop.stop_name) {
-				throw new Error(
+				throw new AlephaError(
 					`Stop ${stop.stop_id} missing required field: stop_name`,
 				);
 			}
@@ -173,17 +198,21 @@ export class GtfsImportService {
 			const lon = Number.parseFloat(stop.stop_lon);
 
 			if (Number.isNaN(lat) || Number.isNaN(lon)) {
-				throw new Error(
+				throw new AlephaError(
 					`Stop ${stop.stop_id} has invalid or missing latitude/longitude`,
 				);
 			}
 
 			if (lat < -90 || lat > 90) {
-				throw new Error(`Stop ${stop.stop_id} has invalid latitude: ${lat}`);
+				throw new AlephaError(
+					`Stop ${stop.stop_id} has invalid latitude: ${lat}`,
+				);
 			}
 
 			if (lon < -180 || lon > 180) {
-				throw new Error(`Stop ${stop.stop_id} has invalid longitude: ${lon}`);
+				throw new AlephaError(
+					`Stop ${stop.stop_id} has invalid longitude: ${lon}`,
+				);
 			}
 		}
 	}

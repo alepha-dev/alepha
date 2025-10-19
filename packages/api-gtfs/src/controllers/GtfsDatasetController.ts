@@ -1,4 +1,4 @@
-import { $inject, AlephaError, t } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
 import { $action } from "@alepha/server";
 import { gtfsImportResultSchema } from "../schemas/gtfsImportResultSchema.ts";
 import { GtfsDatabaseService } from "../services/GtfsDatabaseService.ts";
@@ -35,8 +35,11 @@ export class GtfsDatasetController {
 		},
 		handler: async ({ body }) => {
 			const [name] = body.file.name.split(".");
+			console.log(body.file);
+			console.log(name);
+			console.log(body.dataset ?? name);
 			return await this.importService.import(
-				body.dataset ?? name,
+				body.dataset || name,
 				Buffer.from(await body.file.arrayBuffer()),
 				body.inMemory,
 			);

@@ -15,6 +15,7 @@ import {
 	$action,
 	type ActionDescriptor,
 	type RequestConfigSchema,
+	ServerProvider,
 	ServerRouterProvider,
 } from "@alepha/server";
 import { ServerStaticProvider } from "@alepha/server-static";
@@ -27,6 +28,7 @@ import {
 export class ServerSwaggerProvider {
 	protected readonly serverStaticProvider = $inject(ServerStaticProvider);
 	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+	protected readonly serverProvider = $inject(ServerProvider);
 	protected readonly alepha = $inject(Alepha);
 	protected readonly log = $logger();
 
@@ -36,12 +38,14 @@ export class ServerSwaggerProvider {
 		on: "configure",
 		priority: "last",
 		handler: async (alepha) => {
-			const swagger = alepha.descriptors($swagger)?.[0];
-			if (!swagger) {
-				return;
-			}
+			const options = alepha.descriptors($swagger)?.[0]?.options ?? {
+				info: {
+					title: "API Documentation",
+					version: "1.0.0",
+				},
+			};
 
-			this.json = await this.createSwagger(swagger.options);
+			this.json = await this.createSwagger(options);
 		},
 	});
 
@@ -128,7 +132,7 @@ export class ServerSwaggerProvider {
 				operationId: route.name,
 				summary: route.options.summary,
 				description: route.options.description,
-				tags: [route.group],
+				tags: [route.group.replaceAll(":", " / ")],
 				responses: {
 					[response.status]: {
 						description: "",
@@ -355,6 +359,8 @@ window.onload = function() {
 			},
 		});
 
-		this.log.info(`Swagger UI available at ${prefix}/`);
+		this.log.info(
+			`Swagger UI available at ${this.serverProvider.hostname}${prefix}/`,
+		);
 	}
 }

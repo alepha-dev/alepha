@@ -8,8 +8,8 @@ import { triggerJobSchema } from "../schemas/triggerJobSchema.ts";
 import { JobService } from "../services/JobService.ts";
 
 export class JobController {
-	protected readonly url = "/jobs";
-	protected readonly group = "jobs";
+	protected readonly url: string = "/jobs";
+	protected readonly group: string = "jobs";
 	protected readonly jobService = $inject(JobService);
 
 	public readonly getJobs = $action({

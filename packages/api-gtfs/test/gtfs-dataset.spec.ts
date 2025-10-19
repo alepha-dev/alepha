@@ -4,10 +4,10 @@ import { Alepha } from "@alepha/core";
 import { createFile } from "@alepha/file";
 import JSZip from "jszip";
 import { describe, it } from "vitest";
-import { AlephaApiGTFS, GtfsDatasetController } from "../src";
+import { AlephaApiGtfs, GtfsDatasetController } from "../src";
 
 const createTest = async () => {
-	const alepha = Alepha.create().with(AlephaApiGTFS);
+	const alepha = Alepha.create().with(AlephaApiGtfs);
 	const controller = alepha.inject(GtfsDatasetController);
 
 	await alepha.start();

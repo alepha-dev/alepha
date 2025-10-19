@@ -1,9 +1,9 @@
 import { $page } from "@alepha/react";
-import App from "./App.tsx";
+import Home from "./components/Home.tsx";
 
 export class AppRouter {
 	root = $page({
 		path: "/",
-		component: App,
+		component: Home,
 	});
 }

@@ -1,7 +1,8 @@
 import * as fs from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { $inject, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 
 /**
@@ -17,6 +18,15 @@ export class GtfsDatabaseService {
 		// Store databases in node_modules/.gtfs/
 		this.dbPath = path.join(process.cwd(), "node_modules", ".gtfs");
 	}
+
+	onConfigure = $hook({
+		on: "configure",
+		handler: async () => {
+			try {
+				await mkdir(this.dbPath);
+			} catch {}
+		},
+	});
 
 	/**
 	 * Get the default dataset (first one loaded)
