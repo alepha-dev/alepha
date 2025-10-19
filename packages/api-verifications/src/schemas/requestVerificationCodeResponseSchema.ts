@@ -2,6 +2,10 @@ import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 
 export const requestVerificationCodeResponseSchema = t.object({
+	token: t.string({
+		description:
+			"The verification token (6-digit code for phone, UUID for email). The caller should send this to the user via their preferred notification method.",
+	}),
 	codeExpiration: t.int({
 		description: "Time in seconds before your verification token expires.",
 	}),

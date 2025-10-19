@@ -30,6 +30,7 @@
 		"@alepha/react-auth": "0.10.6",
 		"@alepha/security": "0.10.6",
 		"@alepha/server": "0.10.6",
+		"@alepha/server-links": "0.10.6",
 		"@alepha/server-security": "0.10.6"
 	},
 	"devDependencies": {

@@ -7,7 +7,6 @@ import {
 	type VerificationEntity,
 	verifications,
 } from "../entities/verifications.ts";
-import { VerificationNotifications } from "../notifications/VerificationNotifications.ts";
 import { VerificationParameters } from "../parameters/VerificationParameters.ts";
 import type { RequestVerificationResponse } from "../schemas/requestVerificationCodeResponseSchema.ts";
 import type { ValidateVerificationCodeResponse } from "../schemas/validateVerificationCodeResponseSchema.ts";
@@ -17,9 +16,6 @@ export class VerificationService {
 	protected readonly dateTimeProvider = $inject(DateTimeProvider);
 	protected readonly verificationParameters = $inject(VerificationParameters);
 	protected readonly verificationRepository = $repository(verifications);
-	protected readonly verificationNotifications = $inject(
-		VerificationNotifications,
-	);
 
 	public async findByEntry(
 		entry: VerificationEntry,
@@ -59,9 +55,13 @@ export class VerificationService {
 		});
 	}
 
+	/**
+	 * Creates a verification entry and returns the token.
+	 * The caller is responsible for sending notifications with the token.
+	 * This allows for context-specific notifications (e.g., password reset vs email verification).
+	 */
 	public async createVerification(
 		entry: VerificationEntry,
-		verifyUrl?: string,
 	): Promise<RequestVerificationResponse> {
 		const settings = this.verificationParameters.settings.get(entry.type);
 
@@ -95,34 +95,8 @@ export class VerificationService {
 			code: this.hashCode(token),
 		});
 
-		if (entry.type === "phone") {
-			await this.verificationNotifications.verifyPhoneNumber.push({
-				contact: entry.target,
-				variables: {
-					code: token,
-				},
-			});
-		} else if (entry.type === "email") {
-			if (!verifyUrl) {
-				throw new BadRequestError(
-					"verifyUrl is required for email verification",
-				);
-			}
-
-			const verifyUrlWithToken = `${verifyUrl}?token=${token}`;
-
-			await this.verificationNotifications.verifyEmail.push({
-				contact: entry.target,
-				variables: {
-					verifyUrl: verifyUrlWithToken,
-					expiresInMinutes: Math.floor(settings.codeExpiration / 60),
-				},
-			});
-		} else {
-			throw new BadRequestError("Invalid verification type");
-		}
-
 		return {
+			token,
 			codeExpiration: settings.codeExpiration,
 			verificationCooldown: settings.verificationCooldown,
 			maxVerificationAttempts: settings.maxAttempts,

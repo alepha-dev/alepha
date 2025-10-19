@@ -1,11 +1,14 @@
-import { VerificationController } from "@alepha/api-verifications";
+import type { VerificationController } from "@alepha/api-verifications";
 import { $inject } from "@alepha/core";
 import { $repository } from "@alepha/postgres";
 import { BadRequestError } from "@alepha/server";
+import { $client } from "@alepha/server-links";
 import { users } from "../entities/users.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 
 export class UserService {
-	protected readonly verificationController = $inject(VerificationController);
+	protected readonly verificationController = $client<VerificationController>();
+	protected readonly userNotifications = $inject(UserNotifications);
 
 	public readonly users = $repository(users);
 
@@ -38,12 +41,24 @@ export class UserService {
 			return true;
 		}
 
-		// Create verification using verification service
+		// Create verification using verification controller
 		// This handles: token generation, expiration, rate limiting, cooldown
 		try {
-			await this.verificationController.requestVerificationCode({
-				params: { type: "email" },
-				body: { target: email, verifyUrl },
+			const verification =
+				await this.verificationController.requestVerificationCode({
+					params: { type: "email" },
+					body: { target: email },
+				});
+
+			// Send email verification notification with the token
+			const verifyUrlWithToken = `${verifyUrl}?token=${verification.token}`;
+			await this.userNotifications.emailVerification.push({
+				contact: email,
+				variables: {
+					email,
+					verifyUrl: verifyUrlWithToken,
+					expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+				},
 			});
 		} catch {
 			// If rate limit or cooldown hit, still return true for security
@@ -58,7 +73,7 @@ export class UserService {
 	 * Validates token and updates the user's emailVerified status.
 	 */
 	public async verifyEmail(email: string, token: string): Promise<void> {
-		// Verify token using verification service
+		// Verify token using verification controller
 		const result = await this.verificationController
 			.validateVerificationCode({
 				params: { type: "email" },

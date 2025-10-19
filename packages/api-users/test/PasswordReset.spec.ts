@@ -77,11 +77,11 @@ describe("@alepha/api-users - Password Reset", () => {
 		expect(result.success).toBe(true);
 		expect(result.message).toContain("password reset link has been sent");
 
-		// Verify email was sent via verification service
+		// Verify email was sent via password reset notification
 		await expect.poll(() => emailProvider.records.length).toBe(1);
 		const email = emailProvider.records[0];
 		expect(email.to).toBe("test@example.com");
-		expect(email.subject).toBe("Verify your email address");
+		expect(email.subject).toBe("Reset your password");
 		expect(email.body).toContain("https://example.com/reset-password?token=");
 		expect(email.body).toContain("30 minutes"); // Default email verification expiration
 	});

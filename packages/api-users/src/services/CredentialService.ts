@@ -1,15 +1,18 @@
-import { VerificationController } from "@alepha/api-verifications";
+import type { VerificationController } from "@alepha/api-verifications";
 import { $inject } from "@alepha/core";
 import { $repository } from "@alepha/postgres";
 import { CryptoProvider } from "@alepha/security";
 import { BadRequestError } from "@alepha/server";
+import { $client } from "@alepha/server-links";
 import { identities } from "../entities/identities.ts";
 import { sessions } from "../entities/sessions.ts";
 import { users } from "../entities/users.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 
 export class CredentialService {
 	protected readonly cryptoProvider = $inject(CryptoProvider);
-	protected readonly verificationController = $inject(VerificationController);
+	protected readonly verificationController = $client<VerificationController>();
+	protected readonly userNotifications = $inject(UserNotifications);
 
 	public readonly users = $repository(users);
 	public readonly sessions = $repository(sessions);
@@ -55,12 +58,24 @@ export class CredentialService {
 			return true;
 		}
 
-		// Create verification using verification service
+		// Create verification using verification controller
 		// This handles: token generation, expiration, rate limiting, cooldown
 		try {
-			await this.verificationController.requestVerificationCode({
-				params: { type: "email" },
-				body: { target: email, verifyUrl: resetUrl },
+			const verification =
+				await this.verificationController.requestVerificationCode({
+					params: { type: "email" },
+					body: { target: email },
+				});
+
+			// Send password reset notification with the token
+			const resetUrlWithToken = `${resetUrl}?token=${verification.token}`;
+			await this.userNotifications.passwordReset.push({
+				contact: email,
+				variables: {
+					email,
+					resetUrl: resetUrlWithToken,
+					expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+				},
 			});
 		} catch {
 			// If rate limit or cooldown hit, still return true for security
@@ -78,7 +93,7 @@ export class CredentialService {
 		email: string,
 		token: string,
 	): Promise<string> {
-		// Verify using verification service
+		// Verify using verification controller
 		const isValid = await this.verificationController
 			.validateVerificationCode({
 				params: { type: "email" },
@@ -102,7 +117,7 @@ export class CredentialService {
 		token: string,
 		newPassword: string,
 	): Promise<void> {
-		// Verify token using verification service
+		// Verify token using verification controller
 		const result = await this.verificationController
 			.validateVerificationCode({
 				params: { type: "email" },

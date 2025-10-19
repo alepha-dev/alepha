@@ -1,13 +1,11 @@
 import { $inject, t } from "@alepha/core";
 import { $action } from "@alepha/server";
-import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { CredentialService } from "../services/CredentialService.ts";
 import { UserService } from "../services/UserService.ts";
 
 export class UserController {
 	protected readonly credentialService = $inject(CredentialService);
 	protected readonly userService = $inject(UserService);
-	protected readonly userNotifications = $inject(UserNotifications);
 
 	/**
 	 * Request a password reset.

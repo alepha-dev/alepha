@@ -1,12 +1,7 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { MemoryEmailProvider } from "@alepha/email";
 import { describe, it } from "vitest";
-import {
-	AlephaApiVerification,
-	VerificationController,
-	VerificationNotifications,
-} from "../src";
+import { AlephaApiVerification, VerificationController } from "../src";
 import { VerificationParameters } from "../src/parameters/VerificationParameters.ts";
 
 const createTest = async () => {
@@ -17,15 +12,6 @@ const createTest = async () => {
 	const controller = alepha.inject(VerificationController);
 	const dateTimeProvider = alepha.inject(DateTimeProvider);
 	const target = "+33633115544";
-	const emailProvider = alepha.inject(MemoryEmailProvider);
-
-	// Configure to use email for testing (SMS not available in tests)
-	alepha.inject(VerificationNotifications).verifyPhoneNumber.configure({
-		email: {
-			subject: "Your verification code",
-			body: (it) => it.code,
-		},
-	});
 
 	await alepha.start();
 
@@ -35,14 +21,12 @@ const createTest = async () => {
 		controller,
 		dateTimeProvider,
 		target,
-		emailProvider,
 	};
 };
 
 describe("PhoneVerification", () => {
 	it("should verify phone with 6-digit code correctly", async ({ expect }) => {
-		const { parameters, controller, target, emailProvider } =
-			await createTest();
+		const { parameters, controller, target } = await createTest();
 
 		const request = await controller.requestVerificationCode({
 			params: {
@@ -53,17 +37,14 @@ describe("PhoneVerification", () => {
 			},
 		});
 
-		expect(request).toEqual({
-			codeExpiration: parameters.codeExpiration,
-			verificationCooldown: parameters.verificationCooldown,
-			maxVerificationAttempts: parameters.maxAttempts,
-		});
+		expect(request.codeExpiration).toEqual(parameters.codeExpiration);
+		expect(request.verificationCooldown).toEqual(
+			parameters.verificationCooldown,
+		);
+		expect(request.maxVerificationAttempts).toEqual(parameters.maxAttempts);
+		expect(request.token).toBeTruthy();
 
-		await expect.poll(() => emailProvider.records.length).toEqual(1);
-		const [email] = emailProvider.records;
-
-		expect(email.to).toEqual(target);
-		const code = email.body;
+		const code = request.token;
 
 		// 6-digit code validation
 		expect(code).toMatch(/^\d{6}$/);
@@ -192,20 +173,21 @@ describe("PhoneVerification", () => {
 			"seconds",
 		);
 
-		expect(
-			await controller.requestVerificationCode({
-				params: {
-					type: "phone",
-				},
-				body: {
-					target,
-				},
-			}),
-		).toEqual({
-			codeExpiration: parameters.codeExpiration,
-			verificationCooldown: parameters.verificationCooldown,
-			maxVerificationAttempts: parameters.maxAttempts,
+		const response = await controller.requestVerificationCode({
+			params: {
+				type: "phone",
+			},
+			body: {
+				target,
+			},
 		});
+
+		expect(response.codeExpiration).toEqual(parameters.codeExpiration);
+		expect(response.verificationCooldown).toEqual(
+			parameters.verificationCooldown,
+		);
+		expect(response.maxVerificationAttempts).toEqual(parameters.maxAttempts);
+		expect(response.token).toBeTruthy();
 	});
 
 	it("should respect rate limit per day", async ({ expect }) => {
@@ -242,10 +224,10 @@ describe("PhoneVerification", () => {
 	});
 
 	it("should handle code expiration", async ({ expect }) => {
-		const { parameters, controller, dateTimeProvider, target, emailProvider } =
+		const { parameters, controller, dateTimeProvider, target } =
 			await createTest();
 
-		await controller.requestVerificationCode({
+		const response = await controller.requestVerificationCode({
 			params: {
 				type: "phone",
 			},
@@ -254,9 +236,7 @@ describe("PhoneVerification", () => {
 			},
 		});
 
-		await expect.poll(() => emailProvider.records.length).toEqual(1);
-		const [email] = emailProvider.records;
-		const code = email.body;
+		const code = response.token;
 
 		// Travel past expiration
 		await dateTimeProvider.travel(parameters.codeExpiration + 1, "seconds");
@@ -275,10 +255,10 @@ describe("PhoneVerification", () => {
 	});
 
 	it("should generate different codes for each request", async ({ expect }) => {
-		const { controller, dateTimeProvider, parameters, target, emailProvider } =
+		const { controller, dateTimeProvider, parameters, target } =
 			await createTest();
 
-		await controller.requestVerificationCode({
+		const response1 = await controller.requestVerificationCode({
 			params: {
 				type: "phone",
 			},
@@ -287,15 +267,14 @@ describe("PhoneVerification", () => {
 			},
 		});
 
-		await expect.poll(() => emailProvider.records.length).toEqual(1);
-		const code1 = emailProvider.records[0].body;
+		const code1 = response1.token;
 
 		await dateTimeProvider.travel(
 			parameters.verificationCooldown + 1,
 			"seconds",
 		);
 
-		await controller.requestVerificationCode({
+		const response2 = await controller.requestVerificationCode({
 			params: {
 				type: "phone",
 			},
@@ -304,8 +283,7 @@ describe("PhoneVerification", () => {
 			},
 		});
 
-		await expect.poll(() => emailProvider.records.length).toEqual(2);
-		const code2 = emailProvider.records[1].body;
+		const code2 = response2.token;
 
 		// Codes should be different (though technically they could be the same by chance)
 		// This tests that we're generating new codes, not reusing
@@ -314,11 +292,12 @@ describe("PhoneVerification", () => {
 	});
 
 	it("should pad codes with leading zeros", async ({ expect }) => {
-		const { controller, target, emailProvider } = await createTest();
+		const { controller, target } = await createTest();
 
 		// Request multiple codes to increase chance of getting one with leading zeros
+		const codes: string[] = [];
 		for (let i = 0; i < 5; i++) {
-			await controller.requestVerificationCode({
+			const response = await controller.requestVerificationCode({
 				params: {
 					type: "phone",
 				},
@@ -326,13 +305,11 @@ describe("PhoneVerification", () => {
 					target: `${target}${i}`,
 				},
 			});
+			codes.push(response.token);
 		}
 
-		await expect.poll(() => emailProvider.records.length).toEqual(5);
-
 		// All codes should be exactly 6 digits
-		for (const email of emailProvider.records) {
-			const code = email.body;
+		for (const code of codes) {
 			expect(code).toMatch(/^\d{6}$/);
 			expect(code.length).toBe(6);
 		}

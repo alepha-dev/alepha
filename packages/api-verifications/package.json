@@ -20,7 +20,6 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/api-notifications": "0.10.6",
 		"@alepha/api-parameters": "0.10.6",
 		"@alepha/core": "0.10.6",
 		"@alepha/datetime": "0.10.6",
@@ -29,7 +28,6 @@
 		"@alepha/server": "0.10.6"
 	},
 	"devDependencies": {
-		"@alepha/email": "0.10.6",
 		"vitest": "^3.2.4"
 	}
 }

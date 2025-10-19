@@ -21,23 +21,14 @@ export class VerificationController {
 			}),
 			body: t.object({
 				target: t.text(),
-				verifyUrl: t.optional(
-					t.text({
-						description:
-							"Required for email verification - the URL to redirect to after clicking the verification link",
-					}),
-				),
 			}),
 			response: requestVerificationCodeResponseSchema,
 		},
 		handler: async ({ body, params }) => {
-			return await this.verificationService.createVerification(
-				{
-					type: params.type,
-					target: body.target,
-				},
-				body.verifyUrl,
-			);
+			return await this.verificationService.createVerification({
+				type: params.type,
+				target: body.target,
+			});
 		},
 	});
 
