@@ -20,7 +20,6 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/api-parameters": "0.10.6",
 		"@alepha/core": "0.10.6",
 		"@alepha/datetime": "0.10.6",
 		"@alepha/postgres": "0.10.6",

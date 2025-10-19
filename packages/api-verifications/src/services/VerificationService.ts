@@ -63,7 +63,7 @@ export class VerificationService {
 	public async createVerification(
 		entry: VerificationEntry,
 	): Promise<RequestVerificationResponse> {
-		const settings = this.verificationParameters.settings.get(entry.type);
+		const settings = this.verificationParameters.get(entry.type);
 
 		const recents = await this.findRecentsByEntry(entry);
 		if (recents.length >= settings.limitPerDay) {
@@ -107,7 +107,7 @@ export class VerificationService {
 		entry: VerificationEntry,
 		code: string,
 	): Promise<ValidateVerificationCodeResponse> {
-		const settings = this.verificationParameters.settings.get(entry.type);
+		const settings = this.verificationParameters.get(entry.type);
 
 		const verification = await this.findByEntry(entry);
 		if (verification.verifiedAt) {
@@ -169,7 +169,7 @@ export class VerificationService {
 
 	public generateToken(type: VerificationTypeEnum): string {
 		if (type === "phone") {
-			const settings = this.verificationParameters.settings.get("phone");
+			const settings = this.verificationParameters.get("phone");
 			return randomInt(0, 1_000_000)
 				.toString()
 				.padStart(settings.codeLength, "0");

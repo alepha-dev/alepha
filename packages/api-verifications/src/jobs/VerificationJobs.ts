@@ -12,7 +12,7 @@ export class VerificationJobs {
 		cron: "0 0 * * *", // Every day at midnight
 		description: "Clean expired verifications",
 		handler: async () => {
-			const purgeDays = this.verificationParameters.settings.get("purgeDays");
+			const purgeDays = this.verificationParameters.get("purgeDays");
 			if (purgeDays <= 0) {
 				return; // Auto deletion is disabled
 			}

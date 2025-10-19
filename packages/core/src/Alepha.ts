@@ -1192,3 +1192,7 @@ export interface Hooks {
 		prevValue: any;
 	};
 }
+
+export interface Configurable<T extends object = any> {
+	options: T;
+}

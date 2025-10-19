@@ -6,9 +6,7 @@ import { VerificationParameters } from "../src/parameters/VerificationParameters
 
 const createTest = async () => {
 	const alepha = Alepha.create().with(AlephaApiVerification);
-	const parameters = alepha
-		.inject(VerificationParameters)
-		.settings.get("email");
+	const parameters = alepha.inject(VerificationParameters).get("email");
 	const controller = alepha.inject(VerificationController);
 	const dateTimeProvider = alepha.inject(DateTimeProvider);
 	const target = "test@example.com";
