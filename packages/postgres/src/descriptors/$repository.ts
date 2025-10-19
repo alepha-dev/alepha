@@ -985,11 +985,6 @@ export class RepositoryDescriptor<
 		} as PgQueryWhereOrSQL<EntitySchema>;
 	}
 
-	protected get organization() {
-		// TODO: organization column for automatic multi-tenancy
-		return undefined;
-	}
-
 	protected deletedAt(): PgAttrField | undefined {
 		const deletedAtFields = getAttrFields(this.schema, PG_DELETED_AT);
 		if (deletedAtFields.length > 0) {
