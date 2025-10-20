@@ -7,7 +7,7 @@ export * from "./viteAlephaDev.ts";
 export * from "./viteCompress.ts";
 
 declare global {
-	var __alepha: Alepha;
+  var __alepha: Alepha;
 }
 
 /**

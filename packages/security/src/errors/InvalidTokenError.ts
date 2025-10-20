@@ -1,3 +1,3 @@
 export class InvalidTokenError extends Error {
-	public readonly status = 401;
+  public readonly status = 401;
 }

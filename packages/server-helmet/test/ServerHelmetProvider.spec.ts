@@ -2,101 +2,101 @@ import { Alepha } from "@alepha/core";
 import { $action, ServerProvider } from "@alepha/server";
 import { describe, expect, test } from "vitest";
 import {
-	AlephaServerHelmet,
-	type HelmetOptions,
-	ServerHelmetProvider,
+  AlephaServerHelmet,
+  type HelmetOptions,
+  ServerHelmetProvider,
 } from "../src";
 
 class TestApp {
-	ping = $action({ handler: () => "pong" });
+  ping = $action({ handler: () => "pong" });
 }
 
 describe("ServerHelmetProvider", () => {
-	const setupServer = async (helmetOptions?: HelmetOptions) => {
-		const alepha = Alepha.create({
-			env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
-		})
-			.with(AlephaServerHelmet)
-			.with(TestApp);
+  const setupServer = async (helmetOptions?: HelmetOptions) => {
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+    })
+      .with(AlephaServerHelmet)
+      .with(TestApp);
 
-		if (helmetOptions) {
-			alepha.configure(ServerHelmetProvider, helmetOptions);
-		}
+    if (helmetOptions) {
+      alepha.configure(ServerHelmetProvider, helmetOptions);
+    }
 
-		await alepha.start();
-		const server = alepha.inject(ServerProvider);
+    await alepha.start();
+    const server = alepha.inject(ServerProvider);
 
-		return {
-			hostname: server.hostname,
-			stop: () => alepha.stop(),
-		};
-	};
+    return {
+      hostname: server.hostname,
+      stop: () => alepha.stop(),
+    };
+  };
 
-	test("should add default security headers to the response", async () => {
-		const { hostname, stop } = await setupServer({
-			isSecure: true, // fake secure context
-		});
+  test("should add default security headers to the response", async () => {
+    const { hostname, stop } = await setupServer({
+      isSecure: true, // fake secure context
+    });
 
-		const response = await fetch(`${hostname}/api/ping`);
+    const response = await fetch(`${hostname}/api/ping`);
 
-		expect(response.status).toBe(200);
-		expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-		expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
-		expect(response.headers.get("referrer-policy")).toBe(
-			"strict-origin-when-cross-origin",
-		);
-		expect(response.headers.get("strict-transport-security")).toContain(
-			"max-age=15552000",
-		);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+    expect(response.headers.get("referrer-policy")).toBe(
+      "strict-origin-when-cross-origin",
+    );
+    expect(response.headers.get("strict-transport-security")).toContain(
+      "max-age=15552000",
+    );
 
-		await stop();
-	});
+    await stop();
+  });
 
-	test("should allow disabling a header by setting its option to false", async () => {
-		const { hostname, stop } = await setupServer({
-			xFrameOptions: false,
-		});
+  test("should allow disabling a header by setting its option to false", async () => {
+    const { hostname, stop } = await setupServer({
+      xFrameOptions: false,
+    });
 
-		const response = await fetch(`${hostname}/api/ping`);
+    const response = await fetch(`${hostname}/api/ping`);
 
-		expect(response.headers.get("x-frame-options")).toBeNull();
-		expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBeNull();
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
 
-		await stop();
-	});
+    await stop();
+  });
 
-	test("should allow configuring HSTS", async () => {
-		const { hostname, stop } = await setupServer({
-			isSecure: true, // fake secure context
-			strictTransportSecurity: { maxAge: 31536000, preload: true },
-		});
+  test("should allow configuring HSTS", async () => {
+    const { hostname, stop } = await setupServer({
+      isSecure: true, // fake secure context
+      strictTransportSecurity: { maxAge: 31536000, preload: true },
+    });
 
-		const response = await fetch(`${hostname}/api/ping`);
+    const response = await fetch(`${hostname}/api/ping`);
 
-		const hstsHeader = response.headers.get("strict-transport-security");
-		expect(hstsHeader).toContain("max-age=31536000");
-		expect(hstsHeader).toContain("preload");
+    const hstsHeader = response.headers.get("strict-transport-security");
+    expect(hstsHeader).toContain("max-age=31536000");
+    expect(hstsHeader).toContain("preload");
 
-		await stop();
-	});
+    await stop();
+  });
 
-	test("should apply a Content Security Policy when configured", async () => {
-		const { hostname, stop } = await setupServer({
-			contentSecurityPolicy: {
-				directives: {
-					defaultSrc: ["'self'"],
-					scriptSrc: ["'self'", "https://trusted.cdn.com"],
-				},
-			},
-		});
+  test("should apply a Content Security Policy when configured", async () => {
+    const { hostname, stop } = await setupServer({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "https://trusted.cdn.com"],
+        },
+      },
+    });
 
-		const response = await fetch(`${hostname}/api/ping`);
+    const response = await fetch(`${hostname}/api/ping`);
 
-		const cspHeader = response.headers.get("content-security-policy");
-		expect(cspHeader).toBe(
-			"default-src 'self'; script-src 'self' https://trusted.cdn.com",
-		);
+    const cspHeader = response.headers.get("content-security-policy");
+    expect(cspHeader).toBe(
+      "default-src 'self'; script-src 'self' https://trusted.cdn.com",
+    );
 
-		await stop();
-	});
+    await stop();
+  });
 });

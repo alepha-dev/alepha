@@ -1,5 +1,5 @@
 export const snippets = {
-	server: `
+  server: `
 import { run } from "alepha";
 import { $action } from "alepha/server";
 
@@ -14,7 +14,7 @@ class Api {
 
 run(Api);
 `,
-	react: `
+  react: `
 import { run } from "alepha";
 import { $page } from "alepha/react";
 
@@ -30,7 +30,7 @@ class App {
 
 run(App);
 `,
-	db: `
+  db: `
 import { t, run } from "alepha";
 import { $entity, pg, $repository } from "alepha/postgres";
 
@@ -47,7 +47,7 @@ class App {
   userRepository = $repository(users);
 }
 `,
-	queue: `
+  queue: `
 import { t, run } from "alepha";
 import { $queue } from "alepha/queue";
 
@@ -62,7 +62,7 @@ class App {
 
 run(App);
 `,
-	command: `
+  command: `
 import { t, run } from "alepha";
 import { $command } from "alepha/command";
 

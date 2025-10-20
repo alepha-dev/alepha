@@ -1,9 +1,9 @@
 import type { TObject } from "@alepha/core";
 import type {
-	AnyPgColumn,
-	AnyPgTable,
-	PgSequenceOptions,
-	UpdateDeleteAction,
+  AnyPgColumn,
+  AnyPgTable,
+  PgSequenceOptions,
+  UpdateDeleteAction,
 } from "drizzle-orm/pg-core";
 
 export const PG_DEFAULT = Symbol.for("Alepha.Postgres.Default");
@@ -29,41 +29,41 @@ export type PgRef = typeof PG_REF;
 export type PgPrimaryKey = typeof PG_PRIMARY_KEY;
 
 export type PgSymbols = {
-	[PG_DEFAULT]: {};
-	[PG_PRIMARY_KEY]: {};
-	[PG_CREATED_AT]: {};
-	[PG_UPDATED_AT]: {};
-	[PG_DELETED_AT]: {};
-	[PG_VERSION]: {};
-	[PG_IDENTITY]: PgIdentityOptions;
-	[PG_MANY]: PgManyOptions;
-	[PG_ONE]: PgManyOptions;
-	[PG_REF]: PgRefOptions;
+  [PG_DEFAULT]: {};
+  [PG_PRIMARY_KEY]: {};
+  [PG_CREATED_AT]: {};
+  [PG_UPDATED_AT]: {};
+  [PG_DELETED_AT]: {};
+  [PG_VERSION]: {};
+  [PG_IDENTITY]: PgIdentityOptions;
+  [PG_MANY]: PgManyOptions;
+  [PG_ONE]: PgManyOptions;
+  [PG_REF]: PgRefOptions;
 
-	/**
-	 * @deprecated Use `PG_IDENTITY` instead.
-	 */
-	[PG_SERIAL]: {};
+  /**
+   * @deprecated Use `PG_IDENTITY` instead.
+   */
+  [PG_SERIAL]: {};
 };
 
 export type PgSymbolKeys = keyof PgSymbols;
 
 export type PgIdentityOptions = {
-	mode: "always" | "byDefault";
+  mode: "always" | "byDefault";
 } & PgSequenceOptions & {
-		name?: string;
-	};
+    name?: string;
+  };
 
 export interface PgManyOptions {
-	table: AnyPgTable;
-	schema: TObject;
-	foreignKey: string;
+  table: AnyPgTable;
+  schema: TObject;
+  foreignKey: string;
 }
 
 export interface PgRefOptions {
-	ref: () => AnyPgColumn;
-	actions?: {
-		onUpdate?: UpdateDeleteAction;
-		onDelete?: UpdateDeleteAction;
-	};
+  ref: () => AnyPgColumn;
+  actions?: {
+    onUpdate?: UpdateDeleteAction;
+    onDelete?: UpdateDeleteAction;
+  };
 }

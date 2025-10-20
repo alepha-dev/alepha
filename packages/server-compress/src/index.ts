@@ -14,6 +14,6 @@ export * from "./providers/ServerCompressProvider.ts";
  * Compresses responses using gzip, brotli, or zstd based on the `Accept-Encoding` header.
  */
 export const AlephaServerCompress = $module({
-	name: "alepha.server.compress",
-	services: [AlephaServer, ServerCompressProvider],
+  name: "alepha.server.compress",
+  services: [AlephaServer, ServerCompressProvider],
 });

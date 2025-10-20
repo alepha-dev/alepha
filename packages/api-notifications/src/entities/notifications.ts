@@ -2,70 +2,70 @@ import { type Static, t } from "@alepha/core";
 import { $entity, pg } from "@alepha/postgres";
 
 export const notifications = $entity({
-	name: "notifications",
-	schema: t.object({
-		id: pg.primaryKey(t.uuid()),
+  name: "notifications",
+  schema: t.object({
+    id: pg.primaryKey(t.uuid()),
 
-		version: pg.version(),
+    version: pg.version(),
 
-		createdAt: pg.createdAt(),
+    createdAt: pg.createdAt(),
 
-		updatedAt: pg.updatedAt(),
+    updatedAt: pg.updatedAt(),
 
-		// -----------------------------------------------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------------------------------------------
 
-		type: t.enum(["email", "sms"]),
+    type: t.enum(["email", "sms"]),
 
-		template: t.text(), // e.g. 'resetPassword'
+    template: t.text(), // e.g. 'resetPassword'
 
-		category: t.optional(
-			t.text({
-				description:
-					"For grouping related notifications (e.g., 'authentication', 'marketing'). Contact can filter notifications by category.",
-			}),
-		),
+    category: t.optional(
+      t.text({
+        description:
+          "For grouping related notifications (e.g., 'authentication', 'marketing'). Contact can filter notifications by category.",
+      }),
+    ),
 
-		critical: t.optional(
-			t.boolean({
-				description:
-					"Prioritize delivery of this notification. Set to true for important system alerts.",
-			}),
-		),
+    critical: t.optional(
+      t.boolean({
+        description:
+          "Prioritize delivery of this notification. Set to true for important system alerts.",
+      }),
+    ),
 
-		sensitive: t.optional(
-			t.boolean({
-				description:
-					"Message won't be logged or stored in plain text. Set to true when notification contains passwords or codes.",
-			}),
-		),
+    sensitive: t.optional(
+      t.boolean({
+        description:
+          "Message won't be logged or stored in plain text. Set to true when notification contains passwords or codes.",
+      }),
+    ),
 
-		// -----------------------------------------------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------------------------------------------
 
-		contact: t.text(), // e.g. email address or phone number or user ID or whatever
+    contact: t.text(), // e.g. email address or phone number or user ID or whatever
 
-		variables: t.optional(t.record(t.text(), t.any())),
+    variables: t.optional(t.record(t.text(), t.any())),
 
-		scheduledAt: t.optional(
-			t.datetime({
-				description:
-					"When set, the notification will be sent at or after this date/time.",
-			}),
-		),
+    scheduledAt: t.optional(
+      t.datetime({
+        description:
+          "When set, the notification will be sent at or after this date/time.",
+      }),
+    ),
 
-		// -----------------------------------------------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------------------------------------------
 
-		sentAt: t.optional(t.datetime()),
+    sentAt: t.optional(t.datetime()),
 
-		error: t.optional(
-			t.object({
-				at: t.datetime(),
-				name: t.text(),
-				message: t.text({ size: "rich" }),
-			}),
-		),
+    error: t.optional(
+      t.object({
+        at: t.datetime(),
+        name: t.text(),
+        message: t.text({ size: "rich" }),
+      }),
+    ),
 
-		// TODO: retryCount, lastRetryAt, etc.
-	}),
+    // TODO: retryCount, lastRetryAt, etc.
+  }),
 });
 
 export type NotificationEntity = Static<typeof notifications.$schema>;

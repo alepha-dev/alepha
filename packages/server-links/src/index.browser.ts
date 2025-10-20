@@ -13,7 +13,7 @@ export * from "./schemas/apiLinksResponseSchema.ts";
 // ---------------------------------------------------------------- -----------------------------------------------------
 
 export const AlephaServerLinks = $module({
-	name: "alepha.server.links",
-	descriptors: [$remote, $client],
-	services: [LinkProvider],
+  name: "alepha.server.links",
+  descriptors: [$remote, $client],
+  services: [LinkProvider],
 });

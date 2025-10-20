@@ -1,3 +1,3 @@
 export class InvalidFileError extends Error {
-	public readonly status = 400;
+  public readonly status = 400;
 }

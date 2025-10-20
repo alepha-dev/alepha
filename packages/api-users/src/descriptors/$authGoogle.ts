@@ -14,24 +14,24 @@ import { SessionService } from "../services/SessionService.ts";
  * - `GOOGLE_CLIENT_SECRET`: The client secret obtained from the Google Developer Console.
  */
 export const $authGoogle = (realm: RealmDescriptor) => {
-	const { context } = $cursor();
-	const sessionService = context.inject(SessionService);
+  const { context } = $cursor();
+  const sessionService = context.inject(SessionService);
 
-	const env = context.parseEnv(
-		t.object({
-			GOOGLE_CLIENT_ID: t.string(),
-			GOOGLE_CLIENT_SECRET: t.string(),
-		}),
-	);
+  const env = context.parseEnv(
+    t.object({
+      GOOGLE_CLIENT_ID: t.string(),
+      GOOGLE_CLIENT_SECRET: t.string(),
+    }),
+  );
 
-	return $auth({
-		realm,
-		name: "google",
-		oidc: {
-			issuer: "https://accounts.google.com",
-			clientId: env.GOOGLE_CLIENT_ID,
-			clientSecret: env.GOOGLE_CLIENT_SECRET,
-			account: ({ user }) => sessionService.link("google", user),
-		},
-	});
+  return $auth({
+    realm,
+    name: "google",
+    oidc: {
+      issuer: "https://accounts.google.com",
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      account: ({ user }) => sessionService.link("google", user),
+    },
+  });
 };

@@ -12,17 +12,17 @@ export * from "./ServerSwaggerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/server" {
-	interface ActionDescriptorOptions<TConfig extends RequestConfigSchema> {
-		/**
-		 * Short description of the route.
-		 */
-		summary?: string;
+  interface ActionDescriptorOptions<TConfig extends RequestConfigSchema> {
+    /**
+     * Short description of the route.
+     */
+    summary?: string;
 
-		/**
-		 * Don't include this action in the Swagger documentation.
-		 */
-		hide?: boolean;
-	}
+    /**
+     * Don't include this action in the Swagger documentation.
+     */
+    hide?: boolean;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ declare module "@alepha/server" {
  * @module alepha.server.swagger
  */
 export const AlephaServerSwagger = $module({
-	name: "alepha.server.swagger",
-	descriptors: [$swagger],
-	services: [AlephaServer, ServerSwaggerProvider],
+  name: "alepha.server.swagger",
+  descriptors: [$swagger],
+  services: [AlephaServer, ServerSwaggerProvider],
 });

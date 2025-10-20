@@ -32,129 +32,129 @@ import type { AccessTokenResponse, RealmDescriptor } from "./$realm.ts";
  * ```
  */
 export const $serviceAccount = (
-	options: ServiceAccountDescriptorOptions,
+  options: ServiceAccountDescriptorOptions,
 ): ServiceAccountDescriptor => {
-	const { context } = $cursor();
-	const store: {
-		cache?: AccessTokenResponse;
-	} = {};
-	const dateTimeProvider = context.inject(DateTimeProvider);
-	const gracePeriod = options.gracePeriod ?? 30;
+  const { context } = $cursor();
+  const store: {
+    cache?: AccessTokenResponse;
+  } = {};
+  const dateTimeProvider = context.inject(DateTimeProvider);
+  const gracePeriod = options.gracePeriod ?? 30;
 
-	const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
-		store.cache = {
-			...response,
-			issued_at: dateTimeProvider.now().unix(),
-		};
-	};
+  const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
+    store.cache = {
+      ...response,
+      issued_at: dateTimeProvider.now().unix(),
+    };
+  };
 
-	const getTokenFromCache = () => {
-		if (store.cache) {
-			const { access_token, expires_in, issued_at } = store.cache;
-			if (!expires_in) {
-				return access_token;
-			}
+  const getTokenFromCache = () => {
+    if (store.cache) {
+      const { access_token, expires_in, issued_at } = store.cache;
+      if (!expires_in) {
+        return access_token;
+      }
 
-			const now = dateTimeProvider.now().unix();
-			const expires = issued_at + expires_in;
+      const now = dateTimeProvider.now().unix();
+      const expires = issued_at + expires_in;
 
-			if (expires - gracePeriod > now) {
-				return access_token;
-			}
-		}
-	};
+      if (expires - gracePeriod > now) {
+        return access_token;
+      }
+    }
+  };
 
-	if ("oauth2" in options) {
-		const { url, clientId, clientSecret } = options.oauth2;
+  if ("oauth2" in options) {
+    const { url, clientId, clientSecret } = options.oauth2;
 
-		const token = async () => {
-			const tokenFromCache = getTokenFromCache();
-			if (tokenFromCache) {
-				return tokenFromCache;
-			}
+    const token = async () => {
+      const tokenFromCache = getTokenFromCache();
+      if (tokenFromCache) {
+        return tokenFromCache;
+      }
 
-			const response = await fetch(url, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/x-www-form-urlencoded",
-				},
-				body: new URLSearchParams({
-					grant_type: "client_credentials",
-					client_id: clientId,
-					client_secret: clientSecret,
-				}),
-			});
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+      });
 
-			const json = await response.json();
+      const json = await response.json();
 
-			if (!json.access_token || !json.expires_in) {
-				throw new Error(
-					`Failed to fetch access token: ${JSON.stringify(json)}`,
-				);
-			}
+      if (!json.access_token || !json.expires_in) {
+        throw new Error(
+          `Failed to fetch access token: ${JSON.stringify(json)}`,
+        );
+      }
 
-			cacheToken(json);
+      cacheToken(json);
 
-			return json.access_token;
-		};
+      return json.access_token;
+    };
 
-		return {
-			token,
-		};
-	}
+    return {
+      token,
+    };
+  }
 
-	return {
-		token: async () => {
-			const tokenFromCache = getTokenFromCache();
-			if (tokenFromCache) {
-				return tokenFromCache;
-			}
+  return {
+    token: async () => {
+      const tokenFromCache = getTokenFromCache();
+      if (tokenFromCache) {
+        return tokenFromCache;
+      }
 
-			const token = await options.realm.createToken(options.user);
+      const token = await options.realm.createToken(options.user);
 
-			cacheToken({
-				...token,
-				issued_at: dateTimeProvider.now().unix(),
-			});
+      cacheToken({
+        ...token,
+        issued_at: dateTimeProvider.now().unix(),
+      });
 
-			return token.access_token;
-		},
-	};
+      return token.access_token;
+    },
+  };
 };
 
 export type ServiceAccountDescriptorOptions = {
-	gracePeriod?: number; // Grace period in milliseconds before token expiration
+  gracePeriod?: number; // Grace period in milliseconds before token expiration
 } & (
-	| {
-			oauth2: Oauth2ServiceAccountDescriptorOptions;
-	  }
-	| {
-			realm: RealmDescriptor;
-			user: UserAccount;
-	  }
+  | {
+      oauth2: Oauth2ServiceAccountDescriptorOptions;
+    }
+  | {
+      realm: RealmDescriptor;
+      user: UserAccount;
+    }
 );
 
 export interface Oauth2ServiceAccountDescriptorOptions {
-	/**
-	 * Get Token URL.
-	 */
-	url: string;
+  /**
+   * Get Token URL.
+   */
+  url: string;
 
-	/**
-	 * Client ID.
-	 */
-	clientId: string;
+  /**
+   * Client ID.
+   */
+  clientId: string;
 
-	/**
-	 * Client Secret.
-	 */
-	clientSecret: string;
+  /**
+   * Client Secret.
+   */
+  clientSecret: string;
 }
 
 export interface ServiceAccountDescriptor {
-	token: () => Promise<string>;
+  token: () => Promise<string>;
 }
 
 export interface ServiceAccountStore {
-	response?: AccessTokenResponse;
+  response?: AccessTokenResponse;
 }

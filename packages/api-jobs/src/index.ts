@@ -23,6 +23,6 @@ export * from "./services/JobService.ts";
  * @module alepha.api.jobs
  */
 export const AlephaApiJobs = $module({
-	name: "alepha.api.jobs",
-	services: [AlephaScheduler, JobController, JobService],
+  name: "alepha.api.jobs",
+  services: [AlephaScheduler, JobController, JobService],
 });

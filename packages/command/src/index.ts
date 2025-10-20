@@ -24,20 +24,20 @@ export * from "./providers/CliProvider.ts";
  * @module alepha.command
  */
 export const AlephaCommand = $module({
-	name: "alepha.command",
-	descriptors: [$command],
-	services: [CliProvider, Runner, Asker],
+  name: "alepha.command",
+  descriptors: [$command],
+  services: [CliProvider, Runner, Asker],
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "typebox" {
-	interface StringOptions {
-		/**
-		 * Additional aliases for the flags.
-		 *
-		 * @module alepha.command
-		 */
-		aliases?: string[];
-	}
+  interface StringOptions {
+    /**
+     * Additional aliases for the flags.
+     *
+     * @module alepha.command
+     */
+    aliases?: string[];
+  }
 }

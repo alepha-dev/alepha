@@ -5,90 +5,90 @@
 @import "./styles/code-github-dark.css";
 
 :root {
-	--primary-background-color: #fff;
-	--primary-background-color-dark: #0d1117;
+  --primary-background-color: #fff;
+  --primary-background-color-dark: #0d1117;
 
-	--layout-bg-color-dark: rgba(0, 0, 0, 0.5);
-	--layout-bg-color: rgba(0, 0, 0, 0);
-	--layout-bg-filter: blur(16px);
+  --layout-bg-color-dark: rgba(0, 0, 0, 0.5);
+  --layout-bg-color: rgba(0, 0, 0, 0);
+  --layout-bg-filter: blur(16px);
 
-	--layout-border-color: var(--mantine-color-gray-4);
-	--layout-border-color-dark: var(--mantine-color-gray-7);
+  --layout-border-color: var(--mantine-color-gray-4);
+  --layout-border-color-dark: var(--mantine-color-gray-7);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 .background-primary {
-	background-color: var(--primary-background-color);
+  background-color: var(--primary-background-color);
 }
 
 .mantine-AppShell-root header {
-	backdrop-filter: var(--layout-bg-filter);
-	border-bottom: 1px solid var(--layout-border-color);
-	background-color: var(--layout-bg-color);
+  backdrop-filter: var(--layout-bg-filter);
+  border-bottom: 1px solid var(--layout-border-color);
+  background-color: var(--layout-bg-color);
 }
 .mantine-AppShell-root nav {
-	backdrop-filter: var(--layout-bg-filter);
-	background-color: transparent;
-	border-right: 1px solid rgb(0, 0, 0, 0.1);
+  backdrop-filter: var(--layout-bg-filter);
+  background-color: transparent;
+  border-right: 1px solid rgb(0, 0, 0, 0.1);
 }
 .mantine-AppShell-root footer {
-	backdrop-filter: var(--layout-bg-filter);
-	background-color: transparent;
-	border-top: 1px solid var(--layout-border-color);
+  backdrop-filter: var(--layout-bg-filter);
+  background-color: transparent;
+  border-top: 1px solid var(--layout-border-color);
 }
 
 #root .mantine-Typography-root {
-	text-align: justify;
-	line-height: 32px;
+  text-align: justify;
+  line-height: 32px;
 }
 
 #root pre a {
-	color: var(--mantine-color-blue-8);
-	text-decoration: none;
+  color: var(--mantine-color-blue-8);
+  text-decoration: none;
 }
 #root pre {
-	margin-top: 0;
-	padding: 16px;
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	font-size: var(--mantine-font-size-sm);
+  margin-top: 0;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: var(--mantine-font-size-sm);
 }
 #root code {
-	font-family: var(--mantine-font-family-monospace), serif;
+  font-family: var(--mantine-font-family-monospace), serif;
 }
 #root blockquote {
-	border-left: 4px solid var(--mantine-color-text);
-	padding-left: 16px;
-	font-size: var(--mantine-font-size-sm);
+  border-left: 4px solid var(--mantine-color-text);
+  padding-left: 16px;
+  font-size: var(--mantine-font-size-sm);
 }
 #root .mantine-Alert-root {
-	backdrop-filter: blur(2px);
-	border: 1px solid var(--layout-border-color);
+  backdrop-filter: blur(2px);
+  border: 1px solid var(--layout-border-color);
 }
 #root blockquote a {
-	color: var(--mantine-color-blue-5);
+  color: var(--mantine-color-blue-5);
 }
 #root .mantine-Alert-root a {
-	color: var(--mantine-color-blue-5);
+  color: var(--mantine-color-blue-5);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 #root .mantine-TableOfContents-root button {
-	box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
-	border-radius: 0;
+  box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
+  border-radius: 0;
 }
 #root .mantine-TableOfContents-root button[data-active="true"] {
-	box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
-	border-radius: 0;
+  box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
+  border-radius: 0;
 }
 #root .mantine-NavLink-root {
-	box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
-	border-radius: 0;
+  box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
+  border-radius: 0;
 }
 #root .mantine-NavLink-root[data-active="true"] {
-	box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
-	border-radius: 0;
+  box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
+  border-radius: 0;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -99,7 +99,7 @@ h3,
 h4,
 h5,
 h6 {
-	text-shadow: 2px 5px 0 rgba(0, 0, 0, 0.05);
+  text-shadow: 2px 5px 0 rgba(0, 0, 0, 0.05);
 }
 
 h1::after,
@@ -108,103 +108,103 @@ h3::after,
 h4::after,
 h5::after,
 h6::after {
-	content: "";
-	display: block;
-	width: 32px;
-	height: 1px;
-	background: var(--mantine-color-text);
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--mantine-color-text);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 html[data-mantine-color-scheme="dark"] {
-	body {
-		background-color: var(--primary-background-color-dark);
-	}
-	.background-primary {
-		background-color: var(--primary-background-color-dark);
-	}
-	#root .mantine-TableOfContents-root button[data-active="true"] {
-		box-shadow: -2px 0 0 0 var(--mantine-color-gray-1);
-	}
-	#root pre {
-		box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
-		background-color: var(--primary-background-color-dark);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-	}
-	#root .mantine-Alert-root {
-		border: 1px solid var(--layout-border-color-dark);
-	}
-	.mantine-AppShell-root header {
-		backdrop-filter: var(--layout-bg-filter);
-		background-color: var(--layout-bg-color-dark);
-		border-bottom: 1px solid var(--layout-border-color-dark);
-		box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
-	}
-	.mantine-AppShell-root nav {
-		backdrop-filter: var(--layout-bg-filter);
-		background-color: transparent;
-		border-right: 1px solid var(--layout-border-color-dark);
-	}
-	.mantine-AppShell-root footer {
-		backdrop-filter: var(--layout-bg-filter);
-		background-color: var(--layout-bg-color-dark);
-		border-top: 1px solid var(--layout-border-color-dark);
-	}
+  body {
+    background-color: var(--primary-background-color-dark);
+  }
+  .background-primary {
+    background-color: var(--primary-background-color-dark);
+  }
+  #root .mantine-TableOfContents-root button[data-active="true"] {
+    box-shadow: -2px 0 0 0 var(--mantine-color-gray-1);
+  }
+  #root pre {
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
+    background-color: var(--primary-background-color-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  #root .mantine-Alert-root {
+    border: 1px solid var(--layout-border-color-dark);
+  }
+  .mantine-AppShell-root header {
+    backdrop-filter: var(--layout-bg-filter);
+    background-color: var(--layout-bg-color-dark);
+    border-bottom: 1px solid var(--layout-border-color-dark);
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
+  }
+  .mantine-AppShell-root nav {
+    backdrop-filter: var(--layout-bg-filter);
+    background-color: transparent;
+    border-right: 1px solid var(--layout-border-color-dark);
+  }
+  .mantine-AppShell-root footer {
+    backdrop-filter: var(--layout-bg-filter);
+    background-color: var(--layout-bg-color-dark);
+    border-top: 1px solid var(--layout-border-color-dark);
+  }
 
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
-		text-shadow: 2px 5px 0px rgba(0, 0, 0, 0.3);
-	}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-shadow: 2px 5px 0px rgba(0, 0, 0, 0.3);
+  }
 
-	/* ------------------------------------------------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------------------------------------------------ */
 
-	#root .mantine-TableOfContents-root button {
-		box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
-	}
-	#root .mantine-TableOfContents-root button[data-active="true"] {
-		box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
-	}
-	#root .mantine-NavLink-root {
-		box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
-	}
-	#root .mantine-NavLink-root[data-active="true"] {
-		box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
-	}
+  #root .mantine-TableOfContents-root button {
+    box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
+  }
+  #root .mantine-TableOfContents-root button[data-active="true"] {
+    box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
+  }
+  #root .mantine-NavLink-root {
+    box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
+  }
+  #root .mantine-NavLink-root[data-active="true"] {
+    box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
+  }
 
-	/* ------------------------------------------------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------------------------------------------------ */
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 :root {
-	--graph-paper-bg-color: rgb(16, 16, 16);
-	--graph-paper-line-color-1: rgba(51, 102, 102, 0.04);
-	--graph-paper-line-color-2: rgba(169, 169, 169, 0.04);
+  --graph-paper-bg-color: rgb(16, 16, 16);
+  --graph-paper-line-color-1: rgba(51, 102, 102, 0.04);
+  --graph-paper-line-color-2: rgba(169, 169, 169, 0.04);
 }
 
 .graph-paper {
-	width: 100%;
-	background-image:
-		linear-gradient(var(--graph-paper-line-color-1) 1.5px, transparent 1.5px),
-		linear-gradient(
-			90deg,
-			var(--graph-paper-line-color-2) 1.5px,
-			transparent 1.5px
-		), linear-gradient(var(--graph-paper-line-color-2) 1px, transparent 1px),
-		linear-gradient(90deg, var(--graph-paper-line-color-2) 1px, transparent 1px);
-	background-position:
-		-1.5px -1.5px,
-		-1.5px -1.5px,
-		-1px -1px,
-		-1px -1px;
-	background-size:
-		100px 100px,
-		100px 100px,
-		20px 20px,
-		20px 20px;
+  width: 100%;
+  background-image:
+    linear-gradient(var(--graph-paper-line-color-1) 1.5px, transparent 1.5px),
+    linear-gradient(
+      90deg,
+      var(--graph-paper-line-color-2) 1.5px,
+      transparent 1.5px
+    ), linear-gradient(var(--graph-paper-line-color-2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--graph-paper-line-color-2) 1px, transparent 1px);
+  background-position:
+    -1.5px -1.5px,
+    -1.5px -1.5px,
+    -1px -1px,
+    -1px -1px;
+  background-size:
+    100px 100px,
+    100px 100px,
+    20px 20px,
+    20px 20px;
 }

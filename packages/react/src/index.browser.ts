@@ -18,22 +18,22 @@ export * from "./providers/ReactPageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaReact = $module({
-	name: "alepha.react",
-	descriptors: [$page],
-	services: [
-		ReactPageProvider,
-		ReactBrowserRouterProvider,
-		ReactBrowserProvider,
-		ReactRouter,
-		ReactBrowserRendererProvider,
-	],
-	register: (alepha) =>
-		alepha
-			.with(AlephaServer)
-			.with(AlephaServerLinks)
-			.with(ReactPageProvider)
-			.with(ReactBrowserProvider)
-			.with(ReactBrowserRouterProvider)
-			.with(ReactBrowserRendererProvider)
-			.with(ReactRouter),
+  name: "alepha.react",
+  descriptors: [$page],
+  services: [
+    ReactPageProvider,
+    ReactBrowserRouterProvider,
+    ReactBrowserProvider,
+    ReactRouter,
+    ReactBrowserRendererProvider,
+  ],
+  register: (alepha) =>
+    alepha
+      .with(AlephaServer)
+      .with(AlephaServerLinks)
+      .with(ReactPageProvider)
+      .with(ReactBrowserProvider)
+      .with(ReactBrowserRouterProvider)
+      .with(ReactBrowserRendererProvider)
+      .with(ReactRouter),
 });

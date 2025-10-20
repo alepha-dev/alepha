@@ -15,7 +15,7 @@ export * from "./schemas/pageSchema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaPostgres = $module({
-	name: "alepha.postgres",
-	descriptors: [],
-	services: [],
+  name: "alepha.postgres",
+  descriptors: [],
+  services: [],
 });

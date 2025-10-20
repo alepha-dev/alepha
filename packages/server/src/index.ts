@@ -1,21 +1,21 @@
 import type {
-	IncomingMessage,
-	ServerResponse as NodeServerResponse,
+  IncomingMessage,
+  ServerResponse as NodeServerResponse,
 } from "node:http";
 import { $module, type Alepha, type DescriptorFactoryLike } from "@alepha/core";
 import {
-	$action,
-	type ActionDescriptor,
-	type ClientRequestOptions,
+  $action,
+  type ActionDescriptor,
+  type ClientRequestOptions,
 } from "./descriptors/$action.ts";
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import type {
-	RequestConfigSchema,
-	ServerRequest,
-	ServerRequestConfigEntry,
-	ServerResponse,
-	ServerRoute,
+  RequestConfigSchema,
+  ServerRequest,
+  ServerRequestConfigEntry,
+  ServerResponse,
+  ServerRoute,
 } from "./interfaces/ServerRequest.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
 import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
@@ -29,72 +29,72 @@ import { HttpClient } from "./services/HttpClient.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface Hooks {
-		// -----------------------------------------------------------------------------------------------------------------
-		// Local Actions hooks
-		"action:onRequest": {
-			action: ActionDescriptor<RequestConfigSchema>;
-			request: ServerRequest;
-			options: ClientRequestOptions;
-		};
-		"action:onResponse": {
-			action: ActionDescriptor<RequestConfigSchema>;
-			request: ServerRequest;
-			options: ClientRequestOptions;
-			response: any;
-		};
-		// -----------------------------------------------------------------------------------------------------------------
-		// Server hooks
-		"server:onRequest": {
-			route: ServerRoute;
-			request: ServerRequest;
-		};
-		"server:onError": {
-			route: ServerRoute;
-			request: ServerRequest;
-			error: Error;
-		};
-		// last chance to modify the response -
-		// TODO: probably not really needed, we can also update the response in the onResponse hook...
-		"server:onSend": {
-			route: ServerRoute;
-			request: ServerRequest;
-		};
-		// response is ready
-		"server:onResponse": {
-			route: ServerRoute;
-			request: ServerRequest;
-			response: ServerResponse;
-		};
-		// -----------------------------------------------------------------------------------------------------------------
-		// Http client hooks
-		"client:onRequest": {
-			route: HttpAction;
-			config: ServerRequestConfigEntry;
-			options: ClientRequestOptions;
-			headers: Record<string, string>;
-			request: RequestInit;
-		};
-		"client:beforeFetch": {
-			url: string;
-			options: FetchOptions;
-			request: RequestInit;
-		};
-		"client:onError": {
-			route?: HttpAction;
-			error: HttpError;
-		};
-		// -----------------------------------------------------------------------------------------------------------------
-		// Internal hooks
-		"node:request": {
-			req: IncomingMessage;
-			res: NodeServerResponse;
-		};
-		"web:request": {
-			req: Request;
-			res?: Response;
-		};
-	}
+  interface Hooks {
+    // -----------------------------------------------------------------------------------------------------------------
+    // Local Actions hooks
+    "action:onRequest": {
+      action: ActionDescriptor<RequestConfigSchema>;
+      request: ServerRequest;
+      options: ClientRequestOptions;
+    };
+    "action:onResponse": {
+      action: ActionDescriptor<RequestConfigSchema>;
+      request: ServerRequest;
+      options: ClientRequestOptions;
+      response: any;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    // Server hooks
+    "server:onRequest": {
+      route: ServerRoute;
+      request: ServerRequest;
+    };
+    "server:onError": {
+      route: ServerRoute;
+      request: ServerRequest;
+      error: Error;
+    };
+    // last chance to modify the response -
+    // TODO: probably not really needed, we can also update the response in the onResponse hook...
+    "server:onSend": {
+      route: ServerRoute;
+      request: ServerRequest;
+    };
+    // response is ready
+    "server:onResponse": {
+      route: ServerRoute;
+      request: ServerRequest;
+      response: ServerResponse;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    // Http client hooks
+    "client:onRequest": {
+      route: HttpAction;
+      config: ServerRequestConfigEntry;
+      options: ClientRequestOptions;
+      headers: Record<string, string>;
+      request: RequestInit;
+    };
+    "client:beforeFetch": {
+      url: string;
+      options: FetchOptions;
+      request: RequestInit;
+    };
+    "client:onError": {
+      route?: HttpAction;
+      error: HttpError;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    // Internal hooks
+    "node:request": {
+      req: IncomingMessage;
+      res: NodeServerResponse;
+    };
+    "web:request": {
+      req: Request;
+      res?: Response;
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -123,30 +123,30 @@ export * from "./providers/ServerTimingProvider.ts";
  * @module alepha.server
  */
 export const AlephaServer = $module({
-	name: "alepha.server",
-	descriptors: [$route, $action as DescriptorFactoryLike],
-	services: [
-		ServerProvider,
-		NodeHttpServerProvider,
-		ServerBodyParserProvider,
-		ServerLoggerProvider,
-		ServerNotReadyProvider,
-		ServerTimingProvider,
-		HttpClient,
-	],
-	register: (alepha: Alepha) => {
-		alepha.with({
-			optional: true,
-			provide: ServerProvider,
-			use: NodeHttpServerProvider,
-		});
+  name: "alepha.server",
+  descriptors: [$route, $action as DescriptorFactoryLike],
+  services: [
+    ServerProvider,
+    NodeHttpServerProvider,
+    ServerBodyParserProvider,
+    ServerLoggerProvider,
+    ServerNotReadyProvider,
+    ServerTimingProvider,
+    HttpClient,
+  ],
+  register: (alepha: Alepha) => {
+    alepha.with({
+      optional: true,
+      provide: ServerProvider,
+      use: NodeHttpServerProvider,
+    });
 
-		alepha.with(ServerBodyParserProvider);
-		alepha.with(ServerLoggerProvider);
-		alepha.with(ServerNotReadyProvider);
+    alepha.with(ServerBodyParserProvider);
+    alepha.with(ServerLoggerProvider);
+    alepha.with(ServerNotReadyProvider);
 
-		if (!alepha.isProduction()) {
-			alepha.with(ServerTimingProvider);
-		}
-	},
+    if (!alepha.isProduction()) {
+      alepha.with(ServerTimingProvider);
+    }
+  },
 });

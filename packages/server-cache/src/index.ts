@@ -37,6 +37,6 @@ export * from "./providers/ServerCacheProvider.ts";
  * @module alepha.server.cache
  */
 export const AlephaServerCache = $module({
-	name: "alepha.server.cache",
-	services: [AlephaCache, ServerCacheProvider],
+  name: "alepha.server.cache",
+  services: [AlephaCache, ServerCacheProvider],
 });

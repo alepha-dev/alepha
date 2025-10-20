@@ -1,22 +1,22 @@
 import autocannon from "autocannon";
 
 const targets = [
-	{ name: "Alepha", url: "http://localhost:3003/ping" },
-	{ name: "Raw", url: "http://localhost:3004/ping" },
-	{ name: "Express", url: "http://localhost:3001/ping" },
-	{ name: "Alepha", url: "http://localhost:3003/ping" },
-	{ name: "Fastify", url: "http://localhost:3002/ping" },
-	{ name: "Alepha Cluster", url: "http://localhost:3005/ping" },
+  { name: "Alepha", url: "http://localhost:3003/ping" },
+  { name: "Raw", url: "http://localhost:3004/ping" },
+  { name: "Express", url: "http://localhost:3001/ping" },
+  { name: "Alepha", url: "http://localhost:3003/ping" },
+  { name: "Fastify", url: "http://localhost:3002/ping" },
+  { name: "Alepha Cluster", url: "http://localhost:3005/ping" },
 ];
 
 for (const { name, url } of targets) {
-	console.log(`${name}...`);
+  console.log(`${name}...`);
 
-	const result = await autocannon({
-		url,
-		connections: 100,
-		duration: 10,
-	});
+  const result = await autocannon({
+    url,
+    connections: 100,
+    duration: 10,
+  });
 
-	console.log(name, result.requests.sent);
+  console.log(name, result.requests.sent);
 }

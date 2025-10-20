@@ -24,19 +24,19 @@ export * from "./providers/MemoryLockProvider.ts";
  * @module alepha.lock
  */
 export const AlephaLock = $module({
-	name: "alepha.lock",
-	descriptors: [$lock],
-	services: [LockProvider, MemoryLockProvider, LockTopicProvider],
-	register: (alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: LockTopicProvider,
-				use: MemoryTopicProvider,
-			})
-			.with({
-				optional: true,
-				provide: LockProvider,
-				use: MemoryLockProvider,
-			}),
+  name: "alepha.lock",
+  descriptors: [$lock],
+  services: [LockProvider, MemoryLockProvider, LockTopicProvider],
+  register: (alepha) =>
+    alepha
+      .with({
+        optional: true,
+        provide: LockTopicProvider,
+        use: MemoryTopicProvider,
+      })
+      .with({
+        optional: true,
+        provide: LockProvider,
+        use: MemoryLockProvider,
+      }),
 });

@@ -43,54 +43,54 @@ import type { Async } from "../interfaces/Async.ts";
  *
  */
 export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) =>
-	createDescriptor(HookDescriptor<T>, options);
+  createDescriptor(HookDescriptor<T>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface HookOptions<T extends keyof Hooks> {
-	/**
-	 * The name of the hook. "configure", "start", "ready", "stop", ...
-	 */
-	on: T;
+  /**
+   * The name of the hook. "configure", "start", "ready", "stop", ...
+   */
+  on: T;
 
-	/**
-	 * The handler to run when the hook is triggered.
-	 */
-	handler: (args: Hooks[T]) => Async<any>;
+  /**
+   * The handler to run when the hook is triggered.
+   */
+  handler: (args: Hooks[T]) => Async<any>;
 
-	/**
-	 * Force the hook to run first or last on the list of hooks.
-	 */
-	priority?: "first" | "last";
+  /**
+   * Force the hook to run first or last on the list of hooks.
+   */
+  priority?: "first" | "last";
 
-	/**
-	 * Empty placeholder, not implemented yet. :-)
-	 */
-	before?: object | Array<object>;
+  /**
+   * Empty placeholder, not implemented yet. :-)
+   */
+  before?: object | Array<object>;
 
-	/**
-	 * Empty placeholder, not implemented yet. :-)
-	 */
-	after?: object | Array<object>;
+  /**
+   * Empty placeholder, not implemented yet. :-)
+   */
+  after?: object | Array<object>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class HookDescriptor<T extends keyof Hooks> extends Descriptor<
-	HookOptions<T>
+  HookOptions<T>
 > {
-	public called = 0;
+  public called = 0;
 
-	protected onInit() {
-		this.alepha.events.on(this.options.on, {
-			caller: this.config.service,
-			priority: this.options.priority,
-			callback: async (args: any) => {
-				this.called += 1;
-				await this.options.handler(args);
-			},
-		});
-	}
+  protected onInit() {
+    this.alepha.events.on(this.options.on, {
+      caller: this.config.service,
+      priority: this.options.priority,
+      callback: async (args: any) => {
+        this.called += 1;
+        await this.options.handler(args);
+      },
+    });
+  }
 }
 
 $hook[KIND] = HookDescriptor;

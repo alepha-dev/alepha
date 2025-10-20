@@ -5,19 +5,19 @@ import type { UserAccount } from "../schemas/userAccountInfoSchema";
  * E.g. UserAccountToken is a UserAccountInfo during a request.
  */
 export interface UserAccountToken extends UserAccount {
-	/**
-	 * Access token for the user.
-	 */
-	token?: string;
+  /**
+   * Access token for the user.
+   */
+  token?: string;
 
-	/**
-	 * Realm name of the user.
-	 */
-	realm?: string;
+  /**
+   * Realm name of the user.
+   */
+  realm?: string;
 
-	/**
-	 * Is user dedicated to his own resources for this scope ?
-	 * Mostly, Admin is false and Customer is true.
-	 */
-	ownership?: string | boolean;
+  /**
+   * Is user dedicated to his own resources for this scope ?
+   * Mostly, Admin is false and Customer is true.
+   */
+  ownership?: string | boolean;
 }

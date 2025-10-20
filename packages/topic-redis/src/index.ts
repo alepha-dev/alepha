@@ -15,14 +15,14 @@ export * from "./providers/RedisTopicProvider.ts";
  * @module alepha.topic.redis
  */
 export const AlephaTopicRedis = $module({
-	name: "alepha.topic.redis",
-	services: [RedisTopicProvider],
-	register: (alepha: Alepha): Alepha =>
-		alepha
-			.with({
-				optional: true,
-				provide: TopicProvider,
-				use: RedisTopicProvider,
-			})
-			.with(AlephaTopic),
+  name: "alepha.topic.redis",
+  services: [RedisTopicProvider],
+  register: (alepha: Alepha): Alepha =>
+    alepha
+      .with({
+        optional: true,
+        provide: TopicProvider,
+        use: RedisTopicProvider,
+      })
+      .with(AlephaTopic),
 });

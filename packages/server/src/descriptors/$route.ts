@@ -1,7 +1,7 @@
 import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type {
-	RequestConfigSchema,
-	ServerRoute,
+  RequestConfigSchema,
+  ServerRoute,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
 
@@ -14,27 +14,27 @@ import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
  * @see {@link $page}
  */
 export const $route = <TConfig extends RequestConfigSchema>(
-	options: RouteDescriptorOptions<TConfig>,
+  options: RouteDescriptorOptions<TConfig>,
 ): RouteDescriptor<TConfig> => {
-	return createDescriptor(RouteDescriptor<TConfig>, options);
+  return createDescriptor(RouteDescriptor<TConfig>, options);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RouteDescriptorOptions<
-	TConfig extends RequestConfigSchema = RequestConfigSchema,
+  TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends ServerRoute<TConfig> {}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RouteDescriptor<
-	TConfig extends RequestConfigSchema,
+  TConfig extends RequestConfigSchema,
 > extends Descriptor<RouteDescriptorOptions<TConfig>> {
-	protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+  protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
-	protected onInit() {
-		this.serverRouterProvider.createRoute(this.options);
-	}
+  protected onInit() {
+    this.serverRouterProvider.createRoute(this.options);
+  }
 }
 
 $route[KIND] = RouteDescriptor;

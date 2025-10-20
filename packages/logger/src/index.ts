@@ -98,133 +98,133 @@ export * from "./services/Logger.ts";
  * - Better error messages: "Invalid log level 'bad' for module pattern 'alepha'"
  */
 export const AlephaLogger = $module({
-	name: "alepha.logger",
-	descriptors: [$logger],
-	services: [
-		Logger,
-		ConsoleDestinationProvider,
-		MemoryDestinationProvider,
-		JsonFormatterProvider,
-		SimpleFormatterProvider,
-		RawFormatterProvider,
-	],
-	register: (alepha) => {
-		const env = alepha.parseEnv(envSchema);
+  name: "alepha.logger",
+  descriptors: [$logger],
+  services: [
+    Logger,
+    ConsoleDestinationProvider,
+    MemoryDestinationProvider,
+    JsonFormatterProvider,
+    SimpleFormatterProvider,
+    RawFormatterProvider,
+  ],
+  register: (alepha) => {
+    const env = alepha.parseEnv(envSchema);
 
-		const getLogDestinationProvider = () => {
-			// in test mode, if no LOG_LEVEL is set, use MemoryDestinationProvider to capture logs for inspection.
-			// logs will be printed to console only if the test fails.
-			if (alepha.isTest() && !env.LOG_LEVEL) {
-				const printOnError = (ev: any) => {
-					if (ev.task?.result?.state === "fail") {
-						const output = alepha.inject(MemoryDestinationProvider);
-						for (const log of output.logs) {
-							console.log(log.formatted);
-						}
-					}
-				};
+    const getLogDestinationProvider = () => {
+      // in test mode, if no LOG_LEVEL is set, use MemoryDestinationProvider to capture logs for inspection.
+      // logs will be printed to console only if the test fails.
+      if (alepha.isTest() && !env.LOG_LEVEL) {
+        const printOnError = (ev: any) => {
+          if (ev.task?.result?.state === "fail") {
+            const output = alepha.inject(MemoryDestinationProvider);
+            for (const log of output.logs) {
+              console.log(log.formatted);
+            }
+          }
+        };
 
-				try {
-					alepha.state.get("afterEach")?.(printOnError);
-					alepha.state.get("onTestFinished")?.(printOnError);
-				} catch {
-					// ignore
-				}
+        try {
+          alepha.state.get("afterEach")?.(printOnError);
+          alepha.state.get("onTestFinished")?.(printOnError);
+        } catch {
+          // ignore
+        }
 
-				return MemoryDestinationProvider;
-			}
+        return MemoryDestinationProvider;
+      }
 
-			return ConsoleDestinationProvider;
-		};
+      return ConsoleDestinationProvider;
+    };
 
-		const getLogFormatterProvider = () => {
-			if (env.LOG_FORMAT) {
-				if (env.LOG_FORMAT === "json") {
-					return JsonFormatterProvider;
-				}
-				if (env.LOG_FORMAT === "raw") {
-					return RawFormatterProvider;
-				}
-				return SimpleFormatterProvider;
-			}
+    const getLogFormatterProvider = () => {
+      if (env.LOG_FORMAT) {
+        if (env.LOG_FORMAT === "json") {
+          return JsonFormatterProvider;
+        }
+        if (env.LOG_FORMAT === "raw") {
+          return RawFormatterProvider;
+        }
+        return SimpleFormatterProvider;
+      }
 
-			if (alepha.isProduction() && !alepha.isBrowser()) {
-				return JsonFormatterProvider;
-			}
+      if (alepha.isProduction() && !alepha.isBrowser()) {
+        return JsonFormatterProvider;
+      }
 
-			return SimpleFormatterProvider;
-		};
+      return SimpleFormatterProvider;
+    };
 
-		alepha.with({
-			optional: true,
-			provide: LogDestinationProvider,
-			use: getLogDestinationProvider(),
-		});
+    alepha.with({
+      optional: true,
+      provide: LogDestinationProvider,
+      use: getLogDestinationProvider(),
+    });
 
-		alepha.with({
-			optional: true,
-			provide: LogFormatterProvider,
-			use: getLogFormatterProvider(),
-		});
+    alepha.with({
+      optional: true,
+      provide: LogFormatterProvider,
+      use: getLogFormatterProvider(),
+    });
 
-		alepha.state.set(
-			"log",
-			alepha.inject(Logger, {
-				lifetime: "transient",
-				args: ["Alepha", "alepha.core"],
-			}),
-		);
+    alepha.state.set(
+      "log",
+      alepha.inject(Logger, {
+        lifetime: "transient",
+        args: ["Alepha", "alepha.core"],
+      }),
+    );
 
-		alepha.state.set(
-			"logLevel",
-			env.LOG_LEVEL ?? (alepha.isTest() ? "trace" : "info"),
-		);
-	},
+    alepha.state.set(
+      "logLevel",
+      env.LOG_LEVEL ?? (alepha.isTest() ? "trace" : "info"),
+    );
+  },
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-	/**
-	 * Default log level for the application.
-	 *
-	 * Default by environment:
-	 * - dev = info
-	 * - prod = info
-	 * - test = error
-	 *
-	 * Levels are: "trace" | "debug" | "info" | "warn" | "error" | "silent"
-	 *
-	 * Level can be set for a specific module:
-	 *
-	 * @example
-	 * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
-	 * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
-	 */
-	LOG_LEVEL: t.optional(t.text()),
+  /**
+   * Default log level for the application.
+   *
+   * Default by environment:
+   * - dev = info
+   * - prod = info
+   * - test = error
+   *
+   * Levels are: "trace" | "debug" | "info" | "warn" | "error" | "silent"
+   *
+   * Level can be set for a specific module:
+   *
+   * @example
+   * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
+   * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
+   */
+  LOG_LEVEL: t.optional(t.text()),
 
-	/**
-	 * Built-in log formats.
-	 * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
-	 * - "text" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
-	 * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
-	 */
-	LOG_FORMAT: t.optional(t.enum(["json", "text", "raw"])),
+  /**
+   * Built-in log formats.
+   * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
+   * - "text" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
+   * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
+   */
+  LOG_FORMAT: t.optional(t.enum(["json", "text", "raw"])),
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	export interface Env extends Partial<Static<typeof envSchema>> {}
+  export interface Env extends Partial<Static<typeof envSchema>> {}
 
-	export interface State {
-		logLevel?: string;
-	}
+  export interface State {
+    logLevel?: string;
+  }
 
-	export interface Hooks {
-		log: {
-			message: string;
-			entry: LogEntry;
-		};
-	}
+  export interface Hooks {
+    log: {
+      message: string;
+      entry: LogEntry;
+    };
+  }
 }

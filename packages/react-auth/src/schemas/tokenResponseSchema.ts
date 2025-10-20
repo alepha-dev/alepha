@@ -4,8 +4,8 @@ import { apiLinksResponseSchema } from "@alepha/server-links";
 import { tokensSchema } from "./tokensSchema.ts";
 
 export const tokenResponseSchema = t.interface([tokensSchema], {
-	user: userAccountInfoSchema,
-	api: apiLinksResponseSchema,
+  user: userAccountInfoSchema,
+  api: apiLinksResponseSchema,
 });
 
 export type TokenResponse = Static<typeof tokenResponseSchema>;

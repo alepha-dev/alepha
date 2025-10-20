@@ -10,13 +10,13 @@ export * from "./providers/ThreadProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface Alepha {
-		isWorkerThread(): boolean;
-	}
+  interface Alepha {
+    isWorkerThread(): boolean;
+  }
 }
 
 Alepha.prototype.isWorkerThread = function (this: Alepha): boolean {
-	return !!this.env.ALEPHA_WORKER;
+  return !!this.env.ALEPHA_WORKER;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ Alepha.prototype.isWorkerThread = function (this: Alepha): boolean {
  * @module alepha.thread
  */
 export const AlephaThread = $module({
-	name: "alepha.thread",
-	descriptors: [$thread],
-	services: [ThreadProvider],
+  name: "alepha.thread",
+  descriptors: [$thread],
+  services: [ThreadProvider],
 });

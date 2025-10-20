@@ -1,8 +1,8 @@
 import { $cursor } from "@alepha/core";
 import {
-	$realm,
-	type RealmDescriptorOptions,
-	SecurityProvider,
+  $realm,
+  type RealmDescriptorOptions,
+  SecurityProvider,
 } from "@alepha/security";
 import { SessionService } from "../services/SessionService.ts";
 
@@ -20,53 +20,53 @@ import { SessionService } from "../services/SessionService.ts";
  * - `APP_SECRET`: Secret key for signing tokens (if not provided in options).
  */
 export const $realmUsers = (
-	options: { secret?: string; realm?: Partial<RealmDescriptorOptions> } = {},
+  options: { secret?: string; realm?: Partial<RealmDescriptorOptions> } = {},
 ) => {
-	const { context } = $cursor();
-	const sessionService = context.inject(SessionService);
-	const securityProvider = context.inject(SecurityProvider);
+  const { context } = $cursor();
+  const sessionService = context.inject(SessionService);
+  const securityProvider = context.inject(SecurityProvider);
 
-	return $realm({
-		...options.realm,
-		name: options.realm?.name ?? "users",
-		secret: options.secret ?? securityProvider.secretKey,
-		roles: options.realm?.roles ?? [
-			{
-				name: "admin",
-				permissions: [
-					{
-						name: "*",
-					},
-				],
-			},
-			{
-				name: "user",
-				permissions: [
-					{
-						name: "*",
-						ownership: true,
-						exclude: ["admin:*"],
-					},
-				],
-			},
-		],
-		settings: {
-			accessToken: {
-				expiration: [15, "minutes"],
-			},
-			refreshToken: {
-				expiration: [30, "days"],
-			},
-			onCreateSession: async (user, config) => {
-				return sessionService.createSession(user, config.expiresIn);
-			},
-			onRefreshSession: async (refreshToken) => {
-				return sessionService.refreshSession(refreshToken);
-			},
-			onDeleteSession: async (refreshToken) => {
-				await sessionService.deleteSession(refreshToken);
-			},
-			...options.realm?.settings,
-		},
-	});
+  return $realm({
+    ...options.realm,
+    name: options.realm?.name ?? "users",
+    secret: options.secret ?? securityProvider.secretKey,
+    roles: options.realm?.roles ?? [
+      {
+        name: "admin",
+        permissions: [
+          {
+            name: "*",
+          },
+        ],
+      },
+      {
+        name: "user",
+        permissions: [
+          {
+            name: "*",
+            ownership: true,
+            exclude: ["admin:*"],
+          },
+        ],
+      },
+    ],
+    settings: {
+      accessToken: {
+        expiration: [15, "minutes"],
+      },
+      refreshToken: {
+        expiration: [30, "days"],
+      },
+      onCreateSession: async (user, config) => {
+        return sessionService.createSession(user, config.expiresIn);
+      },
+      onRefreshSession: async (refreshToken) => {
+        return sessionService.refreshSession(refreshToken);
+      },
+      onDeleteSession: async (refreshToken) => {
+        await sessionService.deleteSession(refreshToken);
+      },
+      ...options.realm?.settings,
+    },
+  });
 };

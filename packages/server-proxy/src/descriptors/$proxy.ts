@@ -85,138 +85,138 @@ import type { ServerRequest } from "@alepha/server";
  * ```
  */
 export const $proxy = (options: ProxyDescriptorOptions): ProxyDescriptor => {
-	return createDescriptor(ProxyDescriptor, options);
+  return createDescriptor(ProxyDescriptor, options);
 };
 
 export type ProxyDescriptorOptions = {
-	/**
-	 * Path pattern to match for proxying requests.
-	 *
-	 * Supports wildcards and path parameters:
-	 * - `/api/*` - Matches all paths starting with `/api/`
-	 * - `/api/v1/*` - Matches all paths starting with `/api/v1/`
-	 * - `/users/:id` - Matches `/users/123`, `/users/abc`, etc.
-	 *
-	 * @example "/api/*"
-	 * @example "/secure/admin/*"
-	 * @example "/users/:id/posts"
-	 */
-	path: string;
+  /**
+   * Path pattern to match for proxying requests.
+   *
+   * Supports wildcards and path parameters:
+   * - `/api/*` - Matches all paths starting with `/api/`
+   * - `/api/v1/*` - Matches all paths starting with `/api/v1/`
+   * - `/users/:id` - Matches `/users/123`, `/users/abc`, etc.
+   *
+   * @example "/api/*"
+   * @example "/secure/admin/*"
+   * @example "/users/:id/posts"
+   */
+  path: string;
 
-	/**
-	 * Target URL to which matching requests should be forwarded.
-	 *
-	 * Can be either:
-	 * - **Static string**: A fixed URL like `"https://api.example.com"`
-	 * - **Dynamic function**: A function that returns the URL, enabling runtime target resolution
-	 *
-	 * The target URL will be combined with the remaining path from the original request.
-	 *
-	 * @example "https://api.example.com"
-	 * @example () => process.env.API_URL || "http://localhost:3001"
-	 */
-	target: string | (() => string);
+  /**
+   * Target URL to which matching requests should be forwarded.
+   *
+   * Can be either:
+   * - **Static string**: A fixed URL like `"https://api.example.com"`
+   * - **Dynamic function**: A function that returns the URL, enabling runtime target resolution
+   *
+   * The target URL will be combined with the remaining path from the original request.
+   *
+   * @example "https://api.example.com"
+   * @example () => process.env.API_URL || "http://localhost:3001"
+   */
+  target: string | (() => string);
 
-	/**
-	 * Whether this proxy is disabled.
-	 *
-	 * When `true`, requests matching the path will not be proxied and will be handled
-	 * by other routes or return 404. Useful for feature toggles or conditional proxying.
-	 *
-	 * @default false
-	 * @example !process.env.ENABLE_PROXY
-	 */
-	disabled?: boolean;
+  /**
+   * Whether this proxy is disabled.
+   *
+   * When `true`, requests matching the path will not be proxied and will be handled
+   * by other routes or return 404. Useful for feature toggles or conditional proxying.
+   *
+   * @default false
+   * @example !process.env.ENABLE_PROXY
+   */
+  disabled?: boolean;
 
-	/**
-	 * Hook called before forwarding the request to the target server.
-	 *
-	 * Use this to:
-	 * - Add authentication headers
-	 * - Modify request headers or body
-	 * - Add request tracking/logging
-	 * - Transform the request before forwarding
-	 *
-	 * @param request - The original incoming server request
-	 * @param proxyRequest - The request that will be sent to the target (modifiable)
-	 *
-	 * @example
-	 * ```ts
-	 * beforeRequest: async (request, proxyRequest) => {
-	 *   proxyRequest.headers = {
-	 *     ...proxyRequest.headers,
-	 *     'Authorization': `Bearer ${await getToken()}`,
-	 *     'X-Request-ID': generateRequestId()
-	 *   };
-	 * }
-	 * ```
-	 */
-	beforeRequest?: (
-		request: ServerRequest,
-		proxyRequest: RequestInit,
-	) => Async<void>;
+  /**
+   * Hook called before forwarding the request to the target server.
+   *
+   * Use this to:
+   * - Add authentication headers
+   * - Modify request headers or body
+   * - Add request tracking/logging
+   * - Transform the request before forwarding
+   *
+   * @param request - The original incoming server request
+   * @param proxyRequest - The request that will be sent to the target (modifiable)
+   *
+   * @example
+   * ```ts
+   * beforeRequest: async (request, proxyRequest) => {
+   *   proxyRequest.headers = {
+   *     ...proxyRequest.headers,
+   *     'Authorization': `Bearer ${await getToken()}`,
+   *     'X-Request-ID': generateRequestId()
+   *   };
+   * }
+   * ```
+   */
+  beforeRequest?: (
+    request: ServerRequest,
+    proxyRequest: RequestInit,
+  ) => Async<void>;
 
-	/**
-	 * Hook called after receiving the response from the target server.
-	 *
-	 * Use this to:
-	 * - Log response details for monitoring
-	 * - Add custom headers to the response
-	 * - Transform response data
-	 * - Handle error responses
-	 *
-	 * @param request - The original incoming server request
-	 * @param proxyResponse - The response received from the target server
-	 *
-	 * @example
-	 * ```ts
-	 * afterResponse: async (request, proxyResponse) => {
-	 *   console.log(`Proxy ${request.method} ${request.url} -> ${proxyResponse.status}`);
-	 *
-	 *   if (!proxyResponse.ok) {
-	 *     await logError(`Proxy error: ${proxyResponse.status}`, { request, response: proxyResponse });
-	 *   }
-	 * }
-	 * ```
-	 */
-	afterResponse?: (
-		request: ServerRequest,
-		proxyResponse: Response,
-	) => Async<void>;
+  /**
+   * Hook called after receiving the response from the target server.
+   *
+   * Use this to:
+   * - Log response details for monitoring
+   * - Add custom headers to the response
+   * - Transform response data
+   * - Handle error responses
+   *
+   * @param request - The original incoming server request
+   * @param proxyResponse - The response received from the target server
+   *
+   * @example
+   * ```ts
+   * afterResponse: async (request, proxyResponse) => {
+   *   console.log(`Proxy ${request.method} ${request.url} -> ${proxyResponse.status}`);
+   *
+   *   if (!proxyResponse.ok) {
+   *     await logError(`Proxy error: ${proxyResponse.status}`, { request, response: proxyResponse });
+   *   }
+   * }
+   * ```
+   */
+  afterResponse?: (
+    request: ServerRequest,
+    proxyResponse: Response,
+  ) => Async<void>;
 
-	/**
-	 * Function to rewrite the URL before sending to the target server.
-	 *
-	 * Use this to:
-	 * - Remove or add path prefixes
-	 * - Transform path parameters
-	 * - Modify query parameters
-	 * - Change the URL structure entirely
-	 *
-	 * The function receives a mutable URL object and should modify it in-place.
-	 *
-	 * @param url - The URL object to modify (mutable)
-	 *
-	 * @example
-	 * ```ts
-	 * // Remove /api prefix when forwarding
-	 * rewrite: (url) => {
-	 *   url.pathname = url.pathname.replace('/api', '');
-	 * }
-	 * ```
-	 *
-	 * @example
-	 * ```ts
-	 * // Add version prefix
-	 * rewrite: (url) => {
-	 *   url.pathname = `/v2${url.pathname}`;
-	 * }
-	 * ```
-	 */
-	rewrite?: (url: URL) => void;
+  /**
+   * Function to rewrite the URL before sending to the target server.
+   *
+   * Use this to:
+   * - Remove or add path prefixes
+   * - Transform path parameters
+   * - Modify query parameters
+   * - Change the URL structure entirely
+   *
+   * The function receives a mutable URL object and should modify it in-place.
+   *
+   * @param url - The URL object to modify (mutable)
+   *
+   * @example
+   * ```ts
+   * // Remove /api prefix when forwarding
+   * rewrite: (url) => {
+   *   url.pathname = url.pathname.replace('/api', '');
+   * }
+   * ```
+   *
+   * @example
+   * ```ts
+   * // Add version prefix
+   * rewrite: (url) => {
+   *   url.pathname = `/v2${url.pathname}`;
+   * }
+   * ```
+   */
+  rewrite?: (url: URL) => void;
 
-	// TODO: Add retry functionality
-	// retry?: RetryOptions;
+  // TODO: Add retry functionality
+  // retry?: RetryOptions;
 };
 
 export class ProxyDescriptor extends Descriptor<ProxyDescriptorOptions> {}

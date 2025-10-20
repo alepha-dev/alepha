@@ -49,18 +49,18 @@ export * from "./services/UserService.ts";
  * @module alepha.api.users
  */
 export const AlephaApiUsers = $module({
-	name: "alepha.api.users",
-	services: [
-		AlephaServerSecurity,
-		AlephaReactAuth,
-		AlephaEmail,
-		SessionService,
-		SessionCrudService,
-		CredentialService,
-		UserService,
-		IdentityService,
-		UserController,
-		SessionController,
-		IdentityController,
-	],
+  name: "alepha.api.users",
+  services: [
+    AlephaServerSecurity,
+    AlephaReactAuth,
+    AlephaEmail,
+    SessionService,
+    SessionCrudService,
+    CredentialService,
+    UserService,
+    IdentityService,
+    UserController,
+    SessionController,
+    IdentityController,
+  ],
 });

@@ -1,7 +1,7 @@
 import {
-	type ClientScope,
-	type HttpVirtualClient,
-	LinkProvider,
+  type ClientScope,
+  type HttpVirtualClient,
+  LinkProvider,
 } from "@alepha/server-links";
 import { useInject } from "./useInject.ts";
 
@@ -11,7 +11,7 @@ import { useInject } from "./useInject.ts";
  * It's the React-hook version of `$client()`, from `AlephaServerLinks` module.
  */
 export const useClient = <T extends object>(
-	scope?: ClientScope,
+  scope?: ClientScope,
 ): HttpVirtualClient<T> => {
-	return useInject(LinkProvider).client<T>(scope);
+  return useInject(LinkProvider).client<T>(scope);
 };

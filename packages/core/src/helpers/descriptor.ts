@@ -7,74 +7,74 @@ import type { InstantiableClass, Service } from "../interfaces/Service.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface DescriptorArgs<T extends object = {}> {
-	options: T;
-	alepha: Alepha;
-	service: InstantiableClass<Service>;
-	module?: Service;
+  options: T;
+  alepha: Alepha;
+  service: InstantiableClass<Service>;
+  module?: Service;
 }
 
 export interface DescriptorConfig {
-	propertyKey: string;
-	service: InstantiableClass<Service>;
-	module?: Service;
+  propertyKey: string;
+  service: InstantiableClass<Service>;
+  module?: Service;
 }
 
 export abstract class Descriptor<T extends object = {}> {
-	protected readonly alepha: Alepha;
+  protected readonly alepha: Alepha;
 
-	public readonly options: T;
-	public readonly config: DescriptorConfig;
+  public readonly options: T;
+  public readonly config: DescriptorConfig;
 
-	constructor(args: DescriptorArgs<T>) {
-		this.alepha = args.alepha;
-		this.options = args.options;
-		this.config = {
-			propertyKey: "",
-			service: args.service,
-			module: args.module,
-		};
-	}
+  constructor(args: DescriptorArgs<T>) {
+    this.alepha = args.alepha;
+    this.options = args.options;
+    this.config = {
+      propertyKey: "",
+      service: args.service,
+      module: args.module,
+    };
+  }
 
-	/**
-	 * Called automatically by Alepha after the descriptor is created.
-	 */
-	protected onInit(): void {
-		// this method can be overridden by subclasses to perform initialization logic.
-		// - use onInit instead of the constructor when you need to access `config.propertyKey`
-		// - onInit must be synchronous
-	}
+  /**
+   * Called automatically by Alepha after the descriptor is created.
+   */
+  protected onInit(): void {
+    // this method can be overridden by subclasses to perform initialization logic.
+    // - use onInit instead of the constructor when you need to access `config.propertyKey`
+    // - onInit must be synchronous
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type DescriptorFactory<TDescriptor extends Descriptor = Descriptor> = {
-	(options: TDescriptor["options"]): TDescriptor;
-	[KIND]: InstantiableClass<TDescriptor>;
+  (options: TDescriptor["options"]): TDescriptor;
+  [KIND]: InstantiableClass<TDescriptor>;
 };
 
 export type DescriptorFactoryLike<T extends object = any> = {
-	(options: T): any;
-	[KIND]: any;
+  (options: T): any;
+  [KIND]: any;
 };
 
 export const createDescriptor = <TDescriptor extends Descriptor>(
-	descriptor: InstantiableClass<TDescriptor> & { [MODULE]?: Service },
-	options: TDescriptor["options"],
+  descriptor: InstantiableClass<TDescriptor> & { [MODULE]?: Service },
+  options: TDescriptor["options"],
 ): TDescriptor => {
-	const { context, definition } = $cursor();
+  const { context, definition } = $cursor();
 
-	if (MODULE in descriptor && descriptor[MODULE]) {
-		context.with(descriptor[MODULE]);
-	}
+  if (MODULE in descriptor && descriptor[MODULE]) {
+    context.with(descriptor[MODULE]);
+  }
 
-	return context.inject(descriptor, {
-		lifetime: "transient",
-		args: [
-			{
-				options,
-				alepha: context,
-				service: definition ?? Alepha,
-			},
-		],
-	});
+  return context.inject(descriptor, {
+    lifetime: "transient",
+    args: [
+      {
+        options,
+        alepha: context,
+        service: definition ?? Alepha,
+      },
+    ],
+  });
 };

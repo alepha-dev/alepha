@@ -6,37 +6,37 @@ import { FileService } from "../src";
 import { FileJobs } from "../src/jobs/FileJobs.ts";
 
 describe("FileJobRegistry", () => {
-	const alepha = Alepha.create();
-	const jobs = alepha.inject(FileJobs);
-	const service = alepha.inject(FileService);
-	const dtp = alepha.inject(DateTimeProvider);
+  const alepha = Alepha.create();
+  const jobs = alepha.inject(FileJobs);
+  const service = alepha.inject(FileService);
+  const dtp = alepha.inject(DateTimeProvider);
 
-	it("should remove expired files", async () => {
-		const file = createFile("");
+  it("should remove expired files", async () => {
+    const file = createFile("");
 
-		await Promise.all([
-			service.uploadFile(file),
-			service.uploadFile(file, {
-				expirationDate: new Date().toISOString(),
-			}),
-			service.uploadFile(file, {
-				expirationDate: dtp.now().add(1, "hour").toISOString(),
-			}),
-			service.uploadFile(file, {
-				expirationDate: dtp.now().add(4, "hours").toISOString(),
-			}),
-		]);
+    await Promise.all([
+      service.uploadFile(file),
+      service.uploadFile(file, {
+        expirationDate: new Date().toISOString(),
+      }),
+      service.uploadFile(file, {
+        expirationDate: dtp.now().add(1, "hour").toISOString(),
+      }),
+      service.uploadFile(file, {
+        expirationDate: dtp.now().add(4, "hours").toISOString(),
+      }),
+    ]);
 
-		const list = () => service.findFiles().then((it) => it.content);
+    const list = () => service.findFiles().then((it) => it.content);
 
-		expect(await list()).toHaveLength(4);
+    expect(await list()).toHaveLength(4);
 
-		await jobs.purgeFiles.trigger();
+    await jobs.purgeFiles.trigger();
 
-		expect(await list()).toHaveLength(3);
+    expect(await list()).toHaveLength(3);
 
-		await dtp.travel(2, "hours");
+    await dtp.travel(2, "hours");
 
-		expect(await list()).toHaveLength(2);
-	});
+    expect(await list()).toHaveLength(2); // TODO: fail sometimes here
+  });
 });

@@ -32,15 +32,15 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  * ```
  */
 export const useForm = <T extends TObject>(
-	options: FormCtrlOptions<T>,
+  options: FormCtrlOptions<T>,
 ): FormModel<T> => {
-	const alepha = useAlepha();
-	const formId = useId();
+  const alepha = useAlepha();
+  const formId = useId();
 
-	return useMemo(() => {
-		return alepha.inject(FormModel<T>, {
-			lifetime: "transient",
-			args: [options.id || formId, options],
-		});
-	}, []);
+  return useMemo(() => {
+    return alepha.inject(FormModel<T>, {
+      lifetime: "transient",
+      args: [options.id || formId, options],
+    });
+  }, []);
 };

@@ -21,6 +21,6 @@ export { default as Control } from "./components/Control";
  * @module alepha.ui
  */
 export const AlephaUI = $module({
-	name: "alepha.ui",
-	services: [AlephaReact],
+  name: "alepha.ui",
+  services: [AlephaReact],
 });

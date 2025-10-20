@@ -23,13 +23,13 @@ export * from "./providers/MemoryCacheProvider.ts";
  * @module alepha.cache
  */
 export const AlephaCache = $module({
-	name: "alepha.cache",
-	descriptors: [$cache],
-	services: [CacheProvider, MemoryCacheProvider],
-	register: (alepha) =>
-		alepha.with({
-			optional: true,
-			provide: CacheProvider,
-			use: MemoryCacheProvider,
-		}),
+  name: "alepha.cache",
+  descriptors: [$cache],
+  services: [CacheProvider, MemoryCacheProvider],
+  register: (alepha) =>
+    alepha.with({
+      optional: true,
+      provide: CacheProvider,
+      use: MemoryCacheProvider,
+    }),
 });

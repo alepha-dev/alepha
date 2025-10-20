@@ -1,47 +1,47 @@
 {
-	"name": "@alepha/api-parameters",
-	"description": "Parameter management API endpoints for Alepha applications.",
-	"keywords": [
-		"alepha",
-		"api",
-		"parameters",
-		"configuration"
-	],
-	"author": "Feunard",
-	"version": "0.10.6",
-	"type": "module",
-	"engines": {
-		"node": ">=22.0.0"
-	},
-	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"files": [
-		"dist",
-		"src"
-	],
-	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/postgres": "0.10.6",
-		"@alepha/security": "0.10.6",
-		"@alepha/server": "0.10.6",
-		"@alepha/topic": "0.10.6"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.2.6",
-		"tsdown": "^0.15.7",
-		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
-	},
-	"scripts": {
-		"test": "vitest run",
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts",
-		"check": "tsc"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/feunard/alepha.git"
-	},
-	"homepage": "https://github.com/feunard/alepha"
+  "name": "@alepha/api-parameters",
+  "description": "Parameter management API endpoints for Alepha applications.",
+  "keywords": [
+    "alepha",
+    "api",
+    "parameters",
+    "configuration"
+  ],
+  "author": "Feunard",
+  "version": "0.10.6",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "@alepha/core": "0.10.6",
+    "@alepha/postgres": "0.10.6",
+    "@alepha/security": "0.10.6",
+    "@alepha/server": "0.10.6",
+    "@alepha/topic": "0.10.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.6",
+    "tsdown": "^0.15.7",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "biome check --write --unsafe",
+    "build": "tsdown -c ../../tsdown.config.ts",
+    "check": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "homepage": "https://github.com/feunard/alepha"
 }

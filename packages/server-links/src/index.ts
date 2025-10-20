@@ -20,9 +20,9 @@ export * from "./schemas/apiLinksResponseSchema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface State {
-		api?: ApiLinksResponse;
-	}
+  interface State {
+    api?: ApiLinksResponse;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -39,12 +39,12 @@ declare module "@alepha/core" {
  * @module alepha.server.links
  */
 export const AlephaServerLinks = $module({
-	name: "alepha.server.links",
-	descriptors: [$remote, $client],
-	services: [
-		AlephaServer,
-		ServerLinksProvider,
-		RemoteDescriptorProvider,
-		LinkProvider,
-	],
+  name: "alepha.server.links",
+  descriptors: [$remote, $client],
+  services: [
+    AlephaServer,
+    ServerLinksProvider,
+    RemoteDescriptorProvider,
+    LinkProvider,
+  ],
 });

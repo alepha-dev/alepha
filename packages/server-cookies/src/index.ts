@@ -11,9 +11,9 @@ export * from "./providers/ServerCookiesProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/server" {
-	interface ServerRequest {
-		cookies: Cookies;
-	}
+  interface ServerRequest {
+    cookies: Cookies;
+  }
 }
 
 /**
@@ -27,7 +27,7 @@ declare module "@alepha/server" {
  * @module alepha.server.cookies
  */
 export const AlephaServerCookies = $module({
-	name: "alepha.server.cookies",
-	descriptors: [$cookie],
-	services: [AlephaServer, ServerCookiesProvider],
+  name: "alepha.server.cookies",
+  descriptors: [$cookie],
+  services: [AlephaServer, ServerCookiesProvider],
 });

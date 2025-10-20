@@ -1,20 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 import {
-	$bucket,
-	FileMetadataService,
-	FileNotFoundError,
-	type FileStorageProvider,
+  $bucket,
+  FileMetadataService,
+  FileNotFoundError,
+  type FileStorageProvider,
 } from "@alepha/bucket";
 import {
-	$env,
-	$hook,
-	$inject,
-	Alepha,
-	AlephaError,
-	type FileLike,
-	type Static,
-	t,
+  $env,
+  $hook,
+  $inject,
+  Alepha,
+  AlephaError,
+  type FileLike,
+  type Static,
+  t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { createFile } from "@alepha/file";
@@ -22,201 +22,201 @@ import { $logger } from "@alepha/logger";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
 const envSchema = t.object({
-	BLOB_READ_WRITE_TOKEN: t.text({
-		size: "long",
-	}),
+  BLOB_READ_WRITE_TOKEN: t.text({
+    size: "long",
+  }),
 });
 
 declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
 /**
  * Vercel Blob Storage implementation of File Storage Provider.
  */
 export class VercelFileStorageProvider implements FileStorageProvider {
-	protected readonly log = $logger();
-	protected readonly env = $env(envSchema);
-	protected readonly alepha = $inject(Alepha);
-	protected readonly time = $inject(DateTimeProvider);
-	protected readonly stores: Set<string> = new Set();
-	protected readonly vercelBlobApi = $inject(VercelBlobApi);
-	protected readonly metadataService = $inject(FileMetadataService);
+  protected readonly log = $logger();
+  protected readonly env = $env(envSchema);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly time = $inject(DateTimeProvider);
+  protected readonly stores: Set<string> = new Set();
+  protected readonly vercelBlobApi = $inject(VercelBlobApi);
+  protected readonly metadataService = $inject(FileMetadataService);
 
-	protected readonly onStart = $hook({
-		on: "start",
-		handler: async () => {
-			for (const bucket of this.alepha.descriptors($bucket)) {
-				if (bucket.provider !== this) {
-					continue;
-				}
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: async () => {
+      for (const bucket of this.alepha.descriptors($bucket)) {
+        if (bucket.provider !== this) {
+          continue;
+        }
 
-				const storeName = this.convertName(bucket.name);
+        const storeName = this.convertName(bucket.name);
 
-				this.log.debug(`Prepare store '${storeName}' ...`);
+        this.log.debug(`Prepare store '${storeName}' ...`);
 
-				// Vercel Blob doesn't require explicit store/container creation
-				// We just track the store names for reference
-				this.stores.add(storeName);
+        // Vercel Blob doesn't require explicit store/container creation
+        // We just track the store names for reference
+        this.stores.add(storeName);
 
-				this.log.info(`Store '${bucket.name}' OK`);
-			}
-		},
-	});
+        this.log.info(`Store '${bucket.name}' OK`);
+      }
+    },
+  });
 
-	public convertName(name: string): string {
-		// Convert to a valid path-like name for Vercel Blob
-		return name.replaceAll("/", "-").toLowerCase();
-	}
+  public convertName(name: string): string {
+    // Convert to a valid path-like name for Vercel Blob
+    return name.replaceAll("/", "-").toLowerCase();
+  }
 
-	protected createId(): string {
-		return randomUUID();
-	}
+  protected createId(): string {
+    return randomUUID();
+  }
 
-	public async upload(
-		bucketName: string,
-		file: FileLike,
-		fileId?: string,
-	): Promise<string> {
-		fileId ??= this.createId();
+  public async upload(
+    bucketName: string,
+    file: FileLike,
+    fileId?: string,
+  ): Promise<string> {
+    fileId ??= this.createId();
 
-		this.log.trace(
-			`Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
-		);
+    this.log.trace(
+      `Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
+    );
 
-		const storeName = this.convertName(bucketName);
-		const pathname = `${storeName}/${fileId}`;
+    const storeName = this.convertName(bucketName);
+    const pathname = `${storeName}/${fileId}`;
 
-		try {
-			// Create a buffer with metadata and content
-			const contentBuffer = Buffer.from(await file.arrayBuffer());
-			const fileBuffer = this.metadataService.createFileBuffer(
-				file,
-				contentBuffer,
-			);
+    try {
+      // Create a buffer with metadata and content
+      const contentBuffer = Buffer.from(await file.arrayBuffer());
+      const fileBuffer = this.metadataService.createFileBuffer(
+        file,
+        contentBuffer,
+      );
 
-			// Upload the complete buffer (metadata + content) to Vercel Blob
-			const result = await this.vercelBlobApi.put(
-				pathname,
-				fileBuffer as unknown as Readable,
-				{
-					access: "public",
-					contentType: file.type || "application/octet-stream",
-					token: this.env.BLOB_READ_WRITE_TOKEN,
-					allowOverwrite: true,
-				},
-			);
+      // Upload the complete buffer (metadata + content) to Vercel Blob
+      const result = await this.vercelBlobApi.put(
+        pathname,
+        fileBuffer as unknown as Readable,
+        {
+          access: "public",
+          contentType: file.type || "application/octet-stream",
+          token: this.env.BLOB_READ_WRITE_TOKEN,
+          allowOverwrite: true,
+        },
+      );
 
-			this.log.trace(`File uploaded successfully: ${result.url}`);
-			return fileId;
-		} catch (error) {
-			this.log.error(`Failed to upload file: ${error}`);
-			if (error instanceof Error) {
-				throw new AlephaError(`Upload failed: ${error.message}`, {
-					cause: error,
-				});
-			}
+      this.log.trace(`File uploaded successfully: ${result.url}`);
+      return fileId;
+    } catch (error) {
+      this.log.error(`Failed to upload file: ${error}`);
+      if (error instanceof Error) {
+        throw new AlephaError(`Upload failed: ${error.message}`, {
+          cause: error,
+        });
+      }
 
-			throw error;
-		}
-	}
+      throw error;
+    }
+  }
 
-	public async download(bucketName: string, fileId: string): Promise<FileLike> {
-		this.log.trace(
-			`Downloading file '${fileId}' from bucket '${bucketName}'...`,
-		);
+  public async download(bucketName: string, fileId: string): Promise<FileLike> {
+    this.log.trace(
+      `Downloading file '${fileId}' from bucket '${bucketName}'...`,
+    );
 
-		const storeName = this.convertName(bucketName);
-		const pathname = `${storeName}/${fileId}`;
+    const storeName = this.convertName(bucketName);
+    const pathname = `${storeName}/${fileId}`;
 
-		try {
-			// check if the file exists and get metadata
-			const headResult = await this.vercelBlobApi.head(pathname, {
-				token: this.env.BLOB_READ_WRITE_TOKEN,
-			});
+    try {
+      // check if the file exists and get metadata
+      const headResult = await this.vercelBlobApi.head(pathname, {
+        token: this.env.BLOB_READ_WRITE_TOKEN,
+      });
 
-			if (!headResult) {
-				throw new FileNotFoundError(
-					`File '${fileId}' not found in bucket '${bucketName}'`,
-				);
-			}
+      if (!headResult) {
+        throw new FileNotFoundError(
+          `File '${fileId}' not found in bucket '${bucketName}'`,
+        );
+      }
 
-			// fetch the actual file content (with metadata)
-			const response = await fetch(headResult.url);
+      // fetch the actual file content (with metadata)
+      const response = await fetch(headResult.url);
 
-			if (!response.ok) {
-				throw new FileNotFoundError(
-					`Failed to fetch file: ${response.statusText}`,
-				);
-			}
+      if (!response.ok) {
+        throw new FileNotFoundError(
+          `Failed to fetch file: ${response.statusText}`,
+        );
+      }
 
-			const arrayBuffer = await response.arrayBuffer();
-			if (!arrayBuffer) {
-				throw new FileNotFoundError("File not found - empty response body");
-			}
+      const arrayBuffer = await response.arrayBuffer();
+      if (!arrayBuffer) {
+        throw new FileNotFoundError("File not found - empty response body");
+      }
 
-			// Decode metadata from the buffer
-			const buffer = Buffer.from(arrayBuffer);
-			const { metadata, contentStart } =
-				this.metadataService.decodeMetadataFromBuffer(buffer);
+      // Decode metadata from the buffer
+      const buffer = Buffer.from(arrayBuffer);
+      const { metadata, contentStart } =
+        this.metadataService.decodeMetadataFromBuffer(buffer);
 
-			// Extract the actual content
-			const content = buffer.subarray(contentStart);
+      // Extract the actual content
+      const content = buffer.subarray(contentStart);
 
-			return createFile(content, {
-				name: metadata.name,
-				type: metadata.type,
-				size: content.length,
-			});
-		} catch (error) {
-			if (error instanceof FileNotFoundError) {
-				throw error;
-			}
+      return createFile(content, {
+        name: metadata.name,
+        type: metadata.type,
+        size: content.length,
+      });
+    } catch (error) {
+      if (error instanceof FileNotFoundError) {
+        throw error;
+      }
 
-			this.log.error(`Failed to download file: ${error}`);
-			if (error instanceof Error) {
-				throw new FileNotFoundError("Error downloading file", { cause: error });
-			}
+      this.log.error(`Failed to download file: ${error}`);
+      if (error instanceof Error) {
+        throw new FileNotFoundError("Error downloading file", { cause: error });
+      }
 
-			throw error;
-		}
-	}
+      throw error;
+    }
+  }
 
-	public async exists(bucketName: string, fileId: string): Promise<boolean> {
-		this.log.trace(
-			`Checking existence of file '${fileId}' in bucket '${bucketName}'...`,
-		);
+  public async exists(bucketName: string, fileId: string): Promise<boolean> {
+    this.log.trace(
+      `Checking existence of file '${fileId}' in bucket '${bucketName}'...`,
+    );
 
-		const storeName = this.convertName(bucketName);
-		const pathname = `${storeName}/${fileId}`;
+    const storeName = this.convertName(bucketName);
+    const pathname = `${storeName}/${fileId}`;
 
-		try {
-			const result = await this.vercelBlobApi.head(pathname, {
-				token: this.env.BLOB_READ_WRITE_TOKEN,
-			});
-			return result !== null;
-		} catch (error) {
-			// Vercel Blob head() throws for non-existent files
-			return false;
-		}
-	}
+    try {
+      const result = await this.vercelBlobApi.head(pathname, {
+        token: this.env.BLOB_READ_WRITE_TOKEN,
+      });
+      return result !== null;
+    } catch (error) {
+      // Vercel Blob head() throws for non-existent files
+      return false;
+    }
+  }
 
-	public async delete(bucketName: string, fileId: string): Promise<void> {
-		this.log.trace(`Deleting file '${fileId}' from bucket '${bucketName}'...`);
+  public async delete(bucketName: string, fileId: string): Promise<void> {
+    this.log.trace(`Deleting file '${fileId}' from bucket '${bucketName}'...`);
 
-		const storeName = this.convertName(bucketName);
-		const pathname = `${storeName}/${fileId}`;
+    const storeName = this.convertName(bucketName);
+    const pathname = `${storeName}/${fileId}`;
 
-		try {
-			await this.vercelBlobApi.del(pathname, {
-				token: this.env.BLOB_READ_WRITE_TOKEN,
-			});
-		} catch (error) {
-			this.log.error(`Failed to delete file: ${error}`);
-			if (error instanceof Error) {
-				throw new FileNotFoundError("Error deleting file", { cause: error });
-			}
-			throw error;
-		}
-	}
+    try {
+      await this.vercelBlobApi.del(pathname, {
+        token: this.env.BLOB_READ_WRITE_TOKEN,
+      });
+    } catch (error) {
+      this.log.error(`Failed to delete file: ${error}`);
+      if (error instanceof Error) {
+        throw new FileNotFoundError("Error deleting file", { cause: error });
+      }
+      throw error;
+    }
+  }
 }

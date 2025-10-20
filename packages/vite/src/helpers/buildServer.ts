@@ -3,131 +3,131 @@ import { join } from "node:path";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 import {
-	type ViteAlephaBuildDockerOptions,
-	viteAlephaBuildDocker,
+  type ViteAlephaBuildDockerOptions,
+  viteAlephaBuildDocker,
 } from "../viteAlephaBuildDocker.ts";
 import {
-	type VercelConfig,
-	viteAlephaBuildVercel,
+  type VercelConfig,
+  viteAlephaBuildVercel,
 } from "../viteAlephaBuildVercel.ts";
 import { viteAlephaExternalsVersion } from "../viteAlephaExternalsVersion.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildServerOptions {
-	entry: string;
-	distDir: string;
-	clientDir?: string;
-	vercel?: boolean | VercelConfig;
-	docker?: boolean | ViteAlephaBuildDockerOptions;
-	config?: UserConfig;
+  entry: string;
+  distDir: string;
+  clientDir?: string;
+  vercel?: boolean | VercelConfig;
+  docker?: boolean | ViteAlephaBuildDockerOptions;
+  config?: UserConfig;
 }
 
 export const buildServer = async (opts: BuildServerOptions) => {
-	const { build: viteBuild, mergeConfig } = await importVite();
-	const plugins: any[] = [
-		viteAlephaExternalsVersion({ distDir: opts.distDir }),
-	];
+  const { build: viteBuild, mergeConfig } = await importVite();
+  const plugins: any[] = [
+    viteAlephaExternalsVersion({ distDir: opts.distDir }),
+  ];
 
-	if (opts.vercel) {
-		const config = typeof opts.vercel === "boolean" ? {} : opts.vercel;
-		plugins.push(
-			viteAlephaBuildVercel({
-				clientDir: opts.clientDir,
-				distDir: opts.distDir,
-				config,
-			}),
-		);
-	}
+  if (opts.vercel) {
+    const config = typeof opts.vercel === "boolean" ? {} : opts.vercel;
+    plugins.push(
+      viteAlephaBuildVercel({
+        clientDir: opts.clientDir,
+        distDir: opts.distDir,
+        config,
+      }),
+    );
+  }
 
-	if (opts.docker) {
-		const docker = typeof opts.docker === "boolean" ? {} : opts.docker;
-		plugins.push(
-			viteAlephaBuildDocker({
-				distDir: opts.distDir,
-				...docker,
-			}),
-		);
-	}
+  if (opts.docker) {
+    const docker = typeof opts.docker === "boolean" ? {} : opts.docker;
+    plugins.push(
+      viteAlephaBuildDocker({
+        distDir: opts.distDir,
+        ...docker,
+      }),
+    );
+  }
 
-	const viteBuildServerConfig: UserConfig = {
-		mode: "production",
-		define: {
-			"process.env.NODE_ENV": '"production"',
-		},
-		publicDir: false,
-		ssr: {
-			noExternal: true,
-		},
-		build: {
-			ssr: opts.entry,
-			outDir: `${opts.distDir}/server`,
-			minify: false, // for now, we don't need to minify the server build
-			rollupOptions: {
-				output: {
-					entryFileNames: "[hash].mjs",
-					chunkFileNames: "[hash].mjs",
-					assetFileNames: "[hash][extname]",
-					format: "esm",
-				},
-			},
-		},
-		plugins,
-	};
+  const viteBuildServerConfig: UserConfig = {
+    mode: "production",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    publicDir: false,
+    ssr: {
+      noExternal: true,
+    },
+    build: {
+      ssr: opts.entry,
+      outDir: `${opts.distDir}/server`,
+      minify: false, // for now, we don't need to minify the server build
+      rollupOptions: {
+        output: {
+          entryFileNames: "[hash].mjs",
+          chunkFileNames: "[hash].mjs",
+          assetFileNames: "[hash][extname]",
+          format: "esm",
+        },
+      },
+    },
+    plugins,
+  };
 
-	const result = await viteBuild(
-		mergeConfig(viteBuildServerConfig, opts.config || {}),
-	);
+  const result = await viteBuild(
+    mergeConfig(viteBuildServerConfig, opts.config || {}),
+  );
 
-	const indexFileName = extractIndexFromBundle(opts.entry, result);
+  const indexFileName = extractIndexFromBundle(opts.entry, result);
 
-	let template = "";
+  let template = "";
 
-	if (opts.clientDir) {
-		const index = await readFile(
-			`${opts.distDir}/${opts.clientDir}/index.html`,
-			"utf-8",
-		);
+  if (opts.clientDir) {
+    const index = await readFile(
+      `${opts.distDir}/${opts.clientDir}/index.html`,
+      "utf-8",
+    );
 
-		template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()}\`;\n`;
+    template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()}\`;\n`;
 
-		await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
-	}
+    await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
+  }
 
-	const warning =
-		"// ⚠️ This file was automatically generated. DO NOT MODIFY." +
-		"\n" +
-		"// Changes to this file will be lost when the code is regenerated.\n";
+  const warning =
+    "// ⚠️ This file was automatically generated. DO NOT MODIFY." +
+    "\n" +
+    "// Changes to this file will be lost when the code is regenerated.\n";
 
-	const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
+  const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
 
-	await writeFile(
-		`${opts.distDir}/index.mjs`,
-		`${warning}\n${forceProduction}${template}\nawait import('./server/${indexFileName}');`.trim(),
-	);
+  await writeFile(
+    `${opts.distDir}/index.mjs`,
+    `${warning}\n${forceProduction}${template}\nawait import('./server/${indexFileName}');`.trim(),
+  );
 };
 
 function extractIndexFromBundle(
-	entry: string,
-	result:
-		| vite.Rollup.RollupOutput
-		| vite.Rollup.RollupOutput[]
-		| vite.Rollup.RollupWatcher,
+  entry: string,
+  result:
+    | vite.Rollup.RollupOutput
+    | vite.Rollup.RollupOutput[]
+    | vite.Rollup.RollupWatcher,
 ) {
-	const entryFilePath = join(process.cwd(), entry).replace(/\\/g, "/");
+  const entryFilePath = join(process.cwd(), entry).replace(/\\/g, "/");
 
-	const rollupOutput = (
-		Array.isArray(result) ? result[0] : result
-	) as vite.Rollup.RollupOutput;
+  const rollupOutput = (
+    Array.isArray(result) ? result[0] : result
+  ) as vite.Rollup.RollupOutput;
 
-	const indexFileName = rollupOutput.output.find(
-		(it) => "facadeModuleId" in it && it.facadeModuleId === entryFilePath,
-	)?.fileName;
+  const indexFileName = rollupOutput.output.find(
+    (it) => "facadeModuleId" in it && it.facadeModuleId === entryFilePath,
+  )?.fileName;
 
-	if (!indexFileName) {
-		throw new Error(
-			`Could not find the entry file "${entryFilePath}" in the build output. Please check your entry file and try again.`,
-		);
-	}
+  if (!indexFileName) {
+    throw new Error(
+      `Could not find the entry file "${entryFilePath}" in the build output. Please check your entry file and try again.`,
+    );
+  }
 
-	return indexFileName;
+  return indexFileName;
 }

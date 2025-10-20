@@ -1,11 +1,11 @@
 import {
-	$hook,
-	$inject,
-	createDescriptor,
-	Descriptor,
-	KIND,
-	type Static,
-	type TSchema,
+  $hook,
+  $inject,
+  createDescriptor,
+  Descriptor,
+  KIND,
+  type Static,
+  type TSchema,
 } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
@@ -281,394 +281,394 @@ import { $retry, type RetryDescriptorOptions } from "@alepha/retry";
  * ```
  */
 export const $batch = <TItem extends TSchema, TResponse>(
-	options: BatchDescriptorOptions<TItem, TResponse>,
+  options: BatchDescriptorOptions<TItem, TResponse>,
 ): BatchDescriptor<TItem, TResponse> =>
-	createDescriptor(BatchDescriptor<TItem, TResponse>, options);
+  createDescriptor(BatchDescriptor<TItem, TResponse>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface BatchDescriptorOptions<
-	TItem extends TSchema,
-	TResponse = any,
+  TItem extends TSchema,
+  TResponse = any,
 > {
-	/**
-	 * TypeBox schema for validating each item added to the batch.
-	 *
-	 * This schema:
-	 * - Validates every item pushed to the batch for data integrity
-	 * - Provides full TypeScript type inference for batch items
-	 * - Ensures type safety between item producers and batch handlers
-	 * - Enables automatic serialization/deserialization if needed
-	 *
-	 * **Schema Design Guidelines**:
-	 * - Keep schemas focused on the data needed for batch processing
-	 * - Use optional fields for data that might not always be present
-	 * - Include identifiers that might be needed for partitioning
-	 * - Consider versioning for schema evolution in long-running systems
-	 *
-	 * @example
-	 * ```ts
-	 * t.object({
-	 *   id: t.text(),
-	 *   operation: t.enum(["create", "update"]),
-	 *   data: t.record(t.text(), t.any()),
-	 *   timestamp: t.optional(t.number()),
-	 *   priority: t.optional(t.enum(["high", "normal"]))
-	 * })
-	 * ```
-	 */
-	schema: TItem;
+  /**
+   * TypeBox schema for validating each item added to the batch.
+   *
+   * This schema:
+   * - Validates every item pushed to the batch for data integrity
+   * - Provides full TypeScript type inference for batch items
+   * - Ensures type safety between item producers and batch handlers
+   * - Enables automatic serialization/deserialization if needed
+   *
+   * **Schema Design Guidelines**:
+   * - Keep schemas focused on the data needed for batch processing
+   * - Use optional fields for data that might not always be present
+   * - Include identifiers that might be needed for partitioning
+   * - Consider versioning for schema evolution in long-running systems
+   *
+   * @example
+   * ```ts
+   * t.object({
+   *   id: t.text(),
+   *   operation: t.enum(["create", "update"]),
+   *   data: t.record(t.text(), t.any()),
+   *   timestamp: t.optional(t.number()),
+   *   priority: t.optional(t.enum(["high", "normal"]))
+   * })
+   * ```
+   */
+  schema: TItem;
 
-	/**
-	 * The batch processing handler function that processes arrays of validated items.
-	 *
-	 * This handler:
-	 * - Receives an array of validated items based on the schema
-	 * - Should implement bulk operations for maximum efficiency
-	 * - Can be async and perform any operations (database, API calls, etc.)
-	 * - Should handle errors appropriately (retry logic is provided separately)
-	 * - Has access to the full Alepha dependency injection container
-	 * - Returns results that will be provided to all items in the batch
-	 *
-	 * **Handler Design Guidelines**:
-	 * - Implement true bulk operations rather than loops of individual operations
-	 * - Use transactions when processing related data for consistency
-	 * - Log batch processing progress and results for monitoring
-	 * - Handle partial failures gracefully when possible
-	 * - Consider memory usage for large batch sizes
-	 *
-	 * **Performance Considerations**:
-	 * - Batch operations should be significantly faster than individual operations
-	 * - Use database bulk operations (INSERT, UPDATE, etc.) when available
-	 * - Optimize for the expected batch size and data characteristics
-	 * - Consider connection pooling and resource limits
-	 *
-	 * @param items - Array of validated items to process in this batch
-	 * @returns Result that will be returned to all callers who contributed items to this batch
-	 *
-	 * @example
-	 * ```ts
-	 * handler: async (items) => {
-	 *   console.log(`Processing batch of ${items.length} items`);
-	 *
-	 *   try {
-	 *     // Use bulk operations for maximum efficiency
-	 *     const results = await this.database.transaction(async (tx) => {
-	 *       const insertResults = await tx.items.insertMany(items);
-	 *
-	 *       // Update related data in bulk
-	 *       const updates = items.map(item => ({ id: item.id, processed: true }));
-	 *       await tx.items.updateMany(updates);
-	 *
-	 *       return insertResults;
-	 *     });
-	 *
-	 *     // Log successful processing
-	 *     console.log(`Successfully processed ${items.length} items`);
-	 *
-	 *     return {
-	 *       processed: items.length,
-	 *       results: results.map(r => ({ id: r.id, status: 'success' })),
-	 *       timestamp: Date.now()
-	 *     };
-	 *
-	 *   } catch (error) {
-	 *     console.error(`Batch processing failed for ${items.length} items`, error);
-	 *     throw error; // Will trigger retry logic if configured
-	 *   }
-	 * }
-	 * ```
-	 */
-	handler: (items: Static<TItem>[]) => TResponse;
+  /**
+   * The batch processing handler function that processes arrays of validated items.
+   *
+   * This handler:
+   * - Receives an array of validated items based on the schema
+   * - Should implement bulk operations for maximum efficiency
+   * - Can be async and perform any operations (database, API calls, etc.)
+   * - Should handle errors appropriately (retry logic is provided separately)
+   * - Has access to the full Alepha dependency injection container
+   * - Returns results that will be provided to all items in the batch
+   *
+   * **Handler Design Guidelines**:
+   * - Implement true bulk operations rather than loops of individual operations
+   * - Use transactions when processing related data for consistency
+   * - Log batch processing progress and results for monitoring
+   * - Handle partial failures gracefully when possible
+   * - Consider memory usage for large batch sizes
+   *
+   * **Performance Considerations**:
+   * - Batch operations should be significantly faster than individual operations
+   * - Use database bulk operations (INSERT, UPDATE, etc.) when available
+   * - Optimize for the expected batch size and data characteristics
+   * - Consider connection pooling and resource limits
+   *
+   * @param items - Array of validated items to process in this batch
+   * @returns Result that will be returned to all callers who contributed items to this batch
+   *
+   * @example
+   * ```ts
+   * handler: async (items) => {
+   *   console.log(`Processing batch of ${items.length} items`);
+   *
+   *   try {
+   *     // Use bulk operations for maximum efficiency
+   *     const results = await this.database.transaction(async (tx) => {
+   *       const insertResults = await tx.items.insertMany(items);
+   *
+   *       // Update related data in bulk
+   *       const updates = items.map(item => ({ id: item.id, processed: true }));
+   *       await tx.items.updateMany(updates);
+   *
+   *       return insertResults;
+   *     });
+   *
+   *     // Log successful processing
+   *     console.log(`Successfully processed ${items.length} items`);
+   *
+   *     return {
+   *       processed: items.length,
+   *       results: results.map(r => ({ id: r.id, status: 'success' })),
+   *       timestamp: Date.now()
+   *     };
+   *
+   *   } catch (error) {
+   *     console.error(`Batch processing failed for ${items.length} items`, error);
+   *     throw error; // Will trigger retry logic if configured
+   *   }
+   * }
+   * ```
+   */
+  handler: (items: Static<TItem>[]) => TResponse;
 
-	/**
-	 * Maximum number of items to collect before automatically flushing the batch.
-	 *
-	 * When this threshold is reached, the batch will be processed immediately
-	 * regardless of the time duration. This provides an upper bound on batch size
-	 * and ensures processing doesn't wait indefinitely for more items.
-	 *
-	 * **Size Selection Guidelines**:
-	 * - Database operations: 100-1000 items depending on record size
-	 * - API calls: 10-100 items depending on rate limits and payload size
-	 * - File operations: 10-50 items depending on processing complexity
-	 * - Memory operations: 1000+ items for simple transformations
-	 *
-	 * **Trade-offs**:
-	 * - Larger batches: Better efficiency, higher memory usage, longer latency
-	 * - Smaller batches: Lower latency, less efficiency, more frequent processing
-	 *
-	 * @default 10
-	 *
-	 * @example 50     // Good for database bulk operations
-	 * @example 100    // Good for API batching with rate limits
-	 * @example 1000   // Good for high-throughput log processing
-	 */
-	maxSize?: number;
+  /**
+   * Maximum number of items to collect before automatically flushing the batch.
+   *
+   * When this threshold is reached, the batch will be processed immediately
+   * regardless of the time duration. This provides an upper bound on batch size
+   * and ensures processing doesn't wait indefinitely for more items.
+   *
+   * **Size Selection Guidelines**:
+   * - Database operations: 100-1000 items depending on record size
+   * - API calls: 10-100 items depending on rate limits and payload size
+   * - File operations: 10-50 items depending on processing complexity
+   * - Memory operations: 1000+ items for simple transformations
+   *
+   * **Trade-offs**:
+   * - Larger batches: Better efficiency, higher memory usage, longer latency
+   * - Smaller batches: Lower latency, less efficiency, more frequent processing
+   *
+   * @default 10
+   *
+   * @example 50     // Good for database bulk operations
+   * @example 100    // Good for API batching with rate limits
+   * @example 1000   // Good for high-throughput log processing
+   */
+  maxSize?: number;
 
-	/**
-	 * Maximum time to wait before flushing a batch, even if it hasn't reached maxSize.
-	 *
-	 * This timer starts when the first item is added to a partition and ensures
-	 * that items don't wait indefinitely for a batch to fill up. It provides
-	 * a maximum latency guarantee for batch processing.
-	 *
-	 * **Duration Selection Guidelines**:
-	 * - Real-time systems: 100ms - 1 second for low latency
-	 * - Background processing: 5 - 30 seconds for higher throughput
-	 * - Bulk operations: 1 - 5 minutes for maximum efficiency
-	 * - Log shipping: 30 seconds - 2 minutes for log aggregation
-	 *
-	 * **Latency Impact**:
-	 * - Shorter durations: Lower latency, potentially smaller batches
-	 * - Longer durations: Higher throughput, potentially better efficiency
-	 *
-	 * @default [1, "second"]
-	 *
-	 * @example [500, "milliseconds"]  // Low latency for real-time processing
-	 * @example [10, "seconds"]       // Balanced latency and throughput
-	 * @example [2, "minutes"]        // High throughput for bulk operations
-	 */
-	maxDuration?: DurationLike;
+  /**
+   * Maximum time to wait before flushing a batch, even if it hasn't reached maxSize.
+   *
+   * This timer starts when the first item is added to a partition and ensures
+   * that items don't wait indefinitely for a batch to fill up. It provides
+   * a maximum latency guarantee for batch processing.
+   *
+   * **Duration Selection Guidelines**:
+   * - Real-time systems: 100ms - 1 second for low latency
+   * - Background processing: 5 - 30 seconds for higher throughput
+   * - Bulk operations: 1 - 5 minutes for maximum efficiency
+   * - Log shipping: 30 seconds - 2 minutes for log aggregation
+   *
+   * **Latency Impact**:
+   * - Shorter durations: Lower latency, potentially smaller batches
+   * - Longer durations: Higher throughput, potentially better efficiency
+   *
+   * @default [1, "second"]
+   *
+   * @example [500, "milliseconds"]  // Low latency for real-time processing
+   * @example [10, "seconds"]       // Balanced latency and throughput
+   * @example [2, "minutes"]        // High throughput for bulk operations
+   */
+  maxDuration?: DurationLike;
 
-	/**
-	 * Function to determine partition keys for grouping items into separate batches.
-	 *
-	 * Items with the same partition key are batched together, while items with
-	 * different keys are processed in separate batches. This enables:
-	 * - Processing different types of items with different logic
-	 * - Parallel processing of independent item groups
-	 * - Resource optimization based on item characteristics
-	 *
-	 * **Partitioning Strategies**:
-	 * - By type: Group similar operations together
-	 * - By destination: Group items going to the same endpoint
-	 * - By priority: Process high-priority items separately
-	 * - By size/complexity: Group items with similar processing requirements
-	 * - By tenant/user: Process items per customer or tenant
-	 *
-	 * **Partition Key Guidelines**:
-	 * - Use descriptive, consistent naming
-	 * - Keep key cardinality reasonable (avoid too many unique keys)
-	 * - Consider memory impact of multiple active partitions
-	 * - Balance between parallelism and resource usage
-	 *
-	 * If not provided, all items are placed in a single default partition.
-	 *
-	 * @param item - The validated item to determine partition for
-	 * @returns String key identifying the partition this item belongs to
-	 *
-	 * @example
-	 * ```ts
-	 * // Partition by operation type
-	 * partitionBy: (item) => item.operation,
-	 *
-	 * // Partition by priority and type
-	 * partitionBy: (item) => `${item.priority}-${item.type}`,
-	 *
-	 * // Partition by destination service
-	 * partitionBy: (item) => item.targetService,
-	 *
-	 * // Dynamic partitioning based on size
-	 * partitionBy: (item) => {
-	 *   const size = JSON.stringify(item).length;
-	 *   return size > 1000 ? 'large' : 'small';
-	 * }
-	 * ```
-	 */
-	partitionBy?: (item: Static<TItem>) => string;
+  /**
+   * Function to determine partition keys for grouping items into separate batches.
+   *
+   * Items with the same partition key are batched together, while items with
+   * different keys are processed in separate batches. This enables:
+   * - Processing different types of items with different logic
+   * - Parallel processing of independent item groups
+   * - Resource optimization based on item characteristics
+   *
+   * **Partitioning Strategies**:
+   * - By type: Group similar operations together
+   * - By destination: Group items going to the same endpoint
+   * - By priority: Process high-priority items separately
+   * - By size/complexity: Group items with similar processing requirements
+   * - By tenant/user: Process items per customer or tenant
+   *
+   * **Partition Key Guidelines**:
+   * - Use descriptive, consistent naming
+   * - Keep key cardinality reasonable (avoid too many unique keys)
+   * - Consider memory impact of multiple active partitions
+   * - Balance between parallelism and resource usage
+   *
+   * If not provided, all items are placed in a single default partition.
+   *
+   * @param item - The validated item to determine partition for
+   * @returns String key identifying the partition this item belongs to
+   *
+   * @example
+   * ```ts
+   * // Partition by operation type
+   * partitionBy: (item) => item.operation,
+   *
+   * // Partition by priority and type
+   * partitionBy: (item) => `${item.priority}-${item.type}`,
+   *
+   * // Partition by destination service
+   * partitionBy: (item) => item.targetService,
+   *
+   * // Dynamic partitioning based on size
+   * partitionBy: (item) => {
+   *   const size = JSON.stringify(item).length;
+   *   return size > 1000 ? 'large' : 'small';
+   * }
+   * ```
+   */
+  partitionBy?: (item: Static<TItem>) => string;
 
-	/**
-	 * Maximum number of batch handlers that can execute simultaneously.
-	 *
-	 * This controls the level of parallelism for batch processing across
-	 * all partitions. Higher concurrency can improve throughput but may
-	 * increase resource usage and contention.
-	 *
-	 * **Concurrency Considerations**:
-	 * - Database operations: Limit based on connection pool size
-	 * - API calls: Consider rate limits and server capacity
-	 * - CPU-intensive operations: Set to number of CPU cores
-	 * - Memory-intensive operations: Consider available RAM
-	 * - I/O operations: Can be higher than CPU count
-	 *
-	 * **Resource Planning**:
-	 * - Each concurrent handler may use significant memory/connections
-	 * - Monitor resource usage and adjust based on system capacity
-	 * - Consider downstream system limits and capabilities
-	 *
-	 * @default 1
-	 *
-	 * @example 1      // Sequential processing, lowest resource usage
-	 * @example 4      // Moderate parallelism for balanced systems
-	 * @example 10     // High concurrency for I/O-bound operations
-	 */
-	concurrency?: number;
+  /**
+   * Maximum number of batch handlers that can execute simultaneously.
+   *
+   * This controls the level of parallelism for batch processing across
+   * all partitions. Higher concurrency can improve throughput but may
+   * increase resource usage and contention.
+   *
+   * **Concurrency Considerations**:
+   * - Database operations: Limit based on connection pool size
+   * - API calls: Consider rate limits and server capacity
+   * - CPU-intensive operations: Set to number of CPU cores
+   * - Memory-intensive operations: Consider available RAM
+   * - I/O operations: Can be higher than CPU count
+   *
+   * **Resource Planning**:
+   * - Each concurrent handler may use significant memory/connections
+   * - Monitor resource usage and adjust based on system capacity
+   * - Consider downstream system limits and capabilities
+   *
+   * @default 1
+   *
+   * @example 1      // Sequential processing, lowest resource usage
+   * @example 4      // Moderate parallelism for balanced systems
+   * @example 10     // High concurrency for I/O-bound operations
+   */
+  concurrency?: number;
 
-	/**
-	 * Retry configuration for failed batch processing operations.
-	 *
-	 * When batch handlers fail, this configuration determines how and when
-	 * to retry the operation. Uses the `@alepha/retry` module for robust
-	 * retry logic with exponential backoff, jitter, and other strategies.
-	 *
-	 * **Retry Strategies**:
-	 * - Exponential backoff: Increasingly longer delays between attempts
-	 * - Fixed delays: Consistent intervals between retries
-	 * - Jitter: Random variation to avoid thundering herd problems
-	 *
-	 * **Failure Scenarios to Consider**:
-	 * - Temporary network issues
-	 * - Database connection problems
-	 * - Rate limiting from external services
-	 * - Resource exhaustion (memory, disk space)
-	 * - Downstream service temporary unavailability
-	 *
-	 * **Retry Guidelines**:
-	 * - Use exponential backoff for network-related failures
-	 * - Set reasonable max attempts to avoid infinite loops
-	 * - Consider the impact of retries on overall system performance
-	 * - Monitor retry patterns to identify systemic issues
-	 *
-	 * @example
-	 * ```ts
-	 * retry: {
-	 *   maxAttempts: 3,
-	 *   delay: [1, "second"],
-	 *   backoff: "exponential",
-	 *   maxDelay: [30, "seconds"],
-	 *   jitter: true
-	 * }
-	 * ```
-	 */
-	retry?: Omit<RetryDescriptorOptions<() => Array<Static<TItem>>>, "handler">;
+  /**
+   * Retry configuration for failed batch processing operations.
+   *
+   * When batch handlers fail, this configuration determines how and when
+   * to retry the operation. Uses the `@alepha/retry` module for robust
+   * retry logic with exponential backoff, jitter, and other strategies.
+   *
+   * **Retry Strategies**:
+   * - Exponential backoff: Increasingly longer delays between attempts
+   * - Fixed delays: Consistent intervals between retries
+   * - Jitter: Random variation to avoid thundering herd problems
+   *
+   * **Failure Scenarios to Consider**:
+   * - Temporary network issues
+   * - Database connection problems
+   * - Rate limiting from external services
+   * - Resource exhaustion (memory, disk space)
+   * - Downstream service temporary unavailability
+   *
+   * **Retry Guidelines**:
+   * - Use exponential backoff for network-related failures
+   * - Set reasonable max attempts to avoid infinite loops
+   * - Consider the impact of retries on overall system performance
+   * - Monitor retry patterns to identify systemic issues
+   *
+   * @example
+   * ```ts
+   * retry: {
+   *   maxAttempts: 3,
+   *   delay: [1, "second"],
+   *   backoff: "exponential",
+   *   maxDelay: [30, "seconds"],
+   *   jitter: true
+   * }
+   * ```
+   */
+  retry?: Omit<RetryDescriptorOptions<() => Array<Static<TItem>>>, "handler">;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class BatchDescriptor<
-	TItem extends TSchema,
-	TResponse = any,
+  TItem extends TSchema,
+  TResponse = any,
 > extends Descriptor<BatchDescriptorOptions<TItem, TResponse>> {
-	protected readonly log = $logger();
-	protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
 
-	protected readonly partitions = new Map();
-	protected activeHandlers: PromiseWithResolvers<void>[] = [];
+  protected readonly partitions = new Map();
+  protected activeHandlers: PromiseWithResolvers<void>[] = [];
 
-	protected retry = $retry({
-		...this.options.retry,
-		handler: this.options.handler,
-	});
+  protected retry = $retry({
+    ...this.options.retry,
+    handler: this.options.handler,
+  });
 
-	/**
-	 * Pushes an item into the batch. The item will be processed
-	 * asynchronously with other items when the batch is flushed.
-	 */
-	public async push(item: Static<TItem>): Promise<TResponse> {
-		// 1. Validate the item against the schema
-		const validatedItem = this.alepha.parse(this.options.schema, item);
+  /**
+   * Pushes an item into the batch. The item will be processed
+   * asynchronously with other items when the batch is flushed.
+   */
+  public async push(item: Static<TItem>): Promise<TResponse> {
+    // 1. Validate the item against the schema
+    const validatedItem = this.alepha.parse(this.options.schema, item);
 
-		// 2. Determine the partition key
-		const partitionKey = this.options.partitionBy
-			? this.options.partitionBy(validatedItem)
-			: "default";
+    // 2. Determine the partition key
+    const partitionKey = this.options.partitionBy
+      ? this.options.partitionBy(validatedItem)
+      : "default";
 
-		// 3. Get or create the partition state
-		if (!this.partitions.has(partitionKey)) {
-			this.partitions.set(partitionKey, { items: [], resolvers: [] });
-		}
-		const partition = this.partitions.get(partitionKey)!;
+    // 3. Get or create the partition state
+    if (!this.partitions.has(partitionKey)) {
+      this.partitions.set(partitionKey, { items: [], resolvers: [] });
+    }
+    const partition = this.partitions.get(partitionKey)!;
 
-		// 4. Create a promise that will be resolved/rejected later
-		return new Promise<TResponse>((resolve, reject) => {
-			partition.resolvers.push({ resolve, reject });
-			partition.items.push(validatedItem);
+    // 4. Create a promise that will be resolved/rejected later
+    return new Promise<TResponse>((resolve, reject) => {
+      partition.resolvers.push({ resolve, reject });
+      partition.items.push(validatedItem);
 
-			this.log.trace(`Pushed item to batch partition '${partitionKey}'`, {
-				currentSize: partition.items.length,
-				maxSize: this.options.maxSize,
-			});
+      this.log.trace(`Pushed item to batch partition '${partitionKey}'`, {
+        currentSize: partition.items.length,
+        maxSize: this.options.maxSize,
+      });
 
-			// 5. Check if the batch is full
-			if (partition.items.length >= this.options.maxSize!) {
-				this.log.trace(`Batch partition '${partitionKey}' is full, flushing.`);
-				this.flushPartition(partitionKey);
-			} else if (!partition.timeout) {
-				// 6. Start the timeout if it's not already running for this partition
-				partition.timeout = this.dateTime.createTimeout(() => {
-					this.log.trace(
-						`Batch partition '${partitionKey}' timed out, flushing.`,
-					);
-					this.flushPartition(partitionKey);
-				}, this.options.maxDuration ?? [1, "second"]);
-			}
-		});
-	}
+      // 5. Check if the batch is full
+      if (partition.items.length >= this.options.maxSize!) {
+        this.log.trace(`Batch partition '${partitionKey}' is full, flushing.`);
+        this.flushPartition(partitionKey);
+      } else if (!partition.timeout) {
+        // 6. Start the timeout if it's not already running for this partition
+        partition.timeout = this.dateTime.createTimeout(() => {
+          this.log.trace(
+            `Batch partition '${partitionKey}' timed out, flushing.`,
+          );
+          this.flushPartition(partitionKey);
+        }, this.options.maxDuration ?? [1, "second"]);
+      }
+    });
+  }
 
-	public async flush(partitionKey?: string): Promise<void> {
-		const promises: Promise<void>[] = [];
-		if (partitionKey) {
-			if (this.partitions.has(partitionKey)) {
-				promises.push(this.flushPartition(partitionKey));
-			}
-		} else {
-			for (const key of this.partitions.keys()) {
-				promises.push(this.flushPartition(key));
-			}
-		}
-		await Promise.all(promises);
-	}
+  public async flush(partitionKey?: string): Promise<void> {
+    const promises: Promise<void>[] = [];
+    if (partitionKey) {
+      if (this.partitions.has(partitionKey)) {
+        promises.push(this.flushPartition(partitionKey));
+      }
+    } else {
+      for (const key of this.partitions.keys()) {
+        promises.push(this.flushPartition(key));
+      }
+    }
+    await Promise.all(promises);
+  }
 
-	protected async flushPartition(partitionKey: string): Promise<void> {
-		const partition = this.partitions.get(partitionKey);
-		if (!partition || partition.items.length === 0) {
-			this.partitions.delete(partitionKey);
-			return;
-		}
+  protected async flushPartition(partitionKey: string): Promise<void> {
+    const partition = this.partitions.get(partitionKey);
+    if (!partition || partition.items.length === 0) {
+      this.partitions.delete(partitionKey);
+      return;
+    }
 
-		// Clear the timeout and grab the items
-		partition.timeout?.clear();
-		const itemsToProcess = [...partition.items];
-		const resolversToProcess = [...partition.resolvers];
-		partition.items = [];
-		partition.resolvers = [];
-		this.partitions.delete(partitionKey);
+    // Clear the timeout and grab the items
+    partition.timeout?.clear();
+    const itemsToProcess = [...partition.items];
+    const resolversToProcess = [...partition.resolvers];
+    partition.items = [];
+    partition.resolvers = [];
+    this.partitions.delete(partitionKey);
 
-		if (this.activeHandlers.length >= this.options.concurrency!) {
-			this.log.trace(`Batch handler is busy, waiting...`);
-			await Promise.all(this.activeHandlers.map((it) => it.promise));
-		}
+    if (this.activeHandlers.length >= this.options.concurrency!) {
+      this.log.trace(`Batch handler is busy, waiting...`);
+      await Promise.all(this.activeHandlers.map((it) => it.promise));
+    }
 
-		const promise = Promise.withResolvers<void>();
-		this.activeHandlers.push(promise);
-		let result: any;
-		try {
-			result = await this.alepha.context.run(() =>
-				this.retry.run(itemsToProcess),
-			);
-			for (const { resolve } of resolversToProcess) {
-				resolve(result);
-			}
-		} catch (error) {
-			this.log.error(`Batch handler failed`, error);
-			for (const { reject } of resolversToProcess) {
-				reject(error);
-			}
-		} finally {
-			promise.resolve(result);
-			this.activeHandlers = this.activeHandlers.filter((it) => it !== promise);
-		}
-	}
+    const promise = Promise.withResolvers<void>();
+    this.activeHandlers.push(promise);
+    let result: any;
+    try {
+      result = await this.alepha.context.run(() =>
+        this.retry.run(itemsToProcess),
+      );
+      for (const { resolve } of resolversToProcess) {
+        resolve(result);
+      }
+    } catch (error) {
+      this.log.error(`Batch handler failed`, error);
+      for (const { reject } of resolversToProcess) {
+        reject(error);
+      }
+    } finally {
+      promise.resolve(result);
+      this.activeHandlers = this.activeHandlers.filter((it) => it !== promise);
+    }
+  }
 
-	protected readonly dispose = $hook({
-		on: "stop",
-		handler: async () => {
-			this.log.debug("Flushing all remaining batch partitions on shutdown.");
-			await this.flush();
-			this.log.debug("All batch partitions flushed.");
-		},
-	});
+  protected readonly dispose = $hook({
+    on: "stop",
+    handler: async () => {
+      this.log.debug("Flushing all remaining batch partitions on shutdown.");
+      await this.flush();
+      this.log.debug("All batch partitions flushed.");
+    },
+  });
 }
 
 $batch[KIND] = BatchDescriptor;

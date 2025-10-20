@@ -33,29 +33,29 @@ export * from "./services/NotificationService.ts";
  * @module alepha.api.notifications
  */
 export const AlephaApiNotifications = $module({
-	name: "alepha.api.notifications",
-	descriptors: [$notification],
-	services: [
-		NotificationController,
-		NotificationService,
-		NotificationSenderService,
-		NotificationQueues,
-		NotificationJobs,
-		SmsProvider,
-		MemorySmsProvider,
-	],
-	register: (alepha) => {
-		alepha.with({
-			optional: true,
-			provide: SmsProvider,
-			use: MemorySmsProvider,
-		});
+  name: "alepha.api.notifications",
+  descriptors: [$notification],
+  services: [
+    NotificationController,
+    NotificationService,
+    NotificationSenderService,
+    NotificationQueues,
+    NotificationJobs,
+    SmsProvider,
+    MemorySmsProvider,
+  ],
+  register: (alepha) => {
+    alepha.with({
+      optional: true,
+      provide: SmsProvider,
+      use: MemorySmsProvider,
+    });
 
-		alepha
-			.with(NotificationController)
-			.with(NotificationService)
-			.with(NotificationSenderService)
-			.with(NotificationQueues)
-			.with(NotificationJobs);
-	},
+    alepha
+      .with(NotificationController)
+      .with(NotificationService)
+      .with(NotificationSenderService)
+      .with(NotificationQueues)
+      .with(NotificationJobs);
+  },
 });

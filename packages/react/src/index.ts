@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { $page, type PageAnimation } from "./descriptors/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import {
-	ReactPageProvider,
-	type ReactRouterState,
+  ReactPageProvider,
+  type ReactRouterState,
 } from "./providers/ReactPageProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
@@ -22,43 +22,43 @@ export * from "./providers/ReactServerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface State {
-		"react.router.state"?: ReactRouterState;
-	}
+  interface State {
+    "react.router.state"?: ReactRouterState;
+  }
 
-	interface Hooks {
-		"react:server:render:begin": {
-			request?: ServerRequest;
-			state: ReactRouterState;
-		};
-		"react:server:render:end": {
-			request?: ServerRequest;
-			state: ReactRouterState;
-			html: string;
-		};
-		// -----------------------------------------------------------------------------------------------------------------
-		"react:browser:render": {
-			root: HTMLElement;
-			element: ReactNode;
-			state: ReactRouterState;
-			hydration?: ReactHydrationState;
-		};
-		"react:transition:begin": {
-			previous: ReactRouterState;
-			state: ReactRouterState;
-			animation?: PageAnimation;
-		};
-		"react:transition:success": {
-			state: ReactRouterState;
-		};
-		"react:transition:error": {
-			state: ReactRouterState;
-			error: Error;
-		};
-		"react:transition:end": {
-			state: ReactRouterState;
-		};
-	}
+  interface Hooks {
+    "react:server:render:begin": {
+      request?: ServerRequest;
+      state: ReactRouterState;
+    };
+    "react:server:render:end": {
+      request?: ServerRequest;
+      state: ReactRouterState;
+      html: string;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    "react:browser:render": {
+      root: HTMLElement;
+      element: ReactNode;
+      state: ReactRouterState;
+      hydration?: ReactHydrationState;
+    };
+    "react:transition:begin": {
+      previous: ReactRouterState;
+      state: ReactRouterState;
+      animation?: PageAnimation;
+    };
+    "react:transition:success": {
+      state: ReactRouterState;
+    };
+    "react:transition:error": {
+      state: ReactRouterState;
+      error: Error;
+    };
+    "react:transition:end": {
+      state: ReactRouterState;
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -74,15 +74,15 @@ declare module "@alepha/core" {
  * @module alepha.react
  */
 export const AlephaReact = $module({
-	name: "alepha.react",
-	descriptors: [$page],
-	services: [ReactServerProvider, ReactPageProvider, ReactRouter],
-	register: (alepha) =>
-		alepha
-			.with(AlephaServer)
-			.with(AlephaServerCache)
-			.with(AlephaServerLinks)
-			.with(ReactServerProvider)
-			.with(ReactPageProvider)
-			.with(ReactRouter),
+  name: "alepha.react",
+  descriptors: [$page],
+  services: [ReactServerProvider, ReactPageProvider, ReactRouter],
+  register: (alepha) =>
+    alepha
+      .with(AlephaServer)
+      .with(AlephaServerCache)
+      .with(AlephaServerLinks)
+      .with(ReactServerProvider)
+      .with(ReactPageProvider)
+      .with(ReactRouter),
 });

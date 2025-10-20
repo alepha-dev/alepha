@@ -24,13 +24,13 @@ export * from "./providers/TopicProvider.ts";
  * @module alepha.topic
  */
 export const AlephaTopic = $module({
-	name: "alepha.topic",
-	descriptors: [$topic, $subscriber],
-	services: [TopicProvider, MemoryTopicProvider],
-	register: (alepha: Alepha) =>
-		alepha.with({
-			optional: true,
-			provide: TopicProvider,
-			use: MemoryTopicProvider,
-		}),
+  name: "alepha.topic",
+  descriptors: [$topic, $subscriber],
+  services: [TopicProvider, MemoryTopicProvider],
+  register: (alepha: Alepha) =>
+    alepha.with({
+      optional: true,
+      provide: TopicProvider,
+      use: MemoryTopicProvider,
+    }),
 });

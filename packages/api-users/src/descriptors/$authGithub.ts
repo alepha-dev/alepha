@@ -14,66 +14,66 @@ import { SessionService } from "../services/SessionService.ts";
  * - `GITHUB_CLIENT_SECRET`: The client secret obtained from the GitHub Developer Settings.
  */
 export const $authGithub = (realm: RealmDescriptor) => {
-	const { context } = $cursor();
-	const sessionService = context.inject(SessionService);
+  const { context } = $cursor();
+  const sessionService = context.inject(SessionService);
 
-	const env = context.parseEnv(
-		t.object({
-			GITHUB_CLIENT_ID: t.string(),
-			GITHUB_CLIENT_SECRET: t.string(),
-		}),
-	);
+  const env = context.parseEnv(
+    t.object({
+      GITHUB_CLIENT_ID: t.string(),
+      GITHUB_CLIENT_SECRET: t.string(),
+    }),
+  );
 
-	return $auth({
-		realm,
-		name: "github",
-		oauth: {
-			clientId: env.GITHUB_CLIENT_ID,
-			clientSecret: env.GITHUB_CLIENT_SECRET,
-			authorization: "https://github.com/login/oauth/authorize",
-			token: "https://github.com/login/oauth/access_token",
-			scope: "read:user user:email",
-			userinfo: async (tokens) => {
-				const BASE_URL = "https://api.github.com";
-				const res = await fetch(`${BASE_URL}/user`, {
-					headers: {
-						Authorization: `Bearer ${tokens.access_token}`,
-						"User-Agent": "Alepha",
-					},
-				}).then((res) => res.json());
+  return $auth({
+    realm,
+    name: "github",
+    oauth: {
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
+      authorization: "https://github.com/login/oauth/authorize",
+      token: "https://github.com/login/oauth/access_token",
+      scope: "read:user user:email",
+      userinfo: async (tokens) => {
+        const BASE_URL = "https://api.github.com";
+        const res = await fetch(`${BASE_URL}/user`, {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            "User-Agent": "Alepha",
+          },
+        }).then((res) => res.json());
 
-				const user: OAuth2Profile = {
-					sub: res.id.toString(),
-				};
+        const user: OAuth2Profile = {
+          sub: res.id.toString(),
+        };
 
-				if (res.email) {
-					user.email = res.email;
-				}
+        if (res.email) {
+          user.email = res.email;
+        }
 
-				if (res.name) {
-					user.name = res.name.trim();
-				}
+        if (res.name) {
+          user.name = res.name.trim();
+        }
 
-				if (res.avatar_url) {
-					user.picture = res.avatar_url;
-				}
+        if (res.avatar_url) {
+          user.picture = res.avatar_url;
+        }
 
-				if (!user.email) {
-					const res = await fetch(`${BASE_URL}/user/emails`, {
-						headers: {
-							Authorization: `Bearer ${tokens.access_token}`,
-							"User-Agent": "Alepha",
-						},
-					});
-					if (res.ok) {
-						const emails: any[] = await res.json();
-						user.email = (emails.find((e) => e.primary) ?? emails[0]).email;
-					}
-				}
+        if (!user.email) {
+          const res = await fetch(`${BASE_URL}/user/emails`, {
+            headers: {
+              Authorization: `Bearer ${tokens.access_token}`,
+              "User-Agent": "Alepha",
+            },
+          });
+          if (res.ok) {
+            const emails: any[] = await res.json();
+            user.email = (emails.find((e) => e.primary) ?? emails[0]).email;
+          }
+        }
 
-				return user;
-			},
-			account: ({ user }) => sessionService.link("github", user),
-		},
-	});
+        return user;
+      },
+      account: ({ user }) => sessionService.link("github", user),
+    },
+  });
 };

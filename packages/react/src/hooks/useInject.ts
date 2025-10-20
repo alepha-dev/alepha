@@ -7,6 +7,6 @@ import { useAlepha } from "./useAlepha.ts";
  * It's a wrapper of `useAlepha().inject(service)` with a memoization.
  */
 export const useInject = <T extends object>(service: Service<T>): T => {
-	const alepha = useAlepha();
-	return useMemo(() => alepha.inject(service), []);
+  const alepha = useAlepha();
+  return useMemo(() => alepha.inject(service), []);
 };

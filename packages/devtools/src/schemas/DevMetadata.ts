@@ -11,17 +11,17 @@ import { devSchedulerMetadataSchema } from "./DevSchedulerMetadata.ts";
 import { devTopicMetadataSchema } from "./DevTopicMetadata.ts";
 
 export const devMetadataSchema = t.object({
-	actions: t.array(devActionMetadataSchema),
-	queues: t.array(devQueueMetadataSchema),
-	schedulers: t.array(devSchedulerMetadataSchema),
-	topics: t.array(devTopicMetadataSchema),
-	buckets: t.array(devBucketMetadataSchema),
-	realms: t.array(devRealmMetadataSchema),
-	caches: t.array(devCacheMetadataSchema),
-	pages: t.array(devPageMetadataSchema),
-	providers: t.array(devProviderMetadataSchema),
-	modules: t.array(devModuleMetadataSchema),
-	// More metadata will be added here later
+  actions: t.array(devActionMetadataSchema),
+  queues: t.array(devQueueMetadataSchema),
+  schedulers: t.array(devSchedulerMetadataSchema),
+  topics: t.array(devTopicMetadataSchema),
+  buckets: t.array(devBucketMetadataSchema),
+  realms: t.array(devRealmMetadataSchema),
+  caches: t.array(devCacheMetadataSchema),
+  pages: t.array(devPageMetadataSchema),
+  providers: t.array(devProviderMetadataSchema),
+  modules: t.array(devModuleMetadataSchema),
+  // More metadata will be added here later
 });
 
 export type DevMetadata = Static<typeof devMetadataSchema>;

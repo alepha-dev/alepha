@@ -16,19 +16,19 @@ export * from "./providers/RedisLockProvider.ts";
  * @module alepha.lock.redis
  */
 export const AlephaLockRedis = $module({
-	name: "alepha.lock.redis",
-	services: [RedisLockProvider, RedisTopicProvider],
-	register: (alepha: Alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: LockTopicProvider,
-				use: RedisTopicProvider,
-			})
-			.with({
-				optional: true,
-				provide: LockProvider,
-				use: RedisLockProvider,
-			})
-			.with(AlephaLock),
+  name: "alepha.lock.redis",
+  services: [RedisLockProvider, RedisTopicProvider],
+  register: (alepha: Alepha) =>
+    alepha
+      .with({
+        optional: true,
+        provide: LockTopicProvider,
+        use: RedisTopicProvider,
+      })
+      .with({
+        optional: true,
+        provide: LockProvider,
+        use: RedisLockProvider,
+      })
+      .with(AlephaLock),
 });

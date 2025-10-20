@@ -11,8 +11,8 @@ export type OrderDirection = "asc" | "desc";
  * Single order by clause with column and direction
  */
 export interface OrderByClause<T> {
-	column: keyof T;
-	direction?: OrderDirection;
+  column: keyof T;
+  direction?: OrderDirection;
 }
 
 /**
@@ -27,11 +27,11 @@ export type OrderBy<T> = keyof T | OrderByClause<T> | Array<OrderByClause<T>>;
  * Generic query interface for PostgreSQL entities
  */
 export interface PgQuery<T extends TObject = TObject> {
-	distinct?: boolean;
-	where?: PgQueryWhere<T>;
-	limit?: number;
-	offset?: number;
-	orderBy?: OrderBy<Static<T>>;
-	groupBy?: (keyof Static<T>)[];
-	with?: WithRelations;
+  distinct?: boolean;
+  where?: PgQueryWhere<T>;
+  limit?: number;
+  offset?: number;
+  orderBy?: OrderBy<Static<T>>;
+  groupBy?: (keyof Static<T>)[];
+  with?: WithRelations;
 }

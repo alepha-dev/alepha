@@ -15,6 +15,6 @@ export * from "./providers/ServerHealthProvider.ts";
  * @module alepha.server.health
  */
 export const AlephaServerHealth = $module({
-	name: "alepha.server.health",
-	services: [AlephaServer, ServerHealthProvider],
+  name: "alepha.server.health",
+  services: [AlephaServer, ServerHealthProvider],
 });

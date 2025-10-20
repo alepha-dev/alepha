@@ -5,6 +5,6 @@ import { AlephaServer } from "@alepha/server";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaServerSecurity = $module({
-	name: "alepha.server.security",
-	services: [AlephaServer, AlephaSecurity],
+  name: "alepha.server.security",
+  services: [AlephaServer, AlephaSecurity],
 });

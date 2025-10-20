@@ -11,28 +11,28 @@ export * from "./providers/ServerRateLimitProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/server" {
-	interface ActionDescriptorOptions<TConfig> {
-		/**
-		 * Rate limiting configuration for this action.
-		 * When specified, the action will be rate limited according to these settings.
-		 */
-		rateLimit?: RateLimitOptions;
-	}
+  interface ActionDescriptorOptions<TConfig> {
+    /**
+     * Rate limiting configuration for this action.
+     * When specified, the action will be rate limited according to these settings.
+     */
+    rateLimit?: RateLimitOptions;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RateLimitOptions {
-	/** Maximum number of requests per window (default: 100) */
-	max?: number;
-	/** Window duration in milliseconds (default: 15 minutes) */
-	windowMs?: number;
-	/** Custom key generator function */
-	keyGenerator?: (req: any) => string;
-	/** Skip rate limiting for failed requests */
-	skipFailedRequests?: boolean;
-	/** Skip rate limiting for successful requests */
-	skipSuccessfulRequests?: boolean;
+  /** Maximum number of requests per window (default: 100) */
+  max?: number;
+  /** Window duration in milliseconds (default: 15 minutes) */
+  windowMs?: number;
+  /** Custom key generator function */
+  keyGenerator?: (req: any) => string;
+  /** Skip rate limiting for failed requests */
+  skipFailedRequests?: boolean;
+  /** Skip rate limiting for successful requests */
+  skipSuccessfulRequests?: boolean;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface RateLimitOptions {
  * @module alepha.server.rate-limit
  */
 export const AlephaServerRateLimit = $module({
-	name: "alepha.server.rate-limit",
-	descriptors: [$rateLimit],
-	services: [AlephaServer, ServerRateLimitProvider],
+  name: "alepha.server.rate-limit",
+  descriptors: [$rateLimit],
+  services: [AlephaServer, ServerRateLimitProvider],
 });

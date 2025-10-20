@@ -15,14 +15,14 @@ export * from "./providers/VercelFileStorageProvider.ts";
  * @module alepha.bucket.vercel
  */
 export const AlephaBucketVercel = $module({
-	name: "alepha.bucket.vercel",
-	services: [VercelFileStorageProvider],
-	register: (alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: FileStorageProvider,
-				use: VercelFileStorageProvider,
-			})
-			.with(AlephaBucket),
+  name: "alepha.bucket.vercel",
+  services: [VercelFileStorageProvider],
+  register: (alepha) =>
+    alepha
+      .with({
+        optional: true,
+        provide: FileStorageProvider,
+        use: VercelFileStorageProvider,
+      })
+      .with(AlephaBucket),
 });

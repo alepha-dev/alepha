@@ -1,11 +1,11 @@
 import {
-	$inject,
-	createDescriptor,
-	Descriptor,
-	KIND,
-	type Service,
-	type Static,
-	type TSchema,
+  $inject,
+  createDescriptor,
+  Descriptor,
+  KIND,
+  type Service,
+  type Static,
+  type TSchema,
 } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { MemoryQueueProvider } from "../providers/MemoryQueueProvider.ts";
@@ -124,177 +124,177 @@ import { WorkerProvider } from "../providers/WorkerProvider.ts";
  * ```
  */
 export const $queue = <T extends TSchema>(
-	options: QueueDescriptorOptions<T>,
+  options: QueueDescriptorOptions<T>,
 ): QueueDescriptor<T> => {
-	return createDescriptor(QueueDescriptor<T>, options);
+  return createDescriptor(QueueDescriptor<T>, options);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface QueueDescriptorOptions<T extends TSchema> {
-	/**
-	 * Unique name for the queue.
-	 *
-	 * This name is used for:
-	 * - Queue identification across the system
-	 * - Storage backend key generation
-	 * - Logging and monitoring
-	 * - Worker assignment and routing
-	 *
-	 * If not provided, defaults to the property key where the queue is declared.
-	 *
-	 * @example "email-notifications"
-	 * @example "image-processing"
-	 * @example "order-fulfillment"
-	 */
-	name?: string;
+  /**
+   * Unique name for the queue.
+   *
+   * This name is used for:
+   * - Queue identification across the system
+   * - Storage backend key generation
+   * - Logging and monitoring
+   * - Worker assignment and routing
+   *
+   * If not provided, defaults to the property key where the queue is declared.
+   *
+   * @example "email-notifications"
+   * @example "image-processing"
+   * @example "order-fulfillment"
+   */
+  name?: string;
 
-	/**
-	 * Human-readable description of the queue's purpose.
-	 *
-	 * Used for:
-	 * - Documentation generation
-	 * - Monitoring dashboards
-	 * - Development team communication
-	 * - Queue management interfaces
-	 *
-	 * @example "Process user registration emails and welcome sequences"
-	 * @example "Handle image uploads, resizing, and thumbnail generation"
-	 * @example "Manage order processing, payment, and shipping workflows"
-	 */
-	description?: string;
+  /**
+   * Human-readable description of the queue's purpose.
+   *
+   * Used for:
+   * - Documentation generation
+   * - Monitoring dashboards
+   * - Development team communication
+   * - Queue management interfaces
+   *
+   * @example "Process user registration emails and welcome sequences"
+   * @example "Handle image uploads, resizing, and thumbnail generation"
+   * @example "Manage order processing, payment, and shipping workflows"
+   */
+  description?: string;
 
-	/**
-	 * Queue storage provider configuration.
-	 *
-	 * Options:
-	 * - **"memory"**: In-memory queue (default for development, lost on restart)
-	 * - **Service<QueueProvider>**: Custom provider class (e.g., RedisQueueProvider)
-	 * - **undefined**: Uses the default queue provider from dependency injection
-	 *
-	 * **Provider Selection Guidelines**:
-	 * - Development: Use "memory" for fast, simple testing
-	 * - Production: Use Redis or database-backed providers for persistence
-	 * - High-throughput: Use specialized providers with connection pooling
-	 * - Distributed systems: Use Redis or message brokers for scalability
-	 *
-	 * @default Uses injected QueueProvider
-	 * @example "memory"
-	 * @example RedisQueueProvider
-	 * @example DatabaseQueueProvider
-	 */
-	provider?: "memory" | Service<QueueProvider>;
+  /**
+   * Queue storage provider configuration.
+   *
+   * Options:
+   * - **"memory"**: In-memory queue (default for development, lost on restart)
+   * - **Service<QueueProvider>**: Custom provider class (e.g., RedisQueueProvider)
+   * - **undefined**: Uses the default queue provider from dependency injection
+   *
+   * **Provider Selection Guidelines**:
+   * - Development: Use "memory" for fast, simple testing
+   * - Production: Use Redis or database-backed providers for persistence
+   * - High-throughput: Use specialized providers with connection pooling
+   * - Distributed systems: Use Redis or message brokers for scalability
+   *
+   * @default Uses injected QueueProvider
+   * @example "memory"
+   * @example RedisQueueProvider
+   * @example DatabaseQueueProvider
+   */
+  provider?: "memory" | Service<QueueProvider>;
 
-	/**
-	 * TypeBox schema defining the structure of messages in this queue.
-	 *
-	 * This schema:
-	 * - Validates all messages pushed to the queue
-	 * - Provides full TypeScript type inference
-	 * - Ensures type safety between producers and consumers
-	 * - Enables automatic serialization/deserialization
-	 *
-	 * **Schema Design Best Practices**:
-	 * - Keep schemas simple and focused on the specific task
-	 * - Use optional fields for data that might not always be available
-	 * - Include version fields for schema evolution
-	 * - Use union types for different message types in the same queue
-	 *
-	 * @example
-	 * ```ts
-	 * t.object({
-	 *   userId: t.text(),
-	 *   action: t.enum(["create", "update"]),
-	 *   data: t.record(t.text(), t.any()),
-	 *   timestamp: t.optional(t.number())
-	 * })
-	 * ```
-	 */
-	schema: T;
+  /**
+   * TypeBox schema defining the structure of messages in this queue.
+   *
+   * This schema:
+   * - Validates all messages pushed to the queue
+   * - Provides full TypeScript type inference
+   * - Ensures type safety between producers and consumers
+   * - Enables automatic serialization/deserialization
+   *
+   * **Schema Design Best Practices**:
+   * - Keep schemas simple and focused on the specific task
+   * - Use optional fields for data that might not always be available
+   * - Include version fields for schema evolution
+   * - Use union types for different message types in the same queue
+   *
+   * @example
+   * ```ts
+   * t.object({
+   *   userId: t.text(),
+   *   action: t.enum(["create", "update"]),
+   *   data: t.record(t.text(), t.any()),
+   *   timestamp: t.optional(t.number())
+   * })
+   * ```
+   */
+  schema: T;
 
-	/**
-	 * Message handler function that processes queue messages.
-	 *
-	 * This function:
-	 * - Runs in background worker threads for non-blocking processing
-	 * - Receives type-safe message payloads based on the schema
-	 * - Should be idempotent to handle potential retries
-	 * - Can throw errors to trigger retry mechanisms
-	 * - Has access to the full Alepha dependency injection container
-	 *
-	 * **Handler Best Practices**:
-	 * - Keep handlers focused on a single responsibility
-	 * - Use proper error handling and logging
-	 * - Make operations idempotent when possible
-	 * - Validate critical business logic within handlers
-	 * - Consider using transactions for data consistency
-	 *
-	 * @param message - The queue message with validated payload
-	 * @returns Promise that resolves when processing is complete
-	 *
-	 * @example
-	 * ```ts
-	 * handler: async (message) => {
-	 *   const { userId, email, template } = message.payload;
-	 *
-	 *   try {
-	 *     await this.emailService.send({
-	 *       to: email,
-	 *       template,
-	 *       data: { userId }
-	 *     });
-	 *
-	 *     await this.userService.markEmailSent(userId, template);
-	 *   } catch (error) {
-	 *     // Log error and let the queue system handle retries
-	 *     this.logger.error(`Failed to send email to ${email}`, error);
-	 *     throw error;
-	 *   }
-	 * }
-	 * ```
-	 */
-	handler?: (message: QueueMessage<T>) => Promise<void>;
+  /**
+   * Message handler function that processes queue messages.
+   *
+   * This function:
+   * - Runs in background worker threads for non-blocking processing
+   * - Receives type-safe message payloads based on the schema
+   * - Should be idempotent to handle potential retries
+   * - Can throw errors to trigger retry mechanisms
+   * - Has access to the full Alepha dependency injection container
+   *
+   * **Handler Best Practices**:
+   * - Keep handlers focused on a single responsibility
+   * - Use proper error handling and logging
+   * - Make operations idempotent when possible
+   * - Validate critical business logic within handlers
+   * - Consider using transactions for data consistency
+   *
+   * @param message - The queue message with validated payload
+   * @returns Promise that resolves when processing is complete
+   *
+   * @example
+   * ```ts
+   * handler: async (message) => {
+   *   const { userId, email, template } = message.payload;
+   *
+   *   try {
+   *     await this.emailService.send({
+   *       to: email,
+   *       template,
+   *       data: { userId }
+   *     });
+   *
+   *     await this.userService.markEmailSent(userId, template);
+   *   } catch (error) {
+   *     // Log error and let the queue system handle retries
+   *     this.logger.error(`Failed to send email to ${email}`, error);
+   *     throw error;
+   *   }
+   * }
+   * ```
+   */
+  handler?: (message: QueueMessage<T>) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class QueueDescriptor<T extends TSchema> extends Descriptor<
-	QueueDescriptorOptions<T>
+  QueueDescriptorOptions<T>
 > {
-	protected readonly log = $logger();
-	protected readonly workerProvider = $inject(WorkerProvider);
-	public readonly provider = this.$provider();
+  protected readonly log = $logger();
+  protected readonly workerProvider = $inject(WorkerProvider);
+  public readonly provider = this.$provider();
 
-	public async push(...payloads: Array<Static<T>>) {
-		await Promise.all(
-			payloads.map((payload) =>
-				this.provider.push(
-					this.name,
-					JSON.stringify({
-						headers: {},
-						payload: this.alepha.parse(this.options.schema, payload),
-					}),
-				),
-			),
-		);
+  public async push(...payloads: Array<Static<T>>) {
+    await Promise.all(
+      payloads.map((payload) =>
+        this.provider.push(
+          this.name,
+          JSON.stringify({
+            headers: {},
+            payload: this.alepha.parse(this.options.schema, payload),
+          }),
+        ),
+      ),
+    );
 
-		this.log.debug(`Pushed to queue ${this.name}`, payloads);
-		this.workerProvider.wakeUp();
-	}
+    this.log.debug(`Pushed to queue ${this.name}`, payloads);
+    this.workerProvider.wakeUp();
+  }
 
-	public get name() {
-		return this.options.name || this.config.propertyKey;
-	}
+  public get name() {
+    return this.options.name || this.config.propertyKey;
+  }
 
-	protected $provider() {
-		if (!this.options.provider) {
-			return this.alepha.inject(QueueProvider);
-		}
-		if (this.options.provider === "memory") {
-			return this.alepha.inject(MemoryQueueProvider);
-		}
-		return this.alepha.inject(this.options.provider);
-	}
+  protected $provider() {
+    if (!this.options.provider) {
+      return this.alepha.inject(QueueProvider);
+    }
+    if (this.options.provider === "memory") {
+      return this.alepha.inject(MemoryQueueProvider);
+    }
+    return this.alepha.inject(this.options.provider);
+  }
 }
 
 $queue[KIND] = QueueDescriptor;
@@ -302,9 +302,9 @@ $queue[KIND] = QueueDescriptor;
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface QueueMessageSchema {
-	payload: TSchema;
+  payload: TSchema;
 }
 
 export interface QueueMessage<T extends TSchema> {
-	payload: Static<T>;
+  payload: Static<T>;
 }

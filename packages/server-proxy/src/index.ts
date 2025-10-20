@@ -17,7 +17,7 @@ export * from "./providers/ServerProxyProvider.ts";
  * @module alepha.server.proxy
  */
 export const AlephaServerProxy = $module({
-	name: "alepha.server.proxy",
-	descriptors: [$proxy],
-	services: [AlephaServer, ServerProxyProvider],
+  name: "alepha.server.proxy",
+  descriptors: [$proxy],
+  services: [AlephaServer, ServerProxyProvider],
 });

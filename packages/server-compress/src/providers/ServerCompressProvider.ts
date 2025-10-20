@@ -13,149 +13,149 @@ const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
 
 export class ServerCompressProvider {
-	static compressors: Record<
-		string,
-		| {
-				compress: (...args: any[]) => Promise<Buffer>;
-				stream: (options?: any) => Transform;
-		  }
-		| undefined
-	> = {
-		gzip: {
-			compress: gzip,
-			stream: createGzip,
-		},
-		br: {
-			compress: brotli,
-			stream: createBrotliCompress,
-		},
-		zstd:
-			zstd && createZstdCompress
-				? {
-						compress: zstd,
-						stream: createZstdCompress,
-					}
-				: undefined,
-	};
+  static compressors: Record<
+    string,
+    | {
+        compress: (...args: any[]) => Promise<Buffer>;
+        stream: (options?: any) => Transform;
+      }
+    | undefined
+  > = {
+    gzip: {
+      compress: gzip,
+      stream: createGzip,
+    },
+    br: {
+      compress: brotli,
+      stream: createBrotliCompress,
+    },
+    zstd:
+      zstd && createZstdCompress
+        ? {
+            compress: zstd,
+            stream: createZstdCompress,
+          }
+        : undefined,
+  };
 
-	public options: ServerCompressProviderOptions = {
-		allowedContentTypes: [
-			"application/json",
-			"text/html",
-			"application/javascript",
-			"text/plain",
-			"text/css",
-		],
-	};
+  public options: ServerCompressProviderOptions = {
+    allowedContentTypes: [
+      "application/json",
+      "text/html",
+      "application/javascript",
+      "text/plain",
+      "text/css",
+    ],
+  };
 
-	public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
-		on: "server:onResponse",
-		handler: async ({ request, response }) => {
-			// skip if already compressed
-			if (response.headers["content-encoding"]) {
-				return;
-			}
+  public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
+    on: "server:onResponse",
+    handler: async ({ request, response }) => {
+      // skip if already compressed
+      if (response.headers["content-encoding"]) {
+        return;
+      }
 
-			const acceptEncoding = request.headers["accept-encoding"]; // skip if no accept-encoding header
-			if (!acceptEncoding) {
-				return;
-			}
+      const acceptEncoding = request.headers["accept-encoding"]; // skip if no accept-encoding header
+      if (!acceptEncoding) {
+        return;
+      }
 
-			// skip if not json or html (for now)
-			if (!this.isAllowedContentType(response.headers["content-type"])) {
-				return;
-			}
+      // skip if not json or html (for now)
+      if (!this.isAllowedContentType(response.headers["content-type"])) {
+        return;
+      }
 
-			for (const encoding of ["zstd", "br", "gzip"] as const) {
-				if (
-					acceptEncoding.includes(encoding) &&
-					ServerCompressProvider.compressors[encoding]
-				) {
-					await this.compress(encoding, response);
-					return;
-				}
-			}
-		},
-	});
+      for (const encoding of ["zstd", "br", "gzip"] as const) {
+        if (
+          acceptEncoding.includes(encoding) &&
+          ServerCompressProvider.compressors[encoding]
+        ) {
+          await this.compress(encoding, response);
+          return;
+        }
+      }
+    },
+  });
 
-	protected isAllowedContentType(contentType: string | undefined): boolean {
-		if (!contentType) {
-			return false;
-		}
+  protected isAllowedContentType(contentType: string | undefined): boolean {
+    if (!contentType) {
+      return false;
+    }
 
-		const lowerContentType = contentType.toLowerCase();
+    const lowerContentType = contentType.toLowerCase();
 
-		return !!this.options.allowedContentTypes.find((it) =>
-			lowerContentType.includes(it),
-		);
-	}
+    return !!this.options.allowedContentTypes.find((it) =>
+      lowerContentType.includes(it),
+    );
+  }
 
-	protected async compress(
-		encoding: keyof typeof ServerCompressProvider.compressors,
-		response: ServerResponse,
-	): Promise<void> {
-		const body = response.body; // can be string or Buffer or ArrayBuffer or Readable
+  protected async compress(
+    encoding: keyof typeof ServerCompressProvider.compressors,
+    response: ServerResponse,
+  ): Promise<void> {
+    const body = response.body; // can be string or Buffer or ArrayBuffer or Readable
 
-		const compressor = ServerCompressProvider.compressors[encoding];
-		if (!compressor) {
-			return;
-		}
+    const compressor = ServerCompressProvider.compressors[encoding];
+    if (!compressor) {
+      return;
+    }
 
-		const params = this.getParams(encoding);
+    const params = this.getParams(encoding);
 
-		if (
-			typeof body === "string" ||
-			Buffer.isBuffer(body) ||
-			body instanceof ArrayBuffer
-		) {
-			const compressed = await compressor.compress(body, {
-				params,
-			});
-			this.setHeaders(response, encoding);
-			response.headers["content-length"] = compressed.length.toString();
-			response.body = compressed;
-		}
+    if (
+      typeof body === "string" ||
+      Buffer.isBuffer(body) ||
+      body instanceof ArrayBuffer
+    ) {
+      const compressed = await compressor.compress(body, {
+        params,
+      });
+      this.setHeaders(response, encoding);
+      response.headers["content-length"] = compressed.length.toString();
+      response.body = compressed;
+    }
 
-		if (typeof body === "object" && body instanceof Readable) {
-			this.setHeaders(response, encoding);
-			response.body = body.pipe(compressor.stream({ params }));
-		}
+    if (typeof body === "object" && body instanceof Readable) {
+      this.setHeaders(response, encoding);
+      response.body = body.pipe(compressor.stream({ params }));
+    }
 
-		if (typeof body === "object" && body instanceof ReadableStream) {
-			this.setHeaders(response, encoding);
-			response.body = Readable.fromWeb(body).pipe(
-				compressor.stream({ params }),
-			);
-		}
-	}
+    if (typeof body === "object" && body instanceof ReadableStream) {
+      this.setHeaders(response, encoding);
+      response.body = Readable.fromWeb(body).pipe(
+        compressor.stream({ params }),
+      );
+    }
+  }
 
-	protected getParams(
-		encoding: keyof typeof ServerCompressProvider.compressors,
-	): Record<number, any> {
-		if (encoding === "zstd") {
-			return {
-				[zlib.constants.ZSTD_c_compressionLevel]: 3, // default compression level for zstd
-			};
-		}
-		if (encoding === "br") {
-			return {};
-		}
-		if (encoding === "gzip") {
-			return {};
-		}
-		return {};
-	}
+  protected getParams(
+    encoding: keyof typeof ServerCompressProvider.compressors,
+  ): Record<number, any> {
+    if (encoding === "zstd") {
+      return {
+        [zlib.constants.ZSTD_c_compressionLevel]: 3, // default compression level for zstd
+      };
+    }
+    if (encoding === "br") {
+      return {};
+    }
+    if (encoding === "gzip") {
+      return {};
+    }
+    return {};
+  }
 
-	protected setHeaders(
-		response: ServerResponse,
-		encoding: keyof typeof ServerCompressProvider.compressors,
-	): void {
-		response.headers.vary = "content-encoding";
-		response.headers["content-encoding"] = encoding;
-		response.headers["cache-control"] = "no-cache";
-	}
+  protected setHeaders(
+    response: ServerResponse,
+    encoding: keyof typeof ServerCompressProvider.compressors,
+  ): void {
+    response.headers.vary = "content-encoding";
+    response.headers["content-encoding"] = encoding;
+    response.headers["cache-control"] = "no-cache";
+  }
 }
 
 export interface ServerCompressProviderOptions {
-	allowedContentTypes: string[];
+  allowedContentTypes: string[];
 }

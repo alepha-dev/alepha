@@ -15,14 +15,14 @@ export * from "./providers/ReactAuthProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	export interface State {
-		user?: UserAccount;
-	}
+  export interface State {
+    user?: UserAccount;
+  }
 }
 declare module "@alepha/react" {
-	interface ReactRouterState {
-		user?: UserAccount;
-	}
+  interface ReactRouterState {
+    user?: UserAccount;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ declare module "@alepha/react" {
  * @module alepha.react.auth
  */
 export const AlephaReactAuth = $module({
-	name: "alepha.react.auth",
-	descriptors: [$auth],
-	services: [AlephaReact, AlephaServerCookies, ReactAuthProvider, ReactAuth],
+  name: "alepha.react.auth",
+  descriptors: [$auth],
+  services: [AlephaReact, AlephaServerCookies, ReactAuthProvider, ReactAuth],
 });

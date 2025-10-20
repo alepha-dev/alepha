@@ -3,61 +3,61 @@ import { type ViteCompressOptions, viteCompress } from "../viteCompress.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildClientOptions {
-	dist: string;
-	html: string;
+  dist: string;
+  html: string;
 
-	/**
-	 * @default false
-	 */
-	precompress?: ViteCompressOptions | boolean;
+  /**
+   * @default false
+   */
+  precompress?: ViteCompressOptions | boolean;
 
-	/**
-	 * @default false
-	 */
-	prerender?: boolean;
+  /**
+   * @default false
+   */
+  prerender?: boolean;
 
-	/**
-	 * Build a sitemap.xml file based on the $pages routes.
-	 */
-	sitemap?: {
-		hostname: string;
-	};
+  /**
+   * Build a sitemap.xml file based on the $pages routes.
+   */
+  sitemap?: {
+    hostname: string;
+  };
 
-	config?: UserConfig;
+  config?: UserConfig;
 }
 
 export const buildClient = async (opts: BuildClientOptions) => {
-	const { build: viteBuild, mergeConfig } = await importVite();
-	const plugins: any[] = [];
+  const { build: viteBuild, mergeConfig } = await importVite();
+  const plugins: any[] = [];
 
-	const compress: ViteCompressOptions | undefined = opts.precompress
-		? typeof opts.precompress === "object"
-			? opts.precompress
-			: {}
-		: undefined;
+  const compress: ViteCompressOptions | undefined = opts.precompress
+    ? typeof opts.precompress === "object"
+      ? opts.precompress
+      : {}
+    : undefined;
 
-	if (opts.precompress && compress) {
-		plugins.push(viteCompress(compress));
-	}
+  if (opts.precompress && compress) {
+    plugins.push(viteCompress(compress));
+  }
 
-	const viteBuildClientConfig: UserConfig = {
-		mode: "production",
-		define: {
-			"process.env.NODE_ENV": '"production"',
-		},
-		publicDir: "public",
-		build: {
-			outDir: opts.dist,
-			rollupOptions: {
-				output: {
-					entryFileNames: "[hash].js",
-					chunkFileNames: "[hash].js",
-					assetFileNames: "[hash][extname]",
-				},
-			},
-		},
-		plugins,
-	};
+  const viteBuildClientConfig: UserConfig = {
+    mode: "production",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    publicDir: "public",
+    build: {
+      outDir: opts.dist,
+      rollupOptions: {
+        output: {
+          entryFileNames: "[hash].js",
+          chunkFileNames: "[hash].js",
+          assetFileNames: "[hash][extname]",
+        },
+      },
+    },
+    plugins,
+  };
 
-	await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
+  await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
 };

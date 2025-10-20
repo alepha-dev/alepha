@@ -19,7 +19,7 @@ export * from "./providers/BrowserHeadProvider.ts";
  * @module alepha.react.head
  */
 export const AlephaReactHead = $module({
-	name: "alepha.react.head",
-	descriptors: [$head],
-	services: [AlephaReact, BrowserHeadProvider],
+  name: "alepha.react.head",
+  descriptors: [$head],
+  services: [AlephaReact, BrowserHeadProvider],
 });

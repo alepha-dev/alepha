@@ -11,9 +11,9 @@ export * from "./providers/I18nProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	export interface State {
-		"react.i18n.lang"?: string;
-	}
+  export interface State {
+    "react.i18n.lang"?: string;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ declare module "@alepha/core" {
  * @module alepha.react.i18n
  */
 export const AlephaReactI18n = $module({
-	name: "alepha.react.i18n",
-	descriptors: [$dictionary],
-	services: [I18nProvider],
+  name: "alepha.react.i18n",
+  descriptors: [$dictionary],
+  services: [I18nProvider],
 });

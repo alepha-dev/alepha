@@ -6,10 +6,10 @@ const alepha = Alepha.create();
 const serverHeadProvider = alepha.inject(ServerHeadProvider);
 
 describe("ServerHeadProvider", () => {
-	it("should render head with custom attributes and meta tags", ({
-		expect,
-	}) => {
-		const template = `
+  it("should render head with custom attributes and meta tags", ({
+    expect,
+  }) => {
+    const template = `
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -21,17 +21,17 @@ describe("ServerHeadProvider", () => {
 	</html>
 	`;
 
-		const head = {
-			title: "Test Title",
-			htmlAttributes: { lang: "fr", style: "color: red;" },
-			bodyAttributes: { class: "test-class" },
-			meta: [
-				{ name: "description", content: "Test description" },
-				{ name: "keywords", content: "test, example" },
-			],
-		};
+    const head = {
+      title: "Test Title",
+      htmlAttributes: { lang: "fr", style: "color: red;" },
+      bodyAttributes: { class: "test-class" },
+      meta: [
+        { name: "description", content: "Test description" },
+        { name: "keywords", content: "test, example" },
+      ],
+    };
 
-		const expectedOutput = `
+    const expectedOutput = `
 	<!DOCTYPE html>
 	<html lang="fr" style="color: red;">
 	<head>
@@ -44,11 +44,11 @@ describe("ServerHeadProvider", () => {
 	</body>
 	</html>
 	`
-			.trim()
-			.replace(/\s+/g, " ");
+      .trim()
+      .replace(/\s+/g, " ");
 
-		expect(
-			serverHeadProvider.renderHead(template, head).replace(/\s+/g, " "),
-		).toBe(expectedOutput);
-	});
+    expect(
+      serverHeadProvider.renderHead(template, head).replace(/\s+/g, " "),
+    ).toBe(expectedOutput);
+  });
 });

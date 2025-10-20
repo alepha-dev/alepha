@@ -17,9 +17,9 @@ import { StateManager } from "./helpers/StateManager.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import type {
-	InstantiableClass,
-	Service,
-	ServiceEntry,
+  InstantiableClass,
+  Service,
+  ServiceEntry,
 } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
 import { type TSchema, t } from "./providers/TypeProvider.ts";
@@ -148,943 +148,943 @@ import { type TSchema, t } from "./providers/TypeProvider.ts";
  * 	@module alepha
  */
 export class Alepha {
-	/**
-	 * Creates a new instance of the Alepha container with some helpers:
-	 *
-	 * - merges `process.env` with the provided state.env when available.
-	 * - populates the test hooks for Vitest or Jest environments when available.
-	 *
-	 * If you are not interested about these helpers, you can use the constructor directly.
-	 */
-	public static create(state: Partial<State> = {}): Alepha {
-		// merge process.env with the state.env
-		if (typeof process === "object" && typeof process.env === "object") {
-			state.env = {
-				...state.env,
-				...process.env,
-			};
-		}
-
-		const alepha = new Alepha(state);
-
-		if (alepha.isTest()) {
-			// inject global hooks for testing purposes
-			// > for vitest, { globals: true } is required in the config
-			const g = globalThis as any;
-			const beforeAll = state.beforeAll ?? g.beforeAll;
-			const afterAll = state.afterAll ?? g.afterAll;
-			const afterEach = state.afterEach ?? g.afterEach;
-			const onTestFinished = state.onTestFinished ?? g.onTestFinished;
-
-			beforeAll?.(() => alepha.start());
-			afterAll?.(() => alepha.stop());
-
-			try {
-				onTestFinished?.(() => alepha.stop());
-			} catch (_error) {
-				// ignore
-			}
-
-			alepha.state
-				.set("beforeAll", beforeAll)
-				.set("afterAll", afterAll)
-				.set("afterEach", afterEach)
-				.set("onTestFinished", onTestFinished);
-		}
-
-		return alepha;
-	}
-
-	/**
-	 *  List of all services + how they are provided.
-	 */
-	protected registry: Map<Service, ServiceDefinition> = new Map();
-
-	/**
-	 * Flag indicating whether the App won't accept any further changes.
-	 * Pass to true when #start() is called.
-	 */
-	protected locked = false;
-
-	/**
-	 * True if the App has been configured.
-	 */
-	protected configured = false;
-
-	/**
-	 * True if the App has started.
-	 */
-	protected started = false;
-
-	/**
-	 * True if the App is ready.
-	 */
-	protected ready = false;
-
-	/**
-	 * A promise that resolves when the App has started.
-	 */
-	protected starting?: PromiseWithResolvers<this>;
-
-	/**
-	 * The current state of the App.
-	 *
-	 * It contains the environment variables, logger, and other state-related properties.
-	 *
-	 * You can declare your own state properties by extending the `State` interface.
-	 *
-	 * ```ts
-	 * declare module "@alepha/core" {
-	 *   interface State {
-	 *     myCustomValue: string;
-	 *   }
-	 * }
-	 * ```
-	 *
-	 * Same story for the `Env` interface.
-	 * ```ts
-	 * declare module "@alepha/core" {
-	 *   interface Env {
-	 *     readonly myCustomValue: string;
-	 *   }
-	 * }
-	 * ```
-	 *
-	 * State values can be function or primitive values.
-	 * However, all .env variables must serializable to JSON.
-	 */
-	protected store: State;
-
-	/**
-	 * During the instantiation process, we keep a list of pending instantiations.
-	 * > It allows us to detect circular dependencies.
-	 */
-	protected pendingInstantiations: Service[] = [];
-
-	/**
-	 * Cache for environment variables.
-	 * > It allows us to avoid parsing the same schema multiple times.
-	 */
-	protected cacheEnv: Map<TSchema, any> = new Map();
-
-	/**
-	 * Cache for TypeBox type checks.
-	 * > It allows us to avoid compiling the same schema multiple times.
-	 */
-	protected cacheTypeCheck: Map<TSchema, Validator> = new Map();
-
-	/**
-	 * List of modules that are registered in the container.
-	 *
-	 * Modules are used to group services and provide a way to register them in the container.
-	 */
-	protected modules: Array<Module> = [];
-
-	protected substitutions = new Map<Service, { use: Service }>();
-
-	protected configurations = new Map<Service, object>();
-
-	protected descriptorRegistry = new Map<
-		Service<Descriptor>,
-		Array<Descriptor>
-	>();
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Node.js feature that allows to store context across asynchronous calls.
-	 *
-	 * This is used for logging, tracing, and other context-related features.
-	 *
-	 * Mocked for browser environments.
-	 */
-	public readonly context = new AlsProvider();
-
-	/**
-	 * Event manager to handle lifecycle events and custom events.
-	 */
-	public readonly events = new EventManager(() => this.log);
-
-	/**
-	 * State manager to store arbitrary values.
-	 */
-	public readonly state = new StateManager<State>(this.events, this.context);
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Get logger instance.
-	 */
-	public get log(): LoggerInterface | undefined {
-		return this.state.get("log");
-	}
-
-	/**
-	 * The environment variables for the App.
-	 */
-	public get env(): Readonly<Env> {
-		return this.store.env ?? {};
-	}
-
-	constructor(state: Partial<State> = {}) {
-		this.store = state;
-		this.events.on("configure", () => {
-			if (this.configured) {
-				throw new AlephaError("App is already configured");
-			}
-		});
-	}
-
-	/**
-	 * True when start() is called.
-	 *
-	 * -> No more services can be added, it's over, bye!
-	 */
-	public isLocked(): boolean {
-		return this.locked;
-	}
-
-	/**
-	 * Returns whether the App is configured.
-	 *
-	 * It means that Alepha#configure() has been called.
-	 *
-	 * > By default, configure() is called automatically when start() is called, but you can also call it manually.
-	 */
-	public isConfigured(): boolean {
-		return this.configured;
-	}
-
-	/**
-	 * Returns whether the App has started.
-	 *
-	 * It means that #start() has been called but maybe not all services are ready.
-	 */
-	public isStarted(): boolean {
-		return this.started;
-	}
-
-	/**
-	 * True if the App is ready. It means that Alepha is started AND ready() hook has beed called.
-	 */
-	public isReady(): boolean {
-		return this.ready;
-	}
-
-	/**
-	 * True if the App is running in a browser environment.
-	 */
-	public isBrowser(): boolean {
-		return typeof window !== "undefined"; // pretty cheap check
-	}
-
-	/**
-	 * Returns whether the App is running in Vite dev mode.
-	 */
-	public isViteDev(): boolean {
-		if (this.isBrowser()) {
-			return false;
-		}
-
-		return !!this.env.VITE_ALEPHA_DEV || !!process.env.VITE_ALEPHA_DEV;
-	}
-
-	/**
-	 * Returns whether the App is running in a serverless environment.
-	 */
-	public isServerless(): boolean | "vercel" {
-		if (this.isBrowser()) {
-			return false;
-		}
-
-		if (this.env.VERCEL_REGION || process.env.VERCEL_REGION) {
-			return "vercel";
-		}
-
-		return false;
-	}
-
-	/**
-	 * Returns whether the App is in test mode. (Running in a test environment)
-	 *
-	 * > This is automatically set when running tests with Jest or Vitest.
-	 */
-	public isTest(): boolean {
-		const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
-		return env === "test";
-	}
-
-	/**
-	 * Returns whether the App is in production mode. (Running in a production environment)
-	 *
-	 * > This is automatically set by Vite or Vercel. However, you have to set it manually when running Docker apps.
-	 */
-	public isProduction(): boolean {
-		const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
-		return env === "prod" || env === "production";
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Starts the App.
-	 *
-	 * - Lock any further changes to the container.
-	 * - Run "configure" hook for all services. Descriptors will be processed.
-	 * - Run "start" hook for all services. Providers will connect/listen/...
-	 * - Run "ready" hook for all services. This is the point where the App is ready to serve requests.
-	 *
-	 * @return A promise that resolves when the App has started.
-	 */
-	public async start(): Promise<this> {
-		if (this.ready) {
-			this.log?.debug("App is already started, skipping...");
-			return this;
-		}
-
-		// make sure that start is called only once
-		if (this.starting) {
-			this.log?.warn("App is already starting, waiting for it to finish...");
-			return this.starting.promise;
-		}
-
-		this.starting = Promise.withResolvers();
-
-		const now = Date.now();
-
-		this.log?.info("Starting App...");
-
-		for (const [key] of this.substitutions.entries()) {
-			this.inject(key);
-		}
-
-		const target = this.state.get("target");
-		if (target) {
-			this.registry = new Map();
-			this.descriptorRegistry = new Map();
-			this.with(target);
-		}
-
-		this.locked = true;
-
-		await this.events.emit("configure", this, { log: true });
-
-		this.configured = true;
-
-		await this.events.emit("start", this, { log: true });
-
-		this.started = true;
-
-		await this.events.emit("ready", this, { log: true });
-
-		this.log?.info(`App is now ready [${Date.now() - now}ms]`);
-
-		this.ready = true;
-
-		this.starting.resolve(this);
-		this.starting = undefined;
-
-		return this;
-	}
-
-	/**
-	 * Stops the App.
-	 *
-	 * - Run "stop" hook for all services.
-	 *
-	 * Stop will NOT reset the container.
-	 * Stop will NOT unlock the container.
-	 *
-	 * > Stop is used to gracefully shut down the application, nothing more. There is no "restart".
-	 *
-	 * @return A promise that resolves when the App has stopped.
-	 */
-	public async stop(): Promise<void> {
-		if (!this.started) {
-			return;
-		}
-
-		this.log?.info("Stopping App...");
-		await this.events.emit("stop", this, { reverse: true, log: true });
-		this.log?.info("App is now off");
-
-		this.started = false;
-		this.ready = false;
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Check if entry is registered in the container.
-	 */
-	public has(
-		entry: ServiceEntry,
-		opts: {
-			/**
-			 * Check if the entry is registered in the pending instantiation stack.
-			 *
-			 * @default true
-			 */
-			inStack?: boolean;
-			/**
-			 * Check if the entry is registered in the container registry.
-			 *
-			 * @default true
-			 */
-			inRegistry?: boolean;
-			/**
-			 * Check if the entry is registered in the substitutions.
-			 *
-			 * @default true
-			 */
-			inSubstitutions?: boolean;
-			/**
-			 * Where to look for registered services.
-			 *
-			 * @default this.registry
-			 */
-			registry?: Map<Service, ServiceDefinition>;
-		} = {},
-	): boolean {
-		if (entry === Alepha) {
-			return true;
-		}
-
-		const {
-			inStack = true,
-			inRegistry = true,
-			inSubstitutions = true,
-			registry = this.registry,
-		} = opts;
-
-		const { provide } =
-			typeof entry === "object" && "provide" in entry
-				? entry
-				: { provide: entry };
-
-		if (inSubstitutions) {
-			const substitute = this.substitutions.get(provide);
-			if (substitute) {
-				return true;
-			}
-		}
-
-		if (inRegistry) {
-			const match = registry.get(provide);
-			if (match) {
-				return true;
-			}
-		}
-
-		if (inStack) {
-			const substitute = this.substitutions.get(provide)?.use;
-			if (substitute && this.pendingInstantiations.includes(substitute)) {
-				return true;
-			}
-
-			return this.pendingInstantiations.includes(provide);
-		}
-
-		return false;
-	}
-
-	/**
-	 * Registers the specified service in the container.
-	 *
-	 * - If the service is ALREADY registered, the method does nothing.
-	 * - If the service is NOT registered, a new instance is created and registered.
-	 *
-	 * Method is chainable, so you can register multiple services in a single call.
-	 *
-	 * > ServiceEntry allows to provide a service **substitution** feature.
-	 *
-	 * @example
-	 * ```ts
-	 * class A { value = "a"; }
-	 * class B { value = "b"; }
-	 * class M { a = $inject(A); }
-	 *
-	 * Alepha.create().with({ provide: A, use: B }).get(M).a.value; // "b"
-	 * ```
-	 *
-	 * > **Substitution** is an advanced feature that allows you to replace a service with another service.
-	 * > It's useful for testing or for providing different implementations of a service.
-	 * > If you are interested in configuring a service, use Alepha#configure() instead.
-	 *
-	 * @param serviceEntry - The service to register in the container.
-	 * @param configure - Optional configuration object to merge with the service's options.
-	 * @return Current instance of Alepha.
-	 */
-	public with<T extends { options?: object } & object>(
-		serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
-		configure?: Partial<T["options"]>,
-	): this {
-		const entry: ServiceEntry<T> =
-			"default" in serviceEntry ? serviceEntry.default : serviceEntry;
-
-		// just check if the entry is not present in the pending instantiation stack
-		// Alepha#get will handle the rest
-		if (
-			this.has(entry, {
-				inSubstitutions: false,
-				inRegistry: false,
-			})
-		) {
-			return this;
-		}
-
-		const isSubstitution = typeof entry === "object";
-		if (isSubstitution) {
-			if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
-				if (this.started) {
-					throw new ContainerLockedError();
-				}
-
-				// inherit of module, if service has no module
-				if (
-					MODULE in entry.provide &&
-					typeof entry.provide[MODULE] === "function"
-				) {
-					(entry.use as WithModule)[MODULE] ??= entry.provide[MODULE];
-				}
-
-				this.substitutions.set(entry.provide, {
-					use: entry.use,
-				});
-			} else if (!entry.optional) {
-				throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
-			}
-			return this;
-		}
-
-		if (configure && typeof entry === "function") {
-			this.configure(entry, configure);
-		}
-
-		this.inject(entry);
-
-		return this;
-	}
-
-	/**
-	 * Get an instance of the specified service from the container.
-	 *
-	 * @see {@link InjectOptions} for the available options.
-	 */
-	public inject<T extends object>(
-		service: Service<T>,
-		opts: InjectOptions<T> = {},
-	): T {
-		const lifetime = opts.lifetime ?? "singleton";
-		const parent =
-			opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
-
-		const transient = lifetime === "transient";
-		const registry =
-			lifetime === "scoped"
-				? (this.context.get<Map<Service, ServiceDefinition>>("registry") ??
-					this.registry)
-				: this.registry;
-
-		// If the requested type is the container, the current instance is returned.
-		if ((service as any) === Alepha) {
-			return this as any;
-		}
-
-		const substitute = this.substitutions.get(service);
-		if (substitute) {
-			return this.inject(substitute.use, {
-				parent,
-				lifetime,
-			});
-		}
-
-		const index = this.pendingInstantiations.indexOf(service);
-		if (index !== -1 && !transient) {
-			throw new CircularDependencyError(
-				service.name,
-				this.pendingInstantiations.slice(0, index).map((it) => it.name),
-			);
-		}
-
-		if (!transient) {
-			// the requested type is searched in the container
-			const match = registry.get(service);
-
-			// [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
-			if (!match && this.isViteDev()) {
-				for (const [_, definition] of registry.entries()) {
-					if (definition.instance?.constructor.name === service.name) {
-						this.log?.debug(`Hot reload detected for ${service.name}`);
-						const instance: T = this.new(service, opts.args);
-						definition.instance = instance;
-						return instance;
-					}
-				}
-			}
-
-			if (match) {
-				if (!match.parents.includes(parent) && parent !== service) {
-					match.parents.push(parent);
-				}
-
-				return match.instance;
-			}
-
-			if (this.started) {
-				throw new ContainerLockedError(
-					`Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
-				);
-			}
-		}
-
-		const module = (service as WithModule)[MODULE];
-		if (module && typeof module === "function") {
-			this.with(module);
-		}
-
-		// check if service has been registered by a module
-		if (this.has(service, { registry }) && !transient) {
-			// if the service is already registered, we just return the instance
-			return this.inject(service, { parent, lifetime });
-		}
-
-		const instance: T = this.new(service, opts.args);
-
-		// [feature]: configurations - update .options: object of the service instance
-		const configuration = this.configurations.get(service);
-		if (
-			configuration &&
-			"options" in instance &&
-			instance.options &&
-			typeof instance.options === "object"
-		) {
-			Object.assign(instance.options, configuration);
-		}
-
-		const definition: ServiceDefinition<T> = {
-			parents: [parent],
-			instance,
-		};
-
-		if (!transient) {
-			registry.set(service, definition);
-		}
-
-		// [feature]: modules - it's just a way to group services together
-		if (instance instanceof Module) {
-			this.modules.push(instance);
-
-			const parent = __alephaRef.parent;
-
-			// propagate the current module
-			__alephaRef.parent = instance.constructor as Service;
-
-			instance.register(this);
-
-			// restore the previous $get context
-			__alephaRef.parent = parent;
-		}
-
-		return instance;
-	}
-
-	/**
-	 * Configures the specified service with the provided state.
-	 * If service is not registered, it will do nothing.
-	 *
-	 * It's recommended to use this method on the `configure` hook.
-	 * @example
-	 * ```ts
-	 * class AppConfig {
-	 *   configure = $hook({
-	 *     name: "configure",
-	 *     handler: (a) => {
-	 *       a.configure(MyProvider, { some: "data" });
-	 *     }
-	 *   })
-	 * }
-	 * ```
-	 */
-	public configure<T extends { options?: object }>(
-		service: Service<T>,
-		state: Partial<T["options"]>,
-	): this {
-		if (this.has(service)) {
-			const instance = this.inject(service);
-			if (
-				"options" in instance &&
-				instance.options &&
-				typeof instance.options === "object"
-			) {
-				Object.assign(instance.options, state);
-			}
-		} else {
-			this.configurations.set(service, state);
-		}
-
-		return this;
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Casts the given value to the specified schema.
-	 *
-	 * It uses the TypeBox library to validate the value against the schema.
-	 */
-	public parse<T extends TSchema>(
-		schema: T,
-		value?: unknown,
-		opts: {
-			/**
-			 * Clone the value before parsing.
-			 * @default true
-			 */
-			clone?: boolean;
-			/**
-			 * Apply default values defined in the schema.
-			 * @default true
-			 */
-			default?: boolean;
-			/**
-			 * Remove all values not defined in the schema.
-			 * @default true
-			 */
-			clean?: boolean;
-			/**
-			 * Try to cast/convert some data based on the schema.
-			 * @default true
-			 */
-			convert?: boolean;
-			/**
-			 * Convert `null` to `undefined`
-			 * @default true
-			 */
-			convertNullToUndefined?: boolean;
-			/**
-			 * Prepare value after being deserialized.
-			 * @default true
-			 */
-			check?: boolean;
-		} = {},
-	): Static<T> {
-		const exists = this.cacheTypeCheck.get(schema);
-		const vl = exists ?? Compile(schema);
-		if (!exists) {
-			this.cacheTypeCheck.set(schema, vl);
-		}
-
-		let alreadyCloned = false;
-		if (
-			(t.schema.isObject(schema) || t.schema.isArray(schema)) &&
-			typeof value === "string"
-		) {
-			try {
-				value = JSON.parse(value);
-				alreadyCloned = true;
-			} catch {
-				// ignore json parsing error and let typebox handle it
-			}
-		}
-
-		value =
-			typeof value === "object" && opts.clone !== false && !alreadyCloned
-				? // do NOT use structuredClone() or TypeBox v.Clone() here
-					// we need to remove also all functions, undefined, ...
-					// JSON is FINE for small objects
-					// REMEMBER: alepha.parse is JSON safe, so no Date, Map, Set, BigInt ...
-					JSON.parse(JSON.stringify(value))
-				: value;
-
-		if (opts.clean !== false) {
-			value = vl.Clean(value);
-
-			if (typeof value === "object") {
-				for (const key in value) {
-					if ((value as Record<any, any>)[key] === undefined) {
-						delete (value as Record<any, any>)[key];
-					}
-				}
-			}
-		}
-
-		if (opts.default !== false) {
-			value = vl.Default(value);
-		}
-
-		if (opts.convertNullToUndefined !== false) {
-			value = nullToUndefined(schema, value);
-		}
-
-		if (opts.convert !== false) {
-			value = vl.Convert(value);
-		}
-
-		if (opts.check !== false) {
-			const valid = vl.Check(value);
-			if (!valid) {
-				const error = vl.Errors(value)?.[0];
-				if (error) {
-					throw new TypeBoxError(error, value);
-				}
-			}
-		}
-
-		return value as Static<T>;
-	}
-
-	/**
-	 * Applies environment variables to the provided schema and state object.
-	 *
-	 * It replaces also all templated $ENV inside string values.
-	 *
-	 * @param schema - The schema object to apply environment variables to.
-	 * @return The schema object with environment variables applied.
-	 */
-	public parseEnv<T extends TObject>(schema: T): Static<T> {
-		if (this.cacheEnv.has(schema)) {
-			return this.cacheEnv.get(schema) as Static<T>;
-		}
-
-		const config = this.parse(schema, this.env) as Record<string, any>;
-
-		for (const key in config) {
-			if (typeof config[key] === "string") {
-				for (const env in config) {
-					config[key] = config[key].replace(
-						new RegExp(`\\$${env}`, "gim"),
-						config[env],
-					);
-				}
-			}
-		}
-
-		this.cacheEnv.set(schema, config);
-
-		return config as Static<T>;
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * Dump the current dependency graph of the App.
-	 *
-	 * This method returns a record where the keys are the names of the services.
-	 */
-	public graph(): Record<
-		string,
-		{ from: string[]; as?: string[]; module?: string }
-	> {
-		for (const [key] of this.substitutions.entries()) {
-			if (!this.has(key)) {
-				this.inject(key);
-			}
-		}
-
-		const graph: Record<
-			string,
-			{ from: string[]; as?: string[]; module?: string }
-		> = {};
-
-		for (const [provide, { parents }] of this.registry.entries()) {
-			graph[provide.name] = {
-				from: parents.filter((it) => !!it).map((it) => it.name),
-			};
-
-			const aliases = this.substitutions
-				.entries()
-				.filter((it) => it[1].use === provide)
-				.map((it) => it[0].name)
-				.toArray();
-
-			if (aliases.length) {
-				graph[provide.name].as = aliases;
-			}
-
-			const module = Module.of(provide);
-			if (module) {
-				graph[provide.name].module = module.name;
-			}
-		}
-
-		return graph;
-	}
-
-	public descriptors<TDescriptor extends Descriptor>(
-		factory:
-			| {
-					[KIND]: InstantiableClass<TDescriptor>;
-			  }
-			| string,
-	): Array<TDescriptor> {
-		if (typeof factory === "string") {
-			const key1 = factory.toLowerCase().replace("$", "");
-			const key2 = `${key1}descriptor`;
-			for (const [key, value] of this.descriptorRegistry.entries()) {
-				const name = key.name.toLowerCase();
-				if (name === key1 || name === key2) {
-					return value as Array<TDescriptor>;
-				}
-			}
-			return [];
-		}
-		return (this.descriptorRegistry.get(factory[KIND]) ??
-			[]) as Array<TDescriptor>;
-	}
-
-	// -------------------------------------------------------------------------------------------------------------------
-
-	protected new<T extends object>(service: Service<T>, args: any[] = []): T {
-		// we keep a tree of dependencies to detect circular dependencies
-		// it's also useful for cleaning are global cursor
-		this.pendingInstantiations.push(service);
-
-		//
-		// we use a global cursor to store the current context and definition
-		// as new() is synchronous, there is no worry to do that
-		//
-		__alephaRef.context = this;
-		__alephaRef.definition = service;
-
-		const instance: T = new (service as InstantiableClass<any>)(...args);
-
-		const obj = instance as unknown as Record<string, any>;
-		for (const [key, value] of Object.entries(obj)) {
-			if (value instanceof Descriptor) {
-				this.processDescriptor(value, key);
-			}
-		}
-
-		this.pendingInstantiations.pop();
-
-		// tree is empty, now we can clean the global cursor
-		if (this.pendingInstantiations.length === 0) {
-			__alephaRef.context = undefined;
-		}
-
-		__alephaRef.definition =
-			this.pendingInstantiations[this.pendingInstantiations.length - 1];
-
-		return instance;
-	}
-
-	protected processDescriptor(value: Descriptor, propertyKey = "") {
-		value.config.propertyKey = propertyKey;
-		(value as any).onInit();
-
-		const kind = value.constructor as Service;
-		const list = this.descriptorRegistry.get(kind) ?? [];
-		this.descriptorRegistry.set(kind, [...list, value]);
-	}
+  /**
+   * Creates a new instance of the Alepha container with some helpers:
+   *
+   * - merges `process.env` with the provided state.env when available.
+   * - populates the test hooks for Vitest or Jest environments when available.
+   *
+   * If you are not interested about these helpers, you can use the constructor directly.
+   */
+  public static create(state: Partial<State> = {}): Alepha {
+    // merge process.env with the state.env
+    if (typeof process === "object" && typeof process.env === "object") {
+      state.env = {
+        ...state.env,
+        ...process.env,
+      };
+    }
+
+    const alepha = new Alepha(state);
+
+    if (alepha.isTest()) {
+      // inject global hooks for testing purposes
+      // > for vitest, { globals: true } is required in the config
+      const g = globalThis as any;
+      const beforeAll = state.beforeAll ?? g.beforeAll;
+      const afterAll = state.afterAll ?? g.afterAll;
+      const afterEach = state.afterEach ?? g.afterEach;
+      const onTestFinished = state.onTestFinished ?? g.onTestFinished;
+
+      beforeAll?.(() => alepha.start());
+      afterAll?.(() => alepha.stop());
+
+      try {
+        onTestFinished?.(() => alepha.stop());
+      } catch (_error) {
+        // ignore
+      }
+
+      alepha.state
+        .set("beforeAll", beforeAll)
+        .set("afterAll", afterAll)
+        .set("afterEach", afterEach)
+        .set("onTestFinished", onTestFinished);
+    }
+
+    return alepha;
+  }
+
+  /**
+   *  List of all services + how they are provided.
+   */
+  protected registry: Map<Service, ServiceDefinition> = new Map();
+
+  /**
+   * Flag indicating whether the App won't accept any further changes.
+   * Pass to true when #start() is called.
+   */
+  protected locked = false;
+
+  /**
+   * True if the App has been configured.
+   */
+  protected configured = false;
+
+  /**
+   * True if the App has started.
+   */
+  protected started = false;
+
+  /**
+   * True if the App is ready.
+   */
+  protected ready = false;
+
+  /**
+   * A promise that resolves when the App has started.
+   */
+  protected starting?: PromiseWithResolvers<this>;
+
+  /**
+   * The current state of the App.
+   *
+   * It contains the environment variables, logger, and other state-related properties.
+   *
+   * You can declare your own state properties by extending the `State` interface.
+   *
+   * ```ts
+   * declare module "@alepha/core" {
+   *   interface State {
+   *     myCustomValue: string;
+   *   }
+   * }
+   * ```
+   *
+   * Same story for the `Env` interface.
+   * ```ts
+   * declare module "@alepha/core" {
+   *   interface Env {
+   *     readonly myCustomValue: string;
+   *   }
+   * }
+   * ```
+   *
+   * State values can be function or primitive values.
+   * However, all .env variables must serializable to JSON.
+   */
+  protected store: State;
+
+  /**
+   * During the instantiation process, we keep a list of pending instantiations.
+   * > It allows us to detect circular dependencies.
+   */
+  protected pendingInstantiations: Service[] = [];
+
+  /**
+   * Cache for environment variables.
+   * > It allows us to avoid parsing the same schema multiple times.
+   */
+  protected cacheEnv: Map<TSchema, any> = new Map();
+
+  /**
+   * Cache for TypeBox type checks.
+   * > It allows us to avoid compiling the same schema multiple times.
+   */
+  protected cacheTypeCheck: Map<TSchema, Validator> = new Map();
+
+  /**
+   * List of modules that are registered in the container.
+   *
+   * Modules are used to group services and provide a way to register them in the container.
+   */
+  protected modules: Array<Module> = [];
+
+  protected substitutions = new Map<Service, { use: Service }>();
+
+  protected configurations = new Map<Service, object>();
+
+  protected descriptorRegistry = new Map<
+    Service<Descriptor>,
+    Array<Descriptor>
+  >();
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Node.js feature that allows to store context across asynchronous calls.
+   *
+   * This is used for logging, tracing, and other context-related features.
+   *
+   * Mocked for browser environments.
+   */
+  public readonly context = new AlsProvider();
+
+  /**
+   * Event manager to handle lifecycle events and custom events.
+   */
+  public readonly events = new EventManager(() => this.log);
+
+  /**
+   * State manager to store arbitrary values.
+   */
+  public readonly state = new StateManager<State>(this.events, this.context);
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Get logger instance.
+   */
+  public get log(): LoggerInterface | undefined {
+    return this.state.get("log");
+  }
+
+  /**
+   * The environment variables for the App.
+   */
+  public get env(): Readonly<Env> {
+    return this.store.env ?? {};
+  }
+
+  constructor(state: Partial<State> = {}) {
+    this.store = state;
+    this.events.on("configure", () => {
+      if (this.configured) {
+        throw new AlephaError("App is already configured");
+      }
+    });
+  }
+
+  /**
+   * True when start() is called.
+   *
+   * -> No more services can be added, it's over, bye!
+   */
+  public isLocked(): boolean {
+    return this.locked;
+  }
+
+  /**
+   * Returns whether the App is configured.
+   *
+   * It means that Alepha#configure() has been called.
+   *
+   * > By default, configure() is called automatically when start() is called, but you can also call it manually.
+   */
+  public isConfigured(): boolean {
+    return this.configured;
+  }
+
+  /**
+   * Returns whether the App has started.
+   *
+   * It means that #start() has been called but maybe not all services are ready.
+   */
+  public isStarted(): boolean {
+    return this.started;
+  }
+
+  /**
+   * True if the App is ready. It means that Alepha is started AND ready() hook has beed called.
+   */
+  public isReady(): boolean {
+    return this.ready;
+  }
+
+  /**
+   * True if the App is running in a browser environment.
+   */
+  public isBrowser(): boolean {
+    return typeof window !== "undefined"; // pretty cheap check
+  }
+
+  /**
+   * Returns whether the App is running in Vite dev mode.
+   */
+  public isViteDev(): boolean {
+    if (this.isBrowser()) {
+      return false;
+    }
+
+    return !!this.env.VITE_ALEPHA_DEV || !!process.env.VITE_ALEPHA_DEV;
+  }
+
+  /**
+   * Returns whether the App is running in a serverless environment.
+   */
+  public isServerless(): boolean | "vercel" {
+    if (this.isBrowser()) {
+      return false;
+    }
+
+    if (this.env.VERCEL_REGION || process.env.VERCEL_REGION) {
+      return "vercel";
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns whether the App is in test mode. (Running in a test environment)
+   *
+   * > This is automatically set when running tests with Jest or Vitest.
+   */
+  public isTest(): boolean {
+    const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
+    return env === "test";
+  }
+
+  /**
+   * Returns whether the App is in production mode. (Running in a production environment)
+   *
+   * > This is automatically set by Vite or Vercel. However, you have to set it manually when running Docker apps.
+   */
+  public isProduction(): boolean {
+    const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
+    return env === "prod" || env === "production";
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Starts the App.
+   *
+   * - Lock any further changes to the container.
+   * - Run "configure" hook for all services. Descriptors will be processed.
+   * - Run "start" hook for all services. Providers will connect/listen/...
+   * - Run "ready" hook for all services. This is the point where the App is ready to serve requests.
+   *
+   * @return A promise that resolves when the App has started.
+   */
+  public async start(): Promise<this> {
+    if (this.ready) {
+      this.log?.debug("App is already started, skipping...");
+      return this;
+    }
+
+    // make sure that start is called only once
+    if (this.starting) {
+      this.log?.warn("App is already starting, waiting for it to finish...");
+      return this.starting.promise;
+    }
+
+    this.starting = Promise.withResolvers();
+
+    const now = Date.now();
+
+    this.log?.info("Starting App...");
+
+    for (const [key] of this.substitutions.entries()) {
+      this.inject(key);
+    }
+
+    const target = this.state.get("target");
+    if (target) {
+      this.registry = new Map();
+      this.descriptorRegistry = new Map();
+      this.with(target);
+    }
+
+    this.locked = true;
+
+    await this.events.emit("configure", this, { log: true });
+
+    this.configured = true;
+
+    await this.events.emit("start", this, { log: true });
+
+    this.started = true;
+
+    await this.events.emit("ready", this, { log: true });
+
+    this.log?.info(`App is now ready [${Date.now() - now}ms]`);
+
+    this.ready = true;
+
+    this.starting.resolve(this);
+    this.starting = undefined;
+
+    return this;
+  }
+
+  /**
+   * Stops the App.
+   *
+   * - Run "stop" hook for all services.
+   *
+   * Stop will NOT reset the container.
+   * Stop will NOT unlock the container.
+   *
+   * > Stop is used to gracefully shut down the application, nothing more. There is no "restart".
+   *
+   * @return A promise that resolves when the App has stopped.
+   */
+  public async stop(): Promise<void> {
+    if (!this.started) {
+      return;
+    }
+
+    this.log?.info("Stopping App...");
+    await this.events.emit("stop", this, { reverse: true, log: true });
+    this.log?.info("App is now off");
+
+    this.started = false;
+    this.ready = false;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Check if entry is registered in the container.
+   */
+  public has(
+    entry: ServiceEntry,
+    opts: {
+      /**
+       * Check if the entry is registered in the pending instantiation stack.
+       *
+       * @default true
+       */
+      inStack?: boolean;
+      /**
+       * Check if the entry is registered in the container registry.
+       *
+       * @default true
+       */
+      inRegistry?: boolean;
+      /**
+       * Check if the entry is registered in the substitutions.
+       *
+       * @default true
+       */
+      inSubstitutions?: boolean;
+      /**
+       * Where to look for registered services.
+       *
+       * @default this.registry
+       */
+      registry?: Map<Service, ServiceDefinition>;
+    } = {},
+  ): boolean {
+    if (entry === Alepha) {
+      return true;
+    }
+
+    const {
+      inStack = true,
+      inRegistry = true,
+      inSubstitutions = true,
+      registry = this.registry,
+    } = opts;
+
+    const { provide } =
+      typeof entry === "object" && "provide" in entry
+        ? entry
+        : { provide: entry };
+
+    if (inSubstitutions) {
+      const substitute = this.substitutions.get(provide);
+      if (substitute) {
+        return true;
+      }
+    }
+
+    if (inRegistry) {
+      const match = registry.get(provide);
+      if (match) {
+        return true;
+      }
+    }
+
+    if (inStack) {
+      const substitute = this.substitutions.get(provide)?.use;
+      if (substitute && this.pendingInstantiations.includes(substitute)) {
+        return true;
+      }
+
+      return this.pendingInstantiations.includes(provide);
+    }
+
+    return false;
+  }
+
+  /**
+   * Registers the specified service in the container.
+   *
+   * - If the service is ALREADY registered, the method does nothing.
+   * - If the service is NOT registered, a new instance is created and registered.
+   *
+   * Method is chainable, so you can register multiple services in a single call.
+   *
+   * > ServiceEntry allows to provide a service **substitution** feature.
+   *
+   * @example
+   * ```ts
+   * class A { value = "a"; }
+   * class B { value = "b"; }
+   * class M { a = $inject(A); }
+   *
+   * Alepha.create().with({ provide: A, use: B }).get(M).a.value; // "b"
+   * ```
+   *
+   * > **Substitution** is an advanced feature that allows you to replace a service with another service.
+   * > It's useful for testing or for providing different implementations of a service.
+   * > If you are interested in configuring a service, use Alepha#configure() instead.
+   *
+   * @param serviceEntry - The service to register in the container.
+   * @param configure - Optional configuration object to merge with the service's options.
+   * @return Current instance of Alepha.
+   */
+  public with<T extends { options?: object } & object>(
+    serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
+    configure?: Partial<T["options"]>,
+  ): this {
+    const entry: ServiceEntry<T> =
+      "default" in serviceEntry ? serviceEntry.default : serviceEntry;
+
+    // just check if the entry is not present in the pending instantiation stack
+    // Alepha#get will handle the rest
+    if (
+      this.has(entry, {
+        inSubstitutions: false,
+        inRegistry: false,
+      })
+    ) {
+      return this;
+    }
+
+    const isSubstitution = typeof entry === "object";
+    if (isSubstitution) {
+      if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
+        if (this.started) {
+          throw new ContainerLockedError();
+        }
+
+        // inherit of module, if service has no module
+        if (
+          MODULE in entry.provide &&
+          typeof entry.provide[MODULE] === "function"
+        ) {
+          (entry.use as WithModule)[MODULE] ??= entry.provide[MODULE];
+        }
+
+        this.substitutions.set(entry.provide, {
+          use: entry.use,
+        });
+      } else if (!entry.optional) {
+        throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
+      }
+      return this;
+    }
+
+    if (configure && typeof entry === "function") {
+      this.configure(entry, configure);
+    }
+
+    this.inject(entry);
+
+    return this;
+  }
+
+  /**
+   * Get an instance of the specified service from the container.
+   *
+   * @see {@link InjectOptions} for the available options.
+   */
+  public inject<T extends object>(
+    service: Service<T>,
+    opts: InjectOptions<T> = {},
+  ): T {
+    const lifetime = opts.lifetime ?? "singleton";
+    const parent =
+      opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
+
+    const transient = lifetime === "transient";
+    const registry =
+      lifetime === "scoped"
+        ? (this.context.get<Map<Service, ServiceDefinition>>("registry") ??
+          this.registry)
+        : this.registry;
+
+    // If the requested type is the container, the current instance is returned.
+    if ((service as any) === Alepha) {
+      return this as any;
+    }
+
+    const substitute = this.substitutions.get(service);
+    if (substitute) {
+      return this.inject(substitute.use, {
+        parent,
+        lifetime,
+      });
+    }
+
+    const index = this.pendingInstantiations.indexOf(service);
+    if (index !== -1 && !transient) {
+      throw new CircularDependencyError(
+        service.name,
+        this.pendingInstantiations.slice(0, index).map((it) => it.name),
+      );
+    }
+
+    if (!transient) {
+      // the requested type is searched in the container
+      const match = registry.get(service);
+
+      // [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
+      if (!match && this.isViteDev()) {
+        for (const [_, definition] of registry.entries()) {
+          if (definition.instance?.constructor.name === service.name) {
+            this.log?.debug(`Hot reload detected for ${service.name}`);
+            const instance: T = this.new(service, opts.args);
+            definition.instance = instance;
+            return instance;
+          }
+        }
+      }
+
+      if (match) {
+        if (!match.parents.includes(parent) && parent !== service) {
+          match.parents.push(parent);
+        }
+
+        return match.instance;
+      }
+
+      if (this.started) {
+        throw new ContainerLockedError(
+          `Container is locked. No more services can be added. ${parent?.name} -> ${service.name}`,
+        );
+      }
+    }
+
+    const module = (service as WithModule)[MODULE];
+    if (module && typeof module === "function") {
+      this.with(module);
+    }
+
+    // check if service has been registered by a module
+    if (this.has(service, { registry }) && !transient) {
+      // if the service is already registered, we just return the instance
+      return this.inject(service, { parent, lifetime });
+    }
+
+    const instance: T = this.new(service, opts.args);
+
+    // [feature]: configurations - update .options: object of the service instance
+    const configuration = this.configurations.get(service);
+    if (
+      configuration &&
+      "options" in instance &&
+      instance.options &&
+      typeof instance.options === "object"
+    ) {
+      Object.assign(instance.options, configuration);
+    }
+
+    const definition: ServiceDefinition<T> = {
+      parents: [parent],
+      instance,
+    };
+
+    if (!transient) {
+      registry.set(service, definition);
+    }
+
+    // [feature]: modules - it's just a way to group services together
+    if (instance instanceof Module) {
+      this.modules.push(instance);
+
+      const parent = __alephaRef.parent;
+
+      // propagate the current module
+      __alephaRef.parent = instance.constructor as Service;
+
+      instance.register(this);
+
+      // restore the previous $get context
+      __alephaRef.parent = parent;
+    }
+
+    return instance;
+  }
+
+  /**
+   * Configures the specified service with the provided state.
+   * If service is not registered, it will do nothing.
+   *
+   * It's recommended to use this method on the `configure` hook.
+   * @example
+   * ```ts
+   * class AppConfig {
+   *   configure = $hook({
+   *     name: "configure",
+   *     handler: (a) => {
+   *       a.configure(MyProvider, { some: "data" });
+   *     }
+   *   })
+   * }
+   * ```
+   */
+  public configure<T extends { options?: object }>(
+    service: Service<T>,
+    state: Partial<T["options"]>,
+  ): this {
+    if (this.has(service)) {
+      const instance = this.inject(service);
+      if (
+        "options" in instance &&
+        instance.options &&
+        typeof instance.options === "object"
+      ) {
+        Object.assign(instance.options, state);
+      }
+    } else {
+      this.configurations.set(service, state);
+    }
+
+    return this;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Casts the given value to the specified schema.
+   *
+   * It uses the TypeBox library to validate the value against the schema.
+   */
+  public parse<T extends TSchema>(
+    schema: T,
+    value?: unknown,
+    opts: {
+      /**
+       * Clone the value before parsing.
+       * @default true
+       */
+      clone?: boolean;
+      /**
+       * Apply default values defined in the schema.
+       * @default true
+       */
+      default?: boolean;
+      /**
+       * Remove all values not defined in the schema.
+       * @default true
+       */
+      clean?: boolean;
+      /**
+       * Try to cast/convert some data based on the schema.
+       * @default true
+       */
+      convert?: boolean;
+      /**
+       * Convert `null` to `undefined`
+       * @default true
+       */
+      convertNullToUndefined?: boolean;
+      /**
+       * Prepare value after being deserialized.
+       * @default true
+       */
+      check?: boolean;
+    } = {},
+  ): Static<T> {
+    const exists = this.cacheTypeCheck.get(schema);
+    const vl = exists ?? Compile(schema);
+    if (!exists) {
+      this.cacheTypeCheck.set(schema, vl);
+    }
+
+    let alreadyCloned = false;
+    if (
+      (t.schema.isObject(schema) || t.schema.isArray(schema)) &&
+      typeof value === "string"
+    ) {
+      try {
+        value = JSON.parse(value);
+        alreadyCloned = true;
+      } catch {
+        // ignore json parsing error and let typebox handle it
+      }
+    }
+
+    value =
+      typeof value === "object" && opts.clone !== false && !alreadyCloned
+        ? // do NOT use structuredClone() or TypeBox v.Clone() here
+          // we need to remove also all functions, undefined, ...
+          // JSON is FINE for small objects
+          // REMEMBER: alepha.parse is JSON safe, so no Date, Map, Set, BigInt ...
+          JSON.parse(JSON.stringify(value))
+        : value;
+
+    if (opts.clean !== false) {
+      value = vl.Clean(value);
+
+      if (typeof value === "object") {
+        for (const key in value) {
+          if ((value as Record<any, any>)[key] === undefined) {
+            delete (value as Record<any, any>)[key];
+          }
+        }
+      }
+    }
+
+    if (opts.default !== false) {
+      value = vl.Default(value);
+    }
+
+    if (opts.convertNullToUndefined !== false) {
+      value = nullToUndefined(schema, value);
+    }
+
+    if (opts.convert !== false) {
+      value = vl.Convert(value);
+    }
+
+    if (opts.check !== false) {
+      const valid = vl.Check(value);
+      if (!valid) {
+        const error = vl.Errors(value)?.[0];
+        if (error) {
+          throw new TypeBoxError(error, value);
+        }
+      }
+    }
+
+    return value as Static<T>;
+  }
+
+  /**
+   * Applies environment variables to the provided schema and state object.
+   *
+   * It replaces also all templated $ENV inside string values.
+   *
+   * @param schema - The schema object to apply environment variables to.
+   * @return The schema object with environment variables applied.
+   */
+  public parseEnv<T extends TObject>(schema: T): Static<T> {
+    if (this.cacheEnv.has(schema)) {
+      return this.cacheEnv.get(schema) as Static<T>;
+    }
+
+    const config = this.parse(schema, this.env) as Record<string, any>;
+
+    for (const key in config) {
+      if (typeof config[key] === "string") {
+        for (const env in config) {
+          config[key] = config[key].replace(
+            new RegExp(`\\$${env}`, "gim"),
+            config[env],
+          );
+        }
+      }
+    }
+
+    this.cacheEnv.set(schema, config);
+
+    return config as Static<T>;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Dump the current dependency graph of the App.
+   *
+   * This method returns a record where the keys are the names of the services.
+   */
+  public graph(): Record<
+    string,
+    { from: string[]; as?: string[]; module?: string }
+  > {
+    for (const [key] of this.substitutions.entries()) {
+      if (!this.has(key)) {
+        this.inject(key);
+      }
+    }
+
+    const graph: Record<
+      string,
+      { from: string[]; as?: string[]; module?: string }
+    > = {};
+
+    for (const [provide, { parents }] of this.registry.entries()) {
+      graph[provide.name] = {
+        from: parents.filter((it) => !!it).map((it) => it.name),
+      };
+
+      const aliases = this.substitutions
+        .entries()
+        .filter((it) => it[1].use === provide)
+        .map((it) => it[0].name)
+        .toArray();
+
+      if (aliases.length) {
+        graph[provide.name].as = aliases;
+      }
+
+      const module = Module.of(provide);
+      if (module) {
+        graph[provide.name].module = module.name;
+      }
+    }
+
+    return graph;
+  }
+
+  public descriptors<TDescriptor extends Descriptor>(
+    factory:
+      | {
+          [KIND]: InstantiableClass<TDescriptor>;
+        }
+      | string,
+  ): Array<TDescriptor> {
+    if (typeof factory === "string") {
+      const key1 = factory.toLowerCase().replace("$", "");
+      const key2 = `${key1}descriptor`;
+      for (const [key, value] of this.descriptorRegistry.entries()) {
+        const name = key.name.toLowerCase();
+        if (name === key1 || name === key2) {
+          return value as Array<TDescriptor>;
+        }
+      }
+      return [];
+    }
+    return (this.descriptorRegistry.get(factory[KIND]) ??
+      []) as Array<TDescriptor>;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected new<T extends object>(service: Service<T>, args: any[] = []): T {
+    // we keep a tree of dependencies to detect circular dependencies
+    // it's also useful for cleaning are global cursor
+    this.pendingInstantiations.push(service);
+
+    //
+    // we use a global cursor to store the current context and definition
+    // as new() is synchronous, there is no worry to do that
+    //
+    __alephaRef.context = this;
+    __alephaRef.definition = service;
+
+    const instance: T = new (service as InstantiableClass<any>)(...args);
+
+    const obj = instance as unknown as Record<string, any>;
+    for (const [key, value] of Object.entries(obj)) {
+      if (value instanceof Descriptor) {
+        this.processDescriptor(value, key);
+      }
+    }
+
+    this.pendingInstantiations.pop();
+
+    // tree is empty, now we can clean the global cursor
+    if (this.pendingInstantiations.length === 0) {
+      __alephaRef.context = undefined;
+    }
+
+    __alephaRef.definition =
+      this.pendingInstantiations[this.pendingInstantiations.length - 1];
+
+    return instance;
+  }
+
+  protected processDescriptor(value: Descriptor, propertyKey = "") {
+    value.config.propertyKey = propertyKey;
+    (value as any).onInit();
+
+    const kind = value.constructor as Service;
+    const list = this.descriptorRegistry.get(kind) ?? [];
+    this.descriptorRegistry.set(kind, [...list, value]);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Hook<T extends keyof Hooks = any> {
-	caller?: Service;
-	priority?: "first" | "last";
-	callback: (payload: Hooks[T]) => Async<void>;
+  caller?: Service;
+  priority?: "first" | "last";
+  callback: (payload: Hooks[T]) => Async<void>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1093,106 +1093,106 @@ export interface Hook<T extends keyof Hooks = any> {
  * This is how we store services in the Alepha container.
  */
 interface ServiceDefinition<T extends object = any> {
-	/**
-	 * The instance of the class or type definition.
-	 * Mostly used for caching / singleton but can be used for other purposes like forcing the instance.
-	 */
-	instance: T;
+  /**
+   * The instance of the class or type definition.
+   * Mostly used for caching / singleton but can be used for other purposes like forcing the instance.
+   */
+  instance: T;
 
-	/**
-	 * List of classes which use this class.
-	 */
-	parents: Array<Service | null>;
+  /**
+   * List of classes which use this class.
+   */
+  parents: Array<Service | null>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Env {
-	[key: string]: string | boolean | number | undefined;
+  [key: string]: string | boolean | number | undefined;
 
-	/**
-	 * Optional environment variable that indicates the current environment.
-	 */
-	NODE_ENV?: "dev" | "test" | "production";
+  /**
+   * Optional environment variable that indicates the current environment.
+   */
+  NODE_ENV?: "dev" | "test" | "production";
 
-	/**
-	 * Optional name of the application.
-	 */
-	APP_NAME?: string;
+  /**
+   * Optional name of the application.
+   */
+  APP_NAME?: string;
 
-	/**
-	 * Optional root module name.
-	 */
-	MODULE_NAME?: string;
+  /**
+   * Optional root module name.
+   */
+  MODULE_NAME?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface State {
-	log?: LoggerInterface;
-	env?: Readonly<Env>;
+  log?: LoggerInterface;
+  env?: Readonly<Env>;
 
-	/**
-	 * If defined, the Alepha container will only register this service and its dependencies.
-	 */
-	target?: Service;
+  /**
+   * If defined, the Alepha container will only register this service and its dependencies.
+   */
+  target?: Service;
 
-	// test hooks
-	beforeAll?: (run: any) => any;
-	afterAll?: (run: any) => any;
-	afterEach?: (run: any) => any;
-	onTestFinished?: (run: any) => any;
+  // test hooks
+  beforeAll?: (run: any) => any;
+  afterAll?: (run: any) => any;
+  afterEach?: (run: any) => any;
+  onTestFinished?: (run: any) => any;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Hooks {
-	echo: any; // for testing purposes
+  echo: any; // for testing purposes
 
-	/**
-	 * Triggered during the configuration phase. Before the start phase.
-	 */
-	configure: Alepha;
+  /**
+   * Triggered during the configuration phase. Before the start phase.
+   */
+  configure: Alepha;
 
-	/**
-	 * Triggered during the start phase. When `Alepha#start()` is called.
-	 */
-	start: Alepha;
+  /**
+   * Triggered during the start phase. When `Alepha#start()` is called.
+   */
+  start: Alepha;
 
-	/**
-	 * Triggered during the ready phase. After the start phase.
-	 */
-	ready: Alepha;
+  /**
+   * Triggered during the ready phase. After the start phase.
+   */
+  ready: Alepha;
 
-	/**
-	 * Triggered during the stop phase.
-	 *
-	 * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application. (@see `run()` method)
-	 *
-	 */
-	stop: Alepha;
+  /**
+   * Triggered during the stop phase.
+   *
+   * - Stop should be called after a SIGINT or SIGTERM signal in order to gracefully shutdown the application. (@see `run()` method)
+   *
+   */
+  stop: Alepha;
 
-	/**
-	 * Triggered when a state value is mutated.
-	 */
-	"state:mutate": {
-		/**
-		 * The key of the state that was mutated.
-		 */
-		key: keyof State;
+  /**
+   * Triggered when a state value is mutated.
+   */
+  "state:mutate": {
+    /**
+     * The key of the state that was mutated.
+     */
+    key: keyof State;
 
-		/**
-		 * The new value of the state.
-		 */
-		value: any;
+    /**
+     * The new value of the state.
+     */
+    value: any;
 
-		/**
-		 * The previous value of the state.
-		 */
-		prevValue: any;
-	};
+    /**
+     * The previous value of the state.
+     */
+    prevValue: any;
+  };
 }
 
 export interface Configurable<T extends object = any> {
-	options: T;
+  options: T;
 }

@@ -16,6 +16,6 @@ export * from "./providers/ServerMetricsProvider.ts";
  * @module alepha.server.metrics
  */
 export const AlephaServerMetrics = $module({
-	name: "alepha.server.metrics",
-	services: [AlephaServer, ServerMetricsProvider],
+  name: "alepha.server.metrics",
+  services: [AlephaServer, ServerMetricsProvider],
 });

@@ -15,15 +15,15 @@ export * from "./providers/NodemailerEmailProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface Hooks {
-		"email:sending": {
-			to: string | string[];
-			template: string;
-			variables: Record<string, unknown>;
-			provider: EmailProvider;
-			abort(): void;
-		};
-	}
+  interface Hooks {
+    "email:sending": {
+      to: string | string[];
+      template: string;
+      variables: Record<string, unknown>;
+      provider: EmailProvider;
+      abort(): void;
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -39,17 +39,17 @@ declare module "@alepha/core" {
  * @module alepha.email
  */
 export const AlephaEmail = $module({
-	name: "alepha.email",
-	services: [
-		EmailProvider,
-		MemoryEmailProvider,
-		LocalEmailProvider,
-		NodemailerEmailProvider,
-	],
-	register: (alepha) =>
-		alepha.with({
-			optional: true,
-			provide: EmailProvider,
-			use: MemoryEmailProvider,
-		}),
+  name: "alepha.email",
+  services: [
+    EmailProvider,
+    MemoryEmailProvider,
+    LocalEmailProvider,
+    NodemailerEmailProvider,
+  ],
+  register: (alepha) =>
+    alepha.with({
+      optional: true,
+      provide: EmailProvider,
+      use: MemoryEmailProvider,
+    }),
 });

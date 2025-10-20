@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 
 import {
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-	writeFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,82 +23,82 @@ const OUTPUT_DIR = join(__dirname, "../dist/public");
 const OUTPUT_FILE = join(OUTPUT_DIR, "llms.txt");
 
 function getAllMarkdownFiles(dir: string): string[] {
-	try {
-		const files = readdirSync(dir);
-		return files
-			.filter((file) => extname(file) === ".md")
-			.map((file) => join(dir, file))
-			.sort(); // Sort for consistent order
-	} catch (error) {
-		console.error(`Error reading directory ${dir}:`, error);
-		return [];
-	}
+  try {
+    const files = readdirSync(dir);
+    return files
+      .filter((file) => extname(file) === ".md")
+      .map((file) => join(dir, file))
+      .sort(); // Sort for consistent order
+  } catch (error) {
+    console.error(`Error reading directory ${dir}:`, error);
+    return [];
+  }
 }
 
 function readMarkdownContent(filePath: string): string {
-	try {
-		const content = readFileSync(filePath, "utf-8");
-		const relativePath = filePath.replace(`${DOCS_DIR}/`, "");
+  try {
+    const content = readFileSync(filePath, "utf-8");
+    const relativePath = filePath.replace(`${DOCS_DIR}/`, "");
 
-		// Add file header for context
-		return `\n# ${relativePath}\n\n${content}\n\n---\n`;
-	} catch (error) {
-		console.error(`Error reading file ${filePath}:`, error);
-		return "";
-	}
+    // Add file header for context
+    return `\n# ${relativePath}\n\n${content}\n\n---\n`;
+  } catch (error) {
+    console.error(`Error reading file ${filePath}:`, error);
+    return "";
+  }
 }
 
 function main() {
-	console.log("🔍 Scanning for markdown files...");
+  console.log("🔍 Scanning for markdown files...");
 
-	// Check if docs directory exists
-	if (!existsSync(DOCS_DIR)) {
-		console.error(`❌ Docs directory not found: ${DOCS_DIR}`);
-		process.exit(1);
-	}
+  // Check if docs directory exists
+  if (!existsSync(DOCS_DIR)) {
+    console.error(`❌ Docs directory not found: ${DOCS_DIR}`);
+    process.exit(1);
+  }
 
-	// Get all markdown files
-	const markdownFiles = getAllMarkdownFiles(DOCS_DIR);
+  // Get all markdown files
+  const markdownFiles = getAllMarkdownFiles(DOCS_DIR);
 
-	if (markdownFiles.length === 0) {
-		console.warn("⚠️  No markdown files found");
-		return;
-	}
+  if (markdownFiles.length === 0) {
+    console.warn("⚠️  No markdown files found");
+    return;
+  }
 
-	console.log(`📄 Found ${markdownFiles.length} markdown files`);
+  console.log(`📄 Found ${markdownFiles.length} markdown files`);
 
-	// Create output directory if it doesn't exist
-	if (!existsSync(OUTPUT_DIR)) {
-		mkdirSync(OUTPUT_DIR, { recursive: true });
-	}
+  // Create output directory if it doesn't exist
+  if (!existsSync(OUTPUT_DIR)) {
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
 
-	const pkg = readFileSync(join(__dirname, "../package.json"), "utf-8");
-	const { dependencies } = JSON.parse(pkg);
-	const version = dependencies["@alepha/core"];
+  const pkg = readFileSync(join(__dirname, "../package.json"), "utf-8");
+  const { dependencies } = JSON.parse(pkg);
+  const version = dependencies["@alepha/core"];
 
-	// Concatenate all markdown content
-	let concatenatedContent = `# Alepha Framework Documentation\n\nThis file contains all documentation for the Alepha framework, concatenated for LLM context.\n\nLatest version: ${version}\nGenerated on: ${new Date().toISOString()}\n\n---\n`;
+  // Concatenate all markdown content
+  let concatenatedContent = `# Alepha Framework Documentation\n\nThis file contains all documentation for the Alepha framework, concatenated for LLM context.\n\nLatest version: ${version}\nGenerated on: ${new Date().toISOString()}\n\n---\n`;
 
-	const rules = readFileSync(join(__dirname, "../public/rules.md"), "utf-8");
-	concatenatedContent += `\n# Important Guidelines\n\n${rules}\n\n---\n`;
+  const rules = readFileSync(join(__dirname, "../public/rules.md"), "utf-8");
+  concatenatedContent += `\n# Important Guidelines\n\n${rules}\n\n---\n`;
 
-	for (const filePath of markdownFiles) {
-		console.log(`📖 Reading: ${filePath.replace(`${DOCS_DIR}/`, "")}`);
-		concatenatedContent += readMarkdownContent(filePath);
-	}
+  for (const filePath of markdownFiles) {
+    console.log(`📖 Reading: ${filePath.replace(`${DOCS_DIR}/`, "")}`);
+    concatenatedContent += readMarkdownContent(filePath);
+  }
 
-	// Write the concatenated content
-	try {
-		writeFileSync(OUTPUT_FILE, concatenatedContent, "utf-8");
-		console.log(`✅ Successfully created: ${OUTPUT_FILE}`);
-		console.log(
-			`📊 Total content length: ${concatenatedContent.length} characters`,
-		);
-		console.log(`📁 Files processed: ${markdownFiles.length}`);
-	} catch (error) {
-		console.error("❌ Error writing output file:", error);
-		process.exit(1);
-	}
+  // Write the concatenated content
+  try {
+    writeFileSync(OUTPUT_FILE, concatenatedContent, "utf-8");
+    console.log(`✅ Successfully created: ${OUTPUT_FILE}`);
+    console.log(
+      `📊 Total content length: ${concatenatedContent.length} characters`,
+    );
+    console.log(`📁 Files processed: ${markdownFiles.length}`);
+  } catch (error) {
+    console.error("❌ Error writing output file:", error);
+    process.exit(1);
+  }
 }
 
 main();

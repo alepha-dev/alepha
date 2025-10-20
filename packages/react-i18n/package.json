@@ -1,51 +1,51 @@
 {
-	"name": "@alepha/react-i18n",
-	"description": "Internationalization (i18n) support for React applications using Alepha.",
-	"version": "0.10.6",
-	"type": "module",
-	"engines": {
-		"node": ">=22.0.0"
-	},
-	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"files": [
-		"dist",
-		"src"
-	],
-	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/logger": "0.10.6",
-		"@alepha/react": "0.10.6",
-		"@alepha/server-cookies": "0.10.6"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.2.6",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0",
-		"tsdown": "^0.15.7",
-		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
-	},
-	"peerDependencies": {
-		"react": "*",
-		"react-dom": "*"
-	},
-	"scripts": {
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts",
-		"check": "tsc",
-		"test": "vitest run"
-	},
-	"homepage": "https://github.com/feunard/alepha",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/feunard/alepha.git"
-	},
-	"keywords": [
-		"alepha",
-		"react",
-		"form",
-		"hooks"
-	]
+  "name": "@alepha/react-i18n",
+  "description": "Internationalization (i18n) support for React applications using Alepha.",
+  "version": "0.10.6",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "@alepha/core": "0.10.6",
+    "@alepha/logger": "0.10.6",
+    "@alepha/react": "0.10.6",
+    "@alepha/server-cookies": "0.10.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tsdown": "^0.15.7",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-dom": "*"
+  },
+  "scripts": {
+    "lint": "biome check --write --unsafe",
+    "build": "tsdown -c ../../tsdown.config.ts",
+    "check": "tsc",
+    "test": "vitest run"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "react",
+    "form",
+    "hooks"
+  ]
 }

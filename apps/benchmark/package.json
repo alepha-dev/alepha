@@ -1,22 +1,22 @@
 {
-	"type": "module",
-	"private": true,
-	"devDependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/server": "0.10.6",
-		"@types/autocannon": "^7.12.7",
-		"autocannon": "^8.0.0",
-		"express": "^5.1.0",
-		"fastify": "^5.6.1",
-		"npm-run-all": "^4.1.5"
-	},
-	"scripts": {
-		"alepha": "node --disable-warning=ExperimentalWarning src/3003-alepha.ts",
-		"alepha-cluster": "node --disable-warning=ExperimentalWarning src/3005-alepha-cluster.ts",
-		"express": "node --disable-warning=ExperimentalWarning src/3001-express.js",
-		"fastify": "node --disable-warning=ExperimentalWarning src/3002-fastify.ts",
-		"raw": "node --disable-warning=ExperimentalWarning src/3004-node.ts",
-		"benchmark": "node --disable-warning=ExperimentalWarning src/run-benchmark.ts",
-		"concurrent": "npm-run-all -p alepha express fastify raw alepha-cluster"
-	}
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@alepha/core": "0.10.6",
+    "@alepha/server": "0.10.6",
+    "@types/autocannon": "^7.12.7",
+    "autocannon": "^8.0.0",
+    "express": "^5.1.0",
+    "fastify": "^5.6.1",
+    "npm-run-all": "^4.1.5"
+  },
+  "scripts": {
+    "alepha": "node --disable-warning=ExperimentalWarning src/3003-alepha.ts",
+    "alepha-cluster": "node --disable-warning=ExperimentalWarning src/3005-alepha-cluster.ts",
+    "express": "node --disable-warning=ExperimentalWarning src/3001-express.js",
+    "fastify": "node --disable-warning=ExperimentalWarning src/3002-fastify.ts",
+    "raw": "node --disable-warning=ExperimentalWarning src/3004-node.ts",
+    "benchmark": "node --disable-warning=ExperimentalWarning src/run-benchmark.ts",
+    "concurrent": "npm-run-all -p alepha express fastify raw alepha-cluster"
+  }
 }

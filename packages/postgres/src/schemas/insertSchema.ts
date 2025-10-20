@@ -12,30 +12,30 @@ import { schema } from "../types/schema.ts";
  * After:  { name: string; age?: number; }
  */
 export type TObjectInsert<T extends TObject> = TObject<{
-	[K in keyof T["properties"]]: T["properties"][K] extends
-		| { [PG_DEFAULT]: any }
-		| { "~optional": true }
-		? TOptional<T["properties"][K]>
-		: T["properties"][K];
+  [K in keyof T["properties"]]: T["properties"][K] extends
+    | { [PG_DEFAULT]: any }
+    | { "~optional": true }
+    ? TOptional<T["properties"][K]>
+    : T["properties"][K];
 }>;
 
 export const insertSchema = <T extends TObject>(obj: T): TObjectInsert<T> => {
-	const newProperties: Record<string, any> = {};
+  const newProperties: Record<string, any> = {};
 
-	for (const key in obj.properties) {
-		const prop = obj.properties[key];
+  for (const key in obj.properties) {
+    const prop = obj.properties[key];
 
-		if (PG_DEFAULT in prop) {
-			newProperties[key] = t.optional(prop);
-		} else {
-			newProperties[key] = prop;
-		}
-	}
+    if (PG_DEFAULT in prop) {
+      newProperties[key] = t.optional(prop);
+    } else {
+      newProperties[key] = prop;
+    }
+  }
 
-	return t.object(
-		newProperties,
-		"options" in schema && typeof schema.options === "object"
-			? { ...schema.options }
-			: {},
-	) as TObjectInsert<T>;
+  return t.object(
+    newProperties,
+    "options" in schema && typeof schema.options === "object"
+      ? { ...schema.options }
+      : {},
+  ) as TObjectInsert<T>;
 };

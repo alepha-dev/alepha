@@ -13,14 +13,14 @@ export * from "./providers/AzureFileStorageProvider.ts";
  * @module alepha.bucket.azure
  */
 export const AlephaBucketAzure = $module({
-	name: "alepha.bucket.azure",
-	services: [AzureFileStorageProvider],
-	register: (alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: FileStorageProvider,
-				use: AzureFileStorageProvider,
-			})
-			.with(AlephaBucket),
+  name: "alepha.bucket.azure",
+  services: [AzureFileStorageProvider],
+  register: (alepha) =>
+    alepha
+      .with({
+        optional: true,
+        provide: FileStorageProvider,
+        use: AzureFileStorageProvider,
+      })
+      .with(AlephaBucket),
 });

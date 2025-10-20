@@ -1,9 +1,9 @@
 import { PgError } from "./PgError.ts";
 
 export class PgMigrationError extends PgError {
-	readonly name = "PgMigrationError";
+  readonly name = "PgMigrationError";
 
-	constructor(cause?: unknown) {
-		super("Failed to migrate database", cause);
-	}
+  constructor(cause?: unknown) {
+    super("Failed to migrate database", cause);
+  }
 }

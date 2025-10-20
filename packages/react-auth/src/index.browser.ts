@@ -8,9 +8,9 @@ export * from "./index.shared";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaReactAuth = $module({
-	name: "alepha.react.auth",
-	descriptors: [],
-	register: (alepha: Alepha) => {
-		alepha.with(ReactAuth);
-	},
+  name: "alepha.react.auth",
+  descriptors: [],
+  register: (alepha: Alepha) => {
+    alepha.with(ReactAuth);
+  },
 });

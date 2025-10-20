@@ -1,11 +1,11 @@
 import type {
-	TArray,
-	TBoolean,
-	TInteger,
-	TObject,
-	TObjectOptions,
-	TOptionalAdd,
-	TRecord,
+  TArray,
+  TBoolean,
+  TInteger,
+  TObject,
+  TObjectOptions,
+  TOptionalAdd,
+  TRecord,
 } from "@alepha/core";
 import { t } from "@alepha/core";
 
@@ -19,41 +19,41 @@ import { t } from "@alepha/core";
  * @see {@link $repository#paginate}
  */
 export const pageSchema = <T extends TObject | TRecord>(
-	objectSchema: T,
-	options?: TObjectOptions,
+  objectSchema: T,
+  options?: TObjectOptions,
 ): TPage<T> =>
-	t.object(
-		{
-			content: t.array(objectSchema),
-			can: t.object({
-				next: t.boolean(),
-				previous: t.boolean(),
-			}),
-			page: t.object({
-				number: t.int(),
-				size: t.int(),
-				totalElements: t.optional(t.int()),
-			}),
-		},
-		options,
-	);
+  t.object(
+    {
+      content: t.array(objectSchema),
+      can: t.object({
+        next: t.boolean(),
+        previous: t.boolean(),
+      }),
+      page: t.object({
+        number: t.int(),
+        size: t.int(),
+        totalElements: t.optional(t.int()),
+      }),
+    },
+    options,
+  );
 
 export type TPage<T extends TObject | TRecord> = TObject<{
-	content: TArray<T>;
-	can: TObject<{ next: TBoolean; previous: TBoolean }>;
-	page: TObject<{
-		number: TInteger;
-		size: TInteger;
-		totalElements: TOptionalAdd<TInteger>;
-	}>;
+  content: TArray<T>;
+  can: TObject<{ next: TBoolean; previous: TBoolean }>;
+  page: TObject<{
+    number: TInteger;
+    size: TInteger;
+    totalElements: TOptionalAdd<TInteger>;
+  }>;
 }>;
 
 export type Page<T> = {
-	content: T[];
-	can: { next: boolean; previous: boolean };
-	page: {
-		number: number;
-		size: number;
-		totalElements?: number;
-	};
+  content: T[];
+  can: { next: boolean; previous: boolean };
+  page: {
+    number: number;
+    size: number;
+    totalElements?: number;
+  };
 };

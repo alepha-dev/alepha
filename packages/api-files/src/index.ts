@@ -17,29 +17,29 @@ export * from "./services/FileService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/bucket" {
-	interface BucketFileOptions {
-		/**
-		 * Time to live for the files in the bucket.
-		 */
-		ttl?: DurationLike;
+  interface BucketFileOptions {
+    /**
+     * Time to live for the files in the bucket.
+     */
+    ttl?: DurationLike;
 
-		/**
-		 * Tags for the bucket.
-		 */
-		tags?: string[];
+    /**
+     * Tags for the bucket.
+     */
+    tags?: string[];
 
-		/**
-		 * User performing the operation.
-		 */
-		user?: UserAccountToken;
+    /**
+     * User performing the operation.
+     */
+    user?: UserAccountToken;
 
-		/**
-		 * Whether to persist the file metadata in the database.
-		 *
-		 * @default true
-		 */
-		persist?: boolean;
-	}
+    /**
+     * Whether to persist the file metadata in the database.
+     *
+     * @default true
+     */
+    persist?: boolean;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -53,14 +53,14 @@ declare module "@alepha/bucket" {
  * @module alepha.api.files
  */
 export const AlephaApiFiles = $module({
-	name: "alepha.api.files",
-	services: [FileController, FileJobs, FileService],
-	register: (alepha) => {
-		alepha
-			.with(AlephaBucket)
-			.with(AlephaServerCache)
-			.with(AlephaServerMultipart)
-			.with(FileController)
-			.with(FileJobs);
-	},
+  name: "alepha.api.files",
+  services: [FileController, FileJobs, FileService],
+  register: (alepha) => {
+    alepha
+      .with(AlephaBucket)
+      .with(AlephaServerCache)
+      .with(AlephaServerMultipart)
+      .with(FileController)
+      .with(FileJobs);
+  },
 });

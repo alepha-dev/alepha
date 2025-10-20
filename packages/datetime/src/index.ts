@@ -8,7 +8,7 @@ export * from "./providers/DateTimeProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaDateTime = $module({
-	name: "alepha.datetime",
-	descriptors: [$interval],
-	services: [DateTimeProvider],
+  name: "alepha.datetime",
+  descriptors: [$interval],
+  services: [DateTimeProvider],
 });

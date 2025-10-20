@@ -2,29 +2,29 @@ import { type Static, t } from "@alepha/core";
 import { $entity, pg } from "@alepha/postgres";
 
 export const parameters = $entity({
-	name: "parameters",
-	schema: t.object({
-		id: pg.primaryKey(t.uuid()),
+  name: "parameters",
+  schema: t.object({
+    id: pg.primaryKey(t.uuid()),
 
-		createdAt: pg.createdAt(),
+    createdAt: pg.createdAt(),
 
-		updatedAt: pg.updatedAt(),
+    updatedAt: pg.updatedAt(),
 
-		name: t.string(),
+    name: t.string(),
 
-		content: t.json(),
+    content: t.json(),
 
-		tags: t.optional(t.array(t.string())),
+    tags: t.optional(t.array(t.string())),
 
-		creatorId: t.optional(t.uuid()),
+    creatorId: t.optional(t.uuid()),
 
-		creatorName: t.optional(t.string()),
+    creatorName: t.optional(t.string()),
 
-		activationDate: t.datetime({
-			description:
-				"Optional activation date. Default to now. Must be now or later.",
-		}),
-	}),
+    activationDate: t.datetime({
+      description:
+        "Optional activation date. Default to now. Must be now or later.",
+    }),
+  }),
 });
 
 export type ParameterEntity = Static<typeof parameters.$schema>;

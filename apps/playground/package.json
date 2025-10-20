@@ -1,16 +1,19 @@
 {
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "vite",
-		"build": "vite build",
-		"studio": "drizzle-kit studio"
-	},
-	"dependencies": {
-		"@tailwindcss/vite": "^4.1.14",
-		"alepha": "0.10.6",
-		"drizzle-kit": "^0.31.5",
-		"tailwindcss": "^4.1.14",
-		"vite": "^7.1.10"
-	}
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "a": "alepha"
+  },
+  "dependencies": {
+    "@alepha/cli": "^0.10.6",
+    "@tailwindcss/vite": "^4.1.14",
+    "alepha": "0.10.6",
+    "tailwindcss": "^4.1.14",
+    "vite": "^7.1.10"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
 }

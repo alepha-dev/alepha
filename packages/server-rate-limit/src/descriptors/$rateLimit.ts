@@ -2,8 +2,8 @@ import { $inject, createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { ServerRequest } from "@alepha/server";
 import type { RateLimitOptions } from "../index.ts";
 import {
-	type RateLimitResult,
-	ServerRateLimitProvider,
+  type RateLimitResult,
+  ServerRateLimitProvider,
 } from "../providers/ServerRateLimitProvider.ts";
 
 /**
@@ -12,47 +12,47 @@ import {
  * within the server request/response cycle.
  */
 export const $rateLimit = (
-	options: RateLimitDescriptorOptions = {},
+  options: RateLimitDescriptorOptions = {},
 ): AbstractRateLimitDescriptor => {
-	return createDescriptor(RateLimitDescriptor, options);
+  return createDescriptor(RateLimitDescriptor, options);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RateLimitDescriptorOptions extends RateLimitOptions {
-	/** Name identifier for this rate limit (default: property key) */
-	name?: string;
+  /** Name identifier for this rate limit (default: property key) */
+  name?: string;
 }
 
 export interface AbstractRateLimitDescriptor {
-	readonly name: string;
-	readonly options: RateLimitDescriptorOptions;
-	check(
-		request: ServerRequest,
-		options?: RateLimitOptions,
-	): Promise<RateLimitResult>;
+  readonly name: string;
+  readonly options: RateLimitDescriptorOptions;
+  check(
+    request: ServerRequest,
+    options?: RateLimitOptions,
+  ): Promise<RateLimitResult>;
 }
 
 export class RateLimitDescriptor
-	extends Descriptor<RateLimitDescriptorOptions>
-	implements AbstractRateLimitDescriptor
+  extends Descriptor<RateLimitDescriptorOptions>
+  implements AbstractRateLimitDescriptor
 {
-	protected readonly serverRateLimitProvider = $inject(ServerRateLimitProvider);
+  protected readonly serverRateLimitProvider = $inject(ServerRateLimitProvider);
 
-	public get name(): string {
-		return this.options.name ?? `${this.config.propertyKey}`;
-	}
+  public get name(): string {
+    return this.options.name ?? `${this.config.propertyKey}`;
+  }
 
-	/**
-	 * Checks rate limit for the given request using this descriptor's configuration.
-	 */
-	public async check(
-		request: ServerRequest,
-		options?: RateLimitOptions,
-	): Promise<RateLimitResult> {
-		const mergedOptions = { ...this.options, ...options };
-		return this.serverRateLimitProvider.checkLimit(request, mergedOptions);
-	}
+  /**
+   * Checks rate limit for the given request using this descriptor's configuration.
+   */
+  public async check(
+    request: ServerRequest,
+    options?: RateLimitOptions,
+  ): Promise<RateLimitResult> {
+    const mergedOptions = { ...this.options, ...options };
+    return this.serverRateLimitProvider.checkLimit(request, mergedOptions);
+  }
 }
 
 $rateLimit[KIND] = RateLimitDescriptor;

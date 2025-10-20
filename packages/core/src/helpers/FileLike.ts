@@ -3,66 +3,66 @@ import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import type { TSchema, TUnsafe } from "typebox";
 
 export interface FileLike {
-	/**
-	 * Filename.
-	 * @default "file"
-	 */
-	name: string;
+  /**
+   * Filename.
+   * @default "file"
+   */
+  name: string;
 
-	/**
-	 * Mandatory MIME type of the file.
-	 * @default "application/octet-stream"
-	 */
-	type: string;
+  /**
+   * Mandatory MIME type of the file.
+   * @default "application/octet-stream"
+   */
+  type: string;
 
-	/**
-	 * Size of the file in bytes.
-	 *
-	 * Always 0 for streams, as the size is not known until the stream is fully read.
-	 *
-	 * @default 0
-	 */
-	size: number;
+  /**
+   * Size of the file in bytes.
+   *
+   * Always 0 for streams, as the size is not known until the stream is fully read.
+   *
+   * @default 0
+   */
+  size: number;
 
-	/**
-	 * Last modified timestamp in milliseconds since epoch.
-	 *
-	 * Always the current timestamp for streams, as the last modified time is not known.
-	 * We use this field to ensure compatibility with File API.
-	 *
-	 * @default Date.now()
-	 */
-	lastModified: number;
+  /**
+   * Last modified timestamp in milliseconds since epoch.
+   *
+   * Always the current timestamp for streams, as the last modified time is not known.
+   * We use this field to ensure compatibility with File API.
+   *
+   * @default Date.now()
+   */
+  lastModified: number;
 
-	/**
-	 * Returns a ReadableStream or Node.js Readable stream of the file content.
-	 *
-	 * For streams, this is the original stream.
-	 */
-	stream(): StreamLike;
+  /**
+   * Returns a ReadableStream or Node.js Readable stream of the file content.
+   *
+   * For streams, this is the original stream.
+   */
+  stream(): StreamLike;
 
-	/**
-	 * Returns the file content as an ArrayBuffer.
-	 *
-	 * For streams, this reads the entire stream into memory.
-	 */
-	arrayBuffer(): Promise<ArrayBuffer>;
+  /**
+   * Returns the file content as an ArrayBuffer.
+   *
+   * For streams, this reads the entire stream into memory.
+   */
+  arrayBuffer(): Promise<ArrayBuffer>;
 
-	/**
-	 * Returns the file content as a string.
-	 *
-	 * For streams, this reads the entire stream into memory and converts it to a string.
-	 */
-	text(): Promise<string>;
+  /**
+   * Returns the file content as a string.
+   *
+   * For streams, this reads the entire stream into memory and converts it to a string.
+   */
+  text(): Promise<string>;
 
-	// -- node specific fields --
+  // -- node specific fields --
 
-	/**
-	 * Optional file path, if the file is stored on disk.
-	 *
-	 * This is not from the File API, but rather a custom field to indicate where the file is stored.
-	 */
-	filepath?: string;
+  /**
+   * Optional file path, if the file is stored on disk.
+   *
+   * This is not from the File API, but rather a custom field to indicate where the file is stored.
+   */
+  filepath?: string;
 }
 
 /**
@@ -71,32 +71,32 @@ export interface FileLike {
 export type TFile = TUnsafe<FileLike>;
 
 export const isTypeFile = (value: TSchema): value is TFile => {
-	return (
-		value &&
-		typeof value === "object" &&
-		"format" in value &&
-		value.format === "binary"
-	);
+  return (
+    value &&
+    typeof value === "object" &&
+    "format" in value &&
+    value.format === "binary"
+  );
 };
 
 export const isFileLike = (value: any): value is FileLike => {
-	return (
-		!!value &&
-		typeof value === "object" &&
-		!Array.isArray(value) &&
-		typeof value.name === "string" &&
-		typeof value.type === "string" &&
-		typeof value.size === "number" &&
-		typeof value.stream.bind(value) === "function"
-	);
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof value.name === "string" &&
+    typeof value.type === "string" &&
+    typeof value.size === "number" &&
+    typeof value.stream.bind(value) === "function"
+  );
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type StreamLike =
-	| ReadableStream
-	| WebReadableStream
-	| Readable
-	| NodeJS.ReadableStream;
+  | ReadableStream
+  | WebReadableStream
+  | Readable
+  | NodeJS.ReadableStream;
 
 export type TStream = TUnsafe<StreamLike>;

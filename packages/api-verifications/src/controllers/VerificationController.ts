@@ -6,57 +6,57 @@ import { verificationTypeEnumSchema } from "../schemas/verificationTypeEnumSchem
 import { VerificationService } from "../services/VerificationService.ts";
 
 export class VerificationController {
-	protected readonly verificationService = $inject(VerificationService);
+  protected readonly verificationService = $inject(VerificationService);
 
-	public readonly url = "/verifications";
-	public readonly group = "verifications";
+  public readonly url = "/verifications";
+  public readonly group = "verifications";
 
-	public readonly requestVerificationCode = $action({
-		path: `${this.url}/:type`,
-		group: this.group,
-		method: "POST",
-		schema: {
-			params: t.object({
-				type: verificationTypeEnumSchema,
-			}),
-			body: t.object({
-				target: t.text(),
-			}),
-			response: requestVerificationCodeResponseSchema,
-		},
-		handler: async ({ body, params }) => {
-			return await this.verificationService.createVerification({
-				type: params.type,
-				target: body.target,
-			});
-		},
-	});
+  public readonly requestVerificationCode = $action({
+    path: `${this.url}/:type`,
+    group: this.group,
+    method: "POST",
+    schema: {
+      params: t.object({
+        type: verificationTypeEnumSchema,
+      }),
+      body: t.object({
+        target: t.text(),
+      }),
+      response: requestVerificationCodeResponseSchema,
+    },
+    handler: async ({ body, params }) => {
+      return await this.verificationService.createVerification({
+        type: params.type,
+        target: body.target,
+      });
+    },
+  });
 
-	public readonly validateVerificationCode = $action({
-		path: `${this.url}/:type/validate`,
-		group: this.group,
-		method: "POST",
-		schema: {
-			params: t.object({
-				type: verificationTypeEnumSchema,
-			}),
-			body: t.object({
-				target: t.text(),
-				token: t.text({
-					description:
-						"The verification token (6-digit code for phone, UUID for email).",
-				}),
-			}),
-			response: validateVerificationCodeResponseSchema,
-		},
-		handler: async ({ body, params }) => {
-			return this.verificationService.verifyCode(
-				{
-					type: params.type,
-					target: body.target,
-				},
-				body.token,
-			);
-		},
-	});
+  public readonly validateVerificationCode = $action({
+    path: `${this.url}/:type/validate`,
+    group: this.group,
+    method: "POST",
+    schema: {
+      params: t.object({
+        type: verificationTypeEnumSchema,
+      }),
+      body: t.object({
+        target: t.text(),
+        token: t.text({
+          description:
+            "The verification token (6-digit code for phone, UUID for email).",
+        }),
+      }),
+      response: validateVerificationCodeResponseSchema,
+    },
+    handler: async ({ body, params }) => {
+      return this.verificationService.verifyCode(
+        {
+          type: params.type,
+          target: body.target,
+        },
+        body.token,
+      );
+    },
+  });
 }

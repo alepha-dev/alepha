@@ -16,5 +16,5 @@ import { useInject } from "./useInject.ts";
  * router.go("home"); // typesafe
  */
 export const useRouter = <T extends object = any>(): ReactRouter<T> => {
-	return useInject(ReactRouter<T>);
+  return useInject(ReactRouter<T>);
 };

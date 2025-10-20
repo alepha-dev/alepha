@@ -13,23 +13,23 @@ export * from "./providers/CronProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface Hooks {
-		"scheduler:begin": {
-			name: string;
-			now: DateTime;
-			context: string;
-		};
+  interface Hooks {
+    "scheduler:begin": {
+      name: string;
+      now: DateTime;
+      context: string;
+    };
 
-		"scheduler:success": { name: string; context: string };
+    "scheduler:success": { name: string; context: string };
 
-		"scheduler:error": {
-			name: string;
-			error: Error;
-			context: string;
-		};
+    "scheduler:error": {
+      name: string;
+      error: Error;
+      context: string;
+    };
 
-		"scheduler:end": { name: string; context: string };
-	}
+    "scheduler:end": { name: string; context: string };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ declare module "@alepha/core" {
  * @module alepha.scheduler
  */
 export const AlephaScheduler = $module({
-	name: "alepha.scheduler",
-	descriptors: [$scheduler],
-	services: [AlephaLock, CronProvider],
+  name: "alepha.scheduler",
+  descriptors: [$scheduler],
+  services: [AlephaLock, CronProvider],
 });

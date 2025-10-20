@@ -30,12 +30,12 @@ import { $cursor } from "./$cursor.ts";
  * ```
  */
 export const $env = <T extends TObject>(type: T): Static<T> => {
-	const { context: alepha } = $cursor();
+  const { context: alepha } = $cursor();
 
-	// allow to inject TypeBox schemas
-	if (!t.schema.isObject(type)) {
-		throw new AlephaError("Type must be an TObject");
-	}
+  // allow to inject TypeBox schemas
+  if (!t.schema.isObject(type)) {
+    throw new AlephaError("Type must be an TObject");
+  }
 
-	return alepha.parseEnv(type) as Static<T>;
+  return alepha.parseEnv(type) as Static<T>;
 };

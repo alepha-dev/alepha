@@ -53,109 +53,109 @@ import type { Service } from "../interfaces/Service.ts";
  * If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
  */
 export const $module = <T extends object = {}>(
-	options: ModuleDescriptorOptions<T>,
+  options: ModuleDescriptorOptions<T>,
 ): Service<Module<T>> => {
-	const { services = [], descriptors = [], name } = options;
+  const { services = [], descriptors = [], name } = options;
 
-	if (!name || !Module.NAME_REGEX.test(name)) {
-		throw new AlephaError(
-			`Invalid module name '${name}'. It should be in the format of 'project.module.submodule'`,
-		);
-	}
+  if (!name || !Module.NAME_REGEX.test(name)) {
+    throw new AlephaError(
+      `Invalid module name '${name}'. It should be in the format of 'project.module.submodule'`,
+    );
+  }
 
-	const $ = class extends Module<T> {
-		config = options;
-		options = {} as T;
+  const $ = class extends Module<T> {
+    config = options;
+    options = {} as T;
 
-		register(alepha: Alepha): void {
-			if (typeof options.register === "function") {
-				options.register(alepha, this.options);
-				return;
-			}
+    register(alepha: Alepha): void {
+      if (typeof options.register === "function") {
+        options.register(alepha, this.options);
+        return;
+      }
 
-			for (const service of services) {
-				alepha.inject(service, {
-					parent: this.constructor as Service<Module>,
-				});
-			}
-		}
-	};
+      for (const service of services) {
+        alepha.inject(service, {
+          parent: this.constructor as Service<Module>,
+        });
+      }
+    }
+  };
 
-	Object.defineProperty($, "name", {
-		value: name,
-		writable: false,
-	});
+  Object.defineProperty($, "name", {
+    value: name,
+    writable: false,
+  });
 
-	for (const service of services) {
-		if (!Module.is(service)) {
-			(service as WithModule)[MODULE] = $;
-		}
-	}
+  for (const service of services) {
+    if (!Module.is(service)) {
+      (service as WithModule)[MODULE] = $;
+    }
+  }
 
-	for (const factory of descriptors) {
-		if (typeof factory[KIND] === "function") {
-			factory[KIND][MODULE] = $;
-		}
-	}
+  for (const factory of descriptors) {
+    if (typeof factory[KIND] === "function") {
+      factory[KIND][MODULE] = $;
+    }
+  }
 
-	return $;
+  return $;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface ModuleDescriptorOptions<T extends object> {
-	/**
-	 * Name of the module.
-	 *
-	 * It should be in the format of `project.module.submodule`.
-	 */
-	name: string;
+  /**
+   * Name of the module.
+   *
+   * It should be in the format of `project.module.submodule`.
+   */
+  name: string;
 
-	/**
-	 * List of services to register in the module.
-	 */
-	services?: Array<Service>;
+  /**
+   * List of services to register in the module.
+   */
+  services?: Array<Service>;
 
-	/**
-	 * List of $descriptors to register in the module.
-	 */
-	descriptors?: Array<DescriptorFactoryLike>;
+  /**
+   * List of $descriptors to register in the module.
+   */
+  descriptors?: Array<DescriptorFactoryLike>;
 
-	/**
-	 * By default, module will register all services.
-	 * You can override this behavior by providing a register function.
-	 * It's useful when you want to register services conditionally or in a specific order.
-	 */
-	register?: (alepha: Alepha, options: T) => void;
+  /**
+   * By default, module will register all services.
+   * You can override this behavior by providing a register function.
+   * It's useful when you want to register services conditionally or in a specific order.
+   */
+  register?: (alepha: Alepha, options: T) => void;
 }
 
 /**
  * Base class for all modules.
  */
 export abstract class Module<T extends object = {}> {
-	public abstract readonly config: ModuleDescriptorOptions<T>;
+  public abstract readonly config: ModuleDescriptorOptions<T>;
 
-	public abstract register(alepha: Alepha): void;
+  public abstract register(alepha: Alepha): void;
 
-	static NAME_REGEX = /^[a-z]+(\.[a-z][a-z0-9-]*)*$/;
+  static NAME_REGEX = /^[a-z]+(\.[a-z][a-z0-9-]*)*$/;
 
-	public options: T = {} as T;
+  public options: T = {} as T;
 
-	/**
-	 * Check if a Service is a Module.
-	 */
-	static is(ctor: Service): boolean {
-		return ctor.prototype instanceof Module;
-	}
+  /**
+   * Check if a Service is a Module.
+   */
+  static is(ctor: Service): boolean {
+    return ctor.prototype instanceof Module;
+  }
 
-	/**
-	 * Get the Module of a Service.
-	 */
-	static of(ctor: Service): Service<Module> | undefined {
-		return (ctor as WithModule)[MODULE];
-	}
+  /**
+   * Get the Module of a Service.
+   */
+  static of(ctor: Service): Service<Module> | undefined {
+    return (ctor as WithModule)[MODULE];
+  }
 }
 
 export type WithModule<T extends object = any> = T & {
-	[MODULE]?: Service;
+  [MODULE]?: Service;
 };

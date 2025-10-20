@@ -8,7 +8,7 @@ export * from "./descriptors/$cookie.browser.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaServerCookies = $module({
-	name: "alepha.server.cookies",
-	descriptors: [],
-	services: [AlephaServer],
+  name: "alepha.server.cookies",
+  descriptors: [],
+  services: [AlephaServer],
 });

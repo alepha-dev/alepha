@@ -1,5 +1,5 @@
 class A {
-	value = "a";
+  value = "a";
 }
 
 export default A;

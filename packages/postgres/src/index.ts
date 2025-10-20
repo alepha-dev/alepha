@@ -87,48 +87,48 @@ export * from "./types/schema.ts";
  * @module alepha.postgres
  */
 export const AlephaPostgres = $module({
-	name: "alepha.postgres",
-	descriptors: [$repository, $sequence, $entity],
-	services: [
-		RepositoryProvider,
-		PostgresProvider,
-		NodePostgresProvider,
-		PglitePostgresProvider,
-		DrizzleKitProvider,
-	],
-	register: (alepha: Alepha) => {
-		const env = alepha.parseEnv(
-			t.object({
-				DATABASE_URL: t.optional(t.text()),
-			}),
-		);
+  name: "alepha.postgres",
+  descriptors: [$repository, $sequence, $entity],
+  services: [
+    RepositoryProvider,
+    PostgresProvider,
+    NodePostgresProvider,
+    PglitePostgresProvider,
+    DrizzleKitProvider,
+  ],
+  register: (alepha: Alepha) => {
+    const env = alepha.parseEnv(
+      t.object({
+        DATABASE_URL: t.optional(t.text()),
+      }),
+    );
 
-		alepha.with(RepositoryProvider);
-		alepha.with(DrizzleKitProvider);
+    alepha.with(RepositoryProvider);
+    alepha.with(DrizzleKitProvider);
 
-		const url = env.DATABASE_URL;
-		const hasPGlite = !!PglitePostgresProvider.importPglite();
-		const isNodePg = url?.startsWith("postgres://");
-		const isSqlite = url?.startsWith("sqlite:");
+    const url = env.DATABASE_URL;
+    const hasPGlite = !!PglitePostgresProvider.importPglite();
+    const isNodePg = url?.startsWith("postgres://");
+    const isSqlite = url?.startsWith("sqlite:");
 
-		if (hasPGlite && !isNodePg && !isSqlite) {
-			alepha.with({
-				optional: true,
-				provide: PostgresProvider,
-				use: PglitePostgresProvider,
-			});
-		} else if (isNodePg) {
-			alepha.with({
-				optional: true,
-				provide: PostgresProvider,
-				use: NodePostgresProvider,
-			});
-		} else {
-			alepha.with({
-				optional: true,
-				provide: PostgresProvider,
-				use: NodeSqliteProvider,
-			});
-		}
-	},
+    if (hasPGlite && !isNodePg && !isSqlite) {
+      alepha.with({
+        optional: true,
+        provide: PostgresProvider,
+        use: PglitePostgresProvider,
+      });
+    } else if (isNodePg) {
+      alepha.with({
+        optional: true,
+        provide: PostgresProvider,
+        use: NodePostgresProvider,
+      });
+    } else {
+      alepha.with({
+        optional: true,
+        provide: PostgresProvider,
+        use: NodeSqliteProvider,
+      });
+    }
+  },
 });

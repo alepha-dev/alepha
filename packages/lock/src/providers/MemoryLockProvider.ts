@@ -7,57 +7,57 @@ import type { LockProvider } from "./LockProvider.ts";
  * A simple in-memory store provider.
  */
 export class MemoryLockProvider implements LockProvider {
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
-	protected readonly log = $logger();
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly log = $logger();
 
-	/**
-	 * The in-memory store.
-	 */
-	protected store: Record<string, string> = {};
+  /**
+   * The in-memory store.
+   */
+  protected store: Record<string, string> = {};
 
-	/**
-	 * Timeouts used to expire keys.
-	 */
-	protected storeTimeout: Record<string, Timeout> = {};
+  /**
+   * Timeouts used to expire keys.
+   */
+  protected storeTimeout: Record<string, Timeout> = {};
 
-	public async set(
-		key: string,
-		value: string,
-		nx?: boolean,
-		px?: number,
-	): Promise<string> {
-		if (nx && this.store[key] != null) {
-			return this.store[key];
-		}
+  public async set(
+    key: string,
+    value: string,
+    nx?: boolean,
+    px?: number,
+  ): Promise<string> {
+    if (nx && this.store[key] != null) {
+      return this.store[key];
+    }
 
-		if (px) {
-			this.ttl(key, px);
-		}
+    if (px) {
+      this.ttl(key, px);
+    }
 
-		this.store[key] = value;
+    this.store[key] = value;
 
-		return this.store[key];
-	}
+    return this.store[key];
+  }
 
-	public async del(...keys: string[]): Promise<void> {
-		for (const key of keys) {
-			delete this.store[key];
-			if (this.storeTimeout[key] != null) {
-				this.storeTimeout[key].clear();
-				delete this.storeTimeout[key];
-			}
-		}
-	}
+  public async del(...keys: string[]): Promise<void> {
+    for (const key of keys) {
+      delete this.store[key];
+      if (this.storeTimeout[key] != null) {
+        this.storeTimeout[key].clear();
+        delete this.storeTimeout[key];
+      }
+    }
+  }
 
-	private ttl(key: string, ms: number): void {
-		if (this.storeTimeout[key] != null) {
-			this.storeTimeout[key].clear();
-			delete this.storeTimeout[key];
-		}
+  private ttl(key: string, ms: number): void {
+    if (this.storeTimeout[key] != null) {
+      this.storeTimeout[key].clear();
+      delete this.storeTimeout[key];
+    }
 
-		this.storeTimeout[key] = this.dateTimeProvider.createTimeout(() => {
-			delete this.store[key];
-			delete this.storeTimeout[key];
-		}, ms);
-	}
+    this.storeTimeout[key] = this.dateTimeProvider.createTimeout(() => {
+      delete this.store[key];
+      delete this.storeTimeout[key];
+    }, ms);
+  }
 }

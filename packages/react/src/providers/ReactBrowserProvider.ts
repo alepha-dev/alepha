@@ -1,300 +1,300 @@
 import {
-	$env,
-	$hook,
-	$inject,
-	Alepha,
-	type State,
-	type Static,
-	t,
+  $env,
+  $hook,
+  $inject,
+  Alepha,
+  type State,
+  type Static,
+  t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { LinkProvider } from "@alepha/server-links";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
-	PreviousLayerData,
-	ReactRouterState,
-	TransitionOptions,
+  PreviousLayerData,
+  ReactRouterState,
+  TransitionOptions,
 } from "./ReactPageProvider.ts";
 
 const envSchema = t.object({
-	REACT_ROOT_ID: t.text({ default: "root" }),
+  REACT_ROOT_ID: t.text({ default: "root" }),
 });
 
 declare module "@alepha/core" {
-	interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
 export interface ReactBrowserRendererOptions {
-	scrollRestoration?: "top" | "manual";
+  scrollRestoration?: "top" | "manual";
 }
 
 export class ReactBrowserProvider {
-	protected readonly env = $env(envSchema);
-	protected readonly log = $logger();
-	protected readonly client = $inject(LinkProvider);
-	protected readonly alepha = $inject(Alepha);
-	protected readonly router = $inject(ReactBrowserRouterProvider);
-	protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly env = $env(envSchema);
+  protected readonly log = $logger();
+  protected readonly client = $inject(LinkProvider);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly router = $inject(ReactBrowserRouterProvider);
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-	public options: ReactBrowserRendererOptions = {
-		scrollRestoration: "top",
-	};
+  public options: ReactBrowserRendererOptions = {
+    scrollRestoration: "top",
+  };
 
-	protected getRootElement() {
-		const root = this.document.getElementById(this.env.REACT_ROOT_ID);
-		if (root) {
-			return root;
-		}
+  protected getRootElement() {
+    const root = this.document.getElementById(this.env.REACT_ROOT_ID);
+    if (root) {
+      return root;
+    }
 
-		const div = this.document.createElement("div");
-		div.id = this.env.REACT_ROOT_ID;
+    const div = this.document.createElement("div");
+    div.id = this.env.REACT_ROOT_ID;
 
-		this.document.body.prepend(div);
+    this.document.body.prepend(div);
 
-		return div;
-	}
+    return div;
+  }
 
-	public transitioning?: {
-		to: string;
-		from?: string;
-	};
+  public transitioning?: {
+    to: string;
+    from?: string;
+  };
 
-	public get state(): ReactRouterState {
-		return this.alepha.state.get("react.router.state")!;
-	}
+  public get state(): ReactRouterState {
+    return this.alepha.state.get("react.router.state")!;
+  }
 
-	/**
-	 * Accessor for Document DOM API.
-	 */
-	public get document() {
-		return window.document;
-	}
+  /**
+   * Accessor for Document DOM API.
+   */
+  public get document() {
+    return window.document;
+  }
 
-	/**
-	 * Accessor for History DOM API.
-	 */
-	public get history() {
-		return window.history;
-	}
+  /**
+   * Accessor for History DOM API.
+   */
+  public get history() {
+    return window.history;
+  }
 
-	/**
-	 * Accessor for Location DOM API.
-	 */
-	public get location() {
-		return window.location;
-	}
+  /**
+   * Accessor for Location DOM API.
+   */
+  public get location() {
+    return window.location;
+  }
 
-	public get base() {
-		const base = import.meta.env?.BASE_URL;
-		if (!base || base === "/") {
-			return "";
-		}
+  public get base() {
+    const base = import.meta.env?.BASE_URL;
+    if (!base || base === "/") {
+      return "";
+    }
 
-		return base;
-	}
+    return base;
+  }
 
-	public get url(): string {
-		const url = this.location.pathname + this.location.search;
-		if (this.base) {
-			return url.replace(this.base, "");
-		}
-		return url;
-	}
+  public get url(): string {
+    const url = this.location.pathname + this.location.search;
+    if (this.base) {
+      return url.replace(this.base, "");
+    }
+    return url;
+  }
 
-	public pushState(path: string, replace?: boolean) {
-		const url = this.base + path;
+  public pushState(path: string, replace?: boolean) {
+    const url = this.base + path;
 
-		if (replace) {
-			this.history.replaceState({}, "", url);
-		} else {
-			this.history.pushState({}, "", url);
-		}
-	}
+    if (replace) {
+      this.history.replaceState({}, "", url);
+    } else {
+      this.history.pushState({}, "", url);
+    }
+  }
 
-	public async invalidate(props?: Record<string, any>) {
-		const previous: PreviousLayerData[] = [];
+  public async invalidate(props?: Record<string, any>) {
+    const previous: PreviousLayerData[] = [];
 
-		this.log.trace("Invalidating layers");
+    this.log.trace("Invalidating layers");
 
-		if (props) {
-			const [key] = Object.keys(props);
-			const value = props[key];
+    if (props) {
+      const [key] = Object.keys(props);
+      const value = props[key];
 
-			for (const layer of this.state.layers) {
-				if (layer.props?.[key]) {
-					previous.push({
-						...layer,
-						props: {
-							...layer.props,
-							[key]: value,
-						},
-					});
-					break;
-				}
-				previous.push(layer);
-			}
-		}
+      for (const layer of this.state.layers) {
+        if (layer.props?.[key]) {
+          previous.push({
+            ...layer,
+            props: {
+              ...layer.props,
+              [key]: value,
+            },
+          });
+          break;
+        }
+        previous.push(layer);
+      }
+    }
 
-		await this.render({ previous });
-	}
+    await this.render({ previous });
+  }
 
-	public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
-		this.log.trace(`Going to ${url}`, {
-			url,
-			options,
-		});
+  public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
+    this.log.trace(`Going to ${url}`, {
+      url,
+      options,
+    });
 
-		await this.render({
-			url,
-			previous: options.force ? [] : this.state.layers,
-			meta: options.meta,
-		});
+    await this.render({
+      url,
+      previous: options.force ? [] : this.state.layers,
+      meta: options.meta,
+    });
 
-		// when redirecting in browser
-		if (this.state.url.pathname + this.state.url.search !== url) {
-			this.pushState(this.state.url.pathname + this.state.url.search);
-			return;
-		}
+    // when redirecting in browser
+    if (this.state.url.pathname + this.state.url.search !== url) {
+      this.pushState(this.state.url.pathname + this.state.url.search);
+      return;
+    }
 
-		this.pushState(url, options.replace);
-	}
+    this.pushState(url, options.replace);
+  }
 
-	protected async render(options: RouterRenderOptions = {}): Promise<void> {
-		const previous = options.previous ?? this.state.layers;
-		const url = options.url ?? this.url;
-		const start = this.dateTimeProvider.now();
+  protected async render(options: RouterRenderOptions = {}): Promise<void> {
+    const previous = options.previous ?? this.state.layers;
+    const url = options.url ?? this.url;
+    const start = this.dateTimeProvider.now();
 
-		this.transitioning = {
-			to: url,
-			from: this.state?.url.pathname,
-		};
+    this.transitioning = {
+      to: url,
+      from: this.state?.url.pathname,
+    };
 
-		this.log.debug("Transitioning...", {
-			to: url,
-		});
+    this.log.debug("Transitioning...", {
+      to: url,
+    });
 
-		const redirect = await this.router.transition(
-			new URL(`http://localhost${url}`),
-			previous,
-			options.meta,
-		);
+    const redirect = await this.router.transition(
+      new URL(`http://localhost${url}`),
+      previous,
+      options.meta,
+    );
 
-		if (redirect) {
-			this.log.info("Redirecting to", {
-				redirect,
-			});
+    if (redirect) {
+      this.log.info("Redirecting to", {
+        redirect,
+      });
 
-			// if redirect is an absolute URL, use window.location.href (full page reload)
-			if (redirect.startsWith("http")) {
-				window.location.href = redirect;
-			} else {
-				// if redirect is a relative URL, use render() (single page app)
-				return await this.render({ url: redirect });
-			}
-		}
+      // if redirect is an absolute URL, use window.location.href (full page reload)
+      if (redirect.startsWith("http")) {
+        window.location.href = redirect;
+      } else {
+        // if redirect is a relative URL, use render() (single page app)
+        return await this.render({ url: redirect });
+      }
+    }
 
-		const ms = this.dateTimeProvider.now().diff(start);
-		this.log.info(`Transition OK [${ms}ms]`, this.transitioning);
+    const ms = this.dateTimeProvider.now().diff(start);
+    this.log.info(`Transition OK [${ms}ms]`, this.transitioning);
 
-		this.transitioning = undefined;
-	}
+    this.transitioning = undefined;
+  }
 
-	/**
-	 * Get embedded layers from the server.
-	 */
-	protected getHydrationState(): ReactHydrationState | undefined {
-		try {
-			if ("__ssr" in window && typeof window.__ssr === "object") {
-				return window.__ssr as ReactHydrationState;
-			}
-		} catch (error) {
-			console.error(error);
-		}
-	}
+  /**
+   * Get embedded layers from the server.
+   */
+  protected getHydrationState(): ReactHydrationState | undefined {
+    try {
+      if ("__ssr" in window && typeof window.__ssr === "object") {
+        return window.__ssr as ReactHydrationState;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
-	// -------------------------------------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------------------------------------------
 
-	protected readonly onTransitionEnd = $hook({
-		on: "react:transition:end",
-		handler: () => {
-			if (
-				this.options.scrollRestoration === "top" &&
-				typeof window !== "undefined" &&
-				!this.alepha.isTest()
-			) {
-				this.log.trace("Restoring scroll position to top");
-				window.scrollTo(0, 0);
-			}
-		},
-	});
+  protected readonly onTransitionEnd = $hook({
+    on: "react:transition:end",
+    handler: () => {
+      if (
+        this.options.scrollRestoration === "top" &&
+        typeof window !== "undefined" &&
+        !this.alepha.isTest()
+      ) {
+        this.log.trace("Restoring scroll position to top");
+        window.scrollTo(0, 0);
+      }
+    },
+  });
 
-	public readonly ready = $hook({
-		on: "ready",
-		handler: async () => {
-			const hydration = this.getHydrationState();
-			const previous = hydration?.layers ?? [];
+  public readonly ready = $hook({
+    on: "ready",
+    handler: async () => {
+      const hydration = this.getHydrationState();
+      const previous = hydration?.layers ?? [];
 
-			if (hydration) {
-				// low budget, but works for now
-				for (const [key, value] of Object.entries(hydration)) {
-					if (key !== "layers") {
-						this.alepha.state.set(key as keyof State, value);
-					}
-				}
-			}
+      if (hydration) {
+        // low budget, but works for now
+        for (const [key, value] of Object.entries(hydration)) {
+          if (key !== "layers") {
+            this.alepha.state.set(key as keyof State, value);
+          }
+        }
+      }
 
-			await this.render({ previous });
+      await this.render({ previous });
 
-			const element = this.router.root(this.state);
+      const element = this.router.root(this.state);
 
-			await this.alepha.events.emit("react:browser:render", {
-				element,
-				root: this.getRootElement(),
-				hydration,
-				state: this.state,
-			});
+      await this.alepha.events.emit("react:browser:render", {
+        element,
+        root: this.getRootElement(),
+        hydration,
+        state: this.state,
+      });
 
-			window.addEventListener("popstate", () => {
-				// when you update silently queryParams or hash, skip rendering
-				// if you want to force a rendering, use #go()
-				if (this.base + this.state.url.pathname === this.location.pathname) {
-					return;
-				}
+      window.addEventListener("popstate", () => {
+        // when you update silently queryParams or hash, skip rendering
+        // if you want to force a rendering, use #go()
+        if (this.base + this.state.url.pathname === this.location.pathname) {
+          return;
+        }
 
-				this.log.debug("Popstate event triggered - rendering new state", {
-					url: this.location.pathname + this.location.search,
-				});
+        this.log.debug("Popstate event triggered - rendering new state", {
+          url: this.location.pathname + this.location.search,
+        });
 
-				this.render();
-			});
-		},
-	});
+        this.render();
+      });
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RouterGoOptions {
-	replace?: boolean;
-	match?: TransitionOptions;
-	params?: Record<string, string>;
-	query?: Record<string, string>;
-	meta?: Record<string, any>;
+  replace?: boolean;
+  match?: TransitionOptions;
+  params?: Record<string, string>;
+  query?: Record<string, string>;
+  meta?: Record<string, any>;
 
-	/**
-	 * Recreate the whole page, ignoring the current state.
-	 */
-	force?: boolean;
+  /**
+   * Recreate the whole page, ignoring the current state.
+   */
+  force?: boolean;
 }
 
 export type ReactHydrationState = {
-	layers?: Array<PreviousLayerData>;
+  layers?: Array<PreviousLayerData>;
 } & {
-	[key: string]: any;
+  [key: string]: any;
 };
 
 export interface RouterRenderOptions {
-	url?: string;
-	previous?: PreviousLayerData[];
-	meta?: Record<string, any>;
+  url?: string;
+  previous?: PreviousLayerData[];
+  meta?: Record<string, any>;
 }

@@ -1,13 +1,13 @@
 import {
-	type PropsWithChildren,
-	type ReactNode,
-	useEffect,
-	useState,
+  type PropsWithChildren,
+  type ReactNode,
+  useEffect,
+  useState,
 } from "react";
 
 export interface ClientOnlyProps {
-	fallback?: ReactNode;
-	disabled?: boolean;
+  fallback?: ReactNode;
+  disabled?: boolean;
 }
 
 /**
@@ -21,15 +21,15 @@ export interface ClientOnlyProps {
  * - you want to prevent pre-rendering of a component
  */
 const ClientOnly = (props: PropsWithChildren<ClientOnlyProps>) => {
-	const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-	useEffect(() => setMounted(true), []);
+  useEffect(() => setMounted(true), []);
 
-	if (props.disabled) {
-		return props.children;
-	}
+  if (props.disabled) {
+    return props.children;
+  }
 
-	return mounted ? props.children : props.fallback;
+  return mounted ? props.children : props.fallback;
 };
 
 export default ClientOnly;

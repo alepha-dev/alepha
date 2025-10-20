@@ -22,41 +22,41 @@ import { BrowserHeadProvider } from "../providers/BrowserHeadProvider.ts";
  * ```
  */
 export const useHead = (options?: UseHeadOptions): UseHeadReturn => {
-	const alepha = useInject(Alepha);
+  const alepha = useInject(Alepha);
 
-	const current = useMemo(() => {
-		if (!alepha.isBrowser()) {
-			return {};
-		}
+  const current = useMemo(() => {
+    if (!alepha.isBrowser()) {
+      return {};
+    }
 
-		return alepha.inject(BrowserHeadProvider).getHead(window.document);
-	}, []);
+    return alepha.inject(BrowserHeadProvider).getHead(window.document);
+  }, []);
 
-	const setHead = useCallback((head?: Head | ((previous?: Head) => Head)) => {
-		if (!alepha.isBrowser()) {
-			return;
-		}
+  const setHead = useCallback((head?: Head | ((previous?: Head) => Head)) => {
+    if (!alepha.isBrowser()) {
+      return;
+    }
 
-		alepha
-			.inject(BrowserHeadProvider)
-			.renderHead(
-				window.document,
-				typeof head === "function" ? head(current) : head || {},
-			);
-	}, []);
+    alepha
+      .inject(BrowserHeadProvider)
+      .renderHead(
+        window.document,
+        typeof head === "function" ? head(current) : head || {},
+      );
+  }, []);
 
-	useEffect(() => {
-		if (options) {
-			setHead(options);
-		}
-	}, []);
+  useEffect(() => {
+    if (options) {
+      setHead(options);
+    }
+  }, []);
 
-	return [current, setHead];
+  return [current, setHead];
 };
 
 export type UseHeadOptions = Head | ((previous?: Head) => Head);
 
 export type UseHeadReturn = [
-	Head,
-	(head?: Head | ((previous?: Head) => Head)) => void,
+  Head,
+  (head?: Head | ((previous?: Head) => Head)) => void,
 ];

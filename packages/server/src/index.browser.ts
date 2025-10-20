@@ -8,7 +8,7 @@ export * from "./index.shared.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaServer = $module({
-	name: "alepha.server",
-	descriptors: [],
-	services: [HttpClient],
+  name: "alepha.server",
+  descriptors: [],
+  services: [HttpClient],
 });

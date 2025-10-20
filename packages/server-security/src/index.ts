@@ -1,16 +1,16 @@
 import { $module } from "@alepha/core";
 import {
-	$permission,
-	$realm,
-	$role,
-	AlephaSecurity,
-	type UserAccount,
-	type UserAccountToken,
+  $permission,
+  $realm,
+  $role,
+  AlephaSecurity,
+  type UserAccount,
+  type UserAccountToken,
 } from "@alepha/security";
 import { AlephaServer, type FetchOptions } from "@alepha/server";
 import {
-	type ServerRouteSecure,
-	ServerSecurityProvider,
+  type ServerRouteSecure,
+  ServerSecurityProvider,
 } from "./providers/ServerSecurityProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -20,45 +20,45 @@ export * from "./providers/ServerSecurityProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface State {
-		/**
-		 * Real (or fake) user account, used for internal actions.
-		 *
-		 * If you define this, you assume that all actions are executed by this user by default.
-		 * > To force a different user, you need to pass it explicitly in the options.
-		 */
-		"server.security.system.user"?: UserAccountToken;
+  interface State {
+    /**
+     * Real (or fake) user account, used for internal actions.
+     *
+     * If you define this, you assume that all actions are executed by this user by default.
+     * > To force a different user, you need to pass it explicitly in the options.
+     */
+    "server.security.system.user"?: UserAccountToken;
 
-		user?: UserAccount;
-	}
+    user?: UserAccount;
+  }
 }
 declare module "@alepha/server" {
-	interface ServerRequest<TConfig> {
-		user?: UserAccountToken; // for all routes, user is maybe present
-	}
+  interface ServerRequest<TConfig> {
+    user?: UserAccountToken; // for all routes, user is maybe present
+  }
 
-	interface ServerActionRequest<TConfig> {
-		user: UserAccountToken; // for actions, user is always present
-	}
+  interface ServerActionRequest<TConfig> {
+    user: UserAccountToken; // for actions, user is always present
+  }
 
-	interface ServerRoute {
-		/**
-		 * If true, the route will be protected by the security provider.
-		 * All actions are secure by default, but you can disable it for specific actions.
-		 */
-		secure?: boolean | ServerRouteSecure;
-	}
+  interface ServerRoute {
+    /**
+     * If true, the route will be protected by the security provider.
+     * All actions are secure by default, but you can disable it for specific actions.
+     */
+    secure?: boolean | ServerRouteSecure;
+  }
 
-	interface ClientRequestOptions extends FetchOptions {
-		/**
-		 * Forward user from the previous request.
-		 * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
-		 * If "context", use the user from the current context (e.g. request).
-		 *
-		 * @default "system" if provided, else "context" if available.
-		 */
-		user?: UserAccountToken | "system" | "context";
-	}
+  interface ClientRequestOptions extends FetchOptions {
+    /**
+     * Forward user from the previous request.
+     * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
+     * If "context", use the user from the current context (e.g. request).
+     *
+     * @default "system" if provided, else "context" if available.
+     */
+    user?: UserAccountToken | "system" | "context";
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ declare module "@alepha/server" {
  * @module alepha.server.security
  */
 export const AlephaServerSecurity = $module({
-	name: "alepha.server.security",
-	descriptors: [$realm, $role, $permission],
-	services: [AlephaServer, AlephaSecurity, ServerSecurityProvider],
+  name: "alepha.server.security",
+  descriptors: [$realm, $role, $permission],
+  services: [AlephaServer, AlephaSecurity, ServerSecurityProvider],
 });

@@ -4,7 +4,7 @@ import { customType } from "drizzle-orm/pg-core";
  * Postgres bytea type.
  */
 export const byte = customType<{
-	data: Buffer;
+  data: Buffer;
 }>({
-	dataType: () => "bytea",
+  dataType: () => "bytea",
 });

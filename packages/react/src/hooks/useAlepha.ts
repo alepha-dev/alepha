@@ -15,12 +15,12 @@ import { AlephaContext } from "../contexts/AlephaContext.ts";
  * etc...
  */
 export const useAlepha = (): Alepha => {
-	const alepha = useContext(AlephaContext);
-	if (!alepha) {
-		throw new AlephaError(
-			"Hook 'useAlepha()' must be used within an AlephaContext.Provider",
-		);
-	}
+  const alepha = useContext(AlephaContext);
+  if (!alepha) {
+    throw new AlephaError(
+      "Hook 'useAlepha()' must be used within an AlephaContext.Provider",
+    );
+  }
 
-	return alepha;
+  return alepha;
 };

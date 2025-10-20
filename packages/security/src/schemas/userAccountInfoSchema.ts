@@ -2,54 +2,54 @@ import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
 
 export const userAccountInfoSchema = t.object({
-	id: t.text({
-		description: "Unique identifier for the user.",
-	}),
+  id: t.text({
+    description: "Unique identifier for the user.",
+  }),
 
-	name: t.optional(
-		t.text({
-			description: "Full name of the user.",
-		}),
-	),
+  name: t.optional(
+    t.text({
+      description: "Full name of the user.",
+    }),
+  ),
 
-	email: t.optional(
-		t.text({
-			description: "Email address of the user.",
-			format: "email",
-		}),
-	),
+  email: t.optional(
+    t.text({
+      description: "Email address of the user.",
+      format: "email",
+    }),
+  ),
 
-	username: t.optional(
-		t.text({
-			description: "Preferred username of the user.",
-		}),
-	),
+  username: t.optional(
+    t.text({
+      description: "Preferred username of the user.",
+    }),
+  ),
 
-	picture: t.optional(
-		t.text({
-			description: "URL to the user's profile picture.",
-		}),
-	),
+  picture: t.optional(
+    t.text({
+      description: "URL to the user's profile picture.",
+    }),
+  ),
 
-	sessionId: t.optional(
-		t.text({
-			description: "Session identifier for the user, if applicable.",
-		}),
-	),
+  sessionId: t.optional(
+    t.text({
+      description: "Session identifier for the user, if applicable.",
+    }),
+  ),
 
-	// -------------------------------------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------------------------------------------
 
-	organizations: t.optional(
-		t.array(t.text(), {
-			description: "List of organizations the user belongs to.",
-		}),
-	),
+  organizations: t.optional(
+    t.array(t.text(), {
+      description: "List of organizations the user belongs to.",
+    }),
+  ),
 
-	roles: t.optional(
-		t.array(t.text(), {
-			description: "List of roles assigned to the user.",
-		}),
-	),
+  roles: t.optional(
+    t.array(t.text(), {
+      description: "List of roles assigned to the user.",
+    }),
+  ),
 });
 
 export type UserAccount = Static<typeof userAccountInfoSchema>;

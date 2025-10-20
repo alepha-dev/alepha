@@ -23,6 +23,6 @@ export * from "./services/VerificationService.ts";
  * @module alepha.api.verifications
  */
 export const AlephaApiVerification = $module({
-	name: "alepha.api.verifications",
-	services: [VerificationController, VerificationJobs, VerificationService],
+  name: "alepha.api.verifications",
+  services: [VerificationController, VerificationJobs, VerificationService],
 });

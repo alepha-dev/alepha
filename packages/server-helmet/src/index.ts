@@ -16,6 +16,6 @@ export * from "./providers/ServerHelmetProvider.ts";
  * @module alepha.server.helmet
  */
 export const AlephaServerHelmet = $module({
-	name: "alepha.server.helmet",
-	services: [AlephaServer, ServerHelmetProvider],
+  name: "alepha.server.helmet",
+  services: [AlephaServer, ServerHelmetProvider],
 });

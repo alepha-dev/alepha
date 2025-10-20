@@ -1,8 +1,8 @@
 import { $module, type FileLike } from "@alepha/core";
 import {
-	$bucket,
-	type BucketDescriptor,
-	type BucketFileOptions,
+  $bucket,
+  type BucketDescriptor,
+  type BucketFileOptions,
 } from "./descriptors/$bucket.ts";
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
@@ -21,25 +21,25 @@ export * from "./services/FileMetadataService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/core" {
-	interface Hooks {
-		/**
-		 * Triggered when a file is uploaded to a bucket.
-		 * Can be used to perform actions after a file is uploaded, like creating a database record!
-		 */
-		"bucket:file:uploaded": {
-			id: string;
-			file: FileLike;
-			bucket: BucketDescriptor;
-			options: BucketFileOptions;
-		};
-		/**
-		 * Triggered when a file is deleted from a bucket.
-		 */
-		"bucket:file:deleted": {
-			id: string;
-			bucket: BucketDescriptor;
-		};
-	}
+  interface Hooks {
+    /**
+     * Triggered when a file is uploaded to a bucket.
+     * Can be used to perform actions after a file is uploaded, like creating a database record!
+     */
+    "bucket:file:uploaded": {
+      id: string;
+      file: FileLike;
+      bucket: BucketDescriptor;
+      options: BucketFileOptions;
+    };
+    /**
+     * Triggered when a file is deleted from a bucket.
+     */
+    "bucket:file:deleted": {
+      id: string;
+      bucket: BucketDescriptor;
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -56,20 +56,20 @@ declare module "@alepha/core" {
  * @module alepha.bucket
  */
 export const AlephaBucket = $module({
-	name: "alepha.bucket",
-	descriptors: [$bucket],
-	services: [
-		FileStorageProvider,
-		MemoryFileStorageProvider,
-		LocalFileStorageProvider,
-		FileMetadataService,
-	],
-	register: (alepha) =>
-		alepha.with({
-			optional: true,
-			provide: FileStorageProvider,
-			use: alepha.isTest()
-				? MemoryFileStorageProvider
-				: LocalFileStorageProvider,
-		}),
+  name: "alepha.bucket",
+  descriptors: [$bucket],
+  services: [
+    FileStorageProvider,
+    MemoryFileStorageProvider,
+    LocalFileStorageProvider,
+    FileMetadataService,
+  ],
+  register: (alepha) =>
+    alepha.with({
+      optional: true,
+      provide: FileStorageProvider,
+      use: alepha.isTest()
+        ? MemoryFileStorageProvider
+        : LocalFileStorageProvider,
+    }),
 });

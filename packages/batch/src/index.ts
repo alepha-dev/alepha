@@ -42,6 +42,6 @@ export * from "./descriptors/$batch.ts";
  * @module alepha.batch
  */
 export const AlephaBatch = $module({
-	name: "alepha.batch",
-	descriptors: [$batch],
+  name: "alepha.batch",
+  descriptors: [$batch],
 });

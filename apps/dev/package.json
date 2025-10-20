@@ -1,8 +1,8 @@
 {
-	"private": true,
-	"type": "module",
-	"dependencies": {
-		"@alepha/command": "0.10.6",
-		"@alepha/core": "0.10.6"
-	}
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@alepha/command": "0.10.6",
+    "@alepha/core": "0.10.6"
+  }
 }

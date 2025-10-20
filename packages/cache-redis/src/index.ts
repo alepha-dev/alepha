@@ -15,14 +15,14 @@ export * from "./providers/RedisCacheProvider.ts";
  * @module alepha.cache.redis
  */
 export const AlephaCacheRedis = $module({
-	name: "alepha.cache.redis",
-	services: [RedisCacheProvider],
-	register: (alepha) =>
-		alepha
-			.with({
-				provide: CacheProvider,
-				use: RedisCacheProvider,
-				optional: true,
-			})
-			.with(AlephaCache),
+  name: "alepha.cache.redis",
+  services: [RedisCacheProvider],
+  register: (alepha) =>
+    alepha
+      .with({
+        provide: CacheProvider,
+        use: RedisCacheProvider,
+        optional: true,
+      })
+      .with(AlephaCache),
 });

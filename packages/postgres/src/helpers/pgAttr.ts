@@ -17,48 +17,48 @@ import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
  * ```
  */
 export const pgAttr = <T extends TSchema, Attr extends PgSymbolKeys>(
-	type: T,
-	attr: Attr,
-	value?: PgSymbols[Attr],
+  type: T,
+  attr: Attr,
+  value?: PgSymbols[Attr],
 ): PgAttr<T, Attr> => {
-	Object.assign(type, { [attr]: value ?? {} });
-	return type as PgAttr<T, Attr>;
+  Object.assign(type, { [attr]: value ?? {} });
+  return type as PgAttr<T, Attr>;
 };
 
 /**
  * Retrieves the fields of a schema that have a specific attribute.
  */
 export const getAttrFields = (
-	schema: TObject,
-	name: PgSymbolKeys,
+  schema: TObject,
+  name: PgSymbolKeys,
 ): PgAttrField[] => {
-	const fields: Array<PgAttrField> = [];
+  const fields: Array<PgAttrField> = [];
 
-	for (const key of Object.keys(schema.properties)) {
-		const value = schema.properties[key];
-		if (name in value) {
-			fields.push({
-				type: value as TSchema,
-				key: key,
-				data: (value as any)[name],
-			});
-		}
-	}
+  for (const key of Object.keys(schema.properties)) {
+    const value = schema.properties[key];
+    if (name in value) {
+      fields.push({
+        type: value as TSchema,
+        key: key,
+        data: (value as any)[name],
+      });
+    }
+  }
 
-	return fields;
+  return fields;
 };
 
 /**
  * Type representation.
  */
 export type PgAttr<T extends TSchema, TAttr extends PgSymbolKeys> = T & {
-	[K in TAttr]: PgSymbols[K];
+  [K in TAttr]: PgSymbols[K];
 };
 
 export interface PgAttrField {
-	key: string;
-	type: TSchema;
-	data: any;
-	nested?: any[];
-	one?: boolean;
+  key: string;
+  type: TSchema;
+  data: any;
+  nested?: any[];
+  one?: boolean;
 }

@@ -21,19 +21,19 @@ import { Logger } from "../services/Logger.ts";
  * ```
  */
 export const $logger = (options: LoggerDescriptorOptions = {}): Logger => {
-	const { context, definition, module } = $cursor();
+  const { context, definition, module } = $cursor();
 
-	return $inject(Logger, {
-		lifetime: "transient",
-		args: [
-			options.name ?? definition?.name,
-			module?.name ?? context.env.MODULE_NAME ?? "app",
-		],
-	});
+  return $inject(Logger, {
+    lifetime: "transient",
+    args: [
+      options.name ?? definition?.name,
+      module?.name ?? context.env.MODULE_NAME ?? "app",
+    ],
+  });
 };
 
 export interface LoggerDescriptorOptions {
-	name?: string;
+  name?: string;
 }
 
 $logger[KIND] = Logger;

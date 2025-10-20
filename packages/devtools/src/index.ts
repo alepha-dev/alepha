@@ -29,7 +29,7 @@ export * from "./schemas/DevTopicMetadata.ts";
  * @module alepha.devtools
  */
 export const AlephaDevtools = $module({
-	name: "alepha.devtools",
-	descriptors: [],
-	services: [DevCollectorProvider],
+  name: "alepha.devtools",
+  descriptors: [],
+  services: [DevCollectorProvider],
 });

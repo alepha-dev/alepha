@@ -15,14 +15,14 @@ export * from "./providers/RedisQueueProvider.ts";
  * @module alepha.queue.redis
  */
 export const AlephaQueueRedis = $module({
-	name: "alepha.queue.redis",
-	services: [RedisQueueProvider],
-	register: (alepha: Alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: QueueProvider,
-				use: RedisQueueProvider,
-			})
-			.with(AlephaQueue),
+  name: "alepha.queue.redis",
+  services: [RedisQueueProvider],
+  register: (alepha: Alepha) =>
+    alepha
+      .with({
+        optional: true,
+        provide: QueueProvider,
+        use: RedisQueueProvider,
+      })
+      .with(AlephaQueue),
 });

@@ -8,5 +8,5 @@ export type * from "./schemas/roleSchema.ts";
 export type * from "./schemas/userAccountInfoSchema.ts";
 
 export const AlephaSecurity = $module({
-	name: "alepha.security",
+  name: "alepha.security",
 });

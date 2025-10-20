@@ -1,41 +1,41 @@
 {
-	"name": "@alepha/topic-redis",
-	"description": "Redis implementation for the pub/sub messaging interface.",
-	"version": "0.10.6",
-	"type": "module",
-	"engines": {
-		"node": ">=22.0.0"
-	},
-	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/logger": "0.10.6",
-		"@alepha/redis": "0.10.6",
-		"@alepha/topic": "0.10.6"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.2.6",
-		"tsdown": "^0.15.7",
-		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
-	},
-	"scripts": {
-		"test": "vitest run",
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts",
-		"check": "tsc"
-	},
-	"homepage": "https://github.com/feunard/alepha",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/feunard/alepha.git"
-	},
-	"keywords": [
-		"alepha",
-		"topic",
-		"redis",
-		"pubsub"
-	]
+  "name": "@alepha/topic-redis",
+  "description": "Redis implementation for the pub/sub messaging interface.",
+  "version": "0.10.6",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@alepha/core": "0.10.6",
+    "@alepha/logger": "0.10.6",
+    "@alepha/redis": "0.10.6",
+    "@alepha/topic": "0.10.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.6",
+    "tsdown": "^0.15.7",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "biome check --write --unsafe",
+    "build": "tsdown -c ../../tsdown.config.ts",
+    "check": "tsc"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "topic",
+    "redis",
+    "pubsub"
+  ]
 }

@@ -2,10 +2,10 @@ import { type Static, t } from "@alepha/core";
 import type { LogEntry } from "@alepha/logger";
 
 export const devLogEntrySchema = t.object({
-	formatted: t.text(),
-	entry: t.any(), // Use any since LogEntry has Date instead of string for timestamp
+  formatted: t.text(),
+  entry: t.any(), // Use any since LogEntry has Date instead of string for timestamp
 });
 
 export type DevLogEntry = Static<typeof devLogEntrySchema> & {
-	entry: LogEntry;
+  entry: LogEntry;
 };

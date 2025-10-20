@@ -8,70 +8,70 @@ import { $scheduler, type SchedulerDescriptorOptions } from "../src";
 const store: Record<string, string> = {};
 
 export class SharedLockProvider extends MemoryLockProvider {
-	store = store;
+  store = store;
 }
 
 export const testSchedulerBasic = async (options: {
-	scheduler: Partial<SchedulerDescriptorOptions>;
-	lock?: Service<LockProvider>;
+  scheduler: Partial<SchedulerDescriptorOptions>;
+  lock?: Service<LockProvider>;
 }) => {
-	let count = 0;
+  let count = 0;
 
-	class TestApp {
-		t = $scheduler({
-			...options.scheduler,
-			lock: !!options.lock,
-			handler: async () => {
-				count += 1;
-			},
-		});
-	}
+  class TestApp {
+    t = $scheduler({
+      ...options.scheduler,
+      lock: !!options.lock,
+      handler: async () => {
+        count += 1;
+      },
+    });
+  }
 
-	const prefix = randomUUID();
+  const prefix = randomUUID();
 
-	const createApp = () => {
-		const alepha = Alepha.create({ env: { LOCK_PREFIX_KEY: prefix } });
+  const createApp = () => {
+    const alepha = Alepha.create({ env: { LOCK_PREFIX_KEY: prefix } });
 
-		if (options.lock) {
-			alepha.with({
-				provide: LockProvider,
-				use: options.lock,
-			});
-		}
+    if (options.lock) {
+      alepha.with({
+        provide: LockProvider,
+        use: options.lock,
+      });
+    }
 
-		alepha.with(DateTimeProvider);
-		alepha.with(TestApp);
+    alepha.with(DateTimeProvider);
+    alepha.with(TestApp);
 
-		return alepha;
-	};
+    return alepha;
+  };
 
-	const apps = [createApp(), createApp(), createApp(), createApp()];
+  const apps = [createApp(), createApp(), createApp(), createApp()];
 
-	expect(count).toEqual(0);
+  expect(count).toEqual(0);
 
-	await Promise.all(apps.map((app) => app.start()));
+  await Promise.all(apps.map((app) => app.start()));
 
-	expect(count).toEqual(0);
+  expect(count).toEqual(0);
 
-	if (options.scheduler.interval) {
-		await Promise.all(
-			apps.map((app) => app.inject(DateTimeProvider).travel([64, "seconds"])),
-		);
-	} else {
-		await Promise.all(
-			apps.map((app) => app.inject(DateTimeProvider).travel([1, "hour"])),
-		);
-	}
+  if (options.scheduler.interval) {
+    await Promise.all(
+      apps.map((app) => app.inject(DateTimeProvider).travel([64, "seconds"])),
+    );
+  } else {
+    await Promise.all(
+      apps.map((app) => app.inject(DateTimeProvider).travel([1, "hour"])),
+    );
+  }
 
-	await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 100));
 
-	if (options.lock) {
-		await expect.poll(() => expect(count).toEqual(1)).toBeTruthy();
-	} else {
-		await expect
-			.poll(() => expect(count).toEqual(1 * apps.length))
-			.toBeTruthy();
-	}
+  if (options.lock) {
+    await expect.poll(() => expect(count).toEqual(1)).toBeTruthy();
+  } else {
+    await expect
+      .poll(() => expect(count).toEqual(1 * apps.length))
+      .toBeTruthy();
+  }
 
-	await Promise.all(apps.map((app) => app.stop()));
+  await Promise.all(apps.map((app) => app.stop()));
 };

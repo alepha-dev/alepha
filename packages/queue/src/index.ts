@@ -26,15 +26,15 @@ export * from "./providers/QueueProvider.ts";
  * @module alepha.queue
  */
 export const AlephaQueue = $module({
-	name: "alepha.queue",
-	descriptors: [$queue, $consumer],
-	services: [QueueProvider, MemoryQueueProvider, WorkerProvider],
-	register: (alepha: Alepha) =>
-		alepha
-			.with({
-				optional: true,
-				provide: QueueProvider,
-				use: MemoryQueueProvider,
-			})
-			.with(WorkerProvider),
+  name: "alepha.queue",
+  descriptors: [$queue, $consumer],
+  services: [QueueProvider, MemoryQueueProvider, WorkerProvider],
+  register: (alepha: Alepha) =>
+    alepha
+      .with({
+        optional: true,
+        provide: QueueProvider,
+        use: MemoryQueueProvider,
+      })
+      .with(WorkerProvider),
 });

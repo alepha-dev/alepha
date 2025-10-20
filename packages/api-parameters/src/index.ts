@@ -16,6 +16,6 @@ export * from "./entities/parameters.ts";
  * @module alepha.api.parameters
  */
 export const AlephaApiParameters = $module({
-	name: "alepha.api.parameters",
-	services: [],
+  name: "alepha.api.parameters",
+  services: [],
 });

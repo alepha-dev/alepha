@@ -5,9 +5,9 @@ import { FileStorageProvider } from "../src/providers/FileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "../src/providers/MemoryFileStorageProvider.ts";
 
 describe("FileStorageProvider", () => {
-	test("create default provider", async ({ expect }) => {
-		const alepha = Alepha.create().with(AlephaBucket);
-		const fileStorageProvider = alepha.inject(FileStorageProvider);
-		expect(fileStorageProvider).toBeInstanceOf(MemoryFileStorageProvider);
-	});
+  test("create default provider", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaBucket);
+    const fileStorageProvider = alepha.inject(FileStorageProvider);
+    expect(fileStorageProvider).toBeInstanceOf(MemoryFileStorageProvider);
+  });
 });

@@ -17,7 +17,7 @@ export * from "./providers/ServerStaticProvider.ts";
  * @module alepha.server.static
  */
 export const AlephaServerStatic = $module({
-	name: "alepha.server.static",
-	descriptors: [$serve],
-	services: [AlephaServer, ServerStaticProvider],
+  name: "alepha.server.static",
+  descriptors: [$serve],
+  services: [AlephaServer, ServerStaticProvider],
 });

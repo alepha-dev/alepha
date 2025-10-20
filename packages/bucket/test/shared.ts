@@ -5,159 +5,159 @@ import { $bucket, FileNotFoundError, type FileStorageProvider } from "../src";
 export const TEST_IMAGES_BUCKET = "test-images";
 export const TEST_DOCUMENTS_BUCKET = "test-documents";
 export class TestApp {
-	images = $bucket({ name: TEST_IMAGES_BUCKET });
-	documents = $bucket({ name: TEST_DOCUMENTS_BUCKET });
+  images = $bucket({ name: TEST_IMAGES_BUCKET });
+  documents = $bucket({ name: TEST_DOCUMENTS_BUCKET });
 }
 
 const BUCKET_NAME = TEST_IMAGES_BUCKET;
 
 export const testUploadAndExistence = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ): Promise<string> => {
-	const content = "This is a test image.";
-	const file = createFile(content, { name: "test.jpg", type: "image/jpeg" });
+  const content = "This is a test image.";
+  const file = createFile(content, { name: "test.jpg", type: "image/jpeg" });
 
-	const fileId = await provider.upload(BUCKET_NAME, file);
+  const fileId = await provider.upload(BUCKET_NAME, file);
 
-	expect(fileId).toBeTypeOf("string");
-	expect(fileId.length).toBeGreaterThan(0);
+  expect(fileId).toBeTypeOf("string");
+  expect(fileId.length).toBeGreaterThan(0);
 
-	// Verify the file physically exists
-	const fileExists = await provider.exists(BUCKET_NAME, fileId);
-	expect(fileExists).toBe(true);
+  // Verify the file physically exists
+  const fileExists = await provider.exists(BUCKET_NAME, fileId);
+  expect(fileExists).toBe(true);
 
-	return fileId;
+  return fileId;
 };
 
 export const testDownloadAndMetadata = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ): Promise<string> => {
-	const content = "<h1>Hello Alepha</h1>";
-	const originalFile = createFile(content, {
-		name: "index.html",
-		type: "text/html",
-	});
+  const content = "<h1>Hello Alepha</h1>";
+  const originalFile = createFile(content, {
+    name: "index.html",
+    type: "text/html",
+  });
 
-	const fileId = await provider.upload(BUCKET_NAME, originalFile);
-	const downloadedFile = await provider.download(BUCKET_NAME, fileId);
+  const fileId = await provider.upload(BUCKET_NAME, originalFile);
+  const downloadedFile = await provider.download(BUCKET_NAME, fileId);
 
-	// Check metadata
-	expect(downloadedFile.name).toBe("index.html");
-	expect(downloadedFile.type).toBe("text/html");
-	expect(downloadedFile.size).toBe(content.length);
+  // Check metadata
+  expect(downloadedFile.name).toBe("index.html");
+  expect(downloadedFile.type).toBe("text/html");
+  expect(downloadedFile.size).toBe(content.length);
 
-	// Check content
-	const downloadedContent = await downloadedFile.text();
-	expect(downloadedContent).toBe(content);
+  // Check content
+  const downloadedContent = await downloadedFile.text();
+  expect(downloadedContent).toBe(content);
 
-	return fileId;
+  return fileId;
 };
 
 export const testFileExistence = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ): Promise<string> => {
-	const file = createFile("exists", { name: "exists.txt" });
-	const fileId = await provider.upload(BUCKET_NAME, file);
-	const fileExists = await provider.exists(BUCKET_NAME, fileId);
-	expect(fileExists).toBe(true);
-	return fileId;
+  const file = createFile("exists", { name: "exists.txt" });
+  const fileId = await provider.upload(BUCKET_NAME, file);
+  const fileExists = await provider.exists(BUCKET_NAME, fileId);
+  expect(fileExists).toBe(true);
+  return fileId;
 };
 
 export const testNonExistentFile = async (provider: FileStorageProvider) => {
-	const fileExists = await provider.exists(BUCKET_NAME, "non-existent-file-id");
-	expect(fileExists).toBe(false);
+  const fileExists = await provider.exists(BUCKET_NAME, "non-existent-file-id");
+  expect(fileExists).toBe(false);
 };
 
 export const testDeleteNonExistentFile = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ) => {
-	const file = createFile("exists", { name: "exists.txt" });
-	const fileId = await provider.upload(BUCKET_NAME, file);
-	const fileExists = await provider.exists(BUCKET_NAME, fileId);
-	expect(fileExists).toBe(true);
-	await provider.delete(BUCKET_NAME, fileId);
-	const fileExists2 = await provider.exists(BUCKET_NAME, fileId);
-	expect(fileExists2).toBe(false);
+  const file = createFile("exists", { name: "exists.txt" });
+  const fileId = await provider.upload(BUCKET_NAME, file);
+  const fileExists = await provider.exists(BUCKET_NAME, fileId);
+  expect(fileExists).toBe(true);
+  await provider.delete(BUCKET_NAME, fileId);
+  const fileExists2 = await provider.exists(BUCKET_NAME, fileId);
+  expect(fileExists2).toBe(false);
 };
 
 export const testDeleteFile = async (provider: FileStorageProvider) => {
-	const file = createFile("to be deleted", { name: "delete_me.txt" });
-	const fileId = await provider.upload(BUCKET_NAME, file);
+  const file = createFile("to be deleted", { name: "delete_me.txt" });
+  const fileId = await provider.upload(BUCKET_NAME, file);
 
-	// Verify it exists before deleting
-	expect(await provider.exists(BUCKET_NAME, fileId)).toBe(true);
+  // Verify it exists before deleting
+  expect(await provider.exists(BUCKET_NAME, fileId)).toBe(true);
 
-	await provider.delete(BUCKET_NAME, fileId);
+  await provider.delete(BUCKET_NAME, fileId);
 
-	// Verify it no longer exists after deletion
-	expect(await provider.exists(BUCKET_NAME, fileId)).toBe(false);
+  // Verify it no longer exists after deletion
+  expect(await provider.exists(BUCKET_NAME, fileId)).toBe(false);
 };
 
 export const testNonExistentFileError = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ) => {
-	await expect(
-		provider.download(BUCKET_NAME, "i-do-not-exist"),
-	).rejects.toThrow(FileNotFoundError);
+  await expect(
+    provider.download(BUCKET_NAME, "i-do-not-exist"),
+  ).rejects.toThrow(FileNotFoundError);
 };
 
 export const testUploadIntoBuckets = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ): Promise<{ docId: string; imgId: string }> => {
-	const docFile = createFile("report", { name: "report.pdf" });
-	const imgFile = createFile("logo", { name: "logo.png" });
+  const docFile = createFile("report", { name: "report.pdf" });
+  const imgFile = createFile("logo", { name: "logo.png" });
 
-	const docId = await provider.upload(TEST_DOCUMENTS_BUCKET, docFile);
-	const imgId = await provider.upload(TEST_IMAGES_BUCKET, imgFile);
+  const docId = await provider.upload(TEST_DOCUMENTS_BUCKET, docFile);
+  const imgId = await provider.upload(TEST_IMAGES_BUCKET, imgFile);
 
-	expect(await provider.exists(TEST_DOCUMENTS_BUCKET, docId)).toBe(true);
-	expect(await provider.exists(TEST_IMAGES_BUCKET, imgId)).toBe(true);
+  expect(await provider.exists(TEST_DOCUMENTS_BUCKET, docId)).toBe(true);
+  expect(await provider.exists(TEST_IMAGES_BUCKET, imgId)).toBe(true);
 
-	// Ensure files are in separate directories and not mixed up
-	expect(await provider.exists(TEST_DOCUMENTS_BUCKET, imgId)).toBe(false);
-	expect(await provider.exists(TEST_IMAGES_BUCKET, docId)).toBe(false);
+  // Ensure files are in separate directories and not mixed up
+  expect(await provider.exists(TEST_DOCUMENTS_BUCKET, imgId)).toBe(false);
+  expect(await provider.exists(TEST_IMAGES_BUCKET, docId)).toBe(false);
 
-	return { docId, imgId };
+  return { docId, imgId };
 };
 
 export const testFileStream = async (
-	provider: FileStorageProvider,
+  provider: FileStorageProvider,
 ): Promise<string> => {
-	const content = "Streaming content test.";
-	const file = createFile(content, { name: "stream.txt", type: "text/plain" });
+  const content = "Streaming content test.";
+  const file = createFile(content, { name: "stream.txt", type: "text/plain" });
 
-	const fileId = await provider.upload(BUCKET_NAME, file);
-	const stream = await provider.download(BUCKET_NAME, fileId);
+  const fileId = await provider.upload(BUCKET_NAME, file);
+  const stream = await provider.download(BUCKET_NAME, fileId);
 
-	expect(stream.name).toBe("stream.txt");
-	expect(stream.type).toBe("text/plain");
+  expect(stream.name).toBe("stream.txt");
+  expect(stream.type).toBe("text/plain");
 
-	const streamContent = await stream.text();
-	expect(streamContent).toBe(content);
+  const streamContent = await stream.text();
+  expect(streamContent).toBe(content);
 
-	return fileId;
+  return fileId;
 };
 
 export const testEmptyFiles = async (provider: FileStorageProvider) => {
-	const emptyFile = createFile("", { name: "empty.txt", type: "text/plain" });
+  const emptyFile = createFile("", { name: "empty.txt", type: "text/plain" });
 
-	const fileId = await provider.upload(BUCKET_NAME, emptyFile);
-	const downloadedFile = await provider.download(BUCKET_NAME, fileId);
+  const fileId = await provider.upload(BUCKET_NAME, emptyFile);
+  const downloadedFile = await provider.download(BUCKET_NAME, fileId);
 
-	expect(downloadedFile.name).toBe("empty.txt");
-	expect(downloadedFile.type).toBe("text/plain");
-	expect(downloadedFile.size).toBe(0);
-	expect(await downloadedFile.text()).toBe("");
+  expect(downloadedFile.name).toBe("empty.txt");
+  expect(downloadedFile.type).toBe("text/plain");
+  expect(downloadedFile.size).toBe(0);
+  expect(await downloadedFile.text()).toBe("");
 };
 
 export const testCustomFileId = async (provider: FileStorageProvider) => {
-	const file = createFile("custom id", { name: "custom.txt" });
-	const customFileId = "custom-file-id";
+  const file = createFile("custom id", { name: "custom.txt" });
+  const customFileId = "custom-file-id";
 
-	const uploadedFileId = await provider.upload(BUCKET_NAME, file, customFileId);
+  const uploadedFileId = await provider.upload(BUCKET_NAME, file, customFileId);
 
-	expect(uploadedFileId).toBe(customFileId);
+  expect(uploadedFileId).toBe(customFileId);
 
-	const fileExists = await provider.exists(BUCKET_NAME, customFileId);
-	expect(fileExists).toBe(true);
+  const fileExists = await provider.exists(BUCKET_NAME, customFileId);
+  expect(fileExists).toBe(true);
 };

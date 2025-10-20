@@ -16,6 +16,6 @@ export * from "./providers/ServerMultipartProvider.ts";
  * @module alepha.server.multipart
  */
 export const AlephaServerMultipart = $module({
-	name: "alepha.server.multipart",
-	services: [AlephaServer, ServerMultipartProvider],
+  name: "alepha.server.multipart",
+  services: [AlephaServer, ServerMultipartProvider],
 });

@@ -6,9 +6,9 @@ import { PgError } from "./PgError.ts";
  * This is used for optimistic concurrency control.
  */
 export class PgVersionMismatchError extends PgError {
-	readonly name = "PgVersionMismatchError";
+  readonly name = "PgVersionMismatchError";
 
-	constructor(table: string, id: any) {
-		super(`Version mismatch for table '${table}' and id '${id}'`);
-	}
+  constructor(table: string, id: any) {
+    super(`Version mismatch for table '${table}' and id '${id}'`);
+  }
 }

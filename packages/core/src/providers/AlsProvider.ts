@@ -3,56 +3,56 @@ import type { AsyncLocalStorage } from "node:async_hooks";
 export type AsyncLocalStorageData = any;
 
 export class AlsProvider {
-	static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
-		return undefined;
-	};
+  static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
+    return undefined;
+  };
 
-	public als?: AsyncLocalStorage<AsyncLocalStorageData>;
+  public als?: AsyncLocalStorage<AsyncLocalStorageData>;
 
-	constructor() {
-		this.als = AlsProvider.create();
-	}
+  constructor() {
+    this.als = AlsProvider.create();
+  }
 
-	public createContextId(): string {
-		return crypto.randomUUID();
-	}
+  public createContextId(): string {
+    return crypto.randomUUID();
+  }
 
-	public run<R>(callback: () => R, data: Record<string, any> = {}): R {
-		if (!this.als) {
-			return callback();
-		}
+  public run<R>(callback: () => R, data: Record<string, any> = {}): R {
+    if (!this.als) {
+      return callback();
+    }
 
-		data.registry ??= new Map();
-		data.context ??= this.createContextId();
+    data.registry ??= new Map();
+    data.context ??= this.createContextId();
 
-		return this.als.run(data, callback);
-	}
+    return this.als.run(data, callback);
+  }
 
-	public exists(): boolean {
-		return !!this.get("context");
-	}
+  public exists(): boolean {
+    return !!this.get("context");
+  }
 
-	public get<T>(key: string): T | undefined {
-		if (!this.als) {
-			return undefined;
-		}
+  public get<T>(key: string): T | undefined {
+    if (!this.als) {
+      return undefined;
+    }
 
-		const store = this.als.getStore();
-		if (store) {
-			return store[key] as T;
-		}
+    const store = this.als.getStore();
+    if (store) {
+      return store[key] as T;
+    }
 
-		return undefined;
-	}
+    return undefined;
+  }
 
-	public set<T>(key: string, value: T): void {
-		if (!this.als) {
-			return;
-		}
+  public set<T>(key: string, value: T): void {
+    if (!this.als) {
+      return;
+    }
 
-		const store = this.als.getStore();
-		if (store) {
-			store[key] = value;
-		}
-	}
+    const store = this.als.getStore();
+    if (store) {
+      store[key] = value;
+    }
+  }
 }

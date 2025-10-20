@@ -22,12 +22,12 @@ export * from "./schemas/roleSchema.ts";
 export * from "./schemas/userAccountInfoSchema.ts";
 
 declare module "@alepha/core" {
-	interface Hooks {
-		"security:user:created": {
-			realm: string;
-			user: UserAccount;
-		};
-	}
+  interface Hooks {
+    "security:user:created": {
+      realm: string;
+      user: UserAccount;
+    };
+  }
 }
 
 /**
@@ -43,7 +43,7 @@ declare module "@alepha/core" {
  * @module alepha.security
  */
 export const AlephaSecurity = $module({
-	name: "alepha.security",
-	descriptors: [$realm, $role, $permission],
-	services: [SecurityProvider, JwtProvider, CryptoProvider],
+  name: "alepha.security",
+  descriptors: [$realm, $role, $permission],
+  services: [SecurityProvider, JwtProvider, CryptoProvider],
 });
