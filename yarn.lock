@@ -72,6 +72,8 @@ __metadata:
     "@alepha/core": "npm:0.10.6"
     "@alepha/postgres": "npm:0.10.6"
     "@alepha/security": "npm:0.10.6"
+    "@alepha/server": "npm:0.10.6"
+    "@alepha/topic": "npm:0.10.6"
     "@biomejs/biome": "npm:^2.2.6"
     tsdown: "npm:^0.15.7"
     typescript: "npm:^5.9.3"

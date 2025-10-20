@@ -23,7 +23,9 @@
 	"dependencies": {
 		"@alepha/core": "0.10.6",
 		"@alepha/postgres": "0.10.6",
-		"@alepha/security": "0.10.6"
+		"@alepha/security": "0.10.6",
+		"@alepha/server": "0.10.6",
+		"@alepha/topic": "0.10.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",
