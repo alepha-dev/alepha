@@ -383,8 +383,10 @@ describe("$page descriptor tests", () => {
 		await alepha.start();
 
 		expect(app.staticPage.options.cache).toEqual({
-			provider: "memory",
-			ttl: [1, "week"],
+			store: {
+				provider: "memory",
+				ttl: [1, "week"],
+			},
 		});
 
 		const rendered = await app.staticPage.render();
@@ -678,8 +680,10 @@ describe("$page descriptor tests", () => {
 			cached = $page({
 				path: "/cached",
 				cache: {
-					provider: "memory",
-					ttl: [5, "minute"],
+					store: {
+						provider: "memory",
+						ttl: [5, "minute"],
+					},
 				},
 				component: () => "Cached content",
 			});
@@ -689,8 +693,10 @@ describe("$page descriptor tests", () => {
 		await alepha.start();
 
 		expect(app.cached.options.cache).toEqual({
-			provider: "memory",
-			ttl: [5, "minute"],
+			store: {
+				provider: "memory",
+				ttl: [5, "minute"],
+			},
 		});
 		expect(app.cached.options.static).toBeUndefined();
 

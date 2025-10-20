@@ -1,10 +1,14 @@
 import type { VerificationController } from "@alepha/api-verifications";
 import { $inject } from "@alepha/core";
-import { $repository } from "@alepha/postgres";
+import { $repository, type Page } from "@alepha/postgres";
 import { BadRequestError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
+import type { UserEntity } from "../entities/users.ts";
 import { users } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
+import type { CreateUser } from "../schemas/createUserSchema.ts";
+import type { UpdateUser } from "../schemas/updateUserSchema.ts";
+import type { UserQuery } from "../schemas/userQuerySchema.ts";
 
 export class UserService {
 	protected readonly verificationController = $client<VerificationController>();
@@ -113,5 +117,80 @@ export class UserService {
 			.catch(() => undefined);
 
 		return user?.emailVerified ?? false;
+	}
+
+	/**
+	 * Find users with pagination and filtering.
+	 */
+	public async findUsers(q: UserQuery = {}): Promise<Page<UserEntity>> {
+		q.sort ??= "-createdAt";
+
+		const where = this.users.createQueryWhere();
+
+		if (q.email) {
+			where.email = { like: q.email };
+		}
+
+		if (q.enabled !== undefined) {
+			where.enabled = { eq: q.enabled };
+		}
+
+		if (q.emailVerified !== undefined) {
+			where.emailVerified = { eq: q.emailVerified };
+		}
+
+		if (q.roles) {
+			where.roles = { arrayContains: q.roles };
+		}
+
+		return await this.users.paginate(q, { where }, { count: true });
+	}
+
+	/**
+	 * Get a user by ID.
+	 */
+	public async getUserById(id: string): Promise<UserEntity> {
+		return await this.users.findById(id);
+	}
+
+	/**
+	 * Create a new user.
+	 */
+	public async createUser(data: CreateUser): Promise<UserEntity> {
+		// Check if email already exists
+		const existingUser = await this.users
+			.findOne({
+				where: { email: { eq: data.email } },
+			})
+			.catch(() => undefined);
+
+		if (existingUser) {
+			throw new BadRequestError("User with this email already exists");
+		}
+
+		return await this.users.create({
+			...data,
+			roles: data.roles ?? ["user"],
+		});
+	}
+
+	/**
+	 * Update an existing user.
+	 */
+	public async updateUser(id: string, data: UpdateUser): Promise<UserEntity> {
+		// Verify user exists
+		await this.getUserById(id);
+
+		return await this.users.updateById(id, data);
+	}
+
+	/**
+	 * Delete a user by ID.
+	 */
+	public async deleteUser(id: string): Promise<void> {
+		// Verify user exists
+		await this.getUserById(id);
+
+		await this.users.deleteById(id);
 	}
 }

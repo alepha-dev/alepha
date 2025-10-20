@@ -176,5 +176,9 @@ export interface ServerRawRequest {
 			req: IncomingMessage;
 			res: NodeServerResponse;
 		};
+		web?: {
+			req: Request;
+			res?: Response;
+		};
 	};
 }

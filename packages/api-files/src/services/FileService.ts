@@ -144,11 +144,10 @@ export class FileService {
 	}
 
 	public async streamFile(id: string): Promise<FileLike> {
-		const file = await this.getFileById(id);
+		const entity = await this.getFileById(id);
+		const bucket = this.bucket(entity.bucket);
 
-		const bucket = this.bucket(file.bucket);
-
-		return await bucket.download(file.blobId);
+		return await bucket.download(entity.blobId);
 	}
 
 	public async deleteFile(id: string): Promise<Ok> {

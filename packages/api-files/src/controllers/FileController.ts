@@ -57,13 +57,22 @@ export class FileController {
 	public readonly streamFile = $action({
 		path: `${this.url}/:id`,
 		group: this.group,
-		etag: true,
+		cache: {
+			etag: true,
+			control: {
+				public: true,
+				maxAge: [1, "year"],
+				immutable: true,
+			},
+		},
 		schema: {
 			params: t.object({
 				id: t.uuid(),
 			}),
 			response: t.file(),
 		},
-		handler: ({ params }) => this.fileService.streamFile(params.id),
+		handler: async ({ params }) => {
+			return await this.fileService.streamFile(params.id);
+		},
 	});
 }

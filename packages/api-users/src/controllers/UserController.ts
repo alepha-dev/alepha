@@ -1,11 +1,101 @@
 import { $inject, t } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { pg } from "@alepha/postgres";
+import { $action, okSchema } from "@alepha/server";
+import { createUserSchema } from "../schemas/createUserSchema.ts";
+import { updateUserSchema } from "../schemas/updateUserSchema.ts";
+import { userQuerySchema } from "../schemas/userQuerySchema.ts";
+import { userResourceSchema } from "../schemas/userResourceSchema.ts";
 import { CredentialService } from "../services/CredentialService.ts";
 import { UserService } from "../services/UserService.ts";
 
 export class UserController {
+	protected readonly url = "/users";
+	protected readonly group = "users";
 	protected readonly credentialService = $inject(CredentialService);
 	protected readonly userService = $inject(UserService);
+
+	/**
+	 * Find users with pagination and filtering.
+	 */
+	public readonly findUsers = $action({
+		path: this.url,
+		group: this.group,
+		description: "Find users with pagination and filtering",
+		schema: {
+			query: userQuerySchema,
+			response: pg.page(userResourceSchema),
+		},
+		handler: ({ query }) => this.userService.findUsers(query),
+	});
+
+	/**
+	 * Get a user by ID.
+	 */
+	public readonly getUser = $action({
+		path: `${this.url}/:id`,
+		group: this.group,
+		description: "Get a user by ID",
+		schema: {
+			params: t.object({
+				id: t.uuid(),
+			}),
+			response: userResourceSchema,
+		},
+		handler: ({ params }) => this.userService.getUserById(params.id),
+	});
+
+	/**
+	 * Create a new user.
+	 */
+	public readonly createUser = $action({
+		method: "POST",
+		path: this.url,
+		group: this.group,
+		description: "Create a new user",
+		schema: {
+			body: createUserSchema,
+			response: userResourceSchema,
+		},
+		handler: ({ body }) => this.userService.createUser(body),
+	});
+
+	/**
+	 * Update a user.
+	 */
+	public readonly updateUser = $action({
+		method: "PATCH",
+		path: `${this.url}/:id`,
+		group: this.group,
+		description: "Update a user",
+		schema: {
+			params: t.object({
+				id: t.uuid(),
+			}),
+			body: updateUserSchema,
+			response: userResourceSchema,
+		},
+		handler: ({ params, body }) => this.userService.updateUser(params.id, body),
+	});
+
+	/**
+	 * Delete a user.
+	 */
+	public readonly deleteUser = $action({
+		method: "DELETE",
+		path: `${this.url}/:id`,
+		group: this.group,
+		description: "Delete a user",
+		schema: {
+			params: t.object({
+				id: t.uuid(),
+			}),
+			response: okSchema,
+		},
+		handler: async ({ params }) => {
+			await this.userService.deleteUser(params.id);
+			return { ok: true, id: params.id };
+		},
+	});
 
 	/**
 	 * Request a password reset.
@@ -13,7 +103,7 @@ export class UserController {
 	 */
 	public requestPasswordReset = $action({
 		path: "/users/password-reset/request",
-		group: "users",
+		group: this.group,
 		schema: {
 			body: t.object({
 				email: t.email(),
@@ -47,7 +137,7 @@ export class UserController {
 	 */
 	public validateResetToken = $action({
 		path: "/users/password-reset/validate",
-		group: "users",
+		group: this.group,
 		schema: {
 			query: t.object({
 				email: t.email(),
@@ -82,7 +172,7 @@ export class UserController {
 	 */
 	public resetPassword = $action({
 		path: "/users/password-reset/reset",
-		group: "users",
+		group: this.group,
 		schema: {
 			body: t.object({
 				email: t.email(),
@@ -114,7 +204,7 @@ export class UserController {
 	 */
 	public requestEmailVerification = $action({
 		path: "/users/email-verification/request",
-		group: "users",
+		group: this.group,
 		schema: {
 			body: t.object({
 				email: t.email(),
@@ -148,7 +238,7 @@ export class UserController {
 	 */
 	public verifyEmail = $action({
 		path: "/users/email-verification/verify",
-		group: "users",
+		group: this.group,
 		schema: {
 			body: t.object({
 				email: t.email(),
@@ -174,7 +264,7 @@ export class UserController {
 	 */
 	public checkEmailVerification = $action({
 		path: "/users/email-verification/check",
-		group: "users",
+		group: this.group,
 		schema: {
 			query: t.object({
 				email: t.email(),

@@ -2,13 +2,19 @@ import { $module } from "@alepha/core";
 import { AlephaEmail } from "@alepha/email";
 import { AlephaReactAuth } from "@alepha/react-auth";
 import { AlephaServerSecurity } from "@alepha/server-security";
+import { IdentityController } from "./controllers/IdentityController.ts";
+import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { CredentialService } from "./services/CredentialService.ts";
+import { IdentityService } from "./services/IdentityService.ts";
+import { SessionCrudService } from "./services/SessionCrudService.ts";
 import { SessionService } from "./services/SessionService.ts";
 import { UserService } from "./services/UserService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./controllers/IdentityController.ts";
+export * from "./controllers/SessionController.ts";
 export * from "./controllers/UserController.ts";
 export * from "./descriptors/$authApple.ts";
 export * from "./descriptors/$authCredentials.ts";
@@ -18,7 +24,17 @@ export * from "./descriptors/$realmUsers.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
+export * from "./schemas/createUserSchema.ts";
+export * from "./schemas/identityQuerySchema.ts";
+export * from "./schemas/identityResourceSchema.ts";
+export * from "./schemas/sessionQuerySchema.ts";
+export * from "./schemas/sessionResourceSchema.ts";
+export * from "./schemas/updateUserSchema.ts";
+export * from "./schemas/userQuerySchema.ts";
+export * from "./schemas/userResourceSchema.ts";
 export * from "./services/CredentialService.ts";
+export * from "./services/IdentityService.ts";
+export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
 export * from "./services/UserService.ts";
 
@@ -39,8 +55,12 @@ export const AlephaApiUsers = $module({
 		AlephaReactAuth,
 		AlephaEmail,
 		SessionService,
+		SessionCrudService,
 		CredentialService,
 		UserService,
+		IdentityService,
 		UserController,
+		SessionController,
+		IdentityController,
 	],
 });

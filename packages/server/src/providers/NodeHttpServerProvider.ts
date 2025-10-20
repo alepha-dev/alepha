@@ -4,8 +4,6 @@ import { Readable } from "node:stream";
 import { $env, $hook, $inject, Alepha, type Static, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import type { RouteMethod } from "../constants/routeMethods.ts";
-import type { ServerRawRequest } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "./ServerProvider.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
@@ -64,7 +62,10 @@ export class NodeHttpServerProvider extends ServerProvider {
 			return;
 		}
 
-		const request = this.createRouterRequest(req, res, params);
+		const request = this.createRouterRequest(req, params);
+
+		request.raw.node = { req, res };
+
 		const response = await route.handler(request).catch(() => {
 			return {
 				status: 500,
@@ -112,40 +113,6 @@ export class NodeHttpServerProvider extends ServerProvider {
 		this.log.error("Unknown response body type:", typeof response.body);
 		res.writeHead(500, { "content-type": "text/plain" });
 		res.end("Internal Server Error");
-	}
-
-	public createRouterRequest(
-		req: IncomingMessage,
-		res: ServerResponse,
-		params: Record<string, string> = {},
-	): ServerRawRequest {
-		const url = new URL(
-			`${this.getProtocol(req)}://${req.headers.host}${req.url}`,
-		);
-		const query = Object.fromEntries(url.searchParams.entries());
-		const headers = req.headers as Record<string, string>;
-		const method = (req.method?.toUpperCase() ?? "GET") as RouteMethod;
-
-		return {
-			method,
-			url,
-			headers,
-			params,
-			query,
-			raw: {
-				node: {
-					req,
-					res,
-				},
-			},
-		};
-	}
-
-	public getProtocol(req: IncomingMessage): "http" | "https" {
-		if (req.headers["x-forwarded-proto"] === "https") {
-			return "https";
-		}
-		return "http";
 	}
 
 	public get hostname(): string {

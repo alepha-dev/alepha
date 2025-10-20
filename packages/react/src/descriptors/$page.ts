@@ -324,8 +324,10 @@ export class PageDescriptor<
 	protected onInit() {
 		if (this.options.static) {
 			this.options.cache ??= {
-				provider: "memory",
-				ttl: [1, "week"],
+				store: {
+					provider: "memory",
+					ttl: [1, "week"],
+				},
 			};
 		}
 	}

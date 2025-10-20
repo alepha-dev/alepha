@@ -14,21 +14,12 @@ declare module "@alepha/server" {
 	interface ServerRoute {
 		/**
 		 * Enable caching for this route.
-		 * If set to true, a default cache configuration will be applied (5 minutes TTL).
-		 * If a DurationLike is provided, it will be used as the TTL for the cache.
+		 * - If true: enables both store and etag
+		 * - If object: fine-grained control over store, etag, and cache-control headers
 		 *
 		 * @default false
 		 */
 		cache?: ServerRouteCache;
-
-		/**
-		 * Enable ETag support for this route.
-		 * If set to true, the server will generate and manage ETags automatically.
-		 * If a string is provided, it will be used as a static ETag value.
-		 *
-		 * @default false
-		 */
-		etag?: boolean | string;
 	}
 
 	interface ActionDescriptor<TConfig extends RequestConfigSchema> {
@@ -67,47 +58,27 @@ export class ServerCacheProvider {
 		on: "action:onRequest",
 		handler: async ({ action, request }) => {
 			const cache = action.route.cache;
-			const etag = action.route.etag;
 
-			// Check for cached response or ETag
-			if (cache || etag) {
+			const shouldStore = this.shouldStore(cache);
+
+			// Only check cache if storing is enabled
+			if (shouldStore) {
 				const key = this.createCacheKey(action.route, request);
 				const cached = await this.cache.get(key);
 
 				if (cached) {
-					// Check if client has matching ETag - return 304 for both cached and etag-only routes
-					if (
-						request.headers["if-none-match"] === cached.hash ||
-						request.headers["if-modified-since"] === cached.lastModified
-					) {
-						request.reply.status = 304;
-						request.reply.body = "";
-						request.reply.setHeader("etag", cached.hash);
-						request.reply.setHeader("last-modified", cached.lastModified);
-						this.log.trace("ETag match, returning 304", {
-							action: action.name,
-							etag: cached.hash,
-						});
-						return;
-					}
+					const body =
+						cached.contentType === "application/json"
+							? JSON.parse(cached.body)
+							: cached.body;
 
-					// Only serve cached content if caching is enabled (not for etag-only routes)
-					if (cache) {
-						const body =
-							cached.contentType === "application/json"
-								? JSON.parse(cached.body)
-								: cached.body;
+					this.log.trace("Cache hit for action", {
+						key,
+						action: action.name,
+					});
 
-						this.log.trace("Cache hit for action", {
-							key,
-							action: action.name,
-						});
-
-						request.reply.body = body; // just re-use, full trust
-						request.reply.setHeader("etag", cached.hash);
-						request.reply.setHeader("last-modified", cached.lastModified);
-					}
-				} else if (cache) {
+					request.reply.body = body; // just re-use, full trust
+				} else {
 					this.log.trace("Cache miss for action", {
 						key,
 						action: action.name,
@@ -121,9 +92,10 @@ export class ServerCacheProvider {
 		on: "action:onResponse",
 		handler: async ({ action, request, response }) => {
 			const cache = action.route.cache;
-			const etag = action.route.etag;
 
-			if ((!cache && !etag) || !response) {
+			const shouldStore = this.shouldStore(cache);
+
+			if (!shouldStore || !response) {
 				return;
 			}
 
@@ -142,14 +114,12 @@ export class ServerCacheProvider {
 			const generatedEtag = this.generateETag(body);
 			const lastModified = this.time.toISOString();
 
-			// Store response for both cached and etag-only routes
+			// Store response for cached actions
 			const key = this.createCacheKey(action.route, request);
 
 			this.log.trace("Storing response", {
 				key,
 				action: action.name,
-				cache: !!cache,
-				etag: !!etag,
 			});
 
 			await this.cache.set(key, {
@@ -159,9 +129,11 @@ export class ServerCacheProvider {
 				hash: generatedEtag,
 			});
 
-			// Set ETag headers
-			request.reply.setHeader("etag", generatedEtag);
-			request.reply.setHeader("last-modified", lastModified);
+			// Set Cache-Control header if configured (for HTTP responses)
+			const cacheControl = this.buildCacheControlHeader(cache);
+			if (cacheControl) {
+				request.reply.setHeader("cache-control", cacheControl);
+			}
 		},
 	});
 
@@ -169,10 +141,12 @@ export class ServerCacheProvider {
 		on: "server:onRequest",
 		handler: async ({ route, request }) => {
 			const cache = route.cache;
-			const etag = route.etag;
+
+			const shouldStore = this.shouldStore(cache);
+			const shouldUseEtag = this.shouldUseEtag(cache);
 
 			// Check for cached response or ETag
-			if (!cache && !etag) {
+			if (!shouldStore && !shouldUseEtag) {
 				return;
 			}
 
@@ -195,8 +169,8 @@ export class ServerCacheProvider {
 					return;
 				}
 
-				// Only serve cached content if caching is enabled (not for etag-only routes)
-				if (cache) {
+				// Only serve cached content if storing is enabled (not for etag-only routes)
+				if (shouldStore) {
 					this.log.trace("Cache hit for route", {
 						key,
 						route: route.path,
@@ -214,7 +188,7 @@ export class ServerCacheProvider {
 					request.reply.setHeader("etag", cached.hash);
 					request.reply.setHeader("last-modified", cached.lastModified);
 				}
-			} else if (cache) {
+			} else if (shouldStore) {
 				this.log.trace("Cache miss for route", {
 					key,
 					route: route.path,
@@ -229,7 +203,12 @@ export class ServerCacheProvider {
 			// before sending the response, check if the ETag matches
 			// and if so, return a 304 Not Modified response
 			// -> this is only relevant for etag-only routes, not cached routes <-
-			if (!route.cache && route.etag && request.reply.body != null) {
+			const cache = route.cache;
+
+			const shouldStore = this.shouldStore(cache);
+			const shouldUseEtag = this.shouldUseEtag(cache);
+
+			if (!shouldStore && shouldUseEtag && request.reply.body != null) {
 				const generatedEtag = this.generateETag(request.reply.body);
 
 				if (request.headers["if-none-match"] === generatedEtag) {
@@ -251,10 +230,12 @@ export class ServerCacheProvider {
 		priority: "first",
 		handler: async ({ route, request, response }) => {
 			const cache = route.cache;
-			const etag = route.etag;
+
+			const shouldStore = this.shouldStore(cache);
+			const shouldUseEtag = this.shouldUseEtag(cache);
 
 			// Skip if neither cache nor etag is enabled
-			if (!cache && !etag) {
+			if (!shouldStore && !shouldUseEtag) {
 				return;
 			}
 
@@ -276,15 +257,15 @@ export class ServerCacheProvider {
 			// Initialize headers if not present
 			response.headers ??= {};
 
-			// Store response for both cached and etag-only routes
-			this.log.trace("Storing response", {
-				key,
-				route: route.path,
-				cache: !!cache,
-				etag: !!etag,
-			});
+			// Store response if storing is enabled
+			if (shouldStore) {
+				this.log.trace("Storing response", {
+					key,
+					route: route.path,
+					cache: !!cache,
+					etag: shouldUseEtag,
+				});
 
-			if (cache) {
 				await this.cache.set(key, {
 					body: response.body,
 					status: response.status,
@@ -292,13 +273,109 @@ export class ServerCacheProvider {
 					lastModified,
 					hash: generatedEtag,
 				});
+
+				// Set Cache-Control header if configured
+				const cacheControl = this.buildCacheControlHeader(cache);
+				if (cacheControl) {
+					response.headers["cache-control"] = cacheControl;
+				}
 			}
 
-			// Set ETag headers
-			response.headers.etag = generatedEtag;
-			response.headers["last-modified"] = lastModified;
+			// Set ETag headers if etag is enabled
+			if (shouldUseEtag) {
+				response.headers.etag = generatedEtag;
+				response.headers["last-modified"] = lastModified;
+			}
 		},
 	});
+
+	public buildCacheControlHeader(cache?: ServerRouteCache): string | undefined {
+		if (!cache) {
+			return undefined;
+		}
+
+		// If cache is true or a DurationLike, no Cache-Control header is set
+		if (
+			cache === true ||
+			typeof cache === "string" ||
+			typeof cache === "number"
+		) {
+			return undefined;
+		}
+
+		const control = cache.control;
+		if (!control) {
+			return undefined;
+		}
+
+		// If control is a string, return it directly
+		if (typeof control === "string") {
+			return control;
+		}
+
+		// If control is true, return default Cache-Control
+		if (control === true) {
+			return "public, max-age=300";
+		}
+
+		// Build Cache-Control from object directives
+		const directives: string[] = [];
+
+		if (control.public) {
+			directives.push("public");
+		}
+		if (control.private) {
+			directives.push("private");
+		}
+		if (control.noCache) {
+			directives.push("no-cache");
+		}
+		if (control.noStore) {
+			directives.push("no-store");
+		}
+		if (control.maxAge !== undefined) {
+			const maxAgeSeconds = this.durationToSeconds(control.maxAge);
+			directives.push(`max-age=${maxAgeSeconds}`);
+		}
+		if (control.sMaxAge !== undefined) {
+			const sMaxAgeSeconds = this.durationToSeconds(control.sMaxAge);
+			directives.push(`s-maxage=${sMaxAgeSeconds}`);
+		}
+		if (control.mustRevalidate) {
+			directives.push("must-revalidate");
+		}
+		if (control.proxyRevalidate) {
+			directives.push("proxy-revalidate");
+		}
+		if (control.immutable) {
+			directives.push("immutable");
+		}
+
+		return directives.length > 0 ? directives.join(", ") : undefined;
+	}
+
+	protected durationToSeconds(duration: number | DurationLike): number {
+		if (typeof duration === "number") {
+			return duration;
+		}
+
+		return this.time.duration(duration).asSeconds();
+	}
+
+	protected shouldStore(cache?: ServerRouteCache): boolean {
+		if (!cache) return false;
+		if (cache === true) return true;
+		if (typeof cache === "object" && cache.store) return true;
+		return false;
+	}
+
+	protected shouldUseEtag(cache?: ServerRouteCache): boolean {
+		// cache: true enables etag
+		if (cache === true) return true;
+		// Check object form
+		if (typeof cache === "object" && cache.etag) return true;
+		return false;
+	}
 
 	protected createCacheKey(route: ServerRoute, config?: ServerRequest): string {
 		const params: string[] = [];
@@ -314,9 +391,91 @@ export class ServerCacheProvider {
 }
 
 export type ServerRouteCache =
+	/**
+	 * If true, enables caching with:
+	 * - store: true
+	 * - etag: true
+	 */
 	| boolean
-	| DurationLike
-	| Omit<CacheDescriptorOptions<any>, "handler" | "key">;
+	/**
+	 * Object configuration for fine-grained cache control.
+	 *
+	 * If empty, no caching will be applied.
+	 */
+	| {
+			/**
+			 * If true, enables storing cached responses. (in-memory, Redis, @see @alepha/cache for other providers)
+			 * If a DurationLike is provided, it will be used as the TTL for the cache.
+			 * If CacheDescriptorOptions is provided, it will be used to configure the cache storage.
+			 *
+			 * @default false
+			 */
+			store?: true | DurationLike | CacheDescriptorOptions;
+			/**
+			 * If true, enables ETag support for the cached responses.
+			 */
+			etag?: true;
+			/**
+			 * - If true, sets Cache-Control to "public, max-age=300" (5 minutes).
+			 * - If string, sets Cache-Control to the provided value directly.
+			 * - If object, configures Cache-Control directives.
+			 */
+			control?: /**
+			 * If true, sets Cache-Control to "public, max-age=300" (5 minutes).
+			 */
+				| true
+				/**
+				 * If string, sets Cache-Control to the provided value directly.
+				 */
+				| string
+				/**
+				 * If object, configures Cache-Control directives.
+				 */
+				| {
+						/**
+						 * Indicates that the response may be cached by any cache.
+						 */
+						public?: boolean;
+						/**
+						 * Indicates that the response is intended for a single user and must not be stored by a shared cache.
+						 */
+						private?: boolean;
+						/**
+						 * Forces caches to submit the request to the origin server for validation before releasing a cached copy.
+						 */
+						noCache?: boolean;
+						/**
+						 * Instructs caches not to store the response.
+						 */
+						noStore?: boolean;
+						/**
+						 * Maximum amount of time a resource is considered fresh.
+						 * Can be specified as a number (seconds) or as a DurationLike object.
+						 *
+						 * @example 300 // 5 minutes in seconds
+						 * @example { minutes: 5 } // 5 minutes
+						 * @example { hours: 1 } // 1 hour
+						 */
+						maxAge?: number | DurationLike;
+						/**
+						 * Overrides max-age for shared caches (e.g., CDNs).
+						 * Can be specified as a number (seconds) or as a DurationLike object.
+						 */
+						sMaxAge?: number | DurationLike;
+						/**
+						 * Indicates that once a resource becomes stale, caches must not use it without successful validation.
+						 */
+						mustRevalidate?: boolean;
+						/**
+						 * Similar to must-revalidate, but only for shared caches.
+						 */
+						proxyRevalidate?: boolean;
+						/**
+						 * Indicates that the response can be stored but must be revalidated before each use.
+						 */
+						immutable?: boolean;
+				  };
+	  };
 
 interface RouteCacheEntry {
 	contentType?: string;

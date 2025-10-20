@@ -18,7 +18,7 @@ class TestApp {
 	});
 
 	cachedWithCustomTtl = $action({
-		cache: { ttl: 1000 },
+		cache: { store: { ttl: 1000 } },
 		handler: () => `ttl-cached-${this.counter++}`,
 	});
 
@@ -31,19 +31,124 @@ class TestApp {
 	});
 
 	etagOnlyAction = $action({
-		etag: true,
+		cache: { etag: true },
 		handler: () => `etag-only-${this.counter++}`,
 	});
 
 	etagAndCacheAction = $action({
-		etag: true,
 		cache: true,
 		handler: () => `etag-and-cache-${this.counter++}`,
 	});
 
 	dynamicContentAction = $action({
-		etag: true,
+		cache: { etag: true },
 		handler: () => `dynamic-${Date.now()}`,
+	});
+
+	cacheWithControlTrue = $action({
+		cache: { store: true, control: true },
+		handler: () => `control-true-${this.counter++}`,
+	});
+
+	cacheWithControlString = $action({
+		cache: { store: true, control: "public, max-age=600, immutable" },
+		handler: () => `control-string-${this.counter++}`,
+	});
+
+	cacheWithControlObject = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: 3600,
+				mustRevalidate: true,
+			},
+		},
+		handler: () => `control-object-${this.counter++}`,
+	});
+
+	cacheWithComplexControl = $action({
+		cache: {
+			store: {
+				ttl: [10, "minutes"],
+			},
+			etag: true,
+			control: {
+				public: true,
+				maxAge: 600,
+				sMaxAge: 1200,
+				immutable: true,
+			},
+		},
+		handler: () => `complex-control-${this.counter++}`,
+	});
+
+	cacheWithDurationMaxAge = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: [5, "minutes"],
+				sMaxAge: [1, "hour"],
+			},
+		},
+		handler: () => `duration-maxage-${this.counter++}`,
+	});
+
+	cacheWith30Seconds = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: [30, "seconds"],
+			},
+		},
+		handler: () => "test-30s",
+	});
+
+	cacheWith10Minutes = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: [10, "minutes"],
+			},
+		},
+		handler: () => "test-10m",
+	});
+
+	cacheWith2Hours = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: [2, "hours"],
+			},
+		},
+		handler: () => "test-2h",
+	});
+
+	cacheWith1Day = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: [1, "day"],
+			},
+		},
+		handler: () => "test-1d",
+	});
+
+	cacheWithMixedMaxAge = $action({
+		cache: {
+			store: true,
+			control: {
+				public: true,
+				maxAge: 600, // number (seconds)
+				sMaxAge: [20, "minutes"], // DurationLike
+			},
+		},
+		handler: () => "mixed",
 	});
 
 	errorAction = $action({
@@ -524,6 +629,239 @@ describe("ServerCacheProvider", () => {
 
 			// Different actions should have different ETags
 			expect(etag1).not.toBe(etag2);
+		});
+	});
+
+	describe("Cache-Control header support", () => {
+		test("should set Cache-Control header when control: true", async ({
+			expect,
+		}) => {
+			const response = await app.cacheWithControlTrue.fetch();
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get("cache-control")).toBe("public, max-age=300");
+		});
+
+		test("should set Cache-Control header with custom string value", async ({
+			expect,
+		}) => {
+			const response = await app.cacheWithControlString.fetch();
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get("cache-control")).toBe(
+				"public, max-age=600, immutable",
+			);
+		});
+
+		test("should build Cache-Control header from object directives", async ({
+			expect,
+		}) => {
+			const response = await app.cacheWithControlObject.fetch();
+
+			expect(response.status).toBe(200);
+			const cacheControl = response.headers.get("cache-control");
+			expect(cacheControl).toContain("public");
+			expect(cacheControl).toContain("max-age=3600");
+			expect(cacheControl).toContain("must-revalidate");
+		});
+
+		test("should support complex Cache-Control with multiple directives", async ({
+			expect,
+		}) => {
+			const response = await app.cacheWithComplexControl.fetch();
+
+			expect(response.status).toBe(200);
+			const cacheControl = response.headers.get("cache-control");
+			expect(cacheControl).toContain("public");
+			expect(cacheControl).toContain("max-age=600");
+			expect(cacheControl).toContain("s-maxage=1200");
+			expect(cacheControl).toContain("immutable");
+		});
+
+		test("should not set Cache-Control when cache is true without control option", async ({
+			expect,
+		}) => {
+			const response = await app.cachedAction.fetch();
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get("cache-control")).toBeNull();
+		});
+
+		test("should cache responses with Cache-Control headers", async ({
+			expect,
+		}) => {
+			const response1 = await app.cacheWithControlObject.fetch();
+			const response2 = await app.cacheWithControlObject.fetch();
+
+			expect(response1.data).toBe(response2.data);
+			expect(response1.data).toBe("control-object-0");
+		});
+
+		test("should support private cache directive", async ({ expect }) => {
+			const alepha = Alepha.create().with(AlephaServerCache);
+			const privateAction = alepha.inject(
+				class TestPrivateCache {
+					action = $action({
+						cache: {
+							store: true,
+							control: {
+								private: true,
+								maxAge: 300,
+							},
+						},
+						handler: () => "private-cache",
+					});
+				},
+			).action;
+			await alepha.start();
+
+			const response = await privateAction.fetch();
+			const cacheControl = response.headers.get("cache-control");
+
+			expect(cacheControl).toContain("private");
+			expect(cacheControl).toContain("max-age=300");
+			expect(cacheControl).not.toContain("public");
+		});
+
+		test("should support no-cache and no-store directives", async ({
+			expect,
+		}) => {
+			const alepha = Alepha.create().with(AlephaServerCache);
+			const noCacheAction = alepha.inject(
+				class TestNoCache {
+					action = $action({
+						cache: {
+							store: true,
+							control: {
+								noCache: true,
+								noStore: true,
+							},
+						},
+						handler: () => "no-cache",
+					});
+				},
+			).action;
+			await alepha.start();
+
+			const response = await noCacheAction.fetch();
+			const cacheControl = response.headers.get("cache-control");
+
+			expect(cacheControl).toContain("no-cache");
+			expect(cacheControl).toContain("no-store");
+		});
+
+		test("should support proxy-revalidate directive", async ({ expect }) => {
+			const alepha = Alepha.create().with(AlephaServerCache);
+			const proxyAction = alepha.inject(
+				class TestProxyRevalidate {
+					action = $action({
+						cache: {
+							store: true,
+							control: {
+								public: true,
+								proxyRevalidate: true,
+								maxAge: 600,
+							},
+						},
+						handler: () => "proxy-revalidate",
+					});
+				},
+			).action;
+			await alepha.start();
+
+			const response = await proxyAction.fetch();
+			const cacheControl = response.headers.get("cache-control");
+
+			expect(cacheControl).toContain("public");
+			expect(cacheControl).toContain("proxy-revalidate");
+			expect(cacheControl).toContain("max-age=600");
+		});
+
+		test("should support s-maxage for shared cache control", async ({
+			expect,
+		}) => {
+			const alepha = Alepha.create().with(AlephaServerCache);
+			const sharedCacheAction = alepha.inject(
+				class TestSharedCache {
+					action = $action({
+						cache: {
+							store: true,
+							control: {
+								public: true,
+								maxAge: 300,
+								sMaxAge: 600,
+							},
+						},
+						handler: () => "shared-cache",
+					});
+				},
+			).action;
+			await alepha.start();
+
+			const response = await sharedCacheAction.fetch();
+			const cacheControl = response.headers.get("cache-control");
+
+			expect(cacheControl).toContain("public");
+			expect(cacheControl).toContain("max-age=300");
+			expect(cacheControl).toContain("s-maxage=600");
+		});
+
+		test("should support DurationLike for maxAge and sMaxAge", async ({
+			expect,
+		}) => {
+			const response = await app.cacheWithDurationMaxAge.fetch();
+
+			expect(response.status).toBe(200);
+			const cacheControl = response.headers.get("cache-control");
+
+			// 5 minutes = 300 seconds, 1 hour = 3600 seconds
+			expect(cacheControl).toContain("public");
+			expect(cacheControl).toContain("max-age=300");
+			expect(cacheControl).toContain("s-maxage=3600");
+		});
+
+		test("should handle various DurationLike formats for maxAge", ({
+			expect,
+		}) => {
+			// Test directly via buildCacheControlHeader method
+			expect(
+				cacheProvider.buildCacheControlHeader({
+					control: { public: true, maxAge: [30, "seconds"] },
+				}),
+			).toContain("max-age=30");
+
+			expect(
+				cacheProvider.buildCacheControlHeader({
+					control: { public: true, maxAge: [10, "minutes"] },
+				}),
+			).toContain("max-age=600");
+
+			expect(
+				cacheProvider.buildCacheControlHeader({
+					control: { public: true, maxAge: [2, "hours"] },
+				}),
+			).toContain("max-age=7200");
+
+			expect(
+				cacheProvider.buildCacheControlHeader({
+					control: { public: true, maxAge: [1, "day"] },
+				}),
+			).toContain("max-age=86400");
+		});
+
+		test("should mix number and DurationLike for maxAge and sMaxAge", ({
+			expect,
+		}) => {
+			const cacheControl = cacheProvider.buildCacheControlHeader({
+				control: {
+					public: true,
+					maxAge: 600, // number (seconds)
+					sMaxAge: [20, "minutes"], // DurationLike
+				},
+			});
+
+			expect(cacheControl).toContain("max-age=600");
+			expect(cacheControl).toContain("s-maxage=1200"); // 20 minutes = 1200 seconds
 		});
 	});
 

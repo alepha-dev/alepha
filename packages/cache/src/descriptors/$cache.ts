@@ -163,7 +163,7 @@ export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface CacheDescriptorOptions<
-	TReturn,
+	TReturn = any,
 	TParameter extends any[] = any[],
 > {
 	/**

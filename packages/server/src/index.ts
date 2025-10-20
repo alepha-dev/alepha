@@ -90,6 +90,10 @@ declare module "@alepha/core" {
 			req: IncomingMessage;
 			res: NodeServerResponse;
 		};
+		"web:request": {
+			req: Request;
+			res?: Response;
+		};
 	}
 }
 
