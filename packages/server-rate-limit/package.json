@@ -1,43 +1,43 @@
 {
-  "name": "@alepha/server-rate-limit",
-  "description": "Blocks requests that exceed a defined rate limit.",
-  "version": "0.10.6",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@alepha/cache": "0.10.6",
-    "@alepha/core": "0.10.6",
-    "@alepha/server": "0.10.6"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "tsdown": "^0.15.7",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "lint": "biome check --write --unsafe",
-    "build": "tsdown -c ../../tsdown.config.ts",
-    "check": "tsc"
-  },
-  "homepage": "https://github.com/feunard/alepha",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "server",
-    "rate-limit"
-  ]
+	"name": "@alepha/server-rate-limit",
+	"description": "Blocks requests that exceed a defined rate limit.",
+	"version": "0.10.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/cache": "0.10.6",
+		"@alepha/core": "0.10.6",
+		"@alepha/server": "0.10.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"tsdown": "^0.15.9",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"server",
+		"rate-limit"
+	]
 }

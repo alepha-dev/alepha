@@ -1,46 +1,46 @@
 {
-  "name": "@alepha/email",
-  "description": "Email sending interface with multiple provider implementations (memory, local file, nodemailer).",
-  "keywords": [
-    "alepha",
-    "email",
-    "nodemailer",
-    "smtp"
-  ],
-  "author": "Feunard",
-  "version": "0.10.6",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@alepha/core": "0.10.6",
-    "@alepha/logger": "0.10.6",
-    "nodemailer": "^7.0.9"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "@types/nodemailer": "^7.0.2",
-    "tsdown": "^0.15.7",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "lint": "biome check --write --unsafe",
-    "build": "tsdown -c ../../tsdown.config.ts",
-    "check": "tsc"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "homepage": "https://github.com/feunard/alepha"
+	"name": "@alepha/email",
+	"description": "Email sending interface with multiple provider implementations (memory, local file, nodemailer).",
+	"keywords": [
+		"alepha",
+		"email",
+		"nodemailer",
+		"smtp"
+	],
+	"author": "Feunard",
+	"version": "0.10.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.10.6",
+		"@alepha/logger": "0.10.6",
+		"nodemailer": "^7.0.9"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"@types/nodemailer": "^7.0.2",
+		"tsdown": "^0.15.9",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"homepage": "https://github.com/feunard/alepha"
 }

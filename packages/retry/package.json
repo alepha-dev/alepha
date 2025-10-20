@@ -1,38 +1,38 @@
 {
-  "name": "@alepha/retry",
-  "description": "Simple, declarative, and powerful automatic retry for failed operations.",
-  "version": "0.10.6",
-  "type": "module",
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@alepha/core": "0.10.6",
-    "@alepha/datetime": "0.10.6"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "tsdown": "^0.15.7",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "lint": "biome check --write --unsafe",
-    "build": "tsdown -c ../../tsdown.config.ts",
-    "check": "tsc"
-  },
-  "homepage": "https://github.com/feunard/alepha",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "retry"
-  ]
+	"name": "@alepha/retry",
+	"description": "Simple, declarative, and powerful automatic retry for failed operations.",
+	"version": "0.10.6",
+	"type": "module",
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.10.6",
+		"@alepha/datetime": "0.10.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"tsdown": "^0.15.9",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"retry"
+	]
 }

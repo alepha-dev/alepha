@@ -1,42 +1,42 @@
 {
-  "name": "@alepha/vite",
-  "description": "Vite plugin for building Alepha applications.",
-  "version": "0.10.6",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "dependencies": {
-    "@alepha/core": "0.10.6"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "tsdown": "^0.15.7",
-    "typescript": "^5.9.3",
-    "vite": "^7.1.10"
-  },
-  "peerDependencies": {
-    "vite": "*"
-  },
-  "peerDependenciesMeta": {
-    "vite": {
-      "optional": true
-    }
-  },
-  "scripts": {
-    "lint": "biome check --write --unsafe",
-    "build": "tsdown -c ../../tsdown.config.ts",
-    "check": "tsc"
-  },
-  "homepage": "https://github.com/feunard/alepha",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha"
-  ]
+	"name": "@alepha/vite",
+	"description": "Vite plugin for building Alepha applications.",
+	"version": "0.10.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"dependencies": {
+		"@alepha/core": "0.10.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"tsdown": "^0.15.9",
+		"typescript": "^5.9.3",
+		"vite": "^7.1.11"
+	},
+	"peerDependencies": {
+		"vite": "*"
+	},
+	"peerDependenciesMeta": {
+		"vite": {
+			"optional": true
+		}
+	},
+	"scripts": {
+		"lint": "biome check --write --unsafe",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha"
+	]
 }

@@ -11,7 +11,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",
-		"@types/node": "^24.8.1",
+		"@types/node": "^24.9.0",
 		"@vitest/coverage-v8": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
 		"depcheck": "^1.4.7",
@@ -23,7 +23,7 @@
 		"w": "yarn workspace",
 		"v": "yarn alepha verify",
 		"verify": "yarn alepha verify",
-		"postinstall": "yarn copy",
+		"postinstall": "yarn copy && yarn lint",
 		"alepha": "node apps/dev/src/index.ts",
 		"clean": "yarn alepha clean",
 		"copy": "yarn workspaces foreach -Apt run copy",

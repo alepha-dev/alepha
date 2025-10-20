@@ -1,53 +1,53 @@
 {
-  "name": "@alepha/react-head",
-  "description": "Manages the document <head> for SEO and metadata.",
-  "version": "0.10.6",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "browser": "./src/index.browser.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@alepha/core": "0.10.6",
-    "@alepha/react": "0.10.6",
-    "@alepha/server": "0.10.6"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "@types/react": "^19.2.2",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tsdown": "^0.15.7",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
-  },
-  "peerDependencies": {
-    "react": "*",
-    "react-dom": "*"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "lint": "biome check --write --unsafe",
-    "build": "tsdown -c ../../tsdown.config.ts",
-    "check": "tsc"
-  },
-  "homepage": "https://github.com/feunard/alepha",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "react",
-    "head",
-    "seo",
-    "meta"
-  ]
+	"name": "@alepha/react-head",
+	"description": "Manages the document <head> for SEO and metadata.",
+	"version": "0.10.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"browser": "./src/index.browser.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.10.6",
+		"@alepha/react": "0.10.6",
+		"@alepha/server": "0.10.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"@types/react": "^19.2.2",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"tsdown": "^0.15.9",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	},
+	"peerDependencies": {
+		"react": "*",
+		"react-dom": "*"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"react",
+		"head",
+		"seo",
+		"meta"
+	]
 }

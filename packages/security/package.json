@@ -1,47 +1,47 @@
 {
-  "name": "@alepha/security",
-  "description": "Manage realms, roles, permissions, and JWT-based authentication.",
-  "version": "0.10.6",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "browser": "./src/index.browser.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@alepha/core": "0.10.6",
-    "@alepha/datetime": "0.10.6",
-    "@alepha/logger": "0.10.6",
-    "jose": "^6.1.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "tsdown": "^0.15.7",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "lint": "biome check --write --unsafe",
-    "build": "tsdown -c ../../tsdown.config.ts",
-    "check": "tsc"
-  },
-  "homepage": "https://github.com/feunard/alepha",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "security",
-    "jwt",
-    "roles",
-    "permissions"
-  ]
+	"name": "@alepha/security",
+	"description": "Manage realms, roles, permissions, and JWT-based authentication.",
+	"version": "0.10.6",
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"browser": "./src/index.browser.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"dependencies": {
+		"@alepha/core": "0.10.6",
+		"@alepha/datetime": "0.10.6",
+		"@alepha/logger": "0.10.6",
+		"jose": "^6.1.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"tsdown": "^0.15.9",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"lint": "biome check --write --unsafe",
+		"build": "tsdown -c ../../tsdown.config.ts",
+		"check": "tsc"
+	},
+	"homepage": "https://github.com/feunard/alepha",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/feunard/alepha.git"
+	},
+	"keywords": [
+		"alepha",
+		"security",
+		"jwt",
+		"roles",
+		"permissions"
+	]
 }
