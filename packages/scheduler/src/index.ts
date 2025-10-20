@@ -6,7 +6,9 @@ import { CronProvider } from "./providers/CronProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./constants/CRON.ts";
 export * from "./descriptors/$scheduler.ts";
+export * from "./providers/CronProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

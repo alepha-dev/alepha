@@ -20,6 +20,10 @@ export class ConfigDescriptor<T extends TObject> extends Descriptor<
 		return this.options.name || this.config.propertyKey;
 	}
 
+	public get schema(): T {
+		return this.options.schema;
+	}
+
 	public get current(): Static<T> {
 		return this.options.default;
 	}

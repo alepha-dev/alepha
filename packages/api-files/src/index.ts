@@ -5,7 +5,7 @@ import type { UserAccountToken } from "@alepha/security";
 import { AlephaServerCache } from "@alepha/server-cache";
 import { AlephaServerMultipart } from "@alepha/server-multipart";
 import { FileController } from "./controllers/FileController.ts";
-import { FileJobRegistry } from "./jobs/FileJobRegistry.ts";
+import { FileJobs } from "./jobs/FileJobs.ts";
 import { FileService } from "./services/FileService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -54,13 +54,13 @@ declare module "@alepha/bucket" {
  */
 export const AlephaApiFiles = $module({
 	name: "alepha.api.files",
-	services: [FileController, FileJobRegistry, FileService],
+	services: [FileController, FileJobs, FileService],
 	register: (alepha) => {
 		alepha
 			.with(AlephaBucket)
 			.with(AlephaServerCache)
 			.with(AlephaServerMultipart)
 			.with(FileController)
-			.with(FileJobRegistry);
+			.with(FileJobs);
 	},
 });

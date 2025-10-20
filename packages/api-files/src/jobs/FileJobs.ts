@@ -2,7 +2,7 @@ import { $inject } from "@alepha/core";
 import { $scheduler } from "@alepha/scheduler";
 import { FileService } from "../services/FileService.ts";
 
-export class FileJobRegistry {
+export class FileJobs {
 	protected readonly fileService = $inject(FileService);
 
 	public readonly purgeFiles = $scheduler({

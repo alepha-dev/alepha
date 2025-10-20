@@ -3,11 +3,11 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { createFile } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { FileService } from "../src";
-import { FileJobRegistry } from "../src/jobs/FileJobRegistry.ts";
+import { FileJobs } from "../src/jobs/FileJobs.ts";
 
 describe("FileJobRegistry", () => {
 	const alepha = Alepha.create();
-	const jobs = alepha.inject(FileJobRegistry);
+	const jobs = alepha.inject(FileJobs);
 	const service = alepha.inject(FileService);
 	const dtp = alepha.inject(DateTimeProvider);
 
