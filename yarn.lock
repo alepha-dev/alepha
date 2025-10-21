@@ -222,7 +222,7 @@ __metadata:
     tsx: "npm:^4.20.6"
     typescript: "npm:^5.9.3"
   bin:
-    alepha: ./dist/index.js
+    alepha: ./src/index.ts
   languageName: unknown
   linkType: soft
 

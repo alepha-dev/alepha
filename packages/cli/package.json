@@ -14,7 +14,7 @@
 		"assets"
 	],
 	"bin": {
-		"alepha": "./dist/index.js"
+		"alepha": "./src/index.ts"
 	},
 	"dependencies": {
 		"drizzle-kit": "^0.31.5",

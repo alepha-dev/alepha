@@ -50,6 +50,13 @@ async function main(to?: string) {
         pkg.types = "./src/index.ts";
         pkg.module = undefined;
         pkg.exports = undefined;
+        if (pkg.bin) {
+          for (const [key, value] of Object.entries(pkg.bin)) {
+            pkg.bin[key] = String(value)
+              .replace("dist/", "src/")
+              .replace(".js", ".ts");
+          }
+        }
         if (pkg.browser) {
           pkg.browser = "./src/index.browser.ts";
         }
@@ -68,6 +75,13 @@ async function main(to?: string) {
             "./dist/index.js": "./dist/index.browser.js",
           };
           pkg.exports["."].browser = "./dist/index.browser.js";
+        }
+        if (pkg.bin) {
+          for (const [key, value] of Object.entries(pkg.bin)) {
+            pkg.bin[key] = String(value)
+              .replace("src/", "dist/")
+              .replace(".ts", ".js");
+          }
         }
       }
       await writeFile(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
