@@ -13,6 +13,7 @@ export class ProtobufProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly schemas: Map<string | TObject, Type> = new Map();
   protected readonly protobuf: typeof protobufjs = protobufjs;
+  protected readonly enumDefinitions: Map<string, string[]> = new Map();
 
   /**
    * Encode an object to a Uint8Array.
@@ -54,6 +55,9 @@ export class ProtobufProvider {
     options: CreateProtobufSchemaOptions = {},
   ): string {
     const { rootName = "root", mainMessageName = "Target" } = options;
+    // Clear enum definitions for this schema generation
+    this.enumDefinitions.clear();
+
     const context = {
       proto: `package ${rootName};\nsyntax = "proto3";\n\n`,
       fieldIndex: 1,
@@ -64,7 +68,13 @@ export class ProtobufProvider {
         schema,
         mainMessageName,
       );
-      // Add all sub-messages first
+
+      // Add all enum definitions first
+      for (const [enumName, values] of this.enumDefinitions) {
+        context.proto += this.generateEnumDefinition(enumName, values);
+      }
+
+      // Add all sub-messages
       context.proto += subMessages.join("");
       // Then add the main message
       context.proto += message;
@@ -91,6 +101,14 @@ export class ProtobufProvider {
     for (const [key, value] of Object.entries(obj.properties)) {
       // Handle arrays
       if (t.schema.isArray(value)) {
+        // Check if array items are enums
+        if (this.isEnum(value.items)) {
+          const enumValues = this.getEnumValues(value.items);
+          const enumName = this.registerEnum(key, enumValues);
+          fields.push(`  repeated ${enumName} ${key} = ${fieldIndex++};`);
+          continue;
+        }
+
         if (t.schema.isObject(value.items)) {
           const subMessageName =
             "title" in value.items && typeof value.items.title === "string"
@@ -129,6 +147,14 @@ export class ProtobufProvider {
           (type: TSchema) => !t.schema.isNull(type),
         );
         if (nonNullType) {
+          // Check if it's an enum
+          if (this.isEnum(nonNullType)) {
+            const enumValues = this.getEnumValues(nonNullType);
+            const enumName = this.registerEnum(key, enumValues);
+            fields.push(`  ${enumName} ${key} = ${fieldIndex++};`);
+            continue;
+          }
+
           if (t.schema.isObject(nonNullType)) {
             const subMessageName =
               "title" in nonNullType && typeof nonNullType.title === "string"
@@ -175,6 +201,14 @@ export class ProtobufProvider {
         }
       }
 
+      // Handle enum fields
+      if (this.isEnum(value)) {
+        const enumValues = this.getEnumValues(value);
+        const enumName = this.registerEnum(key, enumValues);
+        fields.push(`  ${enumName} ${key} = ${fieldIndex++};`);
+        continue;
+      }
+
       // Handle regular fields
       const fieldType = this.convertType(value);
       fields.push(`  ${fieldType} ${key} = ${fieldIndex++};`);
@@ -218,6 +252,58 @@ export class ProtobufProvider {
     }
 
     throw new Error(`Unsupported type: ${JSON.stringify(schema)}`);
+  }
+
+  /**
+   * Check if a schema is an enum type.
+   * TypeBox enums have an "enum" property with an array of values.
+   */
+  protected isEnum(schema: TSchema): boolean {
+    return "enum" in schema && Array.isArray(schema.enum);
+  }
+
+  /**
+   * Extract enum values from a TypeBox enum schema.
+   */
+  protected getEnumValues(schema: TSchema): string[] {
+    if ("enum" in schema && Array.isArray(schema.enum)) {
+      return schema.enum.map(String);
+    }
+    return [];
+  }
+
+  /**
+   * Register an enum and return its type name.
+   * Generates a PascalCase name from the field name.
+   */
+  protected registerEnum(fieldName: string, values: string[]): string {
+    // Capitalize first letter of field name for enum type name
+    const enumName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+
+    // Check if we already have this exact enum registered
+    const valueKey = values.join(",");
+    const existingEnum = Array.from(this.enumDefinitions.entries()).find(
+      ([_, enumValues]) => enumValues.join(",") === valueKey,
+    );
+
+    if (existingEnum) {
+      // Reuse existing enum with same values
+      return existingEnum[0];
+    }
+
+    // Register new enum
+    this.enumDefinitions.set(enumName, values);
+    return enumName;
+  }
+
+  /**
+   * Generate a protobuf enum definition.
+   */
+  protected generateEnumDefinition(enumName: string, values: string[]): string {
+    const enumValues = values
+      .map((value, index) => `  ${value} = ${index};`)
+      .join("\n");
+    return `enum ${enumName} {\n${enumValues}\n}\n`;
   }
 }
 

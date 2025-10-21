@@ -264,9 +264,19 @@ message Target {
         `package root;
 syntax = "proto3";
 
+enum Status {
+  ACTIVE = 0;
+  INACTIVE = 1;
+  PENDING = 2;
+}
+enum Role {
+  USER = 0;
+  ADMIN = 1;
+  MODERATOR = 2;
+}
 message Target {
-  string status = 1;
-  string role = 2;
+  Status status = 1;
+  Role role = 2;
 }
 `,
       );
