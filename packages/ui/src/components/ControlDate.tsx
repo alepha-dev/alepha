@@ -1,5 +1,3 @@
-import { TypeBoxError } from "@alepha/core";
-import type { InputField } from "@alepha/react-form";
 import { useFormState } from "@alepha/react-form";
 import {
   DateInput,
@@ -9,15 +7,9 @@ import {
   TimeInput,
   type TimeInputProps,
 } from "@mantine/dates";
-import type { ReactNode } from "react";
+import { type GenericControlProps, parseInput } from "./Control.tsx";
 
-export interface ControlDateProps {
-  input: InputField;
-
-  title?: string;
-  description?: string;
-  icon?: ReactNode;
-
+export interface ControlDateProps extends GenericControlProps {
   date?: boolean | DateInputProps;
   datetime?: boolean | DateTimePickerProps;
   time?: boolean | TimeInputProps;
@@ -35,47 +27,10 @@ export interface ControlDateProps {
  */
 const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input);
-
+  const { inputProps, id, icon } = parseInput(props, form);
   if (!props.input?.props) {
     return null;
   }
-
-  const disabled = false; // form.loading;
-  const id = props.input.props.id;
-
-  // Extract label from props or schema
-  const label =
-    props.title ??
-    ("title" in props.input.schema &&
-    typeof props.input.schema.title === "string"
-      ? props.input.schema.title
-      : undefined) ??
-    prettyName(props.input.path);
-
-  // Extract description from props or schema
-  const description =
-    props.description ??
-    ("description" in props.input.schema &&
-    typeof props.input.schema.description === "string"
-      ? props.input.schema.description
-      : undefined);
-
-  // Extract error message
-  const error =
-    form.error && form.error instanceof TypeBoxError
-      ? form.error.value.message
-      : undefined;
-
-  const icon = props.icon;
-  const required = props.input.required;
-
-  const inputProps = {
-    label,
-    description,
-    error,
-    required,
-    disabled,
-  };
 
   // Detect format from schema
   const format =

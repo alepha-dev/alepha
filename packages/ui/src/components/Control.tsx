@@ -1,5 +1,9 @@
-import { TypeBoxError } from "@alepha/core";
-import { type InputField, useFormState } from "@alepha/react-form";
+import { type TObject, TypeBoxError } from "@alepha/core";
+import {
+  type InputField,
+  type UseFormStateReturn,
+  useFormState,
+} from "@alepha/react-form";
 import {
   Autocomplete,
   type AutocompleteProps,
@@ -26,14 +30,7 @@ import type { ComponentType, ReactNode } from "react";
 import ControlDate from "./ControlDate";
 import ControlSelect from "./ControlSelect";
 
-export interface ControlProps {
-  input: InputField;
-
-  title?: string;
-  description?: string;
-
-  icon?: ReactNode;
-
+export interface ControlProps extends GenericControlProps {
   text?: TextInputProps;
   area?: boolean | TextareaProps;
   select?: boolean | SelectProps;
@@ -44,7 +41,6 @@ export interface ControlProps {
   date?: boolean | DateInputProps;
   datetime?: boolean | DateTimePickerProps;
   time?: boolean | TimeInputProps;
-
   custom?: ComponentType<CustomControlProps>;
 }
 
@@ -68,41 +64,10 @@ export interface ControlProps {
  */
 const Control = (props: ControlProps) => {
   const form = useFormState(props.input);
+  const { inputProps, id, icon } = parseInput(props, form);
   if (!props.input?.props) {
     return null;
   }
-
-  // shared props
-
-  const disabled = false; // form.loading;
-  const id = props.input.props.id;
-  const label =
-    props.title ??
-    ("title" in props.input.schema &&
-    typeof props.input.schema.title === "string"
-      ? props.input.schema.title
-      : undefined) ??
-    prettyName(props.input.path);
-  const description =
-    props.description ??
-    ("description" in props.input.schema &&
-    typeof props.input.schema.description === "string"
-      ? props.input.schema.description
-      : undefined);
-  const error =
-    form.error && form.error instanceof TypeBoxError
-      ? form.error.value.message
-      : undefined;
-  const icon = props.icon;
-  const required = props.input.required;
-
-  const inputProps = {
-    label,
-    description,
-    error,
-    required,
-    disabled,
-  };
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -140,7 +105,7 @@ const Control = (props: ControlProps) => {
       <Input.Wrapper {...inputProps}>
         <Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
           <SegmentedControl
-            disabled={disabled}
+            disabled={inputProps.disabled}
             defaultValue={String(props.input.props.defaultValue)}
             {...segmentedControlProps}
             onChange={(value) => {
@@ -297,6 +262,54 @@ const Control = (props: ControlProps) => {
 };
 
 export default Control;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface GenericControlProps {
+  input: InputField;
+  title?: string;
+  description?: string;
+  icon?: ReactNode;
+}
+
+export const parseInput = (
+  props: GenericControlProps,
+  form: UseFormStateReturn<TObject>,
+) => {
+  const disabled = false; // form.loading;
+  const id = props.input.props.id;
+  const label =
+    props.title ??
+    ("title" in props.input.schema &&
+    typeof props.input.schema.title === "string"
+      ? props.input.schema.title
+      : undefined) ??
+    prettyName(props.input.path);
+  const description =
+    props.description ??
+    ("description" in props.input.schema &&
+    typeof props.input.schema.description === "string"
+      ? props.input.schema.description
+      : undefined);
+  const error =
+    form.error && form.error instanceof TypeBoxError
+      ? form.error.value.message
+      : undefined;
+  const icon = props.icon;
+  const required = props.input.required;
+
+  return {
+    id,
+    icon,
+    inputProps: {
+      label,
+      description,
+      error,
+      required,
+      disabled,
+    },
+  };
+};
 
 const prettyName = (name: string) => {
   return capitalize(name.replaceAll("/", ""));
