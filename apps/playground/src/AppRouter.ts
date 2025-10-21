@@ -5,5 +5,8 @@ export class AppRouter {
   root = $page({
     path: "/",
     component: Home,
+    head: {
+      title: "Playground",
+    },
   });
 }

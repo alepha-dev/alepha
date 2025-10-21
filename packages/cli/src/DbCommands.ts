@@ -30,9 +30,18 @@ export class DbCommands {
       const repositories = alepha.descriptors("repository") as any[];
       const kit = createRequire(import.meta.url)("drizzle-kit/api");
       const migrationDir = join(rootDir, "migrations");
-      const journal = JSON.parse(
-        await readFile(`${migrationDir}/meta/_journal.json`, "utf-8"),
-      );
+
+      const journalFile = await readFile(
+        `${migrationDir}/meta/_journal.json`,
+        "utf-8",
+      ).catch(() => null);
+
+      if (!journalFile) {
+        this.log.info(`No migration journal found.`);
+        return;
+      }
+
+      const journal = JSON.parse(journalFile);
 
       const lastMigration = journal.entries[journal.entries.length - 1];
 

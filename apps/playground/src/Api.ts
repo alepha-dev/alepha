@@ -6,6 +6,7 @@ const organizations = $entity({
   name: "organizations",
   schema: t.object({
     id: pg.primaryKey(),
+    name: t.text(),
   }),
 });
 

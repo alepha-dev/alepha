@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "a": "alepha"
+    "db:generate": "alepha db:generate",
+    "db:check": "alepha db:check"
   },
   "dependencies": {
     "@alepha/cli": "^0.10.6",
