@@ -27,7 +27,8 @@ export type OrderBy<T> = keyof T | OrderByClause<T> | Array<OrderByClause<T>>;
  * Generic query interface for PostgreSQL entities
  */
 export interface PgQuery<T extends TObject = TObject> {
-  distinct?: boolean;
+  distinct?: (keyof Static<T>)[];
+  columns?: (keyof Static<T>)[];
   where?: PgQueryWhere<T>;
   limit?: number;
   offset?: number;

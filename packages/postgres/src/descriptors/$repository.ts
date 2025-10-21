@@ -28,7 +28,6 @@ import type {
   PgTransaction,
   PgTransactionConfig,
   PgUpdateSetSource,
-  SelectedFields,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
 import {
@@ -450,11 +449,19 @@ export class RepositoryDescriptor<
    */
   protected selectDistinct(
     opts: StatementOptions = {},
-    fields: SelectedFields,
+    columns: (keyof Static<EntitySchema>)[] = [],
   ) {
-    return (opts.tx ?? this.db)
-      .selectDistinct(fields)
-      .from(this.table as PgTable);
+    const db = opts.tx ?? this.db;
+    const table = this.table as PgTable;
+
+    const fields: Record<string, any> = {};
+    for (const column of columns) {
+      if (typeof column === "string") {
+        fields[column] = this.col(column);
+      }
+    }
+
+    return db.selectDistinct(fields).from(table);
   }
 
   /**
@@ -489,8 +496,9 @@ export class RepositoryDescriptor<
     query: PgQuery<EntitySchema> & { with?: With } = {},
     opts: StatementOptions = {},
   ): Promise<WithLoadedRelations<EntitySchema, Relations, With>[]> {
+    const columns = query.columns ?? query.distinct;
     const builder = query.distinct
-      ? this.selectDistinct(opts, {} as SelectedFields)
+      ? this.selectDistinct(opts, query.distinct)
       : this.select(opts);
 
     const where = this.withDeletedAt(
@@ -533,7 +541,13 @@ export class RepositoryDescriptor<
 
     try {
       const rows = await builder.execute();
-      let entities = rows.map((row) => this.clean(row));
+
+      let schema: TObject = this.schema;
+      if (columns) {
+        schema = t.pick(schema, columns);
+      }
+
+      let entities = rows.map((row) => this.clean(row, schema));
 
       // Load relations if specified
       if (query.with && Object.keys(query.with).length > 0) {
@@ -1157,7 +1171,7 @@ export class RepositoryDescriptor<
     return {
       find: async (query: any) => {
         const builder = query.distinct
-          ? this.selectDistinct({}, {} as SelectedFields)
+          ? this.selectDistinct({}, {} as any)
           : this.select({});
 
         // Cast table to the correct type for querying
