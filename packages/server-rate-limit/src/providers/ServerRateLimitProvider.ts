@@ -83,7 +83,7 @@ export class ServerRateLimitProvider {
     on: "action:onRequest",
     handler: async ({ action, request }) => {
       // Check if this action has rate limiting enabled
-      const rateLimit = (action as any).options?.rateLimit;
+      const rateLimit = action.options?.rateLimit;
       if (!rateLimit) {
         return; // No rate limiting for this action
       }
@@ -91,37 +91,15 @@ export class ServerRateLimitProvider {
       const result = await this.checkLimit(request, rateLimit);
 
       if (!result.allowed) {
-        // Set rate limit headers
-        request.reply?.setHeader("X-RateLimit-Limit", result.limit.toString());
-        request.reply?.setHeader(
-          "X-RateLimit-Remaining",
-          result.remaining.toString(),
-        );
-        request.reply?.setHeader(
-          "X-RateLimit-Reset",
-          Math.ceil(result.resetTime / 1000).toString(),
-        );
-
-        if (result.retryAfter) {
-          request.reply?.setHeader("Retry-After", result.retryAfter.toString());
-        }
-
+        // Actions are internal - don't set HTTP headers
+        // Only throw error to prevent action execution
         throw new HttpError({
           status: 429,
           message: "Too Many Requests",
         });
       }
 
-      // Set success headers for allowed requests
-      request.reply?.setHeader("X-RateLimit-Limit", result.limit.toString());
-      request.reply?.setHeader(
-        "X-RateLimit-Remaining",
-        result.remaining.toString(),
-      );
-      request.reply?.setHeader(
-        "X-RateLimit-Reset",
-        Math.ceil(result.resetTime / 1000).toString(),
-      );
+      // Action allowed - no headers to set since actions are internal
     },
   });
 
@@ -191,6 +169,14 @@ export class ServerRateLimitProvider {
   }
 
   private getClientIP(req: ServerRequest): string {
+    // Check x-forwarded-for header first (for proxies/load balancers)
+    const forwarded = req.headers?.["x-forwarded-for"];
+    if (forwarded) {
+      // x-forwarded-for can contain multiple IPs, get the first one (original client)
+      const firstIp = forwarded.split(",")[0].trim();
+      if (firstIp) return firstIp;
+    }
+
     return req.ip || "unknown";
   }
 }

@@ -89,11 +89,28 @@ describe("ServerRateLimitProvider", () => {
   });
 
   it("should extract IP from x-forwarded-for header", async () => {
-    const req = createMockRequest();
-    req.headers["x-forwarded-for"] = "203.0.113.1, 192.168.1.1";
+    const options = { max: 1, windowMs: 60000 };
 
-    const result = await provider.checkLimit(req, { max: 5, windowMs: 60000 });
-    expect(result.allowed).toBe(true);
+    // First request with x-forwarded-for: 203.0.113.1
+    const req1 = createMockRequest("127.0.0.1");
+    req1.headers["x-forwarded-for"] = "203.0.113.1, 192.168.1.1";
+
+    const result1 = await provider.checkLimit(req1, options);
+    expect(result1.allowed).toBe(true);
+
+    // Second request with same x-forwarded-for should be blocked
+    const req2 = createMockRequest("127.0.0.1");
+    req2.headers["x-forwarded-for"] = "203.0.113.1, 192.168.1.1";
+
+    const result2 = await provider.checkLimit(req2, options);
+    expect(result2.allowed).toBe(false);
+
+    // Request with different x-forwarded-for should be allowed
+    const req3 = createMockRequest("127.0.0.1");
+    req3.headers["x-forwarded-for"] = "198.51.100.1, 192.168.1.1";
+
+    const result3 = await provider.checkLimit(req3, options);
+    expect(result3.allowed).toBe(true);
   });
 });
 
