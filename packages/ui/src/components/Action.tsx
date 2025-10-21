@@ -103,7 +103,7 @@ const ActionSubmit = (props: ActionSubmitProps) => {
     <Button
       {...buttonProps}
       loading={state.loading}
-      disabled={state.loading || !state.dirty}
+      disabled={state.loading}
       type={"submit"}
     >
       {props.children}

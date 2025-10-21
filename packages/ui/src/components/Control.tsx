@@ -18,6 +18,14 @@ import {
   TextInput,
   type TextInputProps,
 } from "@mantine/core";
+import {
+  DateInput,
+  type DateInputProps,
+  DateTimePicker,
+  type DateTimePickerProps,
+  TimeInput,
+  type TimeInputProps,
+} from "@mantine/dates";
 import type { ComponentType, ReactNode } from "react";
 
 export interface ControlProps {
@@ -35,6 +43,9 @@ export interface ControlProps {
   password?: boolean | PasswordInputProps;
   switch?: boolean | SwitchProps;
   segmented?: boolean | Partial<SegmentedControlProps>;
+  date?: boolean | DateInputProps;
+  datetime?: boolean | DateTimePickerProps;
+  time?: boolean | TimeInputProps;
 
   custom?: ComponentType<CustomControlProps>;
 }
@@ -50,6 +61,9 @@ export interface ControlProps {
  * - PasswordInput
  * - Switch (for boolean types)
  * - SegmentedControl (for enum types)
+ * - DateInput (for date format)
+ * - DateTimePicker (for date-time format)
+ * - TimeInput (for time format)
  * - Custom component
  *
  * Automatically handles labels, descriptions, error messages, and required state.
@@ -215,7 +229,7 @@ const Control = (props: ControlProps) => {
   // endregion
 
   // region <PasswordInput/>
-  if (props.password) {
+  if (props.password || props.input.props.name?.includes("password")) {
     const passwordInputProps =
       typeof props.password === "object" ? props.password : {};
     return (
@@ -240,6 +254,92 @@ const Control = (props: ControlProps) => {
         leftSection={icon}
         {...props.input.props}
         {...textAreaProps}
+      />
+    );
+  }
+  //endregion
+
+  // region <DateTimePicker/>
+  if (
+    props.datetime ||
+    (props.input.schema &&
+      "type" in props.input.schema &&
+      props.input.schema.type === "string" &&
+      "format" in props.input.schema &&
+      props.input.schema.format === "date-time")
+  ) {
+    const dateTimePickerProps =
+      typeof props.datetime === "object" ? props.datetime : {};
+    return (
+      <DateTimePicker
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        defaultValue={
+          props.input.props.defaultValue
+            ? new Date(props.input.props.defaultValue)
+            : undefined
+        }
+        onChange={(value) => {
+          props.input.set(value ? new Date(value).toISOString() : undefined);
+        }}
+        {...dateTimePickerProps}
+      />
+    );
+  }
+  //endregion
+
+  // region <DateInput/>
+  if (
+    props.date ||
+    (props.input.schema &&
+      "type" in props.input.schema &&
+      props.input.schema.type === "string" &&
+      "format" in props.input.schema &&
+      props.input.schema.format === "date")
+  ) {
+    const dateInputProps = typeof props.date === "object" ? props.date : {};
+    return (
+      <DateInput
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        defaultValue={
+          props.input.props.defaultValue
+            ? new Date(props.input.props.defaultValue)
+            : undefined
+        }
+        onChange={(value) => {
+          props.input.set(
+            value ? new Date(value).toISOString().slice(0, 10) : undefined,
+          );
+        }}
+        {...dateInputProps}
+      />
+    );
+  }
+  //endregion
+
+  // region <TimeInput/>
+  if (
+    props.time ||
+    (props.input.schema &&
+      "type" in props.input.schema &&
+      props.input.schema.type === "string" &&
+      "format" in props.input.schema &&
+      props.input.schema.format === "time")
+  ) {
+    const timeInputProps = typeof props.time === "object" ? props.time : {};
+    return (
+      <TimeInput
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        defaultValue={props.input.props.defaultValue}
+        onChange={(event) => {
+          props.input.set(event.currentTarget.value);
+        }}
+        {...timeInputProps}
       />
     );
   }

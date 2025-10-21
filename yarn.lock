@@ -895,11 +895,13 @@ __metadata:
     "@alepha/react-form": "npm:0.10.6"
     "@biomejs/biome": "npm:^2.2.6"
     "@mantine/core": "npm:^8.3.5"
+    "@mantine/dates": "npm:^8.3.5"
     "@mantine/hooks": "npm:^8.3.5"
     "@mantine/modals": "npm:^8.3.5"
     "@mantine/notifications": "npm:^8.3.5"
     "@mantine/nprogress": "npm:^8.3.5"
     "@mantine/spotlight": "npm:^8.3.5"
+    "@tabler/icons-react": "npm:^3.35.0"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
@@ -2675,6 +2677,21 @@ __metadata:
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
   checksum: 10c0/aa8388bd9ba8751c2ca799516ffa242610d56754dc81520ae773e865716420f27981d0e2cce7194c74287caa6000c9100598862c1b07da3770d6a32768214272
+  languageName: node
+  linkType: hard
+
+"@mantine/dates@npm:^8.3.5":
+  version: 8.3.5
+  resolution: "@mantine/dates@npm:8.3.5"
+  dependencies:
+    clsx: "npm:^2.1.1"
+  peerDependencies:
+    "@mantine/core": 8.3.5
+    "@mantine/hooks": 8.3.5
+    dayjs: ">=1.0.0"
+    react: ^18.x || ^19.x
+    react-dom: ^18.x || ^19.x
+  checksum: 10c0/d9ad119269f6936157e8632f587c3924ce3f2bae84b6ce478e70eec9611e48ee356acf1609b97765280df415a3f69b7ba12ba0d8900704084b8ee05485e10f70
   languageName: node
   linkType: hard
 

@@ -23,11 +23,13 @@
 		"@alepha/react": "0.10.6",
 		"@alepha/react-form": "0.10.6",
 		"@mantine/core": "^8.3.5",
+		"@mantine/dates": "^8.3.5",
 		"@mantine/hooks": "^8.3.5",
 		"@mantine/modals": "^8.3.5",
 		"@mantine/notifications": "^8.3.5",
 		"@mantine/nprogress": "^8.3.5",
-		"@mantine/spotlight": "^8.3.5"
+		"@mantine/spotlight": "^8.3.5",
+		"@tabler/icons-react": "^3.35.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

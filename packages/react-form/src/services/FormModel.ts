@@ -18,7 +18,7 @@ export class FormModel<T extends TObject> {
 
   constructor(
     public readonly id: string,
-    protected readonly options: FormCtrlOptions<T>,
+    public readonly options: FormCtrlOptions<T>,
   ) {
     this.options = options;
 

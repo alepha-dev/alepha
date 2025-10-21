@@ -9,6 +9,7 @@ import { Notifications, type NotificationsProps } from "@mantine/notifications";
 import type { NavigationProgressProps } from "@mantine/nprogress";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import type { ReactNode } from "react";
+import Omnibar, { type OmnibarProps } from "./Omnibar";
 
 export interface AlephaMantineProviderProps {
   children?: ReactNode;
@@ -17,6 +18,7 @@ export interface AlephaMantineProviderProps {
   navigationProgress?: NavigationProgressProps;
   notifications?: NotificationsProps;
   modals?: ModalsProviderProps;
+  omnibar?: OmnibarProps;
 }
 
 const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
@@ -39,6 +41,7 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
         <Notifications {...props.notifications} />
         <NavigationProgress {...props.navigationProgress} />
         <ModalsProvider {...props.modals}>
+          <Omnibar {...props.omnibar} />
           {props.children ?? <NestedView />}
         </ModalsProvider>
       </MantineProvider>
