@@ -6,6 +6,7 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 
 export interface DarkModeButtonProps {
   mode?: "minimal" | "segmented";
@@ -22,6 +23,10 @@ export interface DarkModeButtonProps {
 const DarkModeButton = (props: DarkModeButtonProps) => {
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light");
+  const [colorScheme, setColorScheme2] = useState("default");
+  useEffect(() => {
+    setColorScheme2(computedColorScheme);
+  }, [computedColorScheme]);
   const mode = props.mode ?? "minimal";
 
   const toggleColorScheme = () => {
@@ -31,7 +36,7 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
   if (mode === "segmented") {
     return (
       <SegmentedControl
-        value={computedColorScheme}
+        value={colorScheme}
         onChange={(value) => setColorScheme(value as "light" | "dark")}
         data={[
           {
@@ -62,11 +67,7 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
       size={props.size ?? "lg"}
       aria-label="Toggle color scheme"
     >
-      {computedColorScheme === "dark" ? (
-        <IconSun size={20} />
-      ) : (
-        <IconMoon size={20} />
-      )}
+      {colorScheme === "dark" ? <IconSun size={20} /> : <IconMoon size={20} />}
     </ActionIcon>
   );
 };

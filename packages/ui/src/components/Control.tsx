@@ -9,7 +9,6 @@ import {
   type PasswordInputProps,
   SegmentedControl,
   type SegmentedControlProps,
-  Select,
   type SelectProps,
   Switch,
   type SwitchProps,
@@ -18,15 +17,14 @@ import {
   TextInput,
   type TextInputProps,
 } from "@mantine/core";
-import {
-  DateInput,
-  type DateInputProps,
-  DateTimePicker,
-  type DateTimePickerProps,
-  TimeInput,
-  type TimeInputProps,
+import type {
+  DateInputProps,
+  DateTimePickerProps,
+  TimeInputProps,
 } from "@mantine/dates";
 import type { ComponentType, ReactNode } from "react";
+import ControlDate from "./ControlDate";
+import ControlSelect from "./ControlSelect";
 
 export interface ControlProps {
   input: InputField;
@@ -173,33 +171,27 @@ const Control = (props: ControlProps) => {
   }
   // endregion
 
-  // region <Select/>
-  if (
-    (props.input.schema &&
-      "enum" in props.input.schema &&
-      props.input.schema.enum) ||
-    props.select
-  ) {
-    const data =
-      props.input.schema &&
-      "enum" in props.input.schema &&
-      Array.isArray(props.input.schema.enum)
-        ? props.input.schema.enum?.map((value: string) => ({
-            value,
-            label: value,
-          }))
-        : [];
+  // region <ControlSelect/>
+  // Handle: single enum, array of enum, array of strings, or explicit select/multi/tags props
+  const isEnum =
+    props.input.schema &&
+    "enum" in props.input.schema &&
+    props.input.schema.enum;
+  const isArray =
+    props.input.schema &&
+    "type" in props.input.schema &&
+    props.input.schema.type === "array";
+  const hasArrayItems =
+    isArray && "items" in props.input.schema && props.input.schema.items;
 
-    const selectProps = typeof props.select === "object" ? props.select : {};
-
+  if (isEnum || isArray || props.select) {
     return (
-      <Select
-        {...inputProps}
-        id={id}
-        leftSection={icon}
-        data={data}
-        {...props.input.props}
-        {...selectProps}
+      <ControlSelect
+        input={props.input}
+        title={props.title}
+        description={props.description}
+        icon={icon}
+        select={props.select}
       />
     );
   }
@@ -259,91 +251,36 @@ const Control = (props: ControlProps) => {
   }
   //endregion
 
-  // region <DateTimePicker/>
-  if (
-    props.datetime ||
-    (props.input.schema &&
-      "type" in props.input.schema &&
-      props.input.schema.type === "string" &&
-      "format" in props.input.schema &&
-      props.input.schema.format === "date-time")
-  ) {
-    const dateTimePickerProps =
-      typeof props.datetime === "object" ? props.datetime : {};
-    return (
-      <DateTimePicker
-        {...inputProps}
-        id={id}
-        leftSection={icon}
-        defaultValue={
-          props.input.props.defaultValue
-            ? new Date(props.input.props.defaultValue)
-            : undefined
-        }
-        onChange={(value) => {
-          props.input.set(value ? new Date(value).toISOString() : undefined);
-        }}
-        {...dateTimePickerProps}
-      />
-    );
-  }
-  //endregion
+  // region <ControlDate/>
+  // Handle: date, date-time, and time formats
+  const format =
+    props.input.schema &&
+    "format" in props.input.schema &&
+    typeof props.input.schema.format === "string"
+      ? props.input.schema.format
+      : undefined;
 
-  // region <DateInput/>
   if (
     props.date ||
-    (props.input.schema &&
-      "type" in props.input.schema &&
-      props.input.schema.type === "string" &&
-      "format" in props.input.schema &&
-      props.input.schema.format === "date")
-  ) {
-    const dateInputProps = typeof props.date === "object" ? props.date : {};
-    return (
-      <DateInput
-        {...inputProps}
-        id={id}
-        leftSection={icon}
-        defaultValue={
-          props.input.props.defaultValue
-            ? new Date(props.input.props.defaultValue)
-            : undefined
-        }
-        onChange={(value) => {
-          props.input.set(
-            value ? new Date(value).toISOString().slice(0, 10) : undefined,
-          );
-        }}
-        {...dateInputProps}
-      />
-    );
-  }
-  //endregion
-
-  // region <TimeInput/>
-  if (
+    props.datetime ||
     props.time ||
-    (props.input.schema &&
-      "type" in props.input.schema &&
-      props.input.schema.type === "string" &&
-      "format" in props.input.schema &&
-      props.input.schema.format === "time")
+    format === "date" ||
+    format === "date-time" ||
+    format === "time"
   ) {
-    const timeInputProps = typeof props.time === "object" ? props.time : {};
     return (
-      <TimeInput
-        {...inputProps}
-        id={id}
-        leftSection={icon}
-        defaultValue={props.input.props.defaultValue}
-        onChange={(event) => {
-          props.input.set(event.currentTarget.value);
-        }}
-        {...timeInputProps}
+      <ControlDate
+        input={props.input}
+        title={props.title}
+        description={props.description}
+        icon={icon}
+        date={props.date}
+        datetime={props.datetime}
+        time={props.time}
       />
     );
   }
-  //endregion
+  // endregion
 
   // region <TextInput/>
   const textInputProps = typeof props.text === "object" ? props.text : {};

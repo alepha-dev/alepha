@@ -66,7 +66,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
 
   const fieldNames = Object.keys(form.options.schema.properties);
 
-  // Filter out unsupported field types (objects, arrays, etc.)
+  // Filter out unsupported field types (objects only, arrays are now supported)
   const supportedFields = fieldNames.filter((fieldName) => {
     const field = form.input[fieldName as keyof typeof form.input];
     if (!field || typeof field !== "object" || !("schema" in field)) {
@@ -75,9 +75,10 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
 
     const schema: any = field.schema;
 
-    // Skip if it's an object or array (not supported by Control)
+    // Skip if it's an object (not supported by Control)
+    // Arrays are now supported via ControlSelect (MultiSelect/TagsInput)
     if ("type" in schema) {
-      if (schema.type === "object" || schema.type === "array") {
+      if (schema.type === "object") {
         return false;
       }
     }
