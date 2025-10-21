@@ -13,6 +13,8 @@ export { default as Action } from "./components/Action";
 export { default as AlephaMantineProvider } from "./components/AlephaMantineProvider.tsx";
 export { default as Control } from "./components/Control";
 
+export * from "./RootRouter.ts";
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
