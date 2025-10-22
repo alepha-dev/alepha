@@ -32,11 +32,13 @@
 		"@tabler/icons-react": "^3.35.0"
 	},
 	"devDependencies": {
+		"@alepha/vite": "0.10.6",
 		"@biomejs/biome": "^2.2.6",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
 		"tsdown": "^0.15.9",
 		"typescript": "^5.9.3",
+		"vite": "^7.1.11",
 		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
@@ -44,6 +46,7 @@
 		"react-dom": "*"
 	},
 	"scripts": {
+		"dev": "vite dev",
 		"test": "vitest run",
 		"lint": "biome check --write --unsafe",
 		"build": "tsdown -c ../../tsdown.config.ts",

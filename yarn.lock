@@ -893,6 +893,7 @@ __metadata:
     "@alepha/core": "npm:0.10.6"
     "@alepha/react": "npm:0.10.6"
     "@alepha/react-form": "npm:0.10.6"
+    "@alepha/vite": "npm:0.10.6"
     "@biomejs/biome": "npm:^2.2.6"
     "@mantine/core": "npm:^8.3.5"
     "@mantine/dates": "npm:^8.3.5"
@@ -906,6 +907,7 @@ __metadata:
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
+    vite: "npm:^7.1.11"
     vitest: "npm:^3.2.4"
   peerDependencies:
     react: "*"
@@ -919,6 +921,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.6"
     "@biomejs/biome": "npm:^2.2.6"
+    "@vitejs/plugin-react": "npm:^5.0.4"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.1.11"

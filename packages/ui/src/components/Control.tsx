@@ -7,8 +7,14 @@ import {
 import {
   Autocomplete,
   type AutocompleteProps,
+  ColorInput,
+  type ColorInputProps,
+  FileInput,
+  type FileInputProps,
   Flex,
   Input,
+  NumberInput,
+  type NumberInputProps,
   PasswordInput,
   type PasswordInputProps,
   SegmentedControl,
@@ -27,6 +33,8 @@ import type {
   TimeInputProps,
 } from "@mantine/dates";
 import type { ComponentType, ReactNode } from "react";
+import { getDefaultIcon } from "../utils/icons.tsx";
+import { prettyName } from "../utils/string.ts";
 import ControlDate from "./ControlDate";
 import ControlSelect from "./ControlSelect";
 
@@ -38,6 +46,9 @@ export interface ControlProps extends GenericControlProps {
   password?: boolean | PasswordInputProps;
   switch?: boolean | SwitchProps;
   segmented?: boolean | Partial<SegmentedControlProps>;
+  number?: boolean | NumberInputProps;
+  file?: boolean | FileInputProps;
+  color?: boolean | ColorInputProps;
   date?: boolean | DateInputProps;
   datetime?: boolean | DateTimePickerProps;
   time?: boolean | TimeInputProps;
@@ -48,8 +59,11 @@ export interface ControlProps extends GenericControlProps {
  * Generic form control that renders the appropriate input based on the schema and props.
  *
  * Supports:
- * - TextInput
+ * - TextInput (with format detection: email, url, tel)
  * - Textarea
+ * - NumberInput (for number/integer types)
+ * - FileInput
+ * - ColorInput (for color format)
  * - Select (for enum types)
  * - Autocomplete
  * - PasswordInput
@@ -60,7 +74,7 @@ export interface ControlProps extends GenericControlProps {
  * - TimeInput (for time format)
  * - Custom component
  *
- * Automatically handles labels, descriptions, error messages, and required state.
+ * Automatically handles labels, descriptions, error messages, required state, and default icons.
  */
 const Control = (props: ControlProps) => {
   const form = useFormState(props.input);
@@ -69,8 +83,15 @@ const Control = (props: ControlProps) => {
     return null;
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
+  // Extract format once to avoid redeclaration
+  const format =
+    props.input.schema &&
+    "format" in props.input.schema &&
+    typeof props.input.schema.format === "string"
+      ? props.input.schema.format
+      : undefined;
 
+  //region <Custom/>
   if (props.custom) {
     const Custom = props.custom;
     return (
@@ -86,8 +107,64 @@ const Control = (props: ControlProps) => {
       </Input.Wrapper>
     );
   }
+  //endregion
 
-  // region <SegmentedControl/>
+  //region <NumberInput/>
+  if (
+    props.number ||
+    (props.input.schema &&
+      "type" in props.input.schema &&
+      (props.input.schema.type === "number" ||
+        props.input.schema.type === "integer"))
+  ) {
+    const numberInputProps =
+      typeof props.number === "object" ? props.number : {};
+    const { type, ...inputPropsWithoutType } = props.input.props;
+    return (
+      <NumberInput
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        {...inputPropsWithoutType}
+        {...numberInputProps}
+      />
+    );
+  }
+  //endregion
+
+  //region <FileInput/>
+  if (props.file) {
+    const fileInputProps = typeof props.file === "object" ? props.file : {};
+    return (
+      <FileInput
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        onChange={(file) => {
+          props.input.set(file);
+        }}
+        {...fileInputProps}
+      />
+    );
+  }
+  //endregion
+
+  //region <ColorInput/>
+  if (props.color || format === "color") {
+    const colorInputProps = typeof props.color === "object" ? props.color : {};
+    return (
+      <ColorInput
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        {...props.input.props}
+        {...colorInputProps}
+      />
+    );
+  }
+  //endregion
+
+  //region <SegmentedControl/>
   if (props.segmented) {
     const segmentedControlProps: Partial<SegmentedControlProps> =
       typeof props.segmented === "object" ? props.segmented : {};
@@ -117,9 +194,9 @@ const Control = (props: ControlProps) => {
       </Input.Wrapper>
     );
   }
-  // endregion
+  //endregion
 
-  // region <Autocomplete/>
+  //region <Autocomplete/>
   if (props.autocomplete) {
     const autocompleteProps =
       typeof props.autocomplete === "object" ? props.autocomplete : {};
@@ -134,9 +211,9 @@ const Control = (props: ControlProps) => {
       />
     );
   }
-  // endregion
+  //endregion
 
-  // region <ControlSelect/>
+  //region <ControlSelect/>
   // Handle: single enum, array of enum, array of strings, or explicit select/multi/tags props
   const isEnum =
     props.input.schema &&
@@ -146,8 +223,6 @@ const Control = (props: ControlProps) => {
     props.input.schema &&
     "type" in props.input.schema &&
     props.input.schema.type === "array";
-  const hasArrayItems =
-    isArray && "items" in props.input.schema && props.input.schema.items;
 
   if (isEnum || isArray || props.select) {
     return (
@@ -160,10 +235,9 @@ const Control = (props: ControlProps) => {
       />
     );
   }
-  // endregion
+  //endregion
 
-  // region <Switch/>
-
+  //region <Switch/>
   if (
     (props.input.schema &&
       "type" in props.input.schema &&
@@ -183,9 +257,9 @@ const Control = (props: ControlProps) => {
       />
     );
   }
-  // endregion
+  //endregion
 
-  // region <PasswordInput/>
+  //region <PasswordInput/>
   if (props.password || props.input.props.name?.includes("password")) {
     const passwordInputProps =
       typeof props.password === "object" ? props.password : {};
@@ -216,15 +290,8 @@ const Control = (props: ControlProps) => {
   }
   //endregion
 
-  // region <ControlDate/>
+  //region <ControlDate/>
   // Handle: date, date-time, and time formats
-  const format =
-    props.input.schema &&
-    "format" in props.input.schema &&
-    typeof props.input.schema.format === "string"
-      ? props.input.schema.format
-      : undefined;
-
   if (
     props.date ||
     props.datetime ||
@@ -245,15 +312,33 @@ const Control = (props: ControlProps) => {
       />
     );
   }
-  // endregion
+  //endregion
 
-  // region <TextInput/>
+  //region <TextInput/> with format detection
   const textInputProps = typeof props.text === "object" ? props.text : {};
+
+  // Detect HTML5 input type from format
+  const getInputType = (): string | undefined => {
+    switch (format) {
+      case "email":
+        return "email";
+      case "url":
+      case "uri":
+        return "url";
+      case "tel":
+      case "phone":
+        return "tel";
+      default:
+        return undefined;
+    }
+  };
+
   return (
     <TextInput
       {...inputProps}
       id={id}
       leftSection={icon}
+      type={getInputType()}
       {...props.input.props}
       {...textInputProps}
     />
@@ -263,7 +348,9 @@ const Control = (props: ControlProps) => {
 
 export default Control;
 
-// ---------------------------------------------------------------------------------------------------------------------
+// =============================================================================
+// Helper Types and Functions
+// =============================================================================
 
 export interface GenericControlProps {
   input: InputField;
@@ -295,7 +382,32 @@ export const parseInput = (
     form.error && form.error instanceof TypeBoxError
       ? form.error.value.message
       : undefined;
-  const icon = props.icon;
+
+  // Auto-generate icon if not provided
+  const icon =
+    props.icon ??
+    getDefaultIcon({
+      type:
+        props.input.schema && "type" in props.input.schema
+          ? String(props.input.schema.type)
+          : undefined,
+      format:
+        props.input.schema &&
+        "format" in props.input.schema &&
+        typeof props.input.schema.format === "string"
+          ? props.input.schema.format
+          : undefined,
+      name: props.input.props.name,
+      isEnum:
+        props.input.schema &&
+        "enum" in props.input.schema &&
+        Boolean(props.input.schema.enum),
+      isArray:
+        props.input.schema &&
+        "type" in props.input.schema &&
+        props.input.schema.type === "array",
+    });
+
   const required = props.input.required;
 
   return {
@@ -309,14 +421,6 @@ export const parseInput = (
       disabled,
     },
   };
-};
-
-const prettyName = (name: string) => {
-  return capitalize(name.replaceAll("/", ""));
-};
-
-const capitalize = (str: string) => {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
 export type CustomControlProps = {

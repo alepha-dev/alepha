@@ -77,6 +77,19 @@ export class PglitePostgresProvider extends PostgresProvider {
     },
   });
 
+  protected readonly onStop = $hook({
+    on: "stop",
+    handler: async () => {
+      if (this.client) {
+        this.log.debug("Closing PGlite connection...");
+        await this.client.close();
+        this.client = undefined;
+        this.pglite = undefined;
+        this.log.info("PGlite connection closed");
+      }
+    },
+  });
+
   public async execute<T extends TObject | undefined>(
     query: SQLLike,
     schema?: T,

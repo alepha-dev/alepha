@@ -132,11 +132,3 @@ const ControlSelect = (props: ControlSelectProps) => {
 };
 
 export default ControlSelect;
-
-const prettyName = (name: string) => {
-  return capitalize(name.replaceAll("/", ""));
-};
-
-const capitalize = (str: string) => {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};

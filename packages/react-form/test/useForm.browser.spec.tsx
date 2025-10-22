@@ -3,12 +3,8 @@ import { AlephaLogger } from "@alepha/logger";
 import { AlephaContext } from "@alepha/react";
 import { dom } from "@alepha/testing";
 import type { ReactNode } from "react";
-import { describe, it, vi } from "vitest";
+import { describe, it } from "vitest";
 import { useForm } from "../src";
-
-/**
- * @vitest-environment jsdom
- */
 
 describe("useForm", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
@@ -19,7 +15,6 @@ describe("useForm", () => {
 
   it("should run handler on submit", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLogger);
-    const fn = vi.fn();
     const calls: Array<any> = [];
     const Form = () => {
       const form = useForm({

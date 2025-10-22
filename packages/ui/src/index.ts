@@ -18,6 +18,8 @@ export { default as TypeForm } from "./components/TypeForm.tsx";
 export { useToast } from "./hooks/useToast.ts";
 export * from "./RootRouter.ts";
 export { ToastService } from "./services/ToastService.tsx";
+export * from "./utils/icons.tsx";
+export * from "./utils/string.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

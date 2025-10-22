@@ -134,11 +134,11 @@ export class PgJsonQueryManager {
     const conditions: SQL[] = [];
 
     if (operator.eq !== undefined) {
-      conditions.push(sql`${jsonValue} = ${String(operator.eq)}`);
+      conditions.push(sql`${jsonValue} = ${operator.eq}`);
     }
 
     if (operator.ne !== undefined) {
-      conditions.push(sql`${jsonValue} != ${String(operator.ne)}`);
+      conditions.push(sql`${jsonValue} != ${operator.ne}`);
     }
 
     if (operator.gt !== undefined) {
@@ -183,10 +183,9 @@ export class PgJsonQueryManager {
     }
 
     if (operator.inArray !== undefined && Array.isArray(operator.inArray)) {
-      const values = operator.inArray.map((v) => String(v));
       conditions.push(
         sql`${jsonValue} IN (${sql.join(
-          values.map((v) => sql`${v}`),
+          operator.inArray.map((v) => sql`${v}`),
           sql`, `,
         )})`,
       );
@@ -196,10 +195,9 @@ export class PgJsonQueryManager {
       operator.notInArray !== undefined &&
       Array.isArray(operator.notInArray)
     ) {
-      const values = operator.notInArray.map((v) => String(v));
       conditions.push(
         sql`${jsonValue} NOT IN (${sql.join(
-          values.map((v) => sql`${v}`),
+          operator.notInArray.map((v) => sql`${v}`),
           sql`, `,
         )})`,
       );

@@ -26,6 +26,9 @@ export class I18nProvider<
     fallbackLang: "en",
   };
 
+  public dateFormat: { format: (value: Date) => string } =
+    new Intl.DateTimeFormat(this.lang);
+
   public numberFormat: { format: (value: number) => string } =
     new Intl.NumberFormat(this.lang);
 
@@ -79,7 +82,7 @@ export class I18nProvider<
     this.numberFormat = new Intl.NumberFormat(this.lang);
   }
 
-  public async setLang(lang: string) {
+  public setLang = async (lang: string) => {
     if (this.alepha.isBrowser()) {
       for (const item of this.registry) {
         if (lang === item.lang) {
@@ -93,7 +96,7 @@ export class I18nProvider<
     }
 
     this.alepha.state.set("react.i18n.lang", lang);
-  }
+  };
 
   protected readonly mutate = $hook({
     on: "state:mutate",

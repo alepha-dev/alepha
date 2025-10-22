@@ -137,6 +137,22 @@ describe("FileController", () => {
       expect(result.blobId).toBeDefined();
     });
 
+    it("should calculate and store file checksum", async () => {
+      const { ctrl } = await setup();
+      const file = createFile("Hello, World!", {
+        name: "test.txt",
+        type: "text/plain",
+      });
+
+      const result = await ctrl.uploadFile({
+        body: { file },
+        query: {},
+      });
+
+      expect(result.checksum).toBeDefined();
+      expect(result.checksum).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hex format
+    });
+
     it("should upload file to specific bucket", async () => {
       const { app, ctrl } = await setup();
       const file = createFile("Document content", {
@@ -247,6 +263,218 @@ describe("FileController", () => {
           params: { id: "00000000-0000-0000-0000-000000000000" },
         }),
       ).rejects.toThrow();
+    });
+  });
+
+  describe("updateFile", () => {
+    it("should update file name", async () => {
+      const { ctrl } = await setup();
+      const file = createFile("test content", { name: "original.txt" });
+
+      const uploaded = await ctrl.uploadFile({
+        body: { file },
+        query: {},
+      });
+
+      const updated = await ctrl.updateFile({
+        params: { id: uploaded.id },
+        body: { name: "renamed.txt" },
+      });
+
+      expect(updated.name).toBe("renamed.txt");
+      expect(updated.id).toBe(uploaded.id);
+    });
+
+    it("should update file tags", async () => {
+      const { ctrl } = await setup();
+      const file = createFile("test content", { name: "test.txt" });
+
+      const uploaded = await ctrl.uploadFile({
+        body: { file },
+        query: {},
+      });
+
+      const updated = await ctrl.updateFile({
+        params: { id: uploaded.id },
+        body: { tags: ["important", "work"] },
+      });
+
+      expect(updated.tags).toEqual(["important", "work"]);
+    });
+
+    it("should update file expiration date", async () => {
+      const { ctrl, dtp } = await setup();
+      const file = createFile("test content", { name: "test.txt" });
+
+      const uploaded = await ctrl.uploadFile({
+        body: { file },
+        query: {},
+      });
+
+      const newExpiration = dtp.now().add(2, "days").toISOString();
+
+      const updated = await ctrl.updateFile({
+        params: { id: uploaded.id },
+        body: { expirationDate: newExpiration },
+      });
+
+      expect(updated.expirationDate).toBe(newExpiration);
+    });
+
+    it("should update multiple fields at once", async () => {
+      const { ctrl, dtp } = await setup();
+      const file = createFile("test content", { name: "original.txt" });
+
+      const uploaded = await ctrl.uploadFile({
+        body: { file },
+        query: {},
+      });
+
+      const newExpiration = dtp.now().add(3, "days").toISOString();
+
+      const updated = await ctrl.updateFile({
+        params: { id: uploaded.id },
+        body: {
+          name: "updated.txt",
+          tags: ["tag1", "tag2"],
+          expirationDate: newExpiration,
+        },
+      });
+
+      expect(updated.name).toBe("updated.txt");
+      expect(updated.tags).toEqual(["tag1", "tag2"]);
+      expect(updated.expirationDate).toBe(newExpiration);
+    });
+
+    it("should throw error when updating non-existent file", async () => {
+      const { ctrl } = await setup();
+
+      await expect(
+        ctrl.updateFile({
+          params: { id: "00000000-0000-0000-0000-000000000000" },
+          body: { name: "new-name.txt" },
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("enhanced search filtering", () => {
+    it("should filter by file name (partial match)", async () => {
+      const { service, ctrl } = await setup();
+      await service.uploadFile(
+        createFile("content", { name: "report-2024.pdf" }),
+      );
+      await service.uploadFile(
+        createFile("content", { name: "invoice-march.pdf" }),
+      );
+      await service.uploadFile(
+        createFile("content", { name: "report-2025.pdf" }),
+      );
+
+      const results = await ctrl.findFiles({ query: { name: "report" } });
+      expect(results.content.length).toBe(2);
+      expect(results.content.every((f) => f.name.includes("report"))).toBe(
+        true,
+      );
+    });
+
+    it("should filter by MIME type", async () => {
+      const { service, ctrl } = await setup();
+      await service.uploadFile(
+        createFile("content", { name: "file1.pdf", type: "application/pdf" }),
+      );
+      await service.uploadFile(
+        createFile("content", { name: "file2.txt", type: "text/plain" }),
+      );
+      await service.uploadFile(
+        createFile("content", { name: "file3.pdf", type: "application/pdf" }),
+      );
+
+      const results = await ctrl.findFiles({
+        query: { mimeType: "application/pdf" },
+      });
+      expect(results.content.length).toBe(2);
+      expect(
+        results.content.every((f) => f.mimeType === "application/pdf"),
+      ).toBe(true);
+    });
+
+    it("should filter by creator", async () => {
+      const { service, ctrl } = await setup();
+      const user1Id = "123e4567-e89b-12d3-a456-426614174000";
+      const user2Id = "223e4567-e89b-12d3-a456-426614174000";
+
+      await service.uploadFile(createFile("content", { name: "file1.txt" }), {
+        user: { id: user1Id, realm: "test", name: "User 1" },
+      });
+      await service.uploadFile(createFile("content", { name: "file2.txt" }), {
+        user: { id: user2Id, realm: "test", name: "User 2" },
+      });
+      await service.uploadFile(createFile("content", { name: "file3.txt" }), {
+        user: { id: user1Id, realm: "test", name: "User 1" },
+      });
+
+      const results = await ctrl.findFiles({ query: { creator: user1Id } });
+      expect(results.content.length).toBe(2);
+      expect(results.content.every((f) => f.creator === user1Id)).toBe(true);
+    });
+
+    it("should filter by date range", async () => {
+      const { service, ctrl, dtp } = await setup();
+
+      const startTime = dtp.nowISOString();
+
+      await service.uploadFile(createFile("content", { name: "file1.txt" }));
+      await service.uploadFile(createFile("content", { name: "file2.txt" }));
+      await service.uploadFile(createFile("content", { name: "file3.txt" }));
+
+      // Filter for files created after start time (should get all 3)
+      const results = await ctrl.findFiles({
+        query: { createdAfter: startTime },
+      });
+
+      expect(results.content.length).toBe(3);
+
+      // Filter for files created before a future date (should get all 3)
+      const futureTime = dtp.now().add(1, "hour").toISOString();
+      const results2 = await ctrl.findFiles({
+        query: { createdBefore: futureTime },
+      });
+
+      expect(results2.content.length).toBe(3);
+    });
+
+    it("should combine multiple filters", async () => {
+      const { service, ctrl } = await setup();
+      const userId = "123e4567-e89b-12d3-a456-426614174000";
+
+      await service.uploadFile(
+        createFile("content", { name: "report.pdf", type: "application/pdf" }),
+        {
+          user: { id: userId, realm: "test", name: "User" },
+          tags: ["important"],
+        },
+      );
+      await service.uploadFile(
+        createFile("content", { name: "invoice.pdf", type: "application/pdf" }),
+        { tags: ["important"] },
+      );
+      await service.uploadFile(
+        createFile("content", { name: "report.txt", type: "text/plain" }),
+        { user: { id: userId, realm: "test", name: "User" } },
+      );
+
+      const results = await ctrl.findFiles({
+        query: {
+          name: "report",
+          mimeType: "application/pdf",
+          creator: userId,
+          tags: ["important"],
+        },
+      });
+
+      expect(results.content.length).toBe(1);
+      expect(results.content[0].name).toBe("report.pdf");
     });
   });
 

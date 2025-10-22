@@ -20,6 +20,16 @@ export const files = $entity({
     tags: t.optional(t.array(t.text())),
     checksum: t.optional(t.string()),
   }),
+  indexes: [
+    "expirationDate",
+    "bucket",
+    "creator",
+    "createdAt",
+    "mimeType",
+    {
+      columns: ["bucket", "createdAt"],
+    },
+  ],
 });
 
 export type FileEntity = Static<typeof files.$schema>;

@@ -110,11 +110,3 @@ const ControlDate = (props: ControlDateProps) => {
 };
 
 export default ControlDate;
-
-const prettyName = (name: string) => {
-  return capitalize(name.replaceAll("/", ""));
-};
-
-const capitalize = (str: string) => {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};

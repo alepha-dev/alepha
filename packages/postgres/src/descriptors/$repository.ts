@@ -782,9 +782,11 @@ export class RepositoryDescriptor<
       return await this.updateOne(where, set, opts);
     } catch (error) {
       if (error instanceof PgEntityNotFoundError && versionField) {
-        await this.findById(id).then(() => {
-          throw new PgVersionMismatchError(this.tableName, id);
-        });
+        // Verify entity still exists to differentiate between not-found vs version mismatch
+        // If findById succeeds, entity exists and this was a version mismatch
+        // If findById throws, entity doesn't exist and we let that error propagate
+        await this.findById(id);
+        throw new PgVersionMismatchError(this.tableName, id);
       }
       throw error;
     }

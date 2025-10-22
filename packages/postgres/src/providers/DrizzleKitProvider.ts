@@ -161,7 +161,7 @@ export class DrizzleKitProvider {
         const errorMessage = `Error executing statement: ${statement}`;
         if (catchErrors) {
           nErrors++;
-          this.log.trace(errorMessage);
+          this.log.warn(errorMessage, { context: [error] });
         } else {
           throw new Error(errorMessage, {
             cause: error,
