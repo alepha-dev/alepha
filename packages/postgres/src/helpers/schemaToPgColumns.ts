@@ -242,4 +242,5 @@ export type PgTableWithColumnsAndSchema<
   get $schema(): R;
   get $insertSchema(): TObjectInsert<R>;
   get $updateSchema(): TObjectUpdate<R>;
+  alias: (alias: string) => PgTableWithColumnsAndSchema<T, R>;
 };

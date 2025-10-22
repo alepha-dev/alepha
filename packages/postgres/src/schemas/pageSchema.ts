@@ -12,9 +12,13 @@ import { t } from "@alepha/core";
 /**
  * Create a pagination schema for the given object schema.
  *
+ * > use `pg.page` directly.
+ *
  * @example
+ * ```ts
  * const userSchema = t.object({ id: t.int(), name: t.text() });
- * const pagedUserSchema = pageSchema(userSchema);
+ * const userPageSchema = pageSchema(userSchema);
+ * ```
  *
  * @see {@link $repository#paginate}
  */
@@ -48,12 +52,52 @@ export type TPage<T extends TObject | TRecord> = TObject<{
   }>;
 }>;
 
+/**
+ * Opinionated type definition for a paginated response.
+ *
+ * @example
+ * ```ts
+ * const page = {
+ *   content: [ ... ]
+ *   can: {
+ *     next: true,
+ *     previous: false
+ *   },
+ *   page: {
+ *     number: 0,
+ *     size: 10,
+ *     totalElements: 1200
+ *   }
+ * }
+ * ```
+ */
 export type Page<T> = {
+  /**
+   * Array of items on the current page.
+   */
   content: T[];
-  can: { next: boolean; previous: boolean };
+  can: {
+    /**
+     * Indicates if there is a next page.
+     */
+    next: boolean;
+    /**
+     * Indicates if there is a previous page.
+     */
+    previous: boolean;
+  };
   page: {
+    /**
+     * Page number, starting from 0.
+     */
     number: number;
+    /**
+     * Number of items per page.
+     */
     size: number;
+    /**
+     * Requires `count: true` in the paginate options.
+     */
     totalElements?: number;
   };
 };

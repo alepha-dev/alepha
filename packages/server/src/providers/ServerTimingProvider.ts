@@ -9,6 +9,9 @@ export class ServerTimingProvider {
   protected readonly alepha = $inject(Alepha);
 
   public options = {
+    prefix: this.alepha.env.APP_NAME
+      ? `${this.alepha.env.APP_NAME.toLowerCase()}-`
+      : "",
     disabled: this.alepha.isProduction(),
   };
 
@@ -48,7 +51,8 @@ export class ServerTimingProvider {
             continue;
           }
 
-          const formattedName = name.replace(/[^a-zA-Z0-9-]/g, "-");
+          const formattedName =
+            this.options.prefix + name.replace(/[^a-zA-Z0-9-]/g, "-");
           timingHeader += `${formattedName};dur=${duration}, `;
         }
 

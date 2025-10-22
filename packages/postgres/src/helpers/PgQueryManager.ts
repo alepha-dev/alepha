@@ -31,6 +31,7 @@ import type {
   PgQueryWhere,
   PgQueryWhereOrSQL,
 } from "../interfaces/PgQueryWhere.ts";
+import type { Page } from "../schemas/pageSchema.ts";
 import { PgJsonQueryManager } from "./PgJsonQueryManager.ts";
 
 export class PgQueryManager {
@@ -39,11 +40,15 @@ export class PgQueryManager {
   /**
    * Convert a query object to a SQL query.
    */
-  public jsonQueryToSql(
+  public toSQL(
     query: PgQueryWhereOrSQL<TObject>,
-    schema: TObject,
-    col: (key: string) => PgColumn,
+    options: {
+      schema: TObject;
+      col: (key: string) => PgColumn;
+      joins?: PgJoin[];
+    },
   ): SQL | undefined {
+    const { schema, col, joins } = options;
     const conditions: SQL[] = [];
 
     if (isSQLWrapper(query)) {
@@ -56,17 +61,35 @@ export class PgQueryManager {
       for (const key of keys) {
         const operator = query[key] as SQL;
 
+        // Handle joins
+        if (
+          typeof query[key] === "object" &&
+          query[key] != null &&
+          joins?.length
+        ) {
+          const join = joins.find((j) => j.key === key);
+          if (join) {
+            const sql = this.toSQL(query[key], {
+              schema: join.schema,
+              col: join.col,
+            });
+            if (sql) {
+              conditions.push(sql);
+            }
+            continue;
+          }
+        }
+
         if (Array.isArray(operator)) {
           const operations: SQL[] = operator
             .map((it) => {
               if (isSQLWrapper(it)) {
                 return it as SQL;
               }
-              return this.jsonQueryToSql(
-                it as PgQueryWhere<TObject>,
+              return this.toSQL(it as PgQueryWhere<TObject>, {
                 schema,
                 col,
-              );
+              });
             })
             .filter((it) => it != null);
 
@@ -80,11 +103,10 @@ export class PgQueryManager {
         }
 
         if (key === "not") {
-          const where = this.jsonQueryToSql(
-            operator as PgQueryWhereOrSQL<TObject>,
+          const where = this.toSQL(operator as PgQueryWhereOrSQL<TObject>, {
             schema,
             col,
-          );
+          });
           if (where) {
             return not(where);
           }
@@ -292,4 +314,107 @@ export class PgQueryManager {
 
     return and(...conditions);
   }
+
+  /**
+   * Parse pagination sort string to orderBy format.
+   * Format: "firstName,-lastName" -> [{ column: "firstName", direction: "asc" }, { column: "lastName", direction: "desc" }]
+   * - Columns separated by comma
+   * - Prefix with '-' for DESC direction
+   *
+   * @param sort Pagination sort string
+   * @returns OrderBy array or single object
+   */
+  public parsePaginationSort(
+    sort: string,
+  ):
+    | Array<{ column: string; direction: "asc" | "desc" }>
+    | { column: string; direction: "asc" | "desc" } {
+    const fields = sort.split(",").map((field) => field.trim());
+
+    const orderByClauses = fields.map((field) => {
+      if (field.startsWith("-")) {
+        return {
+          column: field.substring(1),
+          direction: "desc" as const,
+        };
+      }
+      return {
+        column: field,
+        direction: "asc" as const,
+      };
+    });
+
+    // Return single object if only one field, array if multiple
+    return orderByClauses.length === 1 ? orderByClauses[0] : orderByClauses;
+  }
+
+  /**
+   * Normalize orderBy parameter to array format.
+   * Supports 3 modes:
+   * 1. String: "name" -> [{ column: "name", direction: "asc" }]
+   * 2. Object: { column: "name", direction: "desc" } -> [{ column: "name", direction: "desc" }]
+   * 3. Array: [{ column: "name" }, { column: "age", direction: "desc" }] -> normalized array
+   *
+   * @param orderBy The orderBy parameter
+   * @returns Normalized array of order by clauses
+   */
+  public normalizeOrderBy(
+    orderBy: any,
+  ): Array<{ column: string; direction: "asc" | "desc" }> {
+    // Mode 1: String -> single column, ASC by default
+    if (typeof orderBy === "string") {
+      return [{ column: orderBy, direction: "asc" }];
+    }
+
+    // Mode 2: Single object -> convert to array
+    if (!Array.isArray(orderBy) && typeof orderBy === "object") {
+      return [
+        {
+          column: orderBy.column,
+          direction: orderBy.direction ?? "asc",
+        },
+      ];
+    }
+
+    // Mode 3: Array -> normalize each item with default direction
+    if (Array.isArray(orderBy)) {
+      return orderBy.map((item) => ({
+        column: item.column,
+        direction: item.direction ?? "asc",
+      }));
+    }
+
+    return [];
+  }
+
+  /**
+   * Create a pagination object.
+   *
+   * @param entities The entities to paginate.
+   * @param limit The limit of the pagination.
+   * @param offset The offset of the pagination.
+   */
+  public createPagination<T>(entities: T[], limit = 10, offset = 0): Page<T> {
+    return {
+      content: entities.slice(0, limit),
+      can: {
+        previous: offset > 0,
+        next: entities.length === limit + 1,
+      },
+      page: {
+        number: Math.floor(offset / limit),
+        size: limit,
+      },
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface PgJoin {
+  table: string;
+  schema: TObject;
+  key: string;
+  col: (key: string) => PgColumn;
+  parent?: string;
 }

@@ -133,8 +133,6 @@ export class ServerLinksProvider {
     return {};
   }
 
-  cache = new Map<string, ApiLinksResponse>();
-
   /**
    * Retrieves API links for the user based on their permissions.
    * Will check on local links and remote links.

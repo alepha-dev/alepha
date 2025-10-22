@@ -1,4 +1,4 @@
-import type { DescriptorArgs, Static, TObject, TSchema } from "@alepha/core";
+import type { Static, TObject, TSchema } from "@alepha/core";
 import {
   $inject,
   Alepha,
@@ -40,16 +40,16 @@ import { PgConflictError } from "../errors/PgConflictError.ts";
 import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
-import { PgQueryManager } from "../helpers/PgQueryManager.ts";
-import {
-  PgRelationManager,
-  type RelationLoadContext,
-  type RepositoryRelations,
-  type WithConfig,
-} from "../helpers/PgRelationManager.ts";
+import { type PgJoin, PgQueryManager } from "../helpers/PgQueryManager.ts";
+import { PgRelationManager } from "../helpers/PgRelationManager.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
-import type { PgQuery } from "../interfaces/PgQuery.ts";
+import type {
+  PgQuery,
+  PgQueryRelations,
+  PgRelationMap,
+  PgStatic,
+} from "../interfaces/PgQuery.ts";
 import type {
   PgQueryWhere,
   PgQueryWhereOrSQL,
@@ -137,13 +137,11 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 export const $repository = <
   EntityTableConfig extends TableConfig,
   EntitySchema extends TObject,
-  Relations extends RepositoryRelations = {},
 >(
   optionsOrTable:
     | RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
     | PgTableWithColumnsAndSchema<EntityTableConfig, EntitySchema>,
-  relations?: Relations,
-): RepositoryDescriptor<EntityTableConfig, EntitySchema, Relations> => {
+): RepositoryDescriptor<EntityTableConfig, EntitySchema> => {
   const options =
     "table" in optionsOrTable
       ? (optionsOrTable as RepositoryDescriptorOptions<
@@ -153,18 +151,10 @@ export const $repository = <
       : ({
           table: optionsOrTable,
           provider: PostgresProvider,
-          relations: relations || {},
         } as RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>);
 
-  // Ensure relations are stored
-  if (!("table" in optionsOrTable)) {
-    (options as any).relations = relations || {};
-  } else if (relations) {
-    (options as any).relations = relations;
-  }
-
   return createDescriptor(
-    RepositoryDescriptor<EntityTableConfig, EntitySchema, Relations>,
+    RepositoryDescriptor<EntityTableConfig, EntitySchema>,
     options,
   );
 };
@@ -234,90 +224,24 @@ export interface RepositoryDescriptorOptions<
    * @example TestDatabaseProvider
    */
   provider?: Service<PostgresProvider>;
-
-  /**
-   * Relations configuration for this repository.
-   */
-  relations?: RepositoryRelations;
 }
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Helper type to infer the type of a related entity from a relation definition.
- */
-type InferRelationType<Rel> = Rel extends { from: { $schema: infer S } }
-  ? S extends TObject
-    ? Static<S>
-    : never
-  : never;
-
-/**
- * Helper type to add all possible relation properties to an entity as optional.
- * This makes TypeScript aware of relation properties even when they're not loaded.
- */
-type WithOptionalRelations<
-  EntitySchema extends TObject,
-  Relations extends RepositoryRelations,
-> = Static<EntitySchema> & {
-  [K in keyof Relations]?: Relations[K] extends { type: "many" }
-    ? InferRelationType<Relations[K]>[]
-    : Relations[K] extends { type: "one" | "inverse" }
-      ? InferRelationType<Relations[K]> | undefined
-      : never;
-};
-
-/**
- * Helper type to merge entity with loaded relations.
- * When `with` is provided, it marks those specific relation properties as loaded (non-undefined).
- */
-type WithLoadedRelations<
-  EntitySchema extends TObject,
-  Relations extends RepositoryRelations,
-  With extends WithConfig<Relations> | undefined,
-> = With extends Record<string, unknown>
-  ? Static<EntitySchema> & {
-      [K in keyof Relations]?: K extends keyof With
-        ? Relations[K] extends { type: "many" }
-          ? InferRelationType<Relations[K]>[]
-          : Relations[K] extends { type: "one" | "inverse" }
-            ? InferRelationType<Relations[K]> | undefined
-            : never
-        : Relations[K] extends { type: "many" }
-          ? InferRelationType<Relations[K]>[]
-          : Relations[K] extends { type: "one" | "inverse" }
-            ? InferRelationType<Relations[K]> | undefined
-            : never;
-    }
-  : WithOptionalRelations<EntitySchema, Relations>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RepositoryDescriptor<
   EntityTableConfig extends TableConfig,
   EntitySchema extends TObject,
-  Relations extends RepositoryRelations = {},
 > extends Descriptor<
   RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 > {
-  protected readonly relationManager = $inject(PgRelationManager);
-  protected readonly queryManager = $inject(PgQueryManager);
+  protected readonly pgRelationManager = $inject(PgRelationManager);
+  protected readonly pgQueryManager = $inject(PgQueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
   public readonly provider = $inject(PostgresProvider);
   public readonly schema = this.options.table.$schema;
   public readonly schemaInsert = this.options.table.$insertSchema;
-  protected readonly relations: RepositoryRelations;
-
-  constructor(
-    args: DescriptorArgs<
-      RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
-    >,
-  ) {
-    super(args);
-    this.relations = args.options.relations || {};
-  }
 
   /**
    * Represents the primary key of the table.
@@ -385,25 +309,29 @@ export class RepositoryDescriptor<
       );
     }
 
-    const rows: any[] = await this.provider.execute(raw);
+    const rows: Record<string, unknown>[] = await this.provider.execute(raw);
 
-    return rows.map((it) => this.clean(this.mapRawFieldsToEntity(it), schema));
+    return rows.map((it) => {
+      return this.clean(this.mapRawFieldsToEntity(it), schema);
+    });
   }
 
   /**
    * Map raw database fields to entity fields. (handles column name differences)
    */
-  protected mapRawFieldsToEntity(row: any[]) {
+  protected mapRawFieldsToEntity(row: Record<string, unknown>) {
     const entity: any = {};
+
     for (const key of Object.keys(row)) {
-      entity[key] = row[key as any];
+      entity[key] = row[key];
       for (const colKey of Object.keys(this.table)) {
         if (this.table[colKey].name === key) {
-          entity[colKey] = row[key as any];
+          entity[colKey] = row[key];
           break;
         }
       }
     }
+
     return entity;
   }
 
@@ -492,21 +420,31 @@ export class RepositoryDescriptor<
    *
    * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
    */
-  public async find<With extends WithConfig<Relations> | undefined = undefined>(
-    query: PgQuery<EntitySchema> & { with?: With } = {},
+  public async find<R extends PgRelationMap<EntitySchema>>(
+    query: PgQueryRelations<EntitySchema, R> = {},
     opts: StatementOptions = {},
-  ): Promise<WithLoadedRelations<EntitySchema, Relations, With>[]> {
+  ): Promise<PgStatic<EntitySchema, R>[]> {
     const columns = query.columns ?? query.distinct;
     const builder = query.distinct
       ? this.selectDistinct(opts, query.distinct)
       : this.select(opts);
+
+    const joins: Array<PgJoin> = [];
+    if (query.with) {
+      this.pgRelationManager.buildJoins(
+        builder,
+        joins,
+        query.with,
+        this.table as PgTableWithColumnsAndSchema<any, any>,
+      );
+    }
 
     const where = this.withDeletedAt(
       (query.where ?? {}) as PgQueryWhere<EntitySchema>,
       opts,
     );
 
-    builder.where(() => this.toSQL(where));
+    builder.where(() => this.toSQL(where, joins));
 
     if (query.offset) {
       builder.offset(query.offset);
@@ -517,7 +455,9 @@ export class RepositoryDescriptor<
     }
 
     if (query.orderBy) {
-      const orderByClauses = this.normalizeOrderBy(query.orderBy);
+      const orderByClauses = this.pgQueryManager.normalizeOrderBy(
+        query.orderBy,
+      );
       builder.orderBy(
         ...orderByClauses.map((clause) =>
           clause.direction === "desc"
@@ -540,24 +480,28 @@ export class RepositoryDescriptor<
     }
 
     try {
-      const rows = await builder.execute();
+      let rows = await builder.execute();
 
       let schema: TObject = this.schema;
       if (columns) {
         schema = t.pick(schema, columns);
       }
 
-      let entities = rows.map((row) => this.clean(row, schema));
-
-      // Load relations if specified
-      if (query.with && Object.keys(query.with).length > 0) {
-        entities = (await this.loadRelationsForEntities(
-          entities,
-          query.with,
-        )) as Static<EntitySchema>[];
+      if (joins.length) {
+        rows = rows.map((row: any) => {
+          return this.pgRelationManager.mapRowWithJoins(
+            row[this.tableName],
+            row,
+            schema,
+            joins,
+          );
+        });
       }
 
-      return entities as WithLoadedRelations<EntitySchema, Relations, With>[];
+      return rows.map((row) => this.clean(row, schema)) as PgStatic<
+        EntitySchema,
+        R
+      >[];
     } catch (error) {
       throw new PgError("Query select has failed", error as Error);
     }
@@ -566,40 +510,20 @@ export class RepositoryDescriptor<
   /**
    * Find a single entity.
    */
-  public async findOne<
-    With extends WithConfig<Relations> | undefined = undefined,
-  >(
-    query: Pick<PgQuery<EntitySchema>, "where"> & { with?: With },
+  public async findOne<R extends PgRelationMap<EntitySchema>>(
+    query: Pick<PgQueryRelations<EntitySchema, R>, "with" | "where">,
     opts: StatementOptions = {},
-  ): Promise<WithLoadedRelations<EntitySchema, Relations, With>> {
-    const [entity] = await this.find<With>({ limit: 1, ...query }, opts);
+  ): Promise<PgStatic<EntitySchema, R>> {
+    const [entity] = await this.find({ limit: 1, ...query }, opts);
 
     if (!entity) {
       // TODO: enhance error message when finding by ID
       throw new PgEntityNotFoundError(this.tableName);
     }
 
-    return entity;
+    return entity as PgStatic<EntitySchema, R>;
   }
-
-  /**
-   * Find an entity by ID.
-   *
-   * This is a convenience method for `findOne` with a where clause on the primary key.
-   * If you need more complex queries, use `findOne` instead.
-   */
-  public async findById<
-    With extends WithConfig<Relations> | undefined = undefined,
-  >(
-    id: string | number,
-    opts: StatementOptions & { with?: With } = {},
-  ): Promise<WithLoadedRelations<EntitySchema, Relations, With>> {
-    const query = {
-      where: this.getWhereId(id),
-      with: opts.with,
-    };
-    return await this.findOne<With>(query, opts);
-  }
+  public one = this.findOne;
 
   /**
    * Find entities with pagination.
@@ -608,20 +532,18 @@ export class RepositoryDescriptor<
    *
    * > Pagination CAN also do a count query to get the total number of elements.
    */
-  public async paginate<
-    With extends WithConfig<Relations> | undefined = undefined,
-  >(
+  public async paginate<R extends PgRelationMap<EntitySchema>>(
     pagination: PageQuery = {},
-    query: PgQuery<EntitySchema> & { with?: With } = {},
+    query: PgQueryRelations<EntitySchema, R> = {},
     opts: StatementOptions & { count?: boolean } = {},
-  ): Promise<Page<WithLoadedRelations<EntitySchema, Relations, With>>> {
+  ): Promise<Page<PgStatic<EntitySchema, R>>> {
     const limit = query.limit ?? pagination.size ?? 10;
     const page = pagination.page ?? 0;
     const offset = query.offset ?? page * limit;
 
     let orderBy = query.orderBy;
     if (!query.orderBy && pagination.sort) {
-      orderBy = this.parsePaginationSort(pagination.sort) as any;
+      orderBy = this.pgQueryManager.parsePaginationSort(pagination.sort) as any;
     }
 
     const now = Date.now();
@@ -633,7 +555,7 @@ export class RepositoryDescriptor<
     const tasks: Promise<any>[] = [];
 
     tasks.push(
-      this.find<With>(
+      this.find(
         {
           offset,
           limit: limit + 1,
@@ -664,13 +586,33 @@ export class RepositoryDescriptor<
 
     const [entities, countResult] = await Promise.all(tasks);
 
-    const response = this.createPagination<
-      WithLoadedRelations<EntitySchema, Relations, With>
-    >(entities, limit, offset);
+    const response = this.pgQueryManager.createPagination<EntitySchema>(
+      entities,
+      limit,
+      offset,
+    );
 
     response.page.totalElements = countResult;
 
-    return response;
+    return response as Page<PgStatic<EntitySchema, R>>;
+  }
+
+  /**
+   * Find an entity by ID.
+   *
+   * This is a convenience method for `findOne` with a where clause on the primary key.
+   * If you need more complex queries, use `findOne` instead.
+   */
+  public async findById(
+    id: string | number,
+    opts: StatementOptions = {},
+  ): Promise<Static<EntitySchema>> {
+    return await this.findOne(
+      {
+        where: this.getWhereId(id),
+      },
+      opts,
+    );
   }
 
   /**
@@ -799,6 +741,9 @@ export class RepositoryDescriptor<
   ): Promise<Static<EntitySchema>> {
     const set = this.alepha.parse(this.schema, entity) as any;
     const id = set[this.id.key];
+    if (id == null) {
+      throw new AlephaError("Cannot save entity without ID");
+    }
 
     // in save mode, we do not ignore undefined values, but set them to null
     for (const key of Object.keys(this.schema.properties)) {
@@ -913,11 +858,16 @@ export class RepositoryDescriptor<
     opts: StatementOptions = {},
   ) {
     const id = (entity as any)[this.id.key];
+    if (id == null) {
+      throw new AlephaError("Cannot destroy entity without ID");
+    }
+
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
       opts.now ??= this.dateTimeProvider.now();
       (entity as any)[deletedAt.key] = opts.now.toISOString();
     }
+
     await this.deleteById(id, opts);
   }
 
@@ -1008,31 +958,6 @@ export class RepositoryDescriptor<
   }
 
   /**
-   * Create a pagination object.
-   *
-   * @param entities The entities to paginate.
-   * @param limit The limit of the pagination.
-   * @param offset The offset of the pagination.
-   */
-  protected createPagination<T>(
-    entities: T[],
-    limit = 10,
-    offset = 0,
-  ): Page<T> {
-    return {
-      content: entities.slice(0, limit),
-      can: {
-        previous: offset > 0,
-        next: entities.length === limit + 1,
-      },
-      page: {
-        number: Math.floor(offset / limit),
-        size: limit,
-      },
-    };
-  }
-
-  /**
    * Convert something to valid Pg Insert Value.
    */
   protected cast(
@@ -1066,14 +991,15 @@ export class RepositoryDescriptor<
   }
 
   /**
-   * Clean a row. Remove all null values.
+   * Transform a row from the database into a clean entity.
    *
-   * @param row The row to clean.
-   * @param schema The schema to use.
-   * @returns The cleaned row.
+   * - Validate against schema
+   * - Replace all null values by undefined
+   * - Fix date-time and date fields to ISO strings
+   * - Cast BigInt to string
    */
   protected clean<T extends TObject = EntitySchema>(
-    row: any,
+    row: Record<string, unknown>,
     schema?: T,
   ): Static<T> {
     const entity = row as Static<T>;
@@ -1106,197 +1032,19 @@ export class RepositoryDescriptor<
   }
 
   // -------------------------------------------------------------------------------------------------------------------
-  // RELATIONS
-
-  /**
-   * Load relations for entities using the RelationManager.
-   */
-  private async loadRelationsForEntities<TEntity extends Record<string, any>>(
-    entities: TEntity | TEntity[],
-    withConfig: WithConfig<Relations>,
-  ): Promise<TEntity | TEntity[]> {
-    const context: RelationLoadContext = {
-      primaryKey: this.id.key as string,
-      findRelated: async (table, query, nestedWith) => {
-        // Find the repository for the related table
-        const relatedRepo = this.createRelatedRepository(table);
-
-        // Execute the query with nested relations if specified
-        const fullQuery: any = {
-          ...query,
-          ...(nestedWith ? { with: nestedWith } : {}),
-        };
-
-        return await relatedRepo.find(fullQuery);
-      },
-      resolveInverseTable: (foreignKey) => {
-        // Get the column from the table
-        const column = this.table[foreignKey as keyof typeof this.table];
-        if (!column || !("references" in column)) {
-          return undefined;
-        }
-
-        // Extract the referenced table from the column's references
-        const ref = (column as any).references;
-        if (!ref || typeof ref !== "function") {
-          return undefined;
-        }
-
-        const referencedTable = ref();
-        return referencedTable;
-      },
-    };
-
-    return await this.relationManager.loadRelations(
-      entities,
-      withConfig,
-      this.relations,
-      context,
-    );
-  }
-
-  protected toSQL(where: PgQueryWhereOrSQL<EntitySchema>): SQL | undefined {
-    return this.queryManager.jsonQueryToSql(
-      where as PgQueryWhereOrSQL<EntitySchema>,
-      this.schema,
-      (name) => this.col(name),
-    );
-  }
-
-  /**
-   * Create a temporary repository for a related table.
-   */
-  private createRelatedRepository(table: { $schema: TObject }): any {
-    // Instead of creating a new repository, use a simple finder that reuses this repository's dependencies
-    return {
-      find: async (query: any) => {
-        const builder = query.distinct
-          ? this.selectDistinct({}, {} as any)
-          : this.select({});
-
-        // Cast table to the correct type for querying
-        const targetTable = table as any;
-        const db = this.provider.db;
-        const selectBuilder = db.select().from(targetTable);
-
-        if (query.where) {
-          selectBuilder.where(() =>
-            this.queryManager.jsonQueryToSql(
-              query.where,
-              table.$schema,
-              (key) => targetTable[key],
-            ),
-          );
-        }
-
-        if (query.offset) {
-          selectBuilder.offset(query.offset);
-        }
-
-        if (query.limit) {
-          selectBuilder.limit(query.limit);
-        }
-
-        if (query.orderBy) {
-          const orderByClauses = this.normalizeOrderBy(query.orderBy);
-          selectBuilder.orderBy(
-            ...orderByClauses.map((clause) =>
-              clause.direction === "desc"
-                ? desc(targetTable[clause.column])
-                : asc(targetTable[clause.column]),
-            ),
-          );
-        }
-
-        const rows = await selectBuilder.execute();
-        let entities = rows.map((row) => this.clean(row, table.$schema));
-
-        // Load nested relations if specified
-        if (query.with && Object.keys(query.with).length > 0) {
-          entities = (await this.loadRelationsForEntities(
-            entities,
-            query.with,
-          )) as any[];
-        }
-
-        return entities;
-      },
-    };
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
   // INTERNAL METHODS
 
-  /**
-   * Parse pagination sort string to orderBy format.
-   * Format: "firstName,-lastName" -> [{ column: "firstName", direction: "asc" }, { column: "lastName", direction: "desc" }]
-   * - Columns separated by comma
-   * - Prefix with '-' for DESC direction
-   *
-   * @param sort Pagination sort string
-   * @returns OrderBy array or single object
-   */
-  protected parsePaginationSort(
-    sort: string,
-  ):
-    | Array<{ column: string; direction: "asc" | "desc" }>
-    | { column: string; direction: "asc" | "desc" } {
-    const fields = sort.split(",").map((field) => field.trim());
-
-    const orderByClauses = fields.map((field) => {
-      if (field.startsWith("-")) {
-        return {
-          column: field.substring(1),
-          direction: "desc" as const,
-        };
-      }
-      return {
-        column: field,
-        direction: "asc" as const,
-      };
+  protected toSQL(
+    where: PgQueryWhereOrSQL<EntitySchema>,
+    joins?: PgJoin[],
+  ): SQL | undefined {
+    return this.pgQueryManager.toSQL(where as PgQueryWhereOrSQL<EntitySchema>, {
+      schema: this.schema,
+      col: (name) => {
+        return this.col(name);
+      },
+      joins,
     });
-
-    // Return single object if only one field, array if multiple
-    return orderByClauses.length === 1 ? orderByClauses[0] : orderByClauses;
-  }
-
-  /**
-   * Normalize orderBy parameter to array format.
-   * Supports 3 modes:
-   * 1. String: "name" -> [{ column: "name", direction: "asc" }]
-   * 2. Object: { column: "name", direction: "desc" } -> [{ column: "name", direction: "desc" }]
-   * 3. Array: [{ column: "name" }, { column: "age", direction: "desc" }] -> normalized array
-   *
-   * @param orderBy The orderBy parameter
-   * @returns Normalized array of order by clauses
-   */
-  protected normalizeOrderBy(
-    orderBy: any,
-  ): Array<{ column: string; direction: "asc" | "desc" }> {
-    // Mode 1: String -> single column, ASC by default
-    if (typeof orderBy === "string") {
-      return [{ column: orderBy, direction: "asc" }];
-    }
-
-    // Mode 2: Single object -> convert to array
-    if (!Array.isArray(orderBy) && typeof orderBy === "object") {
-      return [
-        {
-          column: orderBy.column,
-          direction: orderBy.direction ?? "asc",
-        },
-      ];
-    }
-
-    // Mode 3: Array -> normalize each item with default direction
-    if (Array.isArray(orderBy)) {
-      return orderBy.map((item) => ({
-        column: item.column,
-        direction: item.direction ?? "asc",
-      }));
-    }
-
-    return [];
   }
 
   /**

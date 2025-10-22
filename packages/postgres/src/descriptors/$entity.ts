@@ -3,6 +3,7 @@ import { KIND } from "@alepha/core";
 import type { BuildColumns, BuildExtraConfigColumns, SQL } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  alias,
   index,
   type PgTableExtraConfigValue,
   pgTable,
@@ -222,8 +223,6 @@ import { updateSchema } from "../schemas/updateSchema.ts";
  *   ]
  * });
  * ```
- *
- * @stability 2
  */
 export const $entity = <
   TTableName extends string,
@@ -290,99 +289,16 @@ export interface EntityDescriptorOptions<
 > {
   /**
    * The database table name that will be created for this entity.
-   *
-   * This name:
-   * - Must be unique within your database schema
-   * - Should follow your database naming conventions (typically snake_case)
-   * - Will be used in generated SQL queries and migrations
-   * - Should be descriptive of the entity's purpose
-   *
-   * **Naming Guidelines**:
-   * - Use plural nouns for table names ("users", "products", "orders")
-   * - Use snake_case for multi-word names ("user_profiles", "order_items")
-   * - Keep names concise but descriptive
-   * - Avoid SQL reserved words
-   *
-   * @example "users"
-   * @example "product_categories"
-   * @example "user_roles"
-   * @example "audit_logs"
    */
   name: TTableName;
 
   /**
    * TypeBox schema defining the table structure and column types.
-   *
-   * This schema:
-   * - Defines all table columns with their types and constraints
-   * - Provides full TypeScript type inference for the entity
-   * - Supports validation rules and default values
-   * - Enables automatic insert/update schema generation
-   * - Must include exactly one primary key field marked with `pg.primaryKey()`
-   *
-   * **Supported PostgreSQL Types**:
-   * - `pg.primaryKey(t.uuid())` - UUID primary key
-   * - `t.text()` - VARCHAR column
-   * - `t.integer()`, `t.number()` - Numeric columns
-   * - `t.boolean()` - Boolean column
-   * - `t.array(t.text())` - PostgreSQL array column
-   * - `t.record(t.text(), t.any())` - JSONB column
-   * - `pg.createdAt()`, `pg.updatedAt()`, `pg.deletedAt()` - Audit timestamps
-   * - `pg.version()` - Optimistic locking version field
-   *
-   * **Schema Best Practices**:
-   * - Always include a primary key
-   * - Use appropriate TypeBox constraints (minLength, format, etc.)
-   * - Add audit fields for trackability
-   * - Use optional fields for nullable columns
-   * - Include foreign key columns for relationships
-   *
-   * @example
-   * ```ts
-   * t.object({
-   *   id: pg.primaryKey(t.uuid()),
-   *   email: t.text({ format: "email" }),
-   *   firstName: t.text({ minLength: 1, maxLength: 100 }),
-   *   lastName: t.text({ minLength: 1, maxLength: 100 }),
-   *   age: t.optional(t.integer({ minimum: 0, maximum: 150 })),
-   *   isActive: t.boolean({ default: true }),
-   *   preferences: t.optional(t.record(t.text(), t.any())),
-   *   tags: t.optional(t.array(t.text())),
-   *   createdAt: pg.createdAt(),
-   *   updatedAt: pg.updatedAt(),
-   *   version: pg.version()
-   * })
-   * ```
    */
   schema: T;
 
   /**
    * Database indexes to create for query optimization.
-   *
-   * Indexes improve query performance but consume disk space and slow down writes.
-   * Choose indexes based on your actual query patterns and performance requirements.
-   *
-   * **Index Types**:
-   * - **Simple string**: Creates a single-column index
-   * - **Single column object**: Creates index on one column with options
-   * - **Multi-column object**: Creates composite index on multiple columns
-   *
-   * **Index Guidelines**:
-   * - Index frequently queried columns (WHERE, ORDER BY, JOIN conditions)
-   * - Create unique indexes for business constraints
-   * - Use composite indexes for multi-column queries
-   * - Index foreign key columns for join performance
-   * - Monitor index usage and remove unused indexes
-   *
-   * **Performance Considerations**:
-   * - Each index increases storage requirements
-   * - Indexes slow down INSERT/UPDATE/DELETE operations
-   * - PostgreSQL can use multiple indexes in complex queries
-   * - Partial indexes can be more efficient for filtered queries
-   *
-   * @example ["email", "createdAt", { column: "username", unique: true }]
-   * @example [{ columns: ["userId", "status"], name: "idx_user_status" }]
-   * @example ["categoryId", { columns: ["price", "inStock"] }]
    */
   indexes?: (
     | Keys
@@ -418,35 +334,6 @@ export interface EntityDescriptorOptions<
 
   /**
    * Foreign key constraints to maintain referential integrity.
-   *
-   * Foreign keys ensure that values in specified columns must exist in the referenced table.
-   * They prevent orphaned records and maintain database consistency.
-   *
-   * **Foreign Key Benefits**:
-   * - Prevents invalid references to non-existent records
-   * - Maintains data integrity automatically
-   * - Provides clear schema documentation of relationships
-   * - Enables cascade operations (DELETE, UPDATE)
-   *
-   * **Considerations**:
-   * - Foreign keys can impact performance on large tables
-   * - They prevent deletion of referenced records
-   * - Consider cascade options for related data cleanup
-   *
-   * @example
-   * ```ts
-   * foreignKeys: [
-   *   {
-   *     name: "fk_user_role",
-   *     columns: ["roleId"],
-   *     foreignColumns: [Role.id]
-   *   },
-   *   {
-   *     columns: ["createdBy"],
-   *     foreignColumns: [User.id]
-   *   }
-   * ]
-   * ```
    */
   foreignKeys?: Array<{
     /**
@@ -611,6 +498,11 @@ const pgTableSchema = <
   });
   Object.defineProperty(table, "$updateSchema", {
     get: () => updateSchema(schema),
+  });
+  Object.defineProperty(table, "alias", {
+    get: () => (name: string) => {
+      return alias(table, name);
+    },
   });
 
   return table;

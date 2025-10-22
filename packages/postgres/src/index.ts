@@ -26,7 +26,6 @@ export * from "./errors/PgEntityNotFoundError.ts";
 export * from "./errors/PgError.ts";
 export * from "./errors/PgMigrationError.ts";
 export * from "./errors/PgVersionMismatchError.ts";
-export * from "./helpers/PgRelationManager.ts";
 export * from "./helpers/pgAttr.ts";
 export * from "./helpers/schemaToPgColumns.ts";
 export * from "./interfaces/FilterOperators.ts";
