@@ -489,6 +489,7 @@ export class RepositoryDescriptor<
 
       if (joins.length) {
         rows = rows.map((row: any) => {
+          schema = t.omit(schema, []); // clone schema
           return this.pgRelationManager.mapRowWithJoins(
             row[this.tableName],
             row,

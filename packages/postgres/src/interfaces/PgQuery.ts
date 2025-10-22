@@ -67,5 +67,5 @@ export type PgRelation<Base extends TObject> = {
   type?: "left" | "inner" | "right";
   join: PgTableWithColumnsAndSchema<any, TObject>;
   on: SQLWrapper | [keyof Static<Base>, PgColumn];
-  with?: PgRelationMap<Base>;
+  with?: PgRelationMap<TObject>;
 };

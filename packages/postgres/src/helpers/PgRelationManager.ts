@@ -1,4 +1,4 @@
-import type { TObject } from "@alepha/core";
+import { type TObject, t } from "@alepha/core";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import {
   alias,
@@ -68,7 +68,7 @@ export class PgRelationManager {
     for (const join of joins) {
       if (join.parent === parentKey) {
         record[join.key] = row[join.table];
-        schema.properties[join.key] = join.schema;
+        schema.properties[join.key] = t.omit(join.schema, []); // clone
         this.mapRowWithJoins(
           record[join.key] as Record<string, unknown>,
           row,
