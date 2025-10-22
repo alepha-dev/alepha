@@ -1,15 +1,37 @@
 import type { Static, TObject } from "@alepha/core";
 import type { SQLWrapper } from "drizzle-orm";
 import type { FilterOperators } from "./FilterOperators.ts";
+import type { PgRelationMap } from "./PgQuery.ts";
 
-export type PgQueryWhere<T extends TObject> = {
+export type PgQueryWhere<
+  T extends TObject,
+  Relations extends PgRelationMap<TObject> | undefined = undefined,
+> =
+  | (PgQueryWhereOperators<T> & PgQueryWhereConditions<T>)
+  | (PgQueryWhereRelations<Relations> &
+      PgQueryWhereOperators<T> &
+      PgQueryWhereConditions<T, Relations>);
+
+export type PgQueryWhereOrSQL<
+  T extends TObject,
+  Relations extends PgRelationMap<TObject> | undefined = undefined,
+> = SQLWrapper | PgQueryWhere<T, Relations>;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PgQueryWhereOperators<T extends TObject> = {
   [Key in keyof Static<T>]?:
     | FilterOperators<Static<T>[Key]>
     | Static<T>[Key]
     | (Static<T>[Key] extends object
         ? NestedJsonbQuery<Static<T>[Key]>
         : never);
-} & {
+};
+
+type PgQueryWhereConditions<
+  T extends TObject,
+  Relations extends PgRelationMap<TObject> | undefined = undefined,
+> = {
   /**
    * Combine a list of conditions with the `and` operator. Conditions
    * that are equal `undefined` are automatically ignored.
@@ -26,7 +48,7 @@ export type PgQueryWhere<T extends TObject> = {
    *   )
    * ```
    */
-  and?: Array<PgQueryWhereOrSQL<T>>;
+  and?: Array<PgQueryWhereOrSQL<T, Relations>>;
 
   /**
    * Combine a list of conditions with the `or` operator. Conditions
@@ -44,7 +66,7 @@ export type PgQueryWhere<T extends TObject> = {
    *   )
    * ```
    */
-  or?: Array<PgQueryWhereOrSQL<T>>;
+  or?: Array<PgQueryWhereOrSQL<T, Relations>>;
 
   /**
    * Negate the meaning of an expression using the `not` keyword.
@@ -57,7 +79,7 @@ export type PgQueryWhere<T extends TObject> = {
    *   .where(not(inArray(cars.make, ['GM', 'Ford'])))
    * ```
    */
-  not?: PgQueryWhereOrSQL<T>;
+  not?: PgQueryWhereOrSQL<T, Relations>;
 
   /**
    * Test whether a subquery evaluates to have any rows.
@@ -82,9 +104,16 @@ export type PgQueryWhere<T extends TObject> = {
   exists?: SQLWrapper;
 };
 
-export type PgQueryWhereOrSQL<T extends TObject> = SQLWrapper | PgQueryWhere<T>;
-
-// ---------------------------------------------------------------------------------------------------------------------
+type PgQueryWhereRelations<
+  Relations extends PgRelationMap<TObject> | undefined = undefined,
+> = Relations extends PgRelationMap<TObject>
+  ? {
+      [K in keyof Relations]?: PgQueryWhere<
+        Relations[K]["join"]["$schema"],
+        Relations[K]["with"]
+      >;
+    }
+  : {};
 
 /**
  * Recursively allow nested queries for JSONB object/array types

@@ -61,17 +61,48 @@ export class PgQueryManager {
       for (const key of keys) {
         const operator = query[key] as SQL;
 
-        // Handle joins
+        // Handle joins - check if this key matches a join at the current level
         if (
           typeof query[key] === "object" &&
           query[key] != null &&
+          !Array.isArray(query[key]) &&
           joins?.length
         ) {
-          const join = joins.find((j) => j.key === key);
-          if (join) {
+          // Find the join that matches this key (at the current level, without parent filtering)
+          const matchingJoins = joins.filter((j) => j.key === key);
+          if (matchingJoins.length > 0) {
+            // Use the first matching join (they should all have the same schema)
+            const join = matchingJoins[0];
+
+            // Build the full path to this join
+            const joinPath = join.parent ? `${join.parent}.${key}` : key;
+
+            // Find child joins: those whose parent starts with this join's path
+            const childJoins = joins.filter((j) => {
+              if (!j.parent) return false;
+              // Child's parent should be exactly our path, or start with our path + "."
+              return (
+                j.parent === joinPath || j.parent.startsWith(`${joinPath}.`)
+              );
+            });
+
+            // For recursion, we need to restructure child joins
+            // Remove the current path prefix from parent keys
+            const recursiveJoins = childJoins.map((j) => {
+              const newParent =
+                j.parent === joinPath
+                  ? undefined
+                  : j.parent!.substring(joinPath.length + 1);
+              return {
+                ...j,
+                parent: newParent,
+              };
+            });
+
             const sql = this.toSQL(query[key], {
               schema: join.schema,
               col: join.col,
+              joins: recursiveJoins.length > 0 ? recursiveJoins : undefined,
             });
             if (sql) {
               conditions.push(sql);
@@ -89,6 +120,7 @@ export class PgQueryManager {
               return this.toSQL(it as PgQueryWhere<TObject>, {
                 schema,
                 col,
+                joins, // Pass joins through recursively
               });
             })
             .filter((it) => it != null);
@@ -106,6 +138,7 @@ export class PgQueryManager {
           const where = this.toSQL(operator as PgQueryWhereOrSQL<TObject>, {
             schema,
             col,
+            joins, // Pass joins through recursively
           });
           if (where) {
             return not(where);

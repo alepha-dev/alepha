@@ -1,4 +1,4 @@
-import { type TObject, t } from "@alepha/core";
+import type { TObject } from "@alepha/core";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import {
   alias,
@@ -67,17 +67,32 @@ export class PgRelationManager {
   ) {
     for (const join of joins) {
       if (join.parent === parentKey) {
-        record[join.key] = row[join.table];
-        schema.properties[join.key] = t.omit(join.schema, []); // clone
-        this.mapRowWithJoins(
-          record[join.key] as Record<string, unknown>,
-          row,
-          schema.properties[join.key] as TObject,
-          joins,
-          parentKey ? `${parentKey}.${join.key}` : join.key,
-        );
+        const joinedData = row[join.table];
+        // Set to undefined if all values in the joined table are null (left join with no match)
+        if (this.isAllNull(joinedData)) {
+          record[join.key] = undefined;
+        } else {
+          record[join.key] = joinedData;
+          // Only process nested joins if the parent join has data
+          this.mapRowWithJoins(
+            record[join.key] as Record<string, unknown>,
+            row,
+            schema, // Don't need to pass modified schema, just for recursion
+            joins,
+            parentKey ? `${parentKey}.${join.key}` : join.key,
+          );
+        }
       }
     }
     return record;
+  }
+
+  /**
+   * Check if all values in an object are null (indicates a left join with no match)
+   */
+  private isAllNull(obj: unknown): boolean {
+    if (obj === null || obj === undefined) return true;
+    if (typeof obj !== "object") return false;
+    return Object.values(obj).every((val) => val === null);
   }
 }

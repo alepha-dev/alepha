@@ -2,7 +2,7 @@ import type { Static, TObject } from "@alepha/core";
 import type { SQLWrapper } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
-import type { PgQueryWhere, PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
+import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 /**
  * Order direction for sorting
@@ -42,20 +42,18 @@ export type PgStatic<
   T extends TObject,
   Relations extends PgRelationMap<T>,
 > = Static<T> & {
-  [K in keyof Relations]: Static<Relations[K]["join"]["$schema"]>;
+  [K in keyof Relations]: Static<Relations[K]["join"]["$schema"]> &
+    (Relations[K]["with"] extends PgRelationMap<TObject>
+      ? PgStatic<Relations[K]["join"]["$schema"], Relations[K]["with"]>
+      : {});
 };
 
 export interface PgQueryRelations<
   T extends TObject = TObject,
-  Relations extends PgRelationMap<T> = {},
+  Relations extends PgRelationMap<T> | undefined = undefined,
 > extends PgQuery<T> {
   with?: Relations;
-  where?:
-    | SQLWrapper
-    | PgQueryWhere<T>
-    | (PgQueryWhere<T> & {
-        [K in keyof Relations]?: PgQueryWhere<Relations[K]["join"]["$schema"]>;
-      });
+  where?: PgQueryWhereOrSQL<T, Relations>;
 }
 
 export type PgRelationMap<Base extends TObject> = Record<

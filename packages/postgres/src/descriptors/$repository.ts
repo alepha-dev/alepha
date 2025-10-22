@@ -489,20 +489,26 @@ export class RepositoryDescriptor<
 
       if (joins.length) {
         rows = rows.map((row: any) => {
-          schema = t.omit(schema, []); // clone schema
+          // Clone schema for each row to avoid mutation
+          const rowSchema = { ...schema, properties: { ...schema.properties } };
           return this.pgRelationManager.mapRowWithJoins(
             row[this.tableName],
             row,
-            schema,
+            rowSchema,
             joins,
           );
         });
       }
 
-      return rows.map((row) => this.clean(row, schema)) as PgStatic<
-        EntitySchema,
-        R
-      >[];
+      return rows.map((row) => {
+        // For joined queries, build a schema that includes all nested joins
+        if (joins.length) {
+          const joinedSchema = this.buildSchemaWithJoins(schema, joins);
+          // Clean the row with the full joined schema (including nested relations)
+          return this.cleanWithJoins(row, joinedSchema, joins);
+        }
+        return this.clean(row, schema);
+      }) as PgStatic<EntitySchema, R>[];
     } catch (error) {
       throw new PgError("Query select has failed", error as Error);
     }
@@ -524,7 +530,6 @@ export class RepositoryDescriptor<
 
     return entity as PgStatic<EntitySchema, R>;
   }
-  public one = this.findOne;
 
   /**
    * Find entities with pagination.
@@ -1035,6 +1040,99 @@ export class RepositoryDescriptor<
   // -------------------------------------------------------------------------------------------------------------------
   // INTERNAL METHODS
 
+  /**
+   * Clean a row with joins recursively
+   */
+  protected cleanWithJoins<T extends TObject = EntitySchema>(
+    row: Record<string, unknown>,
+    schema: T,
+    joins: PgJoin[],
+    parentPath?: string,
+  ): Static<T> {
+    // Get joins at this level
+    const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
+
+    // Create a copy of the row for cleaning, removing joined data temporarily
+    const cleanRow: Record<string, unknown> = { ...row };
+    const joinedData: Record<string, unknown> = {};
+
+    for (const join of joinsAtThisLevel) {
+      joinedData[join.key] = cleanRow[join.key];
+      delete cleanRow[join.key];
+    }
+
+    // Clean the base entity without joined properties
+    const entity = this.clean(cleanRow, schema);
+
+    // Then recursively clean joined entities
+    for (const join of joinsAtThisLevel) {
+      const joinedValue = joinedData[join.key];
+      // Only process if the joined value exists
+      if (joinedValue != null) {
+        // Build path for this join
+        const joinPath = parentPath ? `${parentPath}.${join.key}` : join.key;
+        // Find child joins
+        const childJoins = joins.filter((j) => j.parent === joinPath);
+        // Recursively clean if there are child joins
+        if (childJoins.length > 0) {
+          (entity as any)[join.key] = this.cleanWithJoins(
+            joinedValue as Record<string, unknown>,
+            join.schema,
+            joins,
+            joinPath,
+          );
+        } else {
+          // No child joins, just clean this join
+          (entity as any)[join.key] = this.clean(
+            joinedValue as Record<string, unknown>,
+            join.schema,
+          );
+        }
+      } else {
+        // Set to undefined if no data
+        (entity as any)[join.key] = undefined;
+      }
+    }
+
+    return entity as Static<T>;
+  }
+
+  /**
+   * Build a schema that includes all join properties recursively
+   */
+  protected buildSchemaWithJoins(
+    baseSchema: TObject,
+    joins: PgJoin[],
+    parentPath?: string,
+  ): TObject {
+    const schema = { ...baseSchema, properties: { ...baseSchema.properties } };
+
+    // Group joins by parent
+    const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
+
+    for (const join of joinsAtThisLevel) {
+      // Build the path for this join
+      const joinPath = parentPath ? `${parentPath}.${join.key}` : join.key;
+
+      // Find child joins
+      const childJoins = joins.filter((j) => j.parent === joinPath);
+
+      // If there are child joins, recursively build the schema
+      let joinSchema = join.schema;
+      if (childJoins.length > 0) {
+        joinSchema = this.buildSchemaWithJoins(join.schema, joins, joinPath);
+      }
+
+      // Make the join optional (left joins may return null)
+      schema.properties[join.key] = t.optional(joinSchema);
+    }
+
+    return schema;
+  }
+
+  /**
+   * Convert a where clause to SQL.
+   */
   protected toSQL(
     where: PgQueryWhereOrSQL<EntitySchema>,
     joins?: PgJoin[],
