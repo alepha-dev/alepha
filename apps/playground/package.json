@@ -1,18 +1,18 @@
 {
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "db:generate": "alepha db:generate",
-    "db:check": "alepha db:check"
-  },
-  "dependencies": {
-    "@alepha/cli": "^0.10.6",
-    "alepha": "0.10.6",
-    "vite": "^7.1.11"
-  },
-  "devDependencies": {
-    "tsx": "^4.20.6"
-  }
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"db:generate": "alepha db:generate",
+		"db:check": "alepha db:check"
+	},
+	"dependencies": {
+		"@alepha/cli": "^0.10.6",
+		"alepha": "0.10.6",
+		"vite": "^7.1.11"
+	},
+	"devDependencies": {
+		"tsx": "^4.20.6"
+	}
 }
