@@ -8,8 +8,8 @@
 		"db:check": "alepha db:check"
 	},
 	"dependencies": {
-		"@alepha/cli": "^0.10.6",
-		"alepha": "0.10.6",
+		"@alepha/cli": "^0.10.7",
+		"alepha": "0.10.7",
 		"vite": "^7.1.11"
 	},
 	"devDependencies": {

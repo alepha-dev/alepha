@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/router",
-	"version": "0.10.6",
+	"version": "0.10.7",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",
@@ -10,7 +10,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "^0.10.6"
+		"@alepha/core": "^0.10.7"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

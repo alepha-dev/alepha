@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/security",
 	"description": "Manage realms, roles, permissions, and JWT-based authentication.",
-	"version": "0.10.6",
+	"version": "0.10.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,9 +15,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/datetime": "0.10.6",
-		"@alepha/logger": "0.10.6",
+		"@alepha/core": "0.10.7",
+		"@alepha/datetime": "0.10.7",
+		"@alepha/logger": "0.10.7",
 		"jose": "^6.1.0"
 	},
 	"devDependencies": {

@@ -6,7 +6,7 @@
 		"mantine"
 	],
 	"author": "Feunard",
-	"version": "0.10.6",
+	"version": "0.10.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -19,9 +19,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/react": "0.10.6",
-		"@alepha/react-form": "0.10.6",
+		"@alepha/core": "0.10.7",
+		"@alepha/react": "0.10.7",
+		"@alepha/react-form": "0.10.7",
 		"@mantine/core": "^8.3.5",
 		"@mantine/dates": "^8.3.5",
 		"@mantine/hooks": "^8.3.5",
@@ -32,7 +32,7 @@
 		"@tabler/icons-react": "^3.35.0"
 	},
 	"devDependencies": {
-		"@alepha/vite": "0.10.6",
+		"@alepha/vite": "0.10.7",
 		"@biomejs/biome": "^2.2.6",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",

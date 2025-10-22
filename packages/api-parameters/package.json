@@ -8,7 +8,7 @@
 		"configuration"
 	],
 	"author": "Feunard",
-	"version": "0.10.6",
+	"version": "0.10.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -21,11 +21,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/postgres": "0.10.6",
-		"@alepha/security": "0.10.6",
-		"@alepha/server": "0.10.6",
-		"@alepha/topic": "0.10.6"
+		"@alepha/core": "0.10.7",
+		"@alepha/postgres": "0.10.7",
+		"@alepha/security": "0.10.7",
+		"@alepha/server": "0.10.7",
+		"@alepha/topic": "0.10.7"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

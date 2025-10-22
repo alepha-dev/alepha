@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/react-i18n",
 	"description": "Internationalization (i18n) support for React applications using Alepha.",
-	"version": "0.10.6",
+	"version": "0.10.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,10 +14,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.6",
-		"@alepha/logger": "0.10.6",
-		"@alepha/react": "0.10.6",
-		"@alepha/server-cookies": "0.10.6"
+		"@alepha/core": "0.10.7",
+		"@alepha/logger": "0.10.7",
+		"@alepha/react": "0.10.7",
+		"@alepha/server-cookies": "0.10.7"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",
