@@ -17,7 +17,9 @@
 	"dependencies": {
 		"@alepha/api-files": "0.10.6",
 		"@alepha/api-jobs": "0.10.6",
+		"@alepha/api-notifications": "0.10.6",
 		"@alepha/api-users": "0.10.6",
+		"@alepha/api-verifications": "0.10.6",
 		"@alepha/batch": "0.10.6",
 		"@alepha/bucket": "0.10.6",
 		"@alepha/cache": "0.10.6",
@@ -60,6 +62,7 @@
 		"@alepha/server-swagger": "0.10.6",
 		"@alepha/topic": "0.10.6",
 		"@alepha/topic-redis": "0.10.6",
+		"@alepha/ui": "0.10.6",
 		"@alepha/vite": "0.10.6"
 	},
 	"devDependencies": {
@@ -101,10 +104,20 @@
 			"require": "./api/jobs.cjs",
 			"types": "./api/jobs.d.ts"
 		},
+		"./api/notifications": {
+			"import": "./api/notifications.js",
+			"require": "./api/notifications.cjs",
+			"types": "./api/notifications.d.ts"
+		},
 		"./api/users": {
 			"import": "./api/users.js",
 			"require": "./api/users.cjs",
 			"types": "./api/users.d.ts"
+		},
+		"./api/verifications": {
+			"import": "./api/verifications.js",
+			"require": "./api/verifications.cjs",
+			"types": "./api/verifications.d.ts"
 		},
 		"./batch": {
 			"import": "./batch.js",
@@ -316,6 +329,11 @@
 			"require": "./topic/redis.cjs",
 			"types": "./topic/redis.d.ts"
 		},
+		"./ui": {
+			"import": "./ui.js",
+			"require": "./ui.cjs",
+			"types": "./ui.d.ts"
+		},
 		"./vite": {
 			"import": "./vite.js",
 			"require": "./vite.cjs",
@@ -326,7 +344,9 @@
 		"alepha",
 		"api-files",
 		"api-jobs",
+		"api-notifications",
 		"api-users",
+		"api-verifications",
 		"batch",
 		"bucket",
 		"cache",
@@ -369,6 +389,7 @@
 		"server-swagger",
 		"topic",
 		"topic-redis",
+		"ui",
 		"vite"
 	]
 }
