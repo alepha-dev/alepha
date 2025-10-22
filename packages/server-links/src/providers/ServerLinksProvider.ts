@@ -133,6 +133,8 @@ export class ServerLinksProvider {
     return {};
   }
 
+  cache = new Map<string, ApiLinksResponse>();
+
   /**
    * Retrieves API links for the user based on their permissions.
    * Will check on local links and remote links.
@@ -142,9 +144,13 @@ export class ServerLinksProvider {
   ): Promise<ApiLinksResponse> {
     const { user } = options;
     let permissions: Permission[] | undefined;
+    let permissionMap: Map<string, Permission> | undefined;
     const hasSecurity = this.alepha.has(SecurityProvider);
     if (hasSecurity && user) {
       permissions = this.alepha.inject(SecurityProvider).getPermissions(user);
+      permissionMap = new Map(
+        permissions.map((it) => [`${it.group}:${it.name}`, it]),
+      );
     }
 
     const userLinks: ApiLink[] = [];
@@ -181,23 +187,22 @@ export class ServerLinksProvider {
           if (user.realm !== link.secured.realm) {
             continue;
           }
-        } else if (permissions) {
+        } else if (permissionMap) {
           // small permissions check, can be optimized later ... :')
 
-          if (
-            !permissions.some(
-              (permission) =>
-                permission.name === link.name &&
-                permission.group === link.group,
-            )
-          ) {
+          if (!permissionMap.has(`${link.group}:${link.name}`)) {
             continue;
           }
         }
       }
 
-      const { schema: _unused, ...copy } = link;
-      userLinks.push(copy);
+      userLinks.push({
+        name: link.name,
+        group: link.group,
+        requestBodyType: link.requestBodyType,
+        method: link.method,
+        path: link.path,
+      });
     }
 
     this.serverTimingProvider.beginTiming("fetchRemoteLinks");
