@@ -386,19 +386,23 @@ export class Alepha {
       return false;
     }
 
-    return !!this.env.VITE_ALEPHA_DEV || !!process.env.VITE_ALEPHA_DEV;
+    return !!this.env.VITE_ALEPHA_DEV;
   }
 
   /**
    * Returns whether the App is running in a serverless environment.
    */
-  public isServerless(): boolean | "vercel" {
+  public isServerless(): boolean {
     if (this.isBrowser()) {
       return false;
     }
 
-    if (this.env.VERCEL_REGION || process.env.VERCEL_REGION) {
-      return "vercel";
+    if (this.env.VERCEL_REGION) {
+      return true;
+    }
+
+    if (this.env.ALEPHA_SERVERLESS) {
+      return true;
     }
 
     return false;
@@ -410,7 +414,7 @@ export class Alepha {
    * > This is automatically set when running tests with Jest or Vitest.
    */
   public isTest(): boolean {
-    const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
+    const env = this.env.NODE_ENV;
     return env === "test";
   }
 
@@ -420,8 +424,8 @@ export class Alepha {
    * > This is automatically set by Vite or Vercel. However, you have to set it manually when running Docker apps.
    */
   public isProduction(): boolean {
-    const env = this.env.NODE_ENV ?? process.env.NODE_ENV;
-    return env === "prod" || env === "production";
+    const env = this.env.NODE_ENV;
+    return env === "production";
   }
 
   // -------------------------------------------------------------------------------------------------------------------

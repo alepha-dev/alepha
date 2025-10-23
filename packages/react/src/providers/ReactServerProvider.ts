@@ -6,6 +6,7 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  type Configurable,
   type Static,
   t,
 } from "@alepha/core";
@@ -17,7 +18,10 @@ import {
   ServerTimingProvider,
 } from "@alepha/server";
 import { ServerLinksProvider } from "@alepha/server-links";
-import { ServerStaticProvider } from "@alepha/server-static";
+import {
+  type ServeDescriptorOptions,
+  ServerStaticProvider,
+} from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import {
   $page,
@@ -36,7 +40,7 @@ const envSchema = t.object({
   REACT_SERVER_DIST: t.text({ default: "public" }),
   REACT_SERVER_PREFIX: t.text({ default: "" }),
   REACT_SSR_ENABLED: t.optional(t.boolean()),
-  REACT_ROOT_ID: t.text({ default: "root" }),
+  REACT_ROOT_ID: t.text({ default: "root" }), // TODO: move to ReactPageProvider.options?
   REACT_SERVER_TEMPLATE: t.optional(
     t.text({
       size: "rich",
@@ -51,21 +55,35 @@ declare module "@alepha/core" {
   }
 }
 
-export class ReactServerProvider {
+export interface ReactServerProviderOptions {
+  /**
+   * Override default options for the static file server.
+   * > Static file server is only created in non-serverless production mode.
+   */
+  static?: Partial<Omit<ServeDescriptorOptions, "root">>;
+}
+
+export class ReactServerProvider implements Configurable {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly env = $env(envSchema);
   protected readonly pageApi = $inject(ReactPageProvider);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
-  protected readonly env = $env(envSchema);
+
   protected readonly ROOT_DIV_REGEX = new RegExp(
     `<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
     "is",
   );
   protected preprocessedTemplate: PreprocessedTemplate | null = null;
 
+  public options: ReactServerProviderOptions = {};
+
+  /**
+   * Configure the React server provider.
+   */
   public readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
@@ -174,6 +192,9 @@ export class ReactServerProvider {
     }
   }
 
+  /**
+   * Get the public directory path where static files are located.
+   */
   protected getPublicDirectory(): string {
     const maybe = [
       join(process.cwd(), `dist/${this.env.REACT_SERVER_DIST}`),
@@ -189,13 +210,24 @@ export class ReactServerProvider {
     return "";
   }
 
+  /**
+   * Configure the static file server to serve files from the given root directory.
+   */
   protected async configureStaticServer(root: string) {
     await this.serverStaticProvider.createStaticServer({
       root,
       path: this.env.REACT_SERVER_PREFIX,
+      cacheControl: {
+        maxAge: 3600,
+        immutable: true,
+      },
+      ...this.options.static,
     });
   }
 
+  /**
+   * Configure Vite for SSR.
+   */
   protected async configureVite(ssrEnabled: boolean) {
     if (!ssrEnabled) {
       // do nothing, vite will handle everything for us
@@ -286,7 +318,7 @@ export class ReactServerProvider {
       const { url, reply, query, params } = serverRequest;
       const template = await templateLoader();
       if (!template) {
-        throw new Error("Template not found");
+        throw new AlephaError("Template not found");
       }
 
       this.log.trace("Rendering page", {

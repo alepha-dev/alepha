@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { type Alepha, AlephaError, t } from "@alepha/core";
+import { Alepha, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { tsImport } from "tsx/esm/api";
 
@@ -18,6 +18,16 @@ export class DbCommands {
     root: t.text({ description: "Project root", default: "." }),
   });
 
+  /**
+   * Check if database migrations are up to date
+   *
+   * - Loads the Alepha instance from the specified entry file.
+   * - Retrieves all repository descriptors to gather database models.
+   * - Reads the last migration snapshot from the migration journal.
+   * - Generates the current database schema representation.
+   * - Compares the current schema with the last snapshot to detect changes.
+   * - If changes are detected, prompts the user to run the migration generation command!
+   */
   check = $command({
     name: "db:check",
     description: "Verify database migration files are up to date",
@@ -25,7 +35,7 @@ export class DbCommands {
     flags: this.flags,
     handler: async ({ flags }) => {
       const rootDir = join(process.cwd(), flags.root);
-      const { alepha, entry } = await this.load(rootDir, flags.entry);
+      const { alepha } = await this.load(rootDir, flags.entry);
       const models: any[] = [];
       const repositories = alepha.descriptors("repository") as any[];
       const kit = createRequire(import.meta.url)("drizzle-kit/api");
@@ -89,6 +99,15 @@ export class DbCommands {
     },
   });
 
+  /**
+   * Generate database migration files
+   *
+   * - Loads the Alepha instance from the specified entry file.
+   * - Retrieves all repository descriptors to gather database models.
+   * - Creates temporary entity definitions based on the current database schema.
+   * - Writes these definitions to a temporary schema file. (node_modules/.db/entities.ts)
+   * - Invokes Drizzle Kit's CLI to generate migration files based on the current schema.
+   */
   generate = $command({
     name: "db:generate",
     description: "Generate migration files based on current database schema",
@@ -157,26 +176,37 @@ ${entities.map((it) => `export const ${it} = table("${it}");`).join("\n")}
     alepha: Alepha;
     entry: string;
   }> {
-    process.env.VITE_ALEPHA_DEV = "true";
+    process.env.ALEPHA_SKIP_START = "true";
 
     const paths = entry.split(",").map((p) => p.trim());
     for (const path of paths) {
       try {
         const entry = join(rootDir, path);
-        await tsImport(entry, import.meta.url);
+        const mod = await tsImport(entry, import.meta.url);
+
+        this.log.debug(`Load entry: ${path}`);
+
+        // check if alepha is correctly exported
+        if (mod.default instanceof Alepha) {
+          return {
+            alepha: mod.default,
+            entry,
+          };
+        }
+
+        // else, try with global variable
         const g: any = global;
         if (g.__alepha) {
-          this.log.debug(`Load entry: ${path}`);
           return {
             alepha: g.__alepha,
             entry,
           };
         }
-      } catch (e) {
-        console.log(e);
+      } catch {
         // continue to next path
       }
     }
+
     throw new AlephaError("No valid entry file found.");
   }
 }

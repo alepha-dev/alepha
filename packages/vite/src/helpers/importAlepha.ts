@@ -28,18 +28,22 @@ export const importAlepha = async (
     process.env[key] = options.env[key];
   }
 
-  process.env.VITE_ALEPHA_DEV = "true";
+  process.env.ALEPHA_SKIP_START = "true";
   process.env.LOG_LEVEL = "error";
   process.env.LOG_FORMAT = "text";
   process.env.NODE_ENV = "production";
 
   const entryFile = pathToFileURL(join(process.cwd(), entry)).href;
 
-  await import(entryFile);
+  const mod = await import(entryFile);
 
-  // wait for the Alepha instance to be initialized (I know, this is not ideal)
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // check if alepha is correctly exported
+  if (mod.default) {
+    await mod.default.events.emit("configure", mod.default);
+    return mod.default;
+  }
 
+  // else, try with global variable
   const alepha = global.__alepha as Alepha | undefined;
   if (!alepha) {
     throw new AlephaError(

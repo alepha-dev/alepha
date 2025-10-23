@@ -1,14 +1,4 @@
 /// <reference types="vite/client" />
-
-declare global {
-  interface ImportMetaEnv {
-    SSR: boolean;
-  }
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
-}
-
 import { AsyncLocalStorage } from "node:async_hooks";
 import cluster from "node:cluster";
 import { cpus } from "node:os";
@@ -17,22 +7,36 @@ import type { RunOptions } from "./interfaces/Run.ts";
 import type { Service } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export * from "./index.shared.ts";
 
-// only for node.js environment
-AlsProvider.create = () => new AsyncLocalStorage();
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
+ * Run Alepha application, trigger start lifecycle.
  *
+ * ```ts
+ * import { Alepha, run } from "@alepha/core";
+ * import { MyService } from "./services/MyService.ts";
+ *
+ * const alepha = new Alepha({ env: { APP_NAME: "MyAlephaApp" } });
+ *
+ * alepha.with(MyService);
+ *
+ * export default run(alepha);
+ * ```
  */
 export const run = (
   entry: Alepha | Service | Array<Service>,
   opts?: RunOptions,
-): void => {
+): Alepha => {
+  const env = typeof process === "object" ? process.env : {};
+
   const alepha =
     entry instanceof Alepha
       ? entry
-      : Alepha.create({ env: { ...process.env, ...opts?.env } });
+      : Alepha.create({ env: { ...env, ...opts?.env } });
 
   if (!(entry instanceof Alepha)) {
     const entries = Array.isArray(entry) ? entry : [entry];
@@ -41,15 +45,17 @@ export const run = (
     }
   }
 
+  // make alepha globally accessible (for serverless functions, etc...)
+  // it's not recommended, we should force 'export default run(alepha)'
   (globalThis as any).__alepha = alepha;
 
-  if (alepha.isServerless() || alepha.isViteDev()) {
-    return;
+  if (alepha.isServerless() || alepha.isViteDev() || env.ALEPHA_SKIP_START) {
+    return alepha;
   }
 
   if (opts?.cluster) {
     withCluster(entry, opts);
-    return;
+    return alepha;
   }
 
   // default runner
@@ -92,8 +98,18 @@ export const run = (
       }
     }
   })();
+
+  return alepha;
 };
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+// only for node.js environment
+AlsProvider.create = () => new AsyncLocalStorage();
+
+/**
+ * Run Alepha in cluster mode, forking workers based on the number of CPU cores.
+ */
 const withCluster = (
   entry: Alepha | Service | Array<Service>,
   opts?: RunOptions,

@@ -174,6 +174,12 @@ export class SchedulerDescriptor extends Descriptor<SchedulerDescriptorOptions> 
   }
 
   protected schedulerLock = $lock({
+    name: () => {
+      const prefix = this.env.SCHEDULER_PREFIX
+        ? `${this.env.SCHEDULER_PREFIX}:`
+        : "";
+      return `${prefix}scheduler:${this.name}`;
+    },
     handler: async (args: SchedulerHandlerArguments) => {
       await this.options.handler(args);
     },
