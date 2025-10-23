@@ -68,7 +68,7 @@ export class CronProvider {
 
     cron.running = false;
     cron.abort.abort();
-    this.log.debug(`Cron task '${name}' stopped`);
+    this.log.debug(`Cron task '${cron.name}' stopped`);
   }
 
   /**
