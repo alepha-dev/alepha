@@ -16,10 +16,12 @@ import { nullToUndefined } from "./helpers/nullToUndefined.ts";
 import { StateManager } from "./helpers/StateManager.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
-import type {
-  InstantiableClass,
-  Service,
-  ServiceEntry,
+import {
+  type InstantiableClass,
+  isClass,
+  type RunFunction,
+  type Service,
+  type ServiceEntry,
 } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
 import { type TSchema, t } from "./providers/TypeProvider.ts";
@@ -1051,7 +1053,9 @@ export class Alepha {
     __alephaRef.context = this;
     __alephaRef.definition = service;
 
-    const instance: T = new (service as InstantiableClass<any>)(...args);
+    const instance: T = isClass(service)
+      ? new service(...args)
+      : (((service as RunFunction)(...args) ?? {}) as T);
 
     const obj = instance as unknown as Record<string, any>;
     for (const [key, value] of Object.entries(obj)) {

@@ -15,14 +15,19 @@ const envSchema = t.object({
 export class ConsoleColorProvider {
   static readonly COLORS = {
     RESET: "\x1b[0m",
-    GREY: "\x1b[90m",
+    BLACK: "\x1b[30m",
     RED: "\x1b[31m",
-    ORANGE: "\x1b[33m", // using yellow for orange-ish
     GREEN: "\x1b[32m",
+    ORANGE: "\x1b[33m", // using yellow for orange-ish
     BLUE: "\x1b[34m",
-    WHITE: "\x1b[37m",
+    PURPLE: "\x1b[35m",
     CYAN: "\x1b[36m",
-    DARK_GREY: "\x1b[90m", // same as grey for terminal standard
+    GREY_LIGHT: "\x1b[37m",
+    GREY_LIGHT_BOLD: "\x1b[1;37m",
+    GREY_DARK: "\x1b[90m",
+    GREY_DARK_BOLD: "\x1b[1;90m",
+    WHITE: "\x1b[97m",
+    WHITE_BOLD: "\x1b[1;97m",
     // levels
     SILENT: "",
     ERROR: "\x1b[31m",

@@ -1,4 +1,5 @@
 import "tsx";
+import { spawn } from "node:child_process";
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
@@ -76,6 +77,74 @@ export class CoreCommands {
 
 $ cd ${name} && ${runCmd} dev
 			`,
+      );
+    },
+  });
+
+  run = $command({
+    name: "run",
+    description: "Run a TypeScript file directly",
+    flags: t.object({
+      watch: t.optional(
+        t.boolean({ description: "Watch file for changes", alias: "w" }),
+      ),
+    }),
+    summary: false,
+    args: t.text({ title: "path", description: "Filepath to run" }),
+    handler: async ({ args, flags, run }) => {
+      const filePath = args;
+      const watchFlag = flags.watch ? "--watch" : "";
+
+      // Find tsx binary - it should be in node_modules/.bin
+      // Using tsx directly since it's imported at the top of the file
+      const tsxCmd = watchFlag
+        ? `npx tsx ${watchFlag} ${filePath}`
+        : `npx tsx ${filePath}`;
+
+      const tsxArgs = flags.watch ? ["--watch", filePath] : [filePath];
+      const tsx = spawn("npx", ["tsx", ...tsxArgs], {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      });
+
+      await new Promise<void>((resolve) =>
+        tsx.on("exit", (code) => {
+          resolve();
+        }),
+      );
+    },
+  });
+
+  dev = $command({
+    name: "dev",
+    summary: false,
+    handler: async () => {
+      const tsx = spawn("npx", ["vite"], {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      });
+
+      await new Promise<void>((resolve) =>
+        tsx.on("exit", () => {
+          resolve();
+        }),
+      );
+    },
+  });
+
+  build = $command({
+    name: "build",
+    summary: false,
+    handler: async () => {
+      const tsx = spawn("npx", ["vite", "build"], {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      });
+
+      await new Promise<void>((resolve) =>
+        tsx.on("exit", () => {
+          resolve();
+        }),
       );
     },
   });

@@ -24,10 +24,11 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light");
   const [colorScheme, setColorScheme2] = useState("default");
+  const mode = props.mode ?? "minimal";
+
   useEffect(() => {
     setColorScheme2(computedColorScheme);
   }, [computedColorScheme]);
-  const mode = props.mode ?? "minimal";
 
   const toggleColorScheme = () => {
     setColorScheme(computedColorScheme === "dark" ? "light" : "dark");
@@ -67,7 +68,13 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
       size={props.size ?? "lg"}
       aria-label="Toggle color scheme"
     >
-      {colorScheme === "dark" ? <IconSun size={20} /> : <IconMoon size={20} />}
+      {colorScheme === "dark" ? (
+        <IconSun size={20} />
+      ) : colorScheme === "light" ? (
+        <IconMoon size={20} />
+      ) : (
+        <Flex h={20} />
+      )}
     </ActionIcon>
   );
 };

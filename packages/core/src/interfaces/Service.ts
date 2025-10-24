@@ -5,7 +5,10 @@
  */
 export type Service<T extends object = any> =
   | InstantiableClass<T>
-  | AbstractClass<T>;
+  | AbstractClass<T>
+  | RunFunction<T>;
+
+export type RunFunction<T extends object = any> = (...args: any[]) => T | void;
 
 export type InstantiableClass<T extends object = any> = new (
   ...args: any[]
@@ -64,3 +67,11 @@ export type ServiceEntry<T extends object = any> =
   | ServiceSubstitution<T>;
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+export function isClass(func: any): func is InstantiableClass {
+  // Classes have a non-writable prototype.constructor
+  if (typeof func !== "function") return false;
+
+  const descriptor = Object.getOwnPropertyDescriptor(func, "prototype");
+  return !!descriptor && !descriptor.writable;
+}

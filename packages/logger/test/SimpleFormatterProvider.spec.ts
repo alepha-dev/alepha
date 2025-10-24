@@ -36,7 +36,7 @@ describe("SimpleFormatterProvider", () => {
     const fmt = alepha.inject(SimpleFormatterProvider);
 
     expect(output.logs[0].formatted).toMatch(
-      `\x1b[90m[${fmt.formatTimestamp(output.logs[0].timestamp)}]\x1b[0m \x1b[32mINFO\x1b[0m <\x1b[37mapp.\x1b[0m\x1b[0mApp\x1b[0m>: \x1b[36mTest log message\x1b[0m`,
+      `\x1b[90m[${fmt.formatTimestamp(output.logs[0].timestamp)}]\x1b[0m \x1b[32mINFO\x1b[0m <\x1b[37mapp.\x1b[0m\x1b[1;97mApp\x1b[0m>: \x1b[36mTest log message\x1b[0m`,
     );
   });
 

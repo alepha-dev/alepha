@@ -36,7 +36,7 @@ describe("$command", () => {
           ),
           "api-key": t.text({
             description: "API key for deployment.",
-            alias: ["key"],
+            aliases: ["key"],
           }),
         }),
         handler: mockHandlers.deploy,
@@ -196,7 +196,7 @@ describe("$command", () => {
     test("should throw a CommandError for invalid flag types", async () => {
       await expect(() =>
         setupTestCommands(["greet", "--name=Test", "--times=not-a-number"]),
-      ).rejects.toThrow("Invalid flag: /times - must be integer");
+      ).rejects.toThrow("Invalid flag: /times must be integer");
     });
   });
 

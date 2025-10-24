@@ -24,26 +24,35 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
       }
     }
 
-    output += this.color.set("GREY", `[${this.formatTimestamp(timestamp)}]`);
+    output += this.color.set(
+      "GREY_DARK",
+      `[${this.formatTimestamp(timestamp)}]`,
+    );
     output += " ";
 
     output += this.color.set(entry.level, entry.level.toUpperCase());
     output += " ";
 
     if (entry.app) {
-      output += this.color.set("GREY", `${entry.app}`);
+      output += this.color.set("GREY_DARK", `${entry.app}`);
       output += " ";
     }
 
     if (entry.context) {
       output += this.color.set(
-        "GREY",
+        "GREY_DARK",
         `(${this.formatContext(entry.context)})`,
       );
       output += " ";
     }
 
-    output += `<${this.color.set("WHITE", `${entry.module}.`)}${this.color.set("RESET", entry.service)}>`;
+    const module = this.color.set("GREY_LIGHT", `${entry.module}.`);
+    const service = this.color.set(
+      this.alepha.isBrowser() ? "RESET" : "WHITE_BOLD",
+      entry.service,
+    );
+
+    output += `<${module}${service}>`;
 
     if (entry.message) {
       output += `: ${this.color.set("CYAN", entry.message)}`;
@@ -55,7 +64,7 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
       if (isError) {
         output += ` \n${details}`;
       } else {
-        output += ` ${this.color.set("DARK_GREY", details)}`;
+        output += ` ${this.color.set("GREY_DARK", details)}`;
       }
     }
 

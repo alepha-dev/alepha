@@ -132,7 +132,12 @@ export class CliProvider {
   ): Record<string, any> {
     const flagDefs = Object.entries(schema.properties).map(([key, value]) => ({
       key,
-      aliases: [key, ...((value as any).aliases ?? (value as any).alias ?? [])],
+      aliases: [
+        key,
+        ...((value as any).aliases ??
+          ((value as any).alias ? [(value as any).alias] : undefined) ??
+          []),
+      ],
       description: (value as any).description,
       schema: value,
     }));
@@ -144,7 +149,7 @@ export class CliProvider {
     } catch (error) {
       if (error instanceof TypeBoxError) {
         throw new CommandError(
-          `Invalid flag: ${error.cause.instancePath} - ${error.cause.message}`,
+          `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
         );
       }
       throw error;
@@ -334,7 +339,7 @@ export class CliProvider {
 
       const maxFlagLength = this.getMaxFlagLength(flags);
       for (const { aliases, description } of flags) {
-        const flagStr = aliases
+        const flagStr = (Array.isArray(aliases) ? aliases : [aliases])
           .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
         this.log.info(
@@ -390,11 +395,12 @@ export class CliProvider {
 
   private getMaxFlagLength(flags: { aliases: string[] }[]): number {
     return Math.max(
-      ...flags.map(
-        (f) =>
-          f.aliases.map((a) => (a.length === 1 ? `-${a}` : `--${a}`)).join(", ")
-            .length,
-      ),
+      ...flags.map((f) => {
+        const aliases = Array.isArray(f.aliases) ? f.aliases : [f.aliases];
+        return aliases
+          .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ").length;
+      }),
     );
   }
 }

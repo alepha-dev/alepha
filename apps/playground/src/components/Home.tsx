@@ -7,11 +7,7 @@ const Home = () => {
   const form = useForm({
     schema: t.partial(
       t.object({
-        firstName: t.text({
-          $control: {
-            select: {},
-          },
-        }),
+        firstName: t.text({}),
         lastName: t.text(),
         email: t.email(),
         password: t.text(),
@@ -33,7 +29,7 @@ const Home = () => {
   return (
     <Flex p={"lg"} direction={"column"}>
       <Flex>
-        <DarkModeButton mode={"minimal"} />
+        <DarkModeButton mode={"segmented"} />
       </Flex>
       <Flex p={"lg"}>
         <TypeForm form={form} />
