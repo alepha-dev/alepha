@@ -34,6 +34,10 @@ export class ServerSwaggerProvider {
 
   public json?: OpenAPIV3.Document;
 
+  public options = {
+    excludeKeys: ["~options"],
+  };
+
   protected readonly configure = $hook({
     on: "configure",
     priority: "last",
@@ -100,15 +104,20 @@ export class ServerSwaggerProvider {
 
     const excludeTags = doc.excludeTags ?? [];
     const schemas: Record<string, any> = {};
+
     const schema = (source: TSchema) => {
       if ("title" in source && typeof source.title === "string") {
-        schemas[source.title] = source;
+        schemas[source.title] = copy(source);
         return { $ref: `#/components/schemas/${source.title}` };
       }
-      return source;
+      return copy(source);
     };
 
-    const copy = (obj: any) => JSON.parse(JSON.stringify(obj));
+    const copy = (obj: any) => {
+      const newValue = JSON.parse(JSON.stringify(obj));
+      this.removePrivateFields(newValue, this.options.excludeKeys);
+      return newValue;
+    };
 
     for (const route of actions) {
       if (!route.options.schema) {
@@ -165,7 +174,7 @@ export class ServerSwaggerProvider {
             required: true,
             content: {
               "multipart/form-data": {
-                schema: route.options.schema.body,
+                schema: schema(route.options.schema.body),
               },
             },
           };
@@ -204,7 +213,7 @@ export class ServerSwaggerProvider {
             "description" in value && typeof value.description === "string"
               ? value.description
               : undefined;
-          const ref = copy(schema(value));
+          const ref = schema(value);
           delete ref.description;
           operation.parameters.push({
             name: key,
@@ -362,5 +371,43 @@ window.onload = function() {
     this.log.info(
       `Swagger UI available at ${this.serverProvider.hostname}${prefix}/`,
     );
+  }
+
+  public removePrivateFields<T extends Record<string, any>>(
+    obj: T,
+    excludeList: string[],
+  ): T {
+    if (obj === null || typeof obj !== "object") return obj;
+
+    const visited = new WeakSet();
+
+    const traverse = (o: any): void => {
+      if (visited.has(o)) return;
+      visited.add(o);
+
+      if (Array.isArray(o)) {
+        for (let i = 0; i < o.length; i++) {
+          const item = o[i];
+          if (item !== null && typeof item === "object") {
+            traverse(item);
+          }
+        }
+      } else {
+        for (const excludeKey of excludeList) {
+          if (excludeKey in o) {
+            delete o[excludeKey];
+          }
+        }
+        for (const key in o) {
+          const item = o[key];
+          if (item !== null && typeof item === "object") {
+            traverse(item);
+          }
+        }
+      }
+    };
+
+    traverse(obj);
+    return obj;
   }
 }

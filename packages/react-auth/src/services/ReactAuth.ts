@@ -3,9 +3,9 @@ import { $logger } from "@alepha/logger";
 import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "@alepha/security";
 import { HttpClient } from "@alepha/server";
-import type { TokenResponse } from "../schemas/tokenResponseSchema.ts";
+import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
-import type { UserinfoResponse } from "../schemas/userinfoResponseSchema.ts";
+import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
 
 /**
  * Browser, SSR friendly, service to handle authentication.
@@ -55,9 +55,9 @@ export class ReactAuth {
   }
 
   public async ping() {
-    const { data } = await this.httpClient.fetch<UserinfoResponse>(
-      ReactAuth.path.userinfo,
-    );
+    const { data } = await this.httpClient.fetch(ReactAuth.path.userinfo, {
+      schema: { response: userinfoResponseSchema },
+    });
 
     this.alepha.state.set("api", data.api);
     this.alepha.state.set("user", data.user);
@@ -76,7 +76,7 @@ export class ReactAuth {
     },
   ): Promise<Tokens> {
     if (options.username || options.password) {
-      const { data } = await this.httpClient.fetch<TokenResponse>(
+      const { data } = await this.httpClient.fetch(
         `${options.hostname || ""}${ReactAuth.path.token}?provider=${provider}`,
         {
           method: "POST",
@@ -85,6 +85,7 @@ export class ReactAuth {
             password: options.password,
             ...options,
           }),
+          schema: { response: tokenResponseSchema },
         },
       );
 

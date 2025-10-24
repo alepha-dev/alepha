@@ -36,7 +36,10 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
     }
 
     if (entry.context) {
-      output += this.color.set("GREY", `(${entry.context})`);
+      output += this.color.set(
+        "GREY",
+        `(${this.formatContext(entry.context)})`,
+      );
       output += " ";
     }
 
@@ -72,6 +75,17 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
   protected pad2 = (n: number) => (n < 10 ? "0" : "") + n;
   protected pad3 = (n: number) =>
     n < 10 ? `00${n}` : n < 100 ? `0${n}` : `${n}`;
+
+  /**
+   * Avoid to display the whole UUID in development mode
+   */
+  protected formatContext(context: string): string {
+    if (this.alepha.isProduction()) {
+      return context;
+    }
+
+    return context.slice(0, 8);
+  }
 
   protected formatError(error: Error): string {
     // Chrome does not like stack traces with ASCII colors

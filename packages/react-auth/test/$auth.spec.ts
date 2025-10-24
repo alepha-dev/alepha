@@ -8,7 +8,11 @@ import { AlephaServerSecurity } from "@alepha/server-security";
 import type { UserInfoResponse } from "openid-client";
 import { describe, test } from "vitest";
 import { $auth, ReactAuth, type ReactAuthProvider } from "../src";
-import type { TokenResponse } from "../src/schemas/tokenResponseSchema.ts";
+import {
+  type TokenResponse,
+  tokenResponseSchema,
+} from "../src/schemas/tokenResponseSchema.ts";
+import { tokensSchema } from "../src/schemas/tokensSchema.ts";
 
 describe("$auth", () => {
   describe("$auth", () => {
@@ -58,7 +62,7 @@ describe("$auth", () => {
     const login = (alepha: Alepha) =>
       alepha
         .inject(HttpClient)
-        .fetch<TokenResponse>(
+        .fetch(
           `${alepha.inject(ServerProvider).hostname}${ReactAuth.path.token}?provider=auth`,
           {
             method: "POST",
@@ -66,13 +70,16 @@ describe("$auth", () => {
               username: user.username,
               password: user.password,
             }),
+            schema: {
+              response: tokenResponseSchema,
+            },
           },
         );
 
     const refresh = (alepha: Alepha, tokens: TokenResponse) =>
       alepha
         .inject(HttpClient)
-        .fetch<TokenResponse>(
+        .fetch(
           `${alepha.inject(ServerProvider).hostname}${ReactAuth.path.refresh}?provider=auth`,
           {
             method: "POST",
@@ -80,6 +87,9 @@ describe("$auth", () => {
               refresh_token: tokens.refresh_token!,
               access_token: tokens.access_token,
             }),
+            schema: {
+              response: tokensSchema,
+            },
           },
         );
 

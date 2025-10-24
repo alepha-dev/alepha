@@ -35,7 +35,7 @@ describe("useForm", () => {
       });
 
       return (
-        <form onSubmit={form.onSubmit} data-testid="test-form">
+        <form {...form.props} data-testid="test-form">
           <input {...form.input.str.props} />
           <input {...form.input.int.props} />
           <input {...form.input.nested.str.props} />

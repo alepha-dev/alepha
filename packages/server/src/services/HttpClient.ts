@@ -4,6 +4,7 @@ import {
   Alepha,
   type FileLike,
   isFileLike,
+  type Static,
   type TObject,
   type TSchema,
 } from "@alepha/core";
@@ -59,17 +60,23 @@ export class HttpClient {
       ...headers,
     };
 
-    return await this.fetch(url, request, {
-      schema: route.schema?.response,
+    return await this.fetch(url, {
+      ...request,
+      schema: route.schema,
       ...options,
     });
   }
 
-  public async fetch<T>(
+  public async fetch<T extends TSchema>(
     url: string,
-    request: RequestInit = {}, // standard options
-    options: FetchOptions = {}, // alepha options
-  ): Promise<FetchResponse<T>> {
+    request: RequestInitWithOptions<T> = {}, // standard options
+  ): Promise<FetchResponse<Static<T>>> {
+    const options = {
+      cache: request.localCache,
+      schema: request.schema?.response,
+      key: request.key,
+    };
+
     request.method ??= "GET";
 
     this.log.trace("Request", {
@@ -90,7 +97,7 @@ export class HttpClient {
         }
       } else {
         return {
-          data: cached.data as T,
+          data: cached.data as Static<T>,
           status: 200,
           statusText: "OK",
           headers: new Headers(),
@@ -389,7 +396,7 @@ export class HttpClient {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface FetchOptions {
+export interface FetchOptions<T extends TSchema = TSchema> {
   /**
    * Key to identify the request in the pending requests.
    */
@@ -398,13 +405,18 @@ export interface FetchOptions {
   /**
    * The schema to validate the response against.
    */
-  schema?: TSchema;
+  schema?: {
+    response?: T;
+  };
 
   /**
    * Built-in cache options.
    */
-  cache?: boolean | number | DurationLike;
+  localCache?: boolean | number | DurationLike;
 }
+
+export type RequestInitWithOptions<T extends TSchema = TSchema> = RequestInit &
+  FetchOptions<T>;
 
 export interface FetchResponse<T = any> {
   data: T;

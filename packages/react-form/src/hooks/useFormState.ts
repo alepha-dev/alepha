@@ -3,50 +3,72 @@ import { useAlepha } from "@alepha/react";
 import { useEffect, useState } from "react";
 import type { FormModel } from "../services/FormModel.ts";
 
-export interface UseFormStateReturn<T extends TObject> {
+export interface UseFormStateReturn {
   loading: boolean;
   dirty: boolean;
-  values?: T;
+  values?: Record<string, any>;
   error?: Error;
 }
 
-export type FormStateEvent = "change" | "submit" | "error";
-
-export const useFormState = <T extends TObject>(
+export const useFormState = <
+  T extends TObject,
+  Keys extends keyof UseFormStateReturn,
+>(
   target: FormModel<T> | { form: FormModel<T>; path: string },
-  events: FormStateEvent[] = ["change", "submit", "error"],
-): UseFormStateReturn<T> => {
+  _events: Keys[] = ["loading", "dirty", "error"] as Keys[],
+): Pick<UseFormStateReturn, Keys> => {
   const alepha = useAlepha();
+  const events = _events as string[];
 
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
+  const [values, setValues] = useState<Record<string, any> | undefined>(
+    undefined,
+  );
 
   const form = "form" in target ? target.form : target;
   const path = "path" in target ? target.path : undefined;
 
+  const hasValues = events.includes("values");
+  const hasErrors = events.includes("error");
+  const hasDirty = events.includes("dirty");
+  const hasLoading = events.includes("loading");
+
   useEffect(() => {
     const listeners: Function[] = [];
 
-    if (events.includes("change") || events.includes("error")) {
+    if (hasErrors || hasValues || hasDirty) {
       listeners.push(
         alepha.events.on("form:change", (event) => {
           if (event.id === form.id) {
             if (!path || event.path === path) {
-              setDirty(true);
-              setError(undefined);
+              if (hasDirty) {
+                setDirty(true);
+              }
+              if (hasErrors) {
+                setError(undefined);
+              }
             }
-          }
-        }),
-        alepha.events.on("form:submit:success", (event) => {
-          if (event.id === form.id) {
-            setDirty(false);
+            if (hasValues) {
+              setValues(form.currentValues);
+            }
           }
         }),
       );
     }
 
-    if (events.includes("submit")) {
+    if (hasValues) {
+      listeners.push(
+        alepha.events.on("form:reset", (event) => {
+          if (event.id === form.id) {
+            setValues(event.values);
+          }
+        }),
+      );
+    }
+
+    if (hasLoading) {
       listeners.push(
         alepha.events.on("form:submit:begin", (event) => {
           if (event.id === form.id) {
@@ -61,7 +83,22 @@ export const useFormState = <T extends TObject>(
       );
     }
 
-    if (events.includes("error")) {
+    if (hasValues || hasDirty) {
+      listeners.push(
+        alepha.events.on("form:submit:success", (event) => {
+          if (event.id === form.id) {
+            if (hasValues) {
+              setValues(event.values);
+            }
+            if (hasDirty) {
+              setDirty(false);
+            }
+          }
+        }),
+      );
+    }
+
+    if (hasErrors) {
       listeners.push(
         alepha.events.on("form:submit:error", (event) => {
           if (event.id === form.id) {
@@ -88,5 +125,6 @@ export const useFormState = <T extends TObject>(
     dirty,
     loading,
     error,
-  };
+    values,
+  } as Pick<UseFormStateReturn, Keys>;
 };

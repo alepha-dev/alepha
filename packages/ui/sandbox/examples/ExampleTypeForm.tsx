@@ -325,7 +325,6 @@ const ExampleTypeForm = () => {
           controlProps={{
             text: { variant: "filled" },
             area: { minRows: 4, autosize: true },
-            segmented: true,
           }}
         />
 
@@ -335,7 +334,6 @@ const ExampleTypeForm = () => {
   controlProps={{
     text: { variant: "filled" },
     area: { minRows: 4, autosize: true },
-    segmented: true, // Use segmented control for enums
   }}
 />`}
         </Code>
@@ -351,7 +349,7 @@ const ExampleTypeForm = () => {
         </Text>
 
         <form
-          onSubmit={basicForm.onSubmit}
+          {...basicForm.props}
           style={{
             padding: "1rem",
             border: "2px dashed var(--mantine-color-blue-3)",

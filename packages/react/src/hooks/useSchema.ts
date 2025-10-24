@@ -25,11 +25,11 @@ export const useSchema = <TConfig extends RequestConfigSchema>(
     }
 
     const opts: FetchOptions = {
-      cache: true,
+      localCache: true,
     };
 
     httpClient
-      .fetch(`${LinkProvider.path.apiLinks}/${name}/schema`, {}, opts)
+      .fetch(`${LinkProvider.path.apiLinks}/${name}/schema`, opts)
       .then((it) => setSchema(it.data as UseSchemaReturn<TConfig>));
   }, [name]);
 

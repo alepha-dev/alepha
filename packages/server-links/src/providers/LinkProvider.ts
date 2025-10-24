@@ -17,7 +17,6 @@ import {
 import type { ServerRouteSecure } from "@alepha/server-security";
 import {
   type ApiLink,
-  type ApiLinksResponse,
   apiLinksResponseSchema,
 } from "../schemas/apiLinksResponseSchema.ts";
 
@@ -86,13 +85,13 @@ export class LinkProvider {
    * Force browser to refresh links from the server.
    */
   public async fetchLinks(): Promise<HttpClientLink[]> {
-    const { data } = await this.httpClient.fetch<ApiLinksResponse>(
+    const { data } = await this.httpClient.fetch(
       `${LinkProvider.path.apiLinks}`,
       {
         method: "GET",
-      },
-      {
-        schema: apiLinksResponseSchema,
+        schema: {
+          response: apiLinksResponseSchema,
+        },
       },
     );
 

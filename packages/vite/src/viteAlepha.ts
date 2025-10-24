@@ -22,7 +22,7 @@ export function viteAlepha(
   const plugins: (Plugin | Promise<Plugin>)[] = [];
 
   if (options.react !== false) {
-    plugins.push(...viteReact(options.react));
+    plugins.push(viteReact(options.react) as any);
   }
 
   plugins.push(viteAlephaDev(options), viteAlephaBuild(options));

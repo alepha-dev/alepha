@@ -32,7 +32,37 @@ export class FormModel<T extends TObject> {
     });
   }
 
-  public readonly onSubmit = async (event: FormEventLike) => {
+  public get currentValues(): Record<string, any> {
+    return this.parseValuesFromFormElement(this.options, this.values);
+  }
+
+  public get props() {
+    return {
+      noValidate: true,
+      onSubmit: (values: FormEventLike) => this.submit(values),
+      onReset: (event: FormEventLike) => this.reset(event),
+    };
+  }
+
+  protected readonly reset = (event: FormEventLike) => {
+    // clear values in place to maintain proxy reference
+    for (const key in this.values) {
+      delete this.values[key];
+    }
+
+    return this.alepha.events.emit(
+      "form:reset",
+      {
+        id: this.id,
+        values: this.values,
+      },
+      {
+        catch: true,
+      },
+    );
+  };
+
+  protected readonly submit = async (event: FormEventLike) => {
     event.preventDefault();
 
     await this.alepha.events.emit("form:submit:begin", {
@@ -46,18 +76,20 @@ export class FormModel<T extends TObject> {
     };
 
     try {
-      const values: Record<string, any> = this.parseValuesFromFormElement(
+      let values: Record<string, any> = this.parseValuesFromFormElement(
         options,
         this.values,
       );
 
       if (t.schema.isSchema(options.schema)) {
-        await options.handler(this.alepha.parse(options.schema, values), args);
-      } else {
-        await options.handler(values as any, args); // for now, trust
+        values = this.alepha.parse(options.schema, values);
       }
+
+      await options.handler(values as any, args);
+
       await this.alepha.events.emit("form:submit:success", {
         id: this.id,
+        values,
       });
     } catch (error) {
       this.log.error("Form submission error:", error);
@@ -226,9 +258,15 @@ export class FormModel<T extends TObject> {
 
     const attr: InputHTMLAttributesLike = {
       name: key,
-      onChange: (event: ChangeEvent<HTMLInputElement> | string) => {
+      onChange: (event: ChangeEvent<HTMLInputElement> | string | number) => {
         if (typeof event === "string") {
           // If the event is a string, it means it's a direct value change
+          set(event);
+          return;
+        }
+
+        if (typeof event === "number") {
+          // Some inputs might return number directly
           set(event);
           return;
         }

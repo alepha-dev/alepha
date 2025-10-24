@@ -89,4 +89,26 @@ describe("Alepha#parse", () => {
     expect(app.parse(s, '{ "n": 3 }')).toEqual({ n: 3 });
     expect(app.parse(s, '{ "n": "1" }')).toEqual({ n: 1 });
   });
+
+  it("should trim", () => {
+    const user = t.object({
+      name: t.text(),
+    });
+
+    const app = Alepha.create();
+
+    expect(app.parse(user, { name: "  Alice  " })).toEqual({ name: "Alice" });
+  });
+
+  it("should skip trim", () => {
+    const user = t.object({
+      name: t.text({ trim: false }),
+    });
+
+    const app = Alepha.create();
+
+    expect(app.parse(user, { name: "  Alice  " })).toEqual({
+      name: "  Alice  ",
+    });
+  });
 });

@@ -21,9 +21,12 @@ import type {
 } from "typebox";
 import * as TypeBox from "typebox";
 import { Type } from "typebox";
+import type { TLocalizedValidationMessageCallback } from "typebox/error";
 import TypeBoxFormat from "typebox/format";
+import { Locale } from "typebox/system";
 import * as TypeBoxValue from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
 export { TypeBox, TypeBoxValue, TypeBoxFormat };
@@ -114,6 +117,17 @@ export class TypeProvider {
     TypeBoxFormat.Set("int64", (value: string | number) =>
       TypeProvider.isValidBigInt(value),
     );
+  }
+
+  static setLocale(locale: string) {
+    for (const [key, value] of Object.entries(Locale)) {
+      if (key === "Set" || key === "Get") continue;
+      if (key === locale || key.startsWith(`${locale}_`)) {
+        Locale.Set(value as TLocalizedValidationMessageCallback);
+        return;
+      }
+    }
+    throw new AlephaError(`Locale not found: ${locale}`);
   }
 
   static isValidBigInt(value: string | number) {
@@ -280,7 +294,7 @@ export class TypeProvider {
 
     return Type.String({
       maxLength,
-      [OPTIONS]: {
+      "~options": {
         trim: options.trim ?? true,
       },
       ...rest,
@@ -322,6 +336,13 @@ export class TypeProvider {
       maximum: 2147483647,
       ...options,
     });
+  }
+
+  /**
+   * @alias `t.int()`
+   */
+  public integer(options?: TNumberOptions): TInteger {
+    return this.int(options);
   }
 
   /**

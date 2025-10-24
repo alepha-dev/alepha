@@ -1,12 +1,5 @@
-import { type TObject, TypeBoxError } from "@alepha/core";
+import { useFormState } from "@alepha/react-form";
 import {
-  type InputField,
-  type UseFormStateReturn,
-  useFormState,
-} from "@alepha/react-form";
-import {
-  Autocomplete,
-  type AutocompleteProps,
   ColorInput,
   type ColorInputProps,
   FileInput,
@@ -17,9 +10,6 @@ import {
   type NumberInputProps,
   PasswordInput,
   type PasswordInputProps,
-  SegmentedControl,
-  type SegmentedControlProps,
-  type SelectProps,
   Switch,
   type SwitchProps,
   Textarea,
@@ -32,20 +22,17 @@ import type {
   DateTimePickerProps,
   TimeInputProps,
 } from "@mantine/dates";
-import type { ComponentType, ReactNode } from "react";
-import { getDefaultIcon } from "../utils/icons.tsx";
-import { prettyName } from "../utils/string.ts";
+import type { ComponentType } from "react";
+import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 import ControlDate from "./ControlDate";
-import ControlSelect from "./ControlSelect";
+import ControlSelect, { type ControlSelectProps } from "./ControlSelect";
 
 export interface ControlProps extends GenericControlProps {
   text?: TextInputProps;
   area?: boolean | TextareaProps;
-  select?: boolean | SelectProps;
-  autocomplete?: boolean | AutocompleteProps;
+  select?: boolean | Partial<ControlSelectProps>;
   password?: boolean | PasswordInputProps;
   switch?: boolean | SwitchProps;
-  segmented?: boolean | Partial<SegmentedControlProps>;
   number?: boolean | NumberInputProps;
   file?: boolean | FileInputProps;
   color?: boolean | ColorInputProps;
@@ -76,20 +63,17 @@ export interface ControlProps extends GenericControlProps {
  *
  * Automatically handles labels, descriptions, error messages, required state, and default icons.
  */
-const Control = (props: ControlProps) => {
-  const form = useFormState(props.input);
-  const { inputProps, id, icon } = parseInput(props, form);
-  if (!props.input?.props) {
+const Control = (_props: ControlProps) => {
+  const form = useFormState(_props.input, ["error"]);
+  const { inputProps, id, icon, format, schema } = parseInput(_props, form);
+  if (!_props.input?.props) {
     return null;
   }
 
-  // Extract format once to avoid redeclaration
-  const format =
-    props.input.schema &&
-    "format" in props.input.schema &&
-    typeof props.input.schema.format === "string"
-      ? props.input.schema.format
-      : undefined;
+  const props = {
+    ..._props,
+    ...schema.$control,
+  };
 
   //region <Custom/>
   if (props.custom) {
@@ -164,55 +148,6 @@ const Control = (props: ControlProps) => {
   }
   //endregion
 
-  //region <SegmentedControl/>
-  if (props.segmented) {
-    const segmentedControlProps: Partial<SegmentedControlProps> =
-      typeof props.segmented === "object" ? props.segmented : {};
-    const data =
-      segmentedControlProps.data ??
-      (props.input.schema &&
-      "enum" in props.input.schema &&
-      Array.isArray(props.input.schema.enum)
-        ? props.input.schema.enum?.map((value: string) => ({
-            value,
-            label: value,
-          }))
-        : []);
-    return (
-      <Input.Wrapper {...inputProps}>
-        <Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
-          <SegmentedControl
-            disabled={inputProps.disabled}
-            defaultValue={String(props.input.props.defaultValue)}
-            {...segmentedControlProps}
-            onChange={(value) => {
-              props.input.set(value);
-            }}
-            data={data}
-          />
-        </Flex>
-      </Input.Wrapper>
-    );
-  }
-  //endregion
-
-  //region <Autocomplete/>
-  if (props.autocomplete) {
-    const autocompleteProps =
-      typeof props.autocomplete === "object" ? props.autocomplete : {};
-
-    return (
-      <Autocomplete
-        {...inputProps}
-        id={id}
-        leftSection={icon}
-        {...props.input.props}
-        {...autocompleteProps}
-      />
-    );
-  }
-  //endregion
-
   //region <ControlSelect/>
   // Handle: single enum, array of enum, array of strings, or explicit select/multi/tags props
   const isEnum =
@@ -225,13 +160,14 @@ const Control = (props: ControlProps) => {
     props.input.schema.type === "array";
 
   if (isEnum || isArray || props.select) {
+    const opts = typeof props.select === "object" ? props.select : {};
     return (
       <ControlSelect
         input={props.input}
         title={props.title}
         description={props.description}
         icon={icon}
-        select={props.select}
+        {...opts}
       />
     );
   }
@@ -347,81 +283,6 @@ const Control = (props: ControlProps) => {
 };
 
 export default Control;
-
-// =============================================================================
-// Helper Types and Functions
-// =============================================================================
-
-export interface GenericControlProps {
-  input: InputField;
-  title?: string;
-  description?: string;
-  icon?: ReactNode;
-}
-
-export const parseInput = (
-  props: GenericControlProps,
-  form: UseFormStateReturn<TObject>,
-) => {
-  const disabled = false; // form.loading;
-  const id = props.input.props.id;
-  const label =
-    props.title ??
-    ("title" in props.input.schema &&
-    typeof props.input.schema.title === "string"
-      ? props.input.schema.title
-      : undefined) ??
-    prettyName(props.input.path);
-  const description =
-    props.description ??
-    ("description" in props.input.schema &&
-    typeof props.input.schema.description === "string"
-      ? props.input.schema.description
-      : undefined);
-  const error =
-    form.error && form.error instanceof TypeBoxError
-      ? form.error.value.message
-      : undefined;
-
-  // Auto-generate icon if not provided
-  const icon =
-    props.icon ??
-    getDefaultIcon({
-      type:
-        props.input.schema && "type" in props.input.schema
-          ? String(props.input.schema.type)
-          : undefined,
-      format:
-        props.input.schema &&
-        "format" in props.input.schema &&
-        typeof props.input.schema.format === "string"
-          ? props.input.schema.format
-          : undefined,
-      name: props.input.props.name,
-      isEnum:
-        props.input.schema &&
-        "enum" in props.input.schema &&
-        Boolean(props.input.schema.enum),
-      isArray:
-        props.input.schema &&
-        "type" in props.input.schema &&
-        props.input.schema.type === "array",
-    });
-
-  const required = props.input.required;
-
-  return {
-    id,
-    icon,
-    inputProps: {
-      label,
-      description,
-      error,
-      required,
-      disabled,
-    },
-  };
-};
 
 export type CustomControlProps = {
   defaultValue: any;

@@ -5,7 +5,10 @@ export class TypeBoxError extends AlephaError {
   readonly name = "TypeBoxError";
 
   public readonly cause: TLocalizedValidationError;
-  public readonly value: any;
+  public readonly value: {
+    path: string;
+    message: string;
+  };
 
   constructor(error: TLocalizedValidationError, value: any) {
     super(
@@ -14,8 +17,23 @@ export class TypeBoxError extends AlephaError {
         cause: error,
       },
     );
+    const params = error.params as TypeBoxErrorParams;
+    if (params?.requiredProperties) {
+      this.value = {
+        path: `/${params.requiredProperties[0]}`,
+        message: "must be defined",
+      };
+    } else {
+      this.value = {
+        path: error.instancePath,
+        message: error.message,
+      };
+    }
 
     this.cause = error;
-    this.value = value;
   }
+}
+
+export interface TypeBoxErrorParams {
+  requiredProperties?: string[];
 }

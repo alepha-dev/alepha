@@ -7,7 +7,7 @@ import {
   TimeInput,
   type TimeInputProps,
 } from "@mantine/dates";
-import { type GenericControlProps, parseInput } from "./Control.tsx";
+import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 
 export interface ControlDateProps extends GenericControlProps {
   date?: boolean | DateInputProps;
@@ -27,18 +27,10 @@ export interface ControlDateProps extends GenericControlProps {
  */
 const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input);
-  const { inputProps, id, icon } = parseInput(props, form);
+  const { inputProps, id, icon, format } = parseInput(props, form);
   if (!props.input?.props) {
     return null;
   }
-
-  // Detect format from schema
-  const format =
-    props.input.schema &&
-    "format" in props.input.schema &&
-    typeof props.input.schema.format === "string"
-      ? props.input.schema.format
-      : undefined;
 
   // region <DateTimePicker/>
   if (props.datetime || format === "date-time") {

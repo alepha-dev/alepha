@@ -322,7 +322,10 @@ const ExampleControl = () => {
           Use <Code>segmented</Code> prop for enum types
         </Text>
 
-        <Control input={segmentedForm.input.status} segmented />
+        <Control
+          input={segmentedForm.input.status}
+          select={{ segmented: true }}
+        />
 
         <Code block mt="md">
           {`<Control input={form.input.status} segmented />`}
@@ -394,7 +397,7 @@ const ExampleControl = () => {
             type="submit"
             size="lg"
             fullWidth
-            onClick={submitForm.onSubmit}
+            onClick={submitForm.props.onSubmit}
           >
             Submit Form
           </Button>

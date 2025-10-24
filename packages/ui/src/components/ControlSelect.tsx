@@ -1,18 +1,33 @@
 import { useFormState } from "@alepha/react-form";
 import {
+  Autocomplete,
+  type AutocompleteProps,
+  Flex,
+  Input,
   MultiSelect,
   type MultiSelectProps,
+  SegmentedControl,
+  type SegmentedControlProps,
   Select,
   type SelectProps,
   TagsInput,
   type TagsInputProps,
 } from "@mantine/core";
-import { type GenericControlProps, parseInput } from "./Control.tsx";
+import { useEffect, useState } from "react";
+import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
+
+export type SelectValueLabel =
+  | string
+  | { value: string; label: string; icon?: string };
 
 export interface ControlSelectProps extends GenericControlProps {
   select?: boolean | SelectProps;
   multi?: boolean | MultiSelectProps;
   tags?: boolean | TagsInputProps;
+  autocomplete?: boolean | AutocompleteProps;
+  segmented?: boolean | Partial<SegmentedControlProps>;
+
+  loader?: () => Promise<SelectValueLabel[]>;
 }
 
 /**
@@ -31,9 +46,6 @@ export interface ControlSelectProps extends GenericControlProps {
 const ControlSelect = (props: ControlSelectProps) => {
   const form = useFormState(props.input);
   const { inputProps, id, icon } = parseInput(props, form);
-  if (!props.input?.props) {
-    return null;
-  }
 
   // Detect if schema is an array type
   const isArray =
@@ -57,6 +69,61 @@ const ControlSelect = (props: ControlSelectProps) => {
     Array.isArray(props.input.schema.enum)
       ? props.input.schema.enum
       : [];
+
+  const [data, setData] = useState<SelectValueLabel[]>([]);
+
+  useEffect(() => {
+    if (!props.input?.props) {
+      return;
+    }
+
+    if (props.loader) {
+      props.loader().then(setData);
+    } else {
+      setData(enumValues);
+    }
+  }, [props.input, props.loader]);
+
+  if (!props.input?.props) {
+    return null;
+  }
+
+  if (props.segmented) {
+    const segmentedControlProps: Partial<SegmentedControlProps> =
+      typeof props.segmented === "object" ? props.segmented : {};
+
+    return (
+      <Input.Wrapper {...inputProps}>
+        <Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
+          <SegmentedControl
+            disabled={inputProps.disabled}
+            defaultValue={String(props.input.props.defaultValue)}
+            {...segmentedControlProps}
+            onChange={(value) => {
+              props.input.set(value);
+            }}
+            data={data.slice(0, 10)}
+          />
+        </Flex>
+      </Input.Wrapper>
+    );
+  }
+
+  if (props.autocomplete) {
+    const autocompleteProps =
+      typeof props.autocomplete === "object" ? props.autocomplete : {};
+
+    return (
+      <Autocomplete
+        {...inputProps}
+        id={id}
+        leftSection={icon}
+        data={data}
+        {...props.input.props}
+        {...autocompleteProps}
+      />
+    );
+  }
 
   // region <TagsInput/> - for array of strings without enum
   if ((isArray && !itemsEnum) || props.tags) {
@@ -111,11 +178,6 @@ const ControlSelect = (props: ControlSelectProps) => {
   // endregion
 
   // region <Select/> - for single enum value
-  const data = enumValues.map((value: string) => ({
-    value,
-    label: value,
-  }));
-
   const selectProps = typeof props.select === "object" ? props.select : {};
 
   return (

@@ -919,6 +919,7 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/react": "npm:0.10.7"
     "@alepha/react-form": "npm:0.10.7"
+    "@alepha/server": "npm:0.10.7"
     "@alepha/vite": "npm:0.10.7"
     "@biomejs/biome": "npm:^2.2.6"
     "@mantine/core": "npm:^8.3.5"

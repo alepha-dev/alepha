@@ -1,6 +1,6 @@
 import type { TObject } from "@alepha/core";
 import type { FormModel } from "@alepha/react-form";
-import { Grid, Stack } from "@mantine/core";
+import { Flex, Grid } from "@mantine/core";
 import type { ReactNode } from "react";
 import Action, { type ActionSubmitProps } from "./Action";
 import Control, { type ControlProps } from "./Control";
@@ -22,6 +22,7 @@ export interface TypeFormProps<T extends TObject> {
   skipFormElement?: boolean;
   skipSubmitButton?: boolean;
   submitButtonProps?: Partial<Omit<ActionSubmitProps, "form">>;
+  resetButtonProps?: Partial<Omit<ActionSubmitProps, "form">>;
 }
 
 /**
@@ -52,7 +53,7 @@ export interface TypeFormProps<T extends TObject> {
 const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
   const {
     form,
-    columns = 1,
+    columns = 3,
     children,
     controlProps,
     skipFormElement = false,
@@ -97,7 +98,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
       ? {
           xs: 12,
           sm: 6,
-          lg: 12 / 3,
+          lg: 12 / columns,
         }
       : {
           base: columns.base ? 12 / columns.base : undefined,
@@ -134,25 +135,24 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
   };
 
   const content = (
-    <Stack>
+    <Flex direction={"column"} gap={"sm"}>
       {renderFields()}
       {!skipSubmitButton && (
-        <Action form={form} {...submitButtonProps}>
-          {submitButtonProps?.children ?? "Submit"}
-        </Action>
+        <Flex>
+          <Action form={form} {...submitButtonProps}>
+            {submitButtonProps?.children ?? "Submit"}
+          </Action>
+          <button type={"reset"}>Reset</button>
+        </Flex>
       )}
-    </Stack>
+    </Flex>
   );
 
   if (skipFormElement) {
     return content;
   }
 
-  return (
-    <form onSubmit={form.onSubmit} noValidate>
-      {content}
-    </form>
-  );
+  return <form {...form.props}>{content}</form>;
 };
 
 export default TypeForm;
