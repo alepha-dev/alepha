@@ -4,11 +4,13 @@ import * as pg from "drizzle-orm/pg-core";
 import { type PgColumnBuilderBase, pgEnum } from "drizzle-orm/pg-core";
 import {
   PG_CREATED_AT,
+  PG_ENUM,
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
   PG_SERIAL,
   PG_UPDATED_AT,
+  type PgEnumOptions,
   type PgIdentityOptions,
 } from "../constants/PG_SYMBOLS.ts";
 import { byte } from "../types/byte.ts";
@@ -47,12 +49,13 @@ export const pgColumnsConfig: SchemaToPgColumnsConfig = {
  * Convert a Typebox Schema to Drizzle ORM Postgres columns
  */
 export const schemaToPgColumns = <T extends TObject>(
+  tableName: string,
   schema: T,
   registry: Map<string, any>,
 ): FromSchema<T> => {
   return Object.entries(schema.properties).reduce<Partial<FromSchema<T>>>(
     (columns, [key, value]) => {
-      let col = mapFieldToColumn(key, value, registry);
+      let col = mapFieldToColumn(tableName, key, value, registry);
 
       if ("default" in value && value.default != null) {
         col = col.default(value.default as any);
@@ -84,11 +87,12 @@ export const schemaToPgColumns = <T extends TObject>(
  * Map a Typebox field to a PG column.
  */
 export const mapFieldToColumn = (
-  name: string,
+  tableName: string,
+  fieldName: string,
   value: TSchema,
   registry: Map<string, any>,
 ) => {
-  const key = pgColumnsConfig.namingStrategy(name);
+  const key = pgColumnsConfig.namingStrategy(fieldName);
 
   if (
     // is nullish ?
@@ -199,6 +203,7 @@ export const mapFieldToColumn = (
     }
   }
 
+  // Enum handling
   if (
     t.schema.isUnsafe(value) &&
     "type" in value &&
@@ -208,26 +213,29 @@ export const mapFieldToColumn = (
   ) {
     if (!value.enum.every((it) => typeof it === "string")) {
       throw new AlephaError(
-        `Enum for ${name} must be an array of strings, got ${JSON.stringify(
+        `Enum for ${fieldName} must be an array of strings, got ${JSON.stringify(
           value.enum,
         )}`,
       );
     }
 
-    // if the enum has a title, we can create a real PG enum type
-    if ("title" in value && typeof value.title === "string") {
-      const enumName = value.title;
+    // SQL Enum
+    if (PG_ENUM in value && value[PG_ENUM]) {
+      const options = value[PG_ENUM] as PgEnumOptions;
+      const enumName = options.name ?? `${tableName}_${key}_enum`;
       if (!registry.has(enumName)) {
+        // if the enum has a title, we can create a real PG enum type
         registry.set(enumName, pgEnum(enumName, value.enum as [string]));
       }
       return registry.get(enumName)(key);
     }
 
+    // else, map to TEXT
     return mapStringToColumn(key, value);
   }
 
   throw new AlephaError(
-    `Unsupported schema type for ${name} as ${JSON.stringify(value)}`,
+    `Unsupported schema type for ${fieldName} as ${JSON.stringify(value)}`,
   );
 };
 

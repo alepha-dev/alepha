@@ -1,7 +1,5 @@
-import type { TObject } from "@alepha/core";
 import type {
   AnyPgColumn,
-  AnyPgTable,
   PgSequenceOptions,
   UpdateDeleteAction,
 } from "drizzle-orm/pg-core";
@@ -13,8 +11,7 @@ export const PG_UPDATED_AT = Symbol.for("Alepha.Postgres.UpdatedAt");
 export const PG_DELETED_AT = Symbol.for("Alepha.Postgres.DeletedAt");
 export const PG_VERSION = Symbol.for("Alepha.Postgres.Version");
 export const PG_IDENTITY = Symbol.for("Alepha.Postgres.Identity");
-export const PG_MANY = Symbol.for("Alepha.Postgres.Many");
-export const PG_ONE = Symbol.for("Alepha.Postgres.One");
+export const PG_ENUM = Symbol.for("Alepha.Postgres.Enum");
 export const PG_REF = Symbol.for("Alepha.Postgres.Ref");
 
 /**
@@ -23,8 +20,6 @@ export const PG_REF = Symbol.for("Alepha.Postgres.Ref");
 export const PG_SERIAL = Symbol.for("Alepha.Postgres.Serial");
 
 export type PgDefault = typeof PG_DEFAULT;
-export type PgMany = typeof PG_MANY;
-export type PgOne = typeof PG_ONE;
 export type PgRef = typeof PG_REF;
 export type PgPrimaryKey = typeof PG_PRIMARY_KEY;
 
@@ -36,9 +31,8 @@ export type PgSymbols = {
   [PG_DELETED_AT]: {};
   [PG_VERSION]: {};
   [PG_IDENTITY]: PgIdentityOptions;
-  [PG_MANY]: PgManyOptions;
-  [PG_ONE]: PgManyOptions;
   [PG_REF]: PgRefOptions;
+  [PG_ENUM]: PgEnumOptions;
 
   /**
    * @deprecated Use `PG_IDENTITY` instead.
@@ -54,10 +48,8 @@ export type PgIdentityOptions = {
     name?: string;
   };
 
-export interface PgManyOptions {
-  table: AnyPgTable;
-  schema: TObject;
-  foreignKey: string;
+export interface PgEnumOptions {
+  name?: string;
 }
 
 export interface PgRefOptions {

@@ -1,9 +1,9 @@
 import { createRequire } from "node:module";
-import { $inject, Alepha } from "@alepha/core";
+import { $inject, Alepha, AlephaError } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql, Table } from "drizzle-orm";
-import { isPgSequence } from "drizzle-orm/pg-core";
+import { isPgEnum, isPgSequence } from "drizzle-orm/pg-core";
 import { sqliteTable } from "drizzle-orm/sqlite-core";
 import {
   $repository,
@@ -74,6 +74,34 @@ export class DrizzleKitProvider {
     this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
   }
 
+  /**
+   * Mostly used for testing purposes. You can generate SQL migration statements without executing them.
+   */
+  public generateMigration(
+    provider: PostgresProvider,
+    schema?: string,
+  ): Promise<string[]> {
+    // import Drizzle Kit API
+    const kit = this.importDrizzleKit();
+
+    // load all models related to the given database connection provider
+    const models = this.getModels(provider);
+
+    // if schema is not 'public', ensure it exists and rename all models
+    if (schema && schema !== "public") {
+      this.applyPgSchema(models, schema);
+    }
+
+    // generate and return migrations if there are models
+    if (Object.keys(models).length > 0) {
+      const prev = kit.generateDrizzleJson({});
+      const curr = kit.generateDrizzleJson(models);
+      return kit.generateMigration(prev, curr);
+    }
+
+    return Promise.resolve([]);
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
@@ -130,10 +158,27 @@ export class DrizzleKitProvider {
 
     const repositories = this.getRepositories(provider);
 
+    const enumValuesCache: { [name: string]: string } = {};
+
     for (const repository of repositories) {
       tables[repository.tableName] = repository.options.table;
       if (repository.options.table.registry) {
         for (const [name, model] of repository.options.table.registry) {
+          // for enums, just check if already exists with same values
+          if (isPgEnum(model)) {
+            // don't sort, order matters
+            const values = model.enumValues.join(",");
+            if (enumValuesCache[name]) {
+              if (enumValuesCache[name] !== values) {
+                throw new AlephaError(
+                  `Enum name conflict '${name}': values [${enumValuesCache[name]}] vs [${values}]`,
+                );
+              }
+            }
+
+            enumValuesCache[name] = values;
+          }
+
           tables[name] = model;
         }
       }
@@ -238,6 +283,8 @@ export class DrizzleKitProvider {
 
   /**
    * Apply the given PostgreSQL schema to all models.
+   *
+   * TODO: cloning for avoid mutating original models?
    */
   public applyPgSchema(models: Record<string, any>, schema?: string): void {
     if (!schema || schema === "public") {
@@ -249,6 +296,8 @@ export class DrizzleKitProvider {
       this.log.trace(`Force schema '${schema}' for model '${modelName}'`);
       const model = models[modelName];
       if (isPgSequence(model)) {
+        (model as any).schema = schema;
+      } else if (isPgEnum(model)) {
         (model as any).schema = schema;
       } else {
         model[(Table as any).Symbol.Schema] = schema;

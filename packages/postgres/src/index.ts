@@ -79,6 +79,7 @@ export * from "./types/schema.ts";
  * Relations are **NOT SUPPORTED** yet. If you need relations, please use the `drizzle-orm` package directly.
  *
  * @see {@link $entity}
+ * @see {@link $sequence}
  * @see {@link $repository}
  * @see {@link $transaction}
  * @module alepha.postgres

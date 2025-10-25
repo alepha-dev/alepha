@@ -62,6 +62,7 @@ export type {
   TStringOptions,
   TTuple,
   TUnion,
+  TUnsafe,
   TVoid,
 } from "typebox";
 
@@ -105,6 +106,7 @@ declare module "typebox" {
     minLength?: number;
     maxLength?: number;
   }
+
   interface TNumber {
     format?: "int64";
   }

@@ -446,7 +446,7 @@ const pgTableSchema = <
 
   const table = pgTable(
     name,
-    schemaToPgColumns(schema, registry) as TColumnsMap,
+    schemaToPgColumns(name, schema, registry) as TColumnsMap,
     extraConfig,
   ) as PgTableWithColumnsAndSchema<
     PgTableConfig<TTableName, TSchema, TColumnsMap>,
