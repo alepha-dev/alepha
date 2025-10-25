@@ -7,7 +7,8 @@ import {
   IconSettings,
   IconUser,
 } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+// biome-ignore lint/correctness/noUnusedImports: required
+import React, { type ReactNode } from "react";
 
 export interface OmnibarProps {
   actions?: SpotlightActionData[];

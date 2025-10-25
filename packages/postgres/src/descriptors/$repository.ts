@@ -40,10 +40,7 @@ import { PgConflictError } from "../errors/PgConflictError.ts";
 import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
 import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
-import { type PgJoin, PgQueryManager } from "../helpers/PgQueryManager.ts";
-import { PgRelationManager } from "../helpers/PgRelationManager.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type {
   PgQuery,
   PgQueryRelations,
@@ -62,6 +59,9 @@ import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
+import { type PgJoin, PgQueryManager } from "../services/PgQueryManager.ts";
+import { PgRelationManager } from "../services/PgRelationManager.ts";
+import type { PgTableWithColumnsAndSchema } from "./$entity.ts";
 
 /**
  * Creates a repository for database operations on a defined entity.
@@ -229,8 +229,8 @@ export interface RepositoryDescriptorOptions<
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RepositoryDescriptor<
-  EntityTableConfig extends TableConfig,
-  EntitySchema extends TObject,
+  EntityTableConfig extends TableConfig = TableConfig,
+  EntitySchema extends TObject = TObject,
 > extends Descriptor<
   RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
 > {

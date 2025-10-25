@@ -6,16 +6,17 @@ import {
   alias,
   index,
   type PgTableExtraConfigValue,
+  type PgTableWithColumns,
   pgTable,
+  type TableConfig,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import {
   type FromSchema,
-  type PgTableWithColumnsAndSchema,
   schemaToPgColumns,
 } from "../helpers/schemaToPgColumns.ts";
-import { insertSchema } from "../schemas/insertSchema.ts";
-import { updateSchema } from "../schemas/updateSchema.ts";
+import { insertSchema, type TObjectInsert } from "../schemas/insertSchema.ts";
+import { type TObjectUpdate, updateSchema } from "../schemas/updateSchema.ts";
 
 /**
  * Creates a database entity descriptor that defines table structure using TypeBox schemas.
@@ -182,44 +183,6 @@ import { updateSchema } from "../schemas/updateSchema.ts";
  *       columns: ["assignedBy"],
  *       foreignColumns: [User.id]
  *     }
- *   ]
- * });
- * ```
- *
- * @example
- * **Entity with custom Drizzle configuration:**
- * ```ts
- * const Order = $entity({
- *   name: "orders",
- *   schema: t.object({
- *     id: pg.primaryKey(t.uuid()),
- *     orderNumber: t.text(),
- *     customerId: t.text({ format: "uuid" }),
- *     status: t.enum(["pending", "processing", "shipped", "delivered"]),
- *     totalAmount: t.number({ minimum: 0 }),
- *     currency: t.text({ default: "USD" }),
- *     notes: t.optional(t.text()),
- *     createdAt: pg.createdAt(),
- *     updatedAt: pg.updatedAt(),
- *     version: pg.version()
- *   }),
- *   indexes: [
- *     { column: "orderNumber", unique: true },
- *     "customerId",
- *     "status",
- *     "createdAt",
- *     { columns: ["customerId", "status"] }
- *   ],
- *   // Advanced Drizzle ORM configuration
- *   config: (table) => [
- *     // Custom index with specific options
- *     index("idx_orders_amount_status")
- *       .on(table.totalAmount, table.status)
- *       .where(sql`status != 'cancelled'`), // Partial index
- *
- *     // Full-text search index (PostgreSQL specific)
- *     index("idx_orders_search")
- *       .using("gin", table.notes)
  *   ]
  * });
  * ```
@@ -478,9 +441,12 @@ const pgTableSchema = <
   PgTableConfig<TTableName, TSchema, TColumnsMap>,
   TSchema
 > => {
+  // add enum or other custom type tracking if needed
+  const registry = new Map<string, any>();
+
   const table = pgTable(
     name,
-    schemaToPgColumns(schema) as TColumnsMap,
+    schemaToPgColumns(schema, registry) as TColumnsMap,
     extraConfig,
   ) as PgTableWithColumnsAndSchema<
     PgTableConfig<TTableName, TSchema, TColumnsMap>,
@@ -504,6 +470,9 @@ const pgTableSchema = <
       return alias(table, name);
     },
   });
+  Object.defineProperty(table, "registry", {
+    get: () => registry,
+  });
 
   return table;
 };
@@ -517,4 +486,19 @@ export type PgTableConfig<
   schema: any;
   columns: BuildColumns<TTableName, TColumnsMap, "pg">;
   dialect: "pg";
+};
+
+/**
+ * A table with columns and schema.
+ */
+export type PgTableWithColumnsAndSchema<
+  T extends TableConfig,
+  R extends TObject,
+> = PgTableWithColumns<T> & {
+  get $table(): PgTableWithColumns<T>;
+  get $schema(): R;
+  get $insertSchema(): TObjectInsert<R>;
+  get $updateSchema(): TObjectUpdate<R>;
+  alias: (alias: string) => PgTableWithColumnsAndSchema<T, R>;
+  get registry(): Map<string, any>;
 };

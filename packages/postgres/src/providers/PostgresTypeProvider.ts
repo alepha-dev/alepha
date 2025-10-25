@@ -34,9 +34,9 @@ import {
   type PgPrimaryKey,
   type PgRef,
 } from "../constants/PG_SYMBOLS.ts";
+import type { PgTableWithColumnsAndSchema } from "../descriptors/$entity.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
 import type { TPage } from "../schemas/pageSchema.ts";
 import { pageSchema } from "../schemas/pageSchema.ts";
 

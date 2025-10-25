@@ -121,9 +121,9 @@ export class NodePostgresProvider extends PostgresProvider {
     handler: async () => {
       await this.connect();
 
-      if (this.env.POSTGRES_SCHEMA) {
-        await this.kit.setPgSchema(this);
-      }
+      // if (this.env.POSTGRES_SCHEMA) {
+      //   await this.kit.setPgSchema(this);
+      // }
 
       // never migrate in serverless mode (vercel, netlify, ...)
       if (!this.alepha.isServerless()) {

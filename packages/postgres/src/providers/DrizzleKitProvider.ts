@@ -3,109 +3,151 @@ import { $inject, Alepha } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql, Table } from "drizzle-orm";
+import { isPgSequence } from "drizzle-orm/pg-core";
 import { sqliteTable } from "drizzle-orm/sqlite-core";
+import {
+  $repository,
+  type RepositoryDescriptor,
+} from "../descriptors/$repository.ts";
+import { $sequence } from "../descriptors/$sequence.ts";
 import { schemaToSqliteColumns } from "../helpers/schemaToSqliteColumns.ts";
 import type { PostgresProvider } from "./drivers/PostgresProvider.ts";
-import { RepositoryProvider } from "./RepositoryProvider.ts";
 
 export class DrizzleKitProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
-  protected readonly repositoryProvider = $inject(RepositoryProvider);
-
-  public async push(
-    provider: PostgresProvider,
-    schema: string = provider.schema,
-  ): Promise<void> {
-    const kit = this.importDrizzleKit();
-    const tables = await this.getTables(provider, schema);
-    const result = await kit.pushSchema(tables, provider.db, [
-      "public",
-      schema,
-    ]);
-    await this.executeStatements(
-      result.statementsToExecute,
-      provider,
-      schema,
-      false,
-    );
-  }
-
-  public async setPgSchema(provider: PostgresProvider): Promise<void> {
-    if (!provider.schema || provider.schema === "public") {
-      return; // no need to set schema if it's public or not defined
-    }
-    const repositories = this.repositoryProvider.getRepositories(provider);
-
-    for (const repository of repositories) {
-      const table = (repository as any).options.table;
-      table[(Table as any).Symbol.Schema] = provider.schema; // set pgSchema manually
-    }
-  }
 
   /**
-   * Try to generate migrations from scratch based on the models.
-   * Then, execute the migrations.
+   * Synchronize database with current schema definitions.
    *
-   * This is useful for testing or development purposes.
+   * In development mode, it will generate and execute migrations based on the current state.
+   * In testing mode, it will generate migrations from scratch without applying them.
    *
-   * Do not use in production.
-   *
-   * @param provider - The Postgres provider to use.
-   * @param schema - The schema to use.
-   * @returns A promise that resolves once the migrations have been executed.
+   * Does nothing in production mode, you must handle migrations manually.
    */
   public async synchronize(
     provider: PostgresProvider,
     schema?: string,
   ): Promise<void> {
-    const now = Date.now();
-    const tables = await this.getTables(provider, schema);
+    if (this.alepha.isProduction()) {
+      this.log.warn("Synchronization skipped in production mode.");
+      return;
+    }
 
-    if (Object.keys(tables).length > 0) {
+    const now = Date.now();
+
+    // 1. load all models related to the given database connection provider
+    const models = this.getModels(provider);
+
+    // 2. if schema is not 'public', ensure it exists and rename all models
+    if (schema && schema !== "public") {
+      await this.ensurePgSchema(provider, schema);
+      this.applyPgSchema(models, schema);
+    }
+
+    // 3. generate and execute migrations if there are models
+    if (Object.keys(models).length > 0) {
+      // import Drizzle Kit API
       const kit = this.importDrizzleKit();
       if (this.alepha.isTest()) {
+        // -------------------------------------------------------------------------------------------------------------
         // testing area, generate migrations from scratch - no need to push schema
         const prev = kit.generateDrizzleJson({});
-        const curr = kit.generateDrizzleJson(tables);
+        const curr = kit.generateDrizzleJson(models);
         const statements = await kit.generateMigration(prev, curr);
         await this.executeStatements(statements, provider, schema);
-      } else if (!this.alepha.isProduction()) {
+      } else {
+        // -------------------------------------------------------------------------------------------------------------
         // development area, generate migrations based on the current state
-        const entry = await this.loadMigrationSnapshot(provider);
+        const entry = await this.loadDevMigrations(provider);
         const prev = entry
           ? JSON.parse(entry.snapshot)
           : kit.generateDrizzleJson({});
-        const curr = kit.generateDrizzleJson(tables);
+
+        const curr = kit.generateDrizzleJson(models);
         const statements = await kit.generateMigration(prev, curr);
         await this.executeStatements(statements, provider, schema, true);
-        await this.saveMigrationSnapshot(provider, curr, entry);
+        await this.saveDevMigrations(provider, curr, entry);
       }
     }
 
     this.log.info(`Synchronization executed in ${Date.now() - now}ms`);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Get all repositories from the provider.
+   */
+  public getRepositories(
+    provider?: PostgresProvider,
+  ): Array<RepositoryDescriptor> {
+    const repositories: {
+      [name: string]: RepositoryDescriptor;
+    } = {};
+
+    for (const it of this.alepha.descriptors($repository)) {
+      if (!provider || it.provider === provider) {
+        repositories[it.tableName] = it;
+      }
+    }
+
+    return Object.values(repositories);
+  }
+
+  /**
+   * Load all tables, enums, sequences, etc. from the provider's repositories.
+   */
+  public getModels(provider?: PostgresProvider): Record<string, unknown> {
+    const models: Record<string, unknown> = {};
+
+    Object.assign(models, this.getTables(provider));
+    Object.assign(models, this.getSequences(provider));
+
+    return models;
+  }
+
+  /**
+   * Load all sequences from the provider's repositories.
+   */
+  public getSequences(provider?: PostgresProvider): Record<string, unknown> {
+    const sequences: Record<string, unknown> = {};
+
+    for (const it of this.alepha.descriptors($sequence)) {
+      if (!provider || it.provider === provider) {
+        sequences[it.name] = it.model;
+      }
+    }
+
+    return sequences;
+  }
+
   /**
    * Get all tables from the provider's repositories.
    */
-  protected async getTables(
-    provider: PostgresProvider,
-    schema?: string,
-  ): Promise<Record<string, any>> {
-    const repositories = this.repositoryProvider.getRepositories(provider);
+  public getTables(provider?: PostgresProvider): Record<string, unknown> {
+    const tables: Record<string, unknown> = {};
 
-    if (schema && schema !== "public") {
-      await this.prepareSchema(schema, provider, repositories);
+    const repositories = this.getRepositories(provider);
+
+    for (const repository of repositories) {
+      tables[repository.tableName] = repository.options.table;
+      if (repository.options.table.registry) {
+        for (const [name, model] of repository.options.table.registry) {
+          tables[name] = model;
+        }
+      }
     }
 
-    return repositories.reduce<Record<string, any>>((tables, it) => {
-      tables[it.tableName] = it.options.table;
-      return tables;
-    }, {});
+    return tables;
   }
 
-  protected async loadMigrationSnapshot(provider: PostgresProvider) {
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Load the migration snapshot from the database.
+   */
+  protected async loadDevMigrations(provider: PostgresProvider) {
     const app = this.alepha.env.APP_NAME ?? "app";
     await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS "drizzle";`);
     await provider.execute(sql`
@@ -124,7 +166,7 @@ export class DrizzleKitProvider {
     return rows[0];
   }
 
-  protected async saveMigrationSnapshot(
+  protected async saveDevMigrations(
     provider: PostgresProvider,
     curr: Record<string, any>,
     entry?: { id: number; snapshot: string },
@@ -176,25 +218,45 @@ export class DrizzleKitProvider {
     }
   }
 
-  protected async prepareSchema(
-    schemaName: string,
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected async ensurePgSchema(
     provider: PostgresProvider,
-    repositories: any[],
+    schemaName: string,
   ) {
     const sqlSchema = sql.raw(schemaName);
 
     if (schemaName.startsWith("test_")) {
+      this.log.info(`Drop test schema '${schemaName}' ...`, schemaName);
       await provider.execute(sql`DROP SCHEMA IF EXISTS ${sqlSchema} CASCADE`);
     }
 
     // create schema if not exists
+    this.log.info(`Ensuring schema '${schemaName}' exists`);
     await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sqlSchema}`);
+  }
 
-    for (const repository of repositories) {
-      const table = (repository as any).options.table;
-      table[(Table as any).Symbol.Schema] = schemaName; // set pgSchema manually
+  /**
+   * Apply the given PostgreSQL schema to all models.
+   */
+  public applyPgSchema(models: Record<string, any>, schema?: string): void {
+    if (!schema || schema === "public") {
+      return; // no need to set schema if it's public or not defined
+    }
+
+    // update all tables, enums, views, etc. with the new schema
+    for (const modelName in models) {
+      this.log.trace(`Force schema '${schema}' for model '${modelName}'`);
+      const model = models[modelName];
+      if (isPgSequence(model)) {
+        (model as any).schema = schema;
+      } else {
+        model[(Table as any).Symbol.Schema] = schema;
+      }
     }
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   /**
    * Try to load the official Drizzle Kit API.
@@ -213,7 +275,7 @@ export class DrizzleKitProvider {
   // -------------------------------------------------------------------------------------------------------------------
 
   public async synchronizeSqlite(provider: PostgresProvider): Promise<void> {
-    const repositories = this.repositoryProvider.getRepositories(provider);
+    const repositories = this.getRepositories(provider);
     const tables: Record<string, any> = {};
 
     for (const repository of repositories) {

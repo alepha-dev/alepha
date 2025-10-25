@@ -5,6 +5,7 @@ import { ServerHealthProvider } from "./providers/ServerHealthProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./providers/ServerHealthProvider.ts";
+export * from "./schemas/healthSchema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

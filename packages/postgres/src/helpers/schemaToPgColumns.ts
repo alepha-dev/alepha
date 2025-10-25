@@ -1,10 +1,7 @@
 import { AlephaError, type TObject, type TSchema, t } from "@alepha/core";
-import type { TableConfig } from "drizzle-orm";
-import type {
-  PgColumnBuilderBase,
-  PgTableWithColumns,
-} from "drizzle-orm/pg-core";
+import type { PgIntColumnBaseBuilder } from "drizzle-orm/pg-core";
 import * as pg from "drizzle-orm/pg-core";
+import { type PgColumnBuilderBase, pgEnum } from "drizzle-orm/pg-core";
 import {
   PG_CREATED_AT,
   PG_IDENTITY,
@@ -14,20 +11,48 @@ import {
   PG_UPDATED_AT,
   type PgIdentityOptions,
 } from "../constants/PG_SYMBOLS.ts";
-import type { TObjectInsert } from "../schemas/insertSchema.ts";
-import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";
+
+/**
+ * Configuration options for schema to PG columns conversion
+ */
+export interface SchemaToPgColumnsConfig {
+  /**
+   * Custom naming strategy for converting field names to column names
+   * @default camelToSnakeCase
+   */
+  namingStrategy: (fieldName: string) => string;
+  /**
+   * Custom type mappers for specific schema types
+   */
+  customTypeMappers: {
+    [key: string]: (
+      key: string,
+      value: TSchema,
+      registry: Map<string, any>,
+    ) => PgIntColumnBaseBuilder<any>;
+  };
+}
+
+/**
+ * Default configuration for schema to PG columns conversion
+ */
+export const pgColumnsConfig: SchemaToPgColumnsConfig = {
+  namingStrategy: camelToSnakeCase,
+  customTypeMappers: {},
+};
 
 /**
  * Convert a Typebox Schema to Drizzle ORM Postgres columns
  */
 export const schemaToPgColumns = <T extends TObject>(
   schema: T,
+  registry: Map<string, any>,
 ): FromSchema<T> => {
   return Object.entries(schema.properties).reduce<Partial<FromSchema<T>>>(
     (columns, [key, value]) => {
-      let col = mapFieldToColumn(key, value);
+      let col = mapFieldToColumn(key, value, registry);
 
       if ("default" in value && value.default != null) {
         col = col.default(value.default as any);
@@ -57,13 +82,13 @@ export const schemaToPgColumns = <T extends TObject>(
 
 /**
  * Map a Typebox field to a PG column.
- *
- * @param name The key of the field.
- * @param value The value of the field.
- * @returns The PG column.
  */
-export const mapFieldToColumn = (name: string, value: TSchema) => {
-  const key = camelToSnakeCase(name);
+export const mapFieldToColumn = (
+  name: string,
+  value: TSchema,
+  registry: Map<string, any>,
+) => {
+  const key = pgColumnsConfig.namingStrategy(name);
 
   if (
     // is nullish ?
@@ -74,6 +99,17 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
   ) {
     // then, remove nullish
     value = value.anyOf.find((it: TSchema) => !t.schema.isNull(it))!;
+  }
+
+  for (const customTypeName in pgColumnsConfig.customTypeMappers) {
+    const col = pgColumnsConfig.customTypeMappers[customTypeName](
+      key,
+      value,
+      registry,
+    );
+    if (col) {
+      return col;
+    }
   }
 
   if (t.schema.isInteger(value)) {
@@ -163,8 +199,30 @@ export const mapFieldToColumn = (name: string, value: TSchema) => {
     }
   }
 
-  if (t.schema.isUnsafe(value) && "type" in value && value.type === "string") {
-    // t.enum()
+  if (
+    t.schema.isUnsafe(value) &&
+    "type" in value &&
+    value.type === "string" &&
+    "enum" in value &&
+    Array.isArray(value.enum)
+  ) {
+    if (!value.enum.every((it) => typeof it === "string")) {
+      throw new AlephaError(
+        `Enum for ${name} must be an array of strings, got ${JSON.stringify(
+          value.enum,
+        )}`,
+      );
+    }
+
+    // if the enum has a title, we can create a real PG enum type
+    if ("title" in value && typeof value.title === "string") {
+      const enumName = value.title;
+      if (!registry.has(enumName)) {
+        registry.set(enumName, pgEnum(enumName, value.enum as [string]));
+      }
+      return registry.get(enumName)(key);
+    }
+
     return mapStringToColumn(key, value);
   }
 
@@ -215,12 +273,12 @@ export const mapStringToColumn = (key: string, value: TSchema) => {
   return pg.text(key);
 };
 
-export const camelToSnakeCase = (str: string) => {
+export function camelToSnakeCase(str: string) {
   return (
     str[0].toLowerCase() +
     str.slice(1).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
   );
-};
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -229,18 +287,4 @@ export const camelToSnakeCase = (str: string) => {
  */
 export type FromSchema<T extends TObject> = {
   [key in keyof T["properties"]]: PgColumnBuilderBase;
-};
-
-/**
- * A table with columns and schema.
- */
-export type PgTableWithColumnsAndSchema<
-  T extends TableConfig,
-  R extends TObject,
-> = PgTableWithColumns<T> & {
-  get $table(): PgTableWithColumns<T>;
-  get $schema(): R;
-  get $insertSchema(): TObjectInsert<R>;
-  get $updateSchema(): TObjectUpdate<R>;
-  alias: (alias: string) => PgTableWithColumnsAndSchema<T, R>;
 };

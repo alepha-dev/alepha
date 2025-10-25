@@ -1,7 +1,7 @@
 import type { Static, TObject } from "@alepha/core";
 import type { SQLWrapper } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import type { PgTableWithColumnsAndSchema } from "../helpers/schemaToPgColumns.ts";
+import type { PgTableWithColumnsAndSchema } from "../descriptors/$entity.ts";
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 /**

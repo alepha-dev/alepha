@@ -8,7 +8,6 @@ import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.t
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
 import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
-import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -35,7 +34,6 @@ export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
-export * from "./providers/RepositoryProvider.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
 export * from "./schemas/pageQuerySchema.ts";
@@ -89,7 +87,6 @@ export const AlephaPostgres = $module({
   name: "alepha.postgres",
   descriptors: [$repository, $sequence, $entity],
   services: [
-    RepositoryProvider,
     PostgresProvider,
     NodePostgresProvider,
     PglitePostgresProvider,
@@ -102,7 +99,6 @@ export const AlephaPostgres = $module({
       }),
     );
 
-    alepha.with(RepositoryProvider);
     alepha.with(DrizzleKitProvider);
 
     const url = env.DATABASE_URL;

@@ -2,15 +2,15 @@ import { Alepha } from "@alepha/core";
 import { describe, expect, it } from "vitest";
 import { $sequence } from "../src";
 
-const alepha = Alepha.create();
-const app = alepha.inject(
+describe("$sequence", () => {
   class App {
     seq = $sequence();
-    seq2 = $sequence({ start: 100, increment: 2 });
-  },
-);
+    seq2 = $sequence({ startWith: 100, increment: 2 });
+  }
 
-describe("$sequence", () => {
+  const alepha = Alepha.create();
+  const app = alepha.inject(App);
+
   it("should generate sequential numbers", async () => {
     expect(await app.seq.next()).toBe(1);
     expect(await app.seq.next()).toBe(2);

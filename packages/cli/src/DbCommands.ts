@@ -133,6 +133,13 @@ export class DbCommands {
         ...new Set([...repositories.map((it) => it.tableName)]),
       ];
 
+      const registry: Record<string, any> = {};
+      for (const r of repositories) {
+        r.options.table.registry?.forEach((value: any, key: string) => {
+          registry[key] = value;
+        });
+      }
+
       await writeFile(
         join(rootDir, "node_modules/.db/entities.ts"),
         `
@@ -141,10 +148,21 @@ import "../..${entry.replace(rootDir, "")}";
 const alepha = (global as any).__alepha;
 const repositories = alepha.descriptors("repository");
 const table = (name: string) => repositories.find((it: any) => it.tableName === name)!.table;
+const registry: Record<string, any> = {};
+for (const it of repositories) {
+  it.options.table.registry?.forEach((value: any, key: string) => registry[key] = value);
+}
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+// tables
 ${entities.map((it) => `export const ${it} = table("${it}");`).join("\n")}
 
-				`.trim(),
+// enums
+${Object.keys(registry).map((it) => `export const ${it} = registry["${it}"];`)}
+
+// ---------------------------------------------------------------------------------------------------------------------
+`.trim(),
       );
 
       await writeFile(
@@ -157,7 +175,7 @@ ${entities.map((it) => `export const ${it} = table("${it}");`).join("\n")}
               dialect: "postgresql",
             },
             null,
-            4,
+            2,
           ),
       );
 
@@ -182,7 +200,9 @@ ${entities.map((it) => `export const ${it} = table("${it}");`).join("\n")}
     for (const path of paths) {
       try {
         const entry = join(rootDir, path);
-        const mod = await tsImport(entry, import.meta.url);
+        const mod = await tsImport(entry, {
+          parentURL: import.meta.url,
+        });
 
         this.log.debug(`Load entry: ${path}`);
 
@@ -202,11 +222,14 @@ ${entities.map((it) => `export const ${it} = table("${it}");`).join("\n")}
             entry,
           };
         }
-      } catch {
+      } catch (e) {
+        this.log.trace(`Failed to load entry file: ${path}`, e);
         // continue to next path
       }
     }
 
-    throw new AlephaError("No valid entry file found.");
+    throw new AlephaError(
+      `Cannot load Alepha instance from entry file(s). Tried: ${paths.join(", ")}`,
+    );
   }
 }

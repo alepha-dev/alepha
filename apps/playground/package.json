@@ -10,7 +10,8 @@
 	"dependencies": {
 		"@alepha/cli": "^0.10.7",
 		"alepha": "0.10.7",
-		"vite": "^7.1.11"
+		"react": "^19.2.0",
+		"vite": "^7.1.12"
 	},
 	"devDependencies": {
 		"tsx": "^4.20.6"

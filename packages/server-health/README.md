@@ -36,6 +36,6 @@ For more details, see the [Providers documentation](/docs/providers).
 
 #### ServerHealthProvider
 
-Register `/health` endpoint.
+Register `/health` & `/healthz` endpoint.
 
 - Provides basic health information about the server.

@@ -6,9 +6,9 @@ import {
   type PgTableWithColumns,
 } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
+import type { PgTableWithColumnsAndSchema } from "../descriptors/$entity.ts";
 import type { PgRelationMap } from "../interfaces/PgQuery.ts";
 import type { PgJoin } from "./PgQueryManager.ts";
-import type { PgTableWithColumnsAndSchema } from "./schemaToPgColumns.ts";
 
 export class PgRelationManager {
   public buildJoins(

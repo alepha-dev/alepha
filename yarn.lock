@@ -22,10 +22,10 @@ __metadata:
     "@alepha/server-cache": "npm:0.10.7"
     "@alepha/server-multipart": "npm:0.10.7"
     "@alepha/server-security": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -40,10 +40,10 @@ __metadata:
     "@alepha/scheduler": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
     "@alepha/server-security": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -58,10 +58,10 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/postgres": "npm:0.10.7"
     "@alepha/queue": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -74,10 +74,10 @@ __metadata:
     "@alepha/security": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
     "@alepha/topic": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -96,10 +96,10 @@ __metadata:
     "@alepha/server": "npm:0.10.7"
     "@alepha/server-links": "npm:0.10.7"
     "@alepha/server-security": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -112,7 +112,7 @@ __metadata:
     "@alepha/postgres": "npm:0.10.7"
     "@alepha/scheduler": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -124,10 +124,10 @@ __metadata:
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/retry": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -141,10 +141,10 @@ __metadata:
     "@alepha/file": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@azure/storage-blob": "npm:^12.29.1"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -157,12 +157,12 @@ __metadata:
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/file": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
-    "@types/node": "npm:^24.9.0"
+    "@biomejs/biome": "npm:^2.3.0"
+    "@types/node": "npm:^24.9.1"
     "@vercel/blob": "npm:^2.0.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -173,10 +173,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/file": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -188,10 +188,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/redis": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -202,10 +202,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -216,7 +216,7 @@ __metadata:
     "@alepha/command": "npm:^0.10.7"
     "@alepha/core": "npm:^0.10.7"
     "@alepha/logger": "npm:^0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     drizzle-kit: "npm:^0.31.5"
     tsdown: "npm:^0.15.9"
     tsx: "npm:^4.20.6"
@@ -232,10 +232,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/logger": "npm:^0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -243,11 +243,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/core@workspace:packages/core"
   dependencies:
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
-    typebox: "npm:^1.0.41"
+    typebox: "npm:^1.0.43"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -256,11 +256,11 @@ __metadata:
   resolution: "@alepha/datetime@workspace:packages/datetime"
   dependencies:
     "@alepha/core": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     dayjs: "npm:^1.11.18"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -278,10 +278,10 @@ __metadata:
     "@alepha/security": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
     "@alepha/topic": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -299,14 +299,14 @@ __metadata:
     "@mantine/spotlight": "npm:^8.3.5"
     "@tabler/icons-react": "npm:^3.35.0"
     "@types/react": "npm:^19.2.2"
-    "@vitejs/plugin-react": "npm:^5.0.4"
+    "@vitejs/plugin-react": "npm:^5.1.0"
     highlight.js: "npm:^11.11.1"
     marked: "npm:^16.4.1"
     marked-highlight: "npm:^2.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     typescript: "npm:^5.9.3"
-    vite: "npm:^7.1.11"
+    vite: "npm:^7.1.12"
     vite-bundle-analyzer: "npm:^1.2.3"
   languageName: unknown
   linkType: soft
@@ -317,12 +317,12 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
-    "@types/nodemailer": "npm:^7.0.2"
-    nodemailer: "npm:^7.0.9"
+    "@biomejs/biome": "npm:^2.3.0"
+    "@types/nodemailer": "npm:^7.0.3"
+    nodemailer: "npm:^7.0.10"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -331,10 +331,10 @@ __metadata:
   resolution: "@alepha/file@workspace:packages/file"
   dependencies:
     "@alepha/core": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -347,10 +347,10 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/redis": "npm:0.10.7"
     "@alepha/topic-redis": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -362,10 +362,10 @@ __metadata:
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/topic": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -375,10 +375,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:^0.10.7"
     "@alepha/datetime": "npm:^0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -391,14 +391,14 @@ __metadata:
     "@alepha/lock": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/retry": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@electric-sql/pglite": "npm:^0.3.11"
     drizzle-kit: "npm:0.31.5"
-    drizzle-orm: "npm:^0.44.6"
+    drizzle-orm: "npm:^0.44.7"
     postgres: "npm:^3.4.7"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -407,11 +407,11 @@ __metadata:
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
   dependencies:
     "@alepha/core": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     protobufjs: "npm:^7.5.4"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -422,10 +422,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/queue": "npm:0.10.7"
     "@alepha/redis": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -436,10 +436,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -456,13 +456,13 @@ __metadata:
     "@alepha/server-cookies": "npm:0.10.7"
     "@alepha/server-links": "npm:0.10.7"
     "@alepha/server-security": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     openid-client: "npm:^6.8.1"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -477,13 +477,13 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/react": "npm:0.10.7"
     "@alepha/testing": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@types/react": "npm:^19.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -497,13 +497,13 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/react": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@types/react": "npm:^19.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -518,12 +518,12 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/react": "npm:0.10.7"
     "@alepha/server-cookies": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -542,14 +542,14 @@ __metadata:
     "@alepha/server-cache": "npm:0.10.7"
     "@alepha/server-links": "npm:0.10.7"
     "@alepha/server-static": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@types/react": "npm:^19.2.2"
     "@types/react-dom": "npm:^19.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -562,11 +562,11 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
-    "@redis/client": "npm:^5.8.3"
+    "@biomejs/biome": "npm:^2.3.0"
+    "@redis/client": "npm:^5.9.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -576,10 +576,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/datetime": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -588,10 +588,10 @@ __metadata:
   resolution: "@alepha/router@workspace:packages/router"
   dependencies:
     "@alepha/core": "npm:^0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -604,11 +604,11 @@ __metadata:
     "@alepha/lock": "npm:0.10.7"
     "@alepha/lock-redis": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     cron-schedule: "npm:^5.0.4"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -619,11 +619,11 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     jose: "npm:^6.1.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -636,10 +636,10 @@ __metadata:
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -649,10 +649,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -665,10 +665,10 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/security": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -678,10 +678,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -692,10 +692,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -705,10 +705,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -723,10 +723,10 @@ __metadata:
     "@alepha/server": "npm:0.10.7"
     "@alepha/server-proxy": "npm:0.10.7"
     "@alepha/server-security": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -736,11 +736,11 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     prom-client: "npm:^15.1.3"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -751,11 +751,11 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/file": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@fastify/busboy": "npm:^3.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -766,10 +766,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -780,10 +780,10 @@ __metadata:
     "@alepha/cache": "npm:0.10.7"
     "@alepha/core": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -795,10 +795,10 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/security": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -811,10 +811,10 @@ __metadata:
     "@alepha/file": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -828,12 +828,12 @@ __metadata:
     "@alepha/server": "npm:0.10.7"
     "@alepha/server-security": "npm:0.10.7"
     "@alepha/server-static": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     openapi-types: "npm:^12.1.3"
     swagger-ui-dist: "npm:^5.29.5"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -847,10 +847,10 @@ __metadata:
     "@alepha/file": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
     "@alepha/router": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -858,7 +858,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/testing@workspace:packages/testing"
   dependencies:
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@faker-js/faker": "npm:^10.1.0"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.0"
@@ -876,10 +876,10 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.10.7"
     "@alepha/logger": "npm:^0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -891,10 +891,10 @@ __metadata:
     "@alepha/logger": "npm:0.10.7"
     "@alepha/redis": "npm:0.10.7"
     "@alepha/topic": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -905,10 +905,10 @@ __metadata:
     "@alepha/core": "npm:0.10.7"
     "@alepha/datetime": "npm:0.10.7"
     "@alepha/logger": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -921,7 +921,7 @@ __metadata:
     "@alepha/react-form": "npm:0.10.7"
     "@alepha/server": "npm:0.10.7"
     "@alepha/vite": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
+    "@biomejs/biome": "npm:^2.3.0"
     "@mantine/core": "npm:^8.3.5"
     "@mantine/dates": "npm:^8.3.5"
     "@mantine/hooks": "npm:^8.3.5"
@@ -930,12 +930,13 @@ __metadata:
     "@mantine/nprogress": "npm:^8.3.5"
     "@mantine/spotlight": "npm:^8.3.5"
     "@tabler/icons-react": "npm:^3.35.0"
+    dayjs: "npm:^1.11.18"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vite: "npm:^7.1.11"
-    vitest: "npm:^3.2.4"
+    vite: "npm:^7.1.12"
+    vitest: "npm:^4.0.3"
   peerDependencies:
     react: "*"
     react-dom: "*"
@@ -947,11 +948,11 @@ __metadata:
   resolution: "@alepha/vite@workspace:packages/vite"
   dependencies:
     "@alepha/core": "npm:0.10.7"
-    "@biomejs/biome": "npm:^2.2.6"
-    "@vitejs/plugin-react": "npm:^5.0.4"
+    "@biomejs/biome": "npm:^2.3.0"
+    "@vitejs/plugin-react": "npm:^5.1.0"
     tsdown: "npm:^0.15.9"
     typescript: "npm:^5.9.3"
-    vite: "npm:^7.1.11"
+    vite: "npm:^7.1.12"
   peerDependencies:
     vite: "*"
   peerDependenciesMeta:
@@ -959,16 +960,6 @@ __metadata:
       optional: true
   languageName: unknown
   linkType: soft
-
-"@ampproject/remapping@npm:^2.3.0":
-  version: 2.3.0
-  resolution: "@ampproject/remapping@npm:2.3.0"
-  dependencies:
-    "@jridgewell/gen-mapping": "npm:^0.3.5"
-    "@jridgewell/trace-mapping": "npm:^0.3.24"
-  checksum: 10c0/81d63cca5443e0f0c72ae18b544cc28c7c0ec2cea46e7cb888bb0e0f411a1191d0d6b7af798d54e30777d8d1488b2ec0732aac2be342d3d7d3ffd271c6f489ed
-  languageName: node
-  linkType: hard
 
 "@asamuzakjp/css-color@npm:^4.0.3":
   version: 4.0.5
@@ -1918,18 +1909,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@biomejs/biome@npm:^2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/biome@npm:2.2.6"
+"@biomejs/biome@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/biome@npm:2.3.0"
   dependencies:
-    "@biomejs/cli-darwin-arm64": "npm:2.2.6"
-    "@biomejs/cli-darwin-x64": "npm:2.2.6"
-    "@biomejs/cli-linux-arm64": "npm:2.2.6"
-    "@biomejs/cli-linux-arm64-musl": "npm:2.2.6"
-    "@biomejs/cli-linux-x64": "npm:2.2.6"
-    "@biomejs/cli-linux-x64-musl": "npm:2.2.6"
-    "@biomejs/cli-win32-arm64": "npm:2.2.6"
-    "@biomejs/cli-win32-x64": "npm:2.2.6"
+    "@biomejs/cli-darwin-arm64": "npm:2.3.0"
+    "@biomejs/cli-darwin-x64": "npm:2.3.0"
+    "@biomejs/cli-linux-arm64": "npm:2.3.0"
+    "@biomejs/cli-linux-arm64-musl": "npm:2.3.0"
+    "@biomejs/cli-linux-x64": "npm:2.3.0"
+    "@biomejs/cli-linux-x64-musl": "npm:2.3.0"
+    "@biomejs/cli-win32-arm64": "npm:2.3.0"
+    "@biomejs/cli-win32-x64": "npm:2.3.0"
   dependenciesMeta:
     "@biomejs/cli-darwin-arm64":
       optional: true
@@ -1949,62 +1940,62 @@ __metadata:
       optional: true
   bin:
     biome: bin/biome
-  checksum: 10c0/1b99279f41acd5e9928da8c8864194642cc5d197c6517366fe159c9d8af4b6f5da1dd200264456c3dd423b6355715ba153ae6488d82ae3678a0c699d76c8a81e
+  checksum: 10c0/e51770543c80e8309f76b7e1326df4108dad66a3f2ef86c8d4558ad5c43d269c3c0ad4882cbafc57cc2dd58feac1c98efd4a34c8d253d2a516412fda9d50016a
   languageName: node
   linkType: hard
 
-"@biomejs/cli-darwin-arm64@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-darwin-arm64@npm:2.2.6"
+"@biomejs/cli-darwin-arm64@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-darwin-arm64@npm:2.3.0"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@biomejs/cli-darwin-x64@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-darwin-x64@npm:2.2.6"
+"@biomejs/cli-darwin-x64@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-darwin-x64@npm:2.3.0"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-arm64-musl@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-linux-arm64-musl@npm:2.2.6"
+"@biomejs/cli-linux-arm64-musl@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-linux-arm64-musl@npm:2.3.0"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-arm64@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-linux-arm64@npm:2.2.6"
+"@biomejs/cli-linux-arm64@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-linux-arm64@npm:2.3.0"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-x64-musl@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-linux-x64-musl@npm:2.2.6"
+"@biomejs/cli-linux-x64-musl@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-linux-x64-musl@npm:2.3.0"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
-"@biomejs/cli-linux-x64@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-linux-x64@npm:2.2.6"
+"@biomejs/cli-linux-x64@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-linux-x64@npm:2.3.0"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@biomejs/cli-win32-arm64@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-win32-arm64@npm:2.2.6"
+"@biomejs/cli-win32-arm64@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-win32-arm64@npm:2.3.0"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@biomejs/cli-win32-x64@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@biomejs/cli-win32-x64@npm:2.2.6"
+"@biomejs/cli-win32-x64@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@biomejs/cli-win32-x64@npm:2.3.0"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -2641,13 +2632,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@istanbuljs/schema@npm:^0.1.2":
-  version: 0.1.3
-  resolution: "@istanbuljs/schema@npm:0.1.3"
-  checksum: 10c0/61c5286771676c9ca3eb2bd8a7310a9c063fb6e0e9712225c8471c582d157392c88f5353581c8c9adbe0dff98892317d2fdfc56c3499aa42e0194405206a963a
-  languageName: node
-  linkType: hard
-
 "@jridgewell/gen-mapping@npm:^0.3.12, @jridgewell/gen-mapping@npm:^0.3.5":
   version: 0.3.13
   resolution: "@jridgewell/gen-mapping@npm:0.3.13"
@@ -3022,12 +3006,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@redis/client@npm:^5.8.3":
-  version: 5.8.3
-  resolution: "@redis/client@npm:5.8.3"
+"@redis/client@npm:^5.9.0":
+  version: 5.9.0
+  resolution: "@redis/client@npm:5.9.0"
   dependencies:
     cluster-key-slot: "npm:1.1.2"
-  checksum: 10c0/af34e1373fd853d6034ba69add08611c1fe19cf1e1e28f35d4eb1c570e4d11cae9a1b7869739f7593e5ba701f3f13edde64654691f075d74b04a131983347b35
+  checksum: 10c0/f4963fc78ff11ead264321dac8a99e34373048537ffbdf29eb6a04c93a147e0778c832b6d396ba86d4339e6fd36668bb255744ba29113393328d3945b095190f
   languageName: node
   linkType: hard
 
@@ -3131,10 +3115,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rolldown/pluginutils@npm:1.0.0-beta.38":
-  version: 1.0.0-beta.38
-  resolution: "@rolldown/pluginutils@npm:1.0.0-beta.38"
-  checksum: 10c0/8353ec2528349f79e27d1a3193806725b85830da334e935cbb606d88c1177c58ea6519c578e4e93e5f677f5b22aecb8738894dbed14603e14b6bffe3facf1002
+"@rolldown/pluginutils@npm:1.0.0-beta.43":
+  version: 1.0.0-beta.43
+  resolution: "@rolldown/pluginutils@npm:1.0.0-beta.43"
+  checksum: 10c0/1c17a0b16c277a0fdbab080fd22ef91e37c1f0d710ecfdacb6a080068062eb14ff030d0e9d2ec2325a1d4246dba0c49625755c82c0090f6cbf98d16e80183e02
   languageName: node
   linkType: hard
 
@@ -3881,6 +3865,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@standard-schema/spec@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@standard-schema/spec@npm:1.0.0"
+  checksum: 10c0/a1ab9a8bdc09b5b47aa8365d0e0ec40cc2df6437be02853696a0e377321653b0d3ac6f079a8c67d5ddbe9821025584b1fb71d9cc041a6666a96f1fadf2ece15f
+  languageName: node
+  linkType: hard
+
 "@tabler/icons-react@npm:^3.35.0":
   version: 3.35.0
   resolution: "@tabler/icons-react@npm:3.35.0"
@@ -4038,7 +4029,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^24.9.0":
+"@types/node@npm:*, @types/node@npm:>=13.7.0":
   version: 24.9.0
   resolution: "@types/node@npm:24.9.0"
   dependencies:
@@ -4047,13 +4038,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/nodemailer@npm:^7.0.2":
-  version: 7.0.2
-  resolution: "@types/nodemailer@npm:7.0.2"
+"@types/node@npm:^24.9.1":
+  version: 24.9.1
+  resolution: "@types/node@npm:24.9.1"
+  dependencies:
+    undici-types: "npm:~7.16.0"
+  checksum: 10c0/c52f8168080ef9a7c3dc23d8ac6061fab5371aad89231a0f6f4c075869bc3de7e89b075b1f3e3171d9e5143d0dda1807c3dab8e32eac6d68f02e7480e7e78576
+  languageName: node
+  linkType: hard
+
+"@types/nodemailer@npm:^7.0.3":
+  version: 7.0.3
+  resolution: "@types/nodemailer@npm:7.0.3"
   dependencies:
     "@aws-sdk/client-sesv2": "npm:^3.839.0"
     "@types/node": "npm:*"
-  checksum: 10c0/3466f155b87a4543b83d71d4eef91fe47a41b04a277557e71713913fabeef048f9c3149e8a8eff18facf3ed46be7cd6d84b18c560c36904e85b0e6c4c8fe0e77
+  checksum: 10c0/3ee33e21aebf96415dbe5bcbfce078e573a7e542ce707682cd8eb78a48be6f6095bbe7c71f6451c8797861397084a044e45b5afb0ea74b255202094770afdbcd
   languageName: node
   linkType: hard
 
@@ -4106,146 +4106,141 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitejs/plugin-react@npm:^5.0.4":
-  version: 5.0.4
-  resolution: "@vitejs/plugin-react@npm:5.0.4"
+"@vitejs/plugin-react@npm:^5.1.0":
+  version: 5.1.0
+  resolution: "@vitejs/plugin-react@npm:5.1.0"
   dependencies:
     "@babel/core": "npm:^7.28.4"
     "@babel/plugin-transform-react-jsx-self": "npm:^7.27.1"
     "@babel/plugin-transform-react-jsx-source": "npm:^7.27.1"
-    "@rolldown/pluginutils": "npm:1.0.0-beta.38"
+    "@rolldown/pluginutils": "npm:1.0.0-beta.43"
     "@types/babel__core": "npm:^7.20.5"
-    react-refresh: "npm:^0.17.0"
+    react-refresh: "npm:^0.18.0"
   peerDependencies:
     vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
-  checksum: 10c0/bb9360a4b4c0abf064d22211756b999faf23889ac150de490590ca7bd029b0ef7f4cd8ba3a32b86682a62d46fb7bebd75b3fa9835c57c78123f4a646de2e0136
+  checksum: 10c0/e192a12e2b854df109eafb1d06c0bc848e8e2b162c686aa6b999b1048658983e72674b2068ccc37562fcce44d32ad92b65f3a4e1897a0cb7859c2ee69cc63eac
   languageName: node
   linkType: hard
 
-"@vitest/coverage-v8@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/coverage-v8@npm:3.2.4"
+"@vitest/coverage-v8@npm:^4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/coverage-v8@npm:4.0.3"
   dependencies:
-    "@ampproject/remapping": "npm:^2.3.0"
     "@bcoe/v8-coverage": "npm:^1.0.2"
-    ast-v8-to-istanbul: "npm:^0.3.3"
-    debug: "npm:^4.4.1"
+    "@vitest/utils": "npm:4.0.3"
+    ast-v8-to-istanbul: "npm:^0.3.5"
+    debug: "npm:^4.4.3"
     istanbul-lib-coverage: "npm:^3.2.2"
     istanbul-lib-report: "npm:^3.0.1"
     istanbul-lib-source-maps: "npm:^5.0.6"
-    istanbul-reports: "npm:^3.1.7"
-    magic-string: "npm:^0.30.17"
+    istanbul-reports: "npm:^3.2.0"
     magicast: "npm:^0.3.5"
     std-env: "npm:^3.9.0"
-    test-exclude: "npm:^7.0.1"
-    tinyrainbow: "npm:^2.0.0"
+    tinyrainbow: "npm:^3.0.3"
   peerDependencies:
-    "@vitest/browser": 3.2.4
-    vitest: 3.2.4
+    "@vitest/browser": 4.0.3
+    vitest: 4.0.3
   peerDependenciesMeta:
     "@vitest/browser":
       optional: true
-  checksum: 10c0/cae3e58d81d56e7e1cdecd7b5baab7edd0ad9dee8dec9353c52796e390e452377d3f04174d40b6986b17c73241a5e773e422931eaa8102dcba0605ff24b25193
+  checksum: 10c0/5f067034687b4494efeb37bd2f327f3399e9defda9661d43a44bcd1f5581df4a9c083cebae967561d21b6f9d9f08db637e2c0d935b7566c945165816cc93f3f1
   languageName: node
   linkType: hard
 
-"@vitest/expect@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/expect@npm:3.2.4"
+"@vitest/expect@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/expect@npm:4.0.3"
   dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
     "@types/chai": "npm:^5.2.2"
-    "@vitest/spy": "npm:3.2.4"
-    "@vitest/utils": "npm:3.2.4"
-    chai: "npm:^5.2.0"
-    tinyrainbow: "npm:^2.0.0"
-  checksum: 10c0/7586104e3fd31dbe1e6ecaafb9a70131e4197dce2940f727b6a84131eee3decac7b10f9c7c72fa5edbdb68b6f854353bd4c0fa84779e274207fb7379563b10db
+    "@vitest/spy": "npm:4.0.3"
+    "@vitest/utils": "npm:4.0.3"
+    chai: "npm:^6.0.1"
+    tinyrainbow: "npm:^3.0.3"
+  checksum: 10c0/36a9ff769387f4475fea273ec3ee39553ed7607bda620eea3a3632cd88a1e8c97173abcce7bc4440c84bf55b8e752edacb519a64f02d7ad5b47df7770cb56883
   languageName: node
   linkType: hard
 
-"@vitest/mocker@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/mocker@npm:3.2.4"
+"@vitest/mocker@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/mocker@npm:4.0.3"
   dependencies:
-    "@vitest/spy": "npm:3.2.4"
+    "@vitest/spy": "npm:4.0.3"
     estree-walker: "npm:^3.0.3"
-    magic-string: "npm:^0.30.17"
+    magic-string: "npm:^0.30.19"
   peerDependencies:
     msw: ^2.4.9
-    vite: ^5.0.0 || ^6.0.0 || ^7.0.0-0
+    vite: ^6.0.0 || ^7.0.0-0
   peerDependenciesMeta:
     msw:
       optional: true
     vite:
       optional: true
-  checksum: 10c0/f7a4aea19bbbf8f15905847ee9143b6298b2c110f8b64789224cb0ffdc2e96f9802876aa2ca83f1ec1b6e1ff45e822abb34f0054c24d57b29ab18add06536ccd
+  checksum: 10c0/16c9ef064a55b0fd3e0d7adaddfeef5c41d569d8181c40d8fed75464b43445305b83c017b50c5ea88f49355bef64e32f75cfd35db0682e0a8f5bbcc3acbde264
   languageName: node
   linkType: hard
 
-"@vitest/pretty-format@npm:3.2.4, @vitest/pretty-format@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/pretty-format@npm:3.2.4"
+"@vitest/pretty-format@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/pretty-format@npm:4.0.3"
   dependencies:
-    tinyrainbow: "npm:^2.0.0"
-  checksum: 10c0/5ad7d4278e067390d7d633e307fee8103958806a419ca380aec0e33fae71b44a64415f7a9b4bc11635d3c13d4a9186111c581d3cef9c65cc317e68f077456887
+    tinyrainbow: "npm:^3.0.3"
+  checksum: 10c0/031080fbcb16b42c511ef7553a0cdabcb78d0bf9a2bb960a03403ff4553ce05d15e13af4abe7f22bd187f369d3bfa1c59714a0b4d9db33313d7583346511f236
   languageName: node
   linkType: hard
 
-"@vitest/runner@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/runner@npm:3.2.4"
+"@vitest/runner@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/runner@npm:4.0.3"
   dependencies:
-    "@vitest/utils": "npm:3.2.4"
+    "@vitest/utils": "npm:4.0.3"
     pathe: "npm:^2.0.3"
-    strip-literal: "npm:^3.0.0"
-  checksum: 10c0/e8be51666c72b3668ae3ea348b0196656a4a5adb836cb5e270720885d9517421815b0d6c98bfdf1795ed02b994b7bfb2b21566ee356a40021f5bf4f6ed4e418a
+  checksum: 10c0/77a4c76890d652115baded6004beb13f5f84e98d0a5175c38b3908f03875d6c02df998430e43b21bf324de9e1499069a54cf773854447607602cab5d9fe8cd60
   languageName: node
   linkType: hard
 
-"@vitest/snapshot@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/snapshot@npm:3.2.4"
+"@vitest/snapshot@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/snapshot@npm:4.0.3"
   dependencies:
-    "@vitest/pretty-format": "npm:3.2.4"
-    magic-string: "npm:^0.30.17"
+    "@vitest/pretty-format": "npm:4.0.3"
+    magic-string: "npm:^0.30.19"
     pathe: "npm:^2.0.3"
-  checksum: 10c0/f8301a3d7d1559fd3d59ed51176dd52e1ed5c2d23aa6d8d6aa18787ef46e295056bc726a021698d8454c16ed825ecba163362f42fa90258bb4a98cfd2c9424fc
+  checksum: 10c0/69e6a3ebdf3852cb949237989aa88c73ead9e6a1debd2227d130e0ec3c33a0bc07ab2d16538a247b8eea0c105f0c9f62419700bbc9230edc99d1df8083bf7b0a
   languageName: node
   linkType: hard
 
-"@vitest/spy@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/spy@npm:3.2.4"
-  dependencies:
-    tinyspy: "npm:^4.0.3"
-  checksum: 10c0/6ebf0b4697dc238476d6b6a60c76ba9eb1dd8167a307e30f08f64149612fd50227682b876420e4c2e09a76334e73f72e3ebf0e350714dc22474258292e202024
+"@vitest/spy@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/spy@npm:4.0.3"
+  checksum: 10c0/185fc2621c44c974fe2d89523cc8e20db46b4213fb7f153b63c4091c744b14e1e2c79f6160a3db0aab3e91775c6974214499c643032a02c2261cc68692b4cad8
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/ui@npm:3.2.4"
+"@vitest/ui@npm:^4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/ui@npm:4.0.3"
   dependencies:
-    "@vitest/utils": "npm:3.2.4"
+    "@vitest/utils": "npm:4.0.3"
     fflate: "npm:^0.8.2"
     flatted: "npm:^3.3.3"
     pathe: "npm:^2.0.3"
-    sirv: "npm:^3.0.1"
-    tinyglobby: "npm:^0.2.14"
-    tinyrainbow: "npm:^2.0.0"
+    sirv: "npm:^3.0.2"
+    tinyglobby: "npm:^0.2.15"
+    tinyrainbow: "npm:^3.0.3"
   peerDependencies:
-    vitest: 3.2.4
-  checksum: 10c0/c3de1b757905d050706c7ab0199185dd8c7e115f2f348b8d5a7468528c6bf90c2c46096e8901602349ac04f5ba83ac23cd98c38827b104d5151cf8ba21739a0c
+    vitest: 4.0.3
+  checksum: 10c0/ae02dc6c4218af447d025e7a14784e237464f7238ed6f9ca4bfdf895c0b558824477b426bc71b347be6cbaf5603a2ae121963a2783c7bbf386fa40072da7b009
   languageName: node
   linkType: hard
 
-"@vitest/utils@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/utils@npm:3.2.4"
+"@vitest/utils@npm:4.0.3":
+  version: 4.0.3
+  resolution: "@vitest/utils@npm:4.0.3"
   dependencies:
-    "@vitest/pretty-format": "npm:3.2.4"
-    loupe: "npm:^3.1.4"
-    tinyrainbow: "npm:^2.0.0"
-  checksum: 10c0/024a9b8c8bcc12cf40183c246c244b52ecff861c6deb3477cbf487ac8781ad44c68a9c5fd69f8c1361878e55b97c10d99d511f2597f1f7244b5e5101d028ba64
+    "@vitest/pretty-format": "npm:4.0.3"
+    tinyrainbow: "npm:^3.0.3"
+  checksum: 10c0/b773bb0133307176762a932bab0480e77c9b378406eb92c82f37a16d214b1d873a0378e4c567c4b05bf4628073bc7fc18b519a7c0bdaf75e18311545ca00c5ba
   languageName: node
   linkType: hard
 
@@ -4655,13 +4650,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"assertion-error@npm:^2.0.1":
-  version: 2.0.1
-  resolution: "assertion-error@npm:2.0.1"
-  checksum: 10c0/bbbcb117ac6480138f8c93cf7f535614282dea9dc828f540cdece85e3c665e8f78958b96afac52f29ff883c72638e6a87d469ecc9fe5bc902df03ed24a55dba8
-  languageName: node
-  linkType: hard
-
 "ast-kit@npm:^2.1.3":
   version: 2.1.3
   resolution: "ast-kit@npm:2.1.3"
@@ -4672,14 +4660,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ast-v8-to-istanbul@npm:^0.3.3":
-  version: 0.3.7
-  resolution: "ast-v8-to-istanbul@npm:0.3.7"
+"ast-v8-to-istanbul@npm:^0.3.5":
+  version: 0.3.8
+  resolution: "ast-v8-to-istanbul@npm:0.3.8"
   dependencies:
     "@jridgewell/trace-mapping": "npm:^0.3.31"
     estree-walker: "npm:^3.0.3"
     js-tokens: "npm:^9.0.1"
-  checksum: 10c0/5f4a787e19a33c6548846eb84bd9ed844cbf1ccac6e41d333590e7067fa3e4e0772e355b7d5a0220fd763758fcf09e86eff81350c7ecd1496644138d27c86b87
+  checksum: 10c0/6f7d74fc36011699af6d4ad88ecd8efc7d74bd90b8e8dbb1c69d43c8f4bec0ed361fb62a5b5bd98bbee02ee87c62cd8bcc25a39634964e45476bf5489dfa327f
   languageName: node
   linkType: hard
 
@@ -5010,16 +4998,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chai@npm:^5.2.0":
-  version: 5.3.3
-  resolution: "chai@npm:5.3.3"
-  dependencies:
-    assertion-error: "npm:^2.0.1"
-    check-error: "npm:^2.1.1"
-    deep-eql: "npm:^5.0.1"
-    loupe: "npm:^3.1.0"
-    pathval: "npm:^2.0.0"
-  checksum: 10c0/b360fd4d38861622e5010c2f709736988b05c7f31042305fa3f4e9911f6adb80ccfb4e302068bf8ed10e835c2e2520cba0f5edc13d878b886987e5aa62483f53
+"chai@npm:^6.0.1":
+  version: 6.2.0
+  resolution: "chai@npm:6.2.0"
+  checksum: 10c0/a4b7d7f5907187e09f1847afa838d6d1608adc7d822031b7900813c4ed5d9702911ac2468bf290676f22fddb3d727b1be90b57c1d0a69b902534ee29cdc6ff8a
   languageName: node
   linkType: hard
 
@@ -5048,13 +5030,6 @@ __metadata:
   version: 1.0.1
   resolution: "char-spinner@npm:1.0.1"
   checksum: 10c0/59589cfb84d08605f511bc2e18aaa8a92a77b94c78413583838c390eb3c0da4cf1af1901a6f21bf7ac6b6f12521895814e8d5bbf0a7e53e202f830deb80b1a2e
-  languageName: node
-  linkType: hard
-
-"check-error@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "check-error@npm:2.1.1"
-  checksum: 10c0/979f13eccab306cf1785fa10941a590b4e7ea9916ea2a4f8c87f0316fc3eab07eabefb6e587424ef0f88cbcd3805791f172ea739863ca3d7ce2afc54641c7f0e
   languageName: node
   linkType: hard
 
@@ -5370,7 +5345,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:4, debug@npm:^4.1.0, debug@npm:^4.1.1, debug@npm:^4.3.1, debug@npm:^4.3.4, debug@npm:^4.3.5, debug@npm:^4.4.0, debug@npm:^4.4.1, debug@npm:^4.4.3":
+"debug@npm:4, debug@npm:^4.1.0, debug@npm:^4.1.1, debug@npm:^4.3.1, debug@npm:^4.3.4, debug@npm:^4.3.5, debug@npm:^4.4.0, debug@npm:^4.4.3":
   version: 4.4.3
   resolution: "debug@npm:4.4.3"
   dependencies:
@@ -5386,13 +5361,6 @@ __metadata:
   version: 10.6.0
   resolution: "decimal.js@npm:10.6.0"
   checksum: 10c0/07d69fbcc54167a340d2d97de95f546f9ff1f69d2b45a02fd7a5292412df3cd9eb7e23065e532a318f5474a2e1bccf8392fdf0443ef467f97f3bf8cb0477e5aa
-  languageName: node
-  linkType: hard
-
-"deep-eql@npm:^5.0.1":
-  version: 5.0.2
-  resolution: "deep-eql@npm:5.0.2"
-  checksum: 10c0/7102cf3b7bb719c6b9c0db2e19bf0aa9318d141581befe8c7ce8ccd39af9eaa4346e5e05adef7f9bd7015da0f13a3a25dcfe306ef79dc8668aedbecb658dd247
   languageName: node
   linkType: hard
 
@@ -5547,9 +5515,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"drizzle-orm@npm:^0.44.6":
-  version: 0.44.6
-  resolution: "drizzle-orm@npm:0.44.6"
+"drizzle-orm@npm:^0.44.7":
+  version: 0.44.7
+  resolution: "drizzle-orm@npm:0.44.7"
   peerDependencies:
     "@aws-sdk/client-rds-data": ">=3"
     "@cloudflare/workers-types": ">=4"
@@ -5638,7 +5606,7 @@ __metadata:
       optional: true
     sqlite3:
       optional: true
-  checksum: 10c0/b9629fd8894f08a33661a33b9e1bd39dc2685df29bb254bb9b0dad2d447464eafbd9d089c92b8977a463c0e9f399d7991273ad369df9d8a5f356fa0493859660
+  checksum: 10c0/6adfe19179c83be397490c21573433e38ed7eff890bbb1c3b39157ec57d6b7420e9dcfebb8fe0e6ea534b29a53a33b2ec75c77dd2ac6b474b7055965ee7df00d
   languageName: node
   linkType: hard
 
@@ -6122,7 +6090,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expect-type@npm:^1.2.1":
+"expect-type@npm:^1.2.2":
   version: 1.2.2
   resolution: "expect-type@npm:1.2.2"
   checksum: 10c0/6019019566063bbc7a690d9281d920b1a91284a4a093c2d55d71ffade5ac890cf37a51e1da4602546c4b56569d2ad2fc175a2ccee77d1ae06cb3af91ef84f44b
@@ -6540,7 +6508,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^10.2.2, glob@npm:^10.4.1":
+"glob@npm:^10.2.2":
   version: 10.4.5
   resolution: "glob@npm:10.4.5"
   dependencies:
@@ -7240,7 +7208,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"istanbul-reports@npm:^3.1.7":
+"istanbul-reports@npm:^3.2.0":
   version: 3.2.0
   resolution: "istanbul-reports@npm:3.2.0"
   dependencies:
@@ -7504,13 +7472,6 @@ __metadata:
   bin:
     loose-envify: cli.js
   checksum: 10c0/655d110220983c1a4b9c0c679a2e8016d4b67f6e9c7b5435ff5979ecdb20d0813f4dec0a08674fcbdd4846a3f07edbb50a36811fd37930b94aaa0d9daceb017e
-  languageName: node
-  linkType: hard
-
-"loupe@npm:^3.1.0, loupe@npm:^3.1.4":
-  version: 3.2.1
-  resolution: "loupe@npm:3.2.1"
-  checksum: 10c0/910c872cba291309664c2d094368d31a68907b6f5913e989d301b5c25f30e97d76d77f23ab3bf3b46d0f601ff0b6af8810c10c31b91d2c6b2f132809ca2cc705
   languageName: node
   linkType: hard
 
@@ -7920,10 +7881,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:^7.0.9":
-  version: 7.0.9
-  resolution: "nodemailer@npm:7.0.9"
-  checksum: 10c0/029af0c89d64a521aa9969196e44c13ef289c7f419264eed8d63682610999e06205b0fc264ab8ac65941dc3eefd3c435f23337a32880614cc199744c9be6209a
+"nodemailer@npm:^7.0.10":
+  version: 7.0.10
+  resolution: "nodemailer@npm:7.0.10"
+  checksum: 10c0/9bb39bde904397879a6394e5202146167cabc3bd4089c1b0255ce16875e721d1cf132afde25a570fc4cf38f159ba6b6b5411d3b9371775543d38343fbd505101
   languageName: node
   linkType: hard
 
@@ -8216,13 +8177,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pathval@npm:^2.0.0":
-  version: 2.0.1
-  resolution: "pathval@npm:2.0.1"
-  checksum: 10c0/460f4709479fbf2c45903a65655fc8f0a5f6d808f989173aeef5fdea4ff4f303dc13f7870303999add60ec49d4c14733895c0a869392e9866f1091fa64fd7581
-  languageName: node
-  linkType: hard
-
 "picocolors@npm:1.1.1, picocolors@npm:^1.1.1":
   version: 1.1.1
   resolution: "picocolors@npm:1.1.1"
@@ -8325,8 +8279,9 @@ __metadata:
   dependencies:
     "@alepha/cli": "npm:^0.10.7"
     alepha: "npm:0.10.7"
+    react: "npm:^19.2.0"
     tsx: "npm:^4.20.6"
-    vite: "npm:^7.1.11"
+    vite: "npm:^7.1.12"
   languageName: unknown
   linkType: soft
 
@@ -8555,10 +8510,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-refresh@npm:^0.17.0":
-  version: 0.17.0
-  resolution: "react-refresh@npm:0.17.0"
-  checksum: 10c0/002cba940384c9930008c0bce26cac97a9d5682bc623112c2268ba0c155127d9c178a9a5cc2212d560088d60dfd503edd808669a25f9b377f316a32361d0b23c
+"react-refresh@npm:^0.18.0":
+  version: 0.18.0
+  resolution: "react-refresh@npm:0.18.0"
+  checksum: 10c0/34a262f7fd803433a534f50deb27a148112a81adcae440c7d1cbae7ef14d21ea8f2b3d783e858cb7698968183b77755a38b4d4b5b1d79b4f4689c2f6d358fff2
   languageName: node
   linkType: hard
 
@@ -9011,14 +8966,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@biomejs/biome": "npm:^2.2.6"
-    "@types/node": "npm:^24.9.0"
-    "@vitest/coverage-v8": "npm:^3.2.4"
-    "@vitest/ui": "npm:^3.2.4"
+    "@biomejs/biome": "npm:^2.3.0"
+    "@types/node": "npm:^24.9.1"
+    "@vitest/coverage-v8": "npm:^4.0.3"
+    "@vitest/ui": "npm:^4.0.3"
     depcheck: "npm:^1.4.7"
     typescript: "npm:^5.9.3"
     vite-plugin-dts: "npm:^4.5.4"
-    vitest: "npm:^3.2.4"
+    vitest: "npm:^4.0.3"
   languageName: unknown
   linkType: soft
 
@@ -9357,7 +9312,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sirv@npm:^3.0.1":
+"sirv@npm:^3.0.2":
   version: 3.0.2
   resolution: "sirv@npm:3.0.2"
   dependencies:
@@ -9635,15 +9590,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"strip-literal@npm:^3.0.0":
-  version: 3.1.0
-  resolution: "strip-literal@npm:3.1.0"
-  dependencies:
-    js-tokens: "npm:^9.0.1"
-  checksum: 10c0/50918f669915d9ad0fe4b7599902b735f853f2201c97791ead00104a654259c0c61bc2bc8fa3db05109339b61f4cf09e47b94ecc874ffbd0e013965223893af8
-  languageName: node
-  linkType: hard
-
 "strnum@npm:^2.1.0":
   version: 2.1.1
   resolution: "strnum@npm:2.1.1"
@@ -9730,17 +9676,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"test-exclude@npm:^7.0.1":
-  version: 7.0.1
-  resolution: "test-exclude@npm:7.0.1"
-  dependencies:
-    "@istanbuljs/schema": "npm:^0.1.2"
-    glob: "npm:^10.4.1"
-    minimatch: "npm:^9.0.4"
-  checksum: 10c0/6d67b9af4336a2e12b26a68c83308c7863534c65f27ed4ff7068a56f5a58f7ac703e8fc80f698a19bb154fd8f705cdf7ec347d9512b2c522c737269507e7b263
-  languageName: node
-  linkType: hard
-
 "thread-stream@npm:^3.0.0":
   version: 3.1.0
   resolution: "thread-stream@npm:3.1.0"
@@ -9785,7 +9720,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tinyglobby@npm:^0.2.12, tinyglobby@npm:^0.2.14, tinyglobby@npm:^0.2.15":
+"tinyglobby@npm:^0.2.12, tinyglobby@npm:^0.2.15":
   version: 0.2.15
   resolution: "tinyglobby@npm:0.2.15"
   dependencies:
@@ -9795,24 +9730,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tinypool@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "tinypool@npm:1.1.1"
-  checksum: 10c0/bf26727d01443061b04fa863f571016950888ea994ba0cd8cba3a1c51e2458d84574341ab8dbc3664f1c3ab20885c8cf9ff1cc4b18201f04c2cde7d317fff69b
-  languageName: node
-  linkType: hard
-
-"tinyrainbow@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "tinyrainbow@npm:2.0.0"
-  checksum: 10c0/c83c52bef4e0ae7fb8ec6a722f70b5b6fa8d8be1c85792e829f56c0e1be94ab70b293c032dc5048d4d37cfe678f1f5babb04bdc65fd123098800148ca989184f
-  languageName: node
-  linkType: hard
-
-"tinyspy@npm:^4.0.3":
-  version: 4.0.4
-  resolution: "tinyspy@npm:4.0.4"
-  checksum: 10c0/a8020fc17799251e06a8398dcc352601d2770aa91c556b9531ecd7a12581161fd1c14e81cbdaff0c1306c93bfdde8ff6d1c1a3f9bbe6d91604f0fd4e01e2f1eb
+"tinyrainbow@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "tinyrainbow@npm:3.0.3"
+  checksum: 10c0/1e799d35cd23cabe02e22550985a3051dc88814a979be02dc632a159c393a998628eacfc558e4c746b3006606d54b00bcdea0c39301133956d10a27aa27e988c
   languageName: node
   linkType: hard
 
@@ -9973,10 +9894,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.41":
-  version: 1.0.41
-  resolution: "typebox@npm:1.0.41"
-  checksum: 10c0/9266e307fa352b53dd6cf132e4284d5ae6139afd59c41e89059c06fd09c88e0d474c7f3a69174349940d0f4e1616cc18d950f50e2e4c9b2564dd5d7c07dd8097
+"typebox@npm:^1.0.43":
+  version: 1.0.43
+  resolution: "typebox@npm:1.0.43"
+  checksum: 10c0/cbb820d06dd1919e5fd959e7c96e85d6152e4b1d02bac66c942ac929c34b9967ad8e28ad3470cab4169aee4475cb60ca5bcae91d96430bd182d013774787529a
   languageName: node
   linkType: hard
 
@@ -10286,21 +10207,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite-node@npm:3.2.4":
-  version: 3.2.4
-  resolution: "vite-node@npm:3.2.4"
-  dependencies:
-    cac: "npm:^6.7.14"
-    debug: "npm:^4.4.1"
-    es-module-lexer: "npm:^1.7.0"
-    pathe: "npm:^2.0.3"
-    vite: "npm:^5.0.0 || ^6.0.0 || ^7.0.0-0"
-  bin:
-    vite-node: vite-node.mjs
-  checksum: 10c0/6ceca67c002f8ef6397d58b9539f80f2b5d79e103a18367288b3f00a8ab55affa3d711d86d9112fce5a7fa658a212a087a005a045eb8f4758947dd99af2a6c6b
-  languageName: node
-  linkType: hard
-
 "vite-plugin-dts@npm:^4.5.4":
   version: 4.5.4
   resolution: "vite-plugin-dts@npm:4.5.4"
@@ -10324,9 +10230,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^5.0.0 || ^6.0.0 || ^7.0.0-0, vite@npm:^7.1.11":
-  version: 7.1.11
-  resolution: "vite@npm:7.1.11"
+"vite@npm:^6.0.0 || ^7.0.0, vite@npm:^7.1.12":
+  version: 7.1.12
+  resolution: "vite@npm:7.1.12"
   dependencies:
     esbuild: "npm:^0.25.0"
     fdir: "npm:^6.5.0"
@@ -10375,43 +10281,42 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 10c0/c4aa7f47b1fb07f734ed6f4f605d73e5acf7ff9754d75b4adbfbdddf0e520413019834620c1f7b4a207bce7e1d20a2636c584db2b1b17f5a3ba2cd23d47e50ab
+  checksum: 10c0/cef4d4b4a84e663e09b858964af36e916892ac8540068df42a05ced637ceeae5e9ef71c72d54f3cfc1f3c254af16634230e221b6e2327c2a66d794bb49203262
   languageName: node
   linkType: hard
 
-"vitest@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "vitest@npm:3.2.4"
+"vitest@npm:^4.0.3":
+  version: 4.0.3
+  resolution: "vitest@npm:4.0.3"
   dependencies:
-    "@types/chai": "npm:^5.2.2"
-    "@vitest/expect": "npm:3.2.4"
-    "@vitest/mocker": "npm:3.2.4"
-    "@vitest/pretty-format": "npm:^3.2.4"
-    "@vitest/runner": "npm:3.2.4"
-    "@vitest/snapshot": "npm:3.2.4"
-    "@vitest/spy": "npm:3.2.4"
-    "@vitest/utils": "npm:3.2.4"
-    chai: "npm:^5.2.0"
-    debug: "npm:^4.4.1"
-    expect-type: "npm:^1.2.1"
-    magic-string: "npm:^0.30.17"
+    "@vitest/expect": "npm:4.0.3"
+    "@vitest/mocker": "npm:4.0.3"
+    "@vitest/pretty-format": "npm:4.0.3"
+    "@vitest/runner": "npm:4.0.3"
+    "@vitest/snapshot": "npm:4.0.3"
+    "@vitest/spy": "npm:4.0.3"
+    "@vitest/utils": "npm:4.0.3"
+    debug: "npm:^4.4.3"
+    es-module-lexer: "npm:^1.7.0"
+    expect-type: "npm:^1.2.2"
+    magic-string: "npm:^0.30.19"
     pathe: "npm:^2.0.3"
-    picomatch: "npm:^4.0.2"
+    picomatch: "npm:^4.0.3"
     std-env: "npm:^3.9.0"
     tinybench: "npm:^2.9.0"
     tinyexec: "npm:^0.3.2"
-    tinyglobby: "npm:^0.2.14"
-    tinypool: "npm:^1.1.1"
-    tinyrainbow: "npm:^2.0.0"
-    vite: "npm:^5.0.0 || ^6.0.0 || ^7.0.0-0"
-    vite-node: "npm:3.2.4"
+    tinyglobby: "npm:^0.2.15"
+    tinyrainbow: "npm:^3.0.3"
+    vite: "npm:^6.0.0 || ^7.0.0"
     why-is-node-running: "npm:^2.3.0"
   peerDependencies:
     "@edge-runtime/vm": "*"
     "@types/debug": ^4.1.12
-    "@types/node": ^18.0.0 || ^20.0.0 || >=22.0.0
-    "@vitest/browser": 3.2.4
-    "@vitest/ui": 3.2.4
+    "@types/node": ^20.0.0 || ^22.0.0 || >=24.0.0
+    "@vitest/browser-playwright": 4.0.3
+    "@vitest/browser-preview": 4.0.3
+    "@vitest/browser-webdriverio": 4.0.3
+    "@vitest/ui": 4.0.3
     happy-dom: "*"
     jsdom: "*"
   peerDependenciesMeta:
@@ -10421,7 +10326,11 @@ __metadata:
       optional: true
     "@types/node":
       optional: true
-    "@vitest/browser":
+    "@vitest/browser-playwright":
+      optional: true
+    "@vitest/browser-preview":
+      optional: true
+    "@vitest/browser-webdriverio":
       optional: true
     "@vitest/ui":
       optional: true
@@ -10431,7 +10340,7 @@ __metadata:
       optional: true
   bin:
     vitest: vitest.mjs
-  checksum: 10c0/5bf53ede3ae6a0e08956d72dab279ae90503f6b5a05298a6a5e6ef47d2fd1ab386aaf48fafa61ed07a0ebfe9e371772f1ccbe5c258dd765206a8218bf2eb79eb
+  checksum: 10c0/3462e797fc3100d6adae9d5beaa4784a109d4fe5fc1403fb251ebdf7ca95988c1f1447bbaeac3f0046aae555a611f1dcb9da0bcb9d30af7ee99ac5392427fd2b
   languageName: node
   linkType: hard
 
