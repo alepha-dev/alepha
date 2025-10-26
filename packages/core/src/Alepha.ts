@@ -1,19 +1,13 @@
 import type { Static, TObject } from "typebox";
-import { Compile, type Validator } from "typebox/compile";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { __alephaRef } from "./descriptors/$cursor.ts";
 import type { InjectOptions } from "./descriptors/$inject.ts";
 import { Module, type WithModule } from "./descriptors/$module.ts";
-import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
-import { TypeBoxError } from "./errors/TypeBoxError.ts";
 import { Descriptor } from "./helpers/descriptor.ts";
-import { EventManager } from "./helpers/EventManager.ts";
-import { nullToUndefined } from "./helpers/nullToUndefined.ts";
-import { StateManager } from "./helpers/StateManager.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import {
@@ -24,7 +18,10 @@ import {
   type ServiceEntry,
 } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
-import { type TSchema, t } from "./providers/TypeProvider.ts";
+import { CodecManager } from "./providers/CodecManager.ts";
+import { EventManager } from "./providers/EventManager.ts";
+import { StateManager } from "./providers/StateManager.ts";
+import type { TSchema } from "./providers/TypeProvider.ts";
 
 /**
  * Core container of the Alepha framework.
@@ -198,11 +195,6 @@ export class Alepha {
   }
 
   /**
-   *  List of all services + how they are provided.
-   */
-  protected registry: Map<Service, ServiceDefinition> = new Map();
-
-  /**
    * Flag indicating whether the App won't accept any further changes.
    * Pass to true when #start() is called.
    */
@@ -229,33 +221,11 @@ export class Alepha {
   protected starting?: PromiseWithResolvers<this>;
 
   /**
-   * The current state of the App.
+   * Initial state of the container.
    *
-   * It contains the environment variables, logger, and other state-related properties.
-   *
-   * You can declare your own state properties by extending the `State` interface.
-   *
-   * ```ts
-   * declare module "@alepha/core" {
-   *   interface State {
-   *     myCustomValue: string;
-   *   }
-   * }
-   * ```
-   *
-   * Same story for the `Env` interface.
-   * ```ts
-   * declare module "@alepha/core" {
-   *   interface Env {
-   *     readonly myCustomValue: string;
-   *   }
-   * }
-   * ```
-   *
-   * State values can be function or primitive values.
-   * However, all .env variables must serializable to JSON.
+   * > Used to initialize the StateManager.
    */
-  protected store: State;
+  protected init: State;
 
   /**
    * During the instantiation process, we keep a list of pending instantiations.
@@ -270,26 +240,38 @@ export class Alepha {
   protected cacheEnv: Map<TSchema, any> = new Map();
 
   /**
-   * Cache for TypeBox type checks.
-   * > It allows us to avoid compiling the same schema multiple times.
-   */
-  protected cacheTypeCheck: Map<TSchema, Validator> = new Map();
-
-  /**
    * List of modules that are registered in the container.
    *
    * Modules are used to group services and provide a way to register them in the container.
    */
   protected modules: Array<Module> = [];
 
+  /**
+   * List of service substitutions.
+   *
+   * Services registered here will be replaced by the specified service when injected.
+   */
   protected substitutions = new Map<Service, { use: Service }>();
 
+  /**
+   * Configuration states for services.
+   *
+   * Used to configure services when they are instantiated.
+   */
   protected configurations = new Map<Service, object>();
 
+  /**
+   * Registry of descriptors.
+   */
   protected descriptorRegistry = new Map<
     Service<Descriptor>,
     Array<Descriptor>
   >();
+
+  /**
+   *  List of all services + how they are provided.
+   */
+  protected registry: Map<Service, ServiceDefinition> = new Map();
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -300,19 +282,36 @@ export class Alepha {
    *
    * Mocked for browser environments.
    */
-  public readonly context = new AlsProvider();
+  public get context() {
+    return this.inject(AlsProvider);
+  }
 
   /**
    * Event manager to handle lifecycle events and custom events.
    */
-  public readonly events = new EventManager(() => this.log);
+  public get events() {
+    return this.inject(EventManager, {
+      args: [{ logFn: () => this.log }],
+    });
+  }
 
   /**
    * State manager to store arbitrary values.
    */
-  public readonly state = new StateManager<State>(this.events, this.context);
+  public get state() {
+    return this.inject(StateManager, {
+      args: [this.init],
+    });
+  }
 
-  // -------------------------------------------------------------------------------------------------------------------
+  /**
+   * Codec manager for encoding and decoding data with different formats.
+   *
+   * Supports multiple codec formats (JSON, Protobuf, etc.) with a unified interface.
+   */
+  public get codec() {
+    return this.inject(CodecManager);
+  }
 
   /**
    * Get logger instance.
@@ -325,16 +324,11 @@ export class Alepha {
    * The environment variables for the App.
    */
   public get env(): Readonly<Env> {
-    return this.store.env ?? {};
+    return this.state.get("env") ?? {};
   }
 
-  constructor(state: Partial<State> = {}) {
-    this.store = state;
-    this.events.on("configure", () => {
-      if (this.configured) {
-        throw new AlephaError("App is already configured");
-      }
-    });
+  constructor(init: Partial<State> = {}) {
+    this.init = init;
   }
 
   /**
@@ -453,6 +447,8 @@ export class Alepha {
       this.log?.warn("App is already starting, waiting for it to finish...");
       return this.starting.promise;
     }
+
+    this.codec; // ensure codec is initialized
 
     this.starting = Promise.withResolvers();
 
@@ -716,19 +712,6 @@ export class Alepha {
     if (!transient) {
       // the requested type is searched in the container
       const match = registry.get(service);
-
-      // [feature]: dev mode - "hot reload" with Vite, not sure if it's a good idea
-      if (!match && this.isViteDev()) {
-        for (const [_, definition] of registry.entries()) {
-          if (definition.instance?.constructor.name === service.name) {
-            this.log?.debug(`Hot reload detected for ${service.name}`);
-            const instance: T = this.new(service, opts.args);
-            definition.instance = instance;
-            return instance;
-          }
-        }
-      }
-
       if (match) {
         if (!match.parents.includes(parent) && parent !== service) {
           match.parents.push(parent);
@@ -835,112 +818,6 @@ export class Alepha {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   * Casts the given value to the specified schema.
-   *
-   * It uses the TypeBox library to validate the value against the schema.
-   */
-  public parse<T extends TSchema>(
-    schema: T,
-    value?: unknown,
-    opts: {
-      /**
-       * Clone the value before parsing.
-       * @default true
-       */
-      clone?: boolean;
-      /**
-       * Apply default values defined in the schema.
-       * @default true
-       */
-      default?: boolean;
-      /**
-       * Remove all values not defined in the schema.
-       * @default true
-       */
-      clean?: boolean;
-      /**
-       * Try to cast/convert some data based on the schema.
-       * @default true
-       */
-      convert?: boolean;
-      /**
-       * Convert `null` to `undefined`
-       * @default true
-       */
-      convertNullToUndefined?: boolean;
-      /**
-       * Prepare value after being deserialized.
-       * @default true
-       */
-      check?: boolean;
-    } = {},
-  ): Static<T> {
-    const exists = this.cacheTypeCheck.get(schema);
-    const vl = exists ?? Compile(schema);
-    if (!exists) {
-      this.cacheTypeCheck.set(schema, vl);
-    }
-
-    let alreadyCloned = false;
-    if (
-      (t.schema.isObject(schema) || t.schema.isArray(schema)) &&
-      typeof value === "string"
-    ) {
-      try {
-        value = JSON.parse(value);
-        alreadyCloned = true;
-      } catch {
-        // ignore json parsing error and let typebox handle it
-      }
-    }
-
-    value =
-      typeof value === "object" && opts.clone !== false && !alreadyCloned
-        ? // do NOT use structuredClone() or TypeBox v.Clone() here
-          // we need to remove also all functions, undefined, ...
-          // JSON is FINE for small objects
-          // REMEMBER: alepha.parse is JSON safe, so no Date, Map, Set, BigInt ...
-          JSON.parse(JSON.stringify(value))
-        : value;
-
-    if (opts.clean !== false) {
-      value = vl.Clean(value);
-
-      if (typeof value === "object") {
-        for (const key in value) {
-          if ((value as Record<any, any>)[key] === undefined) {
-            delete (value as Record<any, any>)[key];
-          }
-        }
-      }
-    }
-
-    if (opts.default !== false) {
-      value = vl.Default(value);
-    }
-
-    if (opts.convertNullToUndefined !== false) {
-      value = nullToUndefined(schema, value);
-    }
-
-    if (opts.convert !== false) {
-      value = vl.Convert(value);
-    }
-
-    if (opts.check !== false) {
-      const valid = vl.Check(value);
-      if (!valid) {
-        const error = vl.Errors(value)?.[0];
-        if (error) {
-          throw new TypeBoxError(error, value);
-        }
-      }
-    }
-
-    return value as Static<T>;
-  }
-
-  /**
    * Applies environment variables to the provided schema and state object.
    *
    * It replaces also all templated $ENV inside string values.
@@ -953,7 +830,7 @@ export class Alepha {
       return this.cacheEnv.get(schema) as Static<T>;
     }
 
-    const config = this.parse(schema, this.env) as Record<string, any>;
+    const config = this.codec.decode(schema, this.env) as Record<string, any>;
 
     for (const key in config) {
       if (typeof config[key] === "string") {

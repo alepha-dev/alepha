@@ -1,9 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alepha } from "../src/Alepha.ts";
-import { EventManager } from "../src/helpers/EventManager.ts";
-import { StateManager } from "../src/helpers/StateManager.ts";
 import { AlsProvider } from "../src/providers/AlsProvider.ts";
+import { StateManager } from "../src/providers/StateManager.ts";
 
 // Set up AsyncLocalStorage for tests
 AlsProvider.create = () => new AsyncLocalStorage();
@@ -22,12 +21,13 @@ describe("StateManager", () => {
   let stateManager: StateManager;
 
   beforeEach(() => {
-    stateManager = new StateManager();
+    stateManager = Alepha.create().inject(StateManager);
   });
 
   describe("Basic Operations", () => {
     it("should set and get values with proper typing", () => {
-      const typedManager = new StateManager<TestState>();
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
 
       typedManager.set("name", "John");
       typedManager.set("age", 30);
@@ -43,8 +43,8 @@ describe("StateManager", () => {
     });
 
     it("should check if keys exist", () => {
-      const typedManager = new StateManager<TestState>();
-
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
       typedManager.set("name", "John");
 
       expect(typedManager.has("name")).toBe(true);
@@ -52,8 +52,8 @@ describe("StateManager", () => {
     });
 
     it("should handle different data types", () => {
-      const typedManager = new StateManager<TestState>();
-
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
       typedManager.set("name", "hello");
       typedManager.set("age", 42);
       typedManager.set("active", true);
@@ -66,7 +66,7 @@ describe("StateManager", () => {
     });
 
     it("should clear all state", () => {
-      const typedManager = new StateManager<TestState>();
+      const typedManager = Alepha.create().inject(StateManager);
 
       typedManager.set("name", "John");
       typedManager.set("age", 30);
@@ -78,8 +78,8 @@ describe("StateManager", () => {
     });
 
     it("should return all keys", () => {
-      const typedManager = new StateManager<TestState>();
-
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
       typedManager.set("name", "John");
       typedManager.set("age", 30);
 
@@ -91,11 +91,11 @@ describe("StateManager", () => {
 
   describe("Mutation Listeners", () => {
     it("should call listeners when values change", () => {
-      const events = new EventManager();
-      const typedManager = new StateManager<TestState>(events);
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
       const listener = vi.fn();
 
-      events.on("state:mutate", listener);
+      alepha.events.on("state:mutate", listener);
       typedManager.set("name", "John");
 
       expect(listener).toHaveBeenCalledWith({
@@ -106,13 +106,13 @@ describe("StateManager", () => {
     });
 
     it("should call listeners with previous values", () => {
-      const events = new EventManager();
-      const typedManager = new StateManager<TestState>(events);
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
 
       typedManager.set("name", "initial");
 
       const listener = vi.fn();
-      events.on("state:mutate", listener);
+      alepha.events.on("state:mutate", listener);
 
       typedManager.set("name", "updated");
 
@@ -124,11 +124,11 @@ describe("StateManager", () => {
     });
 
     it("should return unsubscribe function", () => {
-      const events = new EventManager();
-      const typedManager = new StateManager<TestState>(events);
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
       const listener = vi.fn();
 
-      const unsubscribe = events.on("state:mutate", listener);
+      const unsubscribe = alepha.events.on("state:mutate", listener);
 
       typedManager.set("name", "value1");
       expect(listener).toHaveBeenCalledTimes(1);
@@ -140,13 +140,13 @@ describe("StateManager", () => {
     });
 
     it("should support multiple listeners for same key", async () => {
-      const events = new EventManager();
-      const typedManager = new StateManager<TestState>(events);
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
       const listener1 = vi.fn();
       const listener2 = vi.fn();
 
-      events.on("state:mutate", listener1);
-      events.on("state:mutate", listener2);
+      alepha.events.on("state:mutate", listener1);
+      alepha.events.on("state:mutate", listener2);
 
       typedManager.set("name", "value");
 
@@ -159,7 +159,8 @@ describe("StateManager", () => {
 
   describe("Chaining", () => {
     it("should support method chaining", () => {
-      const typedManager = new StateManager<TestState>();
+      const alepha = new Alepha();
+      const typedManager = alepha.inject(StateManager<TestState>);
 
       const result = typedManager.set("name", "John").set("age", 30).clear();
 
@@ -255,7 +256,7 @@ describe("StateManager", () => {
     });
 
     it("should handle state manager without ALS provider", () => {
-      const typedManager = new StateManager<TestState>();
+      const typedManager = Alepha.create().inject(StateManager);
 
       typedManager.set("name", "Value");
       expect(typedManager.get("name")).toBe("Value");

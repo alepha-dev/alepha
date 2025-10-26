@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { PassThrough, Readable } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
-import type { FileLike, StreamLike } from "@alepha/core";
+import { AlephaError, type FileLike, type StreamLike } from "@alepha/core";
 import { getContentType } from "./getContentType.ts";
 
 export const createFile = (
@@ -198,7 +198,7 @@ const createStreamFromUrl = (url: string): Readable => {
     // For HTTP/HTTPS URLs, create a stream that fetches the content
     return getStreamingResponse(url);
   } else {
-    throw new Error(`Unsupported protocol: ${parsedUrl.protocol}`);
+    throw new AlephaError(`Unsupported protocol: ${parsedUrl.protocol}`);
   }
 };
 
@@ -218,7 +218,7 @@ export const streamToBuffer = async (
     stream.on("data", (chunk) => buffer.push(Buffer.from(chunk)));
     stream.on("end", () => resolve(Buffer.concat(buffer)));
     stream.on("error", (err) =>
-      reject(new Error("Error converting stream", { cause: err })),
+      reject(new AlephaError("Error converting stream", { cause: err })),
     );
   });
 };

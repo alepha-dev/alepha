@@ -34,6 +34,15 @@ describe("$module", () => {
       database: { from: ["server"] },
       DatabaseService: { from: ["database"], module: "database" },
       ServerProvider: { from: ["server"], module: "server" },
+      AlsProvider: {
+        from: ["StateManager"],
+      },
+      EventManager: {
+        from: ["StateManager"],
+      },
+      StateManager: {
+        from: ["Alepha"],
+      },
     });
   });
 

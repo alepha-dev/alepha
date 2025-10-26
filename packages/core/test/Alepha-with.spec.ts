@@ -10,6 +10,15 @@ test("Alepha#with - from default import", async () => {
     A: {
       from: ["Alepha"],
     },
+    AlsProvider: {
+      from: ["StateManager"],
+    },
+    EventManager: {
+      from: ["StateManager"],
+    },
+    StateManager: {
+      from: ["Alepha"],
+    },
   });
 });
 

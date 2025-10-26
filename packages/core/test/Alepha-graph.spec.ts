@@ -60,6 +60,22 @@ describe("Alepha#graph", () => {
       A3X: { from: ["A3"] },
       A3: { from: ["B", "C", "Alepha"], as: ["A"] },
       X2: { from: ["Alepha"], as: ["X"] },
+      AlsProvider: {
+        from: ["StateManager"],
+      },
+      EventManager: {
+        from: ["StateManager", "Alepha"],
+      },
+      StateManager: {
+        from: ["Alepha"],
+      },
+      Json: {
+        from: ["AleJsonSchemaCodecpha"],
+      },
+      JsonSchemaCodec: {
+        as: ["SchemaCodec"],
+        from: ["Alepha"],
+      },
     });
   });
 });

@@ -35,6 +35,15 @@ describe("Alepha#configure", () => {
       B: {
         from: ["Alepha"],
       },
+      AlsProvider: {
+        from: ["StateManager"],
+      },
+      EventManager: {
+        from: ["StateManager"],
+      },
+      StateManager: {
+        from: ["Alepha"],
+      },
     });
   });
 
@@ -65,6 +74,15 @@ describe("Alepha#configure", () => {
     expect(alepha.inject(Abstract).options.name).toBe("hey1");
     expect(alepha.graph()).toEqual({
       Impl1: { from: ["Alepha"], as: ["Abstract"] },
+      AlsProvider: {
+        from: ["StateManager"],
+      },
+      EventManager: {
+        from: ["StateManager"],
+      },
+      StateManager: {
+        from: ["Alepha"],
+      },
     });
   });
 });

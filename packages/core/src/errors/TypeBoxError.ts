@@ -10,7 +10,7 @@ export class TypeBoxError extends AlephaError {
     message: string;
   };
 
-  constructor(error: TLocalizedValidationError, value: any) {
+  constructor(error: TLocalizedValidationError) {
     super(
       `Invalid input: ${error.message}${error.instancePath ? ` at ${error.instancePath}` : ""}`,
       {

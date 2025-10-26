@@ -8,6 +8,7 @@ import {
 } from "@alepha/core";
 import type { Type } from "protobufjs";
 import protobufjs from "protobufjs";
+import { ProtobufSchemaCodec } from "./ProtobufSchemaCodec.ts";
 
 export class ProtobufProvider {
   protected readonly alepha = $inject(Alepha);
@@ -15,18 +16,32 @@ export class ProtobufProvider {
   protected readonly protobuf: typeof protobufjs = protobufjs;
   protected readonly enumDefinitions: Map<string, string[]> = new Map();
 
+  constructor() {
+    // Register protobuf codec
+    this.alepha.codec.register("protobuf", new ProtobufSchemaCodec());
+  }
+
   /**
    * Encode an object to a Uint8Array.
    */
   public encode(schema: TObject, data: any): Uint8Array {
-    return this.parse(schema).encode(this.alepha.parse(schema, data)).finish();
+    // Use protobuf codec to encode the data
+    const encoded = this.alepha.codec.encode(schema, data, {
+      encoder: "protobuf",
+      encoding: "raw",
+    });
+    return this.parse(schema).encode(encoded).finish();
   }
 
   /**
    * Decode a Uint8Array to an object.
    */
   public decode<T extends TObject>(schema: T, data: Uint8Array): Static<T> {
-    return this.alepha.parse(schema, this.parse(schema).decode(data));
+    const protobufData = this.parse(schema).decode(data);
+    // Use protobuf codec to decode the data
+    return this.alepha.codec.decode(schema, protobufData, {
+      encoder: "protobuf",
+    });
   }
 
   /**

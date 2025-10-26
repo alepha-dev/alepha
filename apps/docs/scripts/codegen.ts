@@ -117,7 +117,7 @@ class App {
       }
 
       await run("parse /packages", async () => {
-        const files = glob(`packages/**/*.md`, {
+        const files = glob(`packages/**/README.md`, {
           cwd: rootDir,
         });
 

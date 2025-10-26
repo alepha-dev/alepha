@@ -4514,7 +4514,6 @@ __metadata:
     "@alepha/topic-redis": "npm:0.10.7"
     "@alepha/ui": "npm:0.10.7"
     "@alepha/vite": "npm:0.10.7"
-    tsdown: "npm:^0.15.9"
   peerDependencies:
     react: "*"
     react-dom: "*"

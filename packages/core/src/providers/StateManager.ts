@@ -1,15 +1,16 @@
 import type { State } from "../Alepha.ts";
-import type { AlsProvider } from "../providers/AlsProvider.ts";
-import type { EventManager } from "./EventManager.ts";
+import { $inject } from "../descriptors/$inject.ts";
+import { AlsProvider } from "./AlsProvider.ts";
+import { EventManager } from "./EventManager.ts";
 
 export class StateManager<S extends Record<string, any> = State> {
-  protected store: Partial<S> = {};
-  protected readonly events?: EventManager;
-  protected readonly als?: AlsProvider;
+  protected readonly als = $inject(AlsProvider);
+  protected readonly events = $inject(EventManager);
 
-  constructor(events?: EventManager, als?: AlsProvider) {
-    this.events = events;
-    this.als = als;
+  protected store: Partial<S> = {};
+
+  constructor(store: Partial<S> = {}) {
+    this.store = store;
   }
 
   /**

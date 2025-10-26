@@ -38,8 +38,8 @@ export const isEmail = TypeBoxFormat.IsEmail;
 export const isURL = TypeBoxFormat.IsUrl;
 
 export type {
-  Static,
   StaticDecode,
+  StaticDecode as Static,
   StaticEncode,
   TAny,
   TArray,
@@ -69,7 +69,19 @@ export type {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class TypeGuard {
-  isSchema = TypeBox.IsSchema;
+  // -------------------------------------------------------------------------------------------------------------------
+  isFile = isTypeFile;
+  // -------------------------------------------------------------------------------------------------------------------
+  isBigInt = (value: TSchema): value is TString =>
+    TypeBox.IsString(value) && "format" in value && value.format === "bigint";
+  isDate = (value: TSchema): value is TString =>
+    TypeBox.IsString(value) && "format" in value && value.format === "date";
+  isDatetime = (value: TSchema): value is TString =>
+    TypeBox.IsString(value) &&
+    "format" in value &&
+    value.format === "date-time";
+  isUUID = (value: TSchema): value is TString =>
+    TypeBox.IsString(value) && "format" in value && value.format === "uuid";
   isObject = TypeBox.IsObject;
   isNumber = TypeBox.IsNumber;
   isString = TypeBox.IsString;
@@ -85,19 +97,7 @@ export class TypeGuard {
   isRecord = TypeBox.IsRecord;
   isTuple = TypeBox.IsTuple;
   isVoid = TypeBox.IsVoid;
-  // -------------------------------------------------------------------------------------------------------------------
-  isFile = isTypeFile;
-  // -------------------------------------------------------------------------------------------------------------------
-  isBigInt = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) && "format" in value && value.format === "int64";
-  isDate = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) && "format" in value && value.format === "date";
-  isDatetime = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) &&
-    "format" in value &&
-    value.format === "date-time";
-  isUUID = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) && "format" in value && value.format === "uuid";
+  isSchema = TypeBox.IsSchema;
 }
 
 declare module "typebox" {
@@ -116,7 +116,7 @@ export class TypeProvider {
   static format = TypeBoxFormat;
 
   static {
-    TypeBoxFormat.Set("int64", (value: string | number) =>
+    TypeBoxFormat.Set("bigint", (value: string | number) =>
       TypeProvider.isValidBigInt(value),
     );
   }
@@ -210,6 +210,9 @@ export class TypeProvider {
   public pick = Type.Pick;
   public tuple = Type.Tuple;
   public interface = Type.Interface;
+  public null = Type.Null;
+  public const = Type.Literal;
+  public codec = Type.Codec;
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
@@ -411,47 +414,78 @@ export class TypeProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  // Codec types
+
   /**
    * Create a schema for a bigint.
    * This is NOT a BigInt object, but a string that represents a bigint.
    */
-  public bigint(options?: TStringOptions): TString {
-    return this.string({
-      ...options,
-      format: "int64",
-    });
+  public bigint(options?: TStringOptions) {
+    return this.codec(
+      t.string({
+        format: "bigint",
+      }),
+    )
+      .Decode((value: bigint | boolean | number | string) => BigInt(value))
+      .Encode((value: BigInt) => value.toString());
   }
 
   /**
    * Create a schema for a datetime.
    * This is NOT a Date object, but a string in ISO 8601 format.
    */
-  public datetime(options?: TStringOptions): TString {
-    return this.string({
-      ...options,
-      format: "date-time",
-    });
+  public datetime(options?: TStringOptions) {
+    return this.codec(
+      this.string({
+        ...options,
+        format: "date-time",
+      }),
+    )
+      .Decode((value: string) => new Date(value))
+      .Encode((value: Date) => value.toISOString());
   }
 
   /**
    * Create a schema for a date.
    * This is NOT a Date object, but a string in ISO 8601 date format (YYYY-MM-DD).
    */
-  public date(options?: TStringOptions): TString {
-    return this.string({
-      ...options,
-      format: "date",
-    });
+  public date(options?: TStringOptions) {
+    return this.codec(
+      this.string({
+        ...options,
+        format: "date",
+      }),
+    )
+      .Decode((value: string) => new Date(value.slice(0, 10)))
+      .Encode((value: Date) => value.toISOString().slice(0, 10));
   }
 
   /**
    * Create a schema for a url.
    */
-  public url(options?: TStringOptions): TString {
-    return this.string({
-      ...options,
-      format: "url",
-    });
+  public url(options?: TStringOptions) {
+    return this.codec(
+      this.string({
+        ...options,
+        format: "url",
+      }),
+    )
+      .Decode((value: string) => new URL(value))
+      .Encode((value: URL) => value.toString());
+  }
+
+  /**
+   * Create a schema for binary data represented as a string.
+   */
+  public binary(options: TStringOptions) {
+    return this.codec(
+      this.string({
+        ...options,
+        format: "binary",
+      }),
+    )
+      .Decode((value) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0)))
+      .Encode((value) => btoa(String.fromCharCode(...value)));
   }
 
   /**
