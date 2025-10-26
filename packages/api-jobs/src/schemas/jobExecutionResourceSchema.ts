@@ -2,7 +2,7 @@ import { type Static, t } from "@alepha/core";
 import { jobExecutions } from "../entities/jobExecutions.ts";
 
 export const jobExecutionResourceSchema = t.interface(
-  [jobExecutions.$schema],
+  [jobExecutions.schema],
   {},
   {
     title: "JobExecutionResource",

@@ -48,7 +48,7 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
 
     const module = this.color.set("GREY_LIGHT", `${entry.module}.`);
     const service = this.color.set(
-      this.alepha.isBrowser() ? "RESET" : "WHITE_BOLD",
+      this.alepha.isBrowser() ? "RESET" : "WHITE",
       entry.service,
     );
 

@@ -17,6 +17,6 @@ export const userEntity = $entity({
   config: (table) => [uniqueIndex("name").on(table.name)],
 });
 
-export const insertUserEntitySchema = userEntity.$insertSchema;
-export type UserEntity = Static<typeof userEntity.$schema>;
+export const insertUserEntitySchema = userEntity.insertSchema;
+export type UserEntity = Static<typeof userEntity.schema>;
 export type InsertUserEntity = Static<typeof insertUserEntitySchema>;

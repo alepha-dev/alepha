@@ -109,7 +109,7 @@ type PgQueryWhereRelations<
 > = Relations extends PgRelationMap<TObject>
   ? {
       [K in keyof Relations]?: PgQueryWhere<
-        Relations[K]["join"]["$schema"],
+        Relations[K]["join"]["schema"],
         Relations[K]["with"]
       >;
     }

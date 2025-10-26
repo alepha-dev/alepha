@@ -4,7 +4,7 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
-		"db:generate": "alepha db:generate",
+		"db:generate": "LOG_FORMAT=text LOG_LEVEL=trace alepha db:generate",
 		"db:check": "alepha db:check"
 	},
 	"dependencies": {

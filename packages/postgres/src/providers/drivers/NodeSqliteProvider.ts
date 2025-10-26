@@ -1,19 +1,16 @@
 import { mkdir } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
-import {
-  $env,
-  $hook,
-  $inject,
-  AlephaError,
-  type Static,
-  type TObject,
-  t,
-} from "@alepha/core";
+import { $env, $hook, $inject, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
+import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
-import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
+import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
+
+const envSchema = t.object({
+  DATABASE_URL: t.optional(t.text()),
+});
 
 export interface NodeSqliteProviderOptions {
   /**
@@ -26,21 +23,18 @@ export interface NodeSqliteProviderOptions {
 }
 
 /**
- * Add a fake support for SQLite in Node.js based on PostgresProvider (yes)
+ * Add a fake support for SQLite in Node.js based on Postgres interfaces.
  *
  * This is NOT a real SQLite provider, it's a workaround to use SQLite with Drizzle ORM.
  * This is NOT recommended for production use.
  */
-export class NodeSqliteProvider extends PostgresProvider {
+export class NodeSqliteProvider extends DatabaseProvider {
   public readonly dialect = "sqlite";
 
   protected readonly kit = $inject(DrizzleKitProvider);
   protected readonly log = $logger();
-  protected readonly env = $env(
-    t.object({
-      DATABASE_URL: t.optional(t.text()),
-    }),
-  );
+  protected readonly env = $env(envSchema);
+  protected readonly builder = $inject(SqliteModelBuilder);
 
   public sqlite!: DatabaseSync;
   public options: NodeSqliteProviderOptions = {
@@ -59,10 +53,9 @@ export class NodeSqliteProvider extends PostgresProvider {
     return path;
   }
 
-  public async execute<T extends TObject | undefined = undefined>(
+  public async execute(
     query: SQLLike,
-    schema?: T,
-  ): Promise<Array<T extends TObject ? Static<T> : any[]>> {
+  ): Promise<Array<Record<string, unknown>>> {
     const all = (this.db as unknown as SqliteRemoteDatabase).all(query);
     const { sql, params, method } = all.getQuery();
     this.log.trace(`${sql}`, params);
@@ -75,11 +68,10 @@ export class NodeSqliteProvider extends PostgresProvider {
 
     if (method === "get") {
       const data = statement.get(...(params as any[]));
-      return this.mapResult(data ? [{ ...data }] : [], schema);
+      return data ? [{ ...data }] : [];
     }
 
-    const rows = statement.all(...(params as any[]));
-    return this.mapResult(rows, schema);
+    return statement.all(...(params as any[]));
   }
 
   public readonly db = drizzle(async (sql, params, method) => {
@@ -121,20 +113,9 @@ export class NodeSqliteProvider extends PostgresProvider {
 
       this.sqlite = new DatabaseSync(filepath);
 
-      await this.kit.synchronizeSqlite(this);
+      await this.kit.synchronize(this);
 
       this.log.info(`Using SQLite database at ${filepath}`);
     },
   });
-
-  protected mapResult<T extends TObject | undefined = undefined>(
-    result: Array<any>,
-    schema?: T,
-  ): Array<T extends TObject ? Static<T> : any> {
-    if (!schema) {
-      return result;
-    }
-
-    return result.map((row) => this.alepha.parse(schema, row)) as Array<any>;
-  }
 }

@@ -1,5 +1,5 @@
 import "tsx";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
@@ -120,48 +120,32 @@ export class DbCommands {
 
       const rootDir = join(process.cwd(), flags.root);
       this.log.debug(`Using project root: ${rootDir}`);
+
       const { alepha, entry } = await this.load(rootDir, flags.entry);
-      const repositories = alepha.descriptors("repository") as any[];
+      const inject = (name: string) =>
+        // biome-ignore lint/complexity/useLiteralKeys: private key
+        alepha["registry"]
+          .values()
+          .find((it: any) => it.instance.constructor.name === name)?.instance;
 
-      try {
-        await mkdir(join(rootDir, "node_modules/.db"), {
-          recursive: true,
-        });
-      } catch {}
-
-      const entities = [
-        ...new Set([...repositories.map((it) => it.tableName)]),
-      ];
-
-      const registry: Record<string, any> = {};
-      for (const r of repositories) {
-        r.options.table.registry?.forEach((value: any, key: string) => {
-          registry[key] = value;
-        });
-      }
+      const kit = inject("DrizzleKitProvider");
+      const provider = (alepha.descriptors("repository")[0] as any).provider;
+      const models = Object.keys(kit.getModels(provider));
 
       await writeFile(
         join(rootDir, "node_modules/.db/entities.ts"),
         `
 import "../..${entry.replace(rootDir, "")}";
+import { DatabaseProvider, DrizzleKitProvider } from "@alepha/postgres";
 
 const alepha = (global as any).__alepha;
-const repositories = alepha.descriptors("repository");
-const table = (name: string) => repositories.find((it: any) => it.tableName === name)!.table;
-const registry: Record<string, any> = {};
-for (const it of repositories) {
-  it.options.table.registry?.forEach((value: any, key: string) => registry[key] = value);
-}
+const inject = (name: string) => alepha.registry.values().find(it => it.instance.constructor.name === name)?.instance
+const kit = alepha.inject(DrizzleKitProvider);
+const provider = (alepha.descriptors("repository")[0] as any).provider;
+const models = kit.getModels(provider);
 
-// ---------------------------------------------------------------------------------------------------------------------
+${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
 
-// tables
-${entities.map((it) => `export const ${it} = table("${it}");`).join("\n")}
-
-// enums
-${Object.keys(registry).map((it) => `export const ${it} = registry["${it}"];`)}
-
-// ---------------------------------------------------------------------------------------------------------------------
 `.trim(),
       );
 

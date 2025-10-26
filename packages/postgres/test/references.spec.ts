@@ -8,7 +8,7 @@ const users = $entity({
     id: pg.identityPrimaryKey(),
     __v: pg.version(),
     name: t.text(),
-    currentPostId: pg.ref(t.optional(t.int()), () => posts.id, {
+    currentPostId: pg.ref(t.optional(t.int()), () => posts.cols.id, {
       onDelete: "set null",
     }),
   }),
@@ -19,10 +19,10 @@ const posts = $entity({
   schema: t.object({
     id: pg.identityPrimaryKey(),
     __v: pg.version(),
-    userId: pg.ref(t.int(), () => users.id, {
+    userId: pg.ref(t.int(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    postParentId: pg.ref(t.optional(t.int()), () => posts.id, {
+    postParentId: pg.ref(t.optional(t.int()), () => posts.cols.id, {
       onDelete: "cascade",
     }),
   }),

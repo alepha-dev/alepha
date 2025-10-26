@@ -1,7 +1,7 @@
 import { createDescriptor, Descriptor, KIND } from "@alepha/core";
 import { sql } from "drizzle-orm";
-import { type PgSequenceOptions, pgSequence } from "drizzle-orm/pg-core";
-import { PostgresProvider } from "../providers/drivers/PostgresProvider.ts";
+import type { PgSequenceOptions } from "drizzle-orm/pg-core";
+import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 
 /**
  * Creates a PostgreSQL sequence descriptor for generating unique numeric values.
@@ -20,21 +20,20 @@ export interface SequenceDescriptorOptions extends PgSequenceOptions {
    */
   name?: string;
 
-  provider?: PostgresProvider;
+  provider?: DatabaseProvider;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class SequenceDescriptor extends Descriptor<SequenceDescriptorOptions> {
   public readonly provider = this.$provider();
-  protected created = false;
+
+  public onInit() {
+    this.provider.registerSequence(this);
+  }
 
   public get name(): string {
     return this.options.name ?? this.config.propertyKey;
-  }
-
-  public get model() {
-    return pgSequence(this.name, this.options);
   }
 
   public async next(): Promise<number> {
@@ -54,7 +53,7 @@ export class SequenceDescriptor extends Descriptor<SequenceDescriptorOptions> {
   }
 
   protected $provider() {
-    return this.options.provider ?? this.alepha.inject(PostgresProvider);
+    return this.options.provider ?? this.alepha.inject(DatabaseProvider);
   }
 }
 

@@ -81,7 +81,7 @@ export const testQueueHasConsumer = async (
       },
     });
   }
-  const app = new Alepha()
+  const app = Alepha.create()
     .with({
       provide: QueueProvider,
       use: provider,

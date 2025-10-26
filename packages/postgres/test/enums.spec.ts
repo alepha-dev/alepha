@@ -80,7 +80,9 @@ describe("enums - t.enum (TEXT column)", () => {
     await alepha.start();
 
     // Check generated SQL
-    const sql = await drizzleKit.generateMigration(app.repository.provider);
+    const { statements: sql } = await drizzleKit.generateMigration(
+      app.repository.provider,
+    );
 
     expect(sql).toContainEqual(expect.stringContaining("CREATE TABLE"));
     expect(sql).toContainEqual(expect.stringContaining("text_enum_test"));
@@ -128,7 +130,9 @@ describe("enums - pg.enum (real PG ENUM type)", () => {
     await alepha.start();
 
     // Check generated SQL
-    const sql = await drizzleKit.generateMigration(app.repository.provider);
+    const { statements: sql } = await drizzleKit.generateMigration(
+      app.repository.provider,
+    );
 
     expect(sql).toContainEqual(expect.stringContaining("CREATE TABLE"));
     expect(sql).toContainEqual(expect.stringContaining("pg_enum_test"));
@@ -177,7 +181,9 @@ describe("enums - mixed t.enum and pg.enum in same table", () => {
     await alepha.start();
 
     // Check generated SQL
-    const sql = await drizzleKit.generateMigration(app.repository.provider);
+    const { statements: sql } = await drizzleKit.generateMigration(
+      app.repository.provider,
+    );
 
     expect(sql).toContainEqual(expect.stringContaining("CREATE TABLE"));
     expect(sql).toContainEqual(expect.stringContaining("mixed_enum_test"));
@@ -234,7 +240,9 @@ describe("enums - shared enum with custom name across tables", () => {
     await alepha.start();
 
     // Check generated SQL
-    const sql = await drizzleKit.generateMigration(app.repository1.provider);
+    const { statements: sql } = await drizzleKit.generateMigration(
+      app.repository1.provider,
+    );
 
     // Count how many times the shared_status_enum is created
     // It should only be created once, even though it's used in two tables
@@ -252,10 +260,7 @@ describe("enums - shared enum with custom name across tables", () => {
     expect(sql.some((s) => s.includes("shared_enum_test_2"))).toBe(true);
   });
 
-  /**
-   * TODO: enable when module v2 is ready
-   */
-  it.skip("should allow both tables to use the shared enum values", async () => {
+  it("should allow both tables to use the shared enum values", async () => {
     const alepha = Alepha.create();
 
     class App {
@@ -291,18 +296,20 @@ describe("enums - shared enum with custom name across tables", () => {
 
 describe("enums - conflict detection with different values", () => {
   it("should throw error when same enum name has different values", async () => {
-    const alepha = Alepha.create().with(() => ({
-      r1: $repository(conflictEnumEntity1),
-      r2: $repository(conflictEnumEntity2),
-    }));
+    const alepha = Alepha.create();
 
-    await expect(() =>
-      alepha.start().catch((e) => {
-        // 1. Can Start Alepha
-        // 2. Because Migration Has Failed
-        // 3. Because Enum Name Conflict Detected
-        throw e.cause.cause;
-      }),
-    ).rejects.toThrow(/Enum name conflict/i);
+    const load = async () => {
+      return alepha.with(() => ({
+        r1: $repository(conflictEnumEntity1),
+        r2: $repository(conflictEnumEntity2),
+      }));
+    };
+
+    expect(() =>
+      alepha.with(() => ({
+        r1: $repository(conflictEnumEntity1),
+        r2: $repository(conflictEnumEntity2),
+      })),
+    ).toThrow(/Enum name conflict/i);
   });
 });

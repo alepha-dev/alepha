@@ -21,7 +21,7 @@ describe("Joins - Comprehensive Tests", () => {
     name: "cities",
     schema: t.object({
       id: pg.primaryKey(),
-      countryId: pg.ref(t.int(), () => countries.id),
+      countryId: pg.ref(t.int(), () => countries.cols.id),
       name: t.text(),
       population: t.optional(t.int()),
     }),
@@ -33,8 +33,8 @@ describe("Joins - Comprehensive Tests", () => {
       id: pg.primaryKey(),
       name: t.text(),
       email: t.text(),
-      cityId: pg.ref(t.optional(t.int()), () => cities.id),
-      managerId: pg.ref(t.optional(t.int()), () => users.id),
+      cityId: pg.ref(t.optional(t.int()), () => cities.cols.id),
+      managerId: pg.ref(t.optional(t.int()), () => users.cols.id),
     }),
   });
 
@@ -42,7 +42,7 @@ describe("Joins - Comprehensive Tests", () => {
     name: "profiles",
     schema: t.object({
       id: pg.primaryKey(),
-      userId: pg.ref(t.int(), () => users.id),
+      userId: pg.ref(t.int(), () => users.cols.id),
       bio: t.text(),
       website: t.optional(t.text()),
     }),
@@ -52,7 +52,7 @@ describe("Joins - Comprehensive Tests", () => {
     name: "posts",
     schema: t.object({
       id: pg.primaryKey(),
-      authorId: pg.ref(t.int(), () => users.id),
+      authorId: pg.ref(t.int(), () => users.cols.id),
       title: t.text(),
       content: t.text(),
       publishedAt: pg.createdAt(),
@@ -63,8 +63,8 @@ describe("Joins - Comprehensive Tests", () => {
     name: "comments",
     schema: t.object({
       id: pg.primaryKey(),
-      postId: pg.ref(t.int(), () => posts.id),
-      authorId: pg.ref(t.int(), () => users.id),
+      postId: pg.ref(t.int(), () => posts.cols.id),
+      authorId: pg.ref(t.int(), () => users.cols.id),
       content: t.text(),
       createdAt: pg.createdAt(),
     }),
@@ -82,8 +82,8 @@ describe("Joins - Comprehensive Tests", () => {
     name: "post_tags",
     schema: t.object({
       id: pg.primaryKey(),
-      postId: pg.ref(t.int(), () => posts.id),
-      tagId: pg.ref(t.int(), () => tags.id),
+      postId: pg.ref(t.int(), () => posts.cols.id),
+      tagId: pg.ref(t.int(), () => tags.cols.id),
     }),
   });
 
@@ -238,7 +238,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         profile: {
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
       },
     });
@@ -264,7 +264,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         country: {
           join: countries,
-          on: ["countryId", countries.id],
+          on: ["countryId", countries.cols.id],
         },
       },
     });
@@ -289,7 +289,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         profile: {
           join: profiles,
-          on: sql`${users.id} = ${profiles.userId}`,
+          on: sql`${users.cols.id} = ${profiles.cols.userId}`,
         },
       },
     });
@@ -314,7 +314,7 @@ describe("Joins - Comprehensive Tests", () => {
         profile: {
           type: "inner",
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
       },
     });
@@ -342,7 +342,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         manager: {
           join: manager,
-          on: ["managerId", manager.id],
+          on: ["managerId", manager.cols.id],
         },
       },
     });
@@ -388,11 +388,11 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         profile: {
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
     });
@@ -418,12 +418,12 @@ describe("Joins - Comprehensive Tests", () => {
         profile: {
           type: "inner", // Must have profile
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
         city: {
           type: "left", // May not have city
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
     });
@@ -449,11 +449,11 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
           with: {
             country: {
               join: countries,
-              on: ["countryId", countries.id],
+              on: ["countryId", countries.cols.id],
             },
           },
         },
@@ -480,11 +480,11 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         author: {
           join: users,
-          on: ["authorId", users.id],
+          on: ["authorId", users.cols.id],
           with: {
             city: {
               join: cities,
-              on: ["cityId", cities.id],
+              on: ["cityId", cities.cols.id],
             },
           },
         },
@@ -515,21 +515,21 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
           with: {
             country: {
               join: countries,
-              on: ["countryId", countries.id],
+              on: ["countryId", countries.cols.id],
             },
           },
         },
         manager: {
           join: manager,
-          on: ["managerId", manager.id],
+          on: ["managerId", manager.cols.id],
           with: {
             city: {
               join: managerCity,
-              on: ["cityId", managerCity.id],
+              on: ["cityId", managerCity.cols.id],
             },
           },
         },
@@ -565,15 +565,15 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         author: {
           join: users,
-          on: ["authorId", users.id],
+          on: ["authorId", users.cols.id],
           with: {
             city: {
               join: cities,
-              on: ["cityId", cities.id],
+              on: ["cityId", cities.cols.id],
               with: {
                 country: {
                   join: countries,
-                  on: ["countryId", countries.id],
+                  on: ["countryId", countries.cols.id],
                 },
               },
             },
@@ -609,11 +609,11 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         manager: {
           join: manager,
-          on: ["managerId", manager.id],
+          on: ["managerId", manager.cols.id],
           with: {
             manager: {
               join: managerManager,
-              on: ["managerId", managerManager.id],
+              on: ["managerId", managerManager.cols.id],
             },
           },
         },
@@ -642,7 +642,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
       where: {
@@ -668,11 +668,11 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
           with: {
             country: {
               join: countries,
-              on: ["countryId", countries.id],
+              on: ["countryId", countries.cols.id],
             },
           },
         },
@@ -701,7 +701,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
       where: {
@@ -734,7 +734,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         manager: {
           join: manager,
-          on: ["managerId", manager.id],
+          on: ["managerId", manager.cols.id],
         },
       },
       where: {
@@ -764,11 +764,11 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         profile: {
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
       orderBy: { column: "name", direction: "asc" },
@@ -791,7 +791,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
       limit: 2,
@@ -814,7 +814,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         profile: {
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
       },
       offset: 1,
@@ -846,7 +846,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         author: {
           join: users,
-          on: ["authorId", users.id],
+          on: ["authorId", users.cols.id],
         },
       },
     });
@@ -856,7 +856,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         author: {
           join: users,
-          on: ["authorId", users.id],
+          on: ["authorId", users.cols.id],
         },
       },
     });
@@ -886,7 +886,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
         },
       },
     });
@@ -910,17 +910,17 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         city: {
           join: cities,
-          on: ["cityId", cities.id],
+          on: ["cityId", cities.cols.id],
           with: {
             country: {
               join: countries,
-              on: ["countryId", countries.id],
+              on: ["countryId", countries.cols.id],
             },
           },
         },
         manager: {
           join: manager,
-          on: ["managerId", manager.id],
+          on: ["managerId", manager.cols.id],
         },
       },
       where: {
@@ -965,7 +965,7 @@ describe("Joins - Comprehensive Tests", () => {
         with: {
           city: {
             join: cities,
-            on: ["cityId", cities.id],
+            on: ["cityId", cities.cols.id],
           },
         },
         orderBy: { column: "name", direction: "asc" },
@@ -992,11 +992,11 @@ describe("Joins - Comprehensive Tests", () => {
         with: {
           city: {
             join: cities,
-            on: ["cityId", cities.id],
+            on: ["cityId", cities.cols.id],
             with: {
               country: {
                 join: countries,
-                on: ["countryId", countries.id],
+                on: ["countryId", countries.cols.id],
               },
             },
           },
@@ -1028,7 +1028,7 @@ describe("Joins - Comprehensive Tests", () => {
         profile: {
           type: "inner",
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
       },
     });
@@ -1056,15 +1056,15 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         post: {
           join: posts,
-          on: ["postId", posts.id],
+          on: ["postId", posts.cols.id],
           with: {
             author: {
               join: author,
-              on: ["authorId", author.id],
+              on: ["authorId", author.cols.id],
               with: {
                 city: {
                   join: authorCity,
-                  on: ["cityId", authorCity.id],
+                  on: ["cityId", authorCity.cols.id],
                 },
               },
             },
@@ -1072,11 +1072,11 @@ describe("Joins - Comprehensive Tests", () => {
         },
         author: {
           join: users,
-          on: ["authorId", users.id],
+          on: ["authorId", users.cols.id],
           with: {
             city: {
               join: cities,
-              on: ["cityId", cities.id],
+              on: ["cityId", cities.cols.id],
             },
           },
         },
@@ -1104,7 +1104,7 @@ describe("Joins - Comprehensive Tests", () => {
       with: {
         profile: {
           join: profiles,
-          on: ["id", profiles.userId],
+          on: ["id", profiles.cols.userId],
         },
       },
     });

@@ -32,4 +32,4 @@ export const files = $entity({
   ],
 });
 
-export type FileEntity = Static<typeof files.$schema>;
+export type FileEntity = Static<typeof files.schema>;

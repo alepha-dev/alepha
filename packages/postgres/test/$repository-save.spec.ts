@@ -4,8 +4,8 @@ import { $entity, $repository, pg } from "../src";
 
 describe("$repository - save", () => {
   it("should save an entity with deleted fields", async () => {
-    const dummySchema = $entity({
-      name: "Dummy",
+    const dummies = $entity({
+      name: "dummies",
       schema: t.object({
         id: pg.primaryKey(),
         name: t.optional(t.text()),
@@ -13,7 +13,7 @@ describe("$repository - save", () => {
     });
 
     class App {
-      dummies = $repository(dummySchema);
+      dummies = $repository(dummies);
     }
 
     const alepha = Alepha.create();

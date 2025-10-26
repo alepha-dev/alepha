@@ -1,19 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
-import {
-  $env,
-  $hook,
-  $inject,
-  AlephaError,
-  type Static,
-  type TObject,
-  t,
-} from "@alepha/core";
+import { $env, $hook, $inject, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { PGlite } from "@electric-sql/pglite";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
+import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
-import { PostgresProvider, type SQLLike } from "./PostgresProvider.ts";
+import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 const envSchema = t.object({
   /**
@@ -27,25 +20,43 @@ const envSchema = t.object({
   DATABASE_URL: t.optional(t.text()),
 });
 
-export class PglitePostgresProvider extends PostgresProvider {
-  public static importPglite():
-    | {
-        PGlite: typeof PGlite;
-      }
-    | undefined {
+export interface PgLiteModule {
+  PGlite: typeof PGlite;
+}
+
+export class PglitePostgresProvider extends DatabaseProvider {
+  public static importPglite(): PgLiteModule | undefined {
     try {
       return createRequire(import.meta.url)("@electric-sql/pglite");
-    } catch {}
+    } catch {
+      // ignored
+    }
   }
 
   protected readonly env = $env(envSchema);
-
   protected readonly log = $logger();
+  protected readonly kit = $inject(DrizzleKitProvider);
+  protected readonly builder = $inject(PostgresModelBuilder);
 
   protected client?: PGlite;
   protected pglite?: PgliteDatabase;
 
-  protected readonly kit = $inject(DrizzleKitProvider);
+  public readonly dialect = "postgres";
+
+  public override get db(): PgliteDatabase {
+    if (!this.pglite) {
+      throw new AlephaError("Database not initialized");
+    }
+
+    return this.pglite;
+  }
+
+  public async execute(
+    statement: SQLLike,
+  ): Promise<Array<Record<string, unknown>>> {
+    const { rows } = await this.db.execute(statement);
+    return rows;
+  }
 
   protected readonly onStart = $hook({
     on: "start",
@@ -58,8 +69,8 @@ export class PglitePostgresProvider extends PostgresProvider {
       }
 
       const { drizzle } = createRequire(import.meta.url)("drizzle-orm/pglite");
-
       const path = this.getDatabasePath();
+
       this.log.info(`Using PGlite database at ${path}`);
 
       if (path !== "memory://") {
@@ -72,8 +83,6 @@ export class PglitePostgresProvider extends PostgresProvider {
       this.pglite = drizzle({
         client: this.client,
       });
-
-      await this.kit.synchronize(this, this.schema);
     },
   });
 
@@ -90,46 +99,23 @@ export class PglitePostgresProvider extends PostgresProvider {
     },
   });
 
-  public async execute<T extends TObject | undefined>(
-    query: SQLLike,
-    schema?: T,
-  ): Promise<Array<T extends TObject ? Static<T> : any>> {
-    const response = await this.db.execute(query);
-
-    if (schema) {
-      return this.mapResult(response.rows, schema);
-    }
-
-    return response.rows as Array<T extends TObject ? Static<T> : any>;
-  }
-
   protected getDatabasePath(): string {
     let path = this.env.DATABASE_URL;
+
     if (!path) {
       if (this.alepha.isTest()) {
-        path = "memory://";
+        path = "memory://"; // use in-memory database for tests by default
       } else {
-        path = "node_modules/.db";
+        path = "node_modules/.db"; // default path for dev
       }
     } else {
-      if (path === ":memory:") {
+      if (path.includes(":memory:")) {
         path = "memory://";
       } else if (path.startsWith("file://")) {
         path = path.replace("file://", "");
-      } else if (path.startsWith("postgres://")) {
-        throw new AlephaError(
-          "Invalid DATABASE_URL. postgres:// protocol are not supported by PGlite.",
-        );
       }
     }
+
     return path;
-  }
-
-  public override get db(): PgliteDatabase {
-    if (!this.pglite) {
-      throw new AlephaError("Database not initialized");
-    }
-
-    return this.pglite;
   }
 }

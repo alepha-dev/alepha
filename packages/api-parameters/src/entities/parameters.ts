@@ -27,4 +27,4 @@ export const parameters = $entity({
   }),
 });
 
-export type ParameterEntity = Static<typeof parameters.$schema>;
+export type ParameterEntity = Static<typeof parameters.schema>;

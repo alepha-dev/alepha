@@ -17,8 +17,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import { PgMigrationError } from "../../errors/PgMigrationError.ts";
+import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
-import { PostgresProvider } from "./PostgresProvider.ts";
+import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 declare module "@alepha/core" {
   interface Env extends Partial<Static<typeof envSchema>> {}
@@ -47,19 +48,8 @@ const envSchema = t.object({
    * It will generate the migration script and save it to the DB.
    *
    * This is recommended for development and testing purposes only.
-   *
-   * @default false
    */
   POSTGRES_SYNCHRONIZE: t.optional(t.boolean()),
-
-  /**
-   * Push the schema to the database.
-   * It's like `drizzle-kit push` command.
-   * It will introspect the models from DB and generate the SQL statements to create or update the tables.
-   *
-   * @default false
-   */
-  POSTGRES_PUSH: t.optional(t.boolean()),
 });
 
 export interface NodePostgresProviderOptions {
@@ -67,20 +57,21 @@ export interface NodePostgresProviderOptions {
   connection: postgres.Options<any>;
 }
 
-export class NodePostgresProvider extends PostgresProvider {
-  public readonly dialect = "postgres";
-
-  protected readonly sslModes = [
+export class NodePostgresProvider extends DatabaseProvider {
+  static readonly SSL_MODES = [
     "require",
     "allow",
     "prefer",
     "verify-full",
   ] as const;
 
+  public readonly dialect = "postgres";
+
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly kit = $inject(DrizzleKitProvider);
+  protected readonly builder = $inject(PostgresModelBuilder);
   protected client?: postgres.Sql;
   protected pg?: PostgresJsDatabase;
 
@@ -92,7 +83,15 @@ export class NodePostgresProvider extends PostgresProvider {
   /**
    * In testing mode, the schema name will be generated and deleted after the test.
    */
-  protected schemaForTesting?: string;
+  protected schemaForTesting = this.alepha.isTest()
+    ? this.generateTestSchemaName()
+    : undefined;
+
+  public override execute(
+    statement: SQLLike,
+  ): Promise<Array<Record<string, unknown>>> {
+    return this.db.execute(statement);
+  }
 
   /**
    * Get Postgres schema.
@@ -109,10 +108,11 @@ export class NodePostgresProvider extends PostgresProvider {
     return "public";
   }
 
-  public get db(): PostgresJsDatabase {
+  public override get db(): PostgresJsDatabase {
     if (!this.pg) {
       throw new AlephaError("Database not initialized");
     }
+
     return this.pg;
   }
 
@@ -120,10 +120,6 @@ export class NodePostgresProvider extends PostgresProvider {
     on: "start",
     handler: async () => {
       await this.connect();
-
-      // if (this.env.POSTGRES_SCHEMA) {
-      //   await this.kit.setPgSchema(this);
-      // }
 
       // never migrate in serverless mode (vercel, netlify, ...)
       if (!this.alepha.isServerless()) {
@@ -139,9 +135,9 @@ export class NodePostgresProvider extends PostgresProvider {
   protected readonly onStop = $hook({
     on: "stop",
     handler: async () => {
+      // cleanup test schema
       if (
         this.alepha.isTest() &&
-        process.env.NODE_ENV === "test" && // just to be sure :-)
         this.schemaForTesting &&
         this.schemaForTesting.startsWith("test_")
       ) {
@@ -162,7 +158,6 @@ export class NodePostgresProvider extends PostgresProvider {
     this.log.debug("Connect ..");
 
     const client = postgres(this.getClientOptions());
-
     await client`SELECT 1`; // test connection
 
     this.client = client;
@@ -200,8 +195,7 @@ export class NodePostgresProvider extends PostgresProvider {
         // Testing environment
         // -------------------------------------------------------------------------------------------------------------
         if (this.alepha.isTest()) {
-          this.schemaForTesting = this.generateTestSchemaName();
-          await this.kit.synchronize(this, this.schema);
+          await this.kit.synchronize(this);
           return;
         }
 
@@ -219,7 +213,7 @@ export class NodePostgresProvider extends PostgresProvider {
           }
 
           // 2. synchronize the database schema with the models
-          await this.kit.synchronize(this, this.schema);
+          await this.kit.synchronize(this);
           return;
         }
       }
@@ -275,7 +269,7 @@ export class NodePostgresProvider extends PostgresProvider {
     url: URL,
   ): "require" | "allow" | "prefer" | "verify-full" | undefined {
     const mode = url.searchParams.get("sslmode");
-    for (const it of this.sslModes) {
+    for (const it of NodePostgresProvider.SSL_MODES) {
       if (mode === it) {
         return it;
       }

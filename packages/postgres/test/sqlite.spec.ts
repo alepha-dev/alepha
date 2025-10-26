@@ -1,6 +1,6 @@
 import { Alepha, t } from "@alepha/core";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, PostgresProvider, pg } from "../src";
+import { $entity, $repository, DatabaseProvider, pg } from "../src";
 import { NodeSqliteProvider } from "../src/providers/drivers/NodeSqliteProvider.ts";
 
 describe("sqlite", () => {
@@ -15,7 +15,7 @@ describe("sqlite", () => {
 
     const alepha = Alepha.create()
       .with({
-        provide: PostgresProvider,
+        provide: DatabaseProvider,
         use: NodeSqliteProvider,
       })
       .configure(NodeSqliteProvider, {

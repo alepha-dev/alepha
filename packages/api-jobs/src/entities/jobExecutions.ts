@@ -17,4 +17,4 @@ export const jobExecutions = $entity({
   }),
 });
 
-export type JobExecutionEntity = Static<typeof jobExecutions.$schema>;
+export type JobExecutionEntity = Static<typeof jobExecutions.schema>;

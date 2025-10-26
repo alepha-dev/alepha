@@ -46,6 +46,6 @@ export const verifications = $entity({
   ],
 });
 
-export const verificationEntitySchema = verifications.$schema;
-export const verificationEntityInsertSchema = verifications.$insertSchema;
-export type VerificationEntity = Static<typeof verifications.$schema>;
+export const verificationEntitySchema = verifications.schema;
+export const verificationEntityInsertSchema = verifications.insertSchema;
+export type VerificationEntity = Static<typeof verifications.schema>;

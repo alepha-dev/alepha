@@ -1,7 +1,5 @@
 import type { Static, TObject } from "@alepha/core";
 import type { SQLWrapper } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
-import type { PgTableWithColumnsAndSchema } from "../descriptors/$entity.ts";
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 /**
@@ -42,9 +40,9 @@ export type PgStatic<
   T extends TObject,
   Relations extends PgRelationMap<T>,
 > = Static<T> & {
-  [K in keyof Relations]: Static<Relations[K]["join"]["$schema"]> &
+  [K in keyof Relations]: Static<Relations[K]["join"]["schema"]> &
     (Relations[K]["with"] extends PgRelationMap<TObject>
-      ? PgStatic<Relations[K]["join"]["$schema"], Relations[K]["with"]>
+      ? PgStatic<Relations[K]["join"]["schema"], Relations[K]["with"]>
       : {});
 };
 
@@ -61,9 +59,21 @@ export type PgRelationMap<Base extends TObject> = Record<
   PgRelation<Base>
 >;
 
+type TObjectAny = TObject<any>;
+
 export type PgRelation<Base extends TObject> = {
   type?: "left" | "inner" | "right";
-  join: PgTableWithColumnsAndSchema<any, TObject>;
-  on: SQLWrapper | [keyof Static<Base>, PgColumn];
+  join: {
+    schema: TObject;
+    name: string;
+  };
+  on:
+    | SQLWrapper
+    | [
+        keyof Static<Base>,
+        {
+          name: string;
+        },
+      ];
   with?: PgRelationMap<TObject>;
 };

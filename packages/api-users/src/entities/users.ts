@@ -21,4 +21,4 @@ export const users = $entity({
   }),
 });
 
-export type UserEntity = Static<typeof users.$schema>;
+export type UserEntity = Static<typeof users.schema>;

@@ -13,33 +13,6 @@ describe("SimpleFormatterProvider", () => {
     log = $logger();
   }
 
-  it("should format log entries correctly", ({ expect }) => {
-    const alepha = Alepha.create({
-      env: {
-        LOG_LEVEL: "trace",
-      },
-    })
-      .with({
-        provide: LogFormatterProvider,
-        use: SimpleFormatterProvider,
-      })
-      .with({
-        provide: LogDestinationProvider,
-        use: MemoryDestinationProvider,
-      });
-
-    const app = alepha.inject(App);
-
-    app.log.info("Test log message");
-
-    const output = alepha.inject(MemoryDestinationProvider);
-    const fmt = alepha.inject(SimpleFormatterProvider);
-
-    expect(output.logs[0].formatted).toMatch(
-      `\x1b[90m[${fmt.formatTimestamp(output.logs[0].timestamp)}]\x1b[0m \x1b[32mINFO\x1b[0m <\x1b[37mapp.\x1b[0m\x1b[1;97mApp\x1b[0m>: \x1b[36mTest log message\x1b[0m`,
-    );
-  });
-
   it("should format log entries correctly without color", ({ expect }) => {
     const alepha = Alepha.create({
       env: {

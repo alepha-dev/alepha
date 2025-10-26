@@ -1,32 +1,29 @@
-import type { TObject } from "@alepha/core";
+import { type Static, type TObject, t } from "@alepha/core";
 import { getTableName, type SQL, sql } from "drizzle-orm";
-import {
-  alias,
-  type PgSelectBase,
-  type PgTableWithColumns,
-} from "drizzle-orm/pg-core";
+import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
-import type { PgTableWithColumnsAndSchema } from "../descriptors/$entity.ts";
+import type { EntityDescriptor } from "../descriptors/$entity.ts";
 import type { PgRelationMap } from "../interfaces/PgQuery.ts";
+import type { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 import type { PgJoin } from "./PgQueryManager.ts";
 
 export class PgRelationManager {
+  /**
+   * Recursively build joins for the query builder based on the relations map
+   */
   public buildJoins(
+    provider: DatabaseProvider,
     builder: PgSelectBase<any, any, any>,
     joins: Array<PgJoin>,
     withRelations: PgRelationMap<TObject>,
-    table: PgTableWithColumnsAndSchema<any, any>,
+    table: PgTableWithColumns<any>,
     parentKey?: string,
   ) {
     for (const [key, join] of Object.entries(withRelations)) {
-      let from = join.join as PgTableWithColumns<any>;
-      if (from === table) {
-        from = alias(from, key);
-      }
-
+      const from = provider.table(join.join as EntityDescriptor);
       const on = isSQLWrapper(join.on)
         ? (join.on as SQL)
-        : sql`${table[join.on[0] as string]} = ${join.on[1]}`;
+        : sql`${table[join.on[0] as string]} = ${from[join.on[1].name]}`;
 
       if (join.type === "right") {
         builder.rightJoin(from, on);
@@ -38,26 +35,28 @@ export class PgRelationManager {
 
       joins.push({
         key,
-        table: getTableName(join.join),
-        schema: join.join.$schema,
-        col: (name: string) => {
-          return (join.join as any)[name];
-        },
+        table: getTableName(from),
+        schema: join.join.schema,
+        col: (name: string) => from[name],
         parent: parentKey,
       });
 
       if (join.with) {
         this.buildJoins(
+          provider,
           builder,
           joins,
           join.with,
-          join.join as PgTableWithColumnsAndSchema<any, any>,
+          from,
           parentKey ? `${parentKey}.${key}` : key,
         );
       }
     }
   }
 
+  /**
+   * Map a row with its joined relations based on the joins definition
+   */
   public mapRowWithJoins(
     record: Record<string, unknown>,
     row: Record<string, unknown>,
@@ -94,5 +93,97 @@ export class PgRelationManager {
     if (obj === null || obj === undefined) return true;
     if (typeof obj !== "object") return false;
     return Object.values(obj).every((val) => val === null);
+  }
+
+  /**
+   * Clean a row with joins recursively
+   */
+  public cleanWithJoins<T extends TObject>(
+    row: Record<string, unknown>,
+    schema: T,
+    joins: PgJoin[],
+    clean: (data: Record<string, unknown>, schema: TObject) => Static<T>,
+    parentPath?: string,
+  ): Static<T> {
+    // Get joins at this level
+    const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
+
+    // Create a copy of the row for cleaning, removing joined data temporarily
+    const cleanRow: Record<string, unknown> = { ...row };
+    const joinedData: Record<string, unknown> = {};
+
+    for (const join of joinsAtThisLevel) {
+      joinedData[join.key] = cleanRow[join.key];
+      delete cleanRow[join.key];
+    }
+
+    // Clean the base entity without joined properties
+    const entity = clean(cleanRow, schema);
+
+    // Then recursively clean joined entities
+    for (const join of joinsAtThisLevel) {
+      const joinedValue = joinedData[join.key];
+      // Only process if the joined value exists
+      if (joinedValue != null) {
+        // Build path for this join
+        const joinPath = parentPath ? `${parentPath}.${join.key}` : join.key;
+        // Find child joins
+        const childJoins = joins.filter((j) => j.parent === joinPath);
+        // Recursively clean if there are child joins
+        if (childJoins.length > 0) {
+          (entity as any)[join.key] = this.cleanWithJoins(
+            joinedValue as Record<string, unknown>,
+            join.schema,
+            joins,
+            clean,
+            joinPath,
+          );
+        } else {
+          // No child joins, just clean this join
+          (entity as any)[join.key] = clean(
+            joinedValue as Record<string, unknown>,
+            join.schema,
+          );
+        }
+      } else {
+        // Set to undefined if no data
+        (entity as any)[join.key] = undefined;
+      }
+    }
+
+    return entity as Static<T>;
+  }
+
+  /**
+   * Build a schema that includes all join properties recursively
+   */
+  public buildSchemaWithJoins(
+    baseSchema: TObject,
+    joins: PgJoin[],
+    parentPath?: string,
+  ): TObject {
+    const schema = { ...baseSchema, properties: { ...baseSchema.properties } };
+
+    // Group joins by parent
+    const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
+
+    for (const join of joinsAtThisLevel) {
+      // Build the path for this join
+      const joinPath = parentPath ? `${parentPath}.${join.key}` : join.key;
+
+      // Find child joins
+      const childJoins = joins.filter((j) => j.parent === joinPath);
+
+      // If there are child joins, recursively build the schema
+      let joinSchema = join.schema;
+      if (childJoins.length > 0) {
+        joinSchema = this.buildSchemaWithJoins(join.schema, joins, joinPath);
+      }
+
+      // Make the join optional (left joins may return null)
+      schema.properties[join.key] = t.optional(joinSchema);
+    }
+
+    return schema;
   }
 }

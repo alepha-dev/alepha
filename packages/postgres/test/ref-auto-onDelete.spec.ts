@@ -19,7 +19,7 @@ describe("pg.ref - automatic onDelete behavior", () => {
       __v: pg.version(),
       name: t.text(),
       // Optional reference - should automatically set onDelete: "set null"
-      categoryId: pg.ref(t.optional(t.int()), () => categories.id),
+      categoryId: pg.ref(t.optional(t.int()), () => categories.cols.id),
     }),
   });
 
@@ -30,7 +30,7 @@ describe("pg.ref - automatic onDelete behavior", () => {
       __v: pg.version(),
       orderNumber: t.text(),
       // Required reference - should automatically set onDelete: "cascade"
-      productId: pg.ref(t.int(), () => products.id),
+      productId: pg.ref(t.int(), () => products.cols.id),
     }),
   });
 
@@ -117,9 +117,13 @@ describe("pg.ref - automatic onDelete behavior", () => {
         __v: pg.version(),
         name: t.text(),
         // Optional reference but explicitly set to cascade
-        categoryId: pg.ref(t.optional(t.int()), () => customCategories.id, {
-          onDelete: "cascade",
-        }),
+        categoryId: pg.ref(
+          t.optional(t.int()),
+          () => customCategories.cols.id,
+          {
+            onDelete: "cascade",
+          },
+        ),
       }),
     });
 

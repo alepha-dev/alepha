@@ -4,17 +4,18 @@ import { $entity } from "./descriptors/$entity.ts";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
+import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
-import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
+import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
+import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { drizzle };
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
-export * from "./constants/PG_SCHEMA.ts";
 export * from "./constants/PG_SYMBOLS.ts";
 export * from "./descriptors/$entity.ts";
 export * from "./descriptors/$repository.ts";
@@ -26,13 +27,12 @@ export * from "./errors/PgError.ts";
 export * from "./errors/PgMigrationError.ts";
 export * from "./errors/PgVersionMismatchError.ts";
 export * from "./helpers/pgAttr.ts";
-export * from "./helpers/schemaToPgColumns.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";
 export * from "./providers/DrizzleKitProvider.ts";
+export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
-export * from "./providers/drivers/PostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
@@ -76,8 +76,6 @@ export * from "./types/schema.ts";
  *
  * Migrations are supported via Drizzle ORM, you need to use the `drizzle-kit` CLI tool to generate and run migrations.
  *
- * Relations are **NOT SUPPORTED** yet. If you need relations, please use the `drizzle-orm` package directly.
- *
  * @see {@link $entity}
  * @see {@link $sequence}
  * @see {@link $repository}
@@ -88,9 +86,12 @@ export const AlephaPostgres = $module({
   name: "alepha.postgres",
   descriptors: [$repository, $sequence, $entity],
   services: [
-    PostgresProvider,
+    DatabaseProvider,
     NodePostgresProvider,
     PglitePostgresProvider,
+    NodeSqliteProvider,
+    SqliteModelBuilder,
+    PostgresModelBuilder,
     DrizzleKitProvider,
   ],
   register: (alepha: Alepha) => {
@@ -104,27 +105,33 @@ export const AlephaPostgres = $module({
 
     const url = env.DATABASE_URL;
     const hasPGlite = !!PglitePostgresProvider.importPglite();
-    const isNodePg = url?.startsWith("postgres://");
+    const isPostgres = url?.startsWith("postgres:");
     const isSqlite = url?.startsWith("sqlite:");
+    const isMemory = url?.includes(":memory:");
+    const isFile = !!url && !isPostgres && !isMemory;
 
-    if (hasPGlite && !isNodePg && !isSqlite) {
+    if (hasPGlite && (isMemory || isFile || !url) && !isSqlite) {
       alepha.with({
         optional: true,
-        provide: PostgresProvider,
+        provide: DatabaseProvider,
         use: PglitePostgresProvider,
       });
-    } else if (isNodePg) {
+      return;
+    }
+
+    if (isPostgres) {
       alepha.with({
         optional: true,
-        provide: PostgresProvider,
+        provide: DatabaseProvider,
         use: NodePostgresProvider,
       });
-    } else {
-      alepha.with({
-        optional: true,
-        provide: PostgresProvider,
-        use: NodeSqliteProvider,
-      });
+      return;
     }
+
+    alepha.with({
+      optional: true,
+      provide: DatabaseProvider,
+      use: NodeSqliteProvider,
+    });
   },
 });

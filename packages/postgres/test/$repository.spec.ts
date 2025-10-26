@@ -48,7 +48,7 @@ const testAllTypes = async (alepha: Alepha) => {
   const app = alepha.inject(App);
   await alepha.start();
 
-  const data: Static<typeof bigEntity.$insertSchema> = {
+  const data: Static<typeof bigEntity.insertSchema> = {
     type: "big_entity",
     a: "a",
     b: 1.111,

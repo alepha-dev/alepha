@@ -62,4 +62,4 @@ export const bigEntity = $entity({
   }),
 });
 
-export type BigEntity = Static<typeof bigEntity.$schema>;
+export type BigEntity = Static<typeof bigEntity.schema>;

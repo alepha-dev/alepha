@@ -10,7 +10,7 @@ export const sessions = $entity({
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     refreshToken: t.uuid(),
-    userId: pg.ref(t.uuid(), () => users.id),
+    userId: pg.ref(t.uuid(), () => users.cols.id),
     expiresAt: t.datetime(),
     ip: t.optional(t.string()),
     userAgent: t.optional(
@@ -23,4 +23,4 @@ export const sessions = $entity({
   }),
 });
 
-export type SessionEntity = Static<typeof sessions.$schema>;
+export type SessionEntity = Static<typeof sessions.schema>;

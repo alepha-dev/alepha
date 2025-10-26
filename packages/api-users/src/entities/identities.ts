@@ -9,11 +9,11 @@ export const identities = $entity({
     version: pg.version(),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
-    userId: pg.ref(t.uuid(), () => users.id),
+    userId: pg.ref(t.uuid(), () => users.cols.id),
     provider: t.string(),
     providerUserId: t.string(),
     providerData: t.optional(t.json()),
   }),
 });
 
-export type IdentityEntity = Static<typeof identities.$schema>;
+export type IdentityEntity = Static<typeof identities.schema>;

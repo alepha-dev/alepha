@@ -1,22 +1,18 @@
-import type { Static, TObject, TSchema } from "@alepha/core";
 import {
   $inject,
   Alepha,
   AlephaError,
   createDescriptor,
   Descriptor,
+  type DescriptorArgs,
   KIND,
-  type Service,
+  type Static,
+  type TObject,
+  type TSchema,
   t,
 } from "@alepha/core";
 import { type DateTime, DateTimeProvider } from "@alepha/datetime";
-import {
-  asc,
-  desc,
-  getTableName,
-  type SQL,
-  type TableConfig,
-} from "drizzle-orm";
+import { asc, desc, type SQL } from "drizzle-orm";
 import type {
   LockConfig,
   LockStrength,
@@ -52,16 +48,21 @@ import type {
   PgQueryWhereOrSQL,
 } from "../interfaces/PgQueryWhere.ts";
 import {
-  PostgresProvider,
+  DatabaseProvider,
   type SQLLike,
-} from "../providers/drivers/PostgresProvider.ts";
+} from "../providers/drivers/DatabaseProvider.ts";
 import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { PageQuery } from "../schemas/pageQuerySchema.ts";
 import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 import { type PgJoin, PgQueryManager } from "../services/PgQueryManager.ts";
 import { PgRelationManager } from "../services/PgRelationManager.ts";
-import type { PgTableWithColumnsAndSchema } from "./$entity.ts";
+import {
+  $entity,
+  EntityDescriptor,
+  type EntityDescriptorOptions,
+  type SchemaToTableConfig,
+} from "./$entity.ts";
 
 /**
  * Creates a repository for database operations on a defined entity.
@@ -70,101 +71,28 @@ import type { PgTableWithColumnsAndSchema } from "./$entity.ts";
  * database operations on entities defined with $entity. It offers a rich set of
  * CRUD operations, advanced querying capabilities, pagination, transactions, and
  * built-in support for audit trails and soft deletes.
- *
- * **Key Features**
- *
- * - **Complete CRUD Operations**: Create, read, update, delete with full type safety
- * - **Advanced Querying**: Complex WHERE conditions, sorting, pagination, and aggregations
- * - **Transaction Support**: Database transactions for consistency and atomicity
- * - **Soft Delete Support**: Built-in soft delete functionality with `pg.deletedAt()` fields
- * - **Optimistic Locking**: Version-based conflict resolution with `pg.version()` fields
- * - **Audit Trail Integration**: Automatic handling of `createdAt`, `updatedAt` timestamps
- * - **Raw SQL Support**: Execute custom SQL queries when needed
- * - **Pagination**: Built-in pagination with metadata and navigation
- *
- * **Important Requirements**
- * - Must be used with an entity created by $entity
- * - Entity schema must include exactly one primary key field
- * - Database tables must be created via migrations before use
- *
- * @example
- * **Basic repository with CRUD operations:**
- * ```ts
- * import { $entity, $repository } from "alepha/postgres";
- * import { pg, t } from "alepha";
- *
- * // First, define the entity
- * const users = $entity({
- *   name: "users",
- *   schema: t.object({
- *     id: pg.primaryKey(t.uuid()),
- *     email: t.text({ format: "email" }),
- *     firstName: t.text(),
- *     lastName: t.text(),
- *     isActive: pg.default(t.boolean(), true),
- *     createdAt: pg.createdAt(),
- *     updatedAt: pg.updatedAt()
- *   }),
- *   indexes: [{ column: "email", unique: true }]
- * });
- *
- * class UserService {
- *   users = $repository(users);
- *
- *   async createUser(userData: { email: string; firstName: string; lastName: string }) {
- *     return await this.users.create({
- *       id: generateUUID(),
- *       email: userData.email,
- *       firstName: userData.firstName,
- *       lastName: userData.lastName
- *     });
- *   }
- *
- *   async getUserByEmail(email: string) {
- *     return await this.users.findOne({ email });
- *   }
- *
- *   async updateUser(id: string, updates: { firstName?: string; lastName?: string }) {
- *     return await this.users.updateById(id, updates);
- *   }
- *
- *   async deactivateUser(id: string) {
- *     return await this.users.updateById(id, { isActive: false });
- *   }
- * }
- * ```
  */
-export const $repository = <
-  EntityTableConfig extends TableConfig,
-  EntitySchema extends TObject,
->(
-  optionsOrTable:
-    | RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
-    | PgTableWithColumnsAndSchema<EntityTableConfig, EntitySchema>,
-): RepositoryDescriptor<EntityTableConfig, EntitySchema> => {
+export const $repository = <T extends TObject>(
+  optionsOrEntity:
+    | EntityDescriptor<T>
+    | EntityDescriptorOptions<T>
+    | RepositoryDescriptorOptions<T>,
+): RepositoryDescriptor<T> => {
   const options =
-    "table" in optionsOrTable
-      ? (optionsOrTable as RepositoryDescriptorOptions<
-          EntityTableConfig,
-          EntitySchema
-        >)
-      : ({
-          table: optionsOrTable,
-          provider: PostgresProvider,
-        } as RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>);
+    optionsOrEntity instanceof EntityDescriptor
+      ? { entity: optionsOrEntity }
+      : "entity" in optionsOrEntity
+        ? optionsOrEntity
+        : {
+            entity: $entity(optionsOrEntity),
+          };
 
-  return createDescriptor(
-    RepositoryDescriptor<EntityTableConfig, EntitySchema>,
-    options,
-  );
+  return createDescriptor(RepositoryDescriptor<T>, options);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface RepositoryDescriptorOptions<
-  EntityTableConfig extends TableConfig,
-  EntitySchema extends TObject,
-> {
+export interface RepositoryDescriptorOptions<T extends TObject> {
   /**
    * The entity table definition created with $entity.
    *
@@ -199,7 +127,7 @@ export interface RepositoryDescriptorOptions<
    * const userRepository = $repository({ table: User });
    * ```
    */
-  table: PgTableWithColumnsAndSchema<EntityTableConfig, EntitySchema>;
+  entity: EntityDescriptor<T>;
 
   /**
    * Override the default PostgreSQL database provider.
@@ -223,25 +151,29 @@ export interface RepositoryDescriptorOptions<
    * @example TenantSpecificPostgresProvider
    * @example TestDatabaseProvider
    */
-  provider?: Service<PostgresProvider>;
+  provider?: DatabaseProvider;
+
+  name?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RepositoryDescriptor<
-  EntityTableConfig extends TableConfig = TableConfig,
-  EntitySchema extends TObject = TObject,
-> extends Descriptor<
-  RepositoryDescriptorOptions<EntityTableConfig, EntitySchema>
-> {
-  protected readonly pgRelationManager = $inject(PgRelationManager);
-  protected readonly pgQueryManager = $inject(PgQueryManager);
+  T extends TObject = TObject,
+> extends Descriptor<RepositoryDescriptorOptions<T>> {
+  protected readonly relationManager = $inject(PgRelationManager);
+  protected readonly queryManager = $inject(PgQueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
-  public readonly provider = $inject(PostgresProvider);
-  public readonly schema = this.options.table.$schema;
-  public readonly schemaInsert = this.options.table.$insertSchema;
+  public readonly provider: DatabaseProvider = this.$provider();
+
+  constructor(args: DescriptorArgs<RepositoryDescriptorOptions<T>>) {
+    super(args);
+    this.provider.registerEntity(
+      this.options.entity as EntityDescriptor<TObject>,
+    );
+  }
 
   /**
    * Represents the primary key of the table.
@@ -250,30 +182,32 @@ export class RepositoryDescriptor<
    *
    * ID is mandatory. If the table does not have a primary key, it will throw an error.
    */
-  public readonly id: {
+  public get id(): {
     type: TSchema;
-    key: keyof EntitySchema["properties"];
+    key: keyof T["properties"];
     col: PgColumn;
-  } = this.getPrimaryKey(this.schema);
+  } {
+    return this.getPrimaryKey(this.options.entity.schema);
+  }
 
   /**
    * Get Drizzle table object.
    */
-  public get table(): PgTableWithColumns<EntityTableConfig> {
-    return this.options.table;
+  public get table(): PgTableWithColumns<SchemaToTableConfig<T>> {
+    return this.provider.table(this.options.entity);
   }
 
   /**
    * Get SQL table name. (from Drizzle table object)
    */
   public get tableName(): string {
-    return getTableName(this.table);
+    return this.options.entity.name;
   }
 
   /**
    * Getter for the database connection from the database provider.
    */
-  protected get db() {
+  protected get db(): PgDatabase<any> {
     return this.provider.db;
   }
 
@@ -287,19 +221,26 @@ export class RepositoryDescriptor<
    *
    * @example
    * ```ts
-   * const users = $entity({ ... });
-   * const result = await repository.query(sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`, users.$schema);
+   * class App {
+   *   repository = $repository({ ... });
+   *   async getAdults() {
+   *     const users = repository.table; // Drizzle table object
+   *     await repository.query(sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`);
+   *     // or better
+   *     await repository.query((users) => sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`);
+   *   }
+   * }
    * ```
    */
-  public async query<T extends TObject = EntitySchema>(
+  public async query<R extends TObject = T>(
     query:
       | SQLLike
       | ((
-          table: PgTableWithColumns<EntityTableConfig>,
+          table: PgTableWithColumns<SchemaToTableConfig<T>>,
           db: PgDatabase<any>,
         ) => SQLLike),
-    schema?: T,
-  ): Promise<Static<T>[]> {
+    schema?: R,
+  ): Promise<Static<R>[]> {
     const raw =
       typeof query === "function" ? query(this.table, this.db) : query;
 
@@ -309,7 +250,7 @@ export class RepositoryDescriptor<
       );
     }
 
-    const rows: Record<string, unknown>[] = await this.provider.execute(raw);
+    const rows = await this.provider.execute(raw);
 
     return rows.map((it) => {
       return this.clean(this.mapRawFieldsToEntity(it), schema);
@@ -338,12 +279,10 @@ export class RepositoryDescriptor<
   /**
    * Get a Drizzle column from the table by his name.
    */
-  protected col(
-    name: keyof PgTableWithColumns<EntityTableConfig>["_"]["columns"],
-  ): PgColumn {
+  protected col(name: keyof Static<T>): PgColumn {
     const column = (this.table as any)[name];
     if (!column) {
-      throw new Error(
+      throw new AlephaError(
         `Invalid access. Column ${String(name)} not found in table ${this.tableName}`,
       );
     }
@@ -377,7 +316,7 @@ export class RepositoryDescriptor<
    */
   protected selectDistinct(
     opts: StatementOptions = {},
-    columns: (keyof Static<EntitySchema>)[] = [],
+    columns: (keyof Static<T>)[] = [],
   ) {
     const db = opts.tx ?? this.db;
     const table = this.table as PgTable;
@@ -420,10 +359,10 @@ export class RepositoryDescriptor<
    *
    * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
    */
-  public async find<R extends PgRelationMap<EntitySchema>>(
-    query: PgQueryRelations<EntitySchema, R> = {},
+  public async find<R extends PgRelationMap<T>>(
+    query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
-  ): Promise<PgStatic<EntitySchema, R>[]> {
+  ): Promise<PgStatic<T, R>[]> {
     const columns = query.columns ?? query.distinct;
     const builder = query.distinct
       ? this.selectDistinct(opts, query.distinct)
@@ -431,16 +370,17 @@ export class RepositoryDescriptor<
 
     const joins: Array<PgJoin> = [];
     if (query.with) {
-      this.pgRelationManager.buildJoins(
+      this.relationManager.buildJoins(
+        this.provider,
         builder,
         joins,
         query.with,
-        this.table as PgTableWithColumnsAndSchema<any, any>,
+        this.table,
       );
     }
 
     const where = this.withDeletedAt(
-      (query.where ?? {}) as PgQueryWhere<EntitySchema>,
+      (query.where ?? {}) as PgQueryWhere<T>,
       opts,
     );
 
@@ -455,9 +395,7 @@ export class RepositoryDescriptor<
     }
 
     if (query.orderBy) {
-      const orderByClauses = this.pgQueryManager.normalizeOrderBy(
-        query.orderBy,
-      );
+      const orderByClauses = this.queryManager.normalizeOrderBy(query.orderBy);
       builder.orderBy(
         ...orderByClauses.map((clause) =>
           clause.direction === "desc"
@@ -482,7 +420,7 @@ export class RepositoryDescriptor<
     try {
       let rows = await builder.execute();
 
-      let schema: TObject = this.schema;
+      let schema: TObject = this.options.entity.schema;
       if (columns) {
         schema = t.pick(schema, columns);
       }
@@ -491,7 +429,7 @@ export class RepositoryDescriptor<
         rows = rows.map((row: any) => {
           // Clone schema for each row to avoid mutation
           const rowSchema = { ...schema, properties: { ...schema.properties } };
-          return this.pgRelationManager.mapRowWithJoins(
+          return this.relationManager.mapRowWithJoins(
             row[this.tableName],
             row,
             rowSchema,
@@ -500,15 +438,20 @@ export class RepositoryDescriptor<
         });
       }
 
-      return rows.map((row) => {
+      rows = rows.map((row) => {
         // For joined queries, build a schema that includes all nested joins
         if (joins.length) {
-          const joinedSchema = this.buildSchemaWithJoins(schema, joins);
+          const joinedSchema = this.relationManager.buildSchemaWithJoins(
+            schema,
+            joins,
+          );
           // Clean the row with the full joined schema (including nested relations)
           return this.cleanWithJoins(row, joinedSchema, joins);
         }
         return this.clean(row, schema);
-      }) as PgStatic<EntitySchema, R>[];
+      });
+
+      return rows as PgStatic<T, R>[];
     } catch (error) {
       throw new PgError("Query select has failed", error as Error);
     }
@@ -517,10 +460,10 @@ export class RepositoryDescriptor<
   /**
    * Find a single entity.
    */
-  public async findOne<R extends PgRelationMap<EntitySchema>>(
-    query: Pick<PgQueryRelations<EntitySchema, R>, "with" | "where">,
+  public async findOne<R extends PgRelationMap<T>>(
+    query: Pick<PgQueryRelations<T, R>, "with" | "where">,
     opts: StatementOptions = {},
-  ): Promise<PgStatic<EntitySchema, R>> {
+  ): Promise<PgStatic<T, R>> {
     const [entity] = await this.find({ limit: 1, ...query }, opts);
 
     if (!entity) {
@@ -528,7 +471,7 @@ export class RepositoryDescriptor<
       throw new PgEntityNotFoundError(this.tableName);
     }
 
-    return entity as PgStatic<EntitySchema, R>;
+    return entity as PgStatic<T, R>;
   }
 
   /**
@@ -538,18 +481,18 @@ export class RepositoryDescriptor<
    *
    * > Pagination CAN also do a count query to get the total number of elements.
    */
-  public async paginate<R extends PgRelationMap<EntitySchema>>(
+  public async paginate<R extends PgRelationMap<T>>(
     pagination: PageQuery = {},
-    query: PgQueryRelations<EntitySchema, R> = {},
+    query: PgQueryRelations<T, R> = {},
     opts: StatementOptions & { count?: boolean } = {},
-  ): Promise<Page<PgStatic<EntitySchema, R>>> {
+  ): Promise<Page<PgStatic<T, R>>> {
     const limit = query.limit ?? pagination.size ?? 10;
     const page = pagination.page ?? 0;
     const offset = query.offset ?? page * limit;
 
     let orderBy = query.orderBy;
     if (!query.orderBy && pagination.sort) {
-      orderBy = this.pgQueryManager.parsePaginationSort(pagination.sort) as any;
+      orderBy = this.queryManager.parsePaginationSort(pagination.sort) as any;
     }
 
     const now = Date.now();
@@ -592,7 +535,7 @@ export class RepositoryDescriptor<
 
     const [entities, countResult] = await Promise.all(tasks);
 
-    const response = this.pgQueryManager.createPagination<EntitySchema>(
+    const response = this.queryManager.createPagination<T>(
       entities,
       limit,
       offset,
@@ -600,7 +543,7 @@ export class RepositoryDescriptor<
 
     response.page.totalElements = countResult;
 
-    return response as Page<PgStatic<EntitySchema, R>>;
+    return response as Page<PgStatic<T, R>>;
   }
 
   /**
@@ -612,7 +555,7 @@ export class RepositoryDescriptor<
   public async findById(
     id: string | number,
     opts: StatementOptions = {},
-  ): Promise<Static<EntitySchema>> {
+  ): Promise<Static<T>> {
     return await this.findOne(
       {
         where: this.getWhereId(id),
@@ -624,14 +567,14 @@ export class RepositoryDescriptor<
   /**
    * Helper to create a type-safe query object.
    */
-  public createQuery(): PgQuery<EntitySchema> {
+  public createQuery(): PgQuery<T> {
     return {};
   }
 
   /**
    * Helper to create a type-safe where clause.
    */
-  public createQueryWhere(): PgQueryWhere<EntitySchema> {
+  public createQueryWhere(): PgQueryWhere<T> {
     return {};
   }
 
@@ -645,13 +588,13 @@ export class RepositoryDescriptor<
    * @returns The ID of the created entity.
    */
   public async create(
-    data: Static<TObjectInsert<EntitySchema>>,
+    data: Static<TObjectInsert<T>>,
     opts: StatementOptions = {},
-  ): Promise<Static<EntitySchema>> {
+  ): Promise<Static<T>> {
     return await this.insert(opts)
       .values(this.cast(data, true))
       .returning(this.table)
-      .then(([it]) => this.clean(it))
+      .then(([it]) => this.clean(it, this.options.entity.schema))
       .catch((error) => {
         throw this.handleError(error, "Insert query has failed");
       });
@@ -665,13 +608,15 @@ export class RepositoryDescriptor<
    * @returns The created entities.
    */
   public async createMany(
-    values: Array<Static<TObjectInsert<EntitySchema>>>,
+    values: Array<Static<TObjectInsert<T>>>,
     opts: StatementOptions = {},
-  ): Promise<Static<EntitySchema>[]> {
+  ): Promise<Static<T>[]> {
     return await this.insert(opts)
       .values(values.map((data) => this.cast(data, true)))
       .returning(this.table)
-      .then((rows) => rows.map((it) => this.clean(it)))
+      .then((rows) =>
+        rows.map((it) => this.clean(it, this.options.entity.schema)),
+      )
       .catch((error) => {
         throw this.handleError(error, "Insert query has failed");
       });
@@ -683,16 +628,19 @@ export class RepositoryDescriptor<
    * Find an entity and update it.
    */
   public async updateOne(
-    where: PgQueryWhereOrSQL<EntitySchema>,
-    data: Partial<Static<TObjectUpdate<EntitySchema>>>,
+    where: PgQueryWhereOrSQL<T>,
+    data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
-  ): Promise<Static<EntitySchema>> {
+  ): Promise<Static<T>> {
     const set = data as any;
 
     // do not update the ID field
     delete set[this.id.key];
 
-    const updatedAtField = getAttrFields(this.schema, PG_UPDATED_AT)?.[0];
+    const updatedAtField = getAttrFields(
+      this.options.entity.schema,
+      PG_UPDATED_AT,
+    )?.[0];
     if (updatedAtField) {
       set[updatedAtField.key] = (
         opts.now ?? this.dateTimeProvider.now()
@@ -714,7 +662,7 @@ export class RepositoryDescriptor<
     }
 
     try {
-      return this.clean(response[0]);
+      return this.clean(response[0], this.options.entity.schema);
     } catch (error) {
       throw this.handleError(error, "Update query has failed");
     }
@@ -742,17 +690,17 @@ export class RepositoryDescriptor<
    * @see {@link PgVersionMismatchError}
    */
   public async save(
-    entity: Static<EntitySchema>,
+    entity: Static<T>,
     opts: StatementOptions = {},
-  ): Promise<Static<EntitySchema>> {
-    const set = this.alepha.parse(this.schema, entity) as any;
+  ): Promise<Static<T>> {
+    const set = this.alepha.parse(this.options.entity.schema, entity) as any;
     const id = set[this.id.key];
     if (id == null) {
       throw new AlephaError("Cannot save entity without ID");
     }
 
     // in save mode, we do not ignore undefined values, but set them to null
-    for (const key of Object.keys(this.schema.properties)) {
+    for (const key of Object.keys(this.options.entity.schema.properties)) {
       if (set[key] === undefined) {
         set[key] = null;
       }
@@ -762,7 +710,10 @@ export class RepositoryDescriptor<
 
     where.id = { eq: id };
 
-    const versionField = getAttrFields(this.schema, PG_VERSION)?.[0];
+    const versionField = getAttrFields(
+      this.options.entity.schema,
+      PG_VERSION,
+    )?.[0];
     if (versionField && typeof set[versionField.key] === "number") {
       where = {
         and: [
@@ -773,7 +724,7 @@ export class RepositoryDescriptor<
             },
           },
         ],
-      } as PgQueryWhere<EntitySchema>;
+      } as PgQueryWhere<T>;
 
       set[versionField.key] += 1;
     }
@@ -797,9 +748,9 @@ export class RepositoryDescriptor<
    */
   public async updateById(
     id: string | number,
-    data: Partial<Static<TObjectUpdate<EntitySchema>>>,
+    data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
-  ): Promise<Static<EntitySchema>> {
+  ): Promise<Static<T>> {
     return await this.updateOne(this.getWhereId(id), data, opts);
   }
 
@@ -807,14 +758,16 @@ export class RepositoryDescriptor<
    * Find many entities and update all of them.
    */
   public async updateMany(
-    where: PgQueryWhereOrSQL<EntitySchema>,
-    data: Partial<Static<TObjectUpdate<EntitySchema>>>,
+    where: PgQueryWhereOrSQL<T>,
+    data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<void> {
     where = this.withDeletedAt(where, opts);
     try {
       await this.update(opts)
-        .set(data as PgUpdateSetSource<PgTableWithColumns<EntityTableConfig>>)
+        .set(
+          data as PgUpdateSetSource<PgTableWithColumns<SchemaToTableConfig<T>>>,
+        )
         .where(this.toSQL(where));
     } catch (error) {
       throw this.handleError(error, "Update query has failed");
@@ -825,7 +778,7 @@ export class RepositoryDescriptor<
    * Find many and delete all of them.
    */
   public async deleteMany(
-    where: PgQueryWhereOrSQL<EntitySchema> = {},
+    where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<void> {
     const deletedAt = this.deletedAt();
@@ -861,10 +814,7 @@ export class RepositoryDescriptor<
    *
    * You must fetch the entity first in order to delete it.
    */
-  public async destroy(
-    entity: Static<EntitySchema>,
-    opts: StatementOptions = {},
-  ) {
+  public async destroy(entity: Static<T>, opts: StatementOptions = {}) {
     const id = (entity as any)[this.id.key];
     if (id == null) {
       throw new AlephaError("Cannot destroy entity without ID");
@@ -883,7 +833,7 @@ export class RepositoryDescriptor<
    * Find an entity and delete it.
    */
   public async deleteOne(
-    where: PgQueryWhereOrSQL<EntitySchema> = {},
+    where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<void> {
     await this.deleteMany(where, opts);
@@ -903,7 +853,7 @@ export class RepositoryDescriptor<
    * Count entities.
    */
   public async count(
-    where: PgQueryWhereOrSQL<EntitySchema> = {},
+    where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<number> {
     where = this.withDeletedAt(where, opts);
@@ -931,11 +881,11 @@ export class RepositoryDescriptor<
   }
 
   protected withDeletedAt(
-    where: PgQueryWhereOrSQL<EntitySchema>,
+    where: PgQueryWhereOrSQL<T>,
     opts: {
       force?: boolean;
     } = {},
-  ): PgQueryWhereOrSQL<EntitySchema> {
+  ): PgQueryWhereOrSQL<T> {
     if (opts.force) {
       return where;
     }
@@ -954,11 +904,14 @@ export class RepositoryDescriptor<
           },
         } as any,
       ],
-    } as PgQueryWhereOrSQL<EntitySchema>;
+    } as PgQueryWhereOrSQL<T>;
   }
 
   protected deletedAt(): PgAttrField | undefined {
-    const deletedAtFields = getAttrFields(this.schema, PG_DELETED_AT);
+    const deletedAtFields = getAttrFields(
+      this.options.entity.schema,
+      PG_DELETED_AT,
+    );
     if (deletedAtFields.length > 0) {
       return deletedAtFields[0];
     }
@@ -971,10 +924,10 @@ export class RepositoryDescriptor<
   protected cast(
     data: any,
     insert: boolean,
-  ): PgInsertValue<PgTableWithColumns<EntityTableConfig>> {
+  ): PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>> {
     const schema = insert
-      ? this.schemaInsert // insert
-      : (t.partial(this.schema) as TObject); // update
+      ? this.options.entity.insertSchema // insert
+      : (t.partial(this.options.entity.schema) as TObject); // update
 
     // delete undefined values but null values are allowed
     for (const key of Object.keys(data)) {
@@ -994,7 +947,7 @@ export class RepositoryDescriptor<
     }
 
     return this.alepha.parse(schema, data) as PgInsertValue<
-      PgTableWithColumns<EntityTableConfig>
+      PgTableWithColumns<SchemaToTableConfig<T>>
     >;
   }
 
@@ -1006,12 +959,12 @@ export class RepositoryDescriptor<
    * - Fix date-time and date fields to ISO strings
    * - Cast BigInt to string
    */
-  protected clean<T extends TObject = EntitySchema>(
+  protected clean<T extends TObject>(
     row: Record<string, unknown>,
     schema?: T,
   ): Static<T> {
     const entity = row as Static<T>;
-    const schemaRef = schema ?? this.schema;
+    const schemaRef = schema ?? this.options.entity.schema;
 
     for (const key of Object.keys(schemaRef.properties)) {
       const value = schemaRef.properties[key];
@@ -1045,7 +998,7 @@ export class RepositoryDescriptor<
   /**
    * Clean a row with joins recursively
    */
-  protected cleanWithJoins<T extends TObject = EntitySchema>(
+  protected cleanWithJoins<T extends TObject>(
     row: Record<string, unknown>,
     schema: T,
     joins: PgJoin[],
@@ -1100,47 +1053,14 @@ export class RepositoryDescriptor<
   }
 
   /**
-   * Build a schema that includes all join properties recursively
-   */
-  protected buildSchemaWithJoins(
-    baseSchema: TObject,
-    joins: PgJoin[],
-    parentPath?: string,
-  ): TObject {
-    const schema = { ...baseSchema, properties: { ...baseSchema.properties } };
-
-    // Group joins by parent
-    const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
-
-    for (const join of joinsAtThisLevel) {
-      // Build the path for this join
-      const joinPath = parentPath ? `${parentPath}.${join.key}` : join.key;
-
-      // Find child joins
-      const childJoins = joins.filter((j) => j.parent === joinPath);
-
-      // If there are child joins, recursively build the schema
-      let joinSchema = join.schema;
-      if (childJoins.length > 0) {
-        joinSchema = this.buildSchemaWithJoins(join.schema, joins, joinPath);
-      }
-
-      // Make the join optional (left joins may return null)
-      schema.properties[join.key] = t.optional(joinSchema);
-    }
-
-    return schema;
-  }
-
-  /**
    * Convert a where clause to SQL.
    */
   protected toSQL(
-    where: PgQueryWhereOrSQL<EntitySchema>,
+    where: PgQueryWhereOrSQL<T>,
     joins?: PgJoin[],
   ): SQL | undefined {
-    return this.pgQueryManager.toSQL(where as PgQueryWhereOrSQL<EntitySchema>, {
-      schema: this.schema,
+    return this.queryManager.toSQL(where as PgQueryWhereOrSQL<T>, {
+      schema: this.options.entity.schema,
       col: (name) => {
         return this.col(name);
       },
@@ -1154,28 +1074,25 @@ export class RepositoryDescriptor<
    * @param id The ID to get the where clause for.
    * @returns The where clause for the ID.
    */
-  protected getWhereId(id: string | number): PgQueryWhere<EntitySchema> {
+  protected getWhereId(id: string | number): PgQueryWhere<T> {
     return {
       [this.id.key]: {
         eq: t.schema.isString(this.id.type) ? String(id) : Number(id),
       },
-    } as PgQueryWhere<EntitySchema>;
+    } as PgQueryWhere<T>;
   }
 
   /**
    * Find a primary key in the schema.
-   *
-   * @param schema
-   * @protected
    */
   protected getPrimaryKey(schema: TObject) {
     const primaryKeys = getAttrFields(schema, PG_PRIMARY_KEY);
     if (primaryKeys.length === 0) {
-      throw new Error("Primary key not found in schema");
+      throw new AlephaError("Primary key not found in schema");
     }
 
     if (primaryKeys.length > 1) {
-      throw new Error(
+      throw new AlephaError(
         `Multiple primary keys (${primaryKeys.length}) are not supported`,
       );
     }
@@ -1185,6 +1102,13 @@ export class RepositoryDescriptor<
       col: this.col(primaryKeys[0].key),
       type: primaryKeys[0].type,
     };
+  }
+
+  protected $provider(): DatabaseProvider {
+    if (this.options.provider) {
+      return this.options.provider;
+    }
+    return this.alepha.inject(DatabaseProvider);
   }
 }
 

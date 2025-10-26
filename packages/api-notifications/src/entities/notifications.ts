@@ -68,4 +68,4 @@ export const notifications = $entity({
   }),
 });
 
-export type NotificationEntity = Static<typeof notifications.$schema>;
+export type NotificationEntity = Static<typeof notifications.schema>;

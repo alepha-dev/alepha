@@ -21,7 +21,7 @@ const messages = $entity({
   schema: t.object({
     id: pg.uuidPrimaryKey(),
     status: t.enum(["pending", "done", "failed"]),
-    type: t.enum(["raw", "binary"], { title: "MessageType" }),
+    type: pg.enum(["raw", "binary"]),
   }),
 });
 
@@ -29,7 +29,7 @@ const supports = $entity({
   name: "supports",
   schema: t.object({
     id: pg.uuidPrimaryKey(),
-    type: t.enum(["raw", "binary"], { title: "MessageType" }),
+    type: pg.enum(["raw", "binary"]),
   }),
 });
 

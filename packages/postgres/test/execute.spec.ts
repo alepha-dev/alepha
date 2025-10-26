@@ -32,7 +32,7 @@ describe("execute", () => {
     expect(
       await app.users.query(
         (t) => sql`SELECT * FROM ${t} WHERE ${t.name} = ${name}`,
-        t.pick(userEntity.$schema, ["name"]),
+        t.pick(userEntity.schema, ["name"]),
       ),
     ).toEqual([
       {
@@ -43,7 +43,7 @@ describe("execute", () => {
     expect(
       await app.users.query(
         (t, db) => db.select({ name: t.name }).from(t).where(eq(t.name, name)),
-        t.pick(userEntity.$schema, ["name"]),
+        t.pick(userEntity.schema, ["name"]),
       ),
     ).toEqual([
       {
@@ -54,7 +54,7 @@ describe("execute", () => {
     expect(
       await app.users.query(
         (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
-        t.pick(userEntity.$schema, ["name"]),
+        t.pick(userEntity.schema, ["name"]),
       ),
     ).toEqual([
       {
