@@ -18,7 +18,7 @@ export class ServerHealthProvider {
       response: healthSchema,
     },
     silent: true,
-    handler: () => this.doHealthCheck(),
+    handler: () => this.healthCheck(),
   });
 
   public readonly healthz = $route({
@@ -27,14 +27,14 @@ export class ServerHealthProvider {
       response: healthSchema,
     },
     silent: true,
-    handler: () => this.doHealthCheck(),
+    handler: () => this.healthCheck(),
   });
 
-  protected doHealthCheck() {
+  protected healthCheck() {
     return {
       message: "OK",
       uptime: Math.floor(process.uptime()),
-      date: this.time.nowISOString(),
+      date: this.time.now(),
       ready: this.alepha.isReady(),
     };
   }

@@ -172,7 +172,7 @@ describe("FileController", () => {
     it("should upload file with expiration date", async () => {
       const { ctrl, dtp } = await setup();
       const file = createFile("Temporary file", { name: "temp.txt" });
-      const expirationDate = dtp.now().add(1, "hour").toISOString();
+      const expirationDate = dtp.now().add(1, "hour");
 
       const result = await ctrl.uploadFile({
         body: { file },

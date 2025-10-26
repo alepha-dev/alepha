@@ -69,17 +69,10 @@ export type {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class TypeGuard {
-  // -------------------------------------------------------------------------------------------------------------------
   isFile = isTypeFile;
   // -------------------------------------------------------------------------------------------------------------------
   isBigInt = (value: TSchema): value is TString =>
     TypeBox.IsString(value) && "format" in value && value.format === "bigint";
-  isDate = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) && "format" in value && value.format === "date";
-  isDatetime = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) &&
-    "format" in value &&
-    value.format === "date-time";
   isUUID = (value: TSchema): value is TString =>
     TypeBox.IsString(value) && "format" in value && value.format === "uuid";
   isObject = TypeBox.IsObject;
@@ -423,41 +416,12 @@ export class TypeProvider {
   public bigint(options?: TStringOptions) {
     return this.codec(
       t.string({
+        ...options,
         format: "bigint",
       }),
     )
       .Decode((value: bigint | boolean | number | string) => BigInt(value))
       .Encode((value: BigInt) => value.toString());
-  }
-
-  /**
-   * Create a schema for a datetime.
-   * This is NOT a Date object, but a string in ISO 8601 format.
-   */
-  public datetime(options?: TStringOptions) {
-    return this.codec(
-      this.string({
-        ...options,
-        format: "date-time",
-      }),
-    )
-      .Decode((value: string) => new Date(value))
-      .Encode((value: Date) => value.toISOString());
-  }
-
-  /**
-   * Create a schema for a date.
-   * This is NOT a Date object, but a string in ISO 8601 date format (YYYY-MM-DD).
-   */
-  public date(options?: TStringOptions) {
-    return this.codec(
-      this.string({
-        ...options,
-        format: "date",
-      }),
-    )
-      .Decode((value: string) => new Date(value.slice(0, 10)))
-      .Encode((value: Date) => value.toISOString().slice(0, 10));
   }
 
   /**

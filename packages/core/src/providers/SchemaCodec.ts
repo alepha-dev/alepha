@@ -1,10 +1,11 @@
 import type { Static, StaticDecode, StaticEncode, TSchema } from "typebox";
 import { Compile, type Validator } from "typebox/compile";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
+import { TypeGuard } from "./TypeProvider.ts";
 
 export abstract class SchemaCodec {
   protected cache: Map<TSchema, Validator> = new Map();
-  protected transformedSchemaCache: Map<TSchema, TSchema> = new Map();
+  protected guard = new TypeGuard();
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -25,7 +26,7 @@ export abstract class SchemaCodec {
    * Override this method to customize how specific types are handled in this codec.
    * For example, a ProtobufCodec might keep BigInt as-is instead of converting to string.
    */
-  protected abstract transformType?(schema: TSchema): TSchema | undefined;
+  protected abstract transformType(schema: TSchema): TSchema | false | void;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -71,12 +72,12 @@ export abstract class SchemaCodec {
    * This method should recursively transform all nested schemas.
    */
   protected transformSchema<T extends TSchema>(schema: T): TSchema {
-    if (!this.transformType) {
+    // First, allow codec-specific type transformation
+    const customType = this.transformType(schema);
+    if (customType === false) {
       return schema;
     }
 
-    // First, allow codec-specific type transformation
-    const customType = this.transformType(schema);
     if (customType) {
       return customType;
     }

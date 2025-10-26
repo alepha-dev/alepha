@@ -5,7 +5,11 @@ import {
   FileNotFoundError,
 } from "@alepha/bucket";
 import { $hook, $inject, Alepha, type FileLike } from "@alepha/core";
-import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import {
+  type DateTime,
+  DateTimeProvider,
+  type DurationLike,
+} from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { $repository, type Page } from "@alepha/postgres";
 import type { UserAccountToken } from "@alepha/security";
@@ -195,7 +199,7 @@ export class FileService {
   public async uploadFile(
     file: FileLike,
     options: {
-      expirationDate?: string | Date;
+      expirationDate?: string | DateTime;
       bucket?: string;
       user?: UserAccountToken;
       tags?: string[];
@@ -206,13 +210,9 @@ export class FileService {
     const checksum = await this.calculateChecksum(file);
     const blobId = await bucket.upload(file, { persist: false });
 
-    let expirationDate: string | undefined;
+    let expirationDate: DateTime | undefined;
     if (options.expirationDate) {
-      if (options.expirationDate instanceof Date) {
-        expirationDate = options.expirationDate.toISOString();
-      } else {
-        expirationDate = new Date(options.expirationDate).toISOString();
-      }
+      expirationDate = this.dateTimeProvider.of(options.expirationDate);
     } else if (bucket.options.ttl) {
       expirationDate = this.getExpirationDate(bucket.options.ttl);
     }

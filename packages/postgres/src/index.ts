@@ -1,9 +1,11 @@
 import { $module, type Alepha, t } from "@alepha/core";
+import { AlephaDateTime } from "@alepha/datetime";
 import * as drizzle from "drizzle-orm";
 import { $entity } from "./descriptors/$entity.ts";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
+import { DrizzleSchemaCodec } from "./providers/DrizzleSchemaCodec.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
@@ -86,6 +88,7 @@ export const AlephaPostgres = $module({
   name: "alepha.postgres",
   descriptors: [$repository, $sequence, $entity],
   services: [
+    AlephaDateTime,
     DatabaseProvider,
     NodePostgresProvider,
     PglitePostgresProvider,
@@ -93,6 +96,7 @@ export const AlephaPostgres = $module({
     SqliteModelBuilder,
     PostgresModelBuilder,
     DrizzleKitProvider,
+    DrizzleSchemaCodec,
   ],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(
@@ -102,6 +106,8 @@ export const AlephaPostgres = $module({
     );
 
     alepha.with(DrizzleKitProvider);
+
+    alepha.codec.register("drizzle", alepha.inject(DrizzleSchemaCodec));
 
     const url = env.DATABASE_URL;
     const hasPGlite = !!PglitePostgresProvider.importPglite();

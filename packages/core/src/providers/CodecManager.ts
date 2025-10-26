@@ -4,20 +4,29 @@ import { AlephaError } from "../errors/AlephaError.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
 
-export interface EncodeOptions {
+export type Encoding = "object" | "string" | "binary";
+export interface EncodeOptions<T extends Encoding = Encoding> {
   /**
    * The output encoding format:
-   * - 'raw': Returns native types (objects, BigInt, Date, etc.)
+   * - 'object': Returns native types (objects, BigInt, Date, etc.)
    * - 'string': Returns JSON string
    * - 'binary': Returns Uint8Array (for protobuf, msgpack, etc.)
    */
-  encoding?: "raw" | "string" | "binary";
+  as?: T;
   /**
    * The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
    * Defaults to 'json'
    */
   encoder?: string;
 }
+export type EncodeResult<
+  T extends TSchema,
+  E extends Encoding,
+> = E extends "string"
+  ? string
+  : E extends "binary"
+    ? Uint8Array
+    : StaticEncode<T>;
 
 export interface DecodeOptions {
   /**
@@ -68,44 +77,33 @@ export class CodecManager {
   }
 
   /**
-   * Encode data using the specified codec and encoding format.
-   * @param schema - The TypeBox schema
-   * @param value - The value to encode
-   * @param options - Encoding options
-   * @returns The encoded value
+   * Encode data using the specified codec and output format.
    */
-  public encode<T extends TSchema>(
+  public encode<T extends TSchema, E extends Encoding = "object">(
     schema: T,
     value: any,
-    options?: EncodeOptions,
-  ): StaticEncode<T> | string | Uint8Array {
+    options?: EncodeOptions<E>,
+  ): EncodeResult<T, E> {
     const encoderName = options?.encoder ?? this.default;
-    const encoding = options?.encoding ?? "raw";
+    const as = options?.as ?? "object";
     const codec = this.codec(encoderName);
 
-    const encoded = codec.encode(schema, value);
-
-    // Handle encoding format
-    if (encoding === "string") {
-      return codec.encodeToString(schema, value);
+    if (as === "string") {
+      // encode directly to string
+      return codec.encodeToString(schema, value) as EncodeResult<T, E>;
     }
 
-    if (encoding === "binary") {
-      // For binary encoding, the codec should return Uint8Array
-      // This is handled by specific codecs like ProtobufCodec
-      return codec.encodeToBinary(schema, value);
+    if (as === "binary") {
+      // not used by JSON, but for other codecs like Protobuf, MsgPack, etc.
+      return codec.encodeToBinary(schema, value) as EncodeResult<T, E>;
     }
 
-    // Default: raw encoding
-    return encoded;
+    // or nothing object encoding
+    return codec.encode(schema, value) as EncodeResult<T, E>;
   }
 
   /**
    * Decode data using the specified codec.
-   * @param schema - The TypeBox schema
-   * @param value - The value to decode
-   * @param options - Decoding options
-   * @returns The decoded value
    */
   public decode<T extends TSchema>(
     schema: T,

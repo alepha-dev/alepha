@@ -9,7 +9,9 @@ export class JsonSchemaCodec extends SchemaCodec {
   protected readonly encoder = new TextEncoder();
   protected readonly decoder = new TextDecoder();
 
-  protected transformType = undefined;
+  protected transformType(schema: TSchema): TSchema | false | void {
+    return false;
+  }
 
   public encodeToString(schema: TSchema, value: any): string {
     return this.json.stringify(this.encode(schema, value));

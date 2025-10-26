@@ -1,10 +1,15 @@
 import "dayjs/plugin/relativeTime.js";
 import "dayjs/plugin/duration.js";
-
+import "dayjs/plugin/utc.js";
+import "dayjs/plugin/timezone.js";
+import "dayjs/plugin/localizedFormat.js";
 import { $hook, $inject, Alepha } from "@alepha/core";
-import dayjs, { type Dayjs, type ManipulateType } from "dayjs";
+import dayjs, { type Dayjs, type ManipulateType, type PluginFunc } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
+import dayjsLocalizedFormat from "dayjs/plugin/localizedFormat.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
+import dayjsTimezone from "dayjs/plugin/timezone.js";
+import dayjsUtc from "dayjs/plugin/utc.js";
 
 export type DateTimeApi = typeof dayjs;
 export type DateTime = dayjs.Dayjs;
@@ -15,26 +20,28 @@ export type DurationLike =
   | [number, ManipulateType];
 
 export class DateTimeProvider {
+  public static PLUGINS: Array<PluginFunc<any>> = [
+    dayjsDuration,
+    dayjsRelativeTime,
+    dayjsUtc,
+    dayjsTimezone,
+    dayjsLocalizedFormat,
+  ];
+
   protected alepha = $inject(Alepha);
   protected ref: DateTime | null = null;
   protected readonly timeouts: Timeout[] = [];
   protected readonly intervals: Interval[] = [];
 
+  public readonly dayjs = dayjs;
+
   constructor() {
-    this.plugins(dayjs);
+    for (const plugin of DateTimeProvider.PLUGINS) {
+      dayjs.extend(plugin);
+    }
   }
 
-  /**
-   * Load Day.js plugins.
-   *
-   * You can override this method to add custom plugins.
-   */
-  protected plugins(api: DateTimeApi): void {
-    api.extend(dayjsDuration);
-    api.extend(dayjsRelativeTime);
-  }
-
-  protected readonly start = $hook({
+  protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
       // we start intervals now but first tick will be rejected as App is not ready yet
@@ -50,7 +57,7 @@ export class DateTimeProvider {
     },
   });
 
-  protected readonly stop = $hook({
+  protected readonly onStop = $hook({
     on: "stop",
     handler: () => {
       for (const timeout of this.timeouts) {

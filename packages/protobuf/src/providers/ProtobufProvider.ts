@@ -28,7 +28,7 @@ export class ProtobufProvider {
     // Use protobuf codec to encode the data
     const encoded = this.alepha.codec.encode(schema, data, {
       encoder: "protobuf",
-      encoding: "raw",
+      as: "raw",
     });
     return this.parse(schema).encode(encoded).finish();
   }

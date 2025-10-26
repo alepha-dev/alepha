@@ -70,7 +70,7 @@ describe("Alepha#graph", () => {
         from: ["Alepha"],
       },
       Json: {
-        from: ["AleJsonSchemaCodecpha"],
+        from: ["JsonSchemaCodec"],
       },
       JsonSchemaCodec: {
         as: ["SchemaCodec"],

@@ -7,6 +7,7 @@ import {
   type DescriptorArgs,
   KIND,
   type Static,
+  type StaticEncode,
   type TObject,
   type TSchema,
   t,
@@ -279,7 +280,7 @@ export class RepositoryDescriptor<
   /**
    * Get a Drizzle column from the table by his name.
    */
-  protected col(name: keyof Static<T>): PgColumn {
+  protected col(name: keyof StaticEncode<T>): PgColumn {
     const column = (this.table as any)[name];
     if (!column) {
       throw new AlephaError(
@@ -693,16 +694,19 @@ export class RepositoryDescriptor<
     entity: Static<T>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
-    const set = this.alepha.parse(this.options.entity.schema, entity) as any;
-    const id = set[this.id.key];
+    const row = this.alepha.codec.encode(this.options.entity.schema, entity, {
+      encoder: "drizzle",
+    }) as any;
+
+    const id = row[this.id.key];
     if (id == null) {
       throw new AlephaError("Cannot save entity without ID");
     }
 
     // in save mode, we do not ignore undefined values, but set them to null
     for (const key of Object.keys(this.options.entity.schema.properties)) {
-      if (set[key] === undefined) {
-        set[key] = null;
+      if (row[key] === undefined) {
+        row[key] = null;
       }
     }
 
@@ -714,23 +718,23 @@ export class RepositoryDescriptor<
       this.options.entity.schema,
       PG_VERSION,
     )?.[0];
-    if (versionField && typeof set[versionField.key] === "number") {
+    if (versionField && typeof row[versionField.key] === "number") {
       where = {
         and: [
           where,
           {
             [versionField.key]: {
-              eq: set[versionField.key],
+              eq: row[versionField.key],
             },
           },
         ],
       } as PgQueryWhere<T>;
 
-      set[versionField.key] += 1;
+      row[versionField.key] += 1;
     }
 
     try {
-      return await this.updateOne(where, set, opts);
+      return await this.updateOne(where, row, opts);
     } catch (error) {
       if (error instanceof PgEntityNotFoundError && versionField) {
         // Verify entity still exists to differentiate between not-found vs version mismatch
@@ -929,26 +933,9 @@ export class RepositoryDescriptor<
       ? this.options.entity.insertSchema // insert
       : (t.partial(this.options.entity.schema) as TObject); // update
 
-    // delete undefined values but null values are allowed
-    for (const key of Object.keys(data)) {
-      if (data[key] === undefined) {
-        delete data[key];
-      }
-    }
-
-    for (const key of Object.keys(schema.properties)) {
-      // convert BigInt-string to BigInt
-      if (
-        t.schema.isBigInt(schema.properties[key]) &&
-        typeof data[key] === "string"
-      ) {
-        (data as any)[key] = BigInt(data[key]);
-      }
-    }
-
-    return this.alepha.parse(schema, data) as PgInsertValue<
-      PgTableWithColumns<SchemaToTableConfig<T>>
-    >;
+    return this.alepha.codec.encode(schema, data, {
+      encoder: "drizzle",
+    }) as PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>>;
   }
 
   /**
@@ -965,31 +952,9 @@ export class RepositoryDescriptor<
   ): Static<T> {
     const entity = row as Static<T>;
     const schemaRef = schema ?? this.options.entity.schema;
-
-    for (const key of Object.keys(schemaRef.properties)) {
-      const value = schemaRef.properties[key];
-
-      // convert PG date-time and date to ISO strings
-      if (typeof entity[key] === "string") {
-        if (t.schema.isDatetime(value)) {
-          (entity as any)[key] = this.dateTimeProvider
-            .of(entity[key])
-            .toISOString();
-        } else if (t.schema.isDate(value)) {
-          (entity as any)[key] = this.dateTimeProvider
-            .of(`${entity[key]}T00:00:00Z`)
-            .toISOString()
-            .split("T")[0];
-        }
-      }
-
-      // convert BigInt to string
-      if (typeof entity[key] === "bigint" && t.schema.isBigInt(value)) {
-        (entity as any)[key] = entity[key].toString();
-      }
-    }
-
-    return this.alepha.parse(schemaRef, entity) as Static<T>;
+    return this.alepha.codec.decode(schemaRef, entity, {
+      encoder: "drizzle",
+    }) as Static<T>;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
