@@ -1,2 +1,15 @@
+import { $module } from "@alepha/core";
+import { ProtobufProvider } from "./providers/ProtobufProvider.ts";
+import { ProtobufSchemaCodec } from "./providers/ProtobufSchemaCodec.ts";
+
 export * from "./providers/ProtobufProvider.ts";
 export * from "./providers/ProtobufSchemaCodec.ts";
+
+export const AlephaProtobuf = $module({
+  name: "alepha.protobuf",
+  services: [ProtobufProvider, ProtobufSchemaCodec],
+  register: (alepha) => {
+    alepha.with(ProtobufProvider);
+    alepha.codec.register("protobuf", alepha.inject(ProtobufSchemaCodec));
+  },
+});

@@ -30,7 +30,7 @@
 		"@types/nodemailer": "^7.0.3",
 		"tsdown": "^0.15.9",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.3"
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"test": "vitest run",

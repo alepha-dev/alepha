@@ -171,11 +171,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   ): void {
     if (responseKind === "json" && route.schema?.response) {
       reply.headers["content-type"] = "application/json";
-      reply.body = JSON.stringify(
-        this.alepha.parse(route.schema.response, reply.body, {
-          clone: true, // clone is required, as parse() will modify the object
-        }),
-      );
+      reply.body = this.alepha.codec.encode(route.schema.response, reply.body, {
+        as: "string",
+      });
       return;
     }
 
@@ -323,7 +321,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   ) {
     if (route.schema?.params) {
       try {
-        request.params = this.alepha.parse(
+        request.params = this.alepha.codec.decode(
           route.schema.params,
           request.params,
         ) as any;
@@ -337,13 +335,16 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         const query: Record<string, any> = {};
         for (const key in route.schema.query.properties) {
           if (request.query[key] != null) {
-            query[key] = this.alepha.parse(
+            query[key] = this.alepha.codec.decode(
               route.schema.query.properties[key],
               request.query[key],
             );
           }
         }
-        request.query = this.alepha.parse(route.schema.query, query) as any;
+        request.query = this.alepha.codec.decode(
+          route.schema.query,
+          query,
+        ) as any;
       } catch (error) {
         throw new ValidationError("Invalid request query", error);
       }
@@ -351,7 +352,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (route.schema?.headers) {
       try {
-        request.headers = this.alepha.parse(
+        request.headers = this.alepha.codec.decode(
           route.schema.headers,
           request.headers,
         ) as any;
@@ -362,10 +363,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (route.schema?.body) {
       try {
-        request.body = this.alepha.parse(route.schema.body, request.body, {
-          clone: false, // clone can be slow for big objects
-          convert: false, // same
-        });
+        request.body = this.alepha.codec.decode(
+          route.schema.body,
+          request.body,
+        );
       } catch (error) {
         throw new ValidationError("Invalid request body", error);
       }

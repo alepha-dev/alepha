@@ -12,12 +12,12 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.0",
 		"@types/node": "^24.9.1",
-		"@vitest/coverage-v8": "^4.0.3",
-		"@vitest/ui": "^4.0.3",
+		"@vitest/coverage-v8": "^3.2.4",
+		"@vitest/ui": "^3.2.4",
 		"depcheck": "^1.4.7",
 		"typescript": "^5.9.3",
 		"vite-plugin-dts": "^4.5.4",
-		"vitest": "^4.0.3"
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"w": "yarn workspace",

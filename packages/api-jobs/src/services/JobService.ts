@@ -57,7 +57,7 @@ export class JobService {
       exec.status = "FAILED";
       exec.error = error.message;
       exec.logs = logs;
-      exec.finishedAt = this.dtp.nowISOString();
+      exec.finishedAt = this.dtp.now();
 
       await this.executionRepository.save(exec);
     },
@@ -76,7 +76,7 @@ export class JobService {
 
       exec.status = "COMPLETED";
       exec.logs = logs;
-      exec.finishedAt = this.dtp.nowISOString();
+      exec.finishedAt = this.dtp.now();
 
       await this.executionRepository.save(exec);
     },

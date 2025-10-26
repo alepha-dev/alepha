@@ -25,7 +25,10 @@ export class JsonSchemaCodec extends SchemaCodec {
   public decode<T extends TSchema>(schema: T, value: any): StaticDecode<T> {
     if (value instanceof Uint8Array) {
       value = this.json.parse(this.decoder.decode(value));
-    } else if (typeof value === "string" && !t.schema.isString(schema)) {
+    } else if (
+      typeof value === "string" &&
+      (t.schema.isObject(schema) || t.schema.isArray(schema))
+    ) {
       value = this.json.parse(value);
     }
 

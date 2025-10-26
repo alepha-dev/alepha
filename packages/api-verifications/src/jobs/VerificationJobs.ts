@@ -1,4 +1,5 @@
 import { $inject } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { $repository } from "@alepha/postgres";
 import { $scheduler } from "@alepha/scheduler";
 import { verifications } from "../entities/verifications.ts";
@@ -7,6 +8,7 @@ import { VerificationParameters } from "../parameters/VerificationParameters.ts"
 export class VerificationJobs {
   protected readonly verificationRepository = $repository(verifications);
   protected readonly verificationParameters = $inject(VerificationParameters);
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   public readonly cleanExpired = $scheduler({
     cron: "0 0 * * *", // Every day at midnight
@@ -22,7 +24,7 @@ export class VerificationJobs {
 
       await this.verificationRepository.deleteMany({
         createdAt: {
-          lt: new Date(purgeThreshold).toISOString(),
+          lt: this.dateTimeProvider.of(purgeThreshold),
         },
       });
     },

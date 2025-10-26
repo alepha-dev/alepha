@@ -272,7 +272,7 @@ export class QueueDescriptor<T extends TSchema> extends Descriptor<
           this.name,
           JSON.stringify({
             headers: {},
-            payload: this.alepha.parse(this.options.schema, payload),
+            payload: this.alepha.codec.decode(this.options.schema, payload),
           }),
         ),
       ),

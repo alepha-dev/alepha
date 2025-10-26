@@ -4,12 +4,15 @@ import type {
   TArrayOptions,
   TBoolean,
   TInteger,
+  TKeysToIndexer,
   TNull,
   TNumber,
   TNumberOptions,
   TObject,
   TObjectOptions,
+  TOmit,
   TOptionalAdd,
+  TPick,
   TProperties,
   TRecord,
   TSchema,
@@ -32,8 +35,6 @@ import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 export { TypeBox, TypeBoxValue, TypeBoxFormat };
 
 export const isUUID = TypeBoxFormat.IsUuid;
-export const isDateTime = TypeBoxFormat.IsDateTime;
-export const isDate = TypeBoxFormat.IsDate;
 export const isEmail = TypeBoxFormat.IsEmail;
 export const isURL = TypeBoxFormat.IsUrl;
 
@@ -90,6 +91,7 @@ export class TypeGuard {
   isRecord = TypeBox.IsRecord;
   isTuple = TypeBox.IsTuple;
   isVoid = TypeBox.IsVoid;
+  isLiteral = TypeBox.IsLiteral;
   isSchema = TypeBox.IsSchema;
 }
 
@@ -197,10 +199,8 @@ export class TypeProvider {
   public void = Type.Void;
   public undefined = Type.Undefined;
   public record = Type.Record;
-  public omit = Type.Omit;
   public partial = Type.Partial;
   public union = Type.Union;
-  public pick = Type.Pick;
   public tuple = Type.Tuple;
   public interface = Type.Interface;
   public null = Type.Null;
@@ -222,6 +222,28 @@ export class TypeProvider {
   public readonly schema = new TypeGuard();
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  public pick<T extends TObject, Indexer extends PropertyKey[]>(
+    schema: T,
+    keys: [...Indexer],
+    options?: TObjectOptions,
+  ): TPick<T, TKeysToIndexer<Indexer>> {
+    return Type.Pick(schema, keys, {
+      additionalProperties: false,
+      ...options,
+    });
+  }
+
+  public omit<T extends TObject, Indexer extends PropertyKey[]>(
+    schema: T,
+    keys: [...Indexer],
+    options?: TObjectOptions,
+  ): TOmit<T, TKeysToIndexer<Indexer>> {
+    return Type.Omit(schema, keys, {
+      additionalProperties: false,
+      ...options,
+    });
+  }
 
   /**
    * Create a schema for an object.
@@ -265,7 +287,7 @@ export class TypeProvider {
    * Create a schema for a string.
    * For db or input fields, consider using `t.text()` instead, which has length limits.
    *
-   * If you need a string with specific format (e.g. email, uuid, date), consider using the corresponding method (e.g. `t.email()`, `t.uuid()`, `t.date()`).
+   * If you need a string with specific format (e.g. email, uuid), consider using the corresponding method (e.g. `t.email()`, `t.uuid()`).
    */
   public string(options: TStringOptions = {}): TString {
     return Type.String({

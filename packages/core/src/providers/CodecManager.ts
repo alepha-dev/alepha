@@ -66,7 +66,7 @@ export class CodecManager {
    * @returns The codec instance
    * @throws {AlephaError} If the codec is not found
    */
-  public codec(name: string): SchemaCodec {
+  public get(name: string): SchemaCodec {
     const codec = this.codecs.get(name);
     if (!codec) {
       throw new AlephaError(
@@ -86,7 +86,7 @@ export class CodecManager {
   ): EncodeResult<T, E> {
     const encoderName = options?.encoder ?? this.default;
     const as = options?.as ?? "object";
-    const codec = this.codec(encoderName);
+    const codec = this.get(encoderName);
 
     if (as === "string") {
       // encode directly to string
@@ -111,7 +111,7 @@ export class CodecManager {
     options?: DecodeOptions,
   ): StaticDecode<T> {
     const encoderName = options?.encoder ?? this.default;
-    const codec = this.codec(encoderName);
+    const codec = this.get(encoderName);
     return codec.decode(schema, value);
   }
 }

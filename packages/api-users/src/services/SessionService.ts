@@ -45,10 +45,7 @@ export class SessionService {
     const request = this.alepha.context.get<ServerRequest>("request");
     const refreshToken = this.cryptoProvider.randomUUID();
 
-    const expiresAt = this.dateTimeProvider
-      .now()
-      .add(expiresIn, "seconds")
-      .toISOString();
+    const expiresAt = this.dateTimeProvider.now().add(expiresIn, "seconds");
 
     const session = await this.sessions.create({
       userId: user.id,

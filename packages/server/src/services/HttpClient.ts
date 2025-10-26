@@ -230,9 +230,9 @@ export class HttpClient {
 
     if (!init.body && action.schema?.body) {
       headers["content-type"] = "application/json";
-      init.body = JSON.stringify(
-        this.alepha.parse(action.schema?.body, args.body),
-      );
+      init.body = this.alepha.codec.encode(action.schema?.body, args.body, {
+        as: "string",
+      });
     }
   }
 
@@ -271,7 +271,7 @@ export class HttpClient {
       const json = await response.json();
 
       if (response.status >= 400) {
-        const jsonError = this.alepha.parse(errorSchema, json);
+        const jsonError = this.alepha.codec.decode(errorSchema, json);
         const error = new HttpError(jsonError);
 
         await this.alepha.events.emit("client:onError", {
@@ -282,7 +282,7 @@ export class HttpClient {
       }
 
       if (options.schema) {
-        return this.alepha.parse(options.schema, json);
+        return this.alepha.codec.decode(options.schema, json);
       }
 
       return json;
@@ -352,10 +352,10 @@ export class HttpClient {
   ): string {
     if (typeof args.params === "object") {
       const params = action.schema?.params
-        ? (this.alepha.parse(action.schema.params, args.params) as Record<
-            string,
-            any
-          >)
+        ? (this.alepha.codec.decode(
+            action.schema.params,
+            args.params,
+          ) as Record<string, any>)
         : args.params;
 
       for (const key of Object.keys(params)) {
@@ -374,7 +374,7 @@ export class HttpClient {
   ): string {
     if (typeof args.query === "object") {
       const query = action.schema?.query
-        ? this.alepha.parse(action.schema.query, args.query ?? {})
+        ? this.alepha.codec.decode(action.schema.query, args.query ?? {})
         : args.query;
 
       for (const key of Object.keys(query)) {

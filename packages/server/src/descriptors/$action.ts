@@ -470,7 +470,10 @@ export class ActionDescriptor<
       // skip validation if response is expected as file
       !isTypeFile(this.options.schema.response)
     ) {
-      response = this.alepha.parse(this.options.schema.response, response);
+      response = this.alepha.codec.decode(
+        this.options.schema.response,
+        response,
+      );
     }
 
     await this.alepha.events.emit("action:onResponse", {

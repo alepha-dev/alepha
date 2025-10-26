@@ -119,7 +119,7 @@ export class ReactPageProvider {
           typeof value[key] === "string"
         ) {
           try {
-            value[key] = this.alepha.parse(
+            value[key] = this.alepha.codec.decode(
               schema.properties[key],
               decodeURIComponent(value[key]),
             );
@@ -161,7 +161,7 @@ export class ReactPageProvider {
       try {
         this.convertStringObjectToObject(route.schema?.query, state.query);
         config.query = route.schema?.query
-          ? this.alepha.parse(route.schema.query, state.query)
+          ? this.alepha.codec.decode(route.schema.query, state.query)
           : {};
       } catch (e) {
         it.error = e as Error;
@@ -170,7 +170,7 @@ export class ReactPageProvider {
 
       try {
         config.params = route.schema?.params
-          ? this.alepha.parse(route.schema.params, state.params)
+          ? this.alepha.codec.decode(route.schema.params, state.params)
           : {};
       } catch (e) {
         it.error = e as Error;

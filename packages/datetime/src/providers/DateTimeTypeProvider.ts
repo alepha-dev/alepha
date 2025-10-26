@@ -1,51 +1,57 @@
-import {
-  type TStringOptions,
-  TypeBox,
-  TypeGuard,
-  TypeProvider,
-  t,
-} from "@alepha/core";
+import { type TStringOptions, TypeGuard, TypeProvider, t } from "@alepha/core";
 import dayjs from "dayjs";
 
 export const datetime = (options?: TStringOptions) =>
-  TypeBox.Type.Codec(
-    t.text({
-      ...options,
-      format: "date-time",
-    }),
-  )
-    .Decode((val) => dayjs(val))
-    .Encode((dt: dayjs.Dayjs) => dt.toISOString());
+  t
+    .codec(
+      t.text({
+        ...options,
+        format: "date-time",
+      }),
+    )
+    .Decode((val) => {
+      return dayjs(val);
+    })
+    .Encode((dt: dayjs.Dayjs) => {
+      return dt.toISOString();
+    });
 
 export const date = (options?: TStringOptions) =>
-  TypeBox.Type.Codec(
-    t.text({
-      ...options,
-      format: "date",
-    }),
-  )
-    .Decode((val) => dayjs(val))
-    .Encode((dt: dayjs.Dayjs) => dt.format("YYYY-MM-DD"));
+  t
+    .codec(
+      t.text({
+        ...options,
+        format: "date",
+      }),
+    )
+    .Decode((val) => {
+      return dayjs.utc(val);
+    })
+    .Encode((dt: dayjs.Dayjs) => {
+      return dt.format("YYYY-MM-DD");
+    });
 
 export const time = (options?: TStringOptions) =>
-  TypeBox.Type.Codec(
-    t.text({
-      ...options,
-      format: "time",
-    }),
-  )
+  t
+    .codec(
+      t.text({
+        ...options,
+        format: "time",
+      }),
+    )
     .Decode((val) => {
       return dayjs(`1970-01-01T${val}`);
     })
     .Encode((dt: dayjs.Dayjs) => dt.format("HH:mm:ssZ"));
 
 export const duration = (options?: TStringOptions) =>
-  TypeBox.Type.Codec(
-    t.text({
-      ...options,
-      format: "duration",
-    }),
-  )
+  t
+    .codec(
+      t.text({
+        ...options,
+        format: "duration",
+      }),
+    )
     .Decode((val) => dayjs.duration(val))
     .Encode((dur) => dur.toISOString());
 

@@ -1,4 +1,4 @@
-import { type Static, type TObject, t } from "@alepha/core";
+import { type TObject, t } from "@alepha/core";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -93,65 +93,6 @@ export class PgRelationManager {
     if (obj === null || obj === undefined) return true;
     if (typeof obj !== "object") return false;
     return Object.values(obj).every((val) => val === null);
-  }
-
-  /**
-   * Clean a row with joins recursively
-   */
-  public cleanWithJoins<T extends TObject>(
-    row: Record<string, unknown>,
-    schema: T,
-    joins: PgJoin[],
-    clean: (data: Record<string, unknown>, schema: TObject) => Static<T>,
-    parentPath?: string,
-  ): Static<T> {
-    // Get joins at this level
-    const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
-
-    // Create a copy of the row for cleaning, removing joined data temporarily
-    const cleanRow: Record<string, unknown> = { ...row };
-    const joinedData: Record<string, unknown> = {};
-
-    for (const join of joinsAtThisLevel) {
-      joinedData[join.key] = cleanRow[join.key];
-      delete cleanRow[join.key];
-    }
-
-    // Clean the base entity without joined properties
-    const entity = clean(cleanRow, schema);
-
-    // Then recursively clean joined entities
-    for (const join of joinsAtThisLevel) {
-      const joinedValue = joinedData[join.key];
-      // Only process if the joined value exists
-      if (joinedValue != null) {
-        // Build path for this join
-        const joinPath = parentPath ? `${parentPath}.${join.key}` : join.key;
-        // Find child joins
-        const childJoins = joins.filter((j) => j.parent === joinPath);
-        // Recursively clean if there are child joins
-        if (childJoins.length > 0) {
-          (entity as any)[join.key] = this.cleanWithJoins(
-            joinedValue as Record<string, unknown>,
-            join.schema,
-            joins,
-            clean,
-            joinPath,
-          );
-        } else {
-          // No child joins, just clean this join
-          (entity as any)[join.key] = clean(
-            joinedValue as Record<string, unknown>,
-            join.schema,
-          );
-        }
-      } else {
-        // Set to undefined if no data
-        (entity as any)[join.key] = undefined;
-      }
-    }
-
-    return entity as Static<T>;
   }
 
   /**

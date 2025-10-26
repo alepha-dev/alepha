@@ -73,7 +73,9 @@ describe("Alepha#graph", () => {
         from: ["JsonSchemaCodec"],
       },
       JsonSchemaCodec: {
-        as: ["SchemaCodec"],
+        from: ["CodecManager"],
+      },
+      CodecManager: {
         from: ["Alepha"],
       },
     });

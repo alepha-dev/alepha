@@ -164,7 +164,10 @@ export class RemoteDescriptorProvider {
         throw new Error(`Failed to fetch links from ${url}`);
       }
 
-      return this.alepha.parse(apiLinksResponseSchema, await response.json());
+      return this.alepha.codec.decode(
+        apiLinksResponseSchema,
+        await response.json(),
+      );
     },
   });
 }

@@ -79,7 +79,7 @@ describe("JobController", () => {
       const execution = executions.content[0];
       expect(execution.status).toBe("COMPLETED");
       expect(execution.finishedAt).toBeDefined();
-      expect(new Date(execution.finishedAt!).getTime()).toBeGreaterThan(0);
+      expect(execution.finishedAt!.valueOf()).toBeGreaterThan(0);
     });
 
     it("should capture logs during job execution", async () => {
@@ -148,7 +148,7 @@ describe("JobController", () => {
       expect(execution.status).toBe("FAILED");
       expect(execution.error).toBe("Intentional test failure");
       expect(execution.finishedAt).toBeDefined();
-      expect(new Date(execution.finishedAt!).getTime()).toBeGreaterThan(0);
+      expect(execution.finishedAt!.valueOf()).toBeGreaterThan(0);
     });
 
     it("should return empty list when job has no executions", async () => {
@@ -219,9 +219,9 @@ describe("JobController", () => {
 
       // Verify descending order
       for (let i = 1; i < executions.content.length; i++) {
-        const prev = new Date(executions.content[i - 1].createdAt);
-        const curr = new Date(executions.content[i].createdAt);
-        expect(prev.getTime()).toBeGreaterThanOrEqual(curr.getTime());
+        const prev = executions.content[i - 1].createdAt;
+        const curr = executions.content[i].createdAt;
+        expect(prev.valueOf()).toBeGreaterThanOrEqual(curr.valueOf());
       }
     });
   });

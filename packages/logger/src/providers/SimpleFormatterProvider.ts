@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "@alepha/core";
+import type { DateTime } from "@alepha/datetime";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { ConsoleColorProvider } from "./ConsoleColorProvider.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";
@@ -71,8 +72,8 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
     return output;
   }
 
-  public formatTimestamp(iso: string): string {
-    const d = new Date(iso);
+  public formatTimestamp(iso: DateTime): string {
+    const d = iso.toDate();
     const h = d.getHours();
     const m = d.getMinutes();
     const s = d.getSeconds();

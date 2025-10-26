@@ -4,6 +4,7 @@ import {
   Descriptor,
   KIND,
   type Static,
+  type StaticEncode,
   type TObject,
 } from "@alepha/core";
 import { NotificationService } from "../services/NotificationService.ts";
@@ -59,7 +60,7 @@ $notification[KIND] = NotificationDescriptor;
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface NotificationPushOptions<T extends TObject> {
-  variables: Static<T>;
+  variables: StaticEncode<T>;
   contact: string;
 }
 

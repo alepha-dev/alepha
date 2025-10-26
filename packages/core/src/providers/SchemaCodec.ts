@@ -1,7 +1,8 @@
 import type { Static, StaticDecode, StaticEncode, TSchema } from "typebox";
 import { Compile, type Validator } from "typebox/compile";
+import Value from "typebox/value";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
-import { TypeGuard } from "./TypeProvider.ts";
+import { TypeGuard, t } from "./TypeProvider.ts";
 
 export abstract class SchemaCodec {
   protected cache: Map<TSchema, Validator> = new Map();
@@ -59,7 +60,8 @@ export abstract class SchemaCodec {
       return this.cache.get(schema) as Validator<{}, T>;
     }
 
-    const validator = Compile(this.transformSchema(schema));
+    const transformedSchema = this.transformSchema(Value.Clone(schema));
+    const validator = Compile(transformedSchema);
     this.cache.set(schema, validator);
     return validator as Validator<{}, T>;
   }
@@ -72,75 +74,17 @@ export abstract class SchemaCodec {
    * This method should recursively transform all nested schemas.
    */
   protected transformSchema<T extends TSchema>(schema: T): TSchema {
-    // First, allow codec-specific type transformation
-    const customType = this.transformType(schema);
-    if (customType === false) {
-      return schema;
-    }
-
-    if (customType) {
-      return customType;
-    }
-
-    // Then recursively transform nested structures
-    if ("properties" in schema && schema.properties) {
-      const properties: Record<string, TSchema> = {};
-      for (const [key, value] of Object.entries(schema.properties)) {
-        properties[key] = this.transformSchema(value as TSchema);
+    if (t.schema.isArray(schema)) {
+      schema.items = this.transformSchema(schema.items);
+    } else if (t.schema.isObject(schema)) {
+      for (const key in schema.properties) {
+        schema.properties[key] = this.transformSchema(schema.properties[key]);
       }
-      return { ...schema, properties } as TSchema;
-    }
-
-    if ("items" in schema && schema.items) {
-      return {
-        ...schema,
-        items: this.transformSchema(schema.items as TSchema),
-      } as TSchema;
-    }
-
-    if ("anyOf" in schema && Array.isArray(schema.anyOf)) {
-      return {
-        ...schema,
-        anyOf: schema.anyOf.map((s) => this.transformSchema(s as TSchema)),
-      } as TSchema;
-    }
-
-    if ("allOf" in schema && Array.isArray(schema.allOf)) {
-      return {
-        ...schema,
-        allOf: schema.allOf.map((s) => this.transformSchema(s as TSchema)),
-      } as TSchema;
-    }
-
-    if ("oneOf" in schema && Array.isArray(schema.oneOf)) {
-      return {
-        ...schema,
-        oneOf: schema.oneOf.map((s) => this.transformSchema(s as TSchema)),
-      } as TSchema;
-    }
-
-    // Handle records (additionalProperties)
-    if ("additionalProperties" in schema && schema.additionalProperties) {
-      return {
-        ...schema,
-        additionalProperties: this.transformSchema(
-          schema.additionalProperties as TSchema,
-        ),
-      } as TSchema;
-    }
-
-    // Handle tuples
-    if (
-      Array.isArray(schema) ||
-      ("prefixItems" in schema && Array.isArray(schema.prefixItems))
-    ) {
-      const items = Array.isArray(schema)
-        ? schema
-        : (schema.prefixItems as TSchema[]);
-      return {
-        ...schema,
-        prefixItems: items.map((s) => this.transformSchema(s as TSchema)),
-      } as TSchema;
+    } else {
+      const newType = this.transformType(schema);
+      if (newType) {
+        return newType;
+      }
     }
 
     return schema;
@@ -173,7 +117,11 @@ export abstract class SchemaCodec {
       return String(value).trim();
     }
 
-    if (typeof value === "object" && value !== null) {
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      schema.type === "object"
+    ) {
       const obj: any = {};
 
       for (const key in value) {

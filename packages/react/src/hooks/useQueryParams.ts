@@ -44,7 +44,7 @@ export interface UseQueryParamsHookOptions {
 }
 
 const encode = (alepha: Alepha, schema: TObject, data: any) => {
-  return btoa(JSON.stringify(alepha.parse(schema, data)));
+  return btoa(JSON.stringify(alepha.codec.decode(schema, data)));
 };
 
 const decode = <T extends TObject>(
@@ -53,7 +53,10 @@ const decode = <T extends TObject>(
   data: any,
 ): Static<T> | undefined => {
   try {
-    return alepha.parse(schema, JSON.parse(atob(decodeURIComponent(data))));
+    return alepha.codec.decode(
+      schema,
+      JSON.parse(atob(decodeURIComponent(data))),
+    );
   } catch {
     return;
   }

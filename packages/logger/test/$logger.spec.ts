@@ -103,6 +103,6 @@ describe("$logger", () => {
     expect(logEvents[0].entry.service).toBe("App");
     expect(logEvents[0].entry.module).toBe("app");
     expect(logEvents[0].entry.data).toEqual({ testData: "value" });
-    expect(logEvents[0].entry.timestamp).toBe(now.toISOString());
+    expect(logEvents[0].entry.timestamp.toISOString()).toBe(now.toISOString());
   });
 });

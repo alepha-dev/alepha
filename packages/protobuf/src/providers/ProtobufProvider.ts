@@ -1,14 +1,6 @@
-import {
-  $inject,
-  Alepha,
-  type Static,
-  type TObject,
-  type TSchema,
-  t,
-} from "@alepha/core";
+import { $inject, Alepha, type TObject, type TSchema, t } from "@alepha/core";
 import type { Type } from "protobufjs";
 import protobufjs from "protobufjs";
-import { ProtobufSchemaCodec } from "./ProtobufSchemaCodec.ts";
 
 export class ProtobufProvider {
   protected readonly alepha = $inject(Alepha);
@@ -16,47 +8,30 @@ export class ProtobufProvider {
   protected readonly protobuf: typeof protobufjs = protobufjs;
   protected readonly enumDefinitions: Map<string, string[]> = new Map();
 
-  constructor() {
-    // Register protobuf codec
-    this.alepha.codec.register("protobuf", new ProtobufSchemaCodec());
-  }
-
   /**
    * Encode an object to a Uint8Array.
    */
-  public encode(schema: TObject, data: any): Uint8Array {
-    // Use protobuf codec to encode the data
-    const encoded = this.alepha.codec.encode(schema, data, {
-      encoder: "protobuf",
-      as: "raw",
-    });
-    return this.parse(schema).encode(encoded).finish();
+  public encode(schema: ProtobufSchema, message: any): Uint8Array {
+    return this.parse(schema).encode(message).finish();
   }
 
   /**
    * Decode a Uint8Array to an object.
    */
-  public decode<T extends TObject>(schema: T, data: Uint8Array): Static<T> {
-    const protobufData = this.parse(schema).decode(data);
-    // Use protobuf codec to decode the data
-    return this.alepha.codec.decode(schema, protobufData, {
-      encoder: "protobuf",
-    });
+  public decode<T = any>(schema: ProtobufSchema, data: Uint8Array): T {
+    return this.parse(schema).decode(data) as T;
   }
 
   /**
    * Parse a TypeBox schema to a Protobuf Type schema ready for encoding/decoding.
    */
-  public parse(
-    schema: ProtobufSchema | TObject,
-    typeName = "root.Target",
-  ): Type {
+  public parse(schema: ProtobufSchema, typeName = "root.Target"): Type {
     const exists = this.schemas.get(schema);
-    if (exists) return exists;
+    if (exists) {
+      return exists;
+    }
 
-    const pbSchema =
-      typeof schema === "string" ? schema : this.createProtobufSchema(schema);
-    const result = this.protobuf.parse(pbSchema);
+    const result = this.protobuf.parse(schema);
     const type = result.root.lookupType(typeName);
     this.schemas.set(schema, type);
     return type;

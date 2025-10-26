@@ -34,7 +34,7 @@ export class NotificationSenderService {
     try {
       if (notification.type === "email") {
         await this.emailProvider.send(this.renderEmail(notification));
-        notification.sentAt = this.dateTimeProvider.nowISOString();
+        notification.sentAt = this.dateTimeProvider.now();
       }
       if (notification.type === "sms") {
         await this.smsProvider.send(this.renderSms(notification));
@@ -43,7 +43,7 @@ export class NotificationSenderService {
       this.log.error("Failed to process notification", e);
       if (e instanceof Error) {
         notification.error = {
-          at: this.dateTimeProvider.nowISOString(),
+          at: this.dateTimeProvider.now(),
           name: e.name,
           message: e.message,
         };

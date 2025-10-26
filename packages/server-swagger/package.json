@@ -28,7 +28,7 @@
 		"swagger-ui-dist": "^5.29.5",
 		"tsdown": "^0.15.9",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.3"
+		"vitest": "^3.2.4"
 	},
 	"scripts": {
 		"copy": "node scripts/copy.ts",

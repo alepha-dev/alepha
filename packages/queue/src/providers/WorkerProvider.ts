@@ -195,7 +195,7 @@ export class WorkerProvider {
 
     try {
       const json = JSON.parse(message);
-      const payload = this.alepha.parse(
+      const payload = this.alepha.codec.decode(
         consumer.queue.options.schema,
         json.payload,
       );

@@ -403,7 +403,7 @@ export class TopicDescriptor<T extends TopicMessageSchema> extends Descriptor<
     await this.provider.publish(
       this.name,
       JSON.stringify({
-        payload: this.alepha.parse(this.options.schema.payload, payload),
+        payload: this.alepha.codec.encode(this.options.schema.payload, payload),
       }),
     );
   }
@@ -468,10 +468,10 @@ export class TopicDescriptor<T extends TopicMessageSchema> extends Descriptor<
   protected parseMessage(message: string): TopicMessage<T> {
     const { payload } = JSON.parse(message);
     return {
-      payload: this.alepha.parse<T["payload"]>(
+      payload: this.alepha.codec.decode(
         this.options.schema.payload,
         payload,
-      ),
+      ) as TopicMessage<T>["payload"],
     };
   }
 }

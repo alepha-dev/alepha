@@ -164,7 +164,7 @@ export class Logger implements LoggerInterface {
       service: this.service,
       module: this.module,
       app: this.app,
-      timestamp: this.dateTimeProvider.nowISOString(),
+      timestamp: this.dateTimeProvider.now(),
     };
 
     const formatted = this.formatter.format(logEntry);

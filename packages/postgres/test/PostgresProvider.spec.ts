@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
 import { describe, expect, it } from "vitest";
-import { $repository } from "../src";
+import { $repository, AlephaPostgres } from "../src";
 import { userEntity } from "./fixtures/userEntitySchema.ts";
 
 describe("PostgresProvider", () => {
@@ -9,7 +9,7 @@ describe("PostgresProvider", () => {
       users = $repository(userEntity);
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaPostgres);
 
     const userService = alepha.inject(UserService);
 
@@ -27,7 +27,7 @@ describe("PostgresProvider", () => {
     });
 
     expect(r1.name).toEqual("John");
-    expect(r1.createdAt).toBe(r1.updatedAt);
+    expect(r1.createdAt.toISOString()).toBe(r1.updatedAt.toISOString());
 
     await new Promise((resolve) => setTimeout(resolve, 1));
 
@@ -40,7 +40,7 @@ describe("PostgresProvider", () => {
 
     expect(r2.name).toEqual("John");
     expect(r2.profile.age).toEqual(31);
-    expect(r2.createdAt).toBe(r1.createdAt);
-    expect(r2.updatedAt).not.toBe(r1.updatedAt);
+    expect(r2.createdAt.toISOString()).toBe(r1.createdAt.toISOString());
+    expect(r2.updatedAt.toISOString()).not.toBe(r1.updatedAt.toISOString());
   });
 });

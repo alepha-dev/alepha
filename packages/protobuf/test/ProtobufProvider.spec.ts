@@ -1,8 +1,9 @@
 import { Alepha, t } from "@alepha/core";
 import { describe, test } from "vitest";
-import { ProtobufProvider } from "../src";
+import { AlephaProtobuf, ProtobufProvider } from "../src";
 
-const protobuf = Alepha.create().inject(ProtobufProvider);
+const alepha = Alepha.create().with(AlephaProtobuf);
+const protobuf = alepha.inject(ProtobufProvider);
 
 describe("ProtobufProvider", () => {
   describe("Basic types", () => {
@@ -51,10 +52,15 @@ message Target {
         age: 30,
         isActive: true,
       };
-      const buf = protobuf.encode(userSchema, data);
+      const buf = alepha.codec.encode(userSchema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
       expect(buf).toBeInstanceOf(Uint8Array);
 
-      const user = protobuf.decode(userSchema, buf);
+      const user = alepha.codec.decode(userSchema, buf, {
+        encoder: "protobuf",
+      });
       expect(user).toEqual(data);
     });
   });
@@ -126,10 +132,15 @@ message Target {
         ],
       };
 
-      const buf = protobuf.encode(schema, data);
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
       expect(buf).toBeInstanceOf(Uint8Array);
 
-      const decoded = protobuf.decode(schema, buf);
+      const decoded = alepha.codec.decode(schema, buf, {
+        encoder: "protobuf",
+      });
       expect(decoded).toEqual(data);
     });
   });
@@ -194,10 +205,15 @@ message Target {
         },
       };
 
-      const buf = protobuf.encode(schema, data);
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
       expect(buf).toBeInstanceOf(Uint8Array);
 
-      const decoded = protobuf.decode(schema, buf);
+      const decoded = alepha.codec.decode(schema, buf, {
+        encoder: "protobuf",
+      });
       expect(decoded).toEqual(data);
     });
   });
@@ -240,11 +256,21 @@ message Target {
         email: "", // In proto3, null string becomes empty string
       };
 
-      const buf1 = protobuf.encode(schema, data1);
-      const buf2 = protobuf.encode(schema, data2);
+      const buf1 = alepha.codec.encode(schema, data1, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+      const buf2 = alepha.codec.encode(schema, data2, {
+        as: "binary",
+        encoder: "protobuf",
+      });
 
-      const decoded1 = protobuf.decode(schema, buf1);
-      const decoded2 = protobuf.decode(schema, buf2);
+      const decoded1 = alepha.codec.decode(schema, buf1, {
+        encoder: "protobuf",
+      });
+      const decoded2 = alepha.codec.decode(schema, buf2, {
+        encoder: "protobuf",
+      });
 
       expect(decoded1).toEqual(data1);
       expect(decoded2.name).toEqual("Jane");
@@ -320,8 +346,13 @@ message Target {
         name: "Test",
       };
 
-      const buf = protobuf.encode(schema, data);
-      const decoded = protobuf.decode(schema, buf);
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+      const decoded = alepha.codec.decode(schema, buf, {
+        encoder: "protobuf",
+      });
 
       expect(decoded).toEqual(data);
     });
@@ -359,8 +390,13 @@ message Target {
         },
       };
 
-      const buf = protobuf.encode(schema, data);
-      const decoded = protobuf.decode(schema, buf);
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+      const decoded = alepha.codec.decode(schema, buf, {
+        encoder: "protobuf",
+      });
 
       expect(decoded).toEqual(data);
     });
@@ -409,8 +445,13 @@ message Target {
         status: "ACTIVE",
       };
 
-      const buf = protobuf.encode(schema, data);
-      const decoded = protobuf.decode(schema, buf);
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+      const decoded = alepha.codec.decode(schema, buf, {
+        encoder: "protobuf",
+      });
 
       expect(decoded).toEqual(data);
     });

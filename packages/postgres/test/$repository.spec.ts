@@ -1,4 +1,5 @@
 import { Alepha, type Static } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { describe, expect, it } from "vitest";
 import { $repository } from "../src";
 import { bigEntity } from "./fixtures/bigEntitySchema.ts";
@@ -52,7 +53,7 @@ const testAllTypes = async (alepha: Alepha) => {
     type: "big_entity",
     a: "a",
     b: 1.111,
-    date: "2024-01-01",
+    date: alepha.inject(DateTimeProvider).dayjs.utc("2024-01-01"),
     c: 2,
     d: true,
     e: {
@@ -99,7 +100,7 @@ const testAllTypes = async (alepha: Alepha) => {
         },
       },
     ],
-    k: new Date().toISOString(),
+    k: alepha.inject(DateTimeProvider).now(),
     l: "123e4567-e89b-12d3-a456-426614174000",
     m: "a" as const,
   };

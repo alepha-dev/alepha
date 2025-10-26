@@ -49,7 +49,7 @@ export class VerificationService {
         type: { eq: entry.type },
         target: { eq: entry.target },
         createdAt: {
-          gte: this.dateTimeProvider.now().startOf("day").toISOString(),
+          gte: this.dateTimeProvider.now().startOf("day"),
         },
       },
     });
@@ -141,7 +141,7 @@ export class VerificationService {
     }
 
     await this.verificationRepository.updateById(verification.id, {
-      verifiedAt: this.dateTimeProvider.nowISOString(),
+      verifiedAt: this.dateTimeProvider.now(),
     });
 
     return { ok: true };

@@ -104,7 +104,7 @@ export class ServerMultipartProvider {
           if (isTypeFile(value)) {
             body[key] = result.files[key];
           } else {
-            body[key] = this.alepha.parse(value, result.fields[key]);
+            body[key] = this.alepha.codec.decode(value, result.fields[key]);
           }
         }
       }

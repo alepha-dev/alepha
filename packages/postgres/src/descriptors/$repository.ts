@@ -254,7 +254,10 @@ export class RepositoryDescriptor<
     const rows = await this.provider.execute(raw);
 
     return rows.map((it) => {
-      return this.clean(this.mapRawFieldsToEntity(it), schema);
+      return this.clean(
+        this.mapRawFieldsToEntity(it),
+        schema ?? this.options.entity.schema,
+      ) as Static<R>;
     });
   }
 
@@ -948,11 +951,9 @@ export class RepositoryDescriptor<
    */
   protected clean<T extends TObject>(
     row: Record<string, unknown>,
-    schema?: T,
+    schema: T,
   ): Static<T> {
-    const entity = row as Static<T>;
-    const schemaRef = schema ?? this.options.entity.schema;
-    return this.alepha.codec.decode(schemaRef, entity, {
+    return this.alepha.codec.decode(schema, row, {
       encoder: "drizzle",
     }) as Static<T>;
   }

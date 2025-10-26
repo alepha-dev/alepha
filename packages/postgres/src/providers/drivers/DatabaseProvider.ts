@@ -71,6 +71,6 @@ export abstract class DatabaseProvider {
     schema: T,
   ): Promise<Array<Static<T>>> {
     const result = await this.execute(statement);
-    return result.map((row) => this.alepha.parse(schema, row));
+    return result.map((row) => this.alepha.codec.decode(schema, row));
   }
 }

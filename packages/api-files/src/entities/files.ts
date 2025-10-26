@@ -13,7 +13,7 @@ export const files = $entity({
     creatorRealm: t.optional(t.string()),
     creatorName: t.optional(t.string()),
     bucket: t.text(),
-    expirationDate: t.optional(t.string()),
+    expirationDate: t.optional(t.datetime()),
     name: t.text(),
     size: t.number(),
     mimeType: t.string(),

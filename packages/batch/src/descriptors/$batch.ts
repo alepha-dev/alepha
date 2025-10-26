@@ -567,7 +567,7 @@ export class BatchDescriptor<
    */
   public async push(item: Static<TItem>): Promise<TResponse> {
     // 1. Validate the item against the schema
-    const validatedItem = this.alepha.parse(this.options.schema, item);
+    const validatedItem = this.alepha.codec.decode(this.options.schema, item);
 
     // 2. Determine the partition key
     const partitionKey = this.options.partitionBy

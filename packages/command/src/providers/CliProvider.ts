@@ -145,7 +145,7 @@ export class CliProvider {
     const parsed = this.parseFlags(argv, flagDefs);
 
     try {
-      return this.alepha.parse(schema, parsed);
+      return this.alepha.codec.decode(schema, parsed);
     } catch (error) {
       if (error instanceof TypeBoxError) {
         throw new CommandError(

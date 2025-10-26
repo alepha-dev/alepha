@@ -263,3 +263,50 @@ A strict mode is planned to enforce module boundaries. Throwing errors when a se
 Small applications does not need modules. It's better to keep it simple.
 Modules are more useful when the application grows and needs to be structured.
 If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
+
+### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/providers).
+
+#### CodecManager
+
+The output encoding format:
+  - 'object': Returns native types (objects, BigInt, Date, etc.)
+  - 'string': Returns JSON string
+  - 'binary': Returns Uint8Array (for protobuf, msgpack, etc.)
+  /
+  as?: T;
+  /**
+  The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
+  Defaults to 'json'
+  /
+  encoder?: string;
+}
+export type EncodeResult<
+  T extends TSchema,
+  E extends Encoding,
+> = E extends "string"
+  ? string
+  : E extends "binary"
+    ? Uint8Array
+    : StaticEncode<T>;
+
+export interface DecodeOptions {
+  /**
+  The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
+  Defaults to 'json'
+  /
+  encoder?: string;
+}
+
+/**
+CodecManager manages multiple codec formats and provides a unified interface
+for encoding and decoding data with different formats.
+
+#### Json
+
+Mimics the JSON global object with stringify and parse methods.
+
+Used across the codebase via dependency injection.

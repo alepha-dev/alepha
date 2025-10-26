@@ -142,7 +142,7 @@ export class DrizzleKitProvider {
 
     if (provider.dialect === "sqlite") {
       try {
-        return this.alepha.parse(
+        return this.alepha.codec.decode(
           devMigrationsSchema,
           await readFile(`node_modules/.db/${name}.json`, "utf-8"),
         );
@@ -172,7 +172,7 @@ export class DrizzleKitProvider {
       return;
     }
 
-    return this.alepha.parse(devMigrationsSchema, rows[0]);
+    return this.alepha.codec.decode(devMigrationsSchema, rows[0]);
   }
 
   protected async saveDevMigrations(
@@ -256,7 +256,7 @@ export class DrizzleKitProvider {
     }
 
     // create schema if not exists
-    this.log.info(`Ensuring schema '${schemaName}' exists`);
+    this.log.debug(`Ensuring schema '${schemaName}' exists`);
     await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sqlSchema}`);
   }
 

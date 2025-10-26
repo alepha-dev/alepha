@@ -23,7 +23,10 @@ export class FormModel<T extends TObject> {
     this.options = options;
 
     if (options.initialValues) {
-      this.values = this.alepha.parse(options.schema, options.initialValues);
+      this.values = this.alepha.codec.decode(
+        options.schema,
+        options.initialValues,
+      ) as Record<string, any>;
     }
 
     this.input = this.createProxyFromSchema(options, options.schema, {
@@ -82,7 +85,10 @@ export class FormModel<T extends TObject> {
       );
 
       if (t.schema.isSchema(options.schema)) {
-        values = this.alepha.parse(options.schema, values);
+        values = this.alepha.codec.decode(options.schema, values) as Record<
+          string,
+          any
+        >;
       }
 
       await options.handler(values as any, args);

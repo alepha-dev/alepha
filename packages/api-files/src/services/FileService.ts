@@ -162,7 +162,7 @@ export class FileService {
     return await this.fileRepository.find({
       limit: 1000,
       where: {
-        expirationDate: { lte: this.dateTimeProvider.nowISOString() },
+        expirationDate: { lte: this.dateTimeProvider.now() },
       },
     });
   }
@@ -171,15 +171,12 @@ export class FileService {
    * Calculates an expiration date based on a TTL (time to live) duration.
    *
    * @param ttl - Duration like "1 day", "2 hours", etc.
-   * @returns ISO string representation of the expiration date, or undefined if no TTL provided
+   * @returns DateTime representation of the expiration date, or undefined if no TTL provided
    * @protected
    */
-  protected getExpirationDate(ttl?: DurationLike): string | undefined {
+  protected getExpirationDate(ttl?: DurationLike): DateTime | undefined {
     return ttl
-      ? (this.dateTimeProvider
-          .now()
-          .add(this.dateTimeProvider.duration(ttl))
-          .toISOString() ?? undefined)
+      ? this.dateTimeProvider.now().add(this.dateTimeProvider.duration(ttl))
       : undefined;
   }
 
@@ -264,7 +261,7 @@ export class FileService {
     data: {
       name?: string;
       tags?: string[];
-      expirationDate?: string | Date;
+      expirationDate?: DateTime;
     },
   ): Promise<FileEntity> {
     const file = await this.getFileById(id);
@@ -280,11 +277,7 @@ export class FileService {
     }
 
     if (data.expirationDate !== undefined) {
-      if (data.expirationDate instanceof Date) {
-        updateData.expirationDate = data.expirationDate.toISOString();
-      } else {
-        updateData.expirationDate = new Date(data.expirationDate).toISOString();
-      }
+      updateData.expirationDate = data.expirationDate;
     }
 
     return await this.fileRepository.updateById(file.id, updateData);

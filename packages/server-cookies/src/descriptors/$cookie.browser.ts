@@ -39,7 +39,9 @@ export class BrowserCookieDescriptor<T extends TSchema>
   }
 
   public set(data: Static<T>): void {
-    const value = JSON.stringify(this.alepha.parse(this.options.schema, data));
+    const value = JSON.stringify(
+      this.alepha.codec.decode(this.options.schema, data),
+    );
     const options = this.options;
 
     if (options.compress) {
@@ -93,7 +95,7 @@ export class BrowserCookieDescriptor<T extends TSchema>
       throw new AlephaError("Signing is not supported in browser cookies.");
     }
 
-    return this.alepha.parse(this.options.schema, JSON.parse(rawValue));
+    return this.alepha.codec.decode(this.options.schema, JSON.parse(rawValue));
   }
 
   public del(): void {

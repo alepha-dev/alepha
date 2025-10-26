@@ -77,7 +77,7 @@ export class ServerSecurityProvider {
 
         this.alepha.state.set(
           "user",
-          this.alepha.parse(userAccountInfoSchema, request.user),
+          this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
       } catch (error) {
         if (action.options.secure || permission) {
@@ -119,7 +119,7 @@ export class ServerSecurityProvider {
         this.alepha.state.set(
           "user",
           // remove sensitive info
-          this.alepha.parse(userAccountInfoSchema, request.user),
+          this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
 
         this.log.trace("User set from request token", {

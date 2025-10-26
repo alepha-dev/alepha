@@ -126,7 +126,7 @@ export class ServerCookiesProvider {
         );
       }
 
-      return this.alepha.parse(options.schema, JSON.parse(rawValue));
+      return this.alepha.codec.decode(options.schema, JSON.parse(rawValue));
     } catch (error) {
       this.log.warn(`Failed to parse cookie "${name}"`, error);
       // corrupted or invalid cookie, instruct browser to delete it on next response
@@ -142,7 +142,7 @@ export class ServerCookiesProvider {
     contextCookies?: Cookies,
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
-    let value = JSON.stringify(this.alepha.parse(options.schema, data));
+    let value = JSON.stringify(this.alepha.codec.decode(options.schema, data));
 
     if (options.compress) {
       value = deflateRawSync(value).toString("base64");
