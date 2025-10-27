@@ -342,11 +342,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             );
           }
         }
-        // then decode the full query to validate dependencies, etc.
-        request.query = this.alepha.codec.decode(
-          route.schema.query,
-          query,
-        ) as any;
+        request.query = query;
       } catch (error) {
         throw new ValidationError("Invalid request query", error);
       }

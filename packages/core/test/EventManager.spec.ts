@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Alepha } from "../src";
-import { EventManager } from "../src/providers/EventManager.ts";
 import type { LoggerInterface } from "../src/interfaces/LoggerInterface.ts";
+import { EventManager } from "../src/providers/EventManager.ts";
 
 describe("EventManager", () => {
   describe("initialization", () => {
@@ -17,7 +17,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const logFn = () => mockLogger;
@@ -429,7 +428,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
@@ -455,7 +453,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
@@ -483,7 +480,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
@@ -505,7 +501,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
@@ -523,8 +518,8 @@ describe("EventManager", () => {
 
       // Should log the hook execution with timing
       const debugCalls = (mockLogger.debug as any).mock.calls;
-      const hasTimingLog = debugCalls.some((call: any[]) =>
-        call[0].includes("OK") && call[0].includes("ms"),
+      const hasTimingLog = debugCalls.some(
+        (call: any[]) => call[0].includes("OK") && call[0].includes("ms"),
       );
       expect(hasTimingLog).toBe(true);
     });
@@ -536,7 +531,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
@@ -564,7 +558,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
@@ -587,7 +580,6 @@ describe("EventManager", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        fatal: vi.fn(),
       };
 
       const eventManager = new EventManager(() => mockLogger);
