@@ -117,11 +117,10 @@ export class VerificationService {
     // DO NOT DELETE THE VERIFICATION WHEN IT IS REJECTED,
     // or we won't be able to cooldown the verification
 
-    const now = this.dateTimeProvider.nowISOString();
+    const now = this.dateTimeProvider.now();
     const expirationDate = this.dateTimeProvider
       .of(verification.createdAt)
-      .add(settings.codeExpiration, "seconds")
-      .toISOString();
+      .add(settings.codeExpiration, "seconds");
 
     if (now > expirationDate) {
       throw new BadRequestError("Verification code has expired");

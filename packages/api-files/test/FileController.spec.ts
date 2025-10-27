@@ -179,7 +179,7 @@ describe("FileController", () => {
         query: { expirationDate },
       });
 
-      expect(result.expirationDate).toBe(expirationDate);
+      expect(result.expirationDate).toEqual(expirationDate);
     });
 
     it("should capture user information when provided", async () => {

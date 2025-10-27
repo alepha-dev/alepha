@@ -13,7 +13,8 @@ export class DrizzleSchemaCodec extends JsonSchemaCodec {
         .Decode((val) => {
           return dayjs(val);
         })
-        .Encode((dt: dayjs.Dayjs) => {
+        .Encode((dt: any) => {
+          if (!dt) return undefined;
           return dt.toISOString();
         });
     }

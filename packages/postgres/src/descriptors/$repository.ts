@@ -596,7 +596,7 @@ export class RepositoryDescriptor<
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
     return await this.insert(opts)
-      .values(this.cast(data, true))
+      .values(this.cast(data ?? {}, true))
       .returning(this.table)
       .then(([it]) => this.clean(it, this.options.entity.schema))
       .catch((error) => {
@@ -636,25 +636,25 @@ export class RepositoryDescriptor<
     data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
-    const set = data as any;
-
-    // do not update the ID field
-    delete set[this.id.key];
+    let row = data as any;
 
     const updatedAtField = getAttrFields(
       this.options.entity.schema,
       PG_UPDATED_AT,
     )?.[0];
+
     if (updatedAtField) {
-      set[updatedAtField.key] = (
-        opts.now ?? this.dateTimeProvider.now()
-      ).toISOString();
+      row[updatedAtField.key] = opts.now ?? this.dateTimeProvider.now();
     }
 
     where = this.withDeletedAt(where, opts);
+    row = this.cast(row, false) as any;
+
+    // do not update the ID field
+    delete row[this.id.key];
 
     const response = await this.update(opts)
-      .set(set)
+      .set(row)
       .where(this.toSQL(where))
       .returning(this.table)
       .catch((error) => {
@@ -696,14 +696,14 @@ export class RepositoryDescriptor<
   public async save(
     entity: Static<T>,
     opts: StatementOptions = {},
-  ): Promise<Static<T>> {
-    const row = this.alepha.codec.encode(this.options.entity.schema, entity, {
-      encoder: "drizzle",
-    }) as any;
+  ): Promise<void> {
+    const row = entity as any;
 
     const id = row[this.id.key];
     if (id == null) {
-      throw new AlephaError("Cannot save entity without ID");
+      throw new AlephaError(
+        "Cannot save entity without ID - missing primary key in value",
+      );
     }
 
     // in save mode, we do not ignore undefined values, but set them to null
@@ -737,7 +737,11 @@ export class RepositoryDescriptor<
     }
 
     try {
-      return await this.updateOne(where, row, opts);
+      const newValue = await this.updateOne(where, row, opts);
+      for (const key of Object.keys(this.options.entity.schema.properties)) {
+        row[key] = undefined;
+      }
+      Object.assign(row, newValue);
     } catch (error) {
       if (error instanceof PgEntityNotFoundError && versionField) {
         // Verify entity still exists to differentiate between not-found vs version mismatch
@@ -770,6 +774,7 @@ export class RepositoryDescriptor<
     opts: StatementOptions = {},
   ): Promise<void> {
     where = this.withDeletedAt(where, opts);
+    data = this.cast(data, false) as any;
     try {
       await this.update(opts)
         .set(
@@ -793,9 +798,7 @@ export class RepositoryDescriptor<
       await this.updateMany(
         where,
         {
-          [deletedAt.key]: (
-            opts.now ?? this.dateTimeProvider.now()
-          ).toISOString(),
+          [deletedAt.key]: opts.now ?? this.dateTimeProvider.now(),
         } as any,
         opts,
       );
@@ -830,7 +833,7 @@ export class RepositoryDescriptor<
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
       opts.now ??= this.dateTimeProvider.now();
-      (entity as any)[deletedAt.key] = opts.now.toISOString();
+      (entity as any)[deletedAt.key] = opts.now;
     }
 
     await this.deleteById(id, opts);
@@ -934,7 +937,7 @@ export class RepositoryDescriptor<
   ): PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>> {
     const schema = insert
       ? this.options.entity.insertSchema // insert
-      : (t.partial(this.options.entity.schema) as TObject); // update
+      : (t.partial(this.options.entity.updateSchema) as TObject); // update
 
     return this.alepha.codec.encode(schema, data, {
       encoder: "drizzle",

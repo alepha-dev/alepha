@@ -32,8 +32,9 @@ export abstract class SchemaCodec {
   // -------------------------------------------------------------------------------------------------------------------
 
   public encode<T extends TSchema>(schema: T, value: any): StaticEncode<T> {
+    const newValue = this.beforeEncode(schema, value);
     try {
-      return this.validator(schema).Encode(value);
+      return this.validator(schema).Encode(newValue);
     } catch (error: any) {
       if (error.cause?.errors?.[0]) {
         throw new TypeBoxError(error.cause.errors[0]);
@@ -43,7 +44,7 @@ export abstract class SchemaCodec {
   }
 
   public decode<T extends TSchema>(schema: T, value: any): StaticDecode<T> {
-    const newValue = this.preprocess(schema, value);
+    const newValue = this.beforeDecode(schema, value);
 
     try {
       return this.validator(schema).Decode(newValue) as Static<T>;
@@ -91,12 +92,47 @@ export abstract class SchemaCodec {
   }
 
   /**
+   * Preprocess the value based on the schema before encoding.
+   *
+   * - Remove `undefined` values from objects. { a: 1, b: undefined } => { a: 1 }
+   */
+  public beforeEncode = (schema: any, value: any): any => {
+    if (!schema) {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((it) => this.beforeDecode(schema.items, it));
+    }
+
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      schema.type === "object"
+    ) {
+      const obj: any = {};
+      for (const key in value) {
+        const newValue = this.beforeDecode(
+          schema.properties?.[key],
+          value[key],
+        );
+        if (newValue !== undefined) {
+          obj[key] = newValue;
+        }
+      }
+      return obj;
+    }
+
+    return value;
+  };
+
+  /**
    * Preprocess the value based on the schema before validation.
    *
    * - If the value is `null` and the schema does not allow `null`, it converts it to `undefined`.
    * - If the value is a string and the schema has a `~options.trim` flag, it trims whitespace from the string.
    */
-  public preprocess = (schema: any, value: any): any => {
+  public beforeDecode = (schema: any, value: any): any => {
     if (!schema) {
       return value;
     }
@@ -106,7 +142,7 @@ export abstract class SchemaCodec {
     }
 
     if (Array.isArray(value)) {
-      return value.map((it) => this.preprocess(schema.items, it));
+      return value.map((it) => this.beforeDecode(schema.items, it));
     }
 
     if (
@@ -125,7 +161,10 @@ export abstract class SchemaCodec {
       const obj: any = {};
 
       for (const key in value) {
-        const newValue = this.preprocess(schema.properties?.[key], value[key]);
+        const newValue = this.beforeDecode(
+          schema.properties?.[key],
+          value[key],
+        );
 
         if (newValue !== undefined) {
           obj[key] = newValue;

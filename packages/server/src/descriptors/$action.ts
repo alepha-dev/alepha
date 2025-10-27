@@ -455,6 +455,34 @@ export class ActionDescriptor<
       return serverActionRequest.reply.body as ClientRequestResponse<TConfig>;
     }
 
+    if (serverActionRequest.query && this.options.schema?.query) {
+      serverActionRequest.query = this.alepha.codec.encode(
+        this.options.schema.query,
+        serverActionRequest.query,
+      );
+    }
+
+    if (serverActionRequest.headers && this.options.schema?.headers) {
+      serverActionRequest.headers = this.alepha.codec.encode(
+        this.options.schema.headers,
+        serverActionRequest.headers,
+      ) as Record<string, any>;
+    }
+
+    if (serverActionRequest.body && this.options.schema?.body) {
+      serverActionRequest.body = this.alepha.codec.encode(
+        this.options.schema.body,
+        serverActionRequest.body,
+      ) as unknown;
+    }
+
+    if (serverActionRequest.params && this.options.schema?.params) {
+      serverActionRequest.params = this.alepha.codec.encode(
+        this.options.schema.params,
+        serverActionRequest.params,
+      ) as Record<string, any>;
+    }
+
     this.serverRouterProvider.validateRequest(
       this.options,
       serverActionRequest as ServerRequest,
@@ -472,7 +500,7 @@ export class ActionDescriptor<
     ) {
       response = this.alepha.codec.decode(
         this.options.schema.response,
-        response,
+        this.alepha.codec.encode(this.options.schema.response, response),
       );
     }
 

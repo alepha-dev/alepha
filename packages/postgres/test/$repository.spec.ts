@@ -53,7 +53,7 @@ const testAllTypes = async (alepha: Alepha) => {
     type: "big_entity",
     a: "a",
     b: 1.111,
-    date: alepha.inject(DateTimeProvider).dayjs.utc("2024-01-01"),
+    date: alepha.inject(DateTimeProvider).utc("2024-01-01"),
     c: 2,
     d: true,
     e: {

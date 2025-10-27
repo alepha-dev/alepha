@@ -4,7 +4,11 @@ import "dayjs/plugin/utc.js";
 import "dayjs/plugin/timezone.js";
 import "dayjs/plugin/localizedFormat.js";
 import { $hook, $inject, Alepha } from "@alepha/core";
-import dayjs, { type Dayjs, type ManipulateType, type PluginFunc } from "dayjs";
+import DayjsApi, {
+  type Dayjs,
+  type ManipulateType,
+  type PluginFunc,
+} from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsLocalizedFormat from "dayjs/plugin/localizedFormat.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
@@ -12,12 +16,14 @@ import dayjsTimezone from "dayjs/plugin/timezone.js";
 import dayjsUtc from "dayjs/plugin/utc.js";
 
 export type DateTimeApi = typeof dayjs;
-export type DateTime = dayjs.Dayjs;
+export type DateTime = DayjsApi.Dayjs;
 export type Duration = dayjsDuration.Duration;
 export type DurationLike =
   | number
   | dayjsDuration.Duration
   | [number, ManipulateType];
+
+export const dayjs = DayjsApi;
 
 export class DateTimeProvider {
   public static PLUGINS: Array<PluginFunc<any>> = [
@@ -32,8 +38,6 @@ export class DateTimeProvider {
   protected ref: DateTime | null = null;
   protected readonly timeouts: Timeout[] = [];
   protected readonly intervals: Interval[] = [];
-
-  public readonly dayjs = dayjs;
 
   constructor() {
     for (const plugin of DateTimeProvider.PLUGINS) {
@@ -71,6 +75,15 @@ export class DateTimeProvider {
       }
     },
   });
+
+  /**
+   * Create a new UTC DateTime instance.
+   */
+  public utc(
+    date: string | number | Date | Dayjs | null | undefined,
+  ): DateTime {
+    return dayjs.utc(date);
+  }
 
   /**
    * Create a new DateTime instance.

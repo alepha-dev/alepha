@@ -332,6 +332,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (route.schema?.query) {
       try {
+        // we parse one by one to use the TypeBox coercion (e.g., number from string)
         const query: Record<string, any> = {};
         for (const key in route.schema.query.properties) {
           if (request.query[key] != null) {
@@ -341,6 +342,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             );
           }
         }
+        // then decode the full query to validate dependencies, etc.
         request.query = this.alepha.codec.decode(
           route.schema.query,
           query,

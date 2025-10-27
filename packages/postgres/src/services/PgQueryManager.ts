@@ -1,4 +1,4 @@
-import { $inject, type TObject } from "@alepha/core";
+import { $inject, Alepha, type TObject } from "@alepha/core";
 import {
   and,
   arrayContained,
@@ -36,6 +36,7 @@ import { PgJsonQueryManager } from "./PgJsonQueryManager.ts";
 
 export class PgQueryManager {
   protected readonly jsonQueryManager = $inject(PgJsonQueryManager);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Convert a query object to a SQL query.
@@ -169,7 +170,7 @@ export class PgQueryManager {
           } else {
             // Regular column query (including primitive arrays)
             const column = col(key);
-            const sql = this.mapOperatorToSql(operator, column);
+            const sql = this.mapOperatorToSql(operator, column, schema, key);
             if (sql) {
               conditions.push(sql);
             }
@@ -245,48 +246,104 @@ export class PgQueryManager {
   }
 
   /**
+   * Check if an object has any filter operator properties.
+   */
+  protected hasFilterOperatorProperties(obj: any): boolean {
+    if (!obj || typeof obj !== "object") return false;
+
+    const filterOperatorKeys = [
+      "eq", "ne", "gt", "gte", "lt", "lte",
+      "inArray", "notInArray", "isNull", "isNotNull",
+      "like", "notLike", "ilike", "notIlike",
+      "between", "notBetween",
+      "arrayContains", "arrayContained", "arrayOverlaps"
+    ];
+
+    return filterOperatorKeys.some(key => key in obj);
+  }
+
+  /**
    * Map a filter operator to a SQL query.
    */
   public mapOperatorToSql(
     operator: FilterOperators<any> | any,
     column: PgColumn,
+    columnSchema?: TObject,
+    columnName?: string,
   ): SQL | undefined {
-    if (typeof operator !== "object") {
-      return eq(column, operator);
+    // Helper function to encode a value for the specific column
+    const encodeValue = (value: any): any => {
+      if (value == null) {
+        return value;
+      }
+
+      // If we have schema information, encode the value properly
+      if (columnSchema && columnName) {
+        try {
+          const fieldSchema = columnSchema.properties[columnName];
+          if (fieldSchema) {
+            // Encode the value using the drizzle codec
+            // This converts application values (like Dayjs) to database values (like ISO strings)
+            return this.alepha.codec.encode(fieldSchema, value, {
+              encoder: "drizzle",
+            });
+          }
+        } catch (error) {
+          // If encoding fails, fall back to the original value
+          // This ensures backward compatibility
+        }
+      }
+
+      return value;
+    };
+
+    // Helper function to encode array values
+    const encodeArray = (values: any[]): any[] => {
+      return values.map((v) => encodeValue(v));
+    };
+
+    // If operator is not an object, OR it's an object but doesn't have any filter operator properties,
+    // treat it as a direct value (e.g., string, number, Date, Dayjs, etc.)
+    if (
+      typeof operator !== "object" ||
+      operator == null ||
+      !this.hasFilterOperatorProperties(operator)
+    ) {
+      return eq(column, encodeValue(operator));
     }
 
     const conditions: SQL[] = [];
 
     if (operator?.eq != null) {
-      conditions.push(eq(column, operator.eq));
+      conditions.push(eq(column, encodeValue(operator.eq)));
     }
 
     if (operator?.ne != null) {
-      conditions.push(ne(column, operator.ne));
+      conditions.push(ne(column, encodeValue(operator.ne)));
     }
 
     if (operator?.gt != null) {
-      conditions.push(gt(column, operator.gt));
+      conditions.push(gt(column, encodeValue(operator.gt)));
     }
 
     if (operator?.gte != null) {
-      conditions.push(gte(column, operator.gte));
+      conditions.push(gte(column, encodeValue(operator.gte)));
     }
 
     if (operator?.lt != null) {
-      conditions.push(lt(column, operator.lt));
+      conditions.push(lt(column, encodeValue(operator.lt)));
     }
 
     if (operator?.lte != null) {
-      conditions.push(lte(column, operator.lte));
+      conditions.push(lte(column, encodeValue(operator.lte)));
     }
 
     if (operator?.inArray != null) {
-      conditions.push(inArray(column, operator.inArray));
+      conditions.push(inArray(column, encodeArray(operator.inArray)));
     }
 
     if (operator?.notInArray != null) {
-      conditions.push(notInArray(column, operator.notInArray));
+      conditions.push(notInArray(column, encodeArray(operator.notInArray)));
     }
 
     if (operator?.isNull != null) {
@@ -298,43 +355,57 @@ export class PgQueryManager {
     }
 
     if (operator?.like != null) {
-      conditions.push(like(column, operator.like));
+      conditions.push(like(column, encodeValue(operator.like)));
     }
 
     if (operator?.notLike != null) {
-      conditions.push(notLike(column, operator.notLike));
+      conditions.push(notLike(column, encodeValue(operator.notLike)));
     }
 
     if (operator?.ilike != null) {
-      conditions.push(ilike(column, operator.ilike));
+      conditions.push(ilike(column, encodeValue(operator.ilike)));
     }
 
     if (operator?.notIlike != null) {
-      conditions.push(notIlike(column, operator.notIlike));
+      conditions.push(notIlike(column, encodeValue(operator.notIlike)));
     }
 
     if (operator?.between != null) {
       conditions.push(
-        between(column, operator.between[0], operator.between[1]),
+        between(
+          column,
+          encodeValue(operator.between[0]),
+          encodeValue(operator.between[1]),
+        ),
       );
     }
 
     if (operator?.notBetween != null) {
       conditions.push(
-        notBetween(column, operator.notBetween[0], operator.notBetween[1]),
+        notBetween(
+          column,
+          encodeValue(operator.notBetween[0]),
+          encodeValue(operator.notBetween[1]),
+        ),
       );
     }
 
     if (operator?.arrayContains != null) {
-      conditions.push(arrayContains(column, operator.arrayContains));
+      conditions.push(
+        arrayContains(column, encodeValue(operator.arrayContains)),
+      );
     }
 
     if (operator?.arrayContained != null) {
-      conditions.push(arrayContained(column, operator.arrayContained));
+      conditions.push(
+        arrayContained(column, encodeValue(operator.arrayContained)),
+      );
     }
 
     if (operator?.arrayOverlaps != null) {
-      conditions.push(arrayOverlaps(column, operator.arrayOverlaps));
+      conditions.push(
+        arrayOverlaps(column, encodeValue(operator.arrayOverlaps)),
+      );
     }
 
     if (conditions.length === 0) {

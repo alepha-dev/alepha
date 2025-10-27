@@ -43,7 +43,7 @@ describe("deletedAt", () => {
     expect(await repository.count({}, { force: true })).toEqual(2);
     expect(await repository.find({}, { force: true })).toEqual([
       { id: entities[1].id },
-      { id: entities[0].id, deletedAt: now.toISOString() },
+      { id: entities[0].id, deletedAt: now },
     ]);
   });
 
@@ -60,7 +60,7 @@ describe("deletedAt", () => {
     await repository.save(it, { force: true });
     expect(await repository.findById(it.id, { force: true })).toEqual({
       id: it.id,
-      deletedAt: now.toISOString(),
+      deletedAt: now,
       name: "Toby",
     });
   });
