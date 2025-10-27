@@ -428,6 +428,9 @@ describe("FileController", () => {
 
       const startTime = dtp.now();
 
+      // ensure time difference
+      await new Promise((resolve) => setTimeout(resolve, 1));
+
       await service.uploadFile(createFile("content", { name: "file1.txt" }));
       await service.uploadFile(createFile("content", { name: "file2.txt" }));
       await service.uploadFile(createFile("content", { name: "file3.txt" }));

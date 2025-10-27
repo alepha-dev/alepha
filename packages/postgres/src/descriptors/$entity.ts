@@ -1,7 +1,6 @@
 import { KIND, type Static, type TObject } from "@alepha/core";
 import type { BuildExtraConfigColumns, SQL } from "drizzle-orm";
 import type {
-  AnyPgColumn,
   PgColumn,
   PgColumnBuilderBase,
   PgTableExtraConfigValue,
@@ -99,8 +98,9 @@ export interface EntityDescriptorOptions<
     columns: Array<keyof Static<T>>;
     /**
      * Referenced columns in the foreign table.
+     * Must be EntityColumn references from other entities.
      */
-    foreignColumns: Array<AnyPgColumn>;
+    foreignColumns: Array<() => EntityColumn<any>>;
   }>;
 
   /**

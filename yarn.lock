@@ -343,6 +343,8 @@ __metadata:
   resolution: "@alepha/integration-tests@workspace:apps/integration"
   dependencies:
     "@alepha/core": "npm:^0.10.7"
+    "@alepha/postgres": "npm:^0.10.7"
+    "@alepha/server": "npm:^0.10.7"
     "@biomejs/biome": "npm:^2.3.0"
     typescript: "npm:^5.9.3"
     vitest: "npm:^3.2.4"
@@ -393,7 +395,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/postgres@npm:0.10.7, @alepha/postgres@workspace:packages/postgres":
+"@alepha/postgres@npm:0.10.7, @alepha/postgres@npm:^0.10.7, @alepha/postgres@workspace:packages/postgres":
   version: 0.0.0-use.local
   resolution: "@alepha/postgres@workspace:packages/postgres"
   dependencies:
@@ -849,7 +851,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server@npm:0.10.7, @alepha/server@workspace:packages/server":
+"@alepha/server@npm:0.10.7, @alepha/server@npm:^0.10.7, @alepha/server@workspace:packages/server":
   version: 0.0.0-use.local
   resolution: "@alepha/server@workspace:packages/server"
   dependencies:

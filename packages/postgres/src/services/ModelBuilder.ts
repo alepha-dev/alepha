@@ -1,11 +1,37 @@
+import type { SQL } from "drizzle-orm";
 import type { EntityDescriptor } from "../descriptors/$entity.ts";
 import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
 
 /**
- * Transform Alepha Descriptors (Entity, Sequence, etc...) into drizzle models (tables, enums, sequences, etc...).
+ * Database-specific table configuration functions
  */
-export interface ModelBuilder {
-  buildTable(
+export interface TableConfigBuilders<TConfig> {
+  index: (name: string) => {
+    on: (...columns: any[]) => TConfig;
+  };
+  uniqueIndex: (name: string) => {
+    on: (...columns: any[]) => TConfig;
+  };
+  unique: (name: string) => {
+    on: (...columns: any[]) => TConfig;
+  };
+  check: (name: string, sql: SQL) => TConfig;
+  foreignKey: (config: {
+    name: string;
+    columns: any[];
+    foreignColumns: any[];
+  }) => TConfig;
+}
+
+/**
+ * Abstract base class for transforming Alepha Descriptors (Entity, Sequence, etc...)
+ * into drizzle models (tables, enums, sequences, etc...).
+ */
+export abstract class ModelBuilder {
+  /**
+   * Build a table from an entity descriptor.
+   */
+  abstract buildTable(
     entity: EntityDescriptor,
     options: {
       tables: Map<string, unknown>;
@@ -14,10 +40,203 @@ export interface ModelBuilder {
     },
   ): void;
 
-  buildSequence(
+  /**
+   * Build a sequence from a sequence descriptor.
+   */
+  abstract buildSequence(
     sequence: SequenceDescriptor,
     options: {
       sequences: Map<string, unknown>;
+      schema: string;
     },
   ): void;
+
+  /**
+   * Convert camelCase to snake_case for column names.
+   */
+  protected toColumnName(str: string): string {
+    return (
+      str[0].toLowerCase() +
+      str.slice(1).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+    );
+  }
+
+  /**
+   * Build the table configuration function for any database.
+   * This includes indexes, foreign keys, constraints, and custom config.
+   *
+   * @param entity - The entity descriptor
+   * @param builders - Database-specific builder functions
+   * @param tableResolver - Function to resolve entity references to table columns
+   * @param customConfigHandler - Optional handler for custom config
+   */
+  protected buildTableConfig<TConfig, TSelf>(
+    entity: EntityDescriptor,
+    builders: TableConfigBuilders<TConfig>,
+    tableResolver?: (entityName: string) => any,
+    customConfigHandler?: (config: any, self: TSelf) => TConfig[],
+  ): ((self: TSelf) => TConfig[]) | undefined {
+    // If no extra config is needed, return undefined
+    if (
+      !entity.options.indexes &&
+      !entity.options.foreignKeys &&
+      !entity.options.constraints &&
+      !entity.options.config
+    ) {
+      return undefined;
+    }
+
+    return (self: TSelf) => {
+      const configs: TConfig[] = [];
+
+      // Build indexes
+      if (entity.options.indexes) {
+        for (const indexDef of entity.options.indexes) {
+          if (typeof indexDef === "string") {
+            const columnName = this.toColumnName(indexDef);
+            const indexName = `${entity.name}_${columnName}_idx`;
+
+            if ((self as any)[columnName]) {
+              configs.push(
+                builders.index(indexName).on((self as any)[columnName]),
+              );
+            }
+          } else if (typeof indexDef === "object" && indexDef !== null) {
+            if ("column" in indexDef) {
+              const columnName = this.toColumnName(indexDef.column as string);
+              const indexName =
+                indexDef.name || `${entity.name}_${columnName}_idx`;
+
+              if ((self as any)[columnName]) {
+                if (indexDef.unique) {
+                  configs.push(
+                    builders
+                      .uniqueIndex(indexName)
+                      .on((self as any)[columnName]),
+                  );
+                } else {
+                  configs.push(
+                    builders.index(indexName).on((self as any)[columnName]),
+                  );
+                }
+              }
+            } else if ("columns" in indexDef) {
+              const columnNames = indexDef.columns.map((col: any) =>
+                this.toColumnName(col as string),
+              );
+              const indexName =
+                indexDef.name || `${entity.name}_${columnNames.join("_")}_idx`;
+
+              const cols = columnNames
+                .map((colName: string) => (self as any)[colName])
+                .filter(Boolean);
+
+              if (cols.length === columnNames.length) {
+                if (indexDef.unique) {
+                  configs.push(builders.uniqueIndex(indexName).on(...cols));
+                } else {
+                  configs.push(builders.index(indexName).on(...cols));
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Build foreign keys
+      if (entity.options.foreignKeys) {
+        for (const fkDef of entity.options.foreignKeys) {
+          const columnNames = fkDef.columns.map((col) =>
+            this.toColumnName(col as string),
+          );
+
+          const cols = columnNames
+            .map((colName) => (self as any)[colName])
+            .filter(Boolean);
+
+          if (cols.length === columnNames.length) {
+            const fkName =
+              fkDef.name || `${entity.name}_${columnNames.join("_")}_fk`;
+
+            // Resolve foreign column references
+            const foreignColumns = fkDef.foreignColumns.map((colRef) => {
+              const entityCol = colRef();
+              if (!entityCol || !entityCol.entity || !entityCol.name) {
+                throw new Error(
+                  `Invalid foreign column reference in ${entity.name}`,
+                );
+              }
+
+              // If we have a table resolver, use it to get the actual table column
+              if (tableResolver) {
+                const foreignTable = tableResolver(entityCol.entity.name);
+                if (!foreignTable) {
+                  throw new Error(
+                    `Foreign table ${entityCol.entity.name} not found for ${entity.name}`,
+                  );
+                }
+                const columnName = this.toColumnName(entityCol.name);
+                return foreignTable[columnName];
+              }
+
+              // Fallback: return the entity column reference (will be resolved later)
+              return entityCol;
+            });
+
+            configs.push(
+              builders.foreignKey({
+                name: fkName,
+                columns: cols,
+                foreignColumns,
+              }),
+            );
+          }
+        }
+      }
+
+      // Build constraints
+      if (entity.options.constraints) {
+        for (const constraintDef of entity.options.constraints) {
+          const columnNames = constraintDef.columns.map((col) =>
+            this.toColumnName(col as string),
+          );
+
+          const cols = columnNames
+            .map((colName) => (self as any)[colName])
+            .filter(Boolean);
+
+          if (cols.length === columnNames.length) {
+            if (constraintDef.unique) {
+              const constraintName =
+                constraintDef.name ||
+                `${entity.name}_${columnNames.join("_")}_unique`;
+
+              configs.push(builders.unique(constraintName).on(...cols));
+            }
+
+            if (constraintDef.check) {
+              const constraintName =
+                constraintDef.name ||
+                `${entity.name}_${columnNames.join("_")}_check`;
+
+              configs.push(builders.check(constraintName, constraintDef.check));
+            }
+          }
+        }
+      }
+
+      // Add custom config if provided
+      if (entity.options.config && customConfigHandler) {
+        configs.push(...customConfigHandler(entity.options.config, self));
+      } else if (entity.options.config) {
+        // Default behavior: call the config function directly
+        const customConfigs = entity.options.config(self as any);
+        if (Array.isArray(customConfigs)) {
+          configs.push(...(customConfigs as any));
+        }
+      }
+
+      return configs;
+    };
+  }
 }

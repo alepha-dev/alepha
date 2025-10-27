@@ -296,8 +296,11 @@ export class FileService {
     const file = await this.getFileById(id);
     const bucket = this.bucket(file.bucket);
 
+    // Always delete the database record
+    await this.fileRepository.deleteById(file.id);
+
     try {
-      await bucket.delete(file.blobId);
+      await bucket.delete(file.blobId, true);
     } catch (e) {
       if (e instanceof FileNotFoundError) {
         // File is already deleted in the bucket, this is okay
@@ -312,9 +315,6 @@ export class FileService {
         );
       }
     }
-
-    // Always delete the database record
-    await this.fileRepository.deleteById(file.id);
 
     return { ok: true, id: String(file.id) };
   }

@@ -7,12 +7,17 @@ import {
   type TString,
   t,
 } from "@alepha/core";
-import { sql } from "drizzle-orm";
+import { type BuildColumns, sql } from "drizzle-orm";
 import * as pg from "drizzle-orm/sqlite-core";
 import {
+  check,
+  foreignKey,
+  index,
   type SQLiteColumnBuilderBase,
   type SQLiteTableWithColumns,
   sqliteTable,
+  unique,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import {
   PG_CREATED_AT,
@@ -25,10 +30,11 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 import type { EntityDescriptor } from "../descriptors/$entity.ts";
 import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
+import { ModelBuilder } from "./ModelBuilder.ts";
 
-export class SqliteModelBuilder {
+export class SqliteModelBuilder extends ModelBuilder {
   public buildTable(
-    entity: EntityDescriptor<TObject>,
+    entity: EntityDescriptor<any>,
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
@@ -40,33 +46,65 @@ export class SqliteModelBuilder {
       return;
     }
 
-    options.tables.set(
+    const columns = this.schemaToSqliteColumns(
       tableName,
-      sqliteTable(
-        tableName,
-        this.schemaToSqliteColumns(
-          tableName,
-          entity.schema,
-          options.enums,
-          options.tables,
-        ),
-        entity.options.config as any,
-      ),
+      entity.schema,
+      options.enums,
+      options.tables,
     );
+
+    // Build the config function for SQLite
+    const configFn = this.getTableConfig(entity, options.tables);
+
+    const table = sqliteTable(tableName, columns, configFn);
+
+    options.tables.set(tableName, table);
   }
 
-  public buildSequence(sequence: SequenceDescriptor) {
+  public buildSequence(
+    sequence: SequenceDescriptor,
+    options: {
+      sequences: Map<string, unknown>;
+      schema: string;
+    },
+  ) {
     throw new AlephaError("SQLite does not support sequences");
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
+  /**
+   * Get SQLite-specific config builder for the table.
+   */
+  protected getTableConfig(
+    entity: EntityDescriptor,
+    tables: Map<string, unknown>,
+  ): ((self: BuildColumns<string, any, "sqlite">) => any) | undefined {
+    // SQLite-specific builders
+    const sqliteBuilders = {
+      index,
+      uniqueIndex,
+      unique,
+      check,
+      foreignKey,
+    };
 
-  toColumnName(str: string) {
-    return (
-      str[0].toLowerCase() +
-      str.slice(1).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+    // Table resolver function
+    const tableResolver = (entityName: string) => {
+      return tables.get(entityName) as any;
+    };
+
+    return this.buildTableConfig<any, BuildColumns<string, any, "sqlite">>(
+      entity,
+      sqliteBuilders,
+      tableResolver,
+      (config, self) => {
+        // SQLite custom config handler
+        const customConfigs = (config as any)(self);
+        return Array.isArray(customConfigs) ? customConfigs : [];
+      },
     );
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   schemaToSqliteColumns = <T extends TObject>(
     tableName: string,
@@ -160,10 +198,6 @@ export class SqliteModelBuilder {
       }
 
       return pg.numeric(key);
-    }
-
-    if (t.schema.isDate(value)) {
-      return this.sqliteDate(key, {});
     }
 
     if (t.schema.isString(value)) {

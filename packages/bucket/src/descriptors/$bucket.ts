@@ -350,8 +350,13 @@ export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
   /**
    * Delete permanently a file from the bucket.
    */
-  public async delete(fileId: string): Promise<void> {
+  public async delete(fileId: string, skipHook = false): Promise<void> {
     await this.provider.delete(this.name, fileId);
+
+    if (skipHook) {
+      return;
+    }
+
     await this.alepha.events.emit("bucket:file:deleted", {
       id: fileId,
       bucket: this,

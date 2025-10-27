@@ -1,12 +1,19 @@
 import { AlephaError, type TObject, type TSchema, t } from "@alepha/core";
+import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
 import {
+  check,
+  foreignKey,
+  index,
   type PgEnum,
   type PgSchema,
+  type PgTableExtraConfigValue,
   type PgTableWithColumns,
   pgEnum,
   pgSchema,
   pgTable,
+  unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import {
   PG_CREATED_AT,
@@ -24,9 +31,9 @@ import type { EntityDescriptor, FromSchema } from "../descriptors/$entity.ts";
 import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";
-import type { ModelBuilder } from "./ModelBuilder.ts";
+import { ModelBuilder } from "./ModelBuilder.ts";
 
-export class PostgresModelBuilder implements ModelBuilder {
+export class PostgresModelBuilder extends ModelBuilder {
   protected schemas = new Map<string, PgSchema>();
 
   protected getPgSchema(name: string) {
@@ -50,7 +57,7 @@ export class PostgresModelBuilder implements ModelBuilder {
   }
 
   public buildTable(
-    entity: EntityDescriptor<TObject>,
+    entity: EntityDescriptor<any>,
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
@@ -64,20 +71,20 @@ export class PostgresModelBuilder implements ModelBuilder {
 
     const nsp = this.getPgSchema(options.schema);
 
-    options.tables.set(
+    const columns = this.schemaToPgColumns(
       tableName,
-      nsp.table(
-        tableName,
-        this.schemaToPgColumns(
-          tableName,
-          entity.schema,
-          nsp,
-          options.enums,
-          options.tables,
-        ),
-        entity.options.config,
-      ),
+      entity.schema,
+      nsp,
+      options.enums,
+      options.tables,
     );
+
+    // Build the config function that includes indexes, foreign keys, constraints, and custom config
+    const configFn = this.getTableConfig(entity, options.tables);
+
+    const table = nsp.table(tableName, columns, configFn);
+
+    options.tables.set(tableName, table);
   }
 
   public buildSequence(
@@ -102,11 +109,35 @@ export class PostgresModelBuilder implements ModelBuilder {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  toColumnName(str: string) {
-    return (
-      str[0].toLowerCase() +
-      str.slice(1).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
-    );
+  /**
+   * Get PostgreSQL-specific config builder for the table.
+   */
+  protected getTableConfig(
+    entity: EntityDescriptor,
+    tables: Map<string, unknown>,
+  ):
+    | ((
+        self: BuildExtraConfigColumns<string, any, "pg">,
+      ) => PgTableExtraConfigValue[])
+    | undefined {
+    // PostgreSQL-specific builders
+    const pgBuilders = {
+      index,
+      uniqueIndex,
+      unique,
+      check,
+      foreignKey,
+    };
+
+    // Table resolver function
+    const tableResolver = (entityName: string) => {
+      return tables.get(entityName) as any;
+    };
+
+    return this.buildTableConfig<
+      PgTableExtraConfigValue,
+      BuildExtraConfigColumns<string, any, "pg">
+    >(entity, pgBuilders as any, tableResolver);
   }
 
   schemaToPgColumns = <T extends TObject>(
@@ -230,10 +261,6 @@ export class PostgresModelBuilder implements ModelBuilder {
       }
 
       return pg.numeric(key);
-    }
-
-    if (t.schema.isDate(value)) {
-      return pg.date(key, { mode: "string" });
     }
 
     if (t.schema.isString(value)) {

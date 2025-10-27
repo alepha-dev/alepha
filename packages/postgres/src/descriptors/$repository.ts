@@ -615,6 +615,10 @@ export class RepositoryDescriptor<
     values: Array<Static<TObjectInsert<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>[]> {
+    if (values.length === 0) {
+      return [];
+    }
+
     return await this.insert(opts)
       .values(values.map((data) => this.cast(data, true)))
       .returning(this.table)
@@ -772,15 +776,17 @@ export class RepositoryDescriptor<
     where: PgQueryWhereOrSQL<T>,
     data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
-  ): Promise<void> {
+  ): Promise<Array<number | string>> {
     where = this.withDeletedAt(where, opts);
     data = this.cast(data, false) as any;
     try {
-      await this.update(opts)
+      const entities = await this.update(opts)
         .set(
           data as PgUpdateSetSource<PgTableWithColumns<SchemaToTableConfig<T>>>,
         )
-        .where(this.toSQL(where));
+        .where(this.toSQL(where))
+        .returning();
+      return entities.map((it: any) => it[this.id.key]);
     } catch (error) {
       throw this.handleError(error, "Update query has failed");
     }
@@ -788,25 +794,28 @@ export class RepositoryDescriptor<
 
   /**
    * Find many and delete all of them.
+   * @returns Array of deleted entity IDs
    */
   public async deleteMany(
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
-  ): Promise<void> {
+  ): Promise<Array<number | string>> {
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
-      await this.updateMany(
+      return await this.updateMany(
         where,
         {
           [deletedAt.key]: opts.now ?? this.dateTimeProvider.now(),
         } as any,
         opts,
       );
-      return;
     }
 
     try {
-      await this.delete(opts).where(this.toSQL(where));
+      const result = await this.delete(opts)
+        .where(this.toSQL(where))
+        .returning({ id: (this.table as any)[this.id.key] });
+      return result.map((row: any) => row.id);
     } catch (error) {
       throw new PgError("Delete query has failed", error as Error);
     }
@@ -814,8 +823,9 @@ export class RepositoryDescriptor<
 
   /**
    * Delete all entities.
+   * @returns Array of deleted entity IDs
    */
-  public clear(opts: StatementOptions = {}) {
+  public clear(opts: StatementOptions = {}): Promise<Array<number | string>> {
     return this.deleteMany({}, opts);
   }
 
@@ -823,8 +833,12 @@ export class RepositoryDescriptor<
    * Delete the given entity.
    *
    * You must fetch the entity first in order to delete it.
+   * @returns Array containing the deleted entity ID
    */
-  public async destroy(entity: Static<T>, opts: StatementOptions = {}) {
+  public async destroy(
+    entity: Static<T>,
+    opts: StatementOptions = {},
+  ): Promise<Array<number | string>> {
     const id = (entity as any)[this.id.key];
     if (id == null) {
       throw new AlephaError("Cannot destroy entity without ID");
@@ -836,27 +850,36 @@ export class RepositoryDescriptor<
       (entity as any)[deletedAt.key] = opts.now;
     }
 
-    await this.deleteById(id, opts);
+    return await this.deleteById(id, opts);
   }
 
   /**
    * Find an entity and delete it.
+   * @returns Array of deleted entity IDs (should contain at most one ID)
    */
   public async deleteOne(
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
-  ): Promise<void> {
-    await this.deleteMany(where, opts);
+  ): Promise<Array<number | string>> {
+    return await this.deleteMany(where, opts);
   }
 
   /**
    * Find an entity by ID and delete it.
+   * @returns Array containing the deleted entity ID
+   * @throws PgEntityNotFoundError if the entity is not found
    */
   public async deleteById(
     id: string | number,
     opts: StatementOptions = {},
-  ): Promise<void> {
-    await this.deleteMany(this.getWhereId(id), opts);
+  ): Promise<Array<number | string>> {
+    const result = await this.deleteMany(this.getWhereId(id), opts);
+    if (result.length === 0) {
+      throw new PgEntityNotFoundError(
+        `Entity with ID ${id} not found in ${this.tableName}`,
+      );
+    }
+    return result;
   }
 
   /**
