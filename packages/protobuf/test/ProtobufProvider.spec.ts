@@ -46,9 +46,10 @@ message Target {
         isActive: t.boolean(),
       });
 
+      const createdAt = new Date();
       const data = {
         username: "John Doe",
-        createdAt: new Date().toISOString(),
+        createdAt,
         age: 30,
         isActive: true,
       };
@@ -61,7 +62,14 @@ message Target {
       const user = alepha.codec.decode(userSchema, buf, {
         encoder: "protobuf",
       });
-      expect(user).toEqual(data);
+      // When decoding, dates come back as dayjs objects, so compare the ISO strings
+      expect(user.username).toBe(data.username);
+      expect(user.age).toBe(data.age);
+      expect(user.isActive).toBe(data.isActive);
+      // Compare datetime as ISO strings since dayjs might be used
+      expect(user.createdAt.toISOString?.() || user.createdAt).toBe(
+        createdAt.toISOString(),
+      );
     });
   });
 

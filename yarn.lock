@@ -338,6 +338,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/integration-tests@workspace:apps/integration":
+  version: 0.0.0-use.local
+  resolution: "@alepha/integration-tests@workspace:apps/integration"
+  dependencies:
+    "@alepha/core": "npm:^0.10.7"
+    "@biomejs/biome": "npm:^2.3.0"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/lock-redis@npm:0.10.7, @alepha/lock-redis@workspace:packages/lock-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/lock-redis@workspace:packages/lock-redis"
@@ -407,6 +418,7 @@ __metadata:
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
   dependencies:
     "@alepha/core": "npm:0.10.7"
+    "@alepha/datetime": "npm:0.10.7"
     "@biomejs/biome": "npm:^2.3.0"
     protobufjs: "npm:^7.5.4"
     tsdown: "npm:^0.15.9"

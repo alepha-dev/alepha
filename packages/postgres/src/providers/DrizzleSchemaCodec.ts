@@ -1,6 +1,6 @@
+import type { TSchema } from "@alepha/core";
 import { JsonSchemaCodec, t } from "@alepha/core";
-import dayjs from "dayjs";
-import type { TSchema } from "typebox";
+import { dayjs } from "@alepha/datetime";
 
 export class DrizzleSchemaCodec extends JsonSchemaCodec {
   protected transformType(schema: TSchema): TSchema | false | void {

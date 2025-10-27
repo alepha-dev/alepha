@@ -1,8 +1,8 @@
+import type { StaticDecode, TSchema } from "typebox";
 import { describe, expect, it } from "vitest";
 import { $inject, Alepha, CodecManager, TypeBoxError, t } from "../src";
 import { JsonSchemaCodec } from "../src/providers/JsonSchemaCodec.ts";
 import { SchemaCodec } from "../src/providers/SchemaCodec.ts";
-import type { StaticDecode, TSchema } from "typebox";
 
 describe("CodecManager", () => {
   describe("initialization", () => {
@@ -734,9 +734,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({ value: t.text() });
 
-      expect(() =>
-        codecManager.decode(schema, "{ invalid json }"),
-      ).toThrow();
+      expect(() => codecManager.decode(schema, "{ invalid json }")).toThrow();
     });
   });
 });

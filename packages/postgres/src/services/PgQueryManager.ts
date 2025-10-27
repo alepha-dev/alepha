@@ -252,14 +252,28 @@ export class PgQueryManager {
     if (!obj || typeof obj !== "object") return false;
 
     const filterOperatorKeys = [
-      "eq", "ne", "gt", "gte", "lt", "lte",
-      "inArray", "notInArray", "isNull", "isNotNull",
-      "like", "notLike", "ilike", "notIlike",
-      "between", "notBetween",
-      "arrayContains", "arrayContained", "arrayOverlaps"
+      "eq",
+      "ne",
+      "gt",
+      "gte",
+      "lt",
+      "lte",
+      "inArray",
+      "notInArray",
+      "isNull",
+      "isNotNull",
+      "like",
+      "notLike",
+      "ilike",
+      "notIlike",
+      "between",
+      "notBetween",
+      "arrayContains",
+      "arrayContained",
+      "arrayOverlaps",
     ];
 
-    return filterOperatorKeys.some(key => key in obj);
+    return filterOperatorKeys.some((key) => key in obj);
   }
 
   /**

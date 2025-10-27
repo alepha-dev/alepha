@@ -144,6 +144,16 @@ export class CliProvider {
 
     const parsed = this.parseFlags(argv, flagDefs);
 
+    // apply manually defaults for optional properties that have defaults
+    for (const [key, value] of Object.entries(schema.properties)) {
+      if (!(key in parsed) && t.schema.isOptional(value)) {
+        const innerSchema = value;
+        if (innerSchema && "default" in innerSchema) {
+          parsed[key] = innerSchema.default;
+        }
+      }
+    }
+
     try {
       return this.alepha.codec.decode(schema, parsed);
     } catch (error) {
