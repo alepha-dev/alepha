@@ -42,12 +42,10 @@ export class ServerSwaggerProvider {
     on: "configure",
     priority: "last",
     handler: async (alepha) => {
-      const options = alepha.descriptors($swagger)?.[0]?.options ?? {
-        info: {
-          title: "API Documentation",
-          version: "1.0.0",
-        },
-      };
+      const options = alepha.descriptors($swagger)?.[0]?.options;
+      if (!options) {
+        return;
+      }
 
       this.json = await this.createSwagger(options);
     },
