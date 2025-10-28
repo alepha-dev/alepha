@@ -84,6 +84,8 @@ export class DevCollectorProvider {
     return this.logs;
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   public getActions(): DevActionMetadata[] {
     const actionDescriptors = this.alepha.descriptors($action);
 
@@ -258,6 +260,8 @@ export class DevCollectorProvider {
       modules: this.getModules(),
     };
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   protected getProviderName(provider?: "memory" | any): string {
     if (!provider) {

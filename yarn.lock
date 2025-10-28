@@ -209,7 +209,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cli@npm:^0.10.7, @alepha/cli@workspace:packages/cli":
+"@alepha/cli@npm:0.10.7, @alepha/cli@npm:^0.10.7, @alepha/cli@workspace:packages/cli":
   version: 0.0.0-use.local
   resolution: "@alepha/cli@workspace:packages/cli"
   dependencies:
@@ -930,6 +930,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
+    "@alepha/cli": "npm:0.10.7"
     "@alepha/core": "npm:0.10.7"
     "@alepha/react": "npm:0.10.7"
     "@alepha/react-form": "npm:0.10.7"

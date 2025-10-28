@@ -2,3 +2,113 @@
 @import "@mantine/nprogress/styles.css";
 @import "@mantine/spotlight/styles.css";
 @import "@mantine/dates/styles.css";
+@import "@mantine/notifications/styles.css";
+@import "./src/components/DataTable.css";
+@import "./src/components/Sidebar.css";
+
+:root {
+  --alepha-bg-light: #f8f9fa;
+  --alepha-bg-dark: #010409;
+  --alepha-bg: var(--alepha-bg-light);
+  --alepha-surface-light: #f1f3f5;
+  --alepha-surface-dark: #0d1117;
+  --alepha-surface: var(--alepha-surface-light);
+  --alepha-elevated-light: #ffffff;
+  --alepha-elevated-hover-light: #f6f5f5;
+  --alepha-elevated-dark: #151b23;
+  --alepha-elevated-hover-dark: #262c36;
+  --alepha-elevated: var(--alepha-elevated-light);
+  --alepha-elevated-hover: var(--alepha-elevated-hover-light);
+
+  --alepha-border-light: #cbcbcb;
+  --alepha-border-dark: #3d444d;
+  --alepha-border: var(--alepha-border-light);
+
+  --alepha-shadow-dark: rgba(0, 0, 0, 0.5);
+  --alepha-shadow-light: rgba(0, 0, 0, 0.05);
+  --alepha-shadow: var(--alepha-shadow-light);
+
+  --alepha-text-light: #000000;
+  --alepha-text-dark: #ffffff;
+  --alepha-text-muted: #6c757d;
+  --alepha-text: var(--alepha-text-light);
+
+  --alepha-focus-ring: rgba(100, 149, 237, 0.4);
+
+  --mantine-color-dimmed: var(--alepha-text-muted) !important;
+  --mantine-color-dark-8: var(--alepha-bg);
+  --mantine-color-dark-6: var(--alepha-surface);
+  --mantine-color-dark-5: var(--alepha-border);
+  --mantine-color-dark-4: var(--alepha-border);
+  --mantine-color-body: var(--alepha-elevated) !important;
+  --mantine-spacing-xs: 8px;
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ */
+
+[data-mantine-color-scheme="dark"] {
+  --alepha-surface: var(--alepha-surface-dark);
+  --alepha-elevated: var(--alepha-elevated-dark);
+  --alepha-elevated-hover: var(--alepha-elevated-hover-dark);
+  --alepha-border: var(--alepha-border-dark);
+  --alepha-bg: var(--alepha-bg-dark);
+  --alepha-shadow: var(--alepha-shadow-dark);
+  --alepha-text: var(--alepha-text-dark);
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--alepha-bg);
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ */
+
+.mantine-SegmentedControl-root {
+  background-color: var(--alepha-surface);
+  border: 1px solid var(--alepha-border);
+}
+
+.mantine-Action-iconOnly .mantine-Button-section {
+  margin-inline-end: 4px;
+  margin-inline-start: 4px;
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ */
+/* Modal Customizations */
+
+/* Custom modal scale animation */
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.mantine-Modal-content {
+  animation: modalScaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mantine-Modal-root[data-exit] .mantine-Modal-content {
+  animation: modalScaleOut 0.15s cubic-bezier(0.4, 0, 1, 1);
+}

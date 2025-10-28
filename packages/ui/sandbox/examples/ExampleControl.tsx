@@ -152,6 +152,9 @@ const ExampleControl = () => {
         <Flex justify="space-between" align="center" mb="md">
           <Title order={1}>Control Component Examples</Title>
           <Flex gap="md" align="center">
+            <Anchor onClick={() => router.go("/action")} c="blue" fw={500}>
+              View Action Examples →
+            </Anchor>
             <Anchor onClick={() => router.go("/typeform")} c="blue" fw={500}>
               View TypeForm Examples →
             </Anchor>

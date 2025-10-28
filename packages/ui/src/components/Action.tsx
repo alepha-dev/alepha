@@ -6,13 +6,93 @@ import {
   useRouter,
 } from "@alepha/react";
 import { type FormModel, useFormState } from "@alepha/react-form";
-import { Button, type ButtonProps, Flex } from "@mantine/core";
+import {
+  Button,
+  type ButtonProps,
+  Flex,
+  Menu,
+  Tooltip,
+  type TooltipProps,
+} from "@mantine/core";
+import { IconChevronRight } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
+
+export interface ActionMenuItem {
+  /**
+   * Menu item type
+   */
+  type?: "item" | "divider" | "label";
+
+  /**
+   * Label text for the menu item
+   */
+  label?: string;
+
+  /**
+   * Icon element to display before the label
+   */
+  icon?: ReactNode;
+
+  /**
+   * Click handler for menu items
+   */
+  onClick?: () => void;
+
+  /**
+   * Color for the menu item (e.g., "red" for danger actions)
+   */
+  color?: string;
+
+  /**
+   * Nested submenu items
+   */
+  children?: ActionMenuItem[];
+}
+
+export interface ActionMenuConfig {
+  /**
+   * Array of menu items to display
+   */
+  items: ActionMenuItem[];
+
+  /**
+   * Menu position relative to the button
+   */
+  position?:
+    | "bottom"
+    | "bottom-start"
+    | "bottom-end"
+    | "top"
+    | "top-start"
+    | "top-end"
+    | "left"
+    | "right";
+
+  /**
+   * Menu width
+   */
+  width?: number | string;
+
+  /**
+   * Menu shadow
+   */
+  shadow?: "xs" | "sm" | "md" | "lg" | "xl";
+}
 
 export interface ActionCommonProps extends ButtonProps {
   children?: ReactNode;
   textVisibleFrom?: "xs" | "sm" | "md" | "lg" | "xl";
-  // TODO
+
+  /**
+   * Tooltip to display on hover. Can be a string for simple tooltips
+   * or a TooltipProps object for advanced configuration.
+   */
+  tooltip?: string | TooltipProps;
+
+  /**
+   * Menu configuration. When provided, the action will display a dropdown menu.
+   */
+  menu?: ActionMenuConfig;
 
   /**
    * If set, a confirmation dialog will be shown before performing the action.
@@ -28,25 +108,78 @@ export type ActionProps = ActionCommonProps &
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+// Helper function to render menu items recursively
+const renderMenuItem = (item: ActionMenuItem, index: number): ReactNode => {
+  // Render divider
+  if (item.type === "divider") {
+    return <Menu.Divider key={index} />;
+  }
+
+  // Render label
+  if (item.type === "label") {
+    return <Menu.Label key={index}>{item.label}</Menu.Label>;
+  }
+
+  // Render submenu if has children
+  if (item.children && item.children.length > 0) {
+    return (
+      <Menu key={index} trigger="hover" position="right-start" offset={2}>
+        <Menu.Target>
+          <Menu.Item
+            leftSection={item.icon}
+            rightSection={<IconChevronRight size={14} />}
+          >
+            {item.label}
+          </Menu.Item>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {item.children.map((child, childIndex) =>
+            renderMenuItem(child, childIndex),
+          )}
+        </Menu.Dropdown>
+      </Menu>
+    );
+  }
+
+  // Render regular menu item
+  return (
+    <Menu.Item
+      key={index}
+      leftSection={item.icon}
+      onClick={item.onClick}
+      color={item.color}
+    >
+      {item.label}
+    </Menu.Item>
+  );
+};
+
 const Action = (_props: ActionProps) => {
   const props = { variant: "subtle", ..._props };
+  const { tooltip, menu, ...restProps } = props;
 
   if (props.leftSection && !props.children) {
-    props.className ??= "mantine-Action-iconOnly";
-    props.p ??= "xs";
+    restProps.className ??= "mantine-Action-iconOnly";
+    restProps.p ??= "xs";
   }
 
   if (props.textVisibleFrom) {
-    const { children, textVisibleFrom, leftSection, ...rest } = props;
+    const { children, textVisibleFrom, leftSection, ...rest } = restProps;
     return (
       <>
         <Flex w={"100%"} visibleFrom={textVisibleFrom}>
-          <Action flex={1} {...rest} leftSection={leftSection}>
+          <Action
+            flex={1}
+            {...rest}
+            leftSection={leftSection}
+            tooltip={tooltip}
+            menu={menu}
+          >
             {children}
           </Action>
         </Flex>
         <Flex w={"100%"} hiddenFrom={textVisibleFrom}>
-          <Action px={"xs"} {...rest}>
+          <Action px={"xs"} {...rest} tooltip={tooltip} menu={menu}>
             {leftSection}
           </Action>
         </Flex>
@@ -55,34 +188,62 @@ const Action = (_props: ActionProps) => {
   }
 
   const renderAction = () => {
-    if ("href" in props && props.href) {
+    if ("href" in restProps && restProps.href) {
       return (
-        <ActionHref {...props} href={props.href}>
-          {props.children}
+        <ActionHref {...restProps} href={restProps.href}>
+          {restProps.children}
         </ActionHref>
       );
     }
 
-    if ("onClick" in props && props.onClick) {
+    if ("onClick" in restProps && restProps.onClick) {
       return (
-        <ActionClick {...props} onClick={props.onClick}>
-          {props.children}
+        <ActionClick {...restProps} onClick={restProps.onClick}>
+          {restProps.children}
         </ActionClick>
       );
     }
 
-    if ("form" in props && props.form) {
+    if ("form" in restProps && restProps.form) {
       return (
-        <ActionSubmit {...props} form={props.form}>
-          {props.children}
+        <ActionSubmit {...restProps} form={restProps.form}>
+          {restProps.children}
         </ActionSubmit>
       );
     }
 
-    return <Button {...(props as any)}>{props.children}</Button>;
+    return <Button {...(restProps as any)}>{restProps.children}</Button>;
   };
 
-  return renderAction();
+  let actionElement = renderAction();
+
+  // Wrap with Menu if provided
+  if (menu) {
+    actionElement = (
+      <Menu
+        position={menu.position || "bottom-start"}
+        width={menu.width || 200}
+        shadow={menu.shadow || "md"}
+      >
+        <Menu.Target>{actionElement}</Menu.Target>
+        <Menu.Dropdown>
+          {menu.items.map((item, index) => renderMenuItem(item, index))}
+        </Menu.Dropdown>
+      </Menu>
+    );
+  }
+
+  // Wrap with Tooltip if provided
+  if (tooltip) {
+    const tooltipProps: TooltipProps =
+      typeof tooltip === "string"
+        ? { label: tooltip, children: actionElement }
+        : { ...tooltip, children: actionElement };
+
+    return <Tooltip {...tooltipProps} />;
+  }
+
+  return actionElement;
 };
 
 export default Action;

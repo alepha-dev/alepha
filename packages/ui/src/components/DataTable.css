@@ -1,0 +1,199 @@
+/* ------------------------------------------------------------------------------------------------------------------ */
+/* DataTable Component Styles */
+/* ------------------------------------------------------------------------------------------------------------------ */
+
+.alepha-datatable-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.alepha-datatable-toolbar {
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+}
+
+.alepha-datatable-search-input {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.alepha-datatable-page-size-select {
+  width: 120px;
+}
+
+.alepha-datatable-table {
+  position: relative;
+}
+
+.alepha-datatable-th {
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.alepha-datatable-th:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme="dark"] .alepha-datatable-th:hover {
+  background-color: var(--mantine-color-dark-6);
+}
+
+.alepha-datatable-tr {
+  transition: background-color 0.15s ease;
+}
+
+.alepha-datatable-tr.alepha-datatable-selected {
+  background-color: var(--mantine-color-blue-0) !important;
+}
+
+[data-mantine-color-scheme="dark"]
+  .alepha-datatable-tr.alepha-datatable-selected {
+  background-color: rgba(34, 139, 230, 0.1) !important;
+}
+
+.alepha-datatable-checkbox-column {
+  width: 40px;
+  text-align: center;
+}
+
+.alepha-datatable-actions-column {
+  width: 100px;
+  text-align: center;
+}
+
+.alepha-datatable-sort-icon {
+  color: var(--mantine-color-blue-6);
+  transition: transform 0.2s ease;
+}
+
+.alepha-datatable-sort-icon-inactive {
+  color: var(--mantine-color-gray-5);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.alepha-datatable-th:hover .alepha-datatable-sort-icon-inactive {
+  opacity: 0.5;
+}
+
+/* Loading state */
+.alepha-datatable-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.alepha-datatable-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+[data-mantine-color-scheme="dark"] .alepha-datatable-loading-overlay {
+  background: rgba(26, 27, 30, 0.8);
+}
+
+/* Sticky header styles */
+.alepha-datatable-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--mantine-color-body);
+}
+
+/* Zebra striping adjustments */
+.alepha-datatable-striped tbody tr:nth-of-type(odd) {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme="dark"]
+  .alepha-datatable-striped
+  tbody
+  tr:nth-of-type(odd) {
+  background-color: var(--mantine-color-dark-7);
+}
+
+/* Empty state */
+.alepha-datatable-empty-state {
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.alepha-datatable-empty-icon {
+  color: var(--mantine-color-gray-5);
+  margin-bottom: 1rem;
+}
+
+/* Footer */
+.alepha-datatable-footer {
+  border-top: 1px solid var(--mantine-color-gray-2);
+  padding-top: var(--mantine-spacing-sm);
+  margin-top: var(--mantine-spacing-xs);
+}
+
+[data-mantine-color-scheme="dark"] .alepha-datatable-footer {
+  border-top-color: var(--mantine-color-dark-5);
+}
+
+/* Custom scrollbar for better UX */
+.alepha-datatable-container ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.alepha-datatable-container ::-webkit-scrollbar-track {
+  background: var(--mantine-color-gray-1);
+  border-radius: 4px;
+}
+
+[data-mantine-color-scheme="dark"]
+  .alepha-datatable-container
+  ::-webkit-scrollbar-track {
+  background: var(--mantine-color-dark-6);
+}
+
+.alepha-datatable-container ::-webkit-scrollbar-thumb {
+  background: var(--mantine-color-gray-4);
+  border-radius: 4px;
+}
+
+[data-mantine-color-scheme="dark"]
+  .alepha-datatable-container
+  ::-webkit-scrollbar-thumb {
+  background: var(--mantine-color-dark-4);
+}
+
+.alepha-datatable-container ::-webkit-scrollbar-thumb:hover {
+  background: var(--mantine-color-gray-5);
+}
+
+[data-mantine-color-scheme="dark"]
+  .alepha-datatable-container
+  ::-webkit-scrollbar-thumb:hover {
+  background: var(--mantine-color-dark-3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .alepha-datatable-toolbar {
+    padding: var(--mantine-spacing-sm);
+  }
+
+  .alepha-datatable-search-input {
+    min-width: 150px;
+  }
+
+  .alepha-datatable-page-size-select {
+    width: 100px;
+  }
+}
