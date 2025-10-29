@@ -60,7 +60,7 @@ jobs:
         run: yarn clean
 
       - name: TypeScript Check
-        run: yarn check
+        run: yarn typecheck
 
       - name: Dependencies Check
         run: yarn check-dependencies
