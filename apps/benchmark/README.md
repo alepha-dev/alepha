@@ -3,6 +3,5 @@ Disclaimer: This is not a serious benchmark, just a fun way to compare different
 ## Commands
 
 ```bash
-yarn concurrent # start all apps concurrently
 yarn benchmark
 ```

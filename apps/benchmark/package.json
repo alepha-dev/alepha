@@ -11,12 +11,11 @@
 		"npm-run-all": "^4.1.5"
 	},
 	"scripts": {
-		"alepha": "node --disable-warning=ExperimentalWarning src/3003-alepha.ts",
-		"alepha-cluster": "node --disable-warning=ExperimentalWarning src/3005-alepha-cluster.ts",
-		"express": "node --disable-warning=ExperimentalWarning src/3001-express.js",
-		"fastify": "node --disable-warning=ExperimentalWarning src/3002-fastify.ts",
-		"raw": "node --disable-warning=ExperimentalWarning src/3004-node.ts",
-		"benchmark": "node --disable-warning=ExperimentalWarning src/run-benchmark.ts",
-		"concurrent": "npm-run-all -p alepha express fastify raw alepha-cluster"
+		"raw": "node src/3004-node.ts",
+		"express": "node src/3001-express.js",
+		"fastify": "node src/3002-fastify.ts",
+		"alepha": "node src/3003-alepha.ts",
+		"benchmark": "node src/run-benchmark.ts",
+		"concurrent": "npm-run-all -p alepha express fastify raw"
 	}
 }

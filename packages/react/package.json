@@ -39,10 +39,10 @@
 		"react-dom": "*"
 	},
 	"scripts": {
-		"check": "tsc",
+		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts"
+		"lint": "biome check --fix",
+		"build": "tsdown -c=../../tsdown.config.ts"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

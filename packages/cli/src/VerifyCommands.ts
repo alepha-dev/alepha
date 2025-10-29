@@ -24,9 +24,10 @@ export class VerifyCommands {
       await run("alepha clean");
       await run("alepha format");
       await run("alepha lint");
-      await run("alepha check:types");
-      await run("alepha check:dependencies");
-      await run("alepha check:migrations");
+      await run("alepha test");
+      await run("alepha typecheck");
+      await run("alepha depcheck");
+      await run("alepha db:check-migrations");
       await run("alepha build");
       await run("alepha clean");
     },
@@ -54,16 +55,24 @@ export class VerifyCommands {
     },
   });
 
-  checkTypes = $command({
-    name: "check:types",
+  test = $command({
+    name: "test",
+    description: "Run tests using Vitest",
+    handler: async () => {
+      await exec("vitest run");
+    },
+  });
+
+  typecheck = $command({
+    name: "typecheck",
     description: "Check TypeScript types across the codebase",
     handler: async () => {
       await exec("tsc --noEmit");
     },
   });
 
-  checkDependencies = $command({
-    name: "check:dependencies",
+  depcheck = $command({
+    name: "depcheck",
     description: "Check for unused or missing dependencies using Depcheck",
     handler: async () => {
       await exec(

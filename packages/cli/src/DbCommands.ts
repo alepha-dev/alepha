@@ -26,7 +26,7 @@ export class DbCommands {
    * - If changes are detected, prompts the user to run the migration generation command!
    */
   check = $command({
-    name: "check:migrations",
+    name: "db:check-migrations",
     description: "Verify database migration files are up to date",
     flags: this.flags,
     handler: async ({ flags }) => {

@@ -55,22 +55,24 @@ export class SecurityProvider {
   /**
    * The realms configured for the security provider.
    */
-  protected readonly realms: Realm[] = [
-    {
-      name: "default",
-      secret: this.env.APP_SECRET,
-      roles: [
+  protected readonly realms: Realm[] = this.alepha.isTest()
+    ? [
         {
-          name: "admin",
-          permissions: [
+          name: "default",
+          secret: this.env.APP_SECRET,
+          roles: [
             {
-              name: "*",
+              name: "admin",
+              permissions: [
+                {
+                  name: "*",
+                },
+              ],
             },
           ],
         },
-      ],
-    },
-  ];
+      ]
+    : [];
 
   protected start = $hook({
     on: "start",

@@ -23,9 +23,9 @@
 	},
 	"scripts": {
 		"test": "vitest run",
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts",
-		"check": "tsc"
+		"lint": "biome check --fix",
+		"build": "tsdown -c=../../tsdown.config.ts",
+		"typecheck": "tsc --noEmit"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

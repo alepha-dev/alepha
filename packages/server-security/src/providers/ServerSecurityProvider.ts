@@ -28,7 +28,11 @@ export class ServerSecurityProvider {
         // -------------------------------------------------------------------------------------------------------------
         // if the action is disabled or not secure, we do NOT create a permission for it
         // -------------------------------------------------------------------------------------------------------------
-        if (action.options.disabled || action.options.secure === false) {
+        if (
+          action.options.disabled ||
+          action.options.secure === false ||
+          this.securityProvider.getRealms().length === 0
+        ) {
           continue;
         }
 

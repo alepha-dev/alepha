@@ -2,18 +2,14 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
-		"build": "vite build",
-		"db:generate": "LOG_FORMAT=text LOG_LEVEL=trace alepha db:generate",
-		"db:check": "alepha check:migrations"
+		"dev": "alepha dev",
+		"build": "alepha build"
 	},
 	"dependencies": {
-		"@alepha/cli": "^0.11.0",
 		"alepha": "0.11.0",
-		"react": "^19.2.0",
-		"vite": "^7.1.12"
+		"react": "^19.2.0"
 	},
 	"devDependencies": {
-		"tsx": "^4.20.6"
+		"@alepha/cli": "0.11.0"
 	}
 }

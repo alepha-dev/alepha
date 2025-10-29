@@ -49,7 +49,7 @@ class AlephaDevCli {
     handler: async ({ run }) => {
       await run(`yarn clean`);
       await run(`yarn lint`);
-      await run(`yarn check`);
+      await run(`yarn typecheck`);
       await run(`yarn test`);
       await run(`yarn check-dependencies`);
       await run(`yarn build`);

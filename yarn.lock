@@ -223,6 +223,7 @@ __metadata:
     tsx: "npm:^4.20.6"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.1.12"
+    vitest: "npm:^3.2.4"
   bin:
     alepha: ./src/index.ts
   languageName: unknown
@@ -291,6 +292,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/docs@workspace:apps/docs"
   dependencies:
+    "@alepha/cli": "npm:0.11.0"
     "@alepha/core": "npm:0.11.0"
     "@alepha/react": "npm:0.11.0"
     "@fontsource/inter": "npm:^5.2.8"
@@ -301,14 +303,11 @@ __metadata:
     "@mantine/spotlight": "npm:^8.3.6"
     "@tabler/icons-react": "npm:^3.35.0"
     "@types/react": "npm:^19.2.2"
-    "@vitejs/plugin-react": "npm:^5.1.0"
     highlight.js: "npm:^11.11.1"
     marked: "npm:^16.4.1"
     marked-highlight: "npm:^2.2.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
-    typescript: "npm:^5.9.3"
-    vite: "npm:^7.1.12"
     vite-bundle-analyzer: "npm:^1.2.3"
   languageName: unknown
   linkType: soft
@@ -344,12 +343,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/integration-tests@workspace:apps/integration"
   dependencies:
+    "@alepha/cli": "npm:^0.11.0"
     "@alepha/core": "npm:^0.11.0"
     "@alepha/postgres": "npm:^0.11.0"
     "@alepha/server": "npm:^0.11.0"
-    "@biomejs/biome": "npm:^2.3.2"
-    typescript: "npm:^5.9.3"
-    vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
 
@@ -8415,11 +8412,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
   dependencies:
-    "@alepha/cli": "npm:^0.11.0"
+    "@alepha/cli": "npm:0.11.0"
     alepha: "npm:0.11.0"
     react: "npm:^19.2.0"
-    tsx: "npm:^4.20.6"
-    vite: "npm:^7.1.12"
   languageName: unknown
   linkType: soft
 

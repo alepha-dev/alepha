@@ -20,9 +20,9 @@
 		"vitest": "^3.2.4"
 	},
 	"scripts": {
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts",
-		"check": "tsc",
+		"lint": "biome check --fix",
+		"build": "tsdown -c=../../tsdown.config.ts",
+		"typecheck": "tsc --noEmit",
 		"test": "vitest run"
 	},
 	"homepage": "https://github.com/feunard/alepha",

@@ -33,9 +33,9 @@
 	"scripts": {
 		"copy": "node scripts/copy.ts",
 		"test": "vitest run",
-		"lint": "biome check --write --unsafe",
-		"build": "tsdown -c ../../tsdown.config.ts && yarn copy",
-		"check": "tsc"
+		"lint": "biome check --fix",
+		"build": "tsdown -c=../../tsdown.config.ts && yarn copy",
+		"typecheck": "tsc --noEmit"
 	},
 	"scarfSettings": {
 		"enabled": false

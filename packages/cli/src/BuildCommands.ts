@@ -1,7 +1,7 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command, CliProvider } from "@alepha/command";
-import { $inject } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { getServerEntry } from "@alepha/vite";
 import { exec } from "./exec.ts";
@@ -31,7 +31,16 @@ export class BuildCommands {
   build = $command({
     name: "build",
     description: "Build the project for production",
-    handler: async () => {
+    flags: t.object({
+      lib: t.optional(t.boolean()),
+      config: t.optional(t.text({ aliases: ["c"] })),
+    }),
+    handler: async ({ flags }) => {
+      if (flags.lib) {
+        await exec(`tsdown${flags.config ? ` -c=${flags.config}` : ""}`);
+        return;
+      }
+
       const viteConfigPath = await this.viteConfigPath();
       await exec(`vite build -c=${viteConfigPath}`);
     },
