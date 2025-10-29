@@ -6,10 +6,10 @@
 		"build": "alepha build"
 	},
 	"dependencies": {
-		"alepha": "0.11.0",
+		"alepha": "0.11.1",
 		"react": "^19.2.0"
 	},
 	"devDependencies": {
-		"@alepha/cli": "0.11.0"
+		"@alepha/cli": "0.11.1"
 	}
 }

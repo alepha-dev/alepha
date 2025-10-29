@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-swagger",
 	"description": "Generates OpenAPI documentation and a Swagger UI for APIs.",
-	"version": "0.11.0",
+	"version": "0.11.1",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -15,12 +15,12 @@
 		"assets"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.0",
-		"@alepha/logger": "0.11.0",
-		"@alepha/security": "0.11.0",
-		"@alepha/server": "0.11.0",
-		"@alepha/server-security": "0.11.0",
-		"@alepha/server-static": "0.11.0",
+		"@alepha/core": "0.11.1",
+		"@alepha/logger": "0.11.1",
+		"@alepha/security": "0.11.1",
+		"@alepha/server": "0.11.1",
+		"@alepha/server-security": "0.11.1",
+		"@alepha/server-static": "0.11.1",
 		"openapi-types": "^12.1.3"
 	},
 	"devDependencies": {
