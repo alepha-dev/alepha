@@ -6,12 +6,13 @@
 	"workspaces": {
 		"packages": [
 			"apps/*",
-			"packages/*"
+			"packages/*",
+			"!apps/*/dist"
 		]
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.0",
-		"@types/node": "^24.9.1",
+		"@biomejs/biome": "^2.3.2",
+		"@types/node": "^24.9.2",
 		"@vitest/coverage-v8": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
 		"depcheck": "^1.4.7",
@@ -30,7 +31,7 @@
 		"convert": "node scripts/convert.ts",
 		"lint": "biome check --write --unsafe",
 		"check": "yarn tsc --noEmit",
-		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=jsdom,@alepha/testing,shx,drizzle-kit,swagger-ui-dist --ignore-patterns=dist,assets",
+		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --exclude @alepha/cli --no-private exec depcheck --ignores=jsdom,@alepha/testing,shx,drizzle-kit,swagger-ui-dist,vite --ignore-patterns=dist,assets",
 		"test": "vitest run",
 		"build": "yarn workspaces foreach -Apt run build"
 	}

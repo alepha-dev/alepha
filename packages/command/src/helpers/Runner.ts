@@ -140,6 +140,7 @@ export class Runner {
    * Prints a summary of all executed tasks and their durations.
    */
   public summary(): void {
+    if (this.timers.length === 0) return;
     this.log.info("");
     this.renderTable(this.timers.map((t) => [t.name, t.duration]));
     const totalTime = ((Date.now() - this.startTime) / 1000).toFixed(2);

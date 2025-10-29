@@ -1,5 +1,6 @@
 import type { Alepha } from "@alepha/core";
 
+export * from "./helpers/getEntryFiles.ts";
 export * from "./viteAlepha.ts";
 export * from "./viteAlephaBuild.ts";
 export * from "./viteAlephaBuildVercel.ts";

@@ -1,5 +1,6 @@
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { AlephaError } from "@alepha/core";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 import {
@@ -64,8 +65,8 @@ export const buildServer = async (opts: BuildServerOptions) => {
       minify: false, // for now, we don't need to minify the server build
       rollupOptions: {
         output: {
-          entryFileNames: "[hash].mjs",
-          chunkFileNames: "[hash].mjs",
+          entryFileNames: "[hash].js",
+          chunkFileNames: "[hash].js",
           assetFileNames: "[hash][extname]",
           format: "esm",
         },
@@ -101,7 +102,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
   const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
 
   await writeFile(
-    `${opts.distDir}/index.mjs`,
+    `${opts.distDir}/index.js`,
     `${warning}\n${forceProduction}${template}\nawait import('./server/${indexFileName}');`.trim(),
   );
 };
@@ -113,7 +114,9 @@ function extractIndexFromBundle(
     | vite.Rollup.RollupOutput[]
     | vite.Rollup.RollupWatcher,
 ) {
-  const entryFilePath = join(process.cwd(), entry).replace(/\\/g, "/");
+  const entryFilePath = entry.startsWith("/")
+    ? entry
+    : join(process.cwd(), entry);
 
   const rollupOutput = (
     Array.isArray(result) ? result[0] : result
@@ -124,7 +127,7 @@ function extractIndexFromBundle(
   )?.fileName;
 
   if (!indexFileName) {
-    throw new Error(
+    throw new AlephaError(
       `Could not find the entry file "${entryFilePath}" in the build output. Please check your entry file and try again.`,
     );
   }

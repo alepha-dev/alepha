@@ -3,7 +3,8 @@ import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
-import { extractFirstModuleScriptSrc, prerender } from "./helpers/prerender.ts";
+import { getServerEntry } from "./helpers/getEntryFiles.ts";
+import { prerender } from "./helpers/prerender.ts";
 import { generateSitemap } from "./helpers/sitemap.ts";
 import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
 import type { VercelConfig } from "./viteAlephaBuildVercel.ts";
@@ -40,7 +41,7 @@ export interface ViteAlephaBuildOptions {
 export async function viteAlephaBuild(
   options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
-  let entry = options.serverEntry;
+  const entry = options.serverEntry ?? (await getServerEntry());
 
   const distDir = "dist";
   const clientDir = "public";
@@ -93,10 +94,6 @@ export async function viteAlephaBuild(
         );
       }
 
-      if (buildClientOptions.prerender && !entry && html) {
-        entry = extractFirstModuleScriptSrc(html);
-      }
-
       if (entry) {
         await buildServer({
           config: {
@@ -114,7 +111,7 @@ export async function viteAlephaBuild(
         await writeFile(
           `${distDir}/${clientDir}/sitemap.xml`,
           await generateSitemap({
-            entry: `${distDir}/index.mjs`,
+            entry: `${distDir}/index.js`,
             baseUrl: buildClientOptions.sitemap.hostname,
           }),
         );
@@ -124,7 +121,7 @@ export async function viteAlephaBuild(
         await prerender({
           template: template,
           dist: `${distDir}/${clientDir}`,
-          entry: `${distDir}/index.mjs`,
+          entry: `${distDir}/index.js`,
           compress: buildClientOptions.precompress,
         });
       }

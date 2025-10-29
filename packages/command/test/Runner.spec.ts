@@ -124,8 +124,6 @@ describe("Runner", () => {
     runner.summary();
 
     const logs = mockLogger.logs.map((l) => l.message);
-    expect(logs.join("")).not.toContain("|"); // No table dividers
-    expect(logs[0]).toBe("");
-    expect(logs[1]).toMatch(/^Total time: \d+\.\d{2} s$/);
+    expect(logs.length).toBe(0);
   });
 });

@@ -2,11 +2,9 @@ import { t } from "@alepha/core";
 import { useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import {
-  Anchor,
   Box,
   Button,
   Code,
-  Divider,
   Flex,
   Paper,
   Stack,
@@ -15,7 +13,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconBook } from "@tabler/icons-react";
-import { Control, DarkModeButton, TypeForm } from "../../src";
+import { Control, TypeForm } from "../../src";
 
 const ExampleTypeForm = () => {
   const router = useRouter();
@@ -155,20 +153,12 @@ const ExampleTypeForm = () => {
       <Box>
         <Flex justify="space-between" align="center" mb="md">
           <Title order={1}>TypeForm Component Examples</Title>
-          <Flex gap="md" align="center">
-            <Anchor onClick={() => router.go("/")} c="blue" fw={500}>
-              ← View Control Examples
-            </Anchor>
-            <DarkModeButton mode="segmented" />
-          </Flex>
         </Flex>
         <Text c="dimmed" size="lg">
           Auto-generated forms from TypeBox schemas with intelligent layout and
           validation
         </Text>
       </Box>
-
-      <Divider my="xl" />
 
       {/* Basic TypeForm */}
       <Paper shadow="xs" p="xl" withBorder>

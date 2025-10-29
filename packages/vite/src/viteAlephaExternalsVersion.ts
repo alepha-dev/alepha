@@ -22,8 +22,6 @@ export function viteAlephaExternalsVersion(
     },
     async closeBundle() {
       const externals: string[] = config?.ssr?.external ?? [];
-      if (!externals.length) return;
-
       const deps: Record<string, string> = {};
 
       for (const dep of externals) {
@@ -39,7 +37,11 @@ export function viteAlephaExternalsVersion(
         }
       }
 
-      const minimalPkg = { type: "module", dependencies: deps };
+      const minimalPkg = {
+        type: "module",
+        main: "index.js",
+        dependencies: deps,
+      };
 
       await fs.mkdir(outDir, { recursive: true });
 

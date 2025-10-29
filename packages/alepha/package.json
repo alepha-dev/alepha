@@ -63,7 +63,9 @@
 		"@alepha/topic": "0.10.7",
 		"@alepha/topic-redis": "0.10.7",
 		"@alepha/ui": "0.10.7",
-		"@alepha/vite": "0.10.7"
+		"@alepha/vite": "0.10.7",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0"
 	},
 	"scripts": {
 		"build": "node build.ts"
@@ -73,18 +75,6 @@
 		"**/*.cjs",
 		"**/*.d.ts"
 	],
-	"peerDependencies": {
-		"react": "*",
-		"react-dom": "*"
-	},
-	"peerDependenciesMeta": {
-		"react": {
-			"optional": true
-		},
-		"react-dom": {
-			"optional": true
-		}
-	},
 	"exports": {
 		".": {
 			"import": "./core.js",

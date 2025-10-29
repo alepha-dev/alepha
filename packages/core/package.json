@@ -14,12 +14,10 @@
 		"dist",
 		"src"
 	],
-	"dependencies": {
-		"typebox": "^1.0.43"
-	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.0",
-		"tsdown": "^0.15.9",
+		"@biomejs/biome": "^2.3.2",
+		"tsdown": "^0.15.11",
+		"typebox": "^1.0.43",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"
 	},

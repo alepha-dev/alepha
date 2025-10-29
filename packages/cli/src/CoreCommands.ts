@@ -1,4 +1,3 @@
-import "tsx";
 import { spawn } from "node:child_process";
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, t } from "@alepha/core";
@@ -109,40 +108,6 @@ $ cd ${name} && ${runCmd} dev
 
       await new Promise<void>((resolve) =>
         tsx.on("exit", (code) => {
-          resolve();
-        }),
-      );
-    },
-  });
-
-  dev = $command({
-    name: "dev",
-    summary: false,
-    handler: async () => {
-      const tsx = spawn("npx", ["vite"], {
-        stdio: "inherit",
-        cwd: process.cwd(),
-      });
-
-      await new Promise<void>((resolve) =>
-        tsx.on("exit", () => {
-          resolve();
-        }),
-      );
-    },
-  });
-
-  build = $command({
-    name: "build",
-    summary: false,
-    handler: async () => {
-      const tsx = spawn("npx", ["vite", "build"], {
-        stdio: "inherit",
-        cwd: process.cwd(),
-      });
-
-      await new Promise<void>((resolve) =>
-        tsx.on("exit", () => {
           resolve();
         }),
       );

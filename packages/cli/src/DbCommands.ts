@@ -1,4 +1,3 @@
-import "tsx";
 import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -6,15 +5,13 @@ import { $command } from "@alepha/command";
 import { Alepha, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { tsImport } from "tsx/esm/api";
+import { getServerEntry } from "../../vite/src/helpers/getEntryFiles.ts";
+import { exec } from "./exec.ts";
 
 export class DbCommands {
   log = $logger();
 
   flags = t.object({
-    entry: t.text({
-      description: "Server entry file",
-      default: "src/index.server.ts,src/index.ts",
-    }),
     root: t.text({ description: "Project root", default: "." }),
   });
 
@@ -29,13 +26,14 @@ export class DbCommands {
    * - If changes are detected, prompts the user to run the migration generation command!
    */
   check = $command({
-    name: "db:check",
+    name: "check:migrations",
     description: "Verify database migration files are up to date",
-    summary: false,
     flags: this.flags,
     handler: async ({ flags }) => {
       const rootDir = join(process.cwd(), flags.root);
-      const { alepha } = await this.load(rootDir, flags.entry);
+      this.log.debug(`Using project root: ${rootDir}`);
+      const { alepha } = await this.loadAlephaFromServerEntryFile(rootDir);
+
       const models: any[] = [];
       const repositories = alepha.descriptors("repository") as any[];
       const kit = createRequire(import.meta.url)("drizzle-kit/api");
@@ -114,14 +112,12 @@ export class DbCommands {
     summary: false,
     flags: this.flags,
     handler: async ({ flags }) => {
-      process.argv[2] = "generate";
-      process.argv[3] = "--config";
-      process.argv[4] = "./node_modules/.db/kit.ts";
-
       const rootDir = join(process.cwd(), flags.root);
       this.log.debug(`Using project root: ${rootDir}`);
 
-      const { alepha, entry } = await this.load(rootDir, flags.entry);
+      const { alepha, entry } =
+        await this.loadAlephaFromServerEntryFile(rootDir);
+
       const inject = (name: string) =>
         // biome-ignore lint/complexity/useLiteralKeys: private key
         alepha["registry"]
@@ -133,7 +129,7 @@ export class DbCommands {
       const models = Object.keys(kit.getModels(provider));
 
       await writeFile(
-        join(rootDir, "node_modules/.db/entities.ts"),
+        join(rootDir, "node_modules/.alepha/entities.ts"),
         `
 import "../..${entry.replace(rootDir, "")}";
 import { DatabaseProvider, DrizzleKitProvider } from "@alepha/postgres";
@@ -150,11 +146,11 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       );
 
       await writeFile(
-        join(rootDir, "node_modules/.db/kit.ts"),
+        join(rootDir, "node_modules/.alepha/drizzle.config.ts"),
         "export default " +
           JSON.stringify(
             {
-              schema: "./node_modules/.db/entities.ts",
+              schema: "./node_modules/.alepha/entities.ts",
               out: "./migrations",
               dialect: "postgresql",
             },
@@ -163,57 +159,45 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
           ),
       );
 
-      const drizzle = createRequire(import.meta.url)
-        .resolve("drizzle-kit")
-        .replace("index.js", "bin.cjs");
-
-      await import(drizzle);
+      await exec(
+        `drizzle-kit generate --config ./node_modules/.alepha/drizzle.config.ts`,
+      );
     },
   });
 
-  public async load(
-    rootDir: string,
-    entry: string,
-  ): Promise<{
+  public async loadAlephaFromServerEntryFile(rootDir?: string): Promise<{
     alepha: Alepha;
     entry: string;
   }> {
     process.env.ALEPHA_SKIP_START = "true";
 
-    const paths = entry.split(",").map((p) => p.trim());
-    for (const path of paths) {
-      try {
-        const entry = join(rootDir, path);
-        const mod = await tsImport(entry, {
-          parentURL: import.meta.url,
-        });
+    const entry = await getServerEntry(rootDir);
 
-        this.log.debug(`Load entry: ${path}`);
+    const mod = await tsImport(entry, {
+      parentURL: import.meta.url,
+    });
 
-        // check if alepha is correctly exported
-        if (mod.default instanceof Alepha) {
-          return {
-            alepha: mod.default,
-            entry,
-          };
-        }
+    this.log.debug(`Load entry: ${entry}`);
 
-        // else, try with global variable
-        const g: any = global;
-        if (g.__alepha) {
-          return {
-            alepha: g.__alepha,
-            entry,
-          };
-        }
-      } catch (e) {
-        this.log.trace(`Failed to load entry file: ${path}`, e);
-        // continue to next path
-      }
+    // check if alepha is correctly exported
+    if (mod.default instanceof Alepha) {
+      return {
+        alepha: mod.default,
+        entry,
+      };
+    }
+
+    // else, try with global variable
+    const g: any = global;
+    if (g.__alepha) {
+      return {
+        alepha: g.__alepha,
+        entry,
+      };
     }
 
     throw new AlephaError(
-      `Cannot load Alepha instance from entry file(s). Tried: ${paths.join(", ")}`,
+      `Could not find Alepha instance in entry file: ${entry}`,
     );
   }
 }

@@ -1,4 +1,4 @@
-import { run } from "@alepha/core";
+import { Alepha, run } from "@alepha/core";
 import { $page } from "@alepha/react";
 import { RootRouter } from "../src";
 import ExampleAction from "./examples/ExampleAction.tsx";
@@ -52,4 +52,8 @@ export class AppRouter extends RootRouter {
   });
 }
 
-run(AppRouter);
+const alepha = Alepha.create();
+
+alepha.with(AppRouter);
+
+run(alepha);

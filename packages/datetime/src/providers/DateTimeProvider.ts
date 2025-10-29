@@ -3,6 +3,8 @@ import "dayjs/plugin/duration.js";
 import "dayjs/plugin/utc.js";
 import "dayjs/plugin/timezone.js";
 import "dayjs/plugin/localizedFormat.js";
+import "dayjs/locale/ar.js";
+import "dayjs/locale/fr.js";
 import { $hook, $inject, Alepha } from "@alepha/core";
 import DayjsApi, {
   type Dayjs,

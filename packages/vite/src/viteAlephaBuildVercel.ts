@@ -56,8 +56,8 @@ export async function viteAlephaBuildVercel(
 
       // add the only one entry point for Vercel
       writeFileSync(
-        `${distDir}/api/index.mjs`,
-        `${warning}\nimport "../index.mjs";
+        `${distDir}/api/index.js`,
+        `${warning}\nimport "../index.js";
 
 // This file is the entry point for Vercel serverless functions.
 export default async function (req, res) {
@@ -76,7 +76,7 @@ export default async function (req, res) {
             rewrites: [
               {
                 source: "/(.*)",
-                destination: "/api/index.mjs",
+                destination: "/api/index.js",
               },
             ],
             buildCommand: "",

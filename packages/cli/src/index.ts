@@ -1,8 +1,12 @@
 #!/usr/bin/env node
+import "tsx";
+// ---------------------------------------------------------------------------------------------------------------------
 import { Alepha, run } from "@alepha/core";
 import pkg from "../package.json" with { type: "json" };
+import { BuildCommands } from "./BuildCommands.ts";
 import { CoreCommands } from "./CoreCommands.ts";
 import { DbCommands } from "./DbCommands.ts";
+import { VerifyCommands } from "./VerifyCommands.ts";
 
 const alepha = Alepha.create({
   env: {
@@ -14,6 +18,8 @@ const alepha = Alepha.create({
 });
 
 alepha.with(CoreCommands);
+alepha.with(BuildCommands);
+alepha.with(VerifyCommands);
 alepha.with(DbCommands);
 
 run(alepha);

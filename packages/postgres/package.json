@@ -20,15 +20,15 @@
 		"@alepha/datetime": "0.10.7",
 		"@alepha/lock": "0.10.7",
 		"@alepha/logger": "0.10.7",
-		"@alepha/retry": "0.10.7",
-		"drizzle-orm": "^0.44.7",
-		"postgres": "^3.4.7"
+		"@alepha/retry": "0.10.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.0",
+		"@biomejs/biome": "^2.3.2",
 		"@electric-sql/pglite": "^0.3.11",
-		"drizzle-kit": "0.31.5",
-		"tsdown": "^0.15.9",
+		"drizzle-kit": "^0.31.6",
+		"drizzle-orm": "^0.44.7",
+		"postgres": "^3.4.7",
+		"tsdown": "^0.15.11",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"
 	},

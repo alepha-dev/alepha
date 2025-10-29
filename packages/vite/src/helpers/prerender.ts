@@ -26,32 +26,6 @@ export async function prerender(opts: PrerenderOptions) {
   );
 }
 
-export function extractFirstModuleScriptSrc(html: string): string {
-  const scriptRegex = /<script\b[^>]*>[\s\S]*?<\/script>/gi;
-  let match: RegExpExecArray | null = scriptRegex.exec(html);
-
-  while (match) {
-    const tag = match[0];
-
-    // Check for type="module"
-    if (/type=["']module["']/i.test(tag)) {
-      // Extract the src value
-      const srcMatch = tag.match(/\bsrc=["']([^"']+)["']/i);
-      const entry = srcMatch?.[1];
-      if (entry) {
-        if (entry.startsWith("/")) {
-          return entry.substring(1); // Remove leading slash
-        }
-        return entry;
-      }
-    }
-
-    match = scriptRegex.exec(html);
-  }
-
-  throw new Error(`No module script found in the provided HTML.`);
-}
-
 async function prerenderFromAlepha(
   alepha: Alepha,
   dist: string,

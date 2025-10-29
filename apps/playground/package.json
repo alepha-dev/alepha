@@ -5,7 +5,7 @@
 		"dev": "vite",
 		"build": "vite build",
 		"db:generate": "LOG_FORMAT=text LOG_LEVEL=trace alepha db:generate",
-		"db:check": "alepha db:check"
+		"db:check": "alepha check:migrations"
 	},
 	"dependencies": {
 		"@alepha/cli": "^0.10.7",

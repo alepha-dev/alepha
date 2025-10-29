@@ -79,7 +79,7 @@ export class ServerMultipartProvider {
     route: ServerRoute,
     stream: IncomingMessage,
   ): Promise<{
-    body: Record<string, any>;
+    body: Record<string, unknown>;
     cleanup: () => Promise<void>;
   }> {
     let result: MultipartResult | undefined;
@@ -96,7 +96,7 @@ export class ServerMultipartProvider {
       );
     }
 
-    const body: any = {};
+    const body: Record<string, any> = {};
 
     if (route.schema?.body && t.schema.isObject(route.schema.body)) {
       for (const [key, value] of Object.entries(route.schema.body.properties)) {
