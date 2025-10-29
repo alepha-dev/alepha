@@ -1,4 +1,4 @@
-import { useActive } from "@alepha/react/src/hooks/useActive";
+import { useActive } from "@alepha/react";
 import { Box, Flex, UnstyledButton } from "@mantine/core";
 import {
   IconChevronDown,
@@ -6,12 +6,12 @@ import {
   IconCircle,
   IconSearch,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { type FC, type ReactNode, useState } from "react";
 
 export interface MenuItem {
   id: string;
   label: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   href?: string;
   activeStartsWith?: boolean; // Use startWith matching for active state
   onClick?: () => void;
@@ -26,7 +26,7 @@ export interface SidebarProps {
   onSearchClick?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Sidebar: FC<SidebarProps> = ({
   menu,
   defaultOpenIds = [],
   onItemClick,
