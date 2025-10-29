@@ -7,15 +7,17 @@ import {
 } from "node:crypto";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
+  $env,
   $hook,
   $inject,
   Alepha,
   type Static,
   type TSchema,
+  t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import { SecurityProvider } from "@alepha/security";
+import { DEFAULT_APP_SECRET } from "@alepha/security";
 import type { ServerRequest } from "@alepha/server";
 import type {
   Cookie,
@@ -24,12 +26,18 @@ import type {
 } from "../descriptors/$cookie.ts";
 import { CookieParser } from "../services/CookieParser.ts";
 
+const envSchema = t.object({
+  APP_SECRET: t.text({
+    default: DEFAULT_APP_SECRET,
+  }),
+});
+
 export class ServerCookiesProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly cookieParser = $inject(CookieParser);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly securityProvider = $inject(SecurityProvider);
+  protected readonly env = $env(envSchema);
 
   // crypto constants
   protected readonly ALGORITHM = "aes-256-gcm";
@@ -223,7 +231,15 @@ export class ServerCookiesProvider {
   }
 
   public secretKey(): string {
-    return this.securityProvider.secretKey;
+    let secret = this.env.APP_SECRET;
+    if (secret.length < 32) {
+      // pad secret to 32 bytes
+      secret = secret.padEnd(32, "0");
+    } else if (secret.length > 32) {
+      // truncate secret to 32 bytes
+      secret = secret.substring(0, 32);
+    }
+    return secret;
   }
 
   protected sign(data: string): string {

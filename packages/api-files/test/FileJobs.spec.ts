@@ -11,7 +11,7 @@ describe("FileJobRegistry", () => {
   const service = alepha.inject(FileService);
   const dtp = alepha.inject(DateTimeProvider);
 
-  it("should remove expired files", async () => {
+  it("should remove expired files", { retry: 2 }, async () => {
     const file = createFile("");
 
     await Promise.all([

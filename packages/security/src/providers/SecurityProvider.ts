@@ -21,7 +21,7 @@ import type { Role } from "../schemas/roleSchema.ts";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 
-const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // 32 chars
+export const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // (32)
 
 const envSchema = t.object({
   APP_SECRET: t.text({
