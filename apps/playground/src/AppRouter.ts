@@ -1,10 +1,13 @@
 import { $inject } from "@alepha/core";
 import { $page } from "@alepha/react";
+import { $client } from "@alepha/server-links";
 import { RootRouter } from "@alepha/ui";
+import type { Api } from "./Api.ts";
 import Home from "./components/Home.tsx";
 
 export class AppRouter {
   rootRouter = $inject(RootRouter);
+  api = $client<Api>();
 
   home = $page({
     parent: this.rootRouter.root,
@@ -12,6 +15,9 @@ export class AppRouter {
     component: Home,
     head: {
       title: "Playground",
+    },
+    resolve: async () => {
+      return await this.api.ping();
     },
   });
 }

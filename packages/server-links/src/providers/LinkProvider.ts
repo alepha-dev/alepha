@@ -6,6 +6,7 @@ import {
   type ClientRequestOptions,
   type ClientRequestResponse,
   type FetchResponse,
+  ForbiddenError,
   HttpClient,
   type RequestConfigSchema,
   type ServerHandler,
@@ -78,7 +79,20 @@ export class LinkProvider {
   }
 
   public get links(): HttpClientLink[] {
-    return this.alepha.state.get("api")?.links ?? this.serverLinks ?? [];
+    // TODO: not performant at all
+    const filteredLinks = this.alepha.state.get("api")?.links;
+    if (filteredLinks) {
+      const links = [];
+      for (const link of filteredLinks) {
+        const originalLink = this.serverLinks.find((l) => l.name === link.name);
+        if (originalLink) {
+          links.push(originalLink);
+        }
+      }
+      return links;
+    }
+
+    return this.serverLinks ?? [];
   }
 
   /**
@@ -154,6 +168,10 @@ export class LinkProvider {
         raw: {},
         reply: new ServerReply(),
       } as Partial<ServerRequest> as ServerRequest);
+    }
+
+    if (!link.host) {
+      throw new ForbiddenError(`Action ${name} cannot be called remotely.`);
     }
 
     this.log.trace("Remote link found", {

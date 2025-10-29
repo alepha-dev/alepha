@@ -285,11 +285,7 @@ const isViteFile = (file: string) => {
   if (
     pathname.startsWith("/@") ||
     pathname.startsWith("/src") ||
-    pathname.includes("/node_modules/") ||
-    pathname.endsWith(".ts") ||
-    pathname.endsWith(".tsx") ||
-    pathname.endsWith(".css") ||
-    pathname.endsWith(".map")
+    pathname.includes("/node_modules/")
   ) {
     return true;
   }

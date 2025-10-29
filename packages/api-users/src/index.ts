@@ -1,7 +1,5 @@
 import { $module } from "@alepha/core";
 import { AlephaEmail } from "@alepha/email";
-import { AlephaReactAuth } from "@alepha/react-auth";
-import { AlephaServerSecurity } from "@alepha/server-security";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
@@ -51,8 +49,6 @@ export * from "./services/UserService.ts";
 export const AlephaApiUsers = $module({
   name: "alepha.api.users",
   services: [
-    AlephaServerSecurity,
-    AlephaReactAuth,
     AlephaEmail,
     SessionService,
     SessionCrudService,

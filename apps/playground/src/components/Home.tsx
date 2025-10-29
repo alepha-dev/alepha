@@ -2,7 +2,7 @@ import { t } from "@alepha/core";
 import { useForm } from "@alepha/react-form";
 import { DarkModeButton, Flex, TypeForm, useToast } from "@alepha/ui";
 
-const Home = () => {
+const Home = (props: { pong: boolean }) => {
   const toast = useToast();
   const form = useForm({
     schema: t.partial(
@@ -28,6 +28,14 @@ const Home = () => {
 
   return (
     <Flex p={"lg"} direction={"column"}>
+      <Flex>
+        <h1>Playground</h1>
+        <p>
+          {props.pong
+            ? " - Pong received from API!"
+            : " - No response from API."}
+        </p>
+      </Flex>
       <Flex>
         <DarkModeButton mode={"segmented"} />
       </Flex>
