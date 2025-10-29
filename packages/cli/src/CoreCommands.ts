@@ -1,7 +1,7 @@
-import { spawn } from "node:child_process";
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
+import { exec } from "./exec.ts";
 
 export class CoreCommands {
   log = $logger();
@@ -90,27 +90,8 @@ $ cd ${name} && ${runCmd} dev
     }),
     summary: false,
     args: t.text({ title: "path", description: "Filepath to run" }),
-    handler: async ({ args, flags, run }) => {
-      const filePath = args;
-      const watchFlag = flags.watch ? "--watch" : "";
-
-      // Find tsx binary - it should be in node_modules/.bin
-      // Using tsx directly since it's imported at the top of the file
-      const tsxCmd = watchFlag
-        ? `npx tsx ${watchFlag} ${filePath}`
-        : `npx tsx ${filePath}`;
-
-      const tsxArgs = flags.watch ? ["--watch", filePath] : [filePath];
-      const tsx = spawn("npx", ["tsx", ...tsxArgs], {
-        stdio: "inherit",
-        cwd: process.cwd(),
-      });
-
-      await new Promise<void>((resolve) =>
-        tsx.on("exit", (code) => {
-          resolve();
-        }),
-      );
+    handler: async ({ args, flags }) => {
+      await exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
     },
   });
 }

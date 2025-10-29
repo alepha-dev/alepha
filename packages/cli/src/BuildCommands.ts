@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { $command, CliProvider } from "@alepha/command";
 import { $inject } from "@alepha/core";
 import { $logger } from "@alepha/logger";
+import { getServerEntry } from "@alepha/vite";
 import { exec } from "./exec.ts";
 
 export class BuildCommands {
@@ -13,6 +14,15 @@ export class BuildCommands {
     name: "dev",
     description: "Run the project in development mode",
     handler: async () => {
+      const root = process.cwd();
+      try {
+        await access(join(root, "index.html"));
+      } catch {
+        const entry = await getServerEntry(root);
+        await exec(`tsx watch ${entry}`);
+        return;
+      }
+
       const viteConfigPath = await this.viteConfigPath();
       await exec(`vite -c=${viteConfigPath}`);
     },
