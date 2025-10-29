@@ -7,7 +7,7 @@
 		"batch"
 	],
 	"author": "Feunard",
-	"version": "0.10.7",
+	"version": "0.11.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -20,10 +20,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.10.7",
-		"@alepha/datetime": "0.10.7",
-		"@alepha/logger": "0.10.7",
-		"@alepha/retry": "0.10.7"
+		"@alepha/core": "0.11.0",
+		"@alepha/datetime": "0.11.0",
+		"@alepha/logger": "0.11.0",
+		"@alepha/retry": "0.11.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.2",

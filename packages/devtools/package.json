@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/devtools",
 	"description": "Developer tools for monitoring and debugging Alepha applications.",
-	"version": "0.10.7",
+	"version": "0.11.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,16 +14,16 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.10.7",
-		"@alepha/cache": "0.10.7",
-		"@alepha/core": "0.10.7",
-		"@alepha/logger": "0.10.7",
-		"@alepha/queue": "0.10.7",
-		"@alepha/react": "0.10.7",
-		"@alepha/scheduler": "0.10.7",
-		"@alepha/security": "0.10.7",
-		"@alepha/server": "0.10.7",
-		"@alepha/topic": "0.10.7"
+		"@alepha/bucket": "0.11.0",
+		"@alepha/cache": "0.11.0",
+		"@alepha/core": "0.11.0",
+		"@alepha/logger": "0.11.0",
+		"@alepha/queue": "0.11.0",
+		"@alepha/react": "0.11.0",
+		"@alepha/scheduler": "0.11.0",
+		"@alepha/security": "0.11.0",
+		"@alepha/server": "0.11.0",
+		"@alepha/topic": "0.11.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.2",
