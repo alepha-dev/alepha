@@ -129,15 +129,14 @@ export class DrizzleCommands {
       const models = Object.keys(kit.getModels(provider));
 
       await writeFile(
-        join(rootDir, "node_modules/.alepha/entities.ts"),
+        join(rootDir, "node_modules/.alepha/entities.js"),
         `
 import "../..${entry.replace(rootDir, "")}";
-import { DatabaseProvider, DrizzleKitProvider } from "@alepha/postgres";
+import { DrizzleKitProvider } from "@alepha/postgres";
 
-const alepha = (global as any).__alepha;
-const inject = (name: string) => alepha.registry.values().find(it => it.instance.constructor.name === name)?.instance
+const alepha = globalThis.__alepha;
 const kit = alepha.inject(DrizzleKitProvider);
-const provider = (alepha.descriptors("repository")[0] as any).provider;
+const provider = alepha.descriptors("repository")[0].provider;
 const models = kit.getModels(provider);
 
 ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
@@ -146,11 +145,11 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       );
 
       await writeFile(
-        join(rootDir, "node_modules/.alepha/drizzle.config.ts"),
+        join(rootDir, "node_modules/.alepha/drizzle.config.js"),
         "export default " +
           JSON.stringify(
             {
-              schema: "./node_modules/.alepha/entities.ts",
+              schema: "./node_modules/.alepha/entities.js",
               out: "./migrations",
               dialect: "postgresql",
             },
@@ -160,7 +159,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       );
 
       await exec(
-        `drizzle-kit generate --config ./node_modules/.alepha/drizzle.config.ts`,
+        `drizzle-kit generate --config ./node_modules/.alepha/drizzle.config.js`,
       );
     },
   });
