@@ -177,6 +177,13 @@ export class RepositoryDescriptor<
   }
 
   /**
+   * Get the entity descriptor associated with this repository.
+   */
+  public get entity(): EntityDescriptor<T> {
+    return this.options.entity;
+  }
+
+  /**
    * Represents the primary key of the table.
    * - Key is the name of the primary key column.
    * - Type is the type (TypeBox) of the primary key column.

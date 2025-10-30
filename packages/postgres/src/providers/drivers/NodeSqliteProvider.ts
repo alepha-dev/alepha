@@ -4,6 +4,7 @@ import { $env, $hook, $inject, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
+import { PgError } from "../../errors/PgError.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -113,7 +114,14 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
       this.sqlite = new DatabaseSync(filepath);
 
-      await this.kit.synchronize(this);
+      try {
+        await this.kit.synchronize(this);
+      } catch (error) {
+        throw new PgError(
+          "Failed to synchronize SQLite database schema",
+          error as Error,
+        );
+      }
 
       this.log.info(`Using SQLite database at ${filepath}`);
     },

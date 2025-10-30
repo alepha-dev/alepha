@@ -41,7 +41,7 @@ export class DrizzleKitProvider {
       const entry = await this.loadDevMigrations(provider);
       const { statements, snapshot } = await this.generateMigration(
         provider,
-        JSON.parse(entry?.snapshot ?? "{}"),
+        entry?.snapshot ? JSON.parse(entry.snapshot) : undefined,
       );
       await this.executeStatements(statements, provider, true);
       await this.saveDevMigrations(provider, snapshot, entry);
@@ -101,7 +101,6 @@ export class DrizzleKitProvider {
    * Load all tables, enums, sequences, etc. from the provider's repositories.
    */
   public getModels(provider: DatabaseProvider): Record<string, unknown> {
-    // TODO: check for name conflicts
     const models: Record<string, unknown> = {};
     for (const [key, value] of provider.tables.entries()) {
       if (models[key]) {
@@ -138,14 +137,16 @@ export class DrizzleKitProvider {
   protected async loadDevMigrations(
     provider: DatabaseProvider,
   ): Promise<DevMigrations | undefined> {
-    const name = `${this.alepha.env.APP_NAME ?? "APP"}_${provider.constructor.name}`;
+    const name =
+      `${this.alepha.env.APP_NAME ?? "APP"}-${provider.constructor.name}`.toLowerCase();
 
     if (provider.dialect === "sqlite") {
       try {
-        return this.alepha.codec.decode(
-          devMigrationsSchema,
-          await readFile(`node_modules/.db/${name}.json`, "utf-8"),
+        const text = await readFile(
+          `node_modules/.alepha/sqlite-${name}.json`,
+          "utf-8",
         );
+        return this.alepha.codec.decode(devMigrationsSchema, text);
       } catch (e) {
         this.log.trace(`No existing migration snapshot for '${name}'`, e);
       }
@@ -180,18 +181,25 @@ export class DrizzleKitProvider {
     curr: Record<string, any>,
     devMigrations?: DevMigrations,
   ) {
-    const name = `${this.alepha.env.APP_NAME ?? "APP"}_${provider.constructor.name}`;
+    const name =
+      `${this.alepha.env.APP_NAME ?? "APP"}-${provider.constructor.name}`.toLowerCase();
     if (provider.dialect === "sqlite") {
-      const filePath = `node_modules/.db/${name}.json`;
-      await mkdir("node_modules/.db", { recursive: true }).catch(() => null);
+      const filePath = `node_modules/.alepha/sqlite-${name}.json`;
+      await mkdir("node_modules/.alepha", { recursive: true }).catch(
+        () => null,
+      );
       await writeFile(
         filePath,
-        JSON.stringify({
-          id: devMigrations?.id ?? 1,
-          name,
-          created_at: new Date(),
-          snapshot: curr,
-        }),
+        JSON.stringify(
+          {
+            id: devMigrations?.id ?? 1,
+            name,
+            created_at: new Date(),
+            snapshot: curr,
+          },
+          null,
+          2,
+        ),
       );
       this.log.debug(`Saved migration snapshot to '${filePath}'`);
       return;
