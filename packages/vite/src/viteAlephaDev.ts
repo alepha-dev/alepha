@@ -228,8 +228,9 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
 
     state.log("[DEBUG] Starting Done!");
   } catch (e) {
-    console.log("--- VITE ALEPHA ERROR ---");
-    if (e instanceof Error) console.error(e.cause ? e.cause : e);
+    if (e instanceof Error) {
+      state.app?.log?.error("Vite Alepha Dev Start Error:", e);
+    }
     state.log("[DEBUG] Alepha app start error");
     state.started = false;
   }

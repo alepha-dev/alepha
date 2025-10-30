@@ -29,8 +29,10 @@ export const getServerEntry = async (root = process.cwd()): Promise<string> => {
 
   const maybeEntry = [
     "src/index.server.ts",
-    "src/index.server.tsx",
+    "src/main.server.ts",
     "src/server-entry.ts",
+    "src/index.server.tsx",
+    "src/main.server.tsx",
     "src/server-entry.tsx",
     "src/index.ts",
     "src/index.tsx",

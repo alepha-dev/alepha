@@ -79,7 +79,7 @@ export class LinkProvider {
   }
 
   public get links(): HttpClientLink[] {
-    // TODO: not performant at all
+    // TODO: not performant at all, use a map instead for ServerLinks
     const filteredLinks = this.alepha.state.get("api")?.links;
     if (filteredLinks) {
       const links = [];

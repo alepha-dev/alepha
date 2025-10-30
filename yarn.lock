@@ -95,7 +95,6 @@ __metadata:
     "@alepha/security": "npm:0.11.1"
     "@alepha/server": "npm:0.11.1"
     "@alepha/server-links": "npm:0.11.1"
-    "@alepha/server-security": "npm:0.11.1"
     "@biomejs/biome": "npm:^2.3.2"
     tsdown: "npm:^0.15.11"
     typescript: "npm:^5.9.3"
@@ -216,6 +215,7 @@ __metadata:
     "@alepha/command": "npm:^0.11.1"
     "@alepha/core": "npm:^0.11.1"
     "@alepha/logger": "npm:^0.11.1"
+    "@alepha/vite": "npm:^0.11.1"
     "@biomejs/biome": "npm:^2.3.2"
     depcheck: "npm:^1.4.7"
     drizzle-kit: "npm:^0.31.6"
@@ -956,7 +956,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/vite@npm:0.11.1, @alepha/vite@workspace:packages/vite":
+"@alepha/vite@npm:0.11.1, @alepha/vite@npm:^0.11.1, @alepha/vite@workspace:packages/vite":
   version: 0.0.0-use.local
   resolution: "@alepha/vite@workspace:packages/vite"
   dependencies:
@@ -9580,6 +9580,15 @@ __metadata:
   checksum: 10c0/89a1416668f950236dd5ac9f9a6b2588e1b9b62b1b6ad8dff1bfc5d1a15dbf0aafc9b52d2226d00c28dffff212da464eaeebfc6b7578b9d180cef3e3782c5983
   languageName: node
   linkType: hard
+
+"starter-6b2739@workspace:apps/starter":
+  version: 0.0.0-use.local
+  resolution: "starter-6b2739@workspace:apps/starter"
+  dependencies:
+    "@alepha/cli": "npm:0.11.1"
+    react: "npm:^19.2.0"
+  languageName: unknown
+  linkType: soft
 
 "statuses@npm:2.0.1":
   version: 2.0.1
