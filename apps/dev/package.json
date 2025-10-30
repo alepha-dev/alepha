@@ -2,7 +2,7 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
-		"@alepha/command": "0.11.1",
-		"@alepha/core": "0.11.1"
+		"@alepha/command": "0.11.2",
+		"@alepha/core": "0.11.2"
 	}
 }

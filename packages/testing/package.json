@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/testing",
 	"description": "Provides testing utilities, including data factories with Faker.js.",
-	"version": "0.11.1",
+	"version": "0.11.2",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"

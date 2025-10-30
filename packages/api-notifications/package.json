@@ -8,7 +8,7 @@
 		"alerts"
 	],
 	"author": "Feunard",
-	"version": "0.11.1",
+	"version": "0.11.2",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -21,13 +21,13 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/batch": "0.11.1",
-		"@alepha/core": "0.11.1",
-		"@alepha/datetime": "0.11.1",
-		"@alepha/email": "0.11.1",
-		"@alepha/logger": "0.11.1",
-		"@alepha/postgres": "0.11.1",
-		"@alepha/queue": "0.11.1"
+		"@alepha/batch": "0.11.2",
+		"@alepha/core": "0.11.2",
+		"@alepha/datetime": "0.11.2",
+		"@alepha/email": "0.11.2",
+		"@alepha/logger": "0.11.2",
+		"@alepha/postgres": "0.11.2",
+		"@alepha/queue": "0.11.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.2",

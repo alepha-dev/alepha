@@ -8,11 +8,11 @@
 		"typecheck": "alepha typecheck"
 	},
 	"dependencies": {
-		"@alepha/core": "^0.11.1",
-		"@alepha/postgres": "^0.11.1",
-		"@alepha/server": "^0.11.1"
+		"@alepha/core": "^0.11.2",
+		"@alepha/postgres": "^0.11.2",
+		"@alepha/server": "^0.11.2"
 	},
 	"devDependencies": {
-		"@alepha/cli": "^0.11.1"
+		"@alepha/cli": "^0.11.2"
 	}
 }
