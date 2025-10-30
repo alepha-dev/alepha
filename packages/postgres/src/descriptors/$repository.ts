@@ -399,6 +399,11 @@ export class RepositoryDescriptor<
 
     if (query.offset) {
       builder.offset(query.offset);
+
+      // SQLite requires LIMIT when OFFSET is used
+      if (this.provider.dialect === "sqlite" && !query.limit) {
+        query.limit = 1000;
+      }
     }
 
     if (query.limit) {
@@ -464,6 +469,7 @@ export class RepositoryDescriptor<
 
       return rows as PgStatic<T, R>[];
     } catch (error) {
+      console.log(error);
       throw new PgError("Query select has failed", error as Error);
     }
   }

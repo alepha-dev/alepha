@@ -96,6 +96,13 @@ export class NodeSqliteProvider extends DatabaseProvider {
       };
     }
 
+    if (method === "values") {
+      const rows = statement.all(...params);
+      return {
+        rows: rows.map((row) => Object.values(row)),
+      };
+    }
+
     throw new AlephaError(`Unsupported method: ${method}`);
   }) as unknown as PgDatabase<any>;
 
