@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cli",
-	"version": "0.11.2",
+	"version": "0.11.3",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -27,10 +27,10 @@
 		"vitest": "^3.2.4"
 	},
 	"devDependencies": {
-		"@alepha/command": "^0.11.2",
-		"@alepha/core": "^0.11.2",
-		"@alepha/logger": "^0.11.2",
-		"@alepha/vite": "^0.11.2",
+		"@alepha/command": "^0.11.3",
+		"@alepha/core": "^0.11.3",
+		"@alepha/logger": "^0.11.3",
+		"@alepha/vite": "^0.11.3",
 		"tsdown": "^0.15.11"
 	},
 	"scripts": {
