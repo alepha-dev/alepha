@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { Alepha, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
+import { getServerEntry } from "@alepha/vite";
 import { tsImport } from "tsx/esm/api";
-import { getServerEntry } from "../../vite/src/helpers/getEntryFiles.ts";
-import { exec } from "./exec.ts";
+import { exec } from "../helpers/exec.ts";
 
-export class DbCommands {
+export class DrizzleCommands {
   log = $logger();
 
   flags = t.object({
@@ -172,7 +172,6 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     process.env.ALEPHA_SKIP_START = "true";
 
     const entry = await getServerEntry(rootDir);
-
     const mod = await tsImport(entry, {
       parentURL: import.meta.url,
     });

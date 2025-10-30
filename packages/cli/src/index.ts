@@ -3,10 +3,11 @@ import "tsx";
 // ---------------------------------------------------------------------------------------------------------------------
 import { Alepha, run } from "@alepha/core";
 import pkg from "../package.json" with { type: "json" };
-import { BuildCommands } from "./BuildCommands.ts";
-import { CoreCommands } from "./CoreCommands.ts";
-import { DbCommands } from "./DbCommands.ts";
-import { VerifyCommands } from "./VerifyCommands.ts";
+import { BiomeCommands } from "./commands/BiomeCommands.ts";
+import { CoreCommands } from "./commands/CoreCommands.ts";
+import { DrizzleCommands } from "./commands/DrizzleCommands.ts";
+import { VerifyCommands } from "./commands/VerifyCommands.ts";
+import { ViteCommands } from "./commands/ViteCommands.ts";
 
 const alepha = Alepha.create({
   env: {
@@ -18,8 +19,9 @@ const alepha = Alepha.create({
 });
 
 alepha.with(CoreCommands);
-alepha.with(BuildCommands);
+alepha.with(ViteCommands);
+alepha.with(BiomeCommands);
 alepha.with(VerifyCommands);
-alepha.with(DbCommands);
+alepha.with(DrizzleCommands);
 
 run(alepha);

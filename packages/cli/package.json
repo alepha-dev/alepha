@@ -30,6 +30,7 @@
 		"@alepha/command": "^0.11.1",
 		"@alepha/core": "^0.11.1",
 		"@alepha/logger": "^0.11.1",
+		"@alepha/vite": "^0.11.1",
 		"tsdown": "^0.15.11"
 	},
 	"scripts": {

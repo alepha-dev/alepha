@@ -1,20 +1,19 @@
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { exec } from "./exec.ts";
 
 export class CoreCommands {
-  log = $logger();
-  cli = $inject(CliProvider);
+  protected readonly log = $logger();
+  protected readonly cli = $inject(CliProvider);
 
-  root = $command({
+  public readonly root = $command({
     name: "",
     handler: async () => {
       this.cli.printHelp();
     },
   });
 
-  create = $command({
+  public readonly create = $command({
     name: "create",
     description: "Create a new Alepha project",
     args: t.text({ title: "name" }),
@@ -27,19 +26,13 @@ export class CoreCommands {
     handler: async ({ run, args, flags }) => {
       const name = args;
 
-      // Determine package manager
       let installCmd = "npm install";
-      let runCmd = "npm run";
-
       if (flags.yarn) {
         installCmd = "yarn";
-        runCmd = "yarn";
       } else if (flags.pnpm) {
         installCmd = "pnpm install";
-        runCmd = "pnpm";
       } else if (flags.bun) {
         installCmd = "bun install";
-        runCmd = "bun run";
       }
 
       await run(`git clone https://github.com/feunard/alepha-starter ${name}`, {
@@ -55,43 +48,36 @@ export class CoreCommands {
         alias: "📦 Installing dependencies",
       });
 
-      await run(`cd ${name} && ${runCmd} lint`, {
+      await run(`cd ${name} && npx alepha lint`, {
         alias: "🔍 Linting code",
       });
 
-      await run(`cd ${name} && ${runCmd} check`, {
+      await run(`cd ${name} && npx alepha typecheck`, {
         alias: "✅ Type checking",
       });
 
-      await run(`cd ${name} && ${runCmd} test`, {
+      await run(`cd ${name} && npx alepha test`, {
         alias: "🧪 Running tests",
       });
 
-      await run(`cd ${name} && ${runCmd} build`, {
+      await run(`cd ${name} && npx alepha build`, {
         alias: "🏗️ Building project",
       });
 
       this.log.info(
         `\n🎉 Project is ready!
 
-$ cd ${name} && ${runCmd} dev
+$ cd ${name} && npx alepha dev
 			`,
       );
     },
   });
 
-  run = $command({
-    name: "run",
-    description: "Run a TypeScript file directly",
-    flags: t.object({
-      watch: t.optional(
-        t.boolean({ description: "Watch file for changes", alias: "w" }),
-      ),
-    }),
-    summary: false,
-    args: t.text({ title: "path", description: "Filepath to run" }),
-    handler: async ({ args, flags }) => {
-      await exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
+  public readonly clean = $command({
+    name: "clean",
+    description: "Clean the project",
+    handler: async ({ run }) => {
+      await run.rm("./dist");
     },
   });
 }
