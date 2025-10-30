@@ -1,6 +1,13 @@
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
-import { $inject, Alepha, isFileLike, isTypeFile, t } from "@alepha/core";
+import {
+  $inject,
+  Alepha,
+  isFileLike,
+  isTypeFile,
+  isUUID,
+  t,
+} from "@alepha/core";
 import { RouterProvider } from "@alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
@@ -54,11 +61,22 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         return this.alepha.context.run(
           () => this.processRequest(request, route, responseKind),
           {
-            context: rawRequest.headers["x-request-id"],
+            context: this.getContextId(rawRequest.headers),
           },
         );
       },
     });
+  }
+
+  protected getContextId(headers: Record<string, string>): string {
+    const contextId = headers["x-request-id"] || headers["x-correlation-id"];
+    // TODO: check if it's not overkill, just checking length might be enough?
+    // some cloud providers generate non-UUID request ids
+    if (isUUID(contextId)) {
+      return contextId;
+    }
+
+    return crypto.randomUUID();
   }
 
   protected async processRequest(
