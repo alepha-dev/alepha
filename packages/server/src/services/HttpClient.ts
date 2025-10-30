@@ -263,7 +263,7 @@ export class HttpClient {
       return this.createFileLike(response);
     }
 
-    if (response.headers.get("Content-Type") === "text/plain") {
+    if (response.headers.get("Content-Type")?.startsWith("text/")) {
       return await response.text();
     }
 
