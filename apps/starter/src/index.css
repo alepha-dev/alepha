@@ -6,8 +6,8 @@
 
 body {
   font-family:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    "Wotfard", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   line-height: 1.5;
   color: #fafafa;
   background-color: #0a0a0a;
@@ -45,7 +45,6 @@ fieldset > ul li a {
   color: #a1a1aa;
   font-weight: 400;
   padding: 8px 16px;
-  border-radius: 4px 4px 0 0;
   transition: all 0.2s ease;
   font-size: 13px;
   position: relative;
@@ -146,15 +145,4 @@ li {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-li:last-child {
-  margin-bottom: 0;
-}
-
-li:first-child {
-  font-size: 14px;
-  color: #fafafa;
-  font-weight: 400;
-  flex-grow: 1;
 }

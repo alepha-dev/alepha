@@ -42,28 +42,20 @@ const MenuItem = (props: { href: string; children: ReactNode }) => {
 };
 
 const LanguageSwitcher = () => {
-  const i18n = useI18n<AppI18n, "en">();
+  const { lang, setLang } = useI18n<AppI18n, "en">();
 
   const onSetLang = (key: string) => {
     return async () => {
-      await i18n.setLang(key);
+      await setLang(key);
     };
   };
 
   return (
     <div>
-      <button
-        disabled={i18n.lang === "en"}
-        type="button"
-        onClick={onSetLang("en")}
-      >
+      <button disabled={lang === "en"} type="button" onClick={onSetLang("en")}>
         En
       </button>
-      <button
-        disabled={i18n.lang === "fr"}
-        type="button"
-        onClick={onSetLang("fr")}
-      >
+      <button disabled={lang === "fr"} type="button" onClick={onSetLang("fr")}>
         Fr
       </button>
     </div>

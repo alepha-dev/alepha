@@ -78,6 +78,14 @@ export class DateTimeProvider {
     },
   });
 
+  public setLocale(locale: string): void {
+    dayjs.locale(locale);
+  }
+
+  public isDateTime(value: unknown): value is DateTime {
+    return dayjs.isDayjs(value);
+  }
+
   /**
    * Create a new UTC DateTime instance.
    */

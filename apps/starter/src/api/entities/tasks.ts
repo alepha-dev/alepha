@@ -5,6 +5,7 @@ export const tasks = $entity({
   name: "tasks",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
+    createdAt: pg.createdAt(),
     name: t.text(),
   }),
 });

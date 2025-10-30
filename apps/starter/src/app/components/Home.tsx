@@ -1,5 +1,5 @@
 import { useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { Localize, useI18n } from "@alepha/react-i18n";
 import { useState } from "react";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import type { TaskEntity } from "../../api/entities/tasks.ts";
@@ -27,7 +27,13 @@ const Home = (props: Props) => {
       <ul>
         {tasks.map((task) => (
           <li key={task.id}>
-            {task.name}
+            <div>
+              {task.name}
+              <br />
+              <small>
+                <Localize value={task.createdAt} date={"LLL"} />
+              </small>
+            </div>
             <button type="button" onClick={onClickDelete(task.id)}>
               {tr("home.deleteButton")}
             </button>

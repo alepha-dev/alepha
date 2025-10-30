@@ -1,7 +1,7 @@
-import { t } from "@alepha/core";
+import { TypeBoxError, t } from "@alepha/core";
 import { useClient, useRouter } from "@alepha/react";
-import { useForm } from "@alepha/react-form";
-import { useI18n } from "@alepha/react-i18n";
+import { useForm, useFormState } from "@alepha/react-form";
+import { Localize, useI18n } from "@alepha/react-i18n";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import type { AppI18n } from "../AppI18n.ts";
 import type { AppRouter } from "../AppRouter.ts";
@@ -13,13 +13,17 @@ const TodoAdd = () => {
 
   const form = useForm({
     schema: t.object({
-      name: t.string(),
+      name: t.string({
+        minLength: 3,
+      }),
     }),
     handler: async (body) => {
       await client.createTask({ body });
       await router.go("home");
     },
   });
+
+  const state = useFormState(form, ["error"]);
 
   return (
     <div>
@@ -29,6 +33,9 @@ const TodoAdd = () => {
           {...form.input.name.props}
           placeholder={tr("addTask.placeholder")}
         />
+        {state.error && state.error instanceof TypeBoxError && (
+          <Localize value={state.error} />
+        )}
         <button type="submit">{tr("addTask.submitButton")}</button>
       </form>
     </div>

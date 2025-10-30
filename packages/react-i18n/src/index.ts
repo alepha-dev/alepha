@@ -4,6 +4,8 @@ import { I18nProvider } from "./providers/I18nProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export type { LocalizeProps } from "./components/Localize.tsx";
+export { default as Localize } from "./components/Localize.tsx";
 export * from "./descriptors/$dictionary.ts";
 export * from "./hooks/useI18n.ts";
 export * from "./providers/I18nProvider.ts";

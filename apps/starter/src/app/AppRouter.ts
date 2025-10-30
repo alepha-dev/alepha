@@ -14,7 +14,7 @@ export class AppRouter {
       title: "Demo App",
       titleSeparator: " | ",
     },
-    lazy: () => import("./components/Layout.ts"),
+    lazy: () => import("./components/Layout.tsx"),
   });
 
   taskCreate = $page({
@@ -22,7 +22,7 @@ export class AppRouter {
     head: {
       title: "Add a new Todo",
     },
-    lazy: () => import("./components/TodoAdd.ts"),
+    lazy: () => import("./components/TodoAdd.tsx"),
   });
 
   home = $page({
@@ -35,6 +35,6 @@ export class AppRouter {
       tasks: await this.taskController.getTasks(),
     }),
     // then, lazy load the component
-    lazy: () => import("./components/Home.ts"),
+    lazy: () => import("./components/Home.tsx"),
   });
 }

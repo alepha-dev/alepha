@@ -24,12 +24,16 @@ import type {
 } from "typebox";
 import * as TypeBox from "typebox";
 import { Type } from "typebox";
-import type { TLocalizedValidationMessageCallback } from "typebox/error";
+import type {
+  TLocalizedValidationError,
+  TLocalizedValidationMessageCallback,
+} from "typebox/error";
 import TypeBoxFormat from "typebox/format";
 import { Locale } from "typebox/system";
 import * as TypeBoxValue from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import type { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
 export { TypeBox, TypeBoxValue, TypeBoxFormat };
@@ -116,9 +120,25 @@ export class TypeProvider {
     );
   }
 
+  static translateError(error: TypeBoxError, locale?: string): string {
+    if (!locale) {
+      return error.cause.message;
+    }
+
+    for (const [key, value] of Object.entries(Locale)) {
+      if (key === "Set" || key === "Get" || key === "Reset") continue;
+      if (key === locale || key.startsWith(`${locale}_`)) {
+        return (value as (error: TLocalizedValidationError) => string)(
+          error.cause,
+        );
+      }
+    }
+    return error.cause.message;
+  }
+
   static setLocale(locale: string) {
     for (const [key, value] of Object.entries(Locale)) {
-      if (key === "Set" || key === "Get") continue;
+      if (key === "Set" || key === "Get" || key === "Reset") continue;
       if (key === locale || key.startsWith(`${locale}_`)) {
         Locale.Set(value as TLocalizedValidationMessageCallback);
         return;

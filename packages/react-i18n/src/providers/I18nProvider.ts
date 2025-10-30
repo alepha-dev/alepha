@@ -1,4 +1,5 @@
-import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, TypeProvider, t } from "@alepha/core";
+import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { $cookie } from "@alepha/server-cookies";
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
@@ -9,6 +10,7 @@ export class I18nProvider<
 > {
   protected logger = $logger();
   protected alepha = $inject(Alepha);
+  protected dateTimeProvider = $inject(DateTimeProvider);
 
   protected cookie = $cookie({
     name: "lang",
@@ -41,6 +43,10 @@ export class I18nProvider<
     languages.add(this.options.fallbackLang);
 
     return Array.from(languages);
+  }
+
+  constructor() {
+    this.refreshLocale();
   }
 
   protected readonly onRender = $hook({
@@ -78,8 +84,11 @@ export class I18nProvider<
     },
   });
 
-  protected createFormatters() {
+  protected refreshLocale() {
     this.numberFormat = new Intl.NumberFormat(this.lang);
+    this.dateFormat = new Intl.DateTimeFormat(this.lang);
+    this.dateTimeProvider.setLocale(this.lang);
+    TypeProvider.setLocale(this.lang);
   }
 
   public setLang = async (lang: string) => {
@@ -96,6 +105,7 @@ export class I18nProvider<
     }
 
     this.alepha.state.set("react.i18n.lang", lang);
+    this.refreshLocale();
   };
 
   protected readonly mutate = $hook({
@@ -113,7 +123,7 @@ export class I18nProvider<
           }
         }
 
-        this.createFormatters();
+        this.refreshLocale();
 
         if (hasChanged) {
           this.alepha.state.set("react.i18n.lang", value);
@@ -153,7 +163,7 @@ export class I18nProvider<
   };
 
   public readonly tr = (
-    key: keyof ServiceDictionary<S>[K] | string,
+    key: keyof ServiceDictionary<S>[K],
     options: {
       args?: string[];
       default?: string;
