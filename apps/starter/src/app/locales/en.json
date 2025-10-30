@@ -1,0 +1,10 @@
+{
+	"home.title": "Todo List",
+	"nav.home": "Home",
+	"nav.addTask": "Add Task",
+	"home.deleteButton": "Delete",
+	"home.emptyState": "No tasks yet. Add your first task to get started!",
+	"addTask.title": "Add a new Todo",
+	"addTask.placeholder": "Enter todo item",
+	"addTask.submitButton": "Add Todo"
+}

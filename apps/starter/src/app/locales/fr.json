@@ -1,0 +1,10 @@
+{
+	"home.title": "Liste de tâches",
+	"nav.home": "Accueil",
+	"nav.addTask": "Ajouter une tâche",
+	"home.deleteButton": "Supprimer",
+	"home.emptyState": "Aucune tâche pour le moment. Ajoutez votre première tâche pour commencer !",
+	"addTask.title": "Ajouter une nouvelle tâche",
+	"addTask.placeholder": "Saisir l'élément de tâche",
+	"addTask.submitButton": "Ajouter la tâche"
+}
