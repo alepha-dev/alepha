@@ -3,7 +3,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "alepha dev",
-		"build": "alepha build"
+		"build": "alepha build",
+		"test": "alepha test"
 	},
 	"dependencies": {
 		"react": "^19.2.0"

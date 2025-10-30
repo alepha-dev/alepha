@@ -4,6 +4,7 @@ import { $env, $hook, $inject, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { PGlite } from "@electric-sql/pglite";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
+import { PgError } from "../../errors/PgError.ts";
 import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -71,8 +72,6 @@ export class PglitePostgresProvider extends DatabaseProvider {
       const { drizzle } = createRequire(import.meta.url)("drizzle-orm/pglite");
       const path = this.getDatabasePath();
 
-      this.log.info(`Using PGlite database at ${path}`);
-
       if (path !== "memory://") {
         try {
           await mkdir(path, { recursive: true });
@@ -83,6 +82,17 @@ export class PglitePostgresProvider extends DatabaseProvider {
       this.pglite = drizzle({
         client: this.client,
       });
+
+      try {
+        await this.kit.synchronize(this);
+      } catch (error) {
+        throw new PgError(
+          "Failed to synchronize PGLite database schema",
+          error as Error,
+        );
+      }
+
+      this.log.info(`Using PGlite database at ${path}`);
     },
   });
 

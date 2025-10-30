@@ -1,22 +1,10 @@
-import { $hook, t } from "@alepha/core";
+import { t } from "@alepha/core";
 import { $repository } from "@alepha/postgres";
 import { $action } from "@alepha/server";
 import { tasks } from "../entities/tasks.ts";
 
 export class TaskController {
   taskRepository = $repository(tasks);
-
-  ready = $hook({
-    on: "ready",
-    handler: async () => {
-      await this.taskRepository.deleteMany();
-      await this.taskRepository.createMany([
-        { name: "Task 1" },
-        { name: "Task 2" },
-        { name: "Task 3" },
-      ]);
-    },
-  });
 
   getTasks = $action({
     schema: {
