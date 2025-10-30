@@ -528,6 +528,7 @@ __metadata:
   resolution: "@alepha/react-i18n@workspace:packages/react-i18n"
   dependencies:
     "@alepha/core": "npm:0.11.2"
+    "@alepha/datetime": "npm:0.11.2"
     "@alepha/logger": "npm:0.11.2"
     "@alepha/react": "npm:0.11.2"
     "@alepha/server-cookies": "npm:0.11.2"

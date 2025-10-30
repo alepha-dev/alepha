@@ -17,7 +17,6 @@ import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
 import dayjsTimezone from "dayjs/plugin/timezone.js";
 import dayjsUtc from "dayjs/plugin/utc.js";
 
-export type DateTimeApi = typeof dayjs;
 export type DateTime = DayjsApi.Dayjs;
 export type Duration = dayjsDuration.Duration;
 export type DurationLike =
