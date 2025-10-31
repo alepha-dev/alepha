@@ -39,16 +39,18 @@ export class ViteCommands {
       const root = process.cwd();
       await this.ensureTsConfig(root);
       const entry = await boot.getServerEntry(root);
+      this.log.trace("Entry file found", { entry });
 
       try {
         await access(join(root, "index.html"));
       } catch {
-        // check src/**/* in
+        this.log.trace("No index.html found, running entry file with tsx");
         await exec(`tsx watch ${entry}`);
         return;
       }
 
       const configPath = await this.configPath();
+      this.log.trace("Vite config found", { configPath });
       await exec(`vite -c=${configPath}`);
     },
   });

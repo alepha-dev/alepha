@@ -1,5 +1,6 @@
 import {
   type RouterGoOptions,
+  type UseActionReturn,
   type UseActiveOptions,
   useAction,
   useActive,
@@ -104,7 +105,34 @@ export interface ActionCommonProps extends ButtonProps {
 }
 
 export type ActionProps = ActionCommonProps &
-  (ActiveHrefProps | ActionClickProps | ActionSubmitProps | {});
+  (
+    | ActiveHrefProps
+    | ActionClickProps
+    | ActionSubmitProps
+    | ActionActionProps
+    | {}
+  );
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Type guard to check if a value is a UseActionReturn object.
+ */
+export function isActionReturn(
+  value: any,
+): value is UseActionReturn<any[], any> {
+  return (
+    value &&
+    typeof value === "object" &&
+    "run" in value &&
+    "loading" in value &&
+    "error" in value &&
+    "cancel" in value &&
+    typeof value.run === "function" &&
+    typeof value.loading === "boolean" &&
+    typeof value.cancel === "function"
+  );
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -196,6 +224,14 @@ const Action = (_props: ActionProps) => {
       );
     }
 
+    if ("action" in restProps && restProps.action) {
+      return (
+        <ActionAction {...restProps} action={restProps.action}>
+          {restProps.children}
+        </ActionAction>
+      );
+    }
+
     if ("onClick" in restProps && restProps.onClick) {
       return (
         <ActionClick {...restProps} onClick={restProps.onClick}>
@@ -274,6 +310,42 @@ const ActionSubmit = (props: ActionSubmitProps) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export interface ActionActionProps extends ButtonProps {
+  action: UseActionReturn<any[], any>;
+}
+
+/**
+ * Action button that integrates with useAction hook return value.
+ * Automatically handles loading state and executes the action on click.
+ *
+ * @example
+ * ```tsx
+ * const saveAction = useAction({
+ *   handler: async (data) => {
+ *     await api.save(data);
+ *   }
+ * }, []);
+ *
+ * <Action action={saveAction}>Save</Action>
+ * ```
+ */
+const ActionAction = (props: ActionActionProps) => {
+  const { action, ...buttonProps } = props;
+
+  return (
+    <Button
+      {...buttonProps}
+      disabled={action.loading || props.disabled}
+      loading={action.loading}
+      onClick={() => action.run()}
+    >
+      {props.children}
+    </Button>
+  );
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface ActionClickProps extends ButtonProps {
   onClick: (e: any) => any;
 }
@@ -282,7 +354,7 @@ export interface ActionClickProps extends ButtonProps {
  * Basic action button that handles click events with loading and error handling.
  */
 const ActionClick = (props: ActionClickProps) => {
-  const [onClick, { loading: pending }] = useAction(
+  const action = useAction(
     {
       handler: async (e: any) => {
         await props.onClick(e);
@@ -295,9 +367,9 @@ const ActionClick = (props: ActionClickProps) => {
   return (
     <Button
       {...props}
-      disabled={pending || props.disabled}
-      loading={pending}
-      onClick={onClick}
+      disabled={action.loading || props.disabled}
+      loading={action.loading}
+      onClick={action.run}
     >
       {props.children}
     </Button>

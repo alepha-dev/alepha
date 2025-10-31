@@ -8,7 +8,17 @@ import { ToastService } from "./services/ToastService.tsx";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { Flex } from "@mantine/core";
-export { default as Action } from "./components/Action.tsx";
+export type {
+  ActionActionProps,
+  ActionClickProps,
+  ActionCommonProps,
+  ActionMenuConfig,
+  ActionMenuItem,
+  ActionProps,
+  ActionSubmitProps,
+  ActiveHrefProps,
+} from "./components/Action.tsx";
+export { default as Action, isActionReturn } from "./components/Action.tsx";
 export { default as AlephaMantineProvider } from "./components/AlephaMantineProvider.tsx";
 export { default as Control } from "./components/Control.tsx";
 export { default as ControlDate } from "./components/ControlDate.tsx";

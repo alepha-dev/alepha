@@ -24,13 +24,14 @@ describe("useAction", () => {
       },
     );
 
-    const [handler, initialState] = result.current;
+    const action = result.current;
 
-    expect(initialState.loading).toBe(false);
-    expect(initialState.error).toBe(null);
-    expect(initialState.cancel).toBeDefined();
+    expect(action.loading).toBe(false);
+    expect(action.error).toBe(null);
+    expect(action.cancel).toBeDefined();
+    expect(action.run).toBeDefined();
 
-    const actionResult = await handler("test");
+    const actionResult = await action.run("test");
 
     expect(actionResult).toBe("result: test");
     expect(mockAction).toHaveBeenCalledWith(
@@ -40,9 +41,8 @@ describe("useAction", () => {
       }),
     );
 
-    const [, finalState] = result.current;
-    expect(finalState.loading).toBe(false);
-    expect(finalState.error).toBe(null);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBe(null);
   });
 
   test("should emit react:action events", async ({ expect }) => {
@@ -74,8 +74,8 @@ describe("useAction", () => {
       },
     );
 
-    const [handler] = result.current;
-    await handler();
+    const action = result.current;
+    await action.run();
 
     expect(events).toEqual(["begin", "success", "end"]);
   });
@@ -100,13 +100,12 @@ describe("useAction", () => {
       },
     );
 
-    const [handler] = result.current;
+    const action = result.current;
 
-    await expect(() => handler()).rejects.toThrow("Test error");
+    await expect(() => action.run()).rejects.toThrow("Test error");
 
-    const [, currentState] = result.current;
-    expect(currentState.error).toBe(error);
-    expect(currentState.loading).toBe(false);
+    expect(result.current.error).toBe(error);
+    expect(result.current.loading).toBe(false);
   });
 
   test("should emit react:action:error on failure", async ({ expect }) => {
@@ -135,10 +134,10 @@ describe("useAction", () => {
       },
     );
 
-    const [handler] = result.current;
+    const action = result.current;
 
     try {
-      await handler();
+      await action.run();
     } catch {
       // Expected
     }
@@ -167,8 +166,8 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
-    await handler();
+    const action = result.current;
+    await action.run();
 
     expect(onError).toHaveBeenCalledWith(error);
   });
@@ -189,8 +188,8 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
-    await handler();
+    const action = result.current;
+    await action.run();
 
     expect(onSuccess).toHaveBeenCalledWith("result");
   });
@@ -216,8 +215,8 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
-    await handler();
+    const action = result.current;
+    await action.run();
 
     expect(events[0].id).toBe("test-action");
   });
@@ -243,10 +242,10 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
+    const action = result.current;
 
     // Call 100 times rapidly
-    const promises = Array.from({ length: 100 }, () => handler());
+    const promises = Array.from({ length: 100 }, () => action.run());
 
     // Wait for all to complete
     await Promise.all(promises);
@@ -271,11 +270,11 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
+    const action = result.current;
 
     // Call 100 times rapidly with different values
     for (let i = 0; i < 100; i++) {
-      handler(`value-${i}`);
+      action.run(`value-${i}`);
     }
 
     // Wait for debounce to complete
@@ -301,14 +300,14 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
+    const action = result.current;
 
     // Call multiple times with delays
-    handler("first");
+    action.run("first");
     await new Promise((resolve) => setTimeout(resolve, 30));
-    handler("second");
+    action.run("second");
     await new Promise((resolve) => setTimeout(resolve, 30));
-    handler("third");
+    action.run("third");
 
     // Wait for final debounce
     await new Promise((resolve) => setTimeout(resolve, 60));
@@ -338,8 +337,8 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler] = result.current;
-    await handler("test");
+    const action = result.current;
+    await action.run("test");
 
     expect(receivedSignal).toBeInstanceOf(AbortSignal);
     expect(receivedSignal?.aborted).toBe(false);
@@ -365,14 +364,14 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler, { cancel }] = result.current;
+    const action = result.current;
 
     // Start action
-    const promise = handler();
+    const promise = action.run();
 
     // Cancel after 50ms
     await new Promise((resolve) => setTimeout(resolve, 50));
-    cancel();
+    action.cancel();
 
     await promise;
 
@@ -394,14 +393,14 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler, { cancel }] = result.current;
+    const action = result.current;
 
     // Call handler
-    handler("test");
+    action.run("test");
 
     // Cancel before debounce completes
     await new Promise((resolve) => setTimeout(resolve, 50));
-    cancel();
+    action.cancel();
 
     // Wait for debounce period
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -429,11 +428,10 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    const [handler, state] = result.current;
-    await handler();
+    const action = result.current;
+    await action.run();
 
     // Should not set error state for abort errors
-    const [, finalState] = result.current;
-    expect(finalState.error).toBe(null);
+    expect(result.current.error).toBe(null);
   });
 });

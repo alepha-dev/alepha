@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type DependencyList,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useAlepha } from "./useAlepha.ts";
 
 /**
@@ -15,32 +21,32 @@ import { useAlepha } from "./useAlepha.ts";
  *
  * @example Basic usage
  * ```tsx
- * const [handleSave, { loading, error }] = useAction({
+ * const action = useAction({
  *   handler: async (data) => {
  *     await api.save(data);
  *   }
  * }, []);
  *
- * <button onClick={() => handleSave(data)} disabled={loading}>
+ * <button onClick={() => action.run(data)} disabled={action.loading}>
  *   Save
  * </button>
  * ```
  *
  * @example With debounce (search input)
  * ```tsx
- * const [handleSearch] = useAction({
+ * const search = useAction({
  *   handler: async (query: string) => {
  *     await api.search(query);
  *   },
  *   debounce: 300 // Wait 300ms after last call
  * }, []);
  *
- * <input onChange={(e) => handleSearch(e.target.value)} />
+ * <input onChange={(e) => search.run(e.target.value)} />
  * ```
  *
  * @example With AbortController
  * ```tsx
- * const [handleFetch] = useAction({
+ * const fetch = useAction({
  *   handler: async (url, { signal }) => {
  *     const response = await fetch(url, { signal });
  *     return response.json();
@@ -51,7 +57,7 @@ import { useAlepha } from "./useAlepha.ts";
  *
  * @example With error handling
  * ```tsx
- * const [handleDelete] = useAction({
+ * const deleteAction = useAction({
  *   handler: async (id: string) => {
  *     await api.delete(id);
  *   },
@@ -61,6 +67,8 @@ import { useAlepha } from "./useAlepha.ts";
  *     }
  *   }
  * }, []);
+ *
+ * {deleteAction.error && <div>Error: {deleteAction.error.message}</div>}
  * ```
  *
  * @example Global error handling
@@ -74,7 +82,7 @@ import { useAlepha } from "./useAlepha.ts";
  */
 export function useAction<Args extends any[], Result = void>(
   options: UseActionOptions<Args, Result>,
-  deps: React.DependencyList,
+  deps: DependencyList,
 ): UseActionReturn<Args, Result> {
   const alepha = useAlepha();
   const [loading, setLoading] = useState(false);
@@ -238,7 +246,12 @@ export function useAction<Args extends any[], Result = void>(
     }
   }, []);
 
-  return [handler, { loading, error, cancel }];
+  return {
+    run: handler,
+    loading,
+    error,
+    cancel,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -257,12 +270,12 @@ export interface ActionContext {
    *
    * @example
    * ```tsx
-   * useAction({
+   * const action = useAction({
    *   handler: async (url, { signal }) => {
    *     const response = await fetch(url, { signal });
    *     return response.json();
    *   }
-   * }, [])
+   * }, []);
    * ```
    */
   signal: AbortSignal;
@@ -298,29 +311,45 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * @example
    * ```tsx
    * // Execute search 300ms after user stops typing
-   * useAction({ handler: search, debounce: 300 }, [])
+   * const search = useAction({ handler: search, debounce: 300 }, [])
    * ```
    */
   debounce?: number;
 }
 
-export type UseActionReturn<Args extends any[], Result> = [
-  (...args: Args) => Promise<Result | undefined>,
-  {
-    loading: boolean;
-    error: Error | null;
-    /**
-     * Cancel any pending debounced action or abort the current in-flight request.
-     *
-     * @example
-     * ```tsx
-     * const [handleFetch, { loading, cancel }] = useAction(...);
-     *
-     * <button onClick={cancel} disabled={!loading}>
-     *   Cancel
-     * </button>
-     * ```
-     */
-    cancel: () => void;
-  },
-];
+export interface UseActionReturn<Args extends any[], Result> {
+  /**
+   * Execute the action with the provided arguments.
+   *
+   * @example
+   * ```tsx
+   * const action = useAction({ handler: async (data) => { ... } }, []);
+   * action.run(data);
+   * ```
+   */
+  run: (...args: Args) => Promise<Result | undefined>;
+
+  /**
+   * Loading state - true when action is executing.
+   */
+  loading: boolean;
+
+  /**
+   * Error state - contains error if action failed, null otherwise.
+   */
+  error: Error | null;
+
+  /**
+   * Cancel any pending debounced action or abort the current in-flight request.
+   *
+   * @example
+   * ```tsx
+   * const action = useAction({ ... }, []);
+   *
+   * <button onClick={action.cancel} disabled={!action.loading}>
+   *   Cancel
+   * </button>
+   * ```
+   */
+  cancel: () => void;
+}
