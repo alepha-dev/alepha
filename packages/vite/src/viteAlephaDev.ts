@@ -1,8 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { Alepha, State } from "@alepha/core";
+import { type Alepha, boot, type State } from "@alepha/core";
 import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
-import { getServerEntry } from "./helpers/getEntryFiles.ts";
 import { importVite } from "./helpers/importVite.ts";
 
 export interface ViteAlephaDevOptions {
@@ -36,7 +35,7 @@ export async function viteAlephaDev(
 ): Promise<Plugin> {
   let entry = options.serverEntry;
   if (!entry) {
-    entry = await getServerEntry();
+    entry = await boot.getServerEntry();
     if (!entry) {
       return {
         name: "alepha-dev",

@@ -8,6 +8,14 @@ export class CoreCommands {
 
   public readonly root = $command({
     name: "",
+    flags: t.object({
+      version: t.optional(
+        t.boolean({
+          description: "Show Alepha CLI version",
+          aliases: ["v"],
+        }),
+      ),
+    }),
     handler: async () => {
       this.cli.printHelp();
     },

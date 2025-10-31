@@ -1,8 +1,17 @@
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { AlephaError } from "@alepha/core";
+import { AlephaError } from "../errors/AlephaError.ts";
 
-export const getClientEntry = async (
+/**
+ * Remember:
+ * At first, functions was inside alepha/vite package, but it's now used in alepha/cli too.
+ * For avoiding cli -> vite, all code moved here.
+ */
+
+/**
+ * Find browser/client entry file path.
+ */
+const getClientEntry = async (
   root = process.cwd(),
 ): Promise<string | undefined> => {
   const indexPath = join(root, "index.html");
@@ -14,7 +23,10 @@ export const getClientEntry = async (
   }
 };
 
-export const getServerEntry = async (root = process.cwd()): Promise<string> => {
+/**
+ * Find server entry file path.
+ */
+const getServerEntry = async (root = process.cwd()): Promise<string> => {
   const pkgPath = join(root, "package.json");
   try {
     const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
@@ -57,7 +69,10 @@ export const getServerEntry = async (root = process.cwd()): Promise<string> => {
   );
 };
 
-export function extractFirstModuleScriptSrc(html: string): string {
+/**
+ * Extract first module script src from HTML.
+ */
+function extractFirstModuleScriptSrc(html: string): string {
   const scriptRegex = /<script\b[^>]*>[\s\S]*?<\/script>/gi;
   let match: RegExpExecArray | null = scriptRegex.exec(html);
 
@@ -82,3 +97,8 @@ export function extractFirstModuleScriptSrc(html: string): string {
 
   throw new AlephaError(`No module script found in the provided HTML.`);
 }
+
+export const boot = {
+  getClientEntry,
+  getServerEntry,
+};

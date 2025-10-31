@@ -1,9 +1,8 @@
 import { access, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { t } from "@alepha/core";
+import { boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { getServerEntry } from "@alepha/vite";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { exec, writeConfigFile } from "../helpers/exec.ts";
@@ -39,7 +38,7 @@ export class ViteCommands {
     handler: async () => {
       const root = process.cwd();
       await this.ensureTsConfig(root);
-      const entry = await getServerEntry(root);
+      const entry = await boot.getServerEntry(root);
 
       try {
         await access(join(root, "index.html"));

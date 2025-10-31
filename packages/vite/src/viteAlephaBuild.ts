@@ -1,9 +1,9 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { boot } from "@alepha/core";
 import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
 import { fileExists } from "./helpers/fileExists.ts";
-import { getServerEntry } from "./helpers/getEntryFiles.ts";
 import { prerender } from "./helpers/prerender.ts";
 import { generateSitemap } from "./helpers/sitemap.ts";
 import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
@@ -41,7 +41,7 @@ export interface ViteAlephaBuildOptions {
 export async function viteAlephaBuild(
   options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
-  const entry = options.serverEntry ?? (await getServerEntry());
+  const entry = options.serverEntry ?? (await boot.getServerEntry());
 
   const distDir = "dist";
   const clientDir = "public";

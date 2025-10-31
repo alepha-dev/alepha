@@ -29,9 +29,7 @@
 	"devDependencies": {
 		"@alepha/command": "^0.11.3",
 		"@alepha/core": "^0.11.3",
-		"@alepha/logger": "^0.11.3",
-		"@alepha/vite": "^0.11.3",
-		"tsdown": "^0.15.11"
+		"@alepha/logger": "^0.11.3"
 	},
 	"scripts": {
 		"lint": "biome check --fix",

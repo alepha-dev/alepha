@@ -2,9 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { Alepha, AlephaError, t } from "@alepha/core";
+import { Alepha, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { getServerEntry } from "@alepha/vite";
 import { tsImport } from "tsx/esm/api";
 import { exec } from "../helpers/exec.ts";
 
@@ -170,7 +169,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   }> {
     process.env.ALEPHA_SKIP_START = "true";
 
-    const entry = await getServerEntry(rootDir);
+    const entry = await boot.getServerEntry(rootDir);
     const mod = await tsImport(entry, {
       parentURL: import.meta.url,
     });
