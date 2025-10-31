@@ -76,8 +76,15 @@ export interface CommandDescriptorOptions<
 
   /**
    * If false, skip summary message at the end of the command execution.
+   * Summary will display only if ({ run }) method calls were made.
    */
   summary?: boolean;
+
+  /**
+   * Marks this command as the root command.
+   * Equivalent to setting name to an empty string "".
+   */
+  root?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -90,6 +97,9 @@ export class CommandDescriptor<
   public readonly aliases = this.options.aliases ?? [];
 
   public get name(): string {
+    if (this.options.root) {
+      return "";
+    }
     return this.options.name ?? `${this.config.propertyKey}`;
   }
 }

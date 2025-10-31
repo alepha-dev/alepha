@@ -21,7 +21,7 @@ export default defineConfig({
 				"packages/cli",
 				"packages/thread",
 			],
-			reporter: ["cobertura", "text", "html"],
+			reporter: ["cobertura", "html"],
 		},
 		env: {
 			DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",

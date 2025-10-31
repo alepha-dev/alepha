@@ -499,6 +499,74 @@ describe("$command", () => {
     });
   });
 
+  describe("Root Command Global Flags", () => {
+    test("should display root command flags as global flags in help", async () => {
+      const mockRootHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command",
+          flags: t.object({
+            verbose: t.optional(
+              t.boolean({ description: "Enable verbose output." }),
+            ),
+            config: t.optional(
+              t.text({
+                description: "Path to config file.",
+                alias: "c",
+              }),
+            ),
+          }),
+          handler: mockRootHandler,
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
+        alepha.configure(CliProvider, {
+          name: "my-cli",
+          description: "My awesome CLI tool.",
+        });
+        alepha.with(RootCommand);
+      });
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("Flags:");
+      expect(output).toContain("--verbose");
+      expect(output).toContain("Enable verbose output.");
+      expect(output).toContain("--config");
+      expect(output).toContain("Path to config file.");
+      expect(output).toContain("-h, --help");
+    });
+
+    test("should parse root command flags correctly", async () => {
+      const mockRootHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command",
+          flags: t.object({
+            verbose: t.optional(t.boolean({ description: "Verbose mode." })),
+            output: t.text({ description: "Output file." }),
+          }),
+          handler: mockRootHandler,
+        });
+      }
+
+      await setupTestCommands(["--verbose", "--output=test.txt"], (alepha) => {
+        alepha.with(RootCommand);
+      });
+
+      expect(mockRootHandler).toHaveBeenCalledOnce();
+      const [callArgs] = mockRootHandler.mock.calls[0];
+      expect(callArgs.flags).toEqual({
+        verbose: true,
+        output: "test.txt",
+      });
+    });
+  });
+
   describe("Help Message with Arguments", () => {
     test("should show argument usage in help for single string argument", async () => {
       class TestCommand {

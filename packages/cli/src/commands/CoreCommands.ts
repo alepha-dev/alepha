@@ -1,13 +1,14 @@
 import { $command, CliProvider } from "@alepha/command";
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
+import { version } from "../version.ts";
 
 export class CoreCommands {
   protected readonly log = $logger();
   protected readonly cli = $inject(CliProvider);
 
   public readonly root = $command({
-    name: "",
+    root: true,
     flags: t.object({
       version: t.optional(
         t.boolean({
@@ -16,7 +17,12 @@ export class CoreCommands {
         }),
       ),
     }),
-    handler: async () => {
+    handler: async ({ flags }) => {
+      if (flags.version) {
+        this.log.info(version);
+        return;
+      }
+
       this.cli.printHelp();
     },
   });

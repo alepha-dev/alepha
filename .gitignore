@@ -11,3 +11,4 @@ node_modules
 dist
 coverage
 .claude
+test-report.junit.xml

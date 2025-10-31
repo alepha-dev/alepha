@@ -29,7 +29,7 @@
 		"clean": "yarn alepha clean",
 		"copy": "yarn workspaces foreach -Apt run copy",
 		"convert": "node scripts/convert.ts",
-		"lint": "biome check --write --unsafe",
+		"lint": "biome check --fix",
 		"typecheck": "yarn tsc --noEmit",
 		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --exclude @alepha/cli --no-private exec depcheck --ignores=jsdom,@alepha/testing,shx,drizzle-kit,swagger-ui-dist,vite --ignore-patterns=dist,assets",
 		"test": "vitest run",

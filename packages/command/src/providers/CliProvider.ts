@@ -66,7 +66,7 @@ export class CliProvider {
 
       const globalFlags = this.parseFlags(
         argv,
-        Object.entries(this.globalFlags).map(([key, value]) => ({
+        Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
           key,
           ...value,
         })),
@@ -124,6 +124,38 @@ export class CliProvider {
     return this.commands.find(
       (command) => command.name === name || command.aliases.includes(name),
     );
+  }
+
+  /**
+   * Get all global flags including those from the root command (name === "")
+   */
+  protected getAllGlobalFlags(): Record<
+    string,
+    { aliases: string[]; description?: string; schema: TSchema }
+  > {
+    const rootCommand = this.commands.find((cmd) => cmd.name === "");
+    const allGlobalFlags: Record<
+      string,
+      { aliases: string[]; description?: string; schema: TSchema }
+    > = { ...this.globalFlags };
+
+    if (rootCommand) {
+      // Add root command flags to global flags
+      for (const [key, value] of Object.entries(rootCommand.flags.properties)) {
+        allGlobalFlags[key] = {
+          aliases: [
+            key,
+            ...((value as any).aliases ??
+              ((value as any).alias ? [(value as any).alias] : undefined) ??
+              []),
+          ],
+          description: (value as any).description,
+          schema: value as TSchema,
+        };
+      }
+    }
+
+    return allGlobalFlags;
   }
 
   protected parseCommandFlags(
@@ -341,7 +373,7 @@ export class CliProvider {
           aliases: (value as any).alias ?? [key],
           description: (value as any).description,
         })),
-        ...Object.entries(this.globalFlags).map(([key, value]) => ({
+        ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
           key,
           ...value,
         })),
@@ -379,7 +411,7 @@ export class CliProvider {
 
       this.log.info("");
       this.log.info("Flags:");
-      const globalFlags = Object.values(this.globalFlags);
+      const globalFlags = Object.values(this.getAllGlobalFlags());
       const maxFlagLength = this.getMaxFlagLength(globalFlags);
       for (const { aliases, description } of globalFlags) {
         const flagStr = aliases
