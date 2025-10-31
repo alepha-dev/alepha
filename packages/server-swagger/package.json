@@ -25,10 +25,10 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.2",
-		"swagger-ui-dist": "^5.30.0",
-		"tsdown": "^0.15.11",
+		"swagger-ui-dist": "^5.30.1",
+		"tsdown": "^0.15.12",
 		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.5"
 	},
 	"scripts": {
 		"copy": "node scripts/copy.ts",

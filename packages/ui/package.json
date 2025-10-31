@@ -32,7 +32,7 @@
 		"@mantine/nprogress": "^8.3.6",
 		"@mantine/spotlight": "^8.3.6",
 		"@tabler/icons-react": "^3.35.0",
-		"dayjs": "^1.11.18"
+		"dayjs": "^1.11.19"
 	},
 	"devDependencies": {
 		"@alepha/cli": "0.11.3",
@@ -40,10 +40,10 @@
 		"@biomejs/biome": "^2.3.2",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
-		"tsdown": "^0.15.11",
+		"tsdown": "^0.15.12",
 		"typescript": "^5.9.3",
 		"vite": "^7.1.12",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.5"
 	},
 	"peerDependencies": {
 		"react": "*",
