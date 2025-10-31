@@ -215,7 +215,6 @@ __metadata:
     "@alepha/command": "npm:^0.11.3"
     "@alepha/core": "npm:^0.11.3"
     "@alepha/logger": "npm:^0.11.3"
-    "@alepha/vite": "npm:^0.11.3"
     "@biomejs/biome": "npm:^2.3.2"
     depcheck: "npm:^1.4.7"
     drizzle-kit: "npm:^0.31.6"
@@ -957,7 +956,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/vite@npm:0.11.3, @alepha/vite@npm:^0.11.3, @alepha/vite@workspace:packages/vite":
+"@alepha/vite@npm:0.11.3, @alepha/vite@workspace:packages/vite":
   version: 0.0.0-use.local
   resolution: "@alepha/vite@workspace:packages/vite"
   dependencies:
