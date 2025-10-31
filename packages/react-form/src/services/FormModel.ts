@@ -68,6 +68,11 @@ export class FormModel<T extends TObject> {
   protected readonly submit = async (event: FormEventLike) => {
     event.preventDefault();
 
+    // Emit both action and form events
+    await this.alepha.events.emit("react:action:begin", {
+      type: "form",
+      id: this.id,
+    });
     await this.alepha.events.emit("form:submit:begin", {
       id: this.id,
     });
@@ -93,6 +98,10 @@ export class FormModel<T extends TObject> {
 
       await options.handler(values as any, args);
 
+      await this.alepha.events.emit("react:action:success", {
+        type: "form",
+        id: this.id,
+      });
       await this.alepha.events.emit("form:submit:success", {
         id: this.id,
         values,
@@ -102,12 +111,21 @@ export class FormModel<T extends TObject> {
 
       options.onError?.(error as Error, args);
 
+      await this.alepha.events.emit("react:action:error", {
+        type: "form",
+        id: this.id,
+        error: error as Error,
+      });
       await this.alepha.events.emit("form:submit:error", {
         error: error as Error,
         id: this.id,
       });
     }
 
+    await this.alepha.events.emit("react:action:end", {
+      type: "form",
+      id: this.id,
+    });
     await this.alepha.events.emit("form:submit:end", {
       id: this.id,
     });

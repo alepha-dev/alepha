@@ -191,7 +191,7 @@ export interface PageDescriptorOptions<
    */
   children?: Array<PageDescriptor> | (() => Array<PageDescriptor>);
 
-  parent?: PageDescriptor<PageConfigSchema, TPropsParent>;
+  parent?: PageDescriptor<PageConfigSchema, TPropsParent, any>;
 
   can?: () => boolean;
 

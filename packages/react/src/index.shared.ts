@@ -8,6 +8,7 @@ export * from "./contexts/AlephaContext.ts";
 export * from "./contexts/RouterLayerContext.ts";
 export * from "./descriptors/$page.ts";
 export * from "./errors/Redirection.ts";
+export * from "./hooks/useAction.ts";
 export * from "./hooks/useActive.ts";
 export * from "./hooks/useAlepha.ts";
 export * from "./hooks/useClient.ts";

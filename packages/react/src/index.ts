@@ -43,6 +43,27 @@ declare module "@alepha/core" {
       state: ReactRouterState;
       hydration?: ReactHydrationState;
     };
+    // -----------------------------------------------------------------------------------------------------------------
+    // TOP LEVEL: All user actions (forms, transitions, custom actions)
+    "react:action:begin": {
+      type: string;
+      id?: string;
+    };
+    "react:action:success": {
+      type: string;
+      id?: string;
+    };
+    "react:action:error": {
+      type: string;
+      id?: string;
+      error: Error;
+    };
+    "react:action:end": {
+      type: string;
+      id?: string;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    // SPECIFIC: Route transitions
     "react:transition:begin": {
       previous: ReactRouterState;
       state: ReactRouterState;

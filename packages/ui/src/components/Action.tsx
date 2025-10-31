@@ -1,8 +1,8 @@
 import {
   type RouterGoOptions,
   type UseActiveOptions,
+  useAction,
   useActive,
-  useAlepha,
   useRouter,
 } from "@alepha/react";
 import { type FormModel, useFormState } from "@alepha/react-form";
@@ -15,7 +15,7 @@ import {
   type TooltipProps,
 } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 
 export interface ActionMenuItem {
   /**
@@ -282,23 +282,15 @@ export interface ActionClickProps extends ButtonProps {
  * Basic action button that handles click events with loading and error handling.
  */
 const ActionClick = (props: ActionClickProps) => {
-  const [pending, setPending] = useState(false);
-  const alepha = useAlepha();
-
-  const onClick = async (e: any) => {
-    setPending(true);
-    try {
-      await props.onClick(e);
-    } catch (e) {
-      console.error(e);
-      await alepha.events.emit("form:submit:error", {
-        id: "action",
-        error: e as Error,
-      });
-    } finally {
-      setPending(false);
-    }
-  };
+  const [onClick, { loading: pending }] = useAction(
+    {
+      handler: async (e: any) => {
+        await props.onClick(e);
+      },
+      id: "action",
+    },
+    [props.onClick],
+  );
 
   return (
     <Button
