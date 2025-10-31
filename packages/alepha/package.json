@@ -29,6 +29,7 @@
 		"@alepha/datetime": "0.11.3",
 		"@alepha/devtools": "0.11.3",
 		"@alepha/email": "0.11.3",
+		"@alepha/fake": "0.11.3",
 		"@alepha/file": "0.11.3",
 		"@alepha/lock": "0.11.3",
 		"@alepha/lock-redis": "0.11.3",
@@ -62,6 +63,7 @@
 		"@alepha/server-swagger": "0.11.3",
 		"@alepha/topic": "0.11.3",
 		"@alepha/topic-redis": "0.11.3",
+		"@alepha/ui": "0.11.3",
 		"@alepha/vite": "0.11.3",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"
@@ -149,6 +151,11 @@
 			"import": "./email.js",
 			"require": "./email.cjs",
 			"types": "./email.d.ts"
+		},
+		"./fake": {
+			"import": "./fake.js",
+			"require": "./fake.cjs",
+			"types": "./fake.d.ts"
 		},
 		"./file": {
 			"import": "./file.js",
@@ -315,6 +322,11 @@
 			"require": "./topic/redis.cjs",
 			"types": "./topic/redis.d.ts"
 		},
+		"./ui": {
+			"import": "./ui.js",
+			"require": "./ui.cjs",
+			"types": "./ui.d.ts"
+		},
 		"./vite": {
 			"import": "./vite.js",
 			"require": "./vite.cjs",
@@ -337,6 +349,7 @@
 		"datetime",
 		"devtools",
 		"email",
+		"fake",
 		"file",
 		"lock",
 		"lock-redis",
@@ -370,6 +383,7 @@
 		"server-swagger",
 		"topic",
 		"topic-redis",
+		"ui",
 		"vite"
 	]
 }

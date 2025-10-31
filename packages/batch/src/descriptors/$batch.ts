@@ -556,6 +556,19 @@ export class BatchDescriptor<
   protected readonly partitions = new Map();
   protected activeHandlers: PromiseWithResolvers<void>[] = [];
 
+  // Computed properties with defaults
+  protected get maxSize(): number {
+    return this.options.maxSize ?? 10;
+  }
+
+  protected get concurrency(): number {
+    return this.options.concurrency ?? 1;
+  }
+
+  protected get maxDuration(): DurationLike {
+    return this.options.maxDuration ?? [1, "second"];
+  }
+
   protected retry = $retry({
     ...this.options.retry,
     handler: this.options.handler,
@@ -576,7 +589,11 @@ export class BatchDescriptor<
 
     // 3. Get or create the partition state
     if (!this.partitions.has(partitionKey)) {
-      this.partitions.set(partitionKey, { items: [], resolvers: [] });
+      this.partitions.set(partitionKey, {
+        items: [],
+        resolvers: [],
+        flushing: false,
+      });
     }
     const partition = this.partitions.get(partitionKey)!;
 
@@ -587,21 +604,21 @@ export class BatchDescriptor<
 
       this.log.trace(`Pushed item to batch partition '${partitionKey}'`, {
         currentSize: partition.items.length,
-        maxSize: this.options.maxSize,
+        maxSize: this.maxSize,
       });
 
       // 5. Check if the batch is full
-      if (partition.items.length >= this.options.maxSize!) {
+      if (partition.items.length >= this.maxSize) {
         this.log.trace(`Batch partition '${partitionKey}' is full, flushing.`);
         this.flushPartition(partitionKey);
-      } else if (!partition.timeout) {
-        // 6. Start the timeout if it's not already running for this partition
+      } else if (!partition.timeout && !partition.flushing) {
+        // 6. Start the timeout if it's not already running for this partition and not currently flushing
         partition.timeout = this.dateTime.createTimeout(() => {
           this.log.trace(
             `Batch partition '${partitionKey}' timed out, flushing.`,
           );
           this.flushPartition(partitionKey);
-        }, this.options.maxDuration ?? [1, "second"]);
+        }, this.maxDuration);
       }
     });
   }
@@ -633,11 +650,17 @@ export class BatchDescriptor<
     const resolversToProcess = [...partition.resolvers];
     partition.items = [];
     partition.resolvers = [];
-    this.partitions.delete(partitionKey);
 
-    if (this.activeHandlers.length >= this.options.concurrency!) {
-      this.log.trace(`Batch handler is busy, waiting...`);
-      await Promise.all(this.activeHandlers.map((it) => it.promise));
+    // Mark partition as flushing to prevent race conditions
+    partition.flushing = true;
+
+    // Wait until there's a free slot (if at concurrency limit)
+    while (this.activeHandlers.length >= this.concurrency) {
+      this.log.trace(
+        `Batch handler is at concurrency limit, waiting for a slot...`,
+      );
+      // Wait for any single handler to complete, not all of them
+      await Promise.race(this.activeHandlers.map((it) => it.promise));
     }
 
     const promise = Promise.withResolvers<void>();
@@ -658,6 +681,15 @@ export class BatchDescriptor<
     } finally {
       promise.resolve(result);
       this.activeHandlers = this.activeHandlers.filter((it) => it !== promise);
+
+      // Only delete partition if no new items arrived during processing
+      const currentPartition = this.partitions.get(partitionKey);
+      if (currentPartition?.flushing && currentPartition.items.length === 0) {
+        this.partitions.delete(partitionKey);
+      } else if (currentPartition) {
+        // Reset flushing flag if partition still exists with items
+        currentPartition.flushing = false;
+      }
     }
   }
 

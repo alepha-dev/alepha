@@ -396,4 +396,187 @@ describe("$batch descriptor", () => {
     const response = await app.fetch("https://example.com/D");
     expect(response).toBe("Response for https://example.com/D");
   });
+
+  test("should handle items arriving during batch processing (race condition fix)", async () => {
+    let handlerCallCount = 0;
+    const handlerCalls: string[][] = [];
+
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        maxSize: 2,
+        maxDuration: [10, "seconds"],
+        handler: async (items: string[]) => {
+          handlerCallCount++;
+          handlerCalls.push([...items]);
+          // Simulate slow processing
+          await time.wait(100);
+          return `batch-${handlerCallCount}`;
+        },
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    // Push 2 items to trigger first batch
+    const promise1 = app.batcher.push("A");
+    const promise2 = app.batcher.push("B");
+
+    // Wait a bit for processing to start but not complete
+    await time.wait(50);
+
+    // Push more items while first batch is processing
+    const promise3 = app.batcher.push("C");
+    const promise4 = app.batcher.push("D");
+
+    // Wait for all promises to resolve
+    const results = await Promise.all([promise1, promise2, promise3, promise4]);
+
+    // Should have 2 batches
+    expect(handlerCallCount).toBe(2);
+    expect(handlerCalls[0]).toEqual(["A", "B"]);
+    expect(handlerCalls[1]).toEqual(["C", "D"]);
+    expect(results).toEqual(["batch-1", "batch-1", "batch-2", "batch-2"]);
+  });
+
+  test("should handle concurrent pushes to same partition during flush", async () => {
+    let processingBatch1 = false;
+
+    class TestApp {
+      batcher = $batch({
+        schema: t.object({ id: t.number(), value: t.text() }),
+        maxSize: 2,
+        partitionBy: (item) => `p-${item.id}`,
+        handler: async (items) => {
+          if (!processingBatch1) {
+            processingBatch1 = true;
+            // Simulate slow processing for first batch only
+            await time.wait(100);
+          }
+          return items.map((item) => ({ ...item, processed: true }));
+        },
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    // Push 2 items to partition p-1 to trigger flush
+    const p1 = app.batcher.push({ id: 1, value: "A" });
+    const p2 = app.batcher.push({ id: 1, value: "B" });
+
+    // Wait for processing to start
+    await time.wait(50);
+
+    // Push more items to same partition while processing
+    const p3 = app.batcher.push({ id: 1, value: "C" });
+    const p4 = app.batcher.push({ id: 1, value: "D" });
+
+    await Promise.all([p1, p2, p3, p4]);
+
+    // All items should be processed successfully
+    expect(true).toBe(true); // If we got here without errors, test passes
+  });
+
+  test("should use default values for maxSize, concurrency, and maxDuration", async () => {
+    const mockHandler = createMockHandler();
+
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        // Not providing maxSize, concurrency, or maxDuration
+        handler: mockHandler,
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    // Test default maxSize (10)
+    for (let i = 0; i < 9; i++) {
+      app.batcher.push(`item-${i}`);
+    }
+    expect(mockHandler).not.toHaveBeenCalled();
+
+    app.batcher.push("item-9"); // 10th item should trigger flush
+
+    await vi.waitFor(() => {
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+    });
+    expect(mockHandler).toHaveBeenCalledWith([
+      "item-0",
+      "item-1",
+      "item-2",
+      "item-3",
+      "item-4",
+      "item-5",
+      "item-6",
+      "item-7",
+      "item-8",
+      "item-9",
+    ]);
+  });
+
+  test("should use default maxDuration (1 second)", async () => {
+    const mockHandler = createMockHandler();
+
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        // Not providing maxDuration, should default to 1 second
+        handler: mockHandler,
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    app.batcher.push("A");
+    expect(mockHandler).not.toHaveBeenCalled();
+
+    // Wait for default timeout (1 second)
+    await time.travel([1.1, "seconds"]);
+
+    await vi.waitFor(() => {
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+    });
+    expect(mockHandler).toHaveBeenCalledWith(["A"]);
+  });
+
+  test("should use default concurrency (1)", async () => {
+    let activeHandlers = 0;
+    let maxActiveHandlers = 0;
+
+    const slowHandler = vi.fn(async (items: any[]) => {
+      activeHandlers++;
+      maxActiveHandlers = Math.max(maxActiveHandlers, activeHandlers);
+      await time.wait(100);
+      activeHandlers--;
+    });
+
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        maxSize: 1,
+        // Not providing concurrency, should default to 1
+        handler: slowHandler,
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    // Push 3 items to trigger 3 batches
+    const promises = [
+      app.batcher.push("A"),
+      app.batcher.push("B"),
+      app.batcher.push("C"),
+    ];
+
+    await Promise.all(promises);
+
+    expect(slowHandler).toHaveBeenCalledTimes(3);
+    expect(maxActiveHandlers).toBe(1); // Should never exceed default concurrency of 1
+  });
 });
