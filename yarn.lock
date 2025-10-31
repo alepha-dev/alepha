@@ -333,6 +333,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/fake@npm:0.11.3, @alepha/fake@workspace:packages/fake":
+  version: 0.0.0-use.local
+  resolution: "@alepha/fake@workspace:packages/fake"
+  dependencies:
+    "@alepha/core": "npm:0.11.3"
+    "@biomejs/biome": "npm:^2.3.2"
+    "@faker-js/faker": "npm:^9.2.0"
+    tsdown: "npm:^0.15.12"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.5"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/file@npm:0.11.3, @alepha/file@workspace:packages/file":
   version: 0.0.0-use.local
   resolution: "@alepha/file@workspace:packages/file"
@@ -562,6 +575,7 @@ __metadata:
     "@alepha/server-cache": "npm:0.11.3"
     "@alepha/server-links": "npm:0.11.3"
     "@alepha/server-static": "npm:0.11.3"
+    "@alepha/testing": "npm:0.11.3"
     "@biomejs/biome": "npm:^2.3.2"
     "@types/react": "npm:^19.2.2"
     "@types/react-dom": "npm:^19.2.2"
@@ -931,7 +945,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.11.3, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
@@ -2525,6 +2539,13 @@ __metadata:
   version: 10.1.0
   resolution: "@faker-js/faker@npm:10.1.0"
   checksum: 10c0/3dc277245ec1bef8b839a9dc45b4ccb1688d21b8bde6531a849c1773193de30047e40e085b7e900c42c940911ecf1645b582ad3c85093df5bfdbddeb44a2b554
+  languageName: node
+  linkType: hard
+
+"@faker-js/faker@npm:^9.2.0":
+  version: 9.9.0
+  resolution: "@faker-js/faker@npm:9.9.0"
+  checksum: 10c0/02107cb6915217b4831fa4b261603165972eb7f09d2ab2e1d4b75807df2d425a2bac8621cddbfdcc158c2c447c2bce2e14939d51c4a63fbd832df55452e7f73c
   languageName: node
   linkType: hard
 
@@ -4540,6 +4561,7 @@ __metadata:
     "@alepha/datetime": "npm:0.11.3"
     "@alepha/devtools": "npm:0.11.3"
     "@alepha/email": "npm:0.11.3"
+    "@alepha/fake": "npm:0.11.3"
     "@alepha/file": "npm:0.11.3"
     "@alepha/lock": "npm:0.11.3"
     "@alepha/lock-redis": "npm:0.11.3"
@@ -4573,6 +4595,7 @@ __metadata:
     "@alepha/server-swagger": "npm:0.11.3"
     "@alepha/topic": "npm:0.11.3"
     "@alepha/topic-redis": "npm:0.11.3"
+    "@alepha/ui": "npm:0.11.3"
     "@alepha/vite": "npm:0.11.3"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
