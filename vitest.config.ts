@@ -5,30 +5,34 @@ const env = loadEnv();
 
 export default defineConfig({
 	test: {
-		pool: "forks",
 		globals: true,
 		coverage: {
-			include: [
+      reporter: ["cobertura", "html"],
+      include: [
 				"packages/*/src/**/*.ts",
 				"packages/*/src/**/*.tsx",
 			],
 			exclude: [
 				"apps/**",
 				"scripts/**",
-				// experimental packages
+				// ignore experimental packages
 				"packages/ui",
 				"packages/vite",
 				"packages/cli",
 				"packages/thread",
 			],
-			reporter: ["cobertura", "html"],
 		},
 		env: {
+      // for testing, let's use Paris timezone as default :)
+      TZ: "Europe/Paris",
+      // database connection string for tests, installed via docker-compose
 			DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
+      // azure blob storage connection string for tests, using azurite via docker-compose
 			AZ_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;" +
 				"AccountName=devstoreaccount1;" +
 				"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
 				"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",
+      // used for testing @bucket/vercel
 			BLOB_READ_WRITE_TOKEN: env.BLOB_READ_WRITE_TOKEN ?? "vercel_blob_rw_mock_token_123456789"
 		},
 		projects: [
@@ -37,9 +41,9 @@ export default defineConfig({
 				extends: true,
 				test: {
 					name: { label: 'node', color: 'green' },
-					include: ['**/test/**/*.spec.{ts,tsx}'],
+          environment: 'node',
+          include: ['**/test/**/*.spec.{ts,tsx}'],
 					exclude: ['**/test/**/*.browser.spec.{ts,tsx}', 'node_modules'],
-					environment: 'node'
 				}
 			},
 			{
@@ -47,7 +51,7 @@ export default defineConfig({
 				extends: true,
 				test: {
 					include: ['**/test/**/*.browser.spec.{ts,tsx}'],
-					name: { label: 'browser', color: 'cyan' },
+					name: { label: 'jsdom', color: 'cyan' },
 					environment: 'jsdom'
 				},
 				resolve: {
