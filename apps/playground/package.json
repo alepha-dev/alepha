@@ -4,7 +4,7 @@
 	"scripts": {
 		"dev": "alepha dev",
 		"build": "alepha build",
-		"start": "alepha build && LOG_FORMAT=text node dist"
+		"start": "alepha build && node dist"
 	},
 	"dependencies": {
 		"alepha": "0.11.3",

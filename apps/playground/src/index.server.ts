@@ -1,4 +1,5 @@
 import { Alepha, run, t } from "@alepha/core";
+import { AlephaDevtools } from "@alepha/devtools";
 import { $entity, $repository, pg } from "@alepha/postgres";
 import { AlephaReactHead } from "@alepha/react-head";
 import { Api } from "./Api.ts";
@@ -36,13 +37,9 @@ alepha.with(() => {
 });
 
 alepha.with(AlephaReactHead);
-alepha.with(AppRouter);
+alepha.with(AlephaDevtools);
 
-// alepha.with(AlephaServerSwagger);
-// alepha.with(AlephaApiJobs);
-// alepha.with(AlephaApiFiles);
-// alepha.with(AlephaApiNotifications);
-// alepha.with(AlephaApiUsers);
+alepha.with(AppRouter);
 alepha.with(Api);
 
 run(alepha);
