@@ -352,10 +352,15 @@ window.onload = function() {
       ui.root ??
       join(fileURLToPath(import.meta.url), "../../assets/swagger-ui");
 
-    await this.serverStaticProvider.createStaticServer({
-      path: prefix,
-      root,
-    });
+    try {
+      await this.serverStaticProvider.createStaticServer({
+        path: prefix,
+        root,
+      });
+    } catch (error) {
+      this.log.warn(`Failed to configure Swagger UI at ${prefix}`, error);
+      return;
+    }
 
     this.serverRouterProvider.createRoute({
       method: "GET",
