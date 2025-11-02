@@ -41,8 +41,8 @@
 		"dev": "alepha dev",
 		"test": "vitest run",
 		"lint": "biome check --fix",
-		"copy": "alepha build && rm -r assets/devtools && cp -r dist/public assets/devtools",
-		"build": "yarn copy && tsdown -c=../../tsdown.config.ts",
+		"build:ui": "alepha build && rm -r assets/devtools && cp -r dist/public assets/devtools",
+		"build": "yarn build:ui && tsdown -c=../../tsdown.config.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"homepage": "https://github.com/feunard/alepha",
