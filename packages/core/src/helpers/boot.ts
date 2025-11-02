@@ -27,17 +27,18 @@ const getClientEntry = async (
  * Find server entry file path.
  */
 const getServerEntry = async (root = process.cwd()): Promise<string> => {
-  const pkgPath = join(root, "package.json");
-  try {
-    const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-    if (pkg.main) {
-      const mainPath = join(root, pkg.main);
-      await access(mainPath);
-      return mainPath.replace(/\\/g, "/");
-    }
-  } catch {
-    // continue to next step
-  }
+  // not a good idea to rely on package.json main field, it can create confusion
+  // const pkgPath = join(root, "package.json");
+  // try {
+  //   const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+  //   if (pkg.main) {
+  //     const mainPath = join(root, pkg.main);
+  //     await access(mainPath);
+  //     return mainPath.replace(/\\/g, "/");
+  //   }
+  // } catch {
+  //   // continue to next step
+  // }
 
   const maybeEntry = [
     "src/index.server.ts",
