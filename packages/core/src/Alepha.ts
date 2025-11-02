@@ -282,14 +282,14 @@ export class Alepha {
    *
    * Mocked for browser environments.
    */
-  public get context() {
+  public get context(): AlsProvider {
     return this.inject(AlsProvider);
   }
 
   /**
    * Event manager to handle lifecycle events and custom events.
    */
-  public get events() {
+  public get events(): EventManager {
     return this.inject(EventManager, {
       args: [{ logFn: () => this.log }],
     });
@@ -298,7 +298,7 @@ export class Alepha {
   /**
    * State manager to store arbitrary values.
    */
-  public get state() {
+  public get state(): StateManager<State> {
     return this.inject(StateManager, {
       args: [this.init],
     });
@@ -309,7 +309,7 @@ export class Alepha {
    *
    * Supports multiple codec formats (JSON, Protobuf, etc.) with a unified interface.
    */
-  public get codec() {
+  public get codec(): CodecManager {
     return this.inject(CodecManager);
   }
 
@@ -1027,6 +1027,11 @@ export interface State {
   afterAll?: (run: any) => any;
   afterEach?: (run: any) => any;
   onTestFinished?: (run: any) => any;
+
+  /**
+   * List of static assets to be copied to the output directory.
+   */
+  assets?: Array<string>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -8,7 +8,7 @@ import { importVite } from "./importVite.ts";
  */
 export const importAlepha = async (
   entry: string,
-  options: {
+  options?: {
     env: Record<string, string>;
   },
 ): Promise<Alepha> => {
@@ -24,8 +24,10 @@ export const importAlepha = async (
     process.env[key] = env[key];
   }
 
-  for (const key in options.env) {
-    process.env[key] = options.env[key];
+  if (options?.env) {
+    for (const key in options.env) {
+      process.env[key] = options.env[key];
+    }
   }
 
   process.env.ALEPHA_SKIP_START = "true";

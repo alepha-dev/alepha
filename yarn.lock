@@ -859,6 +859,7 @@ __metadata:
     "@alepha/logger": "npm:0.11.3"
     "@alepha/security": "npm:0.11.3"
     "@alepha/server": "npm:0.11.3"
+    "@alepha/server-cache": "npm:0.11.3"
     "@alepha/server-security": "npm:0.11.3"
     "@alepha/server-static": "npm:0.11.3"
     "@biomejs/biome": "npm:^2.3.2"

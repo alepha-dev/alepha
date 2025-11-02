@@ -66,7 +66,7 @@ describe("StateManager", () => {
     });
 
     it("should clear all state", () => {
-      const typedManager = Alepha.create().inject(StateManager);
+      const typedManager = Alepha.create().inject(StateManager<TestState>);
 
       typedManager.set("name", "John");
       typedManager.set("age", 30);
@@ -256,7 +256,7 @@ describe("StateManager", () => {
     });
 
     it("should handle state manager without ALS provider", () => {
-      const typedManager = Alepha.create().inject(StateManager);
+      const typedManager = Alepha.create().inject(StateManager<TestState>);
 
       typedManager.set("name", "Value");
       expect(typedManager.get("name")).toBe("Value");

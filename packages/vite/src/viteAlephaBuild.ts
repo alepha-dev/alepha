@@ -3,6 +3,7 @@ import { boot } from "@alepha/core";
 import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
 import { buildServer } from "./helpers/buildServer.ts";
+import { copyAssets } from "./helpers/copyAssets.ts";
 import { fileExists } from "./helpers/fileExists.ts";
 import { prerender } from "./helpers/prerender.ts";
 import { generateSitemap } from "./helpers/sitemap.ts";
@@ -104,6 +105,11 @@ export async function viteAlephaBuild(
           clientDir: hasClient ? clientDir : undefined,
           vercel: options.vercel,
           docker: options.docker,
+        });
+
+        await copyAssets({
+          entry: `${distDir}/index.js`,
+          distDir: `${distDir}`,
         });
       }
 
