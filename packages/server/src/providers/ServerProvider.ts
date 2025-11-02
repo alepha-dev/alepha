@@ -13,11 +13,13 @@ export abstract class ServerProvider {
     route?: Route,
     params?: Record<string, string>,
   ): boolean {
-    return (
-      this.alepha.isViteDev() &&
-      (!route || (!!params?.["*"] && `/${params?.["*"]}` === url)) &&
-      (!route || !!url?.includes("."))
-    );
+    if (this.alepha.isViteDev()) {
+      if (!route) return true;
+      url = url?.split("?")[0];
+      if (!!params?.["*"] && `/${params?.["*"]}` === url) return true;
+      if (url?.includes(".")) return true;
+    }
+    return false;
   }
 
   protected createRouterRequest(
