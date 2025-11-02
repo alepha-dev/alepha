@@ -138,10 +138,6 @@ export class Logger implements LoggerInterface {
   }
 
   protected log(level: LogLevel, message: string, data?: unknown): void {
-    if (this.levels[level] > this.levels[this.level]) {
-      return;
-    }
-
     let _message = "";
     if (typeof message === "string") {
       _message = message;
@@ -167,21 +163,30 @@ export class Logger implements LoggerInterface {
       timestamp: this.dateTimeProvider.now(),
     };
 
+    if (this.levels[level] > this.levels[this.level]) {
+      this.emit(logEntry);
+      return;
+    }
+
     const formatted = this.formatter.format(logEntry);
 
+    this.emit(logEntry, formatted);
+
+    this.destination.write(formatted, logEntry);
+  }
+
+  protected emit(entry: LogEntry, message?: string) {
     this.alepha.events
       .emit(
         "log",
         {
-          message: formatted,
-          entry: logEntry,
+          message,
+          entry,
         },
         {
           catch: true,
         },
       )
       .catch(() => null);
-
-    this.destination.write(formatted, logEntry);
   }
 }

@@ -223,7 +223,7 @@ declare module "@alepha/core" {
 
   export interface Hooks {
     log: {
-      message: string;
+      message?: string;
       entry: LogEntry;
     };
   }
