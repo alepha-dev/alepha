@@ -1032,7 +1032,10 @@ export interface State {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Hooks {
-  echo: any; // for testing purposes
+  /**
+   * Used for testing purposes.
+   */
+  echo: unknown;
 
   /**
    * Triggered during the configuration phase. Before the start phase.

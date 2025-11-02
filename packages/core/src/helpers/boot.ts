@@ -46,8 +46,6 @@ const getServerEntry = async (root = process.cwd()): Promise<string> => {
     "src/index.server.tsx",
     "src/main.server.tsx",
     "src/server-entry.tsx",
-    "src/index.ts",
-    "src/index.tsx",
   ];
 
   for (const entry of maybeEntry) {
