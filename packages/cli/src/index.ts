@@ -1,12 +1,25 @@
 #!/usr/bin/env node
 import "tsx";
-import { Alepha, run } from "@alepha/core";
+import { $module, Alepha, run } from "@alepha/core";
 import { BiomeCommands } from "./commands/BiomeCommands.ts";
 import { CoreCommands } from "./commands/CoreCommands.ts";
 import { DrizzleCommands } from "./commands/DrizzleCommands.ts";
 import { VerifyCommands } from "./commands/VerifyCommands.ts";
 import { ViteCommands } from "./commands/ViteCommands.ts";
+import { ProcessRunner } from "./services/ProcessRunner.ts";
 import { version } from "./version.ts";
+
+const AlephaCli = $module({
+  name: "alepha.cli",
+  services: [
+    ProcessRunner,
+    CoreCommands,
+    DrizzleCommands,
+    VerifyCommands,
+    ViteCommands,
+    BiomeCommands,
+  ],
+});
 
 const alepha = Alepha.create({
   env: {
@@ -17,10 +30,6 @@ const alepha = Alepha.create({
   },
 });
 
-alepha.with(CoreCommands);
-alepha.with(ViteCommands);
-alepha.with(BiomeCommands);
-alepha.with(VerifyCommands);
-alepha.with(DrizzleCommands);
+alepha.with(AlephaCli);
 
 run(alepha);

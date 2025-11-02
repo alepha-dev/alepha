@@ -1,13 +1,14 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { t } from "@alepha/core";
+import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { biomeJson } from "../assets/biomeJson.ts";
-import { exec, writeConfigFile } from "../helpers/exec.ts";
+import { ProcessRunner } from "../services/ProcessRunner.ts";
 
 export class BiomeCommands {
   protected readonly log = $logger();
+  protected readonly runner = $inject(ProcessRunner);
   protected readonly biomeFlags = t.object({
     config: t.optional(
       t.text({
@@ -22,7 +23,7 @@ export class BiomeCommands {
     flags: this.biomeFlags,
     handler: async ({ flags }) => {
       const configPath = await this.configPath(flags.config);
-      await exec(`biome format --fix --config-path=${configPath}`);
+      await this.runner.exec(`biome format --fix --config-path=${configPath}`);
     },
   });
 
@@ -32,7 +33,7 @@ export class BiomeCommands {
     flags: this.biomeFlags,
     handler: async ({ flags }) => {
       const configPath = await this.configPath(flags.config);
-      await exec(
+      await this.runner.exec(
         `biome check --formatter-enabled=false --fix --config-path=${configPath}`,
       );
     },
@@ -53,7 +54,7 @@ export class BiomeCommands {
       await access(path);
       return path;
     } catch {
-      return await writeConfigFile("biome.json", biomeJson);
+      return await this.runner.writeConfigFile("biome.json", biomeJson);
     }
   }
 }

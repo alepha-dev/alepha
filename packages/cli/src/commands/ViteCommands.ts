@@ -1,14 +1,15 @@
 import { access, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { boot, t } from "@alepha/core";
+import { $inject, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
-import { exec, writeConfigFile } from "../helpers/exec.ts";
+import { ProcessRunner } from "../services/ProcessRunner.ts";
 
 export class ViteCommands {
   protected readonly log = $logger();
+  protected readonly runner = $inject(ProcessRunner);
 
   public readonly run = $command({
     name: "run",
@@ -22,7 +23,7 @@ export class ViteCommands {
     args: t.text({ title: "path", description: "Filepath to run" }),
     handler: async ({ args, flags }) => {
       await this.ensureTsConfig();
-      await exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
+      await this.runner.exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
     },
   });
 
@@ -45,13 +46,13 @@ export class ViteCommands {
         await access(join(root, "index.html"));
       } catch {
         this.log.trace("No index.html found, running entry file with tsx");
-        await exec(`tsx watch ${entry}`);
+        await this.runner.exec(`tsx watch ${entry}`);
         return;
       }
 
       const configPath = await this.configPath();
       this.log.trace("Vite config found", { configPath });
-      await exec(`vite -c=${configPath}`);
+      await this.runner.exec(`vite -c=${configPath}`);
     },
   });
 
@@ -66,12 +67,14 @@ export class ViteCommands {
       await this.ensureTsConfig();
 
       if (flags.lib) {
-        await exec(`tsdown${flags.config ? ` -c=${flags.config}` : ""}`);
+        await this.runner.exec(
+          `tsdown${flags.config ? ` -c=${flags.config}` : ""}`,
+        );
         return;
       }
 
       const configPath = await this.configPath();
-      await exec(`vite build -c=${configPath}`);
+      await this.runner.exec(`vite build -c=${configPath}`);
     },
   });
 
@@ -82,7 +85,7 @@ export class ViteCommands {
       await this.ensureTsConfig();
 
       const configPath = await this.configPath();
-      await exec(`vitest run -c=${configPath}`);
+      await this.runner.exec(`vitest run -c=${configPath}`);
     },
   });
 
@@ -103,7 +106,7 @@ export class ViteCommands {
       await access(viteConfigPath);
       return viteConfigPath;
     } catch {
-      return writeConfigFile("vite.config.ts", viteConfigTs);
+      return this.runner.writeConfigFile("vite.config.ts", viteConfigTs);
     }
   }
 }
