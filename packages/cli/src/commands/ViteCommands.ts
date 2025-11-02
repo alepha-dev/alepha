@@ -1,4 +1,4 @@
-import { access, writeFile } from "node:fs/promises";
+import { access, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $inject, boot, t } from "@alepha/core";
@@ -65,6 +65,8 @@ export class ViteCommands {
     }),
     handler: async ({ flags }) => {
       await this.ensureTsConfig();
+
+      await rm("dist", { recursive: true, force: true });
 
       if (flags.lib) {
         await this.runner.exec(
