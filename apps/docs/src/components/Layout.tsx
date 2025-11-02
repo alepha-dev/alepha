@@ -1,4 +1,4 @@
-import { NestedView, useRouterEvents, useRouterState } from "@alepha/react";
+import { NestedView, useEvents, useRouterState } from "@alepha/react";
 import {
   AppShell,
   ColorSchemeScript,
@@ -13,14 +13,17 @@ import Header from "./Header.tsx";
 import Sidebar from "./Sidebar.tsx";
 
 const Layout = () => {
-  useRouterEvents({
-    onBegin: () => {
-      nprogress.start();
+  useEvents(
+    {
+      "react:transition:begin": () => {
+        nprogress.start();
+      },
+      "react:transition:end": () => {
+        nprogress.complete();
+      },
     },
-    onEnd: () => {
-      nprogress.complete();
-    },
-  });
+    [],
+  );
 
   return (
     <>

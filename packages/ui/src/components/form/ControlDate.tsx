@@ -7,7 +7,10 @@ import {
   TimeInput,
   type TimeInputProps,
 } from "@mantine/dates";
-import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
+import {
+  type GenericControlProps,
+  parseInput,
+} from "../../utils/parseInput.ts";
 
 export interface ControlDateProps extends GenericControlProps {
   date?: boolean | DateInputProps;

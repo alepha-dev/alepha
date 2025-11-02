@@ -1,7 +1,7 @@
 import { type TObject, TypeBoxError } from "@alepha/core";
 import type { InputField } from "@alepha/react-form";
 import type { ReactNode } from "react";
-import type { ControlProps } from "../components/Control.tsx";
+import type { ControlProps } from "../components/form/Control.tsx";
 import { getDefaultIcon } from "./icons.tsx";
 import { prettyName } from "./string.ts";
 

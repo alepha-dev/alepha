@@ -3,17 +3,17 @@
 @import "@mantine/spotlight/styles.css";
 @import "@mantine/dates/styles.css";
 @import "@mantine/notifications/styles.css";
-@import "./src/components/DataTable.css";
-@import "./src/components/Sidebar.css";
 
 :root {
-  --alepha-bg-light: #f8f9fa;
-  --alepha-bg-dark: #010409;
-  --alepha-bg: var(--alepha-bg-light);
+  --alepha-background-light: rgb(248, 249, 250);
+  --alepha-background-dark: rgb(1, 4, 9);
+  --alepha-background: var(--alepha-background-light);
+
   --alepha-surface-light: #f1f3f5;
   --alepha-surface-dark: #0d1117;
   --alepha-surface: var(--alepha-surface-light);
-  --alepha-elevated-light: #ffffff;
+
+  --alepha-elevated-light: #fefefe;
   --alepha-elevated-hover-light: #f6f5f5;
   --alepha-elevated-dark: #151b23;
   --alepha-elevated-hover-dark: #262c36;
@@ -36,11 +36,13 @@
   --alepha-focus-ring: rgba(100, 149, 237, 0.4);
 
   --mantine-color-dimmed: var(--alepha-text-muted) !important;
-  --mantine-color-dark-8: var(--alepha-bg);
+  --mantine-color-dark-8: var(--alepha-background);
   --mantine-color-dark-6: var(--alepha-surface);
   --mantine-color-dark-5: var(--alepha-border);
   --mantine-color-dark-4: var(--alepha-border);
   --mantine-color-body: var(--alepha-elevated) !important;
+  --mantine-color-gray-outline: var(--alepha-border) !important;
+  --mantine-color-default: var(--alepha-elevated) !important;
   --mantine-spacing-xs: 8px;
 }
 
@@ -51,7 +53,7 @@
   --alepha-elevated: var(--alepha-elevated-dark);
   --alepha-elevated-hover: var(--alepha-elevated-hover-dark);
   --alepha-border: var(--alepha-border-dark);
-  --alepha-bg: var(--alepha-bg-dark);
+  --alepha-background: var(--alepha-background-dark);
   --alepha-shadow: var(--alepha-shadow-dark);
   --alepha-text: var(--alepha-text-dark);
 }
@@ -64,10 +66,16 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: var(--alepha-bg);
+  background-color: var(--alepha-background);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
+
+.overflow-auto {
+  overflow: auto;
+  scrollbar-color: var(--alepha-text-muted) transparent;
+  scrollbar-width: thin;
+}
 
 .mantine-SegmentedControl-root {
   background-color: var(--alepha-surface);
@@ -77,6 +85,12 @@ body,
 .mantine-Action-iconOnly .mantine-Button-section {
   margin-inline-end: 4px;
   margin-inline-start: 4px;
+}
+
+[data-mantine-color-scheme="dark"] {
+  .mantine-Modal-content {
+    border: 1px solid var(--alepha-border);
+  }
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -112,3 +126,5 @@ body,
 .mantine-Modal-root[data-exit] .mantine-Modal-content {
   animation: modalScaleOut 0.15s cubic-bezier(0.4, 0, 1, 1);
 }
+
+/* ------------------------------------------------------------------------------------------------------------------ */

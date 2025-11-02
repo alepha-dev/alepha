@@ -2,8 +2,10 @@ import type { TObject } from "@alepha/core";
 import type { FormModel } from "@alepha/react-form";
 import { Flex, Grid } from "@mantine/core";
 import type { ReactNode } from "react";
-import Action, { type ActionSubmitProps } from "./Action";
-import Control, { type ControlProps } from "./Control";
+import ActionButton, {
+  type ActionSubmitButtonProps,
+} from "../buttons/ActionButton.tsx";
+import Control, { type ControlProps } from "./Control.tsx";
 
 export interface TypeFormProps<T extends TObject> {
   form: FormModel<T>;
@@ -21,8 +23,8 @@ export interface TypeFormProps<T extends TObject> {
   controlProps?: Partial<Omit<ControlProps, "input">>;
   skipFormElement?: boolean;
   skipSubmitButton?: boolean;
-  submitButtonProps?: Partial<Omit<ActionSubmitProps, "form">>;
-  resetButtonProps?: Partial<Omit<ActionSubmitProps, "form">>;
+  submitButtonProps?: Partial<Omit<ActionSubmitButtonProps, "form">>;
+  resetButtonProps?: Partial<Omit<ActionSubmitButtonProps, "form">>;
 }
 
 /**
@@ -139,9 +141,9 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
       {renderFields()}
       {!skipSubmitButton && (
         <Flex>
-          <Action form={form} {...submitButtonProps}>
+          <ActionButton form={form} {...submitButtonProps}>
             {submitButtonProps?.children ?? "Submit"}
-          </Action>
+          </ActionButton>
           <button type={"reset"}>Reset</button>
         </Flex>
       )}

@@ -23,9 +23,12 @@ import type {
   TimeInputProps,
 } from "@mantine/dates";
 import type { ComponentType } from "react";
-import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
-import ControlDate from "./ControlDate";
-import ControlSelect, { type ControlSelectProps } from "./ControlSelect";
+import {
+  type GenericControlProps,
+  parseInput,
+} from "../../utils/parseInput.ts";
+import ControlDate from "./ControlDate.tsx";
+import ControlSelect, { type ControlSelectProps } from "./ControlSelect.tsx";
 
 export interface ControlProps extends GenericControlProps {
   text?: TextInputProps;

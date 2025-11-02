@@ -112,11 +112,7 @@ const ExampleAction = () => {
         </Text>
 
         <Group gap="md">
-          <Action
-            href="/"
-            leftSection={<IconHome size={16} />}
-            tooltip="Navigate to home page"
-          >
+          <Action href="/" icon={<IconHome />} tooltip="Navigate to home page">
             Home
           </Action>
           <Action

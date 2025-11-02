@@ -29,7 +29,10 @@ export class ToastService {
     });
   }
 
-  public info(options: Partial<NotificationData>) {
+  public info(options: Partial<NotificationData> | string) {
+    if (typeof options === "string") {
+      options = { message: options };
+    }
     this.show({
       color: "blue",
       icon: <IconInfoCircle size={20} />,
@@ -39,7 +42,10 @@ export class ToastService {
     });
   }
 
-  public success(options: Partial<NotificationData>) {
+  public success(options: Partial<NotificationData> | string) {
+    if (typeof options === "string") {
+      options = { message: options };
+    }
     this.show({
       color: "green",
       icon: <IconCheck size={16} />,
@@ -49,7 +55,10 @@ export class ToastService {
     });
   }
 
-  public warning(options: Partial<NotificationData>) {
+  public warning(options: Partial<NotificationData> | string) {
+    if (typeof options === "string") {
+      options = { message: options };
+    }
     this.show({
       color: "yellow",
       icon: <IconAlertTriangle size={20} />,
@@ -59,7 +68,10 @@ export class ToastService {
     });
   }
 
-  public danger(options: Partial<NotificationData>) {
+  public danger(options: Partial<NotificationData> | string) {
+    if (typeof options === "string") {
+      options = { message: options };
+    }
     this.show({
       color: "red",
       icon: <IconX size={20} />,

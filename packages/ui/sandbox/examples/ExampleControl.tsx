@@ -170,7 +170,7 @@ const ExampleControl = () => {
       <Divider my="xl" />
 
       {/* Text Inputs */}
-      <Paper shadow="xs" p="xl" withBorder>
+      <Paper p="xl" withBorder>
         <Title order={2} mb="md">
           Text Inputs with Format Detection
         </Title>

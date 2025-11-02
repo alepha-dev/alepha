@@ -12,10 +12,13 @@ import {
   type ButtonProps,
   Flex,
   Menu,
+  type MenuProps,
+  type MenuTargetProps,
+  ThemeIcon,
   Tooltip,
   type TooltipProps,
 } from "@mantine/core";
-import { IconChevronRight } from "@tabler/icons-react";
+import { IconCheck, IconChevronRight } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 export interface ActionMenuItem {
@@ -48,6 +51,11 @@ export interface ActionMenuItem {
    * Nested submenu items
    */
   children?: ActionMenuItem[];
+
+  /**
+   * Whether the menu item is active
+   */
+  active?: boolean;
 }
 
 export interface ActionMenuConfig {
@@ -78,6 +86,11 @@ export interface ActionMenuConfig {
    * Menu shadow
    */
   shadow?: "xs" | "sm" | "md" | "lg" | "xl";
+
+  on?: "hover" | "click";
+
+  targetProps?: MenuTargetProps;
+  menuProps?: MenuProps;
 }
 
 export interface ActionCommonProps extends ButtonProps {
@@ -102,37 +115,22 @@ export interface ActionCommonProps extends ButtonProps {
    * If an object, it can contain `title` and `message` properties to customize the dialog.
    */
   confirm?: boolean | string | { title?: string; message: string };
+
+  /**
+   * Icon to display on the left side of the button.
+   * If no children are provided, the button will be styled as an icon-only button.
+   */
+  icon?: ReactNode;
 }
 
 export type ActionProps = ActionCommonProps &
   (
-    | ActiveHrefProps
-    | ActionClickProps
-    | ActionSubmitProps
-    | ActionActionProps
+    | ActionNavigationButtonProps
+    | ActionClickButtonProps
+    | ActionSubmitButtonProps
+    | ActionHookButtonProps
     | {}
   );
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Type guard to check if a value is a UseActionReturn object.
- */
-export function isActionReturn(
-  value: any,
-): value is UseActionReturn<any[], any> {
-  return (
-    value &&
-    typeof value === "object" &&
-    "run" in value &&
-    "loading" in value &&
-    "error" in value &&
-    "cancel" in value &&
-    typeof value.run === "function" &&
-    typeof value.loading === "boolean" &&
-    typeof value.cancel === "function"
-  );
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -148,7 +146,7 @@ const renderMenuItem = (item: ActionMenuItem, index: number): ReactNode => {
     return <Menu.Label key={index}>{item.label}</Menu.Label>;
   }
 
-  // Render submenu if has children
+  // Render submenu if it has children
   if (item.children && item.children.length > 0) {
     return (
       <Menu key={index} trigger="hover" position="right-start" offset={2}>
@@ -169,22 +167,43 @@ const renderMenuItem = (item: ActionMenuItem, index: number): ReactNode => {
     );
   }
 
-  // Render regular menu item
+  // render regular menu item
   return (
     <Menu.Item
       key={index}
       leftSection={item.icon}
       onClick={item.onClick}
       color={item.color}
+      rightSection={
+        item.active ? (
+          <ThemeIcon size={"xs"} variant={"transparent"}>
+            <IconCheck />
+          </ThemeIcon>
+        ) : undefined
+      }
     >
       {item.label}
     </Menu.Item>
   );
 };
 
-const Action = (_props: ActionProps) => {
+const ActionButton = (_props: ActionProps) => {
   const props = { variant: "subtle", ..._props };
-  const { tooltip, menu, ...restProps } = props;
+  const { tooltip, menu, icon, ...restProps } = props;
+
+  if (props.icon) {
+    const icon = (
+      <ThemeIcon variant={"transparent"} size={"xs"}>
+        {props.icon}
+      </ThemeIcon>
+    );
+    if (!props.children) {
+      restProps.children = icon;
+      restProps.p ??= "xs";
+    } else {
+      restProps.leftSection = icon;
+    }
+  }
 
   if (props.leftSection && !props.children) {
     restProps.className ??= "mantine-Action-iconOnly";
@@ -196,7 +215,7 @@ const Action = (_props: ActionProps) => {
     return (
       <>
         <Flex w={"100%"} visibleFrom={textVisibleFrom}>
-          <Action
+          <ActionButton
             flex={1}
             {...rest}
             leftSection={leftSection}
@@ -204,12 +223,12 @@ const Action = (_props: ActionProps) => {
             menu={menu}
           >
             {children}
-          </Action>
+          </ActionButton>
         </Flex>
         <Flex w={"100%"} hiddenFrom={textVisibleFrom}>
-          <Action px={"xs"} {...rest} tooltip={tooltip} menu={menu}>
+          <ActionButton px={"xs"} {...rest} tooltip={tooltip} menu={menu}>
             {leftSection}
-          </Action>
+          </ActionButton>
         </Flex>
       </>
     );
@@ -218,33 +237,36 @@ const Action = (_props: ActionProps) => {
   const renderAction = () => {
     if ("href" in restProps && restProps.href) {
       return (
-        <ActionHref {...restProps} href={restProps.href}>
+        <ActionNavigationButton {...restProps} href={restProps.href}>
           {restProps.children}
-        </ActionHref>
+        </ActionNavigationButton>
       );
     }
 
+    delete (restProps as any).classNameActive;
+    delete (restProps as any).variantActive;
+
     if ("action" in restProps && restProps.action) {
       return (
-        <ActionAction {...restProps} action={restProps.action}>
+        <ActionHookButton {...restProps} action={restProps.action}>
           {restProps.children}
-        </ActionAction>
+        </ActionHookButton>
       );
     }
 
     if ("onClick" in restProps && restProps.onClick) {
       return (
-        <ActionClick {...restProps} onClick={restProps.onClick}>
+        <ActionClickButton {...restProps} onClick={restProps.onClick}>
           {restProps.children}
-        </ActionClick>
+        </ActionClickButton>
       );
     }
 
     if ("form" in restProps && restProps.form) {
       return (
-        <ActionSubmit {...restProps} form={restProps.form}>
+        <ActionSubmitButton {...restProps} form={restProps.form}>
           {restProps.children}
-        </ActionSubmit>
+        </ActionSubmitButton>
       );
     }
 
@@ -260,8 +282,10 @@ const Action = (_props: ActionProps) => {
         position={menu.position || "bottom-start"}
         width={menu.width || 200}
         shadow={menu.shadow || "md"}
+        trigger={menu.on === "hover" ? "hover" : "click"}
+        {...menu.menuProps}
       >
-        <Menu.Target>{actionElement}</Menu.Target>
+        <Menu.Target {...menu.targetProps}>{actionElement}</Menu.Target>
         <Menu.Dropdown>
           {menu.items.map((item, index) => renderMenuItem(item, index))}
         </Menu.Dropdown>
@@ -282,18 +306,25 @@ const Action = (_props: ActionProps) => {
   return actionElement;
 };
 
-export default Action;
+export default ActionButton;
+
+// =====================================================================================================================
+// Specific Action Variants
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ActionSubmitProps extends ButtonProps {
+// Action Submit
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface ActionSubmitButtonProps extends ButtonProps {
   form: FormModel<any>;
 }
 
 /**
  * Action button that submits a form with loading and disabled state handling.
  */
-const ActionSubmit = (props: ActionSubmitProps) => {
+const ActionSubmitButton = (props: ActionSubmitButtonProps) => {
   const { form, ...buttonProps } = props;
   const state = useFormState(form);
   return (
@@ -310,7 +341,11 @@ const ActionSubmit = (props: ActionSubmitProps) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ActionActionProps extends ButtonProps {
+// Action with useAction Hook
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface ActionHookButtonProps extends ButtonProps {
   action: UseActionReturn<any[], any>;
 }
 
@@ -326,10 +361,12 @@ export interface ActionActionProps extends ButtonProps {
  *   }
  * }, []);
  *
- * <Action action={saveAction}>Save</Action>
+ * <ActionButton action={saveAction}>
+ *   Save
+ * </ActionButton>
  * ```
  */
-const ActionAction = (props: ActionActionProps) => {
+const ActionHookButton = (props: ActionHookButtonProps) => {
   const { action, ...buttonProps } = props;
 
   return (
@@ -346,14 +383,25 @@ const ActionAction = (props: ActionActionProps) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ActionClickProps extends ButtonProps {
+// Action Click
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface ActionClickButtonProps extends ButtonProps {
   onClick: (e: any) => any;
 }
 
 /**
  * Basic action button that handles click events with loading and error handling.
+ *
+ * @example
+ * ```tsx
+ * <ActionButton onClick={() => api.doSomething()}>
+ *   Do Something
+ * </ActionButton>
+ * ```
  */
-const ActionClick = (props: ActionClickProps) => {
+const ActionClickButton = (props: ActionClickButtonProps) => {
   const action = useAction(
     {
       handler: async (e: any) => {
@@ -378,30 +426,51 @@ const ActionClick = (props: ActionClickProps) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ActiveHrefProps extends ButtonProps {
+// Action Navigation
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface ActionNavigationButtonProps extends ButtonProps {
   href: string;
   active?: Partial<UseActiveOptions> | false;
   routerGoOptions?: RouterGoOptions;
+  classNameActive?: string;
+  variantActive?: ButtonProps["variant"];
 }
 
 /**
  * Action for navigation with active state support.
  */
-const ActionHref = (props: ActiveHrefProps) => {
-  const { active: options, routerGoOptions, ...buttonProps } = props;
+const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
+  const {
+    active: options,
+    classNameActive,
+    variantActive,
+    routerGoOptions,
+    ...buttonProps
+  } = props;
   const router = useRouter();
   const { isPending, isActive } = useActive(
     options ? { href: props.href, ...options } : { href: props.href },
   );
   const anchorProps = router.anchor(props.href, routerGoOptions);
 
+  const className = buttonProps.className || "";
+  if (isActive && options !== false && classNameActive) {
+    buttonProps.className = `${className} ${classNameActive}`.trim();
+  }
+
   return (
     <Button
       component={"a"}
       loading={isPending}
-      {...anchorProps}
       {...buttonProps}
-      variant={isActive && options !== false ? "filled" : "subtle"}
+      {...anchorProps}
+      variant={
+        isActive && options !== false
+          ? (variantActive ?? "filled")
+          : (buttonProps.variant ?? "subtle")
+      }
     >
       {props.children}
     </Button>

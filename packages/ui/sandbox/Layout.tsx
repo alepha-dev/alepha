@@ -1,6 +1,5 @@
-import { NestedView } from "@alepha/react";
-import { AppShell } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useRouter } from "@alepha/react";
+import { Badge } from "@mantine/core";
 import {
   IconApi,
   IconCloud,
@@ -19,212 +18,184 @@ import {
   IconTable,
   IconUserCheck,
 } from "@tabler/icons-react";
-import { type MenuItem, Sidebar } from "../src/components/Sidebar";
-import Header from "./components/Header";
+import AdminShell from "../src/components/layout/AdminShell.tsx";
 
 const Layout = () => {
-  const [opened, { toggle }] = useDisclosure();
-
-  const menuItems: MenuItem[] = [
-    {
-      id: "examples",
-      label: "Examples",
-      icon: <IconCode size={18} />,
-      children: [
-        {
-          id: "control",
-          label: "Control",
-          icon: <IconHome size={18} />,
-          href: "/",
-        },
-        {
-          id: "action",
-          label: "Action",
-          icon: <IconApi size={18} />,
-          href: "/action",
-        },
-        {
-          id: "typeform",
-          label: "TypeForm",
-          icon: <IconFileText size={18} />,
-          href: "/typeform",
-        },
-        {
-          id: "datatable",
-          label: "DataTable",
-          icon: <IconTable size={18} />,
-          href: "/datatable",
-        },
-        {
-          id: "dialog",
-          label: "Dialog",
-          icon: <IconMessage size={18} />,
-          href: "/dialog",
-        },
-      ],
-    },
-    {
-      id: "modules",
-      label: "Modules",
-      icon: <IconCode size={18} />,
-      children: [
-        {
-          id: "core",
-          label: "Core",
-          icon: <IconServer size={18} />,
-          children: [
-            {
-              id: "dependency-injection",
-              label: "Dependency Injection",
-            },
-            {
-              id: "hooks",
-              label: "Hooks",
-            },
-            {
-              id: "environment",
-              label: "Environment",
-            },
-          ],
-        },
-        {
-          id: "database",
-          label: "Database",
-          icon: <IconDatabase size={18} />,
-          children: [
-            {
-              id: "entities",
-              label: "Entities",
-            },
-            {
-              id: "repositories",
-              label: "Repositories",
-            },
-            {
-              id: "migrations",
-              label: "Migrations",
-            },
-          ],
-        },
-        {
-          id: "api",
-          label: "API",
-          icon: <IconApi size={18} />,
-          children: [
-            {
-              id: "actions",
-              label: "Actions",
-            },
-            {
-              id: "routes",
-              label: "Routes",
-            },
-            {
-              id: "middleware",
-              label: "Middleware",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "security",
-      label: "Security",
-      icon: <IconShield size={18} />,
-      children: [
-        {
-          id: "authentication",
-          label: "Authentication",
-          icon: <IconUserCheck size={18} />,
-          children: [
-            {
-              id: "oauth",
-              label: "OAuth",
-            },
-            {
-              id: "jwt",
-              label: "JWT",
-            },
-            {
-              id: "sessions",
-              label: "Sessions",
-            },
-          ],
-        },
-        {
-          id: "authorization",
-          label: "Authorization",
-          icon: <IconLock size={18} />,
-        },
-        {
-          id: "realms",
-          label: "Realms",
-          icon: <IconKey size={18} />,
-        },
-      ],
-    },
-    {
-      id: "infrastructure",
-      label: "Infrastructure",
-      icon: <IconCloud size={18} />,
-      children: [
-        {
-          id: "notifications",
-          label: "Notifications",
-          icon: <IconNotification size={18} />,
-        },
-        {
-          id: "email",
-          label: "Email",
-          icon: <IconMail size={18} />,
-        },
-      ],
-    },
-    {
-      id: "docs",
-      label: "Documentation",
-      icon: <IconFileText size={18} />,
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: <IconSettings size={18} />,
-    },
-  ];
-
+  const router = useRouter();
   return (
-    <AppShell
-      padding="md"
-      header={{ height: 60 }}
-      navbar={{
-        width: 300,
-        breakpoint: "sm",
-        collapsed: { mobile: !opened },
-      }}
-    >
-      <AppShell.Header>
-        <Header opened={opened} toggle={toggle} />
-      </AppShell.Header>
-
-      <AppShell.Navbar>
-        <Sidebar
-          menu={menuItems}
-          defaultOpenIds={["examples"]}
-          showSearchButton={true}
-          onSearchClick={() => {
-            console.log("Search button clicked - will open Omnibar");
-            // TODO: Open Omnibar here
-          }}
-          onItemClick={(item) => {
-            console.log("Clicked:", item.label);
-          }}
-        />
-      </AppShell.Navbar>
-
-      <AppShell.Main>
-        <NestedView />
-      </AppShell.Main>
-    </AppShell>
+    <AdminShell
+      // appShellProps={{
+      //   withBorder: false,
+      // }}
+      // appShellNavbarProps={{
+      //   bg: ui.colors.background,
+      // }}
+      // appShellHeaderProps={{
+      //   bg: `linear-gradient(to bottom, ${ui.colors.background}, ${ui.colors.background} 60%, ${ui.colors.transparent})`,
+      //   style: {
+      //     // backdropFilter: "blur(2px)",
+      //   },
+      // }}
+      menu={[
+        {
+          type: "search",
+          position: "top",
+        },
+        {
+          type: "spacer",
+          position: "top",
+        },
+        {
+          label: "Examples",
+          icon: <IconCode size={18} />,
+          children: [
+            {
+              label: "Control",
+              icon: <IconHome size={18} />,
+              href: "/",
+            },
+            {
+              label: "TypeForm",
+              icon: <IconFileText size={18} />,
+              href: "/typeform",
+            },
+            {
+              label: "DataTable",
+              icon: <IconTable size={18} />,
+              href: "/datatable",
+            },
+            {
+              label: "Dialog",
+              icon: <IconMessage size={18} />,
+              href: "/dialog",
+            },
+          ],
+        },
+        {
+          label: "Modules",
+          icon: <IconCode size={18} />,
+          children: [
+            {
+              label: "Core",
+              icon: <IconServer size={18} />,
+              children: [
+                {
+                  label: "Dependency Injection",
+                },
+                {
+                  label: "Hooks",
+                },
+                {
+                  label: "Environment",
+                },
+              ],
+            },
+            {
+              label: "Database",
+              icon: <IconDatabase size={18} />,
+              children: [
+                {
+                  label: "Entities",
+                  rightSection: <Badge color={"blue"}>New</Badge>,
+                },
+                {
+                  label: "Repositories",
+                },
+                {
+                  label: "Action",
+                  href: "/action",
+                },
+                {
+                  label: "Migrations",
+                },
+              ],
+            },
+            {
+              label: "API",
+              icon: <IconApi size={18} />,
+              children: [
+                {
+                  label: "Actions",
+                },
+                {
+                  label: "Routes",
+                },
+                {
+                  label: "Middleware",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: "section",
+          label: "Capabilities",
+        },
+        {
+          label: "Security",
+          icon: <IconShield size={18} />,
+          children: [
+            {
+              label: "Authentication",
+              icon: <IconUserCheck size={18} />,
+              children: [
+                {
+                  label: "OAuth",
+                },
+                {
+                  label: "JWT",
+                },
+                {
+                  label: "Sessions",
+                },
+              ],
+            },
+            {
+              label: "Authorization",
+              icon: <IconLock size={18} />,
+            },
+            {
+              label: "Realms",
+              icon: <IconKey size={18} />,
+            },
+          ],
+        },
+        {
+          label: "Infrastructure",
+          icon: <IconCloud size={18} />,
+          children: [
+            {
+              label: "Notifications",
+              icon: <IconNotification size={18} />,
+            },
+            {
+              label: "Email",
+              icon: <IconMail size={18} />,
+            },
+          ],
+        },
+        {
+          type: "spacer",
+        },
+        {
+          label: "Documentation",
+          icon: <IconFileText size={18} />,
+        },
+        {
+          type: "divider",
+          position: "bottom",
+        },
+        {
+          position: "bottom",
+          label: "Settings",
+          description: "Configure your preferences",
+          icon: <IconSettings size={18} />,
+          actionProps: {
+            py: "lg",
+          },
+        },
+      ]}
+    ></AdminShell>
   );
 };
 

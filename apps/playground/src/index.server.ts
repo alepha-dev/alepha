@@ -6,7 +6,6 @@ import { AppRouter } from "./AppRouter.ts";
 
 const alepha = Alepha.create({
   env: {
-    LOG_LEVEL: "trace",
     DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
     POSTGRES_SCHEMA: "playground",
   },

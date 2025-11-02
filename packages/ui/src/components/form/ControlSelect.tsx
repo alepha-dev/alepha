@@ -14,7 +14,10 @@ import {
   type TagsInputProps,
 } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
+import {
+  type GenericControlProps,
+  parseInput,
+} from "../../utils/parseInput.ts";
 
 export type SelectValueLabel =
   | string

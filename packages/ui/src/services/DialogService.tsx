@@ -1,9 +1,9 @@
 import type { ModalProps } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import type { ReactNode } from "react";
-import { AlertDialog } from "../components/dialogs/AlertDialog";
-import { ConfirmDialog } from "../components/dialogs/ConfirmDialog";
-import { PromptDialog } from "../components/dialogs/PromptDialog";
+import AlertDialog from "../components/dialogs/AlertDialog";
+import ConfirmDialog from "../components/dialogs/ConfirmDialog";
+import PromptDialog from "../components/dialogs/PromptDialog";
 
 // Base interfaces
 export interface BaseDialogOptions extends Partial<ModalProps> {
@@ -139,12 +139,22 @@ export class DialogService {
    * Open a custom dialog with provided content
    */
   public open(options?: BaseDialogOptions): string {
-    const modalId = modals.open({
+    return modals.open({
       ...this.options.default,
       ...options,
       children: options?.content || options?.message,
     });
-    return modalId;
+  }
+
+  /**
+   * Close the currently open dialog or a specific dialog by ID
+   */
+  public close(modalId?: string): void {
+    if (modalId) {
+      modals.close(modalId);
+    } else {
+      modals.closeAll();
+    }
   }
 
   /**
@@ -163,17 +173,6 @@ export class DialogService {
   }
 
   /**
-   * Close the currently open dialog or a specific dialog by ID
-   */
-  public close(modalId?: string): void {
-    if (modalId) {
-      modals.close(modalId);
-    } else {
-      modals.closeAll();
-    }
-  }
-
-  /**
    * Show a loading/progress dialog with optional progress percentage
    */
   public loading(options?: BaseDialogOptions & { progress?: number }): void {
@@ -185,23 +184,5 @@ export class DialogService {
    */
   public image(src: string | string[], options?: BaseDialogOptions): void {
     // Implementation to be added
-  }
-
-  /**
-   * Show a table/data grid dialog for displaying tabular data
-   */
-  public table(
-    data: any[],
-    options?: BaseDialogOptions & { columns?: any[] },
-  ): void {
-    // Implementation to be added
-  }
-
-  /**
-   * Show a multi-step wizard dialog
-   */
-  public wizard(steps: any[], options?: BaseDialogOptions): Promise<any> {
-    // Implementation to be added
-    return Promise.resolve(null);
   }
 }

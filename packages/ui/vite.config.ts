@@ -2,5 +2,9 @@ import { viteAlepha } from "@alepha/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [viteAlepha()],
+  plugins: [
+    viteAlepha({
+      serverEntry: "./sandbox/main.ts",
+    }),
+  ],
 });

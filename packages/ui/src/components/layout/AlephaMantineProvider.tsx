@@ -1,4 +1,4 @@
-import { NestedView, useRouterEvents } from "@alepha/react";
+import { NestedView, useEvents } from "@alepha/react";
 import type {
   ColorSchemeScriptProps,
   MantineProviderProps,
@@ -9,7 +9,8 @@ import { Notifications, type NotificationsProps } from "@mantine/notifications";
 import type { NavigationProgressProps } from "@mantine/nprogress";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import type { ReactNode } from "react";
-import Omnibar, { type OmnibarProps } from "./Omnibar";
+import { useToast } from "../../hooks/useToast.ts";
+import Omnibar, { type OmnibarProps } from "./Omnibar.tsx";
 
 export interface AlephaMantineProviderProps {
   children?: ReactNode;
@@ -22,14 +23,22 @@ export interface AlephaMantineProviderProps {
 }
 
 const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
-  useRouterEvents({
-    onBegin: () => {
-      nprogress.start();
+  const toast = useToast();
+
+  useEvents(
+    {
+      "react:transition:begin": () => {
+        nprogress.start();
+      },
+      "react:transition:end": () => {
+        nprogress.complete();
+      },
+      "react:action:error": () => {
+        toast.danger("An error occurred while processing your action.");
+      },
     },
-    onEnd: () => {
-      nprogress.complete();
-    },
-  });
+    [],
+  );
 
   return (
     <>

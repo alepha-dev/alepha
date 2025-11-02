@@ -2,12 +2,12 @@ import { Button, Group, Text, TextInput } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import type { PromptDialogProps } from "../../services/DialogService";
 
-export function PromptDialog({ options, onSubmit }: PromptDialogProps) {
+const PromptDialog = ({ options, onSubmit }: PromptDialogProps) => {
   const [value, setValue] = useState(options?.defaultValue || "");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Auto-focus the input when the dialog opens
+    // autofocus the input when the dialog opens
     inputRef.current?.focus();
   }, []);
 
@@ -49,4 +49,6 @@ export function PromptDialog({ options, onSubmit }: PromptDialogProps) {
       </Group>
     </>
   );
-}
+};
+
+export default PromptDialog;

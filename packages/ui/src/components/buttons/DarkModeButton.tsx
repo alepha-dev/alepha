@@ -1,16 +1,18 @@
 import {
-  ActionIcon,
   Flex,
+  type MantineBreakpoint,
   SegmentedControl,
+  type SegmentedControlProps,
   useComputedColorScheme,
   useMantineColorScheme,
 } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 export interface DarkModeButtonProps {
   mode?: "minimal" | "segmented";
-  size?: string | number;
+  size?: MantineBreakpoint;
   variant?:
     | "filled"
     | "light"
@@ -18,6 +20,11 @@ export interface DarkModeButtonProps {
     | "default"
     | "subtle"
     | "transparent";
+
+  fullWidth?: boolean;
+
+  segmentedProps?: Partial<SegmentedControlProps>;
+  actionProps?: Partial<ActionProps>;
 }
 
 const DarkModeButton = (props: DarkModeButtonProps) => {
@@ -57,25 +64,30 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
             ),
           },
         ]}
+        w={props.fullWidth ? "100%" : undefined}
+        {...props.segmentedProps}
       />
     );
   }
 
   return (
-    <ActionIcon
+    <ActionButton
       onClick={toggleColorScheme}
       variant={props.variant ?? "default"}
-      size={props.size ?? "lg"}
+      size={props.size ?? "sm"}
       aria-label="Toggle color scheme"
+      px={"xs"}
+      fullWidth={props.fullWidth ?? false}
+      {...props.actionProps}
     >
       {colorScheme === "dark" ? (
         <IconSun size={20} />
       ) : colorScheme === "light" ? (
         <IconMoon size={20} />
       ) : (
-        <Flex h={20} />
+        <Flex h={20} w={20} />
       )}
-    </ActionIcon>
+    </ActionButton>
   );
 };
 

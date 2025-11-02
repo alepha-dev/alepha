@@ -13,7 +13,7 @@ import { IconEdit, IconEye, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import DataTable, {
   type DataTableColumn,
-} from "../../src/components/DataTable";
+} from "../../src/components/table/DataTable.tsx";
 
 // Sample data type
 interface User {

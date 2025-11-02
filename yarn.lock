@@ -953,6 +953,8 @@ __metadata:
     "@alepha/core": "npm:0.11.3"
     "@alepha/react": "npm:0.11.3"
     "@alepha/react-form": "npm:0.11.3"
+    "@alepha/react-head": "npm:0.11.3"
+    "@alepha/react-i18n": "npm:0.11.3"
     "@alepha/server": "npm:0.11.3"
     "@alepha/vite": "npm:0.11.3"
     "@biomejs/biome": "npm:^2.3.2"
