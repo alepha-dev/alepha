@@ -1,18 +1,19 @@
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { $bucket } from "@alepha/bucket";
 import { $cache } from "@alepha/cache";
 import { $hook, $inject, Alepha, t } from "@alepha/core";
-import type { LogEntry } from "@alepha/logger";
+import { $logger, type LogEntry, logEntrySchema } from "@alepha/logger";
 import { $queue } from "@alepha/queue";
 import { $page } from "@alepha/react";
 import { $scheduler } from "@alepha/scheduler";
 import { $realm } from "@alepha/security";
-import { $action, $route } from "@alepha/server";
+import { $action, $route, ServerProvider } from "@alepha/server";
+import { $serve } from "@alepha/server-static";
 import { $topic } from "@alepha/topic";
-import { ui } from "./constants/ui.ts";
 import type { DevActionMetadata } from "./schemas/DevActionMetadata.ts";
 import type { DevBucketMetadata } from "./schemas/DevBucketMetadata.ts";
 import type { DevCacheMetadata } from "./schemas/DevCacheMetadata.ts";
-import type { DevLogEntry } from "./schemas/DevLogEntry.ts";
 import { type DevMetadata, devMetadataSchema } from "./schemas/DevMetadata.ts";
 import type { DevModuleMetadata } from "./schemas/DevModuleMetadata.ts";
 import type { DevPageMetadata } from "./schemas/DevPageMetadata.ts";
@@ -24,38 +25,41 @@ import type { DevTopicMetadata } from "./schemas/DevTopicMetadata.ts";
 
 export class DevCollectorProvider {
   protected readonly alepha = $inject(Alepha);
-  protected readonly logs: DevLogEntry[] = [];
+  protected readonly serverProvider = $inject(ServerProvider);
+  protected readonly log = $logger();
+  protected readonly logs: LogEntry[] = [];
   protected readonly maxLogs = 10000;
+
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: () => {
+      this.log.info(
+        `Devtools available at ${this.serverProvider.hostname}/devtools/`,
+      );
+    },
+  });
 
   protected readonly onLog = $hook({
     on: "log",
-    handler: (ev: { message: string; entry: LogEntry }) => {
-      this.logs.push({
-        formatted: ev.message,
-        entry: ev.entry,
-      });
+    handler: (ev: { message?: string; entry: LogEntry }) => {
+      this.logs.unshift(ev.entry);
 
-      // Keep only the last 10000 logs
+      // keep only the last 10000 logs
       if (this.logs.length > this.maxLogs) {
-        this.logs.shift();
+        this.logs.pop();
       }
     },
   });
 
-  protected readonly uiRoute = $route({
-    method: "GET",
+  protected readonly uiRoute = $serve({
     path: "/devtools",
-    schema: {
-      response: t.text(),
-    },
-    handler: () => {
-      return ui;
-    },
+    root: join(fileURLToPath(import.meta.url), "../../assets/devtools"),
   });
 
   protected readonly metadataRoute = $route({
     method: "GET",
-    path: "/devtools/metadata",
+    path: "/devtools/api/metadata",
+    silent: true,
     schema: {
       response: devMetadataSchema,
     },
@@ -66,21 +70,17 @@ export class DevCollectorProvider {
 
   protected readonly logsRoute = $route({
     method: "GET",
-    path: "/devtools/logs",
+    path: "/devtools/api/logs",
+    silent: true,
     schema: {
-      response: t.array(
-        t.object({
-          formatted: t.text(),
-          entry: t.any(),
-        }),
-      ),
+      response: t.array(logEntrySchema),
     },
     handler: () => {
       return this.getLogs();
     },
   });
 
-  public getLogs(): DevLogEntry[] {
+  public getLogs(): LogEntry[] {
     return this.logs;
   }
 

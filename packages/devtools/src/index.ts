@@ -7,7 +7,6 @@ export * from "./DevCollectorProvider.ts";
 export * from "./schemas/DevActionMetadata.ts";
 export * from "./schemas/DevBucketMetadata.ts";
 export * from "./schemas/DevCacheMetadata.ts";
-export * from "./schemas/DevLogEntry.ts";
 export * from "./schemas/DevMetadata.ts";
 export * from "./schemas/DevModuleMetadata.ts";
 export * from "./schemas/DevPageMetadata.ts";
@@ -32,4 +31,8 @@ export const AlephaDevtools = $module({
   name: "alepha.devtools",
   descriptors: [],
   services: [DevCollectorProvider],
+  register: (alepha) => {
+    alepha.with(DevCollectorProvider);
+    alepha.state.push("assets", "@alepha/devtools");
+  },
 });
