@@ -147,9 +147,11 @@ export class DateTimeProvider {
     if (Array.isArray(duration)) {
       return dayjs.duration(duration[0], duration[1]);
     }
+
     if (typeof duration === "number") {
       return dayjs.duration(duration, unit || "milliseconds");
     }
+
     return duration;
   };
 
@@ -208,12 +210,22 @@ export class DateTimeProvider {
     });
   }
 
-  public createInterval(run: () => unknown, distance: DurationLike): Interval {
-    const interval = {
+  public createInterval(
+    run: () => unknown,
+    distance: DurationLike,
+    start = false,
+  ): Interval {
+    const interval: Interval = {
       run,
       duration: this.duration(distance).asMilliseconds(),
     };
+
     this.intervals.push(interval);
+
+    if (start) {
+      interval.timer = setInterval(interval.run, interval.duration);
+    }
+
     return interval;
   }
 
@@ -258,6 +270,12 @@ export class DateTimeProvider {
     clearTimeout(timeout.timer);
     timeout.duration = 0;
     timeout.timer = null;
+  }
+
+  public clearInterval(interval: Interval): void {
+    clearInterval(interval.timer);
+    interval.duration = 0;
+    interval.timer = null;
   }
 
   /**
