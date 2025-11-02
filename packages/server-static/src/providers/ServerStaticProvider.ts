@@ -38,8 +38,13 @@ export class ServerStaticProvider {
     }
 
     this.log.debug("Serve static files", { prefix, root });
+
+    await stat(root);
+
+    // 1. get all files in the root directory (recursively)
     const files = await this.getAllFiles(root, options.ignoreDotEnvFiles);
 
+    // 2. create a $route for each file (yes, this could be a lot of routes)
     const routes = await Promise.all(
       files.map(async (file) => {
         const path = file.replace(root, "").replace(/\\/g, "/");
@@ -53,6 +58,8 @@ export class ServerStaticProvider {
     for (const route of routes) {
       this.routerProvider.createRoute(route);
 
+      // if route is for index.html, also create a route without it
+      // e.g. /my/path/index.html -> /my/path/
       if (
         options.indexFallback !== false &&
         route.path.endsWith("index.html")
@@ -64,12 +71,15 @@ export class ServerStaticProvider {
       }
     }
 
+    // 3. store the directory info for reference
     this.directories.push({
       options,
       files: files.map((file) => file.replace(root, "").replace(/\\/g, "/")),
     });
 
+    // bonus! for SPAs, handle history API fallback
     if (options.historyApiFallback) {
+      // meaning all unmatched routes should serve index.html
       this.routerProvider.createRoute({
         path: join(prefix, "*").replace(/\\/g, "/"),
         handler: async (request) => {
@@ -154,7 +164,20 @@ export class ServerStaticProvider {
   }
 
   protected getCacheFileTypes(): string[] {
-    return [".js", ".css"];
+    return [
+      ".js",
+      ".css",
+      ".woff",
+      ".woff2",
+      ".ttf",
+      ".eot",
+      ".otf",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".svg",
+      ".gif",
+    ];
   }
 
   protected getCacheControl(
@@ -167,12 +190,13 @@ export class ServerStaticProvider {
 
     const fileTypes =
       options.cacheControl.fileTypes ?? this.getCacheFileTypes();
+
     for (const type of fileTypes) {
       if (filename.endsWith(type)) {
         return {
           immutable: options.cacheControl.immutable ?? true,
           maxAge: this.dateTimeProvider
-            .duration(options.cacheControl.maxAge ?? [2, "days"])
+            .duration(options.cacheControl.maxAge ?? [30, "days"])
             .as("seconds"),
         };
       }
