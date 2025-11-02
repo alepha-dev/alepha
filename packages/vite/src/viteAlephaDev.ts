@@ -36,6 +36,7 @@ export async function viteAlephaDev(
   let entry = options.serverEntry;
   if (!entry) {
     entry = await boot.getServerEntry();
+    console.log("[viteAlephaDev] Using detected server entry:", entry);
     if (!entry) {
       return {
         name: "alepha-dev",

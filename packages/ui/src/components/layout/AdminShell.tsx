@@ -6,20 +6,18 @@ import type {
 } from "@mantine/core";
 import { AppShell, type AppShellProps } from "@mantine/core";
 import type { ReactNode } from "react";
-import Header, {
-  type HeaderProps,
-} from "../../../sandbox/components/Header.tsx";
 import { ui } from "../../constants/ui.ts";
-import { type MenuNode, Sidebar, type SidebarProps } from "./Sidebar.tsx";
+import AppBar, { type AppBarProps } from "./AppBar.tsx";
+import { Sidebar, type SidebarNode, type SidebarProps } from "./Sidebar.tsx";
 
 export interface AdminShellProps {
-  menu: MenuNode[];
+  menu?: SidebarNode[];
   appShellProps?: Partial<AppShellProps>;
   appShellMainProps?: Partial<AppShellMainProps>;
   appShellHeaderProps?: Partial<AppShellHeaderProps>;
   appShellNavbarProps?: Partial<AppShellNavbarProps>;
   sidebarProps?: Partial<SidebarProps>;
-  headerProps?: Partial<HeaderProps>;
+  headerProps?: Partial<AppBarProps>;
   children?: ReactNode;
 }
 
@@ -53,11 +51,11 @@ const AdminShell = (props: AdminShellProps) => {
       {...props.appShellProps}
     >
       <AppShell.Header bg={ui.colors.surface} {...props.appShellHeaderProps}>
-        <Header {...props.headerProps} />
+        <AppBar {...props.headerProps} />
       </AppShell.Header>
 
       <AppShell.Navbar bg={ui.colors.surface} {...props.appShellNavbarProps}>
-        <Sidebar menu={props.menu} {...props.sidebarProps} />
+        <Sidebar {...props.sidebarProps} />
       </AppShell.Navbar>
 
       <AppShell.Main {...props.appShellMainProps}>

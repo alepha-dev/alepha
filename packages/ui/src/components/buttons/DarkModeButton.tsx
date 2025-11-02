@@ -73,21 +73,22 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
   return (
     <ActionButton
       onClick={toggleColorScheme}
-      variant={props.variant ?? "default"}
+      variant={props.variant ?? "outline"}
       size={props.size ?? "sm"}
       aria-label="Toggle color scheme"
       px={"xs"}
       fullWidth={props.fullWidth ?? false}
+      icon={
+        colorScheme === "dark" ? (
+          <IconSun size={20} />
+        ) : colorScheme === "light" ? (
+          <IconMoon size={20} />
+        ) : (
+          <Flex h={20} w={20} />
+        )
+      }
       {...props.actionProps}
-    >
-      {colorScheme === "dark" ? (
-        <IconSun size={20} />
-      ) : colorScheme === "light" ? (
-        <IconMoon size={20} />
-      ) : (
-        <Flex h={20} w={20} />
-      )}
-    </ActionButton>
+    />
   );
 };
 

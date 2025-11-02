@@ -48,6 +48,7 @@ export class ServerStaticProvider {
     const routes = await Promise.all(
       files.map(async (file) => {
         const path = file.replace(root, "").replace(/\\/g, "/");
+        this.log.trace(`Mount ${join(prefix, path)} -> ${join(root, path)}`);
         return {
           path: join(prefix, encodeURI(path)),
           handler: await this.createFileHandler(join(root, path), options),

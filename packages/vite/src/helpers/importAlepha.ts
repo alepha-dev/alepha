@@ -37,11 +37,12 @@ export const importAlepha = async (
 
   const entryFile = pathToFileURL(join(process.cwd(), entry)).href;
 
+  console.log("Importing Alepha from:", entryFile);
+
   const mod = await import(entryFile);
 
   // check if alepha is correctly exported
   if (mod.default) {
-    await mod.default.events.emit("configure", mod.default);
     return mod.default;
   }
 
@@ -52,8 +53,6 @@ export const importAlepha = async (
       "Alepha instance not found. Ensure Alepha is initialized.",
     );
   }
-
-  await alepha.events.emit("configure", alepha);
 
   return alepha;
 };

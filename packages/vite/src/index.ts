@@ -10,6 +10,8 @@ declare global {
   var __alepha: Alepha;
 }
 
+export { defineConfig } from "vite";
+
 /**
  * Plugin vite for Alepha framework.
  *

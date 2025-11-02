@@ -1,4 +1,5 @@
 import { $module } from "@alepha/core";
+import { AlephaDateTime } from "@alepha/datetime";
 import { AlephaServer } from "@alepha/server";
 import { AlephaServerLinks } from "@alepha/server-links";
 import { $page } from "./descriptors/$page.ts";
@@ -6,6 +7,7 @@ import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
 import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
 import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
 import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
+import { ReactPageService } from "./services/ReactPageService.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -26,9 +28,11 @@ export const AlephaReact = $module({
     ReactBrowserProvider,
     ReactRouter,
     ReactBrowserRendererProvider,
+    ReactPageService,
   ],
   register: (alepha) =>
     alepha
+      .with(AlephaDateTime)
       .with(AlephaServer)
       .with(AlephaServerLinks)
       .with(ReactPageProvider)

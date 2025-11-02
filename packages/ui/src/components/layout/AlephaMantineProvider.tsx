@@ -46,7 +46,18 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
         defaultColorScheme={props.mantine?.defaultColorScheme}
         {...props.colorSchemeScript}
       />
-      <MantineProvider {...props.mantine}>
+      <MantineProvider
+        {...props.mantine}
+        theme={{
+          primaryColor: "gray",
+          primaryShade: {
+            light: 9,
+            dark: 8,
+          },
+          cursorType: "pointer",
+          ...props.mantine?.theme,
+        }}
+      >
         <Notifications {...props.notifications} />
         <NavigationProgress {...props.navigationProgress} />
         <ModalsProvider {...props.modals}>

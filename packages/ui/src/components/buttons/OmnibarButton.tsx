@@ -11,7 +11,7 @@ const OmnibarButton = (props: OmnibarButtonProps) => {
   return (
     <ActionButton
       variant={"outline"}
-      fullWidth
+      miw={256}
       onClick={spotlight.open}
       justify={"space-between"}
       rightSection={<Kbd size={"sm"}>⌘+K</Kbd>}

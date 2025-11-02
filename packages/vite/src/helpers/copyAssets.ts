@@ -18,11 +18,13 @@ export const copyAssets = async (opts: CopyAssetsOptions): Promise<void> => {
 
   const require = createRequire(join(root, opts.entry));
   const buildAssetsDir = join(root, `${opts.distDir}/assets`);
+  console.log("processing assets to", buildAssetsDir);
   await mkdir(buildAssetsDir).catch(() => null);
 
   for (const pkgName of assets ?? []) {
     const pkgDir = dirname(require.resolve(`${pkgName}/package.json`));
     const assetsPkgDir = resolve(pkgDir, "assets");
+    console.log("copying assets from", assetsPkgDir, "to", buildAssetsDir);
     await cp(assetsPkgDir, buildAssetsDir, { recursive: true });
   }
 };

@@ -1,12 +1,14 @@
 import { Alepha } from "@alepha/core";
+import { AlephaDateTime } from "@alepha/datetime";
 import { dom } from "@alepha/testing";
+import type { ReactNode } from "react";
 import { describe, test, vi } from "vitest";
 import { AlephaContext } from "../src/contexts/AlephaContext.ts";
 import { useAction } from "../src/hooks/useAction.ts";
 
 describe("useAction", () => {
   test("should handle successful action", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const mockAction = vi.fn(async (value: string, ctx) => {
@@ -27,7 +29,7 @@ describe("useAction", () => {
     const action = result.current;
 
     expect(action.loading).toBe(false);
-    expect(action.error).toBe(null);
+    expect(action.error).toBe(undefined);
     expect(action.cancel).toBeDefined();
     expect(action.run).toBeDefined();
 
@@ -42,11 +44,11 @@ describe("useAction", () => {
     );
 
     expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe(null);
+    expect(result.current.error).toBe(undefined);
   });
 
   test("should emit react:action events", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const events: string[] = [];
@@ -81,7 +83,7 @@ describe("useAction", () => {
   });
 
   test.skip("should handle errors", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const error = new Error("Test error");
@@ -89,7 +91,7 @@ describe("useAction", () => {
       throw error;
     });
 
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
@@ -109,7 +111,7 @@ describe("useAction", () => {
   });
 
   test("should emit react:action:error on failure", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const events: Array<{ type: string; error?: Error }> = [];
@@ -148,7 +150,7 @@ describe("useAction", () => {
   });
 
   test("should call custom error handler", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const error = new Error("Test error");
@@ -173,7 +175,7 @@ describe("useAction", () => {
   });
 
   test("should call custom success handler", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const mockAction = vi.fn(async (ctx) => "result");
@@ -195,7 +197,7 @@ describe("useAction", () => {
   });
 
   test("should include action id in events", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const events: Array<{ id?: string }> = [];
@@ -222,7 +224,7 @@ describe("useAction", () => {
   });
 
   test("should prevent concurrent executions", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     let executionCount = 0;
@@ -256,7 +258,7 @@ describe("useAction", () => {
   });
 
   test("should debounce action calls", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const mockAction = vi.fn(async (value: string, ctx) => value);
@@ -286,7 +288,7 @@ describe("useAction", () => {
   });
 
   test("should reset debounce timer on each call", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const mockAction = vi.fn(async (value: string, ctx) => value);
@@ -318,7 +320,7 @@ describe("useAction", () => {
   });
 
   test("should pass AbortSignal to handler", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     let receivedSignal: AbortSignal | undefined;
@@ -345,7 +347,7 @@ describe("useAction", () => {
   });
 
   test("should cancel in-flight request with cancel()", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     let wasAborted = false;
@@ -379,7 +381,7 @@ describe("useAction", () => {
   });
 
   test("should cancel debounced action", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const mockAction = vi.fn(async (value: string, ctx) => value);
@@ -410,7 +412,7 @@ describe("useAction", () => {
   });
 
   test("should handle AbortError gracefully", async ({ expect }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
     const mockAction = vi.fn(async (ctx) => {
@@ -432,6 +434,139 @@ describe("useAction", () => {
     await action.run();
 
     // Should not set error state for abort errors
-    expect(result.current.error).toBe(null);
+    expect(result.current.error).toBe(undefined);
+  });
+
+  test("should run action on mount with runOnInit", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async (ctx) => "initialized");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    dom.renderHook(
+      () => useAction({ handler: mockAction, runOnInit: true }, []),
+      {
+        wrapper,
+      },
+    );
+
+    // Wait a tick for the effect to run
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Should have been called once on mount
+    expect(mockAction).toHaveBeenCalledTimes(1);
+  });
+
+  test("should not run action on mount without runOnInit", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async (ctx) => "result");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    dom.renderHook(() => useAction({ handler: mockAction }, []), {
+      wrapper,
+    });
+
+    // Wait a tick
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Should not have been called
+    expect(mockAction).not.toHaveBeenCalled();
+  });
+
+  test("should run action periodically with runEvery (milliseconds)", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async (ctx) => "fired");
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { unmount } = dom.renderHook(
+      () => useAction({ handler: mockAction, runEvery: 60 }, []),
+      { wrapper },
+    );
+
+    // Wait for multiple intervals
+    await new Promise((resolve) => setTimeout(resolve, 160));
+
+    // Should have been called approximately 3 times (at 50ms, 100ms, 150ms)
+    expect(mockAction.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(mockAction.mock.calls.length).toBeLessThanOrEqual(4);
+
+    // Cleanup
+    unmount();
+  });
+
+  test("should run action periodically with runEvery (duration tuple)", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async (ctx) => "polled");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { unmount } = dom.renderHook(
+      () =>
+        useAction({ handler: mockAction, runEvery: [50, "milliseconds"] }, []),
+      { wrapper },
+    );
+
+    // Wait for multiple intervals
+    await new Promise((resolve) => setTimeout(resolve, 160));
+
+    // Should have been called approximately 3 times
+    expect(mockAction.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(mockAction.mock.calls.length).toBeLessThanOrEqual(4);
+
+    // Cleanup
+    unmount();
+  });
+
+  test("should cleanup interval on unmount", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async (ctx) => "polled");
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { unmount } = dom.renderHook(
+      () => useAction({ handler: mockAction, runEvery: 50 }, []),
+      { wrapper },
+    );
+
+    // Wait for one interval
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    const callsBeforeUnmount = mockAction.mock.calls.length;
+
+    // Unmount
+    unmount();
+
+    // Wait for what would be another interval
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Should not have been called again after unmount
+    expect(mockAction.mock.calls.length).toBe(callsBeforeUnmount);
   });
 });

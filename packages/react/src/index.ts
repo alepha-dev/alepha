@@ -1,4 +1,5 @@
 import { $module } from "@alepha/core";
+import { AlephaDateTime } from "@alepha/datetime";
 import { AlephaServer, type ServerRequest } from "@alepha/server";
 import { AlephaServerCache } from "@alepha/server-cache";
 import { AlephaServerLinks } from "@alepha/server-links";
@@ -10,6 +11,8 @@ import {
   type ReactRouterState,
 } from "./providers/ReactPageProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
+import { ReactPageServerService } from "./services/ReactPageServerService.ts";
+import { ReactPageService } from "./services/ReactPageService.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -134,12 +137,23 @@ declare module "@alepha/core" {
 export const AlephaReact = $module({
   name: "alepha.react",
   descriptors: [$page],
-  services: [ReactServerProvider, ReactPageProvider, ReactRouter],
+  services: [
+    ReactServerProvider,
+    ReactPageProvider,
+    ReactRouter,
+    ReactPageService,
+    ReactPageServerService,
+  ],
   register: (alepha) =>
     alepha
+      .with(AlephaDateTime)
       .with(AlephaServer)
       .with(AlephaServerCache)
       .with(AlephaServerLinks)
+      .with({
+        provide: ReactPageService,
+        use: ReactPageServerService,
+      })
       .with(ReactServerProvider)
       .with(ReactPageProvider)
       .with(ReactRouter),

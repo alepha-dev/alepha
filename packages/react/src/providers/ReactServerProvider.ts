@@ -73,7 +73,7 @@ export class ReactServerProvider implements Configurable {
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
-  protected readonly ROOT_DIV_REGEX = new RegExp(
+  public readonly ROOT_DIV_REGEX = new RegExp(
     `<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
     "is",
   );
@@ -93,23 +93,6 @@ export class ReactServerProvider implements Configurable {
         pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
       this.alepha.state.set("react.server.ssr", ssrEnabled);
-
-      for (const page of pages) {
-        page.render = this.createRenderFunction(page.name);
-        page.fetch = async (options) => {
-          const response = await fetch(
-            `${this.serverProvider.hostname}/${page.pathname(options)}`,
-          );
-          const html = await response.text();
-          if (options?.html) return { html, response };
-          // take only text inside the root div
-          const match = html.match(this.ROOT_DIV_REGEX);
-          if (match) {
-            return { html: match[3], response };
-          }
-          throw new AlephaError("Invalid HTML response");
-        };
-      }
 
       // development mode
       if (this.alepha.isViteDev()) {
@@ -248,66 +231,63 @@ export class ReactServerProvider implements Configurable {
   /**
    * For testing purposes, creates a render function that can be used.
    */
-  protected createRenderFunction(name: string, withIndex = false) {
-    return async (
-      options: PageDescriptorRenderOptions = {},
-    ): Promise<PageDescriptorRenderResult> => {
-      const page = this.pageApi.page(name);
-      const url = new URL(this.pageApi.url(name, options));
-
-      const entry: Partial<ReactRouterState> = {
-        url,
-        params: options.params ?? {},
-        query: options.query ?? {},
-        onError: () => null,
-        layers: [],
-        meta: {},
-      };
-
-      const state = entry as ReactRouterState;
-
-      this.log.trace("Rendering", {
-        url,
-      });
-
-      await this.alepha.events.emit("react:server:render:begin", {
-        state,
-      });
-
-      const { redirect } = await this.pageApi.createLayers(
-        page,
-        state as ReactRouterState,
-      );
-
-      if (redirect) {
-        return { state, html: "", redirect };
-      }
-
-      if (!withIndex && !options.html) {
-        this.alepha.state.set("react.router.state", state);
-
-        return {
-          state,
-          html: renderToString(this.pageApi.root(state)),
-        };
-      }
-
-      const template = this.template ?? "";
-      const html = this.renderToHtml(template, state, options.hydration);
-
-      if (html instanceof Redirection) {
-        return { state, html: "", redirect };
-      }
-
-      const result = {
-        state,
-        html,
-      };
-
-      await this.alepha.events.emit("react:server:render:end", result);
-
-      return result;
+  public async render(
+    name: string,
+    options: PageDescriptorRenderOptions = {},
+  ): Promise<PageDescriptorRenderResult> {
+    const page = this.pageApi.page(name);
+    const url = new URL(this.pageApi.url(name, options));
+    const entry: Partial<ReactRouterState> = {
+      url,
+      params: options.params ?? {},
+      query: options.query ?? {},
+      onError: () => null,
+      layers: [],
+      meta: {},
     };
+    const state = entry as ReactRouterState;
+
+    this.log.trace("Rendering", {
+      url,
+    });
+
+    await this.alepha.events.emit("react:server:render:begin", {
+      state,
+    });
+
+    const { redirect } = await this.pageApi.createLayers(
+      page,
+      state as ReactRouterState,
+    );
+
+    if (redirect) {
+      return { state, html: "", redirect };
+    }
+
+    if (!options.html) {
+      this.alepha.state.set("react.router.state", state);
+
+      return {
+        state,
+        html: renderToString(this.pageApi.root(state)),
+      };
+    }
+
+    const template = this.template ?? "";
+    const html = this.renderToHtml(template, state, options.hydration);
+
+    if (html instanceof Redirection) {
+      return { state, html: "", redirect };
+    }
+
+    const result = {
+      state,
+      html,
+    };
+
+    await this.alepha.events.emit("react:server:render:end", result);
+
+    return result;
   }
 
   protected createHandler(

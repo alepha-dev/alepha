@@ -60,7 +60,7 @@ export class ReactPageProvider {
       }
     }
 
-    throw new AlephaError(`Page ${name} not found`);
+    throw new AlephaError(`Page '${name}' not found`);
   }
 
   public pathname(

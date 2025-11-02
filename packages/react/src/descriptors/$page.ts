@@ -1,5 +1,5 @@
 import {
-  AlephaError,
+  $inject,
   type Async,
   createDescriptor,
   Descriptor,
@@ -13,6 +13,7 @@ import type { FC, ReactNode } from "react";
 import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { Redirection } from "../errors/Redirection.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
+import { ReactPageService } from "../services/ReactPageService.ts";
 
 /**
  * Main descriptor for defining a React route in the application.
@@ -130,23 +131,6 @@ export interface PageDescriptorOptions<
   name?: string;
 
   /**
-   * Title of the page.
-   */
-  label?: string;
-
-  /**
-   * Optional description of the page.
-   * Can be used in navigation menus.
-   */
-  description?: string;
-
-  /**
-   * Optional icon for the page.
-   * Can be used in navigation menus.
-   */
-  icon?: ReactNode;
-
-  /**
    * Add a pathname to the page.
    *
    * Pathname can contain parameters, like `/post/:slug`.
@@ -195,14 +179,14 @@ export interface PageDescriptorOptions<
   lazy?: () => Promise<{ default: FC<TProps & TPropsParent> }>;
 
   /**
-   * Set some children pages and make the page a parent page.
-   *
-   * /!\ Parent page can't be rendered directly. /!\
-   *
-   * If you still want to render at this pathname, add a child page with an empty path.
+   * Attach child pages to create nested routes.
+   * This will make the page a parent route.
    */
   children?: Array<PageDescriptor> | (() => Array<PageDescriptor>);
 
+  /**
+   * Define a parent page for nested routing.
+   */
   parent?: PageDescriptor<PageConfigSchema, TPropsParent, any>;
 
   can?: () => boolean;
@@ -250,9 +234,9 @@ export interface PageDescriptorOptions<
    * If true, the page will be considered as a static page, immutable and cacheable.
    * Replace boolean by an object to define static entries. (e.g. list of params/query)
    *
-   * For now, it only works with `@alepha/vite` which can pre-render the page at build time.
+   * Browser-side: it only works with `@alepha/vite`, which can pre-render the page at build time.
    *
-   * It will act as timeless cached page server-side. You can use `cache` to configure the cache behavior.
+   * Server-side: It will act as timeless cached page. You can use `cache` to configure the cache behavior.
    */
   static?:
     | boolean
@@ -263,15 +247,15 @@ export interface PageDescriptorOptions<
   cache?: ServerRouteCache;
 
   /**
-   * If true, force the page to be rendered only on the client-side.
+   * If true, force the page to be rendered only on the client-side (browser).
    * It uses the `<ClientOnly/>` component to render the page.
    */
   client?: boolean | ClientOnlyProps;
 
   /**
-   * Called before the server response is sent to the client.
+   * Called before the server response is sent to the client. (server only)
    */
-  onServerResponse?: (request: ServerRequest) => any;
+  onServerResponse?: (request: ServerRequest) => unknown;
 
   /**
    * Called when user leaves the page. (browser only)
@@ -333,6 +317,8 @@ export class PageDescriptor<
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
 > extends Descriptor<PageDescriptorOptions<TConfig, TProps, TPropsParent>> {
+  protected readonly reactPageService = $inject(ReactPageService);
+
   protected onInit() {
     if (this.options.static) {
       this.options.cache ??= {
@@ -349,24 +335,22 @@ export class PageDescriptor<
   }
 
   /**
-   * For testing or build purposes, this will render the page (with or without the HTML layout) and return the HTML and context.
+   * For testing or build purposes.
+   *
+   * This will render the page (HTML layout included or not) and return the HTML + context.
    * Only valid for server-side rendering, it will throw an error if called on the client-side.
    */
   public async render(
     options?: PageDescriptorRenderOptions,
   ): Promise<PageDescriptorRenderResult> {
-    throw new AlephaError(
-      "render() method is not implemented in this environment",
-    );
+    return this.reactPageService.render(this.name, options);
   }
 
   public async fetch(options?: PageDescriptorRenderOptions): Promise<{
     html: string;
     response: Response;
   }> {
-    throw new AlephaError(
-      "fetch() method is not implemented in this environment",
-    );
+    return this.reactPageService.fetch(this.options.path || "", options);
   }
 
   public match(url: string): boolean {

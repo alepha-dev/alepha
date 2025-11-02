@@ -10,7 +10,7 @@ import { type ReactNode, useCallback, useState } from "react";
 import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
 import OmnibarButton from "../buttons/OmnibarButton.tsx";
 
-export type MenuNode =
+export type SidebarNode =
   | SidebarMenuItem
   | SidebarSpacer
   | SidebarDivider
@@ -18,32 +18,32 @@ export type MenuNode =
   | SidebarElement
   | SidebarSection;
 
-export interface SidebarItem {
+export interface SidebarAbstractItem {
   position?: "top" | "bottom";
 }
 
-export interface SidebarElement extends SidebarItem {
+export interface SidebarElement extends SidebarAbstractItem {
   element: ReactNode;
 }
 
-export interface SidebarSpacer extends SidebarItem {
+export interface SidebarSpacer extends SidebarAbstractItem {
   type: "spacer";
 }
 
-export interface SidebarDivider extends SidebarItem {
+export interface SidebarDivider extends SidebarAbstractItem {
   type: "divider";
 }
 
-export interface SidebarSearch extends SidebarItem {
+export interface SidebarSearch extends SidebarAbstractItem {
   type: "search";
 }
 
-export interface SidebarSection extends SidebarItem {
+export interface SidebarSection extends SidebarAbstractItem {
   type: "section";
   label: string;
 }
 
-export interface SidebarMenuItem extends SidebarItem {
+export interface SidebarMenuItem extends SidebarAbstractItem {
   label: string | ReactNode;
   description?: string;
   icon?: ReactNode;
@@ -67,9 +67,9 @@ export interface SidebarTheme {
 }
 
 export interface SidebarProps {
-  menu: MenuNode[];
-  top?: MenuNode[];
-  bottom?: MenuNode[];
+  menu?: SidebarNode[];
+  top?: SidebarNode[];
+  bottom?: SidebarNode[];
   onItemClick?: (item: SidebarMenuItem) => void;
   onSearchClick?: () => void;
   theme?: SidebarTheme;
@@ -77,9 +77,9 @@ export interface SidebarProps {
 }
 
 export const Sidebar = (props: SidebarProps) => {
-  const { menu, top = [], bottom = [], onItemClick, onSearchClick } = props;
-
-  const renderNode = (item: MenuNode, key: number) => {
+  const router = useRouter();
+  const { top = [], bottom = [], onItemClick } = props;
+  const renderNode = (item: SidebarNode, key: number) => {
     if ("type" in item) {
       if (item.type === "spacer") {
         return <Flex key={key} h={16} />;
@@ -129,6 +129,14 @@ export const Sidebar = (props: SidebarProps) => {
     );
   };
   const padding = "md";
+  const menu =
+    props.menu ??
+    (router.concretePages.map((page) => ({
+      label: page.label ?? page.name,
+      description: page.description,
+      icon: page.icon,
+      href: page.path,
+    })) as SidebarMenuItem[]);
 
   return (
     <Flex

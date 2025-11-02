@@ -193,7 +193,11 @@ const ActionButton = (_props: ActionProps) => {
 
   if (props.icon) {
     const icon = (
-      <ThemeIcon variant={"transparent"} size={"xs"}>
+      <ThemeIcon
+        variant={"transparent"}
+        size={"sm"}
+        c={"var(--mantine-color-text)"}
+      >
         {props.icon}
       </ThemeIcon>
     );

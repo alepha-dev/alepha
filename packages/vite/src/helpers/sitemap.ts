@@ -16,6 +16,11 @@ export async function generateSitemap(opts: SitemapOptions): Promise<string> {
       : {},
   });
 
+  if (!alepha.isConfigured()) {
+    await alepha.events.emit("configure", alepha);
+    alepha["configured"] = true;
+  }
+
   return generateSitemapFromAlepha(alepha, opts.baseUrl);
 }
 

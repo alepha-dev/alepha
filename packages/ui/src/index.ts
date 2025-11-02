@@ -2,6 +2,7 @@ import { $module } from "@alepha/core";
 import { AlephaReactForm } from "@alepha/react-form";
 import { AlephaReactHead } from "@alepha/react-head";
 import { AlephaReactI18n } from "@alepha/react-i18n";
+import type { ReactNode } from "react";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { RootRouter } from "./RootRouter.ts";
 import { DialogService } from "./services/DialogService.tsx";
@@ -37,7 +38,7 @@ export type {
   SidebarMenuItem,
   SidebarProps,
 } from "./components/layout/Sidebar.tsx";
-export { Sidebar, SidebarItem } from "./components/layout/Sidebar.tsx";
+export { Sidebar } from "./components/layout/Sidebar.tsx";
 export type {
   DataTableColumn,
   DataTableFilter,
@@ -67,6 +68,30 @@ export * from "./utils/string.ts";
 declare module "typebox" {
   interface TSchemaOptions {
     $control?: Omit<ControlProps, "input">;
+  }
+}
+
+declare module "@alepha/react" {
+  interface PageDescriptorOptions {
+    /**
+     * Human-readable title for the page.
+     * - for Sidebar navigation
+     * - for Omnibar navigation
+     * (soon)
+     * - for Breadcrumbs
+     * - for document title (with AlephaReactHead)
+     */
+    label?: string;
+
+    /**
+     * Optional description of the page.
+     */
+    description?: string;
+
+    /**
+     * Optional icon for the page.
+     */
+    icon?: ReactNode;
   }
 }
 

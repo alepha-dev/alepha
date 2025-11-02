@@ -19,6 +19,11 @@ export async function prerender(opts: PrerenderOptions) {
 
   const now = Date.now();
 
+  if (!alepha.isConfigured()) {
+    await alepha.events.emit("configure", alepha);
+    alepha["configured"] = true;
+  }
+
   const stats = await prerenderFromAlepha(alepha, opts.dist, opts.compress);
 
   console.log(

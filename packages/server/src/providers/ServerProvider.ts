@@ -17,7 +17,6 @@ export abstract class ServerProvider {
       if (!route) return true;
       url = url?.split("?")[0];
       if (!!params?.["*"] && `/${params?.["*"]}` === url) return true;
-      if (url?.includes(".")) return true;
     }
     return false;
   }
