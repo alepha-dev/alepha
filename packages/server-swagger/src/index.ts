@@ -1,6 +1,8 @@
 import "@alepha/server-security";
 import { $module } from "@alepha/core";
 import { AlephaServer, type RequestConfigSchema } from "@alepha/server";
+import { AlephaServerCache } from "@alepha/server-cache";
+import { AlephaServerStatic } from "@alepha/server-static";
 import { $swagger } from "./descriptors/$swagger.ts";
 import { ServerSwaggerProvider } from "./ServerSwaggerProvider.ts";
 
@@ -38,5 +40,12 @@ declare module "@alepha/server" {
 export const AlephaServerSwagger = $module({
   name: "alepha.server.swagger",
   descriptors: [$swagger],
-  services: [AlephaServer, ServerSwaggerProvider],
+  services: [ServerSwaggerProvider],
+  register: (alepha) => {
+    alepha.with(AlephaServer);
+    alepha.with(AlephaServerCache);
+    alepha.with(AlephaServerStatic);
+    alepha.with(ServerSwaggerProvider);
+    alepha.state.push("assets", "@alepha/server-swagger");
+  },
 });

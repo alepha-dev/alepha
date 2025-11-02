@@ -309,6 +309,9 @@ export class ServerSwaggerProvider {
     this.serverRouterProvider.createRoute({
       method: "GET",
       path: `${prefix}/json`,
+      cache: {
+        etag: true,
+      },
       schema: {
         response: t.json(),
       },
@@ -365,6 +368,9 @@ window.onload = function() {
     this.serverRouterProvider.createRoute({
       method: "GET",
       path: `${prefix}/swagger-initializer.js`,
+      cache: {
+        etag: true,
+      },
       handler: ({ reply }) => {
         reply.headers["content-type"] = "application/javascript; charset=utf-8";
         return initializer;
