@@ -123,16 +123,28 @@ export interface PageDescriptorOptions<
   TPropsParent extends object = TPropsParentDefault,
 > {
   /**
-   * Name your page.
+   * Identifier name for the page. Must be unique.
    *
    * @default Descriptor key
    */
   name?: string;
 
   /**
+   * Title of the page.
+   */
+  label?: string;
+
+  /**
    * Optional description of the page.
+   * Can be used in navigation menus.
    */
   description?: string;
+
+  /**
+   * Optional icon for the page.
+   * Can be used in navigation menus.
+   */
+  icon?: ReactNode;
 
   /**
    * Add a pathname to the page.

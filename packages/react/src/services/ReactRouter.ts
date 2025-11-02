@@ -22,12 +22,33 @@ export class ReactRouter<T extends object> {
     return this.pageApi.getPages();
   }
 
+  public get concretePages() {
+    return this.pageApi.getConcretePages();
+  }
+
   public get browser(): ReactBrowserProvider | undefined {
     if (this.alepha.isBrowser()) {
       return this.alepha.inject(ReactBrowserProvider);
     }
     // server-side
     return undefined;
+  }
+
+  public isActive(
+    href: string,
+    options: {
+      startWith?: boolean;
+    } = {},
+  ): boolean {
+    const current = this.state.url.pathname;
+    let isActive =
+      current === href || current === `${href}/` || `${current}/` === href;
+
+    if (options.startWith && !isActive) {
+      isActive = current.startsWith(href);
+    }
+
+    return isActive;
   }
 
   public path(

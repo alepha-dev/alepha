@@ -147,6 +147,29 @@ Hook to get a virtual client for the specified scope.
 
 It's the React-hook version of `$client()`, from `AlephaServerLinks` module.
 
+#### useEvents()
+
+Allow subscribing to multiple Alepha events. See {@link Hooks} for available events.
+
+useEvents is fully typed to ensure correct event callback signatures.
+
+```tsx
+useEvents(
+  {
+    "react:transition:begin": (ev) => {
+      console.log("Transition began to:", ev.to);
+    },
+    "react:transition:error": {
+      priority: "first",
+      callback: (ev) => {
+        console.error("Transition error:", ev.error);
+      },
+    },
+  },
+  [],
+);
+```
+
 #### useInject()
 
 Hook to inject a service instance.
@@ -169,10 +192,6 @@ class App {
 
 const router = useRouter<App>();
 router.go("home"); // typesafe
-
-#### useRouterEvents()
-
-Subscribe to various router events.
 
 #### useStore()
 

@@ -17,13 +17,7 @@ export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
   const options: UseActiveOptions =
     typeof args === "string" ? { href: args } : { ...args, href: args.href };
   const href = options.href;
-
-  let isActive =
-    current === href || current === `${href}/` || `${current}/` === href;
-
-  if (options.startWith && !isActive) {
-    isActive = current.startsWith(href);
-  }
+  const isActive = router.isActive(href, options);
 
   return {
     isPending,

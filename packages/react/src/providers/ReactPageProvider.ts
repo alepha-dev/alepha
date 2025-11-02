@@ -42,6 +42,17 @@ export class ReactPageProvider {
     return this.pages;
   }
 
+  public getConcretePages(): PageRoute[] {
+    return this.pages.filter((page) => {
+      if (page.children && page.children.length > 0) {
+        return false;
+      }
+      // A concrete page is one that does not have dynamic segments in its path
+      const fullPath = this.pathname(page.name);
+      return !fullPath.includes(":") && !fullPath.includes("*");
+    });
+  }
+
   public page(name: string): PageRoute {
     for (const page of this.pages) {
       if (page.name === name) {
@@ -49,7 +60,7 @@ export class ReactPageProvider {
       }
     }
 
-    throw new Error(`Page ${name} not found`);
+    throw new AlephaError(`Page ${name} not found`);
   }
 
   public pathname(

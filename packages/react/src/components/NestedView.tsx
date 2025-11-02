@@ -2,7 +2,7 @@ import { memo, type ReactNode, use, useRef, useState } from "react";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import type { PageAnimation } from "../descriptors/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
-import { useRouterEvents } from "../hooks/useRouterEvents.ts";
+import { useEvents } from "../hooks/useEvents.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import ErrorBoundary from "./ErrorBoundary.tsx";
@@ -45,9 +45,9 @@ const NestedView = (props: NestedViewProps) => {
   const animationExitDuration = useRef<number>(0);
   const animationExitNow = useRef<number>(0);
 
-  useRouterEvents(
+  useEvents(
     {
-      onBegin: async ({ previous, state }) => {
+      "react:transition:begin": async ({ previous, state }) => {
         // --------- Animations Begin ---------
         const layer = previous.layers[index];
         if (`${state.url.pathname}/`.startsWith(`${layer?.path}/`)) {
@@ -72,7 +72,7 @@ const NestedView = (props: NestedViewProps) => {
         }
         // --------- Animations End ---------
       },
-      onEnd: async ({ state }) => {
+      "react:transition:end": async ({ state }) => {
         const layer = state.layers[index];
 
         // --------- Animations Begin ---------

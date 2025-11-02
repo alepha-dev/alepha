@@ -27,16 +27,25 @@ declare module "@alepha/core" {
   }
 
   interface Hooks {
+    /**
+     * Fires when the React application is starting to be rendered on the server.
+     */
     "react:server:render:begin": {
       request?: ServerRequest;
       state: ReactRouterState;
     };
+    /**
+     * Fires when the React application has been rendered on the server.
+     */
     "react:server:render:end": {
       request?: ServerRequest;
       state: ReactRouterState;
       html: string;
     };
     // -----------------------------------------------------------------------------------------------------------------
+    /**
+     * Fires when the React application is being rendered on the browser.
+     */
     "react:browser:render": {
       root: HTMLElement;
       element: ReactNode;
@@ -45,37 +54,65 @@ declare module "@alepha/core" {
     };
     // -----------------------------------------------------------------------------------------------------------------
     // TOP LEVEL: All user actions (forms, transitions, custom actions)
+    /**
+     * Fires when a user action is starting.
+     * Action can be a form submission, a route transition, or a custom action.
+     */
     "react:action:begin": {
       type: string;
       id?: string;
     };
+    /**
+     * Fires when a user action has succeeded.
+     * Action can be a form submission, a route transition, or a custom action.
+     */
     "react:action:success": {
       type: string;
       id?: string;
     };
+    /**
+     * Fires when a user action has failed.
+     * Action can be a form submission, a route transition, or a custom action.
+     */
     "react:action:error": {
       type: string;
       id?: string;
       error: Error;
     };
+    /**
+     * Fires when a user action has completed, regardless of success or failure.
+     * Action can be a form submission, a route transition, or a custom action.
+     */
     "react:action:end": {
       type: string;
       id?: string;
     };
     // -----------------------------------------------------------------------------------------------------------------
     // SPECIFIC: Route transitions
+    /**
+     * Fires when a route transition is starting.
+     */
     "react:transition:begin": {
       previous: ReactRouterState;
       state: ReactRouterState;
       animation?: PageAnimation;
     };
+    /**
+     * Fires when a route transition has succeeded.
+     */
     "react:transition:success": {
       state: ReactRouterState;
     };
+    /**
+     * Fires when a route transition has failed.
+     */
     "react:transition:error": {
       state: ReactRouterState;
       error: Error;
     };
+    /**
+     * Fires when a route transition has completed, regardless of success or failure.
+     */
     "react:transition:end": {
       state: ReactRouterState;
     };

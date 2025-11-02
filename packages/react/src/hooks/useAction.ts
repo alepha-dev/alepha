@@ -184,11 +184,8 @@ export function useAction<Args extends any[], Result = void>(
           throw error;
         }
       } finally {
-        // Only update state if still mounted
-        if (isMountedRef.current) {
-          isExecutingRef.current = false;
-          setLoading(false);
-        }
+        isExecutingRef.current = false;
+        setLoading(false);
 
         await alepha.events.emit("react:action:end", {
           type: "custom",
