@@ -12,14 +12,16 @@ import {
   type ButtonProps,
   Flex,
   Menu,
+  type MenuItemProps,
   type MenuProps,
   type MenuTargetProps,
   ThemeIcon,
+  type ThemeIconProps,
   Tooltip,
   type TooltipProps,
 } from "@mantine/core";
 import { IconCheck, IconChevronRight } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export interface ActionMenuItem {
   /**
@@ -30,7 +32,7 @@ export interface ActionMenuItem {
   /**
    * Label text for the menu item
    */
-  label?: string;
+  label?: string | ReactNode;
 
   /**
    * Icon element to display before the label
@@ -41,6 +43,11 @@ export interface ActionMenuItem {
    * Click handler for menu items
    */
   onClick?: () => void;
+
+  /**
+   * Href for navigation menu items
+   */
+  href?: string;
 
   /**
    * Color for the menu item (e.g., "red" for danger actions)
@@ -121,6 +128,11 @@ export interface ActionCommonProps extends ButtonProps {
    * If no children are provided, the button will be styled as an icon-only button.
    */
   icon?: ReactNode;
+
+  /**
+   * Additional props to pass to the ThemeIcon wrapping the icon.
+   */
+  themeIconProps?: ThemeIconProps;
 }
 
 export type ActionProps = ActionCommonProps &
@@ -135,7 +147,22 @@ export type ActionProps = ActionCommonProps &
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Helper function to render menu items recursively
-const renderMenuItem = (item: ActionMenuItem, index: number): ReactNode => {
+const ActionMenuItem = (props: {
+  item: ActionMenuItem;
+  index: number;
+}): ReactNode => {
+  const { item, index } = props;
+
+  const router = useRouter();
+  const action = useAction(
+    {
+      handler: async (e: any) => {
+        await item.onClick?.();
+      },
+    },
+    [item.onClick],
+  );
+
   // Render divider
   if (item.type === "divider") {
     return <Menu.Divider key={index} />;
@@ -159,12 +186,19 @@ const renderMenuItem = (item: ActionMenuItem, index: number): ReactNode => {
           </Menu.Item>
         </Menu.Target>
         <Menu.Dropdown>
-          {item.children.map((child, childIndex) =>
-            renderMenuItem(child, childIndex),
-          )}
+          {item.children.map((child, childIndex) => (
+            <ActionMenuItem item={child} index={childIndex} key={childIndex} />
+          ))}
         </Menu.Dropdown>
       </Menu>
     );
+  }
+
+  const menuItemProps: MenuItemProps & ButtonHTMLAttributes<unknown> = {};
+  if (props.item.onClick) {
+    menuItemProps.onClick = action.run;
+  } else if (props.item.href) {
+    Object.assign(menuItemProps, router.anchor(props.item.href));
   }
 
   // render regular menu item
@@ -181,6 +215,7 @@ const renderMenuItem = (item: ActionMenuItem, index: number): ReactNode => {
           </ThemeIcon>
         ) : undefined
       }
+      {...menuItemProps}
     >
       {item.label}
     </Menu.Item>
@@ -194,9 +229,11 @@ const ActionButton = (_props: ActionProps) => {
   if (props.icon) {
     const icon = (
       <ThemeIcon
+        w={24} // TODO: make size configurable
         variant={"transparent"}
         size={"sm"}
         c={"var(--mantine-color-text)"}
+        {...props.themeIconProps}
       >
         {props.icon}
       </ThemeIcon>
@@ -279,7 +316,7 @@ const ActionButton = (_props: ActionProps) => {
 
   let actionElement = renderAction();
 
-  // Wrap with Menu if provided
+  // wrap with Menu if provided
   if (menu) {
     actionElement = (
       <Menu
@@ -291,7 +328,9 @@ const ActionButton = (_props: ActionProps) => {
       >
         <Menu.Target {...menu.targetProps}>{actionElement}</Menu.Target>
         <Menu.Dropdown>
-          {menu.items.map((item, index) => renderMenuItem(item, index))}
+          {menu.items.map((item, index) => (
+            <ActionMenuItem item={item} index={index} key={index} />
+          ))}
         </Menu.Dropdown>
       </Menu>
     );
@@ -311,9 +350,6 @@ const ActionButton = (_props: ActionProps) => {
 };
 
 export default ActionButton;
-
-// =====================================================================================================================
-// Specific Action Variants
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -411,7 +447,6 @@ const ActionClickButton = (props: ActionClickButtonProps) => {
       handler: async (e: any) => {
         await props.onClick(e);
       },
-      id: "action",
     },
     [props.onClick],
   );

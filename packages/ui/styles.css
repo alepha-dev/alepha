@@ -82,6 +82,10 @@ body,
   border: 1px solid var(--alepha-border);
 }
 
+.mantine-Spotlight-content {
+  border: 1px solid var(--alepha-border);
+}
+
 .mantine-Action-iconOnly .mantine-Button-section {
   margin-inline-end: 4px;
   margin-inline-start: 4px;

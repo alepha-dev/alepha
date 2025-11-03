@@ -5,6 +5,7 @@ import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 export interface OmnibarButtonProps {
   actionProps?: ActionProps;
+  collapsed?: boolean;
 }
 
 const OmnibarButton = (props: OmnibarButtonProps) => {

@@ -4,67 +4,16 @@ import {
   type FlexProps,
   type MantineBreakpoint,
   Text,
+  ThemeIcon,
 } from "@mantine/core";
-import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconSquareRounded,
+} from "@tabler/icons-react";
 import { type ReactNode, useCallback, useState } from "react";
 import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
 import OmnibarButton from "../buttons/OmnibarButton.tsx";
-
-export type SidebarNode =
-  | SidebarMenuItem
-  | SidebarSpacer
-  | SidebarDivider
-  | SidebarSearch
-  | SidebarElement
-  | SidebarSection;
-
-export interface SidebarAbstractItem {
-  position?: "top" | "bottom";
-}
-
-export interface SidebarElement extends SidebarAbstractItem {
-  element: ReactNode;
-}
-
-export interface SidebarSpacer extends SidebarAbstractItem {
-  type: "spacer";
-}
-
-export interface SidebarDivider extends SidebarAbstractItem {
-  type: "divider";
-}
-
-export interface SidebarSearch extends SidebarAbstractItem {
-  type: "search";
-}
-
-export interface SidebarSection extends SidebarAbstractItem {
-  type: "section";
-  label: string;
-}
-
-export interface SidebarMenuItem extends SidebarAbstractItem {
-  label: string | ReactNode;
-  description?: string;
-  icon?: ReactNode;
-  href?: string;
-  activeStartsWith?: boolean; // Use startWith matching for active state
-  onClick?: () => void;
-  children?: SidebarMenuItem[];
-  rightSection?: ReactNode;
-  theme?: SidebarButtonTheme;
-  actionProps?: ActionProps;
-}
-
-export interface SidebarButtonTheme {
-  radius?: MantineBreakpoint;
-  size?: MantineBreakpoint;
-}
-
-export interface SidebarTheme {
-  button?: SidebarButtonTheme;
-  search?: SidebarButtonTheme;
-}
 
 export interface SidebarProps {
   menu?: SidebarNode[];
@@ -74,16 +23,20 @@ export interface SidebarProps {
   onSearchClick?: () => void;
   theme?: SidebarTheme;
   flexProps?: Partial<FlexProps>;
+
+  collapsed?: boolean;
 }
 
 export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
   const { top = [], bottom = [], onItemClick } = props;
+
   const renderNode = (item: SidebarNode, key: number) => {
     if ("type" in item) {
       if (item.type === "spacer") {
         return <Flex key={key} h={16} />;
       }
+
       if (item.type === "divider") {
         return (
           <Flex
@@ -95,10 +48,13 @@ export const Sidebar = (props: SidebarProps) => {
           />
         );
       }
+
       if (item.type === "search") {
-        return <OmnibarButton key={key} />;
+        return <OmnibarButton collapsed={props.collapsed} key={key} />;
       }
+
       if (item.type === "section") {
+        if (props.collapsed) return;
         return (
           <Text
             key={key}
@@ -115,9 +71,23 @@ export const Sidebar = (props: SidebarProps) => {
         );
       }
     }
+
     if ("element" in item) {
       return <Flex key={key}>{item.element}</Flex>;
     }
+
+    if (props.collapsed) {
+      return (
+        <SidebarCollapsedItem
+          key={key}
+          item={item}
+          level={0}
+          onItemClick={onItemClick}
+          theme={props.theme ?? {}}
+        />
+      );
+    }
+
     return (
       <SidebarItem
         key={key}
@@ -128,6 +98,7 @@ export const Sidebar = (props: SidebarProps) => {
       />
     );
   };
+
   const padding = "md";
   const menu =
     props.menu ??
@@ -172,8 +143,6 @@ export const Sidebar = (props: SidebarProps) => {
   );
 };
 
-// ---------------------------------------------------------------------------------------------------------------------
-// SidebarItem - Main component that decides which variant to render
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface SidebarItemProps {
@@ -246,7 +215,14 @@ export const SidebarItem = (props: SidebarItemProps) => {
         onClick={handleItemClick}
         leftSection={
           <Flex w={"100%"} align="center" gap={"sm"}>
-            {item.icon && <Flex>{item.icon}</Flex>}
+            {item.icon && (
+              <ThemeIcon
+                size={level === 0 ? "sm" : "xs"}
+                variant={"transparent"}
+              >
+                {item.icon}
+              </ThemeIcon>
+            )}
             <Flex direction={"column"}>
               <Flex>{item.label}</Flex>
               {item.description && (
@@ -271,7 +247,8 @@ export const SidebarItem = (props: SidebarItemProps) => {
           )
         }
         {...props.item.actionProps}
-      ></ActionButton>
+      />
+
       {item.children && isOpen && (
         <Flex direction={"column"} data-parent-level={level}>
           <Flex
@@ -299,3 +276,133 @@ export const SidebarItem = (props: SidebarItemProps) => {
     </Flex>
   );
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface SidebarItemProps {
+  item: SidebarMenuItem;
+  level: number;
+  onItemClick?: (item: SidebarMenuItem) => void;
+  theme: SidebarTheme;
+}
+
+const SidebarCollapsedItem = (props: SidebarItemProps) => {
+  const { item, level } = props;
+
+  const router = useRouter();
+  const isActive = useCallback((item: SidebarMenuItem): boolean => {
+    if (!item.children) return false;
+    for (const child of item.children) {
+      if (child.href) {
+        if (router.isActive(child.href)) {
+          return true;
+        }
+      }
+      if (isActive(child)) {
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
+  const [isOpen, setIsOpen] = useState<boolean>(isActive(item));
+
+  const handleItemClick = (e: MouseEvent) => {
+    e.preventDefault();
+    if (item.children && item.children.length > 0) {
+      setIsOpen(!isOpen);
+    } else {
+      props.onItemClick?.(item);
+      item.onClick?.();
+    }
+  };
+
+  return (
+    <ActionButton
+      variant={"subtle"}
+      size={
+        props.item.theme?.size ??
+        props.theme.button?.size ??
+        (level === 0 ? "sm" : "xs")
+      }
+      variantActive={"default"}
+      radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
+      onClick={handleItemClick}
+      icon={item.icon ?? <IconSquareRounded />}
+      href={props.item.href}
+      menu={
+        item.children
+          ? {
+              position: "right",
+              on: "hover",
+              items: item.children.map((child) => ({
+                label: child.label,
+                href: child.href,
+                icon: child.icon,
+                children: child.children,
+              })),
+            }
+          : undefined
+      }
+      {...props.item.actionProps}
+    />
+  );
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type SidebarNode =
+  | SidebarMenuItem
+  | SidebarSpacer
+  | SidebarDivider
+  | SidebarSearch
+  | SidebarElement
+  | SidebarSection;
+
+export interface SidebarAbstractItem {
+  position?: "top" | "bottom";
+}
+
+export interface SidebarElement extends SidebarAbstractItem {
+  element: ReactNode;
+}
+
+export interface SidebarSpacer extends SidebarAbstractItem {
+  type: "spacer";
+}
+
+export interface SidebarDivider extends SidebarAbstractItem {
+  type: "divider";
+}
+
+export interface SidebarSearch extends SidebarAbstractItem {
+  type: "search";
+}
+
+export interface SidebarSection extends SidebarAbstractItem {
+  type: "section";
+  label: string;
+}
+
+export interface SidebarMenuItem extends SidebarAbstractItem {
+  label: string | ReactNode;
+  description?: string;
+  icon?: ReactNode;
+  href?: string;
+  activeStartsWith?: boolean; // Use startWith matching for active state
+  onClick?: () => void;
+  children?: SidebarMenuItem[];
+  rightSection?: ReactNode;
+  theme?: SidebarButtonTheme;
+  actionProps?: ActionProps;
+}
+
+export interface SidebarButtonTheme {
+  radius?: MantineBreakpoint;
+  size?: MantineBreakpoint;
+}
+
+export interface SidebarTheme {
+  button?: SidebarButtonTheme;
+  search?: SidebarButtonTheme;
+}
