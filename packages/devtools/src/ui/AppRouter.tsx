@@ -1,12 +1,28 @@
 import { $page } from "@alepha/react";
 import { AdminShell, RootRouter } from "@alepha/ui";
+import { ui } from "@alepha/ui/src/constants/ui.ts";
 import { IconDashboard, IconLogs } from "@tabler/icons-react";
 import DevLogs from "./DevLogs.tsx";
 
 export class AppRouter extends RootRouter {
   layout = $page({
     parent: this.root,
-    component: () => <AdminShell />,
+    component: () => (
+      <AdminShell
+        appShellProps={{
+          bg: ui.colors.surface,
+        }}
+        appShellNavbarProps={{
+          bg: ui.colors.transparent,
+        }}
+        appShellHeaderProps={{
+          bg: ui.colors.transparent,
+          style: {
+            backdropFilter: "blur(10px)",
+          },
+        }}
+      />
+    ),
   });
 
   dashboard = $page({

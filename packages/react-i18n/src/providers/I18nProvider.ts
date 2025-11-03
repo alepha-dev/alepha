@@ -1,5 +1,12 @@
-import { $hook, $inject, Alepha, TypeProvider, t } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
+import {
+  $hook,
+  $inject,
+  Alepha,
+  TypeBoxError,
+  TypeProvider,
+  t,
+} from "@alepha/core";
+import { type DateTime, DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { $cookie } from "@alepha/server-cookies";
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
@@ -162,6 +169,70 @@ export class I18nProvider<
     return key; // fallback to the key itself if not found
   };
 
+  public readonly l = (
+    value: I18nLocalizeType,
+    options: I18nLocalizeOptions = {},
+  ) => {
+    // Handle numbers
+    if (typeof value === "number") {
+      if (options.number) {
+        return new Intl.NumberFormat(this.lang, options.number).format(value);
+      }
+      return this.numberFormat.format(value);
+    }
+
+    // Handle dates
+    if (
+      value instanceof Date ||
+      this.dateTimeProvider.isDateTime(value) ||
+      (typeof value === "string" && options.date)
+    ) {
+      // convert to DateTime with locale applied
+      let dt = this.dateTimeProvider.of(value);
+
+      // apply timezone if specified
+      if (options.timezone) {
+        dt = dt.tz(options.timezone);
+      }
+
+      // format using dayjs format string
+      if (typeof options.date === "string") {
+        if (options.date === "fromNow") {
+          return dt.locale(this.lang).fromNow();
+        }
+        return dt.locale(this.lang).format(options.date);
+      }
+
+      // format using Intl.DateTimeFormatOptions
+      if (options.date) {
+        return new Intl.DateTimeFormat(
+          this.lang,
+          options.timezone
+            ? { ...options.date, timeZone: options.timezone }
+            : options.date,
+        ).format(dt.toDate());
+      }
+
+      // default formatting with timezone
+      if (options.timezone) {
+        return new Intl.DateTimeFormat(this.lang, {
+          timeZone: options.timezone,
+        }).format(dt.toDate());
+      }
+
+      // default formatting
+      return this.dateFormat.format(dt.toDate());
+    }
+
+    // handle TypeBox errors
+    if (value instanceof TypeBoxError) {
+      return TypeProvider.translateError(value, this.lang);
+    }
+
+    // return string values as-is
+    return value;
+  };
+
   public readonly tr = (
     key: keyof ServiceDictionary<S>[K],
     options: {
@@ -183,4 +254,30 @@ export class I18nProvider<
     }
     return result;
   }
+}
+
+export type I18nLocalizeType = string | number | Date | DateTime | TypeBoxError;
+
+export interface I18nLocalizeOptions {
+  /**
+   * Options for number formatting (when value is a number)
+   * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat
+   */
+  number?: Intl.NumberFormatOptions;
+  /**
+   * Options for date formatting (when value is a Date or DateTime)
+   * Can be:
+   * - A dayjs format string (e.g., "LLL", "YYYY-MM-DD", "dddd, MMMM D YYYY")
+   * - "fromNow" for relative time (e.g., "2 hours ago")
+   * - Intl.DateTimeFormatOptions for native formatting
+   * @see https://day.js.org/docs/en/display/format
+   * @see https://day.js.org/docs/en/display/from-now
+   */
+  date?: string | "fromNow" | Intl.DateTimeFormatOptions;
+  /**
+   * Timezone to display dates in (when value is a Date or DateTime)
+   * Uses IANA timezone names (e.g., "America/New_York", "Europe/Paris", "Asia/Tokyo")
+   * @see https://day.js.org/docs/en/timezone/timezone
+   */
+  timezone?: string;
 }

@@ -10,7 +10,7 @@ import { ToastService } from "./services/ToastService.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { Flex } from "@mantine/core";
+export { Flex, Text } from "@mantine/core";
 export type {
   ActionClickButtonProps,
   ActionCommonProps,
@@ -41,9 +41,7 @@ export type {
 export { Sidebar } from "./components/layout/Sidebar.tsx";
 export type {
   DataTableColumn,
-  DataTableFilter,
   DataTableProps,
-  DataTableSort,
 } from "./components/table/DataTable.tsx";
 export { default as DataTable } from "./components/table/DataTable.tsx";
 export { useDialog } from "./hooks/useDialog.ts";

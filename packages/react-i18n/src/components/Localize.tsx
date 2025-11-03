@@ -1,6 +1,5 @@
-import { TypeBoxError, TypeProvider } from "@alepha/core";
-import { type DateTime, DateTimeProvider } from "@alepha/datetime";
-import { useInject } from "@alepha/react";
+import type { TypeBoxError } from "@alepha/core";
+import type { DateTime } from "@alepha/datetime";
 import { useI18n } from "../hooks/useI18n.ts";
 
 export interface LocalizeProps {
@@ -30,64 +29,7 @@ export interface LocalizeProps {
 
 const Localize = (props: LocalizeProps) => {
   const i18n = useI18n();
-  const dateTimeProvider = useInject(DateTimeProvider);
-
-  // Handle numbers
-  if (typeof props.value === "number") {
-    if (props.number) {
-      return new Intl.NumberFormat(i18n.lang, props.number).format(props.value);
-    }
-    return i18n.numberFormat.format(props.value);
-  }
-
-  // Handle dates
-  if (
-    props.value instanceof Date ||
-    dateTimeProvider.isDateTime(props.value) ||
-    (typeof props.value === "string" && props.date)
-  ) {
-    // Convert to DateTime with locale applied
-    let dt = dateTimeProvider.of(props.value);
-
-    // Apply timezone if specified
-    if (props.timezone) {
-      dt = dt.tz(props.timezone);
-    }
-
-    // Format using dayjs format string
-    if (typeof props.date === "string") {
-      if (props.date === "fromNow") {
-        return dt.locale(i18n.lang).fromNow();
-      }
-      return dt.locale(i18n.lang).format(props.date);
-    }
-
-    // Format using Intl.DateTimeFormatOptions
-    if (props.date) {
-      const options = props.timezone
-        ? { ...props.date, timeZone: props.timezone }
-        : props.date;
-      return new Intl.DateTimeFormat(i18n.lang, options).format(dt.toDate());
-    }
-
-    // Default formatting with timezone
-    if (props.timezone) {
-      return new Intl.DateTimeFormat(i18n.lang, {
-        timeZone: props.timezone,
-      }).format(dt.toDate());
-    }
-
-    // Default formatting
-    return i18n.dateFormat.format(dt.toDate());
-  }
-
-  // Handle TypeBox errors
-  if (props.value instanceof TypeBoxError) {
-    return TypeProvider.translateError(props.value, i18n.lang);
-  }
-
-  // Return string values as-is
-  return props.value;
+  return i18n.l(props.value, props);
 };
 
 export default Localize;
