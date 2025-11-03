@@ -72,6 +72,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
         },
       },
     },
+    esbuild: { legalComments: "none" },
     plugins,
   };
 

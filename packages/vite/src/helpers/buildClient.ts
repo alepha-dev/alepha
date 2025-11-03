@@ -50,12 +50,13 @@ export const buildClient = async (opts: BuildClientOptions) => {
       outDir: opts.dist,
       rollupOptions: {
         output: {
-          entryFileNames: "[hash].js",
-          chunkFileNames: "[hash].js",
-          assetFileNames: "[hash][extname]",
+          entryFileNames: "entry.[hash].js",
+          chunkFileNames: "chunk.[hash].js",
+          assetFileNames: "asset.[hash][extname]",
         },
       },
     },
+    esbuild: { legalComments: "none" },
     plugins,
   };
 
