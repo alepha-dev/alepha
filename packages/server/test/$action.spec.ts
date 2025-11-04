@@ -1,5 +1,5 @@
 import { Alepha, t } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, test } from "vitest";
 import { $action } from "../src";
 
@@ -131,13 +131,15 @@ describe("$action", () => {
 
   test("should return a file", async ({ expect }) => {
     const alepha = Alepha.create();
+    const fileSystem = alepha.inject(FileSystem);
     class TestApp {
       test = $action({
         schema: {
           response: t.file(), // expect a file response
         },
         handler: () =>
-          createFile(Buffer.from("hello"), {
+          fileSystem.createFile({
+            buffer: Buffer.from("hello"),
             name: "hello.txt",
             type: "text/plain",
           }),

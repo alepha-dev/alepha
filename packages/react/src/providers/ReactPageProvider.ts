@@ -43,14 +43,36 @@ export class ReactPageProvider {
   }
 
   public getConcretePages(): PageRoute[] {
-    return this.pages.filter((page) => {
+    const pages: PageRoute[] = [];
+    for (const page of this.pages) {
       if (page.children && page.children.length > 0) {
-        return false;
+        continue;
       }
-      // A concrete page is one that does not have dynamic segments in its path
       const fullPath = this.pathname(page.name);
-      return !fullPath.includes(":") && !fullPath.includes("*");
-    });
+      if (fullPath.includes(":") || fullPath.includes("*")) {
+        if (typeof page.static === "object") {
+          const entries = page.static.entries;
+          if (entries && entries.length > 0) {
+            for (const entry of entries) {
+              const params = entry.params as Record<string, string>;
+              const path = this.compile(page.path ?? "", params);
+              if (!path.includes(":") && !path.includes("*")) {
+                pages.push({
+                  ...page,
+                  name: params[Object.keys(params)[0]],
+                  path,
+                  ...entry,
+                });
+              }
+            }
+          }
+        }
+
+        continue;
+      }
+      pages.push(page);
+    }
+    return pages;
   }
 
   public page(name: string): PageRoute {
