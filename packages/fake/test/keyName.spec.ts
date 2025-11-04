@@ -36,9 +36,6 @@ describe("FakeProvider - Key Name Intelligence", () => {
     // Verify age is in expected range for context-aware generation
     expect(result.age).toBeGreaterThanOrEqual(18);
     expect(result.age).toBeLessThanOrEqual(99);
-
-    // Log for manual inspection
-    console.log("Context-aware generated data:", result);
   });
 
   test("format takes precedence over key name", ({ expect }) => {
@@ -121,8 +118,6 @@ describe("FakeProvider - Key Name Intelligence", () => {
     // Check some specific patterns
     expect(user.email).toMatch(/@/);
     expect(user.website).toMatch(/^https?:\/\//);
-
-    console.log("Generated realistic user profile:", user);
   });
 
   test("numeric key names influence generation", ({ expect }) => {
@@ -153,7 +148,5 @@ describe("FakeProvider - Key Name Intelligence", () => {
     // Price/amount should be positive
     expect(result.price).toBeGreaterThan(0);
     expect(result.amount).toBeGreaterThan(0);
-
-    console.log("Context-aware numeric data:", result);
   });
 });

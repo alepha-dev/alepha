@@ -17,16 +17,7 @@ class MyApp {
     });
 
     // Generate multiple fake users
-    const users = this.fake.generateMany(userSchema, 10);
-
-    console.log("Generated 10 fake users:");
-    for (const [i, user] of users.entries()) {
-      console.log(
-        `${i + 1}. ${user.firstName} ${user.lastName} (${user.email})`,
-      );
-    }
-
-    return users;
+    return this.fake.generateMany(userSchema, 10);
   }
 }
 
