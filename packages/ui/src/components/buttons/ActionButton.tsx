@@ -277,6 +277,13 @@ const ActionButton = (_props: ActionProps) => {
 
   const renderAction = () => {
     if ("href" in restProps && restProps.href) {
+      if (restProps.href.startsWith("http")) {
+        return (
+          <ActionHrefButton {...restProps} href={restProps.href}>
+            {restProps.children}
+          </ActionHrefButton>
+        );
+      }
       return (
         <ActionNavigationButton {...restProps} href={restProps.href}>
           {restProps.children}
@@ -475,6 +482,7 @@ export interface ActionNavigationButtonProps extends ButtonProps {
   routerGoOptions?: RouterGoOptions;
   classNameActive?: string;
   variantActive?: ButtonProps["variant"];
+  target?: string;
 }
 
 /**
@@ -511,6 +519,23 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
           : (buttonProps.variant ?? "subtle")
       }
     >
+      {props.children}
+    </Button>
+  );
+};
+
+const ActionHrefButton = (props: ActionNavigationButtonProps) => {
+  const {
+    active: options,
+    classNameActive,
+    variantActive,
+    routerGoOptions,
+    target,
+    ...buttonProps
+  } = props;
+
+  return (
+    <Button component={"a"} target={target} {...buttonProps}>
       {props.children}
     </Button>
   );

@@ -1,6 +1,5 @@
 import { $page } from "@alepha/react";
-import { AdminShell, RootRouter } from "@alepha/ui";
-import { ui } from "@alepha/ui/src/constants/ui.ts";
+import { AdminShell, RootRouter, Text, ui } from "@alepha/ui";
 import { IconDashboard, IconLogs } from "@tabler/icons-react";
 import DevLogs from "./DevLogs.tsx";
 
@@ -24,6 +23,19 @@ export class AppRouter extends RootRouter {
         sidebarProps={{
           collapsed: true,
           gap: "xs",
+        }}
+        appBarProps={{
+          items: [
+            { position: "left", type: "burger" },
+            {
+              position: "center",
+              element: (
+                <Text fw="bold" size="lg">
+                  Alepha DevTools
+                </Text>
+              ),
+            },
+          ],
         }}
       />
     ),

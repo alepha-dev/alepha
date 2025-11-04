@@ -20,7 +20,7 @@ export type {
   ActionProps,
   ActionSubmitButtonProps,
 } from "./components/buttons/ActionButton.tsx";
-export { default as Action } from "./components/buttons/ActionButton.tsx";
+export { default as ActionButton } from "./components/buttons/ActionButton.tsx";
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
@@ -32,11 +32,32 @@ export { default as ControlSelect } from "./components/form/ControlSelect.tsx";
 export { default as TypeForm } from "./components/form/TypeForm.tsx";
 export { default as AdminShell } from "./components/layout/AdminShell.tsx";
 export { default as AlephaMantineProvider } from "./components/layout/AlephaMantineProvider.tsx";
+export type {
+  AppBarBurger,
+  AppBarDark,
+  AppBarDivider,
+  AppBarElement,
+  AppBarItem,
+  AppBarLang,
+  AppBarProps,
+  AppBarSearch,
+  AppBarSpacer,
+} from "./components/layout/AppBar.tsx";
+export { default as AppBar } from "./components/layout/AppBar.tsx";
 export { default as Omnibar } from "./components/layout/Omnibar.tsx";
 export type {
+  SidebarAbstractItem,
+  SidebarButtonTheme,
+  SidebarDivider,
+  SidebarElement,
   SidebarItemProps,
   SidebarMenuItem,
+  SidebarNode,
   SidebarProps,
+  SidebarSearch,
+  SidebarSection,
+  SidebarSpacer,
+  SidebarTheme,
 } from "./components/layout/Sidebar.tsx";
 export { Sidebar } from "./components/layout/Sidebar.tsx";
 export type {
@@ -44,6 +65,7 @@ export type {
   DataTableProps,
 } from "./components/table/DataTable.tsx";
 export { default as DataTable } from "./components/table/DataTable.tsx";
+export * from "./constants/ui.ts";
 export { useDialog } from "./hooks/useDialog.ts";
 export { useToast } from "./hooks/useToast.ts";
 export * from "./RootRouter.ts";

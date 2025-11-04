@@ -44,6 +44,8 @@
   --mantine-color-gray-outline: var(--alepha-border) !important;
   --mantine-color-default: var(--alepha-elevated) !important;
   --mantine-spacing-xs: 8px;
+
+  --text-color: var(--alepha-text) !important;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

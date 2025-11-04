@@ -1,6 +1,7 @@
 import { NestedView, useEvents, useStore } from "@alepha/react";
 import {
   AppShell,
+  type AppShellFooterProps,
   type AppShellHeaderProps,
   type AppShellMainProps,
   type AppShellNavbarProps,
@@ -16,8 +17,11 @@ export interface AdminShellProps {
   appShellMainProps?: Partial<AppShellMainProps>;
   appShellHeaderProps?: Partial<AppShellHeaderProps>;
   appShellNavbarProps?: Partial<AppShellNavbarProps>;
+  appShellFooterProps?: Partial<AppShellFooterProps>;
   sidebarProps?: Partial<SidebarProps>;
   appBarProps?: Partial<AppBarProps>;
+  header?: ReactNode;
+  footer?: ReactNode;
   children?: ReactNode;
 }
 
@@ -44,28 +48,48 @@ const AdminShell = (props: AdminShellProps) => {
     [],
   );
 
+  // Default AppBar items with burger button on the left
+  const defaultAppBarItems = [
+    { position: "left" as const, type: "burger" as const },
+  ];
+
   return (
     <AppShell
       padding="md"
       header={{ height: 60 }}
-      navbar={{
-        width: collapsed ? { base: 72 } : { base: 300 },
-        breakpoint: "sm",
-        collapsed: { mobile: !opened },
-      }}
+      navbar={
+        props.sidebarProps !== undefined
+          ? {
+              width: collapsed ? { base: 72 } : { base: 300 },
+              breakpoint: "sm",
+              collapsed: { mobile: !opened },
+            }
+          : undefined
+      }
+      footer={props.footer ? { height: 60 } : undefined}
       {...props.appShellProps}
     >
       <AppShell.Header bg={ui.colors.surface} {...props.appShellHeaderProps}>
-        <AppBar {...props.appBarProps} />
+        {props.header ?? (
+          <AppBar items={defaultAppBarItems} {...props.appBarProps} />
+        )}
       </AppShell.Header>
 
-      <AppShell.Navbar bg={ui.colors.surface} {...props.appShellNavbarProps}>
-        <Sidebar collapsed={collapsed} {...props.sidebarProps} />
-      </AppShell.Navbar>
+      {props.sidebarProps !== undefined && (
+        <AppShell.Navbar bg={ui.colors.surface} {...props.appShellNavbarProps}>
+          <Sidebar collapsed={collapsed} {...props.sidebarProps} />
+        </AppShell.Navbar>
+      )}
 
       <AppShell.Main {...props.appShellMainProps}>
         {props.children ?? <NestedView />}
       </AppShell.Main>
+
+      {props.footer && (
+        <AppShell.Footer bg={ui.colors.surface} {...props.appShellFooterProps}>
+          {props.footer}
+        </AppShell.Footer>
+      )}
     </AppShell>
   );
 };

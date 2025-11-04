@@ -20,7 +20,7 @@ const Omnibar = (props: OmnibarProps) => {
         id: page.name,
         label: page.label ?? page.name,
         description: page.description,
-        onClick: () => router.go(page.name),
+        onClick: () => router.go(page.path ?? page.name),
         leftSection: page.icon,
       })),
     [],
@@ -30,6 +30,7 @@ const Omnibar = (props: OmnibarProps) => {
     <Spotlight
       actions={actions}
       shortcut={shortcut}
+      limit={10}
       searchProps={{
         leftSection: <IconSearch size={20} />,
         placeholder: searchPlaceholder,

@@ -40,7 +40,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useState } from "react";
-import { Action, Control, DarkModeButton } from "../../src";
+import { ActionButton, Control, DarkModeButton } from "../../src";
 
 const ExampleAction = () => {
   const router = useRouter();
@@ -78,13 +78,13 @@ const ExampleAction = () => {
         <Flex justify="space-between" align="center" mb="md">
           <Title order={1}>Action Component Examples</Title>
           <Flex gap="md" align="center">
-            <Action
+            <ActionButton
               href="/"
               variant="light"
               leftSection={<IconHome size={16} />}
             >
               Back to Home
-            </Action>
+            </ActionButton>
             <DarkModeButton mode="segmented" />
           </Flex>
         </Flex>
@@ -112,17 +112,21 @@ const ExampleAction = () => {
         </Text>
 
         <Group gap="md">
-          <Action href="/" icon={<IconHome />} tooltip="Navigate to home page">
+          <ActionButton
+            href="/"
+            icon={<IconHome />}
+            tooltip="Navigate to home page"
+          >
             Home
-          </Action>
-          <Action
+          </ActionButton>
+          <ActionButton
             href="/playground"
             leftSection={<IconSettings size={16} />}
             tooltip="Open the playground"
           >
             Playground
-          </Action>
-          <Action
+          </ActionButton>
+          <ActionButton
             href="/typeform"
             leftSection={<IconUser size={16} />}
             tooltip={{
@@ -132,15 +136,15 @@ const ExampleAction = () => {
             }}
           >
             TypeForm
-          </Action>
-          <Action
+          </ActionButton>
+          <ActionButton
             href="https://github.com"
             leftSection={<IconBrandGithub size={16} />}
             rightSection={<IconExternalLink size={14} />}
             tooltip="Opens in new tab"
           >
             GitHub
-          </Action>
+          </ActionButton>
         </Group>
 
         <Code block mt="md">
@@ -166,7 +170,7 @@ const ExampleAction = () => {
 
         <Stack gap="md">
           <Group gap="md">
-            <Action
+            <ActionButton
               onClick={() => {
                 setClickCount((prev) => prev + 1);
                 setLastAction(`Clicked! Count: ${clickCount + 1}`);
@@ -175,17 +179,17 @@ const ExampleAction = () => {
               variant="filled"
             >
               Sync Click (Count: {clickCount})
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               onClick={handleAsyncClick}
               leftSection={<IconRefresh size={16} />}
               variant="light"
             >
               Async Operation
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               onClick={async () => {
                 setLastAction("Downloading...");
                 await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -195,7 +199,7 @@ const ExampleAction = () => {
               variant="outline"
             >
               Download File
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -222,22 +226,22 @@ const ExampleAction = () => {
           <Control input={sampleForm.input.message} area />
 
           <Group gap="md">
-            <Action
+            <ActionButton
               form={sampleForm}
               leftSection={<IconCheck size={16} />}
               variant="filled"
               color="green"
             >
               Submit Form
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               form={sampleForm}
               leftSection={<IconUpload size={16} />}
               variant="light"
             >
               Save Draft
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -258,13 +262,13 @@ const ExampleAction = () => {
         </Text>
 
         <Group gap="md">
-          <Action
+          <ActionButton
             leftSection={<IconEdit size={16} />}
             onClick={() => setLastAction("Edit clicked")}
             variant="subtle"
             tooltip="Edit item"
           />
-          <Action
+          <ActionButton
             leftSection={<IconTrash size={16} />}
             onClick={() => setLastAction("Delete clicked")}
             variant="subtle"
@@ -276,13 +280,13 @@ const ExampleAction = () => {
               withArrow: true,
             }}
           />
-          <Action
+          <ActionButton
             leftSection={<IconSettings size={16} />}
             onClick={() => setLastAction("Settings clicked")}
             variant="filled"
             tooltip="Open settings"
           />
-          <Action
+          <ActionButton
             leftSection={<IconPlus size={16} />}
             onClick={() => setLastAction("Add clicked")}
             variant="light"
@@ -329,32 +333,32 @@ const ExampleAction = () => {
           </Text>
 
           <Group gap="md">
-            <Action
+            <ActionButton
               leftSection={<IconHome size={16} />}
               textVisibleFrom="sm"
               onClick={() => setLastAction("Home (responsive)")}
               variant="filled"
             >
               Home
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               leftSection={<IconUser size={16} />}
               textVisibleFrom="md"
               onClick={() => setLastAction("Profile (responsive)")}
               variant="light"
             >
               Profile
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               leftSection={<IconSettings size={16} />}
               textVisibleFrom="lg"
               onClick={() => setLastAction("Settings (responsive)")}
               variant="outline"
             >
               Settings
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -379,80 +383,98 @@ const ExampleAction = () => {
 
         <Stack gap="md">
           <Group gap="md">
-            <Action variant="filled" onClick={() => setLastAction("Filled")}>
+            <ActionButton
+              variant="filled"
+              onClick={() => setLastAction("Filled")}
+            >
               Filled
-            </Action>
-            <Action variant="light" onClick={() => setLastAction("Light")}>
+            </ActionButton>
+            <ActionButton
+              variant="light"
+              onClick={() => setLastAction("Light")}
+            >
               Light
-            </Action>
-            <Action variant="outline" onClick={() => setLastAction("Outline")}>
+            </ActionButton>
+            <ActionButton
+              variant="outline"
+              onClick={() => setLastAction("Outline")}
+            >
               Outline
-            </Action>
-            <Action variant="subtle" onClick={() => setLastAction("Subtle")}>
+            </ActionButton>
+            <ActionButton
+              variant="subtle"
+              onClick={() => setLastAction("Subtle")}
+            >
               Subtle
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               variant="transparent"
               onClick={() => setLastAction("Transparent")}
             >
               Transparent
-            </Action>
+            </ActionButton>
           </Group>
 
           <Group gap="md">
-            <Action
+            <ActionButton
               color="blue"
               variant="filled"
               onClick={() => setLastAction("Blue")}
             >
               Blue
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               color="green"
               variant="filled"
               onClick={() => setLastAction("Green")}
             >
               Green
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               color="red"
               variant="filled"
               onClick={() => setLastAction("Red")}
             >
               Red
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               color="yellow"
               variant="filled"
               onClick={() => setLastAction("Yellow")}
             >
               Yellow
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               color="grape"
               variant="filled"
               onClick={() => setLastAction("Grape")}
             >
               Grape
-            </Action>
+            </ActionButton>
           </Group>
 
           <Group gap="md">
-            <Action size="xs" onClick={() => setLastAction("Extra Small")}>
+            <ActionButton
+              size="xs"
+              onClick={() => setLastAction("Extra Small")}
+            >
               XS
-            </Action>
-            <Action size="sm" onClick={() => setLastAction("Small")}>
+            </ActionButton>
+            <ActionButton size="sm" onClick={() => setLastAction("Small")}>
               SM
-            </Action>
-            <Action size="md" onClick={() => setLastAction("Medium")}>
+            </ActionButton>
+            <ActionButton size="md" onClick={() => setLastAction("Medium")}>
               MD
-            </Action>
-            <Action size="lg" onClick={() => setLastAction("Large")}>
+            </ActionButton>
+            <ActionButton size="lg" onClick={() => setLastAction("Large")}>
               LG
-            </Action>
-            <Action size="xl" onClick={() => setLastAction("Extra Large")}>
+            </ActionButton>
+            <ActionButton
+              size="xl"
+              onClick={() => setLastAction("Extra Large")}
+            >
               XL
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -473,7 +495,7 @@ const ExampleAction = () => {
         </Text>
 
         <Stack gap="md">
-          <Action
+          <ActionButton
             href="/playground"
             leftSection={<IconArrowRight size={16} />}
             variant="gradient"
@@ -482,10 +504,10 @@ const ExampleAction = () => {
             fullWidth
           >
             Go to Playground
-          </Action>
+          </ActionButton>
 
           <Group gap="md">
-            <Action
+            <ActionButton
               onClick={async () => {
                 setLastAction("Processing payment...");
                 await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -498,16 +520,16 @@ const ExampleAction = () => {
               radius="xl"
             >
               Complete Payment
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Cancelled")}
               variant="subtle"
               color="gray"
               size="lg"
             >
               Cancel
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -536,14 +558,14 @@ const ExampleAction = () => {
 
         <Stack gap="md">
           <Group gap="md">
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Simple tooltip")}
               tooltip="This is a simple tooltip"
             >
               Simple Tooltip
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Colored tooltip")}
               tooltip={{
                 label: "This has a custom color",
@@ -553,9 +575,9 @@ const ExampleAction = () => {
               color="grape"
             >
               Colored Tooltip
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Positioned tooltip")}
               tooltip={{
                 label: "Tooltip on the right",
@@ -564,9 +586,9 @@ const ExampleAction = () => {
               }}
             >
               Right Position
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Delayed tooltip")}
               tooltip={{
                 label: "This tooltip has a delay",
@@ -576,11 +598,11 @@ const ExampleAction = () => {
               }}
             >
               Delayed Tooltip
-            </Action>
+            </ActionButton>
           </Group>
 
           <Group gap="md">
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Multiline tooltip")}
               tooltip={{
                 label: (
@@ -599,9 +621,9 @@ const ExampleAction = () => {
               variant="filled"
             >
               Rich Content
-            </Action>
+            </ActionButton>
 
-            <Action
+            <ActionButton
               leftSection={<IconRefresh size={16} />}
               onClick={() => setLastAction("Icon with tooltip")}
               tooltip={{
@@ -611,7 +633,7 @@ const ExampleAction = () => {
               }}
             />
 
-            <Action
+            <ActionButton
               onClick={() => setLastAction("Floating tooltip")}
               tooltip={{
                 label: "This tooltip floats",
@@ -622,7 +644,7 @@ const ExampleAction = () => {
               variant="outline"
             >
               Floating Offset
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -659,7 +681,7 @@ const ExampleAction = () => {
         <Stack gap="md">
           <Group gap="md">
             {/* Simple Menu */}
-            <Action
+            <ActionButton
               rightSection={<IconChevronDown size={14} />}
               menu={{
                 items: [
@@ -684,10 +706,10 @@ const ExampleAction = () => {
               }}
             >
               Simple Menu
-            </Action>
+            </ActionButton>
 
             {/* Menu with Labels */}
-            <Action
+            <ActionButton
               variant="light"
               rightSection={<IconChevronDown size={14} />}
               menu={{
@@ -720,10 +742,10 @@ const ExampleAction = () => {
               }}
             >
               Menu with Labels
-            </Action>
+            </ActionButton>
 
             {/* Icon-only menu (More options) */}
-            <Action
+            <ActionButton
               leftSection={<IconDotsVertical size={16} />}
               tooltip="More options"
               menu={{
@@ -793,7 +815,7 @@ const ExampleAction = () => {
         <Stack gap="md">
           <Group gap="md">
             {/* File Menu with Submenus */}
-            <Action
+            <ActionButton
               variant="filled"
               rightSection={<IconChevronDown size={14} />}
               menu={{
@@ -857,10 +879,10 @@ const ExampleAction = () => {
               }}
             >
               File Menu
-            </Action>
+            </ActionButton>
 
             {/* Share Menu with Nested Options */}
-            <Action
+            <ActionButton
               variant="light"
               color="blue"
               leftSection={<IconShare size={16} />}
@@ -911,7 +933,7 @@ const ExampleAction = () => {
               }}
             >
               Share
-            </Action>
+            </ActionButton>
           </Group>
 
           <Code block>
@@ -962,13 +984,21 @@ const ExampleAction = () => {
         </Text>
 
         <Group gap="md">
-          <Action disabled onClick={() => {}} tooltip="This button is disabled">
+          <ActionButton
+            disabled
+            onClick={() => {}}
+            tooltip="This button is disabled"
+          >
             Disabled
-          </Action>
-          <Action loading onClick={() => {}} tooltip="Currently loading...">
+          </ActionButton>
+          <ActionButton
+            loading
+            onClick={() => {}}
+            tooltip="Currently loading..."
+          >
             Loading
-          </Action>
-          <Action
+          </ActionButton>
+          <ActionButton
             disabled
             leftSection={<IconEdit size={16} />}
             onClick={() => {}}
