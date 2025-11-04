@@ -1,4 +1,4 @@
-import { $inject, Alepha, type TObject } from "@alepha/core";
+import { $inject, Alepha, createPagination, type TObject } from "@alepha/core";
 import {
   and,
   arrayContained,
@@ -31,7 +31,6 @@ import type {
   PgQueryWhere,
   PgQueryWhereOrSQL,
 } from "../interfaces/PgQueryWhere.ts";
-import type { Page } from "../schemas/pageSchema.ts";
 import { PgJsonQueryManager } from "./PgJsonQueryManager.ts";
 
 export class PgQueryManager {
@@ -508,22 +507,21 @@ export class PgQueryManager {
   /**
    * Create a pagination object.
    *
+   * @deprecated Use `createPagination` from @alepha/core instead.
+   * This method now delegates to the framework-level helper.
+   *
    * @param entities The entities to paginate.
    * @param limit The limit of the pagination.
    * @param offset The offset of the pagination.
+   * @param sort Optional sort metadata to include in response.
    */
-  public createPagination<T>(entities: T[], limit = 10, offset = 0): Page<T> {
-    return {
-      content: entities.slice(0, limit),
-      can: {
-        previous: offset > 0,
-        next: entities.length === limit + 1,
-      },
-      page: {
-        number: Math.floor(offset / limit),
-        size: limit,
-      },
-    };
+  public createPagination<T>(
+    entities: T[],
+    limit = 10,
+    offset = 0,
+    sort?: Array<{ column: string; direction: "asc" | "desc" }>,
+  ) {
+    return createPagination(entities, limit, offset, sort);
   }
 }
 

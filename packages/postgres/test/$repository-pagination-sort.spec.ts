@@ -96,8 +96,13 @@ const testPaginationSort = async (alepha: Alepha) => {
   expect(result6.content[0].name).toBe("Alice");
   expect(result6.content[1].name).toBe("Bob");
   expect(result6.page.totalElements).toBe(4);
-  expect(result6.can.next).toBe(true);
-  expect(result6.can.previous).toBe(false);
+  expect(result6.page.totalPages).toBe(2);
+  expect(result6.page.isFirst).toBe(true);
+  expect(result6.page.isLast).toBe(false);
+  expect(result6.page.sort?.sorted).toBe(true);
+  expect(result6.page.sort?.fields).toEqual([
+    { field: "name", direction: "asc" },
+  ]);
 
   // Test 7: Second page
   const result7 = await app.users.paginate(
@@ -109,8 +114,12 @@ const testPaginationSort = async (alepha: Alepha) => {
   expect(result7.content.length).toBe(2);
   expect(result7.content[0].name).toBe("Charlie");
   expect(result7.content[1].name).toBe("David");
-  expect(result7.can.next).toBe(false);
-  expect(result7.can.previous).toBe(true);
+  expect(result7.page.isFirst).toBe(false);
+  expect(result7.page.isLast).toBe(true);
+  expect(result7.page.sort?.sorted).toBe(true);
+  expect(result7.page.sort?.fields).toEqual([
+    { field: "name", direction: "asc" },
+  ]);
 
   // Test 8: Sort with spaces (should be trimmed)
   const result8 = await app.users.paginate({ sort: " role , -name " });

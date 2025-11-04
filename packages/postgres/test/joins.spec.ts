@@ -975,8 +975,8 @@ describe("Joins - Comprehensive Tests", () => {
     expect(page.content.length).toBe(2);
     expect(page.content[0].name).toBe("Alice");
     expect(page.content[0].city).toBeDefined();
-    expect(page.can.next).toBe(true);
-    expect(page.can.previous).toBe(false);
+    expect(page.page.isFirst).toBe(true);
+    expect(page.page.isLast).toBe(false);
   });
 
   test("paginate with nested joins", async ({ expect }) => {

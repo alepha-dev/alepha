@@ -552,13 +552,25 @@ export class RepositoryDescriptor<
 
     const [entities, countResult] = await Promise.all(tasks);
 
+    // Normalize orderBy to get sort metadata
+    let sortMetadata:
+      | Array<{ column: string; direction: "asc" | "desc" }>
+      | undefined;
+    if (orderBy) {
+      sortMetadata = this.queryManager.normalizeOrderBy(orderBy);
+    }
+
     const response = this.queryManager.createPagination<T>(
       entities,
       limit,
       offset,
+      sortMetadata,
     );
 
     response.page.totalElements = countResult;
+    if (countResult != null) {
+      response.page.totalPages = Math.ceil(countResult / limit);
+    }
 
     return response as Page<PgStatic<T, R>>;
   }
