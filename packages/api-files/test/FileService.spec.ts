@@ -7,7 +7,7 @@ import {
 } from "@alepha/bucket";
 import { AzureFileStorageProvider } from "@alepha/bucket-azure";
 import { Alepha, type Service } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../src";
 import { FileController } from "../src/controllers/FileController.ts";
@@ -31,8 +31,19 @@ const testFileServiceOperations = async (
 
   const assets = alepha.inject(Assets);
   const ctrl = alepha.inject(FileController);
+  const fs = alepha.inject(FileSystem);
 
   await alepha.start();
+
+  const createFile = (
+    textOrOpts: string | { text: string; name?: string; type?: string },
+    opts?: { name?: string; type?: string },
+  ) => {
+    if (typeof textOrOpts === "string") {
+      return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+    }
+    return fs.createFile(textOrOpts);
+  };
 
   await assets.images.upload(
     createFile("Hello World 1", {

@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { FileLike } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { $inject, type FileLike } from "@alepha/core";
+import { FileSystem } from "@alepha/file";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 export class MemoryFileStorageProvider implements FileStorageProvider {
   public readonly files: Record<string, FileLike> = {};
+  private readonly fileSystem = $inject(FileSystem);
 
   public async upload(
     bucketName: string,
@@ -14,7 +15,8 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   ): Promise<string> {
     fileId ??= this.createId();
 
-    this.files[`${bucketName}/${fileId}`] = createFile(file.stream(), {
+    this.files[`${bucketName}/${fileId}`] = this.fileSystem.createFile({
+      stream: file.stream(),
       name: file.name,
       type: file.type,
       size: file.size,

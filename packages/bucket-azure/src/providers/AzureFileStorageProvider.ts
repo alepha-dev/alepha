@@ -15,7 +15,7 @@ import {
   t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import {
   BlobServiceClient,
@@ -40,6 +40,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly time = $inject(DateTimeProvider);
+  protected readonly fileSystem = $inject(FileSystem);
   protected readonly containers: Record<string, ContainerClient> = {};
   protected readonly blobServiceClient: BlobServiceClient;
 
@@ -146,7 +147,8 @@ export class AzureFileStorageProvider implements FileStorageProvider {
       throw new FileNotFoundError("File not found - empty stream body");
     }
 
-    return createFile(blob.readableStreamBody, {
+    return this.fileSystem.createFile({
+      stream: blob.readableStreamBody,
       ...blob.metadata,
       size: blob.contentLength,
     });

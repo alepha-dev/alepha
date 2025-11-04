@@ -1,11 +1,12 @@
 import {
+  $inject,
   createDescriptor,
   Descriptor,
   type FileLike,
   KIND,
   type Service,
 } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { InvalidFileError } from "../errors/InvalidFileError.ts";
 import { FileStorageProvider } from "../providers/FileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "../providers/MemoryFileStorageProvider.ts";
@@ -293,6 +294,7 @@ export interface BucketFileOptions {
 
 export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
   public readonly provider = this.$provider();
+  private readonly fileSystem = $inject(FileSystem);
 
   public get name() {
     return this.options.name ?? `${this.config.propertyKey}`;
@@ -308,7 +310,7 @@ export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
     if (file instanceof File) {
       // our createFile is smarter than the browser's File constructor
       // by doing this, we can guess the MIME type and size!
-      file = createFile(file);
+      file = this.fileSystem.createFile({ file });
     }
 
     options = {

@@ -1,4 +1,5 @@
-import { createFile } from "@alepha/file";
+import { Alepha } from "@alepha/core";
+import { FileSystem } from "@alepha/file";
 import { expect } from "vitest";
 import { $bucket, FileNotFoundError, type FileStorageProvider } from "../src";
 
@@ -11,11 +12,18 @@ export class TestApp {
 
 const BUCKET_NAME = TEST_IMAGES_BUCKET;
 
+// Helper to create file system instance
+const getFileSystem = () => Alepha.create().inject(FileSystem);
+
 export const testUploadAndExistence = async (
   provider: FileStorageProvider,
 ): Promise<string> => {
   const content = "This is a test image.";
-  const file = createFile(content, { name: "test.jpg", type: "image/jpeg" });
+  const file = getFileSystem().createFile({
+    text: content,
+    name: "test.jpg",
+    type: "image/jpeg",
+  });
 
   const fileId = await provider.upload(BUCKET_NAME, file);
 
@@ -33,7 +41,8 @@ export const testDownloadAndMetadata = async (
   provider: FileStorageProvider,
 ): Promise<string> => {
   const content = "<h1>Hello Alepha</h1>";
-  const originalFile = createFile(content, {
+  const originalFile = getFileSystem().createFile({
+    text: content,
     name: "index.html",
     type: "text/html",
   });
@@ -56,7 +65,10 @@ export const testDownloadAndMetadata = async (
 export const testFileExistence = async (
   provider: FileStorageProvider,
 ): Promise<string> => {
-  const file = createFile("exists", { name: "exists.txt" });
+  const file = getFileSystem().createFile({
+    text: "exists",
+    name: "exists.txt",
+  });
   const fileId = await provider.upload(BUCKET_NAME, file);
   const fileExists = await provider.exists(BUCKET_NAME, fileId);
   expect(fileExists).toBe(true);
@@ -71,7 +83,10 @@ export const testNonExistentFile = async (provider: FileStorageProvider) => {
 export const testDeleteNonExistentFile = async (
   provider: FileStorageProvider,
 ) => {
-  const file = createFile("exists", { name: "exists.txt" });
+  const file = getFileSystem().createFile({
+    text: "exists",
+    name: "exists.txt",
+  });
   const fileId = await provider.upload(BUCKET_NAME, file);
   const fileExists = await provider.exists(BUCKET_NAME, fileId);
   expect(fileExists).toBe(true);
@@ -81,7 +96,10 @@ export const testDeleteNonExistentFile = async (
 };
 
 export const testDeleteFile = async (provider: FileStorageProvider) => {
-  const file = createFile("to be deleted", { name: "delete_me.txt" });
+  const file = getFileSystem().createFile({
+    text: "to be deleted",
+    name: "delete_me.txt",
+  });
   const fileId = await provider.upload(BUCKET_NAME, file);
 
   // Verify it exists before deleting
@@ -104,8 +122,9 @@ export const testNonExistentFileError = async (
 export const testUploadIntoBuckets = async (
   provider: FileStorageProvider,
 ): Promise<{ docId: string; imgId: string }> => {
-  const docFile = createFile("report", { name: "report.pdf" });
-  const imgFile = createFile("logo", { name: "logo.png" });
+  const fs = getFileSystem();
+  const docFile = fs.createFile({ text: "report", name: "report.pdf" });
+  const imgFile = fs.createFile({ text: "logo", name: "logo.png" });
 
   const docId = await provider.upload(TEST_DOCUMENTS_BUCKET, docFile);
   const imgId = await provider.upload(TEST_IMAGES_BUCKET, imgFile);
@@ -124,7 +143,11 @@ export const testFileStream = async (
   provider: FileStorageProvider,
 ): Promise<string> => {
   const content = "Streaming content test.";
-  const file = createFile(content, { name: "stream.txt", type: "text/plain" });
+  const file = getFileSystem().createFile({
+    text: content,
+    name: "stream.txt",
+    type: "text/plain",
+  });
 
   const fileId = await provider.upload(BUCKET_NAME, file);
   const stream = await provider.download(BUCKET_NAME, fileId);
@@ -139,7 +162,11 @@ export const testFileStream = async (
 };
 
 export const testEmptyFiles = async (provider: FileStorageProvider) => {
-  const emptyFile = createFile("", { name: "empty.txt", type: "text/plain" });
+  const emptyFile = getFileSystem().createFile({
+    text: "",
+    name: "empty.txt",
+    type: "text/plain",
+  });
 
   const fileId = await provider.upload(BUCKET_NAME, emptyFile);
   const downloadedFile = await provider.download(BUCKET_NAME, fileId);
@@ -151,7 +178,10 @@ export const testEmptyFiles = async (provider: FileStorageProvider) => {
 };
 
 export const testCustomFileId = async (provider: FileStorageProvider) => {
-  const file = createFile("custom id", { name: "custom.txt" });
+  const file = getFileSystem().createFile({
+    text: "custom id",
+    name: "custom.txt",
+  });
   const customFileId = "custom-file-id";
 
   const uploadedFileId = await provider.upload(BUCKET_NAME, file, customFileId);

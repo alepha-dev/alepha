@@ -455,7 +455,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
       expect(result.page.totalElements).toBe(3);
       expect(result.page.number).toBe(0);
       expect(result.page.size).toBe(10);
-      expect(result.can.next).toBe(false);
+      expect(result.page.isLast).toBe(true);
     });
 
     test("should paginate results", async ({ expect }) => {
@@ -465,7 +465,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
 
       expect(result.content).toHaveLength(2);
       expect(result.page.totalElements).toBe(3);
-      expect(result.can.next).toBe(true);
+      expect(result.page.isLast).toBe(false);
     });
 
     test("should filter by isActive", async ({ expect }) => {
@@ -1291,7 +1291,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
       // Get first page
       const { data: page1 } = await app.listUsers.fetch({ query: { size: 2 } });
       expect(page1.content).toHaveLength(2);
-      expect(page1.can.next).toBe(true);
+      expect(page1.page.isLast).toBe(false);
 
       // Delete a user
       await app.deleteUser.fetch({ params: { id: users[0].id } });

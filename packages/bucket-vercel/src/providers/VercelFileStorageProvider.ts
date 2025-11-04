@@ -17,7 +17,7 @@ import {
   t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
@@ -39,6 +39,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly time = $inject(DateTimeProvider);
+  protected readonly fileSystem = $inject(FileSystem);
   protected readonly stores: Set<string> = new Set();
   protected readonly vercelBlobApi = $inject(VercelBlobApi);
   protected readonly metadataService = $inject(FileMetadataService);
@@ -163,10 +164,10 @@ export class VercelFileStorageProvider implements FileStorageProvider {
       // Extract the actual content
       const content = buffer.subarray(contentStart);
 
-      return createFile(content, {
+      return this.fileSystem.createFile({
+        buffer: content,
         name: metadata.name,
         type: metadata.type,
-        size: content.length,
       });
     } catch (error) {
       if (error instanceof FileNotFoundError) {

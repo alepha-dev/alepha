@@ -8,7 +8,7 @@ import {
 } from "@alepha/bucket";
 import { AzureFileStorageProvider } from "@alepha/bucket-azure";
 import { Alepha, type Service } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../src";
 
@@ -29,8 +29,25 @@ const testStorageOperations = async (
     .with(AlephaApiFiles);
 
   const assets = alepha.inject(A);
+  const fs = alepha.inject(FileSystem);
 
   await alepha.start();
+
+  const createFile = (
+    textOrOpts:
+      | string
+      | Buffer
+      | { text: string; name?: string; type?: string },
+    opts?: { name?: string; type?: string },
+  ) => {
+    if (typeof textOrOpts === "string") {
+      return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+    }
+    if (Buffer.isBuffer(textOrOpts)) {
+      return fs.createFile({ buffer: textOrOpts, ...(opts || {}) });
+    }
+    return fs.createFile(textOrOpts);
+  };
 
   const blob = Buffer.from("Hello, World!");
 

@@ -1,6 +1,6 @@
 import { $bucket } from "@alepha/bucket";
 import { Alepha } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { StorageStatsController } from "../src/controllers/StorageStatsController.ts";
 import { FileService } from "../src/services/FileService.ts";
@@ -11,13 +11,28 @@ describe("StorageStatsController", () => {
     documents = $bucket({ name: "documents" });
   }
 
+  let createFile: (
+    textOrOpts: string | { text: string; name?: string; type?: string },
+    opts?: { name?: string; type?: string },
+  ) => any;
+
   const setup = async () => {
     const alepha = Alepha.create();
     const app = alepha.inject(App);
     const ctrl = alepha.inject(StorageStatsController);
     const service = alepha.inject(FileService);
+    const fs = alepha.inject(FileSystem);
     await alepha.start();
-    return { alepha, app, ctrl, service };
+    createFile = (
+      textOrOpts: string | { text: string; name?: string; type?: string },
+      opts?: { name?: string; type?: string },
+    ) => {
+      if (typeof textOrOpts === "string") {
+        return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+      }
+      return fs.createFile(textOrOpts);
+    };
+    return { alepha, app, ctrl, service, fs };
   };
 
   describe("getStats", () => {

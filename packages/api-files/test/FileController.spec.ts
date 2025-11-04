@@ -1,7 +1,7 @@
 import { $bucket } from "@alepha/bucket";
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { FileController } from "../src/controllers/FileController.ts";
 import { FileService } from "../src/services/FileService.ts";
@@ -12,14 +12,29 @@ describe("FileController", () => {
     documents = $bucket({ name: "documents" });
   }
 
+  let createFile: (
+    textOrOpts: string | { text: string; name?: string; type?: string },
+    opts?: { name?: string; type?: string },
+  ) => any;
+
   const setup = async () => {
     const alepha = Alepha.create();
     const app = alepha.inject(App);
     const ctrl = alepha.inject(FileController);
     const service = alepha.inject(FileService);
     const dtp = alepha.inject(DateTimeProvider);
+    const fs = alepha.inject(FileSystem);
     await alepha.start();
-    return { alepha, app, ctrl, service, dtp };
+    createFile = (
+      textOrOpts: string | { text: string; name?: string; type?: string },
+      opts?: { name?: string; type?: string },
+    ) => {
+      if (typeof textOrOpts === "string") {
+        return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+      }
+      return fs.createFile(textOrOpts);
+    };
+    return { alepha, app, ctrl, service, dtp, fs };
   };
 
   describe("findFiles", () => {

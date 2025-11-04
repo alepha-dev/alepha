@@ -13,7 +13,7 @@ import {
   type FileLike,
   t,
 } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -24,6 +24,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly metadataService = $inject(FileMetadataService);
+  protected readonly fileSystem = $inject(FileSystem);
 
   public options = {
     storagePath: this.alepha.isTest()
@@ -89,7 +90,8 @@ export class LocalFileStorageProvider implements FileStorageProvider {
       const contentSize = stats.size - contentStart;
 
       // create a FileLike object that streams only the content part!
-      return createFile(createReadStream(filePath, { start: contentStart }), {
+      return this.fileSystem.createFile({
+        stream: createReadStream(filePath, { start: contentStart }),
         name: metadata.name,
         type: metadata.type,
         size: contentSize,

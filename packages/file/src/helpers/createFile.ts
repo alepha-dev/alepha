@@ -54,10 +54,11 @@ export const createFileFromWebFile = (
     size?: number;
   } = {},
 ): FileLike => {
+  const name = options.name ?? source.name;
   return {
-    name: source.name,
-    type: source.type || options.type || getContentType(source.name),
-    size: source.size || options.size || 0,
+    name,
+    type: options.type ?? (source.type || getContentType(name)),
+    size: options.size ?? source.size ?? 0,
     lastModified: source.lastModified || Date.now(),
     stream: () => source.stream(),
     arrayBuffer: async (): Promise<ArrayBuffer> => {

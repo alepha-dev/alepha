@@ -1,15 +1,17 @@
 import { Alepha } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, expect, test } from "vitest";
 import { FileMetadataService } from "../src";
 
 describe("FileMetadataService", () => {
   const alepha = Alepha.create();
   const service = alepha.inject(FileMetadataService);
+  const fileSystem = alepha.inject(FileSystem);
 
   describe("encodeMetadata", () => {
     test("should encode file metadata into header and metadata buffers", () => {
-      const file = createFile("test content", {
+      const file = fileSystem.createFile({
+        text: "test content",
         name: "test.txt",
         type: "text/plain",
       });
@@ -46,7 +48,8 @@ describe("FileMetadataService", () => {
     });
 
     test("should handle special characters in file names", () => {
-      const file = createFile("content", {
+      const file = fileSystem.createFile({
+        text: "content",
         name: "файл с эмодзи 🚀.txt",
         type: "text/plain",
       });
@@ -59,7 +62,8 @@ describe("FileMetadataService", () => {
 
     test("should handle long file names", () => {
       const longName = `${"a".repeat(1000)}.txt`;
-      const file = createFile("content", {
+      const file = fileSystem.createFile({
+        text: "content",
         name: longName,
         type: "text/plain",
       });
@@ -220,7 +224,8 @@ describe("FileMetadataService", () => {
 
   describe("createFileBuffer", () => {
     test("should create complete buffer with metadata and content", () => {
-      const file = createFile("Hello World", {
+      const file = fileSystem.createFile({
+        text: "Hello World",
         name: "hello.txt",
         type: "text/plain",
       });
@@ -279,7 +284,8 @@ describe("FileMetadataService", () => {
 
   describe("integration with encoding/decoding", () => {
     test("should encode and decode round-trip successfully", async () => {
-      const originalFile = createFile("Round trip test content", {
+      const originalFile = fileSystem.createFile({
+        text: "Round trip test content",
         name: "roundtrip.txt",
         type: "text/plain",
       });

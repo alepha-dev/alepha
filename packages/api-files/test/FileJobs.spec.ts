@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { FileService } from "../src";
 import { FileJobs } from "../src/jobs/FileJobs.ts";
@@ -10,6 +10,17 @@ describe("FileJobRegistry", () => {
   const jobs = alepha.inject(FileJobs);
   const service = alepha.inject(FileService);
   const dtp = alepha.inject(DateTimeProvider);
+  const fs = alepha.inject(FileSystem);
+
+  const createFile = (
+    textOrOpts: string | { text: string; name?: string; type?: string },
+    opts?: { name?: string; type?: string },
+  ) => {
+    if (typeof textOrOpts === "string") {
+      return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+    }
+    return fs.createFile(textOrOpts);
+  };
 
   it("should remove expired files", { retry: 2 }, async () => {
     const file = createFile("");
