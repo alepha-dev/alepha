@@ -1,7 +1,7 @@
 import { useActive, useRouter } from "@alepha/react";
+import { ActionButton } from "@alepha/ui";
+import type { ButtonProps } from "@mantine/core";
 import {
-  Button,
-  type ButtonProps,
   Divider,
   Flex,
   SimpleGrid,
@@ -48,14 +48,13 @@ const Content = (props: ModuleProps) => {
             <HtmlContent html={props.content} />
           </Typography>
           <Flex>
-            <Button
-              leftSection={<IconEdit />}
+            <ActionButton
+              icon={<IconEdit />}
               variant={"subtle"}
-              component={"a"}
               href={`https://github.com/${repository.name}/edit/main/${props.path}`}
             >
               Edit page on GitHub
-            </Button>
+            </ActionButton>
           </Flex>
           <Divider />
           <BottomNavButton name={props.name} />
@@ -161,16 +160,16 @@ const NavButton = (
   },
 ) => {
   const { href, name, isRight, ...rest } = props;
-  const { isPending, anchorProps } = useActive(href);
+  const { isPending } = useActive(href);
   return (
-    <Button
+    <ActionButton
       flex={1}
       variant={isRight ? "outline" : "subtle"}
       size={"xl"}
       loading={isPending}
       justify={isRight ? "end" : "start"}
+      href={href}
       {...rest}
-      {...anchorProps}
     >
       <Flex gap={"md"} align={"center"}>
         {!isRight && <IconCaretLeft />}
@@ -182,7 +181,7 @@ const NavButton = (
         </Flex>
         {isRight && <IconCaretRight />}
       </Flex>
-    </Button>
+    </ActionButton>
   );
 };
 

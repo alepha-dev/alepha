@@ -93,21 +93,11 @@ const HeroSectionMessage = () => {
       <Title
         order={1}
         style={{
-          fontSize: "clamp(2.5rem, 5vw, 4.5rem)", // Responsive font size
-          fontWeight: 900,
           letterSpacing: "-1.5px",
         }}
         mb="md"
       >
-        Build with{" "}
-        <Text
-          component="span"
-          variant="gradient"
-          gradient={{ from: "gray", to: "green" }}
-          inherit
-        >
-          Clarity.
-        </Text>
+        Build Type-Safe Applications
       </Title>
 
       <Text c="dimmed" size="xl" maw={600} mb="xl">

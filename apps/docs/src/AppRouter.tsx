@@ -25,6 +25,7 @@ export class AppRouter {
   home = $page({
     path: "/",
     component: Home,
+    label: "Home",
     static: true,
     head: {
       title: "Home",
@@ -43,6 +44,7 @@ export class AppRouter {
     static: {
       entries: docs.map((it) => ({
         params: { slug: it.slug },
+        label: it.name,
       })),
     },
     resolve: async ({ params }) => {

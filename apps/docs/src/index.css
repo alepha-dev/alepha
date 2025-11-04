@@ -1,75 +1,28 @@
-@import "@mantine/core/styles.css";
-@import "@mantine/nprogress/styles.css";
-@import "@mantine/spotlight/styles.css";
+@import "@alepha/ui/styles.css";
 @import "highlight.js/styles/github.css";
 @import "./styles/code-github-dark.css";
+@import "../assets/fonts/stylesheet.css";
 
 :root {
-  --primary-background-color: #fff;
-  --primary-background-color-dark: #0d1117;
-
-  --layout-bg-color-dark: rgba(0, 0, 0, 0.5);
-  --layout-bg-color: rgba(0, 0, 0, 0);
-  --layout-bg-filter: blur(16px);
-
-  --layout-border-color: var(--mantine-color-gray-4);
-  --layout-border-color-dark: var(--mantine-color-gray-7);
+  --mantine-font-family: "wotfardregular", system-ui, sans-serif;
+  --mantine-font-family-heading: "wotfardregular", system-ui, sans-serif;
+  --mantine-font-family-monospace: "Fira Code", monospace;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
-
-.background-primary {
-  background-color: var(--primary-background-color);
-}
-
-.mantine-AppShell-root header {
-  backdrop-filter: var(--layout-bg-filter);
-  border-bottom: 1px solid var(--layout-border-color);
-  background-color: var(--layout-bg-color);
-}
-.mantine-AppShell-root nav {
-  backdrop-filter: var(--layout-bg-filter);
-  background-color: transparent;
-  border-right: 1px solid rgb(0, 0, 0, 0.1);
-}
-.mantine-AppShell-root footer {
-  backdrop-filter: var(--layout-bg-filter);
-  background-color: transparent;
-  border-top: 1px solid var(--layout-border-color);
-}
 
 #root .mantine-Typography-root {
   text-align: justify;
   line-height: 32px;
 }
 
-#root pre a {
-  color: var(--mantine-color-blue-8);
+#root .mantine-Typography-root a {
+  color: var(--mantine-color-blue-6);
   text-decoration: none;
 }
-#root pre {
-  margin-top: 0;
-  padding: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  font-size: var(--mantine-font-size-sm);
-}
-#root code {
-  font-family: var(--mantine-font-family-monospace), serif;
-}
-#root blockquote {
-  border-left: 4px solid var(--mantine-color-text);
-  padding-left: 16px;
-  font-size: var(--mantine-font-size-sm);
-}
-#root .mantine-Alert-root {
-  backdrop-filter: blur(2px);
-  border: 1px solid var(--layout-border-color);
-}
-#root blockquote a {
-  color: var(--mantine-color-blue-5);
-}
-#root .mantine-Alert-root a {
-  color: var(--mantine-color-blue-5);
+
+#root .mantine-Typography-root a:hover {
+  text-decoration: underline;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
@@ -78,105 +31,47 @@
   box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
   border-radius: 0;
 }
+
 #root .mantine-TableOfContents-root button[data-active="true"] {
   box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
   border-radius: 0;
 }
-#root .mantine-NavLink-root {
-  box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
-  border-radius: 0;
-}
-#root .mantine-NavLink-root[data-active="true"] {
-  box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
-  border-radius: 0;
-}
-
-/* ------------------------------------------------------------------------------------------------------------------ */
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  text-shadow: 2px 5px 0 rgba(0, 0, 0, 0.05);
-}
-
-h1::after,
-h2::after,
-h3::after,
-h4::after,
-h5::after,
-h6::after {
-  content: "";
-  display: block;
-  width: 32px;
-  height: 1px;
-  background: var(--mantine-color-text);
-}
-
-/* ------------------------------------------------------------------------------------------------------------------ */
 
 html[data-mantine-color-scheme="dark"] {
-  body {
-    background-color: var(--primary-background-color-dark);
-  }
-  .background-primary {
-    background-color: var(--primary-background-color-dark);
-  }
   #root .mantine-TableOfContents-root button[data-active="true"] {
     box-shadow: -2px 0 0 0 var(--mantine-color-gray-1);
   }
-  #root pre {
-    box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
-    background-color: var(--primary-background-color-dark);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  #root .mantine-Alert-root {
-    border: 1px solid var(--layout-border-color-dark);
-  }
-  .mantine-AppShell-root header {
-    backdrop-filter: var(--layout-bg-filter);
-    background-color: var(--layout-bg-color-dark);
-    border-bottom: 1px solid var(--layout-border-color-dark);
-    box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
-  }
-  .mantine-AppShell-root nav {
-    backdrop-filter: var(--layout-bg-filter);
-    background-color: transparent;
-    border-right: 1px solid var(--layout-border-color-dark);
-  }
-  .mantine-AppShell-root footer {
-    backdrop-filter: var(--layout-bg-filter);
-    background-color: var(--layout-bg-color-dark);
-    border-top: 1px solid var(--layout-border-color-dark);
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    text-shadow: 2px 5px 0px rgba(0, 0, 0, 0.3);
-  }
-
-  /* ------------------------------------------------------------------------------------------------------------------ */
-
   #root .mantine-TableOfContents-root button {
     box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
   }
   #root .mantine-TableOfContents-root button[data-active="true"] {
     box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
   }
-  #root .mantine-NavLink-root {
-    box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
-  }
-  #root .mantine-NavLink-root[data-active="true"] {
-    box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
-  }
+}
 
-  /* ------------------------------------------------------------------------------------------------------------------ */
+/* -------------------------------------------------------------------------------------------------- */
+
+#root code {
+  font-family: var(--mantine-font-family-monospace), serif;
+}
+
+#root pre {
+  margin-top: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: var(--mantine-font-size-sm);
+  padding: var(--mantine-spacing-sm);
+}
+
+#root pre code {
+  padding: var(--mantine-spacing-sm);
+}
+
+html[data-mantine-color-scheme="dark"] {
+  #root pre {
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
+    background-color: var(--alepha-background);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

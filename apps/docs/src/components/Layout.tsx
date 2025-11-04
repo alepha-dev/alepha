@@ -1,108 +1,163 @@
-import { NestedView, useEvents, useRouterState } from "@alepha/react";
+import { ClientOnly, useRouter, useRouterState } from "@alepha/react";
+import { useI18n } from "@alepha/react-i18n";
 import {
-  AppShell,
-  ColorSchemeScript,
-  Flex,
-  MantineProvider,
-  Text,
-} from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import { NavigationProgress, nprogress } from "@mantine/nprogress";
-import { theme } from "../config/theme.ts";
+  AdminShell,
+  AlephaMantineProvider,
+  type SidebarNode,
+} from "@alepha/ui";
+import type { AdminShellProps } from "@alepha/ui/src/components/layout/AdminShell.tsx";
+import { ui } from "@alepha/ui/src/constants/ui.ts";
+import { Flex, Text } from "@mantine/core";
+import {
+  IconHeartHandshake,
+  IconMap2,
+  IconPackage,
+  IconRobot,
+} from "@tabler/icons-react";
+import { docs } from "../config/docs.ts";
+import { iconByName } from "../config/icons.ts";
 import Header from "./Header.tsx";
-import Sidebar from "./Sidebar.tsx";
 
 const Layout = () => {
-  useEvents(
-    {
-      "react:transition:begin": () => {
-        nprogress.start();
-      },
-      "react:transition:end": () => {
-        nprogress.complete();
-      },
-    },
-    [],
-  );
-
   return (
-    <>
-      <ColorSchemeScript defaultColorScheme="dark" />
-      <MantineProvider defaultColorScheme="dark" theme={theme.mantine}>
-        <NavigationProgress />
-        <LayoutContent />
-      </MantineProvider>
-    </>
+    <AlephaMantineProvider
+      mantine={{ defaultColorScheme: "dark" }}
+      colorSchemeScript={{ defaultColorScheme: "dark" }}
+    >
+      <LayoutContent />
+    </AlephaMantineProvider>
   );
 };
 
 export default Layout;
 
 const LayoutContent = () => {
-  const [opened, { toggle }] = useDisclosure();
-  const router = useRouterState();
-  const noSidebar = router.layers.slice(-1)[0]?.route?.sidebar !== true;
+  const { layers } = useRouterState();
+  const noSidebar = layers.slice(-1)[0]?.route?.sidebar !== true;
+  const router = useRouter();
+  const { l } = useI18n();
 
-  const header = (
-    <AppShell.Header>
-      <Header opened={opened} toggle={toggle} withBurger={!noSidebar} />
-    </AppShell.Header>
-  );
+  const sidebarMenu: SidebarNode[] = [
+    {
+      label: "Guides",
+      icon: <IconMap2 />,
+      children: docs
+        .filter((it) => it.category === "guides")
+        .map((doc) => ({
+          label: (
+            <Text size={"sm"} fw={"light"}>
+              {doc.name
+                .replace("@", "")
+                .replaceAll("-", "/")
+                .replace("Alepha", "")}
+            </Text>
+          ),
+          icon: iconByName(doc.name),
+          href: `/docs/${doc.slug}`,
+        })),
+    },
+    {
+      label: "Core Concepts",
+      icon: <IconHeartHandshake />,
+      children: docs
+        .filter((it) => it.category === "concepts")
+        .map((doc) => ({
+          label: (
+            <Text size={"sm"} fw={"light"}>
+              {doc.name
+                .replace("@", "")
+                .replaceAll("-", "/")
+                .replace("Alepha", "")}
+            </Text>
+          ),
+          icon: iconByName(doc.name),
+          href: `/docs/${doc.slug}`,
+        })),
+    },
+    {
+      label: "Packages",
+      icon: <IconPackage />,
+      children: docs
+        .filter((it) => it.category === "packages")
+        .map((doc) => ({
+          label: (
+            <Text size={"sm"} fw={"light"}>
+              {doc.name
+                .replace("@", "")
+                .replaceAll("-", "/")
+                .replace("Alepha", "")}
+            </Text>
+          ),
+          icon: iconByName(doc.name),
+          href: `/docs/${doc.slug}`,
+        })),
+    },
+    {
+      label: "LLM",
+      icon: <IconRobot />,
+      href: router.base("/llms.txt"),
+    },
+  ];
 
   const footer = (
-    <AppShell.Footer>
-      <Flex justify={"space-between"} align={"center"} h={"100%"} px={"xs"}>
-        <Flex flex={1} justify={"flex-start"}>
-          <Text size={"xs"} c={"dimmed"}>
-            Alepha Docs
-          </Text>
-        </Flex>
-        <Flex justify={"flex-end"}>
-          <Text size={"xs"} c={"dimmed"}>
-            {`Last update - ${import.meta.env.VITE_BUILD_DATE.split("T")[0]}`}
-          </Text>
-        </Flex>
+    <Flex justify={"space-between"} align={"center"} h={"100%"} px={"md"}>
+      <Flex flex={1} justify={"flex-start"}>
+        <Text size={"xs"} c={"dimmed"}>
+          alepha.dev documentation
+        </Text>
       </Flex>
-    </AppShell.Footer>
+      <Flex justify={"flex-end"}>
+        <Text size={"xs"} c={"dimmed"}>
+          {"updated "}
+          <ClientOnly>
+            {l(import.meta.env.VITE_BUILD_DATE.split("T")[0], {
+              date: "fromNow",
+            })}
+          </ClientOnly>
+        </Text>
+      </Flex>
+    </Flex>
   );
+
+  const header = <Header />;
+
+  const adminShellProps: AdminShellProps = {
+    appShellProps: {
+      withBorder: false,
+      padding: "md",
+      footer: { height: 32 },
+    },
+    appShellFooterProps: {
+      bg: ui.colors.transparent,
+      style: {
+        backdropFilter: "blur(10px)",
+      },
+    },
+    appShellNavbarProps: {
+      bg: ui.colors.transparent,
+    },
+    appShellHeaderProps: {
+      bg: ui.colors.transparent,
+      style: {
+        backdropFilter: "blur(20px)",
+      },
+    },
+    sidebarProps: {
+      menu: sidebarMenu,
+    },
+    header: header,
+    footer: footer,
+  };
 
   if (noSidebar) {
     return (
-      <AppShell
-        padding="md"
-        withBorder={false}
-        header={{ height: theme.headerHeight }}
-        footer={{ height: theme.footerHeight }}
-      >
-        {header}
-        <AppShell.Main mih={"auto"}>
-          <NestedView />
-        </AppShell.Main>
-        {footer}
-      </AppShell>
+      <AdminShell
+        {...adminShellProps}
+        sidebarProps={undefined}
+        footer={undefined}
+      />
     );
   }
 
-  return (
-    <AppShell
-      padding="md"
-      withBorder={false}
-      header={{ height: theme.headerHeight }}
-      footer={{ height: theme.footerHeight }}
-      navbar={{
-        width: theme.sidebarWidth,
-        breakpoint: theme.sidebarBreakpoint,
-        collapsed: { mobile: !opened },
-      }}
-    >
-      {header}
-      <AppShell.Navbar>
-        <Sidebar toggle={toggle} />
-      </AppShell.Navbar>
-      <AppShell.Main mih={"auto"}>
-        <NestedView />
-      </AppShell.Main>
-      {footer}
-    </AppShell>
-  );
+  return <AdminShell {...adminShellProps} />;
 };
