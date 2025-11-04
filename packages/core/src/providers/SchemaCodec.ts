@@ -1,4 +1,4 @@
-import type { Static, StaticDecode, StaticEncode, TSchema } from "typebox";
+import type { StaticDecode, StaticEncode, TSchema } from "typebox";
 import { Compile, type Validator } from "typebox/compile";
 import Value from "typebox/value";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
@@ -47,7 +47,7 @@ export abstract class SchemaCodec {
     const newValue = this.beforeDecode(schema, value);
 
     try {
-      return this.validator(schema).Decode(newValue) as Static<T>;
+      return this.validator(schema).Decode(newValue);
     } catch (error: any) {
       if (error.cause?.errors?.[0]) {
         throw new TypeBoxError(error.cause.errors[0]);

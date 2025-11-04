@@ -23,8 +23,8 @@ export interface SidebarProps {
   onSearchClick?: () => void;
   theme?: SidebarTheme;
   flexProps?: Partial<FlexProps>;
-
   collapsed?: boolean;
+  gap?: MantineBreakpoint;
 }
 
 export const Sidebar = (props: SidebarProps) => {
@@ -100,6 +100,7 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const padding = "md";
+  const gap = props.gap;
   const menu =
     props.menu ??
     (router.concretePages.map((page) => ({
@@ -117,13 +118,14 @@ export const Sidebar = (props: SidebarProps) => {
       className={"overflow-auto"}
       {...props.flexProps}
     >
-      <Flex px={padding} direction={"column"}>
+      <Flex gap={gap} px={padding} direction={"column"}>
         {top.map((item, index) => renderNode(item, index))}
         {menu
           .filter((it) => it.position === "top")
           .map((item, index) => renderNode(item, index + top.length))}
       </Flex>
       <Flex
+        gap={gap}
         px={padding}
         direction={"column"}
         flex={1}
@@ -133,7 +135,7 @@ export const Sidebar = (props: SidebarProps) => {
           .filter((it) => !it.position)
           .map((item, index) => renderNode(item, index))}
       </Flex>
-      <Flex px={padding} direction={"column"}>
+      <Flex gap={gap} px={padding} direction={"column"}>
         {bottom.map((item, index) => renderNode(item, index))}
         {menu
           .filter((it) => it.position === "bottom")

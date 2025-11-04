@@ -21,6 +21,10 @@ export class AppRouter extends RootRouter {
             backdropFilter: "blur(10px)",
           },
         }}
+        sidebarProps={{
+          collapsed: true,
+          gap: "xs",
+        }}
       />
     ),
   });

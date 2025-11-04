@@ -30,7 +30,10 @@ declare module "@alepha/core" {
 
 const AdminShell = (props: AdminShellProps) => {
   const [opened, setOpened] = useStore("alepha.ui.sidebar.opened");
-  const [collapsed, setCollapsed] = useStore("alepha.ui.sidebar.collapsed");
+  const [collapsed] = useStore(
+    "alepha.ui.sidebar.collapsed",
+    props.sidebarProps?.collapsed,
+  );
 
   useEvents(
     {
