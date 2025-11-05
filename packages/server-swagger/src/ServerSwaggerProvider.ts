@@ -84,7 +84,10 @@ export class ServerSwaggerProvider {
   ): OpenAPIV3.Document {
     const openApi: OpenAPIV3.Document = {
       openapi: "3.0.0",
-      info: doc.info,
+      info: doc.info ?? {
+        title: "API Documentation",
+        version: "1.0.0",
+      },
       paths: {},
       components: {},
     };

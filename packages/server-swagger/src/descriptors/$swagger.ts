@@ -5,13 +5,13 @@ import type { OpenAPIV3 } from "openapi-types";
  * Create a new OpenAPI.
  */
 export const $swagger = (
-  options: SwaggerDescriptorOptions,
+  options: SwaggerDescriptorOptions = {},
 ): SwaggerDescriptor => {
   return createDescriptor(SwaggerDescriptor, options);
 };
 
 export interface SwaggerDescriptorOptions {
-  info: OpenAPIV3.InfoObject;
+  info?: OpenAPIV3.InfoObject;
 
   /**
    * @default: "/docs"
