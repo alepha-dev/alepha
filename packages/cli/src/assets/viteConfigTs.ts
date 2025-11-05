@@ -1,9 +1,11 @@
-export const viteConfigTs = `
+export const viteConfigTs = (
+  serverEntry?: string,
+) => `
 import { viteAlepha } from "alepha/vite";
 
 export default {
   plugins: [
-    viteAlepha(),
+    viteAlepha(${serverEntry ? `{ serverEntry: "${serverEntry}" }` : ""}),
   ],
   test: {
     globals: true,

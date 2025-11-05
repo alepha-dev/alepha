@@ -298,7 +298,7 @@ export class ReactServerProvider implements Configurable {
       const { url, reply, query, params } = serverRequest;
       const template = await templateLoader();
       if (!template) {
-        throw new AlephaError("Template not found");
+        throw new AlephaError("Missing template for SSR rendering");
       }
 
       this.log.trace("Rendering page", {

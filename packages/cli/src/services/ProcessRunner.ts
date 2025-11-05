@@ -20,6 +20,7 @@ export class ProcessRunner {
    * Execute a command using npx with inherited stdio.
    *
    * @param command - The command to execute (will be passed to npx)
+   * @param env - Optional environment variables to set for the command
    * @returns Promise that resolves when the process exits
    *
    * @example
@@ -28,12 +29,19 @@ export class ProcessRunner {
    * await runner.exec("tsx watch src/index.ts");
    * ```
    */
-  public async exec(command: string): Promise<void> {
+  public async exec(
+    command: string,
+    env: Record<string, string> = {},
+  ): Promise<void> {
     this.log.debug(`Executing command: npx ${command}`, { cwd: process.cwd() });
 
     const prog = spawn("npx", command.split(" "), {
       stdio: "inherit",
       cwd: process.cwd(),
+      env: {
+        ...process.env,
+        ...env,
+      },
     });
 
     await new Promise<void>((resolve) =>

@@ -997,6 +997,7 @@ __metadata:
     tsdown: "npm:^0.16.0"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.1.12"
+    vite-bundle-analyzer: "npm:^1.2.3"
   peerDependencies:
     vite: "*"
   peerDependenciesMeta:

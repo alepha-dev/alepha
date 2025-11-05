@@ -26,19 +26,21 @@ const getClientEntry = async (
 /**
  * Find server entry file path.
  */
-const getServerEntry = async (root = process.cwd()): Promise<string> => {
-  // not a good idea to rely on package.json main field, it can create confusion
-  // const pkgPath = join(root, "package.json");
-  // try {
-  //   const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-  //   if (pkg.main) {
-  //     const mainPath = join(root, pkg.main);
-  //     await access(mainPath);
-  //     return mainPath.replace(/\\/g, "/");
-  //   }
-  // } catch {
-  //   // continue to next step
-  // }
+const getServerEntry = async (
+  root = process.cwd(),
+  explicitEntry?: string,
+): Promise<string> => {
+  if (explicitEntry) {
+    const explicitPath = join(root, explicitEntry);
+    try {
+      await access(explicitPath);
+      return explicitPath.replace(/\\/g, "/");
+    } catch {
+      throw new AlephaError(
+        `Explicit server entry file "${explicitEntry}" not found.`,
+      );
+    }
+  }
 
   const maybeEntry = [
     "src/index.server.ts",
@@ -63,9 +65,7 @@ const getServerEntry = async (root = process.cwd()): Promise<string> => {
     return clientEntry;
   }
 
-  throw new AlephaError(
-    `Could not find a server entry file. Please declare your server entry in package.json "main" field.`,
-  );
+  throw new AlephaError(`Could not find a server entry file.`);
 };
 
 /**

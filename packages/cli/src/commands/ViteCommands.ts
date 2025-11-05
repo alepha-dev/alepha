@@ -36,21 +36,22 @@ export class ViteCommands {
   public readonly dev = $command({
     name: "dev",
     description: "Run the project in development mode",
-    handler: async () => {
+    args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
+    handler: async ({ args }) => {
       const root = process.cwd();
       await this.ensureTsConfig(root);
-      const entry = await boot.getServerEntry(root);
+      const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
       try {
         await access(join(root, "index.html"));
       } catch {
         this.log.trace("No index.html found, running entry file with tsx");
-        await this.runner.exec(`tsx watch ${entry}`);
-        return;
+        //await this.runner.exec(`tsx watch ${entry}`);
+        //return;
       }
 
-      const configPath = await this.configPath();
+      const configPath = await this.configPath(root, args ? entry : undefined);
       this.log.trace("Vite config found", { configPath });
       await this.runner.exec(`vite -c=${configPath}`);
     },
@@ -59,12 +60,29 @@ export class ViteCommands {
   public readonly build = $command({
     name: "build",
     description: "Build the project for production",
+    args: t.optional(
+      t.text({ title: "entry", description: "Filepath to build" }),
+    ),
     flags: t.object({
-      lib: t.optional(t.boolean()),
-      config: t.optional(t.text({ aliases: ["c"] })),
+      lib: t.optional(
+        t.boolean({
+          description: "Build project as a library",
+        }),
+      ),
+      config: t.optional(
+        t.text({ aliases: ["c"], description: "Path to config file" }),
+      ),
+      stats: t.optional(
+        t.boolean({
+          description: "Generate build stats report",
+        }),
+      ),
     }),
-    handler: async ({ flags }) => {
-      await this.ensureTsConfig();
+    handler: async ({ flags, args }) => {
+      const root = process.cwd();
+      await this.ensureTsConfig(root);
+      const entry = await boot.getServerEntry(root, args);
+      this.log.trace("Entry file found", { entry });
 
       await rm("dist", { recursive: true, force: true });
 
@@ -75,8 +93,14 @@ export class ViteCommands {
         return;
       }
 
-      const configPath = await this.configPath();
-      await this.runner.exec(`vite build -c=${configPath}`);
+      const configPath = await this.configPath(root, args ? entry : undefined);
+
+      const env: Record<string, string> = {};
+      if (flags.stats) {
+        env.ALEPHA_BUILD_STATS = "true";
+      }
+
+      await this.runner.exec(`vite build -c=${configPath}`, env);
     },
   });
 
@@ -102,13 +126,19 @@ export class ViteCommands {
     }
   }
 
-  protected async configPath(root = process.cwd()): Promise<string> {
+  protected async configPath(
+    root = process.cwd(),
+    serverEntry?: string,
+  ): Promise<string> {
     try {
       const viteConfigPath = join(root, "vite.config.ts");
       await access(viteConfigPath);
       return viteConfigPath;
     } catch {
-      return this.runner.writeConfigFile("vite.config.ts", viteConfigTs);
+      return this.runner.writeConfigFile(
+        "vite.config.ts",
+        viteConfigTs(serverEntry),
+      );
     }
   }
 }
