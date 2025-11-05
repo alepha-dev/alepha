@@ -1,17 +1,21 @@
 import type { UserConfig } from "vite";
+import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
 import { type ViteCompressOptions, viteCompress } from "../viteCompress.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildClientOptions {
   dist: string;
-  html: string;
 
   /**
+   * If true, precompress assets using gzip and brotli compression.
+   *
    * @default false
    */
   precompress?: ViteCompressOptions | boolean;
 
   /**
+   * If true, prerender all static routes found in the $pages directory.
+   *
    * @default false
    */
   prerender?: boolean;
@@ -23,7 +27,15 @@ export interface BuildClientOptions {
     hostname: string;
   };
 
+  /**
+   * Override Vite config options.
+   */
   config?: UserConfig;
+
+  /**
+   * If true, generate build stats report.
+   */
+  stats?: boolean;
 }
 
 export const buildClient = async (opts: BuildClientOptions) => {
@@ -36,6 +48,14 @@ export const buildClient = async (opts: BuildClientOptions) => {
       : {}
     : undefined;
 
+  if (opts.stats) {
+    plugins.push(
+      viteAnalyser({
+        analyzerMode: "static",
+      }),
+    );
+  }
+
   if (opts.precompress && compress) {
     plugins.push(viteCompress(compress));
   }
@@ -47,6 +67,7 @@ export const buildClient = async (opts: BuildClientOptions) => {
     },
     publicDir: "public",
     build: {
+      chunkSizeWarningLimit: 1000,
       outDir: opts.dist,
       rollupOptions: {
         output: {

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { AlephaError } from "@alepha/core";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
+import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
 import {
   type ViteAlephaBuildDockerOptions,
   viteAlephaBuildDocker,
@@ -16,11 +17,21 @@ import { importVite } from "./importVite.ts";
 
 export interface BuildServerOptions {
   entry: string;
+
   distDir: string;
+
   clientDir?: string;
+
   vercel?: boolean | VercelConfig;
+
   docker?: boolean | ViteAlephaBuildDockerOptions;
+
   config?: UserConfig;
+
+  /**
+   * If true, generate build stats report.
+   */
+  stats?: boolean;
 }
 
 export const buildServer = async (opts: BuildServerOptions) => {
@@ -28,6 +39,14 @@ export const buildServer = async (opts: BuildServerOptions) => {
   const plugins: any[] = [
     viteAlephaExternalsVersion({ distDir: opts.distDir }),
   ];
+
+  if (opts.stats) {
+    plugins.push(
+      viteAnalyser({
+        analyzerMode: "static",
+      }),
+    );
+  }
 
   if (opts.vercel) {
     const config = typeof opts.vercel === "boolean" ? {} : opts.vercel;
@@ -63,6 +82,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
       ssr: opts.entry,
       outDir: `${opts.distDir}/server`,
       minify: false, // for now, we don't need to minify the server build
+      chunkSizeWarningLimit: 10000,
       rollupOptions: {
         output: {
           entryFileNames: "[hash].js",

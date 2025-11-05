@@ -37,30 +37,40 @@ export interface ViteAlephaBuildOptions {
    * Additionally, it will generate a Dockerfile in the dist directory.
    */
   docker?: boolean | ViteAlephaBuildDockerOptions;
+
+  /**
+   * If true, build statistics will be printed after the build completes.
+   */
+  stats?: boolean;
 }
 
 export async function viteAlephaBuild(
   options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
   const entry = options.serverEntry ?? (await boot.getServerEntry());
-
   const distDir = "dist";
   const clientDir = "public";
+
   let rootConfig: UserConfig = {};
 
   return {
     name: "alepha-build",
     apply: "build",
     config(config, ctx) {
+      // ---
+      // for now, we run two separate builds: one for the client and one for the server
+      // we distinguish them using an environment variable
+      // ---
+
       if (!process.env.VITE_DOUBLE_BUILD_DONE) {
         rootConfig = config;
       }
 
       if (ctx.isSsrBuild || !process.env.VITE_DOUBLE_BUILD_DONE) {
-        // this is a server build, so we don't need the public directory
+        // server build, so we don't need the public directory
         config.publicDir = false;
       } else {
-        // this is a client build, so we need the public directory
+        // client build, so we need the public directory
         config.publicDir = "public";
       }
     },
@@ -73,22 +83,23 @@ export async function viteAlephaBuild(
 
       const hasClient =
         options.client !== false && (await fileExists("index.html"));
+
       const buildClientOptions =
         typeof options.client === "object" ? options.client : {};
 
-      let html = "";
       if (hasClient) {
-        html = await readFile("index.html", "utf-8");
+        // run vite build
         await buildClient({
           ...buildClientOptions,
           config: rootConfig,
-          html,
           dist: `${distDir}/${clientDir}`,
+          stats: options.stats ?? process.env.ALEPHA_BUILD_STATS === "true",
         });
       }
 
       let template = "";
       if (hasClient) {
+        // load output index.html
         template = await readFile(
           `${distDir}/${clientDir}/index.html`,
           "utf-8",
@@ -96,6 +107,7 @@ export async function viteAlephaBuild(
       }
 
       if (entry) {
+        // run vite build ssr
         await buildServer({
           config: {
             base: rootConfig.base || "",
@@ -105,8 +117,10 @@ export async function viteAlephaBuild(
           clientDir: hasClient ? clientDir : undefined,
           vercel: options.vercel,
           docker: options.docker,
+          stats: options.stats ?? process.env.ALEPHA_BUILD_STATS === "true",
         });
 
+        // copy swagger ui & others assets
         await copyAssets({
           entry: `${distDir}/index.js`,
           distDir: `${distDir}`,
@@ -114,6 +128,7 @@ export async function viteAlephaBuild(
       }
 
       if (buildClientOptions.sitemap && entry) {
+        // generate sitemap.xml
         await writeFile(
           `${distDir}/${clientDir}/sitemap.xml`,
           await generateSitemap({
@@ -124,6 +139,7 @@ export async function viteAlephaBuild(
       }
 
       if (buildClientOptions.prerender && template) {
+        // generate pre-rendered pages
         await prerender({
           template: template,
           dist: `${distDir}/${clientDir}`,

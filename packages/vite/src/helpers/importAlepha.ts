@@ -36,9 +36,6 @@ export const importAlepha = async (
   process.env.NODE_ENV = "production";
 
   const entryFile = pathToFileURL(join(process.cwd(), entry)).href;
-
-  console.log("Importing Alepha from:", entryFile);
-
   const mod = await import(entryFile);
 
   // check if alepha is correctly exported
