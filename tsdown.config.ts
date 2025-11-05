@@ -8,7 +8,8 @@ export default async () => {
 				entry: "src/index.ts",
 				format: ["esm"],
 				sourcemap: true,
-			},
+        fixedExtension: false,
+      },
 			{
 				entry: "src/index.browser.ts",
 				platform: "browser",
@@ -23,6 +24,7 @@ export default async () => {
 			format: ["esm"],
 			platform: pkg.engines?.node ? "node" : "neutral",
 			sourcemap: true,
+      fixedExtension: false,
 		},
 	];
 }

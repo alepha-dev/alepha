@@ -7,10 +7,10 @@
 		"start": "alepha build && node dist"
 	},
 	"dependencies": {
-		"alepha": "0.11.3",
+		"alepha": "0.11.4",
 		"react": "^19.2.0"
 	},
 	"devDependencies": {
-		"@alepha/cli": "0.11.3"
+		"@alepha/cli": "0.11.4"
 	}
 }
