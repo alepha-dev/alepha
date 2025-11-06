@@ -93,6 +93,13 @@ export class DrizzleCommands {
       }
 
       this.log.info("");
+      this.log.info("Detected migration statements:");
+      this.log.info("");
+      for (const stmt of migrationStatements) {
+        this.log.info(stmt);
+      }
+      this.log.info("");
+
       this.log.info(
         `At least ${migrationStatements.length} change(s) detected.`,
       );
