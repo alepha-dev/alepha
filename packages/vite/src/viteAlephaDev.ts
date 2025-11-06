@@ -228,7 +228,18 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
     state.log("[DEBUG] Starting Done!");
   } catch (e) {
     if (e instanceof Error) {
-      state.app?.log?.error("Vite Alepha Dev Start Error:", e);
+      let it: any = e;
+      do {
+        server.ssrFixStacktrace(it);
+        it = it.cause;
+      } while (it instanceof Error);
+
+      server.ssrFixStacktrace(e);
+      if (e.cause instanceof Error) {
+        server.ssrFixStacktrace(e.cause);
+      }
+      state.app?.log?.error("App failed to start:", e);
+      state.app?.log?.info("Waiting for changes to restart...");
     }
     state.log("[DEBUG] Alepha app start error");
     state.started = false;

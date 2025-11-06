@@ -49,6 +49,8 @@ const getServerEntry = async (
     "src/index.server.tsx",
     "src/main.server.tsx",
     "src/server-entry.tsx",
+    "src/main.ts",
+    "src/main.tsx",
   ];
 
   for (const entry of maybeEntry) {
