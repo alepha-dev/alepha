@@ -1,5 +1,4 @@
-import type { Static } from "@alepha/core";
-import { t } from "@alepha/core";
+import { type Static, t } from "../providers/TypeProvider.ts";
 
 export const pageQuerySchema = t.object({
   page: t.optional(

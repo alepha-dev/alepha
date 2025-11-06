@@ -16,6 +16,7 @@ import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { drizzle };
+export { type Page, pageQuerySchema, pageSchema } from "@alepha/core";
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
 export * from "./constants/PG_SYMBOLS.ts";
@@ -38,8 +39,6 @@ export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
-export * from "./schemas/pageQuerySchema.ts";
-export * from "./schemas/pageSchema.ts";
 export * from "./schemas/updateSchema.ts";
 export * from "./types/schema.ts";
 

@@ -1,6 +1,6 @@
-import type { TUnsafe } from "@alepha/core";
 import {
   AlephaError,
+  pageSchema,
   type Static,
   type TBigInt,
   type TInteger,
@@ -8,9 +8,11 @@ import {
   type TNumberOptions,
   type TObject,
   type TObjectOptions,
+  type TPage,
   type TSchema,
   type TString,
   type TStringOptions,
+  type TUnsafe,
   t,
 } from "@alepha/core";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
@@ -32,8 +34,6 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
-import type { TPage } from "../schemas/pageSchema.ts";
-import { pageSchema } from "../schemas/pageSchema.ts";
 
 export class PostgresTypeProvider {
   public readonly attr = pgAttr;

@@ -4,6 +4,7 @@ import {
   type TObject,
   type TObjectOptions,
   type TRecord,
+  TypeProvider,
   t,
 } from "../providers/TypeProvider.ts";
 
@@ -139,3 +140,16 @@ export type Page<T> = {
 };
 
 export type PageMetadata = Static<typeof pageMetadataSchema>;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "@alepha/core" {
+  interface TypeProvider {
+    /**
+     * Create a schema for a paginated response.
+     */
+    page<T extends TObject>(itemSchema: T): TPage<T>;
+  }
+}
+
+TypeProvider.prototype.page = (itemSchema) => pageSchema(itemSchema);

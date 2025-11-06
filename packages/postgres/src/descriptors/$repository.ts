@@ -6,6 +6,8 @@ import {
   Descriptor,
   type DescriptorArgs,
   KIND,
+  type Page,
+  type PageQuery,
   type Static,
   type StaticEncode,
   type TObject,
@@ -53,8 +55,6 @@ import {
   type SQLLike,
 } from "../providers/drivers/DatabaseProvider.ts";
 import type { TObjectInsert } from "../schemas/insertSchema.ts";
-import type { PageQuery } from "../schemas/pageQuerySchema.ts";
-import type { Page } from "../schemas/pageSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 import { type PgJoin, PgQueryManager } from "../services/PgQueryManager.ts";
 import { PgRelationManager } from "../services/PgRelationManager.ts";
