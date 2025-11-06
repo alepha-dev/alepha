@@ -2,14 +2,6 @@
 	"$schema": "https://biomejs.dev/schemas/latest/schema.json",
 	"files": {
 		"ignoreUnknown": true,
-		"experimentalScannerIgnores": [
-			"dist",
-			"node_modules",
-			".idea",
-			".yarn",
-			"assets",
-			"coverage"
-		],
 		"includes": [
 			"scripts/*.ts",
 			"**/apps/**",

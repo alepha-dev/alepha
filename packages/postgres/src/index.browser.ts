@@ -1,4 +1,5 @@
 import { $module } from "@alepha/core";
+import { AlephaDateTime } from "@alepha/datetime";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -21,5 +22,5 @@ export * from "./schemas/legacyIdSchema.ts";
 export const AlephaPostgres = $module({
   name: "alepha.postgres",
   descriptors: [],
-  services: [],
+  services: [AlephaDateTime],
 });
