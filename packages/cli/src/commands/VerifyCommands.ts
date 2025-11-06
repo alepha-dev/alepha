@@ -1,7 +1,10 @@
 import { $command } from "@alepha/command";
-import { exec } from "../helpers/exec.ts";
+import { $inject } from "@alepha/core";
+import { ProcessRunner } from "../services/ProcessRunner.ts";
 
 export class VerifyCommands {
+  runner = $inject(ProcessRunner);
+
   /**
    * Run a series of verification commands to ensure code quality and correctness.
    *
@@ -41,7 +44,7 @@ export class VerifyCommands {
     name: "typecheck",
     description: "Check TypeScript types across the codebase",
     handler: async () => {
-      await exec("tsc --noEmit");
+      await this.runner.exec("tsc --noEmit");
     },
   });
 
@@ -52,7 +55,7 @@ export class VerifyCommands {
     name: "depcheck",
     description: "Check for unused or missing dependencies using Depcheck",
     handler: async () => {
-      await exec(
+      await this.runner.exec(
         "depcheck --ignores=jsdom,@alepha/testing,@alepha/cli --ignore-patterns=dist,assets",
       );
     },

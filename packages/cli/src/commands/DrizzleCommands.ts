@@ -1,14 +1,15 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { Alepha, AlephaError, boot, t } from "@alepha/core";
+import { $inject, Alepha, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { tsImport } from "tsx/esm/api";
-import { exec } from "../helpers/exec.ts";
+import { ProcessRunner } from "../services/ProcessRunner.ts";
 
 export class DrizzleCommands {
   log = $logger();
+  runner = $inject(ProcessRunner);
 
   flags = t.object({
     root: t.text({ description: "Project root", default: "." }),
@@ -28,10 +29,18 @@ export class DrizzleCommands {
     name: "db:check-migrations",
     description: "Verify database migration files are up to date",
     flags: this.flags,
-    handler: async ({ flags }) => {
+    args: t.optional(
+      t.text({
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    handler: async ({ flags, args }) => {
       const rootDir = join(process.cwd(), flags.root);
       this.log.debug(`Using project root: ${rootDir}`);
-      const { alepha } = await this.loadAlephaFromServerEntryFile(rootDir);
+      const { alepha } = await this.loadAlephaFromServerEntryFile(
+        rootDir,
+        args,
+      );
 
       const models: any[] = [];
       const repositories = alepha.descriptors("repository") as any[];
@@ -110,12 +119,19 @@ export class DrizzleCommands {
     description: "Generate migration files based on current database schema",
     summary: false,
     flags: this.flags,
-    handler: async ({ flags }) => {
+    args: t.optional(
+      t.text({
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    handler: async ({ flags, args }) => {
       const rootDir = join(process.cwd(), flags.root);
       this.log.debug(`Using project root: ${rootDir}`);
 
-      const { alepha, entry } =
-        await this.loadAlephaFromServerEntryFile(rootDir);
+      const { alepha, entry } = await this.loadAlephaFromServerEntryFile(
+        rootDir,
+        args,
+      );
 
       const inject = (name: string) =>
         // biome-ignore lint/complexity/useLiteralKeys: private key
@@ -126,10 +142,7 @@ export class DrizzleCommands {
       const kit = inject("DrizzleKitProvider");
       const provider = (alepha.descriptors("repository")[0] as any).provider;
       const models = Object.keys(kit.getModels(provider));
-
-      await writeFile(
-        join(rootDir, "node_modules/.alepha/entities.js"),
-        `
+      const entitiesJs = `
 import "../..${entry.replace(rootDir, "")}";
 import { DrizzleKitProvider } from "@alepha/postgres";
 
@@ -140,36 +153,48 @@ const models = kit.getModels(provider);
 
 ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
 
-`.trim(),
+`.trim();
+
+      const entitiesJsPath = await this.runner.writeConfigFile(
+        "entities.js",
+        entitiesJs,
+        rootDir,
       );
 
-      await writeFile(
-        join(rootDir, "node_modules/.alepha/drizzle.config.js"),
+      const drizzleConfigJs =
         "export default " +
-          JSON.stringify(
-            {
-              schema: "./node_modules/.alepha/entities.js",
-              out: "./migrations",
-              dialect: "postgresql",
-            },
-            null,
-            2,
-          ),
+        JSON.stringify(
+          {
+            schema: entitiesJsPath,
+            out: "./migrations",
+            dialect: "postgresql",
+          },
+          null,
+          2,
+        );
+
+      const drizzleConfigJsPath = await this.runner.writeConfigFile(
+        "drizzle.config.js",
+        drizzleConfigJs,
+        rootDir,
       );
 
-      await exec(
-        `drizzle-kit generate --config ./node_modules/.alepha/drizzle.config.js`,
+      await this.runner.exec(
+        `drizzle-kit generate --config=${drizzleConfigJsPath}`,
       );
     },
   });
 
-  public async loadAlephaFromServerEntryFile(rootDir?: string): Promise<{
+  public async loadAlephaFromServerEntryFile(
+    rootDir?: string,
+    explicitEntry?: string,
+  ): Promise<{
     alepha: Alepha;
     entry: string;
   }> {
     process.env.ALEPHA_SKIP_START = "true";
 
-    const entry = await boot.getServerEntry(rootDir);
+    const entry = await boot.getServerEntry(rootDir, explicitEntry);
     const mod = await tsImport(entry, {
       parentURL: import.meta.url,
     });
