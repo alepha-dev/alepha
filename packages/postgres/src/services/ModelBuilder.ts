@@ -96,9 +96,10 @@ export abstract class ModelBuilder {
             const columnName = this.toColumnName(indexDef);
             const indexName = `${entity.name}_${columnName}_idx`;
 
-            if ((self as any)[columnName]) {
+            // Use original camelCase property name for lookup
+            if ((self as any)[indexDef]) {
               configs.push(
-                builders.index(indexName).on((self as any)[columnName]),
+                builders.index(indexName).on((self as any)[indexDef]),
               );
             }
           } else if (typeof indexDef === "object" && indexDef !== null) {
@@ -107,16 +108,19 @@ export abstract class ModelBuilder {
               const indexName =
                 indexDef.name || `${entity.name}_${columnName}_idx`;
 
-              if ((self as any)[columnName]) {
+              // Use original camelCase property name for lookup
+              if ((self as any)[indexDef.column]) {
                 if (indexDef.unique) {
                   configs.push(
                     builders
                       .uniqueIndex(indexName)
-                      .on((self as any)[columnName]),
+                      .on((self as any)[indexDef.column]),
                   );
                 } else {
                   configs.push(
-                    builders.index(indexName).on((self as any)[columnName]),
+                    builders
+                      .index(indexName)
+                      .on((self as any)[indexDef.column]),
                   );
                 }
               }
@@ -127,11 +131,12 @@ export abstract class ModelBuilder {
               const indexName =
                 indexDef.name || `${entity.name}_${columnNames.join("_")}_idx`;
 
-              const cols = columnNames
-                .map((colName: string) => (self as any)[colName])
+              // Use original camelCase property names for lookup
+              const cols = indexDef.columns
+                .map((col: any) => (self as any)[col])
                 .filter(Boolean);
 
-              if (cols.length === columnNames.length) {
+              if (cols.length === indexDef.columns.length) {
                 if (indexDef.unique) {
                   configs.push(builders.uniqueIndex(indexName).on(...cols));
                 } else {
@@ -150,11 +155,12 @@ export abstract class ModelBuilder {
             this.toColumnName(col as string),
           );
 
-          const cols = columnNames
-            .map((colName) => (self as any)[colName])
+          // Use original camelCase property names for lookup
+          const cols = fkDef.columns
+            .map((col) => (self as any)[col])
             .filter(Boolean);
 
-          if (cols.length === columnNames.length) {
+          if (cols.length === fkDef.columns.length) {
             const fkName =
               fkDef.name || `${entity.name}_${columnNames.join("_")}_fk`;
 
@@ -175,8 +181,8 @@ export abstract class ModelBuilder {
                     `Foreign table ${entityCol.entity.name} not found for ${entity.name}`,
                   );
                 }
-                const columnName = this.toColumnName(entityCol.name);
-                return foreignTable[columnName];
+                // Use original camelCase property name for lookup in foreign table
+                return foreignTable[entityCol.name];
               }
 
               // Fallback: return the entity column reference (will be resolved later)
@@ -201,11 +207,12 @@ export abstract class ModelBuilder {
             this.toColumnName(col as string),
           );
 
-          const cols = columnNames
-            .map((colName) => (self as any)[colName])
+          // Use original camelCase property names for lookup
+          const cols = constraintDef.columns
+            .map((col) => (self as any)[col])
             .filter(Boolean);
 
-          if (cols.length === columnNames.length) {
+          if (cols.length === constraintDef.columns.length) {
             if (constraintDef.unique) {
               const constraintName =
                 constraintDef.name ||
