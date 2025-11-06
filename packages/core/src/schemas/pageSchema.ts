@@ -148,7 +148,7 @@ declare module "@alepha/core" {
     /**
      * Create a schema for a paginated response.
      */
-    page<T extends TObject>(itemSchema: T): TPage<T>;
+    page<T extends TObject | TRecord>(itemSchema: T): TPage<T>;
   }
 }
 

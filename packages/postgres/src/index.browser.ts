@@ -2,7 +2,12 @@ import { $module } from "@alepha/core";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { type Page, pageQuerySchema, pageSchema } from "@alepha/core";
+export {
+  type Page,
+  type PageQuery,
+  pageQuerySchema,
+  pageSchema,
+} from "@alepha/core";
 export * from "./errors/PgEntityNotFoundError.ts";
 export * from "./helpers/pgAttr.ts";
 export * from "./interfaces/FilterOperators.ts";

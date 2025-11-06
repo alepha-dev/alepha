@@ -114,4 +114,15 @@ export class CodecManager {
     const codec = this.get(encoderName);
     return codec.decode(schema, value);
   }
+
+  /**
+   * Validate decoded data.
+   */
+  public validate<T extends TSchema>(
+    schema: T,
+    value: any,
+    options?: DecodeOptions,
+  ): StaticDecode<T> {
+    return this.decode(schema, this.encode(schema, value), options);
+  }
 }

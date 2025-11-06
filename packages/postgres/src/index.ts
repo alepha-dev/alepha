@@ -10,13 +10,19 @@ import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
+import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
 import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { drizzle };
-export { type Page, pageQuerySchema, pageSchema } from "@alepha/core";
+export {
+  type Page,
+  type PageQuery,
+  pageQuerySchema,
+  pageSchema,
+} from "@alepha/core";
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
 export * from "./constants/PG_SYMBOLS.ts";
@@ -37,6 +43,7 @@ export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
+export * from "./providers/RepositoryProvider.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
 export * from "./schemas/updateSchema.ts";
@@ -96,6 +103,7 @@ export const AlephaPostgres = $module({
     PostgresModelBuilder,
     DrizzleKitProvider,
     DrizzleSchemaCodec,
+    RepositoryProvider,
   ],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(
@@ -105,6 +113,7 @@ export const AlephaPostgres = $module({
     );
 
     alepha.with(DrizzleKitProvider);
+    alepha.with(RepositoryProvider);
 
     alepha.codec.register("drizzle", alepha.inject(DrizzleSchemaCodec));
 

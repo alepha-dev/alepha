@@ -498,9 +498,9 @@ export class ActionDescriptor<
       // skip validation if response is expected as file
       !isTypeFile(this.options.schema.response)
     ) {
-      response = this.alepha.codec.decode(
+      response = this.alepha.codec.validate(
         this.options.schema.response,
-        this.alepha.codec.encode(this.options.schema.response, response),
+        response,
       );
     }
 
