@@ -297,7 +297,7 @@ export function useAction<Args extends any[], Result = void>(
     if (options.runOnInit) {
       handler(...([] as any));
     }
-  }, []);
+  }, deps);
 
   // Run action periodically if runEvery is specified
   useEffect(() => {

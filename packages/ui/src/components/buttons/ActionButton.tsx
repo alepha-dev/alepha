@@ -311,6 +311,13 @@ const ActionButton = (_props: ActionProps) => {
     }
 
     if ("form" in restProps && restProps.form) {
+      if (restProps.type === "reset") {
+        return (
+          <ActionResetButton {...restProps} form={restProps.form}>
+            {restProps.children}
+          </ActionResetButton>
+        );
+      }
       return (
         <ActionSubmitButton {...restProps} form={restProps.form}>
           {restProps.children}
@@ -366,6 +373,7 @@ export default ActionButton;
 
 export interface ActionSubmitButtonProps extends ButtonProps {
   form: FormModel<any>;
+  type?: "submit" | "reset";
 }
 
 /**
@@ -381,6 +389,16 @@ const ActionSubmitButton = (props: ActionSubmitButtonProps) => {
       disabled={state.loading}
       type={"submit"}
     >
+      {props.children}
+    </Button>
+  );
+};
+
+const ActionResetButton = (props: ActionSubmitButtonProps) => {
+  const { form, ...buttonProps } = props;
+  const state = useFormState(form);
+  return (
+    <Button {...buttonProps} disabled={state.loading} type={"reset"}>
       {props.children}
     </Button>
   );

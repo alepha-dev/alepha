@@ -6,8 +6,6 @@ import {
   type FileInputProps,
   Flex,
   Input,
-  NumberInput,
-  type NumberInputProps,
   PasswordInput,
   type PasswordInputProps,
   Switch,
@@ -28,6 +26,7 @@ import {
   parseInput,
 } from "../../utils/parseInput.ts";
 import ControlDate from "./ControlDate.tsx";
+import ControlNumber, { type ControlNumberProps } from "./ControlNumber.tsx";
 import ControlSelect, { type ControlSelectProps } from "./ControlSelect.tsx";
 
 export interface ControlProps extends GenericControlProps {
@@ -36,7 +35,7 @@ export interface ControlProps extends GenericControlProps {
   select?: boolean | Partial<ControlSelectProps>;
   password?: boolean | PasswordInputProps;
   switch?: boolean | SwitchProps;
-  number?: boolean | NumberInputProps;
+  number?: boolean | Partial<ControlNumberProps>;
   file?: boolean | FileInputProps;
   color?: boolean | ColorInputProps;
   date?: boolean | DateInputProps;
@@ -104,16 +103,15 @@ const Control = (_props: ControlProps) => {
       (props.input.schema.type === "number" ||
         props.input.schema.type === "integer"))
   ) {
-    const numberInputProps =
+    const controlNumberProps =
       typeof props.number === "object" ? props.number : {};
-    const { type, ...inputPropsWithoutType } = props.input.props;
     return (
-      <NumberInput
-        {...inputProps}
-        id={id}
-        leftSection={icon}
-        {...inputPropsWithoutType}
-        {...numberInputProps}
+      <ControlNumber
+        input={props.input}
+        title={props.title}
+        description={props.description}
+        icon={icon}
+        {...controlNumberProps}
       />
     );
   }

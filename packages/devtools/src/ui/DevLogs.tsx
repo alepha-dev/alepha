@@ -87,7 +87,9 @@ const DevLogs = () => {
           }
           return {};
         }}
-        items={logs}
+        items={{
+          content: logs,
+        }}
         columns={{
           timestamp: {
             label: "Tme",

@@ -27,6 +27,6 @@
 		"@alepha/server": "0.11.5"
 	},
 	"devDependencies": {
-		"vitest": "^4.0.6"
+		"vitest": "^4.0.7"
 	}
 }

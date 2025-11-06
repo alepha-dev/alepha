@@ -23,9 +23,9 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  * });
  *
  * return (
- *   <form onSubmit={form.onSubmit}>
- *     <input {...form.input("username")} />
- *     <input {...form.input("password")} />
+ *   <form {...form.props}>
+ *     <input {...form.input.username.props} />
+ *     <input {...form.input.password.props} />
  *     <button type="submit">Submit</button>
  *   </form>
  * );
@@ -33,6 +33,7 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  */
 export const useForm = <T extends TObject>(
   options: FormCtrlOptions<T>,
+  deps: any[] = [],
 ): FormModel<T> => {
   const alepha = useAlepha();
   const formId = useId();
@@ -42,5 +43,5 @@ export const useForm = <T extends TObject>(
       lifetime: "transient",
       args: [options.id || formId, options],
     });
-  }, []);
+  }, deps);
 };

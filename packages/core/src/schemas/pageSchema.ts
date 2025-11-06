@@ -1,15 +1,65 @@
-import type {
-  TArray,
-  TBoolean,
-  TInteger,
-  TObject,
-  TObjectOptions,
-  TOptionalAdd,
-  TRecord,
-  TSchema,
-  TString,
+import {
+  type Static,
+  type TArray,
+  type TObject,
+  type TObjectOptions,
+  type TRecord,
+  t,
 } from "../providers/TypeProvider.ts";
-import { t } from "../providers/TypeProvider.ts";
+
+export const pageMetadataSchema = t.object({
+  number: t.int({ description: "Page number, starting from 0" }),
+  size: t.int({
+    description: "Number of items per page (requested page size)",
+  }),
+  offset: t.int({
+    description: "Offset in the dataset (page × size)",
+  }),
+  numberOfElements: t.int({
+    description:
+      "Number of elements in THIS page (content.length). Different from totalElements which is the total across all pages.",
+  }),
+  totalElements: t.optional(
+    t.int({
+      description:
+        "Total number of elements across all pages. Only available when counting is enabled.",
+    }),
+  ),
+  totalPages: t.optional(
+    t.int({
+      description:
+        "Total number of pages. Only available when `totalElements` is present.",
+    }),
+  ),
+  isEmpty: t.boolean({
+    description:
+      "Indicates if the current page has no items (numberOfElements === 0)",
+  }),
+  isFirst: t.boolean({
+    description: "Indicates if this is the first page (number === 0)",
+  }),
+  isLast: t.boolean({
+    description:
+      "Indicates if this is the last page (no more pages after this)",
+  }),
+  sort: t.optional(
+    t.object({
+      sorted: t.boolean({
+        description: "Whether the results are sorted",
+      }),
+      fields: t.array(
+        t.object({
+          field: t.text({
+            description: "The field used for sorting",
+          }),
+          direction: t.enum(["asc", "desc"], {
+            description: "The direction of the sort. Either 'asc' or 'desc'",
+          }),
+        }),
+      ),
+    }),
+  ),
+});
 
 /**
  * Create a pagination schema for the given object schema.
@@ -40,56 +90,14 @@ export const pageSchema = <T extends TObject | TRecord>(
   t.object(
     {
       content: t.array(objectSchema),
-      page: t.object({
-        number: t.int(),
-        size: t.int(),
-        offset: t.int(),
-        numberOfElements: t.int(),
-        totalElements: t.optional(t.int()),
-        totalPages: t.optional(t.int()),
-        isEmpty: t.boolean(),
-        isFirst: t.boolean(),
-        isLast: t.boolean(),
-        sort: t.optional(
-          t.object({
-            sorted: t.boolean(),
-            fields: t.array(
-              t.object({
-                field: t.text(),
-                direction: t.enum(["asc", "desc"]),
-              }),
-            ),
-          }),
-        ),
-      }),
+      page: pageMetadataSchema,
     },
     options,
   );
 
 export type TPage<T extends TObject | TRecord> = TObject<{
   content: TArray<T>;
-  page: TObject<{
-    number: TInteger;
-    size: TInteger;
-    offset: TInteger;
-    numberOfElements: TInteger;
-    totalElements: TOptionalAdd<TInteger>;
-    totalPages: TOptionalAdd<TInteger>;
-    isEmpty: TBoolean;
-    isFirst: TBoolean;
-    isLast: TBoolean;
-    sort: TOptionalAdd<
-      TObject<{
-        sorted: TBoolean;
-        fields: TArray<
-          TObject<{
-            field: TString;
-            direction: TSchema;
-          }>
-        >;
-      }>
-    >;
-  }>;
+  page: typeof pageMetadataSchema;
 }>;
 
 /**
@@ -127,62 +135,7 @@ export type Page<T> = {
    * Array of items on the current page.
    */
   content: T[];
-  page: {
-    /**
-     * Page number, starting from 0.
-     */
-    number: number;
-    /**
-     * Number of items per page (requested page size).
-     */
-    size: number;
-    /**
-     * Offset in the dataset (page × size).
-     */
-    offset: number;
-    /**
-     * Number of elements in THIS page (content.length).
-     * Different from totalElements which is the total across all pages.
-     */
-    numberOfElements: number;
-    /**
-     * Total number of elements across all pages.
-     * Only available when counting is enabled.
-     */
-    totalElements?: number;
-    /**
-     * Total number of pages.
-     * Only available when `totalElements` is present.
-     */
-    totalPages?: number;
-    /**
-     * Indicates if the current page has no items (numberOfElements === 0).
-     */
-    isEmpty: boolean;
-    /**
-     * Indicates if this is the first page (number === 0).
-     */
-    isFirst: boolean;
-    /**
-     * Indicates if this is the last page (no more pages after this).
-     */
-    isLast: boolean;
-    /**
-     * Sort metadata indicating what sorting was applied.
-     * Only present when sorting is applied.
-     */
-    sort?: {
-      /**
-       * Whether the results are sorted.
-       */
-      sorted: boolean;
-      /**
-       * The fields and directions used for sorting.
-       */
-      fields: Array<{
-        field: string;
-        direction: "asc" | "desc";
-      }>;
-    };
-  };
+  page: Static<typeof pageMetadataSchema>;
 };
+
+export type PageMetadata = Static<typeof pageMetadataSchema>;

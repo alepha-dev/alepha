@@ -57,9 +57,9 @@ const form = useForm({
 });
 
 return (
-  <form onSubmit={form.onSubmit}>
-    <input {...form.input("username")} />
-    <input {...form.input("password")} />
+  <form {...form.props}>
+    <input {...form.input.username.props} />
+    <input {...form.input.password.props} />
     <button type="submit">Submit</button>
   </form>
 );

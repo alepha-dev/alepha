@@ -9,6 +9,14 @@ import {
 import { $logger } from "@alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
+/**
+ * FormModel is a dynamic form handler that generates form inputs based on a provided TypeBox schema.
+ * It manages form state, handles input changes, and processes form submissions with validation.
+ *
+ * It means to be injected and used within React components to provide a structured way to create and manage forms.
+ *
+ * @see {@link useForm}
+ */
 export class FormModel<T extends TObject> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
@@ -35,23 +43,33 @@ export class FormModel<T extends TObject> {
     });
   }
 
+  public get element(): HTMLFormElement {
+    return window.document.getElementById(this.id)! as HTMLFormElement;
+  }
+
   public get currentValues(): Record<string, any> {
-    return this.parseValuesFromFormElement(this.options, this.values);
+    return this.restructureValues(this.values);
   }
 
   public get props() {
     return {
+      id: this.id,
       noValidate: true,
-      onSubmit: (values: FormEventLike) => this.submit(values),
+      onSubmit: (ev?: FormEventLike) => {
+        ev?.preventDefault?.();
+        this.submit();
+      },
       onReset: (event: FormEventLike) => this.reset(event),
     };
   }
 
-  protected readonly reset = (event: FormEventLike) => {
+  public readonly reset = (event: FormEventLike) => {
     // clear values in place to maintain proxy reference
     for (const key in this.values) {
       delete this.values[key];
     }
+
+    this.options.onReset?.();
 
     return this.alepha.events.emit(
       "form:reset",
@@ -65,9 +83,7 @@ export class FormModel<T extends TObject> {
     );
   };
 
-  protected readonly submit = async (event: FormEventLike) => {
-    event.preventDefault();
-
+  public readonly submit = async () => {
     // Emit both action and form events
     await this.alepha.events.emit("react:action:begin", {
       type: "form",
@@ -78,16 +94,13 @@ export class FormModel<T extends TObject> {
     });
 
     const options = this.options;
-    const form = event.currentTarget;
+    const form = this.element;
     const args = {
       form,
     };
 
     try {
-      let values: Record<string, any> = this.parseValuesFromFormElement(
-        options,
-        this.values,
-      );
+      let values: Record<string, any> = this.restructureValues(this.values);
 
       if (t.schema.isSchema(options.schema)) {
         values = this.alepha.codec.decode(options.schema, values) as Record<
@@ -131,32 +144,34 @@ export class FormModel<T extends TObject> {
     });
   };
 
-  protected parseValuesFromFormElement<T extends TObject>(
-    options: FormCtrlOptions<T>,
-    store: Record<string, any>,
-  ): Record<string, any> {
+  /**
+   * Restructures flat keys like "address.city" into nested objects like { address: { city: ... } }
+   * Values are already typed from onChange, so no conversion is needed.
+   */
+  protected restructureValues(store: Record<string, any>): Record<string, any> {
     const values: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(store)) {
       if (key.includes(".")) {
-        // addon: support for nested objects
-        this.getValueFromInputObject(options, values, key, value);
-      } else if (options.schema?.properties[key] != null) {
-        values[key] = this.getValueFromInput(
-          value,
-          options.schema.properties[key],
-        );
+        // nested object: restructure flat key to nested structure
+        this.restructureNestedValue(values, key, value);
+      } else {
+        // value is already typed, just copy it
+        values[key] = value;
       }
     }
 
     return values;
   }
 
-  protected getValueFromInputObject<T extends TObject>(
-    options: FormCtrlOptions<T>,
+  /**
+   * Helper to restructure a flat key like "address.city" into nested object structure.
+   * The value is already typed, so we just assign it to the nested path.
+   */
+  protected restructureNestedValue(
     values: Record<string, any>,
     key: string,
-    value: FormDataEntryValue,
+    value: any,
   ) {
     const pathSegments = key.split(".");
     const finalPropertyKey = pathSegments.pop();
@@ -165,36 +180,15 @@ export class FormModel<T extends TObject> {
     }
 
     let currentObjectLevel = values;
-    let currentSchemaLevel: TSchema | undefined = options.schema;
 
-    // traverse the path to find the target object and its schema.
+    // traverse/create the nested structure
     for (const segment of pathSegments) {
       currentObjectLevel[segment] ??= {};
       currentObjectLevel = currentObjectLevel[segment];
-
-      if (
-        t.schema.isObject(currentSchemaLevel) &&
-        currentSchemaLevel.properties[segment]
-      ) {
-        currentSchemaLevel = currentSchemaLevel.properties[segment];
-      } else {
-        // the path doesn't exist in the schema, so we can't validate or type it, abort!
-        currentSchemaLevel = undefined;
-        break;
-      }
     }
 
-    // find the schema for the final property.
-    const finalPropertySchema = t.schema.isObject(currentSchemaLevel)
-      ? currentSchemaLevel?.properties[finalPropertyKey]
-      : undefined;
-
-    if (finalPropertySchema) {
-      currentObjectLevel[finalPropertyKey] = this.getValueFromInput(
-        value,
-        finalPropertySchema,
-      );
-    }
+    // value is already typed from onChange, just assign it
+    currentObjectLevel[finalPropertyKey] = value;
   }
 
   protected createProxyFromSchema<T extends TObject>(
@@ -263,15 +257,18 @@ export class FormModel<T extends TObject> {
     const path = `/${key.replaceAll(".", "/")}`;
 
     const set = (value: any) => {
-      if (context.store[key] === value) {
+      // Convert to typed value immediately based on schema
+      const typedValue = this.getValueFromInput(value, field);
+
+      if (context.store[key] === typedValue) {
         // no change, do not update
-        return;
+        // return;
       }
 
-      context.store[key] = value;
+      context.store[key] = typedValue;
 
       if (options.onChange) {
-        options.onChange(key, value, context.store);
+        options.onChange(key, typedValue, context.store);
       }
 
       this.alepha.events.emit("form:change", {
@@ -372,9 +369,10 @@ export class FormModel<T extends TObject> {
   }
 
   /**
-   * Convert an input value from HTML to the correct type based on the schema.
+   * Convert an input value to the correct type based on the schema.
+   * Handles raw DOM values (strings, booleans from checkboxes, Files, etc.)
    */
-  protected getValueFromInput(input: FormDataEntryValue, schema: TSchema): any {
+  protected getValueFromInput(input: any, schema: TSchema): any {
     if (input instanceof File) {
       // for file inputs, return the File object directly
       if (t.schema.isString(schema) && schema.format === "binary") {
@@ -441,9 +439,8 @@ export type SchemaToInput<T extends TObject> = {
 };
 
 export interface FormEventLike {
-  currentTarget: any;
-  preventDefault: () => void;
-  stopPropagation: () => void;
+  preventDefault?: () => void;
+  stopPropagation?: () => void;
 }
 
 export interface InputField {
@@ -512,4 +509,6 @@ export type FormCtrlOptions<T extends TObject> = {
   onError?: (error: Error, args: { form: HTMLFormElement }) => void;
 
   onChange?: (key: string, value: any, store: Record<string, any>) => void;
+
+  onReset?: () => void;
 };

@@ -19,6 +19,7 @@ export interface TypeFormProps<T extends TObject> {
         lg?: number;
         xl?: number;
       };
+  schema?: TObject;
   children?: (input: FormModel<T>["input"]) => ReactNode;
   controlProps?: Partial<Omit<ControlProps, "input">>;
   skipFormElement?: boolean;
@@ -63,11 +64,12 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     submitButtonProps,
   } = props;
 
-  if (!form.options?.schema?.properties) {
+  const schema = props.schema || form.options.schema;
+  if (!schema?.properties) {
     return null;
   }
 
-  const fieldNames = Object.keys(form.options.schema.properties);
+  const fieldNames = Object.keys(schema.properties);
 
   // Filter out unsupported field types (objects only, arrays are now supported)
   const supportedFields = fieldNames.filter((fieldName) => {
@@ -140,11 +142,11 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     <Flex direction={"column"} gap={"sm"}>
       {renderFields()}
       {!skipSubmitButton && (
-        <Flex>
+        <Flex gap={"sm"}>
           <ActionButton form={form} {...submitButtonProps}>
             {submitButtonProps?.children ?? "Submit"}
           </ActionButton>
-          <button type={"reset"}>Reset</button>
+          <ActionButton type={"reset"}>Reset</ActionButton>
         </Flex>
       )}
     </Flex>
