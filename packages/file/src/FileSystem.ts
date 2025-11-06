@@ -1,6 +1,6 @@
 import type { Readable } from "node:stream";
 import type { FileLike, StreamLike } from "@alepha/core";
-import type { FileTypeResult } from "./helpers/detectFileType.js";
+import type { FileTypeResult } from "./helpers/detectFileType.ts";
 
 /**
  * Options for creating a file from a URL

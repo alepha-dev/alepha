@@ -17,15 +17,15 @@ import type {
   LsOptions,
   MkdirOptions,
   RmOptions,
-} from "./FileSystem.js";
+} from "./FileSystem.ts";
 import {
   createFileFromBuffer,
   createFileFromStream,
   createFileFromUrl,
   createFileFromWebFile,
-} from "./helpers/createFile.js";
-import { detectFileType } from "./helpers/detectFileType.js";
-import { getContentType } from "./helpers/getContentType.js";
+} from "./helpers/createFile.ts";
+import { detectFileType } from "./helpers/detectFileType.ts";
+import { getContentType } from "./helpers/getContentType.ts";
 
 /**
  * Node.js implementation of FileSystem interface.

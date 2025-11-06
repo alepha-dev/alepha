@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import { getContentType } from "./getContentType.js";
+import { getContentType } from "./getContentType.ts";
 
 /**
  * Magic byte signatures for common file formats.
