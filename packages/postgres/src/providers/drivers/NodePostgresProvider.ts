@@ -84,7 +84,9 @@ export class NodePostgresProvider extends DatabaseProvider {
    * In testing mode, the schema name will be generated and deleted after the test.
    */
   protected schemaForTesting = this.alepha.isTest()
-    ? this.generateTestSchemaName()
+    ? this.env.POSTGRES_SCHEMA?.startsWith("test_")
+      ? this.env.POSTGRES_SCHEMA
+      : this.generateTestSchemaName()
     : undefined;
 
   public override execute(
