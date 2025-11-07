@@ -1,21 +1,21 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import { $scheduler } from "@alepha/scheduler";
 import { describe, expect, it } from "vitest";
 import { JobController } from "../src/controllers/JobController.ts";
+import { $job } from "../src/descriptors/$job.ts";
 import { JobService } from "../src/services/JobService.ts";
 
 describe("JobController", () => {
   class App {
-    testJob = $scheduler({
+    testJob = $job({
       name: "test-job",
       handler: async () => {
         // Test job that is manually triggered
       },
     });
 
-    dailyJob = $scheduler({
+    dailyJob = $job({
       name: "daily-job",
       handler: async () => {
         // Another test job
@@ -86,7 +86,7 @@ describe("JobController", () => {
       class TestAppWithLogs {
         log = $logger();
 
-        loggingJob = $scheduler({
+        loggingJob = $job({
           name: "logging-job",
           handler: async () => {
             this.log.info("Starting job execution");
@@ -121,7 +121,7 @@ describe("JobController", () => {
     it("should capture error and finishedAt when job fails", async () => {
       // Create a separate Alepha instance with a failing job
       class FailingApp {
-        failingJob = $scheduler({
+        failingJob = $job({
           name: "failing-job",
           handler: async () => {
             throw new Error("Intentional test failure");
