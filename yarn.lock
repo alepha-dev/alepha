@@ -282,6 +282,7 @@ __metadata:
     "@alepha/cli": "npm:0.11.5"
     "@alepha/core": "npm:0.11.5"
     "@alepha/logger": "npm:0.11.5"
+    "@alepha/postgres": "npm:0.11.5"
     "@alepha/queue": "npm:0.11.5"
     "@alepha/react": "npm:0.11.5"
     "@alepha/react-i18n": "npm:0.11.5"
@@ -308,7 +309,6 @@ __metadata:
     "@alepha/cli": "npm:0.11.5"
     "@alepha/core": "npm:0.11.5"
     "@alepha/react": "npm:0.11.5"
-    "@fontsource/inter": "npm:^5.2.8"
     "@mantine/core": "npm:^8.3.6"
     "@mantine/form": "npm:^8.3.6"
     "@mantine/hooks": "npm:^8.3.6"
@@ -2670,13 +2670,6 @@ __metadata:
   version: 0.2.10
   resolution: "@floating-ui/utils@npm:0.2.10"
   checksum: 10c0/e9bc2a1730ede1ee25843937e911ab6e846a733a4488623cd353f94721b05ec2c9ec6437613a2ac9379a94c2fd40c797a2ba6fa1df2716f5ce4aa6ddb1cf9ea4
-  languageName: node
-  linkType: hard
-
-"@fontsource/inter@npm:^5.2.8":
-  version: 5.2.8
-  resolution: "@fontsource/inter@npm:5.2.8"
-  checksum: 10c0/f737dd50005e4809887ba55ae0c9b7174216d6d14875d17a4fbb9a0ad75dec4265928b805a43fe16a23f14a878f1974a398bbfc84ad65c79fc4d4b9c3ea154e1
   languageName: node
   linkType: hard
 
@@ -8378,7 +8371,9 @@ __metadata:
   dependencies:
     "@alepha/cli": "npm:0.11.5"
     alepha: "npm:0.11.5"
+    drizzle-kit: "npm:^0.31.6"
     react: "npm:^19.2.0"
+    tsx: "npm:^4.20.6"
   languageName: unknown
   linkType: soft
 

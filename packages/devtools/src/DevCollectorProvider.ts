@@ -4,8 +4,8 @@ import { $bucket } from "@alepha/bucket";
 import { $cache } from "@alepha/cache";
 import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { $logger, type LogEntry, logEntrySchema } from "@alepha/logger";
+import { $entity, $repository, NodeSqliteProvider, pg } from "@alepha/postgres";
 import { $queue } from "@alepha/queue";
-import { $page } from "@alepha/react";
 import { $scheduler } from "@alepha/scheduler";
 import { $realm } from "@alepha/security";
 import { $action, $route, ServerProvider } from "@alepha/server";
@@ -23,12 +23,32 @@ import type { DevRealmMetadata } from "./schemas/DevRealmMetadata.ts";
 import type { DevSchedulerMetadata } from "./schemas/DevSchedulerMetadata.ts";
 import type { DevTopicMetadata } from "./schemas/DevTopicMetadata.ts";
 
+class DevToolsDatabaseProvider extends NodeSqliteProvider {
+  get name() {
+    return "devtools";
+  }
+}
+
+const logs = $entity({
+  name: "logs",
+  schema: t.object({
+    id: pg.primaryKey(),
+    message: t.string(),
+  }),
+});
+
 export class DevCollectorProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly serverProvider = $inject(ServerProvider);
+  protected readonly sqliteProvider = $inject(DevToolsDatabaseProvider);
   protected readonly log = $logger();
   protected readonly logs: LogEntry[] = [];
   protected readonly maxLogs = 10000;
+
+  logtest = $repository({
+    entity: logs,
+    provider: this.sqliteProvider,
+  });
 
   protected readonly onStart = $hook({
     on: "start",
@@ -191,28 +211,30 @@ export class DevCollectorProvider {
   }
 
   public getPages(): DevPageMetadata[] {
-    const pageDescriptors = this.alepha.descriptors($page);
+    // const pageDescriptors = this.alepha.descriptors($page);
+    //
+    // return pageDescriptors.map((page) => ({
+    //   name: page.name,
+    //   description: page.options.description,
+    //   path: page.options.path,
+    //   params: page.options.schema?.params,
+    //   query: page.options.schema?.query,
+    //   hasComponent: !!page.options.component,
+    //   hasLazy: !!page.options.lazy,
+    //   hasResolve: !!page.options.resolve,
+    //   hasChildren: !!page.options.children,
+    //   hasParent: !!page.options.parent,
+    //   hasErrorHandler: !!page.options.errorHandler,
+    //   static:
+    //     typeof page.options.static === "boolean"
+    //       ? page.options.static
+    //       : !!page.options.static,
+    //   cache: page.options.cache,
+    //   client: page.options.client,
+    //   animation: page.options.animation,
+    // }));
 
-    return pageDescriptors.map((page) => ({
-      name: page.name,
-      description: page.options.description,
-      path: page.options.path,
-      params: page.options.schema?.params,
-      query: page.options.schema?.query,
-      hasComponent: !!page.options.component,
-      hasLazy: !!page.options.lazy,
-      hasResolve: !!page.options.resolve,
-      hasChildren: !!page.options.children,
-      hasParent: !!page.options.parent,
-      hasErrorHandler: !!page.options.errorHandler,
-      static:
-        typeof page.options.static === "boolean"
-          ? page.options.static
-          : !!page.options.static,
-      cache: page.options.cache,
-      client: page.options.client,
-      animation: page.options.animation,
-    }));
+    return [];
   }
 
   public getProviders(): DevProviderMetadata[] {

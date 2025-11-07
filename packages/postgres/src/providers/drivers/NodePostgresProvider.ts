@@ -65,7 +65,7 @@ export class NodePostgresProvider extends DatabaseProvider {
     "verify-full",
   ] as const;
 
-  public readonly dialect = "postgres";
+  public readonly dialect = "postgresql";
 
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
@@ -240,7 +240,7 @@ export class NodePostgresProvider extends DatabaseProvider {
    */
   protected getMigrationOptions(): MigrationConfig {
     return {
-      migrationsFolder: "drizzle",
+      migrationsFolder: `migrations/${this.name}`,
     };
   }
 

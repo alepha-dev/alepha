@@ -42,6 +42,7 @@ export * from "./interfaces/PgQueryWhere.ts";
 export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
+export * from "./providers/drivers/NodeSqliteProvider.ts";
 export * from "./providers/PostgresTypeProvider.ts";
 export * from "./providers/RepositoryProvider.ts";
 export * from "./schemas/insertSchema.ts";

@@ -146,49 +146,54 @@ export class DrizzleCommands {
           .values()
           .find((it: any) => it.instance.constructor.name === name)?.instance;
 
+      // ---------------------------------------------------------------------------------------------------------------
       const kit = inject("DrizzleKitProvider");
-      const provider = (alepha.descriptors("repository")[0] as any).provider;
-      const models = Object.keys(kit.getModels(provider));
-      const entitiesJs = `
-import "../..${entry.replace(rootDir, "")}";
-import { DrizzleKitProvider } from "@alepha/postgres";
+      const accepted = new Set<string>([]);
+      for (const descriptor of alepha.descriptors("repository") as any[]) {
+        const provider = descriptor.provider;
+        const providerName = provider.name;
+        const dialect = provider.dialect;
 
-const alepha = globalThis.__alepha;
-const kit = alepha.inject(DrizzleKitProvider);
-const provider = alepha.descriptors("repository")[0].provider;
-const models = kit.getModels(provider);
+        if (!accepted.has(providerName)) {
+          accepted.add(providerName);
+        } else {
+          continue;
+        }
 
-${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
+        this.log.info("");
+        this.log.info(`Generate '${providerName}' migrations (${dialect}) ...`);
 
-`.trim();
+        const models = Object.keys(kit.getModels(provider));
+        const entitiesJs = this.generateEntitiesJs(entry, providerName, models);
 
-      const entitiesJsPath = await this.runner.writeConfigFile(
-        "entities.js",
-        entitiesJs,
-        rootDir,
-      );
-
-      const drizzleConfigJs =
-        "export default " +
-        JSON.stringify(
-          {
-            schema: entitiesJsPath,
-            out: "./migrations",
-            dialect: "postgresql",
-          },
-          null,
-          2,
+        const entitiesJsPath = await this.runner.writeConfigFile(
+          "entities.js",
+          entitiesJs,
+          rootDir,
         );
 
-      const drizzleConfigJsPath = await this.runner.writeConfigFile(
-        "drizzle.config.js",
-        drizzleConfigJs,
-        rootDir,
-      );
+        const drizzleConfigJs =
+          "export default " +
+          JSON.stringify(
+            {
+              schema: entitiesJsPath,
+              out: `./migrations/${providerName}`,
+              dialect: dialect,
+            },
+            null,
+            2,
+          );
 
-      await this.runner.exec(
-        `drizzle-kit generate --config=${drizzleConfigJsPath}`,
-      );
+        const drizzleConfigJsPath = await this.runner.writeConfigFile(
+          "drizzle.config.js",
+          drizzleConfigJs,
+          rootDir,
+        );
+
+        await this.runner.exec(
+          `drizzle-kit generate --config=${drizzleConfigJsPath}`,
+        );
+      }
     },
   });
 
@@ -228,5 +233,24 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     throw new AlephaError(
       `Could not find Alepha instance in entry file: ${entry}`,
     );
+  }
+
+  protected generateEntitiesJs(
+    entry: string,
+    provider: string,
+    models: string[] = [],
+  ) {
+    return `
+import "${entry}";
+import { DrizzleKitProvider, $repository } from "@alepha/postgres";
+
+const alepha = globalThis.__alepha;
+const kit = alepha.inject(DrizzleKitProvider);
+const provider = alepha.descriptors($repository).find((it) => it.provider.name === "${provider}").provider;
+const models = kit.getModels(provider);
+
+${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
+
+`.trim();
   }
 }

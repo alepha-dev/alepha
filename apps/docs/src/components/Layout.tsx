@@ -15,7 +15,6 @@ import {
   IconRobot,
 } from "@tabler/icons-react";
 import { docs } from "../config/docs.ts";
-import { iconByName } from "../config/icons.ts";
 import Header from "./Header.tsx";
 
 const Layout = () => {
@@ -45,14 +44,13 @@ const LayoutContent = () => {
         .filter((it) => it.category === "guides")
         .map((doc) => ({
           label: (
-            <Text size={"sm"} fw={"light"}>
+            <Text size={"sm"}>
               {doc.name
                 .replace("@", "")
                 .replaceAll("-", "/")
                 .replace("Alepha", "")}
             </Text>
           ),
-          icon: iconByName(doc.name),
           href: `/docs/${doc.slug}`,
         })),
     },
@@ -63,14 +61,13 @@ const LayoutContent = () => {
         .filter((it) => it.category === "concepts")
         .map((doc) => ({
           label: (
-            <Text size={"sm"} fw={"light"}>
+            <Text size={"sm"}>
               {doc.name
                 .replace("@", "")
                 .replaceAll("-", "/")
                 .replace("Alepha", "")}
             </Text>
           ),
-          icon: iconByName(doc.name),
           href: `/docs/${doc.slug}`,
         })),
     },
@@ -88,12 +85,12 @@ const LayoutContent = () => {
                 .replace("Alepha", "")}
             </Text>
           ),
-          icon: iconByName(doc.name),
           href: `/docs/${doc.slug}`,
         })),
     },
     {
       label: "LLM",
+      position: "bottom",
       icon: <IconRobot />,
       href: router.base("/llms.txt"),
     },

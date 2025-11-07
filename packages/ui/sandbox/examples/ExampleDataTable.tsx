@@ -1,4 +1,4 @@
-import { createPagination, t } from "@alepha/core";
+import { createPagination, type PageQuery, t } from "@alepha/core";
 import DataTable from "../../src/components/table/DataTable.tsx";
 
 const elements = [
@@ -121,6 +121,11 @@ const elements = [
   { name: "Tennessine", symbol: "Ts", atomicMass: 294 },
   { name: "Oganesson", symbol: "Og", atomicMass: 294 },
 ];
+
+const paginate = (array: Record<string, unknown>[]) => {
+  const repository = [...array];
+  return (page: PageQuery) => {};
+};
 
 const getElements = (filters: Record<string, any>) => {
   let result = [...elements];

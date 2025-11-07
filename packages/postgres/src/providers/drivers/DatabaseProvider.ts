@@ -24,11 +24,15 @@ export abstract class DatabaseProvider {
   protected readonly alepha = $inject(Alepha);
   protected abstract readonly builder: ModelBuilder;
   public abstract readonly db: PgDatabase<any>;
-  public abstract readonly dialect: "postgres" | "sqlite";
+  public abstract readonly dialect: "postgresql" | "sqlite";
 
   public readonly enums = new Map<string, unknown>();
   public readonly tables = new Map<string, unknown>();
   public readonly sequences = new Map<string, unknown>();
+
+  public get name() {
+    return "default";
+  }
 
   public table<T extends TObject>(
     entity: EntityDescriptor<T>,
