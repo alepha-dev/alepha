@@ -1,4 +1,5 @@
 import { $module } from "@alepha/core";
+import { $email } from "./descriptors/$email.ts";
 import { EmailProvider } from "./providers/EmailProvider.ts";
 import { LocalEmailProvider } from "./providers/LocalEmailProvider.ts";
 import { MemoryEmailProvider } from "./providers/MemoryEmailProvider.ts";
@@ -6,6 +7,7 @@ import { NodemailerEmailProvider } from "./providers/NodemailerEmailProvider.ts"
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./descriptors/$email.ts";
 export * from "./errors/EmailError.ts";
 export * from "./providers/EmailProvider.ts";
 export * from "./providers/LocalEmailProvider.ts";
@@ -22,6 +24,11 @@ declare module "@alepha/core" {
       variables: Record<string, unknown>;
       provider: EmailProvider;
       abort(): void;
+    };
+    "email:sent": {
+      to: string | string[];
+      template: string;
+      provider: EmailProvider;
     };
   }
 }
@@ -40,6 +47,7 @@ declare module "@alepha/core" {
  */
 export const AlephaEmail = $module({
   name: "alepha.email",
+  descriptors: [$email],
   services: [
     EmailProvider,
     MemoryEmailProvider,
