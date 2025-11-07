@@ -16,6 +16,75 @@ import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "@alepha/core" {
+  interface Hooks {
+    /**
+     * Fires before creating an entity in the repository.
+     */
+    "repository:create:before": {
+      tableName: string;
+      data: any;
+    };
+    /**
+     * Fires after creating an entity in the repository.
+     */
+    "repository:create:after": {
+      tableName: string;
+      data: any;
+      entity: any;
+    };
+    /**
+     * Fires before updating entities in the repository.
+     */
+    "repository:update:before": {
+      tableName: string;
+      where: any;
+      data: any;
+    };
+    /**
+     * Fires after updating entities in the repository.
+     */
+    "repository:update:after": {
+      tableName: string;
+      where: any;
+      data: any;
+      entities: any[];
+    };
+    /**
+     * Fires before deleting entities from the repository.
+     */
+    "repository:delete:before": {
+      tableName: string;
+      where: any;
+    };
+    /**
+     * Fires after deleting entities from the repository.
+     */
+    "repository:delete:after": {
+      tableName: string;
+      where: any;
+      ids: Array<string | number>;
+    };
+    /**
+     * Fires before reading entities from the repository.
+     */
+    "repository:read:before": {
+      tableName: string;
+      query: any;
+    };
+    /**
+     * Fires after reading entities from the repository.
+     */
+    "repository:read:after": {
+      tableName: string;
+      query: any;
+      entities: any[];
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export { drizzle };
 export {
   type Page,

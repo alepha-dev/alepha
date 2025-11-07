@@ -374,6 +374,11 @@ export class RepositoryDescriptor<
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
+    await this.alepha.events.emit("repository:read:before", {
+      tableName: this.tableName,
+      query,
+    });
+
     const columns = query.columns ?? query.distinct;
     const builder = query.distinct
       ? this.selectDistinct(opts, query.distinct)
@@ -467,9 +472,14 @@ export class RepositoryDescriptor<
         return this.clean(row, schema);
       });
 
+      await this.alepha.events.emit("repository:read:after", {
+        tableName: this.tableName,
+        query,
+        entities: rows,
+      });
+
       return rows as PgStatic<T, R>[];
     } catch (error) {
-      console.log(error);
       throw new PgError("Query select has failed", error as Error);
     }
   }
@@ -620,13 +630,27 @@ export class RepositoryDescriptor<
     data: Static<TObjectInsert<T>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
-    return await this.insert(opts)
-      .values(this.cast(data ?? {}, true))
-      .returning(this.table)
-      .then(([it]) => this.clean(it, this.options.entity.schema))
-      .catch((error) => {
-        throw this.handleError(error, "Insert query has failed");
+    await this.alepha.events.emit("repository:create:before", {
+      tableName: this.tableName,
+      data,
+    });
+
+    try {
+      const entity = await this.insert(opts)
+        .values(this.cast(data ?? {}, true))
+        .returning(this.table)
+        .then(([it]) => this.clean(it, this.options.entity.schema));
+
+      await this.alepha.events.emit("repository:create:after", {
+        tableName: this.tableName,
+        data,
+        entity,
       });
+
+      return entity;
+    } catch (error) {
+      throw this.handleError(error, "Insert query has failed");
+    }
   }
 
   /**
@@ -644,15 +668,29 @@ export class RepositoryDescriptor<
       return [];
     }
 
-    return await this.insert(opts)
-      .values(values.map((data) => this.cast(data, true)))
-      .returning(this.table)
-      .then((rows) =>
-        rows.map((it) => this.clean(it, this.options.entity.schema)),
-      )
-      .catch((error) => {
-        throw this.handleError(error, "Insert query has failed");
+    await this.alepha.events.emit("repository:create:before", {
+      tableName: this.tableName,
+      data: values,
+    });
+
+    try {
+      const entities = await this.insert(opts)
+        .values(values.map((data) => this.cast(data, true)))
+        .returning(this.table)
+        .then((rows) =>
+          rows.map((it) => this.clean(it, this.options.entity.schema)),
+        );
+
+      await this.alepha.events.emit("repository:create:after", {
+        tableName: this.tableName,
+        data: values,
+        entity: entities,
       });
+
+      return entities;
+    } catch (error) {
+      throw this.handleError(error, "Insert query has failed");
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -665,6 +703,12 @@ export class RepositoryDescriptor<
     data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
+    await this.alepha.events.emit("repository:update:before", {
+      tableName: this.tableName,
+      where,
+      data,
+    });
+
     let row = data as any;
 
     const updatedAtField = getAttrFields(
@@ -695,7 +739,16 @@ export class RepositoryDescriptor<
     }
 
     try {
-      return this.clean(response[0], this.options.entity.schema);
+      const entity = this.clean(response[0], this.options.entity.schema);
+
+      await this.alepha.events.emit("repository:update:after", {
+        tableName: this.tableName,
+        where,
+        data,
+        entities: [entity],
+      });
+
+      return entity;
     } catch (error) {
       throw this.handleError(error, "Update query has failed");
     }
@@ -802,6 +855,12 @@ export class RepositoryDescriptor<
     data: Partial<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
+    await this.alepha.events.emit("repository:update:before", {
+      tableName: this.tableName,
+      where,
+      data,
+    });
+
     where = this.withDeletedAt(where, opts);
     data = this.cast(data, false) as any;
     try {
@@ -811,6 +870,14 @@ export class RepositoryDescriptor<
         )
         .where(this.toSQL(where))
         .returning();
+
+      await this.alepha.events.emit("repository:update:after", {
+        tableName: this.tableName,
+        where,
+        data,
+        entities,
+      });
+
       return entities.map((it: any) => it[this.id.key]);
     } catch (error) {
       throw this.handleError(error, "Update query has failed");
@@ -836,11 +903,24 @@ export class RepositoryDescriptor<
       );
     }
 
+    await this.alepha.events.emit("repository:delete:before", {
+      tableName: this.tableName,
+      where,
+    });
+
     try {
       const result = await this.delete(opts)
         .where(this.toSQL(where))
         .returning({ id: (this.table as any)[this.id.key] });
-      return result.map((row: any) => row.id);
+      const ids = result.map((row: any) => row.id);
+
+      await this.alepha.events.emit("repository:delete:after", {
+        tableName: this.tableName,
+        where,
+        ids,
+      });
+
+      return ids;
     } catch (error) {
       throw new PgError("Delete query has failed", error as Error);
     }
