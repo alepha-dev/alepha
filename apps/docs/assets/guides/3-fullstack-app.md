@@ -34,8 +34,8 @@ my-app/
 │   │   └── About.tsx
 │   ├── styles.css
 │   ├── AppRouter.ts
-│   ├── index.server.ts
-│   └── index.browser.ts
+│   ├── main.server.ts
+│   └── main.browser.ts
 ├── index.html
 ├── vite.config.ts
 ├── package.json
@@ -221,7 +221,7 @@ The HTML template serves as the entry point and includes our CSS file.
   <link href="/src/styles.css" rel="stylesheet">
 </head>
 <body>
-  <script type="module" src="/src/index.browser.ts"></script>
+  <script type="module" src="/src/main.browser.ts"></script>
 </body>
 </html>
 ```
@@ -230,7 +230,7 @@ The HTML template serves as the entry point and includes our CSS file.
 
 The server entry point initializes your Alepha application and starts the HTTP server.
 
-**`src/index.server.ts`**
+**`src/main.server.ts`**
 ```typescript
 import { Alepha, run } from "alepha";
 import { AppRouter } from "./AppRouter.ts";
@@ -246,7 +246,7 @@ run(alepha);
 
 The browser entry point handles client-side hydration and navigation.
 
-**`src/index.browser.ts`**
+**`src/main.browser.ts`**
 ```typescript
 import { Alepha, run } from "alepha";
 import { AppRouter } from "./AppRouter.ts";
@@ -273,7 +273,7 @@ export default defineConfig({
     viteReact(),
     viteAlepha({
       // Point to your server entry file
-      serverEntry: "./src/index.server.ts",
+      serverEntry: "./src/main.server.ts",
     }),
   ],
 });
