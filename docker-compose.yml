@@ -22,3 +22,16 @@ services:
     image: mcr.microsoft.com/azure-storage/azurite
     ports:
       - "10000:10000"
+
+  verdaccio:
+    restart: always
+    image: verdaccio/verdaccio:latest
+    ports:
+      - "4873:4873"
+    volumes:
+      - verdaccio-storage:/verdaccio/storage
+      - verdaccio-conf:/verdaccio/conf
+
+volumes:
+  verdaccio-storage:
+  verdaccio-conf:
