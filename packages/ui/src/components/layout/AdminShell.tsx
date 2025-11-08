@@ -27,7 +27,14 @@ export interface AdminShellProps {
 
 declare module "@alepha/core" {
   interface State {
+    /**
+     * Whether the sidebar is opened or closed.
+     */
     "alepha.ui.sidebar.opened"?: boolean;
+
+    /**
+     * Whether the sidebar is collapsed (narrow) or expanded (wide).
+     */
     "alepha.ui.sidebar.collapsed"?: boolean;
   }
 }

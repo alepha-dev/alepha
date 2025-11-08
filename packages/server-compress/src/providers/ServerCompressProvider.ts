@@ -2,7 +2,7 @@ import { Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $hook, type HookDescriptor } from "@alepha/core";
+import { $hook, $inject, Alepha, type HookDescriptor } from "@alepha/core";
 import type { ServerResponse } from "@alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -11,6 +11,12 @@ const brotli = promisify(zlib.brotliCompress);
 const createBrotliCompress = zlib.createBrotliCompress;
 const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
+
+declare module "@alepha/core" {
+  interface State {
+    "alepha.server.compress.options"?: ServerCompressProviderOptions;
+  }
+}
 
 export class ServerCompressProvider {
   static compressors: Record<
@@ -38,15 +44,20 @@ export class ServerCompressProvider {
         : undefined,
   };
 
-  public options: ServerCompressProviderOptions = {
-    allowedContentTypes: [
-      "application/json",
-      "text/html",
-      "application/javascript",
-      "text/plain",
-      "text/css",
-    ],
-  };
+  protected readonly alepha = $inject(Alepha);
+
+  protected get options(): ServerCompressProviderOptions {
+    return {
+      allowedContentTypes: [
+        "application/json",
+        "text/html",
+        "application/javascript",
+        "text/plain",
+        "text/css",
+      ],
+      ...this.alepha.state.get("alepha.server.compress.options"),
+    };
+  }
 
   public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
     on: "server:onResponse",

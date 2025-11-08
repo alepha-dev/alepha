@@ -170,10 +170,11 @@ export class Alepha {
       // inject global hooks for testing purposes
       // > for vitest, { globals: true } is required in the config
       const g = globalThis as any;
-      const beforeAll = state.beforeAll ?? g.beforeAll;
-      const afterAll = state.afterAll ?? g.afterAll;
-      const afterEach = state.afterEach ?? g.afterEach;
-      const onTestFinished = state.onTestFinished ?? g.onTestFinished;
+      const beforeAll = state["alepha.test.beforeAll"] ?? g.beforeAll;
+      const afterAll = state["alepha.test.afterAll"] ?? g.afterAll;
+      const afterEach = state["alepha.test.afterEach"] ?? g.afterEach;
+      const onTestFinished =
+        state["alepha.test.onTestFinished"] ?? g.onTestFinished;
 
       beforeAll?.(() => alepha.start());
       afterAll?.(() => alepha.stop());
@@ -185,10 +186,10 @@ export class Alepha {
       }
 
       alepha.state
-        .set("beforeAll", beforeAll)
-        .set("afterAll", afterAll)
-        .set("afterEach", afterEach)
-        .set("onTestFinished", onTestFinished);
+        .set("alepha.test.beforeAll", beforeAll)
+        .set("alepha.test.afterAll", afterAll)
+        .set("alepha.test.afterEach", afterEach)
+        .set("alepha.test.onTestFinished", onTestFinished);
     }
 
     return alepha;
@@ -317,7 +318,7 @@ export class Alepha {
    * Get logger instance.
    */
   public get log(): LoggerInterface | undefined {
-    return this.state.get("log");
+    return this.state.get("alepha.logger");
   }
 
   /**
@@ -460,7 +461,7 @@ export class Alepha {
       this.inject(key);
     }
 
-    const target = this.state.get("target");
+    const target = this.state.get("alepha.target");
     if (target) {
       this.registry = new Map();
       this.descriptorRegistry = new Map();
@@ -1014,24 +1015,61 @@ export interface Env {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface State {
-  log?: LoggerInterface;
+  /**
+   * Environment variables for the application.
+   */
   env?: Readonly<Env>;
+
+  /**
+   * Logger instance to be used by the Alepha container.
+   *
+   * @internal
+   */
+  "alepha.logger"?: LoggerInterface;
 
   /**
    * If defined, the Alepha container will only register this service and its dependencies.
    */
-  target?: Service;
+  "alepha.target"?: Service;
 
   // test hooks
-  beforeAll?: (run: any) => any;
-  afterAll?: (run: any) => any;
-  afterEach?: (run: any) => any;
-  onTestFinished?: (run: any) => any;
 
   /**
-   * List of static assets to be copied to the output directory.
+   * Bind to Vitest 'beforeAll' hook.
+   * Used for testing purposes.
+   * This is automatically attached if Alepha#create() detects a test environment and global 'beforeAll' is available.
    */
-  assets?: Array<string>;
+  "alepha.test.beforeAll"?: (run: any) => any;
+
+  /**
+   * Bind to Vitest 'afterAll' hook.
+   * Used for testing purposes.
+   * This is automatically attached if Alepha#create() detects a test environment and global 'afterAll' is available.
+   */
+  "alepha.test.afterAll"?: (run: any) => any;
+
+  /**
+   * Bind to Vitest 'afterEach' hook.
+   * Used for testing purposes.
+   * This is automatically attached if Alepha#create() detects a test environment and global 'afterEach' is available.
+   */
+  "alepha.test.afterEach"?: (run: any) => any;
+
+  /**
+   * Bind to Vitest 'onTestFinished' hook.
+   * Used for testing purposes.
+   * This is automatically attached if Alepha#create() detects a test environment and global 'onTestFinished' is available.
+   */
+  "alepha.test.onTestFinished"?: (run: any) => any;
+
+  /**
+   * List of static assets to be copied to the output directory during the build process.
+   *
+   * Used for Alepha-based applications that require static assets.
+   *
+   * See @alepha/vite for more details.
+   */
+  "alepha.build.assets"?: Array<string>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

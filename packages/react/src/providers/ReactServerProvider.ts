@@ -51,7 +51,7 @@ const envSchema = t.object({
 declare module "@alepha/core" {
   interface Env extends Partial<Static<typeof envSchema>> {}
   interface State {
-    "react.server.ssr"?: boolean;
+    "alepha.react.server.ssr"?: boolean;
   }
 }
 
@@ -92,7 +92,7 @@ export class ReactServerProvider implements Configurable {
       const ssrEnabled =
         pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
-      this.alepha.state.set("react.server.ssr", ssrEnabled);
+      this.alepha.state.set("alepha.react.server.ssr", ssrEnabled);
 
       // development mode
       if (this.alepha.isViteDev()) {
@@ -265,7 +265,7 @@ export class ReactServerProvider implements Configurable {
     }
 
     if (!options.html) {
-      this.alepha.state.set("react.router.state", state);
+      this.alepha.state.set("alepha.react.router.state", state);
 
       return {
         state,
@@ -317,7 +317,7 @@ export class ReactServerProvider implements Configurable {
 
       if (this.alepha.has(ServerLinksProvider)) {
         this.alepha.state.set(
-          "api",
+          "alepha.server.request.apiLinks",
           await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
             user: (serverRequest as any).user, // TODO: fix type
             authorization: serverRequest.headers.authorization,
@@ -407,7 +407,7 @@ export class ReactServerProvider implements Configurable {
     const element = this.pageApi.root(state);
 
     // attach react router state to the http request context
-    this.alepha.state.set("react.router.state", state);
+    this.alepha.state.set("alepha.react.router.state", state);
 
     this.serverTimingProvider.beginTiming("renderToString");
     let app = "";
@@ -440,7 +440,7 @@ export class ReactServerProvider implements Configurable {
       const hydrationData: ReactHydrationState = {
         ...store,
         // map react.router.state to the hydration state
-        "react.router.state": undefined,
+        "alepha.react.router.state": undefined,
         layers: state.layers.map((it) => ({
           ...it,
           error: it.error

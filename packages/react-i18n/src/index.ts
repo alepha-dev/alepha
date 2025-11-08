@@ -14,7 +14,7 @@ export * from "./providers/I18nProvider.ts";
 
 declare module "@alepha/core" {
   export interface State {
-    "react.i18n.lang"?: string;
+    "alepha.react.i18n.lang"?: string;
   }
 }
 

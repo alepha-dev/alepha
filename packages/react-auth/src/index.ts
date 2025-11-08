@@ -16,7 +16,12 @@ export * from "./providers/ReactAuthProvider.ts";
 
 declare module "@alepha/core" {
   export interface State {
-    user?: UserAccount;
+    /**
+     * The authenticated user account attached to the server request state.
+     *
+     * @internal
+     */
+    "alepha.server.request.user"?: UserAccount;
   }
 }
 declare module "@alepha/react" {

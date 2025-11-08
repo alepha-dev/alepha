@@ -43,7 +43,7 @@ export class Logger implements LoggerInterface {
   }
 
   public get level(): string {
-    const stateLogLevel = this.alepha.state.get("logLevel");
+    const stateLogLevel = this.alepha.state.get("alepha.logger.level");
     if (stateLogLevel && stateLogLevel !== this.appLogLevel) {
       this.appLogLevel = stateLogLevel;
       this.logLevel = this.parseLevel(this.appLogLevel, this.module);

@@ -257,11 +257,11 @@ describe("Logger", () => {
       expect(logger.level).toBe("INFO");
 
       // Change state
-      alepha.state.set("logLevel", "debug");
+      alepha.state.set("alepha.logger.level", "debug");
       expect(logger.level).toBe("DEBUG");
 
       // Change to module-specific config
-      alepha.state.set("logLevel", "test:trace,warn");
+      alepha.state.set("alepha.logger.level", "test:trace,warn");
       expect(logger.level).toBe("TRACE");
     });
 
@@ -283,7 +283,7 @@ describe("Logger", () => {
         args: ["TestService", "test.module"],
       });
 
-      alepha.state.set("logLevel", "test:debug,info");
+      alepha.state.set("alepha.logger.level", "test:debug,info");
       const level1 = logger.level;
       const level2 = logger.level;
 

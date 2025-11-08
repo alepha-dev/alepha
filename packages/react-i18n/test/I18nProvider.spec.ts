@@ -253,10 +253,10 @@ describe("I18nProvider", () => {
 
     // State is set lazily, so we should set a language first
     await i18n.setLang("en");
-    expect(alepha.state.get("react.i18n.lang")).toBe("en");
+    expect(alepha.state.get("alepha.react.i18n.lang")).toBe("en");
 
     await i18n.setLang("fr");
-    expect(alepha.state.get("react.i18n.lang")).toBe("fr");
+    expect(alepha.state.get("alepha.react.i18n.lang")).toBe("fr");
   });
 
   test("should have number formatter for current language", async ({

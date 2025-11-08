@@ -79,7 +79,9 @@ export class LinkProvider {
 
   public get links(): HttpClientLink[] {
     // TODO: not performant at all, use a map instead for ServerLinks
-    const apiLinks = this.alepha.state.get("api")?.links;
+    const apiLinks = this.alepha.state.get(
+      "alepha.server.request.apiLinks",
+    )?.links;
     if (apiLinks) {
       if (this.alepha.isBrowser()) {
         return apiLinks;
@@ -112,7 +114,7 @@ export class LinkProvider {
       },
     );
 
-    this.alepha.state.set("api", data);
+    this.alepha.state.set("alepha.server.request.apiLinks", data);
 
     return data.links;
   }
@@ -271,7 +273,10 @@ export class LinkProvider {
     name: string,
     options: ClientScope = {},
   ): Promise<HttpClientLink> {
-    if (this.alepha.isBrowser() && !this.alepha.state.get("api")) {
+    if (
+      this.alepha.isBrowser() &&
+      !this.alepha.state.get("alepha.server.request.apiLinks")
+    ) {
       await this.fetchLinks();
     }
 

@@ -168,7 +168,7 @@ interface ViteAlephaDevState {
 
 const ssr = (state: ViteAlephaDevState) => {
   if (!state.app) return false;
-  return state.app.state.get("react.server.ssr" as keyof State) ?? false;
+  return state.app.state.get("alepha.react.server.ssr" as keyof State) ?? false;
 };
 
 const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {

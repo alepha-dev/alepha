@@ -9,7 +9,7 @@ export const useI18n = <
   S extends object,
   K extends keyof ServiceDictionary<S>,
 >(): I18nProvider<S, K> => {
-  useStore("react.i18n.lang");
+  useStore("alepha.react.i18n.lang");
   return useInject(I18nProvider<S, K>);
 };
 

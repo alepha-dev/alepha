@@ -21,7 +21,13 @@ export * from "./schemas/apiLinksResponseSchema.ts";
 
 declare module "@alepha/core" {
   interface State {
-    api?: ApiLinksResponse;
+    /**
+     * API links attached to the server request state.
+     *
+     * @see {@link ApiLinksResponse}
+     * @internal
+     */
+    "alepha.server.request.apiLinks"?: ApiLinksResponse;
   }
 }
 

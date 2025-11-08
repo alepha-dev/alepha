@@ -80,7 +80,7 @@ export class ServerSecurityProvider {
         }
 
         this.alepha.state.set(
-          "user",
+          "alepha.server.request.user",
           this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
       } catch (error) {
@@ -121,7 +121,7 @@ export class ServerSecurityProvider {
         }
 
         this.alepha.state.set(
-          "user",
+          "alepha.server.request.user",
           // remove sensitive info
           this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
@@ -179,7 +179,9 @@ export class ServerSecurityProvider {
     let user: UserAccountToken | undefined;
 
     const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
-    const fromSystem = this.alepha.state.get("server.security.system.user");
+    const fromSystem = this.alepha.state.get(
+      "alepha.server.security.system.user",
+    );
 
     if (type === "system") {
       user = fromSystem;

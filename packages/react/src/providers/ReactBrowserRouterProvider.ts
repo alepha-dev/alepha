@@ -63,7 +63,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       type: "transition",
     });
     await this.alepha.events.emit("react:transition:begin", {
-      previous: this.alepha.state.get("react.router.state")!,
+      previous: this.alepha.state.get("alepha.react.router.state")!,
       state,
     });
 
@@ -135,7 +135,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       }
     }
 
-    this.alepha.state.set("react.router.state", state);
+    this.alepha.state.set("alepha.react.router.state", state);
 
     await this.alepha.events.emit("react:action:end", {
       type: "transition",

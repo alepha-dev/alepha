@@ -33,6 +33,6 @@ export const AlephaDevtools = $module({
   services: [DevCollectorProvider],
   register: (alepha) => {
     alepha.with(DevCollectorProvider);
-    alepha.state.push("assets", "@alepha/devtools");
+    alepha.state.push("alepha.build.assets", "@alepha/devtools");
   },
 });

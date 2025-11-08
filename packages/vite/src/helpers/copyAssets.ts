@@ -11,7 +11,7 @@ export interface CopyAssetsOptions {
 export const copyAssets = async (opts: CopyAssetsOptions): Promise<void> => {
   const root = process.cwd();
   const alepha = await importAlepha(opts.entry);
-  const assets = alepha.state.get("assets");
+  const assets = alepha.state.get("alepha.build.assets");
   if (!assets || assets.length === 0) {
     return;
   }

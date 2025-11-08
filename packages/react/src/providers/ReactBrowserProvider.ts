@@ -61,7 +61,7 @@ export class ReactBrowserProvider {
   };
 
   public get state(): ReactRouterState {
-    return this.alepha.state.get("react.router.state")!;
+    return this.alepha.state.get("alepha.react.router.state")!;
   }
 
   /**

@@ -4,7 +4,7 @@ import { ReactAuth } from "../services/ReactAuth.ts";
 
 export const useAuth = <T extends object = any>() => {
   const alepha = useAlepha();
-  const [user] = useStore("user");
+  const [user] = useStore("alepha.server.request.user");
 
   return {
     user,

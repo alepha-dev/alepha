@@ -60,7 +60,7 @@ export class I18nProvider<
     on: "server:onRequest",
     priority: "last",
     handler: async ({ request }) => {
-      this.alepha.state.set("react.i18n.lang", this.cookie.get(request));
+      this.alepha.state.set("alepha.react.i18n.lang", this.cookie.get(request));
     },
   });
 
@@ -71,7 +71,7 @@ export class I18nProvider<
         // get cookie lang
         const cookieLang = this.cookie.get();
         if (cookieLang) {
-          this.alepha.state.set("react.i18n.lang", cookieLang);
+          this.alepha.state.set("alepha.react.i18n.lang", cookieLang);
         }
 
         for (const item of this.registry) {
@@ -111,14 +111,14 @@ export class I18nProvider<
       this.cookie.set(lang);
     }
 
-    this.alepha.state.set("react.i18n.lang", lang);
+    this.alepha.state.set("alepha.react.i18n.lang", lang);
     this.refreshLocale();
   };
 
   protected readonly mutate = $hook({
     on: "state:mutate",
     handler: async ({ key, value }) => {
-      if (key === "react.i18n.lang" && this.alepha.isBrowser()) {
+      if (key === "alepha.react.i18n.lang" && this.alepha.isBrowser()) {
         let hasChanged = false;
         for (const item of this.registry) {
           if (value === item.lang) {
@@ -133,7 +133,7 @@ export class I18nProvider<
         this.refreshLocale();
 
         if (hasChanged) {
-          this.alepha.state.set("react.i18n.lang", value);
+          this.alepha.state.set("alepha.react.i18n.lang", value);
         }
       }
     },
@@ -141,7 +141,8 @@ export class I18nProvider<
 
   public get lang(): string {
     return (
-      this.alepha.state.get("react.i18n.lang") || this.options.fallbackLang
+      this.alepha.state.get("alepha.react.i18n.lang") ||
+      this.options.fallbackLang
     );
   }
 

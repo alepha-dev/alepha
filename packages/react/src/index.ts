@@ -26,7 +26,7 @@ export * from "./providers/ReactServerProvider.ts";
 
 declare module "@alepha/core" {
   interface State {
-    "react.router.state"?: ReactRouterState;
+    "alepha.react.router.state"?: ReactRouterState;
   }
 
   interface Hooks {

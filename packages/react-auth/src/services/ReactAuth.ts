@@ -51,7 +51,7 @@ export class ReactAuth {
    * Alias for `alepha.state.get("user")`
    */
   public get user(): UserAccountToken | undefined {
-    return this.alepha.state.get("user");
+    return this.alepha.state.get("alepha.server.request.user");
   }
 
   public async ping() {
@@ -59,8 +59,8 @@ export class ReactAuth {
       schema: { response: userinfoResponseSchema },
     });
 
-    this.alepha.state.set("api", data.api);
-    this.alepha.state.set("user", data.user);
+    this.alepha.state.set("alepha.server.request.apiLinks", data.api);
+    this.alepha.state.set("alepha.server.request.user", data.user);
 
     return data.user;
   }
@@ -89,8 +89,8 @@ export class ReactAuth {
         },
       );
 
-      this.alepha.state.set("api", data.api);
-      this.alepha.state.set("user", data.user);
+      this.alepha.state.set("alepha.server.request.apiLinks", data.api);
+      this.alepha.state.set("alepha.server.request.user", data.user);
 
       return data;
     }
