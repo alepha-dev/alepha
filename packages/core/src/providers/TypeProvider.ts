@@ -226,6 +226,7 @@ export class TypeProvider {
   public null = Type.Null;
   public const = Type.Literal;
   public codec = Type.Codec;
+  public literal = Type.Literal;
   // -------------------------------------------------------------------------------------------------------------------
 
   /**

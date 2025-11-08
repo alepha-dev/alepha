@@ -3,7 +3,10 @@ import { Alepha } from "@alepha/core";
 import { $action, AlephaServer, type ServerRequest } from "@alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AlephaServerRateLimit } from "../src/index.ts";
-import { ServerRateLimitProvider } from "../src/providers/ServerRateLimitProvider.ts";
+import {
+  rateLimitOptions,
+  ServerRateLimitProvider,
+} from "../src/providers/ServerRateLimitProvider.ts";
 
 describe("ServerRateLimitProvider", () => {
   let alepha: Alepha;
@@ -59,20 +62,6 @@ describe("ServerRateLimitProvider", () => {
     expect(result3.allowed).toBe(false);
     expect(result3.remaining).toBe(0);
     expect(result3.retryAfter).toBeGreaterThan(0);
-  });
-
-  it("should use custom key generator", async () => {
-    const req = createMockRequest();
-    const keyGenerator = (req: ServerRequest) =>
-      `user:${req.headers["user-id"] || "anonymous"}`;
-
-    const result = await provider.checkLimit(req, {
-      max: 5,
-      windowMs: 60000,
-      keyGenerator,
-    });
-
-    expect(result.allowed).toBe(true);
   });
 
   it("should handle different IPs separately", async () => {
@@ -141,20 +130,15 @@ describe("ServerRateLimitProvider Module Integration", () => {
   it("should integrate with Alepha framework successfully", async () => {
     expect(provider).toBeDefined();
     expect(provider).toBeInstanceOf(ServerRateLimitProvider);
-    expect(provider.options).toBeDefined();
     expect(typeof provider.checkLimit).toBe("function");
-  });
-
-  it("should have configurable options", async () => {
-    const newOptions = { max: 50, windowMs: 30000 };
-    provider.options = newOptions;
-
-    expect(provider.options).toEqual(newOptions);
   });
 
   it("should work with real action requests", async () => {
     // Configure rate limit for testing
-    provider.options = { max: 10, windowMs: 60000 };
+    alepha.state.mut(rateLimitOptions, () => ({
+      max: 10,
+      windowMs: 60000,
+    }));
 
     const app = alepha.inject(TestApp);
 

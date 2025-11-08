@@ -1,12 +1,13 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
+  $atom,
   $env,
   $hook,
   $inject,
+  $use,
   Alepha,
   AlephaError,
-  type Configurable,
   type Static,
   t,
 } from "@alepha/core";
@@ -18,10 +19,7 @@ import {
   ServerTimingProvider,
 } from "@alepha/server";
 import { ServerLinksProvider } from "@alepha/server-links";
-import {
-  type ServeDescriptorOptions,
-  ServerStaticProvider,
-} from "@alepha/server-static";
+import { ServerStaticProvider } from "@alepha/server-static";
 import { renderToString } from "react-dom/server";
 import {
   $page,
@@ -36,9 +34,9 @@ import {
   type ReactRouterState,
 } from "./ReactPageProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 const envSchema = t.object({
-  REACT_SERVER_DIST: t.text({ default: "public" }),
-  REACT_SERVER_PREFIX: t.text({ default: "" }),
   REACT_SSR_ENABLED: t.optional(t.boolean()),
   REACT_ROOT_ID: t.text({ default: "root" }), // TODO: move to ReactPageProvider.options?
   REACT_SERVER_TEMPLATE: t.optional(
@@ -55,15 +53,42 @@ declare module "@alepha/core" {
   }
 }
 
-export interface ReactServerProviderOptions {
-  /**
-   * Override default options for the static file server.
-   * > Static file server is only created in non-serverless production mode.
-   */
-  static?: Partial<Omit<ServeDescriptorOptions, "root">>;
+/**
+ * React server provider configuration atom
+ */
+export const reactServerOptions = $atom({
+  name: "alepha.react.server.options",
+  schema: t.object({
+    publicDir: t.string(),
+    staticServer: t.object({
+      disabled: t.boolean(),
+      path: t.string({
+        description: "URL path where static files will be served.",
+      }),
+    }),
+  }),
+  default: {
+    publicDir: "public",
+    staticServer: {
+      disabled: false,
+      path: "/",
+    },
+  },
+});
+
+export type ReactServerProviderOptions = Static<
+  typeof reactServerOptions.schema
+>;
+
+declare module "@alepha/core" {
+  interface State {
+    [reactServerOptions.key]: ReactServerProviderOptions;
+  }
 }
 
-export class ReactServerProvider implements Configurable {
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class ReactServerProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
@@ -79,7 +104,7 @@ export class ReactServerProvider implements Configurable {
   );
   protected preprocessedTemplate: PreprocessedTemplate | null = null;
 
-  public options: ReactServerProviderOptions = {};
+  protected readonly options = $use(reactServerOptions);
 
   /**
    * Configure the React server provider.
@@ -180,8 +205,8 @@ export class ReactServerProvider implements Configurable {
    */
   protected getPublicDirectory(): string {
     const maybe = [
-      join(process.cwd(), `dist/${this.env.REACT_SERVER_DIST}`),
-      join(process.cwd(), this.env.REACT_SERVER_DIST),
+      join(process.cwd(), `dist/${this.options.publicDir}`),
+      join(process.cwd(), this.options.publicDir),
     ];
 
     for (const it of maybe) {
@@ -199,12 +224,11 @@ export class ReactServerProvider implements Configurable {
   protected async configureStaticServer(root: string) {
     await this.serverStaticProvider.createStaticServer({
       root,
-      path: this.env.REACT_SERVER_PREFIX,
       cacheControl: {
         maxAge: 3600,
         immutable: true,
       },
-      ...this.options.static,
+      ...this.options.staticServer,
     });
   }
 

@@ -227,7 +227,7 @@ export class Alepha {
    *
    * > Used to initialize the StateManager.
    */
-  protected init: State;
+  protected init: Partial<State>;
 
   /**
    * During the instantiation process, we keep a list of pending instantiations.
@@ -609,12 +609,10 @@ export class Alepha {
    * > If you are interested in configuring a service, use Alepha#configure() instead.
    *
    * @param serviceEntry - The service to register in the container.
-   * @param configure - Optional configuration object to merge with the service's options.
    * @return Current instance of Alepha.
    */
-  public with<T extends { options?: object } & object>(
+  public with<T extends object>(
     serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
-    configure?: Partial<T["options"]>,
   ): this {
     const entry: ServiceEntry<T> =
       "default" in serviceEntry ? serviceEntry.default : serviceEntry;
@@ -887,6 +885,7 @@ export class Alepha {
       }
       if (
         typeof value === "object" &&
+        value !== null &&
         typeof value[OPTIONS] === "object" &&
         "getter" in value[OPTIONS]
       ) {
@@ -1078,8 +1077,4 @@ export interface Hooks {
      */
     prevValue: any;
   };
-}
-
-export interface Configurable<T extends object = any> {
-  options: T;
 }

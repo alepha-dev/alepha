@@ -6,7 +6,7 @@ import { $context } from "./$context.ts";
 
 export const $use = <T extends TObject, N extends string>(
   atom: Atom<T, N>,
-): Static<T> => {
+): Readonly<Static<T>> => {
   const { alepha } = $context();
 
   // register atom in state if not already registered

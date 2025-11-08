@@ -1,6 +1,15 @@
 import { mkdir } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
-import { $env, $hook, $inject, AlephaError, t } from "@alepha/core";
+import {
+  $atom,
+  $env,
+  $hook,
+  $inject,
+  $use,
+  AlephaError,
+  type Static,
+  t,
+} from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
@@ -10,19 +19,37 @@ import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 const envSchema = t.object({
   DATABASE_URL: t.optional(t.text()),
 });
 
-export interface NodeSqliteProviderOptions {
-  /**
-   * Sqlite database file path.
-   * Set to `:memory:` to use an in-memory database.
-   *
-   * @default this.env.DATABASE_URL || ":memory:"
-   */
-  path: string;
+/**
+ * Node SQLite provider configuration atom
+ */
+export const nodeSqliteOptions = $atom({
+  name: "alepha.postgres.node-sqlite.options",
+  schema: t.object({
+    path: t.optional(
+      t.string({
+        description:
+          "Sqlite database file path. Set to :memory: to use an in-memory database.",
+      }),
+    ),
+  }),
+  default: {},
+});
+
+export type NodeSqliteProviderOptions = Static<typeof nodeSqliteOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [nodeSqliteOptions.key]: NodeSqliteProviderOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Add a fake support for SQLite in Node.js based on Postgres interfaces.
@@ -39,9 +66,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly builder = $inject(SqliteModelBuilder);
 
   public sqlite!: DatabaseSync;
-  public options: NodeSqliteProviderOptions = {
-    path: this.getDatabasePath(),
-  };
+  protected readonly options = $use(nodeSqliteOptions);
 
   protected getDatabasePath(): string {
     let path = this.env.DATABASE_URL;
@@ -111,7 +136,10 @@ export class NodeSqliteProvider extends DatabaseProvider {
     on: "start",
     handler: async () => {
       const { DatabaseSync } = await import("node:sqlite");
-      const filepath = this.options.path.replace("sqlite://", "");
+      const filepath = (this.options.path || this.getDatabasePath()).replace(
+        "sqlite://",
+        "",
+      );
 
       if (filepath !== ":memory:" && filepath !== "") {
         const dirname = filepath.split("/").slice(0, -1).join("/");

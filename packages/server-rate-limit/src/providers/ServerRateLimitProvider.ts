@@ -1,6 +1,8 @@
 import { $cache } from "@alepha/cache";
-import { $env, $hook, t } from "@alepha/core";
+import { $atom, $env, $hook, $use, type Static, t } from "@alepha/core";
 import { HttpError, type ServerRequest } from "@alepha/server";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -10,13 +12,45 @@ export interface RateLimitResult {
   retryAfter?: number;
 }
 
-export interface RateLimitOptions {
-  windowMs?: number;
-  max?: number;
-  keyGenerator?: (req: ServerRequest) => string;
-  skipFailedRequests?: boolean;
-  skipSuccessfulRequests?: boolean;
+/**
+ * Rate limit configuration atom
+ */
+export const rateLimitOptions = $atom({
+  name: "alepha.server.rate-limit.options",
+  schema: t.object({
+    windowMs: t.optional(
+      t.number({
+        description: "Window duration in milliseconds",
+      }),
+    ),
+    max: t.optional(
+      t.number({
+        description: "Maximum number of requests per window",
+      }),
+    ),
+    skipFailedRequests: t.optional(
+      t.boolean({
+        description: "Skip rate limiting for failed requests",
+      }),
+    ),
+    skipSuccessfulRequests: t.optional(
+      t.boolean({
+        description: "Skip rate limiting for successful requests",
+      }),
+    ),
+  }),
+  default: {},
+});
+
+export type RateLimitOptions = Static<typeof rateLimitOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [rateLimitOptions.key]: RateLimitOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
   RATE_LIMIT_WINDOW_MS: t.number({
@@ -37,7 +71,7 @@ export class ServerRateLimitProvider {
     ttl: [this.env.RATE_LIMIT_WINDOW_MS, "milliseconds"],
   });
 
-  public options: RateLimitOptions = {};
+  protected readonly options = $use(rateLimitOptions);
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
@@ -109,7 +143,7 @@ export class ServerRateLimitProvider {
   ): Promise<RateLimitResult> {
     const windowMs = options.windowMs ?? this.env.RATE_LIMIT_WINDOW_MS;
     const max = options.max ?? this.env.RATE_LIMIT_MAX_REQUESTS;
-    const key = this.generateKey(req, options.keyGenerator);
+    const key = this.generateKey(req);
 
     const now = Date.now();
     const windowStart = now - windowMs;
@@ -155,20 +189,13 @@ export class ServerRateLimitProvider {
     return result;
   }
 
-  private generateKey(
-    req: ServerRequest,
-    keyGenerator?: (req: ServerRequest) => string,
-  ): string {
-    if (keyGenerator) {
-      return keyGenerator(req);
-    }
-
+  protected generateKey(req: ServerRequest): string {
     // Default to IP-based rate limiting
     const ip = this.getClientIP(req);
     return `ip:${ip}`;
   }
 
-  private getClientIP(req: ServerRequest): string {
+  protected getClientIP(req: ServerRequest): string {
     // Check x-forwarded-for header first (for proxies/load balancers)
     const forwarded = req.headers?.["x-forwarded-for"];
     if (forwarded) {

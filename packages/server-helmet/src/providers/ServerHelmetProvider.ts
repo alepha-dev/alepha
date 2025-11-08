@@ -1,4 +1,67 @@
-import { $hook, $inject, Alepha } from "@alepha/core";
+import {
+  $atom,
+  $hook,
+  $inject,
+  $use,
+  Alepha,
+  type Static,
+  t,
+} from "@alepha/core";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Helmet security headers configuration atom
+ */
+export const helmetOptions = $atom({
+  name: "alepha.server.helmet.options",
+  schema: t.object({
+    isSecure: t.optional(t.boolean()),
+    strictTransportSecurity: t.optional(
+      t.object({
+        maxAge: t.optional(t.number()),
+        includeSubDomains: t.optional(t.boolean()),
+        preload: t.optional(t.boolean()),
+      }),
+    ),
+    xContentTypeOptions: t.optional(t.boolean()),
+    xFrameOptions: t.optional(t.enum(["DENY", "SAMEORIGIN"])),
+    xXssProtection: t.optional(t.boolean()),
+    contentSecurityPolicy: t.optional(
+      t.object({
+        directives: t.record(t.string(), t.any()),
+      }),
+    ),
+    referrerPolicy: t.optional(
+      t.enum([
+        "no-referrer",
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "same-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+        "unsafe-url",
+      ]),
+    ),
+  }),
+  default: {
+    strictTransportSecurity: { maxAge: 15552000, includeSubDomains: true },
+    xFrameOptions: "SAMEORIGIN",
+    xXssProtection: false,
+    referrerPolicy: "strict-origin-when-cross-origin",
+  },
+});
+
+export type HelmetOptions = Static<typeof helmetOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [helmetOptions.key]: HelmetOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 type CspDirective = string | string[];
 
@@ -32,25 +95,6 @@ export interface HstsOptions {
   preload?: boolean;
 }
 
-export interface HelmetOptions {
-  isSecure?: boolean;
-  strictTransportSecurity?: HstsOptions | false;
-  xContentTypeOptions?: false;
-  xFrameOptions?: "DENY" | "SAMEORIGIN" | false;
-  xXssProtection?: false;
-  contentSecurityPolicy?: CspOptions | false | "default";
-  referrerPolicy?:
-    | "no-referrer"
-    | "no-referrer-when-downgrade"
-    | "origin"
-    | "origin-when-cross-origin"
-    | "same-origin"
-    | "strict-origin"
-    | "strict-origin-when-cross-origin"
-    | "unsafe-url"
-    | false;
-}
-
 /**
  * Provides a configurable way to apply essential HTTP security headers
  * to every server response, without external dependencies.
@@ -59,16 +103,9 @@ export class ServerHelmetProvider {
   protected readonly alepha = $inject(Alepha);
 
   /**
-   * The configuration options. These can be overridden during
-   * the application's configuration phase using `alepha.configure()`.
+   * The configuration options loaded from the atom.
    */
-  public options: HelmetOptions = {
-    strictTransportSecurity: { maxAge: 15552000, includeSubDomains: true }, // 180 days
-    xFrameOptions: "SAMEORIGIN",
-    xXssProtection: false, // Modern browsers use CSP, this can cause issues. Defaulting to off.
-    contentSecurityPolicy: false, // CSP is powerful but requires careful configuration. Opt-in only.
-    referrerPolicy: "strict-origin-when-cross-origin",
-  };
+  protected readonly options = $use(helmetOptions);
 
   protected defaultCspDirectives(): CspDirectives {
     return {
@@ -128,7 +165,9 @@ export class ServerHelmetProvider {
     // Content-Security-Policy
     if (csp) {
       const directives =
-        csp === "default" ? this.defaultCspDirectives() : csp.directives;
+        Object.keys(csp).length === 0
+          ? this.defaultCspDirectives()
+          : csp.directives;
       headers["content-security-policy"] = Object.entries(directives)
         .map(([key, value]) => {
           const kebabKey = key.replace(

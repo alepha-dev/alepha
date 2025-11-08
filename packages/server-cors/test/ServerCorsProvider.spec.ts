@@ -3,7 +3,7 @@ import { $action, AlephaServer, ServerProvider } from "@alepha/server";
 import { afterEach, describe, expect, test } from "vitest";
 import {
   AlephaServerCors,
-  ServerCorsProvider,
+  corsOptions,
   type ServerCorsProviderOptions,
 } from "../src";
 
@@ -19,16 +19,17 @@ describe("ServerCorsProvider", () => {
   let alepha: Alepha;
   let server: ServerProvider;
 
-  const setupServer = async (
-    corsOptions?: Partial<ServerCorsProviderOptions>,
-  ) => {
+  const setupServer = async (options?: Partial<ServerCorsProviderOptions>) => {
     alepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaServerCors)
       .with(TestApp);
 
-    if (corsOptions) {
-      alepha.configure(ServerCorsProvider, corsOptions);
+    if (options) {
+      alepha.state.mut(corsOptions, (old) => ({
+        ...old,
+        ...options,
+      }));
     }
 
     server = alepha.inject(ServerProvider);
@@ -163,29 +164,6 @@ describe("ServerCorsProvider", () => {
       headers: { Origin: "https://disallowed.com" },
     });
     expect(res3.headers.get("access-control-allow-origin")).toBeNull();
-  });
-
-  test("should handle a function for the origin option", async () => {
-    await setupServer({
-      origin: (origin) => {
-        // Allow all subdomains of example.com
-        return !!origin && origin.endsWith(".example.com");
-      },
-    });
-
-    const allowed = "https://sub.example.com";
-    const disallowed = "https://another.domain.com";
-
-    const res1 = await fetch(`${server.hostname}/api/hello`, {
-      method: "POST",
-      headers: { Origin: allowed },
-    });
-    expect(res1.headers.get("access-control-allow-origin")).toBe(allowed);
-
-    const res2 = await fetch(`${server.hostname}/api/hello`, {
-      headers: { Origin: disallowed },
-    });
-    expect(res2.headers.get("access-control-allow-origin")).toBeNull();
   });
 
   test("should not return CORS headers if Origin header is not present", async () => {

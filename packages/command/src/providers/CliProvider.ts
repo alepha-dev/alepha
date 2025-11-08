@@ -1,9 +1,11 @@
 import * as fs from "node:fs/promises";
 import { glob } from "node:fs/promises";
 import {
+  $atom,
   $env,
   $hook,
   $inject,
+  $use,
   Alepha,
   type Static,
   type TObject,
@@ -21,6 +23,8 @@ import { CommandError } from "../errors/CommandError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { Runner } from "../helpers/Runner.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 const envSchema = t.object({
   CLI_NAME: t.text({
     default: "cli",
@@ -36,6 +40,41 @@ declare module "@alepha/core" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
+/**
+ * CLI provider configuration atom
+ */
+export const cliOptions = $atom({
+  name: "alepha.command.cli.options",
+  schema: t.object({
+    name: t.optional(
+      t.string({
+        description: "Name of the CLI application.",
+      }),
+    ),
+    description: t.optional(
+      t.string({
+        description: "Description of the CLI application.",
+      }),
+    ),
+    argv: t.optional(
+      t.array(t.string(), {
+        description: "Command line arguments to parse.",
+      }),
+    ),
+  }),
+  default: {},
+});
+
+export type CliProviderOptions = Static<typeof cliOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [cliOptions.key]: CliProviderOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class CliProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
@@ -43,11 +82,22 @@ export class CliProvider {
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
 
-  public options = {
-    name: this.env.CLI_NAME,
-    description: this.env.CLI_DESCRIPTION,
-    argv: typeof process !== "undefined" ? process.argv.slice(2) : [],
-  };
+  protected readonly options = $use(cliOptions);
+
+  protected get name(): string {
+    return this.options.name || this.env.CLI_NAME;
+  }
+
+  protected get description(): string {
+    return this.options.description || this.env.CLI_DESCRIPTION;
+  }
+
+  protected get argv(): string[] {
+    return (
+      this.options.argv ||
+      (typeof process !== "undefined" ? process.argv.slice(2) : [])
+    );
+  }
 
   protected readonly globalFlags = {
     help: {
@@ -60,7 +110,7 @@ export class CliProvider {
   protected readonly onReady = $hook({
     on: "ready",
     handler: async () => {
-      const argv = [...this.options.argv];
+      const argv = [...this.argv];
       const commandName = argv.find((arg) => !arg.startsWith("-")) ?? "";
       const command = this.findCommand(commandName);
 
@@ -349,7 +399,7 @@ export class CliProvider {
   }
 
   public printHelp(command?: CommandDescriptor<any>): void {
-    const cliName = this.options.name || "cli";
+    const cliName = this.name || "cli";
     this.log.info(""); // Newline
 
     if (command?.name) {
@@ -390,7 +440,7 @@ export class CliProvider {
       }
     } else {
       // general help
-      this.log.info(this.options.description || "Available commands:");
+      this.log.info(this.description || "Available commands:");
       this.log.info("");
       this.log.info("Commands:");
       const maxCmdLength = this.getMaxCmdLength(this.commands);

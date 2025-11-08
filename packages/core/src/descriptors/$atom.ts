@@ -1,3 +1,4 @@
+import type { TOptionalAdd } from "typebox";
 import { KIND } from "../constants/KIND.ts";
 import type { Static, TObject } from "../providers/TypeProvider.ts";
 
@@ -39,11 +40,16 @@ export const $atom = <T extends TObject, N extends string>(
   return new Atom<T, N>(options);
 };
 
-export interface AtomOptions<T extends TObject, N extends string> {
+export type AtomOptions<T extends TObject, N extends string> = {
   name: N;
   schema: T;
-  default: Static<T>;
-}
+} & (T extends TOptionalAdd<T>
+  ? {
+      default?: Static<T>;
+    }
+  : {
+      default: Static<T>;
+    });
 
 export class Atom<T extends TObject = TObject, N extends string = string> {
   public readonly options: AtomOptions<T, N>;

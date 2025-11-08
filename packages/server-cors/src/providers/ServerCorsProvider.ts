@@ -1,15 +1,63 @@
-import { $hook, $inject } from "@alepha/core";
+import { $atom, $hook, $inject, $use, type Static, t } from "@alepha/core";
 import { ServerRouterProvider } from "@alepha/server";
 
-export class ServerCorsProvider {
-  protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+// ---------------------------------------------------------------------------------------------------------------------
 
-  public options: ServerCorsProviderOptions = {
+/**
+ * CORS configuration atom
+ */
+export const corsOptions = $atom({
+  name: "alepha.server.cors.options",
+  schema: t.object({
+    origin: t.optional(
+      t.string({
+        description:
+          "Allowed origins (* for all, string for single, array for multiple)",
+        default: "*",
+      }),
+    ),
+    methods: t.array(t.string(), {
+      description: "Allowed HTTP methods",
+      default: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    }),
+    headers: t.array(t.string(), {
+      description: "Allowed headers",
+      default: ["Content-Type", "Authorization"],
+    }),
+    credentials: t.optional(
+      t.boolean({
+        description: "Allow credentials",
+        default: true,
+      }),
+    ),
+    maxAge: t.optional(
+      t.number({
+        description: "Preflight cache duration in seconds",
+      }),
+    ),
+  }),
+  default: {
     origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     headers: ["Content-Type", "Authorization"],
     credentials: true,
-  };
+  },
+});
+
+export type CorsOptions = Static<typeof corsOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [corsOptions.key]: CorsOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class ServerCorsProvider {
+  protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+
+  protected readonly options = $use(corsOptions);
 
   protected readonly configure = $hook({
     on: "configure",
@@ -68,20 +116,13 @@ export class ServerCorsProvider {
     origin: string | undefined,
     allowed: ServerCorsProviderOptions["origin"],
   ): boolean {
+    if (!allowed) return false;
     if (allowed === "*") return true;
-    if (typeof allowed === "function") return allowed(origin);
-    if (typeof allowed === "string") return origin === allowed;
-    if (Array.isArray(allowed)) return allowed.includes(origin ?? "");
-    return false;
+    return allowed
+      .split(",")
+      .map((o) => o.trim())
+      .includes(origin ?? "");
   }
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface ServerCorsProviderOptions {
-  origin?: string | string[] | ((origin: string | undefined) => boolean);
-  methods: string[];
-  headers: string[];
-  credentials?: boolean;
-  maxAge?: number;
-}
+export type ServerCorsProviderOptions = CorsOptions;

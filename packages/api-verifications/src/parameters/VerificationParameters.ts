@@ -1,10 +1,18 @@
-import type { Configurable } from "@alepha/core";
-import type { VerificationSettings } from "../schemas/verificationSettingsSchema.ts";
+import { $atom, $use, type Static } from "@alepha/core";
+import {
+  type VerificationSettings,
+  verificationSettingsSchema,
+} from "../schemas/verificationSettingsSchema.ts";
 
-export class VerificationParameters
-  implements Configurable<VerificationSettings>
-{
-  public options = {
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Verification settings configuration atom
+ */
+export const verificationOptions = $atom({
+  name: "alepha.api.verifications.options",
+  schema: verificationSettingsSchema,
+  default: {
     phone: {
       maxAttempts: 5,
       codeLength: 6,
@@ -19,7 +27,21 @@ export class VerificationParameters
       limitPerDay: 10,
     },
     purgeDays: 1,
-  };
+  },
+});
+
+export type VerificationOptions = Static<typeof verificationOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [verificationOptions.key]: VerificationOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class VerificationParameters {
+  protected readonly options = $use(verificationOptions);
 
   public get<K extends keyof VerificationSettings>(
     key: K,

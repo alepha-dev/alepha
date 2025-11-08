@@ -1,10 +1,13 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  $atom,
   $hook,
   $inject,
+  $use,
   Alepha,
   isTypeFile,
+  type Static,
   type TObject,
   type TSchema,
   t,
@@ -25,22 +28,48 @@ import {
   type SwaggerDescriptorOptions,
 } from "./descriptors/$swagger.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Swagger provider configuration atom
+ */
+export const swaggerOptions = $atom({
+  name: "alepha.server.swagger.options",
+  schema: t.object({
+    excludeKeys: t.optional(
+      t.array(t.string(), {
+        description: "Keys to exclude from swagger schema",
+      }),
+    ),
+  }),
+  default: {
+    excludeKeys: [],
+  },
+});
+
+export type ServerSwaggerProviderOptions = Static<typeof swaggerOptions.schema>;
+
+declare module "@alepha/core" {
+  interface State {
+    [swaggerOptions.key]: ServerSwaggerProviderOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class ServerSwaggerProvider {
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly options = $use(swaggerOptions);
 
   public json?: OpenAPIV3.Document;
 
-  public options = {
-    excludeKeys: ["~options"],
-  };
-
   protected readonly configure = $hook({
     on: "configure",
-    priority: "last",
+    priority: "last", // wait for all configurations, sometimes some actions are registered late!
     handler: async (alepha) => {
       const options = alepha.descriptors($swagger)?.[0]?.options;
       if (!options) {
@@ -116,7 +145,10 @@ export class ServerSwaggerProvider {
 
     const copy = (obj: any) => {
       const newValue = JSON.parse(JSON.stringify(obj));
-      this.removePrivateFields(newValue, this.options.excludeKeys);
+      this.removePrivateFields(newValue, [
+        ...(this.options.excludeKeys || []),
+        "~options",
+      ]);
       return newValue;
     };
 

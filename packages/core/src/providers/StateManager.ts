@@ -4,11 +4,18 @@ import { Atom } from "../descriptors/$atom.ts";
 import { $inject } from "../descriptors/$inject.ts";
 import { AlsProvider } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
+import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import type { Static } from "./TypeProvider.ts";
+
+export interface AtomWithValue {
+  atom: Atom;
+  value: unknown;
+}
 
 export class StateManager<State extends object = AlephaState> {
   protected readonly als = $inject(AlsProvider);
   protected readonly events = $inject(EventManager);
+  protected readonly codec = $inject(JsonSchemaCodec);
   protected readonly atoms = new Map<keyof State, Atom>();
 
   protected store: Partial<State> = {};
@@ -17,11 +24,33 @@ export class StateManager<State extends object = AlephaState> {
     this.store = store;
   }
 
-  public register(atom: Atom): this {
+  public getAtoms(context = true): Array<AtomWithValue> {
+    const atoms: Array<AtomWithValue> = [];
+
+    if (context && this.als?.exists()) {
+      // for each this.atoms, check if key is present in als, if yes, add to new map
+      for (const atom of this.atoms.values()) {
+        const value = this.als.get(atom.key);
+        if (value !== undefined) {
+          atoms.push({ atom, value });
+        }
+      }
+    } else {
+      for (const [key, atom] of this.atoms.entries()) {
+        atoms.push({ atom, value: this.store[key] as unknown });
+      }
+    }
+
+    return atoms;
+  }
+
+  public register(atom: Atom<any>): this {
     const key = atom.key as keyof State;
     if (!this.atoms.has(key)) {
       this.atoms.set(key, atom);
-      this.store[key] = atom.options.default as State[typeof key];
+      if (!(key in this.store)) {
+        this.set(key, atom.options.default as State[keyof State]);
+      }
     }
     return this;
   }
@@ -67,6 +96,10 @@ export class StateManager<State extends object = AlephaState> {
       return this;
     }
 
+    if (target instanceof Atom) {
+      this.codec.encode(target.schema, value);
+    }
+
     if (this.als?.exists()) {
       this.als.set(key as string, value);
     } else {
@@ -82,6 +115,23 @@ export class StateManager<State extends object = AlephaState> {
       .catch(() => null);
 
     return this;
+  }
+
+  /**
+   * Mutate a value in the state.
+   */
+  public mut<T extends TObject>(
+    target: Atom<T>,
+    mutator: (current: Static<T>) => Static<T>,
+  ): this;
+  public mut<Key extends keyof State>(
+    target: Key,
+    mutator: (current: State[Key] | undefined) => State[Key] | undefined,
+  ): this;
+  public mut(target: any, mutator: (current: any) => any): this {
+    const current = this.get(target);
+    const updated = mutator(current);
+    return this.set(target, updated);
   }
 
   /**

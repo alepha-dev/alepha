@@ -6,35 +6,9 @@ test("Alepha#with - from default import", async () => {
 
   alepha.with(await import("./fixtures/A.js"));
 
-  expect(alepha.graph()).toEqual({
-    A: {
-      from: ["Alepha"],
-    },
-    AlsProvider: {
-      from: ["StateManager"],
-    },
-    EventManager: {
-      from: ["StateManager"],
-    },
-    StateManager: {
-      from: ["Alepha"],
-    },
+  const graph = alepha.graph();
+
+  expect(graph.A).toEqual({
+    from: ["Alepha"],
   });
-});
-
-test("Alepha#with - configuration", async () => {
-  class A {
-    options = {
-      name: "default",
-    };
-    hello() {
-      return `Hello, ${this.options.name}`;
-    }
-  }
-
-  const alepha = Alepha.create();
-
-  alepha.with(A, { name: "Alepha" });
-
-  expect(alepha.inject(A).hello()).toBe("Hello, Alepha");
 });

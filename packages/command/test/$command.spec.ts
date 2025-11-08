@@ -4,7 +4,7 @@ import {
   MemoryDestinationProvider,
 } from "@alepha/logger";
 import { describe, expect, test, vi } from "vitest";
-import { $command, CliProvider, CommandError } from "../src";
+import { $command, CommandError, cliOptions } from "../src";
 
 describe("$command", () => {
   const setupTestCommands = async (
@@ -53,10 +53,12 @@ describe("$command", () => {
         use: MemoryDestinationProvider,
       })
       .with(TestCommands);
-    const provider = alepha.inject(CliProvider);
 
     if (argv) {
-      provider.options.argv = argv;
+      alepha.state.mut(cliOptions, (old) => ({
+        ...old,
+        argv,
+      }));
     }
 
     await before?.(alepha);
@@ -72,7 +74,6 @@ describe("$command", () => {
     return {
       alepha,
       mockHandlers,
-      provider,
       mockLogger: alepha.inject(MemoryDestinationProvider),
     };
   };
@@ -165,7 +166,7 @@ describe("$command", () => {
     });
 
     test("should correctly parse and cast integer flags", async () => {
-      const { mockHandlers, provider } = await setupTestCommands([
+      const { mockHandlers } = await setupTestCommands([
         "greet",
         "--name=Tester",
         "--times=5",
@@ -203,9 +204,11 @@ describe("$command", () => {
   describe("Help Message", () => {
     test("should print general help with --help flag", async () => {
       const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
-        const provider = alepha.inject(CliProvider);
-        provider.options.name = "my-cli";
-        provider.options.description = "My awesome CLI tool.";
+        alepha.state.mut(cliOptions, (old) => ({
+          ...old,
+          name: "my-cli",
+          description: "My awesome CLI tool.",
+        }));
       });
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
@@ -221,9 +224,10 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["greet", "-h"],
         (alepha) =>
-          alepha.configure(CliProvider, {
+          alepha.state.mut(cliOptions, (old) => ({
+            ...old,
             name: "my-cli",
-          }),
+          })),
       );
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
@@ -523,10 +527,11 @@ describe("$command", () => {
       }
 
       const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
-        alepha.configure(CliProvider, {
+        alepha.state.mut(cliOptions, (old) => ({
+          ...old,
           name: "my-cli",
           description: "My awesome CLI tool.",
-        });
+        }));
         alepha.with(RootCommand);
       });
 
@@ -580,7 +585,10 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
-          alepha.configure(CliProvider, { name: "test-cli" });
+          alepha.state.mut(cliOptions, (old) => ({
+            ...old,
+            name: "test-cli",
+          }));
           alepha.with(TestCommand);
         },
       );
@@ -601,7 +609,10 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
-          alepha.configure(CliProvider, { name: "test-cli" });
+          alepha.state.mut(cliOptions, (old) => ({
+            ...old,
+            name: "test-cli",
+          }));
           alepha.with(TestCommand);
         },
       );
@@ -622,7 +633,10 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
-          alepha.configure(CliProvider, { name: "test-cli" });
+          alepha.state.mut(cliOptions, (old) => ({
+            ...old,
+            name: "test-cli",
+          }));
           alepha.with(TestCommand);
         },
       );

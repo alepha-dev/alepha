@@ -175,7 +175,7 @@ describe("StateManager", () => {
 
     beforeEach(() => {
       alepha = new Alepha();
-      stateManager = alepha.state as StateManager<TestState>;
+      stateManager = alepha.state as unknown as StateManager<TestState>;
     });
 
     it("should use ALS when available and context exists", async () => {
@@ -324,7 +324,7 @@ describe("StateManager", () => {
 
     beforeEach(() => {
       alepha = new Alepha();
-      stateManager = alepha.state as StateManager<TestState>;
+      stateManager = alepha.state as unknown as StateManager<TestState>;
     });
 
     it("should handle transitions between ALS and non-ALS contexts", async () => {

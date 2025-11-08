@@ -1,26 +1,25 @@
 import { Alepha } from "@alepha/core";
 import { $action, ServerProvider } from "@alepha/server";
 import { describe, expect, test } from "vitest";
-import {
-  AlephaServerHelmet,
-  type HelmetOptions,
-  ServerHelmetProvider,
-} from "../src";
+import { AlephaServerHelmet, type HelmetOptions, helmetOptions } from "../src";
 
 class TestApp {
   ping = $action({ handler: () => "pong" });
 }
 
 describe("ServerHelmetProvider", () => {
-  const setupServer = async (helmetOptions?: HelmetOptions) => {
+  const setupServer = async (options?: HelmetOptions) => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     })
       .with(AlephaServerHelmet)
       .with(TestApp);
 
-    if (helmetOptions) {
-      alepha.configure(ServerHelmetProvider, helmetOptions);
+    if (options) {
+      alepha.state.mut(helmetOptions, (old) => ({
+        ...old,
+        ...options,
+      }));
     }
 
     await alepha.start();
@@ -52,9 +51,9 @@ describe("ServerHelmetProvider", () => {
     await stop();
   });
 
-  test("should allow disabling a header by setting its option to false", async () => {
+  test("should allow disabling a header by setting its option to undefined", async () => {
     const { hostname, stop } = await setupServer({
-      xFrameOptions: false,
+      xFrameOptions: undefined,
     });
 
     const response = await fetch(`${hostname}/api/ping`);

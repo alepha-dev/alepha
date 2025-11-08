@@ -1,7 +1,10 @@
 import { Alepha, t } from "@alepha/core";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository, DatabaseProvider, pg } from "../src";
-import { NodeSqliteProvider } from "../src/providers/drivers/NodeSqliteProvider.ts";
+import {
+  NodeSqliteProvider,
+  nodeSqliteOptions,
+} from "../src/providers/drivers/NodeSqliteProvider.ts";
 
 describe("sqlite", () => {
   it("should create and query entities using SQLite", async () => {
@@ -13,14 +16,15 @@ describe("sqlite", () => {
       }),
     });
 
-    const alepha = Alepha.create()
-      .with({
-        provide: DatabaseProvider,
-        use: NodeSqliteProvider,
-      })
-      .configure(NodeSqliteProvider, {
-        path: "sqlite://:memory:",
-      });
+    const alepha = Alepha.create().with({
+      provide: DatabaseProvider,
+      use: NodeSqliteProvider,
+    });
+
+    alepha.state.mut(nodeSqliteOptions, (old) => ({
+      ...old,
+      path: "sqlite://:memory:",
+    }));
 
     class TestApp {
       userRepository = $repository(users);

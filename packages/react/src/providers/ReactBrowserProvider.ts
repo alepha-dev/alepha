@@ -1,7 +1,9 @@
 import {
+  $atom,
   $env,
   $hook,
   $inject,
+  $use,
   Alepha,
   type State,
   type Static,
@@ -17,6 +19,8 @@ import type {
   TransitionOptions,
 } from "./ReactPageProvider.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 const envSchema = t.object({
   REACT_ROOT_ID: t.text({ default: "root" }),
 });
@@ -25,9 +29,30 @@ declare module "@alepha/core" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export interface ReactBrowserRendererOptions {
-  scrollRestoration?: "top" | "manual";
+/**
+ * React browser renderer configuration atom
+ */
+export const reactBrowserOptions = $atom({
+  name: "alepha.react.browser.options",
+  schema: t.object({
+    scrollRestoration: t.enum(["top", "manual"]),
+  }),
+  default: {
+    scrollRestoration: "top" as const,
+  },
+});
+
+export type ReactBrowserRendererOptions = Static<
+  typeof reactBrowserOptions.schema
+>;
+
+declare module "@alepha/core" {
+  interface State {
+    [reactBrowserOptions.key]: ReactBrowserRendererOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class ReactBrowserProvider {
   protected readonly env = $env(envSchema);
@@ -37,9 +62,7 @@ export class ReactBrowserProvider {
   protected readonly router = $inject(ReactBrowserRouterProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-  public options: ReactBrowserRendererOptions = {
-    scrollRestoration: "top",
-  };
+  protected readonly options = $use(reactBrowserOptions);
 
   protected getRootElement() {
     const root = this.document.getElementById(this.env.REACT_ROOT_ID);
