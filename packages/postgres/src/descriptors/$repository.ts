@@ -35,9 +35,9 @@ import {
   PG_UPDATED_AT,
   PG_VERSION,
 } from "../constants/PG_SYMBOLS.ts";
+import { DbError } from "../errors/DbError.ts";
 import { PgConflictError } from "../errors/PgConflictError.ts";
 import { PgEntityNotFoundError } from "../errors/PgEntityNotFoundError.ts";
-import { PgError } from "../errors/PgError.ts";
 import { PgVersionMismatchError } from "../errors/PgVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
@@ -480,7 +480,7 @@ export class RepositoryDescriptor<
 
       return rows as PgStatic<T, R>[];
     } catch (error) {
-      throw new PgError("Query select has failed", error as Error);
+      throw new DbError("Query select has failed", error as Error);
     }
   }
 
@@ -922,7 +922,7 @@ export class RepositoryDescriptor<
 
       return ids;
     } catch (error) {
-      throw new PgError("Delete query has failed", error as Error);
+      throw new DbError("Delete query has failed", error as Error);
     }
   }
 
@@ -1003,9 +1003,9 @@ export class RepositoryDescriptor<
   protected conflictMessagePattern =
     "duplicate key value violates unique constraint";
 
-  protected handleError(error: unknown, message: string): PgError {
+  protected handleError(error: unknown, message: string): DbError {
     if (!(error instanceof Error)) {
-      return new PgError(message);
+      return new DbError(message);
     }
 
     if (
@@ -1015,7 +1015,7 @@ export class RepositoryDescriptor<
       return new PgConflictError(message, error);
     }
 
-    return new PgError(message, error);
+    return new DbError(message, error);
   }
 
   protected withDeletedAt(

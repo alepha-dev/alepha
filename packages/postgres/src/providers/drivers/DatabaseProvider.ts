@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import {
   $inject,
   Alepha,
@@ -5,6 +6,7 @@ import {
   type Static,
   type TObject,
 } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import type { SQLWrapper } from "drizzle-orm";
 import {
   alias,
@@ -16,13 +18,17 @@ import type {
   SchemaToTableConfig,
 } from "../../descriptors/$entity.ts";
 import type { SequenceDescriptor } from "../../descriptors/$sequence.ts";
+import { DbError } from "../../errors/DbError.ts";
 import type { ModelBuilder } from "../../services/ModelBuilder.ts";
+import type { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 
 export type SQLLike = SQLWrapper | string;
 
 export abstract class DatabaseProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected abstract readonly builder: ModelBuilder;
+  protected abstract readonly kit: DrizzleKitProvider;
   public abstract readonly db: PgDatabase<any>;
   public abstract readonly dialect: "postgresql" | "sqlite";
 
@@ -77,4 +83,93 @@ export abstract class DatabaseProvider {
     const result = await this.execute(statement);
     return result.map((row) => this.alepha.codec.decode(schema, row));
   }
+
+  /**
+   * Get migrations folder path - can be overridden
+   */
+  protected getMigrationsFolder(): string {
+    return `migrations/${this.name}`;
+  }
+
+  /**
+   * Base migration orchestration - handles environment logic
+   */
+  protected async migrateDatabase(): Promise<void> {
+    const migrationsFolder = this.getMigrationsFolder();
+
+    // Handle different environments
+    if (this.alepha.isProduction()) {
+      await this.runProductionMigration(migrationsFolder);
+    } else if (this.alepha.isTest()) {
+      await this.runTestMigration();
+    } else {
+      await this.runDevelopmentMigration(migrationsFolder);
+    }
+  }
+
+  /**
+   * Production: run migrations from folder
+   */
+  protected async runProductionMigration(
+    migrationsFolder: string,
+  ): Promise<void> {
+    // Check folder exists
+    const exists = await stat(migrationsFolder).catch(() => false);
+
+    if (!exists) {
+      this.log.warn("Migration SKIPPED - no migrations found");
+      return;
+    }
+
+    this.log.debug(`Migrate from '${migrationsFolder}' directory ...`);
+
+    // Delegate to provider-specific implementation
+    await this.executeMigrations(migrationsFolder);
+
+    this.log.info("Migration OK");
+  }
+
+  /**
+   * Test: always synchronize
+   */
+  protected async runTestMigration(): Promise<void> {
+    await this.synchronizeSchema();
+  }
+
+  /**
+   * Development: default to synchronize (can be overridden)
+   */
+  protected async runDevelopmentMigration(
+    migrationsFolder: string,
+  ): Promise<void> {
+    // Try migrations silently first
+    try {
+      await this.executeMigrations(migrationsFolder);
+    } catch {
+      // Ignore errors
+    }
+
+    // Then synchronize
+    await this.synchronizeSchema();
+  }
+
+  /**
+   * Common synchronization with error handling
+   */
+  protected async synchronizeSchema(): Promise<void> {
+    try {
+      await this.kit.synchronize(this);
+    } catch (error) {
+      throw new DbError(
+        `Failed to synchronize ${this.dialect} database schema`,
+        error as Error,
+      );
+    }
+  }
+
+  /**
+   * Provider-specific migration execution
+   * MUST be implemented by each provider
+   */
+  protected abstract executeMigrations(migrationsFolder: string): Promise<void>;
 }

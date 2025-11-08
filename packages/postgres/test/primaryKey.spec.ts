@@ -1,7 +1,7 @@
 import { Alepha, t } from "@alepha/core";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository, pg } from "../src";
-import { PgError } from "../src/errors/PgError.ts";
+import { DbError } from "../src/errors/DbError.ts";
 
 describe("primaryKey", () => {
   it("should handle identity primary key with overflow", async () => {
@@ -29,7 +29,7 @@ describe("primaryKey", () => {
 
     await app.identity.create({});
 
-    await expect(() => app.identity.create({})).rejects.toThrowError(PgError);
+    await expect(() => app.identity.create({})).rejects.toThrowError(DbError);
   });
 
   it("should handle big identity primary key without overflow", async () => {

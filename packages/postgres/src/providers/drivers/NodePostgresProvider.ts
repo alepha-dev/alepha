@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises";
 import {
   $env,
   $hook,
@@ -11,7 +10,6 @@ import {
 import { $lock } from "@alepha/lock";
 import { $logger } from "@alepha/logger";
 import { sql } from "drizzle-orm";
-import type { MigrationConfig } from "drizzle-orm/migrator";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -41,21 +39,7 @@ const envSchema = t.object({
    * It will monkey patch drizzle tables.
    */
   POSTGRES_SCHEMA: t.optional(t.text()),
-
-  /**
-   * Synchronize the database schema with the models.
-   * It uses a custom implementation, it's not related to `drizzle-kit push` command.
-   * It will generate the migration script and save it to the DB.
-   *
-   * This is recommended for development and testing purposes only.
-   */
-  POSTGRES_SYNCHRONIZE: t.optional(t.boolean()),
 });
-
-export interface NodePostgresProviderOptions {
-  migrations: MigrationConfig;
-  connection: postgres.Options<any>;
-}
 
 export class NodePostgresProvider extends DatabaseProvider {
   static readonly SSL_MODES = [
@@ -75,11 +59,6 @@ export class NodePostgresProvider extends DatabaseProvider {
   protected client?: postgres.Sql;
   protected pg?: PostgresJsDatabase;
 
-  public readonly options: NodePostgresProviderOptions = {
-    migrations: this.getMigrationOptions(),
-    connection: this.getClientOptions(),
-  };
-
   /**
    * In testing mode, the schema name will be generated and deleted after the test.
    */
@@ -89,6 +68,9 @@ export class NodePostgresProvider extends DatabaseProvider {
       : this.generateTestSchemaName()
     : undefined;
 
+  /**
+   * Execute a SQL statement.
+   */
   public override execute(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
@@ -96,7 +78,7 @@ export class NodePostgresProvider extends DatabaseProvider {
   }
 
   /**
-   * Get Postgres schema.
+   * Get Postgres schema used by this provider.
    */
   public override get schema(): string {
     if (this.schemaForTesting) {
@@ -110,6 +92,9 @@ export class NodePostgresProvider extends DatabaseProvider {
     return "public";
   }
 
+  /**
+   * Get the Drizzle Postgres database instance.
+   */
   public override get db(): PostgresJsDatabase {
     if (!this.pg) {
       throw new AlephaError("Database not initialized");
@@ -117,6 +102,14 @@ export class NodePostgresProvider extends DatabaseProvider {
 
     return this.pg;
   }
+
+  protected override async executeMigrations(
+    migrationsFolder: string,
+  ): Promise<void> {
+    await migrate(this.db, { migrationsFolder });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   protected readonly onStart = $hook({
     on: "start",
@@ -190,59 +183,9 @@ export class NodePostgresProvider extends DatabaseProvider {
 
   protected migrate = $lock({
     handler: async () => {
-      const migration = this.getMigrationOptions();
-
-      if (!this.alepha.isProduction()) {
-        // -------------------------------------------------------------------------------------------------------------
-        // Testing environment
-        // -------------------------------------------------------------------------------------------------------------
-        if (this.alepha.isTest()) {
-          await this.kit.synchronize(this);
-          return;
-        }
-
-        // -------------------------------------------------------------------------------------------------------------
-        // Development environment
-        // -------------------------------------------------------------------------------------------------------------
-
-        // synchronize is TRUE in development mode
-        if (this.env.POSTGRES_SYNCHRONIZE !== false) {
-          try {
-            // 1. silently run migrations
-            await migrate(this.db, migration);
-          } catch (_) {
-            // ignore errors
-          }
-
-          // 2. synchronize the database schema with the models
-          await this.kit.synchronize(this);
-          return;
-        }
-      }
-
-      this.log.debug(
-        `Migrate from '${migration.migrationsFolder}' directory ...`,
-      );
-
-      const exists = await stat(migration.migrationsFolder).catch(() => false);
-      if (!exists) {
-        this.log.warn("Migration SKIPPED - no migrations found");
-        return;
-      }
-
-      await migrate(this.db, migration);
-      this.log.info("Migration OK");
+      await this.migrateDatabase();
     },
   });
-
-  /**
-   * Generate a minimal migration configuration.
-   */
-  protected getMigrationOptions(): MigrationConfig {
-    return {
-      migrationsFolder: `migrations/${this.name}`,
-    };
-  }
 
   /**
    * Map the DATABASE_URL to postgres client options.
@@ -277,6 +220,8 @@ export class NodePostgresProvider extends DatabaseProvider {
       }
     }
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   /**
    * For testing purposes, generate a unique schema name.

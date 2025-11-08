@@ -14,7 +14,6 @@ import { $logger } from "@alepha/logger";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import { migrate } from "drizzle-orm/sqlite-proxy/migrator";
-import { PgError } from "../../errors/PgError.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -26,7 +25,7 @@ const envSchema = t.object({
 });
 
 /**
- * Node SQLite provider configuration atom
+ * Configuration options for the Node.js SQLite database provider.
  */
 export const nodeSqliteOptions = $atom({
   name: "alepha.postgres.node-sqlite.options",
@@ -34,7 +33,7 @@ export const nodeSqliteOptions = $atom({
     path: t.optional(
       t.string({
         description:
-          "Sqlite database file path. Set to :memory: to use an in-memory database.",
+          "Filepath or :memory:. If empty, provider will use DATABASE_URL from env.",
       }),
     ),
   }),
@@ -64,20 +63,21 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
-
-  public sqlite!: DatabaseSync;
   protected readonly options = $use(nodeSqliteOptions);
 
-  protected getDatabasePath(): string {
-    let path = this.env.DATABASE_URL;
-    if (!path) {
-      if (this.alepha.isTest()) {
-        path = ":memory:";
-      } else {
-        path = "node_modules/sqlite.db";
-      }
+  protected sqlite!: DatabaseSync;
+
+  public get path(): string {
+    const path = this.options.path ?? this.env.DATABASE_URL;
+    if (path) {
+      return path;
     }
-    return path;
+
+    if (this.alepha.isTest()) {
+      return ":memory:";
+    } else {
+      return "node_modules/sqlite.db";
+    }
   }
 
   public async execute(
@@ -136,11 +136,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     on: "start",
     handler: async () => {
       const { DatabaseSync } = await import("node:sqlite");
-      const filepath = (this.options.path || this.getDatabasePath()).replace(
-        "sqlite://",
-        "",
-      );
-
+      const filepath = this.path.replace("sqlite://", "");
       if (filepath !== ":memory:" && filepath !== "") {
         const dirname = filepath.split("/").slice(0, -1).join("/");
         if (dirname) {
@@ -150,31 +146,22 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
       this.sqlite = new DatabaseSync(filepath);
 
-      if (this.alepha.isProduction()) {
-        await migrate(
-          this.db as unknown as SqliteRemoteDatabase,
-          async (migrationQueries: string[]) => {
-            console.log(migrationQueries);
-            for (const query of migrationQueries) {
-              this.sqlite.prepare(query).run();
-            }
-          },
-          {
-            migrationsFolder: `migrations/${this.name}`,
-          },
-        );
-      } else {
-        try {
-          await this.kit.synchronize(this);
-        } catch (error) {
-          throw new PgError(
-            "Failed to synchronize SQLite database schema",
-            error as Error,
-          );
-        }
-      }
+      await this.migrateDatabase();
 
       this.log.info(`Using SQLite database at ${filepath}`);
     },
   });
+
+  protected async executeMigrations(migrationsFolder: string): Promise<void> {
+    await migrate(
+      this.db as unknown as SqliteRemoteDatabase,
+      async (migrationQueries: string[]) => {
+        this.log.debug("Executing migration queries", { migrationQueries });
+        for (const query of migrationQueries) {
+          this.sqlite.prepare(query).run();
+        }
+      },
+      { migrationsFolder },
+    );
+  }
 }

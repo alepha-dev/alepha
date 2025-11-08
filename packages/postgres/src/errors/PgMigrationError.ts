@@ -1,6 +1,6 @@
-import { PgError } from "./PgError.ts";
+import { DbError } from "./DbError.ts";
 
-export class PgMigrationError extends PgError {
+export class PgMigrationError extends DbError {
   readonly name = "PgMigrationError";
 
   constructor(cause?: unknown) {

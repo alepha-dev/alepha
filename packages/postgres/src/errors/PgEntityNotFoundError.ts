@@ -1,6 +1,6 @@
-import { PgError } from "./PgError.ts";
+import { DbError } from "./DbError.ts";
 
-export class PgEntityNotFoundError extends PgError {
+export class PgEntityNotFoundError extends DbError {
   readonly name = "EntityNotFoundError";
   readonly status = 404;
 

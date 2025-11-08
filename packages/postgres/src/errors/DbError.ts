@@ -1,7 +1,7 @@
 import { AlephaError } from "@alepha/core";
 
-export class PgError extends AlephaError {
-  name = "PgError";
+export class DbError extends AlephaError {
+  name = "DbError";
 
   constructor(message: string, cause?: unknown) {
     super(message, { cause });

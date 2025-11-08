@@ -1,6 +1,6 @@
-import { PgError } from "./PgError.ts";
+import { DbError } from "./DbError.ts";
 
-export class PgConflictError extends PgError {
+export class PgConflictError extends DbError {
   readonly name = "PgConflictError";
   readonly status = 409;
 }
