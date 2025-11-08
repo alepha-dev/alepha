@@ -132,70 +132,204 @@ export class DrizzleCommands {
       }),
     ),
     handler: async ({ flags, args }) => {
-      const rootDir = join(process.cwd(), flags.root);
-      this.log.debug(`Using project root: ${rootDir}`);
-
-      const { alepha, entry } = await this.loadAlephaFromServerEntryFile(
-        rootDir,
+      await this.runDrizzleKitCommand({
+        flags,
         args,
-      );
-
-      const inject = (name: string) =>
-        // biome-ignore lint/complexity/useLiteralKeys: private key
-        alepha["registry"]
-          .values()
-          .find((it: any) => it.instance.constructor.name === name)?.instance;
-
-      // ---------------------------------------------------------------------------------------------------------------
-      const kit = inject("DrizzleKitProvider");
-      const accepted = new Set<string>([]);
-      for (const descriptor of alepha.descriptors("repository") as any[]) {
-        const provider = descriptor.provider;
-        const providerName = provider.name;
-        const dialect = provider.dialect;
-
-        if (!accepted.has(providerName)) {
-          accepted.add(providerName);
-        } else {
-          continue;
-        }
-
-        this.log.info("");
-        this.log.info(`Generate '${providerName}' migrations (${dialect}) ...`);
-
-        const models = Object.keys(kit.getModels(provider));
-        const entitiesJs = this.generateEntitiesJs(entry, providerName, models);
-
-        const entitiesJsPath = await this.runner.writeConfigFile(
-          "entities.js",
-          entitiesJs,
-          rootDir,
-        );
-
-        const drizzleConfigJs =
-          "export default " +
-          JSON.stringify(
-            {
-              schema: entitiesJsPath,
-              out: `./migrations/${providerName}`,
-              dialect: dialect,
-            },
-            null,
-            2,
-          );
-
-        const drizzleConfigJsPath = await this.runner.writeConfigFile(
-          "drizzle.config.js",
-          drizzleConfigJs,
-          rootDir,
-        );
-
-        await this.runner.exec(
-          `drizzle-kit generate --config=${drizzleConfigJsPath}`,
-        );
-      }
+        command: "generate",
+        logMessage: (providerName, dialect) =>
+          `Generate '${providerName}' migrations (${dialect}) ...`,
+      });
     },
   });
+
+  /**
+   * Push database schema changes directly to the database
+   *
+   * - Loads the Alepha instance from the specified entry file.
+   * - Retrieves all repository descriptors to gather database models.
+   * - Creates temporary entity definitions and Drizzle config.
+   * - Invokes Drizzle Kit's push command to apply schema changes directly.
+   */
+  push = $command({
+    name: "db:push",
+    description: "Push database schema changes directly to the database",
+    summary: false,
+    flags: this.flags,
+    args: t.optional(
+      t.text({
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    handler: async ({ flags, args }) => {
+      await this.runDrizzleKitCommand({
+        flags,
+        args,
+        command: "push",
+        logMessage: (providerName, dialect) =>
+          `Push '${providerName}' schema (${dialect}) ...`,
+      });
+    },
+  });
+
+  /**
+   * Apply pending database migrations
+   *
+   * - Loads the Alepha instance from the specified entry file.
+   * - Retrieves all repository descriptors to gather database models.
+   * - Creates temporary entity definitions and Drizzle config.
+   * - Invokes Drizzle Kit's migrate command to apply pending migrations.
+   */
+  migrate = $command({
+    name: "db:migrate",
+    description: "Apply pending database migrations",
+    summary: false,
+    flags: this.flags,
+    args: t.optional(
+      t.text({
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    handler: async ({ flags, args }) => {
+      await this.runDrizzleKitCommand({
+        flags,
+        args,
+        command: "migrate",
+        logMessage: (providerName, dialect) =>
+          `Migrate '${providerName}' database (${dialect}) ...`,
+      });
+    },
+  });
+
+  /**
+   * Launch Drizzle Studio database browser
+   *
+   * - Loads the Alepha instance from the specified entry file.
+   * - Retrieves all repository descriptors to gather database models.
+   * - Creates temporary entity definitions and Drizzle config.
+   * - Invokes Drizzle Kit's studio command to launch the web-based database browser.
+   */
+  studio = $command({
+    name: "db:studio",
+    description: "Launch Drizzle Studio database browser",
+    summary: false,
+    flags: this.flags,
+    args: t.optional(
+      t.text({
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    handler: async ({ flags, args }) => {
+      await this.runDrizzleKitCommand({
+        flags,
+        args,
+        command: "studio",
+        logMessage: (providerName, dialect) =>
+          `Launch Studio for '${providerName}' (${dialect}) ...`,
+      });
+    },
+  });
+
+  /**
+   * Run a drizzle-kit command for all database providers
+   */
+  protected async runDrizzleKitCommand(options: {
+    flags: { root: string };
+    args?: string;
+    command: string;
+    logMessage: (providerName: string, dialect: string) => string;
+  }): Promise<void> {
+    const rootDir = join(process.cwd(), options.flags.root);
+    this.log.debug(`Using project root: ${rootDir}`);
+
+    const { alepha, entry } = await this.loadAlephaFromServerEntryFile(
+      rootDir,
+      options.args,
+    );
+
+    const kit = this.getKitFromAlepha(alepha);
+    const accepted = new Set<string>([]);
+
+    for (const descriptor of alepha.descriptors("repository") as any[]) {
+      const provider = descriptor.provider;
+      const providerName = provider.name;
+      const dialect = provider.dialect;
+
+      if (accepted.has(providerName)) {
+        continue;
+      }
+      accepted.add(providerName);
+
+      this.log.info("");
+      this.log.info(options.logMessage(providerName, dialect));
+
+      const drizzleConfigJsPath = await this.prepareDrizzleConfig({
+        kit,
+        provider,
+        providerName,
+        dialect,
+        entry,
+        rootDir,
+      });
+
+      await this.runner.exec(
+        `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}`,
+      );
+    }
+  }
+
+  /**
+   * Prepare Drizzle configuration files for a provider
+   */
+  protected async prepareDrizzleConfig(options: {
+    kit: any;
+    provider: any;
+    providerName: string;
+    dialect: string;
+    entry: string;
+    rootDir: string;
+  }): Promise<string> {
+    const models = Object.keys(options.kit.getModels(options.provider));
+    const entitiesJs = this.generateEntitiesJs(
+      options.entry,
+      options.providerName,
+      models,
+    );
+
+    const entitiesJsPath = await this.runner.writeConfigFile(
+      "entities.js",
+      entitiesJs,
+      options.rootDir,
+    );
+
+    const drizzleConfigJs =
+      "export default " +
+      JSON.stringify(
+        {
+          schema: entitiesJsPath,
+          out: `./migrations/${options.providerName}`,
+          dialect: options.dialect,
+        },
+        null,
+        2,
+      );
+
+    return await this.runner.writeConfigFile(
+      "drizzle.config.js",
+      drizzleConfigJs,
+      options.rootDir,
+    );
+  }
+
+  /**
+   * Get DrizzleKitProvider from Alepha instance
+   */
+  protected getKitFromAlepha(alepha: Alepha): any {
+    // biome-ignore lint/complexity/useLiteralKeys: private key
+    return alepha["registry"]
+      .values()
+      .find((it: any) => it.instance.constructor.name === "DrizzleKitProvider")
+      ?.instance;
+  }
 
   public async loadAlephaFromServerEntryFile(
     rootDir?: string,
