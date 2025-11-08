@@ -93,6 +93,10 @@ const LayoutContent = () => {
       position: "bottom",
       icon: <IconRobot />,
       href: router.base("/llms.txt"),
+      actionProps: {
+        href: router.base("/llms.txt"),
+        target: "_blank",
+      },
     },
   ];
 
