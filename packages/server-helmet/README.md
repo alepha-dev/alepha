@@ -44,42 +44,30 @@ export const helmetOptions = $atom({
   schema: t.object({
     isSecure: t.optional(t.boolean()),
     strictTransportSecurity: t.optional(
-      t.union([
-        t.object({
-          maxAge: t.optional(t.number()),
-          includeSubDomains: t.optional(t.boolean()),
-          preload: t.optional(t.boolean()),
-        }),
-        t.literal(false),
-      ]),
+      t.object({
+        maxAge: t.optional(t.number()),
+        includeSubDomains: t.optional(t.boolean()),
+        preload: t.optional(t.boolean()),
+      }),
     ),
-    xContentTypeOptions: t.optional(t.literal(false)),
-    xFrameOptions: t.optional(
-      t.union([t.enum(["DENY", "SAMEORIGIN"]), t.literal(false)]),
-    ),
-    xXssProtection: t.optional(t.literal(false)),
+    xContentTypeOptions: t.optional(t.boolean()),
+    xFrameOptions: t.optional(t.enum(["DENY", "SAMEORIGIN"])),
+    xXssProtection: t.optional(t.boolean()),
     contentSecurityPolicy: t.optional(
-      t.union([
-        t.object({
-          directives: t.record(t.string(), t.any()),
-        }),
-        t.literal(false),
-        t.literal("default"),
-      ]),
+      t.object({
+        directives: t.record(t.string(), t.any()),
+      }),
     ),
     referrerPolicy: t.optional(
-      t.union([
-        t.enum([
-          "no-referrer",
-          "no-referrer-when-downgrade",
-          "origin",
-          "origin-when-cross-origin",
-          "same-origin",
-          "strict-origin",
-          "strict-origin-when-cross-origin",
-          "unsafe-url",
-        ]),
-        t.literal(false),
+      t.enum([
+        "no-referrer",
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "same-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+        "unsafe-url",
       ]),
     ),
   }),
@@ -87,7 +75,6 @@ export const helmetOptions = $atom({
     strictTransportSecurity: { maxAge: 15552000, includeSubDomains: true },
     xFrameOptions: "SAMEORIGIN",
     xXssProtection: false,
-    contentSecurityPolicy: false,
     referrerPolicy: "strict-origin-when-cross-origin",
   },
 });

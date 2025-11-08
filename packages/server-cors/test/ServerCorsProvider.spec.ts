@@ -137,7 +137,7 @@ describe("ServerCorsProvider", () => {
       "https://app2.example.com",
     ];
     await setupServer({
-      origin: allowedOrigins,
+      origin: allowedOrigins.join(","),
     });
 
     // First allowed origin
