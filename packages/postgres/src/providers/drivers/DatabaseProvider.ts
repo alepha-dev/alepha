@@ -40,6 +40,10 @@ export abstract class DatabaseProvider {
     return "default";
   }
 
+  public get schema() {
+    return "public";
+  }
+
   public table<T extends TObject>(
     entity: EntityDescriptor<T>,
   ): PgTableWithColumns<SchemaToTableConfig<T>> {
@@ -58,10 +62,6 @@ export abstract class DatabaseProvider {
     }
 
     return table as PgTableWithColumns<SchemaToTableConfig<T>>;
-  }
-
-  public get schema() {
-    return "public";
   }
 
   public registerEntity(entity: EntityDescriptor) {

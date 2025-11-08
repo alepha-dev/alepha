@@ -2,12 +2,11 @@ import {
   type Async,
   type Page,
   type PageMetadata,
-  type Static,
   type TObject,
   t,
 } from "@alepha/core";
-import type { DurationLike } from "@alepha/datetime";
-import { useAction } from "@alepha/react";
+import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
+import { useInject } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import {
   Flex,
@@ -32,14 +31,18 @@ export type MaybePage<T> = Omit<Page<T>, "page"> & {
   page?: Partial<PageMetadata>;
 };
 
-export interface DataTableProps<T extends object, F extends TObject> {
+export interface DataTableProps<T extends object> {
   /**
    * The items to display in the table. Can be a static page of items or a function that returns a promise resolving to a page of items.
    */
   items:
     | MaybePage<T>
     | ((
-        filters: Static<F> & { page: number; size: number; sort?: string },
+        filters: Record<string, string> & {
+          page: number;
+          size: number;
+          sort?: string;
+        },
       ) => Async<MaybePage<T>>);
 
   /**
@@ -49,10 +52,12 @@ export interface DataTableProps<T extends object, F extends TObject> {
     [key: string]: DataTableColumn<T>;
   };
 
+  defaultSize?: number;
+
   /**
    * Optional filters to apply to the data.
    */
-  filters?: F;
+  filters?: TObject;
 
   panel?: (item: T) => ReactNode;
   canPanel?: (item: T) => boolean;
@@ -79,9 +84,7 @@ export interface DataTableProps<T extends object, F extends TObject> {
   tableTrProps?: (item: T) => TableTrProps;
 }
 
-const DataTable = <T extends object, F extends TObject>(
-  props: DataTableProps<T, F>,
-) => {
+const DataTable = <T extends object>(props: DataTableProps<T>) => {
   const [items, setItems] = useState<MaybePage<T>>(
     typeof props.items === "function"
       ? {
@@ -90,13 +93,22 @@ const DataTable = <T extends object, F extends TObject>(
       : props.items,
   );
 
-  const submit = useAction(
+  const defaultSize = props.defaultSize || 10;
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(String(defaultSize));
+
+  const form = useForm(
     {
-      runOnInit: props.submitOnInit,
-      handler: async (filters: Static<F>, sig: any) => {
+      schema: t.object({
+        ...(props.filters ? props.filters.properties : {}),
+        page: t.number({ default: 0 }),
+        size: t.number({ default: defaultSize }),
+        sort: t.optional(t.string()),
+      }),
+      handler: async (values, args) => {
         if (typeof props.items === "function") {
           const response = await props.items(
-            filters as Static<F> & {
+            values as Record<string, string> & {
               page: number;
               size: number;
               sort?: string;
@@ -104,24 +116,6 @@ const DataTable = <T extends object, F extends TObject>(
           );
           setItems(response);
         }
-      },
-    },
-    [],
-  );
-
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState("10");
-
-  const form = useForm(
-    {
-      schema: t.object({
-        ...(props.filters ? props.filters.properties : {}),
-        page: t.number({ default: 0 }),
-        size: t.number({ default: 10 }),
-        sort: t.optional(t.string()),
-      }),
-      handler: async (values, args) => {
-        await submit.run(values as Static<F>);
       },
       onReset: async () => {
         setPage(1);
@@ -136,7 +130,7 @@ const DataTable = <T extends object, F extends TObject>(
         }
 
         if (key === "size") {
-          setSize(value);
+          setSize(String(value));
           form.input.page.set(0);
           return;
         }
@@ -150,6 +144,21 @@ const DataTable = <T extends object, F extends TObject>(
   const submitDebounce = useDebouncedCallback(() => form.submit(), {
     delay: 1000,
   });
+
+  const dt = useInject(DateTimeProvider);
+
+  useEffect(() => {
+    if (props.submitOnInit) {
+      console.log("submitting");
+      form.submit();
+    }
+    if (props.submitEvery) {
+      const it = dt.createInterval(() => {
+        form.submit();
+      }, props.submitEvery);
+      return () => dt.clearInterval(it);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof props.items !== "function") {
@@ -181,7 +190,7 @@ const DataTable = <T extends object, F extends TObject>(
   const schema = t.omit(form.options.schema, ["page", "size", "sort"]);
 
   return (
-    <Flex direction={"column"} gap={"sm"}>
+    <Flex direction={"column"} gap={"sm"} flex={1}>
       <Paper withBorder p={"sm"}>
         {props.filters ? <TypeForm form={form} schema={schema} /> : null}
       </Paper>

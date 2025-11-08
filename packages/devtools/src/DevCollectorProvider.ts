@@ -1,10 +1,17 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { $batch } from "@alepha/batch";
 import { $bucket } from "@alepha/bucket";
 import { $cache } from "@alepha/cache";
-import { $hook, $inject, Alepha, t } from "@alepha/core";
+import { $hook, $inject, Alepha, pageQuerySchema, t } from "@alepha/core";
 import { $logger, type LogEntry, logEntrySchema } from "@alepha/logger";
-import { $entity, $repository, NodeSqliteProvider, pg } from "@alepha/postgres";
+import {
+  $entity,
+  $repository,
+  NodeSqliteProvider,
+  parseQueryString,
+  pg,
+} from "@alepha/postgres";
 import { $queue } from "@alepha/queue";
 import { $scheduler } from "@alepha/scheduler";
 import { $realm } from "@alepha/security";
@@ -27,13 +34,25 @@ class DevToolsDatabaseProvider extends NodeSqliteProvider {
   get name() {
     return "devtools";
   }
+  options = {
+    // path: ":memory:",
+  };
 }
 
 const logs = $entity({
   name: "logs",
   schema: t.object({
     id: pg.primaryKey(),
-    message: t.string(),
+    level: t.enum(["SILENT", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"]),
+    message: t.text({
+      size: "rich",
+    }),
+    service: t.text(),
+    module: t.text(),
+    context: t.optional(t.text()),
+    app: t.optional(t.text()),
+    data: t.optional(t.any()),
+    timestamp: t.datetime(),
   }),
 });
 
@@ -42,10 +61,9 @@ export class DevCollectorProvider {
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly sqliteProvider = $inject(DevToolsDatabaseProvider);
   protected readonly log = $logger();
-  protected readonly logs: LogEntry[] = [];
   protected readonly maxLogs = 10000;
 
-  logtest = $repository({
+  logs = $repository({
     entity: logs,
     provider: this.sqliteProvider,
   });
@@ -59,15 +77,23 @@ export class DevCollectorProvider {
     },
   });
 
+  protected batchLogs = $batch({
+    maxSize: 100,
+    maxDuration: [10, "seconds"],
+    schema: logEntrySchema,
+    handler: async (entries: LogEntry[]) => {
+      await this.logs.createMany(entries);
+    },
+  });
+
   protected readonly onLog = $hook({
     on: "log",
     handler: (ev: { message?: string; entry: LogEntry }) => {
-      this.logs.unshift(ev.entry);
-
-      // keep only the last 10000 logs
-      if (this.logs.length > this.maxLogs) {
-        this.logs.pop();
+      if (ev.entry.module === "alepha.batch" && ev.entry.level === "TRACE") {
+        // skip batch debug logs
+        return;
       }
+      this.batchLogs.push(ev.entry);
     },
   });
 
@@ -93,16 +119,29 @@ export class DevCollectorProvider {
     path: "/devtools/api/logs",
     silent: true,
     schema: {
-      response: t.array(logEntrySchema),
+      query: t.interface([pageQuerySchema], {
+        search: t.optional(t.string()),
+      }),
+      response: t.page(logEntrySchema),
     },
-    handler: () => {
-      return this.getLogs();
+    handler: ({ query }) => {
+      query.sort ??= "-timestamp";
+      if (query.search) {
+        console.log(parseQueryString(query.search));
+      }
+      return this.logs.paginate(
+        query,
+        query.search
+          ? {
+              where: parseQueryString(query.search),
+            }
+          : {},
+        {
+          count: true,
+        },
+      );
     },
   });
-
-  public getLogs(): LogEntry[] {
-    return this.logs;
-  }
 
   // -------------------------------------------------------------------------------------------------------------------
 

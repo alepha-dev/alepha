@@ -14,6 +14,7 @@
 		"src"
 	],
 	"dependencies": {
+		"@alepha/batch": "0.11.5",
 		"@alepha/bucket": "0.11.5",
 		"@alepha/cache": "0.11.5",
 		"@alepha/core": "0.11.5",

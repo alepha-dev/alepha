@@ -216,11 +216,18 @@ export class SqliteModelBuilder extends ModelBuilder {
       return this.sqliteJson(key, value);
     }
 
+    if (t.schema.isAny(value)) {
+      return this.sqliteJson(key, value);
+    }
+
     if (t.schema.isArray(value)) {
       if (t.schema.isObject(value.items)) {
         return this.sqliteJson(key, value);
       }
       if (t.schema.isRecord(value.items)) {
+        return this.sqliteJson(key, value);
+      }
+      if (t.schema.isAny(value.items)) {
         return this.sqliteJson(key, value);
       }
       if (t.schema.isString(value.items)) {
@@ -246,7 +253,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     }
 
     throw new Error(
-      `Unsupported schema type for ${fieldName} as ${JSON.stringify(value)}`,
+      `Unsupported schema for field '${tableName}.${fieldName}' (schema: ${JSON.stringify(value)})`,
     );
   };
 

@@ -62,6 +62,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
+      if (Object.keys(this.kit.getModels(this)).length === 0) {
+        return;
+      }
+
       const module = PglitePostgresProvider.importPglite();
       if (!module) {
         throw new AlephaError(

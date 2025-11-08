@@ -290,6 +290,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
+    "@alepha/batch": "npm:0.11.5"
     "@alepha/bucket": "npm:0.11.5"
     "@alepha/cache": "npm:0.11.5"
     "@alepha/cli": "npm:0.11.5"
@@ -6167,6 +6168,17 @@ __metadata:
   checksum: 10c0/d6b6f2adbccbcda74ddbab52ed07db727ef52e31a61ed26db9feb7dc62af7fc8e060defa65e5f8af9449b86b52cc1a1f6a79f2eafcf4e62add2b7a1fa4a432f6
   languageName: node
   linkType: hard
+
+"example-api-b382ca@workspace:apps/example-api":
+  version: 0.0.0-use.local
+  resolution: "example-api-b382ca@workspace:apps/example-api"
+  dependencies:
+    "@alepha/cli": "npm:^0.11.5"
+    "@alepha/core": "npm:^0.11.5"
+    "@alepha/postgres": "npm:^0.11.5"
+    "@alepha/server": "npm:^0.11.5"
+  languageName: unknown
+  linkType: soft
 
 "expand-tilde@npm:^2.0.0, expand-tilde@npm:^2.0.2":
   version: 2.0.2

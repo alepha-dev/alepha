@@ -1,0 +1,15 @@
+{
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "alepha dev"
+	},
+	"dependencies": {
+		"@alepha/core": "^0.11.5",
+		"@alepha/postgres": "^0.11.5",
+		"@alepha/server": "^0.11.5"
+	},
+	"devDependencies": {
+		"@alepha/cli": "^0.11.5"
+	}
+}

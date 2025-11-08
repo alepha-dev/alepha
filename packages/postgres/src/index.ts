@@ -104,6 +104,7 @@ export * from "./errors/PgConflictError.ts";
 export * from "./errors/PgEntityNotFoundError.ts";
 export * from "./errors/PgMigrationError.ts";
 export * from "./errors/PgVersionMismatchError.ts";
+export * from "./helpers/parseQueryString.ts";
 export * from "./helpers/pgAttr.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";

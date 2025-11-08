@@ -1,34 +1,13 @@
-import { t } from "@alepha/core";
+import { type Page, t } from "@alepha/core";
 import { type LogEntry, logEntrySchema } from "@alepha/logger";
-import { useAction, useInject } from "@alepha/react";
+import { useInject } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
 import { HttpClient } from "@alepha/server";
 import { DataTable, Flex, Text } from "@alepha/ui";
-import { useState } from "react";
 
 const DevLogs = () => {
   const http = useInject(HttpClient);
-  const [logs, setLog] = useState<LogEntry[]>([]);
   const { l } = useI18n();
-
-  useAction(
-    {
-      runOnInit: true,
-      runEvery: [10, "seconds"],
-      handler: async () => {
-        setLog(
-          await http
-            .fetch("/devtools/api/logs", {
-              schema: {
-                response: t.array(logEntrySchema),
-              },
-            })
-            .then(({ data }) => data),
-        );
-      },
-    },
-    [],
-  );
 
   const renderLevel = (level: string) => {
     switch (level.toLowerCase()) {
@@ -68,12 +47,18 @@ const DevLogs = () => {
   };
 
   return (
-    <Flex>
-      <DataTable
+    <Flex flex={1}>
+      <DataTable<LogEntry>
+        submitOnInit
+        submitEvery={[10, "seconds"]}
+        defaultSize={25}
         tableProps={{
           horizontalSpacing: "xs",
           verticalSpacing: 0,
         }}
+        filters={t.object({
+          search: t.optional(t.string()),
+        })}
         tableTrProps={(item) => {
           if (item.level.toLowerCase() === "error") {
             return {
@@ -87,8 +72,17 @@ const DevLogs = () => {
           }
           return {};
         }}
-        items={{
-          content: logs,
+        items={async (filters) => {
+          const response = await http.fetch(
+            `/devtools/api/logs?${new URLSearchParams(filters as any).toString()}`,
+            {
+              schema: {
+                response: t.page(logEntrySchema),
+              },
+            },
+          );
+
+          return response.data as Page<LogEntry>;
         }}
         columns={{
           timestamp: {
