@@ -57,8 +57,6 @@ declare module "@alepha/core" {
  * This is NOT recommended for production use.
  */
 export class NodeSqliteProvider extends DatabaseProvider {
-  public readonly dialect = "sqlite";
-
   protected readonly kit = $inject(DrizzleKitProvider);
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
@@ -66,6 +64,8 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly options = $use(nodeSqliteOptions);
 
   protected sqlite!: DatabaseSync;
+
+  public override readonly dialect = "sqlite";
 
   public get path(): string {
     const path = this.options.path ?? this.env.DATABASE_URL;
@@ -80,7 +80,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     }
   }
 
-  public async execute(
+  public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     const all = (this.db as unknown as SqliteRemoteDatabase).all(query);
@@ -132,7 +132,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     throw new AlephaError(`Unsupported method: ${method}`);
   }) as unknown as PgDatabase<any>;
 
-  protected readonly configure = $hook({
+  protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
       const { DatabaseSync } = await import("node:sqlite");

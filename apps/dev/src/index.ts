@@ -125,9 +125,7 @@ class AlephaDevCli {
       console.log(
         "\nNote: Version was bumped locally but not committed to git.",
       );
-      console.log(
-        "Run 'git restore .' to reset version changes if needed.\n",
-      );
+      console.log("Run 'git restore .' to reset version changes if needed.\n");
     },
   });
 

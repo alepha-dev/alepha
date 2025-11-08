@@ -42,7 +42,7 @@ export class PglitePostgresProvider extends DatabaseProvider {
   protected client?: PGlite;
   protected pglite?: PgliteDatabase;
 
-  public readonly dialect = "postgresql";
+  public override readonly dialect = "postgresql";
 
   public override get db(): PgliteDatabase {
     if (!this.pglite) {
@@ -52,7 +52,7 @@ export class PglitePostgresProvider extends DatabaseProvider {
     return this.pglite;
   }
 
-  public async execute(
+  public override async execute(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     const { rows } = await this.db.execute(statement);

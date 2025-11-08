@@ -2,7 +2,6 @@ import {
   $env,
   $hook,
   $inject,
-  Alepha,
   AlephaError,
   type Static,
   t,
@@ -49,15 +48,14 @@ export class NodePostgresProvider extends DatabaseProvider {
     "verify-full",
   ] as const;
 
-  public readonly dialect = "postgresql";
-
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
-  protected readonly alepha = $inject(Alepha);
   protected readonly kit = $inject(DrizzleKitProvider);
   protected readonly builder = $inject(PostgresModelBuilder);
   protected client?: postgres.Sql;
   protected pg?: PostgresJsDatabase;
+
+  public readonly dialect = "postgresql";
 
   /**
    * In testing mode, the schema name will be generated and deleted after the test.
