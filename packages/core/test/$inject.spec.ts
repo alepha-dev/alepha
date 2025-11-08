@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  $cursor,
+  $context,
   $env,
   $inject,
   Alepha,
@@ -89,13 +89,13 @@ describe("$env", () => {
 describe("$inject - circular dependencies", () => {
   it("should detect circular dependencies", () => {
     const superInject = (type: Service) => {
-      const { context } = $cursor();
-      context.inject(Module); // <- trying to "#get" during a tree walk is bad
+      const { alepha } = $context();
+      alepha.inject(Module); // <- trying to "#get" during a tree walk is bad
 
       // consider using "#register" instead
       // register check if the type is already registered (or pending) before calling #get
 
-      return context.inject(type);
+      return alepha.inject(type);
     };
 
     class A {}
@@ -115,9 +115,9 @@ describe("$inject - circular dependencies", () => {
 
   it("should fix circular dependencies with proper registration", () => {
     const superInject = <T extends object>(type: Service<T>): T => {
-      const { context } = $cursor();
-      context.with(Module); // <- replace .get by .with to fix circular dependency
-      return context.inject(type);
+      const { alepha } = $context();
+      alepha.with(Module); // <- replace .get by .with to fix circular dependency
+      return alepha.inject(type);
     };
 
     class A {

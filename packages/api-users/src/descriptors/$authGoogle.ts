@@ -1,4 +1,4 @@
-import { $cursor, t } from "@alepha/core";
+import { $context, t } from "@alepha/core";
 import { $auth } from "@alepha/react-auth";
 import type { RealmDescriptor } from "@alepha/security";
 import { SessionService } from "../services/SessionService.ts";
@@ -14,10 +14,10 @@ import { SessionService } from "../services/SessionService.ts";
  * - `GOOGLE_CLIENT_SECRET`: The client secret obtained from the Google Developer Console.
  */
 export const $authGoogle = (realm: RealmDescriptor) => {
-  const { context } = $cursor();
-  const sessionService = context.inject(SessionService);
+  const { alepha } = $context();
+  const sessionService = alepha.inject(SessionService);
 
-  const env = context.parseEnv(
+  const env = alepha.parseEnv(
     t.object({
       GOOGLE_CLIENT_ID: t.string(),
       GOOGLE_CLIENT_SECRET: t.string(),

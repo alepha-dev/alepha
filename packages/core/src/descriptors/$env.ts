@@ -1,7 +1,7 @@
 import type { Static, TObject } from "typebox";
 import { AlephaError } from "../errors/AlephaError.ts";
 import { t } from "../providers/TypeProvider.ts";
-import { $cursor } from "./$cursor.ts";
+import { $context } from "./$context.ts";
 
 /**
  * Get typed values from environment variables.
@@ -30,7 +30,7 @@ import { $cursor } from "./$cursor.ts";
  * ```
  */
 export const $env = <T extends TObject>(type: T): Static<T> => {
-  const { context: alepha } = $cursor();
+  const { alepha } = $context();
 
   // allow to inject TypeBox schemas
   if (!t.schema.isObject(type)) {

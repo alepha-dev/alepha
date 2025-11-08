@@ -1,11 +1,15 @@
+import type { TObject } from "typebox";
 import type { State as AlephaState } from "../Alepha.ts";
+import { Atom } from "../descriptors/$atom.ts";
 import { $inject } from "../descriptors/$inject.ts";
 import { AlsProvider } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
+import type { Static } from "./TypeProvider.ts";
 
 export class StateManager<State extends object = AlephaState> {
   protected readonly als = $inject(AlsProvider);
   protected readonly events = $inject(EventManager);
+  protected readonly atoms = new Map<keyof State, Atom>();
 
   protected store: Partial<State> = {};
 
@@ -13,23 +17,51 @@ export class StateManager<State extends object = AlephaState> {
     this.store = store;
   }
 
+  public register(atom: Atom): this {
+    const key = atom.key as keyof State;
+    if (!this.atoms.has(key)) {
+      this.atoms.set(key, atom);
+      this.store[key] = atom.options.default as State[typeof key];
+    }
+    return this;
+  }
+
   /**
    * Get a value from the state with proper typing
    */
-  public get<Key extends keyof State>(key: Key): State[Key] | undefined {
-    if (this.als?.exists()) {
-      return this.als.get<State[Key]>(key as string) ?? this.store[key];
+  public get<T extends TObject>(target: Atom<T>): Static<T>;
+  public get<Key extends keyof State>(target: Key): State[Key] | undefined;
+  public get(target: string | object): any {
+    if (target instanceof Atom) {
+      this.register(target);
     }
-    return this.store[key];
+
+    const key = target instanceof Atom ? target.key : target;
+    const store = this.store as Record<string, any>;
+
+    if (this.als?.exists()) {
+      return this.als.get(key as string) ?? store[key];
+    }
+
+    return store[key];
   }
 
   /**
    * Set a value in the state
    */
+  public set<T extends TObject>(target: Atom<T>, value: Static<T>): this;
   public set<Key extends keyof State>(
-    key: Key,
+    target: Key,
     value: State[Key] | undefined,
-  ): this {
+  ): this;
+  public set(target: any, value: any): this {
+    if (target instanceof Atom) {
+      this.register(target);
+    }
+
+    const key = target instanceof Atom ? target.key : target;
+    const store = this.store as Record<string, any>;
+
     const prevValue = this.get(key);
     if (prevValue === value) {
       return this;
@@ -38,7 +70,7 @@ export class StateManager<State extends object = AlephaState> {
     if (this.als?.exists()) {
       this.als.set(key as string, value);
     } else {
-      this.store[key] = value;
+      store[key] = value;
     }
 
     this.events

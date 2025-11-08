@@ -1,4 +1,4 @@
-import { $cursor } from "@alepha/core";
+import { $context } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 import type { AccessTokenResponse, RealmDescriptor } from "./$realm.ts";
@@ -34,11 +34,11 @@ import type { AccessTokenResponse, RealmDescriptor } from "./$realm.ts";
 export const $serviceAccount = (
   options: ServiceAccountDescriptorOptions,
 ): ServiceAccountDescriptor => {
-  const { context } = $cursor();
+  const { alepha } = $context();
   const store: {
     cache?: AccessTokenResponse;
   } = {};
-  const dateTimeProvider = context.inject(DateTimeProvider);
+  const dateTimeProvider = alepha.inject(DateTimeProvider);
   const gracePeriod = options.gracePeriod ?? 30;
 
   const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {

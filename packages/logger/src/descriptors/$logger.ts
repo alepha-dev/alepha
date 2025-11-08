@@ -1,4 +1,4 @@
-import { $cursor, $inject, KIND } from "@alepha/core";
+import { $context, $inject, KIND } from "@alepha/core";
 import { Logger } from "../services/Logger.ts";
 
 /**
@@ -21,13 +21,13 @@ import { Logger } from "../services/Logger.ts";
  * ```
  */
 export const $logger = (options: LoggerDescriptorOptions = {}): Logger => {
-  const { context, definition, module } = $cursor();
+  const { alepha, service, module } = $context();
 
   return $inject(Logger, {
     lifetime: "transient",
     args: [
-      options.name ?? definition?.name,
-      module?.name ?? context.env.MODULE_NAME ?? "app",
+      options.name ?? service?.name,
+      module?.name ?? alepha.env.MODULE_NAME ?? "app",
     ],
   });
 };

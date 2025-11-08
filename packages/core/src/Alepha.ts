@@ -1,13 +1,14 @@
 import type { Static, TObject } from "typebox";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
-import { __alephaRef } from "./descriptors/$cursor.ts";
+import { OPTIONS } from "./constants/OPTIONS.ts";
 import type { InjectOptions } from "./descriptors/$inject.ts";
 import { Module, type WithModule } from "./descriptors/$module.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { Descriptor } from "./helpers/descriptor.ts";
+import { __alephaRef } from "./helpers/ref.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import {
@@ -253,13 +254,6 @@ export class Alepha {
    * Services registered here will be replaced by the specified service when injected.
    */
   protected substitutions = new Map<Service, { use: Service }>();
-
-  /**
-   * Configuration states for services.
-   *
-   * Used to configure services when they are instantiated.
-   */
-  protected configurations = new Map<Service, object>();
 
   /**
    * Registry of descriptors.
@@ -660,10 +654,6 @@ export class Alepha {
       return this;
     }
 
-    if (configure && typeof entry === "function") {
-      this.configure(entry, configure);
-    }
-
     this.inject(entry);
 
     return this;
@@ -741,17 +731,6 @@ export class Alepha {
 
     const instance: T = this.new(service, opts.args);
 
-    // [feature]: configurations - update .options: object of the service instance
-    const configuration = this.configurations.get(service);
-    if (
-      configuration &&
-      "options" in instance &&
-      instance.options &&
-      typeof instance.options === "object"
-    ) {
-      Object.assign(instance.options, configuration);
-    }
-
     const definition: ServiceDefinition<T> = {
       parents: [parent],
       instance,
@@ -777,43 +756,6 @@ export class Alepha {
     }
 
     return instance;
-  }
-
-  /**
-   * Configures the specified service with the provided state.
-   * If service is not registered, it will do nothing.
-   *
-   * It's recommended to use this method on the `configure` hook.
-   * @example
-   * ```ts
-   * class AppConfig {
-   *   configure = $hook({
-   *     name: "configure",
-   *     handler: (a) => {
-   *       a.configure(MyProvider, { some: "data" });
-   *     }
-   *   })
-   * }
-   * ```
-   */
-  public configure<T extends { options?: object }>(
-    service: Service<T>,
-    state: Partial<T["options"]>,
-  ): this {
-    if (this.has(service)) {
-      const instance = this.inject(service);
-      if (
-        "options" in instance &&
-        instance.options &&
-        typeof instance.options === "object"
-      ) {
-        Object.assign(instance.options, state);
-      }
-    } else {
-      this.configurations.set(service, state);
-    }
-
-    return this;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -895,6 +837,9 @@ export class Alepha {
     return graph;
   }
 
+  /**
+   * Get all descriptors of the specified type.
+   */
   public descriptors<TDescriptor extends Descriptor>(
     factory:
       | {
@@ -928,8 +873,8 @@ export class Alepha {
     // we use a global cursor to store the current context and definition
     // as new() is synchronous, there is no worry to do that
     //
-    __alephaRef.context = this;
-    __alephaRef.definition = service;
+    __alephaRef.alepha = this;
+    __alephaRef.service = service;
 
     const instance: T = isClass(service)
       ? new service(...args)
@@ -940,16 +885,27 @@ export class Alepha {
       if (value instanceof Descriptor) {
         this.processDescriptor(value, key);
       }
+      if (
+        typeof value === "object" &&
+        typeof value[OPTIONS] === "object" &&
+        "getter" in value[OPTIONS]
+      ) {
+        Object.defineProperty(obj, key, {
+          get: () => {
+            return this.state.get(value[OPTIONS].getter);
+          },
+        });
+      }
     }
 
     this.pendingInstantiations.pop();
 
     // tree is empty, now we can clean the global cursor
     if (this.pendingInstantiations.length === 0) {
-      __alephaRef.context = undefined;
+      __alephaRef.alepha = undefined;
     }
 
-    __alephaRef.definition =
+    __alephaRef.service =
       this.pendingInstantiations[this.pendingInstantiations.length - 1];
 
     return instance;

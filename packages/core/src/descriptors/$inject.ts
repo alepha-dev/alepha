@@ -1,6 +1,6 @@
 import { Descriptor } from "../helpers/descriptor.ts";
 import type { InstantiableClass, Service } from "../interfaces/Service.ts";
-import { $cursor } from "./$cursor.ts";
+import { $context } from "./$context.ts";
 
 /**
  * Get the instance of the specified type from the context.
@@ -16,16 +16,16 @@ export const $inject = <T extends object>(
   type: Service<T>,
   opts: InjectOptions<T> = {},
 ): T => {
-  const { context, definition } = $cursor();
+  const { alepha, service } = $context();
 
   // _ = $inject(Alepha)
-  if (type === context.constructor) {
-    return context as T;
+  if (type === alepha.constructor) {
+    return alepha as T;
   }
 
-  return context.inject(type, {
+  return alepha.inject(type, {
     // keep the parent for better error messages and circular dependencies detection
-    parent: definition ?? (context.constructor as Service),
+    parent: service ?? (alepha.constructor as Service),
     ...opts,
   });
 };

@@ -1,7 +1,7 @@
 import { Alepha } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import { MODULE } from "../constants/MODULE.ts";
-import { $cursor } from "../descriptors/$cursor.ts";
+import { $context } from "../descriptors/$context.ts";
 import type { InstantiableClass, Service } from "../interfaces/Service.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -61,19 +61,19 @@ export const createDescriptor = <TDescriptor extends Descriptor>(
   descriptor: InstantiableClass<TDescriptor> & { [MODULE]?: Service },
   options: TDescriptor["options"],
 ): TDescriptor => {
-  const { context, definition } = $cursor();
+  const { alepha, service } = $context();
 
   if (MODULE in descriptor && descriptor[MODULE]) {
-    context.with(descriptor[MODULE]);
+    alepha.with(descriptor[MODULE]);
   }
 
-  return context.inject(descriptor, {
+  return alepha.inject(descriptor, {
     lifetime: "transient",
     args: [
       {
         options,
-        alepha: context,
-        service: definition ?? Alepha,
+        alepha: alepha,
+        service: service ?? Alepha,
       },
     ],
   });

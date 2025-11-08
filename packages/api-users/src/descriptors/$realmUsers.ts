@@ -1,4 +1,4 @@
-import { $cursor } from "@alepha/core";
+import { $context } from "@alepha/core";
 import {
   $realm,
   type RealmDescriptorOptions,
@@ -22,9 +22,9 @@ import { SessionService } from "../services/SessionService.ts";
 export const $realmUsers = (
   options: { secret?: string; realm?: Partial<RealmDescriptorOptions> } = {},
 ) => {
-  const { context } = $cursor();
-  const sessionService = context.inject(SessionService);
-  const securityProvider = context.inject(SecurityProvider);
+  const { alepha } = $context();
+  const sessionService = alepha.inject(SessionService);
+  const securityProvider = alepha.inject(SecurityProvider);
 
   return $realm({
     ...options.realm,

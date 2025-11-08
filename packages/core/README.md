@@ -221,15 +221,15 @@ class B {
 
 Wrap Services and Descriptors into a Module.
 
-- A module is just a Service extended {@link Module}.
+- A module is just a Service with some extra {@link Module}.
 - You must attach a `name` to it.
-- Name must follow the pattern: `project.module.submodule`.
+- Name must follow the pattern: `project.module.submodule`. (e.g. `myapp.users.auth`).
 
 ```ts
 import { $module } from "alepha";
 import { MyService } from "./MyService.ts";
 
-// export MyService, so it can be used everywhere
+// export MyService, so it can be used everywhere (optional)
 export * from "./MyService.ts";
 
 export default $module({
@@ -239,9 +239,9 @@ export default $module({
 });
 ```
 
-## Why Modules?
+### Why Modules?
 
-### Logging
+#### Logging
 
 By default, AlephaLogger will log the module name in the logs.
 This helps to identify where the logs are coming from.
@@ -249,20 +249,21 @@ This helps to identify where the logs are coming from.
 You can also set different log levels for different modules.
 It means you can set 'some.very.specific.module' to 'debug' and keep the rest of the application to 'info'.
 
-### Modulith
+#### Modulith
 
 Force to structure your application in modules, even if it's a single deployable unit.
 It helps to keep a clean architecture and avoid monolithic applications.
 
-You can also use `MODULE_INCLUDE` and `MODULE_EXCLUDE` environment variables to load only specific modules.
-
-A strict mode is planned to enforce module boundaries. Throwing errors when a service from another module is injected.
+A strict mode flag will probably come to enforce module boundaries.
+-> Throwing errors when a service from another module is injected.
+But it's not implemented yet.
 
 ### When not to use Modules?
 
 Small applications does not need modules. It's better to keep it simple.
 Modules are more useful when the application grows and needs to be structured.
-If we speak with `$actions`, a module should be used when you have more than 30 actions in a single module.
+If we speak with number of `$actions`, a module should be used when you have more than 30 actions in a single module.
+Meaning that if you have 100 actions, you should have at least 3 modules.
 
 ### Providers
 
