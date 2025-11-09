@@ -631,6 +631,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.11.5"
     "@alepha/datetime": "npm:0.11.5"
+    "@alepha/logger": "npm:0.11.5"
     "@biomejs/biome": "npm:^2.3.4"
     tsdown: "npm:^0.16.1"
     typescript: "npm:^5.9.3"
@@ -902,6 +903,19 @@ __metadata:
     "@alepha/file": "npm:0.11.5"
     "@alepha/logger": "npm:0.11.5"
     "@alepha/router": "npm:0.11.5"
+    "@biomejs/biome": "npm:^2.3.4"
+    tsdown: "npm:^0.16.1"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.8"
+  languageName: unknown
+  linkType: soft
+
+"@alepha/sms@workspace:packages/sms":
+  version: 0.0.0-use.local
+  resolution: "@alepha/sms@workspace:packages/sms"
+  dependencies:
+    "@alepha/core": "npm:0.11.5"
+    "@alepha/logger": "npm:0.11.5"
     "@biomejs/biome": "npm:^2.3.4"
     tsdown: "npm:^0.16.1"
     typescript: "npm:^5.9.3"

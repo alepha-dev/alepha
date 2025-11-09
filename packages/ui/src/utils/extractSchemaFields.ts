@@ -48,11 +48,27 @@ export function extractSchemaFields(
 
     const path = prefix ? `${prefix}.${key}` : key;
 
+    // Determine the display type - use format for datetime-related fields
+    const format = "format" in fieldSchema ? fieldSchema.format : undefined;
+    const baseType =
+      "type" in fieldSchema ? (fieldSchema.type as string) : "unknown";
+
+    let displayType = baseType;
+    if (format === "date-time") {
+      displayType = "datetime";
+    } else if (format === "date") {
+      displayType = "date";
+    } else if (format === "time") {
+      displayType = "time";
+    } else if (format === "duration") {
+      displayType = "duration";
+    }
+
     const field: SchemaField = {
       name: key,
       path,
-      type: "type" in fieldSchema ? (fieldSchema.type as string) : "unknown",
-      format: "format" in fieldSchema ? fieldSchema.format : undefined,
+      type: displayType,
+      format,
       description:
         "description" in fieldSchema ? fieldSchema.description : undefined,
     };

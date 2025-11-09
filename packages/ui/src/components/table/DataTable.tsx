@@ -71,6 +71,11 @@ export interface DataTableProps<T extends object> {
 
   actions?: any[];
 
+  /**
+   * Enable infinity scroll mode. When true, pagination controls are hidden and new items are loaded automatically when scrolling to the bottom.
+   */
+  infinityScroll?: boolean;
+
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
@@ -93,9 +98,11 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
       : props.items,
   );
 
-  const defaultSize = props.defaultSize || 10;
+  const defaultSize = props.infinityScroll ? 50 : props.defaultSize || 10;
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(String(defaultSize));
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
   const form = useForm(
     {
@@ -114,7 +121,18 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
               sort?: string;
             },
           );
-          setItems(response);
+
+          if (props.infinityScroll && values.page > 0) {
+            // Append new items to existing ones for infinity scroll
+            setItems((prev) => ({
+              ...response,
+              content: [...prev.content, ...response.content],
+            }));
+          } else {
+            setItems(response);
+          }
+          setCurrentPage(values.page);
+          setIsLoadingMore(false);
         }
       },
       onReset: async () => {
@@ -166,6 +184,39 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
     }
   }, [props.items]);
 
+  // Infinity scroll detection
+  useEffect(() => {
+    if (!props.infinityScroll || typeof props.items !== "function") return;
+
+    const handleScroll = () => {
+      if (isLoadingMore) return;
+
+      const scrollTop = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+
+      const isNearBottom = scrollTop + windowHeight >= docHeight - 200;
+
+      if (isNearBottom) {
+        const totalPages = items.page?.totalPages ?? 1;
+
+        if (currentPage + 1 < totalPages) {
+          setIsLoadingMore(true);
+          form.input.page.set(currentPage + 1);
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [
+    props.infinityScroll,
+    isLoadingMore,
+    items.page?.totalPages,
+    currentPage,
+    form,
+  ]);
+
   const head = Object.entries(props.columns).map(([key, col]) => (
     <Table.Th key={key}>
       <ActionButton justify={"space-between"} radius={0} fullWidth size={"xs"}>
@@ -201,31 +252,33 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
         <Table.Tbody>{rows}</Table.Tbody>
       </Table>
 
-      <Flex justify={"space-between"} align={"center"}>
-        <Pagination
-          withEdges
-          total={items.page?.totalPages ?? 1}
-          value={page}
-          onChange={(value) => {
-            form.input.page.set(value - 1);
-          }}
-        />
-        <Flex>
-          <Select
-            value={size}
+      {!props.infinityScroll && (
+        <Flex justify={"space-between"} align={"center"}>
+          <Pagination
+            withEdges
+            total={items.page?.totalPages ?? 1}
+            value={page}
             onChange={(value) => {
-              form.input.size.set(Number(value));
+              form.input.page.set(value - 1);
             }}
-            data={[
-              { value: "5", label: "5" },
-              { value: "10", label: "10" },
-              { value: "25", label: "25" },
-              { value: "50", label: "50" },
-              { value: "100", label: "100" },
-            ]}
           />
+          <Flex>
+            <Select
+              value={size}
+              onChange={(value) => {
+                form.input.size.set(Number(value));
+              }}
+              data={[
+                { value: "5", label: "5" },
+                { value: "10", label: "10" },
+                { value: "25", label: "25" },
+                { value: "50", label: "50" },
+                { value: "100", label: "100" },
+              ]}
+            />
+          </Flex>
         </Flex>
-      </Flex>
+      )}
     </Flex>
   );
 };

@@ -215,14 +215,22 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
                     {field.description || field.type}
                   </Text>
                   {field.enum && (
-                    <Text
-                      size="xs"
-                      c="blue"
-                      style={{ fontStyle: "italic" }}
-                      lineClamp={1}
-                    >
-                      {field.enum.join(", ")}
-                    </Text>
+                    <Group gap={4} wrap="wrap">
+                      {field.enum.map((enumValue) => (
+                        <Code
+                          key={enumValue}
+                          style={{
+                            cursor: "pointer",
+                            fontStyle: "italic",
+                            fontSize: "0.75rem",
+                          }}
+                          c="blue"
+                          onClick={() => onInsert(enumValue)}
+                        >
+                          {enumValue}
+                        </Code>
+                      ))}
+                    </Group>
                   )}
                 </Stack>
                 <Badge size="xs" variant="light" style={{ flexShrink: 0 }}>
