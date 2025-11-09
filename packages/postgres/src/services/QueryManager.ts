@@ -33,7 +33,7 @@ import type {
 } from "../interfaces/PgQueryWhere.ts";
 import { PgJsonQueryManager } from "./PgJsonQueryManager.ts";
 
-export class PgQueryManager {
+export class QueryManager {
   protected readonly jsonQueryManager = $inject(PgJsonQueryManager);
   protected readonly alepha = $inject(Alepha);
 
@@ -46,6 +46,7 @@ export class PgQueryManager {
       schema: TObject;
       col: (key: string) => PgColumn;
       joins?: PgJoin[];
+      dialect: "postgresql" | "sqlite";
     },
   ): SQL | undefined {
     const { schema, col, joins } = options;
@@ -103,6 +104,7 @@ export class PgQueryManager {
               schema: join.schema,
               col: join.col,
               joins: recursiveJoins.length > 0 ? recursiveJoins : undefined,
+              dialect: options.dialect,
             });
             if (sql) {
               conditions.push(sql);
@@ -121,6 +123,7 @@ export class PgQueryManager {
                 schema,
                 col,
                 joins, // Pass joins through recursively
+                dialect: options.dialect,
               });
             })
             .filter((it) => it != null);
@@ -139,6 +142,7 @@ export class PgQueryManager {
             schema,
             col,
             joins, // Pass joins through recursively
+            dialect: options.dialect,
           });
           if (where) {
             return not(where);
@@ -162,6 +166,7 @@ export class PgQueryManager {
               operator,
               schema,
               key,
+              options.dialect,
             );
             if (jsonbSql) {
               conditions.push(jsonbSql);
@@ -193,6 +198,7 @@ export class PgQueryManager {
     nestedQuery: any,
     schema: TObject,
     columnName: string,
+    dialect: "postgresql" | "sqlite",
   ): SQL | undefined {
     // Parse the nested query to extract paths and operators
     const queries = this.jsonQueryManager.parseNestedQuery(nestedQuery);
@@ -200,6 +206,9 @@ export class PgQueryManager {
     if (queries.length === 0) {
       return undefined;
     }
+
+    // Get the column schema for type inference
+    const columnSchema = schema.properties[columnName];
 
     // Build conditions for each parsed query
     const conditions: SQL[] = [];
@@ -215,6 +224,7 @@ export class PgQueryManager {
           path,
           "",
           operator,
+          dialect,
         );
         if (condition) {
           conditions.push(condition);
@@ -225,6 +235,8 @@ export class PgQueryManager {
           column,
           path,
           operator,
+          dialect,
+          columnSchema,
         );
         if (condition) {
           conditions.push(condition);

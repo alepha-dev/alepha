@@ -7,7 +7,11 @@ export default defineConfig({
       client: {
         prerender: true,
       },
-      serverEntry: "src/ui/main.server.ts",
     }),
   ],
+  server: {
+    proxy: {
+      "/devtools/api": "http://localhost:5173",
+    },
+  },
 });

@@ -5,7 +5,7 @@ import { isSQLWrapper } from "drizzle-orm/sql/sql";
 import type { EntityDescriptor } from "../descriptors/$entity.ts";
 import type { PgRelationMap } from "../interfaces/PgQuery.ts";
 import type { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
-import type { PgJoin } from "./PgQueryManager.ts";
+import type { PgJoin } from "./QueryManager.ts";
 
 export class PgRelationManager {
   /**

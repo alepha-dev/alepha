@@ -51,13 +51,19 @@ const DevLogs = () => {
       <DataTable<LogEntry>
         submitOnInit
         submitEvery={[10, "seconds"]}
-        defaultSize={25}
+        defaultSize={20}
         tableProps={{
           horizontalSpacing: "xs",
           verticalSpacing: 0,
         }}
         filters={t.object({
-          search: t.optional(t.string()),
+          search: t.optional(
+            t.string({
+              $control: {
+                query: logEntrySchema,
+              },
+            }),
+          ),
         })}
         tableTrProps={(item) => {
           if (item.level.toLowerCase() === "error") {

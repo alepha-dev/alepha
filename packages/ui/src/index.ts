@@ -28,6 +28,7 @@ export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
 export { default as Control } from "./components/form/Control.tsx";
 export { default as ControlDate } from "./components/form/ControlDate.tsx";
+export { default as ControlQueryBuilder } from "./components/form/ControlQueryBuilder.tsx";
 export { default as ControlSelect } from "./components/form/ControlSelect.tsx";
 export { default as TypeForm } from "./components/form/TypeForm.tsx";
 export { default as AdminShell } from "./components/layout/AdminShell.tsx";
@@ -80,6 +81,7 @@ export type {
 } from "./services/DialogService.tsx";
 export { DialogService } from "./services/DialogService.tsx";
 export { ToastService } from "./services/ToastService.tsx";
+export * from "./utils/extractSchemaFields.ts";
 export * from "./utils/icons.tsx";
 export * from "./utils/string.ts";
 

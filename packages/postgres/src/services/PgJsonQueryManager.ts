@@ -57,45 +57,78 @@ export class PgJsonQueryManager {
    * @param column The JSONB column
    * @param path The path to the nested property (e.g., ['profile', 'contact', 'email'])
    * @param operator The filter operator (e.g., { eq: "test@example.com" })
+   * @param dialect Database dialect (postgresql or sqlite)
+   * @param columnSchema Optional schema of the JSON column for type inference
    * @returns SQL condition
    */
   public buildJsonbCondition(
     column: PgColumn,
     path: string[],
     operator: FilterOperators<any>,
+    dialect: "postgresql" | "sqlite",
+    columnSchema?: any,
   ): SQL | undefined {
     if (path.length === 0) {
       return undefined;
     }
 
-    // Build the JSONB path: column->'path1'->'path2'->>'lastPath'
-    // Use ->> for the last element to get text, -> for intermediate elements
-    let jsonPath = sql`${column}`;
+    let jsonValue: SQL;
 
-    // Navigate through all path elements except the last
-    for (let i = 0; i < path.length - 1; i++) {
-      jsonPath = sql`${jsonPath}->${path[i]}`;
+    if (dialect === "sqlite") {
+      // SQLite: json_extract(column, '$.path.to.field')
+      const pathStr = "$." + path.join(".");
+      jsonValue = sql`json_extract(${column}, ${pathStr})`;
+    } else {
+      // PostgreSQL: column->'path1'->'path2'->>'lastPath'
+      // Use ->> for the last element to get text, -> for intermediate elements
+      let jsonPath = sql`${column}`;
+
+      // Navigate through all path elements except the last
+      for (let i = 0; i < path.length - 1; i++) {
+        jsonPath = sql`${jsonPath}->${path[i]}`;
+      }
+
+      // For the last element, use ->> to extract as text
+      const lastPath = path[path.length - 1];
+      jsonValue = sql`${jsonPath}->>${lastPath}`;
     }
 
-    // For the last element, use ->> to extract as text
-    const lastPath = path[path.length - 1];
-    const jsonValue = sql`${jsonPath}->>${lastPath}`;
+    // Get field type for smart casting
+    const fieldType = columnSchema
+      ? this.getFieldType(columnSchema, path)
+      : undefined;
 
     // Apply the operator
-    return this.applyOperatorToJsonValue(jsonValue, operator);
+    return this.applyOperatorToJsonValue(
+      jsonValue,
+      operator,
+      dialect,
+      fieldType,
+    );
   }
 
   /**
    * Build JSONB array query conditions.
    * Supports queries like: { addresses: { city: { eq: "Wonderland" } } }
    * which translates to: EXISTS (SELECT 1 FROM jsonb_array_elements(addresses) elem WHERE elem->>'city' = 'Wonderland')
+   *
+   * @param dialect Database dialect (postgresql or sqlite)
+   * Note: SQLite array queries are not yet supported
    */
   public buildJsonbArrayCondition(
     column: PgColumn,
     path: string[],
     arrayPath: string,
     operator: FilterOperators<any>,
+    dialect: "postgresql" | "sqlite",
   ): SQL | undefined {
+    if (dialect === "sqlite") {
+      throw new Error(
+        "Array queries in JSON columns are not yet supported for SQLite. " +
+          "Please use PostgreSQL for complex JSON array queries, or restructure your data.",
+      );
+    }
+
     if (path.length === 0) {
       return undefined;
     }
@@ -109,7 +142,11 @@ export class PgJsonQueryManager {
     // Build the condition for array elements
     const lastPath = path[0];
     const elemCondition = sql`elem->>${lastPath}`;
-    const condition = this.applyOperatorToJsonValue(elemCondition, operator);
+    const condition = this.applyOperatorToJsonValue(
+      elemCondition,
+      operator,
+      dialect,
+    );
 
     if (!condition) {
       return undefined;
@@ -121,11 +158,29 @@ export class PgJsonQueryManager {
 
   /**
    * Apply a filter operator to a JSONB value.
+   * @param dialect Database dialect for appropriate casting syntax
+   * @param fieldType Optional field type from schema for smart casting
    */
   private applyOperatorToJsonValue(
     jsonValue: SQL,
     operator: FilterOperators<any>,
+    dialect: "postgresql" | "sqlite",
+    fieldType?: string,
   ): SQL | undefined {
+    // Helper to cast for numeric comparisons based on dialect and field type
+    const castForNumeric = (value: SQL): SQL => {
+      if (dialect === "sqlite") {
+        // Use INTEGER for int types, REAL for number types
+        if (fieldType === "integer" || fieldType === "int") {
+          return sql`CAST(${value} AS INTEGER)`;
+        }
+        // Default to REAL for numeric comparisons
+        return sql`CAST(${value} AS REAL)`;
+      }
+      // PostgreSQL
+      return sql`(${value})::numeric`;
+    };
+
     if (typeof operator !== "object") {
       // Direct value comparison
       return sql`${jsonValue} = ${operator}`;
@@ -143,19 +198,19 @@ export class PgJsonQueryManager {
 
     if (operator.gt !== undefined) {
       // Cast to numeric for comparison
-      conditions.push(sql`(${jsonValue})::numeric > ${operator.gt}`);
+      conditions.push(sql`${castForNumeric(jsonValue)} > ${operator.gt}`);
     }
 
     if (operator.gte !== undefined) {
-      conditions.push(sql`(${jsonValue})::numeric >= ${operator.gte}`);
+      conditions.push(sql`${castForNumeric(jsonValue)} >= ${operator.gte}`);
     }
 
     if (operator.lt !== undefined) {
-      conditions.push(sql`(${jsonValue})::numeric < ${operator.lt}`);
+      conditions.push(sql`${castForNumeric(jsonValue)} < ${operator.lt}`);
     }
 
     if (operator.lte !== undefined) {
-      conditions.push(sql`(${jsonValue})::numeric <= ${operator.lte}`);
+      conditions.push(sql`${castForNumeric(jsonValue)} <= ${operator.lte}`);
     }
 
     if (operator.like !== undefined) {
@@ -163,7 +218,13 @@ export class PgJsonQueryManager {
     }
 
     if (operator.ilike !== undefined) {
-      conditions.push(sql`${jsonValue} ILIKE ${operator.ilike}`);
+      // SQLite: LIKE is case-insensitive by default, so use LIKE
+      // PostgreSQL: Use ILIKE
+      if (dialect === "sqlite") {
+        conditions.push(sql`${jsonValue} LIKE ${operator.ilike}`);
+      } else {
+        conditions.push(sql`${jsonValue} ILIKE ${operator.ilike}`);
+      }
     }
 
     if (operator.notLike !== undefined) {
@@ -171,7 +232,13 @@ export class PgJsonQueryManager {
     }
 
     if (operator.notIlike !== undefined) {
-      conditions.push(sql`${jsonValue} NOT ILIKE ${operator.notIlike}`);
+      // SQLite: LIKE is case-insensitive by default, so use NOT LIKE
+      // PostgreSQL: Use NOT ILIKE
+      if (dialect === "sqlite") {
+        conditions.push(sql`${jsonValue} NOT LIKE ${operator.notIlike}`);
+      } else {
+        conditions.push(sql`${jsonValue} NOT ILIKE ${operator.notIlike}`);
+      }
     }
 
     if (operator.isNull !== undefined) {
@@ -313,6 +380,33 @@ export class PgJsonQueryManager {
       itemType === "boolean" ||
       itemType === "null"
     );
+  }
+
+  /**
+   * Get the type of a field by navigating through a schema path.
+   * Used for smart type casting in SQL queries.
+   *
+   * @param columnSchema The schema of the JSON column (e.g., t.object({ age: t.int() }))
+   * @param path The path to navigate (e.g., ['contact', 'email'])
+   * @returns The type string (e.g., 'integer', 'number', 'string') or undefined if not found
+   */
+  private getFieldType(columnSchema: any, path: string[]): string | undefined {
+    let current = columnSchema;
+
+    for (const segment of path) {
+      // Navigate into object properties
+      if (current.type === "object" && current.properties) {
+        current = current.properties[segment];
+        if (!current) {
+          return undefined;
+        }
+      } else {
+        // Path segment doesn't exist or current is not an object
+        return undefined;
+      }
+    }
+
+    return current.type;
   }
 
   /**

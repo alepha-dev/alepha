@@ -1,5 +1,13 @@
 import { $page } from "@alepha/react";
-import { AdminShell, RootRouter, Text, ui } from "@alepha/ui";
+import {
+  AdminShell,
+  DarkModeButton,
+  OmnibarButton,
+  RootRouter,
+  Text,
+  ui,
+} from "@alepha/ui";
+import ToggleSidebarButton from "@alepha/ui/src/components/buttons/ToggleSidebarButton.tsx";
 import { IconDashboard, IconLogs } from "@tabler/icons-react";
 import DevLogs from "./DevLogs.tsx";
 
@@ -21,19 +29,41 @@ export class AppRouter extends RootRouter {
           },
         }}
         sidebarProps={{
-          collapsed: true,
           gap: "xs",
+          menu: [
+            {
+              element: <ToggleSidebarButton />,
+            },
+            {
+              label: "Dashboard",
+              icon: <IconDashboard />,
+              href: "/",
+            },
+            {
+              label: "Logs",
+              icon: <IconLogs />,
+              href: "/logs",
+            },
+          ],
         }}
         appBarProps={{
           items: [
             { position: "left", type: "burger" },
             {
-              position: "center",
+              position: "left",
               element: (
                 <Text fw="bold" size="lg">
                   Alepha DevTools
                 </Text>
               ),
+            },
+            {
+              position: "center",
+              element: <OmnibarButton />,
+            },
+            {
+              position: "right",
+              element: <DarkModeButton />,
             },
           ],
         }}

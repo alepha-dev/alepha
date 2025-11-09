@@ -56,8 +56,8 @@ import {
 } from "../providers/drivers/DatabaseProvider.ts";
 import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
-import { type PgJoin, PgQueryManager } from "../services/PgQueryManager.ts";
 import { PgRelationManager } from "../services/PgRelationManager.ts";
+import { type PgJoin, QueryManager } from "../services/QueryManager.ts";
 import {
   $entity,
   EntityDescriptor,
@@ -163,7 +163,7 @@ export class RepositoryDescriptor<
   T extends TObject = TObject,
 > extends Descriptor<RepositoryDescriptorOptions<T>> {
   protected readonly relationManager = $inject(PgRelationManager);
-  protected readonly queryManager = $inject(PgQueryManager);
+  protected readonly queryManager = $inject(QueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
@@ -1162,6 +1162,7 @@ export class RepositoryDescriptor<
         return this.col(name);
       },
       joins,
+      dialect: this.provider.dialect,
     });
   }
 

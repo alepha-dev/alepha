@@ -70,6 +70,11 @@ export class NodeSqliteProvider extends DatabaseProvider {
   public get path(): string {
     const path = this.options.path ?? this.env.DATABASE_URL;
     if (path) {
+      if (path.startsWith("postgres://")) {
+        throw new AlephaError(
+          "Postgres URL is not supported for SQLite provider.",
+        );
+      }
       return path;
     }
 

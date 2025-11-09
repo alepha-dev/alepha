@@ -135,7 +135,7 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
           return;
         }
 
-        submitDebounce();
+        //submitDebounce();
       },
     },
     [],

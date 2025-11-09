@@ -35,7 +35,7 @@ class DevToolsDatabaseProvider extends NodeSqliteProvider {
     return "devtools";
   }
   options = {
-    // path: ":memory:",
+    path: "node_modules/.alepha/devtools/devtools.sqlite",
   };
 }
 
@@ -51,7 +51,7 @@ const logs = $entity({
     module: t.text(),
     context: t.optional(t.text()),
     app: t.optional(t.text()),
-    data: t.optional(t.any()),
+    data: t.optional(t.json()),
     timestamp: t.datetime(),
   }),
 });
@@ -61,7 +61,6 @@ export class DevCollectorProvider {
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly sqliteProvider = $inject(DevToolsDatabaseProvider);
   protected readonly log = $logger();
-  protected readonly maxLogs = 10000;
 
   logs = $repository({
     entity: logs,
@@ -88,12 +87,18 @@ export class DevCollectorProvider {
 
   protected readonly onLog = $hook({
     on: "log",
-    handler: (ev: { message?: string; entry: LogEntry }) => {
-      if (ev.entry.module === "alepha.batch" && ev.entry.level === "TRACE") {
+    handler: async (ev: { message?: string; entry: LogEntry }) => {
+      if (ev.entry.level === "TRACE") {
         // skip batch debug logs
         return;
       }
-      this.batchLogs.push(ev.entry);
+      await this.logs.create(ev.entry);
+      // return;
+      // this.batchLogs
+      //   .push(ev.entry)
+      //   .catch((error) =>
+      //     this.log.error("Failed to batch log entries", { error }),
+      //   );
     },
   });
 

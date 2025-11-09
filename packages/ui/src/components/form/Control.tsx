@@ -27,6 +27,7 @@ import {
 } from "../../utils/parseInput.ts";
 import ControlDate from "./ControlDate.tsx";
 import ControlNumber, { type ControlNumberProps } from "./ControlNumber.tsx";
+import ControlQueryBuilder from "./ControlQueryBuilder.tsx";
 import ControlSelect, { type ControlSelectProps } from "./ControlSelect.tsx";
 
 export interface ControlProps extends GenericControlProps {
@@ -41,6 +42,7 @@ export interface ControlProps extends GenericControlProps {
   date?: boolean | DateInputProps;
   datetime?: boolean | DateTimePickerProps;
   time?: boolean | TimeInputProps;
+  query?: any; // Enable query builder mode with schema-aware autocomplete
   custom?: ComponentType<CustomControlProps>;
 }
 
@@ -61,6 +63,7 @@ export interface ControlProps extends GenericControlProps {
  * - DateInput (for date format)
  * - DateTimePicker (for date-time format)
  * - TimeInput (for time format)
+ * - QueryBuilder (for building type-safe queries with autocomplete)
  * - Custom component
  *
  * Automatically handles labels, descriptions, error messages, required state, and default icons.
@@ -76,6 +79,22 @@ const Control = (_props: ControlProps) => {
     ..._props,
     ...schema.$control,
   };
+
+  //region <QueryBuilder/>
+  if (props.query) {
+    return (
+      <Input.Wrapper {...inputProps}>
+        <ControlQueryBuilder
+          schema={props.query}
+          value={props.input.props.value}
+          onChange={(value) => {
+            props.input.set(value);
+          }}
+        />
+      </Input.Wrapper>
+    );
+  }
+  //endregion
 
   //region <Custom/>
   if (props.custom) {
