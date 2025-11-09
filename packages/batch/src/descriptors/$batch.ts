@@ -99,6 +99,7 @@ export class BatchDescriptor<
   >();
   protected readonly partitions = new Map<string, PartitionState>();
   protected activeHandlers: PromiseWithResolvers<void>[] = [];
+  protected isShuttingDown = false;
 
   // Computed properties with defaults
   protected get maxSize(): number {
@@ -300,7 +301,10 @@ export class BatchDescriptor<
     let result: any;
     try {
       result = await this.alepha.context.run(() =>
-        this.retry.run(itemsToProcess),
+        // during shutdown, call handler directly to avoid retry cancellation
+        this.isShuttingDown
+          ? this.options.handler(itemsToProcess)
+          : this.retry.run(itemsToProcess),
       );
 
       // Mark all items as completed and resolve their promises
@@ -346,6 +350,7 @@ export class BatchDescriptor<
     priority: "first",
     handler: async () => {
       this.log.debug("Flushing all remaining batch partitions on shutdown.");
+      this.isShuttingDown = true;
       await this.flush();
       this.log.debug("All batch partitions flushed.");
     },

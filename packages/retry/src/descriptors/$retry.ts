@@ -6,8 +6,8 @@ import {
   KIND,
 } from "@alepha/core";
 import type { DurationLike } from "@alepha/datetime";
-import type { RetryBackoffOptions } from "../services/RetryProvider.ts";
-import { RetryProvider } from "../services/RetryProvider.ts";
+import type { RetryBackoffOptions } from "../providers/RetryProvider.ts";
+import { RetryProvider } from "../providers/RetryProvider.ts";
 
 /**
  * Creates a function that automatically retries a handler upon failure,

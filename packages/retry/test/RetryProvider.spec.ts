@@ -2,7 +2,7 @@ import { Alepha } from "@alepha/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { RetryCancelError } from "../src/errors/RetryCancelError";
 import { RetryTimeoutError } from "../src/errors/RetryTimeoutError";
-import { RetryProvider } from "../src/services/RetryProvider";
+import { RetryProvider } from "../src/providers/RetryProvider";
 
 describe("RetryProvider", () => {
   let alepha: Alepha;

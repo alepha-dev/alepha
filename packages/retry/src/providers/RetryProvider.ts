@@ -140,7 +140,7 @@ export class RetryProvider {
         }
 
         // Check for timeout before attempting
-        if (Date.now() - startTime > maxDurationMs) {
+        if (Date.now() - startTime >= maxDurationMs) {
           throw new RetryTimeoutError(maxDurationMs);
         }
 
@@ -148,7 +148,7 @@ export class RetryProvider {
           const result = await handler(...args);
 
           // Check for timeout after handler execution
-          if (Date.now() - startTime > maxDurationMs) {
+          if (Date.now() - startTime >= maxDurationMs) {
             throw new RetryTimeoutError(maxDurationMs);
           }
 
@@ -157,7 +157,7 @@ export class RetryProvider {
           lastError = err as Error;
 
           // Check for timeout after error
-          if (Date.now() - startTime > maxDurationMs) {
+          if (Date.now() - startTime >= maxDurationMs) {
             throw new RetryTimeoutError(maxDurationMs);
           }
 
@@ -188,6 +188,11 @@ export class RetryProvider {
           const delay = this.calculateBackoff(attempt, options.backoff);
           if (delay > 0) {
             await this.dateTime.wait(delay, { signal: combinedSignal });
+          }
+
+          // Check for timeout after backoff wait before next attempt
+          if (Date.now() - startTime >= maxDurationMs) {
+            throw new RetryTimeoutError(maxDurationMs);
           }
         }
       }
