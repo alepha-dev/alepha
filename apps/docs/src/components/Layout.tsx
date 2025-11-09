@@ -92,11 +92,8 @@ const LayoutContent = () => {
       label: "LLM",
       position: "bottom",
       icon: <IconRobot />,
+      target: "_self",
       href: router.base("/llms.txt"),
-      actionProps: {
-        href: router.base("/llms.txt"),
-        target: "_blank",
-      },
     },
   ];
 

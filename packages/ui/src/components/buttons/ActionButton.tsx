@@ -277,7 +277,7 @@ const ActionButton = (_props: ActionProps) => {
 
   const renderAction = () => {
     if ("href" in restProps && restProps.href) {
-      if (restProps.href.startsWith("http")) {
+      if (restProps.href.startsWith("http") || restProps.target) {
         return (
           <ActionHrefButton {...restProps} href={restProps.href}>
             {restProps.children}

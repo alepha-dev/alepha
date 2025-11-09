@@ -191,7 +191,9 @@ export const SidebarItem = (props: SidebarItemProps) => {
   if (level > maxLevel) return null;
 
   const handleItemClick = (e: MouseEvent) => {
-    e.preventDefault();
+    if (!props.item.target) {
+      e.preventDefault();
+    }
     if (item.children && item.children.length > 0) {
       setIsOpen(!isOpen);
     } else {
@@ -206,6 +208,7 @@ export const SidebarItem = (props: SidebarItemProps) => {
         w={"100%"}
         justify="space-between"
         href={props.item.href}
+        target={props.item.target}
         variant={"subtle"}
         size={
           props.item.theme?.size ??
@@ -310,7 +313,9 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(isActive(item));
 
   const handleItemClick = (e: MouseEvent) => {
-    e.preventDefault();
+    if (!props.item.target) {
+      e.preventDefault();
+    }
     if (item.children && item.children.length > 0) {
       setIsOpen(!isOpen);
     } else {
@@ -332,6 +337,7 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
       onClick={handleItemClick}
       icon={item.icon ?? <IconSquareRounded />}
       href={props.item.href}
+      target={props.item.target}
       menu={
         item.children
           ? {
@@ -391,6 +397,7 @@ export interface SidebarMenuItem extends SidebarAbstractItem {
   description?: string;
   icon?: ReactNode;
   href?: string;
+  target?: "_blank" | "_self" | "_parent" | "_top";
   activeStartsWith?: boolean; // Use startWith matching for active state
   onClick?: () => void;
   children?: SidebarMenuItem[];
