@@ -5,11 +5,11 @@
 	"dependencies": {
 		"@alepha/core": "0.11.5",
 		"@alepha/react": "0.11.5",
-		"@mantine/core": "^8.3.6",
-		"@mantine/form": "^8.3.6",
-		"@mantine/hooks": "^8.3.6",
-		"@mantine/nprogress": "^8.3.6",
-		"@mantine/spotlight": "^8.3.6",
+		"@mantine/core": "^8.3.7",
+		"@mantine/form": "^8.3.7",
+		"@mantine/hooks": "^8.3.7",
+		"@mantine/nprogress": "^8.3.7",
+		"@mantine/spotlight": "^8.3.7",
 		"@tabler/icons-react": "^3.35.0",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"
