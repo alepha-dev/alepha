@@ -36,16 +36,21 @@ describe("$batch descriptor", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push("A");
-    app.batcher.push("B");
+    const id1 = await app.batcher.push("A");
+    const id2 = await app.batcher.push("B");
     expect(mockHandler).not.toHaveBeenCalled();
 
-    app.batcher.push("C"); // This should trigger the flush
+    const id3 = await app.batcher.push("C"); // This should trigger the flush
 
     await vi.waitFor(() => {
       expect(mockHandler).toHaveBeenCalledTimes(1);
     });
     expect(mockHandler).toHaveBeenCalledWith(["A", "B", "C"]);
+
+    // Verify IDs are returned
+    expect(typeof id1).toBe("string");
+    expect(typeof id2).toBe("string");
+    expect(typeof id3).toBe("string");
   });
 
   test("should flush remaining items when maxDuration is reached", async () => {
@@ -139,7 +144,7 @@ describe("$batch descriptor", () => {
     expect(mockHandler).toHaveBeenCalledWith(["A", "B"]);
   });
 
-  test("should reject push promise if handler fails after retries", async () => {
+  test("should reject wait promise if handler fails after retries", async () => {
     const failingHandler = vi.fn(async (items: any[]) => {
       throw new Error("Handler failed");
     });
@@ -156,17 +161,28 @@ describe("$batch descriptor", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    const pushPromise = app.batcher.push("A");
+    const id = await app.batcher.push("A");
+    expect(typeof id).toBe("string");
 
-    await expect(pushPromise).rejects.toThrow("Handler failed");
+    const waitPromise = app.batcher.wait(id);
+    await expect(waitPromise).rejects.toThrow("Handler failed");
 
     await vi.waitFor(() => {
       expect(failingHandler).toHaveBeenCalledTimes(2);
     });
+
+    // Verify status is failed
+    const status = app.batcher.status(id);
+    expect(status?.status).toBe("failed");
+    if (status?.status === "failed") {
+      expect(status.error.message).toBe("Handler failed");
+    }
   });
 
-  test("should resolve push promise on successful processing", async () => {
-    const mockHandler = createMockHandler();
+  test("should resolve wait promise on successful processing", async () => {
+    const mockHandler = vi.fn(async (items: any[]) => {
+      return "success";
+    });
     class TestApp {
       batcher = $batch({
         schema: t.text(),
@@ -178,9 +194,22 @@ describe("$batch descriptor", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    const pushPromise = app.batcher.push("A");
+    const id = await app.batcher.push("A");
+    expect(typeof id).toBe("string");
 
-    await expect(pushPromise).resolves.toBeUndefined();
+    // Status should be pending or processing
+    let status = app.batcher.status(id);
+    expect(status?.status).toMatch(/pending|processing/);
+
+    const result = await app.batcher.wait(id);
+    expect(result).toBe("success");
+
+    // Status should now be completed
+    status = app.batcher.status(id);
+    expect(status?.status).toBe("completed");
+    if (status?.status === "completed") {
+      expect(status.result).toBe("success");
+    }
   });
 
   test("should respect concurrency option", async () => {
@@ -207,14 +236,15 @@ describe("$batch descriptor", () => {
     await alepha.start();
 
     // Push 4 items to trigger 4 batches
-    const promises = [
+    const ids = await Promise.all([
       app.batcher.push("A"),
       app.batcher.push("B"),
       app.batcher.push("C"),
       app.batcher.push("D"),
-    ];
+    ]);
 
-    await Promise.all(promises);
+    // Wait for all to complete
+    await Promise.all(ids.map((id) => app.batcher.wait(id)));
 
     expect(slowHandler).toHaveBeenCalledTimes(4);
     expect(maxActiveHandlers).toBe(2);
@@ -303,7 +333,8 @@ describe("$batch descriptor", () => {
     await expect(app.batcher.push("not-a-number" as any)).rejects.toThrow();
     expect(mockHandler).not.toHaveBeenCalled();
 
-    await expect(app.batcher.push(123)).resolves.toBeUndefined();
+    const id = await app.batcher.push(123);
+    expect(typeof id).toBe("string");
     await vi.waitFor(() => {
       expect(mockHandler).toHaveBeenCalledWith([123]);
     });
@@ -369,7 +400,8 @@ describe("$batch descriptor", () => {
       });
 
       async fetch(url: string) {
-        const response = await this.httpBatch.push(url);
+        const id = await this.httpBatch.push(url);
+        const response = await this.httpBatch.wait(id);
         return response[url];
       }
     }
@@ -420,18 +452,23 @@ describe("$batch descriptor", () => {
     await alepha.start();
 
     // Push 2 items to trigger first batch
-    const promise1 = app.batcher.push("A");
-    const promise2 = app.batcher.push("B");
+    const id1 = await app.batcher.push("A");
+    const id2 = await app.batcher.push("B");
 
     // Wait a bit for processing to start but not complete
     await time.wait(50);
 
     // Push more items while first batch is processing
-    const promise3 = app.batcher.push("C");
-    const promise4 = app.batcher.push("D");
+    const id3 = await app.batcher.push("C");
+    const id4 = await app.batcher.push("D");
 
-    // Wait for all promises to resolve
-    const results = await Promise.all([promise1, promise2, promise3, promise4]);
+    // Wait for all items to complete
+    const results = await Promise.all([
+      app.batcher.wait(id1),
+      app.batcher.wait(id2),
+      app.batcher.wait(id3),
+      app.batcher.wait(id4),
+    ]);
 
     // Should have 2 batches
     expect(handlerCallCount).toBe(2);
@@ -463,17 +500,22 @@ describe("$batch descriptor", () => {
     await alepha.start();
 
     // Push 2 items to partition p-1 to trigger flush
-    const p1 = app.batcher.push({ id: 1, value: "A" });
-    const p2 = app.batcher.push({ id: 1, value: "B" });
+    const id1 = await app.batcher.push({ id: 1, value: "A" });
+    const id2 = await app.batcher.push({ id: 1, value: "B" });
 
     // Wait for processing to start
     await time.wait(50);
 
     // Push more items to same partition while processing
-    const p3 = app.batcher.push({ id: 1, value: "C" });
-    const p4 = app.batcher.push({ id: 1, value: "D" });
+    const id3 = await app.batcher.push({ id: 1, value: "C" });
+    const id4 = await app.batcher.push({ id: 1, value: "D" });
 
-    await Promise.all([p1, p2, p3, p4]);
+    await Promise.all([
+      app.batcher.wait(id1),
+      app.batcher.wait(id2),
+      app.batcher.wait(id3),
+      app.batcher.wait(id4),
+    ]);
 
     // All items should be processed successfully
     expect(true).toBe(true); // If we got here without errors, test passes
@@ -568,15 +610,96 @@ describe("$batch descriptor", () => {
     await alepha.start();
 
     // Push 3 items to trigger 3 batches
-    const promises = [
+    const ids = await Promise.all([
       app.batcher.push("A"),
       app.batcher.push("B"),
       app.batcher.push("C"),
-    ];
+    ]);
 
-    await Promise.all(promises);
+    await Promise.all(ids.map((id) => app.batcher.wait(id)));
 
     expect(slowHandler).toHaveBeenCalledTimes(3);
     expect(maxActiveHandlers).toBe(1); // Should never exceed default concurrency of 1
+  });
+
+  test("should track item status through lifecycle", async () => {
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        maxSize: 10,
+        maxDuration: [100, "milliseconds"],
+        handler: async (items: string[]) => {
+          await time.wait(50);
+          return items.map((item) => `processed-${item}`);
+        },
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    // Push an item and verify it gets an ID
+    const id = await app.batcher.push("test-item");
+    expect(typeof id).toBe("string");
+
+    // Status should be pending initially
+    let status = app.batcher.status(id);
+    expect(status?.status).toMatch(/pending/);
+
+    // Wait for processing to complete
+    const result = await app.batcher.wait(id);
+    expect(result).toEqual(["processed-test-item"]);
+
+    // Status should now be completed
+    status = app.batcher.status(id);
+    expect(status?.status).toBe("completed");
+    if (status?.status === "completed") {
+      expect(status.result).toEqual(["processed-test-item"]);
+    }
+
+    // Calling wait again should return the cached result immediately
+    const result2 = await app.batcher.wait(id);
+    expect(result2).toEqual(["processed-test-item"]);
+
+    // Test non-existent ID
+    const nonExistentStatus = app.batcher.status("non-existent-id");
+    expect(nonExistentStatus).toBeUndefined();
+
+    await expect(app.batcher.wait("non-existent-id")).rejects.toThrow(
+      "Item with id 'non-existent-id' not found",
+    );
+  });
+
+  test("should return unique IDs for each push", async () => {
+    const mockHandler = createMockHandler();
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        maxSize: 10,
+        handler: mockHandler,
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    const id1 = await app.batcher.push("A");
+    const id2 = await app.batcher.push("B");
+    const id3 = await app.batcher.push("C");
+
+    expect(id1).not.toBe(id2);
+    expect(id2).not.toBe(id3);
+    expect(id1).not.toBe(id3);
+
+    // All should be valid UUIDs (rough check)
+    expect(id1).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+    expect(id2).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+    expect(id3).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
   });
 });

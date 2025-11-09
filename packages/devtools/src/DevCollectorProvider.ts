@@ -35,7 +35,7 @@ class DevToolsDatabaseProvider extends NodeSqliteProvider {
     return "devtools";
   }
   options = {
-    path: "node_modules/.alepha/devtools/devtools.sqlite",
+    path: ":memory:",
   };
 }
 
@@ -77,7 +77,7 @@ export class DevCollectorProvider {
   });
 
   protected batchLogs = $batch({
-    maxSize: 100,
+    maxSize: 50,
     maxDuration: [10, "seconds"],
     schema: logEntrySchema,
     handler: async (entries: LogEntry[]) => {
@@ -88,23 +88,23 @@ export class DevCollectorProvider {
   protected readonly onLog = $hook({
     on: "log",
     handler: async (ev: { message?: string; entry: LogEntry }) => {
-      if (ev.entry.level === "TRACE") {
-        // skip batch debug logs
+      if (!this.alepha.isReady()) {
         return;
       }
-      await this.logs.create(ev.entry);
-      // return;
-      // this.batchLogs
-      //   .push(ev.entry)
-      //   .catch((error) =>
-      //     this.log.error("Failed to batch log entries", { error }),
-      //   );
+
+      if (ev.entry.level === "TRACE" && ev.entry.module === "alepha.batch") {
+        // skip batch trace logs to avoid infinite loop
+        return;
+      }
+
+      await this.batchLogs.push(ev.entry);
     },
   });
 
   protected readonly uiRoute = $serve({
     path: "/devtools",
     root: join(fileURLToPath(import.meta.url), "../../assets/devtools"),
+    historyApiFallback: true,
   });
 
   protected readonly metadataRoute = $route({

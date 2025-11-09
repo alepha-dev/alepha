@@ -34,9 +34,16 @@ class LoggingService {
   onReady = $hook({
     on: "ready",
     handler: async () => {
-      this.logBatch.push("Application started.");
-      this.logBatch.push("User authenticated.");
-      // ... more events pushed from elsewhere in the app
+      // push() returns an ID immediately
+      const id1 = await this.logBatch.push("Application started.");
+      const id2 = await this.logBatch.push("User authenticated.");
+
+      // optionally wait for processing to complete
+      await this.logBatch.wait(id1);
+
+      // or check the status
+      const status = this.logBatch.status(id2);
+      console.log(status?.status); // "pending" | "processing" | "completed" | "failed"
     },
   });
 }
