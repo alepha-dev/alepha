@@ -235,6 +235,7 @@ __metadata:
     "@alepha/command": "npm:^0.11.5"
     "@alepha/core": "npm:^0.11.5"
     "@alepha/logger": "npm:^0.11.5"
+    "@alepha/postgres": "npm:^0.11.5"
     "@biomejs/biome": "npm:^2.3.4"
     depcheck: "npm:^1.4.7"
     drizzle-kit: "npm:^0.31.6"
