@@ -84,12 +84,7 @@ const userEntity = $entity({
 
 #### $repository()
 
-Creates a repository for database operations on a defined entity.
-
-This descriptor provides a comprehensive, type-safe interface for performing all
-database operations on entities defined with $entity. It offers a rich set of
-CRUD operations, advanced querying capabilities, pagination, transactions, and
-built-in support for audit trails and soft deletes.
+Get the repository for the given entity.
 
 #### $sequence()
 

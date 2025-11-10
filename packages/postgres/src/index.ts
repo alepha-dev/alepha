@@ -12,6 +12,7 @@ import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
+import { Repository } from "./services/Repository.ts";
 import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -118,6 +119,7 @@ export * from "./providers/RepositoryProvider.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
 export * from "./schemas/updateSchema.ts";
+export * from "./services/Repository.ts";
 export * from "./types/schema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -163,7 +165,7 @@ export * from "./types/schema.ts";
  */
 export const AlephaPostgres = $module({
   name: "alepha.postgres",
-  descriptors: [$repository, $sequence, $entity],
+  descriptors: [$sequence, $entity],
   services: [
     AlephaDateTime,
     DatabaseProvider,
@@ -175,6 +177,7 @@ export const AlephaPostgres = $module({
     DrizzleKitProvider,
     DrizzleSchemaCodec,
     RepositoryProvider,
+    Repository,
   ],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(

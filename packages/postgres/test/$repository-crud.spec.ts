@@ -1,23 +1,25 @@
 import { Alepha, t } from "@alepha/core";
 import { describe, expect, it } from "vitest";
-import { $repository, pg } from "../src";
+import { $entity, $repository, pg } from "../src";
 import { PgEntityNotFoundError } from "../src/errors/PgEntityNotFoundError.ts";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
 
 class App {
-  users = $repository({
-    name: "users",
-    schema: t.object({
-      id: pg.primaryKey(),
-      createdAt: pg.createdAt(),
-      updatedAt: pg.updatedAt(),
-      name: t.text(),
-      profile: t.object({
-        age: t.number(),
+  users = $repository(
+    $entity({
+      name: "users",
+      schema: t.object({
+        id: pg.primaryKey(),
+        createdAt: pg.createdAt(),
+        updatedAt: pg.updatedAt(),
+        name: t.text(),
+        profile: t.object({
+          age: t.number(),
+        }),
+        role: pg.default(t.text(), "user"),
       }),
-      role: pg.default(t.text(), "user"),
     }),
-  });
+  );
 }
 
 const testBasicCrud = async (alepha: Alepha) => {

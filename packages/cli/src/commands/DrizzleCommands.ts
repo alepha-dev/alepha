@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $inject, Alepha, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
+import { Repository } from "@alepha/postgres/src/services/Repository.ts";
 import { tsImport } from "tsx/esm/api";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 
@@ -249,7 +250,7 @@ export class DrizzleCommands {
     const kit = this.getKitFromAlepha(alepha);
     const accepted = new Set<string>([]);
 
-    for (const descriptor of alepha.descriptors("repository") as any[]) {
+    for (const descriptor of alepha.services(Repository)) {
       const provider = descriptor.provider;
       const providerName = provider.name;
       const dialect = provider.dialect;
@@ -376,11 +377,11 @@ export class DrizzleCommands {
   ) {
     return `
 import "${entry}";
-import { DrizzleKitProvider, $repository } from "@alepha/postgres";
+import { DrizzleKitProvider, Repository } from "@alepha/postgres";
 
 const alepha = globalThis.__alepha;
 const kit = alepha.inject(DrizzleKitProvider);
-const provider = alepha.descriptors($repository).find((it) => it.provider.name === "${provider}").provider;
+const provider = alepha.services(Repository).find((it) => it.provider.name === "${provider}").provider;
 const models = kit.getModels(provider);
 
 ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}

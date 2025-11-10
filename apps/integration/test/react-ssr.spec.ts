@@ -1,19 +1,20 @@
 import { $hook, Alepha, t } from "@alepha/core";
-import { $repository, pg } from "@alepha/postgres";
+import { $entity, $repository, pg } from "@alepha/postgres";
 import { $page } from "@alepha/react";
 import { $action, HttpClient, ServerProvider } from "@alepha/server";
 import { $client } from "@alepha/server-links";
 import { describe, it } from "vitest";
 
 describe("React SSR Integration", () => {
+  const tasks = $entity({
+    name: "tasks",
+    schema: t.object({
+      id: pg.primaryKey(t.uuid()),
+      name: t.text(),
+    }),
+  });
   class Api {
-    repository = $repository({
-      name: "tasks",
-      schema: t.object({
-        id: pg.primaryKey(t.uuid()),
-        name: t.text(),
-      }),
-    });
+    repository = $repository(tasks);
 
     ready = $hook({
       on: "ready",

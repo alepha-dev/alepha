@@ -835,6 +835,16 @@ export class Alepha {
     return graph;
   }
 
+  public services<T extends object>(base: Service<T>): Array<T> {
+    const list: Array<T> = [];
+    for (const [key, value] of this.registry.entries()) {
+      if (value.instance instanceof base) {
+        list.push(value.instance as T);
+      }
+    }
+    return list;
+  }
+
   /**
    * Get all descriptors of the specified type.
    */

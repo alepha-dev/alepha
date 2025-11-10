@@ -1,6 +1,6 @@
 import { $hook, Alepha, t } from "@alepha/core";
 import { describe, expect, it } from "vitest";
-import { $repository, pg } from "../src";
+import { $entity, $repository, pg } from "../src";
 
 class HookTracker {
   events: Array<{ name: string; data: any }> = [];
@@ -26,14 +26,16 @@ class HookTracker {
 class App {
   tracker = new HookTracker();
 
-  users = $repository({
-    name: "users",
-    schema: t.object({
-      id: pg.primaryKey(),
-      name: t.text(),
-      email: t.text(),
+  users = $repository(
+    $entity({
+      name: "users",
+      schema: t.object({
+        id: pg.primaryKey(),
+        name: t.text(),
+        email: t.text(),
+      }),
     }),
-  });
+  );
 
   // Hook: Create Before
   createBefore = $hook({

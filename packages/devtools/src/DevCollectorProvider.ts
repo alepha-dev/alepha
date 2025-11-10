@@ -7,11 +7,11 @@ import { $hook, $inject, Alepha, pageQuerySchema, t } from "@alepha/core";
 import { $logger, type LogEntry, logEntrySchema } from "@alepha/logger";
 import {
   $entity,
-  $repository,
   NodeSqliteProvider,
   parseQueryString,
   pg,
 } from "@alepha/postgres";
+import { Repository } from "@alepha/postgres/src/services/Repository.ts";
 import { $queue } from "@alepha/queue";
 import { $scheduler } from "@alepha/scheduler";
 import { $realm } from "@alepha/security";
@@ -56,16 +56,19 @@ const logs = $entity({
   }),
 });
 
+class LogRepository extends Repository<typeof logs.schema> {
+  constructor() {
+    super(logs, DevToolsDatabaseProvider);
+  }
+}
+
 export class DevCollectorProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly sqliteProvider = $inject(DevToolsDatabaseProvider);
   protected readonly log = $logger();
 
-  logs = $repository({
-    entity: logs,
-    provider: this.sqliteProvider,
-  });
+  logs = $inject(LogRepository);
 
   protected readonly onStart = $hook({
     on: "start",
