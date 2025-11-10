@@ -8,11 +8,11 @@
 		"start": "alepha build && node dist"
 	},
 	"dependencies": {
-		"alepha": "0.11.5",
+		"alepha": "0.11.6",
 		"react": "^19.2.0"
 	},
 	"devDependencies": {
-		"@alepha/cli": "0.11.5",
+		"@alepha/cli": "0.11.6",
 		"drizzle-kit": "^0.31.6",
 		"tsx": "^4.20.6"
 	}
