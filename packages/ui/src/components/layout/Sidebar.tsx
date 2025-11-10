@@ -56,18 +56,20 @@ export const Sidebar = (props: SidebarProps) => {
       if (item.type === "section") {
         if (props.collapsed) return;
         return (
-          <Text
-            key={key}
-            size={"xs"}
-            c={"dimmed"}
-            mt={"md"}
-            mb={"xs"}
-            mx={"sm"}
-            tt={"uppercase"}
-            fw={"bold"}
-          >
-            {item.label}
-          </Text>
+          <Flex mt={"md"} mb={"xs"} align={"center"} gap={"xs"}>
+            <ThemeIcon c={"dimmed"} size={"xs"} variant={"transparent"}>
+              {item.icon}
+            </ThemeIcon>
+            <Text
+              key={key}
+              size={"xs"}
+              c={"dimmed"}
+              tt={"uppercase"}
+              fw={"bold"}
+            >
+              {item.label}
+            </Text>
+          </Flex>
         );
       }
     }
@@ -390,6 +392,7 @@ export interface SidebarSearch extends SidebarAbstractItem {
 export interface SidebarSection extends SidebarAbstractItem {
   type: "section";
   label: string;
+  icon?: ReactNode;
 }
 
 export interface SidebarMenuItem extends SidebarAbstractItem {

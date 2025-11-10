@@ -3,11 +3,15 @@ import BurgerButton from "@alepha/ui/src/components/buttons/BurgerButton";
 import { Flex, Text } from "@mantine/core";
 import { IconBrandGithub } from "@tabler/icons-react";
 
-const Header = () => {
+export interface HeaderProps {
+  noSidebar?: boolean;
+}
+
+const Header = (props: HeaderProps) => {
   return (
     <Flex flex={1} px="lg" align={"center"}>
-      <Flex flex={1}>
-        <BurgerButton />
+      <Flex align={"center"} flex={1}>
+        {props.noSidebar ? null : <BurgerButton />}
         <HomeButton />
       </Flex>
       <Flex>

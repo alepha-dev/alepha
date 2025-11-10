@@ -19,7 +19,6 @@ import { run } from "alepha";
 import { $page } from "alepha/react";
 
 class App {
-  // define a type-safe React page (both server and client)
   home = $page({
     path: '/',
     // fetch data before rendering the page
@@ -43,9 +42,7 @@ export const users = $entity({
   })
 });
 
-class App {
-  userRepository = $repository(users);
-}
+class App { userRepository = $repository(users) }
 `,
   queue: `
 import { t, run } from "alepha";

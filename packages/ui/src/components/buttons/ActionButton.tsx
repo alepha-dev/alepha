@@ -352,10 +352,18 @@ const ActionButton = (_props: ActionProps) => {
 
   // Wrap with Tooltip if provided
   if (tooltip) {
+    // openDelay: 1000 -> like HTML title attribute
+    const defaultTooltipProps: Partial<TooltipProps> = {
+      openDelay: 1000,
+    };
     const tooltipProps: TooltipProps =
       typeof tooltip === "string"
-        ? { label: tooltip, children: actionElement }
-        : { ...tooltip, children: actionElement };
+        ? {
+            ...defaultTooltipProps,
+            label: tooltip,
+            children: actionElement,
+          }
+        : { ...defaultTooltipProps, ...tooltip, children: actionElement };
 
     return <Tooltip {...tooltipProps} />;
   }

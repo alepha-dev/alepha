@@ -29,108 +29,100 @@ export const features = [
   {
     icon: IconApi,
     title: "OpenAPI",
-    description: "Generates OpenAPI documentation and a Swagger UI for APIs.",
+    description: "Generates OpenAPI documentation for APIs.",
     slug: "server-swagger",
   },
   {
     icon: IconShieldCheck,
     title: "Security",
-    description:
-      "Manage realms, roles, permissions, and JWT-based authentication.",
+    description: "Manage realms, roles, permissions.",
     slug: "server-security",
   },
 
   {
     icon: IconDatabase,
     title: "Database ORM",
-    description: "A type-safe SQL query builder and ORM using Drizzle.",
+    description: "A type-safe SQL query builder and ORM.",
     slug: "postgres",
   },
   {
     icon: IconBucket,
     title: "Bucket",
-    description: "A universal interface for object and file storage providers.",
+    description: "A universal interface for object storages.",
     slug: "bucket",
   },
   {
     icon: IconBox,
     title: "Cache",
-    description:
-      "A generic key-value caching interface with in-memory implementation.",
+    description: "A generic key-value caching interface.",
     slug: "cache",
   },
 
   {
     icon: IconMessage2,
     title: "Queue",
-    description: "A simple, powerful interface for message queueing systems.",
+    description: "A powerful interface for message queueing systems.",
     slug: "queue",
   },
   {
     icon: IconMessageCircle,
     title: "Topic",
-    description:
-      "A publish-subscribe (pub/sub) messaging interface for eventing.",
+    description: "A publish-subscribe messaging interface.",
     slug: "topic",
   },
   {
     icon: IconClock,
     title: "Scheduler",
-    description:
-      "Schedule recurring tasks using cron expressions or fixed intervals.",
+    description: "Schedule recurring tasks using cron expressions.",
     slug: "scheduler",
   },
 
   {
     icon: IconBrandReact,
     title: "React",
-    description:
-      "Build server-side rendered (SSR) or single-page React applications.",
+    description: "Build SSR, CSR or SSG applications.",
     slug: "react",
   },
   {
     icon: IconSeo,
     title: "SEO",
-    description: "Manages the document <head> for SEO and metadata.",
+    description: "Manages the document <head> and metadata.",
     slug: "react-head",
   },
   {
     icon: IconUserCheck,
     title: "Auth",
-    description: "Simplifies user authentication flows in React applications.",
+    description: "Simplifies user authentication flows.",
     slug: "react-auth",
   },
   {
     icon: IconLink,
     title: "Links",
-    description: "Enables type-safe communication between different services.",
+    description: "Type-safe communication between services.",
     slug: "server-links",
   },
   {
     icon: IconLock,
     title: "Locking",
-    description:
-      "Distributed mutex and semaphore for resource locking and synchronization.",
+    description: "Resource locking and synchronization.",
     slug: "lock",
   },
   {
     icon: IconRepeat,
     title: "Retry",
-    description:
-      "Simple, declarative, and powerful automatic retry for failed operations.",
+    description: "Simple, declarative retry for failed operations.",
     slug: "retry",
   },
   {
     icon: IconPackage,
     title: "Batch",
-    description: "Efficiently process operations in groups by size or time.",
+    description: "Efficiently process operations in groups.",
     slug: "batch",
   },
   {
     icon: IconTool,
     title: "Command",
-    description:
-      "A versatile task runner for scripts and automation workflows.",
+    description: "A versatile task runner for scripts.",
     slug: "command",
   },
   {

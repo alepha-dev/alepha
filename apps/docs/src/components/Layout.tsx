@@ -117,7 +117,7 @@ const LayoutContent = () => {
     </Flex>
   );
 
-  const header = <Header />;
+  const header = <Header noSidebar={noSidebar} />;
 
   const adminShellProps: AdminShellProps = {
     appShellProps: {
@@ -132,7 +132,7 @@ const LayoutContent = () => {
       },
     },
     appShellNavbarProps: {
-      bg: ui.colors.transparent,
+      bg: ui.colors.background,
     },
     appShellHeaderProps: {
       bg: ui.colors.transparent,

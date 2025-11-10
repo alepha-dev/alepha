@@ -23,7 +23,7 @@
 		"vite-bundle-analyzer": "^1.2.3"
 	},
 	"scripts": {
-		"dev": "alepha dev",
+		"dev": "yarn copy && alepha dev",
 		"build": "alepha build",
 		"copy": "node scripts/codegen.ts",
 		"start": "node dist",

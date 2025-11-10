@@ -4,5 +4,6 @@ export const ui = {
     background: "var(--alepha-background)",
     surface: "var(--alepha-surface)",
     elevated: "var(--alepha-elevated)",
+    border: "var(--alepha-border)",
   },
 };

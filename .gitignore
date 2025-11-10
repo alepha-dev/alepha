@@ -12,3 +12,4 @@ dist
 coverage
 .claude
 test-report.junit.xml
+.run

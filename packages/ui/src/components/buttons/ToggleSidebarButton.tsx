@@ -20,7 +20,10 @@ const ToggleSidebarButton = () => {
       variant={"subtle"}
       size={"md"}
       onClick={() => setCollapsed(!collapsed)}
-      tooltip={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      tooltip={{
+        position: "right",
+        label: collapsed ? "Show sidebar" : "Hide sidebar",
+      }}
     />
   );
 };
