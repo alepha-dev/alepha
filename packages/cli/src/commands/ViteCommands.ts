@@ -61,7 +61,7 @@ export class ViteCommands {
     name: "build",
     description: "Build the project for production",
     args: t.optional(
-      t.text({ title: "entry", description: "Filepath to build" }),
+      t.text({ title: "path", description: "Filepath to build" }),
     ),
     flags: t.object({
       lib: t.optional(

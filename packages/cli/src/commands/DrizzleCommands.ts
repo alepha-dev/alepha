@@ -32,6 +32,7 @@ export class DrizzleCommands {
     flags: this.flags,
     args: t.optional(
       t.text({
+        title: "path",
         description: "Path to the Alepha server entry file",
       }),
     ),
@@ -129,6 +130,7 @@ export class DrizzleCommands {
     flags: this.flags,
     args: t.optional(
       t.text({
+        title: "path",
         description: "Path to the Alepha server entry file",
       }),
     ),
@@ -158,6 +160,7 @@ export class DrizzleCommands {
     flags: this.flags,
     args: t.optional(
       t.text({
+        title: "path",
         description: "Path to the Alepha server entry file",
       }),
     ),
@@ -187,6 +190,7 @@ export class DrizzleCommands {
     flags: this.flags,
     args: t.optional(
       t.text({
+        title: "path",
         description: "Path to the Alepha server entry file",
       }),
     ),
@@ -216,6 +220,7 @@ export class DrizzleCommands {
     flags: this.flags,
     args: t.optional(
       t.text({
+        title: "path",
         description: "Path to the Alepha server entry file",
       }),
     ),
