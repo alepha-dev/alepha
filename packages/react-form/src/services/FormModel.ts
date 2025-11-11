@@ -21,8 +21,13 @@ export class FormModel<T extends TObject> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly values: Record<string, any> = {};
+  protected submitInProgress = false;
 
   public input: SchemaToInput<T>;
+
+  public get submitting(): boolean {
+    return this.submitInProgress;
+  }
 
   constructor(
     public readonly id: string,
@@ -84,7 +89,14 @@ export class FormModel<T extends TObject> {
   };
 
   public readonly submit = async () => {
-    // Emit both action and form events
+    if (this.submitInProgress) {
+      this.log.warn(
+        "Form submission already in progress, ignoring duplicate submit.",
+      );
+      return;
+    }
+
+    // emit both action and form events
     await this.alepha.events.emit("react:action:begin", {
       type: "form",
       id: this.id,
@@ -92,6 +104,8 @@ export class FormModel<T extends TObject> {
     await this.alepha.events.emit("form:submit:begin", {
       id: this.id,
     });
+
+    this.submitInProgress = true;
 
     const options = this.options;
     const form = this.element;
@@ -133,6 +147,8 @@ export class FormModel<T extends TObject> {
         error: error as Error,
         id: this.id,
       });
+    } finally {
+      this.submitInProgress = false;
     }
 
     await this.alepha.events.emit("react:action:end", {
@@ -256,7 +272,7 @@ export class FormModel<T extends TObject> {
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 
-    const set = (value: any) => {
+    const set = (value: any, sync = true) => {
       // Convert to typed value immediately based on schema
       const typedValue = this.getValueFromInput(value, field);
 
@@ -274,31 +290,48 @@ export class FormModel<T extends TObject> {
       this.alepha.events.emit("form:change", {
         id: this.id,
         path: path,
+        value: typedValue,
       });
+
+      if (sync) {
+        const inputElement = window.document.querySelector(
+          `[data-path="${path}"]`,
+        );
+        if (inputElement instanceof HTMLInputElement) {
+          if (t.schema.isBoolean(field)) {
+            inputElement.checked = Boolean(value);
+          } else {
+            inputElement.value = value;
+          }
+        }
+      }
     };
 
     const attr: InputHTMLAttributesLike = {
       name: key,
+      autoComplete: "off",
       onChange: (event: ChangeEvent<HTMLInputElement> | string | number) => {
         if (typeof event === "string") {
           // If the event is a string, it means it's a direct value change
-          set(event);
+          set(event, false);
           return;
         }
 
         if (typeof event === "number") {
           // Some inputs might return number directly
-          set(event);
+          set(event, false);
           return;
         }
 
         if (t.schema.isBoolean(field)) {
-          set(event.target.checked);
+          set(event.target.checked, false);
         } else {
-          set(event.target.value);
+          set(event.target.value, false);
         }
       },
     };
+
+    (attr as any)["data-path"] = path;
 
     if (options.id) {
       attr.id = `${options.id}-${key}`;
@@ -463,6 +496,7 @@ export type InputHTMLAttributesLike = Pick<
   | "maxLength"
   | "minLength"
   | "aria-label"
+  | "autoComplete"
 > & {
   value?: any;
   defaultValue?: any;
