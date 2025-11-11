@@ -76,6 +76,7 @@ export function extractSchemaFields(
     // Handle enum
     if ("enum" in fieldSchema && fieldSchema.enum) {
       field.enum = fieldSchema.enum;
+      field.type = "enum";
     }
 
     // Handle nested objects

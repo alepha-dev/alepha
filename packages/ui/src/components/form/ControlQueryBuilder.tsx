@@ -1,9 +1,12 @@
 import type { TObject } from "@alepha/core";
+import { parseQueryString } from "@alepha/postgres";
+import { useEvents } from "@alepha/react";
 import {
   ActionIcon,
   Badge,
   Code,
   Divider,
+  Flex,
   Group,
   Popover,
   Stack,
@@ -11,13 +14,15 @@ import {
   TextInput,
   type TextInputProps,
 } from "@mantine/core";
-import { IconFilter, IconX } from "@tabler/icons-react";
+import { IconFilter, IconInfoTriangle, IconX } from "@tabler/icons-react";
 import { useRef, useState } from "react";
+import { ui } from "../../constants/ui.ts";
 import {
   extractSchemaFields,
   OPERATOR_INFO,
   type SchemaField,
 } from "../../utils/extractSchemaFields.ts";
+import ActionButton from "../buttons/ActionButton.tsx";
 
 export interface ControlQueryBuilderProps
   extends Omit<TextInputProps, "value" | "onChange"> {
@@ -35,33 +40,66 @@ const ControlQueryBuilder = ({
   schema,
   value = "",
   onChange,
-  placeholder = "Enter query or click help for assistance...",
+  placeholder = "Enter query or click for assistance...",
   ...textInputProps
 }: ControlQueryBuilderProps) => {
   const [helpOpened, setHelpOpened] = useState(false);
   const [textValue, setTextValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
   const fields = schema ? extractSchemaFields(schema) : [];
+  const [error, setError] = useState<string | null>(null);
+
+  const isValid = (value: string) => {
+    try {
+      parseQueryString(value);
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    }
+    setError(null);
+    return true;
+  };
 
   const handleTextChange = (newValue: string) => {
     setTextValue(newValue);
-    onChange?.(newValue);
+    if (isValid(newValue)) {
+      onChange?.(newValue);
+    }
   };
 
   const handleClear = () => {
     setTextValue("");
     onChange?.("");
+    isValid("");
   };
 
   const handleInsert = (text: string) => {
     const newValue = textValue ? `${textValue}${text} ` : `${text} `;
     setTextValue(newValue);
-    onChange?.(newValue);
+    if (isValid(newValue)) {
+      onChange?.(newValue);
+    }
     // Refocus the input after inserting
     setTimeout(() => {
       inputRef.current?.focus();
+      // set cursor to end
+      const length = inputRef.current?.value.length || 0;
+      inputRef.current?.setSelectionRange(length, length);
     }, 0);
   };
+
+  useEvents(
+    {
+      "form:change": (event) => {
+        if (event.id === inputRef.current?.form?.id) {
+          if (event.path === (textInputProps as any)["data-path"]) {
+            setTextValue(event.value ?? "");
+          }
+        }
+      },
+    },
+    [],
+  );
 
   return (
     <Popover
@@ -72,10 +110,8 @@ const ControlQueryBuilder = ({
       onChange={setHelpOpened}
       closeOnClickOutside
       closeOnEscape
-      withArrow
-      arrowSize={14}
       transitionProps={{
-        transition: "fade-down",
+        transition: "fade-up",
         duration: 200,
         timingFunction: "ease",
       }}
@@ -87,7 +123,9 @@ const ControlQueryBuilder = ({
           value={textValue}
           onChange={(e) => handleTextChange(e.currentTarget.value)}
           onFocus={() => setHelpOpened(true)}
-          leftSection={<IconFilter size={16} />}
+          leftSection={
+            error ? <IconInfoTriangle size={16} /> : <IconFilter size={16} />
+          }
           rightSection={
             textValue && (
               <ActionIcon
@@ -103,7 +141,13 @@ const ControlQueryBuilder = ({
           {...textInputProps}
         />
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown
+        bg={"transparent"}
+        bd={`1px solid ${ui.colors.border}`}
+        style={{
+          backdropFilter: "blur(20px)",
+        }}
+      >
         <QueryHelp fields={fields} onInsert={handleInsert} />
       </Popover.Dropdown>
     </Popover>
@@ -197,49 +241,60 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
 
       {/* Right Column: Fields */}
       {fields.length > 0 && (
-        <Stack gap="xs" style={{ flex: 2 }}>
+        <Flex direction={"column"} gap="xs" style={{ flex: 2 }}>
           <Text size="sm" fw={600}>
             Fields
           </Text>
-          <Stack gap={4} style={{ maxHeight: 300, overflowY: "auto" }}>
+          <Flex
+            direction={"column"}
+            gap={4}
+            style={{ maxHeight: 300, overflowY: "auto" }}
+          >
             {fields.map((field) => (
-              <Group key={field.path} gap="xs" wrap="nowrap" align="flex-start">
-                <Code
-                  style={{ minWidth: 120, cursor: "pointer" }}
+              <Flex key={field.path} gap="xs" wrap="nowrap" align="flex-start">
+                <ActionButton
+                  px={"xs"}
+                  variant={"filled"}
+                  size={"xs"}
+                  h={24}
+                  justify={"end"}
+                  miw={120}
                   onClick={() => onInsert(field.path)}
                 >
                   {field.path}
-                </Code>
-                <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                </ActionButton>
+                <Flex
+                  mt={3}
+                  direction={"column"}
+                  gap={2}
+                  style={{ flex: 1, minWidth: 0 }}
+                >
                   <Text size="xs" c="dimmed" lineClamp={1}>
                     {field.description || field.type}
                   </Text>
                   {field.enum && (
-                    <Group gap={4} wrap="wrap">
+                    <Group gap={0} wrap="wrap">
                       {field.enum.map((enumValue) => (
-                        <Code
+                        <ActionButton
+                          px={"xs"}
+                          size={"xs"}
+                          h={24}
                           key={enumValue}
-                          style={{
-                            cursor: "pointer",
-                            fontStyle: "italic",
-                            fontSize: "0.75rem",
-                          }}
-                          c="blue"
                           onClick={() => onInsert(enumValue)}
                         >
                           {enumValue}
-                        </Code>
+                        </ActionButton>
                       ))}
                     </Group>
                   )}
-                </Stack>
+                </Flex>
                 <Badge size="xs" variant="light" style={{ flexShrink: 0 }}>
                   {field.type}
                 </Badge>
-              </Group>
+              </Flex>
             ))}
-          </Stack>
-        </Stack>
+          </Flex>
+        </Flex>
       )}
     </Group>
   );
