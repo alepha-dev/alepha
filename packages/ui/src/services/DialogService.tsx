@@ -1,9 +1,11 @@
-import type { ModalProps } from "@mantine/core";
+import { Flex, type ModalProps } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import type { ReactNode } from "react";
+import JsonViewer from "../components/data/JsonViewer.tsx";
 import AlertDialog from "../components/dialogs/AlertDialog";
 import ConfirmDialog from "../components/dialogs/ConfirmDialog";
 import PromptDialog from "../components/dialogs/PromptDialog";
+import { ui } from "../constants/ui.ts";
 
 // Base interfaces
 export interface BaseDialogOptions extends Partial<ModalProps> {
@@ -161,7 +163,16 @@ export class DialogService {
    * Show a JSON editor/viewer dialog
    */
   public json(data?: any, options?: BaseDialogOptions): void {
-    // Implementation to be added
+    this.open({
+      size: "lg",
+      title: options?.title || "Json Viewer",
+      ...options,
+      content: (
+        <Flex bdrs={"md"} w={"100%"} flex={1} p={"sm"} bg={ui.colors.surface}>
+          <JsonViewer size={"xs"} data={data} />
+        </Flex>
+      ),
+    });
   }
 
   /**

@@ -989,6 +989,7 @@ __metadata:
     "@alepha/cli": "npm:0.11.6"
     "@alepha/core": "npm:0.11.6"
     "@alepha/datetime": "npm:0.11.6"
+    "@alepha/postgres": "npm:0.11.6"
     "@alepha/react": "npm:0.11.6"
     "@alepha/react-form": "npm:0.11.6"
     "@alepha/react-head": "npm:0.11.6"

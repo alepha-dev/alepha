@@ -22,6 +22,7 @@
 	"dependencies": {
 		"@alepha/core": "0.11.6",
 		"@alepha/datetime": "0.11.6",
+		"@alepha/postgres": "0.11.6",
 		"@alepha/react": "0.11.6",
 		"@alepha/react-form": "0.11.6",
 		"@alepha/react-head": "0.11.6",

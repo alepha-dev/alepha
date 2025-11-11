@@ -1,4 +1,4 @@
-import type { TObject } from "@alepha/core";
+import { AlephaError, type TObject } from "@alepha/core";
 import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
 
 /**
@@ -132,6 +132,10 @@ class QueryStringParser {
 
     // Get value
     const value = this.parseValue();
+
+    if (value === "") {
+      throw new AlephaError(`Expected value for field '${field.join(".")}'`);
+    }
 
     // Build the condition object
     return this.buildCondition(field, operator, value);

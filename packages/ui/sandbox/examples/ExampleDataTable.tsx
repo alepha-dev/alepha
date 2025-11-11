@@ -165,7 +165,7 @@ export default function ExampleDataTable() {
       columns={{
         index: {
           label: "#",
-          value: (_, index) => index + 1,
+          value: (_, { index }) => index + 1,
         },
         name: { label: "Element Name", value: (item) => item.name },
         symbol: { label: "Symbol", value: (item) => item.symbol },

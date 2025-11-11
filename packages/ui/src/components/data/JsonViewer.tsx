@@ -319,7 +319,7 @@ export const JsonViewer = ({
   const copyIconSize = sizeConfig.icon + 2;
 
   return (
-    <Box pos="relative">
+    <Box pos="relative" w={"100%"}>
       {copyable && (
         <Box pos="absolute" top={0} right={0} style={{ zIndex: 1 }}>
           <CopyButton value={JSON.stringify(data, null, 2)}>

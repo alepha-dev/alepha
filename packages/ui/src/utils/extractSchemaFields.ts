@@ -51,7 +51,7 @@ export function extractSchemaFields(
     // Determine the display type - use format for datetime-related fields
     const format = "format" in fieldSchema ? fieldSchema.format : undefined;
     const baseType =
-      "type" in fieldSchema ? (fieldSchema.type as string) : "unknown";
+      "type" in fieldSchema ? (fieldSchema.type as string) : "object";
 
     let displayType = baseType;
     if (format === "date-time") {

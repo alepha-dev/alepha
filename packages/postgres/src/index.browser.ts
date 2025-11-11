@@ -9,7 +9,9 @@ export {
   pageQuerySchema,
   pageSchema,
 } from "@alepha/core";
+export * from "./descriptors/$entity.ts";
 export * from "./errors/PgEntityNotFoundError.ts";
+export * from "./helpers/parseQueryString.ts";
 export * from "./helpers/pgAttr.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";

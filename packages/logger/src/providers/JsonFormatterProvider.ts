@@ -22,7 +22,7 @@ export class JsonFormatterProvider extends LogFormatterProvider {
     return JSON.stringify(json);
   }
 
-  protected formatJsonError(error: Error): object {
+  public formatJsonError(error: Error): object {
     return {
       name: error.name,
       message: error.message,

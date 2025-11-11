@@ -11,7 +11,7 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      "/devtools/api": "http://localhost:5173",
+      "/devtools/api": "https://transcity.sdser.online",
     },
   },
 });

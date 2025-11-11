@@ -4,7 +4,6 @@ import { useEvents } from "@alepha/react";
 import {
   ActionIcon,
   Badge,
-  Code,
   Divider,
   Flex,
   Group,
@@ -51,7 +50,7 @@ const ControlQueryBuilder = ({
 
   const isValid = (value: string) => {
     try {
-      parseQueryString(value);
+      parseQueryString(value.trim());
     } catch (e) {
       setError((e as Error).message);
       return false;
@@ -143,6 +142,7 @@ const ControlQueryBuilder = ({
       </Popover.Target>
       <Popover.Dropdown
         bg={"transparent"}
+        p={"xs"}
         bd={`1px solid ${ui.colors.border}`}
         style={{
           backdropFilter: "blur(20px)",
@@ -165,7 +165,14 @@ interface QueryHelpProps {
 
 function QueryHelp({ fields, onInsert }: QueryHelpProps) {
   return (
-    <Group gap="md" align="flex-start" wrap="nowrap">
+    <Group
+      gap="md"
+      align="flex-start"
+      wrap="nowrap"
+      bg={ui.colors.surface}
+      p={"sm"}
+      bdrs={"sm"}
+    >
       {/* Left Column: Operators */}
       <Stack gap="md" style={{ flex: 1 }}>
         {/* Available Operators */}
@@ -176,16 +183,17 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
           <Stack gap={4}>
             {Object.entries(OPERATOR_INFO).map(([key, info]) => (
               <Group key={key} gap="xs" wrap="nowrap">
-                <Code
-                  style={{
-                    minWidth: 35,
-                    textAlign: "center",
-                    cursor: "pointer",
-                  }}
+                <ActionButton
+                  px={"xs"}
+                  size={"xs"}
+                  h={24}
+                  variant={"default"}
+                  justify={"center"}
+                  miw={48}
                   onClick={() => onInsert(info.symbol)}
                 >
                   {info.symbol}
-                </Code>
+                </ActionButton>
                 <Text size="xs" c="dimmed" style={{ flex: 1 }}>
                   {info.label}
                 </Text>
@@ -203,31 +211,33 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
           </Text>
           <Stack gap={4}>
             <Group gap="xs" wrap="nowrap">
-              <Code
-                style={{
-                  minWidth: 35,
-                  textAlign: "center",
-                  cursor: "pointer",
-                }}
+              <ActionButton
+                px={"xs"}
+                size={"xs"}
+                h={24}
+                variant={"default"}
+                justify={"center"}
+                miw={48}
                 onClick={() => onInsert("&")}
               >
                 &
-              </Code>
+              </ActionButton>
               <Text size="xs" c="dimmed">
                 AND
               </Text>
             </Group>
             <Group gap="xs" wrap="nowrap">
-              <Code
-                style={{
-                  minWidth: 35,
-                  textAlign: "center",
-                  cursor: "pointer",
-                }}
+              <ActionButton
+                px={"xs"}
+                size={"xs"}
+                h={24}
+                variant={"default"}
+                justify={"center"}
+                miw={48}
                 onClick={() => onInsert("|")}
               >
                 |
-              </Code>
+              </ActionButton>
               <Text size="xs" c="dimmed">
                 OR
               </Text>
@@ -254,9 +264,9 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
               <Flex key={field.path} gap="xs" wrap="nowrap" align="flex-start">
                 <ActionButton
                   px={"xs"}
-                  variant={"filled"}
                   size={"xs"}
                   h={24}
+                  variant={"default"}
                   justify={"end"}
                   miw={120}
                   onClick={() => onInsert(field.path)}

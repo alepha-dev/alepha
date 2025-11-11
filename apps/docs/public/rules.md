@@ -1,4 +1,4 @@
-## 🎯 Framework Overview
+## Framework Overview
 
 Alepha is a convention-driven, class-based TypeScript framework that uses **descriptors** (factory functions starting with `$`) to define application components.
 It's NOT a wrapper around Express/Fastify but a complete framework built from scratch.
@@ -42,8 +42,8 @@ my-app/
 │   │   ├── components/   # React components
 │   │   └── AppRouter.ts  # Router definition, with $page
 │   ├── shared/           # Shared types/schemas
-│   ├── index.server.ts   # Server entry point
-│   └── index.browser.ts  # Browser entry point (if full-stack)
+│   ├── main.server.ts    # Server entry point
+│   └── main.browser.ts   # Browser entry point (if full-stack)
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts        # If using full-stack features
@@ -120,7 +120,7 @@ import { z } from "zod"; // DON'T USE THIS!
 
 ```typescript
 import { pg, $entity, $repository } from "alepha/postgres";
-import { t } from "alepha";
+import { t, type Static } from "alepha";
 
 // Define entity with TypeBox schema
 const users = $entity({
@@ -142,7 +142,7 @@ const users = $entity({
 class UserService {
   userRepository = $repository(users);
 
-  async createUser(data: any) {
+  async createUser(data: Static<typeof users.insertSchema>) {
     return await this.userRepository.create(data);
   }
 
@@ -230,12 +230,10 @@ export class AppRouter {
 
 // vite.config.ts
 import { viteAlepha } from "alepha/vite";
-import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [
-    viteReact(),
     viteAlepha({
       serverEntry: "./src/index.server.ts"
     })
@@ -400,7 +398,7 @@ class EntityController {
 
   list = $action({
     handler: async () => {
-      return await this.service.findAll();
+      return await this.service.find();
     }
   });
 
@@ -434,9 +432,9 @@ run(alepha);
     "alepha": "latest"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "test": "vitest"
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "test": "alepha test"
   }
 }
 ```

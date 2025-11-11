@@ -1,4 +1,5 @@
 import {
+  Alepha,
   type Async,
   type Page,
   type PageMetadata,
@@ -25,6 +26,7 @@ import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";
 export interface DataTableColumnContext<Filters extends TObject> {
   index: number;
   form: FormModel<Filters>;
+  alepha: Alepha;
 }
 
 export interface DataTableColumn<T extends object, Filters extends TObject> {
@@ -123,6 +125,7 @@ const DataTable = <T extends object, Filters extends TObject>(
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(String(defaultSize));
   const [currentPage, setCurrentPage] = useState(0);
+  const alepha = useInject(Alepha);
 
   const form = useForm(
     {
@@ -267,6 +270,7 @@ const DataTable = <T extends object, Filters extends TObject>(
             {col.value(item as T, {
               index,
               form: form as unknown as FormModel<Filters>,
+              alepha,
             })}
           </Table.Td>
         ))}
@@ -285,12 +289,22 @@ const DataTable = <T extends object, Filters extends TObject>(
           schema={schema}
         />
       ) : null}
-      <Table striped stripedColor={""} {...props.tableProps}>
-        <Table.Thead>
-          <Table.Tr>{head}</Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
+
+      <Flex flex={1} className={"overflow-auto"}>
+        <Table
+          striped
+          withRowBorders
+          withColumnBorders
+          withTableBorder
+          stripedColor={""}
+          {...props.tableProps}
+        >
+          <Table.Thead>
+            <Table.Tr>{head}</Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>{rows}</Table.Tbody>
+        </Table>
+      </Flex>
 
       {!props.infinityScroll && (
         <Flex justify={"space-between"} align={"center"}>
