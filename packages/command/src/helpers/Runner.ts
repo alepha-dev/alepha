@@ -80,7 +80,6 @@ export class Runner {
             `rm -rf ${Array.isArray(files) ? files.join(" ") : files}`,
           handler: async () => {
             for await (const file of glob(files)) {
-              console.log(file);
               this.log.trace(`Removing ${file}`);
               await rm(file, { recursive: true, force: true });
             }
