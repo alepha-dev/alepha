@@ -11,10 +11,10 @@ import {
 import { parseQueryString } from "@alepha/postgres";
 import { $route, ServerProvider } from "@alepha/server";
 import { $serve } from "@alepha/server-static";
-import { type DevLogEntry, logs } from "../entities/logs.ts";
-import { LogRepository } from "../repositories/LogRepository.ts";
-import { devMetadataSchema } from "../schemas/DevMetadata.ts";
-import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
+import { type DevLogEntry, logs } from "./entities/logs.ts";
+import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
+import { LogRepository } from "./repositories/LogRepository.ts";
+import { devMetadataSchema } from "./schemas/DevMetadata.ts";
 
 export class DevToolsProvider {
   protected readonly log = $logger();
@@ -90,7 +90,7 @@ export class DevToolsProvider {
 
   protected readonly uiRoute = $serve({
     path: "/devtools",
-    root: join(fileURLToPath(import.meta.url), "../../../assets/devtools"),
+    root: join(fileURLToPath(import.meta.url), "../../assets/devtools"),
     historyApiFallback: true,
   });
 

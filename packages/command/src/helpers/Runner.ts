@@ -73,11 +73,14 @@ export class Runner {
       files: string | string[],
       options: RunOptions = {},
     ): Promise<string> => {
-      if (Array.isArray(files)) {
+      if (Array.isArray(files) || files.includes("*")) {
         return runFn({
-          name: options.alias ?? `rm -rf ${files.join(" ")}`,
+          name:
+            options.alias ??
+            `rm -rf ${Array.isArray(files) ? files.join(" ") : files}`,
           handler: async () => {
             for await (const file of glob(files)) {
+              console.log(file);
               this.log.trace(`Removing ${file}`);
               await rm(file, { recursive: true, force: true });
             }

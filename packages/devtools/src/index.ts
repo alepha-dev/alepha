@@ -1,7 +1,7 @@
 import { $module } from "@alepha/core";
+import { DevToolsProvider } from "./DevToolsProvider.ts";
 import { DevToolsDatabaseProvider } from "./providers/DevToolsDatabaseProvider.ts";
 import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
-import { DevToolsProvider } from "./providers/DevToolsProvider.ts";
 import { LogRepository } from "./repositories/LogRepository.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -684,6 +684,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/server-basic-auth@workspace:packages/server-basic-auth":
+  version: 0.0.0-use.local
+  resolution: "@alepha/server-basic-auth@workspace:packages/server-basic-auth"
+  dependencies:
+    "@alepha/core": "npm:0.11.6"
+    "@alepha/server": "npm:0.11.6"
+    "@biomejs/biome": "npm:^2.3.4"
+    tsdown: "npm:^0.16.1"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.8"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/server-cache@npm:0.11.6, @alepha/server-cache@workspace:packages/server-cache":
   version: 0.0.0-use.local
   resolution: "@alepha/server-cache@workspace:packages/server-cache"
