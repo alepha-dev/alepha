@@ -83,15 +83,15 @@ const Control = (_props: ControlProps) => {
   //region <QueryBuilder/>
   if (props.query) {
     return (
-      <Input.Wrapper {...inputProps}>
-        <ControlQueryBuilder
-          schema={props.query}
-          value={props.input.props.value}
-          onChange={(value) => {
-            props.input.set(value);
-          }}
-        />
-      </Input.Wrapper>
+      <ControlQueryBuilder
+        {...props.input.props}
+        {...inputProps}
+        schema={props.query}
+        value={props.input.props.value}
+        onChange={(value) => {
+          props.input.set(value);
+        }}
+      />
     );
   }
   //endregion

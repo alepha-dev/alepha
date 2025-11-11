@@ -2,16 +2,16 @@ import {
   type Async,
   type Page,
   type PageMetadata,
+  type Static,
   type TObject,
   t,
 } from "@alepha/core";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { useInject } from "@alepha/react";
-import { useForm } from "@alepha/react-form";
+import { type FormModel, useForm } from "@alepha/react-form";
 import {
   Flex,
   Pagination,
-  Paper,
   Select,
   Table,
   type TableProps,
@@ -20,39 +20,58 @@ import {
 import { useDebouncedCallback } from "@mantine/hooks";
 import { type ReactNode, useEffect, useState } from "react";
 import ActionButton from "../buttons/ActionButton.tsx";
-import TypeForm from "../form/TypeForm.tsx";
+import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";
 
-export interface DataTableColumn<T extends object> {
+export interface DataTableColumnContext<Filters extends TObject> {
+  index: number;
+  form: FormModel<Filters>;
+}
+
+export interface DataTableColumn<T extends object, Filters extends TObject> {
   label: string;
-  value: (item: T, index: number) => ReactNode;
+  value: (item: T, ctx: DataTableColumnContext<Filters>) => ReactNode;
+  fit?: boolean;
 }
 
 export type MaybePage<T> = Omit<Page<T>, "page"> & {
   page?: Partial<PageMetadata>;
 };
 
-export interface DataTableProps<T extends object> {
+export interface DataTableSubmitContext<T extends object> {
+  items: T[];
+}
+
+export interface DataTableProps<T extends object, Filters extends TObject> {
   /**
    * The items to display in the table. Can be a static page of items or a function that returns a promise resolving to a page of items.
    */
   items:
     | MaybePage<T>
     | ((
-        filters: Record<string, string> & {
+        filters: Static<Filters> & {
           page: number;
           size: number;
           sort?: string;
         },
+        ctx: DataTableSubmitContext<T>,
       ) => Async<MaybePage<T>>);
 
   /**
    * The columns to display in the table. Each column is defined by a key and a DataTableColumn object.
    */
   columns: {
-    [key: string]: DataTableColumn<T>;
+    [key: string]: DataTableColumn<T, Filters>;
   };
 
   defaultSize?: number;
+
+  typeFormProps?: Partial<Omit<TypeFormProps<Filters>, "form">>;
+
+  onFilterChange?: (
+    key: string,
+    value: unknown,
+    form: FormModel<Filters>,
+  ) => void;
 
   /**
    * Optional filters to apply to the data.
@@ -89,7 +108,9 @@ export interface DataTableProps<T extends object> {
   tableTrProps?: (item: T) => TableTrProps;
 }
 
-const DataTable = <T extends object>(props: DataTableProps<T>) => {
+const DataTable = <T extends object, Filters extends TObject>(
+  props: DataTableProps<T, Filters>,
+) => {
   const [items, setItems] = useState<MaybePage<T>>(
     typeof props.items === "function"
       ? {
@@ -98,10 +119,9 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
       : props.items,
   );
 
-  const defaultSize = props.infinityScroll ? 50 : props.defaultSize || 10;
+  const defaultSize = props.infinityScroll ? 100 : props.defaultSize || 10;
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(String(defaultSize));
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
   const form = useForm(
@@ -115,10 +135,13 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
       handler: async (values, args) => {
         if (typeof props.items === "function") {
           const response = await props.items(
-            values as Record<string, string> & {
+            values as Static<Filters> & {
               page: number;
               size: number;
               sort?: string;
+            },
+            {
+              items: items.content,
             },
           );
 
@@ -131,8 +154,8 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
           } else {
             setItems(response);
           }
+
           setCurrentPage(values.page);
-          setIsLoadingMore(false);
         }
       },
       onReset: async () => {
@@ -153,21 +176,20 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
           return;
         }
 
-        //submitDebounce();
+        props.onFilterChange?.(key, value, form as any);
       },
     },
-    [],
+    [items],
   );
 
   const submitDebounce = useDebouncedCallback(() => form.submit(), {
-    delay: 1000,
+    delay: 800,
   });
 
   const dt = useInject(DateTimeProvider);
 
   useEffect(() => {
     if (props.submitOnInit) {
-      console.log("submitting");
       form.submit();
     }
     if (props.submitEvery) {
@@ -189,19 +211,18 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
     if (!props.infinityScroll || typeof props.items !== "function") return;
 
     const handleScroll = () => {
-      if (isLoadingMore) return;
+      if (form.submitting) return;
 
       const scrollTop = window.scrollY;
       const windowHeight = window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
 
-      const isNearBottom = scrollTop + windowHeight >= docHeight - 200;
+      const isNearBottom = scrollTop + windowHeight >= docHeight - 300;
 
       if (isNearBottom) {
         const totalPages = items.page?.totalPages ?? 1;
 
         if (currentPage + 1 < totalPages) {
-          setIsLoadingMore(true);
           form.input.page.set(currentPage + 1);
         }
       }
@@ -211,14 +232,24 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [
     props.infinityScroll,
-    isLoadingMore,
+    form.submitting,
     items.page?.totalPages,
     currentPage,
     form,
   ]);
 
   const head = Object.entries(props.columns).map(([key, col]) => (
-    <Table.Th key={key}>
+    <Table.Th
+      key={key}
+      style={{
+        ...(col.fit
+          ? {
+              width: "1%",
+              whiteSpace: "nowrap",
+            }
+          : {}),
+      }}
+    >
       <ActionButton justify={"space-between"} radius={0} fullWidth size={"xs"}>
         {col.label}
       </ActionButton>
@@ -232,7 +263,12 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
     return (
       <Table.Tr key={JSON.stringify(item)} {...trProps}>
         {Object.entries(props.columns).map(([key, col]) => (
-          <Table.Td key={key}>{col.value(item as T, index)}</Table.Td>
+          <Table.Td key={key}>
+            {col.value(item as T, {
+              index,
+              form: form as unknown as FormModel<Filters>,
+            })}
+          </Table.Td>
         ))}
       </Table.Tr>
     );
@@ -242,9 +278,13 @@ const DataTable = <T extends object>(props: DataTableProps<T>) => {
 
   return (
     <Flex direction={"column"} gap={"sm"} flex={1}>
-      <Paper withBorder p={"sm"}>
-        {props.filters ? <TypeForm form={form} schema={schema} /> : null}
-      </Paper>
+      {props.filters ? (
+        <TypeForm
+          {...props.typeFormProps}
+          form={form as unknown as FormModel<Filters>}
+          schema={schema}
+        />
+      ) : null}
       <Table striped stripedColor={""} {...props.tableProps}>
         <Table.Thead>
           <Table.Tr>{head}</Table.Tr>

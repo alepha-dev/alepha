@@ -23,6 +23,7 @@ export type {
 export { default as ActionButton } from "./components/buttons/ActionButton.tsx";
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
+export { default as JsonViewer } from "./components/data/JsonViewer.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
 export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx";
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
