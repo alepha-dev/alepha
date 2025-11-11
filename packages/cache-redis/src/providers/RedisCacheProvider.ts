@@ -27,12 +27,17 @@ export class RedisCacheProvider implements CacheProvider {
       return;
     }
 
-    const buffer = await this.redisProvider.get(this.prefix(name, key));
+    const keyWithPrefix = this.prefix(name, key);
+    const buffer = await this.redisProvider.get(keyWithPrefix);
     if (!buffer) {
       return;
     }
 
-    this.log.debug(`Cache hit for ${name}:${key}`, { size: buffer.byteLength });
+    this.log.debug(`Cache hit`, {
+      size: buffer.byteLength,
+      key: keyWithPrefix,
+    });
+
     return new Uint8Array(buffer);
   }
 
