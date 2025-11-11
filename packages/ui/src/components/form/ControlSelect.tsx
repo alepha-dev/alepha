@@ -97,7 +97,7 @@ const ControlSelect = (props: ControlSelectProps) => {
 
     return (
       <Input.Wrapper {...inputProps}>
-        <Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
+        <Flex>
           <SegmentedControl
             disabled={inputProps.disabled}
             defaultValue={String(props.input.props.defaultValue)}

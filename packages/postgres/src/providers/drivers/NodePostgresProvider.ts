@@ -66,6 +66,14 @@ export class NodePostgresProvider extends DatabaseProvider {
       : this.generateTestSchemaName()
     : undefined;
 
+  public override get url() {
+    if (!this.env.DATABASE_URL) {
+      throw new AlephaError("DATABASE_URL is not defined in the environment");
+    }
+
+    return this.env.DATABASE_URL;
+  }
+
   /**
    * Execute a SQL statement.
    */
@@ -189,11 +197,7 @@ export class NodePostgresProvider extends DatabaseProvider {
    * Map the DATABASE_URL to postgres client options.
    */
   protected getClientOptions(): postgres.Options<any> {
-    if (!this.env.DATABASE_URL) {
-      throw new AlephaError("DATABASE_URL is not defined in the environment");
-    }
-
-    const url = new URL(this.env.DATABASE_URL);
+    const url = new URL(this.url);
 
     return {
       host: url.hostname,

@@ -44,6 +44,27 @@ export class PglitePostgresProvider extends DatabaseProvider {
 
   public override readonly dialect = "postgresql";
 
+  public override get url(): string {
+    let path = this.env.DATABASE_URL;
+
+    if (!path) {
+      if (this.alepha.isTest()) {
+        path = ":memory:"; // use in-memory database for tests by default
+      } else {
+        path = "node_modules/.db"; // default path for dev
+      }
+    } else {
+      if (path.includes(":memory:")) {
+        // like postgres://:memory: or pglite://:memory:
+        path = ":memory:";
+      } else if (path.startsWith("file://")) {
+        path = path.replace("file://", "");
+      }
+    }
+
+    return path;
+  }
+
   public override get db(): PgliteDatabase {
     if (!this.pglite) {
       throw new AlephaError("Database not initialized");
@@ -74,15 +95,15 @@ export class PglitePostgresProvider extends DatabaseProvider {
       }
 
       const { drizzle } = createRequire(import.meta.url)("drizzle-orm/pglite");
-      const path = this.getDatabasePath();
+      const path = this.url;
 
-      if (path !== "memory://") {
-        try {
-          await mkdir(path, { recursive: true });
-        } catch {}
+      if (path !== ":memory:") {
+        await mkdir(path, { recursive: true }).catch(() => null);
+        this.client = new module.PGlite(path);
+      } else {
+        this.client = new module.PGlite();
       }
 
-      this.client = new module.PGlite(this.getDatabasePath());
       this.pglite = drizzle({
         client: this.client,
       });
@@ -105,26 +126,6 @@ export class PglitePostgresProvider extends DatabaseProvider {
       }
     },
   });
-
-  protected getDatabasePath(): string {
-    let path = this.env.DATABASE_URL;
-
-    if (!path) {
-      if (this.alepha.isTest()) {
-        path = "memory://"; // use in-memory database for tests by default
-      } else {
-        path = "node_modules/.db"; // default path for dev
-      }
-    } else {
-      if (path.includes(":memory:")) {
-        path = "memory://";
-      } else if (path.startsWith("file://")) {
-        path = path.replace("file://", "");
-      }
-    }
-
-    return path;
-  }
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
     await migrate(this.db, { migrationsFolder });

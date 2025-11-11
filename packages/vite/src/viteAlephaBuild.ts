@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { boot } from "@alepha/core";
 import type { Plugin, UserConfig } from "vite";
 import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
@@ -15,7 +15,7 @@ export interface ViteAlephaBuildOptions {
    * Path to the entry file for the server build.
    * If empty, SSR build will be skipped.
    */
-  serverEntry?: string;
+  serverEntry?: string | false;
 
   /**
    * Set false to skip the client build.
@@ -119,6 +119,11 @@ export async function viteAlephaBuild(
           docker: options.docker,
           stats: options.stats ?? process.env.ALEPHA_BUILD_STATS === "true",
         });
+
+        // server will handle index.html if both client & server are built
+        if (hasClient && options.serverEntry !== false) {
+          await unlink(`${distDir}/${clientDir}/index.html`);
+        }
 
         // copy swagger ui & others assets
         await copyAssets({

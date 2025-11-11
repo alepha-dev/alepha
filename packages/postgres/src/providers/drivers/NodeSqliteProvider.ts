@@ -67,7 +67,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
   public override readonly dialect = "sqlite";
 
-  public get path(): string {
+  public override get url(): string {
     const path = this.options.path ?? this.env.DATABASE_URL;
     if (path) {
       if (path.startsWith("postgres://")) {
@@ -108,7 +108,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
   public readonly db = drizzle(async (sql, params, method) => {
     const statement = this.sqlite.prepare(sql);
-    this.log.trace(`${sql}`, params);
+    this.log.trace(`${sql}`, { params });
 
     if (method === "get") {
       const data = statement.get(...params);
@@ -141,7 +141,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     on: "start",
     handler: async () => {
       const { DatabaseSync } = await import("node:sqlite");
-      const filepath = this.path.replace("sqlite://", "");
+      const filepath = this.url.replace("sqlite://", "");
       if (filepath !== ":memory:" && filepath !== "") {
         const dirname = filepath.split("/").slice(0, -1).join("/");
         if (dirname) {

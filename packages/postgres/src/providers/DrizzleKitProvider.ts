@@ -140,6 +140,13 @@ export class DrizzleKitProvider {
     const name =
       `${this.alepha.env.APP_NAME ?? "APP"}-${provider.constructor.name}`.toLowerCase();
 
+    if (provider.url.includes(":memory:")) {
+      this.log.trace(
+        `In-memory database detected for '${name}', skipping migration snapshot load.`,
+      );
+      return;
+    }
+
     if (provider.dialect === "sqlite") {
       try {
         const text = await readFile(
@@ -181,6 +188,13 @@ export class DrizzleKitProvider {
     curr: Record<string, any>,
     devMigrations?: DevMigrations,
   ) {
+    if (provider.url.includes(":memory:")) {
+      this.log.trace(
+        `In-memory database detected for '${provider.constructor.name}', skipping migration snapshot save.`,
+      );
+      return;
+    }
+
     const name =
       `${this.alepha.env.APP_NAME ?? "APP"}-${provider.constructor.name}`.toLowerCase();
     if (provider.dialect === "sqlite") {

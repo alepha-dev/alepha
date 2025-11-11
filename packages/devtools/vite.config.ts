@@ -4,14 +4,12 @@ export default defineConfig({
   base: "/devtools",
   plugins: [
     viteAlepha({
-      client: {
-        prerender: true,
-      },
+      serverEntry: false,
     }),
   ],
   server: {
     proxy: {
-      "/devtools/api": "https://transcity.sdser.online",
+      "/devtools/api": "http://localhost:5173",
     },
   },
 });

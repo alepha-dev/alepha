@@ -43,7 +43,6 @@
 	"scripts": {
 		"test": "vitest run",
 		"lint": "biome check --fix",
-		"build:ui": "alepha build && rm -r assets/devtools && cp -r dist/public assets/devtools",
 		"build": "yarn ui:build && tsdown -c=../../tsdown.config.ts",
 		"typecheck": "tsc --noEmit",
 		"ui:dev": "alepha dev",

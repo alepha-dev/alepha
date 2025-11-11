@@ -40,6 +40,8 @@ export const AlephaDevtools = $module({
     LogRepository,
   ],
   register: (alepha) => {
+    alepha.with(DevToolsProvider);
+    alepha.with(DevToolsDatabaseProvider);
     alepha.with(DevToolsMetadataProvider);
     alepha.state.push("alepha.build.assets", "@alepha/devtools");
   },

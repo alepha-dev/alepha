@@ -143,6 +143,16 @@ export class BatchDescriptor<
       partitionKey,
       status: "pending",
     };
+
+    // CAUTION: Do not log.debug/info here as it may cause infinite loops if logging is batched
+    // log.trace is safe
+
+    this.log.trace("Pushing item to batch", {
+      id,
+      partitionKey,
+      item: validatedItem,
+    });
+
     this.itemStates.set(id, itemState);
 
     // 5. Get or create the partition state
@@ -157,18 +167,12 @@ export class BatchDescriptor<
     // 6. Add item ID to partition
     partition.itemIds.push(id);
 
-    this.log.trace(`Pushed item to batch partition '${partitionKey}'`, {
-      id,
-      currentSize: partition.itemIds.length,
-      maxSize: this.maxSize,
-    });
-
     // 7. Check if the batch is full
     if (partition.itemIds.length >= this.maxSize) {
-      this.log.trace(`Batch partition '${partitionKey}' is full, flushing.`);
+      this.log.trace(`Batch partition '${partitionKey}' is full, flushing...`);
       this.flushPartition(partitionKey).catch((error) =>
         this.log.error(
-          `Failed to flush batch partition '${partitionKey}' on max size.`,
+          `Failed to flush batch partition '${partitionKey}' on max size`,
           error,
         ),
       );
@@ -176,11 +180,11 @@ export class BatchDescriptor<
       // 8. Start the timeout if it's not already running for this partition and not currently flushing
       partition.timeout = this.dateTime.createTimeout(() => {
         this.log.trace(
-          `Batch partition '${partitionKey}' timed out, flushing.`,
+          `Batch partition '${partitionKey}' timed out, flushing...`,
         );
         this.flushPartition(partitionKey).catch((error) =>
           this.log.error(
-            `Failed to flush batch partition '${partitionKey}' on timeout.`,
+            `Failed to flush batch partition '${partitionKey}' on timeout`,
             error,
           ),
         );
@@ -271,6 +275,7 @@ export class BatchDescriptor<
 
     // Clear the timeout and grab the item IDs
     partition.timeout?.clear();
+    partition.timeout = undefined;
     const itemIdsToProcess = [...partition.itemIds];
     partition.itemIds = [];
 
@@ -341,6 +346,21 @@ export class BatchDescriptor<
       } else if (currentPartition) {
         // Reset flushing flag if partition still exists with items
         currentPartition.flushing = false;
+
+        // Restart timeout for items that arrived during flush
+        if (currentPartition.itemIds.length > 0 && !currentPartition.timeout) {
+          currentPartition.timeout = this.dateTime.createTimeout(() => {
+            this.log.trace(
+              `Batch partition '${partitionKey}' timed out, flushing...`,
+            );
+            this.flushPartition(partitionKey).catch((error) =>
+              this.log.error(
+                `Failed to flush batch partition '${partitionKey}' on timeout`,
+                error,
+              ),
+            );
+          }, this.maxDuration);
+        }
       }
     }
   }
@@ -349,10 +369,10 @@ export class BatchDescriptor<
     on: "stop",
     priority: "first",
     handler: async () => {
-      this.log.debug("Flushing all remaining batch partitions on shutdown.");
+      this.log.debug("Flushing all remaining batch partitions on shutdown...");
       this.isShuttingDown = true;
       await this.flush();
-      this.log.debug("All batch partitions flushed.");
+      this.log.debug("All batch partitions flushed");
     },
   });
 }

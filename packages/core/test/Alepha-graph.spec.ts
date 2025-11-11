@@ -64,7 +64,7 @@ describe("Alepha#graph", () => {
         from: ["StateManager"],
       },
       EventManager: {
-        from: ["StateManager", "Alepha"],
+        from: ["Alepha", "StateManager"],
       },
       StateManager: {
         from: ["Alepha"],

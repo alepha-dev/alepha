@@ -36,7 +36,7 @@ export class DevToolsProvider {
   protected batchLogs = $batch({
     maxSize: 50,
     maxDuration: [10, "seconds"],
-    schema: logs.schema,
+    schema: logs.insertSchema,
     handler: async (entries) => {
       await this.logs.createMany(entries);
     },
@@ -45,30 +45,52 @@ export class DevToolsProvider {
   protected readonly onLog = $hook({
     on: "log",
     handler: async (ev: { message?: string; entry: LogEntry }) => {
-      if (!this.alepha.isReady()) {
-        return;
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // CAUTION: It's very easy to create an infinite loop here.
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      try {
+        if (!this.alepha.isStarted()) {
+          return;
+        }
+
+        if (ev.entry.module === "alepha.devtools") {
+          // skip devtools logs to avoid infinite loop
+          return;
+        }
+
+        if (ev.entry.level === "TRACE" && ev.entry.module === "alepha.batch") {
+          // skip batch trace logs to avoid infinite loop
+          return;
+        }
+
+        if (this.alepha.isProduction() && ev.entry.level === "TRACE") {
+          // skip trace logs in production
+          return;
+        }
+
+        const entry = {
+          ...ev.entry,
+          data:
+            ev.entry.data instanceof Error
+              ? this.jsonFormatter.formatJsonError(ev.entry.data)
+              : typeof ev.entry.data === "object" &&
+                  !Array.isArray(ev.entry.data)
+                ? ev.entry.data
+                : { data: ev.entry.data },
+        };
+
+        await this.batchLogs.push(entry as DevLogEntry);
+      } catch (error) {
+        // DO TO NOT WITH THE LOGGER HERE TO AVOID INFINITE LOOP
+        console.error(error, ev);
       }
-
-      if (ev.entry.level === "TRACE" && ev.entry.module === "alepha.batch") {
-        // skip batch trace logs to avoid infinite loop
-        return;
-      }
-
-      const entry = {
-        ...ev.entry,
-        data:
-          ev.entry.data instanceof Error
-            ? this.jsonFormatter.formatJsonError(ev.entry.data)
-            : ev.entry.data,
-      };
-
-      await this.batchLogs.push(entry as DevLogEntry);
     },
   });
 
   protected readonly uiRoute = $serve({
     path: "/devtools",
-    root: join(fileURLToPath(import.meta.url), "../../assets/devtools"),
+    root: join(fileURLToPath(import.meta.url), "../../../assets/devtools"),
     historyApiFallback: true,
   });
 

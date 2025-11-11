@@ -33,10 +33,8 @@ export class ServerLoggerProvider {
   public readonly onError = $hook({
     on: "server:onError",
     priority: "last",
-    handler: ({ route, error }) => {
-      if (!route.silent) {
-        this.log.error("Request has failed", error);
-      }
+    handler: ({ error }) => {
+      this.log.error("Request has failed", error);
     },
   });
 

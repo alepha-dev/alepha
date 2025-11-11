@@ -31,6 +31,7 @@ export abstract class DatabaseProvider {
   protected abstract readonly kit: DrizzleKitProvider;
   public abstract readonly db: PgDatabase<any>;
   public abstract readonly dialect: "postgresql" | "sqlite";
+  public abstract readonly url: string;
 
   public readonly enums = new Map<string, unknown>();
   public readonly tables = new Map<string, unknown>();

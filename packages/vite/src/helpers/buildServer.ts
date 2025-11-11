@@ -1,4 +1,4 @@
-import { readFile, unlink, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AlephaError } from "@alepha/core";
 import type * as vite from "vite";
@@ -111,8 +111,6 @@ export const buildServer = async (opts: BuildServerOptions) => {
     );
 
     template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()}\`;\n`;
-
-    await unlink(`${opts.distDir}/${opts.clientDir}/index.html`);
   }
 
   const warning =

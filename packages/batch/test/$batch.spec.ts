@@ -670,6 +670,67 @@ describe("$batch descriptor", () => {
     );
   });
 
+  test("should restart timeout for items that arrive during flush (maxDuration bug)", async () => {
+    const mockHandler = vi.fn(async (items: string[]) => {
+      // Simulate slow processing
+      await time.wait(50);
+      return items.map((item) => `processed-${item}`);
+    });
+
+    class TestApp {
+      batcher = $batch({
+        schema: t.text(),
+        maxSize: 10,
+        maxDuration: [100, "milliseconds"],
+        handler: mockHandler,
+      });
+    }
+
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    // Push first item, timeout starts
+    const id1 = await app.batcher.push("A");
+
+    // Wait for timeout to fire and flush to start
+    await time.travel([100, "milliseconds"]);
+
+    // Handler is now processing (takes 50ms)
+    // At T=25ms into processing, push another item
+    await time.wait(25);
+    const id2 = await app.batcher.push("B");
+
+    // Wait for first flush to complete
+    await time.wait(30); // Total 55ms, first flush completes at 50ms
+
+    // At this point:
+    // - First batch ["A"] has been processed
+    // - Item "B" is waiting in the partition
+    // - BUG: No timeout exists for "B" because it was pushed during flush
+
+    expect(mockHandler).toHaveBeenCalledTimes(1);
+    expect(mockHandler).toHaveBeenCalledWith(["A"]);
+
+    // Item "B" should flush after maxDuration (100ms)
+    await time.travel([110, "milliseconds"]); // More than enough time
+
+    // Expected: 2 calls (first batch "A", second batch "B")
+    // Without fix: 1 call (only "A" was processed, "B" is stuck)
+    await vi.waitFor(
+      () => {
+        expect(mockHandler).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 200 },
+    );
+    expect(mockHandler).toHaveBeenNthCalledWith(2, ["B"]);
+
+    // Verify both items completed successfully
+    const result1 = await app.batcher.wait(id1);
+    const result2 = await app.batcher.wait(id2);
+    expect(result1).toEqual(["processed-A"]);
+    expect(result2).toEqual(["processed-B"]);
+  });
+
   test("should return unique IDs for each push", async () => {
     const mockHandler = createMockHandler();
     class TestApp {

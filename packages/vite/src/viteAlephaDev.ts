@@ -9,7 +9,7 @@ export interface ViteAlephaDevOptions {
    * Path to the entry file for the server build.
    * If empty, plugin will be disabled.
    */
-  serverEntry?: string;
+  serverEntry?: string | false;
 
   /**
    * If true, enables debug logging.

@@ -55,6 +55,13 @@ const DevLogViewer = () => {
         },
       }),
     ),
+    level: t.optional(
+      t.array(
+        t.enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR"], {
+          $control: {},
+        }),
+      ),
+    ),
   });
 
   return (
@@ -73,7 +80,7 @@ const DevLogViewer = () => {
           verticalSpacing: 0,
         }}
         onFilterChange={(key, value, form) => {
-          if (key === "search") {
+          if (key === "search" || key === "level") {
             return form.submit();
           }
         }}
@@ -105,6 +112,18 @@ const DevLogViewer = () => {
               filters.search += `& ${next}`;
             } else {
               filters.search = next;
+            }
+          }
+
+          if (filters.level) {
+            const levelFilter = filters.level
+              .map((it) => `level = ${it}`)
+              .join(" | ");
+
+            if (filters.search) {
+              filters.search += `& (${levelFilter})`;
+            } else {
+              filters.search = levelFilter;
             }
           }
 

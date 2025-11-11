@@ -286,7 +286,7 @@ export class Alepha {
    */
   public get events(): EventManager {
     return this.inject(EventManager, {
-      args: [{ logFn: () => this.log }],
+      args: [() => this.log],
     });
   }
 
@@ -294,6 +294,7 @@ export class Alepha {
    * State manager to store arbitrary values.
    */
   public get state(): StateManager<State> {
+    this.events; // ensure events is initialized first (TODO: move this to constructor?)
     return this.inject(StateManager, {
       args: [this.init],
     });

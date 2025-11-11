@@ -38,7 +38,7 @@ describe("$module", () => {
         from: ["StateManager"],
       },
       EventManager: {
-        from: ["StateManager"],
+        from: ["Alepha", "StateManager"],
       },
       StateManager: {
         from: ["Alepha"],
