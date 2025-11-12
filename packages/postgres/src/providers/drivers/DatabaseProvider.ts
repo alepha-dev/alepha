@@ -143,14 +143,17 @@ export abstract class DatabaseProvider {
   protected async runDevelopmentMigration(
     migrationsFolder: string,
   ): Promise<void> {
-    // Try migrations silently first
+    // try migrations silently first
     try {
-      await this.executeMigrations(migrationsFolder);
+      // exclude in-memory databases (there is nothing to migrate!)
+      if (!this.url.includes(":memory:")) {
+        await this.executeMigrations(migrationsFolder);
+      }
     } catch {
       // Ignore errors
     }
 
-    // Then synchronize
+    // then synchronize
     await this.synchronizeSchema();
   }
 
