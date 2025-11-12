@@ -150,5 +150,5 @@ jobs:
         run: cd apps/roadmap && yarn build
 
       - name: Deploy to Vercel
-        run: cd apps/roadmap/dist && yarn vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
+        run: cd apps/roadmap/dist && npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
 
