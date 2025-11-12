@@ -1,4 +1,5 @@
-import type { Atom, State, Static, TAtomObject } from "@alepha/core";
+import type { State, Static, TAtomObject } from "@alepha/core";
+import { Atom } from "@alepha/core";
 import { useEffect, useMemo, useState } from "react";
 import { useAlepha } from "./useAlepha.ts";
 
@@ -29,8 +30,10 @@ function useStore(target: any, defaultValue?: any): any {
       return;
     }
 
+    const key = target instanceof Atom ? target.key : target;
+
     return alepha.events.on("state:mutate", (ev) => {
-      if (ev.key === target) {
+      if (ev.key === key) {
         setState(ev.value);
       }
     });
