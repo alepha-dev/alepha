@@ -12,7 +12,7 @@ export class AdminApi {
     group: "admin",
     schema: {
       query: pageQuerySchema,
-      response: pageSchema(users.$schema),
+      response: pageSchema(users.schema),
     },
     handler: async ({ query }) => {
       return await this.db.users.paginate(query, {}, { count: true });
@@ -23,7 +23,7 @@ export class AdminApi {
     group: "admin",
     schema: {
       query: pageQuerySchema,
-      response: pageSchema(projects.$schema),
+      response: pageSchema(projects.schema),
     },
     handler: async ({ query }) => {
       query.sort ??= "-createdAt";

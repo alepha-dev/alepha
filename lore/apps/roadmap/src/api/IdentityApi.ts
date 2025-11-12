@@ -50,8 +50,10 @@ export class IdentityApi {
       // Check if usernamePassword identity already exists
       const existingIdentity = await this.db.identities
         .findOne({
-          provider: { eq: "usernamePassword" },
-          userId: { eq: user.id },
+          where: {
+            provider: { eq: "usernamePassword" },
+            userId: { eq: user.id },
+          },
         })
         .catch(() => null);
 
@@ -62,8 +64,10 @@ export class IdentityApi {
       // Check if username is already taken
       const existingUsername = await this.db.identities
         .findOne({
-          provider: { eq: "usernamePassword" },
-          providerUserId: { eq: username },
+          where: {
+            provider: { eq: "usernamePassword" },
+            providerUserId: { eq: username },
+          },
         })
         .catch(() => null);
 

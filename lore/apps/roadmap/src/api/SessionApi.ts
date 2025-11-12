@@ -3,7 +3,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { $action, $route } from "@alepha/server";
 import { Db, sessions } from "../providers/Db.ts";
 
-export const userSession = t.interface([sessions.$schema], {
+export const userSession = t.interface([sessions.schema], {
   current: t.boolean(),
 });
 
@@ -20,7 +20,7 @@ export class SessionApi {
     },
     handler: async () => {
       await this.db.sessions.deleteMany({
-        expiresAt: { lt: this.dt.nowISOString() },
+        expiresAt: { lt: this.dt.now() },
       });
 
       return "OK";
@@ -56,8 +56,10 @@ export class SessionApi {
     },
     handler: async ({ params, user }) => {
       const session = await this.db.sessions.findOne({
-        id: params.sessionId,
-        userId: user.id,
+        where: {
+          id: { eq: params.sessionId },
+          userId: { eq: user.id },
+        },
       });
 
       await this.db.sessions.deleteById(session.id);

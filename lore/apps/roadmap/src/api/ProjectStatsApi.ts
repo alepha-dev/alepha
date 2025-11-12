@@ -60,7 +60,8 @@ export class ProjectStatsApi {
       await this.security.checkOwnership(params.id, user);
 
       // Get overview stats
-      const overviewQuery = await this.db.query(sql`
+      const overviewQuery = await this.db.query(
+        sql`
 				SELECT
 					COUNT(CASE WHEN t.deleted_at IS NULL THEN 1 END) as total_tasks,
 					COUNT(CASE WHEN t.completed_at IS NOT NULL THEN 1 END) as completed_tasks,
@@ -70,7 +71,15 @@ export class ProjectStatsApi {
 				FROM ${tasks} t
 				LEFT JOIN ${this.db.characters.table} c ON c.project_id = t.project_id
 				WHERE t.project_id = ${params.id}
-			`);
+			`,
+        t.object({
+          total_tasks: t.string(),
+          completed_tasks: t.string(),
+          active_players: t.string(),
+          total_xp: t.string(),
+          average_task_complexity: t.string(),
+        }),
+      );
 
       const overview = {
         totalTasks: Number(overviewQuery[0].total_tasks) || 0,
@@ -85,14 +94,14 @@ export class ProjectStatsApi {
       const priorityQuery = await this.db.query(
         sql`
 				SELECT
-					${tasks.priority},
+					${tasks.cols.priority},
 					COUNT(*) as count,
-					COUNT(CASE WHEN ${tasks.completedAt} IS NOT NULL THEN 1 END) as completed
+					COUNT(CASE WHEN ${tasks.cols.completedAt} IS NOT NULL THEN 1 END) as completed
 				FROM ${tasks}
-				WHERE ${tasks.projectId} = ${params.id} AND ${tasks.deletedAt} IS NULL
-				GROUP BY ${tasks.priority}
+				WHERE ${tasks.cols.projectId} = ${params.id} AND ${tasks.cols.deletedAt} IS NULL
+				GROUP BY ${tasks.cols.priority}
 				ORDER BY
-					CASE ${tasks.priority}
+					CASE ${tasks.cols.priority}
 						WHEN 'high' THEN 1
 						WHEN 'medium' THEN 2
 						WHEN 'low' THEN 3
@@ -107,7 +116,7 @@ export class ProjectStatsApi {
       );
 
       const tasksByPriority = priorityQuery.map((row) => ({
-        priority: row.priority,
+        priority: String(row.priority),
         count: Number(row.count),
         completed: Number(row.completed),
       }));
@@ -116,19 +125,19 @@ export class ProjectStatsApi {
       const complexityQuery = await this.db.query(
         sql`
 				SELECT
-					${tasks.complexity},
+					${tasks.cols.complexity},
 					COUNT(*) as count,
 					AVG(
 						CASE
-							WHEN ${tasks.priority} = 'high' THEN ${tasks.complexity} * 150 + 300
-							WHEN ${tasks.priority} = 'medium' THEN ${tasks.complexity} * 150 + 180
-							ELSE ${tasks.complexity} * 150 + 80
+							WHEN ${tasks.cols.priority} = 'high' THEN ${tasks.cols.complexity} * 150 + 300
+							WHEN ${tasks.cols.priority} = 'medium' THEN ${tasks.cols.complexity} * 150 + 180
+							ELSE ${tasks.cols.complexity} * 150 + 80
 						END
 					) as average_xp
 				FROM ${tasks}
-				WHERE ${tasks.projectId} = ${params.id} AND ${tasks.deletedAt} IS NULL
-				GROUP BY ${tasks.complexity}
-				ORDER BY ${tasks.complexity}
+				WHERE ${tasks.cols.projectId} = ${params.id} AND ${tasks.cols.deletedAt} IS NULL
+				GROUP BY ${tasks.cols.complexity}
+				ORDER BY ${tasks.cols.complexity}
 			`,
         t.object({
           complexity: t.string(),
@@ -147,11 +156,11 @@ export class ProjectStatsApi {
       const zonesQuery = await this.db.query(
         sql`
 				SELECT
-					COALESCE(${tasks.package}, 'Unassigned') as zone,
+					COALESCE(${tasks.cols.package}, 'Unassigned') as zone,
 					COUNT(*) as total_tasks
 				FROM ${tasks}
-				WHERE ${tasks.projectId} = ${params.id} AND ${tasks.deletedAt} IS NULL
-				GROUP BY ${tasks.package}
+				WHERE ${tasks.cols.projectId} = ${params.id} AND ${tasks.cols.deletedAt} IS NULL
+				GROUP BY ${tasks.cols.package}
 				ORDER BY total_tasks DESC
 				LIMIT 6
 			`,
@@ -198,21 +207,31 @@ export class ProjectStatsApi {
       }));
 
       // Calculate completion rates
-      const weeklyQuery = await this.db.query(sql`
+      const weeklyQuery = await this.db.query(
+        sql`
 				SELECT COUNT(*) as completed
 				FROM ${tasks}
-				WHERE ${tasks.projectId} = ${params.id}
-					AND ${tasks.completedAt} IS NOT NULL
-					AND ${tasks.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
-			`);
+				WHERE ${tasks.cols.projectId} = ${params.id}
+					AND ${tasks.cols.completedAt} IS NOT NULL
+					AND ${tasks.cols.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
+			`,
+        t.object({
+          completed: t.string(),
+        }),
+      );
 
-      const monthlyQuery = await this.db.query(sql`
+      const monthlyQuery = await this.db.query(
+        sql`
 				SELECT COUNT(*) as completed
 				FROM ${tasks}
-				WHERE ${tasks.projectId} = ${params.id}
-					AND ${tasks.completedAt} IS NOT NULL
-					AND ${tasks.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
-			`);
+				WHERE ${tasks.cols.projectId} = ${params.id}
+					AND ${tasks.cols.completedAt} IS NOT NULL
+					AND ${tasks.cols.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
+			`,
+        t.object({
+          completed: t.string(),
+        }),
+      );
 
       const weeklyCompleted = Number(weeklyQuery[0]?.completed) || 0;
       const monthlyCompleted = Number(monthlyQuery[0]?.completed) || 0;
@@ -249,12 +268,16 @@ export class ProjectStatsApi {
     handler: async ({ params, user }) => {
       // Verify project access
       const project = await this.db.projects.findOne({
-        id: { eq: params.id },
+        where: {
+          id: { eq: params.id },
+        },
       });
 
       await this.db.characters.findOne({
-        userId: user.id,
-        projectId: project.id,
+        where: {
+          userId: { eq: user.id },
+          projectId: { eq: project.id },
+        },
       });
 
       const tasks = await this.db.tasks.find({
@@ -278,7 +301,7 @@ export class ProjectStatsApi {
       for (const task of tasks) {
         const row = fields.map((field) => {
           let value = (task as any)[field] ?? "";
-          if (value instanceof Date) {
+          if (value && typeof value === "object" && "toISOString" in value) {
             value = value.toISOString();
           } else if (typeof value === "string") {
             // Escape double quotes in strings

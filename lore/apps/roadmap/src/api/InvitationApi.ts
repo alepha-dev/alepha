@@ -15,7 +15,7 @@ export class InvitationApi {
         projectId: t.int(),
         invitedEmail: t.string({ format: "email" }),
       }),
-      response: invitations.$schema,
+      response: invitations.schema,
     },
     handler: async ({ body, user }) => {
       // Check if user has permission to invite to this project
@@ -29,15 +29,19 @@ export class InvitationApi {
       // Check if user is already a member of the project
       const invitedUser = await this.db.users
         .findOne({
-          email: { eq: body.invitedEmail },
+          where: {
+            email: { eq: body.invitedEmail },
+          },
         })
         .catch(() => null);
 
       if (invitedUser) {
         const existingCharacter = await this.db.characters
           .findOne({
-            projectId: { eq: body.projectId },
-            userId: { eq: invitedUser.id },
+            where: {
+              projectId: { eq: body.projectId },
+              userId: { eq: invitedUser.id },
+            },
           })
           .catch(() => null);
 
@@ -49,9 +53,11 @@ export class InvitationApi {
       // Check if invitation already exists
       const existingInvitation = await this.db.invitations
         .findOne({
-          projectId: { eq: body.projectId },
-          invitedEmail: { eq: body.invitedEmail },
-          status: { eq: "pending" },
+          where: {
+            projectId: { eq: body.projectId },
+            invitedEmail: { eq: body.invitedEmail },
+            status: { eq: "pending" },
+          },
         })
         .catch(() => null);
 
@@ -97,10 +103,14 @@ export class InvitationApi {
         userInvitations.map(async (invitation) => {
           const [project, inviter] = await Promise.all([
             this.db.projects.findOne({
-              id: { eq: invitation.projectId },
+              where: {
+                id: { eq: invitation.projectId },
+              },
             }),
             this.db.users.findOne({
-              id: { eq: invitation.invitedBy },
+              where: {
+                id: { eq: invitation.invitedBy },
+              },
             }),
           ]);
 
@@ -128,16 +138,20 @@ export class InvitationApi {
     },
     handler: async ({ params, user }) => {
       const invitation = await this.db.invitations.findOne({
-        id: { eq: params.id },
-        invitedEmail: { eq: user.email },
-        status: { eq: "pending" },
+        where: {
+          id: { eq: params.id },
+          invitedEmail: { eq: user.email },
+          status: { eq: "pending" },
+        },
       });
 
       // Check if user is already a member of the project
       const existingCharacter = await this.db.characters
         .findOne({
-          projectId: { eq: invitation.projectId },
-          userId: { eq: user.id },
+          where: {
+            projectId: { eq: invitation.projectId },
+            userId: { eq: user.id },
+          },
         })
         .catch(() => null);
 
@@ -182,9 +196,11 @@ export class InvitationApi {
     },
     handler: async ({ params, user }) => {
       const invitation = await this.db.invitations.findOne({
-        id: { eq: params.id },
-        invitedEmail: { eq: user.email },
-        status: { eq: "pending" },
+        where: {
+          id: { eq: params.id },
+          invitedEmail: { eq: user.email },
+          status: { eq: "pending" },
+        },
       });
 
       // Delete the invitation
@@ -201,7 +217,7 @@ export class InvitationApi {
       params: t.object({
         projectId: t.int(),
       }),
-      response: t.array(invitations.$schema),
+      response: t.array(invitations.schema),
     },
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.projectId, user);
