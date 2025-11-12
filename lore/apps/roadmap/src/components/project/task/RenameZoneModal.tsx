@@ -5,6 +5,7 @@ import { Button, Stack } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { IconTag } from "@tabler/icons-react";
 import type { ProjectApi } from "../../../api/ProjectApi.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import Control from "../../ui/Control.jsx";
 
 interface RenameZoneModalProps {
@@ -14,7 +15,7 @@ interface RenameZoneModalProps {
 export const RenameZoneModal = (props: RenameZoneModalProps) => {
   const projectApi = useClient<ProjectApi>();
   const router = useRouter();
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
 
   const form = useForm({
     initialValues: {

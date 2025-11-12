@@ -13,7 +13,10 @@ import {
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
-import type { Project, Task } from "../../../providers/Db.ts";
+import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import type { Project } from "../../../entities/projects.ts";
+import type { Task } from "../../../entities/tasks.ts";
 import { taskCreateSchema } from "../../../schemas/taskCreateSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.jsx";
@@ -32,7 +35,7 @@ const TaskCreate = (props: TaskCreateProps) => {
   const alepha = useAlepha();
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
-  const [currentProject, setCurrentProject] = useStore("current_project");
+  const [currentProject, setCurrentProject] = useStore(currentProjectAtom);
 
   const update = !!props.task?.id;
 
@@ -46,9 +49,9 @@ const TaskCreate = (props: TaskCreateProps) => {
           params: { id: props.task.id },
           body: data,
         });
-        alepha.state.set("current_assigned_tasks", [
+        alepha.state.set(currentAssignedTasksAtom, [
           resp,
-          ...(alepha.state.get("current_assigned_tasks") ?? []).filter(
+          ...(alepha.state.get(currentAssignedTasksAtom) ?? []).filter(
             (task) => task.id !== resp.id,
           ),
         ]);

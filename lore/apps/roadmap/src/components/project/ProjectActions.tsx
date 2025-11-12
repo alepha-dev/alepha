@@ -11,13 +11,14 @@ import {
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action, { type ActionProps } from "../ui/Action.jsx";
 import TaskCreate from "./task/TaskCreate.jsx";
 
 const ProjectActions = () => {
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
 
@@ -95,7 +96,7 @@ const CreateTaskButton = () => {
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<TaskApi>();
 
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
   if (!project) {
     return null;
   }

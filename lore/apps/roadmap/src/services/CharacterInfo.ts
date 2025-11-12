@@ -1,4 +1,4 @@
-import type { Task } from "../providers/Db.ts";
+import type { Task } from "../entities/tasks.ts";
 
 export class CharacterInfo {
   levels = [

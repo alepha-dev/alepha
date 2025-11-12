@@ -1,4 +1,5 @@
-import { NestedView, useEvents } from "@alepha/react";
+import { Alepha } from "@alepha/core";
+import { NestedView, useEvents, useInject } from "@alepha/react";
 import { ColorSchemeScript, Flex, MantineProvider } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
@@ -6,18 +7,7 @@ import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { theme } from "../constants/theme.ts";
-import type { Character, Project, Task } from "../providers/Db.ts";
 import Header from "./shared/Header.jsx";
-
-declare module "@alepha/core" {
-  interface State {
-    current_assigned_tasks?: Task[];
-    current_project?: Project | null;
-    current_project_character?: Character | null;
-    current_task?: Task | null;
-    user_projects?: Project[];
-  }
-}
 
 const Layout = () => {
   useEvents(
@@ -32,10 +22,12 @@ const Layout = () => {
     [],
   );
 
+  const alepha = useInject(Alepha);
+
   return (
     <>
-      <Analytics />
-      <SpeedInsights />
+      {alepha.isProduction() && <Analytics />}
+      {alepha.isProduction() && <SpeedInsights />}
       <ColorSchemeScript defaultColorScheme={theme.defaultColorScheme} />
       <MantineProvider
         defaultColorScheme={theme.defaultColorScheme}

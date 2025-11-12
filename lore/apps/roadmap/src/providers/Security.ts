@@ -6,7 +6,9 @@ import {
 } from "@alepha/api-users";
 import { $inject } from "@alepha/core";
 import type { UserAccountToken } from "@alepha/security";
-import { type Character, Db, type Project } from "./Db.ts";
+import type { Character } from "../entities/characters.ts";
+import type { Project } from "../entities/projects.ts";
+import { Db } from "./Db.ts";
 
 export class Security {
   db = $inject(Db);

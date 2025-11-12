@@ -2,13 +2,15 @@ import { useRouter, useRouterState, useStore } from "@alepha/react";
 import { Flex, Menu } from "@mantine/core";
 import { IconPlus, IconSquare, IconSquareCheck } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import Action from "../ui/Action.jsx";
 
 const HeaderProject = () => {
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
   const router = useRouter<AppRouter>();
   const { params } = useRouterState();
-  const [projects = []] = useStore("user_projects");
+  const [projects = []] = useStore(userProjectsAtom);
 
   if (!project) {
     return null;

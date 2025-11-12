@@ -8,9 +8,11 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Flex, Stack, Text } from "@mantine/core";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import type { TaskApi } from "../../../api/TaskApi.ts";
-import type { Task } from "../../../providers/Db.ts";
+import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import type { Task } from "../../../entities/tasks.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TaskGroup from "./TaskGroup.jsx";
 
@@ -22,6 +24,7 @@ const TaskList = (props: TaskListProps) => {
   const { tr } = useI18n<I18n, "en">();
   const taskApi = useClient<TaskApi>();
   const alepha = useAlepha();
+  const id = useId();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -68,16 +71,16 @@ const TaskList = (props: TaskListProps) => {
         });
 
         // Update local state
-        const currentTasks = alepha.state.get("current_assigned_tasks") || [];
+        const currentTasks = alepha.state.get(currentAssignedTasksAtom) || [];
         const updatedTasks = currentTasks.map((t) =>
           t.id === updatedTask.id ? updatedTask : t,
         );
-        alepha.state.set("current_assigned_tasks", updatedTasks);
+        alepha.state.set(currentAssignedTasksAtom, updatedTasks);
 
         // Update project packages if needed
-        const currentProject = alepha.state.get("current_project");
+        const currentProject = alepha.state.get(currentProjectAtom);
         if (currentProject && !currentProject.packages.includes(newZoneName)) {
-          alepha.state.set("current_project", {
+          alepha.state.set(currentProjectAtom, {
             ...currentProject,
             packages: [...currentProject.packages, newZoneName],
           });
@@ -103,7 +106,7 @@ const TaskList = (props: TaskListProps) => {
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext id={id} sensors={sensors} onDragEnd={handleDragEnd}>
       <Stack gap={0}>
         {packageList.map((key) => (
           <TaskGroup name={key} tasks={groupByPackage[key]} key={key} />

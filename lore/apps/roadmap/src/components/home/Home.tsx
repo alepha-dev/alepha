@@ -8,8 +8,9 @@ import {
   IconMapRoute,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
-import type { Project } from "../../providers/Db.ts";
+import type { Project } from "../../entities/projects.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.jsx";
 
@@ -19,7 +20,7 @@ export interface HomeProps {
 
 const Home = () => {
   const { tr } = useI18n<I18n, "en">();
-  const [projects = []] = useStore("user_projects");
+  const [projects = []] = useStore(userProjectsAtom);
   const router = useRouter<AppRouter>();
   const dt = useInject(DateTimeProvider);
 

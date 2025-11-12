@@ -5,8 +5,10 @@ import { useI18n } from "@alepha/react-i18n";
 import { Card, Flex } from "@mantine/core";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
-import type { Project } from "../../providers/Db.ts";
+import type { Project } from "../../entities/projects.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.jsx";
 import Control from "../ui/Control.jsx";
@@ -37,9 +39,9 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
         body: values,
       });
 
-      alepha.state.set("current_project", project);
-      alepha.state.set("user_projects", [
-        ...(alepha.state.get("user_projects") ?? []).filter(
+      alepha.state.set(currentProjectAtom, project);
+      alepha.state.set(userProjectsAtom, [
+        ...(alepha.state.get(userProjectsAtom) ?? []).filter(
           (p) => p.id !== project.id,
         ),
         project,

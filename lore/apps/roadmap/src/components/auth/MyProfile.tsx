@@ -26,7 +26,7 @@ import {
 } from "@tabler/icons-react";
 import { type ChangeEvent, useRef, useState } from "react";
 import type { UserApi } from "../../api/UserApi.ts";
-import type { User } from "../../providers/Db";
+import type { User } from "../../entities/users.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 export interface ProfileProps {

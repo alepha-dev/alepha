@@ -27,12 +27,10 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { InvitationApi } from "../../api/InvitationApi.ts";
-import type {
-  Character,
-  Invitation,
-  Project,
-  User,
-} from "../../providers/Db.ts";
+import type { Character } from "../../entities/characters.ts";
+import type { Invitation } from "../../entities/invitations.ts";
+import type { Project } from "../../entities/projects.ts";
+import type { User } from "../../entities/users.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 
 export interface ProjectPlayersProps {

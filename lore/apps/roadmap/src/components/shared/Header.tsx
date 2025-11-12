@@ -2,6 +2,7 @@ import { useEvents, useRouter, useStore } from "@alepha/react";
 import { Burger, Container, Drawer, Flex } from "@mantine/core";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import ProjectActions from "../project/ProjectActions.jsx";
 import QuestLog from "../project/QuestLog.jsx";
@@ -54,7 +55,7 @@ export default Header;
 
 const MobileQuestLog = () => {
   const [show, setShow] = useState(false);
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
 
   useEvents(
     {

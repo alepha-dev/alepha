@@ -9,10 +9,11 @@ import {
   IconSunset2,
   IconSwords,
 } from "@tabler/icons-react";
-import type { Task } from "../../../providers/Db.ts";
+import { currentTaskAtom } from "../../../atoms/currentTaskAtom.ts";
+import type { Task } from "../../../entities/tasks.ts";
 
 const TaskHistory = () => {
-  const [task] = useStore("current_task");
+  const [task] = useStore(currentTaskAtom);
 
   return (
     <Flex
@@ -51,6 +52,8 @@ const TaskTimeline = ({ task }: { task: Task }) => {
   const style = {
     animation: "fadeInUpLight 0.3s ease forwards",
   };
+
+  console.log(task);
 
   const title = (action: string) => {
     if (action === "assigned") {
