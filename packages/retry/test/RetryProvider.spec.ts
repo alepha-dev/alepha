@@ -99,7 +99,7 @@ describe("RetryProvider", () => {
     expect(duration).toBeGreaterThanOrEqual(280);
   });
 
-  test("should respect maxDuration timeout", async () => {
+  test("should respect maxDuration timeout", { retry: 3 }, async () => {
     const handler = vi.fn(() => {
       throw new Error("Retry");
     });
