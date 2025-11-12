@@ -44,7 +44,7 @@ describe("@alepha/api-users - SessionController", () => {
     const session = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
       ip: "127.0.0.1",
       userAgent: {
         os: "macOS",
@@ -85,7 +85,7 @@ describe("@alepha/api-users - SessionController", () => {
     const session = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
     const result = await controller.deleteSession({
@@ -116,17 +116,17 @@ describe("@alepha/api-users - SessionController", () => {
     const session1 = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
     const session2 = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
     const session3 = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
     const result = await controller.findSessions({
@@ -158,17 +158,17 @@ describe("@alepha/api-users - SessionController", () => {
     await sessionService.sessions.create({
       userId: user1.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
     await sessionService.sessions.create({
       userId: user1.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
     await sessionService.sessions.create({
       userId: user2.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
     const result = await controller.findSessions({
@@ -193,17 +193,17 @@ describe("@alepha/api-users - SessionController", () => {
     const session1 = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
     const session2 = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
     const session3 = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
     const result = await controller.findSessions({
@@ -233,7 +233,7 @@ describe("@alepha/api-users - SessionController", () => {
     const desktopSession = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
       userAgent: {
         os: "Windows",
         browser: "Edge",
@@ -244,7 +244,7 @@ describe("@alepha/api-users - SessionController", () => {
     const mobileSession = await sessionService.sessions.create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
-      expiresAt: dateTimeProvider.now().add(7, "days"),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
       userAgent: {
         os: "iOS",
         browser: "Safari",

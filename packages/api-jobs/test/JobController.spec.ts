@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
+import { DateTimeProvider, dayjs } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
 import { describe, expect, it } from "vitest";
 import { JobController } from "../src/controllers/JobController.ts";
@@ -79,7 +79,7 @@ describe("JobController", () => {
       const execution = executions.content[0];
       expect(execution.status).toBe("COMPLETED");
       expect(execution.finishedAt).toBeDefined();
-      expect(execution.finishedAt!.valueOf()).toBeGreaterThan(0);
+      expect(new Date(execution.finishedAt!).valueOf()).toBeGreaterThan(0);
     });
 
     it("should capture logs during job execution", async () => {
@@ -148,7 +148,7 @@ describe("JobController", () => {
       expect(execution.status).toBe("FAILED");
       expect(execution.error).toBe("Intentional test failure");
       expect(execution.finishedAt).toBeDefined();
-      expect(execution.finishedAt!.valueOf()).toBeGreaterThan(0);
+      expect(new Date(execution.finishedAt!).valueOf()).toBeGreaterThan(0);
     });
 
     it("should return empty list when job has no executions", async () => {
@@ -219,8 +219,8 @@ describe("JobController", () => {
 
       // Verify descending order
       for (let i = 1; i < executions.content.length; i++) {
-        const prev = executions.content[i - 1].createdAt;
-        const curr = executions.content[i].createdAt;
+        const prev = dayjs(executions.content[i - 1].createdAt);
+        const curr = dayjs(executions.content[i].createdAt);
         expect(prev.valueOf()).toBeGreaterThanOrEqual(curr.valueOf());
       }
     });

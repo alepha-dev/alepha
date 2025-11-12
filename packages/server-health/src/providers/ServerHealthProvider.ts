@@ -34,7 +34,7 @@ export class ServerHealthProvider {
     return {
       message: "OK",
       uptime: Math.floor(process.uptime()),
-      date: this.time.now(),
+      date: this.time.nowISOString(),
       ready: this.alepha.isReady(),
     };
   }

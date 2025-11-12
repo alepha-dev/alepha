@@ -1,5 +1,4 @@
 import { Alepha } from "@alepha/core";
-import { dayjs } from "@alepha/datetime";
 import { describe, expect, it } from "vitest";
 import { TaskController } from "../src/api/controllers/TaskController.ts";
 
@@ -12,7 +11,7 @@ describe("TaskController", () => {
     expect(await ctrl.createTask({ body: { name: "New Task" } })).toEqual([
       {
         id: expect.any(String),
-        createdAt: expect.any(dayjs),
+        createdAt: expect.any(String),
         name: "New Task",
       },
     ]);

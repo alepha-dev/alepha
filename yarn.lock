@@ -296,6 +296,7 @@ __metadata:
     "@alepha/cache": "npm:0.11.6"
     "@alepha/cli": "npm:0.11.6"
     "@alepha/core": "npm:0.11.6"
+    "@alepha/datetime": "npm:0.11.6"
     "@alepha/logger": "npm:0.11.6"
     "@alepha/postgres": "npm:0.11.6"
     "@alepha/queue": "npm:0.11.6"
@@ -748,6 +749,7 @@ __metadata:
   resolution: "@alepha/server-basic-auth@workspace:packages/server-basic-auth"
   dependencies:
     "@alepha/core": "npm:0.11.6"
+    "@alepha/logger": "npm:0.11.6"
     "@alepha/server": "npm:0.11.6"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.3"

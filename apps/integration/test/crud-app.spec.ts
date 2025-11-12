@@ -1,4 +1,5 @@
 import { Alepha, t } from "@alepha/core";
+import { dayjs } from "@alepha/datetime";
 import { $entity, $repository, pageQuerySchema, pg } from "@alepha/postgres";
 import { $action, HttpError } from "@alepha/server";
 import { beforeEach, describe, test } from "vitest";
@@ -721,8 +722,8 @@ describe("CRUD Application - Complete Integration Tests", () => {
         body: { name: "Updated Name" },
       });
 
-      expect(updated.updatedAt.toDate().getTime()).toBeGreaterThan(
-        created.updatedAt.toDate().getTime(),
+      expect(dayjs(updated.updatedAt).toDate().getTime()).toBeGreaterThan(
+        dayjs(created.updatedAt).toDate().getTime(),
       );
     });
   });

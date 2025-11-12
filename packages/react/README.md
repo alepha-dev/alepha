@@ -192,7 +192,3 @@ class App {
 
 const router = useRouter<App>();
 router.go("home"); // typesafe
-
-#### useStore()
-
-Hook to access and mutate the Alepha state.

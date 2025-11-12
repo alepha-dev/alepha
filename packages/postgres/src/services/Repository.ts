@@ -605,7 +605,9 @@ export abstract class Repository<T extends TObject> {
     )?.[0];
 
     if (updatedAtField) {
-      row[updatedAtField.key] = opts.now ?? this.dateTimeProvider.now();
+      row[updatedAtField.key] = this.dateTimeProvider
+        .of(opts.now)
+        .toISOString();
     }
 
     where = this.withDeletedAt(where, opts);
@@ -660,7 +662,6 @@ export abstract class Repository<T extends TObject> {
    * - validate entity against schema
    * - undefined values will be set to null, not ignored!
    *
-   * @see {@link PostgresTypeProvider#version}
    * @see {@link PgVersionMismatchError}
    */
   public async save(
@@ -746,6 +747,17 @@ export abstract class Repository<T extends TObject> {
       data,
     });
 
+    const updatedAtField = getAttrFields(
+      this.entity.schema,
+      PG_UPDATED_AT,
+    )?.[0];
+
+    if (updatedAtField) {
+      (data as any)[updatedAtField.key] = this.dateTimeProvider
+        .of(opts.now)
+        .toISOString();
+    }
+
     where = this.withDeletedAt(where, opts);
     data = this.cast(data, false) as any;
     try {
@@ -782,7 +794,7 @@ export abstract class Repository<T extends TObject> {
       return await this.updateMany(
         where,
         {
-          [deletedAt.key]: opts.now ?? this.dateTimeProvider.now(),
+          [deletedAt.key]: opts.now ?? this.dateTimeProvider.nowISOString(),
         } as any,
         opts,
       );
@@ -797,7 +809,7 @@ export abstract class Repository<T extends TObject> {
       const result = await this.delete(opts)
         .where(this.toSQL(where))
         .returning({ id: (this.table as any)[this.id.key] });
-      const ids = result.map((row: any) => row.id);
+      const ids = result.map((row) => row.id);
 
       await this.alepha.events.emit("repository:delete:after", {
         tableName: this.tableName,
@@ -836,7 +848,7 @@ export abstract class Repository<T extends TObject> {
 
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
-      opts.now ??= this.dateTimeProvider.now();
+      opts.now ??= this.dateTimeProvider.nowISOString();
       (entity as any)[deletedAt.key] = opts.now;
     }
 
@@ -949,26 +961,40 @@ export abstract class Repository<T extends TObject> {
       ? this.entity.insertSchema // insert
       : (t.partial(this.entity.updateSchema) as TObject); // update
 
-    return this.alepha.codec.encode(schema, data, {
-      encoder: "drizzle",
-    }) as PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>>;
+    return this.alepha.codec.encode(schema, data) as PgInsertValue<
+      PgTableWithColumns<SchemaToTableConfig<T>>
+    >;
   }
 
   /**
    * Transform a row from the database into a clean entity.
-   *
-   * - Validate against schema
-   * - Replace all null values by undefined
-   * - Fix date-time and date fields to ISO strings
-   * - Cast BigInt to string
    */
   protected clean<T extends TObject>(
     row: Record<string, unknown>,
     schema: T,
   ): Static<T> {
-    return this.alepha.codec.decode(schema, row, {
-      encoder: "drizzle",
-    }) as Static<T>;
+    for (const key of Object.keys(schema.properties)) {
+      const value = schema.properties[key];
+
+      // convert PG date-time and date to ISO strings
+      if (typeof row[key] === "string") {
+        if (t.schema.isDateTime(value)) {
+          row[key] = this.dateTimeProvider.of(row[key]).toISOString();
+        } else if (t.schema.isDate(value)) {
+          row[key] = this.dateTimeProvider
+            .of(`${row[key]}T00:00:00Z`)
+            .toISOString()
+            .split("T")[0];
+        }
+      }
+
+      // convert BigInt to string
+      if (typeof row[key] === "bigint" && t.schema.isBigInt(value)) {
+        row[key] = row[key].toString();
+      }
+    }
+
+    return this.alepha.codec.decode(schema, row) as Static<T>;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1109,5 +1135,5 @@ export interface StatementOptions {
   /**
    * Force the current time.
    */
-  now?: DateTime;
+  now?: DateTime | string;
 }

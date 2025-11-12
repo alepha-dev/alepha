@@ -29,24 +29,24 @@ describe("Query with Date Encoding", () => {
     // Create test data
     const event1 = await app.repository.create({
       name: "Past Event",
-      scheduledFor: dt.of("2024-01-01").utc(),
+      scheduledFor: dt.utc("2024-01-01").toISOString(),
     });
 
     const event2 = await app.repository.create({
       name: "Recent Event",
-      scheduledFor: dt.of("2024-06-01").utc(),
+      scheduledFor: dt.utc("2024-06-01").toISOString(),
     });
 
     const event3 = await app.repository.create({
       name: "Future Event",
-      scheduledFor: dt.of("2025-01-01").utc(),
+      scheduledFor: dt.utc("2025-01-01").toISOString(),
     });
 
     // Test 1: Filter with Dayjs object using eq
     const exactMatch = await app.repository.find({
       where: {
         scheduledFor: {
-          eq: dt.of("2024-06-01").utc(),
+          eq: dt.utc("2024-06-01").toISOString(),
         },
       },
     });
@@ -58,7 +58,7 @@ describe("Query with Date Encoding", () => {
     const futureEvents = await app.repository.find({
       where: {
         scheduledFor: {
-          gt: dt.of("2024-06-01").utc(),
+          gt: dt.utc("2024-06-01").toISOString(),
         },
       },
     });
@@ -70,7 +70,7 @@ describe("Query with Date Encoding", () => {
     const pastEvents = await app.repository.find({
       where: {
         scheduledFor: {
-          lt: dt.of("2024-06-01").utc(),
+          lt: dt.utc("2024-06-01").toISOString(),
         },
       },
     });
@@ -84,12 +84,12 @@ describe("Query with Date Encoding", () => {
         and: [
           {
             scheduledFor: {
-              gte: dt.of("2024-01-01").utc(),
+              gte: dt.utc("2024-01-01").toISOString(),
             },
           },
           {
             scheduledFor: {
-              lte: dt.of("2024-12-31").utc(),
+              lte: dt.utc("2024-12-31").toISOString(),
             },
           },
         ],
@@ -105,8 +105,8 @@ describe("Query with Date Encoding", () => {
       where: {
         eventDate: {
           between: [
-            dt.of("2024-01-01").utc(),
-            dt.of("2025-12-31").utc(),
+            dt.utc("2024-01-01").toISOString(),
+            dt.utc("2025-12-31").toISOString(),
           ] as any,
         },
       },
@@ -118,7 +118,10 @@ describe("Query with Date Encoding", () => {
     const specificDates = await app.repository.find({
       where: {
         scheduledFor: {
-          inArray: [dt.of("2024-01-01").utc(), dt.of("2025-01-01").utc()],
+          inArray: [
+            dt.utc("2024-01-01").toISOString(),
+            dt.utc("2025-01-01").toISOString(),
+          ],
         },
       },
     });
@@ -130,7 +133,7 @@ describe("Query with Date Encoding", () => {
     // Test 7: Direct value (not using operator object)
     const directMatch = await app.repository.find({
       where: {
-        scheduledFor: dt.of("2024-06-01").utc(),
+        scheduledFor: dt.utc("2024-06-01").toISOString(),
       },
     });
 
@@ -164,19 +167,19 @@ describe("Query with Date Encoding", () => {
     // Create test data
     await app.repository.create({
       title: "Task 1",
-      dueDate: dt.of("2024-03-15").utc(),
+      dueDate: dt.utc("2024-03-15").toISOString(),
     });
 
     await app.repository.create({
       title: "Task 2",
-      dueDate: dt.of("2024-06-20").utc(),
+      dueDate: dt.utc("2024-06-20").toISOString(),
     });
 
     // Test with Dayjs object
     const withDayjs = await app.repository.find({
       where: {
         dueDate: {
-          gte: dt.of("2024-06-01").utc(),
+          gte: dt.utc("2024-06-01").toISOString(),
         },
       },
     });
@@ -225,22 +228,22 @@ describe("Query with Date Encoding", () => {
     await app.repository.createMany([
       {
         patientName: "Alice",
-        appointmentDate: dt.of("2024-05-01").utc(),
+        appointmentDate: dt.utc("2024-05-01").toISOString(),
         status: "confirmed",
       },
       {
         patientName: "Bob",
-        appointmentDate: dt.of("2024-06-01").utc(),
+        appointmentDate: dt.utc("2024-06-01").toISOString(),
         status: "pending",
       },
       {
         patientName: "Charlie",
-        appointmentDate: dt.of("2024-07-01").utc(),
+        appointmentDate: dt.utc("2024-07-01").toISOString(),
         status: "confirmed",
       },
       {
         patientName: "David",
-        appointmentDate: dt.of("2024-08-01").utc(),
+        appointmentDate: dt.utc("2024-08-01").toISOString(),
         status: "cancelled",
       },
     ]);
@@ -254,12 +257,12 @@ describe("Query with Date Encoding", () => {
           },
           {
             appointmentDate: {
-              gte: dt.of("2024-06-01").utc(),
+              gte: dt.utc("2024-06-01").toISOString(),
             },
           },
           {
             appointmentDate: {
-              lt: dt.of("2024-08-01").utc(),
+              lt: dt.utc("2024-08-01").toISOString(),
             },
           },
         ],
@@ -275,12 +278,12 @@ describe("Query with Date Encoding", () => {
         or: [
           {
             appointmentDate: {
-              lt: dt.of("2024-06-01").utc(),
+              lt: dt.utc("2024-06-01").toISOString(),
             },
           },
           {
             appointmentDate: {
-              gte: dt.of("2024-08-01").utc(),
+              gte: dt.utc("2024-08-01").toISOString(),
             },
           },
         ],
@@ -317,7 +320,7 @@ describe("Query with Date Encoding", () => {
     await app.repository.createMany([
       {
         name: "Completed Project",
-        completedAt: dt.of("2024-05-15").utc(),
+        completedAt: dt.utc("2024-05-15").toISOString(),
       },
       {
         name: "Ongoing Project",
@@ -371,16 +374,19 @@ describe("Query with Date Encoding", () => {
     await alepha.start();
 
     await app.repository.createMany([
-      { name: "Event 1", date: dt.of("2024-01-01").utc() },
-      { name: "Event 2", date: dt.of("2024-02-01").utc() },
-      { name: "Event 3", date: dt.of("2024-03-01").utc() },
-      { name: "Event 4", date: dt.of("2024-04-01").utc() },
+      { name: "Event 1", date: dt.utc("2024-01-01").toISOString() },
+      { name: "Event 2", date: dt.utc("2024-02-01").toISOString() },
+      { name: "Event 3", date: dt.utc("2024-03-01").toISOString() },
+      { name: "Event 4", date: dt.utc("2024-04-01").toISOString() },
     ]);
 
     const excluded = await app.repository.find({
       where: {
         date: {
-          notInArray: [dt.of("2024-01-01").utc(), dt.of("2024-03-01").utc()],
+          notInArray: [
+            dt.utc("2024-01-01").toISOString(),
+            dt.utc("2024-03-01").toISOString(),
+          ],
         },
       },
     });

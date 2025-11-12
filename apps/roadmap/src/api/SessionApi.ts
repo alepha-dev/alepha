@@ -21,7 +21,7 @@ export class SessionApi {
     },
     handler: async () => {
       await this.db.sessions.deleteMany({
-        expiresAt: { lt: this.dt.now() },
+        expiresAt: { lt: this.dt.nowISOString() },
       });
 
       return "OK";

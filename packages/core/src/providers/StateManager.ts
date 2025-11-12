@@ -50,12 +50,14 @@ export class StateManager<State extends object = AlephaState> {
 
   public register(atom: Atom<any>): this {
     const key = atom.key as keyof State;
+
     if (!this.atoms.has(key)) {
       this.atoms.set(key, atom);
       if (!(key in this.store)) {
         this.set(key, atom.options.default as State[keyof State]);
       }
     }
+
     return this;
   }
 
@@ -69,23 +71,12 @@ export class StateManager<State extends object = AlephaState> {
       this.register(target);
     }
 
-    if (typeof target === "string") {
-      const atom = this.atoms.get(target as keyof State);
-      if (atom) {
-        target = atom;
-      }
-    }
-
     const key = target instanceof Atom ? target.key : target;
     const store = this.store as Record<string, any>;
 
-    const value = this.als?.exists() ? this.als.get(key as string) : store[key];
-
-    if (target instanceof Atom && value != null) {
-      return this.codec.decode(target.schema, value);
-    }
-
-    return value;
+    return this.als?.exists()
+      ? (this.als.get(key as string) ?? store[key])
+      : store[key];
   }
 
   /**
@@ -94,24 +85,14 @@ export class StateManager<State extends object = AlephaState> {
   public set<T extends TAtomObject>(
     target: Atom<T>,
     value: AtomStatic<T>,
-    options?: StateSetOptions,
   ): this;
   public set<Key extends keyof State>(
     target: Key,
     value: State[Key] | undefined,
-    options?: StateSetOptions,
   ): this;
-  public set(target: any, value: any, options: StateSetOptions = {}): this {
+  public set(target: any, value: any): this {
     if (target instanceof Atom) {
       this.register(target);
-    }
-
-    // resolve string keys to atoms if registered
-    if (typeof target === "string") {
-      const atom = this.atoms.get(target as keyof State);
-      if (atom) {
-        target = atom;
-      }
     }
 
     const key = target instanceof Atom ? target.key : target;
@@ -120,13 +101,6 @@ export class StateManager<State extends object = AlephaState> {
     const prevValue = this.get(key);
     if (prevValue === value) {
       return this;
-    }
-
-    if (target instanceof Atom) {
-      if (options.encoded) {
-        value = this.codec.decode(target.schema, value);
-      }
-      value = this.codec.encode(target.schema, value);
     }
 
     if (this.als?.exists()) {
@@ -210,10 +184,3 @@ export class StateManager<State extends object = AlephaState> {
 type OnlyArray<T extends object> = {
   [K in keyof T]: NonNullable<T[K]> extends Array<any> ? K : never;
 };
-
-export interface StateSetOptions {
-  /**
-   * Indicates whether the value is already encoded.
-   */
-  encoded?: boolean;
-}

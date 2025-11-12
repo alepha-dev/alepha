@@ -105,16 +105,16 @@ export class ServerSecurityProvider {
         return;
       }
 
-      if (!request.headers.authorization && !route.secure) {
+      const permission = this.securityProvider
+        .getPermissions()
+        .find((it) => it.path === route.path && it.method === route.method);
+
+      if (!request.headers.authorization && !route.secure && !permission) {
         this.log.trace(
           "Skipping security check for route - no authorization header and not secure",
         );
         return;
       }
-
-      const permission = this.securityProvider
-        .getPermissions()
-        .find((it) => it.path === route.path && it.method === route.method);
 
       try {
         // set user to request

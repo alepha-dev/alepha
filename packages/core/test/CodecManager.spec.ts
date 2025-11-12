@@ -164,7 +164,7 @@ describe("CodecManager", () => {
       expect(result).toEqual({ value: "test", flag: true });
     });
 
-    it("should transform BigInt to string", () => {
+    it("should keep bigint string as-is", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -172,7 +172,7 @@ describe("CodecManager", () => {
         bigNum: t.bigint(),
       });
 
-      const result = codecManager.encode(schema, { bigNum: 123456789n });
+      const result = codecManager.encode(schema, { bigNum: "123456789" });
 
       expect(result.bigNum).toBe("123456789");
     });
@@ -386,7 +386,7 @@ describe("CodecManager", () => {
       expect(result.price).toBe(19.99);
     });
 
-    it("should decode string to BigInt", () => {
+    it("should decode string to string (bigint format)", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -396,7 +396,7 @@ describe("CodecManager", () => {
 
       const result = codecManager.decode(schema, { bigNum: "123456789" });
 
-      expect(result.bigNum).toBe(123456789n);
+      expect(result.bigNum).toBe("123456789");
     });
 
     it("should apply default values", () => {
@@ -553,7 +553,7 @@ describe("CodecManager", () => {
           active: true,
         },
         tags: ["typescript", "testing"],
-        count: 999999999999n,
+        count: "999999999999",
       };
 
       // Encode to string

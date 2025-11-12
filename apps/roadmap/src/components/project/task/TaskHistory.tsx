@@ -122,7 +122,7 @@ const TaskTimeline = ({ task }: { task: Task }) => {
       )}
       {task.history.toReversed().map((it) => (
         <Timeline.Item
-          key={it.at.toISOString()}
+          key={it.at}
           style={style}
           title={title(it.action)}
           bullet={

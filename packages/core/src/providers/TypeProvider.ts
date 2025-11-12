@@ -41,6 +41,10 @@ export { TypeBox, TypeBoxValue, TypeBoxFormat };
 export const isUUID = TypeBoxFormat.IsUuid;
 export const isEmail = TypeBoxFormat.IsEmail;
 export const isURL = TypeBoxFormat.IsUrl;
+export const isDateTime = TypeBoxFormat.IsDateTime;
+export const isDate = TypeBoxFormat.IsDate;
+export const isTime = TypeBoxFormat.IsTime;
+export const isDuration = TypeBoxFormat.IsDuration;
 
 export type {
   StaticDecode,
@@ -74,7 +78,6 @@ export type {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class TypeGuard {
-  isFile = isTypeFile;
   // -------------------------------------------------------------------------------------------------------------------
   isBigInt = (value: TSchema): value is TString =>
     TypeBox.IsString(value) && "format" in value && value.format === "bigint";
@@ -97,6 +100,20 @@ export class TypeGuard {
   isVoid = TypeBox.IsVoid;
   isLiteral = TypeBox.IsLiteral;
   isSchema = TypeBox.IsSchema;
+  // -------------------------------------------------------------------------------------------------------------------
+  isFile = isTypeFile;
+  isDateTime = (schema: unknown) => {
+    return t.schema.isString(schema) && schema.format === "date-time";
+  };
+  isDate = (schema: unknown) => {
+    return t.schema.isString(schema) && schema.format === "date";
+  };
+  isTime = (schema: unknown) => {
+    return t.schema.isString(schema) && schema.format === "time";
+  };
+  isDuration = (schema: unknown) => {
+    return t.schema.isString(schema) && schema.format === "duration";
+  };
 }
 
 declare module "typebox" {
@@ -453,46 +470,34 @@ export class TypeProvider {
   // Codec types
 
   /**
-   * Create a schema for a bigint.
-   * This is NOT a BigInt object, but a string that represents a bigint.
+   * Create a schema for a bigint represented as a string.
+   * This is a string that validates bigint format (e.g. "123456789").
    */
   public bigint(options?: TStringOptions) {
-    return this.codec(
-      t.string({
-        ...options,
-        format: "bigint",
-      }),
-    )
-      .Decode((value: bigint | boolean | number | string) => BigInt(value))
-      .Encode((value: BigInt) => value.toString());
+    return t.string({
+      ...options,
+      format: "bigint",
+    });
   }
 
   /**
-   * Create a schema for a url.
+   * Create a schema for a URL represented as a string.
    */
   public url(options?: TStringOptions) {
-    return this.codec(
-      this.string({
-        ...options,
-        format: "url",
-      }),
-    )
-      .Decode((value: string) => new URL(value))
-      .Encode((value: URL) => value.toString());
+    return this.string({
+      ...options,
+      format: "url",
+    });
   }
 
   /**
-   * Create a schema for binary data represented as a string.
+   * Create a schema for binary data represented as a base64 string.
    */
   public binary(options: TStringOptions) {
-    return this.codec(
-      this.string({
-        ...options,
-        format: "binary",
-      }),
-    )
-      .Decode((value) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0)))
-      .Encode((value) => btoa(String.fromCharCode(...value)));
+    return this.string({
+      ...options,
+      format: "binary",
+    });
   }
 
   /**
@@ -622,6 +627,30 @@ export class TypeProvider {
       },
       options,
     );
+
+  public datetime = (options?: TStringOptions) =>
+    t.text({
+      ...options,
+      format: "date-time",
+    });
+
+  public date = (options?: TStringOptions) =>
+    t.text({
+      ...options,
+      format: "date",
+    });
+
+  public time = (options?: TStringOptions) =>
+    t.text({
+      ...options,
+      format: "time",
+    });
+
+  public duration = (options?: TStringOptions) =>
+    t.text({
+      ...options,
+      format: "duration",
+    });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

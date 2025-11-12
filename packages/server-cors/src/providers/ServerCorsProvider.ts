@@ -56,7 +56,6 @@ declare module "@alepha/core" {
 
 export class ServerCorsProvider {
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-
   protected readonly options = $use(corsOptions);
 
   protected readonly configure = $hook({

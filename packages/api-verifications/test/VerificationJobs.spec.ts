@@ -26,17 +26,17 @@ describe("VerificationJobs", () => {
 
     await db.verifications.create({
       ...entry,
-      createdAt: time.now(),
+      createdAt: time.now().toISOString(),
     });
 
     await db.verifications.create({
       ...entry,
-      createdAt: time.now().subtract(1, "days"),
+      createdAt: time.now().subtract(1, "days").toISOString(),
     });
 
     await db.verifications.create({
       ...entry,
-      createdAt: time.now().subtract(2, "days"),
+      createdAt: time.now().subtract(2, "days").toISOString(),
     });
 
     expect(await db.verifications.count()).toBe(3);

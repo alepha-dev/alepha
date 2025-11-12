@@ -18,6 +18,7 @@
 		"@alepha/bucket": "0.11.6",
 		"@alepha/cache": "0.11.6",
 		"@alepha/core": "0.11.6",
+		"@alepha/datetime": "0.11.6",
 		"@alepha/logger": "0.11.6",
 		"@alepha/postgres": "0.11.6",
 		"@alepha/queue": "0.11.6",

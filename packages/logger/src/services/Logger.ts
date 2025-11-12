@@ -160,7 +160,7 @@ export class Logger implements LoggerInterface {
       service: this.service,
       module: this.module,
       app: this.app,
-      timestamp: this.dateTimeProvider.now(),
+      timestamp: this.dateTimeProvider.nowISOString(),
     };
 
     if (this.levels[level] > this.levels[this.level]) {

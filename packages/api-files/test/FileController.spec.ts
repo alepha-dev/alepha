@@ -187,7 +187,7 @@ describe("FileController", () => {
     it("should upload file with expiration date", async () => {
       const { ctrl, dtp } = await setup();
       const file = createFile("Temporary file", { name: "temp.txt" });
-      const expirationDate = dtp.now().add(1, "hour");
+      const expirationDate = dtp.now().add(1, "hour").toISOString();
 
       const result = await ctrl.uploadFile({
         body: { file },
@@ -326,16 +326,14 @@ describe("FileController", () => {
         query: {},
       });
 
-      const newExpiration = dtp.now().add(2, "days");
+      const newExpiration = dtp.now().add(2, "days").toISOString();
 
       const updated = await ctrl.updateFile({
         params: { id: uploaded.id },
         body: { expirationDate: newExpiration },
       });
 
-      expect(updated.expirationDate?.toISOString()).toBe(
-        newExpiration.toISOString(),
-      );
+      expect(updated.expirationDate).toBe(newExpiration);
     });
 
     it("should update multiple fields at once", async () => {
@@ -347,7 +345,7 @@ describe("FileController", () => {
         query: {},
       });
 
-      const newExpiration = dtp.now().add(3, "days");
+      const newExpiration = dtp.now().add(3, "days").toISOString();
 
       const updated = await ctrl.updateFile({
         params: { id: uploaded.id },
@@ -360,9 +358,7 @@ describe("FileController", () => {
 
       expect(updated.name).toBe("updated.txt");
       expect(updated.tags).toEqual(["tag1", "tag2"]);
-      expect(updated.expirationDate?.toISOString()).toBe(
-        newExpiration.toISOString(),
-      );
+      expect(updated.expirationDate).toBe(newExpiration);
     });
 
     it("should throw error when updating non-existent file", async () => {
@@ -441,7 +437,7 @@ describe("FileController", () => {
     it("should filter by date range", async () => {
       const { service, ctrl, dtp } = await setup();
 
-      const startTime = dtp.now();
+      const startTime = dtp.nowISOString();
 
       // ensure time difference
       await new Promise((resolve) => setTimeout(resolve, 1));
@@ -458,7 +454,7 @@ describe("FileController", () => {
       expect(results.content.length).toBe(3);
 
       // Filter for files created before a future date (should get all 3)
-      const futureTime = dtp.now().add(1, "hour");
+      const futureTime = dtp.now().add(1, "hour").toISOString();
       const results2 = await ctrl.findFiles({
         query: { createdBefore: futureTime },
       });
@@ -548,7 +544,7 @@ describe("FileController", () => {
 
       await ctrl.uploadFile({
         body: { file: createFile("File 3", { name: "file3.txt" }) },
-        query: { expirationDate: dtp.now().add(1, "hour") },
+        query: { expirationDate: dtp.now().add(1, "hour").toISOString() },
       });
 
       const allFiles = await ctrl.findFiles({ query: {} });

@@ -24,7 +24,7 @@ describe("deletedAt", () => {
     const now = alepha.inject(DateTimeProvider).pause();
     return {
       repository: app.repository,
-      now,
+      now: now.toISOString(),
     };
   };
 

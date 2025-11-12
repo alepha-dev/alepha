@@ -5,7 +5,6 @@ import { $entity } from "./descriptors/$entity.ts";
 import { $repository } from "./descriptors/$repository.ts";
 import { $sequence } from "./descriptors/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
-import { DrizzleSchemaCodec } from "./providers/DrizzleSchemaCodec.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
@@ -175,7 +174,6 @@ export const AlephaPostgres = $module({
     SqliteModelBuilder,
     PostgresModelBuilder,
     DrizzleKitProvider,
-    DrizzleSchemaCodec,
     RepositoryProvider,
     Repository,
   ],
@@ -188,8 +186,6 @@ export const AlephaPostgres = $module({
 
     alepha.with(DrizzleKitProvider);
     alepha.with(RepositoryProvider);
-
-    alepha.codec.register("drizzle", alepha.inject(DrizzleSchemaCodec));
 
     const url = env.DATABASE_URL;
     const hasPGlite = !!PglitePostgresProvider.importPglite();

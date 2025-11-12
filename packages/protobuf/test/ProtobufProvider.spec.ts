@@ -46,7 +46,7 @@ message Target {
         isActive: t.boolean(),
       });
 
-      const createdAt = new Date();
+      const createdAt = new Date().toISOString();
       const data = {
         username: "John Doe",
         createdAt,
@@ -67,9 +67,7 @@ message Target {
       expect(user.age).toBe(data.age);
       expect(user.isActive).toBe(data.isActive);
       // Compare datetime as ISO strings since dayjs might be used
-      expect(user.createdAt.toISOString?.() || user.createdAt).toBe(
-        createdAt.toISOString(),
-      );
+      expect(user.createdAt).toBe(createdAt);
     });
   });
 

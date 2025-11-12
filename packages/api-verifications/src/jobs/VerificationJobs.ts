@@ -24,7 +24,7 @@ export class VerificationJobs {
 
       await this.verificationRepository.deleteMany({
         createdAt: {
-          lt: this.dateTimeProvider.of(purgeThreshold),
+          lt: this.dateTimeProvider.of(purgeThreshold).toISOString(),
         },
       });
     },

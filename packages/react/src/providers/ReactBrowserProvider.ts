@@ -262,9 +262,7 @@ export class ReactBrowserProvider {
         // low budget, but works for now
         for (const [key, value] of Object.entries(hydration)) {
           if (key !== "layers") {
-            this.alepha.state.set(key as keyof State, value, {
-              encoded: true,
-            });
+            this.alepha.state.set(key as keyof State, value);
           }
         }
       }

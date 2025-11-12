@@ -162,7 +162,7 @@ export class FileService {
     return await this.fileRepository.find({
       limit: 1000,
       where: {
-        expirationDate: { lte: this.dateTimeProvider.now() },
+        expirationDate: { lte: this.dateTimeProvider.nowISOString() },
       },
     });
   }
@@ -174,9 +174,12 @@ export class FileService {
    * @returns DateTime representation of the expiration date, or undefined if no TTL provided
    * @protected
    */
-  protected getExpirationDate(ttl?: DurationLike): DateTime | undefined {
+  protected getExpirationDate(ttl?: DurationLike): string | undefined {
     return ttl
-      ? this.dateTimeProvider.now().add(this.dateTimeProvider.duration(ttl))
+      ? this.dateTimeProvider
+          .now()
+          .add(this.dateTimeProvider.duration(ttl))
+          .toISOString()
       : undefined;
   }
 
@@ -207,9 +210,11 @@ export class FileService {
     const checksum = await this.calculateChecksum(file);
     const blobId = await bucket.upload(file, { persist: false });
 
-    let expirationDate: DateTime | undefined;
+    let expirationDate: string | undefined;
     if (options.expirationDate) {
-      expirationDate = this.dateTimeProvider.of(options.expirationDate);
+      expirationDate = this.dateTimeProvider
+        .of(options.expirationDate)
+        .toISOString();
     } else if (bucket.options.ttl) {
       expirationDate = this.getExpirationDate(bucket.options.ttl);
     }
@@ -261,7 +266,7 @@ export class FileService {
     data: {
       name?: string;
       tags?: string[];
-      expirationDate?: DateTime;
+      expirationDate?: DateTime | string;
     },
   ): Promise<FileEntity> {
     const file = await this.getFileById(id);
@@ -277,7 +282,9 @@ export class FileService {
     }
 
     if (data.expirationDate !== undefined) {
-      updateData.expirationDate = data.expirationDate;
+      updateData.expirationDate = this.dateTimeProvider
+        .of(data.expirationDate)
+        .toISOString();
     }
 
     return await this.fileRepository.updateById(file.id, updateData);

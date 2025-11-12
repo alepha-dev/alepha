@@ -154,7 +154,7 @@ export class JobDescriptor extends Descriptor<JobDescriptorOptions> {
 
           exec.status = "COMPLETED";
           exec.logs = logs;
-          exec.finishedAt = this.dateTimeProvider.now();
+          exec.finishedAt = this.dateTimeProvider.nowISOString();
 
           await this.executionRepository.save(exec);
 
@@ -181,7 +181,7 @@ export class JobDescriptor extends Descriptor<JobDescriptorOptions> {
           exec.status = "FAILED";
           exec.error = (error as Error).message;
           exec.logs = logs;
-          exec.finishedAt = this.dateTimeProvider.now();
+          exec.finishedAt = this.dateTimeProvider.nowISOString();
 
           await this.executionRepository.save(exec);
 

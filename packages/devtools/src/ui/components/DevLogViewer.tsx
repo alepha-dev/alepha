@@ -1,4 +1,5 @@
 import { type Page, t } from "@alepha/core";
+import { dayjs } from "@alepha/datetime";
 import { type LogEntry, logEntrySchema } from "@alepha/logger";
 import { useInject } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
@@ -107,7 +108,7 @@ const DevLogViewer = () => {
           }
 
           if (filters.page && filters.page > 0) {
-            const next = `timestamp < ${ctx.items[0].timestamp.toISOString()}`;
+            const next = `timestamp < ${ctx.items[0].timestamp}`;
             if (filters.search) {
               filters.search += `& ${next}`;
             } else {
@@ -154,8 +155,8 @@ const DevLogViewer = () => {
                   date: "DD MMM YYYY HH:mm:ss.SSS",
                 })}
                 onClick={() => {
-                  const before = item.timestamp.subtract(1, "minute");
-                  const after = item.timestamp.add(1, "minute");
+                  const before = dayjs(item.timestamp).subtract(1, "minute");
+                  const after = dayjs(item.timestamp).add(1, "minute");
                   form.input.search.set(
                     `timestamp >= ${before.toISOString()} & timestamp <= ${after.toISOString()}`,
                   );

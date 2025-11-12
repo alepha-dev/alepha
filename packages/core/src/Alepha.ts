@@ -900,10 +900,9 @@ export class Alepha {
         typeof value[OPTIONS] === "object" &&
         "getter" in value[OPTIONS]
       ) {
+        const getter = value[OPTIONS].getter as keyof State;
         Object.defineProperty(obj, key, {
-          get: () => {
-            return this.state.get(value[OPTIONS].getter);
-          },
+          get: () => this.state.get(getter),
         });
       }
     }
