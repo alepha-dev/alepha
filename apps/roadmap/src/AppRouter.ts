@@ -10,6 +10,11 @@ import type { InvitationApi } from "./api/InvitationApi.ts";
 import type { ProjectApi } from "./api/ProjectApi.ts";
 import type { ProjectStatsApi } from "./api/ProjectStatsApi.ts";
 import type { TaskApi } from "./api/TaskApi.ts";
+import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
+import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
+import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
+import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { AdminRouter } from "./components/admin/AdminRouter.ts";
 import { MeRouter } from "./components/auth/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.jsx";
@@ -53,7 +58,7 @@ export class AppRouter {
     resolve: async ({ user }) => {
       if (user) {
         this.alepha.state.set(
-          "user_projects",
+          userProjectsAtom,
           await this.projectApi.getMyProjects(),
         );
       }
@@ -140,18 +145,18 @@ export class AppRouter {
           },
         });
 
-      this.alepha.state.set("current_project", project);
-      this.alepha.state.set("current_project_character", character);
-      this.alepha.state.set("current_assigned_tasks", tasks);
+      this.alepha.state.set(currentProjectAtom, project);
+      this.alepha.state.set(currentProjectCharacterAtom, character);
+      this.alepha.state.set(currentAssignedTasksAtom, tasks);
 
       return {
         project,
       };
     },
     onLeave: () => {
-      this.alepha.state.set("current_project_character", null);
-      this.alepha.state.set("current_project", null);
-      this.alepha.state.set("current_assigned_tasks", []);
+      this.alepha.state.set(currentProjectCharacterAtom, undefined);
+      this.alepha.state.set(currentProjectAtom, undefined);
+      this.alepha.state.set(currentAssignedTasksAtom, []);
     },
   });
 
@@ -164,7 +169,7 @@ export class AppRouter {
     path: "/players",
     lazy: () => import("./components/project/ProjectPlayers.jsx"),
     resolve: async ({ params }) => {
-      const project = this.alepha.state.get("current_project");
+      const project = this.alepha.state.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
       }
@@ -196,7 +201,7 @@ export class AppRouter {
     resolve: async ({ params }) => {
       const stats = await this.projectStatsApi.getProjectStats({
         params: {
-          id: this.alepha.state.get("current_project")?.id ?? -1,
+          id: this.alepha.state.get(currentProjectAtom)?.id ?? -1,
         },
       });
       return {
@@ -252,11 +257,11 @@ export class AppRouter {
           id: params.taskId,
         },
       });
-      this.alepha.state.set("current_task", task);
+      this.alepha.state.set(currentTaskAtom, task);
       return { task };
     },
     onLeave: () => {
-      this.alepha.state.set("current_task", null);
+      this.alepha.state.set(currentTaskAtom, undefined);
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {

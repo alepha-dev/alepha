@@ -200,7 +200,7 @@ export class EntityDescriptor<T extends TObject = TObject> {
     return this.options.name;
   }
 
-  get schema() {
+  get schema(): T {
     return this.options.schema;
   }
 

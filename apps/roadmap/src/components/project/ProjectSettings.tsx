@@ -14,6 +14,8 @@ import { modals } from "@mantine/modals";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.jsx";
@@ -24,7 +26,7 @@ const ProjectSettings = () => {
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectApi>();
   const router = useRouter<AppRouter>();
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
 
   if (!project) {
     return null;
@@ -90,8 +92,8 @@ const ProjectSettings = () => {
                     })
                     .then(() => {
                       alepha.state.set(
-                        "user_projects",
-                        (alepha.state.get("user_projects") ?? []).filter(
+                        userProjectsAtom,
+                        (alepha.state.get(userProjectsAtom) ?? []).filter(
                           (p) => p.id !== project.id,
                         ),
                       );

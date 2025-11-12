@@ -8,11 +8,11 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import type { AppRouter } from "../../../AppRouter.ts";
-import type { Task } from "../../../providers/Db.ts";
+import type { Task } from "../../../entities/tasks.ts";
 import Action from "../../ui/Action.jsx";
 import TaskComplexity from "./TaskComplexity.jsx";
 
-const TaskItem = (props: { task: Task }) => {
+const TaskItem = (props: { task: Task; index: number }) => {
   const { task } = props;
 
   const router = useRouter<AppRouter>();
@@ -22,6 +22,9 @@ const TaskItem = (props: { task: Task }) => {
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
+      attributes: {
+        tabIndex: task.id,
+      },
       id: `task-${task.id}`,
       data: {
         type: "task",

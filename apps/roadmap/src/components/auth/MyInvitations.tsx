@@ -16,6 +16,7 @@ import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import type { InvitationApi } from "../../api/InvitationApi.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 
 export interface MyInvitationsProps {
   invitations: Array<{
@@ -48,7 +49,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
       });
 
       setInvitations(await invitationApi.getMyInvitations());
-      alepha.state.set("user_projects", await projectApi.getMyProjects());
+      alepha.state.set(userProjectsAtom, await projectApi.getMyProjects());
 
       notifications.show({
         title: "Invitation Accepted",

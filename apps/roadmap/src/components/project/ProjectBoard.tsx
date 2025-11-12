@@ -26,15 +26,17 @@ import { useEffect, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
 import type { TaskApi } from "../../api/TaskApi.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
-import type { Task, User } from "../../providers/Db.ts";
+import type { Task } from "../../entities/tasks.ts";
+import type { User } from "../../entities/users.ts";
 import Action from "../ui/Action.jsx";
 import TaskComplexity from "./task/TaskComplexity.jsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
 
 const ProjectBoard = () => {
-  const [project] = useStore("current_project");
+  const [project] = useStore(currentProjectAtom);
   const taskApi = useClient<TaskApi>();
   const projectApi = useClient<ProjectApi>();
   const [status, setStatus] = useState<TaskStatus>("new");

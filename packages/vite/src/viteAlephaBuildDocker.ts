@@ -40,7 +40,7 @@ export async function viteAlephaBuildDocker(
     name: "alepha-vercel",
     apply: "build",
     async writeBundle() {
-      const dockerfile = `# ⚠️ This file was automatically generated. DO NOT MODIFY.
+      const dockerfile = `# This file was automatically generated. DO NOT MODIFY.
 # Changes to this file will be lost when the code is regenerated.
 FROM ${image}
 WORKDIR /app

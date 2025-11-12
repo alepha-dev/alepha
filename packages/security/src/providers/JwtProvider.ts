@@ -38,7 +38,7 @@ export class JwtProvider {
   public setKeyLoader(name: string, secretKeyOrJwks: string | JSONWebKeySet) {
     if (typeof secretKeyOrJwks === "object") {
       this.log.info(
-        `will verify JWTs from '${name}' with JWKS object (x${secretKeyOrJwks.keys.length})`,
+        `will verify JWTs from key '${name}' with JWKS object (x${secretKeyOrJwks.keys.length})`,
       );
       this.keystore.push({
         name,

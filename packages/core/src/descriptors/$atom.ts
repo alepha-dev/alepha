@@ -1,6 +1,10 @@
-import type { TOptionalAdd } from "typebox";
+import type { TArray } from "typebox";
 import { KIND } from "../constants/KIND.ts";
-import type { Static, TObject } from "../providers/TypeProvider.ts";
+import type {
+  Static,
+  TObject,
+  TOptionalAdd,
+} from "../providers/TypeProvider.ts";
 
 /**
  * Define an atom for state management.
@@ -34,15 +38,19 @@ import type { Static, TObject } from "../providers/TypeProvider.ts";
  * Avoid storing complex objects like class instances, functions, or DOM elements.
  * If you need to store complex data, consider using identifiers or references instead.
  */
-export const $atom = <T extends TObject, N extends string>(
+export const $atom = <
+  T extends TObject<TProperties> | TArray,
+  N extends string,
+>(
   options: AtomOptions<T, N>,
 ): Atom<T, N> => {
   return new Atom<T, N>(options);
 };
 
-export type AtomOptions<T extends TObject, N extends string> = {
+export type AtomOptions<T extends TAtomObject, N extends string> = {
   name: N;
   schema: T;
+  description?: string;
 } & (T extends TOptionalAdd<T>
   ? {
       default?: Static<T>;
@@ -51,7 +59,7 @@ export type AtomOptions<T extends TObject, N extends string> = {
       default: Static<T>;
     });
 
-export class Atom<T extends TObject = TObject, N extends string = string> {
+export class Atom<T extends TAtomObject = TObject, N extends string = string> {
   public readonly options: AtomOptions<T, N>;
 
   public get schema(): T {
@@ -68,3 +76,10 @@ export class Atom<T extends TObject = TObject, N extends string = string> {
 }
 
 $atom[KIND] = "atom";
+
+type TProperties = any; // it's required to avoid required [ string ] error, ...
+
+export type TAtomObject = TObject<any> | TArray;
+export type AtomStatic<T extends TAtomObject> = T extends TOptionalAdd<T>
+  ? Static<T> | undefined
+  : Static<T>;

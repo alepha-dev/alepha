@@ -1,7 +1,8 @@
+import { sessions } from "@alepha/api-users";
 import { $inject, type Static, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $action, $route } from "@alepha/server";
-import { Db, sessions } from "../providers/Db.ts";
+import { Db } from "../providers/Db.ts";
 
 export const userSession = t.interface([sessions.schema], {
   current: t.boolean(),

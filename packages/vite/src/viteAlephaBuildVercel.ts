@@ -39,7 +39,7 @@ export async function viteAlephaBuildVercel(
   const { loadEnv } = await importVite();
 
   const warning =
-    "// ⚠️ This file was automatically generated. DO NOT MODIFY." +
+    "// This file was automatically generated. DO NOT MODIFY." +
     "\n" +
     "// Changes to this file will be lost when the code is regenerated.\n";
 
@@ -59,7 +59,6 @@ export async function viteAlephaBuildVercel(
         `${distDir}/api/index.js`,
         `${warning}\nimport "../index.js";
 
-// This file is the entry point for Vercel serverless functions.
 export default async function (req, res) {
 \tawait __alepha.start();
 \t__alepha.events.emit("node:request", { req, res });

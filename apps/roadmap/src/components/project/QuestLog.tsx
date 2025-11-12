@@ -11,12 +11,13 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
+import { currentAssignedTasksAtom } from "../../atoms/currentAssignedTasksAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import TaskList from "./task/TaskList.jsx";
 
 const QuestLog = () => {
-  const [tasks = []] = useStore("current_assigned_tasks");
+  const [tasks = []] = useStore(currentAssignedTasksAtom);
   const { tr } = useI18n<I18n, "en">();
   const [searchValue, setSearchValue] = useState<string>("");
 

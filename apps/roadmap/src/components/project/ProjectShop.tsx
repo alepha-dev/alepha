@@ -18,6 +18,7 @@ import {
   IconSword,
   IconWand,
 } from "@tabler/icons-react";
+import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 
 interface ShopItem {
   id: string;
@@ -34,7 +35,7 @@ interface ShopItem {
 }
 
 const ProjectShop = () => {
-  const [character] = useStore("current_project_character");
+  const [character] = useStore(currentProjectCharacterAtom);
 
   // Fantasy-oriented items for task management
   const shopItems: ShopItem[] = [

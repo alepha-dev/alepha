@@ -23,6 +23,7 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { ProjectStatsApi } from "../../api/ProjectStatsApi.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import Action from "../ui/Action.jsx";
 
 export interface ProjectStatsProps {
@@ -64,7 +65,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
   const { stats } = props;
   const alepha = useAlepha();
   const projectStatsApi = useClient<ProjectStatsApi>();
-  const currentProject = alepha.state.get("current_project");
+  const currentProject = alepha.state.get(currentProjectAtom);
   const [timelineRange, setTimelineRange] = useState<string>("14days");
 
   const handleExportCsv = async () => {

@@ -1,4 +1,5 @@
 import { $hook, $inject, Alepha } from "@alepha/core";
+import { $logger } from "@alepha/logger";
 import { HttpError, type ServerRequest } from "@alepha/server";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -19,6 +20,7 @@ export interface BasicAuthDescriptorConfig extends BasicAuthOptions {
 
 export class ServerBasicAuthProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected readonly realm = "Secure Area";
 
   /**
@@ -32,6 +34,17 @@ export class ServerBasicAuthProvider {
   public registerAuth(config: BasicAuthDescriptorConfig): void {
     this.registeredAuths.push(config);
   }
+
+  public readonly onStart = $hook({
+    on: "start",
+    handler: async () => {
+      if (this.registeredAuths.length > 0) {
+        this.log.info(
+          `Initialized with ${this.registeredAuths.length} registered basic-auth configurations.`,
+        );
+      }
+    },
+  });
 
   /**
    * Hook into server:onRequest to check basic auth

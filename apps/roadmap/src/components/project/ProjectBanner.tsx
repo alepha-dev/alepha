@@ -3,13 +3,15 @@ import { useI18n } from "@alepha/react-i18n";
 import { Card, Flex, Stack, Text } from "@mantine/core";
 import { IconCircleFilled, IconMoneybag } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 import Action from "../ui/Action.jsx";
 
 const ProjectBanner = () => {
-  const [character] = useStore("current_project_character");
-  const [project] = useStore("current_project");
+  const [character] = useStore(currentProjectCharacterAtom);
+  const [project] = useStore(currentProjectAtom);
   const helper = useInject(CharacterInfo);
   const router = useRouter<AppRouter>();
   const i18n = useI18n();

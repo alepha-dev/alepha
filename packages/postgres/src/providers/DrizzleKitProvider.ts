@@ -47,7 +47,9 @@ export class DrizzleKitProvider {
       await this.saveDevMigrations(provider, snapshot, entry);
     }
 
-    this.log.info(`Synchronize '${provider.name}' in ${Date.now() - now}ms`);
+    this.log.info(
+      `Synchronization of DB '${provider.name}' OK [${Date.now() - now}ms]`,
+    );
   }
 
   /**

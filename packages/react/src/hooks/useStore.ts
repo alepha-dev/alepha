@@ -1,23 +1,28 @@
-import type { State } from "@alepha/core";
+import type { Atom, State, Static, TAtomObject } from "@alepha/core";
 import { useEffect, useMemo, useState } from "react";
 import { useAlepha } from "./useAlepha.ts";
 
 /**
  * Hook to access and mutate the Alepha state.
  */
-export const useStore = <Key extends keyof State>(
-  key: Key,
+function useStore<T extends TAtomObject>(
+  target: Atom<T>,
+  defaultValue?: Static<T>,
+): UseStoreReturn<Static<T>>;
+function useStore<Key extends keyof State>(
+  target: Key,
   defaultValue?: State[Key],
-): [State[Key], (value: State[Key]) => void] => {
+): UseStoreReturn<State[Key]>;
+function useStore(target: any, defaultValue?: any): any {
   const alepha = useAlepha();
 
   useMemo(() => {
-    if (defaultValue != null && alepha.state.get(key) == null) {
-      alepha.state.set(key, defaultValue);
+    if (defaultValue != null && alepha.state.get(target) == null) {
+      alepha.state.set(target, defaultValue);
     }
   }, [defaultValue]);
 
-  const [state, setState] = useState(alepha.state.get(key));
+  const [state, setState] = useState(alepha.state.get(target));
 
   useEffect(() => {
     if (!alepha.isBrowser()) {
@@ -25,7 +30,7 @@ export const useStore = <Key extends keyof State>(
     }
 
     return alepha.events.on("state:mutate", (ev) => {
-      if (ev.key === key) {
+      if (ev.key === target) {
         setState(ev.value);
       }
     });
@@ -33,8 +38,12 @@ export const useStore = <Key extends keyof State>(
 
   return [
     state,
-    (value: State[Key]) => {
-      alepha.state.set(key, value);
+    (value: any) => {
+      alepha.state.set(target, value);
     },
   ] as const;
-};
+}
+
+export type UseStoreReturn<T> = [T, (value: T) => void];
+
+export { useStore };

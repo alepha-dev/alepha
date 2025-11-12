@@ -2,13 +2,14 @@ import { useInject, useStore } from "@alepha/react";
 import { useAuth } from "@alepha/react-auth";
 import { Card, Flex, HoverCard, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
+import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import { CharacterInfo } from "../../services/CharacterInfo.ts";
 import LevelUpAnimation from "./LevelUpAnimation.jsx";
 
 const ExperienceBar = () => {
   const auth = useAuth();
-  const [character] = useStore("current_project_character");
+  const [character] = useStore(currentProjectCharacterAtom);
   const info = useInject(CharacterInfo);
 
   if (!auth.user || !character) {

@@ -1,8 +1,10 @@
+import { users } from "@alepha/api-users";
 import { $inject } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { pageQuerySchema, pageSchema } from "@alepha/postgres";
 import { $action } from "@alepha/server";
-import { Db, projects, users } from "../providers/Db.ts";
+import { projects } from "../entities/projects.ts";
+import { Db } from "../providers/Db.ts";
 
 export class AdminApi {
   log = $logger();

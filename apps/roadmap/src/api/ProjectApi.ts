@@ -1,16 +1,13 @@
+import { users } from "@alepha/api-users";
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { pageQuerySchema } from "@alepha/postgres";
 import { $action, ForbiddenError, okSchema } from "@alepha/server";
-import {
-  type Character,
-  characters,
-  Db,
-  projects,
-  tasks,
-  type User,
-  users,
-} from "../providers/Db.ts";
+import { type Character, characters } from "../entities/characters.ts";
+import { projects } from "../entities/projects.ts";
+import { tasks } from "../entities/tasks.ts";
+import type { User } from "../entities/users.ts";
+import { Db } from "../providers/Db.ts";
 import { Security } from "../providers/Security.ts";
 
 export class ProjectApi {

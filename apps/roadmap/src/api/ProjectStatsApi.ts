@@ -2,7 +2,8 @@ import { $inject, t } from "@alepha/core";
 import { createFile } from "@alepha/file";
 import { sql } from "@alepha/postgres";
 import { $action } from "@alepha/server";
-import { Db, tasks } from "../providers/Db.ts";
+import { tasks } from "../entities/tasks.ts";
+import { Db } from "../providers/Db.ts";
 import { Security } from "../providers/Security";
 
 export class ProjectStatsApi {

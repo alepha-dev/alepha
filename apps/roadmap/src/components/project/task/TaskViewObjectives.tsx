@@ -3,8 +3,9 @@ import { useI18n } from "@alepha/react-i18n";
 import { Checkbox, Flex, Stack, Text } from "@mantine/core";
 import { IconListCheck } from "@tabler/icons-react";
 import type { TaskApi } from "../../../api/TaskApi.ts";
+import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { theme } from "../../../constants/theme.ts";
-import type { Task } from "../../../providers/Db.ts";
+import type { Task } from "../../../entities/tasks.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 interface TaskViewObjectivesProps {
@@ -19,7 +20,7 @@ const TaskViewObjectives = ({
   const { tr } = useI18n<I18n, "en">();
   const taskApi = useClient<TaskApi>();
   const [assignedTasks, setCurrentAssignedTasks] = useStore(
-    "current_assigned_tasks",
+    currentAssignedTasksAtom,
   );
 
   const handleObjectiveToggle = async (index: number) => {

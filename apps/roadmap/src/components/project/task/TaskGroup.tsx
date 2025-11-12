@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { ActionIcon, Button, Flex, Stack, Text } from "@mantine/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
-import type { Task } from "../../../providers/Db.ts";
+import type { Task } from "../../../entities/tasks.ts";
 import { openRenameZoneModal } from "./RenameZoneModal.jsx";
 import TaskItem from "./TaskItem.jsx";
 
@@ -78,8 +78,8 @@ const TaskGroup = (props: TaskGroupProps) => {
       </Flex>
       {isCollapsed && (
         <Stack gap={0}>
-          {tasks.map((item) => (
-            <TaskItem key={item.id} task={item} />
+          {tasks.map((item, index) => (
+            <TaskItem key={item.id} task={item} index={index} />
           ))}
         </Stack>
       )}

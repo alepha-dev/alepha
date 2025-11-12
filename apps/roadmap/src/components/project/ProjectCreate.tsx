@@ -8,6 +8,7 @@ import { IconHammer, IconTag } from "@tabler/icons-react";
 import { useMemo } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { Toaster } from "../../services/Toaster.ts";
@@ -64,8 +65,8 @@ const ProjectCreate = () => {
         params: { projectId: String(project.id) },
       });
 
-      alepha.state.set("user_projects", [
-        ...(alepha.state.get("user_projects") || []),
+      alepha.state.set(userProjectsAtom, [
+        ...(alepha.state.get(userProjectsAtom) || []),
         project,
       ]);
     },

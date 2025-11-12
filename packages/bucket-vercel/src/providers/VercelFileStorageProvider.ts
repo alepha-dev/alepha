@@ -60,7 +60,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
         // We just track the store names for reference
         this.stores.add(storeName);
 
-        this.log.info(`Store '${bucket.name}' OK`);
+        this.log.info(`Blob storage '${bucket.name}' OK`);
       }
     },
   });

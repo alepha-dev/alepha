@@ -10,6 +10,7 @@ import {
 } from "@alepha/logger";
 import { parseQueryString } from "@alepha/postgres";
 import { $route, ServerProvider } from "@alepha/server";
+import { $basicAuth } from "@alepha/server-basic-auth";
 import { $serve } from "@alepha/server-static";
 import { type DevLogEntry, logs } from "./entities/logs.ts";
 import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
@@ -23,6 +24,12 @@ export class DevToolsProvider {
   protected readonly jsonFormatter = $inject(JsonFormatterProvider);
   protected readonly logs = $inject(LogRepository);
   protected readonly devCollectorProvider = $inject(DevToolsMetadataProvider);
+
+  guard = $basicAuth({
+    username: "devtools",
+    password: "password",
+    paths: ["/devtools/*"],
+  });
 
   protected readonly onStart = $hook({
     on: "start",

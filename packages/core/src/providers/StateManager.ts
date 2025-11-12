@@ -1,6 +1,10 @@
 import type { TObject } from "typebox";
 import type { State as AlephaState } from "../Alepha.ts";
-import { Atom } from "../descriptors/$atom.ts";
+import {
+  Atom,
+  type AtomStatic,
+  type TAtomObject,
+} from "../descriptors/$atom.ts";
 import { $inject } from "../descriptors/$inject.ts";
 import { AlsProvider } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
@@ -58,34 +62,56 @@ export class StateManager<State extends object = AlephaState> {
   /**
    * Get a value from the state with proper typing
    */
-  public get<T extends TObject>(target: Atom<T>): Static<T>;
+  public get<T extends TAtomObject>(target: Atom<T>): Static<T>;
   public get<Key extends keyof State>(target: Key): State[Key] | undefined;
   public get(target: string | object): any {
     if (target instanceof Atom) {
       this.register(target);
     }
 
+    if (typeof target === "string") {
+      const atom = this.atoms.get(target as keyof State);
+      if (atom) {
+        target = atom;
+      }
+    }
+
     const key = target instanceof Atom ? target.key : target;
     const store = this.store as Record<string, any>;
 
-    if (this.als?.exists()) {
-      return this.als.get(key as string) ?? store[key];
+    const value = this.als?.exists() ? this.als.get(key as string) : store[key];
+
+    if (target instanceof Atom && value != null) {
+      return this.codec.decode(target.schema, value);
     }
 
-    return store[key];
+    return value;
   }
 
   /**
    * Set a value in the state
    */
-  public set<T extends TObject>(target: Atom<T>, value: Static<T>): this;
+  public set<T extends TAtomObject>(
+    target: Atom<T>,
+    value: AtomStatic<T>,
+    options?: StateSetOptions,
+  ): this;
   public set<Key extends keyof State>(
     target: Key,
     value: State[Key] | undefined,
+    options?: StateSetOptions,
   ): this;
-  public set(target: any, value: any): this {
+  public set(target: any, value: any, options: StateSetOptions = {}): this {
     if (target instanceof Atom) {
       this.register(target);
+    }
+
+    // resolve string keys to atoms if registered
+    if (typeof target === "string") {
+      const atom = this.atoms.get(target as keyof State);
+      if (atom) {
+        target = atom;
+      }
     }
 
     const key = target instanceof Atom ? target.key : target;
@@ -97,7 +123,10 @@ export class StateManager<State extends object = AlephaState> {
     }
 
     if (target instanceof Atom) {
-      this.codec.encode(target.schema, value);
+      if (options.encoded) {
+        value = this.codec.decode(target.schema, value);
+      }
+      value = this.codec.encode(target.schema, value);
     }
 
     if (this.als?.exists()) {
@@ -181,3 +210,10 @@ export class StateManager<State extends object = AlephaState> {
 type OnlyArray<T extends object> = {
   [K in keyof T]: NonNullable<T[K]> extends Array<any> ? K : never;
 };
+
+export interface StateSetOptions {
+  /**
+   * Indicates whether the value is already encoded.
+   */
+  encoded?: boolean;
+}
