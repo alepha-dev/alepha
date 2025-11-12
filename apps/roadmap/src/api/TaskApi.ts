@@ -19,7 +19,7 @@ export class TaskApi {
   createTask = $action({
     schema: {
       body: taskCreateSchema,
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ body, user }) => {
       const { project } = await this.security.checkOwnership(
@@ -54,39 +54,26 @@ export class TaskApi {
         status: t.optional(t.enum(["new", "accepted", "completed"])),
         search: t.optional(t.string()),
       }),
-      response: pg.page(tasks.$schema),
+      response: pg.page(tasks.schema),
     },
     handler: async ({ params, query, user }) => {
       await this.security.checkOwnership(params.projectId, user);
 
-      let where = this.db.tasks.createQueryWhere({
-        projectId: { eq: params.projectId },
-      });
+      const where = this.db.tasks.createQueryWhere();
+      where.projectId = { eq: params.projectId };
 
       if (query.search) {
-        where = {
-          ...where,
-          title: { ilike: `%${query.search}%` },
-        };
+        where.title = { ilike: `%${query.search}%` };
       }
 
       if (query.status === "new") {
-        where = {
-          ...where,
-          acceptedAt: { isNull: true },
-          completedAt: { isNull: true },
-        };
+        where.acceptedAt = { isNull: true };
+        where.completedAt = { isNull: true };
       } else if (query.status === "accepted") {
-        where = {
-          ...where,
-          acceptedAt: { isNotNull: true },
-          completedAt: { isNull: true },
-        };
+        where.acceptedAt = { isNotNull: true };
+        where.completedAt = { isNull: true };
       } else if (query.status === "completed") {
-        where = {
-          ...where,
-          completedAt: { isNotNull: true },
-        };
+        where.completedAt = { isNotNull: true };
         query.sort ??= "-completedAt";
       }
 
@@ -103,13 +90,15 @@ export class TaskApi {
       params: t.object({
         id: t.int(),
       }),
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ params, user }) => {
       const task = await this.db.tasks.findOne({
-        id: { eq: params.id },
-        acceptedAt: { isNotNull: true },
-        completedAt: { isNull: true },
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
       });
 
       await this.security.checkOwnership(task.projectId, user);
@@ -117,12 +106,13 @@ export class TaskApi {
       task.acceptedAt = undefined;
       task.acceptedBy = undefined;
       task.history.push({
-        at: this.dt.nowISOString(),
+        at: this.dt.now(),
         by: user.id,
         action: "unassigned",
       });
 
-      return await this.db.tasks.save(task);
+      await this.db.tasks.save(task);
+      return task;
     },
   });
 
@@ -131,26 +121,29 @@ export class TaskApi {
       params: t.object({
         id: t.int(),
       }),
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ params, user }) => {
       const task = await this.db.tasks.findOne({
-        id: { eq: params.id },
-        acceptedAt: { isNull: true },
-        completedAt: { isNull: true },
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+        },
       });
 
       await this.security.checkOwnership(task.projectId, user);
 
-      task.acceptedAt = this.dt.nowISOString();
+      task.acceptedAt = this.dt.now();
       task.acceptedBy = user.id;
       task.history.push({
-        at: this.dt.nowISOString(),
+        at: this.dt.now(),
         by: user.id,
         action: "assigned",
       });
 
-      return await this.db.tasks.save(task);
+      await this.db.tasks.save(task);
+      return task;
     },
   });
 
@@ -159,17 +152,19 @@ export class TaskApi {
       params: t.object({
         id: t.int(),
       }),
-      response: t.interface([tasks.$schema], {
-        character: characters.$schema,
+      response: t.interface([tasks.schema], {
+        character: characters.schema,
       }),
     },
     handler: async ({ params, user }) => {
       return this.db.tasks.transaction(async (tx) => {
         const task = await this.db.tasks.findOne(
           {
-            id: { eq: params.id },
-            completedAt: { isNull: true },
-            acceptedAt: { isNotNull: true },
+            where: {
+              id: { eq: params.id },
+              completedAt: { isNull: true },
+              acceptedAt: { isNotNull: true },
+            },
           },
           { tx },
         );
@@ -190,8 +185,10 @@ export class TaskApi {
 
         const character = await this.db.characters.findOne(
           {
-            projectId: { eq: task.projectId },
-            userId: { eq: user.id },
+            where: {
+              projectId: { eq: task.projectId },
+              userId: { eq: user.id },
+            },
           },
           { tx },
         );
@@ -201,7 +198,7 @@ export class TaskApi {
 
         character.xp += xp;
         character.balance += money;
-        task.completedAt = this.dt.nowISOString();
+        task.completedAt = this.dt.now();
         task.completedBy = user.id;
 
         await Promise.all([
@@ -222,11 +219,13 @@ export class TaskApi {
       params: t.object({
         id: t.int(),
       }),
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ params, user }) => {
       const task = await this.db.tasks.findOne({
-        id: { eq: params.id },
+        where: {
+          id: { eq: params.id },
+        },
       });
 
       await this.security.checkOwnership(task.projectId, user);
@@ -241,7 +240,7 @@ export class TaskApi {
         id: t.int(),
       }),
       body: t.partial(
-        t.pick(tasks.$schema, [
+        t.pick(tasks.schema, [
           "title",
           "description",
           "package",
@@ -250,12 +249,14 @@ export class TaskApi {
           "objectives",
         ]),
       ),
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.db.tasks.findOne({
-        id: { eq: params.id },
-        completedAt: { isNull: true },
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
       });
 
       await this.security.checkOwnership(task.projectId, user);
@@ -272,7 +273,7 @@ export class TaskApi {
         history: [
           ...task.history,
           {
-            at: this.dt.nowISOString(),
+            at: this.dt.now(),
             by: user.id,
             action: "updated",
           },
@@ -289,13 +290,15 @@ export class TaskApi {
       body: t.object({
         index: t.int(),
       }),
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ params, user, body }) => {
       const task = await this.db.tasks.findOne({
-        id: { eq: params.id },
-        completedAt: { isNull: true },
-        acceptedAt: { isNotNull: true },
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+          acceptedAt: { isNotNull: true },
+        },
       });
 
       await this.security.checkOwnership(task.projectId, user);
@@ -314,7 +317,7 @@ export class TaskApi {
           ? [
               ...task.history,
               {
-                at: this.dt.nowISOString(),
+                at: this.dt.now(),
                 by: user.id,
                 action: "objective_completed",
               },
@@ -337,12 +340,14 @@ export class TaskApi {
           }),
         ),
       }),
-      response: tasks.$schema,
+      response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.db.tasks.findOne({
-        id: { eq: params.id },
-        completedAt: { isNull: true },
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
       });
 
       await this.security.checkOwnership(task.projectId, user);
@@ -354,7 +359,7 @@ export class TaskApi {
         history: [
           ...task.history,
           {
-            at: this.dt.nowISOString(),
+            at: this.dt.now(),
             by: user.id,
             action: "updated",
           },

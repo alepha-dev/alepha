@@ -368,7 +368,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/file@npm:0.11.6, @alepha/file@workspace:packages/file":
+"@alepha/file@npm:0.11.6, @alepha/file@npm:^0.11.6, @alepha/file@workspace:packages/file":
   version: 0.0.0-use.local
   resolution: "@alepha/file@workspace:packages/file"
   dependencies:
@@ -497,7 +497,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-auth@npm:0.11.6, @alepha/react-auth@workspace:packages/react-auth":
+"@alepha/react-auth@npm:0.11.6, @alepha/react-auth@npm:^0.11.6, @alepha/react-auth@workspace:packages/react-auth":
   version: 0.0.0-use.local
   resolution: "@alepha/react-auth@workspace:packages/react-auth"
   dependencies:
@@ -523,7 +523,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-form@npm:0.11.6, @alepha/react-form@workspace:packages/react-form":
+"@alepha/react-form@npm:0.11.6, @alepha/react-form@npm:^0.11.6, @alepha/react-form@workspace:packages/react-form":
   version: 0.0.0-use.local
   resolution: "@alepha/react-form@workspace:packages/react-form"
   dependencies:
@@ -544,7 +544,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-head@npm:0.11.6, @alepha/react-head@workspace:packages/react-head":
+"@alepha/react-head@npm:0.11.6, @alepha/react-head@npm:^0.11.6, @alepha/react-head@workspace:packages/react-head":
   version: 0.0.0-use.local
   resolution: "@alepha/react-head@workspace:packages/react-head"
   dependencies:
@@ -564,7 +564,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-i18n@npm:0.11.6, @alepha/react-i18n@workspace:packages/react-i18n":
+"@alepha/react-i18n@npm:0.11.6, @alepha/react-i18n@npm:^0.11.6, @alepha/react-i18n@workspace:packages/react-i18n":
   version: 0.0.0-use.local
   resolution: "@alepha/react-i18n@workspace:packages/react-i18n"
   dependencies:
@@ -650,10 +650,22 @@ __metadata:
     "@alepha/bucket-vercel": "npm:^0.11.6"
     "@alepha/cli": "npm:^0.11.6"
     "@alepha/core": "npm:^0.11.6"
+    "@alepha/datetime": "npm:^0.11.6"
+    "@alepha/file": "npm:^0.11.6"
     "@alepha/logger": "npm:^0.11.6"
     "@alepha/postgres": "npm:^0.11.6"
     "@alepha/react": "npm:^0.11.6"
+    "@alepha/react-auth": "npm:^0.11.6"
+    "@alepha/react-form": "npm:^0.11.6"
+    "@alepha/react-head": "npm:^0.11.6"
+    "@alepha/react-i18n": "npm:^0.11.6"
+    "@alepha/security": "npm:^0.11.6"
     "@alepha/server": "npm:^0.11.6"
+    "@alepha/server-compress": "npm:^0.11.6"
+    "@alepha/server-helmet": "npm:^0.11.6"
+    "@alepha/server-links": "npm:^0.11.6"
+    "@alepha/server-multipart": "npm:^0.11.6"
+    "@alepha/server-security": "npm:^0.11.6"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -663,7 +675,6 @@ __metadata:
     "@mantine/modals": "npm:^8.3.7"
     "@mantine/notifications": "npm:^8.3.7"
     "@mantine/nprogress": "npm:^8.3.7"
-    "@mantine/spotlight": "npm:^8.3.7"
     "@mantine/tiptap": "npm:^8.3.7"
     "@tabler/icons-react": "npm:^3.35.0"
     "@tiptap/core": "npm:^3.10.5"
@@ -717,7 +728,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/security@npm:0.11.6, @alepha/security@workspace:packages/security":
+"@alepha/security@npm:0.11.6, @alepha/security@npm:^0.11.6, @alepha/security@workspace:packages/security":
   version: 0.0.0-use.local
   resolution: "@alepha/security@workspace:packages/security"
   dependencies:
@@ -761,7 +772,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-compress@npm:0.11.6, @alepha/server-compress@workspace:packages/server-compress":
+"@alepha/server-compress@npm:0.11.6, @alepha/server-compress@npm:^0.11.6, @alepha/server-compress@workspace:packages/server-compress":
   version: 0.0.0-use.local
   resolution: "@alepha/server-compress@workspace:packages/server-compress"
   dependencies:
@@ -817,7 +828,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-helmet@npm:0.11.6, @alepha/server-helmet@workspace:packages/server-helmet":
+"@alepha/server-helmet@npm:0.11.6, @alepha/server-helmet@npm:^0.11.6, @alepha/server-helmet@workspace:packages/server-helmet":
   version: 0.0.0-use.local
   resolution: "@alepha/server-helmet@workspace:packages/server-helmet"
   dependencies:
@@ -830,7 +841,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-links@npm:0.11.6, @alepha/server-links@workspace:packages/server-links":
+"@alepha/server-links@npm:0.11.6, @alepha/server-links@npm:^0.11.6, @alepha/server-links@workspace:packages/server-links":
   version: 0.0.0-use.local
   resolution: "@alepha/server-links@workspace:packages/server-links"
   dependencies:
@@ -862,7 +873,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-multipart@npm:0.11.6, @alepha/server-multipart@workspace:packages/server-multipart":
+"@alepha/server-multipart@npm:0.11.6, @alepha/server-multipart@npm:^0.11.6, @alepha/server-multipart@workspace:packages/server-multipart":
   version: 0.0.0-use.local
   resolution: "@alepha/server-multipart@workspace:packages/server-multipart"
   dependencies:
@@ -904,7 +915,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-security@npm:0.11.6, @alepha/server-security@workspace:packages/server-security":
+"@alepha/server-security@npm:0.11.6, @alepha/server-security@npm:^0.11.6, @alepha/server-security@workspace:packages/server-security":
   version: 0.0.0-use.local
   resolution: "@alepha/server-security@workspace:packages/server-security"
   dependencies:

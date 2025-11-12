@@ -44,6 +44,8 @@ export class I18n {
         "task.create.package.helper": "Where the quest takes place",
         "task.create.title": "Name",
         "task.create.title.helper": "Short and descriptive name",
+        "task.create.objectives": "Objectives",
+        "task.create.objectives.helper": "List of objectives for this quest",
 
         "priority.high": "High",
         "priority.medium": "Normal",
@@ -129,6 +131,8 @@ export class I18n {
         "task.create.package.helper": "Royaume ou lieu où se déroule la quête",
         "task.create.title": "Nom",
         "task.create.title.helper": "Un nom court et héroïque",
+        "task.create.objectives": "Objectifs",
+        "task.create.objectives.helper": "Liste des objectifs pour cette quête",
 
         "priority.high": "Urgente",
         "priority.medium": "Normal",

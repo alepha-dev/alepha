@@ -42,7 +42,8 @@ const ProjectBoard = () => {
   const dateFormatter = useInject(DateTimeProvider);
   const [loading, setLoading] = useState(false);
   const router = useRouter<AppRouter>();
-  const next = result?.can.next ? result.page.number + 1 : undefined;
+  const next =
+    result && !result.page.isLast ? result.page.number + 1 : undefined;
   const tasks = result?.content || [];
   const [sortValue, setSortValue] = useState<string | undefined>(undefined);
   const [searchValue, setSearchValue] = useState<string>("");

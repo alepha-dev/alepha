@@ -43,7 +43,7 @@ const getServerEntry = async (
   }
 
   const maybeEntry = [
-    "src/main.server.ts",
+    "src/index.server.ts",
     "src/main.server.ts",
     "src/server-entry.ts",
     "src/index.server.tsx",

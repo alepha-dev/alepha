@@ -87,7 +87,7 @@ const TaskCreate = (props: TaskCreateProps) => {
   });
 
   return (
-    <form onSubmit={form.onSubmit} noValidate>
+    <form {...form.props}>
       <Stack>
         <SimpleGrid
           cols={{
@@ -187,10 +187,8 @@ const TaskCreate = (props: TaskCreateProps) => {
         </SimpleGrid>
 
         <Control
-          title={tr("task.create.objectives", { default: "Objectives" })}
-          description={tr("task.create.objectives.helper", {
-            default: "Define specific goals or requirements for this task",
-          })}
+          title={tr("task.create.objectives")}
+          description={tr("task.create.objectives.helper")}
           custom={TaskCreateObjectives}
           input={form.input.objectives}
           icon={<IconListCheck />}

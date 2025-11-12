@@ -25,6 +25,9 @@ export type DurationLike =
   | [number, ManipulateType];
 
 export const dayjs = DayjsApi;
+export const isDateTime = (value: unknown): value is DateTime => {
+  return dayjs.isDayjs(value);
+};
 
 export class DateTimeProvider {
   public static PLUGINS: Array<PluginFunc<any>> = [

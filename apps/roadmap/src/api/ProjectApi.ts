@@ -20,14 +20,14 @@ export class ProjectApi {
 
   createProject = $action({
     schema: {
-      body: t.pick(projects.$insertSchema, ["title", "public"]),
-      response: projects.$schema,
+      body: t.pick(projects.insertSchema, ["title", "public"]),
+      response: projects.schema,
     },
     handler: async ({ body, user }) => {
       // TODO: load user + check if they have a free project slot
 
       const count = await this.db.projects.count({
-        createdBy: user.id,
+        createdBy: { eq: user.id },
       });
 
       if (count >= 5) {
@@ -57,7 +57,7 @@ export class ProjectApi {
     description: "Get all projects for the authenticated user",
     schema: {
       query: pageQuerySchema,
-      response: t.array(projects.$schema),
+      response: t.array(projects.schema),
     },
     handler: async ({ user }) => {
       const characters = await this.db.characters.find({
@@ -80,7 +80,7 @@ export class ProjectApi {
       params: t.object({
         id: t.int(),
       }),
-      response: t.array(users.$schema),
+      response: t.array(users.schema),
     },
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.id, user);
@@ -103,8 +103,8 @@ export class ProjectApi {
       params: t.object({
         id: t.int(),
       }),
-      body: t.partial(t.pick(projects.$insertSchema, ["title", "public"])),
-      response: projects.$schema,
+      body: t.partial(t.pick(projects.insertSchema, ["title", "public"])),
+      response: projects.schema,
     },
     handler: async ({ params, body, user }) => {
       const { project } = await this.security.checkOwnership(params.id, user);
@@ -117,7 +117,8 @@ export class ProjectApi {
         project.public = body.public;
       }
 
-      return await this.db.projects.save(project);
+      await this.db.projects.save(project);
+      return project;
     },
   });
 
@@ -126,9 +127,9 @@ export class ProjectApi {
       params: t.object({
         id: t.int(),
       }),
-      response: t.interface([projects.$schema], {
-        character: t.optional(characters.$schema),
-        tasks: t.array(tasks.$schema),
+      response: t.interface([projects.schema], {
+        character: t.optional(characters.schema),
+        tasks: t.array(tasks.schema),
       }),
     },
     handler: async ({ params, user }) => {
@@ -136,8 +137,10 @@ export class ProjectApi {
 
       const character = await this.db.characters
         .findOne({
-          projectId: { eq: params.id },
-          userId: { eq: user.id },
+          where: {
+            projectId: { eq: params.id },
+            userId: { eq: user.id },
+          },
         })
         .catch((err) => {
           if (project.public) return undefined;
@@ -162,8 +165,8 @@ export class ProjectApi {
         id: t.int(),
       }),
       response: t.array(
-        t.interface([characters.$schema], {
-          user: users.$schema,
+        t.interface([characters.schema], {
+          user: users.schema,
         }),
       ),
     },
@@ -205,9 +208,7 @@ export class ProjectApi {
       return charactersWithUsers.sort((a, b) => {
         if (a.owner && !b.owner) return -1;
         if (!a.owner && b.owner) return 1;
-        return (
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
+        return a.createdAt.valueOf() - b.createdAt.valueOf();
       });
     },
   });

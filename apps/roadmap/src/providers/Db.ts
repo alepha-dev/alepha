@@ -152,5 +152,5 @@ export class Db {
   });
 
   provider = $inject(DatabaseProvider);
-  query = this.provider.execute.bind(this.provider);
+  query = this.provider.run.bind(this.provider);
 }
