@@ -108,7 +108,7 @@ export class TaskApi {
       task.acceptedAt = undefined;
       task.acceptedBy = undefined;
       task.history.push({
-        at: this.dt.now(),
+        at: this.dt.nowISOString(),
         by: user.id,
         action: "unassigned",
       });
@@ -136,10 +136,10 @@ export class TaskApi {
 
       await this.security.checkOwnership(task.projectId, user);
 
-      task.acceptedAt = this.dt.now();
+      task.acceptedAt = this.dt.nowISOString();
       task.acceptedBy = user.id;
       task.history.push({
-        at: this.dt.now(),
+        at: this.dt.nowISOString(),
         by: user.id,
         action: "assigned",
       });
@@ -200,7 +200,7 @@ export class TaskApi {
 
         character.xp += xp;
         character.balance += money;
-        task.completedAt = this.dt.now();
+        task.completedAt = this.dt.nowISOString();
         task.completedBy = user.id;
 
         await Promise.all([
@@ -275,7 +275,7 @@ export class TaskApi {
         history: [
           ...task.history,
           {
-            at: this.dt.now(),
+            at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
           },
@@ -319,7 +319,7 @@ export class TaskApi {
           ? [
               ...task.history,
               {
-                at: this.dt.now(),
+                at: this.dt.nowISOString(),
                 by: user.id,
                 action: "objective_completed",
               },
@@ -361,7 +361,7 @@ export class TaskApi {
         history: [
           ...task.history,
           {
-            at: this.dt.now(),
+            at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
           },
@@ -419,7 +419,7 @@ export class TaskApi {
         history: [
           ...task.history,
           {
-            at: this.dt.now(),
+            at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
           },

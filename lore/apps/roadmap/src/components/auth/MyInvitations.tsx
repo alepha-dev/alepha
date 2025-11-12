@@ -1,4 +1,3 @@
-import type { DateTime } from "@alepha/datetime";
 import { useAlepha, useClient } from "@alepha/react";
 import { useI18n } from "@alepha/react-i18n";
 import {
@@ -27,7 +26,7 @@ export interface MyInvitationsProps {
     inviterName?: string;
     inviterEmail: string;
     status: "pending" | "accepted" | "rejected";
-    createdAt: DateTime;
+    createdAt: string;
   }>;
 }
 
