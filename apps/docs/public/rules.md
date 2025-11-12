@@ -84,7 +84,7 @@ router.get('/users/:id', async (req, res) => {
 ### Rule 3: Entry Point Pattern (server and browser)
 
 ```typescript
-// Server entry (src/index.server.ts)
+// Server entry (src/main.server.ts)
 import { Alepha, run } from "alepha";
 import { UserController } from "./controllers/UserController";
 
@@ -235,7 +235,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [
     viteAlepha({
-      serverEntry: "./src/index.server.ts"
+      serverEntry: "./src/main.server.ts"
     })
   ]
 });

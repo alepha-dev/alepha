@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [
     viteAlepha({
-      serverEntry: "src/index.server.ts",
+      serverEntry: "src/main.server.ts",
     }),
   ],
 });

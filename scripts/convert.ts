@@ -58,7 +58,7 @@ async function main(to?: string) {
           }
         }
         if (pkg.browser) {
-          pkg.browser = "./src/index.browser.ts";
+          pkg.browser = "./src/main.browser.ts";
         }
       } else {
         pkg.main = "./dist/index.js";

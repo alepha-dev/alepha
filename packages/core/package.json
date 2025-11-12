@@ -18,8 +18,8 @@
 		"typebox": "^1.0.51"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.4",
-		"tsdown": "^0.16.1",
+		"@biomejs/biome": "^2.3.5",
+		"tsdown": "^0.16.3",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.8"
 	},
