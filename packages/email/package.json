@@ -28,7 +28,7 @@
 		"@biomejs/biome": "^2.3.5",
 		"@types/nodemailer": "^7.0.3",
 		"nodemailer": "^7.0.10",
-		"tsdown": "^0.16.3",
+		"tsdown": "^0.16.4",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.8"
 	},

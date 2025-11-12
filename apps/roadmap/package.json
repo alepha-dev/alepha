@@ -41,11 +41,11 @@
 		"@mantine/nprogress": "^8.3.7",
 		"@mantine/tiptap": "^8.3.7",
 		"@tabler/icons-react": "^3.35.0",
-		"@tiptap/core": "^3.10.5",
-		"@tiptap/extension-link": "^3.10.5",
-		"@tiptap/pm": "^3.10.5",
-		"@tiptap/react": "^3.10.5",
-		"@tiptap/starter-kit": "^3.10.5",
+		"@tiptap/core": "^3.10.7",
+		"@tiptap/extension-link": "^3.10.7",
+		"@tiptap/pm": "^3.10.7",
+		"@tiptap/react": "^3.10.7",
+		"@tiptap/starter-kit": "^3.10.7",
 		"@vercel/analytics": "^1.5.0",
 		"@vercel/speed-insights": "^1.2.0",
 		"animate.css": "^4.1.1",
@@ -59,9 +59,9 @@
 	"devDependencies": {
 		"@alepha/cli": "^0.11.6",
 		"@types/node": "^24.10.1",
-		"@types/react": "^19.2.3",
-		"@types/react-dom": "^19.2.2",
+		"@types/react": "^19.2.4",
+		"@types/react-dom": "^19.2.3",
 		"@types/sanitize-html": "^2.16.0",
-		"vercel": "^48.9.0"
+		"vercel": "^48.9.1"
 	}
 }

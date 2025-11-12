@@ -53,8 +53,6 @@ const TaskTimeline = ({ task }: { task: Task }) => {
     animation: "fadeInUpLight 0.3s ease forwards",
   };
 
-  console.log(task);
-
   const title = (action: string) => {
     if (action === "assigned") {
       return "Courageous Choice";

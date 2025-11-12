@@ -11,12 +11,12 @@
 	"types": "./src/index.ts",
 	"dependencies": {
 		"@alepha/core": "0.11.6",
-		"@vitejs/plugin-react": "^5.1.0",
+		"@vitejs/plugin-react": "^5.1.1",
 		"vite-bundle-analyzer": "^1.2.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",
-		"tsdown": "^0.16.3",
+		"tsdown": "^0.16.4",
 		"typescript": "^5.9.3",
 		"vite": "^7.2.2"
 	},

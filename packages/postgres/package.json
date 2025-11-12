@@ -28,7 +28,7 @@
 		"@biomejs/biome": "^2.3.5",
 		"@electric-sql/pglite": "^0.3.14",
 		"drizzle-kit": "^0.31.6",
-		"tsdown": "^0.16.3",
+		"tsdown": "^0.16.4",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.8"
 	},
