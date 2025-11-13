@@ -29,8 +29,8 @@ describe("TypeProvider", () => {
         const schema = t.string();
 
         // TypeBox's Compile with codecs may coerce some types
-        expect(alepha.codec.decode(schema, 123)).toBe("123");
-        expect(alepha.codec.decode(schema, true)).toBe("true");
+        expect(alepha.codec.validate(schema, 123)).toBe("123");
+        expect(alepha.codec.validate(schema, true)).toBe("true");
       });
     });
 
@@ -60,9 +60,9 @@ describe("TypeProvider", () => {
         const schema = t.number();
 
         // TypeBox's Compile with codecs may coerce some types
-        expect(alepha.codec.decode(schema, "123")).toBe(123);
-        expect(alepha.codec.decode(schema, true)).toBe(1);
-        expect(alepha.codec.decode(schema, false)).toBe(0);
+        expect(alepha.codec.validate(schema, "123")).toBe(123);
+        expect(alepha.codec.validate(schema, true)).toBe(1);
+        expect(alepha.codec.validate(schema, false)).toBe(0);
       });
 
       it("should validate constraints", async () => {
@@ -70,12 +70,12 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.number({ minimum: 0, maximum: 100 });
 
-        expect(alepha.codec.decode(schema, 0)).toBe(0);
-        expect(alepha.codec.decode(schema, 50)).toBe(50);
-        expect(alepha.codec.decode(schema, 100)).toBe(100);
+        expect(alepha.codec.validate(schema, 0)).toBe(0);
+        expect(alepha.codec.validate(schema, 50)).toBe(50);
+        expect(alepha.codec.validate(schema, 100)).toBe(100);
 
-        expect(() => alepha.codec.decode(schema, -1)).toThrow();
-        expect(() => alepha.codec.decode(schema, 101)).toThrow();
+        expect(() => alepha.codec.validate(schema, -1)).toThrow();
+        expect(() => alepha.codec.validate(schema, 101)).toThrow();
       });
     });
 
@@ -104,10 +104,10 @@ describe("TypeProvider", () => {
         const schema = t.boolean();
 
         // TypeBox's Compile with codecs may coerce some types
-        expect(alepha.codec.decode(schema, "true")).toBe(true);
-        expect(alepha.codec.decode(schema, "false")).toBe(false);
-        expect(alepha.codec.decode(schema, 1)).toBe(true);
-        expect(alepha.codec.decode(schema, 0)).toBe(false);
+        expect(alepha.codec.validate(schema, "true")).toBe(true);
+        expect(alepha.codec.validate(schema, "false")).toBe(false);
+        expect(alepha.codec.validate(schema, 1)).toBe(true);
+        expect(alepha.codec.validate(schema, 0)).toBe(false);
       });
     });
 
@@ -185,7 +185,7 @@ describe("TypeProvider", () => {
         const schema = t.text();
 
         const tooLong = "a".repeat(256);
-        expect(() => alepha.codec.decode(schema, tooLong)).toThrow();
+        expect(() => alepha.codec.validate(schema, tooLong)).toThrow();
       });
 
       it("should encode text", async () => {
@@ -203,11 +203,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const shortSchema = t.text({ size: "short" });
 
-        expect(alepha.codec.decode(shortSchema, "a".repeat(64))).toBe(
+        expect(alepha.codec.validate(shortSchema, "a".repeat(64))).toBe(
           "a".repeat(64),
         );
         expect(() =>
-          alepha.codec.decode(shortSchema, "a".repeat(65)),
+          alepha.codec.validate(shortSchema, "a".repeat(65)),
         ).toThrow();
       });
 
@@ -216,11 +216,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const regularSchema = t.text({ size: "regular" });
 
-        expect(alepha.codec.decode(regularSchema, "a".repeat(255))).toBe(
+        expect(alepha.codec.validate(regularSchema, "a".repeat(255))).toBe(
           "a".repeat(255),
         );
         expect(() =>
-          alepha.codec.decode(regularSchema, "a".repeat(256)),
+          alepha.codec.validate(regularSchema, "a".repeat(256)),
         ).toThrow();
       });
 
@@ -229,11 +229,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const longSchema = t.text({ size: "long" });
 
-        expect(alepha.codec.decode(longSchema, "a".repeat(1024))).toBe(
+        expect(alepha.codec.validate(longSchema, "a".repeat(1024))).toBe(
           "a".repeat(1024),
         );
         expect(() =>
-          alepha.codec.decode(longSchema, "a".repeat(1025)),
+          alepha.codec.validate(longSchema, "a".repeat(1025)),
         ).toThrow();
       });
 
@@ -242,14 +242,14 @@ describe("TypeProvider", () => {
         await alepha.start();
         const richSchema = t.text({ size: "rich" });
 
-        expect(alepha.codec.decode(richSchema, "a".repeat(1000))).toBe(
+        expect(alepha.codec.validate(richSchema, "a".repeat(1000))).toBe(
           "a".repeat(1000),
         );
-        expect(alepha.codec.decode(richSchema, "a".repeat(65535))).toBe(
+        expect(alepha.codec.validate(richSchema, "a".repeat(65535))).toBe(
           "a".repeat(65535),
         );
         expect(() =>
-          alepha.codec.decode(richSchema, "a".repeat(65536)),
+          alepha.codec.validate(richSchema, "a".repeat(65536)),
         ).toThrow();
       });
     });
@@ -260,11 +260,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const shortSchema = t.shortText();
 
-        expect(alepha.codec.decode(shortSchema, "a".repeat(64))).toBe(
+        expect(alepha.codec.validate(shortSchema, "a".repeat(64))).toBe(
           "a".repeat(64),
         );
         expect(() =>
-          alepha.codec.decode(shortSchema, "a".repeat(65)),
+          alepha.codec.validate(shortSchema, "a".repeat(65)),
         ).toThrow();
       });
 
@@ -273,11 +273,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const longSchema = t.longText();
 
-        expect(alepha.codec.decode(longSchema, "a".repeat(1024))).toBe(
+        expect(alepha.codec.validate(longSchema, "a".repeat(1024))).toBe(
           "a".repeat(1024),
         );
         expect(() =>
-          alepha.codec.decode(longSchema, "a".repeat(1025)),
+          alepha.codec.validate(longSchema, "a".repeat(1025)),
         ).toThrow();
       });
 
@@ -341,8 +341,8 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.int();
 
-        expect(() => alepha.codec.decode(schema, 2147483648)).toThrow();
-        expect(() => alepha.codec.decode(schema, -2147483648)).toThrow();
+        expect(() => alepha.codec.validate(schema, 2147483648)).toThrow();
+        expect(() => alepha.codec.validate(schema, -2147483648)).toThrow();
       });
     });
 
@@ -377,7 +377,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.int64();
 
-        expect(() => alepha.codec.decode(schema, 3.14)).toThrow();
+        expect(() => alepha.codec.validate(schema, 3.14)).toThrow();
       });
 
       it("should reject values outside safe integer range", async () => {
@@ -385,8 +385,10 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.int64();
 
-        expect(() => alepha.codec.decode(schema, 9007199254740992)).toThrow();
-        expect(() => alepha.codec.decode(schema, -9007199254740992)).toThrow();
+        expect(() => alepha.codec.validate(schema, 9007199254740992)).toThrow();
+        expect(() =>
+          alepha.codec.validate(schema, -9007199254740992),
+        ).toThrow();
       });
     });
   });
@@ -418,11 +420,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.uuid();
 
-        expect(() => alepha.codec.decode(schema, "not-a-uuid")).toThrow();
+        expect(() => alepha.codec.validate(schema, "not-a-uuid")).toThrow();
         expect(() =>
-          alepha.codec.decode(schema, "550e8400-e29b-41d4-a716"),
+          alepha.codec.validate(schema, "550e8400-e29b-41d4-a716"),
         ).toThrow();
-        expect(() => alepha.codec.decode(schema, "")).toThrow();
+        expect(() => alepha.codec.validate(schema, "")).toThrow();
       });
     });
 
@@ -455,10 +457,10 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.email();
 
-        expect(() => alepha.codec.decode(schema, "not an email")).toThrow();
-        expect(() => alepha.codec.decode(schema, "@example.com")).toThrow();
-        expect(() => alepha.codec.decode(schema, "user@")).toThrow();
-        expect(() => alepha.codec.decode(schema, "")).toThrow();
+        expect(() => alepha.codec.validate(schema, "not an email")).toThrow();
+        expect(() => alepha.codec.validate(schema, "@example.com")).toThrow();
+        expect(() => alepha.codec.validate(schema, "user@")).toThrow();
+        expect(() => alepha.codec.validate(schema, "")).toThrow();
       });
     });
 
@@ -482,13 +484,13 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.e164();
 
-        expect(() => alepha.codec.decode(schema, "1234567890")).toThrow(); // Missing +
-        expect(() => alepha.codec.decode(schema, "+0123456789")).toThrow(); // Starts with 0
-        expect(() => alepha.codec.decode(schema, "+1")).toThrow(); // Too short
+        expect(() => alepha.codec.validate(schema, "1234567890")).toThrow(); // Missing +
+        expect(() => alepha.codec.validate(schema, "+0123456789")).toThrow(); // Starts with 0
+        expect(() => alepha.codec.validate(schema, "+1")).toThrow(); // Too short
         expect(() =>
-          alepha.codec.decode(schema, "+12345678901234567"),
+          alepha.codec.validate(schema, "+12345678901234567"),
         ).toThrow(); // Too long
-        expect(() => alepha.codec.decode(schema, "+1234-567-890")).toThrow(); // Contains dashes
+        expect(() => alepha.codec.validate(schema, "+1234-567-890")).toThrow(); // Contains dashes
       });
     });
 
@@ -510,11 +512,11 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.bcp47();
 
-        expect(() => alepha.codec.decode(schema, "EN")).toThrow(); // Uppercase language
-        expect(() => alepha.codec.decode(schema, "en-us")).toThrow(); // Lowercase region
-        expect(() => alepha.codec.decode(schema, "e")).toThrow(); // Too short
-        expect(() => alepha.codec.decode(schema, "english")).toThrow(); // Too long
-        expect(() => alepha.codec.decode(schema, "en-US-variant")).toThrow(); // Too many parts
+        expect(() => alepha.codec.validate(schema, "EN")).toThrow(); // Uppercase language
+        expect(() => alepha.codec.validate(schema, "en-us")).toThrow(); // Lowercase region
+        expect(() => alepha.codec.validate(schema, "e")).toThrow(); // Too short
+        expect(() => alepha.codec.validate(schema, "english")).toThrow(); // Too long
+        expect(() => alepha.codec.validate(schema, "en-US-variant")).toThrow(); // Too many parts
       });
     });
 
@@ -535,10 +537,10 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.snakeCase();
 
-        expect(() => alepha.codec.decode(schema, "hello")).toThrow(); // Lowercase
-        expect(() => alepha.codec.decode(schema, "Hello_World")).toThrow(); // Mixed case
-        expect(() => alepha.codec.decode(schema, "HELLO WORLD")).toThrow(); // Space
-        expect(() => alepha.codec.decode(schema, "HELLO.WORLD")).toThrow(); // Dot
+        expect(() => alepha.codec.validate(schema, "hello")).toThrow(); // Lowercase
+        expect(() => alepha.codec.validate(schema, "Hello_World")).toThrow(); // Mixed case
+        expect(() => alepha.codec.validate(schema, "HELLO WORLD")).toThrow(); // Space
+        expect(() => alepha.codec.validate(schema, "HELLO.WORLD")).toThrow(); // Dot
       });
     });
   });
@@ -583,7 +585,7 @@ describe("TypeProvider", () => {
         });
 
         expect(() =>
-          alepha.codec.decode(schema, { name: "John", age: 30 }),
+          alepha.codec.validate(schema, { name: "John", age: 30 }),
         ).toThrow();
       });
 
@@ -684,7 +686,7 @@ describe("TypeProvider", () => {
         expect(alepha.codec.decode(schema, maxArray)).toEqual(maxArray);
 
         const tooManyItems = new Array(1001).fill("x");
-        expect(() => alepha.codec.decode(schema, tooManyItems)).toThrow();
+        expect(() => alepha.codec.validate(schema, tooManyItems)).toThrow();
       });
 
       it("should support custom maxItems", async () => {
@@ -695,7 +697,9 @@ describe("TypeProvider", () => {
         expect(alepha.codec.decode(schema, [1, 2, 3, 4, 5])).toEqual([
           1, 2, 3, 4, 5,
         ]);
-        expect(() => alepha.codec.decode(schema, [1, 2, 3, 4, 5, 6])).toThrow();
+        expect(() =>
+          alepha.codec.validate(schema, [1, 2, 3, 4, 5, 6]),
+        ).toThrow();
       });
 
       it("should reject invalid item types", async () => {
@@ -713,7 +717,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.array(t.text());
 
-        expect(() => alepha.codec.decode(schema, "not an array")).toThrow();
+        expect(() => alepha.codec.validate(schema, "not an array")).toThrow();
       });
 
       it("should support array of objects", async () => {
@@ -750,7 +754,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.union([t.text(), t.int()]);
 
-        expect(() => alepha.codec.decode(schema, {})).toThrow();
+        expect(() => alepha.codec.validate(schema, {})).toThrow();
       });
 
       it("should support union of object types", async () => {
@@ -798,7 +802,7 @@ describe("TypeProvider", () => {
         const schema = t.record(t.text(), t.int());
 
         expect(() =>
-          alepha.codec.decode(schema, { a: "not a number" }),
+          alepha.codec.validate(schema, { a: "not a number" }),
         ).toThrow();
       });
     });
@@ -845,7 +849,7 @@ describe("TypeProvider", () => {
           }),
         ]);
 
-        expect(() => alepha.codec.decode(schema, ["hello", 42])).toThrow();
+        expect(() => alepha.codec.validate(schema, ["hello", 42])).toThrow();
         expect(
           alepha.codec.decode(schema, ["hello", 42, { flag: true }, "extra"]),
         ).toEqual(["hello", 42, { flag: true }]);
@@ -857,7 +861,7 @@ describe("TypeProvider", () => {
         const schema = t.tuple([t.text(), t.int(), t.boolean()]);
 
         expect(() =>
-          alepha.codec.decode(schema, ["hello", "not a number", true]),
+          alepha.codec.validate(schema, ["hello", "not a number", true]),
         ).toThrow();
       });
     });
@@ -919,7 +923,7 @@ describe("TypeProvider", () => {
           value: t.nullable(t.text()),
         });
 
-        expect(() => alepha.codec.decode(schema, {})).toThrow();
+        expect(() => alepha.codec.validate(schema, {})).toThrow();
       });
     });
 
@@ -1038,7 +1042,7 @@ describe("TypeProvider", () => {
         const pickedSchema = t.pick(baseSchema, ["name", "email"]);
 
         expect(() =>
-          alepha.codec.decode(pickedSchema, { name: "John" }),
+          alepha.codec.validate(pickedSchema, { name: "John" }),
         ).toThrow();
       });
     });
@@ -1114,9 +1118,9 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.enum(["ACTIVE", "INACTIVE", "PENDING"]);
 
-        expect(() => alepha.codec.decode(schema, "INVALID")).toThrow();
-        expect(() => alepha.codec.decode(schema, "active")).toThrow(); // Case sensitive
-        expect(() => alepha.codec.decode(schema, "")).toThrow();
+        expect(() => alepha.codec.validate(schema, "INVALID")).toThrow();
+        expect(() => alepha.codec.validate(schema, "active")).toThrow(); // Case sensitive
+        expect(() => alepha.codec.validate(schema, "")).toThrow();
       });
     });
 
@@ -1134,8 +1138,8 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.const("FIXED_VALUE");
 
-        expect(() => alepha.codec.decode(schema, "OTHER_VALUE")).toThrow();
-        expect(() => alepha.codec.decode(schema, "")).toThrow();
+        expect(() => alepha.codec.validate(schema, "OTHER_VALUE")).toThrow();
+        expect(() => alepha.codec.validate(schema, "")).toThrow();
       });
 
       it("should support number literals", async () => {

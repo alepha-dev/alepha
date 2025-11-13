@@ -307,17 +307,26 @@ For more details, see the [Providers documentation](/docs/providers).
 #### CodecManager
 
 The output encoding format:
-  - 'object': Returns native types (objects, BigInt, Date, etc.)
   - 'string': Returns JSON string
   - 'binary': Returns Uint8Array (for protobuf, msgpack, etc.)
+  
+  @default "string"
   /
   as?: T;
+
   /**
   The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
-  Defaults to 'json'
+  
+  @default "json"
   /
   encoder?: string;
+
+  /**
+  Validation options to apply before encoding.
+  /
+  validation?: ValidateOptions | false;
 }
+
 export type EncodeResult<
   T extends TSchema,
   E extends Encoding,
@@ -330,9 +339,15 @@ export type EncodeResult<
 export interface DecodeOptions {
   /**
   The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
-  Defaults to 'json'
+  
+  @default "json"
   /
   encoder?: string;
+
+  /**
+  Validation options to apply before encoding.
+  /
+  validation?: ValidateOptions | false;
 }
 
 /**

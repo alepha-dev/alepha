@@ -1,37 +1,44 @@
-import type { StaticDecode, TSchema } from "typebox";
+import type { TSchema } from "typebox";
 import { $inject } from "../descriptors/$inject.ts";
 import { Json } from "./Json.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
-import { t } from "./TypeProvider.ts";
+import type { Static } from "./TypeProvider.ts";
 
 export class JsonSchemaCodec extends SchemaCodec {
   protected readonly json = $inject(Json);
   protected readonly encoder = new TextEncoder();
   protected readonly decoder = new TextDecoder();
 
-  protected transformType(schema: TSchema): TSchema | false | void {
-    return false;
+  public encodeToString<T extends TSchema>(
+    schema: T,
+    value: Static<T>,
+  ): string {
+    return this.json.stringify(value);
   }
 
-  public encodeToString(schema: TSchema, value: any): string {
-    return this.json.stringify(this.encode(schema, value));
+  public encodeToBinary<T extends TSchema>(
+    schema: T,
+    value: Static<T>,
+  ): Uint8Array {
+    return this.encoder.encode(this.encodeToString(schema, value));
   }
 
-  public encodeToBinary(schema: TSchema, value: any): Uint8Array {
-    const jsonString = this.encodeToString(schema, value);
-    return this.encoder.encode(jsonString);
-  }
-
-  public decode<T extends TSchema>(schema: T, value: any): StaticDecode<T> {
+  public decode<T>(schema: TSchema, value: unknown): T {
     if (value instanceof Uint8Array) {
-      value = this.json.parse(this.decoder.decode(value));
-    } else if (
-      typeof value === "string" &&
-      (t.schema.isObject(schema) || t.schema.isArray(schema))
-    ) {
-      value = this.json.parse(value);
+      const text = this.decoder.decode(value);
+      return this.json.parse(text);
     }
 
-    return super.decode(schema, value);
+    if (typeof value === "string") {
+      // Only parse if it looks like JSON (starts with { or [)
+      const trimmed = value.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        return this.json.parse(value);
+      }
+      // Return plain strings as-is
+      return value as T;
+    }
+
+    return value as T;
   }
 }

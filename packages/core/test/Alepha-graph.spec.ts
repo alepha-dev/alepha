@@ -78,6 +78,9 @@ describe("Alepha#graph", () => {
       CodecManager: {
         from: ["Alepha"],
       },
+      SchemaValidator: {
+        from: ["CodecManager"],
+      },
     });
   });
 });

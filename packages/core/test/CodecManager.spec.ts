@@ -1,4 +1,4 @@
-import type { StaticDecode, TSchema } from "typebox";
+import type { TSchema } from "typebox";
 import { describe, expect, it } from "vitest";
 import { $inject, Alepha, CodecManager, TypeBoxError, t } from "../src";
 import { JsonSchemaCodec } from "../src/providers/JsonSchemaCodec.ts";
@@ -17,7 +17,7 @@ describe("CodecManager", () => {
     it("should get JSON codec by default", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
-      const jsonCodec = codecManager.get("json");
+      const jsonCodec = codecManager.getCodec("json");
 
       expect(jsonCodec).toBeInstanceOf(JsonSchemaCodec);
     });
@@ -26,10 +26,6 @@ describe("CodecManager", () => {
   describe("codec registration", () => {
     it("should register custom codec", () => {
       class CustomCodec extends SchemaCodec {
-        protected transformType(schema: TSchema): TSchema | false | void {
-          return false;
-        }
-
         public encodeToString(schema: TSchema, value: any): string {
           return `custom:${JSON.stringify(value)}`;
         }
@@ -37,6 +33,10 @@ describe("CodecManager", () => {
         public encodeToBinary(schema: TSchema, value: any): Uint8Array {
           const str = this.encodeToString(schema, value);
           return new TextEncoder().encode(str);
+        }
+
+        public decode<T>(schema: TSchema, value: unknown): T {
+          return value as T;
         }
       }
 
@@ -46,7 +46,7 @@ describe("CodecManager", () => {
 
       codecManager.register("custom", customCodec);
 
-      const retrieved = codecManager.get("custom");
+      const retrieved = codecManager.getCodec("custom");
       expect(retrieved).toBe(customCodec);
     });
 
@@ -54,21 +54,21 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      expect(() => codecManager.get("nonexistent")).toThrow(
+      expect(() => codecManager.getCodec("nonexistent")).toThrow(
         'Codec "nonexistent" not found. Available codecs: json',
       );
     });
 
     it("should list available codecs in error message", () => {
       class MockCodec extends SchemaCodec {
-        protected transformType(): false {
-          return false;
-        }
         public encodeToString(): string {
           return "";
         }
         public encodeToBinary(): Uint8Array {
           return new Uint8Array();
+        }
+        public decode<T>(schema: TSchema, value: unknown): T {
+          return value as T;
         }
       }
 
@@ -76,7 +76,7 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
       codecManager.register("mock", new MockCodec());
 
-      expect(() => codecManager.get("missing")).toThrow(
+      expect(() => codecManager.getCodec("missing")).toThrow(
         'Codec "missing" not found. Available codecs: json, mock',
       );
     });
@@ -283,16 +283,16 @@ describe("CodecManager", () => {
   describe("custom encoder option", () => {
     it("should use custom encoder when specified", () => {
       class CustomCodec extends SchemaCodec {
-        protected transformType(): false {
-          return false;
-        }
-
-        public encodeToString(schema: TSchema, value: any): string {
+        public encodeToString(_schema: TSchema, value: any): string {
           return `CUSTOM:${JSON.stringify(value)}`;
         }
 
         public encodeToBinary(): Uint8Array {
           return new Uint8Array();
+        }
+
+        public decode<T>(_schema: TSchema, value: unknown): T {
+          return value as T;
         }
       }
 
@@ -399,7 +399,7 @@ describe("CodecManager", () => {
       expect(result.bigNum).toBe("123456789");
     });
 
-    it("should apply default values", () => {
+    it("should apply default values during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -408,12 +408,13 @@ describe("CodecManager", () => {
         role: t.text({ default: "user" }),
       });
 
-      const result = codecManager.decode(schema, { name: "John" });
+      const decoded = codecManager.decode(schema, { name: "John" });
+      const result = codecManager.validate(schema, decoded);
 
       expect(result).toEqual({ name: "John", role: "user" });
     });
 
-    it("should trim strings when trim option is set", () => {
+    it("should trim strings when trim option is set during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -421,12 +422,13 @@ describe("CodecManager", () => {
         name: t.text({ trim: true }),
       });
 
-      const result = codecManager.decode(schema, { name: "  John  " });
+      const decoded = codecManager.decode(schema, { name: "  John  " });
+      const result = codecManager.validate(schema, decoded);
 
       expect(result.name).toBe("John");
     });
 
-    it("should convert null to undefined for non-nullable fields", () => {
+    it("should convert null to undefined for non-nullable fields during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -435,10 +437,11 @@ describe("CodecManager", () => {
         optional: t.optional(t.text()),
       });
 
-      const result = codecManager.decode(schema, {
+      const decoded = codecManager.decode(schema, {
         required: "value",
         optional: null,
       });
+      const result = codecManager.validate(schema, decoded);
 
       expect(result).toEqual({ required: "value" });
     });
@@ -482,10 +485,6 @@ describe("CodecManager", () => {
 
     it("should use custom decoder when specified", () => {
       class CustomCodec extends SchemaCodec {
-        protected transformType(): false {
-          return false;
-        }
-
         public encodeToString(): string {
           return "";
         }
@@ -494,23 +493,21 @@ describe("CodecManager", () => {
           return new Uint8Array();
         }
 
-        public decode<T extends TSchema>(
-          schema: T,
-          value: any,
-        ): StaticDecode<T> {
+        public decode<T>(_schema: TSchema, value: unknown): T {
           // Custom decoding logic: prefix all strings with "DECODED:"
           if (typeof value === "object" && value !== null) {
             const result: any = {};
-            for (const key in value) {
-              if (typeof value[key] === "string") {
-                result[key] = `DECODED:${value[key]}`;
+            const obj = value as Record<string, any>;
+            for (const key in obj) {
+              if (typeof obj[key] === "string") {
+                result[key] = `DECODED:${obj[key]}`;
               } else {
-                result[key] = value[key];
+                result[key] = obj[key];
               }
             }
-            return super.decode(schema, result);
+            return result as T;
           }
-          return super.decode(schema, value);
+          return value as T;
         }
       }
 
@@ -619,14 +616,14 @@ describe("CodecManager", () => {
 
     it("should register custom codec in service", () => {
       class CustomCodec extends SchemaCodec {
-        protected transformType(): false {
-          return false;
-        }
         public encodeToString(): string {
           return "custom";
         }
         public encodeToBinary(): Uint8Array {
           return new Uint8Array();
+        }
+        public decode<T>(_schema: TSchema, value: unknown): T {
+          return value as T;
         }
       }
 
@@ -642,14 +639,14 @@ describe("CodecManager", () => {
       alepha.inject(ConfigService);
 
       const codecManager = alepha.codec;
-      const customCodec = codecManager.get("custom");
+      const customCodec = codecManager.getCodec("custom");
 
       expect(customCodec).toBeInstanceOf(CustomCodec);
     });
   });
 
   describe("JsonSchemaCodec specifics", () => {
-    it("should handle null values correctly", () => {
+    it("should handle null values correctly during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -658,16 +655,17 @@ describe("CodecManager", () => {
         optional: t.optional(t.text()),
       });
 
-      const result = codecManager.decode(schema, {
+      const decoded = codecManager.decode(schema, {
         nullable: null,
         optional: null,
       });
+      const result = codecManager.validate(schema, decoded);
 
       expect(result.nullable).toBeNull();
       expect(result.optional).toBeUndefined();
     });
 
-    it("should handle array preprocessing", () => {
+    it("should handle array preprocessing during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -675,14 +673,15 @@ describe("CodecManager", () => {
         items: t.array(t.text({ trim: true })),
       });
 
-      const result = codecManager.decode(schema, {
+      const decoded = codecManager.decode(schema, {
         items: ["  a  ", "  b  ", "  c  "],
       });
+      const result = codecManager.validate(schema, decoded);
 
       expect(result.items).toEqual(["a", "b", "c"]);
     });
 
-    it("should remove undefined values from objects", () => {
+    it("should remove undefined values from objects during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -691,10 +690,11 @@ describe("CodecManager", () => {
         b: t.optional(t.text()),
       });
 
-      const result = codecManager.decode(schema, {
+      const decoded = codecManager.decode(schema, {
         a: "value",
         b: undefined,
       });
+      const result = codecManager.validate(schema, decoded);
 
       expect(result).toEqual({ a: "value" });
       expect("b" in result).toBe(false);
@@ -715,7 +715,7 @@ describe("CodecManager", () => {
       );
     });
 
-    it("should throw TypeBoxError on decoding validation failure", () => {
+    it("should throw TypeBoxError when validating invalid decoded data", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 

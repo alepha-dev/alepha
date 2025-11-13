@@ -772,7 +772,7 @@ export class Alepha {
       return this.cacheEnv.get(schema) as Static<T>;
     }
 
-    const config = this.codec.decode(schema, this.env) as Record<string, any>;
+    const config = this.codec.validate(schema, this.env) as Record<string, any>;
 
     for (const key in config) {
       if (typeof config[key] === "string") {

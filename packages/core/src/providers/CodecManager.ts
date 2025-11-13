@@ -1,24 +1,36 @@
-import type { StaticDecode, StaticEncode, TSchema } from "typebox";
+import type { StaticEncode, TSchema } from "typebox";
 import { $inject } from "../descriptors/$inject.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
+import { SchemaValidator, type ValidateOptions } from "./SchemaValidator.ts";
+import type { Static } from "./TypeProvider.ts";
 
 export type Encoding = "object" | "string" | "binary";
+
 export interface EncodeOptions<T extends Encoding = Encoding> {
   /**
    * The output encoding format:
-   * - 'object': Returns native types (objects, BigInt, Date, etc.)
    * - 'string': Returns JSON string
    * - 'binary': Returns Uint8Array (for protobuf, msgpack, etc.)
+   *
+   * @default "string"
    */
   as?: T;
+
   /**
    * The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
-   * Defaults to 'json'
+   *
+   * @default "json"
    */
   encoder?: string;
+
+  /**
+   * Validation options to apply before encoding.
+   */
+  validation?: ValidateOptions | false;
 }
+
 export type EncodeResult<
   T extends TSchema,
   E extends Encoding,
@@ -31,9 +43,15 @@ export type EncodeResult<
 export interface DecodeOptions {
   /**
    * The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
-   * Defaults to 'json'
+   *
+   * @default "json"
    */
   encoder?: string;
+
+  /**
+   * Validation options to apply before encoding.
+   */
+  validation?: ValidateOptions | false;
 }
 
 /**
@@ -43,6 +61,7 @@ export interface DecodeOptions {
 export class CodecManager {
   protected readonly codecs: Map<string, SchemaCodec> = new Map();
   protected readonly jsonCodec = $inject(JsonSchemaCodec);
+  protected readonly schemaValidator = $inject(SchemaValidator);
 
   public default = "json";
 
@@ -53,6 +72,7 @@ export class CodecManager {
 
   /**
    * Register a new codec format.
+   *
    * @param name - The name of the codec (e.g., 'json', 'protobuf')
    * @param codec - The codec implementation
    */
@@ -62,11 +82,12 @@ export class CodecManager {
 
   /**
    * Get a specific codec by name.
+   *
    * @param name - The name of the codec
    * @returns The codec instance
    * @throws {AlephaError} If the codec is not found
    */
-  public get(name: string): SchemaCodec {
+  public getCodec(name: string): SchemaCodec {
     const codec = this.codecs.get(name);
     if (!codec) {
       throw new AlephaError(
@@ -81,25 +102,34 @@ export class CodecManager {
    */
   public encode<T extends TSchema, E extends Encoding = "object">(
     schema: T,
-    value: any,
+    value: unknown,
     options?: EncodeOptions<E>,
   ): EncodeResult<T, E> {
-    const encoderName = options?.encoder ?? this.default;
+    const codec = this.getCodec(options?.encoder ?? this.default);
     const as = options?.as ?? "object";
-    const codec = this.get(encoderName);
 
-    if (as === "string") {
-      // encode directly to string
-      return codec.encodeToString(schema, value) as EncodeResult<T, E>;
+    if (options?.validation !== false) {
+      value = this.schemaValidator.validate(schema, value, options?.validation);
+    }
+
+    if (as === "object") {
+      // Return the validated object as-is
+      return value as EncodeResult<T, E>;
     }
 
     if (as === "binary") {
       // not used by JSON, but for other codecs like Protobuf, MsgPack, etc.
-      return codec.encodeToBinary(schema, value) as EncodeResult<T, E>;
+      return codec.encodeToBinary(schema, value as Static<T>) as EncodeResult<
+        T,
+        E
+      >;
     }
 
-    // or nothing object encoding
-    return codec.encode(schema, value) as EncodeResult<T, E>;
+    // encode directly to string
+    return codec.encodeToString(schema, value as Static<T>) as EncodeResult<
+      T,
+      E
+    >;
   }
 
   /**
@@ -107,22 +137,30 @@ export class CodecManager {
    */
   public decode<T extends TSchema>(
     schema: T,
-    value: any,
+    data: any,
     options?: DecodeOptions,
-  ): StaticDecode<T> {
+  ): Static<T> {
     const encoderName = options?.encoder ?? this.default;
-    const codec = this.get(encoderName);
-    return codec.decode(schema, value);
+    const codec = this.getCodec(encoderName);
+    let value = codec.decode(schema, data);
+
+    if (options?.validation !== false) {
+      value = this.schemaValidator.validate(schema, value, options?.validation);
+    }
+
+    return value as Static<T>;
   }
 
   /**
-   * Validate decoded data.
+   * Validate decoded data against the schema.
+   *
+   * This is automatically called before encoding or after decoding.
    */
   public validate<T extends TSchema>(
     schema: T,
-    value: any,
-    options?: DecodeOptions,
-  ): StaticDecode<T> {
-    return this.decode(schema, this.encode(schema, value), options);
+    value: unknown,
+    options?: ValidateOptions,
+  ): Static<T> {
+    return this.schemaValidator.validate(schema, value, options);
   }
 }

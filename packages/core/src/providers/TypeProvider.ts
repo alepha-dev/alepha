@@ -4,6 +4,7 @@ import type {
   TArrayOptions,
   TBoolean,
   TInteger,
+  TInterface,
   TKeysToIndexer,
   TNull,
   TNumber,
@@ -239,11 +240,8 @@ export class TypeProvider {
   public partial = Type.Partial;
   public union = Type.Union;
   public tuple = Type.Tuple;
-  public interface = Type.Interface;
   public null = Type.Null;
   public const = Type.Literal;
-  public codec = Type.Codec;
-  public literal = Type.Literal;
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
@@ -260,6 +258,17 @@ export class TypeProvider {
   public readonly schema = new TypeGuard();
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  public extend<T extends TObject, U extends TProperties>(
+    schema: T,
+    properties: U,
+    options?: TSchemaOptions,
+  ): TInterface<[T], U> {
+    return Type.Interface([schema], properties, {
+      additionalProperties: false,
+      ...options,
+    });
+  }
 
   public pick<T extends TObject, Indexer extends PropertyKey[]>(
     schema: T,

@@ -1,7 +1,8 @@
 import {
   $inject,
+  AlephaError,
   SchemaCodec,
-  type StaticDecode,
+  type Static,
   type TSchema,
   t,
 } from "@alepha/core";
@@ -21,26 +22,57 @@ export class ProtobufSchemaCodec extends SchemaCodec {
   protected protobufProvider = $inject(ProtobufProvider);
   protected decoder = new TextDecoder();
 
-  public encodeToString(schema: TSchema, value: any): string {
+  public encodeToString<T extends TSchema>(
+    schema: T,
+    value: Static<T>,
+  ): string {
     const binary = this.encodeToBinary(schema, value);
-    return this.decoder.decode(binary);
+    // convert binary to base64 string for text representation
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(binary).toString("base64");
+    } else {
+      return btoa(String.fromCharCode(...binary));
+    }
   }
 
-  public encodeToBinary(schema: TSchema, value: any): Uint8Array {
+  public encodeToBinary<T extends TSchema>(
+    schema: T,
+    value: Static<T>,
+  ): Uint8Array {
     const proto = this.protobufProvider.createProtobufSchema(schema);
-    return this.protobufProvider.encode(proto, this.encode(schema, value));
+    return this.protobufProvider.encode(proto, value);
   }
 
-  public decode<T extends TSchema>(schema: T, value: any): StaticDecode<T> {
+  public decode<T>(schema: TSchema, value: unknown): T {
     // First decode from protobuf binary to object
     const proto = this.protobufProvider.createProtobufSchema(schema);
-    const decoded = this.protobufProvider.decode(proto, value);
 
-    // Apply proto3 default values for missing fields
-    const withDefaults = this.applyProto3Defaults(schema, decoded);
+    if (value instanceof Uint8Array) {
+      return this.applyProto3Defaults(
+        schema,
+        this.protobufProvider.decode(proto, value),
+      );
+    }
 
-    // Then use the parent decode to validate and transform
-    return super.decode(schema, withDefaults);
+    if (typeof value === "string") {
+      return this.applyProto3Defaults(
+        schema,
+        this.protobufProvider.decode(
+          proto,
+          typeof Buffer !== "undefined"
+            ? Uint8Array.from(Buffer.from(value, "base64"))
+            : Uint8Array.from(
+                atob(value)
+                  .split("")
+                  .map((c) => c.charCodeAt(0)),
+              ),
+        ),
+      );
+    }
+
+    throw new AlephaError(
+      `Unsupported value type for Protobuf decoding: ${typeof value}`,
+    );
   }
 
   /**
@@ -134,21 +166,6 @@ export class ProtobufSchemaCodec extends SchemaCodec {
       return {};
     }
 
-    return undefined;
-  }
-
-  /**
-   * Transform types for Protobuf compatibility.
-   * This method is called for each type in the schema tree.
-   */
-  protected transformType(schema: TSchema): TSchema | undefined {
-    // For bigint: keep as-is, don't convert to string
-    // The schema is still a string type with format "int64", but we override encode/decode
-    if (t.schema.isBigInt(schema)) {
-      return t.bigint();
-    }
-
-    // For other types, use default behavior
     return undefined;
   }
 }
