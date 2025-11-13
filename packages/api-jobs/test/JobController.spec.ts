@@ -111,7 +111,9 @@ describe("JobController", () => {
       const execution = executions.content[0];
       expect(execution.logs).toBeDefined();
       expect(Array.isArray(execution.logs)).toBe(true);
-      const logInfos = execution.logs?.filter((log) => log.level === "INFO");
+      const logInfos = execution.logs?.filter(
+        (log: any) => log.level === "INFO",
+      );
       expect(logInfos?.length).toBeGreaterThanOrEqual(3);
       expect(logInfos?.[0].message).toBe("Starting job execution");
       expect(logInfos?.[1].message).toBe("Processing data");

@@ -1,5 +1,6 @@
 import { $module } from "@alepha/core";
 import { JobController } from "./controllers/JobController.ts";
+import { JobProvider } from "./providers/JobProvider.ts";
 import { JobService } from "./services/JobService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -7,6 +8,7 @@ import { JobService } from "./services/JobService.ts";
 export * from "./controllers/JobController.ts";
 export * from "./descriptors/$job.ts";
 export * from "./entities/jobExecutions.ts";
+export * from "./providers/JobProvider.ts";
 export * from "./schemas/jobExecutionQuerySchema.ts";
 export * from "./schemas/jobExecutionResourceSchema.ts";
 export * from "./schemas/triggerJobSchema.ts";
@@ -24,5 +26,5 @@ export * from "./services/JobService.ts";
  */
 export const AlephaApiJobs = $module({
   name: "alepha.api.jobs",
-  services: [JobController, JobService],
+  services: [JobController, JobProvider, JobService],
 });

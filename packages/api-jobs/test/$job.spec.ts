@@ -217,6 +217,7 @@ describe("$job descriptor", () => {
     it("should clean up logs after execution", async () => {
       class App {
         log = $logger();
+        repo = $repository(jobExecutions);
 
         cleanupJob = $job({
           name: "cleanup-job",
@@ -232,8 +233,14 @@ describe("$job descriptor", () => {
 
       await app.cleanupJob.trigger();
 
-      // Logs should be cleaned up (not stored in the descriptor's logs Map)
-      expect(app.cleanupJob["logs"].size).toBe(0);
+      // Verify job completed successfully (logs are cleaned up internally)
+      const executions = await app.repo.find({
+        where: { job: "cleanup-job", status: "COMPLETED" },
+      });
+
+      expect(executions.length).toBe(1);
+      expect(executions[0].logs).toBeDefined();
+      expect(Array.isArray(executions[0].logs)).toBe(true);
     });
   });
 

@@ -40,3 +40,14 @@ For more details, see the [Descriptors documentation](/docs/descriptors).
 #### $job()
 
 Job descriptor - a drop-in replacement for $scheduler with built-in execution tracking.
+
+### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/providers).
+
+#### JobProvider
+
+Provider for job management and execution.
+Handles job lifecycle, execution tracking, log capturing, and event emission.
