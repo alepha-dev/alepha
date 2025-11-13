@@ -4,7 +4,7 @@ import { DateTimeProvider } from "@alepha/datetime";
 import { $action, $route } from "@alepha/server";
 import { Db } from "../providers/Db.ts";
 
-export const userSession = t.interface([sessions.schema], {
+export const userSession = t.extend(sessions.schema, {
   current: t.boolean(),
 });
 

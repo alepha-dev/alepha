@@ -52,7 +52,7 @@ export class TaskApi {
       params: t.object({
         projectId: t.int(),
       }),
-      query: t.interface([pageQuerySchema], {
+      query: t.extend(pageQuerySchema, {
         status: t.optional(t.enum(["new", "accepted", "completed"])),
         search: t.optional(t.string()),
       }),
@@ -154,7 +154,7 @@ export class TaskApi {
       params: t.object({
         id: t.int(),
       }),
-      response: t.interface([tasks.schema], {
+      response: t.extend(tasks.schema, {
         character: characters.schema,
       }),
     },
