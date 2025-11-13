@@ -1,8 +1,8 @@
 import { type Static, t } from "@alepha/core";
 import { files } from "../entities/files.ts";
 
-export const fileResourceSchema = t.interface(
-  [files.schema],
+export const fileResourceSchema = t.extend(
+  files.schema,
   {},
   {
     title: "FileResource",

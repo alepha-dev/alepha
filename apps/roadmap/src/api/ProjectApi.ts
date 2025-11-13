@@ -124,7 +124,7 @@ export class ProjectApi {
       params: t.object({
         id: t.int(),
       }),
-      response: t.interface([projects.schema], {
+      response: t.extend(projects.schema, {
         character: t.optional(characters.schema),
         tasks: t.array(tasks.schema),
       }),
@@ -162,7 +162,7 @@ export class ProjectApi {
         id: t.int(),
       }),
       response: t.array(
-        t.interface([characters.schema], {
+        t.extend(characters.schema, {
           user: users.schema,
         }),
       ),

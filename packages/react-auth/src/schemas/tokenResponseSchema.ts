@@ -3,7 +3,7 @@ import { userAccountInfoSchema } from "@alepha/security";
 import { apiLinksResponseSchema } from "@alepha/server-links";
 import { tokensSchema } from "./tokensSchema.ts";
 
-export const tokenResponseSchema = t.interface([tokensSchema], {
+export const tokenResponseSchema = t.extend(tokensSchema, {
   user: userAccountInfoSchema,
   api: apiLinksResponseSchema,
 });

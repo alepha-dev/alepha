@@ -111,7 +111,7 @@ export class DevToolsProvider {
     path: "/devtools/api/logs",
     silent: true,
     schema: {
-      query: t.interface([pageQuerySchema], {
+      query: t.extend(pageQuerySchema, {
         search: t.optional(t.string()),
       }),
       response: t.page(logEntrySchema),

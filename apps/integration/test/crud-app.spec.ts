@@ -91,7 +91,7 @@ class UserCrudApp {
     method: "GET",
     path: "/users",
     schema: {
-      query: t.interface([pageQuerySchema], {
+      query: t.extend(pageQuerySchema, {
         search: t.optional(t.text()),
         isActive: t.optional(t.boolean()),
         minAge: t.optional(t.number({ minimum: 0 })),
