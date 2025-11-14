@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $inject, Alepha, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { Repository } from "@alepha/postgres/src/services/Repository.ts";
+import { Repository } from "@alepha/postgres";
 import { tsImport } from "tsx/esm/api";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 
