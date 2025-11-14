@@ -30,11 +30,9 @@ npm i -g alepha
 
 An attempt to create easy-to-use framework for many use cases : API endpoints (Docker or Serverless), React applications (SSR or CSR or SSG), CLI tools, etc.
 
-Alepha is extremely modular (60+ packages) and relies only on very few runtime dependencies.
+Extremely modular (60+ packages) and relies only on very few runtime dependencies.
 
-Opinionated by design, after learning the most used functions, you will be able to build complex applications very quickly.
-
-Alepha takes care of configuration, development, build, deployment, testing, etc. No need to learn all the tools, Alepha wraps them all with sensible defaults.
+All in one tool that takes care of configuration, development, build, deployment, testing, etc. No need to learn all the tools, Alepha wraps them all with sensible defaults.
 
 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
 
@@ -57,7 +55,6 @@ import { run, t, Alepha } from "@alepha/core";
 import { $action } from "@alepha/server";
 import { $swagger } from "@alepha/server-swagger";
 
-// Write your code like a config file.
 class Api {
 
   // Functions starting with $ are "descriptors", they describe something needed.
