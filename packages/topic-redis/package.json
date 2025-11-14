@@ -7,8 +7,8 @@
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
 	"dependencies": {
 		"@alepha/core": "0.11.8",
 		"@alepha/logger": "0.11.8",
@@ -37,12 +37,5 @@
 		"topic",
 		"redis",
 		"pubsub"
-	],
-	"module": "./dist/index.js",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	}
+	]
 }

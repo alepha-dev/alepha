@@ -7,11 +7,9 @@
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"browser": {
-		"./dist/index.js": "./dist/index.browser.js"
-	},
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"browser": "./src/index.browser.ts",
 	"files": [
 		"dist",
 		"src"
@@ -43,13 +41,5 @@
 		"alepha",
 		"server",
 		"security"
-	],
-	"module": "./dist/index.js",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"browser": "./dist/index.browser.js"
-		}
-	}
+	]
 }

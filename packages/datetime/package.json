@@ -4,8 +4,8 @@
 	"version": "0.11.8",
 	"type": "module",
 	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
 	"files": [
 		"dist",
 		"src"
@@ -37,12 +37,5 @@
 		"dayjs",
 		"duration",
 		"interval"
-	],
-	"module": "./dist/index.js",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	}
+	]
 }

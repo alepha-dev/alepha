@@ -7,8 +7,8 @@
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
 	"dependencies": {
 		"@faker-js/faker": "^10.1.0",
 		"@testing-library/dom": "^10.4.1",
@@ -34,12 +34,5 @@
 	},
 	"keywords": [
 		"alepha"
-	],
-	"module": "./dist/index.js",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	}
+	]
 }
