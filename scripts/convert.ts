@@ -37,7 +37,6 @@ async function main(to?: string) {
 
       if (
         pkg.private ||
-        pkg.name === "alepha" ||
         !pkg.scripts?.build ||
         (!pkg.main.includes("dist") && !pkg.main.includes("src"))
       ) {
@@ -51,10 +50,16 @@ async function main(to?: string) {
         pkg.module = undefined;
         pkg.exports = undefined;
         if (pkg.bin) {
-          for (const [key, value] of Object.entries(pkg.bin)) {
-            pkg.bin[key] = String(value)
+          if (typeof pkg.bin === "string") {
+            pkg.bin = String(pkg.bin)
               .replace("dist/", "src/")
               .replace(".js", ".ts");
+          } else {
+            for (const [key, value] of Object.entries(pkg.bin)) {
+              pkg.bin[key] = String(value)
+                .replace("dist/", "src/")
+                .replace(".js", ".ts");
+            }
           }
         }
         if (pkg.browser) {
@@ -78,10 +83,16 @@ async function main(to?: string) {
           pkg.exports["."].browser = "./dist/index.browser.js";
         }
         if (pkg.bin) {
-          for (const [key, value] of Object.entries(pkg.bin)) {
-            pkg.bin[key] = String(value)
+          if (typeof pkg.bin === "string") {
+            pkg.bin = String(pkg.bin)
               .replace("src/", "dist/")
               .replace(".ts", ".js");
+          } else {
+            for (const [key, value] of Object.entries(pkg.bin)) {
+              pkg.bin[key] = String(value)
+                .replace("src/", "dist/")
+                .replace(".ts", ".js");
+            }
           }
         }
       }
