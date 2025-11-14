@@ -1,5 +1,5 @@
 import { $inject, t } from "@alepha/core";
-import { createFile } from "@alepha/file";
+import { FileSystem } from "@alepha/file";
 import { sql } from "@alepha/postgres";
 import { $action } from "@alepha/server";
 import { tasks } from "../entities/tasks.ts";
@@ -9,6 +9,7 @@ import { Security } from "../providers/Security";
 export class ProjectStatsApi {
   db = $inject(Db);
   security = $inject(Security);
+  fs = $inject(FileSystem);
 
   getProjectStats = $action({
     cache: true,
@@ -318,7 +319,8 @@ export class ProjectStatsApi {
         csvContent += `${row.join(",")}\n`;
       }
 
-      return createFile(csvContent, {
+      return this.fs.createFile({
+        text: csvContent,
         name: `tasks-export-${project.title}-${new Date().toISOString().split("T")[0]}.csv`,
         type: "text/csv",
       });
