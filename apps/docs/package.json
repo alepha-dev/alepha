@@ -3,8 +3,8 @@
 	"name": "@alepha/docs",
 	"type": "module",
 	"dependencies": {
-		"@alepha/core": "0.11.6",
-		"@alepha/react": "0.11.6",
+		"@alepha/core": "0.11.7",
+		"@alepha/react": "0.11.7",
 		"@mantine/core": "^8.3.7",
 		"@mantine/form": "^8.3.7",
 		"@mantine/hooks": "^8.3.7",
@@ -15,7 +15,7 @@
 		"react-dom": "^19.2.0"
 	},
 	"devDependencies": {
-		"@alepha/cli": "0.11.6",
+		"@alepha/cli": "0.11.7",
 		"@types/react": "^19.2.4",
 		"highlight.js": "^11.11.1",
 		"marked": "^17.0.0",

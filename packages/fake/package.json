@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/fake",
 	"description": "Generate fake data from TypeBox schemas using faker.js",
-	"version": "0.11.6",
+	"version": "0.11.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,7 +14,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.6",
+		"@alepha/core": "0.11.7",
 		"@faker-js/faker": "^10.1.0"
 	},
 	"devDependencies": {

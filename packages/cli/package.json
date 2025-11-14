@@ -1,6 +1,6 @@
 {
 	"name": "@alepha/cli",
-	"version": "0.11.6",
+	"version": "0.11.7",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -17,7 +17,7 @@
 		"alepha": "./src/index.ts"
 	},
 	"dependencies": {
-		"@alepha/postgres": "^0.11.6",
+		"@alepha/postgres": "^0.11.7",
 		"@biomejs/biome": "^2.3.5",
 		"depcheck": "^1.4.7",
 		"drizzle-kit": "^0.31.6",
@@ -28,9 +28,9 @@
 		"vitest": "^4.0.8"
 	},
 	"devDependencies": {
-		"@alepha/command": "^0.11.6",
-		"@alepha/core": "^0.11.6",
-		"@alepha/logger": "^0.11.6"
+		"@alepha/command": "^0.11.7",
+		"@alepha/core": "^0.11.7",
+		"@alepha/logger": "^0.11.7"
 	},
 	"scripts": {
 		"lint": "biome check --fix",
