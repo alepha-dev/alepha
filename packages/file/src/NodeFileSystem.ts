@@ -9,7 +9,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
-import type { FileLike } from "@alepha/core";
+import { AlephaError, type FileLike } from "@alepha/core";
 import type {
   CpOptions,
   CreateFileOptions,
@@ -131,7 +131,9 @@ export class NodeFileSystem implements FileSystem {
       });
     }
 
-    throw new Error("Invalid createFile options: no valid source provided");
+    throw new AlephaError(
+      "Invalid createFile options: no valid source provided",
+    );
   }
 
   /**

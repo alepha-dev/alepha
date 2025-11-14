@@ -23,13 +23,8 @@ A convention-driven TypeScript framework for building type-safe full-stack appli
 ## Quick Start
 
 ```bash
-npx @alepha/cli create my-app
-```
-
-Or manually:
-
-```bash
 npm install alepha
+npm install -D @alepha/cli
 ```
 
 ## What is this?
@@ -42,24 +37,18 @@ For more information, please visit the [documentation](https://feunard.github.io
 
 ## Examples
 
-### Type-safe API endpoint
+### API endpoint
 
-Write type-safe API endpoints with automatic OpenAPI documentation and more.
-
+Write API endpoints with automatic OpenAPI documentation.
 
 ```ts
-// app.ts
-import { run, t } from "alepha";
+// hello.ts
+import { run, t, Alepha } from "alepha";
 import { $action } from "alepha/server";
 import { $swagger } from "alepha/server/swagger";
 
 class Api {
-  docs = $swagger({
-    info: {
-      title: "My API",
-      version: "1.0.0",
-    }
-  })
+  docs = $swagger();
 
   sayHello = $action({
     path: "/hello/:name",
@@ -77,70 +66,20 @@ class Api {
   });
 }
 
-run(Api);
+const alepha = Alepha.create();
+
+alepha.with(Api);
+
+run(alepha);
 ```
 
 ```bash
-node app.ts
-```
-
-### Database with Drizzle ORM
-
-[Drizzle ORM](https://orm.drizzle.team/) is a type-safe ORM for TypeScript, bundled inside Alepha.
-
-You need `drizzle-kit` CLI as dev dependencies:
-
-```bash
-npm install -D drizzle-kit
-```
-
-```ts
-// app.ts
-import { $hook, run, t } from "alepha";
-import { $entity, $repository, pg } from "alepha/postgres";
-import { $logger } from "alepha/logger";
-
-export const users = $entity({
-  name: "users",
-  schema: t.object({
-    id: pg.primaryKey(),
-    name: t.text(),
-  }),
-});
-
-
-class Db {
-  log = $logger();
-  users = $repository(users);
-
-  ready = $hook({
-    on: "ready",
-    handler: async () => {
-      await this.users.create({
-        name: "John Doe",
-      });
-      this.log.info("Users:", await this.users.find());
-    }
-  })
-}
-
-run(Db)
-```
-
-```bash
-node app.ts
+npx alepha dev hello.ts
 ```
 
 ### React Application
 
 Build full-stack React applications, with server-side rendering (SSR) and client-side rendering (CSR).
-
-[React](https://react.dev) is required as a `dependency`:
-
-```bash
-npm install react react-dom
-npm install -D @types/react
-```
 
 ```tsx
 // app.tsx
@@ -153,7 +92,7 @@ const Hello = (props: { count: number }) => {
   return <button onClick={() => setCount(count + 1)}>Clicked: {count}</button>
 }
 
-class HomePage {
+class AppRouter {
   index = $page({
     schema: {
       query: t.object({
@@ -167,33 +106,15 @@ class HomePage {
   });
 }
 
-run(HomePage);
+const alepha = Alepha.create();
+
+alepha.with(AppRouter);
+
+run(alepha);
 ```
-
-[Vite](https://vite.dev) is required as a `devDependencies`:
-
-```bash
-npm install -D vite
-```
-
-Add the Alepha Vite plugin to your Vite config:
-
-```ts
-// vite.config.ts
-import { viteAlepha } from "alepha/vite";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [
-    viteAlepha()
-  ]
-});
-```
-
 Create an `index.html` file:
 
 ```html
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -206,12 +127,6 @@ Create an `index.html` file:
 </html>
 ```
 
-Then run Vite:
-
 ```bash
-npx vite
+npx alepha dev
 ```
-
-## License
-
-MIT

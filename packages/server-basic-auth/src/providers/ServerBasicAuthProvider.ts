@@ -113,6 +113,9 @@ export class ServerBasicAuthProvider {
     // Verify credentials
     if (username !== options.username || password !== options.password) {
       this.sendAuthRequired(request);
+      this.log.warn(`Failed basic auth attempt for user`, {
+        username,
+      });
       throw new HttpError({
         status: 401,
         message: "Invalid credentials",
