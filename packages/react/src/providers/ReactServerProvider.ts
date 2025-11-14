@@ -241,7 +241,7 @@ export class ReactServerProvider {
       return;
     }
 
-    this.log.info("SSR (vite) OK");
+    this.log.info("SSR (dev) OK");
 
     const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
 

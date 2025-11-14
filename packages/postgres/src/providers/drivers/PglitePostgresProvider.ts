@@ -42,6 +42,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
   protected client?: PGlite;
   protected pglite?: PgliteDatabase;
 
+  public get name() {
+    return "pglite";
+  }
+
   public override readonly dialect = "postgresql";
 
   public override get url(): string {

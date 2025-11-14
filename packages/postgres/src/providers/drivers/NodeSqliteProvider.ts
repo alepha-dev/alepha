@@ -65,6 +65,10 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
   protected sqlite!: DatabaseSync;
 
+  public get name() {
+    return "sqlite";
+  }
+
   public override readonly dialect = "sqlite";
 
   public override get url(): string {

@@ -11158,9 +11158,7 @@ __metadata:
   dependencies:
     "@alepha/cli": "npm:0.11.6"
     alepha: "npm:0.11.6"
-    drizzle-kit: "npm:^0.31.6"
     react: "npm:^19.2.0"
-    tsx: "npm:^4.20.6"
   languageName: unknown
   linkType: soft
 

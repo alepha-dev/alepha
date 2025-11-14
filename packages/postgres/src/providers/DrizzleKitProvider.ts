@@ -48,7 +48,7 @@ export class DrizzleKitProvider {
     }
 
     this.log.info(
-      `Synchronization of DB '${provider.name}' OK [${Date.now() - now}ms]`,
+      `Db '${provider.name}' synchronization OK [${Date.now() - now}ms]`,
     );
   }
 

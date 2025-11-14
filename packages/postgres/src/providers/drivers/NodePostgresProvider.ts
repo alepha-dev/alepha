@@ -57,6 +57,10 @@ export class NodePostgresProvider extends DatabaseProvider {
 
   public readonly dialect = "postgresql";
 
+  public get name() {
+    return "postgres";
+  }
+
   /**
    * In testing mode, the schema name will be generated and deleted after the test.
    */
