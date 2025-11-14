@@ -228,6 +228,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/cli@npm:^0.11.9":
+  version: 0.11.9
+  resolution: "@alepha/cli@npm:0.11.9"
+  dependencies:
+    "@alepha/postgres": "npm:^0.11.9"
+    "@biomejs/biome": "npm:^2.3.5"
+    depcheck: "npm:^1.4.7"
+    drizzle-kit: "npm:^0.31.6"
+    tsdown: "npm:^0.16.4"
+    tsx: "npm:^4.20.6"
+    typescript: "npm:^5.9.3"
+    vite: "npm:^7.2.2"
+    vitest: "npm:^4.0.8"
+  bin:
+    alepha: dist/index.js
+  checksum: 10c0/e6b5e8de67d8c21a5115692bcb922b93621892c50f03625a1a655312951a5967c4ccf49d0d0988c9e74efc6ceaff59fb820de2cb130e54726e9427aeab317db3
+  languageName: node
+  linkType: hard
+
 "@alepha/command@npm:0.11.9, @alepha/command@npm:^0.11.9, @alepha/command@workspace:packages/command":
   version: 0.0.0-use.local
   resolution: "@alepha/command@workspace:packages/command"
@@ -924,7 +943,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-swagger@workspace:packages/server-swagger":
+"@alepha/server-swagger@npm:^0.11.9, @alepha/server-swagger@workspace:packages/server-swagger":
   version: 0.0.0-use.local
   resolution: "@alepha/server-swagger@workspace:packages/server-swagger"
   dependencies:
@@ -6055,7 +6074,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"alepha@npm:0.11.9, alepha@workspace:packages/alepha":
+"alepha@npm:0.11.9, alepha@npm:^0.11.9, alepha@workspace:packages/alepha":
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
@@ -6064,8 +6083,8 @@ __metadata:
     "@alepha/logger": "npm:^0.11.9"
     "@alepha/postgres": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
-    degit: "npm:^2.8.4"
     drizzle-kit: "npm:^0.31.7"
+    tar: "npm:^7.5.2"
     tsx: "npm:^4.20.6"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.2.2"
@@ -7212,15 +7231,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"degit@npm:^2.8.4":
-  version: 2.8.4
-  resolution: "degit@npm:2.8.4"
-  bin:
-    degit: degit
-  checksum: 10c0/25ae9daf8010b450ffe8307c5ca903fe8bfaa8bb8622da12f81f2b6c3b1bb24e96fe3ab0b4ec4a1a19684f674b2158a8a3a2178c481882cc4991c7a0859ec40a
-  languageName: node
-  linkType: hard
-
 "delayed-stream@npm:~1.0.0":
   version: 1.0.0
   resolution: "delayed-stream@npm:1.0.0"
@@ -7388,7 +7398,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"drizzle-kit@npm:^0.31.7":
+"drizzle-kit@npm:^0.31.6, drizzle-kit@npm:^0.31.7":
   version: 0.31.7
   resolution: "drizzle-kit@npm:0.31.7"
   dependencies:
@@ -12697,6 +12707,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "starter-6b2739@workspace:apps/starter"
   dependencies:
+    "@alepha/cli": "npm:^0.11.9"
+    "@alepha/core": "npm:^0.11.9"
+    "@alepha/postgres": "npm:^0.11.9"
+    "@alepha/react": "npm:^0.11.9"
+    "@alepha/react-form": "npm:^0.11.9"
+    "@alepha/react-head": "npm:^0.11.9"
+    "@alepha/react-i18n": "npm:^0.11.9"
+    "@alepha/server": "npm:^0.11.9"
+    "@alepha/server-links": "npm:^0.11.9"
+    "@alepha/server-swagger": "npm:^0.11.9"
+    alepha: "npm:^0.11.9"
     react: "npm:^19.2.0"
   languageName: unknown
   linkType: soft
@@ -12962,7 +12983,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:^7.4.0":
+"tar@npm:^7.4.0, tar@npm:^7.5.2":
   version: 7.5.2
   resolution: "tar@npm:7.5.2"
   dependencies:
@@ -13894,7 +13915,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^4.0.9":
+"vitest@npm:^4.0.8, vitest@npm:^4.0.9":
   version: 4.0.9
   resolution: "vitest@npm:4.0.9"
   dependencies:

@@ -1,8 +1,11 @@
-import { access, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { $command, CliProvider } from "@alepha/command";
-import { $inject, t } from "@alepha/core";
+import { $inject, AlephaError, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
+import { pipeline } from "stream/promises";
+import * as tar from "tar";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { version } from "../version.ts";
 
@@ -33,33 +36,52 @@ export class CoreCommands {
   public readonly create = $command({
     name: "create",
     description: "Create a new Alepha project",
-    args: t.text({ title: "name" }),
+    aliases: ["new"],
+    args: t.text({
+      title: "name",
+    }),
     flags: t.object({
       yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
       pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
-      bun: t.optional(t.boolean({ description: "Use Bun package manager" })),
     }),
     summary: false,
     handler: async ({ run, args, flags }) => {
       const name = args;
+      const root = process.cwd();
+      const dest = join(root, name);
 
-      let installCmd = "npm install";
-      if (flags.yarn) {
-        installCmd = "yarn";
-      } else if (flags.pnpm) {
-        installCmd = "pnpm install";
-      } else if (flags.bun) {
-        installCmd = "bun install";
+      try {
+        await access(dest);
+        this.log.error(
+          `Directory "${name}" already exists. Please choose a different project name.`,
+        );
+        return;
+      } catch {
+        // Directory does not exist, proceed
       }
 
-      await run(`npx degit feunard/alepha/apps/starter ${name}`, {
-        alias: "Cloning repository",
-      });
+      let installCmd = "npm install";
+      let execCmd = "npx";
+      if (flags.yarn) {
+        installCmd = "yarn";
+        execCmd = "yarn";
+      } else if (flags.pnpm) {
+        installCmd = "pnpm install";
+        execCmd = "pnpm";
+      }
 
-      // Remove .git directory to start fresh
-      await run(`rm -rf ${name}/.git`, {
-        alias: "Setting up project",
-      });
+      await mkdir(dest, { recursive: true }).catch(() => null);
+
+      await run("Downloading sample project", () =>
+        this.downloadSampleProject(dest),
+      );
+
+      if (flags.yarn) {
+        await this.ensureYarn(dest);
+        await run(`cd ${name} &&yarn init -2`, {
+          alias: "Init Yarn",
+        });
+      }
 
       await run(`cd ${name} && ${installCmd}`, {
         alias: "Installing dependencies",
@@ -81,12 +103,14 @@ export class CoreCommands {
         alias: "Building project",
       });
 
+      this.log.info("");
       this.log.info(
-        `Project is ready!
+        `🎉 Project is ready! You can now start developing your Alepha project:
 
-$ cd ${name} && npx alepha dev
-			`,
+$ cd ${name} && ${execCmd} alepha dev
+			`.trim(),
       );
+      this.log.info("");
     },
   });
 
@@ -134,7 +158,6 @@ $ cd ${name} && npx alepha dev
     try {
       await access(tsconfigPath);
     } catch {
-      this.log.info("Missing .yarnrc.yml detected. Creating one...");
       await writeFile(tsconfigPath, "nodeLinker: node-modules");
     }
   }
@@ -218,5 +241,34 @@ $ cd ${name} && npx alepha dev
       this.log.info("Missing tsconfig.json detected. Creating one...");
       await writeFile(tsconfigPath, tsconfigJson);
     }
+  }
+
+  public async downloadSampleProject(targetDir: string) {
+    const url = "https://api.github.com/repos/feunard/alepha/tarball/main";
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Alepha-CLI", // GitHub API requires User-Agent
+      },
+    });
+
+    if (!response.ok) {
+      throw new AlephaError(`Failed to download: ${response.statusText}`);
+    }
+
+    const tarStream = Readable.fromWeb(response.body as any);
+    await pipeline(
+      tarStream,
+      tar.extract({
+        cwd: targetDir, // Extract to target directory
+        strip: 3, // Remove feunard-alepha-<hash>/apps/starter prefix
+        filter: (path) => {
+          // Only extract files from apps/starter/
+          const parts = path.split("/");
+          return (
+            parts.length >= 3 && parts[1] === "apps" && parts[2] === "starter"
+          );
+        },
+      }),
+    );
   }
 }

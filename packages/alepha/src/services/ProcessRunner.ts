@@ -41,7 +41,7 @@ export class ProcessRunner {
       env: {
         ...process.env,
         ...env,
-        NODE_OPTIONS: "--import tsx",
+        // NODE_OPTIONS: "--import tsx",
       },
     });
 
