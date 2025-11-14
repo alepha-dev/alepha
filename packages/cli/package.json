@@ -1,23 +1,23 @@
 {
 	"name": "@alepha/cli",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"src",
 		"assets"
 	],
 	"bin": {
-		"alepha": "./src/index.ts"
+		"alepha": "./dist/index.js"
 	},
 	"dependencies": {
-		"@alepha/postgres": "^0.11.7",
+		"@alepha/postgres": "^0.11.8",
 		"@biomejs/biome": "^2.3.5",
 		"depcheck": "^1.4.7",
 		"drizzle-kit": "^0.31.6",
@@ -28,9 +28,9 @@
 		"vitest": "^4.0.8"
 	},
 	"devDependencies": {
-		"@alepha/command": "^0.11.7",
-		"@alepha/core": "^0.11.7",
-		"@alepha/logger": "^0.11.7"
+		"@alepha/command": "^0.11.8",
+		"@alepha/core": "^0.11.8",
+		"@alepha/logger": "^0.11.8"
 	},
 	"scripts": {
 		"lint": "biome check --fix",
@@ -44,5 +44,12 @@
 	},
 	"keywords": [
 		"alepha"
-	]
+	],
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	}
 }

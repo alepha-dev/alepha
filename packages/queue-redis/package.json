@@ -1,22 +1,22 @@
 {
 	"name": "@alepha/queue-redis",
 	"description": "Redis implementation for the message queueing system.",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
 	},
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.7",
-		"@alepha/queue": "0.11.7",
-		"@alepha/redis": "0.11.7"
+		"@alepha/core": "0.11.8",
+		"@alepha/queue": "0.11.8",
+		"@alepha/redis": "0.11.8"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",
@@ -38,5 +38,12 @@
 	"keywords": [
 		"alepha",
 		"queue"
-	]
+	],
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	}
 }

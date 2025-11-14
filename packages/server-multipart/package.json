@@ -1,22 +1,22 @@
 {
 	"name": "@alepha/server-multipart",
 	"description": "Handles multipart/form-data requests for file uploads.",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.7",
-		"@alepha/file": "0.11.7",
-		"@alepha/server": "0.11.7"
+		"@alepha/core": "0.11.8",
+		"@alepha/file": "0.11.8",
+		"@alepha/server": "0.11.8"
 	},
 	"devDependencies": {
 		"@fastify/busboy": "^3.2.0",
@@ -37,5 +37,12 @@
 	},
 	"keywords": [
 		"alepha"
-	]
+	],
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	}
 }

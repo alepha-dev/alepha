@@ -1,27 +1,29 @@
 {
 	"name": "@alepha/server-links",
 	"description": "Enables type-safe communication between different services.",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"browser": "./src/index.browser.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"browser": {
+		"./dist/index.js": "./dist/index.browser.js"
+	},
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.7",
-		"@alepha/logger": "0.11.7",
-		"@alepha/retry": "0.11.7",
-		"@alepha/security": "0.11.7",
-		"@alepha/server": "0.11.7",
-		"@alepha/server-proxy": "0.11.7",
-		"@alepha/server-security": "0.11.7"
+		"@alepha/core": "0.11.8",
+		"@alepha/logger": "0.11.8",
+		"@alepha/retry": "0.11.8",
+		"@alepha/security": "0.11.8",
+		"@alepha/server": "0.11.8",
+		"@alepha/server-proxy": "0.11.8",
+		"@alepha/server-security": "0.11.8"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",
@@ -44,5 +46,13 @@
 		"alepha",
 		"server",
 		"links"
-	]
+	],
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"browser": "./dist/index.browser.js"
+		}
+	}
 }

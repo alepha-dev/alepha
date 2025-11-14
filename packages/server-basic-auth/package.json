@@ -1,22 +1,22 @@
 {
 	"name": "@alepha/server-basic-auth",
 	"description": "HTTP Basic Authentication middleware for server routes.",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.7",
-		"@alepha/logger": "0.11.7",
-		"@alepha/server": "0.11.7"
+		"@alepha/core": "0.11.8",
+		"@alepha/logger": "0.11.8",
+		"@alepha/server": "0.11.8"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",
@@ -40,5 +40,12 @@
 		"server",
 		"basic-auth",
 		"authentication"
-	]
+	],
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	}
 }

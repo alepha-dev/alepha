@@ -8,34 +8,34 @@
 		"storage"
 	],
 	"author": "Feunard",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
 	},
 	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.11.7",
-		"@alepha/core": "0.11.7",
-		"@alepha/datetime": "0.11.7",
-		"@alepha/file": "0.11.7",
-		"@alepha/logger": "0.11.7",
-		"@alepha/postgres": "0.11.7",
-		"@alepha/scheduler": "0.11.7",
-		"@alepha/security": "0.11.7",
-		"@alepha/server": "0.11.7",
-		"@alepha/server-cache": "0.11.7",
-		"@alepha/server-multipart": "0.11.7",
-		"@alepha/server-security": "0.11.7"
+		"@alepha/bucket": "0.11.8",
+		"@alepha/core": "0.11.8",
+		"@alepha/datetime": "0.11.8",
+		"@alepha/file": "0.11.8",
+		"@alepha/logger": "0.11.8",
+		"@alepha/postgres": "0.11.8",
+		"@alepha/scheduler": "0.11.8",
+		"@alepha/security": "0.11.8",
+		"@alepha/server": "0.11.8",
+		"@alepha/server-cache": "0.11.8",
+		"@alepha/server-multipart": "0.11.8",
+		"@alepha/server-security": "0.11.8"
 	},
 	"devDependencies": {
-		"@alepha/bucket-azure": "0.11.7",
+		"@alepha/bucket-azure": "0.11.8",
 		"@biomejs/biome": "^2.3.5",
 		"tsdown": "^0.16.4",
 		"typescript": "^5.9.3",
@@ -51,5 +51,12 @@
 		"type": "git",
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
-	"homepage": "https://github.com/feunard/alepha"
+	"homepage": "https://github.com/feunard/alepha",
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	}
 }

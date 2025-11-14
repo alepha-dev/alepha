@@ -7,7 +7,7 @@
 		"verifications"
 	],
 	"author": "Feunard",
-	"version": "0.11.7",
+	"version": "0.11.8",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -20,11 +20,11 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.7",
-		"@alepha/datetime": "0.11.7",
-		"@alepha/postgres": "0.11.7",
-		"@alepha/scheduler": "0.11.7",
-		"@alepha/server": "0.11.7"
+		"@alepha/core": "0.11.8",
+		"@alepha/datetime": "0.11.8",
+		"@alepha/postgres": "0.11.8",
+		"@alepha/scheduler": "0.11.8",
+		"@alepha/server": "0.11.8"
 	},
 	"devDependencies": {
 		"vitest": "^4.0.8"
