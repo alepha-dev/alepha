@@ -156,4 +156,36 @@ describe("$action", () => {
     expect(file.name).toBe("hello.txt");
     expect(file.type).toBe("text/plain");
   });
+
+  test("should filter fields", async ({ expect }) => {
+    const alepha = Alepha.create();
+    const fileSystem = alepha.inject(FileSystem);
+    class TestApp {
+      test = $action({
+        schema: {
+          body: t.object({
+            extra: t.text(),
+          }),
+          response: t.string(),
+        },
+        handler: ({ body }) => JSON.stringify(body),
+      });
+    }
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    expect(
+      await app.test.run({
+        body: { extra: "some extra", invalid: "nope" },
+      } as any),
+    ).toBe(JSON.stringify({ extra: "some extra" }));
+
+    expect(
+      await app.test
+        .fetch({
+          body: { extra: "some extra", invalid: "nope" },
+        } as any)
+        .then((it) => it.data),
+    ).toBe(JSON.stringify({ extra: "some extra" }));
+  });
 });

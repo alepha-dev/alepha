@@ -13,6 +13,7 @@ import type {
   TObjectOptions,
   TOmit,
   TOptionalAdd,
+  TPartial,
   TPick,
   TProperties,
   TRecord,
@@ -237,11 +238,11 @@ export class TypeProvider {
   public void = Type.Void;
   public undefined = Type.Undefined;
   public record = Type.Record;
-  public partial = Type.Partial;
   public union = Type.Union;
   public tuple = Type.Tuple;
   public null = Type.Null;
   public const = Type.Literal;
+  public options = Type.Options;
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
@@ -259,15 +260,29 @@ export class TypeProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  public extend<T extends TSchema[], U extends TProperties>(
+    schema: [...T],
+    properties: U,
+    options?: TSchemaOptions,
+  ): TInterface<T, U>;
   public extend<T extends TObject, U extends TProperties>(
     schema: T,
     properties: U,
     options?: TSchemaOptions,
-  ): TInterface<[T], U> {
-    return Type.Interface([schema], properties, {
-      additionalProperties: false,
-      ...options,
-    });
+  ): TInterface<[T], U>;
+  public extend(
+    schema: TSchema | TSchema[],
+    properties: Record<string, any>,
+    options?: TSchemaOptions,
+  ): any {
+    return Type.Interface(
+      Array.isArray(schema) ? schema : [schema],
+      properties,
+      {
+        additionalProperties: false,
+        ...options,
+      },
+    );
   }
 
   public pick<T extends TObject, Indexer extends PropertyKey[]>(
@@ -287,6 +302,16 @@ export class TypeProvider {
     options?: TObjectOptions,
   ): TOmit<T, TKeysToIndexer<Indexer>> {
     return Type.Omit(schema, keys, {
+      additionalProperties: false,
+      ...options,
+    });
+  }
+
+  public partial<T extends TSchema>(
+    schema: T,
+    options?: TSchemaOptions,
+  ): TPartial<T> {
+    return Type.Partial(schema, {
       additionalProperties: false,
       ...options,
     });

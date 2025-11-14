@@ -339,7 +339,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   ) {
     if (route.schema?.params) {
       try {
-        request.params = this.alepha.codec.decode(
+        request.params = this.alepha.codec.validate(
           route.schema.params,
           request.params,
         ) as any;
@@ -368,7 +368,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (route.schema?.headers) {
       try {
-        request.headers = this.alepha.codec.decode(
+        request.headers = this.alepha.codec.validate(
           route.schema.headers,
           request.headers,
         ) as any;
