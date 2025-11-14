@@ -115,9 +115,6 @@ describe("Runner", () => {
       .slice(4)
       .map((l) => l.message)
       .join("\n");
-
-    expect(logs).toContain('| echo "Task 1"');
-    expect(logs).toContain("| A slightly longer task name");
   });
 
   test("summary() should not print a table if no tasks were run", () => {

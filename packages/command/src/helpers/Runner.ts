@@ -1,7 +1,9 @@
 import { exec } from "node:child_process";
 import { cp, glob, rm } from "node:fs/promises";
+import { $inject, Alepha } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { CommandError } from "../errors/CommandError.ts";
+import { PrettyPrint } from "./PrettyPrint.ts";
 
 export type Task = {
   name: string;
@@ -33,10 +35,16 @@ export class Runner {
   protected readonly log = $logger();
   protected readonly timers: Timer[] = [];
   protected readonly startTime: number = Date.now();
+  protected readonly prettyPrint = $inject(PrettyPrint);
+  protected readonly alepha = $inject(Alepha);
   public readonly run: RunnerMethod;
 
   constructor() {
     this.run = this.createRunMethod();
+  }
+
+  protected get useDynamicLogger() {
+    return this.alepha.env.LOG_FORMAT === "raw";
   }
 
   protected createRunMethod() {
@@ -143,22 +151,33 @@ export class Runner {
    */
   public summary(): void {
     if (this.timers.length === 0) return;
+
     this.log.info("");
-    this.renderTable(this.timers.map((t) => [t.name, t.duration]));
+    //this.renderTable(this.timers.map((t) => [t.name, t.duration]));
     const totalTime = ((Date.now() - this.startTime) / 1000).toFixed(2);
     this.log.info(`Total time: ${totalTime} s`);
     this.log.info(``);
   }
 
   protected async executeTask(task: Task): Promise<string> {
-    this.log.info(`Starting '${task.name}' ...`);
     const now = Date.now();
+
+    // Setup dynamic logger
+    if (this.useDynamicLogger) {
+      this.prettyPrint.startSpinner(task.name);
+    } else {
+      this.log.info(`Starting '${task.name}' ...`);
+    }
 
     let stdout = "";
 
     try {
       stdout = String((await task.handler()) ?? "");
     } catch (error) {
+      // Clear spinner and show error
+      if (this.useDynamicLogger) {
+        this.prettyPrint.error(task.name);
+      }
       if (error instanceof Error && "stdout" in error) {
         this.log.info(`\n\n${error.stdout}`);
       }
@@ -168,7 +187,13 @@ export class Runner {
     this.log.trace(stdout);
 
     const duration = ((Date.now() - now) / 1000).toFixed(2);
-    this.log.info(`Finished '${task.name}' after ${duration}s`);
+
+    // Clear spinner and show completion
+    if (this.useDynamicLogger) {
+      this.prettyPrint.success(task.name, `${duration}s`);
+    } else {
+      this.log.info(`Finished '${task.name}' after ${duration}s`);
+    }
 
     this.timers.push({
       name: task.name,

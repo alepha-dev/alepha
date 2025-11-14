@@ -11,8 +11,5 @@
 		"@alepha/core": "^0.11.9",
 		"@alepha/postgres": "^0.11.9",
 		"@alepha/server": "^0.11.9"
-	},
-	"devDependencies": {
-		"@alepha/cli": "^0.11.9"
 	}
 }

@@ -10,6 +10,7 @@
 Alepha
 </h1>
 <p style="max-width: 512px">
+Easy mode for building TypeScript applications.
 </p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="npm"/></a>
@@ -18,9 +19,6 @@ Alepha
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
-The easy mode for building TypeScript applications.
-
-Requirements: Node.js 22+
 
 ```bash
 npm i -g alepha
@@ -28,11 +26,11 @@ npm i -g alepha
 
 ## What is this?
 
-An attempt to create easy-to-use framework for many use cases : API endpoints (Docker or Serverless), React applications (SSR or CSR or SSG), CLI tools, etc.
+Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), CLI tools, and more!
 
 Extremely modular (60+ packages) and relies only on very few runtime dependencies.
 
-All in one tool that takes care of configuration, development, build, deployment, testing, etc. No need to learn all the tools, Alepha wraps them all with sensible defaults.
+All-in-one tool that takes care of configuration, development, build, deployment, testing, etc. Convention over configuration.
 
 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
 
@@ -43,8 +41,7 @@ For more information, please visit the [documentation](https://feunard.github.io
 Write API endpoints with automatic OpenAPI documentation.
 
 ```bash
-# Add Alepha to your current directory
-# -> package.json and tsconfig.json will be created if not existing
+# Initialize a new Alepha project in the current folder
 npx alepha init --api
 ```
 
@@ -57,18 +54,18 @@ import { $swagger } from "@alepha/server-swagger";
 
 class Api {
 
-  // Functions starting with $ are "descriptors", they describe something needed.
-  // Like react hooks, they must be called inside Alepha context.
+  // Functions starting with $ are "descriptors".
+  // Like React hooks, they must be called inside Alepha context.
   docs = $swagger();
 
   sayHello = $action({
     path: "/hello/:name",
-    // Every feature inside Alepha is strongly typed with runtime validation
-    // schema is based on TypeBox library.
+    // Every feature inside Alepha is strongly typed with runtime validation.
+    // Schema is based on TypeBox library.
     schema: {
       params: t.object({
-        // Alepha provides many built-in types,
-        // for example t.text() is a t.string() with specific maxLength, auto-trim, etc.
+        // Alepha provides many built-in types.
+        // For example `t.text()` = `t.string()` + specific maxLength, auto-trim, etc.
         name: t.text()
       }),
       response: t.object({

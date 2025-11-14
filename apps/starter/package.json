@@ -8,8 +8,5 @@
 	},
 	"dependencies": {
 		"react": "^19.2.0"
-	},
-	"devDependencies": {
-		"@alepha/cli": "0.11.9"
 	}
 }

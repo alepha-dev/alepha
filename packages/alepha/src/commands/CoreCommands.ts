@@ -35,9 +35,9 @@ export class CoreCommands {
     description: "Create a new Alepha project",
     args: t.text({ title: "name" }),
     flags: t.object({
-      yarn: t.boolean({ description: "Use Yarn package manager" }),
-      pnpm: t.boolean({ description: "Use pnpm package manager" }),
-      bun: t.boolean({ description: "Use Bun package manager" }),
+      yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
+      pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
+      bun: t.optional(t.boolean({ description: "Use Bun package manager" })),
     }),
     summary: false,
     handler: async ({ run, args, flags }) => {
@@ -52,13 +52,13 @@ export class CoreCommands {
         installCmd = "bun install";
       }
 
-      await run(`git clone https://github.com/feunard/alepha-starter ${name}`, {
-        alias: "📥 Cloning repository",
+      await run(`npx degit feunard/alepha/apps/starter ${name}`, {
+        alias: "Cloning repository",
       });
 
       // Remove .git directory to start fresh
       await run(`rm -rf ${name}/.git`, {
-        alias: "🔧 Setting up project",
+        alias: "Setting up project",
       });
 
       await run(`cd ${name} && ${installCmd}`, {
