@@ -12,23 +12,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@alepha/api-files@npm:0.11.8, @alepha/api-files@npm:^0.11.8, @alepha/api-files@workspace:packages/api-files":
+"@alepha/api-files@npm:0.11.9, @alepha/api-files@npm:^0.11.9, @alepha/api-files@workspace:packages/api-files":
   version: 0.0.0-use.local
   resolution: "@alepha/api-files@workspace:packages/api-files"
   dependencies:
-    "@alepha/bucket": "npm:0.11.8"
-    "@alepha/bucket-azure": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/scheduler": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-cache": "npm:0.11.8"
-    "@alepha/server-multipart": "npm:0.11.8"
-    "@alepha/server-security": "npm:0.11.8"
+    "@alepha/bucket": "npm:0.11.9"
+    "@alepha/bucket-azure": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/scheduler": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-cache": "npm:0.11.9"
+    "@alepha/server-multipart": "npm:0.11.9"
+    "@alepha/server-security": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -36,18 +36,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-jobs@npm:0.11.8, @alepha/api-jobs@workspace:packages/api-jobs":
+"@alepha/api-jobs@npm:0.11.9, @alepha/api-jobs@workspace:packages/api-jobs":
   version: 0.0.0-use.local
   resolution: "@alepha/api-jobs@workspace:packages/api-jobs"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/lock": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/scheduler": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-security": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/lock": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/scheduler": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-security": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -55,17 +55,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-notifications@npm:0.11.8, @alepha/api-notifications@workspace:packages/api-notifications":
+"@alepha/api-notifications@npm:0.11.9, @alepha/api-notifications@workspace:packages/api-notifications":
   version: 0.0.0-use.local
   resolution: "@alepha/api-notifications@workspace:packages/api-notifications"
   dependencies:
-    "@alepha/batch": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/email": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/queue": "npm:0.11.8"
+    "@alepha/batch": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/email": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/queue": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -77,11 +77,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/api-parameters@workspace:packages/api-parameters"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/topic": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/topic": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -89,20 +89,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-users@npm:0.11.8, @alepha/api-users@npm:^0.11.8, @alepha/api-users@workspace:packages/api-users":
+"@alepha/api-users@npm:0.11.9, @alepha/api-users@npm:^0.11.9, @alepha/api-users@workspace:packages/api-users":
   version: 0.0.0-use.local
   resolution: "@alepha/api-users@workspace:packages/api-users"
   dependencies:
-    "@alepha/api-notifications": "npm:0.11.8"
-    "@alepha/api-verifications": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/email": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/react-auth": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-links": "npm:0.11.8"
+    "@alepha/api-notifications": "npm:0.11.9"
+    "@alepha/api-verifications": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/email": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/react-auth": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-links": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -110,15 +110,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/api-verifications@npm:0.11.8, @alepha/api-verifications@workspace:packages/api-verifications":
+"@alepha/api-verifications@npm:0.11.9, @alepha/api-verifications@workspace:packages/api-verifications":
   version: 0.0.0-use.local
   resolution: "@alepha/api-verifications@workspace:packages/api-verifications"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/scheduler": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/scheduler": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     vitest: "npm:^4.0.8"
   languageName: unknown
   linkType: soft
@@ -127,7 +127,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/api-workflows@workspace:packages/api-workflows"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -135,14 +135,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/batch@npm:0.11.8, @alepha/batch@workspace:packages/batch":
+"@alepha/batch@npm:0.11.9, @alepha/batch@workspace:packages/batch":
   version: 0.0.0-use.local
   resolution: "@alepha/batch@workspace:packages/batch"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/retry": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/retry": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -150,15 +150,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/bucket-azure@npm:0.11.8, @alepha/bucket-azure@workspace:packages/bucket-azure":
+"@alepha/bucket-azure@npm:0.11.9, @alepha/bucket-azure@workspace:packages/bucket-azure":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-azure@workspace:packages/bucket-azure"
   dependencies:
-    "@alepha/bucket": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/bucket": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@azure/storage-blob": "npm:^12.29.1"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
@@ -167,15 +167,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/bucket-vercel@npm:^0.11.8, @alepha/bucket-vercel@workspace:packages/bucket-vercel":
+"@alepha/bucket-vercel@npm:^0.11.9, @alepha/bucket-vercel@workspace:packages/bucket-vercel":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-vercel@workspace:packages/bucket-vercel"
   dependencies:
-    "@alepha/bucket": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/bucket": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@types/node": "npm:^24.10.1"
     "@vercel/blob": "npm:^2.0.0"
@@ -185,13 +185,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/bucket@npm:0.11.8, @alepha/bucket@npm:^0.11.8, @alepha/bucket@workspace:packages/bucket":
+"@alepha/bucket@npm:0.11.9, @alepha/bucket@npm:^0.11.9, @alepha/bucket@workspace:packages/bucket":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket@workspace:packages/bucket"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -199,14 +199,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cache-redis@npm:0.11.8, @alepha/cache-redis@workspace:packages/cache-redis":
+"@alepha/cache-redis@npm:0.11.9, @alepha/cache-redis@workspace:packages/cache-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/cache-redis@workspace:packages/cache-redis"
   dependencies:
-    "@alepha/cache": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/redis": "npm:0.11.8"
+    "@alepha/cache": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/redis": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -214,13 +214,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cache@npm:0.11.8, @alepha/cache@workspace:packages/cache":
+"@alepha/cache@npm:0.11.9, @alepha/cache@workspace:packages/cache":
   version: 0.0.0-use.local
   resolution: "@alepha/cache@workspace:packages/cache"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -228,14 +228,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cli@npm:0.11.8, @alepha/cli@npm:^0.11.8, @alepha/cli@workspace:packages/cli":
+"@alepha/cli@npm:0.11.9, @alepha/cli@npm:^0.11.9, @alepha/cli@workspace:packages/cli":
   version: 0.0.0-use.local
   resolution: "@alepha/cli@workspace:packages/cli"
   dependencies:
-    "@alepha/command": "npm:^0.11.8"
-    "@alepha/core": "npm:^0.11.8"
-    "@alepha/logger": "npm:^0.11.8"
-    "@alepha/postgres": "npm:^0.11.8"
+    "@alepha/command": "npm:^0.11.9"
+    "@alepha/core": "npm:^0.11.9"
+    "@alepha/logger": "npm:^0.11.9"
+    "@alepha/postgres": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     depcheck: "npm:^1.4.7"
     drizzle-kit: "npm:^0.31.6"
@@ -249,12 +249,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/command@npm:0.11.8, @alepha/command@npm:^0.11.8, @alepha/command@workspace:packages/command":
+"@alepha/command@npm:0.11.9, @alepha/command@npm:^0.11.9, @alepha/command@workspace:packages/command":
   version: 0.0.0-use.local
   resolution: "@alepha/command@workspace:packages/command"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:^0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -262,7 +262,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/core@npm:0.11.8, @alepha/core@npm:^0.11.8, @alepha/core@workspace:packages/core":
+"@alepha/core@npm:0.11.9, @alepha/core@npm:^0.11.9, @alepha/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@alepha/core@workspace:packages/core"
   dependencies:
@@ -274,11 +274,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/datetime@npm:0.11.8, @alepha/datetime@npm:^0.11.8, @alepha/datetime@workspace:packages/datetime":
+"@alepha/datetime@npm:0.11.9, @alepha/datetime@npm:^0.11.9, @alepha/datetime@workspace:packages/datetime":
   version: 0.0.0-use.local
   resolution: "@alepha/datetime@workspace:packages/datetime"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     dayjs: "npm:^1.11.19"
     tsdown: "npm:^0.16.4"
@@ -287,28 +287,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools@npm:0.11.8, @alepha/devtools@workspace:packages/devtools":
+"@alepha/devtools@npm:0.11.9, @alepha/devtools@workspace:packages/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
-    "@alepha/batch": "npm:0.11.8"
-    "@alepha/bucket": "npm:0.11.8"
-    "@alepha/cache": "npm:0.11.8"
-    "@alepha/cli": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/queue": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/react-i18n": "npm:0.11.8"
-    "@alepha/scheduler": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-static": "npm:0.11.8"
-    "@alepha/topic": "npm:0.11.8"
-    "@alepha/ui": "npm:0.11.8"
-    "@alepha/vite": "npm:0.11.8"
+    "@alepha/batch": "npm:0.11.9"
+    "@alepha/bucket": "npm:0.11.9"
+    "@alepha/cache": "npm:0.11.9"
+    "@alepha/cli": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/queue": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/react-i18n": "npm:0.11.9"
+    "@alepha/scheduler": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-static": "npm:0.11.9"
+    "@alepha/topic": "npm:0.11.9"
+    "@alepha/ui": "npm:0.11.9"
+    "@alepha/vite": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@tabler/icons-react": "npm:^3.35.0"
     react: "npm:^19.2.0"
@@ -322,9 +322,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/docs@workspace:apps/docs"
   dependencies:
-    "@alepha/cli": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
+    "@alepha/cli": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
     "@mantine/core": "npm:^8.3.7"
     "@mantine/form": "npm:^8.3.7"
     "@mantine/hooks": "npm:^8.3.7"
@@ -341,12 +341,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/email@npm:0.11.8, @alepha/email@workspace:packages/email":
+"@alepha/email@npm:0.11.9, @alepha/email@workspace:packages/email":
   version: 0.0.0-use.local
   resolution: "@alepha/email@workspace:packages/email"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@types/nodemailer": "npm:^7.0.3"
     nodemailer: "npm:^7.0.10"
@@ -356,11 +356,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/fake@npm:0.11.8, @alepha/fake@workspace:packages/fake":
+"@alepha/fake@npm:0.11.9, @alepha/fake@workspace:packages/fake":
   version: 0.0.0-use.local
   resolution: "@alepha/fake@workspace:packages/fake"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@faker-js/faker": "npm:^10.1.0"
     tsdown: "npm:^0.16.4"
@@ -369,11 +369,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/file@npm:0.11.8, @alepha/file@npm:^0.11.8, @alepha/file@workspace:packages/file":
+"@alepha/file@npm:0.11.9, @alepha/file@npm:^0.11.9, @alepha/file@workspace:packages/file":
   version: 0.0.0-use.local
   resolution: "@alepha/file@workspace:packages/file"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -385,22 +385,22 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/integration-tests@workspace:apps/integration"
   dependencies:
-    "@alepha/cli": "npm:^0.11.8"
-    "@alepha/core": "npm:^0.11.8"
-    "@alepha/postgres": "npm:^0.11.8"
-    "@alepha/server": "npm:^0.11.8"
+    "@alepha/cli": "npm:^0.11.9"
+    "@alepha/core": "npm:^0.11.9"
+    "@alepha/postgres": "npm:^0.11.9"
+    "@alepha/server": "npm:^0.11.9"
   languageName: unknown
   linkType: soft
 
-"@alepha/lock-redis@npm:0.11.8, @alepha/lock-redis@workspace:packages/lock-redis":
+"@alepha/lock-redis@npm:0.11.9, @alepha/lock-redis@workspace:packages/lock-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/lock-redis@workspace:packages/lock-redis"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/lock": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/redis": "npm:0.11.8"
-    "@alepha/topic-redis": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/lock": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/redis": "npm:0.11.9"
+    "@alepha/topic-redis": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -408,14 +408,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/lock@npm:0.11.8, @alepha/lock@workspace:packages/lock":
+"@alepha/lock@npm:0.11.9, @alepha/lock@workspace:packages/lock":
   version: 0.0.0-use.local
   resolution: "@alepha/lock@workspace:packages/lock"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/topic": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/topic": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -423,12 +423,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/logger@npm:0.11.8, @alepha/logger@npm:^0.11.8, @alepha/logger@workspace:packages/logger":
+"@alepha/logger@npm:0.11.9, @alepha/logger@npm:^0.11.9, @alepha/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@alepha/logger@workspace:packages/logger"
   dependencies:
-    "@alepha/core": "npm:^0.11.8"
-    "@alepha/datetime": "npm:^0.11.8"
+    "@alepha/core": "npm:^0.11.9"
+    "@alepha/datetime": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -436,15 +436,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/postgres@npm:0.11.8, @alepha/postgres@npm:^0.11.8, @alepha/postgres@workspace:packages/postgres":
+"@alepha/postgres@npm:0.11.9, @alepha/postgres@npm:^0.11.9, @alepha/postgres@workspace:packages/postgres":
   version: 0.0.0-use.local
   resolution: "@alepha/postgres@workspace:packages/postgres"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/lock": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/retry": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/lock": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/retry": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@electric-sql/pglite": "npm:^0.3.14"
     drizzle-kit: "npm:^0.31.6"
@@ -460,8 +460,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     protobufjs: "npm:^7.5.4"
     tsdown: "npm:^0.16.4"
@@ -470,13 +470,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/queue-redis@npm:0.11.8, @alepha/queue-redis@workspace:packages/queue-redis":
+"@alepha/queue-redis@npm:0.11.9, @alepha/queue-redis@workspace:packages/queue-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/queue-redis@workspace:packages/queue-redis"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/queue": "npm:0.11.8"
-    "@alepha/redis": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/queue": "npm:0.11.9"
+    "@alepha/redis": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -484,13 +484,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/queue@npm:0.11.8, @alepha/queue@workspace:packages/queue":
+"@alepha/queue@npm:0.11.9, @alepha/queue@workspace:packages/queue":
   version: 0.0.0-use.local
   resolution: "@alepha/queue@workspace:packages/queue"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -498,19 +498,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-auth@npm:0.11.8, @alepha/react-auth@npm:^0.11.8, @alepha/react-auth@workspace:packages/react-auth":
+"@alepha/react-auth@npm:0.11.9, @alepha/react-auth@npm:^0.11.9, @alepha/react-auth@workspace:packages/react-auth":
   version: 0.0.0-use.local
   resolution: "@alepha/react-auth@workspace:packages/react-auth"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-cookies": "npm:0.11.8"
-    "@alepha/server-links": "npm:0.11.8"
-    "@alepha/server-security": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-cookies": "npm:0.11.9"
+    "@alepha/server-links": "npm:0.11.9"
+    "@alepha/server-security": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     openid-client: "npm:^6.8.1"
     react: "npm:^19.2.0"
@@ -524,14 +524,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-form@npm:0.11.8, @alepha/react-form@npm:^0.11.8, @alepha/react-form@workspace:packages/react-form":
+"@alepha/react-form@npm:0.11.9, @alepha/react-form@npm:^0.11.9, @alepha/react-form@workspace:packages/react-form":
   version: 0.0.0-use.local
   resolution: "@alepha/react-form@workspace:packages/react-form"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/testing": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/testing": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@types/react": "npm:^19.2.4"
     react: "npm:^19.2.0"
@@ -545,13 +545,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-head@npm:0.11.8, @alepha/react-head@npm:^0.11.8, @alepha/react-head@workspace:packages/react-head":
+"@alepha/react-head@npm:0.11.9, @alepha/react-head@npm:^0.11.9, @alepha/react-head@workspace:packages/react-head":
   version: 0.0.0-use.local
   resolution: "@alepha/react-head@workspace:packages/react-head"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@types/react": "npm:^19.2.4"
     react: "npm:^19.2.0"
@@ -565,15 +565,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react-i18n@npm:0.11.8, @alepha/react-i18n@npm:^0.11.8, @alepha/react-i18n@workspace:packages/react-i18n":
+"@alepha/react-i18n@npm:0.11.9, @alepha/react-i18n@npm:^0.11.9, @alepha/react-i18n@workspace:packages/react-i18n":
   version: 0.0.0-use.local
   resolution: "@alepha/react-i18n@workspace:packages/react-i18n"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/server-cookies": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/server-cookies": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
@@ -586,19 +586,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/react@npm:0.11.8, @alepha/react@npm:^0.11.8, @alepha/react@workspace:packages/react":
+"@alepha/react@npm:0.11.9, @alepha/react@npm:^0.11.9, @alepha/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@alepha/react@workspace:packages/react"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/router": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-cache": "npm:0.11.8"
-    "@alepha/server-links": "npm:0.11.8"
-    "@alepha/server-static": "npm:0.11.8"
-    "@alepha/testing": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/router": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-cache": "npm:0.11.9"
+    "@alepha/server-links": "npm:0.11.9"
+    "@alepha/server-static": "npm:0.11.9"
+    "@alepha/testing": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@types/react": "npm:^19.2.4"
     "@types/react-dom": "npm:^19.2.3"
@@ -613,12 +613,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/redis@npm:0.11.8, @alepha/redis@workspace:packages/redis":
+"@alepha/redis@npm:0.11.9, @alepha/redis@workspace:packages/redis":
   version: 0.0.0-use.local
   resolution: "@alepha/redis@workspace:packages/redis"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@redis/client": "npm:^5.9.0"
     tsdown: "npm:^0.16.4"
@@ -627,13 +627,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/retry@npm:0.11.8, @alepha/retry@workspace:packages/retry":
+"@alepha/retry@npm:0.11.9, @alepha/retry@workspace:packages/retry":
   version: 0.0.0-use.local
   resolution: "@alepha/retry@workspace:packages/retry"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -645,28 +645,28 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/roadmap@workspace:apps/roadmap"
   dependencies:
-    "@alepha/api-files": "npm:^0.11.8"
-    "@alepha/api-users": "npm:^0.11.8"
-    "@alepha/bucket": "npm:^0.11.8"
-    "@alepha/bucket-vercel": "npm:^0.11.8"
-    "@alepha/cli": "npm:^0.11.8"
-    "@alepha/core": "npm:^0.11.8"
-    "@alepha/datetime": "npm:^0.11.8"
-    "@alepha/file": "npm:^0.11.8"
-    "@alepha/logger": "npm:^0.11.8"
-    "@alepha/postgres": "npm:^0.11.8"
-    "@alepha/react": "npm:^0.11.8"
-    "@alepha/react-auth": "npm:^0.11.8"
-    "@alepha/react-form": "npm:^0.11.8"
-    "@alepha/react-head": "npm:^0.11.8"
-    "@alepha/react-i18n": "npm:^0.11.8"
-    "@alepha/security": "npm:^0.11.8"
-    "@alepha/server": "npm:^0.11.8"
-    "@alepha/server-compress": "npm:^0.11.8"
-    "@alepha/server-helmet": "npm:^0.11.8"
-    "@alepha/server-links": "npm:^0.11.8"
-    "@alepha/server-multipart": "npm:^0.11.8"
-    "@alepha/server-security": "npm:^0.11.8"
+    "@alepha/api-files": "npm:^0.11.9"
+    "@alepha/api-users": "npm:^0.11.9"
+    "@alepha/bucket": "npm:^0.11.9"
+    "@alepha/bucket-vercel": "npm:^0.11.9"
+    "@alepha/cli": "npm:^0.11.9"
+    "@alepha/core": "npm:^0.11.9"
+    "@alepha/datetime": "npm:^0.11.9"
+    "@alepha/file": "npm:^0.11.9"
+    "@alepha/logger": "npm:^0.11.9"
+    "@alepha/postgres": "npm:^0.11.9"
+    "@alepha/react": "npm:^0.11.9"
+    "@alepha/react-auth": "npm:^0.11.9"
+    "@alepha/react-form": "npm:^0.11.9"
+    "@alepha/react-head": "npm:^0.11.9"
+    "@alepha/react-i18n": "npm:^0.11.9"
+    "@alepha/security": "npm:^0.11.9"
+    "@alepha/server": "npm:^0.11.9"
+    "@alepha/server-compress": "npm:^0.11.9"
+    "@alepha/server-helmet": "npm:^0.11.9"
+    "@alepha/server-links": "npm:^0.11.9"
+    "@alepha/server-multipart": "npm:^0.11.9"
+    "@alepha/server-security": "npm:^0.11.9"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -700,11 +700,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/router@npm:0.11.8, @alepha/router@workspace:packages/router":
+"@alepha/router@npm:0.11.9, @alepha/router@workspace:packages/router":
   version: 0.0.0-use.local
   resolution: "@alepha/router@workspace:packages/router"
   dependencies:
-    "@alepha/core": "npm:^0.11.8"
+    "@alepha/core": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -712,15 +712,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/scheduler@npm:0.11.8, @alepha/scheduler@workspace:packages/scheduler":
+"@alepha/scheduler@npm:0.11.9, @alepha/scheduler@workspace:packages/scheduler":
   version: 0.0.0-use.local
   resolution: "@alepha/scheduler@workspace:packages/scheduler"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/lock": "npm:0.11.8"
-    "@alepha/lock-redis": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/lock": "npm:0.11.9"
+    "@alepha/lock-redis": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     cron-schedule: "npm:^5.0.4"
     tsdown: "npm:^0.16.4"
@@ -729,13 +729,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/security@npm:0.11.8, @alepha/security@npm:^0.11.8, @alepha/security@workspace:packages/security":
+"@alepha/security@npm:0.11.9, @alepha/security@npm:^0.11.9, @alepha/security@workspace:packages/security":
   version: 0.0.0-use.local
   resolution: "@alepha/security@workspace:packages/security"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     jose: "npm:^6.1.1"
     tsdown: "npm:^0.16.4"
@@ -748,9 +748,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/server-basic-auth@workspace:packages/server-basic-auth"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -758,15 +758,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-cache@npm:0.11.8, @alepha/server-cache@workspace:packages/server-cache":
+"@alepha/server-cache@npm:0.11.9, @alepha/server-cache@workspace:packages/server-cache":
   version: 0.0.0-use.local
   resolution: "@alepha/server-cache@workspace:packages/server-cache"
   dependencies:
-    "@alepha/cache": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/cache": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -774,12 +774,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-compress@npm:0.11.8, @alepha/server-compress@npm:^0.11.8, @alepha/server-compress@workspace:packages/server-compress":
+"@alepha/server-compress@npm:0.11.9, @alepha/server-compress@npm:^0.11.9, @alepha/server-compress@workspace:packages/server-compress":
   version: 0.0.0-use.local
   resolution: "@alepha/server-compress@workspace:packages/server-compress"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -787,15 +787,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-cookies@npm:0.11.8, @alepha/server-cookies@workspace:packages/server-cookies":
+"@alepha/server-cookies@npm:0.11.9, @alepha/server-cookies@workspace:packages/server-cookies":
   version: 0.0.0-use.local
   resolution: "@alepha/server-cookies@workspace:packages/server-cookies"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -803,12 +803,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-cors@npm:0.11.8, @alepha/server-cors@workspace:packages/server-cors":
+"@alepha/server-cors@npm:0.11.9, @alepha/server-cors@workspace:packages/server-cors":
   version: 0.0.0-use.local
   resolution: "@alepha/server-cors@workspace:packages/server-cors"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -816,13 +816,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-health@npm:0.11.8, @alepha/server-health@workspace:packages/server-health":
+"@alepha/server-health@npm:0.11.9, @alepha/server-health@workspace:packages/server-health":
   version: 0.0.0-use.local
   resolution: "@alepha/server-health@workspace:packages/server-health"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -830,12 +830,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-helmet@npm:0.11.8, @alepha/server-helmet@npm:^0.11.8, @alepha/server-helmet@workspace:packages/server-helmet":
+"@alepha/server-helmet@npm:0.11.9, @alepha/server-helmet@npm:^0.11.9, @alepha/server-helmet@workspace:packages/server-helmet":
   version: 0.0.0-use.local
   resolution: "@alepha/server-helmet@workspace:packages/server-helmet"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -843,17 +843,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-links@npm:0.11.8, @alepha/server-links@npm:^0.11.8, @alepha/server-links@workspace:packages/server-links":
+"@alepha/server-links@npm:0.11.9, @alepha/server-links@npm:^0.11.9, @alepha/server-links@workspace:packages/server-links":
   version: 0.0.0-use.local
   resolution: "@alepha/server-links@workspace:packages/server-links"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/retry": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-proxy": "npm:0.11.8"
-    "@alepha/server-security": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/retry": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-proxy": "npm:0.11.9"
+    "@alepha/server-security": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -861,12 +861,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-metrics@npm:0.11.8, @alepha/server-metrics@workspace:packages/server-metrics":
+"@alepha/server-metrics@npm:0.11.9, @alepha/server-metrics@workspace:packages/server-metrics":
   version: 0.0.0-use.local
   resolution: "@alepha/server-metrics@workspace:packages/server-metrics"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     prom-client: "npm:^15.1.3"
     tsdown: "npm:^0.16.4"
@@ -875,13 +875,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-multipart@npm:0.11.8, @alepha/server-multipart@npm:^0.11.8, @alepha/server-multipart@workspace:packages/server-multipart":
+"@alepha/server-multipart@npm:0.11.9, @alepha/server-multipart@npm:^0.11.9, @alepha/server-multipart@workspace:packages/server-multipart":
   version: 0.0.0-use.local
   resolution: "@alepha/server-multipart@workspace:packages/server-multipart"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@fastify/busboy": "npm:^3.2.0"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -889,13 +889,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-proxy@npm:0.11.8, @alepha/server-proxy@workspace:packages/server-proxy":
+"@alepha/server-proxy@npm:0.11.9, @alepha/server-proxy@workspace:packages/server-proxy":
   version: 0.0.0-use.local
   resolution: "@alepha/server-proxy@workspace:packages/server-proxy"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -907,9 +907,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/server-rate-limit@workspace:packages/server-rate-limit"
   dependencies:
-    "@alepha/cache": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/cache": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -917,14 +917,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-security@npm:0.11.8, @alepha/server-security@npm:^0.11.8, @alepha/server-security@workspace:packages/server-security":
+"@alepha/server-security@npm:0.11.9, @alepha/server-security@npm:^0.11.9, @alepha/server-security@workspace:packages/server-security":
   version: 0.0.0-use.local
   resolution: "@alepha/server-security@workspace:packages/server-security"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -932,15 +932,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-static@npm:0.11.8, @alepha/server-static@workspace:packages/server-static":
+"@alepha/server-static@npm:0.11.9, @alepha/server-static@workspace:packages/server-static":
   version: 0.0.0-use.local
   resolution: "@alepha/server-static@workspace:packages/server-static"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -948,17 +948,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server-swagger@npm:0.11.8, @alepha/server-swagger@workspace:packages/server-swagger":
+"@alepha/server-swagger@npm:0.11.9, @alepha/server-swagger@workspace:packages/server-swagger":
   version: 0.0.0-use.local
   resolution: "@alepha/server-swagger@workspace:packages/server-swagger"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-cache": "npm:0.11.8"
-    "@alepha/server-security": "npm:0.11.8"
-    "@alepha/server-static": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-cache": "npm:0.11.9"
+    "@alepha/server-security": "npm:0.11.9"
+    "@alepha/server-static": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     openapi-types: "npm:^12.1.3"
     swagger-ui-dist: "npm:^5.30.2"
@@ -968,16 +968,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/server@npm:0.11.8, @alepha/server@npm:^0.11.8, @alepha/server@workspace:packages/server":
+"@alepha/server@npm:0.11.9, @alepha/server@npm:^0.11.9, @alepha/server@workspace:packages/server":
   version: 0.0.0-use.local
   resolution: "@alepha/server@workspace:packages/server"
   dependencies:
-    "@alepha/cache": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/router": "npm:0.11.8"
+    "@alepha/cache": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/router": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -989,8 +989,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/sms@workspace:packages/sms"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -998,7 +998,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/testing@npm:0.11.8, @alepha/testing@workspace:packages/testing":
+"@alepha/testing@npm:0.11.9, @alepha/testing@workspace:packages/testing":
   version: 0.0.0-use.local
   resolution: "@alepha/testing@workspace:packages/testing"
   dependencies:
@@ -1018,8 +1018,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/thread@workspace:packages/thread"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:^0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -1027,14 +1027,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/topic-redis@npm:0.11.8, @alepha/topic-redis@workspace:packages/topic-redis":
+"@alepha/topic-redis@npm:0.11.9, @alepha/topic-redis@workspace:packages/topic-redis":
   version: 0.0.0-use.local
   resolution: "@alepha/topic-redis@workspace:packages/topic-redis"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/redis": "npm:0.11.8"
-    "@alepha/topic": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/redis": "npm:0.11.9"
+    "@alepha/topic": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -1042,13 +1042,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/topic@npm:0.11.8, @alepha/topic@workspace:packages/topic":
+"@alepha/topic@npm:0.11.9, @alepha/topic@workspace:packages/topic":
   version: 0.0.0-use.local
   resolution: "@alepha/topic@workspace:packages/topic"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
@@ -1056,20 +1056,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.11.8, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.11.9, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
-    "@alepha/cli": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/react-form": "npm:0.11.8"
-    "@alepha/react-head": "npm:0.11.8"
-    "@alepha/react-i18n": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/vite": "npm:0.11.8"
+    "@alepha/cli": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/react-form": "npm:0.11.9"
+    "@alepha/react-head": "npm:0.11.9"
+    "@alepha/react-i18n": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/vite": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@mantine/core": "npm:^8.3.7"
     "@mantine/dates": "npm:^8.3.7"
@@ -1092,11 +1092,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/vite@npm:0.11.8, @alepha/vite@workspace:packages/vite":
+"@alepha/vite@npm:0.11.9, @alepha/vite@workspace:packages/vite":
   version: 0.0.0-use.local
   resolution: "@alepha/vite@workspace:packages/vite"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     "@vitejs/plugin-react": "npm:^5.1.1"
     tsdown: "npm:^0.16.4"
@@ -6078,59 +6078,59 @@ __metadata:
   languageName: node
   linkType: hard
 
-"alepha@npm:0.11.8, alepha@workspace:packages/alepha":
+"alepha@npm:0.11.9, alepha@workspace:packages/alepha":
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
-    "@alepha/api-files": "npm:0.11.8"
-    "@alepha/api-jobs": "npm:0.11.8"
-    "@alepha/api-notifications": "npm:0.11.8"
-    "@alepha/api-users": "npm:0.11.8"
-    "@alepha/api-verifications": "npm:0.11.8"
-    "@alepha/batch": "npm:0.11.8"
-    "@alepha/bucket": "npm:0.11.8"
-    "@alepha/cache": "npm:0.11.8"
-    "@alepha/cache-redis": "npm:0.11.8"
-    "@alepha/command": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/datetime": "npm:0.11.8"
-    "@alepha/devtools": "npm:0.11.8"
-    "@alepha/email": "npm:0.11.8"
-    "@alepha/fake": "npm:0.11.8"
-    "@alepha/file": "npm:0.11.8"
-    "@alepha/lock": "npm:0.11.8"
-    "@alepha/lock-redis": "npm:0.11.8"
-    "@alepha/logger": "npm:0.11.8"
-    "@alepha/postgres": "npm:0.11.8"
-    "@alepha/queue": "npm:0.11.8"
-    "@alepha/queue-redis": "npm:0.11.8"
-    "@alepha/react": "npm:0.11.8"
-    "@alepha/react-auth": "npm:0.11.8"
-    "@alepha/react-form": "npm:0.11.8"
-    "@alepha/react-head": "npm:0.11.8"
-    "@alepha/react-i18n": "npm:0.11.8"
-    "@alepha/redis": "npm:0.11.8"
-    "@alepha/retry": "npm:0.11.8"
-    "@alepha/router": "npm:0.11.8"
-    "@alepha/scheduler": "npm:0.11.8"
-    "@alepha/security": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
-    "@alepha/server-cache": "npm:0.11.8"
-    "@alepha/server-compress": "npm:0.11.8"
-    "@alepha/server-cookies": "npm:0.11.8"
-    "@alepha/server-cors": "npm:0.11.8"
-    "@alepha/server-health": "npm:0.11.8"
-    "@alepha/server-helmet": "npm:0.11.8"
-    "@alepha/server-links": "npm:0.11.8"
-    "@alepha/server-metrics": "npm:0.11.8"
-    "@alepha/server-multipart": "npm:0.11.8"
-    "@alepha/server-proxy": "npm:0.11.8"
-    "@alepha/server-security": "npm:0.11.8"
-    "@alepha/server-static": "npm:0.11.8"
-    "@alepha/server-swagger": "npm:0.11.8"
-    "@alepha/topic": "npm:0.11.8"
-    "@alepha/topic-redis": "npm:0.11.8"
-    "@alepha/vite": "npm:0.11.8"
+    "@alepha/api-files": "npm:0.11.9"
+    "@alepha/api-jobs": "npm:0.11.9"
+    "@alepha/api-notifications": "npm:0.11.9"
+    "@alepha/api-users": "npm:0.11.9"
+    "@alepha/api-verifications": "npm:0.11.9"
+    "@alepha/batch": "npm:0.11.9"
+    "@alepha/bucket": "npm:0.11.9"
+    "@alepha/cache": "npm:0.11.9"
+    "@alepha/cache-redis": "npm:0.11.9"
+    "@alepha/command": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/datetime": "npm:0.11.9"
+    "@alepha/devtools": "npm:0.11.9"
+    "@alepha/email": "npm:0.11.9"
+    "@alepha/fake": "npm:0.11.9"
+    "@alepha/file": "npm:0.11.9"
+    "@alepha/lock": "npm:0.11.9"
+    "@alepha/lock-redis": "npm:0.11.9"
+    "@alepha/logger": "npm:0.11.9"
+    "@alepha/postgres": "npm:0.11.9"
+    "@alepha/queue": "npm:0.11.9"
+    "@alepha/queue-redis": "npm:0.11.9"
+    "@alepha/react": "npm:0.11.9"
+    "@alepha/react-auth": "npm:0.11.9"
+    "@alepha/react-form": "npm:0.11.9"
+    "@alepha/react-head": "npm:0.11.9"
+    "@alepha/react-i18n": "npm:0.11.9"
+    "@alepha/redis": "npm:0.11.9"
+    "@alepha/retry": "npm:0.11.9"
+    "@alepha/router": "npm:0.11.9"
+    "@alepha/scheduler": "npm:0.11.9"
+    "@alepha/security": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
+    "@alepha/server-cache": "npm:0.11.9"
+    "@alepha/server-compress": "npm:0.11.9"
+    "@alepha/server-cookies": "npm:0.11.9"
+    "@alepha/server-cors": "npm:0.11.9"
+    "@alepha/server-health": "npm:0.11.9"
+    "@alepha/server-helmet": "npm:0.11.9"
+    "@alepha/server-links": "npm:0.11.9"
+    "@alepha/server-metrics": "npm:0.11.9"
+    "@alepha/server-multipart": "npm:0.11.9"
+    "@alepha/server-proxy": "npm:0.11.9"
+    "@alepha/server-security": "npm:0.11.9"
+    "@alepha/server-static": "npm:0.11.9"
+    "@alepha/server-swagger": "npm:0.11.9"
+    "@alepha/topic": "npm:0.11.9"
+    "@alepha/topic-redis": "npm:0.11.9"
+    "@alepha/vite": "npm:0.11.9"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
   languageName: unknown
@@ -6460,8 +6460,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "benchmark-5bbce0@workspace:apps/benchmark"
   dependencies:
-    "@alepha/core": "npm:0.11.8"
-    "@alepha/server": "npm:0.11.8"
+    "@alepha/core": "npm:0.11.9"
+    "@alepha/server": "npm:0.11.9"
     "@types/autocannon": "npm:^7.12.7"
     autocannon: "npm:^8.0.0"
     express: "npm:^5.1.0"
@@ -7366,8 +7366,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "dev-cb062e@workspace:apps/dev"
   dependencies:
-    "@alepha/command": "npm:0.11.8"
-    "@alepha/core": "npm:0.11.8"
+    "@alepha/command": "npm:0.11.9"
+    "@alepha/core": "npm:0.11.9"
   languageName: unknown
   linkType: soft
 
@@ -8395,10 +8395,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-api-b382ca@workspace:apps/example-api"
   dependencies:
-    "@alepha/cli": "npm:^0.11.8"
-    "@alepha/core": "npm:^0.11.8"
-    "@alepha/postgres": "npm:^0.11.8"
-    "@alepha/server": "npm:^0.11.8"
+    "@alepha/cli": "npm:^0.11.9"
+    "@alepha/core": "npm:^0.11.9"
+    "@alepha/postgres": "npm:^0.11.9"
+    "@alepha/server": "npm:^0.11.9"
   languageName: unknown
   linkType: soft
 
@@ -11155,8 +11155,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
   dependencies:
-    "@alepha/cli": "npm:0.11.8"
-    alepha: "npm:0.11.8"
+    "@alepha/cli": "npm:0.11.9"
+    alepha: "npm:0.11.9"
     react: "npm:^19.2.0"
   languageName: unknown
   linkType: soft
@@ -12751,7 +12751,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "starter-6b2739@workspace:apps/starter"
   dependencies:
-    "@alepha/cli": "npm:0.11.8"
+    "@alepha/cli": "npm:0.11.9"
     react: "npm:^19.2.0"
   languageName: unknown
   linkType: soft

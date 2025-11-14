@@ -7,7 +7,7 @@
 		"redis"
 	],
 	"author": "Feunard",
-	"version": "0.11.8",
+	"version": "0.11.9",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -20,10 +20,10 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/cache": "0.11.8",
-		"@alepha/core": "0.11.8",
-		"@alepha/logger": "0.11.8",
-		"@alepha/redis": "0.11.8"
+		"@alepha/cache": "0.11.9",
+		"@alepha/core": "0.11.9",
+		"@alepha/logger": "0.11.9",
+		"@alepha/redis": "0.11.9"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",
