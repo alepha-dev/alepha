@@ -1,7 +1,7 @@
-import { access, rm, writeFile } from "node:fs/promises";
+import { access, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { $inject, boot, t } from "@alepha/core";
+import { $inject, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
@@ -40,6 +40,7 @@ export class ViteCommands {
     handler: async ({ args }) => {
       const root = process.cwd();
       await this.ensureTsConfig(root);
+      await this.ensurePackageJson(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
@@ -81,6 +82,7 @@ export class ViteCommands {
     handler: async ({ flags, args }) => {
       const root = process.cwd();
       await this.ensureTsConfig(root);
+      await this.ensurePackageJson(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
@@ -139,6 +141,22 @@ export class ViteCommands {
         "vite.config.ts",
         viteConfigTs(serverEntry),
       );
+    }
+  }
+
+  protected async ensurePackageJson(root = process.cwd()) {
+    const packageJsonPath = join(root, "package.json");
+    try {
+      await access(packageJsonPath);
+    } catch (error) {
+      throw new AlephaError("No package.json found in project root");
+    }
+
+    const content = await readFile(packageJsonPath, "utf8");
+    const packageJson = JSON.parse(content);
+    if (!packageJson.type || packageJson.type !== "module") {
+      packageJson.type = "module";
+      await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
     }
   }
 }
