@@ -63,7 +63,6 @@
 		"@alepha/server-swagger": "0.11.7",
 		"@alepha/topic": "0.11.7",
 		"@alepha/topic-redis": "0.11.7",
-		"@alepha/ui": "0.11.7",
 		"@alepha/vite": "0.11.7",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"
@@ -322,11 +321,6 @@
 			"require": "./topic/redis.cjs",
 			"types": "./topic/redis.d.ts"
 		},
-		"./ui": {
-			"import": "./ui.js",
-			"require": "./ui.cjs",
-			"types": "./ui.d.ts"
-		},
 		"./vite": {
 			"import": "./vite.js",
 			"require": "./vite.cjs",
@@ -383,7 +377,6 @@
 		"server-swagger",
 		"topic",
 		"topic-redis",
-		"ui",
 		"vite"
 	]
 }

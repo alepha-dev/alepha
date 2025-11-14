@@ -6130,7 +6130,6 @@ __metadata:
     "@alepha/server-swagger": "npm:0.11.7"
     "@alepha/topic": "npm:0.11.7"
     "@alepha/topic-redis": "npm:0.11.7"
-    "@alepha/ui": "npm:0.11.7"
     "@alepha/vite": "npm:0.11.7"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
