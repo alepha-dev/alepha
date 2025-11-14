@@ -1,7 +1,7 @@
 export const viteConfigTs = (
   serverEntry?: string,
 ) => `
-import { viteAlepha } from "alepha/vite";
+import { viteAlepha } from "@alepha/vite";
 
 export default {
   plugins: [

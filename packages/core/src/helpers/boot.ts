@@ -4,7 +4,7 @@ import { AlephaError } from "../errors/AlephaError.ts";
 
 /**
  * Remember:
- * At first, functions was inside alepha/vite package, but it's now used in alepha/cli too.
+ * At first, functions was inside alepha/vite package, but it's now used in alepha too.
  * For avoiding cli -> vite, all code moved here.
  */
 

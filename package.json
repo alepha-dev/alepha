@@ -2,7 +2,7 @@
 	"private": true,
 	"description": "Alepha framework monorepo workspace",
 	"type": "module",
-	"packageManager": "yarn@4.10.3",
+	"packageManager": "yarn@4.11.0",
 	"workspaces": {
 		"packages": [
 			"apps/*",

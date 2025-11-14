@@ -14,7 +14,6 @@ export class VerifyCommands {
    * 3. Lint the code
    * 4. Run tests
    * 5. Type check the code
-   * 6. Check for unused or missing dependencies
    * 8. Build the project
    * 9. Clean the project again
    */
@@ -27,7 +26,6 @@ export class VerifyCommands {
       await run("alepha lint");
       await run("alepha test");
       await run("alepha typecheck");
-      await run("alepha depcheck");
 
       // run only if migrations dir is present ?
       //await run("alepha db:check-migrations");
@@ -45,19 +43,6 @@ export class VerifyCommands {
     description: "Check TypeScript types across the codebase",
     handler: async () => {
       await this.runner.exec("tsc --noEmit");
-    },
-  });
-
-  /**
-   * Check for unused or missing dependencies using Depcheck.
-   */
-  public readonly depcheck = $command({
-    name: "depcheck",
-    description: "Check for unused or missing dependencies using Depcheck",
-    handler: async () => {
-      await this.runner.exec(
-        "depcheck --ignores=jsdom,@alepha/testing,@alepha/cli --ignore-patterns=dist,assets",
-      );
     },
   });
 }

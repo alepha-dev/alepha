@@ -68,6 +68,7 @@ async function main(to?: string) {
           ".": {
             types: "./dist/index.d.ts",
             import: "./dist/index.js",
+            require: "./dist/index.cjs",
           },
         };
         if (pkg.browser) {

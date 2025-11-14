@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { $command } from "@alepha/command";
 import { Alepha, run, t } from "@alepha/core";
 
@@ -18,27 +18,7 @@ class AlephaDevCli {
         `packages/*/coverage`,
       ]);
 
-      await run.rm([
-        `packages/alepha/**/*.js`,
-        `packages/alepha/**/*.cjs`,
-        `packages/alepha/**/*.d.ts`,
-        `packages/alepha/**/*.map`,
-      ]);
-
-      const dirs = await readdir("packages/alepha", {
-        withFileTypes: true,
-      }).then((entries) =>
-        entries
-          .filter((d) => d.isDirectory())
-          .map((d) => `packages/alepha/${d.name}`),
-      );
-
-      if (dirs.length) {
-        await run.rm(dirs);
-      }
-
       await run("yarn");
-
       await run("yarn copy");
     },
   });

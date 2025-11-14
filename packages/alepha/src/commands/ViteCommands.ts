@@ -3,13 +3,14 @@ import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $inject, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
+import { CoreCommands } from "./CoreCommands.ts";
 
 export class ViteCommands {
   protected readonly log = $logger();
   protected readonly runner = $inject(ProcessRunner);
+  protected readonly core = $inject(CoreCommands);
 
   public readonly run = $command({
     name: "run",
@@ -22,7 +23,7 @@ export class ViteCommands {
     summary: false,
     args: t.text({ title: "path", description: "Filepath to run" }),
     handler: async ({ args, flags }) => {
-      await this.ensureTsConfig();
+      await this.core.ensureTsConfig();
       await this.runner.exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
     },
   });
@@ -39,7 +40,7 @@ export class ViteCommands {
     args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
     handler: async ({ args }) => {
       const root = process.cwd();
-      await this.ensureTsConfig(root);
+      await this.core.ensureTsConfig(root);
       await this.ensurePackageJson(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
@@ -65,11 +66,6 @@ export class ViteCommands {
       t.text({ title: "path", description: "Filepath to build" }),
     ),
     flags: t.object({
-      lib: t.optional(
-        t.boolean({
-          description: "Build project as a library",
-        }),
-      ),
       config: t.optional(
         t.text({ aliases: ["c"], description: "Path to config file" }),
       ),
@@ -81,19 +77,20 @@ export class ViteCommands {
     }),
     handler: async ({ flags, args }) => {
       const root = process.cwd();
-      await this.ensureTsConfig(root);
+      await this.core.ensureTsConfig(root);
       await this.ensurePackageJson(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
       await rm("dist", { recursive: true, force: true });
 
-      if (flags.lib) {
-        await this.runner.exec(
-          `tsdown${flags.config ? ` -c=${flags.config}` : ""}`,
-        );
-        return;
-      }
+      // DISABLED FOR NOW (waiting for vite-rolldown)
+      // if (flags.lib) {
+      //   await this.runner.exec(
+      //     `tsdown${flags.config ? ` -c=${flags.config}` : ""}`,
+      //   );
+      //   return;
+      // }
 
       const configPath = await this.configPath(root, args ? entry : undefined);
 
@@ -110,7 +107,7 @@ export class ViteCommands {
     name: "test",
     description: "Run tests using Vitest",
     handler: async () => {
-      await this.ensureTsConfig();
+      await this.core.ensureTsConfig();
 
       const configPath = await this.configPath();
       await this.runner.exec(`vitest run -c=${configPath}`);
@@ -118,15 +115,6 @@ export class ViteCommands {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
-
-  protected async ensureTsConfig(root = process.cwd()) {
-    const tsconfigPath = join(root, "tsconfig.json");
-    try {
-      await access(tsconfigPath);
-    } catch {
-      await writeFile(tsconfigPath, tsconfigJson);
-    }
-  }
 
   protected async configPath(
     root = process.cwd(),
@@ -149,7 +137,9 @@ export class ViteCommands {
     try {
       await access(packageJsonPath);
     } catch (error) {
-      throw new AlephaError("No package.json found in project root");
+      throw new AlephaError(
+        "No package.json found in project root. Run 'npx alepha init' to create one.",
+      );
     }
 
     const content = await readFile(packageJsonPath, "utf8");

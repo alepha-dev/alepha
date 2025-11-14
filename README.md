@@ -18,20 +18,23 @@ Alepha
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
-A convention-driven TypeScript framework for building type-safe full-stack applications.
+The easy mode for building TypeScript applications.
 
-## Quick Start
+Requirements: Node.js 22+
 
 ```bash
-npm install alepha
-npm install -D @alepha/cli
+npm i -g alepha
 ```
 
 ## What is this?
 
-Alepha is an opinionated framework that handles everything from database to frontend.
+An attempt to create easy-to-use framework for many use cases : API endpoints (Docker or Serverless), React applications (SSR or CSR or SSG), CLI tools, etc.
 
-It uses a descriptor-based architecture (`$action`, `$page`, `$repository`, etc.) and enforces type safety across the entire stack.
+Alepha is extremely modular (60+ packages) and relies only on very few runtime dependencies.
+
+Opinionated by design, after learning the most used functions, you will be able to build complex applications very quickly.
+
+Alepha takes care of configuration, development, build, deployment, testing, etc. No need to learn all the tools, Alepha wraps them all with sensible defaults.
 
 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
 
@@ -41,19 +44,34 @@ For more information, please visit the [documentation](https://feunard.github.io
 
 Write API endpoints with automatic OpenAPI documentation.
 
-```ts
-// hello.ts
-import { run, t, Alepha } from "alepha";
-import { $action } from "alepha/server";
-import { $swagger } from "alepha/server/swagger";
+```bash
+# Add Alepha to your current directory
+# -> package.json and tsconfig.json will be created if not existing
+npx alepha init --api
+```
 
+Create a file `src/main.ts`:
+
+```ts
+import { run, t, Alepha } from "@alepha/core";
+import { $action } from "@alepha/server";
+import { $swagger } from "@alepha/server-swagger";
+
+// Write your code like a config file.
 class Api {
+
+  // Functions starting with $ are "descriptors", they describe something needed.
+  // Like react hooks, they must be called inside Alepha context.
   docs = $swagger();
 
   sayHello = $action({
     path: "/hello/:name",
+    // Every feature inside Alepha is strongly typed with runtime validation
+    // schema is based on TypeBox library.
     schema: {
       params: t.object({
+        // Alepha provides many built-in types,
+        // for example t.text() is a t.string() with specific maxLength, auto-trim, etc.
         name: t.text()
       }),
       response: t.object({
@@ -66,25 +84,47 @@ class Api {
   });
 }
 
+// Create Alepha instance
 const alepha = Alepha.create();
 
+// Register API
 alepha.with(Api);
 
+// Run Application
 run(alepha);
 ```
 
+Run the development server:
+
 ```bash
-npx alepha dev hello.ts
+npx alepha dev
 ```
+
+Then, open your browser at `http://localhost:3000/docs/` and enjoy your automatically generated documentation.
+
+Once you are done, build the application for production:
+
+```bash
+npx alepha build
+```
+
+Application will be built in the `dist/` folder, ready to be deployed on any platform (Docker, Serverless, etc.).
+Bonus, no need to "npm install" on the server, Alepha bundles everything together.
 
 ### React Application
 
-Build full-stack React applications, with server-side rendering (SSR) and client-side rendering (CSR).
+Build full-stack React applications, with server-side rendering.
+
+```bash
+npx alepha init --react
+```
+
+Create a file `src/main.tsx`:
 
 ```tsx
-// app.tsx
-import { run, t } from "alepha";
-import { $page } from "alepha/react";
+// src/main.tsx
+import { run, t } from "@alepha/core";
+import { $page } from "@alepha/react";
 import { useState } from "react";
 
 const Hello = (props: { count: number }) => {
@@ -122,11 +162,15 @@ Create an `index.html` file:
   <title>App</title>
 </head>
 <body>
-<script type="module" src="app.tsx"></script>
+<script type="module" src="src/main.tsx"></script>
 </body>
 </html>
 ```
 
+Run the development server:
+
 ```bash
 npx alepha dev
 ```
+
+Open your browser at `http://localhost:3000/` and see your React application in action.
