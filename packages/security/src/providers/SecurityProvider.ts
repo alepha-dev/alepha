@@ -36,7 +36,8 @@ declare module "@alepha/core" {
 export class SecurityProvider {
   protected readonly UNKNOWN_USER_NAME = "Anonymous User";
   protected readonly PERMISSION_REGEXP = /^[\w-]+((:[\w-]+)+)?$/;
-  protected readonly PERMISSION_REGEXP_WILDCARD = /^[\w-]+((:[\w-]+)+)?|(:\*)$/;
+  protected readonly PERMISSION_REGEXP_WILDCARD =
+    /^[\w-]+((:[\w-]+)*:\*|(:[\w-]+)+)?$/;
 
   protected readonly log = $logger();
   protected readonly jwt = $inject(JwtProvider);
@@ -113,15 +114,38 @@ export class SecurityProvider {
     for (const realm of list) {
       for (const { name } of role.permissions) {
         if (this.alepha.isStarted()) {
-          const parts = name.split(":");
-          const existing = this.permissions.find(
-            (it) =>
-              (parts[0] === it.group && parts[1] === "*") ||
-              this.permissionToString(it) === name,
-          );
-          if (!existing) {
-            throw new SecurityError(`Permission '${name}' not found`);
+          // Check if permission exists or matches a wildcard pattern
+          if (name === "*") {
+            // Global wildcard is always allowed
+            continue;
           }
+
+          // Check for exact match first
+          const existingExact = this.permissions.find(
+            (it) => this.permissionToString(it) === name,
+          );
+          if (existingExact) {
+            continue;
+          }
+
+          // Check if it's a wildcard pattern (e.g., "admin:api:*")
+          if (name.endsWith(":*")) {
+            const groupPrefix = name.slice(0, -2); // Remove ":*"
+            // Check if any permission exists with this group prefix
+            const existingWithPrefix = this.permissions.find((it) => {
+              if (!it.group) return false;
+              return (
+                it.group === groupPrefix ||
+                it.group.startsWith(`${groupPrefix}:`)
+              );
+            });
+            if (existingWithPrefix) {
+              continue;
+            }
+          }
+
+          // Permission not found
+          throw new SecurityError(`Permission '${name}' not found`);
         } else {
           if (name !== "*" && !this.PERMISSION_REGEXP_WILDCARD.test(name)) {
             throw new InvalidPermissionError(name);

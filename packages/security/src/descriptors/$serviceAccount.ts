@@ -73,23 +73,51 @@ export const $serviceAccount = (
         return tokenFromCache;
       }
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: clientId,
-          client_secret: clientSecret,
-        }),
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            grant_type: "client_credentials",
+            client_id: clientId,
+            client_secret: clientSecret,
+          }),
+        });
+      } catch (error) {
+        throw new Error(
+          `Failed to fetch access token from ${url}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
 
-      const json = await response.json();
+      // Check HTTP status
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status} ${response.statusText}`;
+        try {
+          const errorBody = await response.text();
+          errorMessage += `: ${errorBody}`;
+        } catch {
+          // Ignore error reading body
+        }
+        throw new Error(`Failed to fetch access token: ${errorMessage}`);
+      }
 
+      // Parse JSON response
+      let json: any;
+      try {
+        json = await response.json();
+      } catch (error) {
+        throw new Error(
+          `Failed to parse access token response as JSON: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+
+      // Validate response structure
       if (!json.access_token || !json.expires_in) {
         throw new Error(
-          `Failed to fetch access token: ${JSON.stringify(json)}`,
+          `Invalid access token response: missing access_token or expires_in. Response: ${JSON.stringify(json)}`,
         );
       }
 

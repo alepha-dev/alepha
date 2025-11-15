@@ -14,12 +14,43 @@ export class CryptoProvider {
     password: string,
     stored: string,
   ): Promise<boolean> {
-    const [salt, originalHex] = stored.split(":");
-    const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
-    const originalKey = Buffer.from(originalHex, "hex");
+    // Validate input format
+    if (!stored || typeof stored !== "string") {
+      return false;
+    }
 
-    // Important: prevent timing attacks
-    return timingSafeEqual(derivedKey, originalKey);
+    const parts = stored.split(":");
+    if (parts.length !== 2) {
+      return false;
+    }
+
+    const [salt, originalHex] = parts;
+
+    // Validate salt and hash are non-empty
+    if (!salt || !originalHex) {
+      return false;
+    }
+
+    // Validate hex format (must be even length and valid hex)
+    if (originalHex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(originalHex)) {
+      return false;
+    }
+
+    try {
+      const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+      const originalKey = Buffer.from(originalHex, "hex");
+
+      // Validate buffer lengths match (scrypt should produce 64 bytes)
+      if (derivedKey.length !== originalKey.length) {
+        return false;
+      }
+
+      // Important: prevent timing attacks
+      return timingSafeEqual(derivedKey, originalKey);
+    } catch (error) {
+      // Handle any errors during verification (e.g., invalid salt encoding)
+      return false;
+    }
   }
 
   public randomUUID(): string {
