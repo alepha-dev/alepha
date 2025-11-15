@@ -17,6 +17,34 @@ import type {
   Cookies,
 } from "./$cookie.ts";
 
+/**
+ * Creates a browser-side cookie descriptor for client-side cookie management.
+ *
+ * Browser-specific version of $cookie that uses document.cookie API. Supports type-safe
+ * cookie operations with schema validation but excludes encryption/signing (use server-side
+ * $cookie for secure operations).
+ *
+ * **Note**: This is the browser version - encryption, signing, and compression are not supported.
+ *
+ * @example
+ * ```ts
+ * class ClientCookies {
+ *   preferences = $cookie({
+ *     name: "user-prefs",
+ *     schema: t.object({ theme: t.text(), language: t.text() }),
+ *     ttl: [30, "days"]
+ *   });
+ *
+ *   savePreferences() {
+ *     this.preferences.set({ theme: "dark", language: "en" });
+ *   }
+ *
+ *   getPreferences() {
+ *     return this.preferences.get() ?? { theme: "light", language: "en" };
+ *   }
+ * }
+ * ```
+ */
 export const $cookie = <T extends TSchema>(
   options: CookieDescriptorOptions<T>,
 ): AbstractCookieDescriptor<T> => {

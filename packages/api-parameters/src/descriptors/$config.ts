@@ -6,6 +6,33 @@ import {
 } from "@alepha/core";
 import type { UserAccount } from "@alepha/security";
 
+/**
+ * Creates a configuration parameter descriptor for managing application settings.
+ *
+ * Provides type-safe, versioned configuration with schema validation, default values,
+ * and scheduled activation. Useful for feature flags, system parameters, and runtime settings.
+ *
+ * @example
+ * ```ts
+ * class AppConfig {
+ *   features = $config({
+ *     name: "feature-flags",
+ *     schema: t.object({
+ *       enableBeta: t.boolean(),
+ *       maxUploadSize: t.number()
+ *     }),
+ *     default: { enableBeta: false, maxUploadSize: 10485760 }
+ *   });
+ *
+ *   async updateFeatures() {
+ *     await this.features.set(
+ *       { enableBeta: true, maxUploadSize: 20971520 },
+ *       { user: currentUser, activationDate: tomorrow }
+ *     );
+ *   }
+ * }
+ * ```
+ */
 export interface ConfigDescriptorOptions<T extends TObject> {
   name?: string;
   description?: string;

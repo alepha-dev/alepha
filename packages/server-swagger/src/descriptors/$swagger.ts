@@ -2,7 +2,27 @@ import { createDescriptor, Descriptor, KIND } from "@alepha/core";
 import type { OpenAPIV3 } from "openapi-types";
 
 /**
- * Create a new OpenAPI.
+ * Creates an OpenAPI/Swagger documentation descriptor with interactive UI.
+ *
+ * Automatically generates API documentation from your $action descriptors and serves
+ * an interactive Swagger UI for testing endpoints. Supports customization, tag filtering,
+ * and OAuth configuration.
+ *
+ * @example
+ * ```ts
+ * class App {
+ *   docs = $swagger({
+ *     prefix: "/api-docs",
+ *     info: {
+ *       title: "My API",
+ *       version: "1.0.0",
+ *       description: "REST API documentation"
+ *     },
+ *     excludeTags: ["internal"],
+ *     ui: { root: "/swagger" }
+ *   });
+ * }
+ * ```
  */
 export const $swagger = (
   options: SwaggerDescriptorOptions = {},

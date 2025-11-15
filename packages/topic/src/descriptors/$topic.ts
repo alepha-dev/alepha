@@ -21,41 +21,16 @@ import {
 } from "../providers/TopicProvider.ts";
 
 /**
- * Creates a topic descriptor for pub/sub messaging and event-driven architecture.
+ * Creates a topic descriptor for publish/subscribe messaging and event-driven architecture.
  *
- * This descriptor provides a powerful publish/subscribe system that enables decoupled communication
- * between different parts of your application. Topics allow multiple publishers to send messages
- * and multiple subscribers to receive them, creating flexible event-driven architectures with
- * support for real-time messaging and asynchronous event processing.
+ * Enables decoupled communication through a pub/sub pattern where publishers send messages
+ * and multiple subscribers receive them. Supports type-safe messages, real-time delivery,
+ * event filtering, and pluggable backends (memory, Redis, custom providers).
  *
- * **Key Features**
- *
- * - **Publish/Subscribe Pattern**: Decoupled communication between publishers and subscribers
- * - **Multiple Subscribers**: One-to-many message distribution with automatic fan-out
- * - **Type-Safe Messages**: Full TypeScript support with schema validation using TypeBox
- * - **Real-time Processing**: Immediate message delivery to active subscribers
- * - **Event Filtering**: Subscribe to specific message types using filter functions
- * - **Timeout Support**: Wait for specific messages with configurable timeouts
- * - **Multiple Backends**: Support for in-memory, Redis, and custom topic providers
- * - **Error Resilience**: Built-in error handling and message processing recovery
- *
- * **Use Cases**
- *
- * Perfect for event-driven architectures and real-time communication:
- * - User activity notifications
- * - Real-time chat and messaging systems
- * - System event broadcasting
- * - Microservice communication
- * - Live data updates and synchronization
- * - Application state change notifications
- * - Webhook and external API event handling
+ * **Use Cases**: User notifications, real-time chat, event broadcasting, microservice communication
  *
  * @example
- * **Basic topic with publish/subscribe:**
  * ```ts
- * import { $topic } from "alepha/topic";
- * import { t } from "alepha";
- *
  * class NotificationService {
  *   userActivity = $topic({
  *     name: "user-activity",
@@ -63,136 +38,21 @@ import {
  *       payload: t.object({
  *         userId: t.text(),
  *         action: t.enum(["login", "logout", "purchase"]),
- *         timestamp: t.number(),
- *         metadata: t.optional(t.record(t.text(), t.any()))
+ *         timestamp: t.number()
  *       })
  *     },
  *     handler: async (message) => {
- *       // This subscriber runs automatically for all messages
- *       console.log(`User ${message.payload.userId} performed ${message.payload.action}`);
+ *       console.log(`User ${message.payload.userId}: ${message.payload.action}`);
  *     }
  *   });
  *
- *   async trackUserLogin(userId: string) {
- *     // Publish event - all subscribers will receive it
- *     await this.userActivity.publish({
- *       userId,
- *       action: "login",
- *       timestamp: Date.now(),
- *       metadata: { source: "web", ip: "192.168.1.1" }
- *     });
+ *   async trackLogin(userId: string) {
+ *     await this.userActivity.publish({ userId, action: "login", timestamp: Date.now() });
  *   }
  *
- *   async setupAdditionalSubscriber() {
- *     // Add another subscriber dynamically
+ *   async subscribeToEvents() {
  *     await this.userActivity.subscribe(async (message) => {
- *       if (message.payload.action === "purchase") {
- *         await this.sendPurchaseConfirmation(message.payload.userId);
- *       }
- *     });
- *   }
- * }
- * ```
- *
- * @example
- * **Real-time chat system with multiple subscribers:**
- * ```ts
- * class ChatService {
- *   messagesTopic = $topic({
- *     name: "chat-messages",
- *     description: "Real-time chat messages for all rooms",
- *     schema: {
- *       payload: t.object({
- *         messageId: t.text(),
- *         roomId: t.text(),
- *         userId: t.text(),
- *         content: t.text(),
- *         timestamp: t.number(),
- *         messageType: t.enum(["text", "image", "file"])
- *       })
- *     }
- *   });
- *
- *   async sendMessage(roomId: string, userId: string, content: string) {
- *     await this.messagesTopic.publish({
- *       messageId: generateId(),
- *       roomId,
- *       userId,
- *       content,
- *       timestamp: Date.now(),
- *       messageType: "text"
- *     });
- *   }
- *
- *   // Different services can subscribe to the same topic
- *   async setupMessageLogging() {
- *     await this.messagesTopic.subscribe(async (message) => {
- *       // Log all messages for compliance
- *       await this.auditLogger.log({
- *         action: "message_sent",
- *         roomId: message.payload.roomId,
- *         userId: message.payload.userId,
- *         timestamp: message.payload.timestamp
- *       });
- *     });
- *   }
- *
- *   async setupNotificationService() {
- *     await this.messagesTopic.subscribe(async (message) => {
- *       // Send push notifications to offline users
- *       const offlineUsers = await this.getOfflineUsersInRoom(message.payload.roomId);
- *       await this.sendPushNotifications(offlineUsers, {
- *         title: `New message in ${message.payload.roomId}`,
- *         body: message.payload.content
- *       });
- *     });
- *   }
- * }
- * ```
- *
- * @example
- * **Redis-backed topic for distributed systems:**
- * ```ts
- * class DistributedEventSystem {
- *   systemEvents = $topic({
- *     name: "system-events",
- *     provider: RedisTopicProvider,  // Use Redis for cross-service communication
- *     schema: {
- *       payload: t.object({
- *         eventType: t.text(),
- *         serviceId: t.text(),
- *         data: t.record(t.text(), t.any()),
- *         timestamp: t.number(),
- *         correlationId: t.optional(t.text())
- *       })
- *     },
- *     handler: async (message) => {
- *       // Central event handler for all system events
- *       await this.processSystemEvent(message.payload);
- *     }
- *   });
- *
- *   async publishServiceHealth(serviceId: string, healthy: boolean) {
- *     await this.systemEvents.publish({
- *       eventType: "service.health",
- *       serviceId,
- *       data: { healthy, checkedAt: new Date().toISOString() },
- *       timestamp: Date.now()
- *     });
- *   }
- *
- *   async setupHealthMonitoring() {
- *     await this.systemEvents.subscribe(async (message) => {
- *       if (message.payload.eventType === "service.health") {
- *         await this.updateServiceStatus(
- *           message.payload.serviceId,
- *           message.payload.data.healthy
- *         );
- *
- *         if (!message.payload.data.healthy) {
- *           await this.alertOnCall(`Service ${message.payload.serviceId} is down`);
- *         }
- *       }
+ *       // Additional subscriber logic
  *     });
  *   }
  * }

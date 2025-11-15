@@ -9,6 +9,34 @@ import {
 } from "@alepha/core";
 import { NotificationService } from "../services/NotificationService.ts";
 
+/**
+ * Creates a notification descriptor for managing email/SMS notification templates.
+ *
+ * Provides type-safe, reusable notification templates with multi-language support,
+ * variable substitution, and categorization for different notification channels.
+ *
+ * @example
+ * ```ts
+ * class NotificationTemplates {
+ *   welcomeEmail = $notification({
+ *     name: "welcome-email",
+ *     category: "onboarding",
+ *     schema: t.object({ username: t.text(), activationLink: t.text() }),
+ *     email: {
+ *       subject: "Welcome to our platform!",
+ *       body: (vars) => `Hello ${vars.username}, click: ${vars.activationLink}`
+ *     }
+ *   });
+ *
+ *   async sendWelcome(user: User) {
+ *     await this.welcomeEmail.push({
+ *       variables: { username: user.name, activationLink: generateLink() },
+ *       contact: user.email
+ *     });
+ *   }
+ * }
+ * ```
+ */
 export const $notification = <T extends TObject>(
   options: NotificationDescriptorOptions<T>,
 ) => createDescriptor(NotificationDescriptor<T>, options);
