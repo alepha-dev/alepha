@@ -1,7 +1,7 @@
 import { $inject, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import { pageQuerySchema, pg } from "@alepha/postgres";
+import { pageQuerySchema, pg } from "@alepha/orm";
 import { $action, BadRequestError, okSchema } from "@alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { characters } from "../entities/characters.ts";

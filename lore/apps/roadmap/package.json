@@ -17,7 +17,7 @@
 		"@alepha/datetime": "^0.11.10",
 		"@alepha/file": "^0.11.10",
 		"@alepha/logger": "^0.11.10",
-		"@alepha/postgres": "^0.11.10",
+		"@alepha/orm": "^0.11.10",
 		"@alepha/react": "^0.11.10",
 		"@alepha/react-auth": "^0.11.10",
 		"@alepha/react-form": "^0.11.10",

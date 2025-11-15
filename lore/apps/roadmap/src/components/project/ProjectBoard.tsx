@@ -1,5 +1,5 @@
 import { DateTimeProvider } from "@alepha/datetime";
-import type { Page } from "@alepha/postgres";
+import type { Page } from "@alepha/orm";
 import { useClient, useInject, useRouter, useStore } from "@alepha/react";
 import {
   ActionIcon,
