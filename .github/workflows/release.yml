@@ -1,0 +1,153 @@
+name: Release
+
+permissions:
+  contents: write
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - minor
+          - patch
+          - major
+        default: 'minor'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history for proper versioning
+          fetch-depth: 0
+          # Use a token that can push to protected branches
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: "yarn"
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Lint
+        run: yarn lint
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Dependencies Check
+        run: yarn check-dependencies
+
+      - name: Test
+        run: yarn test
+
+      - name: Build
+        run: yarn build
+
+      - name: Check for Changes After Build
+        run: |
+          if [[ -n $(git diff) ]]; then
+            echo "Error: Build created uncommitted changes"
+            git diff
+            exit 1
+          fi
+
+      - name: Bump Version
+        run: |
+          yarn workspaces foreach --no-private --all version ${{ inputs.version_bump }}
+
+      - name: Convert to JavaScript
+        run: yarn convert js
+
+      - name: Publish to NPM with Provenance
+        run: |
+          yarn workspaces foreach --no-private -Apt exec npm publish --access=public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Clean Up
+        run: yarn alepha clean
+
+      - name: Get New Version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./packages/alepha/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Released version: $VERSION"
+
+      - name: Commit and Tag Release
+        run: |
+          git commit -am "release: ${{ steps.version.outputs.version }}"
+          git tag -a ${{ steps.version.outputs.version }} -m "release: ${{ steps.version.outputs.version }}"
+
+      - name: Push Changes and Tags
+        run: |
+          git push --follow-tags
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          body: |
+            Release ${{ steps.version.outputs.version }}
+
+            Published to npm with provenance certification.
+
+            **Version bump:** ${{ inputs.version_bump }}
+          draft: false
+          prerelease: false
