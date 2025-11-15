@@ -111,7 +111,7 @@ const testAllTypes = async (alepha: Alepha) => {
     ...data,
   });
 
-  const it = await app.big.find({
+  const it = await app.big.findMany({
     where: {
       type: "big_entity",
     },

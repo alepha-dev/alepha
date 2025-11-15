@@ -22,7 +22,7 @@ describe("PostgresProvider", () => {
       },
     });
 
-    const [r1] = await userService.users.find({
+    const [r1] = await userService.users.findMany({
       where: { name: { eq: "John" } },
     });
 

@@ -88,7 +88,7 @@ const testDeleteReturning = async (alepha: Alepha) => {
   );
 
   // Verify only inactive user remains
-  const remaining = await app.users.find({});
+  const remaining = await app.users.findMany({});
   expect(remaining).toHaveLength(1);
   expect(remaining[0].name).toBe("Charlie");
 
@@ -218,10 +218,10 @@ describe("Delete methods with returning IDs", () => {
     expect(softDeletedId[0]).toBe(item1.id);
 
     // Item should still exist but be soft deleted
-    const allAfterSoftDelete = await app.items.find({}, { force: true });
+    const allAfterSoftDelete = await app.items.findMany({}, { force: true });
     expect(allAfterSoftDelete).toHaveLength(3);
 
-    const activeAfterSoftDelete = await app.items.find({});
+    const activeAfterSoftDelete = await app.items.findMany({});
     expect(activeAfterSoftDelete).toHaveLength(2);
     expect(activeAfterSoftDelete.map((i) => i.name).sort()).toEqual([
       "Item 2",
@@ -239,10 +239,10 @@ describe("Delete methods with returning IDs", () => {
     expect(sortedIds).toEqual(expectedIds);
 
     // All items should be soft deleted now
-    const allItems = await app.items.find({}, { force: true });
+    const allItems = await app.items.findMany({}, { force: true });
     expect(allItems).toHaveLength(3);
 
-    const activeItems = await app.items.find({});
+    const activeItems = await app.items.findMany({});
     expect(activeItems).toHaveLength(0);
 
     // Force delete returns IDs
@@ -250,7 +250,7 @@ describe("Delete methods with returning IDs", () => {
     expect(forceDeletedIds).toHaveLength(3);
 
     // Table should be empty now
-    const finalItems = await app.items.find({}, { force: true });
+    const finalItems = await app.items.findMany({}, { force: true });
     expect(finalItems).toHaveLength(0);
   });
 });

@@ -272,6 +272,13 @@ export class DrizzleKitProvider {
     provider: DatabaseProvider,
     schemaName: string,
   ) {
+    // Validate schema name to prevent SQL injection
+    if (!/^[a-z0-9_]+$/i.test(schemaName)) {
+      throw new Error(
+        `Invalid schema name: ${schemaName}. Must only contain alphanumeric characters and underscores.`,
+      );
+    }
+
     const sqlSchema = sql.raw(schemaName);
 
     if (schemaName.startsWith("test_")) {

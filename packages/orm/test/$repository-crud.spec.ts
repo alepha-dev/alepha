@@ -68,26 +68,26 @@ const testBasicCrud = async (alepha: Alepha) => {
   // ========================================
 
   // Test: find all
-  const allUsers = await app.users.find();
+  const allUsers = await app.users.findMany();
   expect(allUsers).toHaveLength(5);
 
   // Test: find with where clause (exact match)
-  const adminUsers = await app.users.find({
+  const adminUsers = await app.users.findMany({
     where: { role: { eq: "admin" } },
   });
   expect(adminUsers).toHaveLength(2);
   expect(adminUsers.every((u) => u.role === "admin")).toBe(true);
 
   // Test: find with limit
-  const limitedUsers = await app.users.find({ limit: 2 });
+  const limitedUsers = await app.users.findMany({ limit: 2 });
   expect(limitedUsers).toHaveLength(2);
 
   // Test: find with offset
-  const offsetUsers = await app.users.find({ offset: 3 });
+  const offsetUsers = await app.users.findMany({ offset: 3 });
   expect(offsetUsers).toHaveLength(2);
 
   // Test: find with limit and offset
-  const paginatedUsers = await app.users.find({ limit: 2, offset: 1 });
+  const paginatedUsers = await app.users.findMany({ limit: 2, offset: 1 });
   expect(paginatedUsers).toHaveLength(2);
 
   // Test: findOne
@@ -169,7 +169,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(updatedUserIds).toHaveLength(2);
 
   // Verify updateMany worked
-  const members = await app.users.find({
+  const members = await app.users.findMany({
     where: { role: { eq: "member" } },
   });
   expect(members).toHaveLength(2);
@@ -198,7 +198,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(deletedOneIds[0]).toBe(bob.id);
 
   // Verify bob is deleted
-  const usersAfterDeleteOne = await app.users.find();
+  const usersAfterDeleteOne = await app.users.findMany();
   expect(usersAfterDeleteOne).toHaveLength(4);
   expect(usersAfterDeleteOne.every((u) => u.name !== "Bob")).toBe(true);
 
@@ -214,7 +214,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   );
 
   // Verify eve is deleted
-  const usersAfterDeleteById = await app.users.find();
+  const usersAfterDeleteById = await app.users.findMany();
   expect(usersAfterDeleteById).toHaveLength(3);
 
   // Test: destroy (delete by entity)
@@ -224,7 +224,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(destroyedIds[0]).toBe(david.id);
 
   // Verify david is deleted
-  const usersAfterDestroy = await app.users.find();
+  const usersAfterDestroy = await app.users.findMany();
   expect(usersAfterDestroy).toHaveLength(2);
 
   // Test: deleteMany
@@ -235,7 +235,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(deletedManyIds[0]).toBe(aliceId);
 
   // Verify only Charlie remains
-  const remainingUsers = await app.users.find();
+  const remainingUsers = await app.users.findMany();
   expect(remainingUsers).toHaveLength(1);
   expect(remainingUsers[0].name).toBe("Charlie Saved");
 
@@ -255,7 +255,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   const afterClearCount = await app.users.count();
   expect(afterClearCount).toBe(0);
 
-  const emptyFind = await app.users.find();
+  const emptyFind = await app.users.findMany();
   expect(emptyFind).toHaveLength(0);
 };
 

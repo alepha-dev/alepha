@@ -46,18 +46,18 @@ describe("references", () => {
       postParentId: post1.id,
     });
 
-    expect(await app.users.find()).toEqual([
+    expect(await app.users.findMany()).toEqual([
       { id: user.id, name: "John", __v: 0 },
     ]);
-    expect(await app.posts.find()).toEqual([
+    expect(await app.posts.findMany()).toEqual([
       { id: post1.id, userId: user.id, __v: 0 },
       { id: post2.id, userId: user.id, postParentId: post1.id, __v: 0 },
     ]);
 
     await app.users.deleteById(user.id);
 
-    expect(await app.users.find()).toEqual([]);
-    expect(await app.posts.find()).toEqual([]);
+    expect(await app.users.findMany()).toEqual([]);
+    expect(await app.posts.findMany()).toEqual([]);
   });
 
   it("should handle delete null", async () => {
@@ -79,11 +79,11 @@ describe("references", () => {
 
     await app.users.save(user);
 
-    expect(await app.users.find()).toEqual([
+    expect(await app.users.findMany()).toEqual([
       { id: user.id, name: "John", __v: 1, currentPostId: post2.id },
     ]);
 
-    expect(await app.posts.find()).toEqual([
+    expect(await app.posts.findMany()).toEqual([
       { id: post1.id, userId: user.id, __v: 0 },
       { id: post2.id, userId: user.id, postParentId: post1.id, __v: 0 },
       { id: post3.id, userId: user.id, __v: 0 },
@@ -91,11 +91,11 @@ describe("references", () => {
 
     await app.posts.deleteById(post1.id);
 
-    expect(await app.users.find()).toEqual([
+    expect(await app.users.findMany()).toEqual([
       { id: user.id, name: "John", __v: 1 },
     ]);
 
-    expect(await app.posts.find()).toEqual([
+    expect(await app.posts.findMany()).toEqual([
       { id: post3.id, userId: user.id, __v: 0 },
     ]);
   });

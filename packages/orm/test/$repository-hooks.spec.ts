@@ -155,7 +155,7 @@ const testRepositoryHooks = async (alepha: Alepha) => {
 
   // Test: find hook
   app.tracker.clear();
-  const allUsers = await app.users.find();
+  const allUsers = await app.users.findMany();
 
   expect(app.tracker.find("read:before")).toHaveLength(1);
   expect(app.tracker.find("read:after")).toHaveLength(1);
@@ -222,7 +222,7 @@ const testRepositoryHooks = async (alepha: Alepha) => {
 
   // Test: updateMany hook
   app.tracker.clear();
-  const allBeforeUpdate = await app.users.find();
+  const allBeforeUpdate = await app.users.findMany();
   const bobAndCharlie = allBeforeUpdate.filter(
     (u) => u.name === "Bob" || u.name === "Charlie",
   );
@@ -285,7 +285,7 @@ const testRepositoryHooks = async (alepha: Alepha) => {
 
   // Test: deleteById hook (uses deleteMany internally)
   app.tracker.clear();
-  const remainingUsers = await app.users.find();
+  const remainingUsers = await app.users.findMany();
   const lastUser = remainingUsers[0];
 
   await app.users.deleteById(lastUser.id);

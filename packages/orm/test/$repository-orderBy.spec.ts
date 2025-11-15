@@ -25,7 +25,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   }
 
   // MODE 1: String (defaults to ASC)
-  const usersMode1 = await app.users.find({
+  const usersMode1 = await app.users.findMany({
     orderBy: "name",
   });
 
@@ -36,7 +36,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   expect(usersMode1[3].name).toBe("David");
 
   // MODE 2: Single object with direction ASC
-  const usersMode2Asc = await app.users.find({
+  const usersMode2Asc = await app.users.findMany({
     orderBy: { column: "name", direction: "asc" },
   });
 
@@ -47,7 +47,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   expect(usersMode2Asc[3].name).toBe("David");
 
   // MODE 2: Single object with direction DESC
-  const usersMode2Desc = await app.users.find({
+  const usersMode2Desc = await app.users.findMany({
     orderBy: { column: "name", direction: "desc" },
   });
 
@@ -58,7 +58,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   expect(usersMode2Desc[3].name).toBe("Alice");
 
   // MODE 2: Single object without direction (defaults to ASC)
-  const usersMode2Default = await app.users.find({
+  const usersMode2Default = await app.users.findMany({
     orderBy: { column: "name" },
   });
 
@@ -67,7 +67,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   expect(usersMode2Default[3].name).toBe("David");
 
   // MODE 3: Array with multiple columns
-  const usersMode3Multi = await app.users.find({
+  const usersMode3Multi = await app.users.findMany({
     orderBy: [
       { column: "role", direction: "asc" },
       { column: "name", direction: "desc" },
@@ -87,7 +87,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   expect(usersMode3Multi[3].name).toBe("Alice"); // user, Alice
 
   // MODE 3: Array with default direction
-  const usersMode3Default = await app.users.find({
+  const usersMode3Default = await app.users.findMany({
     orderBy: [{ column: "role" }, { column: "name" }],
   });
 
@@ -99,7 +99,7 @@ const testOrderByModes = async (alepha: Alepha) => {
   expect(usersMode3Default[1].name).toBe("Charlie"); // admin, Charlie
 
   // MODE 3: Array with single column
-  const usersMode3Single = await app.users.find({
+  const usersMode3Single = await app.users.findMany({
     orderBy: [{ column: "name", direction: "desc" }],
   });
 

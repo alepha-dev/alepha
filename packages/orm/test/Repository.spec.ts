@@ -101,7 +101,7 @@ describe("Repository", () => {
     await app.repository.create({ name: "Eve", age: 40 });
 
     // Test range query with both gte and lte
-    const results = await app.repository.find({
+    const results = await app.repository.findMany({
       where: {
         age: { gte: 25, lte: 35 },
       },
@@ -115,7 +115,7 @@ describe("Repository", () => {
     ]);
 
     // Test with only gte
-    const resultsGte = await app.repository.find({
+    const resultsGte = await app.repository.findMany({
       where: {
         age: { gte: 35 },
       },
@@ -125,7 +125,7 @@ describe("Repository", () => {
     expect(resultsGte.map((r) => r.name).sort()).toEqual(["David", "Eve"]);
 
     // Test with only lte
-    const resultsLte = await app.repository.find({
+    const resultsLte = await app.repository.findMany({
       where: {
         age: { lte: 25 },
       },

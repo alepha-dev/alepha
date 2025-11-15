@@ -274,14 +274,14 @@ const testModelBuilderFeatures = async (alepha: Alepha) => {
 
   // Test 4: Query using indexes (verify they improve query performance)
   // Find users by email (uses email index)
-  const usersByEmail = await app.users.find({
+  const usersByEmail = await app.users.findMany({
     where: { email: { eq: "alice@example.com" } },
   });
   expect(usersByEmail.length).toBe(1);
   expect(usersByEmail[0].username).toBe("alice");
 
   // Find users by roleId and status (uses composite index)
-  const adminUsers = await app.users.find({
+  const adminUsers = await app.users.findMany({
     where: { roleId: { eq: adminRole.id } },
     orderBy: "status",
   });
@@ -289,7 +289,7 @@ const testModelBuilderFeatures = async (alepha: Alepha) => {
   expect(adminUsers[0].roleId).toBe(adminRole.id);
 
   // Find posts by userId and published status (uses composite index)
-  const publishedPosts = await app.posts.find({
+  const publishedPosts = await app.posts.findMany({
     where: {
       userId: { eq: user1.id },
       published: { eq: true },

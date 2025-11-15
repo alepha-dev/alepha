@@ -309,7 +309,7 @@ describe("Joins - Comprehensive Tests", () => {
     await setupTestData(app);
 
     // Diana has no profile, so should be excluded with inner join
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         profile: {
           type: "inner",
@@ -362,7 +362,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       where: {
         managerId: { isNull: true },
       },
@@ -638,7 +638,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         city: {
           join: cities,
@@ -664,7 +664,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         city: {
           join: cities,
@@ -697,7 +697,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         city: {
           join: cities,
@@ -730,7 +730,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const manager = users.alias("manager");
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         manager: {
           join: manager,
@@ -760,7 +760,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         profile: {
           join: profiles,
@@ -787,7 +787,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         city: {
           join: cities,
@@ -810,7 +810,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         profile: {
           join: profiles,
@@ -851,7 +851,7 @@ describe("Joins - Comprehensive Tests", () => {
       },
     });
 
-    const postComments = await app.comments.find({
+    const postComments = await app.comments.findMany({
       where: { postId: { eq: testPosts.post1.id } },
       with: {
         author: {
@@ -906,7 +906,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const manager = users.alias("manager");
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       with: {
         city: {
           join: cities,
@@ -1022,7 +1022,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       where: { name: { eq: "Diana" } }, // Diana has no profile
       with: {
         profile: {
@@ -1099,7 +1099,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     await setupTestData(app);
 
-    const results = await app.users.find({
+    const results = await app.users.findMany({
       where: { name: { eq: "NonExistentUser" } },
       with: {
         profile: {

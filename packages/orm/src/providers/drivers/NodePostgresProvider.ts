@@ -146,10 +146,17 @@ export class NodePostgresProvider extends DatabaseProvider {
         this.schemaForTesting &&
         this.schemaForTesting.startsWith("test_")
       ) {
+        // Additional validation: schema name must only contain safe characters
+        if (!/^test_[a-z0-9_]+$/i.test(this.schemaForTesting)) {
+          throw new AlephaError(
+            `Invalid test schema name: ${this.schemaForTesting}. Must match pattern: test_[a-z0-9_]+`,
+          );
+        }
+
         this.log.warn(`Deleting test schema '${this.schemaForTesting}' ...`);
-        // I hope that this will never delete a production schema
+        // Use sql.raw without quotes (Drizzle handles identifier escaping)
         await this.execute(
-          sql`DROP SCHEMA IF EXISTS "${sql.raw(this.schemaForTesting)}" CASCADE`,
+          sql`DROP SCHEMA IF EXISTS ${sql.raw(this.schemaForTesting)} CASCADE`,
         );
         this.log.info(`Test schema '${this.schemaForTesting}' deleted`);
       }

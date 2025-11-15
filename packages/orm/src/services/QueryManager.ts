@@ -214,11 +214,34 @@ export class QueryManager {
     const conditions: SQL[] = [];
 
     for (const { path, operator } of queries) {
+      // Check if the operator is an array operator (arrayContains, arrayContained, arrayOverlaps)
+      const isArrayOperator =
+        operator.arrayContains !== undefined ||
+        operator.arrayContained !== undefined ||
+        operator.arrayOverlaps !== undefined;
+
       // Check if this is an array property
-      if (
-        this.jsonQueryManager.isArrayProperty(schema, [columnName, ...path])
-      ) {
-        // Handle array queries
+      const isArrayProp = this.jsonQueryManager.isArrayProperty(schema, [
+        columnName,
+        ...path,
+      ]);
+
+      if (isArrayProp && isArrayOperator) {
+        // Array operators on JSONB arrays should use buildJsonbCondition
+        // This handles cases like: { metadata: { permissions: { arrayContains: [...] } } }
+        const condition = this.jsonQueryManager.buildJsonbCondition(
+          column,
+          path,
+          operator,
+          dialect,
+          columnSchema,
+        );
+        if (condition) {
+          conditions.push(condition);
+        }
+      } else if (isArrayProp && !isArrayOperator) {
+        // Non-array operators on array properties use buildJsonbArrayCondition
+        // This handles cases like: { addresses: { city: { eq: "Wonderland" } } }
         const condition = this.jsonQueryManager.buildJsonbArrayCondition(
           column,
           path,
@@ -277,6 +300,9 @@ export class QueryManager {
       "notLike",
       "ilike",
       "notIlike",
+      "contains",
+      "startsWith",
+      "endsWith",
       "between",
       "notBetween",
       "arrayContains",
@@ -364,10 +390,19 @@ export class QueryManager {
     }
 
     if (operator?.inArray != null) {
+      if (!Array.isArray(operator.inArray) || operator.inArray.length === 0) {
+        throw new Error("inArray operator requires at least one value");
+      }
       conditions.push(inArray(column, encodeArray(operator.inArray)));
     }
 
     if (operator?.notInArray != null) {
+      if (
+        !Array.isArray(operator.notInArray) ||
+        operator.notInArray.length === 0
+      ) {
+        throw new Error("notInArray operator requires at least one value");
+      }
       conditions.push(notInArray(column, encodeArray(operator.notInArray)));
     }
 
@@ -395,7 +430,39 @@ export class QueryManager {
       conditions.push(notIlike(column, encodeValue(operator.notIlike)));
     }
 
+    if (operator?.contains != null) {
+      // Escape LIKE special characters to prevent wildcard injection
+      const escapedValue = String(operator.contains)
+        .replace(/\\/g, "\\\\") // Escape backslash first
+        .replace(/%/g, "\\%") // Escape %
+        .replace(/_/g, "\\_"); // Escape _
+      conditions.push(ilike(column, encodeValue(`%${escapedValue}%`)));
+    }
+
+    if (operator?.startsWith != null) {
+      // Escape LIKE special characters to prevent wildcard injection
+      const escapedValue = String(operator.startsWith)
+        .replace(/\\/g, "\\\\") // Escape backslash first
+        .replace(/%/g, "\\%") // Escape %
+        .replace(/_/g, "\\_"); // Escape _
+      conditions.push(ilike(column, encodeValue(`${escapedValue}%`)));
+    }
+
+    if (operator?.endsWith != null) {
+      // Escape LIKE special characters to prevent wildcard injection
+      const escapedValue = String(operator.endsWith)
+        .replace(/\\/g, "\\\\") // Escape backslash first
+        .replace(/%/g, "\\%") // Escape %
+        .replace(/_/g, "\\_"); // Escape _
+      conditions.push(ilike(column, encodeValue(`%${escapedValue}`)));
+    }
+
     if (operator?.between != null) {
+      if (!Array.isArray(operator.between) || operator.between.length !== 2) {
+        throw new Error(
+          "between operator requires exactly 2 values [min, max]",
+        );
+      }
       conditions.push(
         between(
           column,
@@ -406,6 +473,14 @@ export class QueryManager {
     }
 
     if (operator?.notBetween != null) {
+      if (
+        !Array.isArray(operator.notBetween) ||
+        operator.notBetween.length !== 2
+      ) {
+        throw new Error(
+          "notBetween operator requires exactly 2 values [min, max]",
+        );
+      }
       conditions.push(
         notBetween(
           column,

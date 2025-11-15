@@ -72,6 +72,12 @@ export class PgJsonQueryManager {
       return undefined;
     }
 
+    // Check if operator is an array operator that needs JSONB (not text extraction)
+    const isArrayOperator =
+      operator.arrayContains !== undefined ||
+      operator.arrayContained !== undefined ||
+      operator.arrayOverlaps !== undefined;
+
     let jsonValue: SQL;
 
     if (dialect === "sqlite") {
@@ -79,8 +85,7 @@ export class PgJsonQueryManager {
       const pathStr = "$." + path.join(".");
       jsonValue = sql`json_extract(${column}, ${pathStr})`;
     } else {
-      // PostgreSQL: column->'path1'->'path2'->>'lastPath'
-      // Use ->> for the last element to get text, -> for intermediate elements
+      // PostgreSQL: Build the JSON path
       let jsonPath = sql`${column}`;
 
       // Navigate through all path elements except the last
@@ -88,9 +93,15 @@ export class PgJsonQueryManager {
         jsonPath = sql`${jsonPath}->${path[i]}`;
       }
 
-      // For the last element, use ->> to extract as text
+      // For the last element:
+      // - Use -> to keep as JSONB for array operators
+      // - Use ->> to extract as text for other operators
       const lastPath = path[path.length - 1];
-      jsonValue = sql`${jsonPath}->>${lastPath}`;
+      if (isArrayOperator) {
+        jsonValue = sql`${jsonPath}->${lastPath}`;
+      } else {
+        jsonValue = sql`${jsonPath}->>${lastPath}`;
+      }
     }
 
     // Get field type for smart casting
@@ -270,6 +281,56 @@ export class PgJsonQueryManager {
       );
     }
 
+    // Handle array operators for JSONB arrays
+    // When these operators are used, jsonValue will be a JSONB value (not text extracted)
+    if (operator.arrayContains !== undefined) {
+      if (dialect === "postgresql") {
+        // PostgreSQL @> operator: checks if left JSONB contains right JSONB
+        // JSON.stringify ensures the value is properly escaped as a JSON string
+        const jsonArray = JSON.stringify(
+          Array.isArray(operator.arrayContains)
+            ? operator.arrayContains
+            : [operator.arrayContains],
+        );
+        // The value is safely parameterized via sql template, preventing SQL injection
+        conditions.push(sql`${jsonValue} @> ${jsonArray}::jsonb`);
+      }
+    }
+
+    if (operator.arrayContained !== undefined) {
+      if (dialect === "postgresql") {
+        // PostgreSQL <@ operator: checks if left JSONB is contained in right JSONB
+        const jsonArray = JSON.stringify(
+          Array.isArray(operator.arrayContained)
+            ? operator.arrayContained
+            : [operator.arrayContained],
+        );
+        conditions.push(sql`${jsonValue} <@ ${jsonArray}::jsonb`);
+      }
+    }
+
+    if (operator.arrayOverlaps !== undefined) {
+      if (dialect === "postgresql") {
+        // PostgreSQL ?| operator: checks if any of the array elements exist as top-level keys
+        // Note: For JSONB arrays, we need to use a different approach
+        // Convert the JSONB array to text array for the ?| operator
+        const values = Array.isArray(operator.arrayOverlaps)
+          ? operator.arrayOverlaps
+          : [operator.arrayOverlaps];
+
+        // Build an OR condition to check if any value exists in the array
+        // This is safer than using ?| with dynamic values
+        const overlapConditions = values.map((val) => {
+          const jsonVal = JSON.stringify(val);
+          return sql`${jsonValue} @> ${jsonVal}::jsonb`;
+        });
+
+        if (overlapConditions.length > 0) {
+          conditions.push(sql`(${sql.join(overlapConditions, sql` OR `)})`);
+        }
+      }
+    }
+
     if (conditions.length === 0) {
       return undefined;
     }
@@ -314,6 +375,9 @@ export class PgJsonQueryManager {
             "isNotNull",
             "inArray",
             "notInArray",
+            "arrayContains",
+            "arrayContained",
+            "arrayOverlaps",
           ].includes(k),
         );
 

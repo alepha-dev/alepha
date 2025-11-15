@@ -32,16 +32,16 @@ describe("deletedAt", () => {
     const { repository, now } = await setup();
 
     await repository.createMany([{}, {}]);
-    const entities = await repository.find();
+    const entities = await repository.findMany();
     expect(entities.length).toEqual(2);
     expect(await repository.count()).toEqual(2);
 
     await repository.deleteById(entities[0].id);
     expect(await repository.count()).toEqual(1);
-    expect(await repository.find()).toEqual([{ id: entities[1].id }]);
+    expect(await repository.findMany()).toEqual([{ id: entities[1].id }]);
 
     expect(await repository.count({}, { force: true })).toEqual(2);
-    expect(await repository.find({}, { force: true })).toEqual([
+    expect(await repository.findMany({}, { force: true })).toEqual([
       { id: entities[1].id },
       { id: entities[0].id, deletedAt: now },
     ]);
@@ -50,7 +50,7 @@ describe("deletedAt", () => {
   it("should not update if deletedAt is already set", async ({ expect }) => {
     const { repository, now } = await setup();
     await repository.createMany([{}, {}]);
-    const entities = await repository.find();
+    const entities = await repository.findMany();
     const it = entities[0];
     await repository.destroy(it);
     it.name = "Toby";
@@ -68,7 +68,7 @@ describe("deletedAt", () => {
   it("should force delete", async ({ expect }) => {
     const { repository } = await setup();
     await repository.createMany([{}, {}]);
-    const entities = await repository.find();
+    const entities = await repository.findMany();
     const it = entities[0];
     await repository.destroy(it);
     expect(await repository.count()).toEqual(1);

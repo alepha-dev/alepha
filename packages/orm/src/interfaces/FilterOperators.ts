@@ -304,6 +304,69 @@ export interface FilterOperators<TValue> {
   notIlike?: string;
 
   /**
+   * Syntactic sugar for case-insensitive substring matching.
+   * Automatically wraps the value with `%` wildcards on both sides.
+   *
+   * Equivalent to: `ilike: '%value%'`
+   *
+   * ## Examples
+   *
+   * ```ts
+   * // Select all cars with "Turbo" anywhere in their name.
+   * db.select().from(cars)
+   *   .where({ name: { contains: 'Turbo' } })
+   * // Same as: .where(ilike(cars.name, '%Turbo%'))
+   * ```
+   *
+   * @see ilike for manual pattern matching
+   * @see startsWith for prefix matching
+   * @see endsWith for suffix matching
+   */
+  contains?: string;
+
+  /**
+   * Syntactic sugar for case-insensitive prefix matching.
+   * Automatically appends a `%` wildcard to the end of the value.
+   *
+   * Equivalent to: `ilike: 'value%'`
+   *
+   * ## Examples
+   *
+   * ```ts
+   * // Select all cars whose names start with "Ford".
+   * db.select().from(cars)
+   *   .where({ name: { startsWith: 'Ford' } })
+   * // Same as: .where(ilike(cars.name, 'Ford%'))
+   * ```
+   *
+   * @see ilike for manual pattern matching
+   * @see contains for substring matching
+   * @see endsWith for suffix matching
+   */
+  startsWith?: string;
+
+  /**
+   * Syntactic sugar for case-insensitive suffix matching.
+   * Automatically prepends a `%` wildcard to the beginning of the value.
+   *
+   * Equivalent to: `ilike: '%value'`
+   *
+   * ## Examples
+   *
+   * ```ts
+   * // Select all cars whose names end with "Turbo".
+   * db.select().from(cars)
+   *   .where({ name: { endsWith: 'Turbo' } })
+   * // Same as: .where(ilike(cars.name, '%Turbo'))
+   * ```
+   *
+   * @see ilike for manual pattern matching
+   * @see contains for substring matching
+   * @see startsWith for prefix matching
+   */
+  endsWith?: string;
+
+  /**
    * Test that a column or expression contains all elements of
    * the list passed as the second argument.
    *

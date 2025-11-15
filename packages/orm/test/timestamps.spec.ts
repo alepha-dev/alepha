@@ -145,7 +145,7 @@ const testTimestamps = async (alepha: Alepha) => {
   }
 
   // Test 4: Query using createdAt ordering
-  const sortedByCreated = await app.articles.find({
+  const sortedByCreated = await app.articles.findMany({
     orderBy: { column: "createdAt", direction: "asc" },
   });
 
@@ -161,7 +161,7 @@ const testTimestamps = async (alepha: Alepha) => {
 
   // Test 5: Query with createdAt filters
   // Use the actual createdAt value from the first article (already a Dayjs object)
-  const recentArticles = await app.articles.find({
+  const recentArticles = await app.articles.findMany({
     where: {
       createdAt: {
         gte: article1.createdAt as any, // Cast to any since it's actually compatible at runtime
@@ -215,7 +215,7 @@ const testTimestamps = async (alepha: Alepha) => {
   }
 
   // Test 8: Query using composite index with timestamps
-  const statusCreatedQuery = await app.articles.find({
+  const statusCreatedQuery = await app.articles.findMany({
     where: {
       status: { eq: "published" },
     },
@@ -263,7 +263,7 @@ describe("Timestamp Fields (createdAt/updatedAt)", () => {
     const startTime = new Date(createdTime.getTime() - 1000); // 1 second before
     const endTime = new Date(createdTime.getTime() + 1000); // 1 second after
 
-    const byCreated = await app.articles.find({
+    const byCreated = await app.articles.findMany({
       where: {
         createdAt: {
           gte: startTime.toISOString() as any,
@@ -276,7 +276,7 @@ describe("Timestamp Fields (createdAt/updatedAt)", () => {
     expect(byCreated.some((a) => a.id === article.id)).toBe(true);
 
     // Query using the composite index
-    const byStatusAndCreated = await app.articles.find({
+    const byStatusAndCreated = await app.articles.findMany({
       where: {
         status: { eq: "draft" },
         createdAt: { gte: startTime.toISOString() as any },
@@ -367,7 +367,7 @@ describe("Timestamp Fields (createdAt/updatedAt)", () => {
     }
 
     // Query and verify ordering
-    const ordered = await app.articles.find({
+    const ordered = await app.articles.findMany({
       orderBy: [
         { column: "createdAt", direction: "asc" },
         { column: "id", direction: "asc" },

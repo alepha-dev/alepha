@@ -57,10 +57,10 @@ describe("pg.ref - automatic onDelete behavior", () => {
     });
 
     // Verify data exists
-    expect(await app.products.find()).toEqual([
+    expect(await app.products.findMany()).toEqual([
       { id: product.id, name: "Laptop", categoryId: category.id, __v: 0 },
     ]);
-    expect(await app.orders.find()).toEqual([
+    expect(await app.orders.findMany()).toEqual([
       { id: order.id, orderNumber: "ORD-001", productId: product.id, __v: 0 },
     ]);
 
@@ -68,8 +68,8 @@ describe("pg.ref - automatic onDelete behavior", () => {
     await app.products.deleteById(product.id);
 
     // Order should be deleted due to cascade
-    expect(await app.products.find()).toEqual([]);
-    expect(await app.orders.find()).toEqual([]);
+    expect(await app.products.findMany()).toEqual([]);
+    expect(await app.orders.findMany()).toEqual([]);
   });
 
   it("should set null for optional references", async () => {
@@ -85,7 +85,7 @@ describe("pg.ref - automatic onDelete behavior", () => {
     });
 
     // Verify product has category
-    expect(await app.products.find()).toEqual([
+    expect(await app.products.findMany()).toEqual([
       { id: product.id, name: "Laptop", categoryId: category.id, __v: 0 },
     ]);
 
@@ -93,8 +93,8 @@ describe("pg.ref - automatic onDelete behavior", () => {
     await app.categories.deleteById(category.id);
 
     // Product should still exist with null categoryId (optional reference)
-    expect(await app.categories.find()).toEqual([]);
-    expect(await app.products.find()).toEqual([
+    expect(await app.categories.findMany()).toEqual([]);
+    expect(await app.products.findMany()).toEqual([
       { id: product.id, name: "Laptop", __v: 0 },
     ]);
   });
@@ -142,7 +142,7 @@ describe("pg.ref - automatic onDelete behavior", () => {
       categoryId: category.id,
     });
 
-    expect(await app.products.find()).toEqual([
+    expect(await app.products.findMany()).toEqual([
       { id: product.id, name: "Novel", categoryId: category.id, __v: 0 },
     ]);
 
@@ -150,7 +150,7 @@ describe("pg.ref - automatic onDelete behavior", () => {
     await app.categories.deleteById(category.id);
 
     // Product should be deleted due to explicit cascade
-    expect(await app.categories.find()).toEqual([]);
-    expect(await app.products.find()).toEqual([]);
+    expect(await app.categories.findMany()).toEqual([]);
+    expect(await app.products.findMany()).toEqual([]);
   });
 });

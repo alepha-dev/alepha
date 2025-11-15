@@ -43,7 +43,7 @@ describe("Query with Date Encoding", () => {
     });
 
     // Test 1: Filter with Dayjs object using eq
-    const exactMatch = await app.repository.find({
+    const exactMatch = await app.repository.findMany({
       where: {
         scheduledFor: {
           eq: dt.utc("2024-06-01").toISOString(),
@@ -55,7 +55,7 @@ describe("Query with Date Encoding", () => {
     expect(exactMatch[0].name).toBe("Recent Event");
 
     // Test 2: Filter with Dayjs object using gt (greater than)
-    const futureEvents = await app.repository.find({
+    const futureEvents = await app.repository.findMany({
       where: {
         scheduledFor: {
           gt: dt.utc("2024-06-01").toISOString(),
@@ -67,7 +67,7 @@ describe("Query with Date Encoding", () => {
     expect(futureEvents[0].name).toBe("Future Event");
 
     // Test 3: Filter with Dayjs object using lt (less than)
-    const pastEvents = await app.repository.find({
+    const pastEvents = await app.repository.findMany({
       where: {
         scheduledFor: {
           lt: dt.utc("2024-06-01").toISOString(),
@@ -79,7 +79,7 @@ describe("Query with Date Encoding", () => {
     expect(pastEvents[0].name).toBe("Past Event");
 
     // Test 4: Filter with Dayjs object using gte and lte (range)
-    const rangeEvents = await app.repository.find({
+    const rangeEvents = await app.repository.findMany({
       where: {
         and: [
           {
@@ -101,7 +101,7 @@ describe("Query with Date Encoding", () => {
     expect(rangeEvents.map((e) => e.name)).toContain("Recent Event");
 
     // Test 5: Filter with Dayjs object using between
-    const betweenEvents = await app.repository.find({
+    const betweenEvents = await app.repository.findMany({
       where: {
         eventDate: {
           between: [
@@ -115,7 +115,7 @@ describe("Query with Date Encoding", () => {
     expect(betweenEvents.length).toBeGreaterThanOrEqual(3);
 
     // Test 6: Filter with inArray using Dayjs objects
-    const specificDates = await app.repository.find({
+    const specificDates = await app.repository.findMany({
       where: {
         scheduledFor: {
           inArray: [
@@ -131,7 +131,7 @@ describe("Query with Date Encoding", () => {
     expect(specificDates.map((e) => e.name)).toContain("Future Event");
 
     // Test 7: Direct value (not using operator object)
-    const directMatch = await app.repository.find({
+    const directMatch = await app.repository.findMany({
       where: {
         scheduledFor: dt.utc("2024-06-01").toISOString(),
       },
@@ -176,7 +176,7 @@ describe("Query with Date Encoding", () => {
     });
 
     // Test with Dayjs object
-    const withDayjs = await app.repository.find({
+    const withDayjs = await app.repository.findMany({
       where: {
         dueDate: {
           gte: dt.utc("2024-06-01").toISOString(),
@@ -188,7 +188,7 @@ describe("Query with Date Encoding", () => {
     expect(withDayjs[0].title).toBe("Task 2");
 
     // Test with ISO string (should also work)
-    const withString = await app.repository.find({
+    const withString = await app.repository.findMany({
       where: {
         dueDate: {
           gte: "2024-06-01T00:00:00.000Z" as any,
@@ -249,7 +249,7 @@ describe("Query with Date Encoding", () => {
     ]);
 
     // Complex query: Find confirmed appointments in June or July
-    const confirmedSummer = await app.repository.find({
+    const confirmedSummer = await app.repository.findMany({
       where: {
         and: [
           {
@@ -273,7 +273,7 @@ describe("Query with Date Encoding", () => {
     expect(confirmedSummer[0].patientName).toBe("Charlie");
 
     // Test OR condition with dates
-    const earlyOrLate = await app.repository.find({
+    const earlyOrLate = await app.repository.findMany({
       where: {
         or: [
           {
@@ -328,7 +328,7 @@ describe("Query with Date Encoding", () => {
     ]);
 
     // Test isNull filter
-    const ongoing = await app.repository.find({
+    const ongoing = await app.repository.findMany({
       where: {
         completedAt: {
           isNull: true,
@@ -340,7 +340,7 @@ describe("Query with Date Encoding", () => {
     expect(ongoing[0].name).toBe("Ongoing Project");
 
     // Test isNotNull filter
-    const completed = await app.repository.find({
+    const completed = await app.repository.findMany({
       where: {
         completedAt: {
           isNotNull: true,
@@ -380,7 +380,7 @@ describe("Query with Date Encoding", () => {
       { name: "Event 4", date: dt.utc("2024-04-01").toISOString() },
     ]);
 
-    const excluded = await app.repository.find({
+    const excluded = await app.repository.findMany({
       where: {
         date: {
           notInArray: [
