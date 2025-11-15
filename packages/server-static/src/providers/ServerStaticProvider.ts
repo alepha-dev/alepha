@@ -4,7 +4,7 @@ import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 import { $hook, $inject, Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { getContentType } from "@alepha/file";
+import { FileDetector } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "@alepha/server";
 import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
@@ -13,6 +13,7 @@ export class ServerStaticProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly routerProvider = $inject(ServerRouterProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly fileDetector = $inject(FileDetector);
   protected readonly log = $logger();
   protected readonly directories: ServeDirectory[] = [];
 
@@ -121,7 +122,7 @@ export class ServerStaticProvider {
     const fileStat = await stat(filepath);
     const lastModified = fileStat.mtime.toUTCString();
     const etag = `"${fileStat.size}-${fileStat.mtime.getTime()}"`;
-    const contentType = getContentType(filename);
+    const contentType = this.fileDetector.getContentType(filename);
     const cacheControl = this.getCacheControl(filename, options);
 
     return async (request): Promise<NodeStream | undefined> => {

@@ -12,7 +12,6 @@ import {
   isTypeFile,
   t,
 } from "@alepha/core";
-import { bufferToArrayBuffer } from "@alepha/file";
 import { HttpError, isMultipart, type ServerRoute } from "@alepha/server";
 import Busboy, {
   type BusboyConfig,
@@ -185,7 +184,10 @@ export class ServerMultipartProvider {
           },
           async arrayBuffer() {
             const content = await readFile(tmpPath);
-            return bufferToArrayBuffer(content);
+            return content.buffer.slice(
+              content.byteOffset,
+              content.byteOffset + content.byteLength,
+            ) as ArrayBuffer;
           },
           text: async () => {
             return await readFile(tmpPath, "utf-8");

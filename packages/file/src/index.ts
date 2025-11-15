@@ -9,47 +9,6 @@ export * from "./providers/FileSystemProvider.ts";
 export * from "./providers/NodeFileSystemProvider.ts";
 export * from "./services/FileDetector.ts";
 
-// Re-export commonly used utilities for backward compatibility
-export { FileDetector as FileDetectorService } from "./services/FileDetector.ts";
-
-/**
- * Gets the content type (MIME type) based on a filename.
- * This is a convenience function that uses FileDetector.mimeMap.
- *
- * @param filename - The filename to check
- * @returns The MIME type
- *
- * @example
- * ```typescript
- * import { getContentType } from "@alepha/file";
- * const mimeType = getContentType("image.png"); // "image/png"
- * ```
- */
-export function getContentType(filename: string): string {
-  const ext = filename.toLowerCase().split(".").pop() || "";
-  return FileDetector.mimeMap[ext] || "application/octet-stream";
-}
-
-/**
- * Converts a Node.js Buffer to an ArrayBuffer.
- *
- * @param buffer - The Buffer to convert
- * @returns The ArrayBuffer
- *
- * @example
- * ```typescript
- * import { bufferToArrayBuffer } from "@alepha/file";
- * const buffer = Buffer.from("hello");
- * const arrayBuffer = bufferToArrayBuffer(buffer);
- * ```
- */
-export function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
-  return buffer.buffer.slice(
-    buffer.byteOffset,
-    buffer.byteOffset + buffer.byteLength,
-  ) as ArrayBuffer;
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**

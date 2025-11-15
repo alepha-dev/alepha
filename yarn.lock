@@ -228,25 +228,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/cli@npm:^0.11.9":
-  version: 0.11.9
-  resolution: "@alepha/cli@npm:0.11.9"
-  dependencies:
-    "@alepha/orm": "npm:^0.11.9"
-    "@biomejs/biome": "npm:^2.3.5"
-    depcheck: "npm:^1.4.7"
-    drizzle-kit: "npm:^0.31.6"
-    tsdown: "npm:^0.16.4"
-    tsx: "npm:^4.20.6"
-    typescript: "npm:^5.9.3"
-    vite: "npm:^7.2.2"
-    vitest: "npm:^4.0.8"
-  bin:
-    alepha: dist/index.js
-  checksum: 10c0/e6b5e8de67d8c21a5115692bcb922b93621892c50f03625a1a655312951a5967c4ccf49d0d0988c9e74efc6ceaff59fb820de2cb130e54726e9427aeab317db3
-  languageName: node
-  linkType: hard
-
 "@alepha/command@npm:0.11.10, @alepha/command@npm:^0.11.10, @alepha/command@workspace:packages/command":
   version: 0.0.0-use.local
   resolution: "@alepha/command@workspace:packages/command"
@@ -322,6 +303,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.11.10"
     "@alepha/react": "npm:0.11.10"
+    "@alepha/vite": "npm:^0.11.10"
     "@mantine/core": "npm:^8.3.7"
     "@mantine/form": "npm:^8.3.7"
     "@mantine/hooks": "npm:^8.3.7"
@@ -329,6 +311,7 @@ __metadata:
     "@mantine/spotlight": "npm:^8.3.7"
     "@tabler/icons-react": "npm:^3.35.0"
     "@types/react": "npm:^19.2.5"
+    alepha: "npm:^0.11.10"
     highlight.js: "npm:^11.11.1"
     marked: "npm:^17.0.0"
     marked-highlight: "npm:^2.2.3"
@@ -432,7 +415,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/orm@npm:0.11.10, @alepha/orm@npm:^0.11.10, @alepha/orm@npm:^0.11.9, @alepha/orm@workspace:packages/orm":
+"@alepha/orm@npm:0.11.10, @alepha/orm@npm:^0.11.10, @alepha/orm@workspace:packages/orm":
   version: 0.0.0-use.local
   resolution: "@alepha/orm@workspace:packages/orm"
   dependencies:
@@ -662,6 +645,7 @@ __metadata:
     "@alepha/server-links": "npm:^0.11.10"
     "@alepha/server-multipart": "npm:^0.11.10"
     "@alepha/server-security": "npm:^0.11.10"
+    "@alepha/vite": "npm:^0.11.10"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -684,6 +668,7 @@ __metadata:
     "@types/sanitize-html": "npm:^2.16.0"
     "@vercel/analytics": "npm:^1.5.0"
     "@vercel/speed-insights": "npm:^1.2.0"
+    alepha: "npm:^0.11.10"
     animate.css: "npm:^4.1.1"
     framer-motion: "npm:^12.23.24"
     highlight.js: "npm:^11.11.1"
@@ -875,7 +860,6 @@ __metadata:
   resolution: "@alepha/server-multipart@workspace:packages/server-multipart"
   dependencies:
     "@alepha/core": "npm:0.11.10"
-    "@alepha/file": "npm:0.11.10"
     "@alepha/server": "npm:0.11.10"
     "@fastify/busboy": "npm:^3.2.0"
     tsdown: "npm:^0.16.4"
@@ -1087,7 +1071,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/vite@npm:0.11.10, @alepha/vite@workspace:packages/vite":
+"@alepha/vite@npm:0.11.10, @alepha/vite@npm:^0.11.10, @alepha/vite@workspace:packages/vite":
   version: 0.0.0-use.local
   resolution: "@alepha/vite@workspace:packages/vite"
   dependencies:
@@ -7398,7 +7382,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"drizzle-kit@npm:^0.31.6, drizzle-kit@npm:^0.31.7":
+"drizzle-kit@npm:^0.31.7":
   version: 0.31.7
   resolution: "drizzle-kit@npm:0.31.7"
   dependencies:
@@ -11112,7 +11096,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
   dependencies:
-    alepha: "npm:0.11.10"
+    "@alepha/vite": "npm:^0.11.10"
+    alepha: "npm:^0.11.10"
     react: "npm:^19.2.0"
   languageName: unknown
   linkType: soft
@@ -12707,7 +12692,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "starter-6b2739@workspace:apps/starter"
   dependencies:
-    "@alepha/cli": "npm:^0.11.9"
     "@alepha/core": "npm:^0.11.10"
     "@alepha/orm": "npm:^0.11.10"
     "@alepha/react": "npm:^0.11.10"
@@ -12717,6 +12701,7 @@ __metadata:
     "@alepha/server": "npm:^0.11.10"
     "@alepha/server-links": "npm:^0.11.10"
     "@alepha/server-swagger": "npm:^0.11.10"
+    "@alepha/vite": "npm:^0.11.10"
     alepha: "npm:^0.11.10"
     react: "npm:^19.2.0"
   languageName: unknown
@@ -13915,7 +13900,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^4.0.8, vitest@npm:^4.0.9":
+"vitest@npm:^4.0.9":
   version: 4.0.9
   resolution: "vitest@npm:4.0.9"
   dependencies:

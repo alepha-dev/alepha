@@ -19,7 +19,7 @@
 		"react": "^19.2.0"
 	},
 	"devDependencies": {
-		"@alepha/cli": "^0.11.9",
+		"@alepha/vite": "^0.11.10",
 		"alepha": "^0.11.10"
 	}
 }
