@@ -100,6 +100,7 @@ export class BatchDescriptor<
   protected readonly partitions = new Map<string, PartitionState>();
   protected activeHandlers: PromiseWithResolvers<void>[] = [];
   protected isShuttingDown = false;
+  protected isReady = false;
 
   // Computed properties with defaults
   protected get maxSize(): number {
@@ -167,28 +168,39 @@ export class BatchDescriptor<
     // 6. Add item ID to partition
     partition.itemIds.push(id);
 
-    // 7. Check if the batch is full
-    if (partition.itemIds.length >= this.maxSize) {
-      this.log.trace(`Batch partition '${partitionKey}' is full, flushing...`);
-      this.flushPartition(partitionKey).catch((error) =>
-        this.log.error(
-          `Failed to flush batch partition '${partitionKey}' on max size`,
-          error,
-        ),
-      );
-    } else if (!partition.timeout && !partition.flushing) {
-      // 8. Start the timeout if it's not already running for this partition and not currently flushing
-      partition.timeout = this.dateTime.createTimeout(() => {
+    // 7. Only start processing if the app is ready (after "ready" hook)
+    // During startup, items are just buffered in memory
+    if (this.isReady) {
+      // Check if the batch is full
+      if (partition.itemIds.length >= this.maxSize) {
         this.log.trace(
-          `Batch partition '${partitionKey}' timed out, flushing...`,
+          `Batch partition '${partitionKey}' is full, flushing...`,
         );
         this.flushPartition(partitionKey).catch((error) =>
           this.log.error(
-            `Failed to flush batch partition '${partitionKey}' on timeout`,
+            `Failed to flush batch partition '${partitionKey}' on max size`,
             error,
           ),
         );
-      }, this.maxDuration);
+      } else if (!partition.timeout && !partition.flushing) {
+        // 8. Start the timeout if it's not already running for this partition and not currently flushing
+        partition.timeout = this.dateTime.createTimeout(() => {
+          this.log.trace(
+            `Batch partition '${partitionKey}' timed out, flushing...`,
+          );
+          this.flushPartition(partitionKey).catch((error) =>
+            this.log.error(
+              `Failed to flush batch partition '${partitionKey}' on timeout`,
+              error,
+            ),
+          );
+        }, this.maxDuration);
+      }
+    } else {
+      // Not ready yet - just buffer items, no size checks or timeouts
+      this.log.trace(
+        `Buffering item in partition '${partitionKey}' (app not ready yet, ${partition.itemIds.length} items buffered)`,
+      );
     }
 
     // 9. Return ID immediately
@@ -266,18 +278,24 @@ export class BatchDescriptor<
     await Promise.all(promises);
   }
 
-  protected async flushPartition(partitionKey: string): Promise<void> {
+  protected async flushPartition(
+    partitionKey: string,
+    limit?: number,
+  ): Promise<void> {
     const partition = this.partitions.get(partitionKey);
     if (!partition || partition.itemIds.length === 0) {
       this.partitions.delete(partitionKey);
       return;
     }
 
-    // Clear the timeout and grab the item IDs
+    // Clear the timeout and grab the item IDs (up to limit if specified)
     partition.timeout?.clear();
     partition.timeout = undefined;
-    const itemIdsToProcess = [...partition.itemIds];
-    partition.itemIds = [];
+    const itemsToTake =
+      limit !== undefined
+        ? Math.min(limit, partition.itemIds.length)
+        : partition.itemIds.length;
+    const itemIdsToProcess = partition.itemIds.splice(0, itemsToTake);
 
     // Mark partition as flushing to prevent race conditions
     partition.flushing = true;
@@ -365,6 +383,17 @@ export class BatchDescriptor<
     }
   }
 
+  protected readonly onReady = $hook({
+    on: "ready",
+    handler: async () => {
+      this.log.debug(
+        "Batch processor is now ready, starting to process buffered items...",
+      );
+      this.isReady = true;
+      await this.startProcessing();
+    },
+  });
+
   protected readonly dispose = $hook({
     on: "stop",
     priority: "first",
@@ -375,6 +404,53 @@ export class BatchDescriptor<
       this.log.debug("All batch partitions flushed");
     },
   });
+
+  /**
+   * Called after the "ready" hook to start processing buffered items that were
+   * pushed during startup. This checks all partitions and starts timeouts/flushes
+   * for items that were accumulated before the app was ready.
+   */
+  protected async startProcessing(): Promise<void> {
+    for (const [partitionKey, partition] of this.partitions.entries()) {
+      if (partition.itemIds.length === 0) {
+        continue;
+      }
+
+      this.log.trace(
+        `Starting processing for partition '${partitionKey}' with ${partition.itemIds.length} buffered items`,
+      );
+
+      // Flush batches of maxSize while we have items >= maxSize
+      while (partition.itemIds.length >= this.maxSize) {
+        this.log.trace(
+          `Partition '${partitionKey}' has ${partition.itemIds.length} items, flushing batch of ${this.maxSize}...`,
+        );
+        await this.flushPartition(partitionKey, this.maxSize);
+      }
+
+      // After flushing full batches, start timeout for any remaining items
+      if (
+        partition.itemIds.length > 0 &&
+        !partition.timeout &&
+        !partition.flushing
+      ) {
+        this.log.trace(
+          `Starting timeout for partition '${partitionKey}' with ${partition.itemIds.length} remaining items`,
+        );
+        partition.timeout = this.dateTime.createTimeout(() => {
+          this.log.trace(
+            `Batch partition '${partitionKey}' timed out, flushing...`,
+          );
+          this.flushPartition(partitionKey).catch((error) =>
+            this.log.error(
+              `Failed to flush partition '${partitionKey}' on timeout after startup`,
+              error,
+            ),
+          );
+        }, this.maxDuration);
+      }
+    }
+  }
 }
 
 $batch[KIND] = BatchDescriptor;
