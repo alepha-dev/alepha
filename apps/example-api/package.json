@@ -5,8 +5,8 @@
 		"dev": "alepha dev"
 	},
 	"dependencies": {
-		"@alepha/core": "^0.11.9",
-		"@alepha/postgres": "^0.11.9",
-		"@alepha/server": "^0.11.9"
+		"@alepha/core": "^0.11.10",
+		"@alepha/postgres": "^0.11.10",
+		"@alepha/server": "^0.11.10"
 	}
 }

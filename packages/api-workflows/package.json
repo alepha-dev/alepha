@@ -8,7 +8,7 @@
 		"automation"
 	],
 	"author": "Feunard",
-	"version": "0.11.9",
+	"version": "0.11.10",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -21,7 +21,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.9"
+		"@alepha/core": "0.11.10"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",

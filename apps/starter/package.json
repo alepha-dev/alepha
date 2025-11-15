@@ -7,19 +7,19 @@
 		"test": "alepha test"
 	},
 	"dependencies": {
-		"@alepha/core": "^0.11.9",
-		"@alepha/postgres": "^0.11.9",
-		"@alepha/react": "^0.11.9",
-		"@alepha/react-form": "^0.11.9",
-		"@alepha/react-head": "^0.11.9",
-		"@alepha/react-i18n": "^0.11.9",
-		"@alepha/server": "^0.11.9",
-		"@alepha/server-links": "^0.11.9",
-		"@alepha/server-swagger": "^0.11.9",
+		"@alepha/core": "^0.11.10",
+		"@alepha/postgres": "^0.11.10",
+		"@alepha/react": "^0.11.10",
+		"@alepha/react-form": "^0.11.10",
+		"@alepha/react-head": "^0.11.10",
+		"@alepha/react-i18n": "^0.11.10",
+		"@alepha/server": "^0.11.10",
+		"@alepha/server-links": "^0.11.10",
+		"@alepha/server-swagger": "^0.11.10",
 		"react": "^19.2.0"
 	},
 	"devDependencies": {
 		"@alepha/cli": "^0.11.9",
-		"alepha": "^0.11.9"
+		"alepha": "^0.11.10"
 	}
 }

@@ -1,7 +1,7 @@
 {
 	"name": "@alepha/server-multipart",
 	"description": "Handles multipart/form-data requests for file uploads.",
-	"version": "0.11.9",
+	"version": "0.11.10",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -14,9 +14,9 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/core": "0.11.9",
-		"@alepha/file": "0.11.9",
-		"@alepha/server": "0.11.9"
+		"@alepha/core": "0.11.10",
+		"@alepha/file": "0.11.10",
+		"@alepha/server": "0.11.10"
 	},
 	"devDependencies": {
 		"@fastify/busboy": "^3.2.0",
