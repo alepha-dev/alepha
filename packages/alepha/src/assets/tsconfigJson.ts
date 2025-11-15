@@ -10,6 +10,7 @@ export const tsconfigJson = `
     "moduleDetection": "force",
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "noEmit": true,
     "allowImportingTsExtensions": true
   },
   "exclude": ["node_modules", "dist"]

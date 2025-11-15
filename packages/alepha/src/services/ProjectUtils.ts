@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { $inject, Alepha, AlephaError, boot } from "@alepha/core";
+import { FileSystemProvider } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import type { RepositoryProvider } from "@alepha/orm";
 import * as tar from "tar";
@@ -26,6 +27,7 @@ import { ProcessRunner } from "./ProcessRunner.ts";
 export class ProjectUtils {
   protected readonly log = $logger();
   protected readonly runner = $inject(ProcessRunner);
+  protected readonly fs = $inject(FileSystemProvider);
 
   // ===================================================================================================================
   // Package Manager & Project Setup
@@ -45,6 +47,12 @@ export class ProjectUtils {
     } catch {
       await writeFile(yarnrcPath, "nodeLinker: node-modules");
     }
+
+    // remove lock files from other package managers
+    const npmLockPath = join(root, "package-lock.json");
+    const pnpmLockPath = join(root, "pnpm-lock.yaml");
+    await this.fs.rm(npmLockPath, { force: true });
+    await this.fs.rm(pnpmLockPath, { force: true });
   }
 
   /**
@@ -53,10 +61,7 @@ export class ProjectUtils {
    * @param modes - Configuration for which dependencies to include
    * @returns Package.json partial with dependencies, devDependencies, and scripts
    */
-  public generatePackageJsonContent(modes: {
-    api?: boolean;
-    react?: boolean;
-  }): {
+  public generatePackageJsonContent(modes: DependencyModes): {
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
     scripts: Record<string, string>;
@@ -78,12 +83,18 @@ export class ProjectUtils {
       dependencies["@alepha/server-multipart"] = `^${version}`;
     }
 
+    if (modes.orm) {
+      dependencies["@alepha/orm"] = `^${version}`;
+    }
+
     if (modes.react) {
       dependencies["@alepha/server"] = `^${version}`;
       dependencies["@alepha/server-links"] = `^${version}`;
       dependencies["@alepha/react"] = `^${version}`;
+
+      // React 19 support
       dependencies.react = "^19.2.0";
-      devDependencies["@types/react"] = "^19.0.0";
+      devDependencies["@types/react"] = "^19.2.0";
     }
 
     return {
@@ -109,13 +120,12 @@ export class ProjectUtils {
    */
   public async ensurePackageJson(
     root: string,
-    modes: { api?: boolean; react?: boolean },
+    modes: DependencyModes,
   ): Promise<void> {
     const packageJsonPath = join(root, "package.json");
     try {
       await access(packageJsonPath);
     } catch (error) {
-      this.log.info("No package.json found. Creating one...");
       await writeFile(
         packageJsonPath,
         JSON.stringify(this.generatePackageJsonContent(modes), null, 2),
@@ -181,7 +191,6 @@ export class ProjectUtils {
     try {
       await access(tsconfigPath);
     } catch {
-      this.log.info("Missing tsconfig.json detected. Creating one...");
       await writeFile(tsconfigPath, tsconfigJson);
     }
   }
@@ -490,4 +499,10 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       );
     }
   }
+}
+
+export interface DependencyModes {
+  api?: boolean;
+  react?: boolean;
+  orm?: boolean;
 }

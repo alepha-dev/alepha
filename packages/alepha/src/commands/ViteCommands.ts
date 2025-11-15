@@ -47,8 +47,8 @@ export class ViteCommands {
         await access(join(root, "index.html"));
       } catch {
         this.log.trace("No index.html found, running entry file with tsx");
-        //await this.runner.exec(`tsx watch ${entry}`);
-        //return;
+        await this.runner.exec(`tsx watch ${entry}`);
+        return;
       }
 
       const configPath = await this.utils.getViteConfigPath(

@@ -144,6 +144,9 @@ export class CoreCommands {
       react: t.optional(
         t.boolean({ description: "Include Alepha React dependencies" }),
       ),
+      orm: t.optional(
+        t.boolean({ description: "Include Alepha ORM dependencies" }),
+      ),
     }),
     handler: async ({ run, flags, root }) => {
       await run("Ensuring Alepha configuration files", async () => {

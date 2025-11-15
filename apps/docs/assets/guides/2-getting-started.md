@@ -67,7 +67,8 @@ You're all set. You can run your server directly with Node.js or Bun. No extra b
 node src/main.ts
 ```
 
-But for development, it's better to use `alepha dev`, which provides hot-reloading and other niceties:
+But for development, it's better to use `alepha dev`, which provides hot-reloading and other niceties.
+It's also mandatory when working with `@alepha/react` package, as TSX files are not natively supported by Node.js yet.
 
 ```bash
 npx alepha dev
@@ -89,7 +90,7 @@ curl http://localhost:3000
 
 You should see the response: `Hello World!`
 
-Voilà! 🎉 You have successfully created and run your first Alepha application using just your runtime's native capabilities.
+Voilà! You have successfully created and run your first Alepha application using just your runtime's native capabilities.
 
 ## Building for Production
 
@@ -101,4 +102,4 @@ npx alepha build
 
 This command will compile your TypeScript code and prepare it for deployment.
 
-By default, output is generic but you can also target specific platforms like Docker or Vercel.
+By default, output is generic, but you can also target specific platforms like Docker or Vercel.
