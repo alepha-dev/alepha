@@ -96,7 +96,7 @@ export class InvitationApi {
       ),
     },
     handler: async ({ user }) => {
-      const userInvitations = await this.db.invitations.find({
+      const userInvitations = await this.db.invitations.findMany({
         where: { invitedEmail: { eq: user.email } },
       });
 
@@ -223,7 +223,7 @@ export class InvitationApi {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.projectId, user);
 
-      return await this.db.invitations.find({
+      return await this.db.invitations.findMany({
         where: { projectId: { eq: params.projectId } },
       });
     },

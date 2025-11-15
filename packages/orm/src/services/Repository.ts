@@ -208,14 +208,14 @@ export abstract class Repository<T extends TObject> {
   /**
    * Start a SELECT query on the table.
    */
-  protected select(opts: StatementOptions = {}) {
+  protected rawSelect(opts: StatementOptions = {}) {
     return (opts.tx ?? this.db).select().from(this.table as PgTable);
   }
 
   /**
    * Start a SELECT DISTINCT query on the table.
    */
-  protected selectDistinct(
+  protected rawSelectDistinct(
     opts: StatementOptions = {},
     columns: (keyof Static<T>)[] = [],
   ) {
@@ -235,21 +235,21 @@ export abstract class Repository<T extends TObject> {
   /**
    * Start an INSERT query on the table.
    */
-  protected insert(opts: StatementOptions = {}) {
+  protected rawInsert(opts: StatementOptions = {}) {
     return (opts.tx ?? this.db).insert(this.table);
   }
 
   /**
    * Start an UPDATE query on the table.
    */
-  protected update(opts: StatementOptions = {}) {
+  protected rawUpdate(opts: StatementOptions = {}) {
     return (opts.tx ?? this.db).update(this.table);
   }
 
   /**
    * Start a DELETE query on the table.
    */
-  protected delete(opts: StatementOptions = {}) {
+  protected rawDelete(opts: StatementOptions = {}) {
     return (opts.tx ?? this.db).delete(this.table);
   }
 
@@ -260,7 +260,7 @@ export abstract class Repository<T extends TObject> {
    *
    * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
    */
-  public async find<R extends PgRelationMap<T>>(
+  public async findMany<R extends PgRelationMap<T>>(
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
@@ -271,8 +271,8 @@ export abstract class Repository<T extends TObject> {
 
     const columns = query.columns ?? query.distinct;
     const builder = query.distinct
-      ? this.selectDistinct(opts, query.distinct)
-      : this.select(opts);
+      ? this.rawSelectDistinct(opts, query.distinct)
+      : this.rawSelect(opts);
 
     const joins: Array<PgJoin> = [];
     if (query.with) {
@@ -381,7 +381,7 @@ export abstract class Repository<T extends TObject> {
     query: Pick<PgQueryRelations<T, R>, "with" | "where">,
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>> {
-    const [entity] = await this.find({ limit: 1, ...query }, opts);
+    const [entity] = await this.findMany({ limit: 1, ...query }, opts);
 
     if (!entity) {
       // TODO: enhance error message when finding by ID
@@ -421,7 +421,7 @@ export abstract class Repository<T extends TObject> {
     const tasks: Promise<any>[] = [];
 
     tasks.push(
-      this.find(
+      this.findMany(
         {
           offset,
           limit: limit + 1,
@@ -526,7 +526,7 @@ export abstract class Repository<T extends TObject> {
     });
 
     try {
-      const entity = await this.insert(opts)
+      const entity = await this.rawInsert(opts)
         .values(this.cast(data ?? {}, true))
         .returning(this.table)
         .then(([it]) => this.clean(it, this.entity.schema));
@@ -564,7 +564,7 @@ export abstract class Repository<T extends TObject> {
     });
 
     try {
-      const entities = await this.insert(opts)
+      const entities = await this.rawInsert(opts)
         .values(values.map((data) => this.cast(data, true)))
         .returning(this.table)
         .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
@@ -616,7 +616,7 @@ export abstract class Repository<T extends TObject> {
     // do not update the ID field
     delete row[this.id.key];
 
-    const response = await this.update(opts)
+    const response = await this.rawUpdate(opts)
       .set(row)
       .where(this.toSQL(where))
       .returning(this.table)
@@ -713,10 +713,22 @@ export abstract class Repository<T extends TObject> {
     } catch (error) {
       if (error instanceof DbEntityNotFoundError && versionField) {
         // Verify entity still exists to differentiate between not-found vs version mismatch
-        // If findById succeeds, entity exists and this was a version mismatch
-        // If findById throws, entity doesn't exist and we let that error propagate
-        await this.findById(id);
-        throw new DbVersionMismatchError(this.tableName, id);
+        try {
+          // If findById succeeds, entity exists and this was a version mismatch
+          await this.findById(id);
+          throw new DbVersionMismatchError(this.tableName, id);
+        } catch (lookupError) {
+          // If it's still not found, propagate the original not found error
+          if (lookupError instanceof DbEntityNotFoundError) {
+            throw error; // Original error
+          }
+          // If it's a version mismatch error, propagate it
+          if (lookupError instanceof DbVersionMismatchError) {
+            throw lookupError;
+          }
+          // Other errors (network, timeout, etc.) should be re-thrown
+          throw lookupError;
+        }
       }
       throw error;
     }
@@ -761,7 +773,7 @@ export abstract class Repository<T extends TObject> {
     where = this.withDeletedAt(where, opts);
     data = this.cast(data, false) as any;
     try {
-      const entities = await this.update(opts)
+      const entities = await this.rawUpdate(opts)
         .set(
           data as PgUpdateSetSource<PgTableWithColumns<SchemaToTableConfig<T>>>,
         )
@@ -806,7 +818,7 @@ export abstract class Repository<T extends TObject> {
     });
 
     try {
-      const result = await this.delete(opts)
+      const result = await this.rawDelete(opts)
         .where(this.toSQL(where))
         .returning({ id: (this.table as any)[this.id.key] });
       const ids = result.map((row) => row.id);

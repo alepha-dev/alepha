@@ -435,7 +435,7 @@ describe("@alepha/api-users - Password Reset", () => {
     await sessionService.createSession(user, 3600);
 
     // Verify sessions exist
-    const existingSessions = await sessionService.sessions.find({
+    const existingSessions = await sessionService.sessions.findMany({
       where: { userId: { eq: user.id } },
     });
     expect(existingSessions).toHaveLength(2);
@@ -458,7 +458,7 @@ describe("@alepha/api-users - Password Reset", () => {
     });
 
     // Verify all sessions are deleted
-    const remainingSessions = await sessionService.sessions.find({
+    const remainingSessions = await sessionService.sessions.findMany({
       where: { userId: { eq: user.id } },
     });
     expect(remainingSessions).toHaveLength(0);

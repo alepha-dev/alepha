@@ -20,7 +20,7 @@ export class VerificationService {
   public async findByEntry(
     entry: VerificationEntry,
   ): Promise<VerificationEntity> {
-    const results = await this.verificationRepository.find({
+    const results = await this.verificationRepository.findMany({
       limit: 1, // only need the most recent entry
       orderBy: {
         column: "createdAt",
@@ -40,7 +40,7 @@ export class VerificationService {
   }
 
   public findRecentsByEntry(entry: VerificationEntry) {
-    return this.verificationRepository.find({
+    return this.verificationRepository.findMany({
       orderBy: {
         column: "createdAt",
         direction: "desc",

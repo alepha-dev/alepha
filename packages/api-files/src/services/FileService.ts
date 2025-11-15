@@ -159,7 +159,7 @@ export class FileService {
    * @returns Array of expired file entities
    */
   public async findExpiredFiles(): Promise<FileEntity[]> {
-    return await this.fileRepository.find({
+    return await this.fileRepository.findMany({
       limit: 1000,
       where: {
         expirationDate: { lte: this.dateTimeProvider.nowISOString() },
@@ -348,7 +348,7 @@ export class FileService {
    * @returns Storage statistics with aggregated data
    */
   public async getStorageStats(): Promise<StorageStats> {
-    const allFiles = await this.fileRepository.find({});
+    const allFiles = await this.fileRepository.findMany({});
 
     const totalSize = allFiles.reduce((sum, file) => sum + file.size, 0);
     const totalFiles = allFiles.length;

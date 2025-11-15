@@ -47,7 +47,7 @@ class UserCrudApp {
     },
     handler: async ({ body }) => {
       // Check for duplicate email
-      const existing = await this.users.find({
+      const existing = await this.users.findMany({
         where: { email: { eq: body.email } },
         limit: 1,
       });
@@ -159,7 +159,7 @@ class UserCrudApp {
 
       // Check for duplicate email if email is being updated
       if (body.email && body.email !== existing.email) {
-        const duplicate = await this.users.find({
+        const duplicate = await this.users.findMany({
           where: { email: { eq: body.email } },
           limit: 1,
         });

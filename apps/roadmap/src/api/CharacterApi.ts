@@ -21,7 +21,7 @@ export class CharacterApi {
       ),
     },
     handler: async ({ user }) => {
-      const userCharacters = await this.db.characters.find({
+      const userCharacters = await this.db.characters.findMany({
         where: { userId: { eq: user.id } },
       });
       const userCharacterIds = userCharacters.map((c) => c.id);
@@ -31,7 +31,7 @@ export class CharacterApi {
       }
 
       // Fetch projects for each character
-      const projects = await this.db.projects.find({
+      const projects = await this.db.projects.findMany({
         where: { id: { inArray: userCharacters.map((c) => c.projectId) } },
       });
 

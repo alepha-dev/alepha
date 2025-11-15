@@ -33,7 +33,7 @@ export class SessionApi {
       response: t.array(userSession),
     },
     handler: async ({ user }) => {
-      const sessions = await this.db.sessions.find({
+      const sessions = await this.db.sessions.findMany({
         where: {
           userId: { eq: user.id },
         },

@@ -36,7 +36,7 @@ class App {
       }
 
       // Fetch all tasks
-      const allTasks = await this.tasks.find();
+      const allTasks = await this.tasks.findMany();
       console.log("All Tasks:", allTasks);
     },
   });

@@ -33,7 +33,7 @@ describe("React SSR Integration", () => {
         response: t.array(this.repository.entity.schema),
       },
       handler: async () => {
-        return this.repository.find();
+        return this.repository.findMany();
       },
     });
   }

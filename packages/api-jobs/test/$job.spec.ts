@@ -69,7 +69,7 @@ describe("$job descriptor", () => {
         testJob = $job({
           name: "tracked-job",
           handler: async () => {
-            const executions = await this.repo.find({
+            const executions = await this.repo.findMany({
               where: { job: "tracked-job", status: "STARTED" },
             });
             expect(executions.length).toBe(1);
@@ -100,7 +100,7 @@ describe("$job descriptor", () => {
 
       await app.testJob.trigger();
 
-      const executions = await app.repo.find({
+      const executions = await app.repo.findMany({
         where: { job: "success-job", status: "COMPLETED" },
       });
 
@@ -129,7 +129,7 @@ describe("$job descriptor", () => {
       // Trigger should not throw, it handles errors internally
       await app.failingJob.trigger();
 
-      const executions = await app.repo.find({
+      const executions = await app.repo.findMany({
         where: { job: "failing-job", status: "FAILED" },
       });
 
@@ -160,7 +160,7 @@ describe("$job descriptor", () => {
 
       await app.loggingJob.trigger();
 
-      const executions = await app.repo.find({
+      const executions = await app.repo.findMany({
         where: { job: "logging-job" },
       });
 
@@ -199,7 +199,7 @@ describe("$job descriptor", () => {
 
       await app.failingJob.trigger();
 
-      const executions = await app.repo.find({
+      const executions = await app.repo.findMany({
         where: { job: "failing-with-logs" },
       });
 
@@ -234,7 +234,7 @@ describe("$job descriptor", () => {
       await app.cleanupJob.trigger();
 
       // Verify job completed successfully (logs are cleaned up internally)
-      const executions = await app.repo.find({
+      const executions = await app.repo.findMany({
         where: { job: "cleanup-job", status: "COMPLETED" },
       });
 
@@ -445,7 +445,7 @@ describe("$job descriptor", () => {
       await app.testJob.trigger();
       await app.testJob.trigger();
 
-      const executions = await app.repo.find({
+      const executions = await app.repo.findMany({
         where: { job: "multi-exec-job" },
       });
 

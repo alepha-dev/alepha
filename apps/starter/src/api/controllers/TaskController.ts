@@ -11,7 +11,7 @@ export class TaskController {
       response: t.array(tasks.schema),
     },
     handler: async () => {
-      return this.taskRepository.find();
+      return this.taskRepository.findMany();
     },
   });
 
@@ -22,7 +22,7 @@ export class TaskController {
     },
     handler: async ({ body }) => {
       await this.taskRepository.create(body);
-      return this.taskRepository.find();
+      return this.taskRepository.findMany();
     },
   });
 
@@ -36,7 +36,7 @@ export class TaskController {
     },
     handler: async ({ params }) => {
       await this.taskRepository.deleteById(params.task);
-      return this.taskRepository.find();
+      return this.taskRepository.findMany();
     },
   });
 }

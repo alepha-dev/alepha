@@ -282,7 +282,7 @@ export class ProjectStatsApi {
         },
       });
 
-      const tasks = await this.db.tasks.find({
+      const tasks = await this.db.tasks.findMany({
         where: { projectId: { eq: params.id } },
         orderBy: "createdAt",
         limit: 1000,
