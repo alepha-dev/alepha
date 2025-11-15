@@ -8,8 +8,8 @@
 		"start": "alepha build && node dist"
 	},
 	"dependencies": {
-		"@alepha/vite": "^0.11.10",
-		"alepha": "^0.11.10",
+		"@alepha/vite": "^0.11.11",
+		"alepha": "^0.11.11",
 		"react": "^19.2.0"
 	}
 }

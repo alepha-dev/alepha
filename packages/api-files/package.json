@@ -8,7 +8,7 @@
 		"storage"
 	],
 	"author": "Feunard",
-	"version": "0.11.10",
+	"version": "0.11.11",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -21,21 +21,21 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.11.10",
-		"@alepha/core": "0.11.10",
-		"@alepha/datetime": "0.11.10",
-		"@alepha/file": "0.11.10",
-		"@alepha/logger": "0.11.10",
-		"@alepha/orm": "0.11.10",
-		"@alepha/scheduler": "0.11.10",
-		"@alepha/security": "0.11.10",
-		"@alepha/server": "0.11.10",
-		"@alepha/server-cache": "0.11.10",
-		"@alepha/server-multipart": "0.11.10",
-		"@alepha/server-security": "0.11.10"
+		"@alepha/bucket": "0.11.11",
+		"@alepha/core": "0.11.11",
+		"@alepha/datetime": "0.11.11",
+		"@alepha/file": "0.11.11",
+		"@alepha/logger": "0.11.11",
+		"@alepha/orm": "0.11.11",
+		"@alepha/scheduler": "0.11.11",
+		"@alepha/security": "0.11.11",
+		"@alepha/server": "0.11.11",
+		"@alepha/server-cache": "0.11.11",
+		"@alepha/server-multipart": "0.11.11",
+		"@alepha/server-security": "0.11.11"
 	},
 	"devDependencies": {
-		"@alepha/bucket-azure": "0.11.10",
+		"@alepha/bucket-azure": "0.11.11",
 		"@biomejs/biome": "^2.3.5",
 		"tsdown": "^0.16.4",
 		"typescript": "^5.9.3",

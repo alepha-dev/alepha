@@ -1,7 +1,7 @@
 {
 	"name": "alepha",
 	"description": "Easy-to-use modern TypeScript framework for building many kind of applications.",
-	"version": "0.11.10",
+	"version": "0.11.11",
 	"type": "module",
 	"engines": {
 		"node": ">=22.0.0"
@@ -16,7 +16,7 @@
 	],
 	"bin": "./src/index.ts",
 	"dependencies": {
-		"@alepha/orm": "^0.11.10",
+		"@alepha/orm": "^0.11.11",
 		"@biomejs/biome": "^2.3.5",
 		"drizzle-kit": "^0.31.7",
 		"tar": "^7.5.2",
@@ -26,9 +26,9 @@
 		"vitest": "^4.0.9"
 	},
 	"devDependencies": {
-		"@alepha/command": "^0.11.10",
-		"@alepha/core": "^0.11.10",
-		"@alepha/logger": "^0.11.10"
+		"@alepha/command": "^0.11.11",
+		"@alepha/core": "^0.11.11",
+		"@alepha/logger": "^0.11.11"
 	},
 	"scripts": {
 		"lint": "biome check --fix",
