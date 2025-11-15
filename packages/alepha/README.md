@@ -168,3 +168,9 @@ npx alepha dev
 ```
 
 Open your browser at `http://localhost:3000/` and see your React application in action.
+
+## What's next?
+
+- Dive into the [full docs](https://feunard.github.io/alepha/) for more advanced stuff
+- Browse the GitHub repo for examples and source code
+- Check out the individual packages to see what else you can build
