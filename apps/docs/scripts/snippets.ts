@@ -1,37 +1,48 @@
 export const snippets = {
   server: `
-import { run } from "alepha";
-import { $action } from "alepha/server";
+import { run } from "@alepha/core";
+import { $action } from "@alepha/server";
 
 class Api {
   // define a type-safe API action
   // accessible via HTTP GET /api/greet?name=John
   greet = $action({
-    schema: { query: t.object({ name: t.text() }) },
-    handler: async ({ query }) => \`Hello, \${query.name}!\`,
+    schema: {
+      query: t.object({ name: t.text() }),
+      response: t.object({ greeting: t.string() }),
+    },
+    handler: async ({ query }) => ({
+      greeting: \`Hello, \${query.name}!\`,
+    }),
   });
 }
 
 run(Api);
 `,
   react: `
-import { run } from "alepha";
-import { $page } from "alepha/react";
+import { run } from "@alepha/core";
+import { $page } from "@alepha/react";
+
+const HelloComponent = ({ message }: { message: string }) => {
+  return <h1>{message}</h1>;
+}
 
 class App {
   home = $page({
     path: '/',
     // fetch data before rendering the page
-    resolve: async () => ({ message: "Welcome to Alepha!" }),
-    component: ({ message }) => <h1>{message}</h1>,
+    resolve: async () => ({
+      message: "Welcome to Alepha!"
+    }),
+    component: HelloComponent,
   });
 }
 
 run(App);
 `,
   db: `
-import { t, run } from "alepha";
-import { $entity, pg, $repository } from "alepha/orm";
+import { t, run } from "@alepha/core";
+import { $entity, pg, $repository } from "@alepha/orm";
 
 // define an entity with a schema
 export const users = $entity({
@@ -42,36 +53,52 @@ export const users = $entity({
   })
 });
 
-class App { userRepository = $repository(users) }
+class App {
+  userRepository = $repository(users)
+}
+
+run(App);
 `,
   queue: `
-import { t, run } from "alepha";
-import { $queue } from "alepha/queue";
+import { t, run } from "@alepha/core";
+import { $queue } from "@alepha/queue";
+import { EmailProvider } from "@alepha/email";
 
 class App {
+  email = $inject(EmailProvider);
+
   sendEmail = $queue({
     schema: t.object({
-      email: t.text()
+      to: t.email(), subject: t.text(), body: t.string()
     }),
-    handler: async ({ payload }) => { /* worker */ }
+    handler: async ({ payload }) => {
+      const { to, subject, body } = payload;
+      await this.email.send(to, subject, body);
+    }
   });
 }
 
 run(App);
 `,
   command: `
-import { t, run } from "alepha";
-import { $command } from "alepha/command";
+import { t, run } from "@alepha/core";
+import { $command } from "@alepha/command";
 
-class CLI {
-  build = $command({
+class App {
+  deploy = $command({
+    aliases: ["d"],
     schema: t.object({
-    	verbose: t.optional(t.boolean()),
+    	env: t.enum(["staging", "prod"]),
     }),
-    handler: () => { }
+    handler: async ({ run, flags }) => {
+      await run("npx alepha build");
+
+      const prod = flags.env === "prod" ? " --prod" : "";
+      await run("cd dist && npx vercel$\{prod}");
+    }
   });
 }
 
-run(CLI);
+run(App);
 `,
 };

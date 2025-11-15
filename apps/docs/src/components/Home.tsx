@@ -147,8 +147,8 @@ const HeroSectionMessage = () => {
 
 const ShowcaseSection = () => {
   return (
-    <Paper withBorder visibleFrom={"sm"}>
-      <Tabs defaultValue="server" variant={"pills"}>
+    <Paper withBorder visibleFrom={"sm"} w={640}>
+      <Tabs defaultValue="server" variant={"pills"} h={512} w={640}>
         <Tabs.List grow p={"xs"}>
           <Tabs.Tab
             variant={""}
