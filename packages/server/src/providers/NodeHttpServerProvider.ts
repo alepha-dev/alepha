@@ -31,7 +31,7 @@ export class NodeHttpServerProvider extends ServerProvider {
   protected readonly env = $env(envSchema);
   protected readonly router = $inject(ServerRouterProvider);
 
-  protected readonly server = createServer((req, res) => this.handle(req, res));
+  public readonly server = createServer((req, res) => this.handle(req, res));
 
   protected readonly onNodeRequest = $hook({
     on: "node:request",
