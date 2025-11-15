@@ -57,13 +57,13 @@ export class ProjectApi {
       response: t.array(projects.schema),
     },
     handler: async ({ user }) => {
-      const characters = await this.db.characters.find({
+      const characters = await this.db.characters.findMany({
         where: { userId: { eq: user.id } },
       });
 
       const characterProjectIds = characters.map((it) => it.projectId);
 
-      return await this.db.projects.find({
+      return await this.db.projects.findMany({
         where: { id: { inArray: characterProjectIds } },
         limit: characterProjectIds.length,
       });
@@ -82,13 +82,13 @@ export class ProjectApi {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.id, user);
 
-      const characters = await this.db.characters.find({
+      const characters = await this.db.characters.findMany({
         where: { projectId: { eq: params.id } },
       });
 
       const userIds = characters.map((it) => it.userId);
 
-      return await this.db.users.find({
+      return await this.db.users.findMany({
         where: { id: { inArray: userIds } },
         limit: userIds.length,
       });
@@ -144,7 +144,7 @@ export class ProjectApi {
           throw err;
         });
 
-      const tasks = await this.db.tasks.find({
+      const tasks = await this.db.tasks.findMany({
         where: {
           projectId: { eq: params.id },
           completedAt: { isNull: true },
@@ -170,11 +170,11 @@ export class ProjectApi {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.id, user);
 
-      const projectCharacters = await this.db.characters.find({
+      const projectCharacters = await this.db.characters.findMany({
         where: { projectId: { eq: params.id } },
       });
 
-      const users = await this.db.users.find({
+      const users = await this.db.users.findMany({
         limit: projectCharacters.length,
         where: {
           id: { inArray: projectCharacters.map((char) => char.userId) },
@@ -249,7 +249,7 @@ export class ProjectApi {
       const { project } = await this.security.checkOwnership(params.id, user);
 
       // Update all tasks with the old package name to the new one
-      const tasksToUpdate = await this.db.tasks.find({
+      const tasksToUpdate = await this.db.tasks.findMany({
         where: {
           projectId: { eq: params.id },
           package: { eq: body.oldZoneName },

@@ -20,7 +20,7 @@ export class IdentityApi {
       ),
     },
     handler: async ({ user }) => {
-      const userIdentities = await this.db.identities.find({
+      const userIdentities = await this.db.identities.findMany({
         where: { userId: { eq: user.id } },
       });
 
