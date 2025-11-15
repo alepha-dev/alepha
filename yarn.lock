@@ -565,6 +565,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/react-websocket@workspace:packages/react-websocket":
+  version: 0.0.0-use.local
+  resolution: "@alepha/react-websocket@workspace:packages/react-websocket"
+  dependencies:
+    "@alepha/core": "npm:0.11.11"
+    "@alepha/react": "npm:0.11.11"
+    "@alepha/testing": "npm:0.11.11"
+    "@alepha/websocket": "npm:0.11.11"
+    "@biomejs/biome": "npm:^2.3.5"
+    "@types/react": "npm:^19.0.13"
+    react: "npm:^19.0.0"
+    tsdown: "npm:^0.16.4"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.9"
+  peerDependencies:
+    react: ^19.0.0
+  languageName: unknown
+  linkType: soft
+
 "@alepha/react@npm:0.11.11, @alepha/react@npm:^0.11.11, @alepha/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@alepha/react@workspace:packages/react"
@@ -1090,7 +1109,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/websocket@workspace:packages/websocket":
+"@alepha/websocket@npm:0.11.11, @alepha/websocket@workspace:packages/websocket":
   version: 0.0.0-use.local
   resolution: "@alepha/websocket@workspace:packages/websocket"
   dependencies:
@@ -1098,12 +1117,18 @@ __metadata:
     "@alepha/logger": "npm:0.11.11"
     "@alepha/server": "npm:0.11.11"
     "@alepha/testing": "npm:0.11.11"
+    "@alepha/topic": "npm:0.11.11"
     "@biomejs/biome": "npm:^2.3.5"
     "@types/ws": "npm:^8.5.13"
     tsdown: "npm:^0.16.4"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.9"
     ws: "npm:^8.18.0"
+  peerDependencies:
+    "@alepha/security": 0.11.11
+  peerDependenciesMeta:
+    "@alepha/security":
+      optional: true
   languageName: unknown
   linkType: soft
 
@@ -5257,7 +5282,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19.2.5":
+"@types/react@npm:^19.0.13, @types/react@npm:^19.2.5":
   version: 19.2.5
   resolution: "@types/react@npm:19.2.5"
   dependencies:
@@ -11704,7 +11729,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:^19.2.0":
+"react@npm:^19.0.0, react@npm:^19.2.0":
   version: 19.2.0
   resolution: "react@npm:19.2.0"
   checksum: 10c0/1b6d64eacb9324725bfe1e7860cb7a6b8a34bc89a482920765ebff5c10578eb487e6b46b2f0df263bd27a25edbdae2c45e5ea5d81ae61404301c1a7192c38330

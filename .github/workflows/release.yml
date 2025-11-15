@@ -113,9 +113,7 @@ jobs:
 
       - name: Publish to NPM with Provenance
         run: |
-          yarn workspaces foreach --no-private -Apt exec npm publish --access=public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          yarn workspaces foreach --no-private -Apt exec npm publish --access=public
 
       - name: Clean Up
         run: yarn alepha clean

@@ -5,32 +5,28 @@ import {
   $inject,
   Alepha,
   type Static,
-  type TSchema,
   TypeBoxValue,
   t,
 } from "@alepha/core";
 import { $logger } from "@alepha/logger";
 import { NodeHttpServerProvider } from "@alepha/server";
 import { WebSocket, WebSocketServer } from "ws";
+import type { TWSObject } from "../descriptors/$channel.ts";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
 import type {
-  WebSocketConfig,
+  EmitOptions,
   WebSocketConnection,
+  WebSocketDescriptorOptions,
   WebSocketHandlerContext,
   WebSocketState,
-} from "../interfaces/WebSocketConnection.ts";
+} from "../interfaces/WebSocketInterfaces.ts";
+import { RoomManager } from "../services/RoomManager.ts";
+import { WebSocketTopicService } from "../services/WebSocketTopicService.ts";
 import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-  WEBSOCKET_PORT: t.int({
-    default: 3001,
-    min: 0,
-    max: 65535,
-    description:
-      "WebSocket server port. Set 0 to use the same port as HTTP server.",
-  }),
   WEBSOCKET_PATH: t.text({
     default: "/ws",
     description: "Base path for WebSocket endpoints",
@@ -46,44 +42,74 @@ declare module "@alepha/core" {
 export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly httpServerProvider = $inject(NodeHttpServerProvider);
+  protected readonly roomManager = $inject(RoomManager);
+  protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
 
   protected wss?: WebSocketServer;
-  protected endpoints = new Map<string, WebSocketConfig<any>>();
+  protected endpoints = new Map<string, WebSocketDescriptorOptions<any, any>>();
   protected connections = new Map<string, WebSocketConnection>();
+  protected userConnections = new Map<string, Set<string>>(); // userId → Set<connectionId>
   protected nextConnectionId = 1;
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  public registerEndpoint<TMessageSchema extends TSchema>(
-    config: WebSocketConfig<TMessageSchema>,
+  public registerEndpoint<TClient extends TWSObject, TServer extends TWSObject>(
+    config: WebSocketDescriptorOptions<TClient, TServer>,
   ): void {
-    const path = this.normalizePath(config.path);
+    const path = config.channel.options.path;
     this.log.debug(`Registering WebSocket endpoint: ${path}`);
     this.endpoints.set(path, config);
+  }
+
+  public async emit<TClient extends TWSObject>(
+    channelPath: string,
+    options: EmitOptions<TClient>,
+  ): Promise<void> {
+    // Publish to topic so all server instances receive it
+    await this.topicService.publish({
+      channelPath,
+      roomIds: options.roomIds
+        ? options.roomIds
+        : options.roomId
+          ? [options.roomId]
+          : undefined,
+      userIds: options.userIds
+        ? options.userIds
+        : options.userId
+          ? [options.userId]
+          : undefined,
+      connectionIds: options.connectionIds
+        ? options.connectionIds
+        : options.connectionId
+          ? [options.connectionId]
+          : undefined,
+      exceptConnectionIds: options.exceptConnectionIds,
+      exceptUserIds: options.exceptUserIds,
+      message: options.message,
+    });
   }
 
   public getConnections(): WebSocketConnection[] {
     return Array.from(this.connections.values());
   }
 
-  public async broadcast(message: any): Promise<void> {
-    const serialized = JSON.stringify(message);
-    await Promise.all(
-      Array.from(this.connections.values()).map((conn) =>
-        conn.send(serialized),
-      ),
-    );
+  public getRoomConnections(roomId: string): WebSocketConnection[] {
+    const connectionIds = this.roomManager.getRoomConnections(roomId);
+    return connectionIds
+      .map((id) => this.connections.get(id))
+      .filter((conn): conn is WebSocketConnection => conn !== undefined);
   }
 
-  public async sendTo(connectionId: string, message: any): Promise<void> {
-    const connection = this.connections.get(connectionId);
-    if (!connection) {
-      this.log.warn(`Connection not found: ${connectionId}`);
-      return;
+  public getUserConnections(userId: string): WebSocketConnection[] {
+    const connectionIds = this.userConnections.get(userId);
+    if (!connectionIds) {
+      return [];
     }
-    await connection.send(message);
+    return Array.from(connectionIds)
+      .map((id) => this.connections.get(id))
+      .filter((conn): conn is WebSocketConnection => conn !== undefined);
   }
 
   public async closeConnection(
@@ -100,14 +126,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   }
 
   // -------------------------------------------------------------------------------------------------------------------
-
-  protected normalizePath(path: string): string {
-    const base = this.env.WEBSOCKET_PATH;
-    if (path.startsWith(base)) {
-      return path;
-    }
-    return `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  }
 
   protected handleUpgrade(
     request: IncomingMessage,
@@ -131,27 +149,69 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     });
   }
 
-  protected handleConnection(
+  protected handleConnection<
+    TClient extends TWSObject,
+    TServer extends TWSObject,
+  >(
     ws: WebSocket,
-    endpoint: WebSocketConfig<any>,
+    endpoint: WebSocketDescriptorOptions<TClient, TServer>,
     request: IncomingMessage,
   ): void {
     const connectionId = `ws-${this.nextConnectionId++}`;
+
+    // TODO: Extract userId from security context when @alepha/security is available
+    const userId: string | undefined = undefined;
+
+    // Extract roomIds from query params (e.g., ?roomId=room1&roomId=room2 or ?roomIds=room1,room2)
+    const url = new URL(request.url || "/", "http://localhost");
+    const roomIds = this.extractRoomIds(url);
+
     const connection = this.alepha.inject(NodeWebSocketConnection, {
       lifetime: "transient",
-      args: [connectionId, ws, this, endpoint],
+      args: [connectionId, userId, roomIds, ws, this, endpoint],
     });
 
     this.connections.set(connectionId, connection);
 
+    // Track user connections
+    if (userId) {
+      let userConns = this.userConnections.get(userId);
+      if (!userConns) {
+        userConns = new Set();
+        this.userConnections.set(userId, userConns);
+      }
+      userConns.add(connectionId);
+
+      // Check max connections per user
+      if (
+        endpoint.maxConnectionsPerUser &&
+        userConns.size > endpoint.maxConnectionsPerUser
+      ) {
+        this.log.warn(
+          `User ${userId} exceeded max connections (${endpoint.maxConnectionsPerUser})`,
+        );
+        ws.close(1008, "Max connections per user exceeded");
+        return;
+      }
+    }
+
+    // Join rooms
+    if (roomIds.length > 0) {
+      this.roomManager.joinRooms(connectionId, roomIds);
+    }
+
     this.log.info(`WebSocket connection established: ${connectionId}`, {
-      path: endpoint.path,
+      path: endpoint.channel.options.path,
+      userId,
+      roomIds,
       remoteAddress: request.socket.remoteAddress,
     });
 
     // Call onConnect handler if provided
     if (endpoint.onConnect) {
-      Promise.resolve(endpoint.onConnect(connection)).catch((error) => {
+      Promise.resolve(
+        endpoint.onConnect({ connectionId, userId, roomIds }),
+      ).catch((error) => {
         this.log.error("Error in onConnect handler:", error);
       });
     }
@@ -165,11 +225,26 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         code,
         reason: reason.toString(),
       });
+
+      // Clean up
       this.connections.delete(connectionId);
+      this.roomManager.leaveAllRooms(connectionId);
+
+      if (userId) {
+        const userConns = this.userConnections.get(userId);
+        if (userConns) {
+          userConns.delete(connectionId);
+          if (userConns.size === 0) {
+            this.userConnections.delete(userId);
+          }
+        }
+      }
 
       // Call onDisconnect handler if provided
       if (endpoint.onDisconnect) {
-        Promise.resolve(endpoint.onDisconnect(connection)).catch((error) => {
+        Promise.resolve(
+          endpoint.onDisconnect({ connectionId, userId, roomIds }),
+        ).catch((error) => {
           this.log.error("Error in onDisconnect handler:", error);
         });
       }
@@ -178,6 +253,112 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     ws.on("error", (error) => {
       this.log.error(`WebSocket error on ${connectionId}:`, error);
     });
+  }
+
+  protected extractRoomIds(url: URL): string[] {
+    const roomIds: string[] = [];
+
+    // Check for roomId parameter (can be multiple)
+    const roomIdParams = url.searchParams.getAll("roomId");
+    roomIds.push(...roomIdParams);
+
+    // Check for roomIds parameter (comma-separated)
+    const roomIdsParam = url.searchParams.get("roomIds");
+    if (roomIdsParam) {
+      roomIds.push(...roomIdsParam.split(",").map((id) => id.trim()));
+    }
+
+    // Default room if none specified
+    if (roomIds.length === 0) {
+      roomIds.push("default");
+    }
+
+    return roomIds;
+  }
+
+  /**
+   * Send message to local connections based on targeting criteria
+   * This is called by the topic service when a message is received
+   */
+  protected async sendToLocalConnections(
+    channelPath: string,
+    message: any,
+    criteria: {
+      roomIds?: string[];
+      userIds?: string[];
+      connectionIds?: string[];
+      exceptConnectionIds?: string[];
+      exceptUserIds?: string[];
+    },
+  ): Promise<void> {
+    const targetConnections = new Set<string>();
+
+    // Collect target connections based on criteria
+    if (criteria.roomIds) {
+      for (const roomId of criteria.roomIds) {
+        const roomConns = this.roomManager.getRoomConnections(roomId);
+        for (const connId of roomConns) {
+          targetConnections.add(connId);
+        }
+      }
+    }
+
+    if (criteria.userIds) {
+      for (const userId of criteria.userIds) {
+        const userConns = this.userConnections.get(userId);
+        if (userConns) {
+          for (const connId of userConns) {
+            targetConnections.add(connId);
+          }
+        }
+      }
+    }
+
+    if (criteria.connectionIds) {
+      for (const connId of criteria.connectionIds) {
+        targetConnections.add(connId);
+      }
+    }
+
+    // If no specific targeting, send to all connections on this channel
+    if (!criteria.roomIds && !criteria.userIds && !criteria.connectionIds) {
+      for (const conn of this.connections.values()) {
+        targetConnections.add(conn.id);
+      }
+    }
+
+    // Remove exceptions
+    if (criteria.exceptConnectionIds) {
+      for (const connId of criteria.exceptConnectionIds) {
+        targetConnections.delete(connId);
+      }
+    }
+
+    if (criteria.exceptUserIds) {
+      for (const userId of criteria.exceptUserIds) {
+        const userConns = this.userConnections.get(userId);
+        if (userConns) {
+          for (const connId of userConns) {
+            targetConnections.delete(connId);
+          }
+        }
+      }
+    }
+
+    // Send to all target connections
+    const serialized = JSON.stringify(message);
+    await Promise.all(
+      Array.from(targetConnections).map(async (connId) => {
+        const conn = this.connections.get(connId);
+        if (conn) {
+          try {
+            await conn.send(serialized);
+          } catch (error) {
+            this.log.error(`Failed to send to connection ${connId}:`, error);
+          }
+        }
+      }),
+    );
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -200,6 +381,17 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         });
         this.log.debug("WebSocket upgrade handler attached to HTTP server");
       }
+
+      // Set up topic service message handler
+      this.topicService.setMessageHandler(async (event) => {
+        await this.sendToLocalConnections(event.channelPath, event.message, {
+          roomIds: event.roomIds,
+          userIds: event.userIds,
+          connectionIds: event.connectionIds,
+          exceptConnectionIds: event.exceptConnectionIds,
+          exceptUserIds: event.exceptUserIds,
+        });
+      });
 
       this.log.info("WebSocket server initialized", {
         basePath: this.env.WEBSOCKET_PATH,
@@ -243,9 +435,11 @@ export class NodeWebSocketConnection implements WebSocketConnection {
 
   constructor(
     public readonly id: string,
+    public readonly userId: string | undefined,
+    public readonly roomIds: string[],
     protected readonly ws: WebSocket,
     protected readonly provider: NodeWebSocketServerProvider,
-    protected readonly endpoint: WebSocketConfig<any>,
+    protected readonly endpoint: WebSocketDescriptorOptions<any, any>,
   ) {}
 
   public get readyState(): WebSocketState {
@@ -277,32 +471,59 @@ export class NodeWebSocketConnection implements WebSocketConnection {
   public async handleMessage(data: any): Promise<void> {
     try {
       const rawMessage = data.toString();
-      let message: any;
+      let parsed: any;
 
       try {
-        message = JSON.parse(rawMessage);
+        parsed = JSON.parse(rawMessage);
       } catch {
-        message = rawMessage;
+        this.log.warn("Received non-JSON message");
+        return;
       }
 
-      // Validate message if schema is provided
-      if (this.endpoint.schema?.message) {
-        if (!TypeBoxValue.Check(this.endpoint.schema.message, message)) {
-          const errors = Array.from(
-            TypeBoxValue.Errors(this.endpoint.schema.message, message),
-          );
-          throw new WebSocketValidationError(
-            `Message validation failed: ${errors.map((e: any) => e.message).join(", ")}`,
-          );
+      // Extract roomId from message (or use first room in connection's rooms)
+      const roomId = parsed.roomId || this.roomIds[0] || "default";
+
+      // Extract message payload
+      const message = parsed.message || parsed;
+
+      // Validate message against schema (out = client→server)
+      const outSchema = this.endpoint.channel.options.schema.out;
+      if (!TypeBoxValue.Check(outSchema, message)) {
+        const errors = Array.from(TypeBoxValue.Errors(outSchema, message));
+        throw new WebSocketValidationError(
+          `Message validation failed: ${errors.map((e: any) => e.message).join(", ")}`,
+        );
+      }
+
+      // Create reply function scoped to this context
+      const reply = async (options: {
+        message: any;
+        roomId?: string;
+        exceptSelf?: boolean;
+        exceptConnectionIds?: string[];
+        exceptUserIds?: string[];
+      }) => {
+        const targetRoomId = options.roomId || roomId;
+        const exceptConnectionIds = options.exceptConnectionIds || [];
+
+        if (options.exceptSelf) {
+          exceptConnectionIds.push(this.id);
         }
-      }
 
-      const context: WebSocketHandlerContext<any> = {
+        await this.provider.emit(this.endpoint.channel.options.path, {
+          message: options.message,
+          roomId: targetRoomId,
+          exceptConnectionIds,
+          exceptUserIds: options.exceptUserIds,
+        });
+      };
+
+      const context: WebSocketHandlerContext<any, any> = {
+        connectionId: this.id,
+        userId: this.userId,
+        roomId,
         message,
-        connection: this,
-        broadcast: (msg) => this.provider.broadcast(msg),
-        sendTo: (connId, msg) => this.provider.sendTo(connId, msg),
-        getConnections: () => this.provider.getConnections(),
+        reply,
       };
 
       await this.endpoint.handler(context);

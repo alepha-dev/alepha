@@ -1,8 +1,12 @@
 import { $module, type Alepha, type DescriptorFactoryLike } from "@alepha/core";
 import { AlephaServer } from "@alepha/server";
+import { AlephaTopic } from "@alepha/topic";
+import { $channel } from "./descriptors/$channel.ts";
 import { $websocket } from "./descriptors/$websocket.ts";
 import { NodeWebSocketServerProvider } from "./providers/NodeWebSocketServerProvider.ts";
 import { WebSocketServerProvider } from "./providers/WebSocketServerProvider.ts";
+import { RoomManager } from "./services/RoomManager.ts";
+import { WebSocketTopicService } from "./services/WebSocketTopicService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -68,10 +72,19 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
  */
 export const AlephaWebSockets = $module({
   name: "alepha.websockets",
-  descriptors: [$websocket as DescriptorFactoryLike],
-  services: [WebSocketServerProvider, NodeWebSocketServerProvider],
+  descriptors: [
+    $channel as DescriptorFactoryLike,
+    $websocket as DescriptorFactoryLike,
+  ],
+  services: [
+    WebSocketServerProvider,
+    NodeWebSocketServerProvider,
+    RoomManager,
+    WebSocketTopicService,
+  ],
   register: (alepha: Alepha) => {
     alepha.with(AlephaServer);
+    alepha.with(AlephaTopic);
 
     alepha.with({
       provide: WebSocketServerProvider,

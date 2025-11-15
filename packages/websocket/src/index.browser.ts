@@ -1,36 +1,27 @@
 import { $module, type Alepha, type DescriptorFactoryLike } from "@alepha/core";
-import { AlephaServer } from "@alepha/server";
+import { AlephaTopic } from "@alepha/topic";
+import { $channel } from "./descriptors/$channel.ts";
 import { $websocket } from "./descriptors/$websocket.ts";
-import { BrowserWebSocketProvider } from "./providers/BrowserWebSocketProvider.ts";
-import { WebSocketServerProvider } from "./providers/WebSocketServerProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export * from "./index.shared.ts";
-export * from "./providers/BrowserWebSocketProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
+import { WebSocketClient } from "./services/WebSocketClient.ts";
 
 /**
- * Provides real-time bidirectional communication using WebSockets in the browser.
+ * @alepha/websocket (Browser)
  *
- * The WebSockets module enables building real-time applications using the `$websocket` descriptor
- * on class properties. In the browser, it uses the native WebSocket API to connect to WebSocket
- * servers and provides automatic reconnection, message queuing, and type-safe message handling.
+ * Browser-side WebSocket client module. Provides WebSocketClient service
+ * for managing WebSocket connections from the browser.
  *
- * @see {@link $websocket}
- * @module alepha.websockets
+ * For React applications, use @alepha/react-websocket with the useRoom hook.
  */
-export const AlephaWebSockets = $module({
-  name: "alepha.websockets",
-  descriptors: [$websocket as DescriptorFactoryLike],
-  services: [WebSocketServerProvider, BrowserWebSocketProvider],
-  register: (alepha: Alepha) => {
-    alepha.with(AlephaServer);
+export * from "./index.shared.ts";
 
-    alepha.with({
-      provide: WebSocketServerProvider,
-      use: BrowserWebSocketProvider,
-    });
+export const AlephaWebSockets = $module({
+  name: "alepha.websockets.browser",
+  descriptors: [
+    $channel as DescriptorFactoryLike,
+    $websocket as DescriptorFactoryLike,
+  ],
+  services: [WebSocketClient],
+  register: (alepha: Alepha) => {
+    alepha.with(AlephaTopic);
   },
 });

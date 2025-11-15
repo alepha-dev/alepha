@@ -1,8 +1,9 @@
-import type { TSchema } from "@alepha/core";
+import type { TWSObject } from "../descriptors/$channel.ts";
 import type {
-  WebSocketConfig,
+  EmitOptions,
   WebSocketConnection,
-} from "../interfaces/WebSocketConnection.ts";
+  WebSocketDescriptorOptions,
+} from "../interfaces/WebSocketInterfaces.ts";
 
 /**
  * Abstract WebSocket server provider
@@ -12,26 +13,37 @@ import type {
  */
 export abstract class WebSocketServerProvider {
   /**
-   * Register a WebSocket endpoint
+   * Register a WebSocket endpoint with its channel configuration
    */
-  abstract registerEndpoint<TMessageSchema extends TSchema>(
-    config: WebSocketConfig<TMessageSchema>,
-  ): void;
+  abstract registerEndpoint<
+    TClient extends TWSObject,
+    TServer extends TWSObject,
+  >(config: WebSocketDescriptorOptions<TClient, TServer>): void;
 
   /**
-   * Get all active connections
+   * Emit a message to clients based on targeting criteria
+   *
+   * This method distributes messages across all server instances via pub/sub.
+   */
+  abstract emit<TClient extends TWSObject>(
+    channelPath: string,
+    options: EmitOptions<TClient>,
+  ): Promise<void>;
+
+  /**
+   * Get all active connections (local to this server instance)
    */
   abstract getConnections(): WebSocketConnection[];
 
   /**
-   * Broadcast a message to all connections
+   * Get connections in a specific room (local to this server instance)
    */
-  abstract broadcast(message: any): Promise<void>;
+  abstract getRoomConnections(roomId: string): WebSocketConnection[];
 
   /**
-   * Send a message to a specific connection
+   * Get connections for a specific user (local to this server instance)
    */
-  abstract sendTo(connectionId: string, message: any): Promise<void>;
+  abstract getUserConnections(userId: string): WebSocketConnection[];
 
   /**
    * Close a specific connection
