@@ -1,5 +1,6 @@
 {
 	"name": "alepha",
+	"description": "Easy-to-use modern TypeScript framework for building many kind of applications.",
 	"version": "0.11.10",
 	"type": "module",
 	"engines": {
