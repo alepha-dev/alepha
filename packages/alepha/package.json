@@ -41,6 +41,11 @@
 		"url": "git+https://github.com/feunard/alepha.git"
 	},
 	"keywords": [
-		"alepha"
+		"alepha",
+		"aleph",
+		"framework",
+		"serverless",
+		"react",
+		"api"
 	]
 }
