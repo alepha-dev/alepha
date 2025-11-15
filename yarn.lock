@@ -1090,9 +1090,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/websockets@workspace:packages/websockets":
+"@alepha/websocket@workspace:packages/websocket":
   version: 0.0.0-use.local
-  resolution: "@alepha/websockets@workspace:packages/websockets"
+  resolution: "@alepha/websocket@workspace:packages/websocket"
   dependencies:
     "@alepha/core": "npm:0.11.11"
     "@alepha/logger": "npm:0.11.11"

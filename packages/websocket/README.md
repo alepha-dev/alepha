@@ -1,4 +1,4 @@
-# Alepha Websockets
+# Alepha Websocket
 
 Real-time bidirectional communication using WebSockets.
 
@@ -25,10 +25,10 @@ This module can be imported and used as follows:
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaWebsockets } from "alepha/websockets";
+import { AlephaWebsocket } from "alepha/websocket";
 
 const alepha = Alepha.create()
-	.with(AlephaWebsockets);
+	.with(AlephaWebsocket);
 
 run(alepha);
 ```

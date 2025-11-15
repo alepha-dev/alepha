@@ -128,7 +128,8 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     const hashed = await crypto.hashPassword(password);
 
     // Corrupt the hash by changing one character
-    const corrupted = hashed.slice(0, -1) + "0";
+    const removedChar = hashed.slice(-1);
+    const corrupted = hashed.slice(0, -1) + (removedChar === "0" ? "1" : "0");
 
     const result = await crypto.verifyPassword(password, corrupted);
     expect(result).toBe(false);

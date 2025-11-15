@@ -298,6 +298,28 @@ Modules are more useful when the application grows and needs to be structured.
 If we speak with number of `$actions`, a module should be used when you have more than 30 actions in a single module.
 Meaning that if you have 100 actions, you should have at least 3 modules.
 
+#### $use()
+
+Subscribes to an atom's state and returns its current value for use in components.
+
+Creates a reactive connection between an atom and a component, automatically registering
+the atom in the application state if not already registered. The returned value is reactive
+and will update when the atom's state changes.
+
+**Use Cases**: Accessing global state, sharing data between components, reactive UI updates
+
+```ts
+const userState = $atom({ schema: t.object({ name: t.text(), role: t.text() }) });
+
+class UserComponent {
+  user = $use(userState); // Reactive reference to atom state
+
+  render() {
+    return <div>Hello {this.user.name}!</div>;
+  }
+}
+```
+
 ### Providers
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.

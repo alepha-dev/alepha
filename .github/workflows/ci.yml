@@ -1,4 +1,4 @@
-name: Alepha
+name: Build
 permissions: write-all
 
 on:

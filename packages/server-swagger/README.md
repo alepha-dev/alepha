@@ -38,4 +38,23 @@ For more details, see the [Descriptors documentation](/docs/descriptors).
 
 #### $swagger()
 
-Create a new OpenAPI.
+Creates an OpenAPI/Swagger documentation descriptor with interactive UI.
+
+Automatically generates API documentation from your $action descriptors and serves
+an interactive Swagger UI for testing endpoints. Supports customization, tag filtering,
+and OAuth configuration.
+
+```ts
+class App {
+  docs = $swagger({
+    prefix: "/api-docs",
+    info: {
+      title: "My API",
+      version: "1.0.0",
+      description: "REST API documentation"
+    },
+    excludeTags: ["internal"],
+    ui: { root: "/swagger" }
+  });
+}
+```

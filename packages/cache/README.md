@@ -40,130 +40,48 @@ For more details, see the [Descriptors documentation](/docs/descriptors).
 
 #### $cache()
 
-Creates a cache descriptor for high-performance data caching with automatic cache management.
+Creates a cache descriptor for high-performance data caching with automatic management.
 
-This descriptor provides a powerful caching layer that can significantly improve application performance
-by storing frequently accessed data in memory or external cache stores like Redis. It supports both
-function result caching and manual cache operations with intelligent serialization and TTL management.
+Provides a caching layer that improves application performance by storing frequently accessed
+data in memory or external stores like Redis, with support for both function result caching
+and manual cache operations.
 
 **Key Features**
+- Automatic function result caching based on input parameters
+- Multiple storage backends (in-memory, Redis, custom providers)
+- Intelligent serialization for JSON, strings, and binary data
+- Configurable TTL with automatic expiration
+- Pattern-based cache invalidation with wildcard support
+- Environment controls to enable/disable caching
 
-- **Function Result Caching**: Automatically cache function results based on input parameters
-- **Multiple Storage Backends**: Support for in-memory, Redis, and custom cache providers
-- **Intelligent Serialization**: Automatic handling of JSON, strings, and binary data
-- **TTL Management**: Configurable time-to-live with automatic expiration
-- **Cache Invalidation**: Pattern-based cache invalidation with wildcard support
-- **Environment Controls**: Enable/disable caching via environment variables
-- **Type Safety**: Full TypeScript support with generic type parameters
+**Storage Backends**
+- Memory: Fast in-memory cache (default for development)
+- Redis: Distributed cache for production environments
+- Custom providers: Implement your own storage backend
 
-## Cache Strategies
-
-### 1. Function Result Caching (Memoization)
-Automatically cache the results of expensive operations based on input parameters.
-
-### 2. Manual Cache Operations
-Direct cache operations for custom caching logic and data storage.
-
-## Storage Backends
-
-- **Memory**: Fast in-memory cache (default for development)
-- **Redis**: Distributed cache for production environments
-- **Custom Providers**: Implement your own cache storage backend
-
-**Basic function result caching:**
 ```ts
-import { $cache } from "alepha/cache";
-
 class DataService {
-  // Cache expensive database queries
+  // Function result caching
   getUserData = $cache({
     name: "user-data",
     ttl: [10, "minutes"],
     handler: async (userId: string) => {
-      // Expensive database operation
       return await database.users.findById(userId);
     }
   });
 
-  async getUser(id: string) {
-    // This will hit cache on subsequent calls with same ID
-    return await this.getUserData(id);
-  }
-}
-```
-
-**API response caching with custom key generation:**
-```ts
-class ApiService {
-  fetchUserPosts = $cache({
-    name: "user-posts",
-    ttl: [5, "minutes"],
-    key: (userId: string, page: number) => `${userId}:page:${page}`,
-    handler: async (userId: string, page: number = 1) => {
-      const response = await fetch(`/api/users/${userId}/posts?page=${page}`);
-      return await response.json();
-    }
-  });
-}
-```
-
-**Manual cache operations for custom logic:**
-```ts
-class SessionService {
+  // Manual cache operations
   sessionCache = $cache<UserSession>({
-    name: "user-sessions",
-    ttl: [1, "hour"],
-    provider: "memory"  // Use memory cache for sessions
+    name: "sessions",
+    ttl: [1, "hour"]
   });
 
-  async storeSession(sessionId: string, session: UserSession) {
-    await this.sessionCache.set(sessionId, session);
-  }
-
-  async getSession(sessionId: string): Promise<UserSession | undefined> {
-    return await this.sessionCache.get(sessionId);
+  async storeSession(id: string, session: UserSession) {
+    await this.sessionCache.set(id, session);
   }
 
   async invalidateUserSessions(userId: string) {
-    // Invalidate all sessions for a user using wildcards
     await this.sessionCache.invalidate(`user:${userId}:*`);
   }
-}
-```
-
-**Redis-backed caching for production:**
-```ts
-class ProductService {
-  productCache = $cache({
-    name: "products",
-    ttl: [1, "hour"],
-    provider: RedisCacheProvider,  // Use Redis for distributed caching
-    handler: async (productId: string) => {
-      return await this.database.products.findById(productId);
-    }
-  });
-
-  async invalidateProduct(productId: string) {
-    await this.productCache.invalidate(productId);
-  }
-
-  async invalidateAllProducts() {
-    await this.productCache.invalidate("*");
-  }
-}
-```
-
-**Conditional caching with environment controls:**
-```ts
-class ExpensiveService {
-  computation = $cache({
-    name: "heavy-computation",
-    ttl: [1, "day"],
-    disabled: process.env.NODE_ENV === "development", // Disable in dev
-    handler: async (input: ComplexInput) => {
-      // Very expensive computation that should be cached in production
-      return await performHeavyComputation(input);
-    }
-  });
 }
 ```
