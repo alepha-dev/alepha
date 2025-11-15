@@ -4,10 +4,10 @@ Alepha Framework provides factory functions called **descriptors** that allow yo
 These descriptors are used to create routes, services, and other components without the need for complex boilerplate code.
 
 ```ts
-import { $action } from "alepha/server";
-import { run, Alepha, $logger } from "alepha";
-import { $queue } from "alepha/queue";
-import { $scheduler } from "alepha/scheduler";
+import { $action } from "@alepha/server";
+import { run, Alepha, $logger } from "@alepha/core";
+import { $queue } from "@alepha/queue";
+import { $scheduler } from "@alepha/scheduler";
 
 class UserController {
   log = $logger();

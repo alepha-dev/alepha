@@ -1,7 +1,7 @@
 ## Alepha Instance
 
 ```ts
-import { Alepha } from "alepha";
+import { Alepha } from "@alepha/core";
 
 const alepha = new Alepha();
 ```
@@ -11,7 +11,7 @@ The `Alepha` class is the core of the Alepha framework. It serves as the main en
 ### Factory
 
 ```ts
-import { Alepha } from "alepha";
+import { Alepha } from "@alepha/core";
 
 const alepha = Alepha.create();
 ```
@@ -34,7 +34,7 @@ The `stop` method gracefully shuts down the instance, cleaning up resources and 
 #### Running the Application
 
 ```ts
-import { run } from "alepha";
+import { run } from "@alepha/core";
 
 run(alepha)
 // server: alepha.start().then(() => process.on("exit", () => alepha.stop()));
@@ -48,7 +48,7 @@ On the server side, `.stop` will be called automatically when the process exits,
 ### Configuration
 
 ```ts
-import { Alepha } from "alepha";
+import { Alepha } from "@alepha/core";
 
 Alepha.create({
   env: {
@@ -65,8 +65,8 @@ Env variables can be accessed using `alepha.env.MY_VAR`, it's immutable, so you 
 ### Container
 
 ```ts
-import { Alepha, run } from "alepha";
-import { AlephaServer } from "alepha/server";
+import { Alepha, run } from "@alepha/core";
+import { AlephaServer } from "@alepha/server";
 
 const alepha = Alepha.create();
 
@@ -83,7 +83,7 @@ The Alepha instance acts as a container for your application. You can register s
 You can also inject services.
 
 ```ts
-import { Alepha, run } from "alepha";
+import { Alepha, run } from "@alepha/core";
 
 class MyService {
   greet() {

@@ -18,7 +18,7 @@ In order to send our email, we need to create a provider that will handle the em
 Providers are classes that encapsulate specific functionality and can be injected into services or other providers.
 
 ```ts
-import { $hook, $env, t, $inject } from "alepha";
+import { $hook, $env, t, $inject } from "@alepha/core";
 import { createTransport } from "nodemailer";
 
 class EmailProvider {
@@ -62,9 +62,9 @@ For example, `QueueProvider` may vary based on the queue system you use (e.g., R
 In this case, you can use polymorphic providers.
 
 ```ts
-import { $env, t, $inject, alepha } from "alepha";
-import { QueueProvider, MemoryQueueProvider } from "alepha/queue";
-import { RedisQueueProvider } from "alepha/queue/redis";
+import { $env, t, $inject, alepha } from "@alepha/core";
+import { QueueProvider, MemoryQueueProvider } from "@alepha/queue";
+import { RedisQueueProvider } from "@alepha/queue-redis";
 
 class TransactionService {
   // Inject the QueueProvider, which can be either Redis or Memory based on the environment

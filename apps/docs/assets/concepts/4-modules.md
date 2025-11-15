@@ -5,7 +5,7 @@ Small applications can be built with a single file, but as your application grow
 Modules are a way to group related services, providers, and descriptors together.
 
 ```ts
-import { Alepha, run, $module } from "alepha";
+import { Alepha, run, $module } from "@alepha/core";
 
 const MyUserModule = $module({
   name: "com.example.user",
@@ -35,7 +35,7 @@ Instead, use the `$client` descriptor to communicate between modules with `$acti
 This ensures that your modules remain decoupled and can be reused independently.
 
 ```ts
-import { $client } from "alepha/server/links";
+import { $client } from "@alepha/server-links";
 import type { NotificationController } from "@mycompany/api-notifications";
 
 class UserController {
