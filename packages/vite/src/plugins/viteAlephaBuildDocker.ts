@@ -1,5 +1,5 @@
 import { cp, writeFile } from "node:fs/promises";
-import { fileExists } from "./helpers/fileExists.ts";
+import { fileExists } from "../helpers/fileExists.ts";
 
 export interface ViteAlephaBuildDockerOptions {
   /**

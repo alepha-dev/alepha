@@ -1,7 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import type { Alepha } from "@alepha/core";
-import { compressFile, type ViteCompressOptions } from "../viteCompress.ts";
-import { importAlepha } from "./importAlepha.ts";
+import { importAlepha } from "../helpers/importAlepha.ts";
+import {
+  compressFile,
+  type ViteCompressOptions,
+} from "../plugins/viteCompress.ts";
 
 export interface PrerenderOptions {
   template: string; // template HTML file to use for pre-rendering
@@ -10,6 +13,10 @@ export interface PrerenderOptions {
   compress?: ViteCompressOptions | boolean; // optional compression options
 }
 
+/**
+ * Pre-renders static pages defined in the Alepha application.
+ * Allow SSG for AlephaReact module.
+ */
 export async function prerender(opts: PrerenderOptions) {
   const alepha = await importAlepha(opts.entry, {
     env: {

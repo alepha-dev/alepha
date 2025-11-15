@@ -1,12 +1,15 @@
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { boot } from "@alepha/core";
 import type { Plugin, UserConfig } from "vite";
-import { type BuildClientOptions, buildClient } from "./helpers/buildClient.ts";
-import { buildServer } from "./helpers/buildServer.ts";
-import { copyAssets } from "./helpers/copyAssets.ts";
-import { fileExists } from "./helpers/fileExists.ts";
-import { prerender } from "./helpers/prerender.ts";
-import { generateSitemap } from "./helpers/sitemap.ts";
+import { copyAssets } from "../features/copyAssets.ts";
+import { prerender } from "../features/prerender.ts";
+import { generateSitemap } from "../features/sitemap.ts";
+import {
+  type BuildClientOptions,
+  buildClient,
+} from "../helpers/buildClient.ts";
+import { buildServer } from "../helpers/buildServer.ts";
+import { fileExists } from "../helpers/fileExists.ts";
 import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
 import type { VercelConfig } from "./viteAlephaBuildVercel.ts";
 

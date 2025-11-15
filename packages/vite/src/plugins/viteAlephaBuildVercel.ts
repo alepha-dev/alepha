@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { importVite } from "./helpers/importVite.ts";
+import { importVite } from "../helpers/importVite.ts";
 
 export interface ViteAlephaBuildVercelOptions {
   /**

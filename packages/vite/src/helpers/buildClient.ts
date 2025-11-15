@@ -1,6 +1,9 @@
 import type { UserConfig } from "vite";
 import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
-import { type ViteCompressOptions, viteCompress } from "../viteCompress.ts";
+import {
+  type ViteCompressOptions,
+  viteCompress,
+} from "../plugins/viteCompress.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildClientOptions {

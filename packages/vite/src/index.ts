@@ -1,10 +1,10 @@
 import type { Alepha } from "@alepha/core";
 
-export * from "./viteAlepha.ts";
-export * from "./viteAlephaBuild.ts";
-export * from "./viteAlephaBuildVercel.ts";
-export * from "./viteAlephaDev.ts";
-export * from "./viteCompress.ts";
+export * from "./plugins/viteAlepha.ts";
+export * from "./plugins/viteAlephaBuild.ts";
+export * from "./plugins/viteAlephaBuildVercel.ts";
+export * from "./plugins/viteAlephaDev.ts";
+export * from "./plugins/viteCompress.ts";
 
 declare global {
   var __alepha: Alepha;

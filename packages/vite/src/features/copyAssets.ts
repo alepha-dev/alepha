@@ -1,13 +1,17 @@
 import { cp, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import { importAlepha } from "./importAlepha.ts";
+import { importAlepha } from "../helpers/importAlepha.ts";
 
 export interface CopyAssetsOptions {
   entry: string; // entry point for the Alepha application
   distDir: string; // output directory for copied assets
 }
 
+/**
+ * Convention for copying assets from Alepha packages to the build output directory.
+ * Used for example by AlephaServerSwagger.
+ */
 export const copyAssets = async (opts: CopyAssetsOptions): Promise<void> => {
   const root = process.cwd();
   const alepha = await importAlepha(opts.entry);

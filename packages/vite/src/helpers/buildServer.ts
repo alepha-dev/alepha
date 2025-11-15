@@ -7,12 +7,12 @@ import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
 import {
   type ViteAlephaBuildDockerOptions,
   viteAlephaBuildDocker,
-} from "../viteAlephaBuildDocker.ts";
+} from "../plugins/viteAlephaBuildDocker.ts";
 import {
   type VercelConfig,
   viteAlephaBuildVercel,
-} from "../viteAlephaBuildVercel.ts";
-import { viteAlephaExternalsVersion } from "../viteAlephaExternalsVersion.ts";
+} from "../plugins/viteAlephaBuildVercel.ts";
+import { viteAlephaExternalsVersion } from "../plugins/viteAlephaExternalsVersion.ts";
 import { importVite } from "./importVite.ts";
 
 export interface BuildServerOptions {

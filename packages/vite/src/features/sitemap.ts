@@ -1,5 +1,5 @@
 import type { Alepha } from "@alepha/core";
-import { importAlepha } from "./importAlepha.ts";
+import { importAlepha } from "../helpers/importAlepha.ts";
 
 export interface SitemapOptions {
   entry: string; // entry point for the Alepha application
@@ -7,6 +7,9 @@ export interface SitemapOptions {
   template?: string; // optional template HTML file
 }
 
+/**
+ * Generate static sitemap XML from Alepha application.
+ */
 export async function generateSitemap(opts: SitemapOptions): Promise<string> {
   const alepha = await importAlepha(opts.entry, {
     env: opts.template

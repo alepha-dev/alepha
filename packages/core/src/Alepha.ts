@@ -4,6 +4,7 @@ import { MODULE } from "./constants/MODULE.ts";
 import { OPTIONS } from "./constants/OPTIONS.ts";
 import type { InjectOptions } from "./descriptors/$inject.ts";
 import { Module, type WithModule } from "./descriptors/$module.ts";
+import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
@@ -664,7 +665,7 @@ export class Alepha {
    * @see {@link InjectOptions} for the available options.
    */
   public inject<T extends object>(
-    service: Service<T>,
+    service: Service<T> | string,
     opts: InjectOptions<T> = {},
   ): T {
     const lifetime = opts.lifetime ?? "singleton";
@@ -681,6 +682,15 @@ export class Alepha {
     // If the requested type is the container, the current instance is returned.
     if ((service as any) === Alepha) {
       return this as any;
+    }
+
+    if (typeof service === "string") {
+      for (const [key, value] of registry.entries()) {
+        if (key.name === service) {
+          return value.instance as T;
+        }
+      }
+      throw new AlephaError(`Service not found: ${service}`);
     }
 
     const substitute = this.substitutions.get(service);

@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { type Alepha, boot, type State } from "@alepha/core";
 import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
-import { importVite } from "./helpers/importVite.ts";
+import { importVite } from "../helpers/importVite.ts";
 
 export interface ViteAlephaDevOptions {
   /**

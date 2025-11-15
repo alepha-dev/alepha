@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $inject, Alepha, AlephaError, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { Repository } from "@alepha/postgres";
+import type { RepositoryProvider } from "@alepha/postgres";
 import { tsImport } from "tsx/esm/api";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 
@@ -253,9 +253,11 @@ export class DrizzleCommands {
     );
 
     const kit = this.getKitFromAlepha(alepha);
+    const repositoryProvider =
+      alepha.inject<RepositoryProvider>("RepositoryProvider");
     const accepted = new Set<string>([]);
 
-    for (const descriptor of alepha.services(Repository)) {
+    for (const descriptor of repositoryProvider.getRepositories()) {
       const provider = descriptor.provider;
       const providerName = provider.name;
       const dialect = provider.dialect;
@@ -272,6 +274,7 @@ export class DrizzleCommands {
         kit,
         provider,
         providerName,
+        providerUrl: provider.url,
         dialect,
         entry,
         rootDir,
@@ -290,6 +293,7 @@ export class DrizzleCommands {
     kit: any;
     provider: any;
     providerName: string;
+    providerUrl: string;
     dialect: string;
     entry: string;
     rootDir: string;
@@ -307,17 +311,20 @@ export class DrizzleCommands {
       options.rootDir,
     );
 
-    const drizzleConfigJs =
-      "export default " +
-      JSON.stringify(
-        {
-          schema: entitiesJsPath,
-          out: `./migrations/${options.providerName}`,
-          dialect: options.dialect,
-        },
-        null,
-        2,
-      );
+    const config: Record<string, any> = {
+      schema: entitiesJsPath,
+      out: `./migrations/${options.providerName}`,
+      dialect: options.dialect,
+      dbCredentials: {
+        url: options.providerUrl,
+      },
+    };
+
+    if (options.providerName === "pglite") {
+      config.driver = "pglite";
+    }
+
+    const drizzleConfigJs = "export default " + JSON.stringify(config, null, 2);
 
     return await this.runner.writeConfigFile(
       "drizzle.config.js",

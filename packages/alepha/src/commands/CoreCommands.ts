@@ -78,8 +78,8 @@ export class CoreCommands {
 
       if (flags.yarn) {
         await this.ensureYarn(dest);
-        await run(`cd ${name} &&yarn init -2`, {
-          alias: "Init Yarn",
+        await run(`cd ${name} && yarn set version stable`, {
+          alias: "Setting Yarn to stable version",
         });
       }
 
@@ -104,12 +104,7 @@ export class CoreCommands {
       });
 
       this.log.info("");
-      this.log.info(
-        `🎉 Project is ready! You can now start developing your Alepha project:
-
-$ cd ${name} && ${execCmd} alepha dev
-			`.trim(),
-      );
+      this.log.info(`$ cd ${name} && ${execCmd} alepha dev`.trim());
       this.log.info("");
     },
   });
@@ -142,9 +137,6 @@ $ cd ${name} && ${execCmd} alepha dev
 
       if (flags.yarn) {
         await this.ensureYarn(root);
-        await run("yarn", {
-          alias: "Installing dependencies with Yarn",
-        });
       } else {
         await run("npm install", {
           alias: "Installing dependencies with npm",
