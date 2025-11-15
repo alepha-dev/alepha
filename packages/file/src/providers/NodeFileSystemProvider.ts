@@ -142,42 +142,6 @@ export class NodeFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * Detects the file type by checking magic bytes in a stream.
-   *
-   * @param stream - The readable stream to check
-   * @param filename - The filename (used to get the extension)
-   * @returns File type information including MIME type, extension, and verification status
-   *
-   * @example
-   * ```typescript
-   * const fs = alepha.inject(NodeFileSystemProvider);
-   * const stream = createReadStream('image.png');
-   * const result = await fs.detectFileType(stream, 'image.png');
-   * console.log(result.mimeType); // 'image/png'
-   * console.log(result.verified); // true if magic bytes match
-   * ```
-   */
-  async detectFileType(stream: Readable, filename: string) {
-    return this.detector.detectFileType(stream, filename);
-  }
-
-  /**
-   * Gets the content type (MIME type) based on a filename.
-   *
-   * @param filename - The filename to check
-   * @returns The MIME type
-   *
-   * @example
-   * ```typescript
-   * const fs = alepha.inject(NodeFileSystemProvider);
-   * const mimeType = fs.getContentType("image.png"); // "image/png"
-   * ```
-   */
-  getContentType(filename: string): string {
-    return this.detector.getContentType(filename);
-  }
-
-  /**
    * Removes a file or directory.
    *
    * @param path - The path to remove

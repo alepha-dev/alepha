@@ -1,6 +1,4 @@
-import type { Readable } from "node:stream";
 import type { FileLike, StreamLike } from "@alepha/core";
-import type { FileTypeResult } from "../services/FileDetector.ts";
 
 /**
  * Options for creating a file from a URL
@@ -198,26 +196,6 @@ export abstract class FileSystemProvider {
   abstract createFile(options: CreateFileOptions): FileLike;
 
   /**
-   * Detects the file type by checking magic bytes in a stream.
-   *
-   * @param stream - The readable stream to check
-   * @param filename - The filename (used to get the extension)
-   * @returns File type information including MIME type, extension, and verification status
-   */
-  abstract detectFileType(
-    stream: Readable,
-    filename: string,
-  ): Promise<FileTypeResult>;
-
-  /**
-   * Gets the content type (MIME type) based on a filename.
-   *
-   * @param filename - The filename to check
-   * @returns The MIME type
-   */
-  abstract getContentType(filename: string): string;
-
-  /**
    * Removes a file or directory.
    *
    * @param path - The path to remove
@@ -258,8 +236,6 @@ export abstract class FileSystemProvider {
    * @returns Array of filenames
    */
   abstract ls(path: string, options?: LsOptions): Promise<string[]>;
-
-  // exists, readFile, writeFile
 
   /**
    * Checks if a file or directory exists.

@@ -1,17 +1,16 @@
 ## Getting Started
 
-Welcome to Alepha! This guide will walk you through creating your first Alepha application in just a few minutes, demonstrating how easily it integrates into any modern TypeScript project.
+This guide will walk you through creating your first Alepha application in just a few minutes, demonstrating how easily it allows you to build any kind of application within a modern TypeScript project.
 
 ### Prerequisites
 
-All you need is a modern JavaScript runtime. Alepha is built and optimized for **Node.js 22+** or the latest version of **Bun**.
+All you need is a modern JavaScript runtime. Alepha is built and optimized for **Node.js 22+**.
 
 *   [Install Node.js](https://nodejs.org/)
-*   [Install Bun](https://bun.sh/)
 
 If you're new to TypeScript, don't worry! Alepha is designed to be beginner-friendly, and this guide will help you get started without any prior experience.
 
-### 1. Project Setup
+### Project Setup
 
 Let's begin by creating a new project directory and initializing it.
 
@@ -20,48 +19,24 @@ mkdir my-app
 cd my-app
 ```
 
-Next, we'll install Alepha as dependency.
+Next, we'll use Alepha CLI to create the required configuration files.
 
 ```bash
-# Install the all-in-one Alepha package
-npm install alepha
+npx alepha init --api
 ```
 
-### 2. Configure TypeScript
+### Create Your First Server
 
-Alepha is a TypeScript-first framework. Create a `tsconfig.json` file in your project root with the following configuration. This minimal setup enables modern module resolution and JSX support.
+Now for the fun part! Create an `src/main.ts` file. This will be the entry point for your application.
 
-**`tsconfig.json`**
-```json
-{
-  "compilerOptions": {
-    "module": "nodenext",
-    "target": "esnext",
-    "strict": true,
-    "jsx": "react-jsx"
-  }
-}
-```
+We'll define a simple server with a single route that responds with "Hello World!".
 
-You'll also need to update your `package.json` to specify that your project uses ES Modules. Add the following line:
+Notice that we are using standard TypeScript classes and methods—**no decorator shims or complex syntax required.**
 
-**`package.json`**
-```json
-{
-  "type": "module"
-}
-```
-
-### 3. Create Your First Server
-
-Now for the fun part! Create an `src/server.ts` file. This will be the entry point for your application.
-
-We'll define a simple server with a single route that responds with "Hello World!". Notice that we are using standard TypeScript classes and methods—**no decorator shims or complex syntax required.**
-
-**`src/server.ts`**
 ```typescript
-import { run } from "alepha";
-import { $route } from "alepha/server";
+// src/main.ts
+import { run } from "@alepha/core";
+import { $route } from "@alepha/server";
 
 class Server {
   // the $route descriptor declares a new HTTP endpoint
@@ -83,13 +58,19 @@ run(Server);
 
 That's all it takes to write a complete, working web server. Alepha plugs into your project with zero fuss.
 
-### 4. Run Your Application
+### Run Your Application
 
 You're all set. You can run your server directly with Node.js or Bun. No extra build steps or runtime tools are needed for development.
 
 **Using Node.js:**
 ```bash
-node src/server.ts
+node src/main.ts
+```
+
+But for development, it's better to use `alepha dev`, which provides hot-reloading and other niceties:
+
+```bash
+npx alepha dev
 ```
 
 You should see a message indicating that the server has started:
@@ -109,3 +90,15 @@ curl http://localhost:3000
 You should see the response: `Hello World!`
 
 Voilà! 🎉 You have successfully created and run your first Alepha application using just your runtime's native capabilities.
+
+## Building for Production
+
+When you're ready to deploy your application, you can build it for production using the Alepha CLI:
+
+```bash
+npx alepha build
+```
+
+This command will compile your TypeScript code and prepare it for deployment.
+
+By default, output is generic but you can also target specific platforms like Docker or Vercel.
