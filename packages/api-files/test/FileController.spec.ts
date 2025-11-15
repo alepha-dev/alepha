@@ -1,7 +1,7 @@
 import { $bucket } from "@alepha/bucket";
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { FileController } from "../src/controllers/FileController.ts";
 import { FileService } from "../src/services/FileService.ts";
@@ -23,7 +23,7 @@ describe("FileController", () => {
     const ctrl = alepha.inject(FileController);
     const service = alepha.inject(FileService);
     const dtp = alepha.inject(DateTimeProvider);
-    const fs = alepha.inject(FileSystem);
+    const fs = alepha.inject(FileSystemProvider);
     await alepha.start();
     createFile = (
       textOrOpts: string | { text: string; name?: string; type?: string },

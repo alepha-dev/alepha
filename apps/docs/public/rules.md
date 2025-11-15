@@ -119,7 +119,7 @@ import { z } from "zod"; // DON'T USE THIS!
 ### Rule 5: Database with Postgres Module
 
 ```typescript
-import { pg, $entity, $repository } from "alepha/postgres";
+import { pg, $entity, $repository } from "alepha/orm";
 import { t, type Static } from "alepha";
 
 // Define entity with TypeBox schema
@@ -366,7 +366,7 @@ describe("UserService", () => {
 // 1. Import Alepha essentials
 import { Alepha, run, t, $logger, $inject } from "alepha";
 import { $action } from "alepha/server";
-import { $entity, $repository } from "alepha/postgres";
+import { $entity, $repository } from "alepha/orm";
 import { pg } from "alepha";
 
 // 2. Define entities
@@ -487,7 +487,7 @@ Alepha is modular, with a LOT of modules.
 
 *   **Core ([@alepha/core](https://feunard.github.io/alepha/docs/alepha-core)) 📦:** The heart of the framework, providing a powerful dependency injection container, application lifecycle management, and the core descriptor system.
 *   **Server ([@alepha/server](https://feunard.github.io/alepha/docs/alepha-server)) 🌐:** A high-performance, minimalist HTTP server for creating type-safe REST APIs using declarative `$action` descriptors.
-*   **Database ([@alepha/postgres](https://feunard.github.io/alepha/docs/alepha-postgres)) 🗄️:** A powerful and type-safe ORM built on Drizzle. Define your schema with `$entity` and get fully-typed repositories with `$repository`.
+*   **Database ([@alepha/orm](https://feunard.github.io/alepha/docs/alepha-postgres)) 🗄️:** A powerful and type-safe ORM built on Drizzle. Define your schema with `$entity` and get fully-typed repositories with `$repository`.
 *   **React ([@alepha/react](https://feunard.github.io/alepha/docs/alepha-react)) ⚛️:** Build full-stack, server-side rendered React applications with a file-based routing system (`$page`) that handles data fetching, hydration, and type-safe props.
 
 ### Backend Infrastructure & Abstractions

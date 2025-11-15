@@ -11,7 +11,7 @@ import {
   type DurationLike,
 } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import { $repository, type Page } from "@alepha/postgres";
+import { $repository, type Page } from "@alepha/orm";
 import type { UserAccountToken } from "@alepha/security";
 import type { Ok } from "@alepha/server";
 import { NotFoundError } from "@alepha/server";

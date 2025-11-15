@@ -8,7 +8,7 @@ import {
   type LogEntry,
   logEntrySchema,
 } from "@alepha/logger";
-import { parseQueryString } from "@alepha/postgres";
+import { parseQueryString } from "@alepha/orm";
 import { $route, ServerProvider } from "@alepha/server";
 import { $serve } from "@alepha/server-static";
 import { type DevLogEntry, logs } from "./entities/logs.ts";

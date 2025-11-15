@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { PgEntityNotFoundError } from "@alepha/postgres";
+import { DbEntityNotFoundError } from "@alepha/orm";
 import { AlephaSecurity } from "@alepha/security";
 import { describe, it } from "vitest";
 import {
@@ -70,7 +70,7 @@ describe("@alepha/api-users - SessionController", () => {
       controller.getSession({
         params: { id: "550e8400-e29b-41d4-a716-446655440000" },
       }),
-    ).rejects.toThrowError(PgEntityNotFoundError);
+    ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
   it("should delete a session", async ({ expect }) => {
@@ -100,7 +100,7 @@ describe("@alepha/api-users - SessionController", () => {
       controller.getSession({
         params: { id: session.id },
       }),
-    ).rejects.toThrowError(PgEntityNotFoundError);
+    ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
   it("should find sessions with pagination", async ({ expect }) => {

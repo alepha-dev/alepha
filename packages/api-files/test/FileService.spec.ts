@@ -7,7 +7,7 @@ import {
 } from "@alepha/bucket";
 import { AzureFileStorageProvider } from "@alepha/bucket-azure";
 import { Alepha, type Service } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../src";
 import { FileController } from "../src/controllers/FileController.ts";
@@ -31,7 +31,7 @@ const testFileServiceOperations = async (
 
   const assets = alepha.inject(Assets);
   const ctrl = alepha.inject(FileController);
-  const fs = alepha.inject(FileSystem);
+  const fs = alepha.inject(FileSystemProvider);
 
   await alepha.start();
 

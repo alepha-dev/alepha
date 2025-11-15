@@ -118,4 +118,9 @@ export interface CommandHandlerArgs<
   ask: AskMethod;
   glob: typeof glob;
   fs: typeof fs;
+
+  /**
+   * The root directory where the command is executed.
+   */
+  root: string;
 }

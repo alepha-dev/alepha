@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { PgEntityNotFoundError } from "@alepha/postgres";
+import { DbEntityNotFoundError } from "@alepha/orm";
 import { AlephaSecurity } from "@alepha/security";
 import { BadRequestError } from "@alepha/server";
 import { describe, it } from "vitest";
@@ -104,7 +104,7 @@ describe("@alepha/api-users - UserController CRUD", () => {
       controller.getUser({
         params: { id: "550e8400-e29b-41d4-a716-446655440000" },
       }),
-    ).rejects.toThrowError(PgEntityNotFoundError);
+    ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
   it("should update a user", async ({ expect }) => {
@@ -175,7 +175,7 @@ describe("@alepha/api-users - UserController CRUD", () => {
       controller.getUser({
         params: { id: created.id },
       }),
-    ).rejects.toThrowError(PgEntityNotFoundError);
+    ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
   it("should find users with pagination", async ({ expect }) => {

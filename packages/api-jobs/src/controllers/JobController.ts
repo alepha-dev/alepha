@@ -1,6 +1,6 @@
 import "@alepha/server-security";
 import { $inject, t } from "@alepha/core";
-import { pg } from "@alepha/postgres";
+import { pg } from "@alepha/orm";
 import { $action, okSchema } from "@alepha/server";
 import { jobExecutionQuerySchema } from "../schemas/jobExecutionQuerySchema.ts";
 import { jobExecutionResourceSchema } from "../schemas/jobExecutionResourceSchema.ts";

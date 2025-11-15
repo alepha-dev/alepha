@@ -1,6 +1,6 @@
 import { Alepha, run, t } from "@alepha/core";
 import { AlephaDevtools } from "@alepha/devtools";
-import { $entity, $repository, pg } from "@alepha/postgres";
+import { $entity, $repository, pg } from "@alepha/orm";
 import { AlephaReactHead } from "@alepha/react-head";
 import { Api } from "./Api.ts";
 import { AppRouter } from "./AppRouter.ts";

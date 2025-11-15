@@ -1,6 +1,6 @@
 import "@alepha/server-security";
 import { $inject, t } from "@alepha/core";
-import { pg } from "@alepha/postgres";
+import { pg } from "@alepha/orm";
 import { $action, okSchema } from "@alepha/server";
 import { fileQuerySchema } from "../schemas/fileQuerySchema.ts";
 import { fileResourceSchema } from "../schemas/fileResourceSchema.ts";

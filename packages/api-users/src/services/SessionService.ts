@@ -1,6 +1,6 @@
 import { $inject, Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import type { OAuth2Profile } from "@alepha/react-auth";
 import { CryptoProvider, type UserAccount } from "@alepha/security";
 import { type ServerRequest, UnauthorizedError } from "@alepha/server";

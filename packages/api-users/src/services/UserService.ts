@@ -1,6 +1,6 @@
 import type { VerificationController } from "@alepha/api-verifications";
 import { $inject } from "@alepha/core";
-import { $repository, type Page } from "@alepha/postgres";
+import { $repository, type Page } from "@alepha/orm";
 import { BadRequestError } from "@alepha/server";
 import { $client } from "@alepha/server-links";
 import type { UserEntity } from "../entities/users.ts";

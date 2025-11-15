@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { describe, it } from "vitest";
 import { AlephaApiVerification } from "../src";
 import { verifications } from "../src/entities/verifications.ts";

@@ -1,6 +1,6 @@
 import { $batch } from "@alepha/batch";
 import { $hook, run, t } from "@alepha/core";
-import { $entity, $repository, pg } from "@alepha/postgres";
+import { $entity, $repository, pg } from "@alepha/orm";
 
 const tasks = $entity({
   name: "tasks",

@@ -1,5 +1,5 @@
 import { $inject, Alepha } from "@alepha/core";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { $job } from "../descriptors/$job.ts";
 import { jobExecutions } from "../entities/jobExecutions.ts";
 import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";

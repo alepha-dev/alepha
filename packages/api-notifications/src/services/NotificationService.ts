@@ -2,7 +2,7 @@ import { $batch } from "@alepha/batch";
 import { $env, $inject, Alepha, type Static, t } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { $logger } from "@alepha/logger";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { notifications } from "../entities/notifications.ts";
 import { NotificationQueues } from "../queues/NotificationQueues.ts";
 import {

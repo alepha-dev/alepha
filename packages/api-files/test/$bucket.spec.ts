@@ -8,7 +8,7 @@ import {
 } from "@alepha/bucket";
 import { AzureFileStorageProvider } from "@alepha/bucket-azure";
 import { Alepha, type Service } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../src";
 
@@ -29,7 +29,7 @@ const testStorageOperations = async (
     .with(AlephaApiFiles);
 
   const assets = alepha.inject(A);
-  const fs = alepha.inject(FileSystem);
+  const fs = alepha.inject(FileSystemProvider);
 
   await alepha.start();
 

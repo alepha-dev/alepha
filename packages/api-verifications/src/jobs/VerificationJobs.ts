@@ -1,6 +1,6 @@
 import { $inject } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { $scheduler } from "@alepha/scheduler";
 import { verifications } from "../entities/verifications.ts";
 import { VerificationParameters } from "../parameters/VerificationParameters.ts";

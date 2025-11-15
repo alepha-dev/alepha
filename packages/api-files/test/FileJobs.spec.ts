@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { FileService } from "../src";
 import { FileJobs } from "../src/jobs/FileJobs.ts";
@@ -10,7 +10,7 @@ describe("FileJobRegistry", () => {
   const jobs = alepha.inject(FileJobs);
   const service = alepha.inject(FileService);
   const dtp = alepha.inject(DateTimeProvider);
-  const fs = alepha.inject(FileSystem);
+  const fs = alepha.inject(FileSystemProvider);
 
   const createFile = (
     textOrOpts: string | { text: string; name?: string; type?: string },

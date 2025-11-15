@@ -1,4 +1,4 @@
-import { Repository } from "@alepha/postgres";
+import { Repository } from "@alepha/orm";
 import { logs } from "../entities/logs.ts";
 import { DevToolsDatabaseProvider } from "../providers/DevToolsDatabaseProvider.ts";
 

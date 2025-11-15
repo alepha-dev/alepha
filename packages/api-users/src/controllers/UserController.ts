@@ -1,5 +1,5 @@
 import { $inject, t } from "@alepha/core";
-import { pg } from "@alepha/postgres";
+import { pg } from "@alepha/orm";
 import { $action, okSchema } from "@alepha/server";
 import { createUserSchema } from "../schemas/createUserSchema.ts";
 import { updateUserSchema } from "../schemas/updateUserSchema.ts";

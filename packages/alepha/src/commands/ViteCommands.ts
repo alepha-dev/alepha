@@ -1,16 +1,15 @@
-import { access, readFile, rm, writeFile } from "node:fs/promises";
+import { access, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { $command } from "@alepha/command";
-import { $inject, AlephaError, boot, t } from "@alepha/core";
+import { $inject, boot, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
-import { CoreCommands } from "./CoreCommands.ts";
+import { ProjectUtils } from "../services/ProjectUtils.ts";
 
 export class ViteCommands {
   protected readonly log = $logger();
   protected readonly runner = $inject(ProcessRunner);
-  protected readonly core = $inject(CoreCommands);
+  protected readonly utils = $inject(ProjectUtils);
 
   public readonly run = $command({
     name: "run",
@@ -22,8 +21,8 @@ export class ViteCommands {
     }),
     summary: false,
     args: t.text({ title: "path", description: "Filepath to run" }),
-    handler: async ({ args, flags }) => {
-      await this.core.ensureTsConfig();
+    handler: async ({ args, flags, root }) => {
+      await this.utils.ensureTsConfig(root);
       await this.runner.exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
     },
   });
@@ -38,10 +37,9 @@ export class ViteCommands {
     name: "dev",
     description: "Run the project in development mode",
     args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
-    handler: async ({ args }) => {
-      const root = process.cwd();
-      await this.core.ensureTsConfig(root);
-      await this.ensurePackageJson(root);
+    handler: async ({ args, root }) => {
+      await this.utils.ensureTsConfig(root);
+      await this.utils.ensurePackageJsonModule(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
@@ -53,7 +51,10 @@ export class ViteCommands {
         //return;
       }
 
-      const configPath = await this.configPath(root, args ? entry : undefined);
+      const configPath = await this.utils.getViteConfigPath(
+        root,
+        args ? entry : undefined,
+      );
       this.log.trace("Vite config found", { configPath });
       await this.runner.exec(`vite -c=${configPath}`);
     },
@@ -77,8 +78,8 @@ export class ViteCommands {
     }),
     handler: async ({ flags, args }) => {
       const root = process.cwd();
-      await this.core.ensureTsConfig(root);
-      await this.ensurePackageJson(root);
+      await this.utils.ensureTsConfig(root);
+      await this.utils.ensurePackageJsonModule(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
@@ -92,7 +93,10 @@ export class ViteCommands {
       //   return;
       // }
 
-      const configPath = await this.configPath(root, args ? entry : undefined);
+      const configPath = await this.utils.getViteConfigPath(
+        root,
+        args ? entry : undefined,
+      );
 
       const env: Record<string, string> = {};
       if (flags.stats) {
@@ -106,47 +110,10 @@ export class ViteCommands {
   public readonly test = $command({
     name: "test",
     description: "Run tests using Vitest",
-    handler: async () => {
-      await this.core.ensureTsConfig();
-
-      const configPath = await this.configPath();
+    handler: async ({ root }) => {
+      await this.utils.ensureTsConfig(root);
+      const configPath = await this.utils.getViteConfigPath(root);
       await this.runner.exec(`vitest run -c=${configPath}`);
     },
   });
-
-  // -------------------------------------------------------------------------------------------------------------------
-
-  protected async configPath(
-    root = process.cwd(),
-    serverEntry?: string,
-  ): Promise<string> {
-    try {
-      const viteConfigPath = join(root, "vite.config.ts");
-      await access(viteConfigPath);
-      return viteConfigPath;
-    } catch {
-      return this.runner.writeConfigFile(
-        "vite.config.ts",
-        viteConfigTs(serverEntry),
-      );
-    }
-  }
-
-  protected async ensurePackageJson(root = process.cwd()) {
-    const packageJsonPath = join(root, "package.json");
-    try {
-      await access(packageJsonPath);
-    } catch (error) {
-      throw new AlephaError(
-        "No package.json found in project root. Run 'npx alepha init' to create one.",
-      );
-    }
-
-    const content = await readFile(packageJsonPath, "utf8");
-    const packageJson = JSON.parse(content);
-    if (!packageJson.type || packageJson.type !== "module") {
-      packageJson.type = "module";
-      await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-    }
-  }
 }

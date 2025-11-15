@@ -6,7 +6,7 @@
 	},
 	"dependencies": {
 		"@alepha/core": "^0.11.10",
-		"@alepha/postgres": "^0.11.10",
+		"@alepha/orm": "^0.11.10",
 		"@alepha/server": "^0.11.10"
 	}
 }

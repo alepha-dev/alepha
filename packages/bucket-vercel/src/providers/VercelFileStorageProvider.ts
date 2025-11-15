@@ -17,7 +17,7 @@ import {
   t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
@@ -39,7 +39,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly time = $inject(DateTimeProvider);
-  protected readonly fileSystem = $inject(FileSystem);
+  protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly stores: Set<string> = new Set();
   protected readonly vercelBlobApi = $inject(VercelBlobApi);
   protected readonly metadataService = $inject(FileMetadataService);

@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { PgEntityNotFoundError } from "@alepha/postgres";
+import { DbEntityNotFoundError } from "@alepha/orm";
 import { AlephaSecurity } from "@alepha/security";
 import { describe, it } from "vitest";
 import {
@@ -69,7 +69,7 @@ describe("@alepha/api-users - IdentityController", () => {
       controller.getIdentity({
         params: { id: "550e8400-e29b-41d4-a716-446655440000" },
       }),
-    ).rejects.toThrowError(PgEntityNotFoundError);
+    ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
   it("should delete an identity", async ({ expect }) => {
@@ -98,7 +98,7 @@ describe("@alepha/api-users - IdentityController", () => {
       controller.getIdentity({
         params: { id: identity.id },
       }),
-    ).rejects.toThrowError(PgEntityNotFoundError);
+    ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
   it("should find identities with pagination", async ({ expect }) => {

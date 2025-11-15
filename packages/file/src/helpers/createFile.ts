@@ -1,50 +1,10 @@
 import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { PassThrough, Readable } from "node:stream";
-import { ReadableStream as NodeWebStream } from "node:stream/web";
+import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
 import { AlephaError, type FileLike, type StreamLike } from "@alepha/core";
 import { getContentType } from "./getContentType.ts";
-
-export const createFile = (
-  source: string | Buffer | ArrayBuffer | StreamLike | File,
-  options: {
-    type?: string;
-    name?: string;
-    size?: number;
-  } = {},
-): FileLike => {
-  if (source instanceof File) {
-    return createFileFromWebFile(source, options);
-  }
-
-  // Handle URL strings
-  if (
-    typeof source === "string" &&
-    (source.startsWith("file://") ||
-      source.startsWith("http://") ||
-      source.startsWith("https://"))
-  ) {
-    return createFileFromUrl(source, options);
-  }
-
-  if (source instanceof ReadableStream || source instanceof NodeWebStream) {
-    return createFileFromStream(Readable.from(source), options);
-  }
-
-  if (isReadableStream(source) || source instanceof Readable) {
-    return createFileFromStream(source, options);
-  }
-
-  return createFileFromBuffer(
-    Buffer.isBuffer(source)
-      ? source
-      : typeof source === "string"
-        ? Buffer.from(source, "utf-8")
-        : Buffer.from(source),
-    options,
-  );
-};
 
 export const createFileFromWebFile = (
   source: File,

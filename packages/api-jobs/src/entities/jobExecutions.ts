@@ -1,6 +1,6 @@
 import { type Static, t } from "@alepha/core";
 import { logEntrySchema } from "@alepha/logger";
-import { $entity, pg } from "@alepha/postgres";
+import { $entity, pg } from "@alepha/orm";
 
 export const jobExecutions = $entity({
   name: "job_executions",

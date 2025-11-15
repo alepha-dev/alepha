@@ -1,5 +1,5 @@
 import type { TObject } from "@alepha/core";
-import { parseQueryString } from "@alepha/postgres";
+import { parseQueryString } from "@alepha/orm";
 import { useEvents } from "@alepha/react";
 import {
   ActionIcon,

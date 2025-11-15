@@ -1,12 +1,12 @@
 import { Alepha } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, expect, test } from "vitest";
 import { FileMetadataService } from "../src";
 
 describe("FileMetadataService", () => {
   const alepha = Alepha.create();
   const service = alepha.inject(FileMetadataService);
-  const fileSystem = alepha.inject(FileSystem);
+  const fileSystem = alepha.inject(FileSystemProvider);
 
   describe("encodeMetadata", () => {
     test("should encode file metadata into header and metadata buffers", () => {

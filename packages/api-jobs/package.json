@@ -25,7 +25,7 @@
 		"@alepha/datetime": "0.11.10",
 		"@alepha/lock": "0.11.10",
 		"@alepha/logger": "0.11.10",
-		"@alepha/postgres": "0.11.10",
+		"@alepha/orm": "0.11.10",
 		"@alepha/scheduler": "0.11.10",
 		"@alepha/server": "0.11.10",
 		"@alepha/server-security": "0.11.10"

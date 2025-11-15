@@ -3,7 +3,7 @@ import { $inject } from "@alepha/core";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 
 export class VerifyCommands {
-  runner = $inject(ProcessRunner);
+  protected readonly processRunner = $inject(ProcessRunner);
 
   /**
    * Run a series of verification commands to ensure code quality and correctness.
@@ -26,10 +26,6 @@ export class VerifyCommands {
       await run("alepha lint");
       await run("alepha test");
       await run("alepha typecheck");
-
-      // run only if migrations dir is present ?
-      //await run("alepha db:check-migrations");
-
       await run("alepha build");
       await run("alepha clean");
     },
@@ -42,7 +38,7 @@ export class VerifyCommands {
     name: "typecheck",
     description: "Check TypeScript types across the codebase",
     handler: async () => {
-      await this.runner.exec("tsc --noEmit");
+      await this.processRunner.exec("tsc --noEmit");
     },
   });
 }

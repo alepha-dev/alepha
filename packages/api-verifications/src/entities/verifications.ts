@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
-import { $entity, pg } from "@alepha/postgres";
+import { $entity, pg } from "@alepha/orm";
 import { verificationTypeEnumSchema } from "../schemas/verificationTypeEnumSchema.ts";
 
 export const verifications = $entity({

@@ -1,5 +1,5 @@
 import { $hook, Alepha, t } from "@alepha/core";
-import { $entity, $repository, pg } from "@alepha/postgres";
+import { $entity, $repository, pg } from "@alepha/orm";
 import { $page } from "@alepha/react";
 import { $action, HttpClient, ServerProvider } from "@alepha/server";
 import { $client } from "@alepha/server-links";

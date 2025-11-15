@@ -1,7 +1,7 @@
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { $inject } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { BadRequestError, NotFoundError } from "@alepha/server";
 import {
   type VerificationEntity,

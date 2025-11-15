@@ -2,7 +2,7 @@ import { $inject, Alepha, AlephaError } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
 import { EmailProvider } from "@alepha/email";
 import { $logger } from "@alepha/logger";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { $notification } from "../descriptors/$notification.ts";
 import {
   type NotificationEntity,

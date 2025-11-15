@@ -1,5 +1,5 @@
 import { t } from "@alepha/core";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { $action } from "@alepha/server";
 import { tasks } from "../entities/tasks.ts";
 

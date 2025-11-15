@@ -1,5 +1,5 @@
 import { type Static, t } from "@alepha/core";
-import { $entity, pg } from "@alepha/postgres";
+import { $entity, pg } from "@alepha/orm";
 import { users } from "./users.ts";
 
 export const identities = $entity({

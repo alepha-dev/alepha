@@ -1,4 +1,4 @@
-import { $repository, type Page } from "@alepha/postgres";
+import { $repository, type Page } from "@alepha/orm";
 import type { SessionEntity } from "../entities/sessions.ts";
 import { sessions } from "../entities/sessions.ts";
 import type { SessionQuery } from "../schemas/sessionQuerySchema.ts";

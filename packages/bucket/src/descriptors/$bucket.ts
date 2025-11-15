@@ -6,7 +6,7 @@ import {
   KIND,
   type Service,
 } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { InvalidFileError } from "../errors/InvalidFileError.ts";
 import { FileStorageProvider } from "../providers/FileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "../providers/MemoryFileStorageProvider.ts";
@@ -294,7 +294,7 @@ export interface BucketFileOptions {
 
 export class BucketDescriptor extends Descriptor<BucketDescriptorOptions> {
   public readonly provider = this.$provider();
-  private readonly fileSystem = $inject(FileSystem);
+  private readonly fileSystem = $inject(FileSystemProvider);
 
   public get name() {
     return this.options.name ?? `${this.config.propertyKey}`;

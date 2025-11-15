@@ -1,5 +1,5 @@
 import { Alepha } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { expect } from "vitest";
 import { $bucket, FileNotFoundError, type FileStorageProvider } from "../src";
 
@@ -13,7 +13,7 @@ export class TestApp {
 const BUCKET_NAME = TEST_IMAGES_BUCKET;
 
 // Helper to create file system instance
-const getFileSystem = () => Alepha.create().inject(FileSystem);
+const getFileSystem = () => Alepha.create().inject(FileSystemProvider);
 
 export const testUploadAndExistence = async (
   provider: FileStorageProvider,

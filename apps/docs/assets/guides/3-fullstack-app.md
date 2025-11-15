@@ -338,7 +338,7 @@ Congratulations! 🎉 You've created a complete full-stack application with:
 From here, you can:
 
 - Add more complex pages with nested routing
-- Integrate databases with `alepha/postgres`
+- Integrate databases with `alepha/orm`
 - Add email functionality with `alepha/email`
 - Implement background jobs with `alepha/queue`
 - Add authentication with `alepha/security`

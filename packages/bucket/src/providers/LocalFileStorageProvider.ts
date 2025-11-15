@@ -16,7 +16,7 @@ import {
   type Static,
   t,
 } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -56,7 +56,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly metadataService = $inject(FileMetadataService);
-  protected readonly fileSystem = $inject(FileSystem);
+  protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly options = $use(localFileStorageOptions);
 
   protected get storagePath(): string {

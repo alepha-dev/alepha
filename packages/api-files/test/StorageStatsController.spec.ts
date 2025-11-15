@@ -1,6 +1,6 @@
 import { $bucket } from "@alepha/bucket";
 import { Alepha } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, expect, it } from "vitest";
 import { StorageStatsController } from "../src/controllers/StorageStatsController.ts";
 import { FileService } from "../src/services/FileService.ts";
@@ -21,7 +21,7 @@ describe("StorageStatsController", () => {
     const app = alepha.inject(App);
     const ctrl = alepha.inject(StorageStatsController);
     const service = alepha.inject(FileService);
-    const fs = alepha.inject(FileSystem);
+    const fs = alepha.inject(FileSystemProvider);
     await alepha.start();
     createFile = (
       textOrOpts: string | { text: string; name?: string; type?: string },

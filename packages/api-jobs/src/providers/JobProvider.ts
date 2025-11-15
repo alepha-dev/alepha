@@ -9,7 +9,7 @@ import {
 import { type DateTime, DateTimeProvider } from "@alepha/datetime";
 import { $lock, type LockDescriptor } from "@alepha/lock";
 import type { LogEntry } from "@alepha/logger";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { CronProvider } from "@alepha/scheduler";
 import { jobExecutions } from "../entities/jobExecutions.ts";
 

@@ -1,5 +1,5 @@
 import { Alepha, t } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { describe, test } from "vitest";
 import { $action } from "../src";
 
@@ -131,7 +131,7 @@ describe("$action", () => {
 
   test("should return a file", async ({ expect }) => {
     const alepha = Alepha.create();
-    const fileSystem = alepha.inject(FileSystem);
+    const fileSystem = alepha.inject(FileSystemProvider);
     class TestApp {
       test = $action({
         schema: {
@@ -159,7 +159,7 @@ describe("$action", () => {
 
   test("should filter fields", async ({ expect }) => {
     const alepha = Alepha.create();
-    const fileSystem = alepha.inject(FileSystem);
+    const fileSystem = alepha.inject(FileSystemProvider);
     class TestApp {
       test = $action({
         schema: {

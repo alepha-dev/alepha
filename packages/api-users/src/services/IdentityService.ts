@@ -1,4 +1,4 @@
-import { $repository, type Page } from "@alepha/postgres";
+import { $repository, type Page } from "@alepha/orm";
 import type { IdentityEntity } from "../entities/identities.ts";
 import { identities } from "../entities/identities.ts";
 import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";

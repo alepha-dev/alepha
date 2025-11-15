@@ -1,6 +1,6 @@
 import { Alepha } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { $repository } from "@alepha/postgres";
+import { $repository } from "@alepha/orm";
 import { describe, expect, it, vi } from "vitest";
 import { $job } from "../src/descriptors/$job.ts";
 import { jobExecutions } from "../src/entities/jobExecutions.ts";

@@ -22,7 +22,7 @@ __metadata:
     "@alepha/datetime": "npm:0.11.10"
     "@alepha/file": "npm:0.11.10"
     "@alepha/logger": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/scheduler": "npm:0.11.10"
     "@alepha/security": "npm:0.11.10"
     "@alepha/server": "npm:0.11.10"
@@ -44,7 +44,7 @@ __metadata:
     "@alepha/datetime": "npm:0.11.10"
     "@alepha/lock": "npm:0.11.10"
     "@alepha/logger": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/scheduler": "npm:0.11.10"
     "@alepha/server": "npm:0.11.10"
     "@alepha/server-security": "npm:0.11.10"
@@ -64,7 +64,7 @@ __metadata:
     "@alepha/datetime": "npm:0.11.10"
     "@alepha/email": "npm:0.11.10"
     "@alepha/logger": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/queue": "npm:0.11.10"
     "@biomejs/biome": "npm:^2.3.5"
     tsdown: "npm:^0.16.4"
@@ -78,7 +78,7 @@ __metadata:
   resolution: "@alepha/api-parameters@workspace:packages/api-parameters"
   dependencies:
     "@alepha/core": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/security": "npm:0.11.10"
     "@alepha/server": "npm:0.11.10"
     "@alepha/topic": "npm:0.11.10"
@@ -98,7 +98,7 @@ __metadata:
     "@alepha/core": "npm:0.11.10"
     "@alepha/datetime": "npm:0.11.10"
     "@alepha/email": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/react-auth": "npm:0.11.10"
     "@alepha/security": "npm:0.11.10"
     "@alepha/server": "npm:0.11.10"
@@ -116,7 +116,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.11.10"
     "@alepha/datetime": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/scheduler": "npm:0.11.10"
     "@alepha/server": "npm:0.11.10"
     vitest: "npm:^4.0.9"
@@ -232,7 +232,7 @@ __metadata:
   version: 0.11.9
   resolution: "@alepha/cli@npm:0.11.9"
   dependencies:
-    "@alepha/postgres": "npm:^0.11.9"
+    "@alepha/orm": "npm:^0.11.9"
     "@biomejs/biome": "npm:^2.3.5"
     depcheck: "npm:^1.4.7"
     drizzle-kit: "npm:^0.31.6"
@@ -295,7 +295,7 @@ __metadata:
     "@alepha/core": "npm:0.11.10"
     "@alepha/datetime": "npm:0.11.10"
     "@alepha/logger": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/queue": "npm:0.11.10"
     "@alepha/react": "npm:0.11.10"
     "@alepha/react-i18n": "npm:0.11.10"
@@ -383,7 +383,7 @@ __metadata:
   resolution: "@alepha/integration-tests@workspace:apps/integration"
   dependencies:
     "@alepha/core": "npm:^0.11.10"
-    "@alepha/postgres": "npm:^0.11.10"
+    "@alepha/orm": "npm:^0.11.10"
     "@alepha/server": "npm:^0.11.10"
   languageName: unknown
   linkType: soft
@@ -432,9 +432,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/postgres@npm:0.11.10, @alepha/postgres@npm:^0.11.10, @alepha/postgres@npm:^0.11.9, @alepha/postgres@workspace:packages/postgres":
+"@alepha/orm@npm:0.11.10, @alepha/orm@npm:^0.11.10, @alepha/orm@npm:^0.11.9, @alepha/orm@workspace:packages/orm":
   version: 0.0.0-use.local
-  resolution: "@alepha/postgres@workspace:packages/postgres"
+  resolution: "@alepha/orm@workspace:packages/orm"
   dependencies:
     "@alepha/core": "npm:0.11.10"
     "@alepha/datetime": "npm:0.11.10"
@@ -649,7 +649,7 @@ __metadata:
     "@alepha/datetime": "npm:^0.11.10"
     "@alepha/file": "npm:^0.11.10"
     "@alepha/logger": "npm:^0.11.10"
-    "@alepha/postgres": "npm:^0.11.10"
+    "@alepha/orm": "npm:^0.11.10"
     "@alepha/react": "npm:^0.11.10"
     "@alepha/react-auth": "npm:^0.11.10"
     "@alepha/react-form": "npm:^0.11.10"
@@ -1057,7 +1057,7 @@ __metadata:
   dependencies:
     "@alepha/core": "npm:0.11.10"
     "@alepha/datetime": "npm:0.11.10"
-    "@alepha/postgres": "npm:0.11.10"
+    "@alepha/orm": "npm:0.11.10"
     "@alepha/react": "npm:0.11.10"
     "@alepha/react-form": "npm:0.11.10"
     "@alepha/react-head": "npm:0.11.10"
@@ -6081,7 +6081,7 @@ __metadata:
     "@alepha/command": "npm:^0.11.10"
     "@alepha/core": "npm:^0.11.10"
     "@alepha/logger": "npm:^0.11.10"
-    "@alepha/postgres": "npm:^0.11.10"
+    "@alepha/orm": "npm:^0.11.10"
     "@biomejs/biome": "npm:^2.3.5"
     drizzle-kit: "npm:^0.31.7"
     tar: "npm:^7.5.2"
@@ -8354,7 +8354,7 @@ __metadata:
   resolution: "example-api-b382ca@workspace:apps/example-api"
   dependencies:
     "@alepha/core": "npm:^0.11.10"
-    "@alepha/postgres": "npm:^0.11.10"
+    "@alepha/orm": "npm:^0.11.10"
     "@alepha/server": "npm:^0.11.10"
   languageName: unknown
   linkType: soft
@@ -12709,7 +12709,7 @@ __metadata:
   dependencies:
     "@alepha/cli": "npm:^0.11.9"
     "@alepha/core": "npm:^0.11.10"
-    "@alepha/postgres": "npm:^0.11.10"
+    "@alepha/orm": "npm:^0.11.10"
     "@alepha/react": "npm:^0.11.10"
     "@alepha/react-form": "npm:^0.11.10"
     "@alepha/react-head": "npm:^0.11.10"

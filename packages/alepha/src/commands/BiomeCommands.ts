@@ -1,14 +1,14 @@
-import { access } from "node:fs/promises";
-import { join } from "node:path";
 import { $command } from "@alepha/command";
 import { $inject, t } from "@alepha/core";
 import { $logger } from "@alepha/logger";
-import { biomeJson } from "../assets/biomeJson.ts";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
+import { ProjectUtils } from "../services/ProjectUtils.ts";
 
 export class BiomeCommands {
   protected readonly log = $logger();
   protected readonly runner = $inject(ProcessRunner);
+  protected readonly utils = $inject(ProjectUtils);
+
   protected readonly biomeFlags = t.object({
     config: t.optional(
       t.text({
@@ -22,7 +22,7 @@ export class BiomeCommands {
     description: "Format the codebase using Biome",
     flags: this.biomeFlags,
     handler: async ({ flags }) => {
-      const configPath = await this.configPath(flags.config);
+      const configPath = await this.utils.getBiomeConfigPath(flags.config);
       await this.runner.exec(`biome format --fix --config-path=${configPath}`);
     },
   });
@@ -32,29 +32,10 @@ export class BiomeCommands {
     description: "Run linter across the codebase using Biome",
     flags: this.biomeFlags,
     handler: async ({ flags }) => {
-      const configPath = await this.configPath(flags.config);
+      const configPath = await this.utils.getBiomeConfigPath(flags.config);
       await this.runner.exec(
         `biome check --formatter-enabled=false --fix --config-path=${configPath}`,
       );
     },
   });
-
-  protected async configPath(maybePath?: string): Promise<string> {
-    const root = process.cwd();
-    if (maybePath) {
-      try {
-        const path = join(root, maybePath);
-        await access(path);
-        return path;
-      } catch {}
-    }
-
-    try {
-      const path = join(root, "biome.json");
-      await access(path);
-      return path;
-    } catch {
-      return await this.runner.writeConfigFile("biome.json", biomeJson);
-    }
-  }
 }

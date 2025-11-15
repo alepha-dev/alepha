@@ -153,6 +153,7 @@ export class CliProvider {
           ask: this.asker.ask,
           fs,
           glob,
+          root: process.cwd(),
         };
 
         await command.options.handler(args as CommandHandlerArgs<TObject>);

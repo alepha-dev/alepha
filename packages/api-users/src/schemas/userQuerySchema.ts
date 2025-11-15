@@ -1,6 +1,6 @@
 import type { Static } from "@alepha/core";
 import { t } from "@alepha/core";
-import { pageQuerySchema } from "@alepha/postgres";
+import { pageQuerySchema } from "@alepha/orm";
 
 export const userQuerySchema = t.extend(pageQuerySchema, {
   email: t.optional(t.string()),

@@ -15,7 +15,7 @@ import {
   t,
 } from "@alepha/core";
 import { DateTimeProvider } from "@alepha/datetime";
-import { FileSystem } from "@alepha/file";
+import { FileSystemProvider } from "@alepha/file";
 import { $logger } from "@alepha/logger";
 import {
   BlobServiceClient,
@@ -40,7 +40,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly time = $inject(DateTimeProvider);
-  protected readonly fileSystem = $inject(FileSystem);
+  protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly containers: Record<string, ContainerClient> = {};
   protected readonly blobServiceClient: BlobServiceClient;
 

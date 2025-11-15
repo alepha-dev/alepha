@@ -1,6 +1,6 @@
 import { $inject, t } from "@alepha/core";
-import { FileSystem } from "@alepha/file";
-import { sql } from "@alepha/postgres";
+import { FileSystemProvider } from "@alepha/file";
+import { sql } from "@alepha/orm";
 import { $action } from "@alepha/server";
 import { tasks } from "../entities/tasks.ts";
 import { Db } from "../providers/Db.ts";
@@ -9,7 +9,7 @@ import { Security } from "../providers/Security";
 export class ProjectStatsApi {
   db = $inject(Db);
   security = $inject(Security);
-  fs = $inject(FileSystem);
+  fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
     cache: true,

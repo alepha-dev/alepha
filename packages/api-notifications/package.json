@@ -26,7 +26,7 @@
 		"@alepha/datetime": "0.11.10",
 		"@alepha/email": "0.11.10",
 		"@alepha/logger": "0.11.10",
-		"@alepha/postgres": "0.11.10",
+		"@alepha/orm": "0.11.10",
 		"@alepha/queue": "0.11.10"
 	},
 	"devDependencies": {
