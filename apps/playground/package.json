@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"alepha": "^0.11.11",
+		"@alepha/devtools": "^0.11.11",
 		"react": "^19.2.0"
 	}
 }

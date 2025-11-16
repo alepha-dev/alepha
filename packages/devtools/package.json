@@ -26,7 +26,6 @@
 		"alepha": "0.11.11"
 	},
 	"scripts": {
-		"copy": "yarn ui:build",
 		"lint": "alepha lint",
 		"typecheck": "alepha typecheck",
 		"test": "alepha test",

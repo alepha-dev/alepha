@@ -1048,10 +1048,12 @@ class DocsCliApp {
    * - category: "3-packages/alepha", filename: "api-files" → "packages-alepha-api-files"
    */
   getFullSlug(categoryPath: string, filename: string): string {
-    this.log.trace(`Generating full slug for category: ${categoryPath}, filename: ${filename}`);
+    this.log.trace(
+      `Generating full slug for category: ${categoryPath}, filename: ${filename}`,
+    );
 
     // Split the category path and clean each part
-    const parts = categoryPath.split("/").map(part => this.cleanName(part));
+    const parts = categoryPath.split("/").map((part) => this.cleanName(part));
 
     // Add the filename
     parts.push(this.cleanName(filename));
@@ -1070,7 +1072,7 @@ class DocsCliApp {
     const parts = categoryPath.split("/");
 
     // Check if we're in the packages section
-    const packagesIndex = parts.findIndex(p => p.startsWith("3-"));
+    const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
     if (packagesIndex === -1) {
       return itemName;
     }
@@ -1111,7 +1113,7 @@ class DocsCliApp {
    */
   getPackageCategoryName(categoryPath: string, categoryName: string): string {
     const parts = categoryPath.split("/");
-    const packagesIndex = parts.findIndex(p => p.startsWith("3-"));
+    const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
 
     if (packagesIndex === -1) {
       return this.pretty(categoryName);
@@ -1152,7 +1154,7 @@ class DocsCliApp {
 
         if (!categoryMap.has(categoryPath)) {
           // Check if this is a package category node
-          const isPackageNode = parts.some(p => p.startsWith("3-")) && i > 0;
+          const isPackageNode = parts.some((p) => p.startsWith("3-")) && i > 0;
 
           const node: DocNode = {
             slug: this.slug(categoryName),
