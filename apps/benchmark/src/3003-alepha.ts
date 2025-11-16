@@ -1,5 +1,5 @@
-import { Alepha, run } from "@alepha/core";
-import { $route } from "@alepha/server";
+import { Alepha, run } from "alepha";
+import { $route } from "alepha/server";
 
 class App {
   ping = $route({

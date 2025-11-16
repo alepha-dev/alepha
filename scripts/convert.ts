@@ -66,11 +66,13 @@ async function main(to?: string) {
           for (const value of Object.values(
             pkg.exports as Record<string, any>,
           )) {
-            value.types = replace(value.types);
-            value.require = replace(value.require);
-            value.import = replace(value.import);
-            if (value.browser) {
-              value.browser = replace(value.browser);
+            if (typeof value === "object") {
+              value.types = replace(value.types);
+              value.require = replace(value.require);
+              value.import = replace(value.import);
+              if (value.browser) {
+                value.browser = replace(value.browser);
+              }
             }
           }
         }
@@ -99,16 +101,18 @@ async function main(to?: string) {
           for (const value of Object.values(
             pkg.exports as Record<string, any>,
           )) {
-            value.types = replace(value.types);
-            value.require = replace(value.require);
-            value.import = replace(value.import);
-            if (value.browser) {
-              value.browser = replace(value.browser);
+            if (typeof value === "object") {
+              value.types = replace(value.types);
+              value.require = replace(value.require);
+              value.import = replace(value.import);
+              if (value.browser) {
+                value.browser = replace(value.browser);
+              }
             }
           }
         }
       }
-      await writeFile(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
+      await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
       console.log(`Patched ${name} to ${action}`);
     } catch (error) {
       console.error(`Failed to patch ${name}`, error);

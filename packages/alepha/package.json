@@ -8,7 +8,6 @@
   },
   "license": "MIT",
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "files": [
     "dist",
     "src",
@@ -41,15 +40,20 @@
     "openid-client": "^6.8.1",
     "prom-client": "^15.1.3",
     "react-dom": "^19.2.0",
+    "swagger-ui-dist": "^5.30.2",
     "tar": "^7.5.2",
     "vitest": "^4.0.9"
   },
+  "scarfSettings": {
+    "enabled": false
+  },
   "scripts": {
     "lint": "biome check --fix",
-    "check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "node scripts/build.ts"
-  },
+    "build": "node scripts/build.ts",
+		"copy": "node scripts/copy-swagger.ts"
+	},
   "homepage": "https://github.com/feunard/alepha",
   "repository": {
     "type": "git",
@@ -64,274 +68,274 @@
     "api"
   ],
   "exports": {
-    "./datetime": {
-      "types": "./src/datetime/index.ts",
-      "require": "./src/datetime/index.ts",
-      "import": "./src/datetime/index.ts"
-    },
-    "./logger": {
-      "types": "./src/logger/index.ts",
-      "require": "./src/logger/index.ts",
-      "import": "./src/logger/index.ts"
-    },
-    "./retry": {
-      "types": "./src/retry/index.ts",
-      "require": "./src/retry/index.ts",
-      "import": "./src/retry/index.ts"
-    },
-    "./topic": {
-      "types": "./src/topic/index.ts",
-      "require": "./src/topic/index.ts",
-      "import": "./src/topic/index.ts"
-    },
-    "./lock": {
-      "types": "./src/lock/index.ts",
-      "require": "./src/lock/index.ts",
-      "import": "./src/lock/index.ts"
-    },
-    "./orm": {
-      "types": "./src/orm/index.ts",
-      "require": "./src/orm/index.ts",
-      "import": "./src/orm/index.ts",
-      "browser": "./src/orm/index.browser.ts"
-    },
-    "./router": {
-      "types": "./src/router/index.ts",
-      "require": "./src/router/index.ts",
-      "import": "./src/router/index.ts"
-    },
-    "./cache": {
-      "types": "./src/cache/index.ts",
-      "require": "./src/cache/index.ts",
-      "import": "./src/cache/index.ts"
-    },
-    "./server": {
-      "types": "./src/server/index.ts",
-      "require": "./src/server/index.ts",
-      "import": "./src/server/index.ts",
-      "browser": "./src/server/index.browser.ts"
-    },
-    "./file": {
-      "types": "./src/file/index.ts",
-      "require": "./src/file/index.ts",
-      "import": "./src/file/index.ts"
-    },
-    "./bucket": {
-      "types": "./src/bucket/index.ts",
-      "require": "./src/bucket/index.ts",
-      "import": "./src/bucket/index.ts"
-    },
-    "./security": {
-      "types": "./src/security/index.ts",
-      "require": "./src/security/index.ts",
-      "import": "./src/security/index.ts",
-      "browser": "./src/security/index.browser.ts"
-    },
-    "./scheduler": {
-      "types": "./src/scheduler/index.ts",
-      "require": "./src/scheduler/index.ts",
-      "import": "./src/scheduler/index.ts"
-    },
     "./api/files": {
       "types": "./src/api-files/index.ts",
-      "require": "./src/api-files/index.ts",
-      "import": "./src/api-files/index.ts"
+      "import": "./src/api-files/index.ts",
+      "require": "./src/api-files/index.ts"
     },
     "./api/jobs": {
       "types": "./src/api-jobs/index.ts",
-      "require": "./src/api-jobs/index.ts",
-      "import": "./src/api-jobs/index.ts"
-    },
-    "./queue": {
-      "types": "./src/queue/index.ts",
-      "require": "./src/queue/index.ts",
-      "import": "./src/queue/index.ts"
-    },
-    "./email": {
-      "types": "./src/email/index.ts",
-      "require": "./src/email/index.ts",
-      "import": "./src/email/index.ts"
-    },
-    "./batch": {
-      "types": "./src/batch/index.ts",
-      "require": "./src/batch/index.ts",
-      "import": "./src/batch/index.ts"
+      "import": "./src/api-jobs/index.ts",
+      "require": "./src/api-jobs/index.ts"
     },
     "./api/notifications": {
       "types": "./src/api-notifications/index.ts",
-      "require": "./src/api-notifications/index.ts",
-      "import": "./src/api-notifications/index.ts"
+      "import": "./src/api-notifications/index.ts",
+      "require": "./src/api-notifications/index.ts"
     },
     "./api/parameters": {
       "types": "./src/api-parameters/index.ts",
-      "require": "./src/api-parameters/index.ts",
-      "import": "./src/api-parameters/index.ts"
+      "import": "./src/api-parameters/index.ts",
+      "require": "./src/api-parameters/index.ts"
     },
     "./api/users": {
       "types": "./src/api-users/index.ts",
-      "require": "./src/api-users/index.ts",
+      "browser": "./src/api-users/index.browser.ts",
       "import": "./src/api-users/index.ts",
-      "browser": "./src/api-users/index.browser.ts"
+      "require": "./src/api-users/index.ts"
     },
     "./api/verifications": {
       "types": "./src/api-verifications/index.ts",
-      "require": "./src/api-verifications/index.ts",
-      "import": "./src/api-verifications/index.ts"
+      "import": "./src/api-verifications/index.ts",
+      "require": "./src/api-verifications/index.ts"
     },
     "./api/workflows": {
       "types": "./src/api-workflows/index.ts",
-      "require": "./src/api-workflows/index.ts",
-      "import": "./src/api-workflows/index.ts"
+      "import": "./src/api-workflows/index.ts",
+      "require": "./src/api-workflows/index.ts"
     },
-    "./vite": {
-      "types": "./src/vite/index.ts",
-      "require": "./src/vite/index.ts",
-      "import": "./src/vite/index.ts"
-    },
-    "./command": {
-      "types": "./src/command/index.ts",
-      "require": "./src/command/index.ts",
-      "import": "./src/command/index.ts"
-    },
-    "./cli": {
-      "types": "./src/cli/index.ts",
-      "require": "./src/cli/index.ts",
-      "import": "./src/cli/index.ts"
+    "./batch": {
+      "types": "./src/batch/index.ts",
+      "import": "./src/batch/index.ts",
+      "require": "./src/batch/index.ts"
     },
     "./bin": {
       "types": "./src/bin/index.ts",
-      "require": "./src/bin/index.ts",
-      "import": "./src/bin/index.ts"
+      "import": "./src/bin/index.ts",
+      "require": "./src/bin/index.ts"
     },
-    "./redis": {
-      "types": "./src/redis/index.ts",
-      "require": "./src/redis/index.ts",
-      "import": "./src/redis/index.ts"
+    "./bucket": {
+      "types": "./src/bucket/index.ts",
+      "import": "./src/bucket/index.ts",
+      "require": "./src/bucket/index.ts"
+    },
+    "./cache": {
+      "types": "./src/cache/index.ts",
+      "import": "./src/cache/index.ts",
+      "require": "./src/cache/index.ts"
     },
     "./cache/redis": {
       "types": "./src/cache-redis/index.ts",
-      "require": "./src/cache-redis/index.ts",
-      "import": "./src/cache-redis/index.ts"
+      "import": "./src/cache-redis/index.ts",
+      "require": "./src/cache-redis/index.ts"
+    },
+    "./cli": {
+      "types": "./src/cli/index.ts",
+      "import": "./src/cli/index.ts",
+      "require": "./src/cli/index.ts"
+    },
+    "./command": {
+      "types": "./src/command/index.ts",
+      "import": "./src/command/index.ts",
+      "require": "./src/command/index.ts"
     },
     ".": {
       "types": "./src/core/index.ts",
-      "require": "./src/core/index.ts",
+      "browser": "./src/core/index.browser.ts",
       "import": "./src/core/index.ts",
-      "browser": "./src/core/index.browser.ts"
+      "require": "./src/core/index.ts"
+    },
+    "./datetime": {
+      "types": "./src/datetime/index.ts",
+      "import": "./src/datetime/index.ts",
+      "require": "./src/datetime/index.ts"
+    },
+    "./email": {
+      "types": "./src/email/index.ts",
+      "import": "./src/email/index.ts",
+      "require": "./src/email/index.ts"
     },
     "./fake": {
       "types": "./src/fake/index.ts",
-      "require": "./src/fake/index.ts",
-      "import": "./src/fake/index.ts"
+      "import": "./src/fake/index.ts",
+      "require": "./src/fake/index.ts"
+    },
+    "./file": {
+      "types": "./src/file/index.ts",
+      "import": "./src/file/index.ts",
+      "require": "./src/file/index.ts"
+    },
+    "./lock": {
+      "types": "./src/lock/index.ts",
+      "import": "./src/lock/index.ts",
+      "require": "./src/lock/index.ts"
     },
     "./lock/redis": {
       "types": "./src/lock-redis/index.ts",
-      "require": "./src/lock-redis/index.ts",
-      "import": "./src/lock-redis/index.ts"
+      "import": "./src/lock-redis/index.ts",
+      "require": "./src/lock-redis/index.ts"
+    },
+    "./logger": {
+      "types": "./src/logger/index.ts",
+      "import": "./src/logger/index.ts",
+      "require": "./src/logger/index.ts"
+    },
+    "./orm": {
+      "types": "./src/orm/index.ts",
+      "browser": "./src/orm/index.browser.ts",
+      "import": "./src/orm/index.ts",
+      "require": "./src/orm/index.ts"
+    },
+    "./queue": {
+      "types": "./src/queue/index.ts",
+      "import": "./src/queue/index.ts",
+      "require": "./src/queue/index.ts"
     },
     "./queue/redis": {
       "types": "./src/queue-redis/index.ts",
-      "require": "./src/queue-redis/index.ts",
-      "import": "./src/queue-redis/index.ts"
+      "import": "./src/queue-redis/index.ts",
+      "require": "./src/queue-redis/index.ts"
+    },
+    "./redis": {
+      "types": "./src/redis/index.ts",
+      "import": "./src/redis/index.ts",
+      "require": "./src/redis/index.ts"
+    },
+    "./retry": {
+      "types": "./src/retry/index.ts",
+      "import": "./src/retry/index.ts",
+      "require": "./src/retry/index.ts"
+    },
+    "./router": {
+      "types": "./src/router/index.ts",
+      "import": "./src/router/index.ts",
+      "require": "./src/router/index.ts"
+    },
+    "./scheduler": {
+      "types": "./src/scheduler/index.ts",
+      "import": "./src/scheduler/index.ts",
+      "require": "./src/scheduler/index.ts"
+    },
+    "./security": {
+      "types": "./src/security/index.ts",
+      "browser": "./src/security/index.browser.ts",
+      "import": "./src/security/index.ts",
+      "require": "./src/security/index.ts"
+    },
+    "./server": {
+      "types": "./src/server/index.ts",
+      "browser": "./src/server/index.browser.ts",
+      "import": "./src/server/index.ts",
+      "require": "./src/server/index.ts"
     },
     "./server/basic-auth": {
       "types": "./src/server-basic-auth/index.ts",
-      "require": "./src/server-basic-auth/index.ts",
-      "import": "./src/server-basic-auth/index.ts"
+      "import": "./src/server-basic-auth/index.ts",
+      "require": "./src/server-basic-auth/index.ts"
     },
     "./server/cache": {
       "types": "./src/server-cache/index.ts",
-      "require": "./src/server-cache/index.ts",
-      "import": "./src/server-cache/index.ts"
+      "import": "./src/server-cache/index.ts",
+      "require": "./src/server-cache/index.ts"
     },
     "./server/compress": {
       "types": "./src/server-compress/index.ts",
-      "require": "./src/server-compress/index.ts",
-      "import": "./src/server-compress/index.ts"
+      "import": "./src/server-compress/index.ts",
+      "require": "./src/server-compress/index.ts"
     },
     "./server/cookies": {
       "types": "./src/server-cookies/index.ts",
-      "require": "./src/server-cookies/index.ts",
+      "browser": "./src/server-cookies/index.browser.ts",
       "import": "./src/server-cookies/index.ts",
-      "browser": "./src/server-cookies/index.browser.ts"
+      "require": "./src/server-cookies/index.ts"
     },
     "./server/cors": {
       "types": "./src/server-cors/index.ts",
-      "require": "./src/server-cors/index.ts",
-      "import": "./src/server-cors/index.ts"
+      "import": "./src/server-cors/index.ts",
+      "require": "./src/server-cors/index.ts"
     },
     "./server/health": {
       "types": "./src/server-health/index.ts",
-      "require": "./src/server-health/index.ts",
-      "import": "./src/server-health/index.ts"
+      "import": "./src/server-health/index.ts",
+      "require": "./src/server-health/index.ts"
     },
     "./server/helmet": {
       "types": "./src/server-helmet/index.ts",
-      "require": "./src/server-helmet/index.ts",
-      "import": "./src/server-helmet/index.ts"
+      "import": "./src/server-helmet/index.ts",
+      "require": "./src/server-helmet/index.ts"
     },
     "./server/links": {
       "types": "./src/server-links/index.ts",
-      "require": "./src/server-links/index.ts",
+      "browser": "./src/server-links/index.browser.ts",
       "import": "./src/server-links/index.ts",
-      "browser": "./src/server-links/index.browser.ts"
+      "require": "./src/server-links/index.ts"
     },
     "./server/metrics": {
       "types": "./src/server-metrics/index.ts",
-      "require": "./src/server-metrics/index.ts",
-      "import": "./src/server-metrics/index.ts"
+      "import": "./src/server-metrics/index.ts",
+      "require": "./src/server-metrics/index.ts"
     },
     "./server/multipart": {
       "types": "./src/server-multipart/index.ts",
-      "require": "./src/server-multipart/index.ts",
-      "import": "./src/server-multipart/index.ts"
+      "import": "./src/server-multipart/index.ts",
+      "require": "./src/server-multipart/index.ts"
     },
     "./server/proxy": {
       "types": "./src/server-proxy/index.ts",
-      "require": "./src/server-proxy/index.ts",
-      "import": "./src/server-proxy/index.ts"
+      "import": "./src/server-proxy/index.ts",
+      "require": "./src/server-proxy/index.ts"
     },
     "./server/rate-limit": {
       "types": "./src/server-rate-limit/index.ts",
-      "require": "./src/server-rate-limit/index.ts",
-      "import": "./src/server-rate-limit/index.ts"
+      "import": "./src/server-rate-limit/index.ts",
+      "require": "./src/server-rate-limit/index.ts"
     },
     "./server/security": {
       "types": "./src/server-security/index.ts",
-      "require": "./src/server-security/index.ts",
+      "browser": "./src/server-security/index.browser.ts",
       "import": "./src/server-security/index.ts",
-      "browser": "./src/server-security/index.browser.ts"
+      "require": "./src/server-security/index.ts"
     },
     "./server/static": {
       "types": "./src/server-static/index.ts",
-      "require": "./src/server-static/index.ts",
-      "import": "./src/server-static/index.ts"
+      "import": "./src/server-static/index.ts",
+      "require": "./src/server-static/index.ts"
     },
     "./server/swagger": {
       "types": "./src/server-swagger/index.ts",
-      "require": "./src/server-swagger/index.ts",
-      "import": "./src/server-swagger/index.ts"
+      "import": "./src/server-swagger/index.ts",
+      "require": "./src/server-swagger/index.ts"
     },
     "./sms": {
       "types": "./src/sms/index.ts",
-      "require": "./src/sms/index.ts",
-      "import": "./src/sms/index.ts"
+      "import": "./src/sms/index.ts",
+      "require": "./src/sms/index.ts"
     },
     "./thread": {
       "types": "./src/thread/index.ts",
-      "require": "./src/thread/index.ts",
-      "import": "./src/thread/index.ts"
+      "import": "./src/thread/index.ts",
+      "require": "./src/thread/index.ts"
+    },
+    "./topic": {
+      "types": "./src/topic/index.ts",
+      "import": "./src/topic/index.ts",
+      "require": "./src/topic/index.ts"
     },
     "./topic/redis": {
       "types": "./src/topic-redis/index.ts",
-      "require": "./src/topic-redis/index.ts",
-      "import": "./src/topic-redis/index.ts"
+      "import": "./src/topic-redis/index.ts",
+      "require": "./src/topic-redis/index.ts"
+    },
+    "./vite": {
+      "types": "./src/vite/index.ts",
+      "import": "./src/vite/index.ts",
+      "require": "./src/vite/index.ts"
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",
-      "require": "./src/websocket/index.ts",
+      "browser": "./src/websocket/index.browser.ts",
       "import": "./src/websocket/index.ts",
-      "browser": "./src/websocket/index.browser.ts"
+      "require": "./src/websocket/index.ts"
     }
   }
 }

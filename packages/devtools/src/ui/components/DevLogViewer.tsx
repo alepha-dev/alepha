@@ -1,4 +1,4 @@
-import { type Page, t } from "@alepha/core";
+import { type Page, t } from "alepha";
 import { dayjs } from "@alepha/datetime";
 import { type LogEntry, logEntrySchema } from "@alepha/logger";
 import { useInject } from "@alepha/react";

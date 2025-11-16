@@ -1,4 +1,4 @@
-import { $swagger } from "@alepha/server-swagger";
+import { $swagger } from "alepha/server/swagger";
 
 export class ApiDoc {
   docs = $swagger({

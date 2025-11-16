@@ -1,4 +1,4 @@
-import { $module } from "@alepha/core";
+import { $module } from "alepha";
 import { AlephaReactForm } from "@alepha/react-form";
 import { AlephaReactHead } from "@alepha/react-head";
 import { AlephaReactI18n } from "@alepha/react-i18n";

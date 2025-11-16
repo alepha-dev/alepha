@@ -1,6 +1,6 @@
-import { t } from "@alepha/core";
-import { useForm } from "@alepha/react-form";
-import { DarkModeButton, Flex, TypeForm, useToast } from "@alepha/ui";
+import { t } from "alepha";
+import { useForm } from "@alepha/react/form";
+import { DarkModeButton, Flex, TypeForm, useToast } from "alepha/ui";
 
 const Home = (props: { pong: boolean }) => {
   const toast = useToast();

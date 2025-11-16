@@ -1,7 +1,7 @@
-import { $inject } from "@alepha/core";
+import { $inject } from "alepha";
 import { $page } from "@alepha/react";
-import { $client } from "@alepha/server-links";
-import { RootRouter } from "@alepha/ui";
+import { $client } from "alepha/server/links";
+import { RootRouter } from "alepha/ui";
 import type { Api } from "./Api.ts";
 import Home from "./components/Home.tsx";
 

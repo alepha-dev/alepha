@@ -1,14 +1,14 @@
-import { AlephaLogger } from "@alepha/logger";
 import { AlephaContext } from "@alepha/react";
-import { dom } from "@alepha/testing";
+import { fireEvent, render } from "@testing-library/react";
 import { Alepha, t } from "alepha";
+import { AlephaLogger } from "alepha/logger";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
-import { useForm } from "../src";
+import { useForm } from "../../src/form/index.ts";
 
 describe("useForm", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
-    return dom.render(
+    return render(
       <AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
     );
   };
@@ -49,23 +49,23 @@ describe("useForm", () => {
 
     const ui = renderWithAlepha(alepha, <Form />);
 
-    dom.fireEvent.change(ui.getByTestId("test-str"), {
+    fireEvent.change(ui.getByTestId("test-str"), {
       target: { value: "testuser" },
     });
 
-    dom.fireEvent.change(ui.getByTestId("test-int"), {
+    fireEvent.change(ui.getByTestId("test-int"), {
       target: { value: "123" },
     });
 
-    dom.fireEvent.change(ui.getByTestId("test-nested.str"), {
+    fireEvent.change(ui.getByTestId("test-nested.str"), {
       target: { value: "nestedvalue" },
     });
 
-    dom.fireEvent.change(ui.getByTestId("test-nested.another.level"), {
+    fireEvent.change(ui.getByTestId("test-nested.another.level"), {
       target: { value: "anothervalue" },
     });
 
-    dom.fireEvent.submit(ui.getByText("Submit"));
+    fireEvent.submit(ui.getByText("Submit"));
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 

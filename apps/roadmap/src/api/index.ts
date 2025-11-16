@@ -1,4 +1,4 @@
-import { $module } from "@alepha/core";
+import { $module } from "alepha";
 import { Db } from "../providers/Db.ts";
 import { Security } from "../providers/Security.ts";
 import { AdminApi } from "./AdminApi.ts";

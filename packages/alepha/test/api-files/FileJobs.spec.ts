@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";

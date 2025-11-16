@@ -1,5 +1,5 @@
-import { type Static, t } from "@alepha/core";
-import { $entity, pg } from "@alepha/orm";
+import { type Static, t } from "alepha";
+import { $entity, pg } from "alepha/orm";
 
 export const tasks = $entity({
   name: "tasks",

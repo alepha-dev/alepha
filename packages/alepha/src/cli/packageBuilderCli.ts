@@ -22,24 +22,27 @@ export class PackageBuilderCli {
     handler: async ({ run, root }) => {
       const modules: Array<Module> = [];
 
-      await run("analyze modules", async () => {
-        modules.push(...(await analyzeModules(join(root, this.src))));
-      });
 
       const pkg = await readFile("package.json", "utf-8");
       const pkgData = JSON.parse(pkg);
+      const packageName = pkgData.name as string;
+
+      await run("analyze modules", async () => {
+        modules.push(...(await analyzeModules(join(root, this.src), packageName)));
+      });
+
       pkgData.exports = {};
       for (const item of modules) {
         const path =
           item.name === "core" ? "." : `./${item.name.replace("-", "/")}`;
-        pkgData.exports[path] = {
-          types: `./src/${item.name}/index.ts`,
-          require: `./src/${item.name}/index.ts`,
-          import: `./src/${item.name}/index.ts`,
-        };
+        pkgData.exports[path] = {};
+        // order is important here for compatibility
+        pkgData.exports[path].types = `./src/${item.name}/index.ts`;
         if (item.browser) {
           pkgData.exports[path].browser = `./src/${item.name}/index.browser.ts`;
         }
+        pkgData.exports[path].import = `./src/${item.name}/index.ts`;
+        pkgData.exports[path].require = `./src/${item.name}/index.ts`;
       }
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
 
@@ -51,11 +54,14 @@ export class PackageBuilderCli {
         JSON.stringify(modules, null, 2),
       );
 
-      const external = modules.map((item) => `alepha/${item.name}`);
+      const external = [
+        "alepha",
+        ...modules.map((item) => `alepha/${item.name}`),
+      ];
 
       await run.rm(this.dist);
 
-      for (const item of modules) {
+      const build = async (item: Module) => {
         const entries: InlineConfig[] = [];
         const src = join(root, this.src, item.name);
         const dest = join(root, this.dist, item.name);
@@ -88,6 +94,13 @@ export class PackageBuilderCli {
         );
         await run(`npx tsdown -c=${config}`);
         await this.fs.rm(config);
+      };
+
+      // build 4 by 4
+      const concurrency = 8;
+      for (let i = 0; i < modules.length; i += concurrency) {
+        const chunk = modules.slice(i, i + concurrency);
+        await Promise.all(chunk.map((item) => build(item)));
       }
     },
   });
@@ -124,12 +137,12 @@ function removeComments(content: string): string {
   return cleaned;
 }
 
-function extractAlephaDependencies(content: string): string[] {
+function extractAlephaDependencies(content: string, packageName: string): string[] {
   const deps = new Set<string>();
   const cleanedContent = removeComments(content);
 
   // Match: from "alepha/xxx" or from 'alepha/xxx'
-  const importRegex = /from\s+['"]alepha\/([^'"]+)['"]/g;
+  const importRegex = new RegExp(`from "${packageName}/([a-zA-Z0-9_/]+)"`, "g");
 
   const matches = cleanedContent.matchAll(importRegex);
   for (const match of matches) {
@@ -184,35 +197,7 @@ function detectCircularDependencies(modules: Module[]): void {
   }
 }
 
-function topologicalSort(modules: Module[]): Module[] {
-  const moduleMap = new Map(modules.map((m) => [m.name, m]));
-  const visited = new Set<string>();
-  const sorted: Module[] = [];
-
-  function visit(moduleName: string) {
-    if (visited.has(moduleName)) return;
-
-    visited.add(moduleName);
-
-    const module = moduleMap.get(moduleName);
-    if (!module) return;
-
-    // Visit dependencies first
-    for (const dep of module.dependencies) {
-      visit(dep);
-    }
-
-    sorted.push(module);
-  }
-
-  for (const module of modules) {
-    visit(module.name);
-  }
-
-  return sorted;
-}
-
-export async function analyzeModules(srcDir: string): Promise<Module[]> {
+export async function analyzeModules(srcDir: string, packageName: string): Promise<Module[]> {
   const modules: Module[] = [];
   const entries = await readdir(srcDir, { withFileTypes: true });
 
@@ -231,10 +216,8 @@ export async function analyzeModules(srcDir: string): Promise<Module[]> {
 
       for (const file of files) {
         const content = await readFile(file, "utf-8");
-        const deps = extractAlephaDependencies(content);
+        const deps = extractAlephaDependencies(content, packageName);
         for (const dep of deps) {
-          const normalizedModuleName = moduleName.replace("-", "/");
-          //if (dep.startsWith(normalizedModuleName)) continue;
           if (dep.endsWith(".ts")) {
             throw new Error(
               `Invalid dependency '${dep}' in module '${moduleName}'. Do not include file extensions in Alepha module imports.`,
@@ -264,6 +247,5 @@ export async function analyzeModules(srcDir: string): Promise<Module[]> {
   // Check for circular dependencies
   detectCircularDependencies(modules);
 
-  // Sort topologically (dependencies first)
-  return topologicalSort(modules);
+  return modules;
 }

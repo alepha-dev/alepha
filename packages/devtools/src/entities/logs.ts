@@ -1,4 +1,4 @@
-import { type Static, t } from "@alepha/core";
+import { type Static, t } from "alepha";
 import { $entity, pg } from "@alepha/orm";
 
 export const logs = $entity({

@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 import { $realm, $serviceAccount } from "../../src/security";

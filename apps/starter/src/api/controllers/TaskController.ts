@@ -1,6 +1,6 @@
-import { t } from "@alepha/core";
-import { $repository } from "@alepha/orm";
-import { $action } from "@alepha/server";
+import { t } from "alepha";
+import { $repository } from "alepha/orm";
+import { $action } from "alepha/server";
 import { tasks } from "../entities/tasks.ts";
 
 export class TaskController {

@@ -1,4 +1,4 @@
-import { viteAlepha } from "@alepha/vite";
+import { viteAlepha } from "alepha/vite";
 import { defineConfig } from "vite";
 
 process.env.VITE_BUILD_DATE = new Date().toISOString();

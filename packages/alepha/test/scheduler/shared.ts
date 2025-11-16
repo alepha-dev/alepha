@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Alepha, type Service } from "alepha/core";
+import { Alepha, type Service } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
 import { expect } from "vitest";

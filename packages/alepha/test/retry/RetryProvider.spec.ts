@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { RetryCancelError } from "../../src/retry/errors/RetryCancelError";
 import { RetryTimeoutError } from "../../src/retry/errors/RetryTimeoutError";

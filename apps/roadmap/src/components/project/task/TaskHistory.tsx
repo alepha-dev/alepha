@@ -1,4 +1,4 @@
-import { DateTimeProvider } from "@alepha/datetime";
+import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "@alepha/react";
 import { Flex, Text, Timeline, Transition } from "@mantine/core";
 import {

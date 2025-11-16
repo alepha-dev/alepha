@@ -1,5 +1,4 @@
 {
-	"name": "@alepha/integration-tests",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -8,8 +7,6 @@
 		"typecheck": "alepha typecheck"
 	},
 	"dependencies": {
-		"@alepha/core": "^0.11.11",
-		"@alepha/orm": "^0.11.11",
-		"@alepha/server": "^0.11.11"
+		"alepha": "^0.11.11"
 	}
 }

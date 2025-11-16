@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
 import { $entity } from "../../src/orm/descriptors/$entity.ts";

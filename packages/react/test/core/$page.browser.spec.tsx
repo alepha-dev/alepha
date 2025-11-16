@@ -1,11 +1,12 @@
-import { Alepha, t } from "@alepha/core";
-import { dom } from "@alepha/testing";
+import { waitFor } from "@testing-library/dom";
+import { Alepha, t } from "alepha";
+import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import NestedView from "../src/components/NestedView.tsx";
-import { $page } from "../src/descriptors/$page.ts";
-import { Redirection } from "../src/errors/Redirection.ts";
-import { AlephaReact } from "../src/index.browser.ts";
-import { ReactRouter } from "../src/services/ReactRouter.ts";
+import NestedView from "../../src/core/components/NestedView.tsx";
+import { $page } from "../../src/core/descriptors/$page.ts";
+import { Redirection } from "../../src/core/errors/Redirection.ts";
+import { AlephaReact } from "../../src/core/index.browser.ts";
+import { ReactRouter } from "../../src/core/services/ReactRouter.ts";
 
 describe("$page browser tests", () => {
   let alepha: Alepha;
@@ -30,11 +31,11 @@ describe("$page browser tests", () => {
 
     const router = alepha.inject(ReactRouter);
 
-    await dom.act(async () => {
+    await act(async () => {
       await router.go("/");
     });
 
-    await dom.waitFor(() => {
+    await waitFor(() => {
       const element = document.querySelector('[data-testid="home"]');
       expect(element).toBeDefined();
       expect(element?.textContent).toBe("Welcome Home");
@@ -60,20 +61,20 @@ describe("$page browser tests", () => {
     const router = alepha.inject(ReactRouter);
 
     // Navigate to home
-    await dom.act(async () => {
+    await act(async () => {
       await router.go("/");
     });
 
-    await dom.waitFor(() => {
+    await waitFor(() => {
       expect(document.querySelector('[data-testid="home"]')).toBeDefined();
     });
 
     // Navigate to about
-    await dom.act(async () => {
+    await act(async () => {
       await router.go("/about");
     });
 
-    await dom.waitFor(() => {
+    await waitFor(() => {
       expect(document.querySelector('[data-testid="about"]')).toBeDefined();
       expect(document.querySelector('[data-testid="about"]')?.textContent).toBe(
         "About Us",
@@ -115,11 +116,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/user/123");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(document.querySelector('[data-testid="id"]')?.textContent).toBe(
           "123",
         );
@@ -149,11 +150,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/async");
       });
 
-      await dom.waitFor(
+      await waitFor(
         () => {
           expect(
             document.querySelector('[data-testid="async"]')?.textContent,
@@ -200,22 +201,22 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       // Try to access protected - should redirect to login
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/protected");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(document.querySelector('[data-testid="login"]')).toBeDefined();
       });
 
       // Now authenticate
       isAuthenticated = true;
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/protected");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="protected"]'),
         ).toBeDefined();
@@ -244,11 +245,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/error");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="error"]')?.textContent,
         ).toBe("Error: Something went wrong");
@@ -290,11 +291,11 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       // Navigate to home - should show layout and home
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="header"]')?.textContent,
         ).toBe("My App");
@@ -302,11 +303,11 @@ describe("$page browser tests", () => {
       });
 
       // Navigate to about - layout should persist
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/about");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="header"]')?.textContent,
         ).toBe("My App");
@@ -344,11 +345,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/page");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document
             .querySelector('[data-testid="layout"]')
@@ -400,11 +401,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/section/page");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(document.querySelector('[data-testid="root"]')).toBeDefined();
         expect(document.querySelector('[data-testid="section"]')).toBeDefined();
         expect(
@@ -437,22 +438,22 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       // Navigate to home
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(document.querySelector('[data-testid="home"]')).toBeDefined();
       });
 
       expect(onLeaveSpy).not.toHaveBeenCalled();
 
       // Navigate away from home to about
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/about");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(document.querySelector('[data-testid="about"]')).toBeDefined();
       });
 
@@ -485,11 +486,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/user/abc123");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="user"]')?.textContent,
         ).toBe("User: abc123");
@@ -530,11 +531,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/search?q=typescript&page=2");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="query"]')?.textContent,
         ).toBe("typescript");
@@ -580,11 +581,11 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       // Navigate with query params
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/search?q=alepha&page=5");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="query"]')?.textContent,
         ).toBe("alepha");
@@ -635,11 +636,11 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/users/john/posts?sort=popular&limit=20");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="user"]')?.textContent,
         ).toBe("john");
@@ -687,11 +688,11 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       // Navigate without query params - should use defaults
-      await dom.act(async () => {
+      await act(async () => {
         await router.go("/search");
       });
 
-      await dom.waitFor(() => {
+      await waitFor(() => {
         expect(
           document.querySelector('[data-testid="query"]')?.textContent,
         ).toBe("default search");

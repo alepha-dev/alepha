@@ -28,10 +28,10 @@
 		"alepha": "0.11.11"
 	},
 	"scripts": {
-		"test": "vitest run",
-		"lint": "biome check --fix",
+		"lint": "alepha lint",
+		"typecheck": "alepha typecheck",
+		"test": "alepha test",
 		"build": "yarn ui:build && tsdown -c=../../tsdown.config.ts",
-		"typecheck": "tsc --noEmit",
 		"ui:dev": "alepha dev",
 		"ui:build": "alepha build && rm -r assets/devtools && cp -r dist/public assets/devtools"
 	},

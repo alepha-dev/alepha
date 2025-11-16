@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { describe, expect, it, vi } from "vitest";
 import { $serviceAccount } from "../../src/security";
 

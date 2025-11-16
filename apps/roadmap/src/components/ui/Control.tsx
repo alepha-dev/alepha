@@ -1,5 +1,5 @@
-import { TypeBoxError } from "@alepha/core";
-import { type InputField, useFormState } from "@alepha/react-form";
+import { TypeBoxError } from "alepha";
+import { type InputField, useFormState } from "@alepha/react/form";
 import {
   Autocomplete,
   type AutocompleteProps,

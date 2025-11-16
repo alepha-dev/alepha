@@ -1,4 +1,4 @@
-import { $hook, Alepha } from "alepha/core";
+import { $hook, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $interval, DateTimeProvider } from "../../src/datetime";
 

@@ -1,17 +1,17 @@
-import { Alepha } from "@alepha/core";
 import { AlephaContext } from "@alepha/react";
-import { dom } from "@alepha/testing";
+import { fireEvent, render } from "@testing-library/react";
+import { Alepha } from "alepha";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { describe, test } from "vitest";
-import { $dictionary } from "../src/descriptors/$dictionary.ts";
-import { useI18n } from "../src/hooks/useI18n.ts";
-import { AlephaReactI18n } from "../src/index.ts";
-import { I18nProvider } from "../src/providers/I18nProvider.ts";
+import { $dictionary } from "../../src/i18n/descriptors/$dictionary.ts";
+import { useI18n } from "../../src/i18n/hooks/useI18n.ts";
+import { AlephaReactI18n } from "../../src/i18n/index.ts";
+import { I18nProvider } from "../../src/i18n/providers/I18nProvider.ts";
 
 describe("useI18n hook", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
-    return dom.render(
+    return render(
       <AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
     );
   };
@@ -119,14 +119,14 @@ describe("useI18n hook", () => {
 
     // Switch to French
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("switch-fr"));
+      fireEvent.click(ui.getByTestId("switch-fr"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("message").textContent).toBe("Bienvenue");
 
     // Switch to Spanish
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("switch-es"));
+      fireEvent.click(ui.getByTestId("switch-es"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("message").textContent).toBe("Bienvenido");
@@ -172,7 +172,7 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("current-lang").textContent).toBe("en");
 
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("change-lang"));
+      fireEvent.click(ui.getByTestId("change-lang"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("current-lang").textContent).toBe("de");
@@ -360,19 +360,19 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("text").textContent).toBe("Active");
 
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("fr"));
+      fireEvent.click(ui.getByTestId("fr"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("text").textContent).toBe("Actif");
 
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("de"));
+      fireEvent.click(ui.getByTestId("de"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("text").textContent).toBe("Aktiv");
 
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("en"));
+      fireEvent.click(ui.getByTestId("en"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("text").textContent).toBe("Active");
@@ -428,7 +428,7 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("specific").textContent).toBe("English specific");
 
     await act(async () => {
-      dom.fireEvent.click(ui.getByTestId("switch"));
+      fireEvent.click(ui.getByTestId("switch"));
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(ui.getByTestId("common").textContent).toBe("Texte commun");

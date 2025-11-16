@@ -1,4 +1,4 @@
-import { $hook, Alepha, t } from "alepha/core";
+import { $hook, Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository, pg } from "../../src/orm";
 

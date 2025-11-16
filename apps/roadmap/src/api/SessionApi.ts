@@ -1,7 +1,7 @@
-import { sessions } from "@alepha/api-users";
-import { $inject, type Static, t } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
-import { $action, $route } from "@alepha/server";
+import { sessions } from "alepha/api/users";
+import { $inject, type Static, t } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $action, $route } from "alepha/server";
 import { Db } from "../providers/Db.ts";
 
 export const userSession = t.extend(sessions.schema, {

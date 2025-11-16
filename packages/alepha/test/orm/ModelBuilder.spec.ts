@@ -1,4 +1,4 @@
-import { t } from "alepha/core";
+import { t } from "alepha";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, test } from "vitest";
 import { $entity } from "../../src/orm/descriptors/$entity.ts";

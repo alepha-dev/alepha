@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { DbEntityNotFoundError } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";

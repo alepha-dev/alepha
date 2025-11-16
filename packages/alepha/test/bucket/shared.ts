@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { expect } from "vitest";
 import {

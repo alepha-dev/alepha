@@ -217,7 +217,7 @@ export async function generateReadmes(root: string, log = console.log) {
         continue;
       }
 
-      const nameSegment = pkgJson.name.replace("@alepha/", "");
+      const nameSegment = pkgJson.name.replace("alepha/", "");
       const formattedName = formatPackageName(nameSegment);
       const moduleName = `Alepha${formattedName.replaceAll(" ", "")}`;
 

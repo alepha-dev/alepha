@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, t } from "alepha/core";
+import { Alepha, AlephaError, t } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,

@@ -1,4 +1,4 @@
-import { Alepha, TypeBoxError, t } from "alepha/core";
+import { Alepha, TypeBoxError, t } from "alepha";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository, pg, sql } from "../../src/orm";

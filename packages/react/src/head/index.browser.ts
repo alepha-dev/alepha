@@ -1,5 +1,5 @@
-import { $module } from "alepha";
 import { AlephaReact } from "@alepha/react";
+import { $module } from "alepha";
 import { $head } from "./descriptors/$head.ts";
 import { BrowserHeadProvider } from "./providers/BrowserHeadProvider.ts";
 

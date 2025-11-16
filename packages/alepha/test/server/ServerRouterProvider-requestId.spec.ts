@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { beforeEach, describe, it } from "vitest";
 import { HttpClient, ServerProvider } from "../../src/server";
 import { $action } from "../../src/server/descriptors/$action.ts";

@@ -5,6 +5,7 @@
 	"packageManager": "yarn@4.11.0",
 	"workspaces": {
 		"packages": [
+			"apps/*",
 			"packages/*",
 			"!apps/*/dist"
 		]

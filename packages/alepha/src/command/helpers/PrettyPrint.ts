@@ -1,7 +1,16 @@
 export class PrettyPrint {
   private spinnerInterval?: NodeJS.Timeout;
   private readonly frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-  private frameIndex = 0;
+  private tasks = new Map<
+    string,
+    {
+      taskName: string;
+      frameIndex: number;
+      status: "running" | "success" | "error";
+      duration?: string;
+    }
+  >();
+  private lastLineCount = 0;
 
   // ANSI color codes
   private readonly colors = {
@@ -15,39 +24,98 @@ export class PrettyPrint {
   /**
    * Start an animated spinner with a task name
    */
-  public startSpinner(taskName: string): void {
-    const updateSpinner = () => {
-      process.stdout.write(
-        `\r${this.colors.cyan}${this.frames[this.frameIndex]}${this.colors.reset} ${this.colors.dim}${taskName}${this.colors.reset}`,
-      );
-      this.frameIndex = (this.frameIndex + 1) % this.frames.length;
-    };
+  public startSpinner(id: string, taskName: string): void {
+    this.tasks.set(id, {
+      taskName,
+      frameIndex: 0,
+      status: "running",
+    });
 
-    updateSpinner();
-    this.spinnerInterval = setInterval(updateSpinner, 80);
+    // Start interval if not already running
+    if (!this.spinnerInterval) {
+      this.spinnerInterval = setInterval(() => this.updateDisplay(), 80);
+    }
+
+    this.updateDisplay();
   }
 
   /**
    * Stop the spinner and show success with a tick
    */
-  public success(taskName: string, duration?: string): void {
-    this.stopSpinner();
-    const durationStr = duration
-      ? ` ${this.colors.dim}${duration}${this.colors.reset}`
-      : "";
-    process.stdout.write(
-      `\r${this.colors.green}✓${this.colors.reset} ${taskName}${durationStr}\n`,
-    );
+  public success(id: string, taskName?: string, duration?: string): void {
+    const task = this.tasks.get(id);
+    if (task) {
+      task.status = "success";
+      if (taskName) task.taskName = taskName;
+      if (duration) task.duration = duration;
+      this.updateDisplay();
+    }
+
+    this.checkIfAllDone();
   }
 
   /**
    * Stop the spinner and show error with a cross
    */
-  public error(taskName: string): void {
-    this.stopSpinner();
-    process.stdout.write(
-      `\r${this.colors.red}✗${this.colors.reset} ${taskName}\n`,
+  public error(id: string, taskName?: string): void {
+    const task = this.tasks.get(id);
+    if (task) {
+      task.status = "error";
+      if (taskName) task.taskName = taskName;
+      this.updateDisplay();
+    }
+
+    this.checkIfAllDone();
+  }
+
+  /**
+   * Update the display for all tasks
+   */
+  private updateDisplay(): void {
+    // Clear previous lines
+    if (this.lastLineCount > 0) {
+      // Move cursor up and clear each line
+      for (let i = 0; i < this.lastLineCount; i++) {
+        process.stdout.write("\x1b[1A\x1b[2K");
+      }
+    }
+
+    // Render all tasks
+    const taskArray = Array.from(this.tasks.values());
+    for (const task of taskArray) {
+      let line = "";
+
+      if (task.status === "running") {
+        const frame = this.frames[task.frameIndex];
+        line = `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}`;
+        task.frameIndex = (task.frameIndex + 1) % this.frames.length;
+      } else if (task.status === "success") {
+        const durationStr = task.duration
+          ? ` ${this.colors.dim}${task.duration}${this.colors.reset}`
+          : "";
+        line = `${this.colors.green}✓${this.colors.reset} ${task.taskName}${durationStr}`;
+      } else if (task.status === "error") {
+        line = `${this.colors.red}✗${this.colors.reset} ${task.taskName}`;
+      }
+
+      process.stdout.write(line + "\n");
+    }
+
+    this.lastLineCount = taskArray.length;
+  }
+
+  /**
+   * Check if all tasks are done and stop the interval
+   */
+  private checkIfAllDone(): void {
+    const hasRunningTasks = Array.from(this.tasks.values()).some(
+      (task) => task.status === "running",
     );
+
+    if (!hasRunningTasks && this.spinnerInterval) {
+      clearInterval(this.spinnerInterval);
+      this.spinnerInterval = undefined;
+    }
   }
 
   /**
@@ -57,7 +125,15 @@ export class PrettyPrint {
     if (this.spinnerInterval) {
       clearInterval(this.spinnerInterval);
       this.spinnerInterval = undefined;
-      this.frameIndex = 0;
     }
+  }
+
+  /**
+   * Clear all tasks
+   */
+  public clear(): void {
+    this.tasks.clear();
+    this.stopSpinner();
+    this.lastLineCount = 0;
   }
 }

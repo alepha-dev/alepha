@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { $action } from "alepha/server";
 import { afterEach, beforeEach, describe, test } from "vitest";
 import { AlephaServerCache, ServerCacheProvider } from "../../src/server-cache";

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $batch } from "@alepha/batch";
-import { $hook, $inject, Alepha, pageQuerySchema, t } from "@alepha/core";
+import { $hook, $inject, Alepha, pageQuerySchema, t } from "alepha";
 import {
   $logger,
   JsonFormatterProvider,

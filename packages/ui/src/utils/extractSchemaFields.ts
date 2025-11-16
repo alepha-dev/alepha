@@ -1,4 +1,4 @@
-import type { TObject, TProperties, TSchema } from "@alepha/core";
+import type { TObject, TProperties, TSchema } from "alepha";
 
 export interface SchemaField {
   name: string;

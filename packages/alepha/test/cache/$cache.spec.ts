@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 import { $cache, MemoryCacheProvider } from "../../src/cache";

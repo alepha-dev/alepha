@@ -1,5 +1,5 @@
-import { AlephaBucket, FileStorageProvider } from "@alepha/bucket";
-import { $module } from "@alepha/core";
+import { $module } from "alepha";
+import { AlephaBucket, FileStorageProvider } from "alepha/bucket";
 import { AzureFileStorageProvider } from "./providers/AzureFileStorageProvider.ts";
 
 export * from "./providers/AzureFileStorageProvider.ts";

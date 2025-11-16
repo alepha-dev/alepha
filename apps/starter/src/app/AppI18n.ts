@@ -1,4 +1,4 @@
-import { $dictionary } from "@alepha/react-i18n";
+import { $dictionary } from "@alepha/react/i18n";
 
 export class AppI18n {
   en = $dictionary({

@@ -1,4 +1,4 @@
-import { createPagination, type PageQuery, t } from "@alepha/core";
+import { createPagination, type PageQuery, t } from "alepha";
 import DataTable from "../../src/components/table/DataTable.tsx";
 
 const elements = [

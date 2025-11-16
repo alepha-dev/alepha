@@ -1,10 +1,10 @@
-import { Alepha } from "@alepha/core";
 import { AlephaContext } from "@alepha/react";
-import { dom } from "@alepha/testing";
-import type { ReactNode } from "react";
+import { render } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { act, type ReactNode } from "react";
 import { beforeEach, describe, it, vi } from "vitest";
-import { useHead } from "../src";
-import type { Head } from "../src/interfaces/Head";
+import { useHead } from "../../src/head";
+import type { Head } from "../../src/head/interfaces/Head";
 
 /**
  * @vitest-environment jsdom
@@ -12,7 +12,7 @@ import type { Head } from "../src/interfaces/Head";
 
 describe("useHead", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
-    return dom.render(
+    return render(
       <AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
     );
   };
@@ -72,7 +72,7 @@ describe("useHead", () => {
 
     renderWithAlepha(alepha, <TestComponent />);
 
-    dom.act(() => {
+    act(() => {
       setHeadFn({ title: "Updated Title" });
     });
 
@@ -91,7 +91,7 @@ describe("useHead", () => {
 
     renderWithAlepha(alepha, <TestComponent />);
 
-    dom.act(() => {
+    act(() => {
       setHeadFn({
         meta: [
           { name: "description", content: "Test Description" },
@@ -119,7 +119,7 @@ describe("useHead", () => {
 
     renderWithAlepha(alepha, <TestComponent />);
 
-    dom.act(() => {
+    act(() => {
       setHeadFn({
         bodyAttributes: {
           class: "dark-theme",
@@ -144,7 +144,7 @@ describe("useHead", () => {
 
     renderWithAlepha(alepha, <TestComponent />);
 
-    dom.act(() => {
+    act(() => {
       setHeadFn({
         htmlAttributes: {
           lang: "en",
@@ -171,7 +171,7 @@ describe("useHead", () => {
 
     expect(document.title).toBe("Initial Title");
 
-    dom.act(() => {
+    act(() => {
       setHeadFn((prev) => ({
         ...prev,
         title: `${prev?.title} - Updated`,
@@ -193,7 +193,7 @@ describe("useHead", () => {
 
     renderWithAlepha(alepha, <TestComponent />);
 
-    dom.act(() => {
+    act(() => {
       setHeadFn({
         title: "First Title",
         meta: [{ name: "description", content: "First Description" }],
@@ -207,7 +207,7 @@ describe("useHead", () => {
         ?.getAttribute("content"),
     ).toBe("First Description");
 
-    dom.act(() => {
+    act(() => {
       setHeadFn({
         title: "Second Title",
         meta: [{ name: "description", content: "Second Description" }],

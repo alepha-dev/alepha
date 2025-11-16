@@ -48,7 +48,7 @@ npx alepha init --api
 Create a file `src/main.ts`:
 
 ```ts
-import { run, t, Alepha } from "@alepha/core";
+import { run, t, Alepha } from "alepha";
 import { $action } from "@alepha/server";
 import { $swagger } from "@alepha/server-swagger";
 
@@ -117,7 +117,7 @@ Create a file `src/main.tsx`:
 
 ```tsx
 // src/main.tsx
-import { run, t } from "@alepha/core";
+import { run, t } from "alepha";
 import { $page } from "@alepha/react";
 import { useState } from "react";
 

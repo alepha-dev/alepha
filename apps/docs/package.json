@@ -1,9 +1,7 @@
 {
 	"private": true,
-	"name": "@alepha/docs",
 	"type": "module",
 	"dependencies": {
-		"@alepha/core": "0.11.11",
 		"@alepha/react": "0.11.11",
 		"@mantine/core": "^8.3.7",
 		"@mantine/form": "^8.3.7",
@@ -11,11 +9,11 @@
 		"@mantine/nprogress": "^8.3.7",
 		"@mantine/spotlight": "^8.3.7",
 		"@tabler/icons-react": "^3.35.0",
+		"alepha": "0.11.11",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"
 	},
 	"devDependencies": {
-		"@alepha/vite": "^0.11.11",
 		"@types/react": "^19.2.5",
 		"alepha": "^0.11.11",
 		"highlight.js": "^11.11.1",

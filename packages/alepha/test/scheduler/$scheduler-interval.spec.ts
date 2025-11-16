@@ -1,4 +1,4 @@
-import { RedisLockProvider } from "alepha/lock-redis";
+import { RedisLockProvider } from "alepha/lock/redis";
 import { describe, test } from "vitest";
 import { SharedLockProvider, testSchedulerBasic } from "./shared.ts";
 

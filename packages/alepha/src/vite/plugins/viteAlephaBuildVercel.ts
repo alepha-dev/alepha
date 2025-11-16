@@ -112,6 +112,12 @@ export default async function (req, res) {
           ),
         );
       }
+
+      // if /public does not exist, create an empty one to avoid Vercel errors
+      if (!existsSync(`${distDir}/${clientDir}`)) {
+        mkdirSync(`${distDir}/${clientDir}`, { recursive: true });
+        writeFileSync(`${distDir}/${clientDir}/.keep`, "");
+      }
     },
   };
 }

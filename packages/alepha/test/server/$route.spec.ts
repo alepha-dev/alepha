@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { describe, test } from "vitest";
 import { $route, ServerProvider } from "../../src/server";
 

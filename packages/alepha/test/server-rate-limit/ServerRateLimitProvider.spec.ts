@@ -1,5 +1,5 @@
 import { AlephaCache } from "alepha/cache";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { $action, AlephaServer, type ServerRequest } from "alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AlephaServerRateLimit } from "../../src/server-rate-limit/index.ts";

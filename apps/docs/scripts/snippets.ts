@@ -1,7 +1,7 @@
 export const snippets = {
   server: `
-import { run } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { run } from "alepha";
+import { $action } from "alepha/server";
 
 class Api {
   // define a type-safe API action
@@ -20,7 +20,7 @@ class Api {
 run(Api);
 `,
   react: `
-import { run } from "@alepha/core";
+import { run } from "alepha";
 import { $page } from "@alepha/react";
 
 const HelloComponent = ({ message }: { message: string }) => {
@@ -41,8 +41,8 @@ class App {
 run(App);
 `,
   db: `
-import { t, run } from "@alepha/core";
-import { $entity, pg, $repository } from "@alepha/orm";
+import { t, run } from "alepha";
+import { $entity, pg, $repository } from "alepha/orm";
 
 // define an entity with a schema
 export const users = $entity({
@@ -60,9 +60,9 @@ class App {
 run(App);
 `,
   queue: `
-import { t, run } from "@alepha/core";
-import { $queue } from "@alepha/queue";
-import { EmailProvider } from "@alepha/email";
+import { t, run } from "alepha";
+import { $queue } from "alepha/queue";
+import { EmailProvider } from "alepha/email";
 
 class App {
   email = $inject(EmailProvider);
@@ -81,8 +81,8 @@ class App {
 run(App);
 `,
   command: `
-import { t, run } from "@alepha/core";
-import { $command } from "@alepha/command";
+import { t, run } from "alepha";
+import { $command } from "alepha/command";
 
 class App {
   deploy = $command({

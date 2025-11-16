@@ -1,4 +1,4 @@
-import { Alepha, run } from "@alepha/core";
+import { Alepha, run } from "alepha";
 import { Api } from "./api/Api.ts";
 import { App } from "./app/App.ts";
 

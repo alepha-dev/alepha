@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { DateTimeProvider, dayjs } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { describe, expect, it } from "vitest";

@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { describe, expect, it, vi } from "vitest";

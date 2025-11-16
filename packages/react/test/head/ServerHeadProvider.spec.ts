@@ -1,6 +1,6 @@
-import { Alepha } from "@alepha/core";
+import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-import { ServerHeadProvider } from "../src/providers/ServerHeadProvider.ts";
+import { ServerHeadProvider } from "../../src/head/providers/ServerHeadProvider.ts";
 
 const alepha = Alepha.create();
 const serverHeadProvider = alepha.inject(ServerHeadProvider);

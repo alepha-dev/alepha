@@ -1,4 +1,4 @@
-import { Alepha, type Static } from "alepha/core";
+import { Alepha, type Static } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { describe, expect, it } from "vitest";

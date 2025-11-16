@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { beforeEach, describe, it } from "vitest";
 import { AlephaFile } from "../../src/file/index.ts";
 import { NodeFileSystemProvider } from "../../src/file/providers/NodeFileSystemProvider.ts";

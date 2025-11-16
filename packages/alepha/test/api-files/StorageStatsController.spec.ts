@@ -1,5 +1,5 @@
 import { $bucket } from "alepha/bucket";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";
 import { StorageStatsController } from "../../src/api-files/controllers/StorageStatsController.ts";

@@ -1,5 +1,5 @@
 import { NestedView, useRouter } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
+import { useAuth } from "@alepha/react/auth";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import {
   IconAntenna,

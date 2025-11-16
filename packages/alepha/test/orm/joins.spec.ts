@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { sql } from "drizzle-orm";
 import { describe, test } from "vitest";
 import { $entity, $repository, pg } from "../../src/orm";

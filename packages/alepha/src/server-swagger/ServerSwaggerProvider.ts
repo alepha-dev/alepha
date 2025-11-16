@@ -386,7 +386,7 @@ window.onload = function() {
 
     const root =
       ui.root ??
-      join(fileURLToPath(import.meta.url), "../../assets/swagger-ui");
+      join(fileURLToPath(import.meta.url), "../../../assets/swagger-ui");
 
     try {
       await this.serverStaticProvider.createStaticServer({

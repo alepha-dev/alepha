@@ -1,7 +1,7 @@
-import { Alepha, t } from "@alepha/core";
-import { dayjs } from "@alepha/datetime";
-import { $entity, $repository, pageQuerySchema, pg } from "@alepha/orm";
-import { $action, HttpError } from "@alepha/server";
+import { Alepha, t } from "alepha";
+import { dayjs } from "alepha/datetime";
+import { $entity, $repository, pageQuerySchema, pg } from "alepha/orm";
+import { $action, HttpError } from "alepha/server";
 import { beforeEach, describe, test } from "vitest";
 
 /**

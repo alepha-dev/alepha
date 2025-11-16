@@ -1,5 +1,5 @@
 import { useClient, useRouter, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import { Card, Drawer, Flex, Group, Transition } from "@mantine/core";
 import {
   IconChartLine,

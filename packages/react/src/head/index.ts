@@ -1,10 +1,10 @@
-import { $module } from "alepha";
 import {
   AlephaReact,
   type PageConfigSchema,
   type TPropsDefault,
   type TPropsParentDefault,
 } from "@alepha/react";
+import { $module } from "alepha";
 import { $head } from "./descriptors/$head.ts";
 import type { Head } from "./interfaces/Head.ts";
 import { ServerHeadProvider } from "./providers/ServerHeadProvider.ts";

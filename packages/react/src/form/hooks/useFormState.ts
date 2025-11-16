@@ -1,5 +1,5 @@
 import { useAlepha } from "@alepha/react";
-import type { FormModel } from "@alepha/react/form";
+import type { FormModel } from "../services/FormModel.ts";
 import { type TObject, TypeBoxError } from "alepha";
 import { useEffect, useState } from "react";
 

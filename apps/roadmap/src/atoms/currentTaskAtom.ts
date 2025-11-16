@@ -1,4 +1,4 @@
-import { $atom, t } from "@alepha/core";
+import { $atom, t } from "alepha";
 import { tasks } from "../entities/tasks.ts";
 
 export const currentTaskAtom = $atom({

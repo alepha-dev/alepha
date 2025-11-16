@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { describe, it } from "vitest";
 import { $entity, $repository, DatabaseProvider, pg, sql } from "../../src/orm";
 import {

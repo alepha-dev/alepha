@@ -1,5 +1,5 @@
 import { useClient } from "@alepha/react";
-import { Localize, useI18n } from "@alepha/react-i18n";
+import { Localize, useI18n } from "@alepha/react/i18n";
 import { useState } from "react";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import type { TaskEntity } from "../../api/entities/tasks.ts";

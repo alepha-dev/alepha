@@ -1,4 +1,4 @@
-import type { TObject } from "@alepha/core";
+import type { TObject } from "alepha";
 import { parseQueryString } from "@alepha/orm";
 import { useEvents } from "@alepha/react";
 import {

@@ -1,9 +1,9 @@
-import { Alepha } from "@alepha/core";
 import { $page } from "@alepha/react";
+import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AlephaReactHead } from "../src/index.browser.ts";
-import type { Head } from "../src/interfaces/Head.ts";
-import { BrowserHeadProvider } from "../src/providers/BrowserHeadProvider.ts";
+import { AlephaReactHead } from "../../src/head/index.browser.ts";
+import type { Head } from "../../src/head/interfaces/Head.ts";
+import { BrowserHeadProvider } from "../../src/head/providers/BrowserHeadProvider.ts";
 
 describe("BrowserHeadProvider", () => {
   let alepha: Alepha;

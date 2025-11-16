@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {

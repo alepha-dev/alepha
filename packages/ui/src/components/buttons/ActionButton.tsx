@@ -6,7 +6,7 @@ import {
   useActive,
   useRouter,
 } from "@alepha/react";
-import { type FormModel, useFormState } from "@alepha/react-form";
+import { type FormModel, useFormState } from "@alepha/react/form";
 import {
   Button,
   type ButtonProps,

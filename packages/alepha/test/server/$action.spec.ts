@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { describe, test } from "vitest";
 import { $action } from "../../src/server";

@@ -1,4 +1,4 @@
-import { $module } from "@alepha/core";
+import { $module } from "alepha";
 import { DevToolsProvider } from "./DevToolsProvider.ts";
 import { DevToolsDatabaseProvider } from "./providers/DevToolsDatabaseProvider.ts";
 import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";

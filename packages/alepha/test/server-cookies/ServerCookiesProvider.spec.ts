@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, test } from "vitest";
 import { $cookie, AlephaServerCookies } from "../../src/server-cookies";

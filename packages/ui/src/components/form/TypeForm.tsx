@@ -1,4 +1,4 @@
-import type { TObject } from "@alepha/core";
+import type { TObject } from "alepha";
 import type { FormModel } from "@alepha/react-form";
 import { Flex, Grid } from "@mantine/core";
 import type { ReactNode } from "react";

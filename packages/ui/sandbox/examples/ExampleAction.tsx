@@ -1,4 +1,4 @@
-import { t } from "@alepha/core";
+import { t } from "alepha";
 import { useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react-form";
 import {

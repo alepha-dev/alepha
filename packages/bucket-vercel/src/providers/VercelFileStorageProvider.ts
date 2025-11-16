@@ -1,12 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 import {
-  $bucket,
-  FileMetadataService,
-  FileNotFoundError,
-  type FileStorageProvider,
-} from "@alepha/bucket";
-import {
   $env,
   $hook,
   $inject,
@@ -15,10 +9,16 @@ import {
   type FileLike,
   type Static,
   t,
-} from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
-import { FileSystemProvider } from "@alepha/file";
-import { $logger } from "@alepha/logger";
+} from "alepha";
+import {
+  $bucket,
+  FileMetadataService,
+  FileNotFoundError,
+  type FileStorageProvider,
+} from "alepha/bucket";
+import { DateTimeProvider } from "alepha/datetime";
+import { FileSystemProvider } from "alepha/file";
+import { $logger } from "alepha/logger";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
 const envSchema = t.object({
@@ -27,7 +27,7 @@ const envSchema = t.object({
   }),
 });
 
-declare module "@alepha/core" {
+declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, expect, test } from "vitest";
 import { AlephaServerMultipart } from "../../src/server-multipart";

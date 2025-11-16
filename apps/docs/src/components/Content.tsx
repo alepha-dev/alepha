@@ -1,5 +1,5 @@
 import { useActive, useRouter } from "@alepha/react";
-import { ActionButton } from "@alepha/ui";
+import { ActionButton } from "alepha/ui";
 import type { ButtonProps } from "@mantine/core";
 import {
   Divider,

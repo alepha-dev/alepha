@@ -1,7 +1,7 @@
-import { Alepha } from "@alepha/core";
 import { $page } from "@alepha/react";
+import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-import { $head, AlephaReactHead } from "../src";
+import { $head, AlephaReactHead } from "../../src/head";
 
 class App {
   head = $head({

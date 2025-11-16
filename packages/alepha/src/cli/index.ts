@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-import "tsx";
 import { $module } from "alepha";
 import { BiomeCommands } from "./commands/BiomeCommands.ts";
 import { CoreCommands } from "./commands/CoreCommands.ts";

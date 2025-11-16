@@ -1,4 +1,4 @@
-import { run } from "@alepha/core";
+import { run } from "alepha";
 import { AppRouter } from "./AppRouter.tsx";
 
 run(AppRouter);

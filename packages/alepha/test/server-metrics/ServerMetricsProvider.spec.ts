@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { AlephaServerMetrics } from "../../src/server-metrics";

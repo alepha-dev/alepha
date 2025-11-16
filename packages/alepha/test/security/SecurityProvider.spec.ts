@@ -1,4 +1,4 @@
-import { Alepha, ContainerLockedError } from "alepha/core";
+import { Alepha, ContainerLockedError } from "alepha";
 import { describe, expect, it } from "vitest";
 import {
   InvalidPermissionError,

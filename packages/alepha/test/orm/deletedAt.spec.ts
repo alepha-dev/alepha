@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
 import { $entity, $repository, DbEntityNotFoundError, pg } from "../../src/orm";

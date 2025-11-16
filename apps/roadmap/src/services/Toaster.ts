@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "@alepha/core";
+import { $hook, $inject, Alepha } from "alepha";
 import { notifications } from "@mantine/notifications";
 
 export class Toaster {

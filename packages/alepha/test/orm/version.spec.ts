@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha/core";
+import { $inject, Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 import {

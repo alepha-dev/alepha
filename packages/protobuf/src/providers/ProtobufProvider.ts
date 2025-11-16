@@ -1,4 +1,4 @@
-import { $inject, Alepha, type TObject, type TSchema, t } from "@alepha/core";
+import { $inject, Alepha, type TObject, type TSchema, t } from "alepha";
 import type { Type } from "protobufjs";
 import protobufjs from "protobufjs";
 

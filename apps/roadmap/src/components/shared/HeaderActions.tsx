@@ -1,6 +1,6 @@
 import { useRouter } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
-import { useI18n } from "@alepha/react-i18n";
+import { useAuth } from "@alepha/react/auth";
+import { useI18n } from "@alepha/react/i18n";
 import { ActionIcon, Flex, Menu, useMantineColorScheme } from "@mantine/core";
 import {
   IconLogout,

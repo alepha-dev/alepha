@@ -74,7 +74,7 @@ function main() {
 
   const pkg = readFileSync(join(__dirname, "../package.json"), "utf-8");
   const { dependencies } = JSON.parse(pkg);
-  const version = dependencies["@alepha/core"];
+  const version = dependencies["alepha"];
 
   // Concatenate all markdown content
   let concatenatedContent = `# Alepha Framework Documentation\n\nThis file contains all documentation for the Alepha framework, concatenated for LLM context.\n\nLatest version: ${version}\nGenerated on: ${new Date().toISOString()}\n\n---\n`;

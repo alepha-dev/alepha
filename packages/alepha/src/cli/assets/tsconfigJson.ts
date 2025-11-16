@@ -1,18 +1,5 @@
 export const tsconfigJson = `
 {
-  "compilerOptions": {
-    "module": "nodenext",
-    "target": "esnext",
-    "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true
-  },
-  "exclude": ["node_modules", "dist"]
+  "extends": "alepha/tsconfig"
 }
 `.trim();

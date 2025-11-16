@@ -1,10 +1,10 @@
-import { Alepha } from "@alepha/core";
-import { AlephaDateTime } from "@alepha/datetime";
-import { dom } from "@alepha/testing";
+import { renderHook } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaDateTime } from "alepha/datetime";
 import type { ReactNode } from "react";
 import { describe, test, vi } from "vitest";
-import { AlephaContext } from "../src/contexts/AlephaContext.ts";
-import { useAction } from "../src/hooks/useAction.ts";
+import { AlephaContext } from "../../src/core/contexts/AlephaContext.ts";
+import { useAction } from "../../src/core/hooks/useAction.ts";
 
 describe("useAction", () => {
   test("should handle successful action", async ({ expect }) => {
@@ -19,7 +19,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       {
         wrapper,
@@ -69,7 +69,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       {
         wrapper,
@@ -95,7 +95,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       {
         wrapper,
@@ -129,7 +129,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       {
         wrapper,
@@ -163,7 +163,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction, onError }, []),
       { wrapper },
     );
@@ -185,7 +185,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction, onSuccess }, []),
       { wrapper },
     );
@@ -212,7 +212,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction, id: "test-action" }, []),
       { wrapper },
     );
@@ -239,7 +239,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       { wrapper },
     );
@@ -267,7 +267,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction, debounce: 50 }, []),
       { wrapper },
     );
@@ -297,7 +297,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction, debounce: 50 }, []),
       { wrapper },
     );
@@ -334,7 +334,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       { wrapper },
     );
@@ -361,7 +361,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       { wrapper },
     );
@@ -390,7 +390,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction, debounce: 100 }, []),
       { wrapper },
     );
@@ -425,7 +425,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { result } = dom.renderHook(
+    const { result } = renderHook(
       () => useAction({ handler: mockAction }, []),
       { wrapper },
     );
@@ -447,12 +447,9 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    dom.renderHook(
-      () => useAction({ handler: mockAction, runOnInit: true }, []),
-      {
-        wrapper,
-      },
-    );
+    renderHook(() => useAction({ handler: mockAction, runOnInit: true }, []), {
+      wrapper,
+    });
 
     // Wait a tick for the effect to run
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -473,7 +470,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    dom.renderHook(() => useAction({ handler: mockAction }, []), {
+    renderHook(() => useAction({ handler: mockAction }, []), {
       wrapper,
     });
 
@@ -496,7 +493,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { unmount } = dom.renderHook(
+    const { unmount } = renderHook(
       () => useAction({ handler: mockAction, runEvery: 60 }, []),
       { wrapper },
     );
@@ -524,7 +521,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { unmount } = dom.renderHook(
+    const { unmount } = renderHook(
       () =>
         useAction({ handler: mockAction, runEvery: [50, "milliseconds"] }, []),
       { wrapper },
@@ -551,7 +548,7 @@ describe("useAction", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    const { unmount } = dom.renderHook(
+    const { unmount } = renderHook(
       () => useAction({ handler: mockAction, runEvery: 50 }, []),
       { wrapper },
     );

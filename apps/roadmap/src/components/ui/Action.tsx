@@ -5,7 +5,7 @@ import {
   useAlepha,
   useRouter,
 } from "@alepha/react";
-import { type FormModel, useFormState } from "@alepha/react-form";
+import { type FormModel, useFormState } from "@alepha/react/form";
 import { Button, type ButtonProps, Flex } from "@mantine/core";
 import { type ReactNode, useState } from "react";
 

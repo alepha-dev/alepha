@@ -1,5 +1,5 @@
-import { ActionButton, DarkModeButton, OmnibarButton } from "@alepha/ui";
-import BurgerButton from "@alepha/ui/src/components/buttons/BurgerButton";
+import { ActionButton, DarkModeButton, OmnibarButton } from "alepha/ui";
+import BurgerButton from "alepha/ui/src/components/buttons/BurgerButton";
 import { Flex, Text } from "@mantine/core";
 import { IconBrandGithub } from "@tabler/icons-react";
 

@@ -3,7 +3,7 @@
 	"compilerOptions": {
 		"paths": {
 			"@alepha/react": ["./src/core/*"],
-			"@alepha/react/*": ["./src/*"],
+			"@alepha/react/*": ["./src/*"]
 		}
 	}
 }

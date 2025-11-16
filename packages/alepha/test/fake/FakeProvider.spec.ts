@@ -1,4 +1,4 @@
-import { t } from "alepha/core";
+import { t } from "alepha";
 import { describe, test } from "vitest";
 import { FakeProvider } from "../../src/fake/providers/FakeProvider.ts";
 

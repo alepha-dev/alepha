@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { test } from "vitest";
 import { $channel } from "../../src/websocket/descriptors/$channel.ts";
 

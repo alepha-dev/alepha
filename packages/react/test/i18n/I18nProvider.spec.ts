@@ -1,8 +1,8 @@
-import { Alepha } from "@alepha/core";
+import { Alepha } from "alepha";
 import { describe, test } from "vitest";
-import { $dictionary } from "../src/descriptors/$dictionary.ts";
-import { AlephaReactI18n } from "../src/index.ts";
-import { I18nProvider } from "../src/providers/I18nProvider.ts";
+import { $dictionary } from "../../src/i18n/descriptors/$dictionary.ts";
+import { AlephaReactI18n } from "../../src/i18n/index.ts";
+import { I18nProvider } from "../../src/i18n/providers/I18nProvider.ts";
 
 describe("I18nProvider", () => {
   test("should register dictionaries on initialization", async ({ expect }) => {

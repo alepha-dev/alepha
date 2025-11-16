@@ -1,6 +1,6 @@
-import { $inject, AlephaError, t } from "@alepha/core";
-import { CryptoProvider } from "@alepha/security";
-import { $action } from "@alepha/server";
+import { $inject, AlephaError, t } from "alepha";
+import { CryptoProvider } from "alepha/security";
+import { $action } from "alepha/server";
 import { Db } from "../providers/Db.ts";
 
 export class IdentityApi {

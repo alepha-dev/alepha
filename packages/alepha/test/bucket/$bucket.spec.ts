@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { describe, test } from "vitest";
 import {
   $bucket,

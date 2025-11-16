@@ -1,8 +1,8 @@
-import { t } from "@alepha/core";
-import { $logger } from "@alepha/logger";
-import { $entity, $repository, pg } from "@alepha/orm";
-import { $action } from "@alepha/server";
-import { $swagger } from "@alepha/server-swagger";
+import { t } from "alepha";
+import { $logger } from "alepha/logger";
+import { $entity, $repository, pg } from "alepha/orm";
+import { $action } from "alepha/server";
+import { $swagger } from "alepha/server/swagger";
 
 const organizations = $entity({
   name: "organizations",

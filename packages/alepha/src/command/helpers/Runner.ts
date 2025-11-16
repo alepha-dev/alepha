@@ -161,10 +161,11 @@ export class Runner {
 
   protected async executeTask(task: Task): Promise<string> {
     const now = Date.now();
+    const taskId = task.name; // Use task name as unique ID
 
     // Setup dynamic logger
     if (this.useDynamicLogger) {
-      this.prettyPrint.startSpinner(task.name);
+      this.prettyPrint.startSpinner(taskId, task.name);
     } else {
       this.log.info(`Starting '${task.name}' ...`);
     }
@@ -176,7 +177,7 @@ export class Runner {
     } catch (error) {
       // Clear spinner and show error
       if (this.useDynamicLogger) {
-        this.prettyPrint.error(task.name);
+        this.prettyPrint.error(taskId, task.name);
       }
       if (error instanceof Error && "stdout" in error) {
         this.log.info(`\n\n${error.stdout}`);
@@ -190,7 +191,7 @@ export class Runner {
 
     // Clear spinner and show completion
     if (this.useDynamicLogger) {
-      this.prettyPrint.success(task.name, `${duration}s`);
+      this.prettyPrint.success(taskId, task.name, `${duration}s`);
     } else {
       this.log.info(`Finished '${task.name}' after ${duration}s`);
     }

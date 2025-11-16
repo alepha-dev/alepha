@@ -1,8 +1,8 @@
 import { glob, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path, { basename, join } from "node:path";
-import { $command } from "@alepha/command";
-import { run } from "@alepha/core";
-import { $logger } from "@alepha/logger";
+import { $command } from "alepha/command";
+import { run } from "alepha";
+import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
 import { markedHighlight } from "marked-highlight";

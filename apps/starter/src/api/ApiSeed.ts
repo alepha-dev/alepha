@@ -1,5 +1,5 @@
-import { $hook } from "@alepha/core";
-import { $repository } from "@alepha/orm";
+import { $hook } from "alepha";
+import { $repository } from "alepha/orm";
 import { tasks } from "./entities/tasks.ts";
 
 export class ApiSeed {

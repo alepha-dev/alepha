@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $repository } from "../../src/orm";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";

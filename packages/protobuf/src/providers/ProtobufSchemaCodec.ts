@@ -5,7 +5,7 @@ import {
   type Static,
   type TSchema,
   t,
-} from "@alepha/core";
+} from "alepha";
 import "@alepha/datetime";
 import { ProtobufProvider } from "./ProtobufProvider.ts";
 

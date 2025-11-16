@@ -1,81 +1,89 @@
 {
-	"name": "@alepha/react",
-	"description": "React components and hooks for building Alepha applications.",
-	"version": "0.11.11",
-	"type": "module",
-	"engines": {
-		"node": ">=22.0.0"
-	},
-	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"files": [
-		"dist",
-		"src",
-		"assets"
-	],
-	"bin": "./src/index.ts",
-	"devDependencies": {
-		"@types/react": "^19.2.5",
-		"alepha": "0.11.11",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0"
-	},
-	"peerDependencies": {
-		"alepha": "0.11.11",
-		"react": "^19.2.0"
-	},
-	"scripts": {
-		"lint": "biome check --fix",
-		"build": "node scripts/build.ts",
-		"check": "tsc --noEmit"
-	},
-	"homepage": "https://github.com/feunard/alepha",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/feunard/alepha.git"
-	},
-	"keywords": [
-		"alepha",
-		"aleph",
-		"framework",
-		"serverless",
-		"react",
-		"api"
-	],
-	"exports": {
-		".": {
-			"import": "./src/core/index.ts",
-			"require": "./src/core/index.ts",
-			"types": "./src/core/index.ts",
-			"browser": "./src/core/index.browser.ts"
-		},
-		"./auth": {
-			"import": "./src/react-auth/index.ts",
-			"require": "./src/react-auth/index.ts",
-			"types": "./src/react-auth/index.ts",
-			"browser": "./src/react-auth/index.browser.ts"
-		},
-		"./form": {
-			"import": "./src/react-form/index.ts",
-			"require": "./src/react-form/index.ts",
-			"types": "./src/react-form/index.ts"
-		},
-		"./head": {
-			"import": "./src/react-head/index.ts",
-			"require": "./src/react-head/index.ts",
-			"types": "./src/react-head/index.ts",
-			"browser": "./src/react-head/index.browser.ts"
-		},
-		"./i18n": {
-			"import": "./src/react-i18n/index.ts",
-			"require": "./src/react-i18n/index.ts",
-			"types": "./src/react-i18n/index.ts"
-		},
-		"./websocket": {
-			"import": "./src/react-websocket/index.ts",
-			"require": "./src/react-websocket/index.ts",
-			"types": "./src/react-websocket/index.ts"
-		}
-	}
+  "name": "@alepha/react",
+  "description": "React components and hooks for building Alepha applications.",
+  "version": "0.11.11",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src",
+    "assets"
+  ],
+  "bin": "./src/index.ts",
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.5",
+    "alepha": "0.11.11",
+    "jsdom": "^27.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "vitest": "^4.0.9"
+  },
+  "peerDependencies": {
+    "alepha": "0.11.11",
+    "react": "^19.2.0"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "check": "alepha typecheck",
+    "test": "vitest run",
+    "build": "node scripts/build.ts"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "aleph",
+    "framework",
+    "react",
+    "ssr",
+    "form"
+  ],
+  "exports": {
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "browser": "./src/auth/index.browser.ts",
+      "import": "./src/auth/index.ts",
+      "require": "./src/auth/index.ts"
+    },
+    ".": {
+      "types": "./src/core/index.ts",
+      "browser": "./src/core/index.browser.ts",
+      "import": "./src/core/index.ts",
+      "require": "./src/core/index.ts"
+    },
+    "./form": {
+      "types": "./src/form/index.ts",
+      "import": "./src/form/index.ts",
+      "require": "./src/form/index.ts"
+    },
+    "./head": {
+      "types": "./src/head/index.ts",
+      "browser": "./src/head/index.browser.ts",
+      "import": "./src/head/index.ts",
+      "require": "./src/head/index.ts"
+    },
+    "./i18n": {
+      "types": "./src/i18n/index.ts",
+      "import": "./src/i18n/index.ts",
+      "require": "./src/i18n/index.ts"
+    },
+    "./websocket": {
+      "types": "./src/websocket/index.ts",
+      "import": "./src/websocket/index.ts",
+      "require": "./src/websocket/index.ts"
+    }
+  }
 }

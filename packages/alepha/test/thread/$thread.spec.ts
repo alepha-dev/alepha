@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { $thread, AlephaThread, ThreadDescriptor } from "../../src/thread";
 

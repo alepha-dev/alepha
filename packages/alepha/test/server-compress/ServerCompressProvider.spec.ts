@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { AlephaServerCompress } from "../../src/server-compress";

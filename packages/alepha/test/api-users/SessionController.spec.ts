@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbEntityNotFoundError } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";

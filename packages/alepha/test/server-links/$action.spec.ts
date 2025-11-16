@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
 import { afterEach, describe, expect, it } from "vitest";
 import {

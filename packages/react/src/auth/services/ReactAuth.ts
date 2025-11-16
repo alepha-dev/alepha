@@ -1,6 +1,6 @@
+import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import { ReactBrowserProvider, Redirection } from "@alepha/react";
 import type { UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";

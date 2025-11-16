@@ -1,18 +1,18 @@
 import { randomUUID } from "node:crypto";
-import { Alepha } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
-import { $realm } from "@alepha/security";
-import { HttpClient, ServerProvider } from "@alepha/server";
-import { $client } from "@alepha/server-links";
-import { AlephaServerSecurity } from "@alepha/server-security";
+import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $realm } from "alepha/security";
+import { HttpClient, ServerProvider } from "alepha/server";
+import { $client } from "alepha/server/links";
+import { AlephaServerSecurity } from "alepha/server/security";
 import type { UserInfoResponse } from "openid-client";
 import { describe, test } from "vitest";
-import { $auth, ReactAuth, type ReactAuthProvider } from "../src";
+import { $auth, ReactAuth, type ReactAuthProvider } from "../../src/auth";
 import {
   type TokenResponse,
   tokenResponseSchema,
-} from "../src/schemas/tokenResponseSchema.ts";
-import { tokensSchema } from "../src/schemas/tokensSchema.ts";
+} from "../../src/auth/schemas/tokenResponseSchema.ts";
+import { tokensSchema } from "../../src/auth/schemas/tokensSchema.ts";
 
 describe("$auth", () => {
   describe("$auth", () => {

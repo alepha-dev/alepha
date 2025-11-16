@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import {
-  $bucket,
-  FileNotFoundError,
-  type FileStorageProvider,
-} from "@alepha/bucket";
+  BlobServiceClient,
+  type BlockBlobClient,
+  type ContainerClient,
+  type StoragePipelineOptions,
+} from "@azure/storage-blob";
 import {
   $env,
   $hook,
@@ -13,22 +14,21 @@ import {
   type FileLike,
   type Static,
   t,
-} from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
-import { FileSystemProvider } from "@alepha/file";
-import { $logger } from "@alepha/logger";
+} from "alepha";
 import {
-  BlobServiceClient,
-  type BlockBlobClient,
-  type ContainerClient,
-  type StoragePipelineOptions,
-} from "@azure/storage-blob";
+  $bucket,
+  FileNotFoundError,
+  type FileStorageProvider,
+} from "alepha/bucket";
+import { DateTimeProvider } from "alepha/datetime";
+import { FileSystemProvider } from "alepha/file";
+import { $logger } from "alepha/logger";
 
 const envSchema = t.object({
   AZ_STORAGE_CONNECTION_STRING: t.string(),
 });
 
-declare module "@alepha/core" {
+declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 

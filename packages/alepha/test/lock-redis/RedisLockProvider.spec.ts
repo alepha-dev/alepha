@@ -1,4 +1,4 @@
-import { RedisTopicProvider } from "alepha/topic-redis";
+import { RedisTopicProvider } from "alepha/topic/redis";
 import { describe, test } from "vitest";
 import { RedisLockProvider } from "../../src/lock-redis";
 import {

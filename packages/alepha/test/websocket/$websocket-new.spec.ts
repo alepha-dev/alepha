@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha/core";
+import { Alepha, t } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { test } from "vitest";
 import WebSocket from "ws";

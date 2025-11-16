@@ -1,4 +1,4 @@
-import { Alepha, run } from "@alepha/core";
+import { Alepha, run } from "alepha";
 import { App } from "./app/App.ts";
 
 const alepha = Alepha.create();

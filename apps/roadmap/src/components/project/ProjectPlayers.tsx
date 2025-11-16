@@ -1,6 +1,6 @@
 import { useClient, useInject } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
-import { useI18n } from "@alepha/react-i18n";
+import { useAuth } from "@alepha/react/auth";
+import { useI18n } from "@alepha/react/i18n";
 import {
   Avatar,
   Badge,

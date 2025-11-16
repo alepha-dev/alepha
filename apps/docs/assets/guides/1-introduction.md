@@ -16,7 +16,7 @@ targeting **Node.js 22+** to leverage the latest features of the runtime.
 
 While much of Alepha is a fresh rewrite, it also stands on the shoulders of giants.
 
-Because rewriting an ORM is a fool's errand. `@alepha/orm` is based on [Drizzle](https://orm.drizzle.team/), a modern TypeScript-first ORM with a powerful query builder and migration system.
+Because rewriting an ORM is a fool's errand. `alepha/orm` is based on [Drizzle](https://orm.drizzle.team/), a modern TypeScript-first ORM with a powerful query builder and migration system.
 
 Building and bundling is handled by [Vite](https://vitejs.dev/), the lightning-fast build tool that has become the de facto standard for modern web development.
 

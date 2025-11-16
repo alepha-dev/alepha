@@ -1,6 +1,8 @@
-import { $batch } from "@alepha/batch";
-import { $hook, run, t } from "@alepha/core";
-import { $entity, $repository, pg } from "@alepha/orm";
+import { $hook, run, t } from "alepha";
+import { $batch } from "alepha/batch";
+import { $entity, $repository, pg } from "alepha/orm";
+import { $action } from "alepha/server";
+import { $swagger } from "alepha/server/swagger";
 
 const tasks = $entity({
   name: "tasks",
@@ -11,6 +13,7 @@ const tasks = $entity({
 });
 
 class App {
+  docs = $swagger();
   tasks = $repository(tasks);
 
   batch = $batch({
@@ -26,11 +29,22 @@ class App {
     maxDuration: [10, "seconds"],
   });
 
+  hello = $action({
+    method: "GET",
+    path: "/hello",
+    schema: {
+      response: t.string(),
+    },
+    handler: async () => {
+      return "Hello, World!";
+    },
+  });
+
   ready = $hook({
     on: "ready",
     handler: async () => {
       for (let i = 0; i < 12; i++) {
-        this.batch.push({ title: `Initial Task ${i + 1}` });
+        await this.batch.push({ title: `Initial Task ${i + 1}` });
         console.log(`Pushed Initial Task ${i + 1}`);
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -44,6 +58,6 @@ class App {
 
 run(App, {
   env: {
-    DATABASE_URL: "sqlite://:memory:",
+    DATABASE_URL: "sqlite://node_modules/.alepha/db.sqlite",
   },
 });

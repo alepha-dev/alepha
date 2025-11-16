@@ -1,9 +1,9 @@
-import { Alepha, t } from "@alepha/core";
+import { Alepha, t } from "alepha";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
-import type { ReactRouterState } from "../src";
-import { $page, PageDescriptor, Redirection } from "../src";
-import NestedView from "../src/components/NestedView.tsx";
+import type { ReactRouterState } from "../../src/core";
+import { $page, PageDescriptor, Redirection } from "../../src/core";
+import NestedView from "../../src/core/components/NestedView.tsx";
 
 describe("$page descriptor tests", () => {
   let alepha: Alepha;
@@ -16,7 +16,6 @@ describe("$page descriptor tests", () => {
     class App {
       basic = $page({
         name: "Basic Page",
-        description: "A basic test page",
         path: "/basic",
         component: () => "Basic content",
       });
@@ -27,7 +26,6 @@ describe("$page descriptor tests", () => {
 
     expect(app.basic).toBeInstanceOf(PageDescriptor);
     expect(app.basic.name).toBe("Basic Page");
-    expect(app.basic.options.description).toBe("A basic test page");
     expect(app.basic.options.path).toBe("/basic");
 
     const rendered = await app.basic.render();

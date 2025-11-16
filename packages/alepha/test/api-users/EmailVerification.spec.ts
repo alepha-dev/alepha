@@ -1,5 +1,5 @@
-import { AlephaApiVerification } from "alepha/api-verifications";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
+import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity } from "alepha/security";

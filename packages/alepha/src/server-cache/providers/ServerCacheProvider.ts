@@ -10,6 +10,8 @@ import {
   type ServerRoute,
 } from "alepha/server";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 declare module "alepha/server" {
   interface ServerRoute {
     /**
@@ -32,6 +34,8 @@ ActionDescriptor.prototype.invalidate = async function (
 ) {
   await this.alepha.inject(ServerCacheProvider).invalidate(this.route);
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerCacheProvider {
   protected readonly log = $logger();

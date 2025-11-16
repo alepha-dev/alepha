@@ -1,4 +1,4 @@
-import { $inject, Alepha, type Service, t } from "alepha/core";
+import { $inject, Alepha, type Service, t } from "alepha";
 import { expect } from "vitest";
 import {
   $subscriber,

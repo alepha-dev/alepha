@@ -35,8 +35,8 @@ Notice that we are using standard TypeScript classes and methods—**no decorato
 
 ```typescript
 // src/main.ts
-import { run } from "@alepha/core";
-import { $route } from "@alepha/server";
+import { run } from "alepha";
+import { $route } from "alepha/server";
 
 class Server {
   // the $route descriptor declares a new HTTP endpoint

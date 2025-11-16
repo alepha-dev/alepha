@@ -97,6 +97,7 @@ const ErrorViewer = ({ error, alepha }: ErrorViewerProps) => {
           <div style={styles.sectionHeader}>
             <span>Stack trace</span>
             <button
+              type="button"
               onClick={() => copyToClipboard(error.stack!)}
               style={styles.copyButton}
             >
@@ -108,7 +109,7 @@ const ErrorViewer = ({ error, alepha }: ErrorViewerProps) => {
               <div key={i}>{line}</div>
             ))}
             {!expanded && hiddenLineCount > 0 && (
-              <div style={styles.expandLine} onClick={() => setExpanded(true)}>
+              <div  style={styles.expandLine} onClick={() => setExpanded(true)}>
                 + {hiddenLineCount} more lines...
               </div>
             )}

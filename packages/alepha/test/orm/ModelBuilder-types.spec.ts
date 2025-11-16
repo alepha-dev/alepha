@@ -1,4 +1,4 @@
-import { t } from "alepha/core";
+import { t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity } from "../../src/orm/descriptors/$entity.ts";
 import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";

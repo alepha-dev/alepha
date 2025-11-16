@@ -1,4 +1,4 @@
-import { Alepha, run } from "@alepha/core";
+import { Alepha, run } from "alepha";
 import { $page } from "@alepha/react";
 import { $dictionary } from "@alepha/react-i18n";
 import { Icon3dCubeSphere } from "@tabler/icons-react";

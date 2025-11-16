@@ -1,4 +1,4 @@
-import { Alepha } from "@alepha/core";
+import { Alepha } from "alepha";
 import { del } from "@vercel/blob";
 import { afterAll, afterEach, beforeEach, describe, test, vi } from "vitest";
 import {

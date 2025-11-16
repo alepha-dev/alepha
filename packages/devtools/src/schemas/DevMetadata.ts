@@ -1,4 +1,4 @@
-import { type Static, t } from "@alepha/core";
+import { type Static, t } from "alepha";
 import { devActionMetadataSchema } from "./DevActionMetadata.ts";
 import { devBucketMetadataSchema } from "./DevBucketMetadata.ts";
 import { devCacheMetadataSchema } from "./DevCacheMetadata.ts";

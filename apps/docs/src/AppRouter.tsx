@@ -1,6 +1,6 @@
-import { t } from "@alepha/core";
+import { t } from "alepha";
 import { $page, NotFound } from "@alepha/react";
-import { NotFoundError } from "@alepha/server";
+import { NotFoundError } from "alepha/server";
 import Content from "./components/Content.tsx";
 import Home from "./components/Home.tsx";
 import Layout from "./components/Layout.tsx";

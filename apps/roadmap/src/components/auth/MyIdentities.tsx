@@ -1,6 +1,6 @@
-import { t } from "@alepha/core";
+import { t } from "alepha";
 import { useClient } from "@alepha/react";
-import { useForm } from "@alepha/react-form";
+import { useForm } from "@alepha/react/form";
 import {
   Badge,
   Card,

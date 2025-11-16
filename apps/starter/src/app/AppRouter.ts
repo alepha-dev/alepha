@@ -1,5 +1,5 @@
 import { $page } from "@alepha/react";
-import { $client } from "@alepha/server-links";
+import { $client } from "alepha/server/links";
 import type { TaskController } from "../api/controllers/TaskController.ts";
 
 export class AppRouter {

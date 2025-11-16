@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { $realm } from "alepha/security";
 import { $action, $route, ForbiddenError, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";

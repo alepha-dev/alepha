@@ -1,6 +1,6 @@
 import { $bucket } from "@alepha/bucket";
 import { $cache } from "@alepha/cache";
-import { $inject, Alepha } from "@alepha/core";
+import { $inject, Alepha } from "alepha";
 import { $logger } from "@alepha/logger";
 import { $queue } from "@alepha/queue";
 import { $scheduler } from "@alepha/scheduler";

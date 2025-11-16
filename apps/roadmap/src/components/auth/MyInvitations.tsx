@@ -1,5 +1,5 @@
 import { useAlepha, useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import {
   Badge,
   Button,

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { $inject, Alepha, type Service } from "alepha/core";
+import { $inject, Alepha, type Service } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import {
   MemoryTopicProvider,

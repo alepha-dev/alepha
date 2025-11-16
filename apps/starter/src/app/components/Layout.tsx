@@ -1,5 +1,5 @@
 import { Link, NestedView, useActive, useRouter } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import type { ReactNode } from "react";
 import type { AppI18n } from "../AppI18n.ts";
 import type { AppRouter } from "../AppRouter.ts";

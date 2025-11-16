@@ -1,4 +1,4 @@
-import { t } from "alepha/core";
+import { t } from "alepha";
 import { FakeProvider } from "../../src/fake/providers/FakeProvider.ts";
 
 // Example showing how key names influence generated data

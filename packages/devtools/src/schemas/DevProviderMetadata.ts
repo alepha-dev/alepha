@@ -1,4 +1,4 @@
-import { type Static, t } from "@alepha/core";
+import { type Static, t } from "alepha";
 
 export const devProviderMetadataSchema = t.object({
   name: t.text(),

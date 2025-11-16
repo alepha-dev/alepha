@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha/core";
+import { $inject, Alepha, t } from "alepha";
 import { AlephaFake, FakeProvider } from "../../src/fake/index.ts";
 
 // Example showing how to use the AlephaFake module

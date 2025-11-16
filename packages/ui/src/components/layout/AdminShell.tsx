@@ -25,7 +25,7 @@ export interface AdminShellProps {
   children?: ReactNode;
 }
 
-declare module "@alepha/core" {
+declare module "alepha" {
   interface State {
     /**
      * Whether the sidebar is opened or closed.

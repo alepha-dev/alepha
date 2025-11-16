@@ -6,7 +6,7 @@ import {
   type Static,
   type TObject,
   t,
-} from "@alepha/core";
+} from "alepha";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { useInject } from "@alepha/react";
 import { type FormModel, useForm } from "@alepha/react-form";

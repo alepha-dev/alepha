@@ -1,4 +1,4 @@
-import { type TObject, TypeProvider, t } from "@alepha/core";
+import { type TObject, TypeProvider, t } from "alepha";
 import { useInject } from "@alepha/react";
 import { type FormModel, useForm, useFormState } from "@alepha/react-form";
 import { HttpClient } from "@alepha/server";

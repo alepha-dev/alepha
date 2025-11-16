@@ -1,4 +1,4 @@
-import { Alepha } from "alepha/core";
+import { Alepha } from "alepha";
 import { beforeEach, describe, test } from "vitest";
 import {
   AlephaBucket,
