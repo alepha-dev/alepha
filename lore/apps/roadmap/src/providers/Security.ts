@@ -1,10 +1,6 @@
+import { $auth, $authGithub, $authGoogle } from "@alepha/react/auth";
 import { $inject } from "alepha";
-import {
-  $authCredentials,
-  $authGithub,
-  $authGoogle,
-  $realmUsers,
-} from "alepha/api/users";
+import { $realmUsers, SessionService } from "alepha/api/users";
 import type { UserAccountToken } from "alepha/security";
 import type { Character } from "../entities/characters.ts";
 import type { Project } from "../entities/projects.ts";
@@ -13,11 +9,24 @@ import { Db } from "./Db.ts";
 export class Security {
   db = $inject(Db);
   realm = $realmUsers();
+  session = $inject(SessionService);
 
   // login providers
-  credentials = $authCredentials(this.realm);
-  google = $authGoogle(this.realm);
-  github = $authGithub(this.realm);
+  credentials = $auth({
+    realm: this.realm,
+    credentials: {
+      account: (creds) =>
+        this.session.login("credentials", creds.username, creds.password),
+    },
+  });
+
+  google = $authGoogle(this.realm, {
+    account: (user) => this.session.link("google", user),
+  });
+
+  github = $authGithub(this.realm, {
+    account: (user) => this.session.link("github", user),
+  });
 
   async checkOwnership(
     projectId: number,

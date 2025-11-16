@@ -2,7 +2,6 @@ import { $inject, t } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { sql } from "alepha/orm";
 import { $action } from "alepha/server";
-import { tasks } from "../entities/tasks.ts";
 import { Db } from "../providers/Db.ts";
 import { Security } from "../providers/Security";
 
@@ -70,7 +69,7 @@ export class ProjectStatsApi {
 					COUNT(DISTINCT c.user_id) as active_players,
 					COALESCE(SUM(c.xp), 0) as total_xp,
 					COALESCE(AVG(t.complexity::numeric), 0) as average_task_complexity
-				FROM ${tasks} t
+				FROM ${this.db.tasks.table} t
 				LEFT JOIN ${this.db.characters.table} c ON c.project_id = t.project_id
 				WHERE t.project_id = ${params.id}
 			`,
@@ -96,14 +95,14 @@ export class ProjectStatsApi {
       const priorityQuery = await this.db.query(
         sql`
 				SELECT
-					${tasks.cols.priority},
+					${this.db.tasks.table.priority},
 					COUNT(*) as count,
-					COUNT(CASE WHEN ${tasks.cols.completedAt} IS NOT NULL THEN 1 END) as completed
-				FROM ${tasks}
-				WHERE ${tasks.cols.projectId} = ${params.id} AND ${tasks.cols.deletedAt} IS NULL
-				GROUP BY ${tasks.cols.priority}
+					COUNT(CASE WHEN ${this.db.tasks.table.completedAt} IS NOT NULL THEN 1 END) as completed
+				FROM ${this.db.tasks.table}
+				WHERE ${this.db.tasks.table.projectId} = ${params.id} AND ${this.db.tasks.table.deletedAt} IS NULL
+				GROUP BY ${this.db.tasks.table.priority}
 				ORDER BY
-					CASE ${tasks.cols.priority}
+					CASE ${this.db.tasks.table.priority}
 						WHEN 'high' THEN 1
 						WHEN 'medium' THEN 2
 						WHEN 'low' THEN 3
@@ -127,19 +126,19 @@ export class ProjectStatsApi {
       const complexityQuery = await this.db.query(
         sql`
 				SELECT
-					${tasks.cols.complexity},
+					${this.db.tasks.table.complexity},
 					COUNT(*) as count,
 					AVG(
 						CASE
-							WHEN ${tasks.cols.priority} = 'high' THEN ${tasks.cols.complexity} * 150 + 300
-							WHEN ${tasks.cols.priority} = 'medium' THEN ${tasks.cols.complexity} * 150 + 180
-							ELSE ${tasks.cols.complexity} * 150 + 80
+							WHEN ${this.db.tasks.table.priority} = 'high' THEN ${this.db.tasks.table.complexity} * 150 + 300
+							WHEN ${this.db.tasks.table.priority} = 'medium' THEN ${this.db.tasks.table.complexity} * 150 + 180
+							ELSE ${this.db.tasks.table.complexity} * 150 + 80
 						END
 					) as average_xp
-				FROM ${tasks}
-				WHERE ${tasks.cols.projectId} = ${params.id} AND ${tasks.cols.deletedAt} IS NULL
-				GROUP BY ${tasks.cols.complexity}
-				ORDER BY ${tasks.cols.complexity}
+				FROM ${this.db.tasks.table}
+				WHERE ${this.db.tasks.table.projectId} = ${params.id} AND ${this.db.tasks.table.deletedAt} IS NULL
+				GROUP BY ${this.db.tasks.table.complexity}
+				ORDER BY ${this.db.tasks.table.complexity}
 			`,
         t.object({
           complexity: t.string(),
@@ -158,11 +157,11 @@ export class ProjectStatsApi {
       const zonesQuery = await this.db.query(
         sql`
 				SELECT
-					COALESCE(${tasks.cols.package}, 'Unassigned') as zone,
+					COALESCE(${this.db.tasks.table.package}, 'Unassigned') as zone,
 					COUNT(*) as total_tasks
-				FROM ${tasks}
-				WHERE ${tasks.cols.projectId} = ${params.id} AND ${tasks.cols.deletedAt} IS NULL
-				GROUP BY ${tasks.cols.package}
+				FROM ${this.db.tasks.table}
+				WHERE ${this.db.tasks.table.projectId} = ${params.id} AND ${this.db.tasks.table.deletedAt} IS NULL
+				GROUP BY ${this.db.tasks.table.package}
 				ORDER BY total_tasks DESC
 				LIMIT 6
 			`,
@@ -191,7 +190,7 @@ export class ProjectStatsApi {
 					ds.date,
 					COALESCE(COUNT(t.id), 0) as tasks_completed
 				FROM date_series ds
-				LEFT JOIN ${tasks} t ON DATE(t.completed_at) = ds.date
+				LEFT JOIN ${this.db.tasks.table} t ON DATE(t.completed_at) = ds.date
 					AND t.project_id = ${params.id}
 					AND t.completed_at IS NOT NULL
 				GROUP BY ds.date
@@ -212,10 +211,10 @@ export class ProjectStatsApi {
       const weeklyQuery = await this.db.query(
         sql`
 				SELECT COUNT(*) as completed
-				FROM ${tasks}
-				WHERE ${tasks.cols.projectId} = ${params.id}
-					AND ${tasks.cols.completedAt} IS NOT NULL
-					AND ${tasks.cols.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
+				FROM ${this.db.tasks.table}
+				WHERE ${this.db.tasks.table.projectId} = ${params.id}
+					AND ${this.db.tasks.table.completedAt} IS NOT NULL
+					AND ${this.db.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
 			`,
         t.object({
           completed: t.string(),
@@ -225,10 +224,10 @@ export class ProjectStatsApi {
       const monthlyQuery = await this.db.query(
         sql`
 				SELECT COUNT(*) as completed
-				FROM ${tasks}
-				WHERE ${tasks.cols.projectId} = ${params.id}
-					AND ${tasks.cols.completedAt} IS NOT NULL
-					AND ${tasks.cols.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
+				FROM ${this.db.tasks.table}
+				WHERE ${this.db.tasks.table.projectId} = ${params.id}
+					AND ${this.db.tasks.table.completedAt} IS NOT NULL
+					AND ${this.db.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
 			`,
         t.object({
           completed: t.string(),
