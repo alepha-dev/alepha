@@ -44,6 +44,10 @@ export class Runner {
   }
 
   protected get useDynamicLogger() {
+    if (this.alepha.isCI()) {
+      return false;
+    }
+
     return this.alepha.env.LOG_FORMAT === "raw";
   }
 
@@ -121,7 +125,12 @@ export class Runner {
 
   protected async exec(cmd: string): Promise<string> {
     return await new Promise<string>((resolve, reject) => {
-      exec(cmd, (err, stdout) => {
+      exec(cmd, {
+        env: {
+          ...process.env,
+          LOG_FORMAT: "text"
+        }
+      },(err, stdout) => {
         if (err) {
           err.stdout = stdout;
           reject(err);

@@ -365,6 +365,17 @@ export class Alepha {
   }
 
   /**
+   * True if the App is running in a Continuous Integration environment.
+   */
+  public isCI(): boolean {
+    if (!!this.env.GITHUB_ACTIONS) {
+      return true;
+    }
+
+    return !!this.env.CI;
+  }
+
+  /**
    * True if the App is running in a browser environment.
    */
   public isBrowser(): boolean {

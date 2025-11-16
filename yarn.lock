@@ -149,7 +149,6 @@ __metadata:
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     tsdown: "npm:^0.16.4"
-    vitest: "npm:^4.0.9"
   peerDependencies:
     react: "*"
     react-dom: "*"
