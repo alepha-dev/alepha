@@ -67,6 +67,7 @@ export class ProjectUtils {
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
     scripts: Record<string, string>;
+    type: "module";
   } {
     const dependencies: Record<string, string> = {
       alepha: `^${version}`,
@@ -81,6 +82,7 @@ export class ProjectUtils {
     }
 
     return {
+      type: "module",
       dependencies,
       devDependencies,
       scripts: {
@@ -118,9 +120,7 @@ export class ProjectUtils {
 
     const content = await readFile(packageJsonPath, "utf8");
     const packageJson = JSON.parse(content);
-    if (!packageJson.type || packageJson.type !== "module") {
-      packageJson.type = "module";
-    }
+
     const newPackageJson = this.generatePackageJsonContent(modes);
 
     packageJson.type = "module";

@@ -60,7 +60,7 @@ const FeatureGrid = () => (
           <Button
             size={"xl"}
             component={Link}
-            href={`/docs/alepha-${feature.slug}`}
+            href={`/docs/${feature.slug}`}
             flex={1}
             px={"xs"}
             variant={"subtle"}
