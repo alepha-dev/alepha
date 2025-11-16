@@ -1,6 +1,7 @@
 {
 	"private": true,
 	"type": "module",
+	"name": "docs",
 	"dependencies": {
 		"@alepha/react": "0.11.11",
 		"@mantine/core": "^8.3.7",
@@ -22,11 +23,12 @@
 		"vite-bundle-analyzer": "^1.2.3"
 	},
 	"scripts": {
+		"cli": "node scripts/docs-cli.ts",
 		"dev": "yarn copy && alepha dev",
-		"build": "alepha build",
-		"copy": "node scripts/codegen.ts",
+		"copy": "yarn cli readme && yarn cli docs",
 		"start": "node dist",
-		"codegen:llms": "node scripts/codegen-llms.ts",
-		"typecheck": "alepha typecheck"
+		"lint": "alepha lint",
+		"typecheck": "alepha typecheck",
+		"build": "alepha build"
 	}
 }

@@ -1,16 +1,14 @@
-# Alepha Bucket Azure
-
-Azure Blob Storage implementation for the bucket file storage.
+# @alepha/bucket-azure - Bucket Azure
 
 ## Installation
 
-This package is part of the Alepha framework and can be installed via the all-in-one package:
+This module is part of the Alepha framework:
 
 ```bash
-npm install alepha
+npm install @alepha/bucket-azure
 ```
 
-## Module
+## Overview
 
 Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.
 
@@ -20,7 +18,7 @@ Plugin for Alepha Bucket that provides Azure Blob Storage capabilities.
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](https://feunard.github.io/alepha/).
+For more details, see the [Providers documentation](/docs/providers).
 
 #### AzureFileStorageProvider
 

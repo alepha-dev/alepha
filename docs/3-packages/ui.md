@@ -1,14 +1,14 @@
-# Alepha Ui
+# @alepha/ui - Ui
 
 ## Installation
 
-This package is part of the Alepha framework and can be installed via the all-in-one package:
+This module is part of the Alepha framework:
 
 ```bash
-npm install alepha
+npm install @alepha/ui
 ```
 
-## Module
+## Overview
 
 Mantine
 

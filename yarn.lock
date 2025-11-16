@@ -6353,9 +6353,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"docs-535474@workspace:apps/docs":
+"docs@workspace:apps/docs":
   version: 0.0.0-use.local
-  resolution: "docs-535474@workspace:apps/docs"
+  resolution: "docs@workspace:apps/docs"
   dependencies:
     "@alepha/react": "npm:0.11.11"
     "@mantine/core": "npm:^8.3.7"

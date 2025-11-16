@@ -1,16 +1,14 @@
-# Alepha Devtools
-
-Developer tools for monitoring and debugging Alepha applications.
+# @alepha/devtools - Devtools
 
 ## Installation
 
-This package is part of the Alepha framework and can be installed via the all-in-one package:
+This module is part of the Alepha framework:
 
 ```bash
-npm install alepha
+npm install @alepha/devtools
 ```
 
-## Module
+## Overview
 
 Developer tools module for monitoring and debugging Alepha applications.
 

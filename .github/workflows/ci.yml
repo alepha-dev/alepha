@@ -59,6 +59,9 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      - name: Lint Project
+        run: yarn lint
+
       - name: TypeScript Check
         run: yarn typecheck
 
@@ -67,6 +70,9 @@ jobs:
 
       - name: Test Project
         run: yarn test --coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml
+
+      - name: Build Project
+        run: yarn build
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -108,7 +114,7 @@ jobs:
         run: yarn
 
       - name: Build Documentation
-        run: cd apps/docs && yarn build && node scripts/codegen-llms.ts
+        run: cd apps/docs && yarn build && yarn cli llms
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -126,7 +126,7 @@ const HeroSectionMessage = () => {
           radius="xl"
           leftSection={<IconPlayerPlay size={20} />}
           component={Link}
-          href="/docs/introduction"
+          href="/docs/guides-introduction"
         >
           Get Started
         </Button>
@@ -136,7 +136,7 @@ const HeroSectionMessage = () => {
           radius="xl"
           leftSection={<IconBook size={20} />}
           component={Link}
-          href="/docs/alepha-core"
+          href="/docs/packages-alepha-core"
         >
           Explore Packages
         </Button>

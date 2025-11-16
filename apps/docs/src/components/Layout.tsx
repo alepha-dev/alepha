@@ -4,17 +4,12 @@ import type { AdminShellProps } from "@alepha/ui";
 import {
   AdminShell,
   AlephaMantineProvider,
+  type SidebarMenuItem,
   type SidebarNode,
   ui,
 } from "@alepha/ui";
 import { Flex, Text } from "@mantine/core";
-import {
-  IconHeartHandshake,
-  IconMap2,
-  IconPackage,
-  IconRobot,
-} from "@tabler/icons-react";
-import { docs } from "../config/docs.ts";
+import { type DocNode, tree } from "../config/docs.ts";
 import Header from "./Header.tsx";
 
 const Layout = () => {
@@ -36,62 +31,36 @@ const LayoutContent = () => {
   const router = useRouter();
   const { l } = useI18n();
 
+  const convertTreeToSidebar = (nodes: DocNode[]): SidebarMenuItem[] => {
+    return nodes.map((node) => {
+      const sidebarNode: SidebarMenuItem = {
+        label: (
+          <Text
+            size={"sm"}
+            fw={node.children && node.children.length > 0 ? "bold" : "normal"}
+          >
+            {node.name}
+          </Text>
+        ),
+      };
+
+      if (node.href) {
+        sidebarNode.href = node.href;
+      }
+
+      if (node.children && node.children.length > 0) {
+        sidebarNode.children = convertTreeToSidebar(node.children);
+      }
+
+      return sidebarNode;
+    });
+  };
+
   const sidebarMenu: SidebarNode[] = [
-    {
-      label: "Guides",
-      icon: <IconMap2 />,
-      children: docs
-        .filter((it) => it.category === "guides")
-        .map((doc) => ({
-          label: (
-            <Text size={"sm"}>
-              {doc.name
-                .replace("@", "")
-                .replaceAll("-", "/")
-                .replace("Alepha", "")}
-            </Text>
-          ),
-          href: `/docs/${doc.slug}`,
-        })),
-    },
-    {
-      label: "Core Concepts",
-      icon: <IconHeartHandshake />,
-      children: docs
-        .filter((it) => it.category === "concepts")
-        .map((doc) => ({
-          label: (
-            <Text size={"sm"}>
-              {doc.name
-                .replace("@", "")
-                .replaceAll("-", "/")
-                .replace("Alepha", "")}
-            </Text>
-          ),
-          href: `/docs/${doc.slug}`,
-        })),
-    },
-    {
-      label: "Packages",
-      icon: <IconPackage />,
-      children: docs
-        .filter((it) => it.category === "packages")
-        .map((doc) => ({
-          label: (
-            <Text size={"sm"} fw={"light"}>
-              {doc.name
-                .replace("@", "")
-                .replaceAll("-", "/")
-                .replace("Alepha", "")}
-            </Text>
-          ),
-          href: `/docs/${doc.slug}`,
-        })),
-    },
+    ...convertTreeToSidebar(tree),
     {
       label: "LLM",
       position: "bottom",
-      icon: <IconRobot />,
       target: "_self",
       href: router.base("/llms.txt"),
     },
