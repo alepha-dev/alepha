@@ -154,7 +154,18 @@ export class CoreCommands {
         await this.utils.ensurePackageJson(root, flags);
       });
 
-      if (flags.yarn) {
+      if (flags.react) {
+        // if index.html does not exist, create it
+        await run("Ensuring index.html file", async () => {
+          await this.utils.ensureIndexHtml(root);
+        });
+      }
+
+      // TODO: check if all alepha dependencies are same version
+
+      const guessedPm = await this.utils.getPackageManager(root);
+
+      if (flags.yarn || guessedPm === "yarn") {
         await this.utils.ensureYarn(root);
         await run("yarn install", {
           alias: "Installing dependencies with Yarn",

@@ -31,7 +31,7 @@
     "test": "alepha test",
     "build": "yarn ui:build && tsdown -c=../../tsdown.config.ts",
     "ui:dev": "alepha dev",
-    "ui:build": "alepha build && rm -rf assets/devtools && cp -r dist/public assets/devtools"
+    "ui:build": "alepha build && rm -rf assets/devtools && mkdir -p assets && cp -r dist/public assets/devtools"
   },
   "homepage": "https://github.com/feunard/alepha",
   "repository": {

@@ -14,6 +14,7 @@ import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { version } from "../version.ts";
 import { ProcessRunner } from "./ProcessRunner.ts";
+import { indexHtml } from "../assets/indexHtml.ts";
 
 /**
  * Utility service for common project operations used by CLI commands.
@@ -77,7 +78,6 @@ export class ProjectUtils {
       dependencies["@alepha/react"] = `^${version}`;
       dependencies.react = "^19.2.0";
       devDependencies["@types/react"] = "^19.2.0";
-      devDependencies["@vitejs/plugin-react"] = "^5.1.1";
     }
 
     return {
@@ -481,6 +481,29 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
         `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}`,
       );
     }
+  }
+
+  public async getPackageManager(root: string): Promise<"yarn" | "pnpm" | "npm"> {
+    if (await this.fs.exists(join(root, "yarn.lock"))) {
+      return "yarn";
+    } else if (await this.fs.exists(join(root, "pnpm-lock.yaml"))) {
+      return "pnpm";
+    } else {
+      return "npm";
+    }
+  }
+
+  public async ensureIndexHtml(
+    root: string,
+  ) {
+    if (await this.fs.exists(join(root, "index.html"))) {
+      return;
+    }
+
+    const entry = await boot.getServerEntry(root).catch(() => null);
+    await this.fs.writeFile(
+      join(root, "index.html"), indexHtml(entry ? entry.replace(root, "") : undefined)
+    )
   }
 }
 

@@ -34,7 +34,7 @@ const getServerEntry = async (
     const explicitPath = join(root, explicitEntry);
     try {
       await access(explicitPath);
-      return explicitPath.replace(/\\/g, "/");
+      return explicitPath;
     } catch {
       throw new AlephaError(
         `Explicit server entry file "${explicitEntry}" not found.`,
@@ -55,8 +55,9 @@ const getServerEntry = async (
 
   for (const entry of maybeEntry) {
     try {
-      await access(entry);
-      return join(root, entry).replace(/\\/g, "/");
+      const path = join(root, entry).replace(/\\/g, "/");
+      await access(path);
+      return path;
     } catch {
       // continue to next entry
     }
