@@ -1,10 +1,10 @@
-import { t } from "alepha";
 import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import { IconHammer, IconTag } from "@tabler/icons-react";
+import { t } from "alepha";
 import { useMemo } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { ProjectApi } from "../../api/ProjectApi.ts";

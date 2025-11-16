@@ -1,9 +1,9 @@
-import { t } from "alepha";
 import { useClient, useRouter, useStore } from "@alepha/react";
 import { useForm, useFormState } from "@alepha/react/form";
 import { Button, Stack } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { IconTag } from "@tabler/icons-react";
+import { t } from "alepha";
 import type { ProjectApi } from "../../../api/ProjectApi.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import Control from "../../ui/Control.jsx";

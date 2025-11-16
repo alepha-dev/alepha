@@ -1,4 +1,3 @@
-import { Alepha } from "alepha";
 import { NestedView, useEvents, useInject } from "@alepha/react";
 import { ColorSchemeScript, Flex, MantineProvider } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
@@ -6,6 +5,7 @@ import { Notifications } from "@mantine/notifications";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Alepha } from "alepha";
 import { theme } from "../constants/theme.ts";
 import Header from "./shared/Header.jsx";
 

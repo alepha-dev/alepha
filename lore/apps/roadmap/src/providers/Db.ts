@@ -1,6 +1,6 @@
+import { $inject } from "alepha";
 import { identities, sessions } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
-import { $inject } from "alepha";
 import { $repository, DatabaseProvider } from "alepha/orm";
 import { characters } from "../entities/characters.ts";
 import { files } from "../entities/files.ts";

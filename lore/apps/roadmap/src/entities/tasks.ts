@@ -1,5 +1,5 @@
-import { users } from "alepha/api/users";
 import { type Static, t } from "alepha";
+import { users } from "alepha/api/users";
 import { $entity, pg } from "alepha/orm";
 import { projects } from "./projects.js";
 

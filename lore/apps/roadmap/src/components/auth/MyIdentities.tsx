@@ -1,4 +1,3 @@
-import { t } from "alepha";
 import { useClient } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import {
@@ -20,6 +19,7 @@ import {
   IconLock,
   IconUser,
 } from "@tabler/icons-react";
+import { t } from "alepha";
 import { useState } from "react";
 import type { IdentityApi } from "../../api/IdentityApi.ts";
 import Action from "../ui/Action.jsx";

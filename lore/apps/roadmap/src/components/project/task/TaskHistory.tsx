@@ -1,4 +1,3 @@
-import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "@alepha/react";
 import { Flex, Text, Timeline, Transition } from "@mantine/core";
 import {
@@ -9,6 +8,7 @@ import {
   IconSunset2,
   IconSwords,
 } from "@tabler/icons-react";
+import { DateTimeProvider } from "alepha/datetime";
 import { currentTaskAtom } from "../../../atoms/currentTaskAtom.ts";
 import type { Task } from "../../../entities/tasks.ts";
 

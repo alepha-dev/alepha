@@ -1,5 +1,5 @@
-import { users } from "alepha/api/users";
 import { $inject } from "alepha";
+import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { pageQuerySchema, pageSchema } from "alepha/orm";
 import { $action } from "alepha/server";
