@@ -1,0 +1,198 @@
+import type { IncomingMessage } from "node:http";
+import type Stream from "node:stream";
+import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
+import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $logger } from "alepha/logger";
+import { HttpError } from "../errors/HttpError.ts";
+
+const envSchema = t.object({
+  SERVER_BODY_PARSER_INFLATE: t.boolean({
+    default: true,
+    description: "Enable decompression of request body.",
+  }),
+  SERVER_BODY_PARSER_LIMIT: t.int({
+    default: 100_000, // 100KB
+    min: 0,
+    description: "Maximum size of request body in bytes.",
+  }),
+});
+
+export class ServerBodyParserProvider {
+  protected readonly env = $env(envSchema);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
+
+  public readonly onRequest = $hook({
+    on: "server:onRequest",
+    handler: async ({ route, request }) => {
+      if (request.body) {
+        return; // already parsed
+      }
+
+      const stream: Stream | undefined = request.raw.node?.req;
+      if (!stream) {
+        return; // not a node request - skip
+      }
+
+      if (route.schema?.body) {
+        try {
+          const body = await this.parse(stream, request.headers);
+          if (body) {
+            request.body = body;
+          }
+        } catch (error) {
+          if (error instanceof HttpError) {
+            throw error;
+          }
+
+          throw new HttpError(
+            {
+              status: 400,
+              message: "Failed to parse request body",
+            },
+            error,
+          );
+        }
+      }
+    },
+  });
+
+  public async parse(
+    stream: Stream,
+    headers: Record<string, string>,
+  ): Promise<object | string | undefined> {
+    const contentType = headers["content-type"];
+    const contentEncoding = headers["content-encoding"];
+
+    if (!contentType) return undefined;
+
+    if (contentType.startsWith("application/json")) {
+      return this.parseJson(stream, contentEncoding);
+    }
+
+    if (contentType.startsWith("text/plain")) {
+      return this.parseText(stream, contentEncoding);
+    }
+
+    if (contentType.startsWith("application/x-www-form-urlencoded")) {
+      return this.parseUrlEncoded(stream, contentEncoding);
+    }
+
+    return undefined;
+  }
+
+  public async parseText(
+    stream: Stream,
+    contentEncoding?: string,
+  ): Promise<string> {
+    const buffer = await this.streamToBuffer(stream);
+    const bufferInflated = await this.maybeDecompress(buffer, contentEncoding);
+    return bufferInflated.toString("utf-8");
+  }
+
+  public async parseUrlEncoded(
+    stream: Stream,
+    contentEncoding?: string,
+  ): Promise<object> {
+    const text = await this.parseText(stream, contentEncoding);
+    const params = new URLSearchParams(text);
+    const result: Record<string, string> = {};
+    for (const [key, value] of params.entries()) {
+      result[key] = value;
+    }
+
+    return result;
+  }
+
+  public async parseJson(
+    stream: Stream,
+    contentEncoding?: string,
+  ): Promise<object> {
+    const text = await this.parseText(stream, contentEncoding);
+    return JSON.parse(text);
+  }
+
+  protected async maybeDecompress(
+    buffer: Buffer,
+    encoding: string | undefined,
+  ): Promise<Buffer> {
+    if (!this.env.SERVER_BODY_PARSER_INFLATE && encoding) {
+      throw new HttpError({
+        status: 415,
+        message: `Content-Encoding ${encoding} not allowed`,
+      });
+    }
+
+    switch (encoding) {
+      case "gzip":
+        return new Promise((res, rej) =>
+          createGunzip()
+            .end(buffer, () => {})
+            .on("data", res)
+            .on("error", rej),
+        );
+      case "deflate":
+        return new Promise((res, rej) =>
+          createInflate()
+            .end(buffer, () => {})
+            .on("data", res)
+            .on("error", rej),
+        );
+      case "br":
+        return new Promise((res, rej) =>
+          createBrotliDecompress()
+            .end(buffer, () => {})
+            .on("data", res)
+            .on("error", rej),
+        );
+      case undefined:
+      case "identity":
+        return buffer;
+      default:
+        throw new Error(`Unsupported Content-Encoding: ${encoding}`);
+    }
+  }
+
+  /**
+   * Classic Node.js stream to Buffer conversion but with a size limit.
+   */
+  protected streamToBuffer(req: Stream): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    let totalLength = 0;
+
+    return new Promise((resolve, reject) => {
+      req.on("data", (chunk) => {
+        totalLength += chunk.length;
+
+        if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
+          this.log.error(
+            `Body size limit exceeded: ${totalLength} > ${this.env.SERVER_BODY_PARSER_LIMIT}`,
+          );
+
+          (req as IncomingMessage).pause(); // stop receiving data
+
+          return reject(
+            new HttpError({
+              status: 413,
+              message: `Request body size limit exceeded`,
+            }),
+          );
+        }
+
+        chunks.push(chunk);
+      });
+
+      req.on("end", () => {
+        if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
+          return;
+        }
+
+        resolve(Buffer.concat(chunks));
+      });
+
+      req.on("error", (err) => {
+        reject(err);
+      });
+    });
+  }
+}

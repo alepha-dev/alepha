@@ -20,10 +20,6 @@ Easy mode for building TypeScript applications.
 </div>
 
 
-```bash
-npm i -g alepha
-```
-
 ## What is this?
 
 Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), CLI tools, and more!
@@ -42,15 +38,15 @@ Write API endpoints with automatic OpenAPI documentation.
 
 ```bash
 # Initialize a new Alepha project in the current folder
-npx alepha init --api
+npx alepha init
 ```
 
 Create a file `src/main.ts`:
 
 ```ts
-import { run, t, Alepha } from "@alepha/core";
-import { $action } from "@alepha/server";
-import { $swagger } from "@alepha/server-swagger";
+import { run, t, Alepha } from "alepha";
+import { $action } from "alepha/server";
+import { $swagger } from "alepha/server/swagger";
 
 class Api {
 
@@ -117,8 +113,8 @@ Create a file `src/main.tsx`:
 
 ```tsx
 // src/main.tsx
-import { run, t } from "@alepha/core";
-import { $page } from "@alepha/react";
+import { run, t } from "alepha/core";
+import { $page } from "alepha/react";
 import { useState } from "react";
 
 const Hello = (props: { count: number }) => {

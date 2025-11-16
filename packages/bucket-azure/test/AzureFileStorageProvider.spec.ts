@@ -1,3 +1,5 @@
+import { Alepha } from "@alepha/core";
+import { describe, test } from "vitest";
 import {
   TestApp,
   testCustomFileId,
@@ -11,9 +13,7 @@ import {
   testNonExistentFileError,
   testUploadAndExistence,
   testUploadIntoBuckets,
-} from "@alepha/bucket/test/shared.ts";
-import { Alepha } from "@alepha/core";
-import { describe, test } from "vitest";
+} from "../../alepha/test/bucket/shared.ts";
 import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
 
 const alepha = Alepha.create().with(AlephaBucketAzure).with(TestApp);

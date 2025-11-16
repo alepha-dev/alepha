@@ -45,37 +45,41 @@ async function main(to?: string) {
 
       const action = to ?? (pkg.exports ? "ts" : "js");
       if (action === "ts") {
+        const replace = (str: any) =>
+          String(str).replace("dist/", "src/").replace(".js", ".ts");
         pkg.main = "./src/index.ts";
         pkg.types = "./src/index.ts";
         pkg.module = undefined;
-        pkg.exports = undefined;
-        if (pkg.bin) {
-          if (typeof pkg.bin === "string") {
-            pkg.bin = String(pkg.bin)
-              .replace("dist/", "src/")
-              .replace(".js", ".ts");
-          } else {
-            for (const [key, value] of Object.entries(pkg.bin)) {
-              pkg.bin[key] = String(value)
-                .replace("dist/", "src/")
-                .replace(".js", ".ts");
-            }
-          }
-        }
         if (pkg.browser) {
           pkg.browser = "./src/index.browser.ts";
         }
+        if (pkg.bin) {
+          if (typeof pkg.bin === "string") {
+            pkg.bin = replace(pkg.bin);
+          } else {
+            for (const [key, value] of Object.entries(pkg.bin)) {
+              pkg.bin[key] = replace(value);
+            }
+          }
+        }
+        if (pkg.exports) {
+          for (const value of Object.values(
+            pkg.exports as Record<string, any>,
+          )) {
+            value.types = replace(value.types);
+            value.require = replace(value.require);
+            value.import = replace(value.import);
+            if (value.browser) {
+              value.browser = replace(value.browser);
+            }
+          }
+        }
       } else {
+        const replace = (str: any) =>
+          String(str).replace("src/", "dist/").replace(".ts", ".js");
         pkg.main = "./dist/index.js";
         pkg.module = "./dist/index.js";
         pkg.types = "./dist/index.d.ts";
-        pkg.exports = {
-          ".": {
-            types: "./dist/index.d.ts",
-            import: "./dist/index.js",
-            require: "./dist/index.cjs",
-          },
-        };
         if (pkg.browser) {
           pkg.browser = {
             "./dist/index.js": "./dist/index.browser.js",
@@ -84,14 +88,22 @@ async function main(to?: string) {
         }
         if (pkg.bin) {
           if (typeof pkg.bin === "string") {
-            pkg.bin = String(pkg.bin)
-              .replace("src/", "dist/")
-              .replace(".ts", ".js");
+            pkg.bin = replace(pkg.bin);
           } else {
             for (const [key, value] of Object.entries(pkg.bin)) {
-              pkg.bin[key] = String(value)
-                .replace("src/", "dist/")
-                .replace(".ts", ".js");
+              pkg.bin[key] = replace(value);
+            }
+          }
+        }
+        if (pkg.exports) {
+          for (const value of Object.values(
+            pkg.exports as Record<string, any>,
+          )) {
+            value.types = replace(value.types);
+            value.require = replace(value.require);
+            value.import = replace(value.import);
+            if (value.browser) {
+              value.browser = replace(value.browser);
             }
           }
         }

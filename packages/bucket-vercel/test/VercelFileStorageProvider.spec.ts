@@ -1,3 +1,6 @@
+import { Alepha } from "@alepha/core";
+import { del } from "@vercel/blob";
+import { afterAll, afterEach, beforeEach, describe, test, vi } from "vitest";
 import {
   TEST_DOCUMENTS_BUCKET,
   TEST_IMAGES_BUCKET,
@@ -11,10 +14,7 @@ import {
   testNonExistentFileError,
   testUploadAndExistence,
   testUploadIntoBuckets,
-} from "@alepha/bucket/test/shared.ts";
-import { Alepha } from "@alepha/core";
-import { del } from "@vercel/blob";
-import { afterAll, afterEach, beforeEach, describe, test, vi } from "vitest";
+} from "../../alepha/test/bucket/shared.ts";
 import { AlephaBucketVercel, VercelFileStorageProvider } from "../src";
 import { VercelBlobApi } from "../src/providers/VercelBlobProvider.ts";
 import { MockVercelBlobApi } from "./MockVercelBlobApi.ts";

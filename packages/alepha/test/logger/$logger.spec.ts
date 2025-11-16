@@ -1,0 +1,108 @@
+import { Alepha } from "alepha/core";
+import { DateTimeProvider } from "alepha/datetime";
+import { describe, it } from "vitest";
+import {
+  $logger,
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "../../src/logger";
+
+describe("$logger", () => {
+  class App {
+    log = $logger();
+  }
+
+  it("should log in-memory", ({ expect }) => {
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "trace",
+      },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+    const output = alepha.inject(MemoryDestinationProvider);
+    const app = alepha.inject(App);
+
+    app.log.info("Test log message");
+
+    expect(output.logs[0].message).toBe("Test log message");
+    expect(output.logs[0].level).toBe("INFO");
+    expect(output.logs[0].service).toBe("App");
+    expect(output.logs[0].module).toBe("app");
+    expect(output.logs[0].app).toBeUndefined();
+    expect(output.logs[0].context).toBeUndefined();
+    expect(output.logs[0].timestamp).toBeDefined();
+
+    app.log.trace("Trace log message");
+    expect(output.logs[1].message).toBe("Trace log message");
+    app.log.warn("Warning log message");
+    expect(output.logs[2].message).toBe("Warning log message");
+    app.log.error("Error log message");
+    expect(output.logs[3].message).toBe("Error log message");
+    app.log.debug("Debug log message");
+    expect(output.logs[4].message).toBe("Debug log message");
+  });
+
+  it("should log with Alepha", async ({ expect }) => {
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "info",
+      },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+    const output = alepha.inject(MemoryDestinationProvider);
+    const app = alepha.inject(App);
+    await alepha.start();
+    app.log.info("Test log message");
+    expect(output.logs.length).toBe(3);
+  });
+
+  it("should skip alepha logs", async ({ expect }) => {
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "alepha.core:error,info",
+      },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+    const output = alepha.inject(MemoryDestinationProvider);
+    const app = alepha.inject(App);
+    await alepha.start();
+    app.log.info("Test log message");
+    expect(output.logs.length).toBe(1);
+  });
+
+  it("should emit log events for external listeners", async ({ expect }) => {
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "info",
+      },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+
+    const now = alepha.inject(DateTimeProvider).pause();
+    const app = alepha.inject(App);
+    const logEvents: any[] = [];
+
+    alepha.events.on("log", (event) => {
+      logEvents.push(event);
+    });
+
+    app.log.info("Test event emission", { testData: "value" });
+
+    expect(logEvents).toHaveLength(1);
+    expect(logEvents[0].message).toMatch(/Test event emission/);
+    expect(logEvents[0].entry.message).toBe("Test event emission");
+    expect(logEvents[0].entry.level).toBe("INFO");
+    expect(logEvents[0].entry.service).toBe("App");
+    expect(logEvents[0].entry.module).toBe("app");
+    expect(logEvents[0].entry.data).toEqual({ testData: "value" });
+    expect(logEvents[0].entry.timestamp).toBe(now.toISOString());
+  });
+});

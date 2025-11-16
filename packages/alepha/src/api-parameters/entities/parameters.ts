@@ -1,0 +1,30 @@
+import { type Static, t } from "alepha";
+import { $entity, pg } from "alepha/orm";
+
+export const parameters = $entity({
+  name: "parameters",
+  schema: t.object({
+    id: pg.primaryKey(t.uuid()),
+
+    createdAt: pg.createdAt(),
+
+    updatedAt: pg.updatedAt(),
+
+    name: t.string(),
+
+    content: t.json(),
+
+    tags: t.optional(t.array(t.string())),
+
+    creatorId: t.optional(t.uuid()),
+
+    creatorName: t.optional(t.string()),
+
+    activationDate: t.datetime({
+      description:
+        "Optional activation date. Default to now. Must be now or later.",
+    }),
+  }),
+});
+
+export type ParameterEntity = Static<typeof parameters.schema>;

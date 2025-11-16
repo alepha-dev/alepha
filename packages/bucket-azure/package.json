@@ -23,18 +23,17 @@
 		"src"
 	],
 	"dependencies": {
-		"@alepha/bucket": "0.11.11",
-		"@alepha/core": "0.11.11",
-		"@alepha/datetime": "0.11.11",
-		"@alepha/file": "0.11.11",
-		"@alepha/logger": "0.11.11",
 		"@azure/storage-blob": "^12.29.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.5",
+		"alepha": "0.11.11",
 		"tsdown": "^0.16.4",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.9"
+	},
+	"peerDependencies": {
+		"alepha": "0.11.11"
 	},
 	"scripts": {
 		"test": "vitest run",

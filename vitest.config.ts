@@ -19,7 +19,6 @@ export default defineConfig({
 				"packages/ui",
 				"packages/vite",
 				"packages/cli",
-				"packages/thread",
 			],
 		},
 		env: {

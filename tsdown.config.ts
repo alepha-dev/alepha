@@ -1,17 +1,23 @@
 import { readFile } from "node:fs/promises";
 
 export default async () => {
-	const pkg = JSON.parse(await readFile("./package.json", "utf-8"));
-	if (pkg.browser) {
+  let hasBrowser = false;
+  try {
+    await readFile("index.browser.ts");
+    hasBrowser = true;
+  } catch {}
+
+  // check if "index.browser.ts" exists in dir
+	if (hasBrowser) {
 		return [
 			{
-				entry: "src/index.ts",
+				entry: "index.ts",
 				format: ["esm", "cjs"],
 				sourcemap: true,
         fixedExtension: false,
       },
 			{
-				entry: "src/index.browser.ts",
+				entry: "index.browser.ts",
 				platform: "browser",
 				sourcemap: true,
 				dts: false,
@@ -20,9 +26,9 @@ export default async () => {
 	}
 	return [
 		{
-			entry: "src/index.ts",
+			entry: "index.ts",
 			format: ["esm", "cjs"],
-			platform: pkg.engines?.node ? "node" : "neutral",
+			platform: "neutral", // TODO: index.node.ts for node specific build
 			sourcemap: true,
       fixedExtension: false,
 		},
