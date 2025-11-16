@@ -2,8 +2,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "alepha dev",
-		"build": "alepha build"
+		"dev": "alepha dev"
 	},
 	"dependencies": {
 		"alepha": "^0.11.11"

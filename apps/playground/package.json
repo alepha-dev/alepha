@@ -4,12 +4,11 @@
 	"scripts": {
 		"dev": "alepha dev",
 		"db:generate": "alepha db:generate",
-		"build": "alepha build --stats",
 		"start": "alepha build && node dist"
 	},
 	"dependencies": {
-		"alepha": "^0.11.11",
 		"@alepha/devtools": "^0.11.11",
+		"alepha": "^0.11.11",
 		"react": "^19.2.0"
 	}
 }

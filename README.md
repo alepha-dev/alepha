@@ -47,8 +47,8 @@ We will show:
 Write API endpoints with automatic OpenAPI documentation.
 
 ```bash
-# add required config files in the current folder
-npx alepha init
+# Add required config files in the current folder
+$ npx alepha init
 ```
 
 Create a new file `src/main.ts`:

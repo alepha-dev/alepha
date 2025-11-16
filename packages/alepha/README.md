@@ -19,29 +19,39 @@ Easy mode for building TypeScript applications.
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
-
 ## What is this?
 
-Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), CLI tools, and more!
+Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), and more!
 
-Extremely modular (60+ packages) and relies only on very few runtime dependencies.
+Relies only on very few runtime dependencies. No more bloated frameworks.
 
 All-in-one tool that takes care of configuration, development, build, deployment, testing, etc. Convention over configuration.
+
+Enterprise-grade framework designed for developer experience and scalability.
 
 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
 
 ## Examples
+
+We will show:
+
+- API endpoint with automatic OpenAPI documentation
+- Full-stack React application with server-side rendering
+
+### Requirements
+
+- [Node.js](https://nodejs.org/) v22 or higher
 
 ### API endpoint
 
 Write API endpoints with automatic OpenAPI documentation.
 
 ```bash
-# Initialize a new Alepha project in the current folder
-npx alepha init
+# Add required config files in the current folder
+$ npx alepha init
 ```
 
-Create a file `src/main.ts`:
+Create a new file `src/main.ts`:
 
 ```ts
 import { run, t, Alepha } from "alepha";
@@ -74,28 +84,32 @@ class Api {
   });
 }
 
-// Create Alepha instance
+// Creating Alepha instance is like creating a new context.
 const alepha = Alepha.create();
 
-// Register API
+// And you add features by registering classes.
 alepha.with(Api);
 
-// Run Application
+// `run` will take care of Alepha lifecycle (startup, graceful shutdown, etc.)
 run(alepha);
 ```
 
 Run the development server:
 
 ```bash
-npx alepha dev
+$ npx alepha dev
+# alepha dev comes with hot-reload and full TypeScript support, but you can also run:
+$ node ./src/main.ts
 ```
 
 Then, open your browser at `http://localhost:3000/docs/` and enjoy your automatically generated documentation.
 
+#### Production build
+
 Once you are done, build the application for production:
 
 ```bash
-npx alepha build
+$ npx alepha build
 ```
 
 Application will be built in the `dist/` folder, ready to be deployed on any platform (Docker, Serverless, etc.).
@@ -106,15 +120,15 @@ Bonus, no need to "npm install" on the server, Alepha bundles everything togethe
 Build full-stack React applications, with server-side rendering.
 
 ```bash
-npx alepha init --react
+$ npx alepha init --react
 ```
 
 Create a file `src/main.tsx`:
 
 ```tsx
 // src/main.tsx
-import { run, t } from "alepha/core";
-import { $page } from "alepha/react";
+import { run, t } from "alepha";
+import { $page } from "@alepha/react";
 import { useState } from "react";
 
 const Hello = (props: { count: number }) => {
@@ -142,25 +156,11 @@ alepha.with(AppRouter);
 
 run(alepha);
 ```
-Create an `index.html` file:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>App</title>
-</head>
-<body>
-<script type="module" src="src/main.tsx"></script>
-</body>
-</html>
-```
 
 Run the development server:
 
 ```bash
-npx alepha dev
+$ npx alepha dev
 ```
 
 Open your browser at `http://localhost:3000/` and see your React application in action.
