@@ -1,4 +1,4 @@
-# Alepha Bucket Azure
+# Alepha @bucket Azure
 
 Azure Blob Storage implementation for the bucket file storage.
 
@@ -18,10 +18,10 @@ This module can be imported and used as follows:
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaBucketAzure } from "alepha/bucket/azure";
+import { Alepha@bucketAzure } from "alepha/bucket/azure";
 
 const alepha = Alepha.create()
-	.with(AlephaBucketAzure);
+	.with(Alepha@bucketAzure);
 
 run(alepha);
 ```

@@ -1,5 +1,5 @@
-import { t } from "alepha";
 import { useForm } from "@alepha/react/form";
+import { t } from "alepha";
 import { DarkModeButton, Flex, TypeForm, useToast } from "alepha/ui";
 
 const Home = (props: { pong: boolean }) => {

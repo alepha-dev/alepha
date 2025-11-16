@@ -9,7 +9,7 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  *
  * @example
  * ```ts
- * import { $dictionary } from "@alepha/react-i18n";
+ * import { $dictionary } from "@alepha/react/i18n";
  *
  * const Example = () => {
  *   const { tr } = useI18n<App, "en">();

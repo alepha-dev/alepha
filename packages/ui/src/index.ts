@@ -1,7 +1,7 @@
+import { AlephaReactForm } from "@alepha/react/form";
+import { AlephaReactHead } from "@alepha/react/head";
+import { AlephaReactI18n } from "@alepha/react/i18n";
 import { $module } from "alepha";
-import { AlephaReactForm } from "@alepha/react-form";
-import { AlephaReactHead } from "@alepha/react-head";
-import { AlephaReactI18n } from "@alepha/react-i18n";
 import type { ReactNode } from "react";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { RootRouter } from "./RootRouter.ts";

@@ -1,7 +1,7 @@
-import { Alepha, run } from "alepha";
 import { $page } from "@alepha/react";
-import { $dictionary } from "@alepha/react-i18n";
+import { $dictionary } from "@alepha/react/i18n";
 import { Icon3dCubeSphere } from "@tabler/icons-react";
+import { Alepha, run } from "alepha";
 import { createElement } from "react";
 import { AlephaUI } from "../src";
 import AlephaMantineProvider from "../src/components/layout/AlephaMantineProvider.tsx";

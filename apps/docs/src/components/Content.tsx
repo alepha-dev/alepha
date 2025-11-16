@@ -1,5 +1,4 @@
 import { useActive, useRouter } from "@alepha/react";
-import { ActionButton } from "alepha/ui";
 import type { ButtonProps } from "@mantine/core";
 import {
   Divider,
@@ -10,6 +9,7 @@ import {
   Typography,
 } from "@mantine/core";
 import { IconCaretLeft, IconCaretRight, IconEdit } from "@tabler/icons-react";
+import { ActionButton } from "alepha/ui";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { docs, repository } from "../config/docs.ts";
 import { theme } from "../config/theme.ts";

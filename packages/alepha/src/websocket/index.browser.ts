@@ -10,7 +10,7 @@ import { WebSocketClient } from "./services/WebSocketClient.ts";
  * Browser-side WebSocket client module. Provides WebSocketClient service
  * for managing WebSocket connections from the browser.
  *
- * For React applications, use alepha/react-websocket with the useRoom hook.
+ * For React applications, use alepha/react/websocket with the useRoom hook.
  */
 export * from "./index.shared.ts";
 

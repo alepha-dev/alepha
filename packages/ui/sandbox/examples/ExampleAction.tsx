@@ -1,6 +1,5 @@
-import { t } from "alepha";
 import { useRouter } from "@alepha/react";
-import { useForm } from "@alepha/react-form";
+import { useForm } from "@alepha/react/form";
 import {
   Badge,
   Box,
@@ -39,6 +38,7 @@ import {
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
+import { t } from "alepha";
 import { useState } from "react";
 import { ActionButton, Control, DarkModeButton } from "../../src";
 

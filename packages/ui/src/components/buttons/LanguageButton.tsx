@@ -1,4 +1,4 @@
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import { IconLanguage } from "@tabler/icons-react";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 

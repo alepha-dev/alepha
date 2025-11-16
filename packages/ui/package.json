@@ -20,7 +20,6 @@
 		"src"
 	],
 	"dependencies": {
-		"alepha": "0.11.11",
 		"@alepha/react": "0.11.11",
 		"@mantine/core": "^8.3.7",
 		"@mantine/dates": "^8.3.7",
@@ -30,6 +29,7 @@
 		"@mantine/nprogress": "^8.3.7",
 		"@mantine/spotlight": "^8.3.7",
 		"@tabler/icons-react": "^3.35.0",
+		"alepha": "0.11.11",
 		"dayjs": "^1.11.19"
 	},
 	"devDependencies": {

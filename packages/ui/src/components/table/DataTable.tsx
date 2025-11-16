@@ -1,15 +1,6 @@
-import {
-  Alepha,
-  type Async,
-  type Page,
-  type PageMetadata,
-  type Static,
-  type TObject,
-  t,
-} from "alepha";
 import { DateTimeProvider, type DurationLike } from "@alepha/datetime";
 import { useInject } from "@alepha/react";
-import { type FormModel, useForm } from "@alepha/react-form";
+import { type FormModel, useForm } from "@alepha/react/form";
 import {
   Flex,
   Pagination,
@@ -19,6 +10,15 @@ import {
   type TableTrProps,
 } from "@mantine/core";
 import { useDebouncedCallback } from "@mantine/hooks";
+import {
+  Alepha,
+  type Async,
+  type Page,
+  type PageMetadata,
+  type Static,
+  type TObject,
+  t,
+} from "alepha";
 import { type ReactNode, useEffect, useState } from "react";
 import ActionButton from "../buttons/ActionButton.tsx";
 import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";

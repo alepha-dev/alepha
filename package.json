@@ -21,11 +21,11 @@
 		"vitest": "^4.0.9"
 	},
 	"scripts": {
+		"alepha": "node scripts/alepha-dev-cli.ts",
 		"w": "yarn workspace",
 		"v": "yarn alepha verify",
 		"verify": "yarn alepha verify",
 		"postinstall": "yarn copy && yarn lint",
-		"alepha": "node apps/dev/src/index.ts",
 		"clean": "yarn alepha clean",
 		"copy": "yarn workspaces foreach -Apt run copy",
 		"convert": "node scripts/convert.ts",

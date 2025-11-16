@@ -52,8 +52,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "node scripts/build.ts",
-		"copy": "node scripts/copy-swagger.ts"
-	},
+    "copy": "node scripts/copy-swagger.ts"
+  },
   "homepage": "https://github.com/feunard/alepha",
   "repository": {
     "type": "git",

@@ -1,10 +1,10 @@
+import { $inject } from "alepha";
 import {
   $authCredentials,
   $authGithub,
   $authGoogle,
   $realmUsers,
 } from "alepha/api/users";
-import { $inject } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 import type { Character } from "../entities/characters.ts";
 import type { Project } from "../entities/projects.ts";

@@ -1,5 +1,5 @@
-import { $inject } from "alepha";
 import { $page } from "@alepha/react";
+import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
 import { RootRouter } from "alepha/ui";
 import type { Api } from "./Api.ts";

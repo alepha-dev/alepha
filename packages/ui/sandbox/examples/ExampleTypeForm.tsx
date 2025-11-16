@@ -1,6 +1,5 @@
-import { t } from "alepha";
 import { useRouter } from "@alepha/react";
-import { useForm } from "@alepha/react-form";
+import { useForm } from "@alepha/react/form";
 import {
   Box,
   Button,
@@ -13,6 +12,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconBook } from "@tabler/icons-react";
+import { t } from "alepha";
 import { Control, TypeForm } from "../../src";
 
 const ExampleTypeForm = () => {

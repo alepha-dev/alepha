@@ -1,4 +1,4 @@
-# Alepha Devtools
+# Alepha @devtools
 
 Developer tools for monitoring and debugging Alepha applications.
 
@@ -21,10 +21,10 @@ This module can be imported and used as follows:
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaDevtools } from "alepha/devtools";
+import { Alepha@devtools } from "alepha/devtools";
 
 const alepha = Alepha.create()
-	.with(AlephaDevtools);
+	.with(Alepha@devtools);
 
 run(alepha);
 ```

@@ -1,4 +1,3 @@
-import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { Card, Flex, Group, Stack, Text } from "@mantine/core";
@@ -7,6 +6,7 @@ import {
   IconDeviceDesktop,
   IconDeviceMobile,
 } from "@tabler/icons-react";
+import { DateTimeProvider } from "alepha/datetime";
 import { useState } from "react";
 import type { SessionApi, UserSession } from "../../api/SessionApi.ts";
 import { theme } from "../../constants/theme.ts";

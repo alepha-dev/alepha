@@ -1,10 +1,10 @@
-import { type Page, t } from "alepha";
 import { dayjs } from "@alepha/datetime";
 import { type LogEntry, logEntrySchema } from "@alepha/logger";
 import { useInject } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import { HttpClient } from "@alepha/server";
 import { ActionButton, DataTable, DialogService, Flex, Text } from "@alepha/ui";
+import { type Page, t } from "alepha";
 import { logs } from "../../entities/logs.ts";
 
 const DevLogViewer = () => {

@@ -1,6 +1,5 @@
-import { t } from "alepha";
 import { useRouter } from "@alepha/react";
-import { useForm } from "@alepha/react-form";
+import { useForm } from "@alepha/react/form";
 import {
   Anchor,
   Box,
@@ -14,6 +13,7 @@ import {
   Title,
 } from "@mantine/core";
 import { IconRocket } from "@tabler/icons-react";
+import { t } from "alepha";
 import { Control, DarkModeButton } from "../../src";
 
 const ExampleControl = () => {

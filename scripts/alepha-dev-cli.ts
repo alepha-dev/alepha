@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { $command } from "alepha/command";
 import { Alepha, run, t } from "alepha";
+import { $command } from "alepha/command";
 
 class AlephaDevCli {
   clean = $command({

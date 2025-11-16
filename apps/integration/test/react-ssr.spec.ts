@@ -1,6 +1,6 @@
+import { $page } from "@alepha/react";
 import { $hook, Alepha, t } from "alepha";
 import { $entity, $repository, pg } from "alepha/orm";
-import { $page } from "@alepha/react";
 import { $action, HttpClient, ServerProvider } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { describe, it } from "vitest";

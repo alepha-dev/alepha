@@ -1,4 +1,3 @@
-import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useRouter, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { Card, Container, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
@@ -7,6 +6,7 @@ import {
   IconCubePlus,
   IconMapRoute,
 } from "@tabler/icons-react";
+import { DateTimeProvider } from "alepha/datetime";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";

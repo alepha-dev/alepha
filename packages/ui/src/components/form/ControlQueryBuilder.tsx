@@ -1,4 +1,3 @@
-import type { TObject } from "alepha";
 import { parseQueryString } from "@alepha/orm";
 import { useEvents } from "@alepha/react";
 import {
@@ -14,6 +13,7 @@ import {
   type TextInputProps,
 } from "@mantine/core";
 import { IconFilter, IconInfoTriangle, IconX } from "@tabler/icons-react";
+import type { TObject } from "alepha";
 import { useRef, useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import {

@@ -1,5 +1,5 @@
 /**
- * alepha/react-websocket
+ * alepha/react/websocket
  *
  * React hooks for real-time WebSocket communication
  */

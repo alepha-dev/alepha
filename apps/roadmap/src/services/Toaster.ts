@@ -1,5 +1,5 @@
-import { $hook, $inject, Alepha } from "alepha";
 import { notifications } from "@mantine/notifications";
+import { $hook, $inject, Alepha } from "alepha";
 
 export class Toaster {
   alepha = $inject(Alepha);

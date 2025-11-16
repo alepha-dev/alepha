@@ -1,6 +1,6 @@
-import type { TObject } from "alepha";
-import type { FormModel } from "@alepha/react-form";
+import type { FormModel } from "@alepha/react/form";
 import { Flex, Grid } from "@mantine/core";
+import type { TObject } from "alepha";
 import type { ReactNode } from "react";
 import ActionButton, {
   type ActionSubmitButtonProps,
@@ -35,7 +35,7 @@ export interface TypeFormProps<T extends TObject> {
  * @example
  * ```tsx
  * import { t } from "alepha";
- * import { useForm } from "@alepha/react-form";
+ * import { useForm } from "@alepha/react/form";
  * import { TypeForm } from "@alepha/ui";
  *
  * const form = useForm({

@@ -1,4 +1,4 @@
-import { useFormState } from "@alepha/react-form";
+import { useFormState } from "@alepha/react/form";
 import {
   DateInput,
   type DateInputProps,

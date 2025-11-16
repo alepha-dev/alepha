@@ -1,5 +1,5 @@
-import { Alepha, run } from "alepha";
 import { AlephaReactHead } from "@alepha/react/head";
+import { Alepha, run } from "alepha";
 import { AlephaUI } from "alepha/ui";
 import { AppRouter } from "./AppRouter.tsx";
 

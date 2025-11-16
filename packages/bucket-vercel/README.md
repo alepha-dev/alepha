@@ -1,4 +1,4 @@
-# Alepha Bucket Vercel
+# Alepha @bucket Vercel
 
 Vercel Blob Storage implementation for the bucket file storage.
 
@@ -18,10 +18,10 @@ This module can be imported and used as follows:
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaBucketVercel } from "alepha/bucket/vercel";
+import { Alepha@bucketVercel } from "alepha/bucket/vercel";
 
 const alepha = Alepha.create()
-	.with(AlephaBucketVercel);
+	.with(Alepha@bucketVercel);
 
 run(alepha);
 ```
