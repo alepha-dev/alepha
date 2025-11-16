@@ -1,10 +1,10 @@
 import { useInject } from "@alepha/react";
 import { type FormModel, useForm, useFormState } from "@alepha/react/form";
-import { HttpClient } from "@alepha/server";
 import type { ComboboxLikeRenderOptionInput } from "@mantine/core";
 import { Flex, Group, Paper } from "@mantine/core";
 import { IconCheck } from "@tabler/icons-react";
 import { type TObject, TypeProvider, t } from "alepha";
+import { HttpClient } from "alepha/server";
 import { TypeForm } from "../../src";
 
 TypeProvider.setLocale("fr_FR");

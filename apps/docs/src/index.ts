@@ -1,6 +1,6 @@
 import { AlephaReactHead } from "@alepha/react/head";
+import { AlephaUI } from "@alepha/ui";
 import { Alepha, run } from "alepha";
-import { AlephaUI } from "alepha/ui";
 import { AppRouter } from "./AppRouter.tsx";
 
 const alepha = Alepha.create();

@@ -46,6 +46,6 @@ export const AlephaServerSwagger = $module({
     alepha.with(AlephaServerCache);
     alepha.with(AlephaServerStatic);
     alepha.with(ServerSwaggerProvider);
-    alepha.state.push("alepha.build.assets", "alepha/server/swagger");
+    alepha.state.push("alepha.build.assets", "alepha");
   },
 });

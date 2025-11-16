@@ -1,7 +1,11 @@
+import {
+  ActionButton,
+  BurgerButton,
+  DarkModeButton,
+  OmnibarButton,
+} from "@alepha/ui";
 import { Flex, Text } from "@mantine/core";
 import { IconBrandGithub } from "@tabler/icons-react";
-import { ActionButton, DarkModeButton, OmnibarButton } from "alepha/ui";
-import BurgerButton from "alepha/ui/src/components/buttons/BurgerButton";
 
 export interface HeaderProps {
   noSidebar?: boolean;

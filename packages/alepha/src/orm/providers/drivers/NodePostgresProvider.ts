@@ -10,6 +10,7 @@ import { DbMigrationError } from "../../errors/DbMigrationError.ts";
 import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
+import { DbError } from "../../errors/DbError.ts";
 
 declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
@@ -77,7 +78,13 @@ export class NodePostgresProvider extends DatabaseProvider {
   public override execute(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    return this.db.execute(statement);
+    try {
+      return this.db.execute(statement);
+    } catch (error) {
+      throw new DbError(
+        "Error executing statement"
+        , error);
+    }
   }
 
   /**

@@ -4,6 +4,7 @@ import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import type { InlineConfig } from "tsdown";
+import * as os from "node:os";
 
 interface Module {
   name: string;
@@ -43,6 +44,10 @@ export class PackageBuilderCli {
         }
         pkgData.exports[path].import = `./src/${item.name}/index.ts`;
         pkgData.exports[path].require = `./src/${item.name}/index.ts`;
+      }
+      if (packageName === "alepha") {
+        pkgData.exports["./tsconfig"] = "./tsconfig.base.json";
+        pkgData.exports["./package.json"] = "./package.json";
       }
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
 
@@ -96,12 +101,24 @@ export class PackageBuilderCli {
         await this.fs.rm(config);
       };
 
-      // build 4 by 4
-      const concurrency = 8;
-      for (let i = 0; i < modules.length; i += concurrency) {
-        const chunk = modules.slice(i, i + concurrency);
-        await Promise.all(chunk.map((item) => build(item)));
+
+      const concurrency = Math.ceil(os.cpus().length / 2);
+      const queue = modules.slice();
+      const workers: Promise<void>[] = [];
+      for (let i = 0; i < concurrency; i++) {
+        const worker = (async () => {
+          while (queue.length > 0) {
+            const item = queue.shift();
+            if (item) {
+              await build(item);
+            } else {
+              await new Promise((r) => setTimeout(r, 100));
+            }
+          }
+        })();
+        workers.push(worker);
       }
+      await Promise.all(workers);
     },
   });
 }
@@ -137,12 +154,12 @@ function removeComments(content: string): string {
   return cleaned;
 }
 
-function extractAlephaDependencies(content: string, packageName: string): string[] {
+function extractAlephaDependencies(content: string, packageName: string, moduleName:string): string[] {
   const deps = new Set<string>();
   const cleanedContent = removeComments(content);
 
   // Match: from "alepha/xxx" or from 'alepha/xxx'
-  const importRegex = new RegExp(`from "${packageName}/([a-zA-Z0-9_/]+)"`, "g");
+  const importRegex = new RegExp(`from "${packageName}/([a-zA-Z0-9_/]+)";`, "g");
 
   const matches = cleanedContent.matchAll(importRegex);
   for (const match of matches) {
@@ -216,7 +233,7 @@ export async function analyzeModules(srcDir: string, packageName: string): Promi
 
       for (const file of files) {
         const content = await readFile(file, "utf-8");
-        const deps = extractAlephaDependencies(content, packageName);
+        const deps = extractAlephaDependencies(content, packageName, moduleName);
         for (const dep of deps) {
           if (dep.endsWith(".ts")) {
             throw new Error(

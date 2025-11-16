@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 import {
   $env,
@@ -71,7 +70,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
   }
 
   protected createId(): string {
-    return randomUUID();
+    return crypto.randomUUID();
   }
 
   public async upload(

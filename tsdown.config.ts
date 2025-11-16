@@ -11,13 +11,13 @@ export default async () => {
 	if (hasBrowser) {
 		return [
 			{
-				entry: "index.ts",
+				entry: "src/index.ts",
 				format: ["esm", "cjs"],
 				sourcemap: true,
         fixedExtension: false,
       },
 			{
-				entry: "index.browser.ts",
+				entry: "src/index.browser.ts",
 				platform: "browser",
 				sourcemap: true,
 				dts: false,
@@ -26,7 +26,7 @@ export default async () => {
 	}
 	return [
 		{
-			entry: "index.ts",
+			entry: "src/index.ts",
 			format: ["esm", "cjs"],
 			platform: "neutral", // TODO: index.node.ts for node specific build
 			sourcemap: true,

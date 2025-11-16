@@ -1,16 +1,16 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { $batch } from "@alepha/batch";
+import { $hook, $inject, Alepha, pageQuerySchema, t } from "alepha";
+import { $batch } from "alepha/batch";
 import {
   $logger,
   JsonFormatterProvider,
   type LogEntry,
   logEntrySchema,
-} from "@alepha/logger";
-import { parseQueryString } from "@alepha/orm";
-import { $route, ServerProvider } from "@alepha/server";
-import { $serve } from "@alepha/server-static";
-import { $hook, $inject, Alepha, pageQuerySchema, t } from "alepha";
+} from "alepha/logger";
+import { parseQueryString } from "alepha/orm";
+import { $route, ServerProvider } from "alepha/server";
+import { $serve } from "alepha/server/static";
 import { type DevLogEntry, logs } from "./entities/logs.ts";
 import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
 import { LogRepository } from "./repositories/LogRepository.ts";

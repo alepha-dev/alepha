@@ -6,7 +6,7 @@ import {
   type TSchema,
   t,
 } from "alepha";
-import "@alepha/datetime";
+import "alepha/datetime";
 import { ProtobufProvider } from "./ProtobufProvider.ts";
 
 /**

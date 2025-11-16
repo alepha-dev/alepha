@@ -16,12 +16,10 @@
 	"devDependencies": {
 		"@alepha/react": "0.11.11",
 		"@alepha/ui": "0.11.11",
-		"@biomejs/biome": "^2.3.5",
 		"@tabler/icons-react": "^3.35.0",
 		"alepha": "0.11.11",
 		"react": "^19.2.0",
 		"tsdown": "^0.16.4",
-		"typescript": "^5.9.3",
 		"vitest": "^4.0.9"
 	},
 	"peerDependencies": {
@@ -33,7 +31,7 @@
 		"test": "alepha test",
 		"build": "yarn ui:build && tsdown -c=../../tsdown.config.ts",
 		"ui:dev": "alepha dev",
-		"ui:build": "alepha build && rm -r assets/devtools && cp -r dist/public assets/devtools"
+		"ui:build": "alepha build && rm -rf assets/devtools && cp -r dist/public assets/devtools"
 	},
 	"homepage": "https://github.com/feunard/alepha",
 	"repository": {

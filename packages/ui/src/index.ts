@@ -21,6 +21,7 @@ export type {
   ActionSubmitButtonProps,
 } from "./components/buttons/ActionButton.tsx";
 export { default as ActionButton } from "./components/buttons/ActionButton.tsx";
+export { default as BurgerButton } from "./components/buttons/BurgerButton.tsx";
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
 export { default as JsonViewer } from "./components/data/JsonViewer.tsx";
@@ -32,7 +33,10 @@ export { default as ControlDate } from "./components/form/ControlDate.tsx";
 export { default as ControlQueryBuilder } from "./components/form/ControlQueryBuilder.tsx";
 export { default as ControlSelect } from "./components/form/ControlSelect.tsx";
 export { default as TypeForm } from "./components/form/TypeForm.tsx";
-export { default as AdminShell } from "./components/layout/AdminShell.tsx";
+export {
+  type AdminShellProps,
+  default as AdminShell,
+} from "./components/layout/AdminShell.tsx";
 export { default as AlephaMantineProvider } from "./components/layout/AlephaMantineProvider.tsx";
 export type {
   AppBarBurger,

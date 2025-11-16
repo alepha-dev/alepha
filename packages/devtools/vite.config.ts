@@ -1,4 +1,4 @@
-import { defineConfig, viteAlepha } from "@alepha/vite";
+import { defineConfig, viteAlepha } from "alepha/vite";
 
 export default defineConfig({
   base: "/devtools",

@@ -1,4 +1,4 @@
-import { NodeSqliteProvider } from "@alepha/orm";
+import { NodeSqliteProvider } from "alepha/orm";
 
 export class DevToolsDatabaseProvider extends NodeSqliteProvider {
   public get name() {

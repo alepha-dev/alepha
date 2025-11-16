@@ -1,5 +1,12 @@
 import { ClientOnly, useRouter, useRouterState } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import type { AdminShellProps } from "@alepha/ui";
+import {
+  AdminShell,
+  AlephaMantineProvider,
+  type SidebarNode,
+  ui,
+} from "@alepha/ui";
 import { Flex, Text } from "@mantine/core";
 import {
   IconHeartHandshake,
@@ -7,9 +14,6 @@ import {
   IconPackage,
   IconRobot,
 } from "@tabler/icons-react";
-import { AdminShell, AlephaMantineProvider, type SidebarNode } from "alepha/ui";
-import type { AdminShellProps } from "alepha/ui/src/components/layout/AdminShell.tsx";
-import { ui } from "alepha/ui/src/constants/ui.ts";
 import { docs } from "../config/docs.ts";
 import Header from "./Header.tsx";
 

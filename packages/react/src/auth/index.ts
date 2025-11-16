@@ -9,6 +9,8 @@ import { ReactAuth } from "./services/ReactAuth.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$auth.ts";
+export * from "./descriptors/$authGithub.ts";
+export * from "./descriptors/$authGoogle.ts";
 export * from "./index.shared.ts";
 export * from "./providers/ReactAuthProvider.ts";
 
