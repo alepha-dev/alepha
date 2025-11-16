@@ -1,10 +1,10 @@
-import { $hook, $inject, Alepha, t } from "@alepha/core";
 import { $page, NotFound, ReactRouter, Redirection } from "@alepha/react";
-import { ReactAuth } from "@alepha/react-auth";
-import { $head } from "@alepha/react-head";
-import { HttpError, NotFoundError } from "@alepha/server";
-import { $client } from "@alepha/server-links";
+import { ReactAuth } from "@alepha/react/auth";
+import { $head } from "@alepha/react/head";
 import { notifications } from "@mantine/notifications";
+import { $hook, $inject, Alepha, t } from "alepha";
+import { HttpError, NotFoundError } from "alepha/server";
+import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { InvitationApi } from "./api/InvitationApi.ts";
 import type { ProjectApi } from "./api/ProjectApi.ts";

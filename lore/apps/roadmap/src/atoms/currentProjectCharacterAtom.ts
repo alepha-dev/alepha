@@ -1,4 +1,4 @@
-import { $atom, t } from "@alepha/core";
+import { $atom, t } from "alepha";
 import { characters } from "../entities/characters.ts";
 
 export const currentProjectCharacterAtom = $atom({

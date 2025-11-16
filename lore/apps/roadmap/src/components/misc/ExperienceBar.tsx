@@ -1,5 +1,5 @@
 import { useInject, useStore } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
+import { useAuth } from "@alepha/react/auth";
 import { Card, Flex, HoverCard, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";

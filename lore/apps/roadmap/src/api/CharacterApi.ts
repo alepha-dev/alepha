@@ -1,5 +1,5 @@
-import { $inject, t } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { $inject, t } from "alepha";
+import { $action } from "alepha/server";
 import { Db } from "../providers/Db.ts";
 
 export class CharacterApi {

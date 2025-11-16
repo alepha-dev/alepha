@@ -1,6 +1,6 @@
-import { users } from "@alepha/api-users";
-import { type Static, t } from "@alepha/core";
-import { $entity, pg } from "@alepha/orm";
+import { users } from "alepha/api/users";
+import { type Static, t } from "alepha";
+import { $entity, pg } from "alepha/orm";
 import { projects } from "./projects.js";
 
 export const characters = $entity({

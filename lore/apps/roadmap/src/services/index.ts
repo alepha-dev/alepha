@@ -1,4 +1,4 @@
-import { $module } from "@alepha/core";
+import { $module } from "alepha";
 import { CharacterInfo } from "./CharacterInfo.ts";
 import { I18n } from "./I18n.ts";
 import { Toaster } from "./Toaster.ts";

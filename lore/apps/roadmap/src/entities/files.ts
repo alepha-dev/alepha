@@ -1,3 +1,3 @@
-import { files } from "@alepha/api-files";
+import { files } from "alepha/api/files";
 
 export { files };

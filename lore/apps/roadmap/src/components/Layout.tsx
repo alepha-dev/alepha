@@ -1,4 +1,4 @@
-import { Alepha } from "@alepha/core";
+import { Alepha } from "alepha";
 import { NestedView, useEvents, useInject } from "@alepha/react";
 import { ColorSchemeScript, Flex, MantineProvider } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";

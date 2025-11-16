@@ -9,27 +9,8 @@
 		"typecheck": "alepha typecheck"
 	},
 	"dependencies": {
-		"@alepha/api-files": "^0.11.11",
-		"@alepha/api-users": "^0.11.11",
-		"@alepha/bucket": "^0.11.11",
 		"@alepha/bucket-vercel": "^0.11.11",
-		"@alepha/core": "^0.11.11",
-		"@alepha/datetime": "^0.11.11",
-		"@alepha/file": "^0.11.11",
-		"@alepha/logger": "^0.11.11",
-		"@alepha/orm": "^0.11.11",
 		"@alepha/react": "^0.11.11",
-		"@alepha/react-auth": "^0.11.11",
-		"@alepha/react-form": "^0.11.11",
-		"@alepha/react-head": "^0.11.11",
-		"@alepha/react-i18n": "^0.11.11",
-		"@alepha/security": "^0.11.11",
-		"@alepha/server": "^0.11.11",
-		"@alepha/server-compress": "^0.11.11",
-		"@alepha/server-helmet": "^0.11.11",
-		"@alepha/server-links": "^0.11.11",
-		"@alepha/server-multipart": "^0.11.11",
-		"@alepha/server-security": "^0.11.11",
 		"@dnd-kit/core": "^6.3.1",
 		"@dnd-kit/sortable": "^10.0.0",
 		"@dnd-kit/utilities": "^3.2.2",
@@ -48,6 +29,7 @@
 		"@tiptap/starter-kit": "^3.10.7",
 		"@vercel/analytics": "^1.5.0",
 		"@vercel/speed-insights": "^1.2.0",
+		"alepha": "^0.11.11",
 		"animate.css": "^4.1.1",
 		"framer-motion": "^12.23.24",
 		"highlight.js": "^11.11.1",
@@ -57,12 +39,10 @@
 		"sanitize-html": "^2.17.0"
 	},
 	"devDependencies": {
-		"@alepha/vite": "^0.11.11",
 		"@types/node": "^24.10.1",
 		"@types/react": "^19.2.5",
 		"@types/react-dom": "^19.2.3",
 		"@types/sanitize-html": "^2.16.0",
-		"alepha": "^0.11.11",
 		"vercel": "^48.10.2"
 	}
 }

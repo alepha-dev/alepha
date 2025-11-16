@@ -1,8 +1,8 @@
-import { users } from "@alepha/api-users";
-import { $inject } from "@alepha/core";
-import { $logger } from "@alepha/logger";
-import { pageQuerySchema, pageSchema } from "@alepha/orm";
-import { $action } from "@alepha/server";
+import { users } from "alepha/api/users";
+import { $inject } from "alepha";
+import { $logger } from "alepha/logger";
+import { pageQuerySchema, pageSchema } from "alepha/orm";
+import { $action } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import { Db } from "../providers/Db.ts";
 

@@ -1,8 +1,8 @@
-import { t } from "@alepha/core";
+import { t } from "alepha";
 import { useAlepha, useClient, useInject, useRouter } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
-import { useForm } from "@alepha/react-form";
-import { useI18n } from "@alepha/react-i18n";
+import { useAuth } from "@alepha/react/auth";
+import { useForm } from "@alepha/react/form";
+import { useI18n } from "@alepha/react/i18n";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import { IconHammer, IconTag } from "@tabler/icons-react";
 import { useMemo } from "react";

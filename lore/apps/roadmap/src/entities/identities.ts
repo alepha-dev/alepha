@@ -1,3 +1,3 @@
-import { identities } from "@alepha/api-users";
+import { identities } from "alepha/api/users";
 
 export { identities };

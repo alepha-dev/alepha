@@ -1,6 +1,6 @@
-import { FileService } from "@alepha/api-files";
-import { $inject, t } from "@alepha/core";
-import { $action } from "@alepha/server";
+import { FileService } from "alepha/api/files";
+import { $inject, t } from "alepha";
+import { $action } from "alepha/server";
 import { users } from "../entities/users.ts";
 import { Db } from "../providers/Db.ts";
 

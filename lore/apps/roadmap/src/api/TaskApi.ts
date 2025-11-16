@@ -1,8 +1,8 @@
-import { $inject, t } from "@alepha/core";
-import { DateTimeProvider } from "@alepha/datetime";
-import { $logger } from "@alepha/logger";
-import { pageQuerySchema, pg } from "@alepha/orm";
-import { $action, BadRequestError, okSchema } from "@alepha/server";
+import { $inject, t } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { pageQuerySchema, pg } from "alepha/orm";
+import { $action, BadRequestError, okSchema } from "alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { characters } from "../entities/characters.ts";
 import { tasks } from "../entities/tasks.ts";

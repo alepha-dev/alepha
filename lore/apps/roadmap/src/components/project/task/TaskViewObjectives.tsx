@@ -1,5 +1,5 @@
 import { useClient, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import { Checkbox, Flex, Stack, Text } from "@mantine/core";
 import { IconListCheck } from "@tabler/icons-react";
 import type { TaskApi } from "../../../api/TaskApi.ts";

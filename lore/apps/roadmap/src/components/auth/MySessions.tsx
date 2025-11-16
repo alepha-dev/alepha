@@ -1,6 +1,6 @@
-import { DateTimeProvider } from "@alepha/datetime";
+import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
+import { useAuth } from "@alepha/react/auth";
 import { Card, Flex, Group, Stack, Text } from "@mantine/core";
 import {
   IconCircleFilled,

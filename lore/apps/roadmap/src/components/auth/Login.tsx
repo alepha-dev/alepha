@@ -1,8 +1,8 @@
-import { TypeBoxError, t } from "@alepha/core";
+import { TypeBoxError, t } from "alepha";
 import { useRouter } from "@alepha/react";
-import { useAuth } from "@alepha/react-auth";
-import { useForm } from "@alepha/react-form";
-import { HttpError } from "@alepha/server";
+import { useAuth } from "@alepha/react/auth";
+import { useForm } from "@alepha/react/form";
+import { HttpError } from "alepha/server";
 import { Card, Center, Flex, Group, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconLock, IconMail } from "@tabler/icons-react";

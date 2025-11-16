@@ -1,8 +1,8 @@
-import { users } from "@alepha/api-users";
-import { $inject, t } from "@alepha/core";
-import { $logger } from "@alepha/logger";
-import { pageQuerySchema } from "@alepha/orm";
-import { $action, ForbiddenError, okSchema } from "@alepha/server";
+import { users } from "alepha/api/users";
+import { $inject, t } from "alepha";
+import { $logger } from "alepha/logger";
+import { pageQuerySchema } from "alepha/orm";
+import { $action, ForbiddenError, okSchema } from "alepha/server";
 import { type Character, characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";

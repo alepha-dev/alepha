@@ -1,5 +1,5 @@
 import { $page } from "@alepha/react";
-import { $client } from "@alepha/server-links";
+import { $client } from "alepha/server/links";
 import type { CharacterApi } from "../../api/CharacterApi.ts";
 import type { IdentityApi } from "../../api/IdentityApi.ts";
 import type { InvitationApi } from "../../api/InvitationApi.ts";

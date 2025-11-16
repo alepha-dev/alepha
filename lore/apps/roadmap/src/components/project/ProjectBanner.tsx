@@ -1,5 +1,5 @@
 import { useInject, useRouter, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import { Card, Flex, Stack, Text } from "@mantine/core";
 import { IconCircleFilled, IconMoneybag } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";

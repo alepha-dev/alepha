@@ -1,4 +1,4 @@
-import { t } from "@alepha/core";
+import { t } from "alepha";
 
 export const taskCreateSchema = t.object({
   title: t.string(),

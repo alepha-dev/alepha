@@ -1,5 +1,5 @@
 import { useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react-i18n";
+import { useI18n } from "@alepha/react/i18n";
 import { ActionIcon, Card, Flex, Menu, Text, TextInput } from "@mantine/core";
 import {
   IconBook2,

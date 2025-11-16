@@ -1,6 +1,6 @@
-import { $inject, t } from "@alepha/core";
-import { $logger } from "@alepha/logger";
-import { $action, BadRequestError, okSchema } from "@alepha/server";
+import { $inject, t } from "alepha";
+import { $logger } from "alepha/logger";
+import { $action, BadRequestError, okSchema } from "alepha/server";
 import { invitations } from "../entities/invitations.ts";
 import { Db } from "../providers/Db.ts";
 import { Security } from "../providers/Security.ts";
