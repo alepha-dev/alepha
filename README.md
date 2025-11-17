@@ -126,8 +126,7 @@ $ npx alepha init --react
 Create a file `src/main.tsx`:
 
 ```tsx
-// src/main.tsx
-import { run, t } from "alepha";
+import { Alepha, run, t } from "alepha";
 import { $page } from "@alepha/react";
 import { useState } from "react";
 
@@ -163,7 +162,7 @@ Run the development server:
 $ npx alepha dev
 ```
 
-Open your browser at `http://localhost:3000/` and see your React application in action.
+Open your browser at `http://localhost:5173/` and see your React application in action.
 
 ## What's next?
 
