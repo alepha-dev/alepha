@@ -12,7 +12,7 @@
     "dist",
     "src",
     "assets",
-		"tsconfig.base.json"
+    "tsconfig.base.json"
   ],
   "bin": "./src/bin/index.ts",
   "dependencies": {
