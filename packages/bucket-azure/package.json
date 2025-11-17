@@ -10,7 +10,7 @@
     "storage-blob"
   ],
   "author": "Feunard",
-  "version": "0.11.11",
+  "version": "0.11.12",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -26,12 +26,12 @@
     "@azure/storage-blob": "^12.29.1"
   },
   "devDependencies": {
-    "alepha": "0.11.11",
+    "alepha": "0.11.12",
     "tsdown": "^0.16.4",
     "vitest": "^4.0.9"
   },
   "peerDependencies": {
-    "alepha": "0.11.11"
+    "alepha": "0.11.12"
   },
   "scripts": {
     "lint": "alepha lint",

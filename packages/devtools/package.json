@@ -1,7 +1,7 @@
 {
   "name": "@alepha/devtools",
   "description": "Developer tools for monitoring and debugging Alepha applications.",
-  "version": "0.11.11",
+  "version": "0.11.12",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -14,16 +14,16 @@
     "src"
   ],
   "devDependencies": {
-    "@alepha/react": "0.11.11",
-    "@alepha/ui": "0.11.11",
+    "@alepha/react": "0.11.12",
+    "@alepha/ui": "0.11.12",
     "@tabler/icons-react": "^3.35.0",
-    "alepha": "0.11.11",
+    "alepha": "0.11.12",
     "react": "^19.2.0",
     "tsdown": "^0.16.4",
     "vitest": "^4.0.9"
   },
   "peerDependencies": {
-    "alepha": "0.11.11"
+    "alepha": "0.11.12"
   },
   "scripts": {
     "lint": "alepha lint",
