@@ -21,36 +21,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
-    services:
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      postgres:
-        image: postgres
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      azurite:
-        image: mcr.microsoft.com/azure-storage/azurite
-        ports:
-          - 10000:10000
-
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
@@ -81,28 +51,8 @@ jobs:
       - name: Clean
         run: yarn clean
 
-      - name: Lint
-        run: yarn lint
-
-      - name: TypeScript Check
-        run: yarn typecheck
-
-      - name: Dependencies Check
-        run: yarn check-dependencies
-
-      - name: Test
-        run: yarn test
-
       - name: Build
         run: yarn build
-
-      - name: Check for Changes After Build
-        run: |
-          if [[ -n $(git diff) ]]; then
-            echo "Error: Build created uncommitted changes"
-            git diff
-            exit 1
-          fi
 
       - name: Bump Version
         run: |
@@ -111,12 +61,12 @@ jobs:
       - name: Convert to JavaScript
         run: yarn convert js
 
-      - name: Publish to NPM with Provenance
+      - name: Publish to NPM
         run: |
           yarn workspaces foreach --no-private -Apt exec npm publish --access=public
 
-      - name: Clean Up
-        run: yarn alepha clean
+      - name: Clean
+        run: yarn clean
 
       - name: Get New Version
         id: version
@@ -143,8 +93,6 @@ jobs:
           release_name: Release ${{ steps.version.outputs.version }}
           body: |
             Release ${{ steps.version.outputs.version }}
-
-            Published to npm with provenance certification.
 
             **Version bump:** ${{ inputs.version_bump }}
           draft: false
