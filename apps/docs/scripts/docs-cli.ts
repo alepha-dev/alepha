@@ -387,31 +387,33 @@ class DocsCliApp {
     );
     const formattedName = this.formatPackageName(moduleName);
 
-    // Find the main index file
-    const indexPath = await (async () => {
-      const candidates = [
-        join(sourcePath, "index.ts"),
-        join(sourcePath, `${moduleName}.ts`),
-        join(sourcePath, "Alepha.ts"),
-      ];
+    // Find the file with @module tag
+    const candidates = [
+      join(sourcePath, "index.ts"),
+      join(sourcePath, `${moduleName}.ts`),
+      join(sourcePath, "Alepha.ts"),
+    ];
 
-      this.log.trace(`Looking for index file in: ${sourcePath}`);
-      for (const path of candidates) {
-        try {
-          await fs.access(path);
-          this.log.debug(`Found index file: ${path}`);
-          return path;
-        } catch {
-          this.log.trace(`Index file not found: ${path}`);
+    this.log.trace(`Looking for @module tag in: ${sourcePath}`);
+    let moduleDescription: string | null = null;
+    let indexPath: string | null = null;
+
+    for (const path of candidates) {
+      try {
+        await fs.access(path);
+        this.log.trace(`Checking file: ${path}`);
+        const description = await this.extractModuleDescription(path);
+        if (description) {
+          this.log.debug(`Found @module tag in: ${path}`);
+          moduleDescription = description;
+          indexPath = path;
+          break;
         }
+        this.log.trace(`No @module tag in: ${path}`);
+      } catch {
+        this.log.trace(`File not found: ${path}`);
       }
-      this.log.debug("No index file found");
-      return null;
-    })();
-
-    const moduleDescription = indexPath
-      ? await this.extractModuleDescription(indexPath)
-      : null;
+    }
 
     // Skip modules without @module tag
     if (!moduleDescription) {
