@@ -16,7 +16,8 @@
   ],
   "bin": "./src/index.ts",
   "dependencies": {
-    "@vitejs/plugin-react": "^5.1.1"
+    "@vitejs/plugin-react": "^5.1.1",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -26,7 +27,6 @@
     "jsdom": "^27.2.0",
     "openid-client": "^6.8.1",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "vitest": "^4.0.9"
   },
   "peerDependencies": {
