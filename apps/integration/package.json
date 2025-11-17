@@ -7,6 +7,6 @@
 		"typecheck": "alepha typecheck"
 	},
 	"dependencies": {
-		"alepha": "^0.11.12"
+		"alepha": "^0.12.0"
 	}
 }
