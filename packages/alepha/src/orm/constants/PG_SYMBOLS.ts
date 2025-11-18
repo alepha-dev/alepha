@@ -50,6 +50,7 @@ export type PgIdentityOptions = {
 
 export interface PgEnumOptions {
   name?: string;
+  description?: string;
 }
 
 export interface PgRefOptions {

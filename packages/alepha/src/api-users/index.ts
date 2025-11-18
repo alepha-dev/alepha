@@ -14,7 +14,7 @@ import { UserService } from "./services/UserService.ts";
 export * from "./controllers/IdentityController.ts";
 export * from "./controllers/SessionController.ts";
 export * from "./controllers/UserController.ts";
-export * from "./descriptors/$realmUsers.ts";
+export * from "./descriptors/$userRealm.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
