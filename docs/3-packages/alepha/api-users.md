@@ -23,31 +23,6 @@ For more details, see the [Descriptors documentation](/docs/descriptors).
 
 #### $userRealm()
 
-Secret key for signing tokens.
-  
-  If not provided, the secret from the SecurityProvider will be used (usually from the APP_SECRET environment variable).
-  /
-  secret?: string;
-
-  /**
-  Realm configuration options.
-  
-  It's already pre-configured for user management with admin and user roles.
-  /
-  realm?: Partial<RealmDescriptorOptions>;
-
-  /**
-  Override entities.
-  /
-  entities?: {
-    users?: EntityDescriptor;
-    identities?: EntityDescriptor;
-    sessions?: EntityDescriptor;
-    organizations?: EntityDescriptor;
-  }
-}
-
-/**
 Already configured realm for user management.
 
 Realm contains two roles: `admin` and `user`.
