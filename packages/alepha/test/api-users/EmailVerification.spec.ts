@@ -49,7 +49,7 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService, emailProvider, actions } = await setup();
 
     // Create a test user
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -98,7 +98,7 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService, emailProvider, actions } = await setup();
 
     // Create a user with already verified email
-    await userService.users.create({
+    await userService.users().create({
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,
@@ -123,7 +123,7 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService, emailProvider, actions } = await setup();
 
     // Create a test user
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -151,7 +151,7 @@ describe("alepha/api-users - Email Verification", () => {
     expect(result.message).toContain("Email has been verified successfully");
 
     // Check that emailVerified is now true
-    const updatedUser = await userService.users.findOne({
+    const updatedUser = await userService.users().findOne({
       where: { id: { eq: user.id } },
     });
     expect(updatedUser.emailVerified).toBe(true);
@@ -161,7 +161,7 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService, actions } = await setup();
 
     // Create a test user
-    await userService.users.create({
+    await userService.users().create({
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -183,7 +183,7 @@ describe("alepha/api-users - Email Verification", () => {
       await setup();
 
     // Create a test user
-    await userService.users.create({
+    await userService.users().create({
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -219,7 +219,7 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService, emailProvider, actions } = await setup();
 
     // Create a test user
-    await userService.users.create({
+    await userService.users().create({
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -258,14 +258,14 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService, actions } = await setup();
 
     // Create a test user with unverified email
-    await userService.users.create({
+    await userService.users().create({
       email: "unverified@example.com",
       roles: ["user"],
       emailVerified: false,
     });
 
     // Create a test user with verified email
-    await userService.users.create({
+    await userService.users().create({
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,
@@ -297,7 +297,7 @@ describe("alepha/api-users - Email Verification", () => {
       await setup();
 
     // Create a test user
-    await userService.users.create({
+    await userService.users().create({
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -344,13 +344,13 @@ describe("alepha/api-users - Email Verification", () => {
     const { userService } = await setup();
 
     // Create users with different verification statuses
-    await userService.users.create({
+    await userService.users().create({
       email: "unverified@example.com",
       roles: ["user"],
       emailVerified: false,
     });
 
-    await userService.users.create({
+    await userService.users().create({
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,

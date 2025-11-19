@@ -18,10 +18,15 @@ export class SessionController {
     group: this.group,
     description: "Find sessions with pagination and filtering",
     schema: {
-      query: sessionQuerySchema,
+      query: t.extend(sessionQuerySchema, {
+        userRealmName: t.optional(t.string()),
+      }),
       response: pg.page(sessionResourceSchema),
     },
-    handler: ({ query }) => this.sessionService.findSessions(query),
+    handler: ({ query }) => {
+      const { userRealmName, ...q } = query;
+      return this.sessionService.findSessions(q, userRealmName);
+    },
   });
 
   /**
@@ -35,9 +40,12 @@ export class SessionController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       response: sessionResourceSchema,
     },
-    handler: ({ params }) => this.sessionService.getSessionById(params.id),
+    handler: ({ params, query }) => this.sessionService.getSessionById(params.id, query.userRealmName),
   });
 
   /**
@@ -52,10 +60,13 @@ export class SessionController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
-      await this.sessionService.deleteSession(params.id);
+    handler: async ({ params, query }) => {
+      await this.sessionService.deleteSession(params.id, query.userRealmName);
       return { ok: true, id: params.id };
     },
   });

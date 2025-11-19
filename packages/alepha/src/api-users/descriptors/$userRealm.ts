@@ -1,7 +1,11 @@
 import { $context } from "alepha";
 import { $realm, type RealmDescriptorOptions, SecurityProvider, } from "alepha/security";
 import { SessionService } from "../services/SessionService.ts";
-import { EntityDescriptor } from "alepha/orm";
+import { $repository, Repository } from "alepha/orm";
+import { sessions } from "../entities/sessions.ts";
+import { identities } from "../entities/identities.ts";
+import { users } from "../entities/users.ts";
+import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 
 /**
  * Already configured realm for user management.
@@ -22,6 +26,9 @@ export const $userRealm = (
   const { alepha } = $context();
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
+  const userRealmProvider = alepha.inject(UserRealmProvider);
+
+  userRealmProvider.register("default", options);
 
   return $realm({
     ...options.realm,
@@ -90,9 +97,8 @@ export interface UserRealmOptions {
    * Override entities.
    */
   entities?: {
-    users?: EntityDescriptor;
-    identities?: EntityDescriptor;
-    sessions?: EntityDescriptor;
-    organizations?: EntityDescriptor;
+    users?: Repository<typeof users.schema>;
+    identities?: Repository<typeof identities.schema>;
+    sessions?: Repository<typeof sessions.schema>;
   }
 }

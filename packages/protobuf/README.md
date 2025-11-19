@@ -1,5 +1,7 @@
 # Alepha Protobuf
 
+Protocol Buffers (Protobuf) codec support for Alepha framework.
+
 ## Installation
 
 This package is part of the Alepha framework and can be installed via the all-in-one package:

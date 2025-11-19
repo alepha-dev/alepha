@@ -22,10 +22,15 @@ export class UserController {
     group: this.group,
     description: "Find users with pagination and filtering",
     schema: {
-      query: userQuerySchema,
+      query: t.extend(userQuerySchema, {
+        userRealmName: t.optional(t.string()),
+      }),
       response: pg.page(userResourceSchema),
     },
-    handler: ({ query }) => this.userService.findUsers(query),
+    handler: ({ query }) => {
+      const { userRealmName, ...q } = query;
+      return this.userService.findUsers(q, userRealmName);
+    },
   });
 
   /**
@@ -39,9 +44,12 @@ export class UserController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       response: userResourceSchema,
     },
-    handler: ({ params }) => this.userService.getUserById(params.id),
+    handler: ({ params, query }) => this.userService.getUserById(params.id, query.userRealmName),
   });
 
   /**
@@ -53,10 +61,13 @@ export class UserController {
     group: this.group,
     description: "Create a new user",
     schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       body: createUserSchema,
       response: userResourceSchema,
     },
-    handler: ({ body }) => this.userService.createUser(body),
+    handler: ({ body, query }) => this.userService.createUser(body, query.userRealmName),
   });
 
   /**
@@ -71,10 +82,13 @@ export class UserController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       body: updateUserSchema,
       response: userResourceSchema,
     },
-    handler: ({ params, body }) => this.userService.updateUser(params.id, body),
+    handler: ({ params, body, query }) => this.userService.updateUser(params.id, body, query.userRealmName),
   });
 
   /**
@@ -89,10 +103,13 @@ export class UserController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
-      await this.userService.deleteUser(params.id);
+    handler: async ({ params, query }) => {
+      await this.userService.deleteUser(params.id, query.userRealmName);
       return { ok: true, id: params.id };
     },
   });
@@ -105,6 +122,9 @@ export class UserController {
     path: "/users/password-reset/request",
     group: this.group,
     schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       body: t.object({
         email: t.email(),
         resetUrl: t.string(),
@@ -114,15 +134,13 @@ export class UserController {
         message: t.string(),
       }),
     },
-    handler: async ({ body }) => {
-      // Request password reset using verification service
-      // This handles user validation, token generation, email sending, rate limiting, etc.
+    handler: async ({ body, query }) => {
       await this.credentialService.requestPasswordReset(
         body.email,
         body.resetUrl,
+        query.userRealmName,
       );
 
-      // Always return success to prevent email enumeration
       return {
         success: true,
         message:
@@ -142,6 +160,7 @@ export class UserController {
       query: t.object({
         email: t.email(),
         token: t.string(),
+        userRealmName: t.optional(t.string()),
       }),
       response: t.object({
         valid: t.boolean(),
@@ -153,6 +172,7 @@ export class UserController {
         const email = await this.credentialService.validateResetToken(
           query.email,
           query.token,
+          query.userRealmName,
         );
         return {
           valid: true,
@@ -174,6 +194,9 @@ export class UserController {
     path: "/users/password-reset/reset",
     group: this.group,
     schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       body: t.object({
         email: t.email(),
         token: t.string(),
@@ -184,11 +207,12 @@ export class UserController {
         message: t.string(),
       }),
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, query }) => {
       await this.credentialService.resetPassword(
         body.email,
         body.token,
         body.newPassword,
+        query.userRealmName,
       );
 
       return {
@@ -206,6 +230,9 @@ export class UserController {
     path: "/users/email-verification/request",
     group: this.group,
     schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       body: t.object({
         email: t.email(),
         verifyUrl: t.string(),
@@ -215,15 +242,13 @@ export class UserController {
         message: t.string(),
       }),
     },
-    handler: async ({ body }) => {
-      // Request email verification using verification service
-      // This handles user validation, token generation, email sending, rate limiting, etc.
+    handler: async ({ body, query }) => {
       await this.userService.requestEmailVerification(
         body.email,
         body.verifyUrl,
+        query.userRealmName,
       );
 
-      // Always return success to prevent email enumeration
       return {
         success: true,
         message:
@@ -240,6 +265,9 @@ export class UserController {
     path: "/users/email-verification/verify",
     group: this.group,
     schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       body: t.object({
         email: t.email(),
         token: t.string(),
@@ -249,8 +277,8 @@ export class UserController {
         message: t.string(),
       }),
     },
-    handler: async ({ body }) => {
-      await this.userService.verifyEmail(body.email, body.token);
+    handler: async ({ body, query }) => {
+      await this.userService.verifyEmail(body.email, body.token, query.userRealmName);
 
       return {
         success: true,
@@ -268,13 +296,14 @@ export class UserController {
     schema: {
       query: t.object({
         email: t.email(),
+        userRealmName: t.optional(t.string()),
       }),
       response: t.object({
         verified: t.boolean(),
       }),
     },
     handler: async ({ query }) => {
-      const verified = await this.userService.isEmailVerified(query.email);
+      const verified = await this.userService.isEmailVerified(query.email, query.userRealmName);
 
       return {
         verified,

@@ -1,22 +1,28 @@
 import type { VerificationController } from "alepha/api/verifications";
 import { $inject } from "alepha";
-import { $repository } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
-import { identities } from "../entities/identities.ts";
-import { sessions } from "../entities/sessions.ts";
-import { users } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
+import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 
 export class CredentialService {
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
+  protected readonly userRealmProvider = $inject(UserRealmProvider);
 
-  public readonly users = $repository(users);
-  public readonly sessions = $repository(sessions);
-  public readonly identities = $repository(identities);
+  public users(userRealmName?: string) {
+    return this.userRealmProvider.userRepository(userRealmName);
+  }
+
+  public sessions(userRealmName?: string) {
+    return this.userRealmProvider.sessionRepository(userRealmName);
+  }
+
+  public identities(userRealmName?: string) {
+    return this.userRealmProvider.identityRepository(userRealmName);
+  }
 
   /**
    * Request a password reset for a user by email.
@@ -29,9 +35,10 @@ export class CredentialService {
   public async requestPasswordReset(
     email: string,
     resetUrl: string,
+    userRealmName?: string,
   ): Promise<boolean> {
     // Find user by email (silent fail for security)
-    const user = await this.users
+    const user = await this.users(userRealmName)
       .findOne({
         where: { email: { eq: email } },
       })
@@ -43,7 +50,7 @@ export class CredentialService {
     }
 
     // Find the credentials identity for this user
-    const identity = await this.identities
+    const identity = await this.identities(userRealmName)
       .findOne({
         where: {
           userId: { eq: user.id },
@@ -92,6 +99,7 @@ export class CredentialService {
   public async validateResetToken(
     email: string,
     token: string,
+    userRealmName?: string,
   ): Promise<string> {
     // Verify using verification controller
     const isValid = await this.verificationController
@@ -116,6 +124,7 @@ export class CredentialService {
     email: string,
     token: string,
     newPassword: string,
+    userRealmName?: string,
   ): Promise<void> {
     // Verify token using verification controller
     const result = await this.verificationController
@@ -133,11 +142,11 @@ export class CredentialService {
     }
 
     // Find user and identity
-    const user = await this.users.findOne({
+    const user = await this.users(userRealmName).findOne({
       where: { email: { eq: email } },
     });
 
-    const identity = await this.identities.findOne({
+    const identity = await this.identities(userRealmName).findOne({
       where: {
         userId: { eq: user.id },
         provider: { eq: "credentials" },
@@ -148,7 +157,7 @@ export class CredentialService {
     const hashedPassword = await this.cryptoProvider.hashPassword(newPassword);
 
     // Update the identity with new password
-    await this.identities.updateById(identity.id, {
+    await this.identities(userRealmName).updateById(identity.id, {
       providerData: {
         ...(identity.providerData as Record<string, unknown>),
         password: hashedPassword,
@@ -156,7 +165,7 @@ export class CredentialService {
     });
 
     // Invalidate all existing sessions for this user
-    await this.sessions.deleteMany({
+    await this.sessions(userRealmName).deleteMany({
       userId: { eq: user.id },
     });
   }

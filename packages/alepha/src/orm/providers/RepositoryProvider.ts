@@ -20,6 +20,13 @@ export class RepositoryProvider {
     return repositories;
   }
 
+  public getRepository<T extends TObject>(
+    entity: EntityDescriptor<T>,
+  ): Repository<T> {
+    const RepositoryClass = this.createClassRepository(entity);
+    return this.alepha.inject(RepositoryClass);
+  }
+
   public createClassRepository<T extends TObject>(
     entity: EntityDescriptor<T>,
   ): Service<Repository<T>> {

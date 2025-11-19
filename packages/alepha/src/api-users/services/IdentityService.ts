@@ -1,20 +1,26 @@
-import { $repository, type Page } from "alepha/orm";
+import { $inject } from "alepha";
+import type { Page } from "alepha/orm";
 import type { IdentityEntity } from "../entities/identities.ts";
-import { identities } from "../entities/identities.ts";
+import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";
 
 export class IdentityService {
-  public readonly identities = $repository(identities);
+  protected readonly userRealmProvider = $inject(UserRealmProvider);
+
+  public identities(userRealmName?: string) {
+    return this.userRealmProvider.identityRepository(userRealmName);
+  }
 
   /**
    * Find identities with pagination and filtering.
    */
   public async findIdentities(
     q: IdentityQuery = {},
+    userRealmName?: string,
   ): Promise<Page<IdentityEntity>> {
     q.sort ??= "-createdAt";
 
-    const where = this.identities.createQueryWhere();
+    const where = this.identities(userRealmName).createQueryWhere();
 
     if (q.userId) {
       where.userId = { eq: q.userId };
@@ -24,23 +30,23 @@ export class IdentityService {
       where.provider = { like: q.provider };
     }
 
-    return await this.identities.paginate(q, { where }, { count: true });
+    return await this.identities(userRealmName).paginate(q, { where }, { count: true });
   }
 
   /**
    * Get an identity by ID.
    */
-  public async getIdentityById(id: string): Promise<IdentityEntity> {
-    return await this.identities.findById(id);
+  public async getIdentityById(id: string, userRealmName?: string): Promise<IdentityEntity> {
+    return await this.identities(userRealmName).findById(id);
   }
 
   /**
    * Delete an identity by ID.
    */
-  public async deleteIdentity(id: string): Promise<void> {
+  public async deleteIdentity(id: string, userRealmName?: string): Promise<void> {
     // Verify identity exists
-    await this.getIdentityById(id);
+    await this.getIdentityById(id, userRealmName);
 
-    await this.identities.deleteById(id);
+    await this.identities(userRealmName).deleteById(id);
   }
 }

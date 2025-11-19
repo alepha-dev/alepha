@@ -18,10 +18,15 @@ export class IdentityController {
     group: this.group,
     description: "Find identities with pagination and filtering",
     schema: {
-      query: identityQuerySchema,
+      query: t.extend(identityQuerySchema, {
+        userRealmName: t.optional(t.string()),
+      }),
       response: pg.page(identityResourceSchema),
     },
-    handler: ({ query }) => this.identityService.findIdentities(query),
+    handler: ({ query }) => {
+      const { userRealmName, ...q } = query;
+      return this.identityService.findIdentities(q, userRealmName);
+    },
   });
 
   /**
@@ -35,9 +40,12 @@ export class IdentityController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       response: identityResourceSchema,
     },
-    handler: ({ params }) => this.identityService.getIdentityById(params.id),
+    handler: ({ params, query }) => this.identityService.getIdentityById(params.id, query.userRealmName),
   });
 
   /**
@@ -52,10 +60,13 @@ export class IdentityController {
       params: t.object({
         id: t.uuid(),
       }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
-      await this.identityService.deleteIdentity(params.id);
+    handler: async ({ params, query }) => {
+      await this.identityService.deleteIdentity(params.id, query.userRealmName);
       return { ok: true, id: params.id };
     },
   });

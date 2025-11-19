@@ -3,6 +3,7 @@ import { AlephaEmail } from "alepha/email";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
+import { UserRealmProvider } from "./providers/UserRealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
 import { SessionCrudService } from "./services/SessionCrudService.ts";
@@ -46,6 +47,7 @@ export const AlephaApiUsers = $module({
   name: "alepha.api.users",
   services: [
     AlephaEmail,
+    UserRealmProvider,
     SessionService,
     SessionCrudService,
     CredentialService,

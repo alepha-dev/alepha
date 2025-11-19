@@ -35,13 +35,13 @@ describe("alepha/api-users - SessionController", () => {
       await setup();
 
     // Create a test user
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "session@example.com",
       roles: ["user"],
     });
 
     // Create a session
-    const session = await sessionService.sessions.create({
+    const session = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
@@ -77,12 +77,12 @@ describe("alepha/api-users - SessionController", () => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "deletesession@example.com",
       roles: ["user"],
     });
 
-    const session = await sessionService.sessions.create({
+    const session = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
@@ -107,23 +107,23 @@ describe("alepha/api-users - SessionController", () => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "multisession@example.com",
       roles: ["user"],
     });
 
     // Create multiple sessions
-    const session1 = await sessionService.sessions.create({
+    const session1 = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
-    const session2 = await sessionService.sessions.create({
+    const session2 = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
-    const session3 = await sessionService.sessions.create({
+    const session3 = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
@@ -146,26 +146,26 @@ describe("alepha/api-users - SessionController", () => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();
 
-    const user1 = await userService.users.create({
+    const user1 = await userService.users().create({
       email: "user1@example.com",
       roles: ["user"],
     });
-    const user2 = await userService.users.create({
+    const user2 = await userService.users().create({
       email: "user2@example.com",
       roles: ["user"],
     });
 
-    await sessionService.sessions.create({
+    await sessionService.sessions().create({
       userId: user1.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
-    await sessionService.sessions.create({
+    await sessionService.sessions().create({
       userId: user1.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
-    await sessionService.sessions.create({
+    await sessionService.sessions().create({
       userId: user2.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
@@ -185,22 +185,22 @@ describe("alepha/api-users - SessionController", () => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "sorttest@example.com",
       roles: ["user"],
     });
 
-    const session1 = await sessionService.sessions.create({
+    const session1 = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
-    const session2 = await sessionService.sessions.create({
+    const session2 = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
-    const session3 = await sessionService.sessions.create({
+    const session3 = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
@@ -225,12 +225,12 @@ describe("alepha/api-users - SessionController", () => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "useragent@example.com",
       roles: ["user"],
     });
 
-    const desktopSession = await sessionService.sessions.create({
+    const desktopSession = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
@@ -241,7 +241,7 @@ describe("alepha/api-users - SessionController", () => {
       },
     });
 
-    const mobileSession = await sessionService.sessions.create({
+    const mobileSession = await sessionService.sessions().create({
       userId: user.id,
       refreshToken: crypto.randomUUID(),
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),

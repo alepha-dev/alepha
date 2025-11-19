@@ -32,13 +32,13 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     // Create a test user
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "identity@example.com",
       roles: ["user"],
     });
 
     // Create an identity
-    const identity = await identityService.identities.create({
+    const identity = await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-123456",
@@ -75,12 +75,12 @@ describe("alepha/api-users - IdentityController", () => {
   it("should delete an identity", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "deleteidentity@example.com",
       roles: ["user"],
     });
 
-    const identity = await identityService.identities.create({
+    const identity = await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-789",
@@ -104,23 +104,23 @@ describe("alepha/api-users - IdentityController", () => {
   it("should find identities with pagination", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "multiidentity@example.com",
       roles: ["user"],
     });
 
     // Create multiple identities
-    const identity1 = await identityService.identities.create({
+    const identity1 = await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-1",
     });
-    const identity2 = await identityService.identities.create({
+    const identity2 = await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-1",
     });
-    const identity3 = await identityService.identities.create({
+    const identity3 = await identityService.identities().create({
       userId: user.id,
       provider: "apple",
       providerUserId: "apple-1",
@@ -142,26 +142,26 @@ describe("alepha/api-users - IdentityController", () => {
   it("should filter identities by userId", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user1 = await userService.users.create({
+    const user1 = await userService.users().create({
       email: "user1identity@example.com",
       roles: ["user"],
     });
-    const user2 = await userService.users.create({
+    const user2 = await userService.users().create({
       email: "user2identity@example.com",
       roles: ["user"],
     });
 
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user1.id,
       provider: "google",
       providerUserId: "google-user1-1",
     });
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user1.id,
       provider: "github",
       providerUserId: "github-user1-1",
     });
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user2.id,
       provider: "google",
       providerUserId: "google-user2-1",
@@ -178,22 +178,22 @@ describe("alepha/api-users - IdentityController", () => {
   it("should filter identities by provider", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "providerfilter@example.com",
       roles: ["user"],
     });
 
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-1",
     });
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-1",
     });
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-2",
@@ -212,22 +212,22 @@ describe("alepha/api-users - IdentityController", () => {
   }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "sortidentity@example.com",
       roles: ["user"],
     });
 
-    const identity1 = await identityService.identities.create({
+    const identity1 = await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-sort-1",
     });
-    const identity2 = await identityService.identities.create({
+    const identity2 = await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-sort-1",
     });
-    const identity3 = await identityService.identities.create({
+    const identity3 = await identityService.identities().create({
       userId: user.id,
       provider: "apple",
       providerUserId: "apple-sort-1",
@@ -249,12 +249,12 @@ describe("alepha/api-users - IdentityController", () => {
   it("should handle identities with provider data", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "providerdata@example.com",
       roles: ["user"],
     });
 
-    const googleIdentity = await identityService.identities.create({
+    const googleIdentity = await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-data-1",
@@ -267,7 +267,7 @@ describe("alepha/api-users - IdentityController", () => {
       },
     });
 
-    const githubIdentity = await identityService.identities.create({
+    const githubIdentity = await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-data-1",
@@ -302,12 +302,12 @@ describe("alepha/api-users - IdentityController", () => {
   it("should handle identities without provider data", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "noproviderdata@example.com",
       roles: ["user"],
     });
 
-    const identity = await identityService.identities.create({
+    const identity = await identityService.identities().create({
       userId: user.id,
       provider: "custom",
       providerUserId: "custom-123",
@@ -323,22 +323,22 @@ describe("alepha/api-users - IdentityController", () => {
   it("should handle multiple providers for same user", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
-    const user = await userService.users.create({
+    const user = await userService.users().create({
       email: "multiprovider@example.com",
       roles: ["user"],
     });
 
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-multi-1",
     });
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-multi-1",
     });
-    await identityService.identities.create({
+    await identityService.identities().create({
       userId: user.id,
       provider: "apple",
       providerUserId: "apple-multi-1",
