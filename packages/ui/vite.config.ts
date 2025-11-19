@@ -1,5 +1,4 @@
-import { viteAlepha } from "alepha/vite";
-import { defineConfig } from "vite";
+import { defineConfig, viteAlepha } from "alepha/vite";
 
 export default defineConfig({
   plugins: [
