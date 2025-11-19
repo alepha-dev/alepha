@@ -8,9 +8,9 @@ import {
   Alepha,
   isTypeFile,
   type Static,
+  t,
   type TObject,
   type TSchema,
-  t,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { AlephaSecurity } from "alepha/security";
@@ -27,7 +27,8 @@ import {
   type OpenApiDocument,
   type OpenApiOperation,
   type SwaggerDescriptorOptions,
-} from "./descriptors/$swagger.ts";
+} from "../descriptors/$swagger.ts";
+import { FileSystemProvider } from "alepha/file";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -65,6 +66,7 @@ export class ServerSwaggerProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly options = $use(swaggerOptions);
+  protected readonly fs = $inject(FileSystemProvider);
 
   public json?: OpenApiDocument;
 
@@ -384,19 +386,24 @@ window.onload = function() {
 };
 		`.trim();
 
-    const root =
-      ui.root ??
-      join(fileURLToPath(import.meta.url), "../../../assets/swagger-ui");
+    const dirname = fileURLToPath(import.meta.url);
 
-    try {
-      await this.serverStaticProvider.createStaticServer({
-        path: prefix,
-        root,
-      });
-    } catch (error) {
-      this.log.warn(`Failed to configure Swagger UI at ${prefix}`, error);
+
+    const root = await this.getAssetPath(
+        ui.root,
+        join(dirname, "../../assets/swagger-ui"),
+        join(dirname, "../../../../assets/swagger-ui"),
+    )
+
+    if (!root) {
+      this.log.warn(`Failed to locate Swagger UI assets for path ${prefix}`);
       return;
     }
+
+    await this.serverStaticProvider.createStaticServer({
+      path: prefix,
+      root,
+    });
 
     this.serverRouterProvider.createRoute({
       method: "GET",
@@ -413,6 +420,16 @@ window.onload = function() {
     this.log.info(
       `Swagger UI available at ${this.serverProvider.hostname}${prefix}/`,
     );
+  }
+
+  protected async getAssetPath(...paths: (string|undefined)[]): Promise<string | undefined> {
+    for (let path of paths) {
+      if (!path) continue;
+      const exists = await this.fs.exists(path);
+      if (exists) {
+        return path;
+      }
+    }
   }
 
   public removePrivateFields<T extends Record<string, any>>(

@@ -4,12 +4,12 @@ import { AlephaServer, type RequestConfigSchema } from "alepha/server";
 import { AlephaServerCache } from "alepha/server/cache";
 import { AlephaServerStatic } from "alepha/server/static";
 import { $swagger } from "./descriptors/$swagger.ts";
-import { ServerSwaggerProvider } from "./ServerSwaggerProvider.ts";
+import { ServerSwaggerProvider } from "./providers/ServerSwaggerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$swagger.ts";
-export * from "./ServerSwaggerProvider.ts";
+export * from "./providers/ServerSwaggerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
