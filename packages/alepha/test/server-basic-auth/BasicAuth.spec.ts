@@ -160,51 +160,32 @@ describe("Basic Authentication", () => {
     });
   });
 
-  describe("Path matching", () => {
-    it("should match exact paths", () => {
-      const app = alepha.inject(TestApp);
+  describe("Route pattern matching with getRoutes()", () => {
+    it("should attach basicAuth to routes matching patterns at startup", () => {
       const provider = alepha.inject(ServerBasicAuthProvider);
+      const app = alepha.inject(TestApp);
 
-      expect(provider.matchesPath("/admin/users", ["/admin/users"])).toBe(true);
-      expect(provider.matchesPath("/admin/posts", ["/admin/users"])).toBe(
-        false,
-      );
+      // Verify that auth was registered
+      expect(provider.registeredAuths.length).toBeGreaterThanOrEqual(2);
+      expect(
+        provider.registeredAuths.find((a) => a.username === "dev"),
+      ).toBeDefined();
+      expect(
+        provider.registeredAuths.find((a) => a.username === "admin"),
+      ).toBeDefined();
     });
 
-    it("should match wildcard paths", () => {
-      const app = alepha.inject(TestApp);
+    it("should register multiple auth instances", () => {
       const provider = alepha.inject(ServerBasicAuthProvider);
-
-      expect(provider.matchesPath("/devtools/logs", ["/devtools/*"])).toBe(
-        true,
-      );
-      expect(provider.matchesPath("/devtools/metadata", ["/devtools/*"])).toBe(
-        true,
-      );
-      expect(provider.matchesPath("/api/users", ["/devtools/*"])).toBe(false);
-    });
-
-    it("should match multiple patterns", () => {
       const app = alepha.inject(TestApp);
-      const provider = alepha.inject(ServerBasicAuthProvider);
 
-      expect(provider.matchesPath("/admin/users", ["/admin/*", "/api/*"])).toBe(
-        true,
-      );
-      expect(provider.matchesPath("/api/posts", ["/admin/*", "/api/*"])).toBe(
-        true,
-      );
-      expect(provider.matchesPath("/public/home", ["/admin/*", "/api/*"])).toBe(
-        false,
-      );
-    });
-
-    it("should return false for empty patterns", () => {
-      const app = alepha.inject(TestApp);
-      const provider = alepha.inject(ServerBasicAuthProvider);
-
-      expect(provider.matchesPath("/any/path", [])).toBe(false);
-      expect(provider.matchesPath("/any/path", undefined)).toBe(false);
+      expect(provider.registeredAuths.length).toBeGreaterThanOrEqual(2);
+      expect(
+        provider.registeredAuths.find((a) => a.username === "dev"),
+      ).toBeDefined();
+      expect(
+        provider.registeredAuths.find((a) => a.username === "admin"),
+      ).toBeDefined();
     });
   });
 

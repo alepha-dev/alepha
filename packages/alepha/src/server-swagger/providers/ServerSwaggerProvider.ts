@@ -8,10 +8,11 @@ import {
   Alepha,
   isTypeFile,
   type Static,
-  t,
   type TObject,
   type TSchema,
+  t,
 } from "alepha";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { AlephaSecurity } from "alepha/security";
 import {
@@ -28,7 +29,6 @@ import {
   type OpenApiOperation,
   type SwaggerDescriptorOptions,
 } from "../descriptors/$swagger.ts";
-import { FileSystemProvider } from "alepha/file";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -388,12 +388,11 @@ window.onload = function() {
 
     const dirname = fileURLToPath(import.meta.url);
 
-
     const root = await this.getAssetPath(
-        ui.root,
-        join(dirname, "../../assets/swagger-ui"),
-        join(dirname, "../../../../assets/swagger-ui"),
-    )
+      ui.root,
+      join(dirname, "../../assets/swagger-ui"),
+      join(dirname, "../../../../assets/swagger-ui"),
+    );
 
     if (!root) {
       this.log.warn(`Failed to locate Swagger UI assets for path ${prefix}`);
@@ -422,8 +421,10 @@ window.onload = function() {
     );
   }
 
-  protected async getAssetPath(...paths: (string|undefined)[]): Promise<string | undefined> {
-    for (let path of paths) {
+  protected async getAssetPath(
+    ...paths: (string | undefined)[]
+  ): Promise<string | undefined> {
+    for (const path of paths) {
       if (!path) continue;
       const exists = await this.fs.exists(path);
       if (exists) {

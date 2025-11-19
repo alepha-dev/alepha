@@ -368,7 +368,7 @@ export class Alepha {
    * True if the App is running in a Continuous Integration environment.
    */
   public isCI(): boolean {
-    if (!!this.env.GITHUB_ACTIONS) {
+    if (this.env.GITHUB_ACTIONS) {
       return true;
     }
 

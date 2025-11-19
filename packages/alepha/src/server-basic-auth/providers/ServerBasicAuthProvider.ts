@@ -1,6 +1,10 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import { HttpError, type ServerRequest } from "alepha/server";
+import {
+  HttpError,
+  type ServerRequest,
+  ServerRouterProvider,
+} from "alepha/server";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -21,6 +25,7 @@ export interface BasicAuthDescriptorConfig extends BasicAuthOptions {
 export class ServerBasicAuthProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly routerProvider = $inject(ServerRouterProvider);
   protected readonly realm = "Secure Area";
 
   /**
@@ -38,6 +43,24 @@ export class ServerBasicAuthProvider {
   public readonly onStart = $hook({
     on: "start",
     handler: async () => {
+      // Attach basicAuth to matching routes for each registered auth
+      for (const auth of this.registeredAuths) {
+        if (auth.paths) {
+          for (const pattern of auth.paths) {
+            // Use getRoutes() to find matching routes with pattern
+            const matchedRoutes = this.routerProvider.getRoutes(pattern);
+
+            // Attach basicAuth to each matched route
+            for (const route of matchedRoutes) {
+              route.basicAuth = {
+                username: auth.username,
+                password: auth.password,
+              };
+            }
+          }
+        }
+      }
+
       if (this.registeredAuths.length > 0) {
         this.log.info(
           `Initialized with ${this.registeredAuths.length} registered basic-auth configurations.`,
@@ -52,19 +75,10 @@ export class ServerBasicAuthProvider {
   public readonly onRequest = $hook({
     on: "server:onRequest",
     handler: async ({ route, request }) => {
-      // Check per-route basic auth first
+      // Check per-route basic auth
       const routeAuth = route.basicAuth;
       if (routeAuth) {
         this.checkAuth(request, routeAuth);
-        return;
-      }
-
-      // Check global basic auth with path matching
-      for (const auth of this.registeredAuths) {
-        if (this.matchesPath(request.url.pathname, auth.paths)) {
-          this.checkAuth(request, auth);
-          return;
-        }
       }
     },
   });
@@ -130,34 +144,5 @@ export class ServerBasicAuthProvider {
    */
   protected sendAuthRequired(request: ServerRequest): void {
     request.reply.setHeader("WWW-Authenticate", `Basic realm="${this.realm}"`);
-  }
-
-  /**
-   * Check if a path matches any of the configured patterns
-   */
-  public matchesPath(pathname: string, patterns?: string[]): boolean {
-    if (!patterns || patterns.length === 0) {
-      return false;
-    }
-
-    for (const pattern of patterns) {
-      if (this.matchPattern(pathname, pattern)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * Match a single path pattern (supports wildcards)
-   */
-  protected matchPattern(pathname: string, pattern: string): boolean {
-    // Convert wildcard pattern to regex
-    // /devtools/* -> ^/devtools/.*$
-    // /admin -> ^/admin$
-    const regexPattern = pattern.replace(/\*/g, ".*").replace(/\//g, "\\/");
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(pathname);
   }
 }

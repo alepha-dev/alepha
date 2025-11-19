@@ -2,7 +2,11 @@ import { randomInt } from "node:crypto";
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { CryptoProvider, InvalidCredentialsError, type UserAccount } from "alepha/security";
+import {
+  CryptoProvider,
+  InvalidCredentialsError,
+  type UserAccount,
+} from "alepha/security";
 import { type ServerRequest, UnauthorizedError } from "alepha/server";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 
@@ -30,12 +34,15 @@ export class SessionService {
    * Uses cryptographically secure random number generation
    */
   protected randomDelay(): Promise<void> {
-    return new Promise((resolve) =>
-      setTimeout(resolve, randomInt(50, 201)),
-    );
+    return new Promise((resolve) => setTimeout(resolve, randomInt(50, 201)));
   }
 
-  public async login(provider: string, username: string, password: string, userRealmName?: string) {
+  public async login(
+    provider: string,
+    username: string,
+    password: string,
+    userRealmName?: string,
+  ) {
     try {
       const identity = await this.identities(userRealmName)
         .findOne({
@@ -121,7 +128,11 @@ export class SessionService {
     }
   }
 
-  public async createSession(user: UserAccount, expiresIn: number, userRealmName?: string) {
+  public async createSession(
+    user: UserAccount,
+    expiresIn: number,
+    userRealmName?: string,
+  ) {
     const request = this.alepha.context.get<ServerRequest>("request");
     const refreshToken = this.cryptoProvider.randomUUID();
 

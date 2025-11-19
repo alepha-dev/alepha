@@ -1,5 +1,5 @@
-import { $entity, pg } from "../../orm/index.ts";
 import { t } from "../../core/providers/TypeProvider.ts";
+import { $entity, pg } from "../../orm/index.ts";
 import { workflowExecutionEntity } from "./WorkflowExecutionEntity.ts";
 
 export const workflowEventEntity = $entity({
@@ -11,7 +11,9 @@ export const workflowEventEntity = $entity({
       () => workflowExecutionEntity.cols.workflowId,
     ),
     sequence: t.int({ description: "Event sequence number (for ordering)" }),
-    eventType: t.text({ description: "Event type (WorkflowStarted, ActivityScheduled, etc.)" }),
+    eventType: t.text({
+      description: "Event type (WorkflowStarted, ActivityScheduled, etc.)",
+    }),
     eventData: t.json({ description: "Event payload data" }),
     timestamp: t.datetime({ description: "Event timestamp" }),
   }),

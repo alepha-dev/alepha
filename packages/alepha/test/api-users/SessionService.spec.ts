@@ -1,6 +1,9 @@
 import { Alepha } from "alepha";
-import { CryptoProvider, InvalidCredentialsError } from "alepha/security";
-import { AlephaSecurity } from "alepha/security";
+import {
+  AlephaSecurity,
+  CryptoProvider,
+  InvalidCredentialsError,
+} from "alepha/security";
 import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
@@ -96,7 +99,11 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Test login with wrong password
     await expect(
-      sessionService.login("local", "invalid-password@example.com", "wrongPassword"),
+      sessionService.login(
+        "local",
+        "invalid-password@example.com",
+        "wrongPassword",
+      ),
     ).rejects.toThrowError(InvalidCredentialsError);
   });
 
@@ -127,7 +134,8 @@ describe("alepha/api-users - SessionService.login", () => {
   it("should throw InvalidCredentialsError when user is deleted after identity creation", async ({
     expect,
   }) => {
-    const { sessionService, userService, cryptoProvider, identities } = await setup();
+    const { sessionService, userService, cryptoProvider, identities } =
+      await setup();
 
     // Create a user, then delete them to simulate orphan identity
     const user = await userService.users().create({
@@ -148,7 +156,11 @@ describe("alepha/api-users - SessionService.login", () => {
     await userService.users().deleteById(user.id);
 
     await expect(
-      sessionService.login("local", "orphan-identity@example.com", "password123"),
+      sessionService.login(
+        "local",
+        "orphan-identity@example.com",
+        "password123",
+      ),
     ).rejects.toThrowError(InvalidCredentialsError);
   });
 
@@ -181,7 +193,11 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Test invalid password
     try {
-      await sessionService.login("local", "same-error@example.com", "wrongPassword");
+      await sessionService.login(
+        "local",
+        "same-error@example.com",
+        "wrongPassword",
+      );
     } catch (error) {
       expect(error).toBeInstanceOf(InvalidCredentialsError);
       expect((error as Error).message).toBe("Invalid credentials");
@@ -196,7 +212,11 @@ describe("alepha/api-users - SessionService.login", () => {
     const start = Date.now();
 
     try {
-      await sessionService.login("local", "timing-attack@example.com", "password");
+      await sessionService.login(
+        "local",
+        "timing-attack@example.com",
+        "password",
+      );
     } catch {
       // Expected to fail
     }
@@ -226,7 +246,11 @@ describe("alepha/api-users - SessionService.login", () => {
     });
 
     // Login with correct provider
-    const result = await sessionService.login("custom", "custom-user-id", "customPass");
+    const result = await sessionService.login(
+      "custom",
+      "custom-user-id",
+      "customPass",
+    );
     expect(result.id).toBe(user.id);
 
     // Should fail with wrong provider

@@ -45,7 +45,8 @@ export class SessionController {
       }),
       response: sessionResourceSchema,
     },
-    handler: ({ params, query }) => this.sessionService.getSessionById(params.id, query.userRealmName),
+    handler: ({ params, query }) =>
+      this.sessionService.getSessionById(params.id, query.userRealmName),
   });
 
   /**

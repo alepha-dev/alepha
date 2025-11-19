@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import "tsx";
-import { AlephaCli, version } from "alepha/cli";
 import { Alepha, run } from "alepha";
+import { AlephaCli, version } from "alepha/cli";
 
 const alepha = Alepha.create({
   env: {

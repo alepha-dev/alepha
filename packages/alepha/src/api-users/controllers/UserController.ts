@@ -49,7 +49,8 @@ export class UserController {
       }),
       response: userResourceSchema,
     },
-    handler: ({ params, query }) => this.userService.getUserById(params.id, query.userRealmName),
+    handler: ({ params, query }) =>
+      this.userService.getUserById(params.id, query.userRealmName),
   });
 
   /**
@@ -67,7 +68,8 @@ export class UserController {
       body: createUserSchema,
       response: userResourceSchema,
     },
-    handler: ({ body, query }) => this.userService.createUser(body, query.userRealmName),
+    handler: ({ body, query }) =>
+      this.userService.createUser(body, query.userRealmName),
   });
 
   /**
@@ -88,7 +90,8 @@ export class UserController {
       body: updateUserSchema,
       response: userResourceSchema,
     },
-    handler: ({ params, body, query }) => this.userService.updateUser(params.id, body, query.userRealmName),
+    handler: ({ params, body, query }) =>
+      this.userService.updateUser(params.id, body, query.userRealmName),
   });
 
   /**
@@ -278,7 +281,11 @@ export class UserController {
       }),
     },
     handler: async ({ body, query }) => {
-      await this.userService.verifyEmail(body.email, body.token, query.userRealmName);
+      await this.userService.verifyEmail(
+        body.email,
+        body.token,
+        query.userRealmName,
+      );
 
       return {
         success: true,
@@ -303,7 +310,10 @@ export class UserController {
       }),
     },
     handler: async ({ query }) => {
-      const verified = await this.userService.isEmailVerified(query.email, query.userRealmName);
+      const verified = await this.userService.isEmailVerified(
+        query.email,
+        query.userRealmName,
+      );
 
       return {
         verified,

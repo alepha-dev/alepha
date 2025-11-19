@@ -1,6 +1,4 @@
-import type { Atom, TAtomObject } from "../../core/descriptors/$atom.ts";
 import { AlephaError } from "../../core/errors/AlephaError.ts";
-import type { Static } from "../../core/providers/TypeProvider.ts";
 import type { Activity } from "../descriptors/$activity.ts";
 import type { Duration } from "../descriptors/$workflow.ts";
 
@@ -22,15 +20,20 @@ export class WorkflowContext<TInput = any> {
   // State management
   public readonly state: Record<string, any> = {};
 
-  private readonly currentTime: Date;
-  private readonly seed: number;
-  private randomState: number;
-  private readonly pendingActivities: Map<string, any> = new Map();
-  private readonly pendingSignals: Map<string, any> = new Map();
-  private readonly memoCache: Map<string, any> = new Map();
-  private readonly compensationHandlers: Array<() => Promise<void>> = [];
+  protected readonly currentTime: Date;
+  protected readonly seed: number;
+  protected randomState: number;
+  protected readonly pendingActivities: Map<string, any> = new Map();
+  protected readonly pendingSignals: Map<string, any> = new Map();
+  protected readonly memoCache: Map<string, any> = new Map();
+  protected readonly compensationHandlers: Array<() => Promise<void>> = [];
 
-  constructor(workflowId: string, runId: string, input: TInput, startedAt: Date) {
+  constructor(
+    workflowId: string,
+    runId: string,
+    input: TInput,
+    startedAt: Date,
+  ) {
     this.workflowId = workflowId;
     this.runId = runId;
     this.input = input;
@@ -104,9 +107,8 @@ export class WorkflowContext<TInput = any> {
    * Sleep for a duration.
    */
   public async sleep(duration: Duration | number): Promise<void> {
-    const durationObj = typeof duration === "number"
-      ? { milliseconds: duration }
-      : duration;
+    const durationObj =
+      typeof duration === "number" ? { milliseconds: duration } : duration;
     // In event sourcing, sleep is recorded as an event
     // The workflow will resume after the duration
     throw new SleepRequestedError(durationObj);
@@ -163,9 +165,15 @@ export class WorkflowContext<TInput = any> {
   /**
    * Send a signal to another workflow.
    */
-  public async sendSignal<T>(workflowId: string, signal: any, payload: T): Promise<void> {
+  public async sendSignal<T>(
+    workflowId: string,
+    signal: any,
+    payload: T,
+  ): Promise<void> {
     // TODO: Implement signal sending to other workflows
-    throw new AlephaError("Sending signals to other workflows not yet implemented");
+    throw new AlephaError(
+      "Sending signals to other workflows not yet implemented",
+    );
   }
 
   /**
@@ -198,35 +206,47 @@ export class WorkflowContext<TInput = any> {
   /**
    * Record activity result (internal use).
    */
-  public recordActivityResult<T>(activityName: string, input: any, result: T): void {
+  public recordActivityResult<T>(
+    activityName: string,
+    input: any,
+    result: T,
+  ): void {
     const activityKey = `${activityName}:${JSON.stringify(input)}`;
     this.pendingActivities.set(activityKey, result);
   }
 
-  private hashString(str: string): number {
+  protected hashString(str: string): number {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash);
   }
 
-  private hex8(): string {
-    return Array.from({ length: 8 }, () => Math.floor(this.random() * 16).toString(16)).join('');
+  protected hex8(): string {
+    return Array.from({ length: 8 }, () =>
+      Math.floor(this.random() * 16).toString(16),
+    ).join("");
   }
 
-  private hex4(): string {
-    return Array.from({ length: 4 }, () => Math.floor(this.random() * 16).toString(16)).join('');
+  protected hex4(): string {
+    return Array.from({ length: 4 }, () =>
+      Math.floor(this.random() * 16).toString(16),
+    ).join("");
   }
 
-  private hex3(): string {
-    return Array.from({ length: 3 }, () => Math.floor(this.random() * 16).toString(16)).join('');
+  protected hex3(): string {
+    return Array.from({ length: 3 }, () =>
+      Math.floor(this.random() * 16).toString(16),
+    ).join("");
   }
 
-  private hex12(): string {
-    return Array.from({ length: 12 }, () => Math.floor(this.random() * 16).toString(16)).join('');
+  protected hex12(): string {
+    return Array.from({ length: 12 }, () =>
+      Math.floor(this.random() * 16).toString(16),
+    ).join("");
   }
 }
 

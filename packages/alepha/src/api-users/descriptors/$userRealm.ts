@@ -1,11 +1,16 @@
 import { $context } from "alepha";
-import { $realm, type RealmDescriptorOptions, SecurityProvider, } from "alepha/security";
-import { SessionService } from "../services/SessionService.ts";
-import { $repository, Repository } from "alepha/orm";
-import { sessions } from "../entities/sessions.ts";
-import { identities } from "../entities/identities.ts";
-import { users } from "../entities/users.ts";
+import type { Repository } from "alepha/orm";
+import {
+  $realm,
+  type RealmDescriptorOptions,
+  SecurityProvider,
+} from "alepha/security";
+import type { identities } from "../entities/identities.ts";
+import type { sessions } from "../entities/sessions.ts";
+import type { users } from "../entities/users.ts";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import type { LoginSettings } from "../schemas/loginSettingsSchema.ts";
+import { SessionService } from "../services/SessionService.ts";
 
 /**
  * Already configured realm for user management.
@@ -20,9 +25,7 @@ import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
  * Environment Variables:
  * - `APP_SECRET`: Secret key for signing tokens (if not provided in options).
  */
-export const $userRealm = (
-  options: UserRealmOptions = {},
-) => {
+export const $userRealm = (options: UserRealmOptions = {}) => {
   const { alepha } = $context();
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
@@ -34,6 +37,7 @@ export const $userRealm = (
     ...options.realm,
     name: options.realm?.name ?? "users",
     secret: options.secret ?? securityProvider.secretKey,
+
     roles: options.realm?.roles ?? [
       {
         name: "admin",
@@ -78,7 +82,6 @@ export const $userRealm = (
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface UserRealmOptions {
-
   /**
    * Secret key for signing tokens.
    *
@@ -100,5 +103,7 @@ export interface UserRealmOptions {
     users?: Repository<typeof users.schema>;
     identities?: Repository<typeof identities.schema>;
     sessions?: Repository<typeof sessions.schema>;
-  }
+  };
+
+  settings?: LoginSettings;
 }

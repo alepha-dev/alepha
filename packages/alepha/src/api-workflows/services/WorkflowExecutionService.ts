@@ -1,18 +1,18 @@
 import { $inject } from "../../core/descriptors/$inject.ts";
-import { $repository } from "../../orm/descriptors/$repository.ts";
 import { AlephaError } from "../../core/errors/AlephaError.ts";
 import { DateTimeProvider } from "../../datetime/providers/DateTimeProvider.ts";
+import { $repository } from "../../orm/descriptors/$repository.ts";
 import { RetryProvider } from "../../retry/providers/RetryProvider.ts";
-import { workflowExecutionEntity } from "../entities/WorkflowExecutionEntity.ts";
 import { workflowEventEntity } from "../entities/WorkflowEventEntity.ts";
+import { workflowExecutionEntity } from "../entities/WorkflowExecutionEntity.ts";
 import { workflowSignalQueueEntity } from "../entities/WorkflowSignalQueueEntity.ts";
-import { WorkflowRegistryService } from "./WorkflowRegistryService.ts";
 import {
-  WorkflowContext,
-  SignalNotAvailableError,
   ActivityNotExecutedError,
+  SignalNotAvailableError,
   SleepRequestedError,
+  WorkflowContext,
 } from "./WorkflowContext.ts";
+import { WorkflowRegistryService } from "./WorkflowRegistryService.ts";
 
 /**
  * Service for executing workflow steps and managing workflow state.
@@ -152,7 +152,12 @@ export class WorkflowExecutionService {
         });
       } else {
         // Workflow failed with error
-        await this.handleWorkflowError(workflowId, workflow, error as Error, context);
+        await this.handleWorkflowError(
+          workflowId,
+          workflow,
+          error as Error,
+          context,
+        );
       }
     }
   }
@@ -160,7 +165,10 @@ export class WorkflowExecutionService {
   /**
    * Replay a single event to update context state.
    */
-  private async replayEvent(context: WorkflowContext, event: any): Promise<void> {
+  private async replayEvent(
+    context: WorkflowContext,
+    event: any,
+  ): Promise<void> {
     const { eventType, eventData } = event;
 
     switch (eventType) {
@@ -216,17 +224,15 @@ export class WorkflowExecutionService {
 
     try {
       // Execute activity with retry policy
-      const output = await this.retry.retry(
-        {
-          handler: async () => await activity.handler(input, {} as any),
-          max: retryPolicy?.maxAttempts ?? 3,
-          backoff: {
-            initial: retryPolicy?.initialInterval ?? 200,
-            factor: retryPolicy?.backoffCoefficient ?? 2,
-            max: retryPolicy?.maximumInterval ?? 10000,
-          },
+      const output = await this.retry.retry({
+        handler: async () => await activity.handler(input, {} as any),
+        max: retryPolicy?.maxAttempts ?? 3,
+        backoff: {
+          initial: retryPolicy?.initialInterval ?? 200,
+          factor: retryPolicy?.backoffCoefficient ?? 2,
+          max: retryPolicy?.maximumInterval ?? 10000,
         },
-      );
+      });
 
       // Record ActivityCompleted event
       await this.recordEvent(workflowId, "ActivityCompleted", {

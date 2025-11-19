@@ -1,14 +1,14 @@
-import { $inject } from "../../core/descriptors/$inject.ts";
-import { $repository } from "../../orm/descriptors/$repository.ts";
 import type { Atom } from "../../core/descriptors/$atom.ts";
-import type { Workflow } from "../descriptors/$workflow.ts";
+import { $inject } from "../../core/descriptors/$inject.ts";
 import { AlephaError } from "../../core/errors/AlephaError.ts";
 import { DateTimeProvider } from "../../datetime/providers/DateTimeProvider.ts";
-import { workflowExecutionEntity } from "../entities/WorkflowExecutionEntity.ts";
+import { $repository } from "../../orm/descriptors/$repository.ts";
+import type { Workflow } from "../descriptors/$workflow.ts";
 import { workflowEventEntity } from "../entities/WorkflowEventEntity.ts";
+import { workflowExecutionEntity } from "../entities/WorkflowExecutionEntity.ts";
 import { workflowSignalQueueEntity } from "../entities/WorkflowSignalQueueEntity.ts";
-import { WorkflowRegistryService } from "./WorkflowRegistryService.ts";
 import { WorkflowQueues } from "../queues/WorkflowQueues.ts";
+import { WorkflowRegistryService } from "./WorkflowRegistryService.ts";
 
 /**
  * Main workflow orchestration engine.
@@ -109,7 +109,9 @@ export class WorkflowEngineService {
   /**
    * Get workflow execution status.
    */
-  public async getStatus(workflowId: string): Promise<WorkflowExecutionInfo | null> {
+  public async getStatus(
+    workflowId: string,
+  ): Promise<WorkflowExecutionInfo | null> {
     const execution = await this.executions.findOne({ where: { workflowId } });
     if (!execution) {
       return null;

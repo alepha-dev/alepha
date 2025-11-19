@@ -199,10 +199,14 @@ export class PostgresTypeProvider {
     pgEnumOptions?: PgEnumOptions,
     typeOptions?: TStringOptions,
   ): PgAttr<TUnsafe<T[number]>, typeof PG_ENUM> => {
-    return pgAttr(t.enum(values, {
-      description: pgEnumOptions?.description,
-      ...typeOptions,
-    }), PG_ENUM, pgEnumOptions);
+    return pgAttr(
+      t.enum(values, {
+        description: pgEnumOptions?.description,
+        ...typeOptions,
+      }),
+      PG_ENUM,
+      pgEnumOptions,
+    );
   };
 
   /**

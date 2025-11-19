@@ -125,19 +125,23 @@ export class Runner {
 
   protected async exec(cmd: string): Promise<string> {
     return await new Promise<string>((resolve, reject) => {
-      exec(cmd, {
-        env: {
-          ...process.env,
-          LOG_FORMAT: "text"
-        }
-      },(err, stdout) => {
-        if (err) {
-          err.stdout = stdout;
-          reject(err);
-        } else {
-          resolve(stdout);
-        }
-      });
+      exec(
+        cmd,
+        {
+          env: {
+            ...process.env,
+            LOG_FORMAT: "text",
+          },
+        },
+        (err, stdout) => {
+          if (err) {
+            err.stdout = stdout;
+            reject(err);
+          } else {
+            resolve(stdout);
+          }
+        },
+      );
     });
   }
 

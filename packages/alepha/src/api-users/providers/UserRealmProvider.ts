@@ -1,9 +1,9 @@
-import { $repository, Repository } from "alepha/orm";
 import { AlephaError } from "alepha";
+import type { UserRealmOptions } from "alepha/api/users";
+import { $repository, type Repository } from "alepha/orm";
 import { identities } from "../entities/identities";
 import { sessions } from "../entities/sessions";
 import { users } from "../entities/users";
-import { UserRealmOptions } from "alepha/api/users";
 
 export interface UserRealmRepositories {
   identities: Repository<typeof identities.schema>;
@@ -24,7 +24,8 @@ export class UserRealmProvider {
     userRealmOptions: UserRealmOptions = {},
   ) {
     this.realms.set(userRealmName, {
-      identities: userRealmOptions.entities?.identities ?? this.defaultIdentities,
+      identities:
+        userRealmOptions.entities?.identities ?? this.defaultIdentities,
       sessions: userRealmOptions.entities?.sessions ?? this.defaultSessions,
       users: userRealmOptions.entities?.users ?? this.defaultUsers,
     });
@@ -42,22 +43,30 @@ export class UserRealmProvider {
         this.register("default");
         realm = this.realms.get("default")!;
       } else {
-        throw new AlephaError(`Missing user realm '${userRealmName}', please declare $userRealm in your application.`);
+        throw new AlephaError(
+          `Missing user realm '${userRealmName}', please declare $userRealm in your application.`,
+        );
       }
     }
 
     return realm;
   }
 
-  public identityRepository(userRealmName = "default"): Repository<typeof identities.schema> {
+  public identityRepository(
+    userRealmName = "default",
+  ): Repository<typeof identities.schema> {
     return this.getRealm(userRealmName).identities;
   }
 
-  public sessionRepository(userRealmName = "default"): Repository<typeof sessions.schema> {
+  public sessionRepository(
+    userRealmName = "default",
+  ): Repository<typeof sessions.schema> {
     return this.getRealm(userRealmName).sessions;
   }
 
-  public userRepository(userRealmName = "default"): Repository<typeof users.schema> {
+  public userRepository(
+    userRealmName = "default",
+  ): Repository<typeof users.schema> {
     return this.getRealm(userRealmName).users;
   }
 }

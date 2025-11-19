@@ -10,11 +10,11 @@ import { boot } from "alepha/vite";
 import * as tar from "tar";
 import { tsImport } from "tsx/esm/api";
 import { biomeJson } from "../assets/biomeJson.ts";
+import { indexHtml } from "../assets/indexHtml.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { version } from "../version.ts";
 import { ProcessRunner } from "./ProcessRunner.ts";
-import { indexHtml } from "../assets/indexHtml.ts";
 
 /**
  * Utility service for common project operations used by CLI commands.
@@ -483,7 +483,9 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     }
   }
 
-  public async getPackageManager(root: string): Promise<"yarn" | "pnpm" | "npm"> {
+  public async getPackageManager(
+    root: string,
+  ): Promise<"yarn" | "pnpm" | "npm"> {
     if (await this.fs.exists(join(root, "yarn.lock"))) {
       return "yarn";
     } else if (await this.fs.exists(join(root, "pnpm-lock.yaml"))) {
@@ -493,17 +495,16 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     }
   }
 
-  public async ensureIndexHtml(
-    root: string,
-  ) {
+  public async ensureIndexHtml(root: string) {
     if (await this.fs.exists(join(root, "index.html"))) {
       return;
     }
 
     const entry = await boot.getServerEntry(root).catch(() => null);
     await this.fs.writeFile(
-      join(root, "index.html"), indexHtml(entry ? entry.replace(root, "") : undefined)
-    )
+      join(root, "index.html"),
+      indexHtml(entry ? entry.replace(root, "") : undefined),
+    );
   }
 }
 

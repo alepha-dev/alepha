@@ -45,7 +45,8 @@ export class IdentityController {
       }),
       response: identityResourceSchema,
     },
-    handler: ({ params, query }) => this.identityService.getIdentityById(params.id, query.userRealmName),
+    handler: ({ params, query }) =>
+      this.identityService.getIdentityById(params.id, query.userRealmName),
   });
 
   /**

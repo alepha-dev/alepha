@@ -67,7 +67,10 @@ export class FakeProvider {
   /**
    * Generate multiple fake data items.
    */
-  public generateMany<T extends TSchema>(schema: T, count: number): StaticDecode<T>[] {
+  public generateMany<T extends TSchema>(
+    schema: T,
+    count: number,
+  ): StaticDecode<T>[] {
     return Array.from({ length: count }, () => this.generate(schema));
   }
 
@@ -371,7 +374,10 @@ export class FakeProvider {
    * Generate a value with context from the property key name.
    * This helps generate more realistic fake data based on field names.
    */
-  protected generateValueWithContext(schema: TSchema, keyName?: string): unknown {
+  protected generateValueWithContext(
+    schema: TSchema,
+    keyName?: string,
+  ): unknown {
     // If no key name context, use regular generation
     if (!keyName) {
       return this.generateValue(schema);

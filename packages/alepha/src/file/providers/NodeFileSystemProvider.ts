@@ -15,12 +15,7 @@ import { join } from "node:path";
 import { PassThrough, Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
-import {
-  $inject,
-  AlephaError,
-  type FileLike,
-  type StreamLike,
-} from "alepha";
+import { $inject, AlephaError, type FileLike, type StreamLike } from "alepha";
 import { FileDetector } from "../services/FileDetector.ts";
 import type {
   CpOptions,

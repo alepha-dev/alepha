@@ -1,12 +1,4 @@
-import {
-  $atom,
-  $hook,
-  $inject,
-  $use,
-  Alepha,
-  type Static,
-  t,
-} from "alepha";
+import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

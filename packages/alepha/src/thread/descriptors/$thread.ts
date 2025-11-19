@@ -212,7 +212,7 @@ export interface ThreadDescriptorOptions {
 
 export class ThreadDescriptor extends Descriptor<ThreadDescriptorOptions> {
   protected readonly script = process.argv[1];
-  private static readonly globalPool = new Map<string, ThreadPool>();
+  static readonly globalPool = new Map<string, ThreadPool>();
 
   public get name(): string {
     return this.options.name || this.config.propertyKey;

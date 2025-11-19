@@ -171,7 +171,7 @@ export class CliProvider {
     return this.alepha.descriptors($command);
   }
 
-  private findCommand(name: string): CommandDescriptor<TObject> | undefined {
+  protected findCommand(name: string): CommandDescriptor<TObject> | undefined {
     return this.commands.find(
       (command) => command.name === name || command.aliases.includes(name),
     );

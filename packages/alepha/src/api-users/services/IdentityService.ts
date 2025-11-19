@@ -30,20 +30,30 @@ export class IdentityService {
       where.provider = { like: q.provider };
     }
 
-    return await this.identities(userRealmName).paginate(q, { where }, { count: true });
+    return await this.identities(userRealmName).paginate(
+      q,
+      { where },
+      { count: true },
+    );
   }
 
   /**
    * Get an identity by ID.
    */
-  public async getIdentityById(id: string, userRealmName?: string): Promise<IdentityEntity> {
+  public async getIdentityById(
+    id: string,
+    userRealmName?: string,
+  ): Promise<IdentityEntity> {
     return await this.identities(userRealmName).findById(id);
   }
 
   /**
    * Delete an identity by ID.
    */
-  public async deleteIdentity(id: string, userRealmName?: string): Promise<void> {
+  public async deleteIdentity(
+    id: string,
+    userRealmName?: string,
+  ): Promise<void> {
     // Verify identity exists
     await this.getIdentityById(id, userRealmName);
 

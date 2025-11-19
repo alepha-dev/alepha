@@ -1,17 +1,15 @@
 import { Alepha } from "alepha";
 import { test } from "vitest";
 import {
-  $workflow,
   $activity,
-  AlephaApiWorkflows,
+  $workflow,
   WorkflowEngineService,
   WorkflowRegistryService,
-  WorkflowExecutionService,
 } from "../../src/api-workflows/index.ts";
-import { AlephaQueue } from "../../src/queue/index.ts";
-import { t } from "../../src/core/providers/TypeProvider.ts";
-import { $inject } from "../../src/core/descriptors/$inject.ts";
 import { $atom } from "../../src/core/descriptors/$atom.ts";
+import { $inject } from "../../src/core/descriptors/$inject.ts";
+import { t } from "../../src/core/providers/TypeProvider.ts";
+import { AlephaQueue } from "../../src/queue/index.ts";
 
 test("should execute workflow with activities", async ({ expect }) => {
   const alepha = Alepha.create().with(AlephaQueue);
@@ -44,10 +42,13 @@ test("should execute workflow with activities", async ({ expect }) => {
         amount: t.number(),
       }),
       handler: async ({ orderId, amount }, ctx) => {
-        const processResult = (await ctx.activity(this.activities.processOrder, {
-          orderId,
-          amount,
-        })) as { orderId: string; amount: number; processed: boolean };
+        const processResult = (await ctx.activity(
+          this.activities.processOrder,
+          {
+            orderId,
+            amount,
+          },
+        )) as { orderId: string; amount: number; processed: boolean };
 
         return {
           orderId,

@@ -1,5 +1,5 @@
-import type { VerificationController } from "alepha/api/verifications";
 import { $inject } from "alepha";
+import type { VerificationController } from "alepha/api/verifications";
 import type { Page } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -67,7 +67,11 @@ export class UserService {
   /**
    * Verify a user's email using a valid verification token.
    */
-  public async verifyEmail(email: string, token: string, userRealmName?: string): Promise<void> {
+  public async verifyEmail(
+    email: string,
+    token: string,
+    userRealmName?: string,
+  ): Promise<void> {
     const result = await this.verificationController
       .validateVerificationCode({
         params: { type: "email" },
@@ -93,7 +97,10 @@ export class UserService {
   /**
    * Check if an email is verified.
    */
-  public async isEmailVerified(email: string, userRealmName?: string): Promise<boolean> {
+  public async isEmailVerified(
+    email: string,
+    userRealmName?: string,
+  ): Promise<boolean> {
     const user = await this.users(userRealmName)
       .findOne({
         where: { email: { eq: email } },
@@ -106,7 +113,10 @@ export class UserService {
   /**
    * Find users with pagination and filtering.
    */
-  public async findUsers(q: UserQuery = {}, userRealmName?: string): Promise<Page<UserEntity>> {
+  public async findUsers(
+    q: UserQuery = {},
+    userRealmName?: string,
+  ): Promise<Page<UserEntity>> {
     q.sort ??= "-createdAt";
 
     const where = this.users(userRealmName).createQueryWhere();
@@ -127,20 +137,30 @@ export class UserService {
       where.roles = { arrayContains: q.roles };
     }
 
-    return await this.users(userRealmName).paginate(q, { where }, { count: true });
+    return await this.users(userRealmName).paginate(
+      q,
+      { where },
+      { count: true },
+    );
   }
 
   /**
    * Get a user by ID.
    */
-  public async getUserById(id: string, userRealmName?: string): Promise<UserEntity> {
+  public async getUserById(
+    id: string,
+    userRealmName?: string,
+  ): Promise<UserEntity> {
     return await this.users(userRealmName).findById(id);
   }
 
   /**
    * Create a new user.
    */
-  public async createUser(data: CreateUser, userRealmName?: string): Promise<UserEntity> {
+  public async createUser(
+    data: CreateUser,
+    userRealmName?: string,
+  ): Promise<UserEntity> {
     const existingUser = await this.users(userRealmName)
       .findOne({
         where: { email: { eq: data.email } },
@@ -160,7 +180,11 @@ export class UserService {
   /**
    * Update an existing user.
    */
-  public async updateUser(id: string, data: UpdateUser, userRealmName?: string): Promise<UserEntity> {
+  public async updateUser(
+    id: string,
+    data: UpdateUser,
+    userRealmName?: string,
+  ): Promise<UserEntity> {
     await this.getUserById(id, userRealmName);
 
     return await this.users(userRealmName).updateById(id, data);

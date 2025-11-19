@@ -1,6 +1,6 @@
+import { AlephaError } from "../../core/errors/AlephaError.ts";
 import type { Activity } from "../descriptors/$activity.ts";
 import type { Workflow } from "../descriptors/$workflow.ts";
-import { AlephaError } from "../../core/errors/AlephaError.ts";
 
 /**
  * Registry for managing workflow and activity definitions.

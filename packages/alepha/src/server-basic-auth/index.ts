@@ -12,14 +12,6 @@ export * from "./providers/ServerBasicAuthProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha/server" {
-  interface ActionDescriptorOptions<TConfig> {
-    /**
-     * Basic authentication configuration for this action.
-     * When specified, the action will require HTTP Basic Authentication.
-     */
-    basicAuth?: BasicAuthOptions;
-  }
-
   interface ServerRoute {
     /**
      * Basic authentication configuration for this route.

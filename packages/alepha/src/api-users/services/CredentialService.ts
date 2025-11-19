@@ -1,5 +1,5 @@
-import type { VerificationController } from "alepha/api/verifications";
 import { $inject } from "alepha";
+import type { VerificationController } from "alepha/api/verifications";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";

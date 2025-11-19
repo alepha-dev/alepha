@@ -1,5 +1,5 @@
-import { $notification } from "alepha/api/notifications";
 import { t } from "alepha";
+import { $notification } from "alepha/api/notifications";
 
 export class UserNotifications {
   public readonly passwordReset = $notification({

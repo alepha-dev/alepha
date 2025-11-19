@@ -1,16 +1,21 @@
-import { $entity, pg } from "../../orm/index.ts";
 import { t } from "../../core/providers/TypeProvider.ts";
+import { $entity, pg } from "../../orm/index.ts";
 
 export const workflowExecutionEntity = $entity({
   name: "workflow_executions",
   schema: t.object({
-    workflowId: pg.primaryKey(t.uuid({ description: "Unique workflow execution ID" })),
+    workflowId: pg.primaryKey(
+      t.uuid({ description: "Unique workflow execution ID" }),
+    ),
     workflowName: t.text({ description: "Workflow definition name" }),
     workflowVersion: t.text({ description: "Workflow definition version" }),
     runId: t.uuid({ description: "Current run ID (for retries)" }),
-    status: pg.enum(["running", "completed", "failed", "canceled", "compensating"], {
-      name: "workflow_status",
-    }),
+    status: pg.enum(
+      ["running", "completed", "failed", "canceled", "compensating"],
+      {
+        name: "workflow_status",
+      },
+    ),
     input: t.json({ description: "Workflow input data" }),
     output: t.optional(t.json({ description: "Workflow output data" })),
     state: t.json({ description: "Current workflow state" }),
@@ -22,7 +27,9 @@ export const workflowExecutionEntity = $entity({
       ),
     ),
     startedAt: t.datetime({ description: "Workflow start timestamp" }),
-    completedAt: t.optional(t.datetime({ description: "Workflow completion timestamp" })),
+    completedAt: t.optional(
+      t.datetime({ description: "Workflow completion timestamp" }),
+    ),
     updatedAt: t.datetime({ description: "Last update timestamp" }),
   }),
   indexes: [

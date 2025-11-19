@@ -1,49 +1,48 @@
 import { $module } from "../core/descriptors/$module.ts";
 import { WorkflowController } from "./controllers/WorkflowController.ts";
+import { WorkflowQueues } from "./queues/WorkflowQueues.ts";
 import { WorkflowEngineService } from "./services/WorkflowEngineService.ts";
 import { WorkflowExecutionService } from "./services/WorkflowExecutionService.ts";
 import { WorkflowRegistryService } from "./services/WorkflowRegistryService.ts";
-import { WorkflowQueues } from "./queues/WorkflowQueues.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Descriptors
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { $workflow } from "./descriptors/$workflow.ts";
-export type {
-  Workflow,
-  WorkflowOptions,
-  WorkflowHandler,
-  WorkflowContext,
-  Duration,
-  RetryPolicy,
-} from "./descriptors/$workflow.ts";
-
-export { $activity } from "./descriptors/$activity.ts";
 export type {
   Activity,
-  ActivityOptions,
-  ActivityHandler,
   ActivityContext,
+  ActivityHandler,
+  ActivityOptions,
 } from "./descriptors/$activity.ts";
+export { $activity } from "./descriptors/$activity.ts";
+export type {
+  Duration,
+  RetryPolicy,
+  Workflow,
+  WorkflowContext,
+  WorkflowHandler,
+  WorkflowOptions,
+} from "./descriptors/$workflow.ts";
+export { $workflow } from "./descriptors/$workflow.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Entities
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { workflowExecutionEntity } from "./entities/WorkflowExecutionEntity.ts";
-export { workflowEventEntity } from "./entities/WorkflowEventEntity.ts";
-export { workflowSignalQueueEntity } from "./entities/WorkflowSignalQueueEntity.ts";
 export { humanTaskEntity } from "./entities/HumanTaskEntity.ts";
+export { workflowEventEntity } from "./entities/WorkflowEventEntity.ts";
+export { workflowExecutionEntity } from "./entities/WorkflowExecutionEntity.ts";
+export { workflowSignalQueueEntity } from "./entities/WorkflowSignalQueueEntity.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Services
 // ---------------------------------------------------------------------------------------------------------------------
 
+export type { WorkflowExecutionInfo } from "./services/WorkflowEngineService.ts";
 export { WorkflowEngineService } from "./services/WorkflowEngineService.ts";
 export { WorkflowExecutionService } from "./services/WorkflowExecutionService.ts";
 export { WorkflowRegistryService } from "./services/WorkflowRegistryService.ts";
-export type { WorkflowExecutionInfo } from "./services/WorkflowEngineService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Queues

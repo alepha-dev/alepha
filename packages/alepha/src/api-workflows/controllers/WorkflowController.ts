@@ -1,7 +1,7 @@
-import { $action } from "../../server/descriptors/$action.ts";
 import { $inject } from "../../core/descriptors/$inject.ts";
-import { t } from "../../core/providers/TypeProvider.ts";
 import { AlephaError } from "../../core/errors/AlephaError.ts";
+import { t } from "../../core/providers/TypeProvider.ts";
+import { $action } from "../../server/descriptors/$action.ts";
 import { WorkflowEngineService } from "../services/WorkflowEngineService.ts";
 import { WorkflowRegistryService } from "../services/WorkflowRegistryService.ts";
 
@@ -83,7 +83,11 @@ export class WorkflowController {
       }),
     },
     handler: async ({ params, body }) => {
-      await this.engine.signal(params.workflowId, params.signalName, body.payload);
+      await this.engine.signal(
+        params.workflowId,
+        params.signalName,
+        body.payload,
+      );
 
       return {
         sent: true,

@@ -1,5 +1,5 @@
-import { $entity, pg } from "../../orm/index.ts";
 import { t } from "../../core/providers/TypeProvider.ts";
+import { $entity, pg } from "../../orm/index.ts";
 import { workflowExecutionEntity } from "./WorkflowExecutionEntity.ts";
 
 export const humanTaskEntity = $entity({
@@ -18,7 +18,9 @@ export const humanTaskEntity = $entity({
     assignedTo: t.optional(t.uuid({ description: "Assigned user ID" })),
     result: t.optional(t.json({ description: "Task result data" })),
     createdAt: t.datetime({ description: "Task creation timestamp" }),
-    completedAt: t.optional(t.datetime({ description: "Task completion timestamp" })),
+    completedAt: t.optional(
+      t.datetime({ description: "Task completion timestamp" }),
+    ),
   }),
   indexes: [
     { columns: ["workflowId"] },

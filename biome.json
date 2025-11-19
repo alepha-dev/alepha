@@ -4,8 +4,8 @@
     "ignoreUnknown": true,
     "includes": [
       "scripts/*.ts",
-      "**/apps/**",
-      "**/packages/**",
+      "apps/**",
+      "packages/**",
       "!node_modules",
       "!.idea",
       "!.yarn",

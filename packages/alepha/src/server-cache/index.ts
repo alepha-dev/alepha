@@ -1,5 +1,5 @@
-import { AlephaCache } from "alepha/cache";
 import { $module } from "alepha";
+import { AlephaCache } from "alepha/cache";
 import { ServerCacheProvider } from "./providers/ServerCacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

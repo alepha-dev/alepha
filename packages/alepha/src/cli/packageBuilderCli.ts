@@ -1,10 +1,10 @@
 import { access, readdir, readFile } from "node:fs/promises";
+import * as os from "node:os";
 import { join } from "node:path";
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import type { InlineConfig } from "tsdown";
-import * as os from "node:os";
 
 interface Module {
   name: string;
@@ -23,13 +23,14 @@ export class PackageBuilderCli {
     handler: async ({ run, root }) => {
       const modules: Array<Module> = [];
 
-
       const pkg = await readFile("package.json", "utf-8");
       const pkgData = JSON.parse(pkg);
       const packageName = pkgData.name as string;
 
       await run("analyze modules", async () => {
-        modules.push(...(await analyzeModules(join(root, this.src), packageName)));
+        modules.push(
+          ...(await analyzeModules(join(root, this.src), packageName)),
+        );
       });
 
       pkgData.exports = {};
@@ -101,7 +102,6 @@ export class PackageBuilderCli {
         await this.fs.rm(config);
       };
 
-
       const concurrency = Math.ceil(os.cpus().length / 2);
       const queue = modules.slice();
       const workers: Promise<void>[] = [];
@@ -154,12 +154,19 @@ function removeComments(content: string): string {
   return cleaned;
 }
 
-function extractAlephaDependencies(content: string, packageName: string, moduleName:string): string[] {
+function extractAlephaDependencies(
+  content: string,
+  packageName: string,
+  moduleName: string,
+): string[] {
   const deps = new Set<string>();
   const cleanedContent = removeComments(content);
 
   // Match: from "alepha/xxx" or from 'alepha/xxx'
-  const importRegex = new RegExp(`from "${packageName}/([a-zA-Z0-9_/]+)";`, "g");
+  const importRegex = new RegExp(
+    `from "${packageName}/([a-zA-Z0-9_/]+)";`,
+    "g",
+  );
 
   const matches = cleanedContent.matchAll(importRegex);
   for (const match of matches) {
@@ -214,7 +221,10 @@ function detectCircularDependencies(modules: Module[]): void {
   }
 }
 
-export async function analyzeModules(srcDir: string, packageName: string): Promise<Module[]> {
+export async function analyzeModules(
+  srcDir: string,
+  packageName: string,
+): Promise<Module[]> {
   const modules: Module[] = [];
   const entries = await readdir(srcDir, { withFileTypes: true });
 
@@ -233,7 +243,11 @@ export async function analyzeModules(srcDir: string, packageName: string): Promi
 
       for (const file of files) {
         const content = await readFile(file, "utf-8");
-        const deps = extractAlephaDependencies(content, packageName, moduleName);
+        const deps = extractAlephaDependencies(
+          content,
+          packageName,
+          moduleName,
+        );
         for (const dep of deps) {
           if (dep.endsWith(".ts")) {
             throw new Error(

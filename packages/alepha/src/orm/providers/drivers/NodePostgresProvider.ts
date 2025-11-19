@@ -6,11 +6,11 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
+import { DbError } from "../../errors/DbError.ts";
 import { DbMigrationError } from "../../errors/DbMigrationError.ts";
 import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
-import { DbError } from "../../errors/DbError.ts";
 
 declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
@@ -81,9 +81,7 @@ export class NodePostgresProvider extends DatabaseProvider {
     try {
       return this.db.execute(statement);
     } catch (error) {
-      throw new DbError(
-        "Error executing statement"
-        , error);
+      throw new DbError("Error executing statement", error);
     }
   }
 

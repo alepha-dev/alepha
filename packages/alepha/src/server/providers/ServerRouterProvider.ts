@@ -1,13 +1,6 @@
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
-import {
-  $inject,
-  Alepha,
-  isFileLike,
-  isTypeFile,
-  isUUID,
-  t,
-} from "alepha";
+import { $inject, Alepha, isFileLike, isTypeFile, isUUID, t } from "alepha";
 import { RouterProvider } from "alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
@@ -37,7 +30,23 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
 
-  public getRoutes(): ServerRoute[] {
+  /**
+   * Get all registered routes, optionally filtered by a pattern.
+   *
+   * Pattern accept simple wildcard '*' at the end.
+   * Example: '/api/*' will match all routes starting with '/api/' but '/api/' will match only that exact route.
+   */
+  public getRoutes(pattern?: string): ServerRoute[] {
+    if (pattern) {
+      if (pattern.endsWith("*")) {
+        const basePattern = pattern.slice(0, -1);
+        return this.routes.filter((route) =>
+          route.path.startsWith(basePattern),
+        );
+      } else {
+        return this.routes.filter((route) => route.path === pattern);
+      }
+    }
     return this.routes;
   }
 

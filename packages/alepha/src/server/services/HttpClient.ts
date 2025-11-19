@@ -1,4 +1,3 @@
-import { $cache } from "alepha/cache";
 import {
   $inject,
   Alepha,
@@ -8,6 +7,7 @@ import {
   type TObject,
   type TSchema,
 } from "alepha";
+import { $cache } from "alepha/cache";
 import type { DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type { ClientRequestOptions } from "../descriptors/$action.ts";

@@ -131,6 +131,16 @@ export interface ServerRoute<
    * @see ServerLoggerProvider
    */
   silent?: boolean;
+
+  /**
+   * Basic authentication configuration attached to this route.
+   * Set by ServerBasicAuthProvider at startup for routes matching auth patterns.
+   * @see ServerBasicAuthProvider
+   */
+  basicAuth?: {
+    username: string;
+    password: string;
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -1,14 +1,15 @@
+import { createRequire } from "node:module";
 import type { Plugin } from "vite";
 import {
   type ViteAlephaBuildOptions,
   viteAlephaBuild,
 } from "./viteAlephaBuild.ts";
 import { type ViteAlephaDevOptions, viteAlephaDev } from "./viteAlephaDev.ts";
-import { createRequire } from "node:module";
 
-export type ViteAlephaOptions = ViteAlephaDevOptions & ViteAlephaBuildOptions & {
-  react?: false;
-}
+export type ViteAlephaOptions = ViteAlephaDevOptions &
+  ViteAlephaBuildOptions & {
+    react?: false;
+  };
 
 export function viteAlepha(
   options: ViteAlephaOptions = {},
@@ -21,12 +22,11 @@ export function viteAlepha(
 
   if (options.react !== false) {
     try {
-      const {default: viteReact} = createRequire(
-        import.meta.url,
-      )("@vitejs/plugin-react");
+      const { default: viteReact } = createRequire(import.meta.url)(
+        "@vitejs/plugin-react",
+      );
       plugins.push(viteReact());
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   plugins.push(viteAlephaDev(options), viteAlephaBuild(options));

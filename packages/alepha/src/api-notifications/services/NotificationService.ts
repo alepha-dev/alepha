@@ -1,5 +1,5 @@
-import { $batch } from "alepha/batch";
 import { $env, $inject, Alepha, type Static, t } from "alepha";
+import { $batch } from "alepha/batch";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";

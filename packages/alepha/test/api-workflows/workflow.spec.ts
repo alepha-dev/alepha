@@ -1,16 +1,15 @@
 import { Alepha } from "alepha";
 import { test } from "vitest";
 import {
-  $workflow,
   $activity,
-  AlephaApiWorkflows,
+  $workflow,
   WorkflowEngineService,
   WorkflowRegistryService,
 } from "../../src/api-workflows/index.ts";
-import { AlephaQueue } from "../../src/queue/index.ts";
-import { t } from "../../src/core/providers/TypeProvider.ts";
-import { $inject } from "../../src/core/descriptors/$inject.ts";
 import { $atom } from "../../src/core/descriptors/$atom.ts";
+import { $inject } from "../../src/core/descriptors/$inject.ts";
+import { t } from "../../src/core/providers/TypeProvider.ts";
+import { AlephaQueue } from "../../src/queue/index.ts";
 
 test("should define and register a workflow", async ({ expect }) => {
   const alepha = Alepha.create().with(AlephaQueue);
@@ -127,7 +126,9 @@ test("should send signal to workflow", async ({ expect }) => {
 
   // Register and start workflow
   registry.registerWorkflow(workflows.approval);
-  const execution = await engine.start(workflows.approval, { requestId: "req-123" });
+  const execution = await engine.start(workflows.approval, {
+    requestId: "req-123",
+  });
 
   // Send signal
   await engine.signal(execution.workflowId, ApprovalSignal, { approved: true });

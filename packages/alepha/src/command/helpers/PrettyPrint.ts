@@ -1,7 +1,22 @@
+import { $inject } from "alepha";
+import { DateTimeProvider, type Interval } from "alepha/datetime";
+
 export class PrettyPrint {
-  private spinnerInterval?: NodeJS.Timeout;
-  private readonly frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-  private tasks = new Map<
+  protected dateTimeProvider = $inject(DateTimeProvider);
+  protected spinnerInterval?: Interval;
+  protected readonly frames = [
+    "⠋",
+    "⠙",
+    "⠹",
+    "⠸",
+    "⠼",
+    "⠴",
+    "⠦",
+    "⠧",
+    "⠇",
+    "⠏",
+  ];
+  protected tasks = new Map<
     string,
     {
       taskName: string;
@@ -10,10 +25,10 @@ export class PrettyPrint {
       duration?: string;
     }
   >();
-  private lastLineCount = 0;
+  protected lastLineCount = 0;
 
   // ANSI color codes
-  private readonly colors = {
+  protected readonly colors = {
     reset: "\x1b[0m",
     cyan: "\x1b[36m",
     green: "\x1b[32m",
@@ -33,7 +48,11 @@ export class PrettyPrint {
 
     // Start interval if not already running
     if (!this.spinnerInterval) {
-      this.spinnerInterval = setInterval(() => this.updateDisplay(), 80);
+      this.spinnerInterval = this.dateTimeProvider.createInterval(
+        () => this.updateDisplay(),
+        80,
+        true,
+      );
     }
 
     this.updateDisplay();
@@ -71,7 +90,7 @@ export class PrettyPrint {
   /**
    * Update the display for all tasks
    */
-  private updateDisplay(): void {
+  protected updateDisplay(): void {
     // Clear previous lines
     if (this.lastLineCount > 0) {
       // Move cursor up and clear each line
@@ -98,7 +117,7 @@ export class PrettyPrint {
         line = `${this.colors.red}✗${this.colors.reset} ${task.taskName}`;
       }
 
-      process.stdout.write(line + "\n");
+      process.stdout.write(`${line}\n`);
     }
 
     this.lastLineCount = taskArray.length;
@@ -107,13 +126,13 @@ export class PrettyPrint {
   /**
    * Check if all tasks are done and stop the interval
    */
-  private checkIfAllDone(): void {
+  protected checkIfAllDone(): void {
     const hasRunningTasks = Array.from(this.tasks.values()).some(
       (task) => task.status === "running",
     );
 
     if (!hasRunningTasks && this.spinnerInterval) {
-      clearInterval(this.spinnerInterval);
+      this.dateTimeProvider.clearInterval(this.spinnerInterval);
       this.spinnerInterval = undefined;
     }
   }
@@ -123,7 +142,7 @@ export class PrettyPrint {
    */
   public stopSpinner(): void {
     if (this.spinnerInterval) {
-      clearInterval(this.spinnerInterval);
+      this.dateTimeProvider.clearInterval(this.spinnerInterval);
       this.spinnerInterval = undefined;
     }
   }

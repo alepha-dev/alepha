@@ -27,6 +27,7 @@ declare module "alepha" {
      * If you define this, you assume that all actions are executed by this user by default.
      * > To force a different user, you need to pass it explicitly in the options.
      */
+
     "alepha.server.security.system.user"?: UserAccountToken;
 
     /**

@@ -98,6 +98,16 @@ describe("$hook", () => {
       });
     }
 
+    class F {
+      _ = $hook({
+        priority: "last",
+        on: "configure",
+        handler: () => {
+          stack += "F";
+        },
+      });
+    }
+
     class E {
       d = $inject(D);
       f = $inject(F);
@@ -107,16 +117,6 @@ describe("$hook", () => {
         before: [this.f],
         handler: () => {
           stack += "E";
-        },
-      });
-    }
-
-    class F {
-      _ = $hook({
-        priority: "last",
-        on: "configure",
-        handler: () => {
-          stack += "F";
         },
       });
     }

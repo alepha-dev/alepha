@@ -1,5 +1,5 @@
-import type { CacheProvider } from "alepha/cache";
 import { $env, $inject, Alepha, type Static, t } from "alepha";
+import type { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
 

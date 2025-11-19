@@ -1,6 +1,6 @@
 import { $module } from "alepha";
-import { RetryProvider } from "./providers/RetryProvider.ts";
 import { $retry } from "./descriptors/$retry.ts";
+import { RetryProvider } from "./providers/RetryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

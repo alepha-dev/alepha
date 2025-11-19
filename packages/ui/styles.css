@@ -93,12 +93,6 @@ body,
   margin-inline-start: 4px;
 }
 
-[data-mantine-color-scheme="dark"] {
-  .mantine-Modal-content {
-    border: 1px solid var(--alepha-border);
-  }
-}
-
 /* ------------------------------------------------------------------------------------------------------------------ */
 /* Modal Customizations */
 
@@ -131,6 +125,12 @@ body,
 
 .mantine-Modal-root[data-exit] .mantine-Modal-content {
   animation: modalScaleOut 0.15s cubic-bezier(0.4, 0, 1, 1);
+}
+
+[data-mantine-color-scheme="dark"] {
+  .mantine-Modal-content {
+    border: 1px solid var(--alepha-border);
+  }
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

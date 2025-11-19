@@ -215,12 +215,12 @@ export class DateTimeProvider {
 
   public createInterval(
     run: () => unknown,
-    distance: DurationLike,
+    duration: DurationLike,
     start = false,
   ): Interval {
     const interval: Interval = {
       run,
-      duration: this.duration(distance).asMilliseconds(),
+      duration: this.duration(duration).asMilliseconds(),
     };
 
     this.intervals.push(interval);

@@ -26,20 +26,30 @@ export class SessionCrudService {
       where.userId = { eq: q.userId };
     }
 
-    return await this.sessions(userRealmName).paginate(q, { where }, { count: true });
+    return await this.sessions(userRealmName).paginate(
+      q,
+      { where },
+      { count: true },
+    );
   }
 
   /**
    * Get a session by ID.
    */
-  public async getSessionById(id: string, userRealmName?: string): Promise<SessionEntity> {
+  public async getSessionById(
+    id: string,
+    userRealmName?: string,
+  ): Promise<SessionEntity> {
     return await this.sessions(userRealmName).findById(id);
   }
 
   /**
    * Delete a session by ID.
    */
-  public async deleteSession(id: string, userRealmName?: string): Promise<void> {
+  public async deleteSession(
+    id: string,
+    userRealmName?: string,
+  ): Promise<void> {
     // Verify session exists
     await this.getSessionById(id, userRealmName);
 
