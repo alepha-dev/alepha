@@ -13,6 +13,7 @@ export * from "./descriptors/$role.ts";
 export * from "./descriptors/$serviceAccount.ts";
 export * from "./errors/InvalidPermissionError.ts";
 export * from "./errors/SecurityError.ts";
+export * from "./errors/InvalidCredentialsError.ts";
 export * from "./interfaces/UserAccountToken.ts";
 export * from "./providers/CryptoProvider.ts";
 export * from "./providers/JwtProvider.ts";

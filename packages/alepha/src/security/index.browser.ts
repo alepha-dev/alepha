@@ -2,6 +2,7 @@ import { $module } from "alepha";
 
 export * from "./errors/InvalidPermissionError.ts";
 export * from "./errors/SecurityError.ts";
+export * from "./errors/InvalidCredentialsError.ts";
 export * from "./interfaces/UserAccountToken.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
