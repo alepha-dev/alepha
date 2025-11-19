@@ -55,7 +55,7 @@ const TaskItem = (props: { task: Task; index: number }) => {
         }}
         rightSection={
           <Flex align="center" justify="center" gap={4}>
-            {task.note && task.note.trim() && (
+            {task.note?.trim() && (
               <HoverCard
                 transitionProps={{
                   transition: "fade-right",
