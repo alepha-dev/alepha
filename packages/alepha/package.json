@@ -34,7 +34,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@faker-js/faker": "^10.1.0",
-    "@fastify/busboy": "^3.2.0",
+    "@types/node": "^24.10.1",
     "@types/nodemailer": "^7.0.4",
     "@types/ws": "^8.18.1",
     "cron-schedule": "^5.0.4",

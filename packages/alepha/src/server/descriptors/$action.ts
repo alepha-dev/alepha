@@ -329,7 +329,6 @@ export class ActionDescriptor<
       headers,
       reply,
       metadata: {},
-      raw: {},
     };
 
     await this.alepha.events.emit("action:onRequest", {

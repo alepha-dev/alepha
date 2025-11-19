@@ -37,18 +37,26 @@ describe("$proxy", () => {
       });
     }
 
-    const a1 = Alepha.create().with(App);
+    const alephaApi = Alepha.create({
+      env: {
+        APP_NAME: "API",
+      },
+    }).with(App);
 
     class AppProxy {
       proxy = $proxy({
         path: "/api/*",
-        target: () => a1.inject(ServerProvider).hostname,
+        target: () => alephaApi.inject(ServerProvider).hostname,
       });
     }
 
-    const alephaProxy = Alepha.create().with(AppProxy);
+    const alephaProxy = Alepha.create({
+      env: {
+        APP_NAME: "PROXY",
+      },
+    }).with(AppProxy);
 
-    await a1.start();
+    await alephaApi.start();
     await alephaProxy.start();
 
     for (let i = 0; i < 10; i++) {

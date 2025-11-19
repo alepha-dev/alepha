@@ -1,62 +1,48 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream, createWriteStream } from "node:fs";
-import { readFile, stat, unlink } from "node:fs/promises";
-import type { IncomingMessage } from "node:http";
+import { createReadStream } from "node:fs";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import * as os from "node:os";
-import Busboy, {
-  type BusboyConfig,
-  type BusboyFileStream,
-  type BusboyHeaders,
-} from "@fastify/busboy";
-import {
-  $hook,
-  $inject,
-  Alepha,
-  type FileLike,
-  type HookDescriptor,
-  isTypeFile,
-  t,
-} from "alepha";
+import { $hook, $inject, Alepha, type FileLike, isTypeFile, t } from "alepha";
 import { HttpError, isMultipart, type ServerRoute } from "alepha/server";
 
 export class ServerMultipartProvider {
   protected readonly alepha = $inject(Alepha);
 
-  public readonly onRequest: HookDescriptor<"server:onRequest"> = $hook({
+  public readonly onRequest = $hook({
     on: "server:onRequest",
     handler: async ({ route, request }) => {
+      // already parsed (e.g. by body parser)
       if (request.body) {
-        return; // already parsed
+        return;
       }
 
+      // we do not parse body if no schema
       if (!route.schema?.body) {
         return;
       }
 
-      const req: IncomingMessage | undefined = request.raw.node?.req;
-      if (!req) {
-        return; // not a node request - skip for now
+      // raw web request is required
+      if (!request.raw) {
+        return;
       }
 
       const contentType = request.headers["content-type"];
 
-      if (
-        !isMultipart(route) &&
-        !contentType?.startsWith("multipart/form-data")
-      ) {
-        return;
-      }
-
       if (!contentType?.startsWith("multipart/form-data")) {
+        if (!isMultipart(route)) {
+          return;
+        }
+
+        // route expects multipart but content-type is not correct! reject with 415
         throw new HttpError({
           status: 415,
           message: `Invalid content-type: ${contentType} - only "multipart/form-data" is accepted`,
         });
       }
 
-      const { body, cleanup } = await this.handleMultipartBodyFromNode(
+      const { body, cleanup } = await this.handleMultipartBodyFromWeb(
         route,
-        req,
+        request.raw,
       );
 
       request.body = body;
@@ -64,7 +50,7 @@ export class ServerMultipartProvider {
     },
   });
 
-  public readonly onSend: HookDescriptor<"server:onResponse"> = $hook({
+  public readonly onResponse = $hook({
     on: "server:onResponse",
     handler: async ({ request }) => {
       const cleanup = request.metadata.multipart?.cleanup;
@@ -74,17 +60,18 @@ export class ServerMultipartProvider {
     },
   });
 
-  public async handleMultipartBodyFromNode(
+  public async handleMultipartBodyFromWeb(
     route: ServerRoute,
-    stream: IncomingMessage,
+    request: Request,
   ): Promise<{
     body: Record<string, unknown>;
     cleanup: () => Promise<void>;
   }> {
-    let result: MultipartResult | undefined;
+    let formData: FormData;
 
     try {
-      result = await this.parseMultipart(stream, {});
+      // Parse the FormData from the request
+      formData = await request.formData();
     } catch (error) {
       throw new HttpError(
         {
@@ -96,14 +83,27 @@ export class ServerMultipartProvider {
     }
 
     const body: Record<string, any> = {};
+    const tempFiles: HybridFile[] = [];
 
     if (route.schema?.body && t.schema.isObject(route.schema.body)) {
       for (const [key, value] of Object.entries(route.schema.body.properties)) {
         if (t.schema.isSchema(value)) {
           if (isTypeFile(value)) {
-            body[key] = result.files[key];
+            const file = formData.get(key);
+            // Check if file is a Blob (File extends Blob in Web APIs)
+            if (file && typeof file === "object" && "arrayBuffer" in file) {
+              const hybridFile = await this.createHybridFile(file as Blob, key);
+              body[key] = hybridFile;
+              tempFiles.push(hybridFile);
+            }
           } else {
-            body[key] = this.alepha.codec.decode(value, result.fields[key]);
+            const fieldValue = formData.get(key);
+            if (fieldValue !== null) {
+              // FormData values are either string or File/Blob
+              const stringValue =
+                typeof fieldValue === "string" ? fieldValue : "";
+              body[key] = this.alepha.codec.decode(value, stringValue);
+            }
           }
         }
       }
@@ -112,116 +112,74 @@ export class ServerMultipartProvider {
     return {
       body,
       cleanup: async () => {
-        for (const file of Object.values(result.files)) {
+        for (const file of tempFiles) {
           await file.cleanup();
         }
       },
     };
   }
 
-  public async parseMultipart(
-    req: IncomingMessage,
-    config: Omit<BusboyConfig, "headers"> = {},
-  ): Promise<MultipartResult> {
-    const parser = Busboy({
-      headers: req.headers as BusboyHeaders,
-      ...config,
-    });
+  /**
+   * This is a legacy code, previously we used "busboy" to parse multipart in Node.js environment.
+   * Now we rely on Web Request's formData() method, which is supported in modern Node.js versions.
+   * However, we still need to create temporary files for uploaded files to provide a consistent File-like interface.
+   *
+   * TODO: In future, we might want to refactor this to avoid using temporary files if not necessary?
+   */
+  protected async createHybridFile(
+    file: Blob,
+    fieldName: string,
+  ): Promise<HybridFile> {
+    const tmpPath = `${os.tmpdir()}/${randomUUID()}`;
 
-    const fields: Record<string, string | string[]> = {};
-    const files: Record<string, HybridFile> = {};
-    const pending: Promise<void>[] = [];
+    // Get file data
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    parser.on("field", (name, value) => {
-      if (!fields[name]) {
-        fields[name] = value;
-        return;
-      }
+    // Write to temp file
+    await writeFile(tmpPath, buffer);
 
-      if (Array.isArray(fields[name])) {
-        (fields[name] as string[]).push(value);
-        return;
-      }
+    // Get file name - check if it has name property (File type)
+    const fileName = (file as any).name || `${fieldName}_${Date.now()}`;
 
-      fields[name] = [fields[name] as string, value];
-    });
-
-    parser.on(
-      "file",
-      (
-        name: string,
-        stream: BusboyFileStream,
-        filename: string,
-        _: string,
-        mimeType: string,
-      ) => {
-        const tmpPath = `${os.tmpdir()}/${randomUUID()}`;
-        const writer = createWriteStream(tmpPath);
-
-        pending.push(
-          new Promise<void>((resolve, reject) => {
-            stream.pipe(writer);
-            writer.on("finish", resolve);
-            writer.on("error", reject);
-          }),
-        );
-
-        files[name] = {
-          _state: {
-            cleanup: false,
-            size: 0,
-            tmpPath,
-          },
-          name: filename,
-          type: mimeType,
-          lastModified: Date.now(),
-          filepath: tmpPath,
-          get size() {
-            return this._state.size;
-          },
-          stream() {
-            return createReadStream(tmpPath);
-          },
-          async arrayBuffer() {
-            const content = await readFile(tmpPath);
-            return content.buffer.slice(
-              content.byteOffset,
-              content.byteOffset + content.byteLength,
-            ) as ArrayBuffer;
-          },
-          text: async () => {
-            return await readFile(tmpPath, "utf-8");
-          },
-          async cleanup() {
-            if (this._state.cleanup) {
-              return;
-            }
-
-            await unlink(tmpPath); // clean up the temp file
-            this._state.cleanup = true;
-          },
-        };
+    const hybridFile: HybridFile = {
+      _state: {
+        cleanup: false,
+        size: file.size,
+        tmpPath,
       },
-    );
+      name: fileName,
+      type: file.type || "application/octet-stream",
+      lastModified: (file as any).lastModified || Date.now(),
+      filepath: tmpPath,
+      get size() {
+        return this._state.size;
+      },
+      stream() {
+        return createReadStream(tmpPath);
+      },
+      async arrayBuffer() {
+        const content = await readFile(tmpPath);
+        return content.buffer.slice(
+          content.byteOffset,
+          content.byteOffset + content.byteLength,
+        ) as ArrayBuffer;
+      },
+      text: async () => {
+        return await readFile(tmpPath, "utf-8");
+      },
+      async cleanup() {
+        if (this._state.cleanup) {
+          return;
+        }
 
-    req.pipe(parser);
+        await unlink(tmpPath); // clean up the temp file
+        this._state.cleanup = true;
+      },
+    };
 
-    await new Promise((resolve) => parser.on("finish", resolve));
-    await Promise.all(pending);
-
-    for (const file of Object.values(files)) {
-      file._state.size = await stat(file._state.tmpPath).then(
-        (stat) => stat.size,
-      );
-    }
-
-    return { fields, files };
+    return hybridFile;
   }
-}
-
-interface MultipartResult {
-  fields: Record<string, string | string[]>;
-  files: Record<string, HybridFile>;
 }
 
 interface HybridFile extends FileLike {

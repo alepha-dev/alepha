@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   routeMethods,
@@ -30,11 +30,13 @@ export class ServerProxyProvider {
     const path = options.path;
     const target =
       typeof options.target === "function" ? options.target() : options.target;
-    const handler = this.createProxyHandler(target, options);
 
     if (!path.endsWith("/*")) {
-      throw new Error("Proxy path should end with '/*'");
+      throw new AlephaError("Proxy path should end with '/*'");
     }
+
+    // Extract base path without /*
+    const handler = this.createProxyHandler(target, options);
 
     for (const method of routeMethods) {
       this.routerProvider.createRoute({
@@ -100,16 +102,13 @@ export class ServerProxyProvider {
     };
   }
 
-  private getRawRequestBody(req: ServerRequest): any {
+  private getRawRequestBody(req: ServerRequest): ReadableStream | undefined {
     const { method } = req;
 
     if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
       return;
     }
 
-    // Node.js request
-    if (req.raw.node?.req) {
-      return req.raw.node.req;
-    }
+    return req.raw?.body as ReadableStream | undefined;
   }
 }

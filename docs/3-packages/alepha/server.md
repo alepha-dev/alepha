@@ -107,6 +107,12 @@ If the server is not ready, it responds with a 503 status code and a message ind
 
 The response also includes a `Retry-After` header indicating that the client should retry after 5 seconds.
 
+#### ServerProvider
+
+Base server provider to handle incoming requests and route them.
+
+This is the default implementation for serverless environments.
+
 #### ServerRouterProvider
 
 Main router for all routes on the server side.

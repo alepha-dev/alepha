@@ -393,6 +393,10 @@ export class Alepha {
     return !!this.env.VITE_ALEPHA_DEV;
   }
 
+  public isBun(): boolean {
+    return "Bun" in globalThis;
+  }
+
   /**
    * Returns whether the App is running in a serverless environment.
    */

@@ -1,6 +1,7 @@
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import { $inject, Alepha, isFileLike, isTypeFile, isUUID, t } from "alepha";
+import { $logger } from "alepha/logger";
 import { RouterProvider } from "alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
@@ -25,6 +26,7 @@ import { ServerTimingProvider } from "./ServerTimingProvider.ts";
  * - $page => React route (for SSR)
  */
 export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
+  protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly routes: ServerRoute[] = [];
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
@@ -60,6 +62,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     const path = `/${route.method}/${route.path}`.replace(/\/+/g, "/");
     const responseKind = this.getResponseType(route.schema);
+
+    this.log.trace(`Create route ${path}`);
 
     this.push({
       path,

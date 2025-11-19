@@ -1914,13 +1914,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/busboy@npm:^3.2.0":
-  version: 3.2.0
-  resolution: "@fastify/busboy@npm:3.2.0"
-  checksum: 10c0/3e4fb00a27e3149d1c68de8ff14007d2bbcbbc171a9d050d0a8772e836727329d4d3f130995ebaa19cf537d5d2f5ce2a88000366e6192e751457bfcc2125f351
-  languageName: node
-  linkType: hard
-
 "@floating-ui/core@npm:^1.7.3":
   version: 1.7.3
   resolution: "@floating-ui/core@npm:1.7.3"
@@ -4972,8 +4965,8 @@ __metadata:
     "@biomejs/biome": "npm:^2.3.6"
     "@electric-sql/pglite": "npm:^0.3.14"
     "@faker-js/faker": "npm:^10.1.0"
-    "@fastify/busboy": "npm:^3.2.0"
     "@redis/client": "npm:^5.9.0"
+    "@types/node": "npm:^24.10.1"
     "@types/nodemailer": "npm:^7.0.4"
     "@types/ws": "npm:^8.18.1"
     cron-schedule: "npm:^5.0.4"

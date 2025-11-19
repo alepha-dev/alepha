@@ -1,7 +1,3 @@
-import type {
-  IncomingMessage,
-  ServerResponse as NodeServerResponse,
-} from "node:http";
 import type { Readable as NodeStream } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type {
@@ -98,24 +94,9 @@ export interface ServerRequest<
   reply: ServerReply;
 
   /**
-   * Raw request and response objects from platform.
-   * You should avoid using this property as much as possible to keep your code platform-agnostic.
+   * The raw underlying request object (Web Request).
    */
-  raw: {
-    /**
-     * Node.js request and response objects.
-     */
-    node?: {
-      /**
-       * Node.js IncomingMessage object. (request)
-       */
-      req: IncomingMessage;
-      /**
-       * Node.js ServerResponse object. (response)
-       */
-      res: NodeServerResponse;
-    };
-  };
+  raw?: Request;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -175,20 +156,12 @@ export interface ServerRouteMatcher extends Route {
   handler: ServerRouteRequestHandler;
 }
 
+// TODO: just use Web Request, it's useless to wrap it
 export interface ServerRawRequest {
   method: RouteMethod;
   url: URL;
   headers: Record<string, string>;
   query: Record<string, string>;
   params: Record<string, string>;
-  raw: {
-    node?: {
-      req: IncomingMessage;
-      res: NodeServerResponse;
-    };
-    web?: {
-      req: Request;
-      res?: Response;
-    };
-  };
+  raw: Request;
 }

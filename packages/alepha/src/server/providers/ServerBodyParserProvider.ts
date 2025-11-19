@@ -1,5 +1,3 @@
-import type { IncomingMessage } from "node:http";
-import type Stream from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { $env, $hook, $inject, Alepha, t } from "alepha";
 import { $logger } from "alepha/logger";
@@ -29,14 +27,14 @@ export class ServerBodyParserProvider {
         return; // already parsed
       }
 
-      const stream: Stream | undefined = request.raw.node?.req;
-      if (!stream) {
-        return; // not a node request - skip
+      const webRequest: Request | undefined = request.raw;
+      if (!webRequest) {
+        return; // not a web request - skip
       }
 
       if (route.schema?.body) {
         try {
-          const body = await this.parse(stream, request.headers);
+          const body = await this.parse(webRequest, request.headers);
           if (body) {
             request.body = body;
           }
@@ -58,7 +56,7 @@ export class ServerBodyParserProvider {
   });
 
   public async parse(
-    stream: Stream,
+    request: Request,
     headers: Record<string, string>,
   ): Promise<object | string | undefined> {
     const contentType = headers["content-type"];
@@ -66,23 +64,28 @@ export class ServerBodyParserProvider {
 
     if (!contentType) return undefined;
 
+    // Check if request has a body
+    if (!request.body) {
+      return undefined;
+    }
+
     if (contentType.startsWith("application/json")) {
-      return this.parseJson(stream, contentEncoding);
+      return this.parseJson(request.body, contentEncoding);
     }
 
     if (contentType.startsWith("text/plain")) {
-      return this.parseText(stream, contentEncoding);
+      return this.parseText(request.body, contentEncoding);
     }
 
     if (contentType.startsWith("application/x-www-form-urlencoded")) {
-      return this.parseUrlEncoded(stream, contentEncoding);
+      return this.parseUrlEncoded(request.body, contentEncoding);
     }
 
     return undefined;
   }
 
   public async parseText(
-    stream: Stream,
+    stream: ReadableStream,
     contentEncoding?: string,
   ): Promise<string> {
     const buffer = await this.streamToBuffer(stream);
@@ -91,7 +94,7 @@ export class ServerBodyParserProvider {
   }
 
   public async parseUrlEncoded(
-    stream: Stream,
+    stream: ReadableStream,
     contentEncoding?: string,
   ): Promise<object> {
     const text = await this.parseText(stream, contentEncoding);
@@ -105,7 +108,7 @@ export class ServerBodyParserProvider {
   }
 
   public async parseJson(
-    stream: Stream,
+    stream: ReadableStream,
     contentEncoding?: string,
   ): Promise<object> {
     const text = await this.parseText(stream, contentEncoding);
@@ -154,45 +157,62 @@ export class ServerBodyParserProvider {
   }
 
   /**
-   * Classic Node.js stream to Buffer conversion but with a size limit.
+   * Convert Web ReadableStream to Buffer, with a size limit.
+   *
+   * TODO: move to alepha/file FileUtils
    */
-  protected streamToBuffer(req: Stream): Promise<Buffer> {
-    const chunks: Buffer[] = [];
+  protected async streamToBuffer(stream: ReadableStream): Promise<Buffer> {
+    const chunks: Uint8Array[] = [];
     let totalLength = 0;
 
-    return new Promise((resolve, reject) => {
-      req.on("data", (chunk) => {
-        totalLength += chunk.length;
+    const reader = stream.getReader();
 
-        if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
-          this.log.error(
-            `Body size limit exceeded: ${totalLength} > ${this.env.SERVER_BODY_PARSER_LIMIT}`,
-          );
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
 
-          (req as IncomingMessage).pause(); // stop receiving data
+        if (done) {
+          break;
+        }
 
-          return reject(
-            new HttpError({
+        if (value) {
+          totalLength += value.length;
+
+          if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
+            this.log.error(
+              `Body size limit exceeded: ${totalLength} > ${this.env.SERVER_BODY_PARSER_LIMIT}`,
+            );
+
+            await reader.cancel(); // Cancel the stream
+
+            throw new HttpError({
               status: 413,
               message: `Request body size limit exceeded`,
-            }),
-          );
+            });
+          }
+
+          chunks.push(value);
         }
+      }
 
-        chunks.push(chunk);
-      });
+      // Combine all chunks into a single Buffer
+      const combinedLength = chunks.reduce(
+        (sum, chunk) => sum + chunk.length,
+        0,
+      );
+      const combined = new Uint8Array(combinedLength);
+      let offset = 0;
 
-      req.on("end", () => {
-        if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
-          return;
-        }
+      for (const chunk of chunks) {
+        combined.set(chunk, offset);
+        offset += chunk.length;
+      }
 
-        resolve(Buffer.concat(chunks));
-      });
-
-      req.on("error", (err) => {
-        reject(err);
-      });
-    });
+      return Buffer.from(combined);
+    } catch (error) {
+      // Make sure to release the reader lock
+      reader.releaseLock();
+      throw error;
+    }
   }
 }

@@ -170,7 +170,6 @@ export class LinkProvider {
         params: config.params ?? {},
         headers: config.headers ?? {},
         metadata: {},
-        raw: {},
         reply: new ServerReply(),
       } as Partial<ServerRequest> as ServerRequest);
     }

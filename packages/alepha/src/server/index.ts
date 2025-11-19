@@ -1,7 +1,3 @@
-import type {
-  IncomingMessage,
-  ServerResponse as NodeServerResponse,
-} from "node:http";
 import { $module, type Alepha, type DescriptorFactoryLike } from "alepha";
 import {
   $action,
@@ -17,10 +13,15 @@ import type {
   ServerResponse,
   ServerRoute,
 } from "./interfaces/ServerRequest.ts";
+import { BunHttpServerProvider } from "./providers/BunHttpServerProvider.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
 import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
 import { ServerLoggerProvider } from "./providers/ServerLoggerProvider.ts";
 import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
+import type {
+  NodeRequestEvent,
+  WebRequestEvent,
+} from "./providers/ServerProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
 import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";
@@ -86,14 +87,8 @@ declare module "alepha" {
     };
     // -----------------------------------------------------------------------------------------------------------------
     // Internal hooks
-    "node:request": {
-      req: IncomingMessage;
-      res: NodeServerResponse;
-    };
-    "web:request": {
-      req: Request;
-      res?: Response;
-    };
+    "node:request": NodeRequestEvent;
+    "web:request": WebRequestEvent;
   }
 }
 
@@ -102,6 +97,7 @@ declare module "alepha" {
 export * from "./descriptors/$action.ts";
 export * from "./descriptors/$route.ts";
 export * from "./index.shared.ts";
+export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
 export * from "./providers/ServerLoggerProvider.ts";
 export * from "./providers/ServerNotReadyProvider.ts";
@@ -127,6 +123,7 @@ export const AlephaServer = $module({
   descriptors: [$route, $action as DescriptorFactoryLike],
   services: [
     ServerProvider,
+    BunHttpServerProvider,
     NodeHttpServerProvider,
     ServerBodyParserProvider,
     ServerLoggerProvider,
@@ -135,11 +132,21 @@ export const AlephaServer = $module({
     HttpClient,
   ],
   register: (alepha: Alepha) => {
-    alepha.with({
-      optional: true,
-      provide: ServerProvider,
-      use: NodeHttpServerProvider,
-    });
+    if (!alepha.isServerless() && !alepha.isViteDev()) {
+      if (alepha.isBun()) {
+        alepha.with({
+          optional: true,
+          provide: ServerProvider,
+          use: BunHttpServerProvider,
+        });
+      } else {
+        alepha.with({
+          optional: true,
+          provide: ServerProvider,
+          use: NodeHttpServerProvider,
+        });
+      }
+    }
 
     alepha.with(ServerBodyParserProvider);
     alepha.with(ServerLoggerProvider);
