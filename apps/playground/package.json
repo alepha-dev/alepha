@@ -1,14 +1,14 @@
 {
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "alepha dev",
-		"db:generate": "alepha db:generate",
-		"start": "alepha build && node dist"
-	},
-	"dependencies": {
-		"@alepha/devtools": "^0.12.0",
-		"alepha": "^0.12.0",
-		"react": "^19.2.0"
-	}
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "db:generate": "alepha db:generate",
+    "start": "alepha build && node dist"
+  },
+  "dependencies": {
+    "@alepha/devtools": "^0.12.0",
+    "alepha": "^0.12.0",
+    "react": "^19.2.0"
+  }
 }

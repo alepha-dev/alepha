@@ -1,12 +1,12 @@
 {
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"test": "alepha test",
-		"lint": "alepha lint",
-		"typecheck": "alepha typecheck"
-	},
-	"dependencies": {
-		"alepha": "^0.12.0"
-	}
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "alepha test",
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck"
+  },
+  "dependencies": {
+    "alepha": "^0.12.0"
+  }
 }

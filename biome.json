@@ -1,72 +1,72 @@
 {
-	"$schema": "https://biomejs.dev/schemas/latest/schema.json",
-	"files": {
-		"ignoreUnknown": true,
-		"includes": [
-			"scripts/*.ts",
-			"**/apps/**",
-			"**/packages/**",
-			"!node_modules",
-			"!.idea",
-			"!.yarn",
-			"!**/node_modules",
-			"!**/dist",
-			"!**/coverage",
-			"!**/assets"
-		]
-	},
-	"formatter": {
-		"enabled": true,
-		"useEditorconfig": true
-	},
-	"assist": {
-		"enabled": true,
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"suspicious": {
-				"noExplicitAny": "off",
-				"noArrayIndexKey": "off",
-				"noConfusingVoidType": "off"
-			},
-			"correctness": {
-				"noUnusedImports": {
-					"options": {},
-					"level": "error",
-					"fix": "safe"
-				},
-				"noUnusedFunctionParameters": "off",
-				"noUnusedVariables": "off",
-				"noEmptyPattern": "off",
-				"useExhaustiveDependencies": "off"
-			},
-			"performance": {
-				"noDelete": "off",
-				"noAccumulatingSpread": "off"
-			},
-			"complexity": {
-				"noBannedTypes": "off",
-				"noImportantStyles": "off"
-			},
-			"style": {
-				"noNonNullAssertion": "off",
-				"noParameterAssign": "off"
-			},
-			"a11y": {
-				"recommended": false
-			}
-		}
-	},
-	"vcs": {
-		"enabled": true,
-		"clientKind": "git",
-		"useIgnoreFile": true,
-		"defaultBranch": "main"
-	}
+  "$schema": "https://biomejs.dev/schemas/latest/schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "scripts/*.ts",
+      "**/apps/**",
+      "**/packages/**",
+      "!node_modules",
+      "!.idea",
+      "!.yarn",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!**/assets"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "useEditorconfig": true
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off",
+        "noConfusingVoidType": "off"
+      },
+      "correctness": {
+        "noUnusedImports": {
+          "options": {},
+          "level": "error",
+          "fix": "safe"
+        },
+        "noUnusedFunctionParameters": "off",
+        "noUnusedVariables": "off",
+        "noEmptyPattern": "off",
+        "useExhaustiveDependencies": "off"
+      },
+      "performance": {
+        "noDelete": "off",
+        "noAccumulatingSpread": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off",
+        "noImportantStyles": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "off"
+      },
+      "a11y": {
+        "recommended": false
+      }
+    }
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  }
 }

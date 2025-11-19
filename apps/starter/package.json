@@ -1,14 +1,14 @@
 {
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "alepha dev",
-		"build": "alepha build",
-		"test": "alepha test"
-	},
-	"dependencies": {
-		"@alepha/react": "^0.12.0",
-		"alepha": "^0.12.0",
-		"react": "^19.2.0"
-	}
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "test": "alepha test"
+  },
+  "dependencies": {
+    "@alepha/react": "^0.12.0",
+    "alepha": "^0.12.0",
+    "react": "^19.2.0"
+  }
 }

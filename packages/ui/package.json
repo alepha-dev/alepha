@@ -1,56 +1,57 @@
 {
-	"name": "@alepha/ui",
-	"keywords": [
-		"alepha",
-		"ui",
-		"mantine"
-	],
-	"author": "Feunard",
-	"version": "0.12.0",
-	"type": "module",
-	"engines": {
-		"node": ">=22.0.0"
-	},
-	"license": "MIT",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"style": "./styles.css",
-	"files": [
-		"dist",
-		"src"
-	],
-	"dependencies": {
-		"@alepha/react": "0.12.0",
-		"@mantine/core": "^8.3.8",
-		"@mantine/dates": "^8.3.8",
-		"@mantine/hooks": "^8.3.8",
-		"@mantine/modals": "^8.3.8",
-		"@mantine/notifications": "^8.3.8",
-		"@mantine/nprogress": "^8.3.8",
-		"@mantine/spotlight": "^8.3.8",
-		"@tabler/icons-react": "^3.35.0",
-		"alepha": "0.12.0",
-		"dayjs": "^1.11.19"
-	},
-	"devDependencies": {
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0",
-		"tsdown": "^0.16.5"
-	},
-	"peerDependencies": {
-		"react": "*",
-		"react-dom": "*"
-	},
-	"scripts": {
-		"dev": "alepha dev",
-		"lint": "alepha lint",
-		"typecheck": "alepha typecheck",
-		"test": "alepha test",
-		"build": "tsdown -c=../../tsdown.config.ts"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/feunard/alepha.git"
-	},
-	"homepage": "https://github.com/feunard/alepha"
+  "name": "@alepha/ui",
+  "description": "UI components and themes for Alepha framework based on Mantine UI library.",
+  "keywords": [
+    "alepha",
+    "ui",
+    "mantine"
+  ],
+  "author": "Nicolas Foures",
+  "version": "0.12.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "style": "./styles.css",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "@alepha/react": "0.12.0",
+    "@mantine/core": "^8.3.8",
+    "@mantine/dates": "^8.3.8",
+    "@mantine/hooks": "^8.3.8",
+    "@mantine/modals": "^8.3.8",
+    "@mantine/notifications": "^8.3.8",
+    "@mantine/nprogress": "^8.3.8",
+    "@mantine/spotlight": "^8.3.8",
+    "@tabler/icons-react": "^3.35.0",
+    "alepha": "0.12.0",
+    "dayjs": "^1.11.19"
+  },
+  "devDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tsdown": "^0.16.5"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-dom": "*"
+  },
+  "scripts": {
+    "dev": "alepha dev",
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown -c=../../tsdown.config.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "homepage": "https://github.com/feunard/alepha"
 }
