@@ -3,7 +3,7 @@ import { FakeProvider } from "./providers/FakeProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * as fake from "@faker-js/faker";
+export { faker as fake } from "@faker-js/faker";
 export * from "./providers/FakeProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -41,8 +41,8 @@ export interface FakeOptions {
  * ```
  */
 export class FakeProvider {
-  private readonly faker: typeof faker;
-  private readonly guard: TypeGuard;
+  protected readonly faker: typeof faker;
+  protected readonly guard: TypeGuard;
 
   constructor(options?: FakeOptions) {
     // Set seed for deterministic generation FIRST
@@ -60,18 +60,18 @@ export class FakeProvider {
   /**
    * Generate fake data matching the given TypeBox schema.
    */
-  generate<T extends TSchema>(schema: T): StaticDecode<T> {
+  public generate<T extends TSchema>(schema: T): StaticDecode<T> {
     return this.generateValue(schema) as StaticDecode<T>;
   }
 
   /**
    * Generate multiple fake data items.
    */
-  generateMany<T extends TSchema>(schema: T, count: number): StaticDecode<T>[] {
+  public generateMany<T extends TSchema>(schema: T, count: number): StaticDecode<T>[] {
     return Array.from({ length: count }, () => this.generate(schema));
   }
 
-  private generateValue(schema: TSchema): unknown {
+  protected generateValue(schema: TSchema): unknown {
     // Handle optional
     if (this.guard.isOptional(schema)) {
       // 30% chance of being undefined
@@ -221,7 +221,7 @@ export class FakeProvider {
     return this.faker.lorem.word();
   }
 
-  private generateString(schema: TString): string {
+  protected generateString(schema: TString): string {
     const schemaAny = schema as any;
     const format = schemaAny.format;
     const pattern = schemaAny.pattern;
@@ -315,7 +315,7 @@ export class FakeProvider {
     return text;
   }
 
-  private generateNumber(schema: TNumber): number {
+  protected generateNumber(schema: TNumber): number {
     const schemaAny = schema as any;
     const min = schemaAny.minimum ?? -1000000;
     const max = schemaAny.maximum ?? 1000000;
@@ -330,7 +330,7 @@ export class FakeProvider {
     return value;
   }
 
-  private generateInteger(schema: TInteger): number {
+  protected generateInteger(schema: TInteger): number {
     const schemaAny = schema as any;
     const min = schemaAny.minimum ?? -2147483647;
     const max = schemaAny.maximum ?? 2147483647;
@@ -338,17 +338,17 @@ export class FakeProvider {
     return this.faker.number.int({ min, max });
   }
 
-  private generateBigInt(schema: TString): string {
+  protected generateBigInt(schema: TString): string {
     return this.faker.number
       .bigInt({ min: -9007199254740991n, max: 9007199254740991n })
       .toString();
   }
 
-  private generateBoolean(_schema: TBoolean): boolean {
+  protected generateBoolean(_schema: TBoolean): boolean {
     return this.faker.datatype.boolean();
   }
 
-  private generateArray(schema: TArray): unknown[] {
+  protected generateArray(schema: TArray): unknown[] {
     const schemaAny = schema as any;
     const minItems = schemaAny.minItems ?? 0;
     const maxItems = Math.min(schemaAny.maxItems ?? 5, 5); // Cap at 5 by default
@@ -357,7 +357,7 @@ export class FakeProvider {
     return Array.from({ length }, () => this.generateValue(schema.items));
   }
 
-  private generateObject(schema: TObject): Record<string, unknown> {
+  protected generateObject(schema: TObject): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
     for (const [key, propSchema] of Object.entries(schema.properties)) {
@@ -371,7 +371,7 @@ export class FakeProvider {
    * Generate a value with context from the property key name.
    * This helps generate more realistic fake data based on field names.
    */
-  private generateValueWithContext(schema: TSchema, keyName?: string): unknown {
+  protected generateValueWithContext(schema: TSchema, keyName?: string): unknown {
     // If no key name context, use regular generation
     if (!keyName) {
       return this.generateValue(schema);
@@ -493,7 +493,7 @@ export class FakeProvider {
     return this.generateValue(schema);
   }
 
-  private generateRecord(schema: TRecord): Record<string, unknown> {
+  protected generateRecord(schema: TRecord): Record<string, unknown> {
     const record = schema as any;
     const keySchema = record.patternProperties
       ? Object.keys(record.patternProperties)[0]
