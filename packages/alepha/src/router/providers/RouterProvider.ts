@@ -4,9 +4,15 @@ export abstract class RouterProvider<T extends Route = Route> {
   protected routePathRegex: RegExp = /^\/[A-Za-z0-9._~!$&%'()*+,;=:@{}?/-]*$/;
 
   protected tree: Tree<T> = { children: {} };
+  protected cache = new Map<string, RouteMatch<T>>();
 
   public match(path: string): RouteMatch<T> {
-    return this.mapParams(this.createRouteMatch(path));
+    if (this.cache.has(path)) {
+      return this.cache.get(path)!;
+    }
+    const result = this.mapParams(this.createRouteMatch(path));
+    this.cache.set(path, result);
+    return result;
   }
 
   protected test(path: string): void {

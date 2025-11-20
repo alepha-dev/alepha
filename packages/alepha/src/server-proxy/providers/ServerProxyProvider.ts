@@ -1,3 +1,4 @@
+import { ReadableStream as WebStream } from "node:stream/web";
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import {
@@ -109,6 +110,13 @@ export class ServerProxyProvider {
       return;
     }
 
-    return req.raw?.body as ReadableStream | undefined;
+    if (req.raw?.web?.req) {
+      return req.raw.web.req.body as ReadableStream;
+    }
+
+    if (req.raw?.node?.req) {
+      const nodeReq = req.raw.node.req;
+      return WebStream.from(nodeReq) as ReadableStream;
+    }
   }
 }

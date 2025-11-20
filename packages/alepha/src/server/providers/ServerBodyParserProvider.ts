@@ -1,3 +1,4 @@
+import { ReadableStream as WebStream } from "node:stream/web";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { $env, $hook, $inject, Alepha, t } from "alepha";
 import { $logger } from "alepha/logger";
@@ -8,7 +9,7 @@ const envSchema = t.object({
     default: true,
     description: "Enable decompression of request body.",
   }),
-  SERVER_BODY_PARSER_LIMIT: t.int({
+  SERVER_BODY_PARSER_LIMIT: t.integer({
     default: 100_000, // 100KB
     min: 0,
     description: "Maximum size of request body in bytes.",
@@ -27,14 +28,23 @@ export class ServerBodyParserProvider {
         return; // already parsed
       }
 
-      const webRequest: Request | undefined = request.raw;
-      if (!webRequest) {
-        return; // not a web request - skip
+      let stream: ReadableStream | undefined;
+
+      if (request.raw.web?.req.body) {
+        stream = request.raw.web.req.body;
+      } else if (request.raw.node?.req) {
+        // convert Node.js IncomingMessage to Web ReadableStream
+        // TODO: check performance impact, it's better to directly read from Node stream!
+        stream = WebStream.from(request.raw.node.req) as ReadableStream;
+      }
+
+      if (!stream) {
+        return;
       }
 
       if (route.schema?.body) {
         try {
-          const body = await this.parse(webRequest, request.headers);
+          const body = await this.parse(stream, request.headers);
           if (body) {
             request.body = body;
           }
@@ -56,7 +66,7 @@ export class ServerBodyParserProvider {
   });
 
   public async parse(
-    request: Request,
+    stream: ReadableStream,
     headers: Record<string, string>,
   ): Promise<object | string | undefined> {
     const contentType = headers["content-type"];
@@ -64,21 +74,16 @@ export class ServerBodyParserProvider {
 
     if (!contentType) return undefined;
 
-    // Check if request has a body
-    if (!request.body) {
-      return undefined;
-    }
-
     if (contentType.startsWith("application/json")) {
-      return this.parseJson(request.body, contentEncoding);
+      return this.parseJson(stream, contentEncoding);
     }
 
     if (contentType.startsWith("text/plain")) {
-      return this.parseText(request.body, contentEncoding);
+      return this.parseText(stream, contentEncoding);
     }
 
     if (contentType.startsWith("application/x-www-form-urlencoded")) {
-      return this.parseUrlEncoded(request.body, contentEncoding);
+      return this.parseUrlEncoded(stream, contentEncoding);
     }
 
     return undefined;

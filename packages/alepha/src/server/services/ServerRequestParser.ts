@@ -1,8 +1,8 @@
 import { $inject, Alepha } from "alepha";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
-  ServerRawRequest,
   ServerRequest,
+  ServerRequestData,
 } from "../interfaces/ServerRequest.ts";
 import { UserAgentParser } from "./UserAgentParser.ts";
 
@@ -10,7 +10,7 @@ export class ServerRequestParser {
   protected readonly alepha = $inject(Alepha);
   protected readonly userAgentParser = $inject(UserAgentParser);
 
-  public createServerRequest(rawRequest: ServerRawRequest): ServerRequest {
+  public createServerRequest(rawRequest: ServerRequestData): ServerRequest {
     const self = this;
     return {
       method: rawRequest.method,
@@ -33,15 +33,15 @@ export class ServerRequestParser {
     } as ServerRequest;
   }
 
-  public getRequestId(request: ServerRawRequest): string | undefined {
+  public getRequestId(request: ServerRequestData): string | undefined {
     return request.headers["x-request-id"];
   }
 
-  public getRequestUserAgent(request: ServerRawRequest) {
+  public getRequestUserAgent(request: ServerRequestData) {
     return this.userAgentParser.parse(request.headers["user-agent"]);
   }
 
-  public getRequestIp(request: ServerRawRequest): string | undefined {
+  public getRequestIp(request: ServerRequestData): string | undefined {
     // check for the 'x-forwarded-for' header first, which is commonly used
     // in proxy setups to forward the original client's IP address.
 

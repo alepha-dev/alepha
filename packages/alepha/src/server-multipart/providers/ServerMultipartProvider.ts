@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import * as os from "node:os";
+import { ReadableStream as WebStream } from "node:stream/web";
 import { $hook, $inject, Alepha, type FileLike, isTypeFile, t } from "alepha";
 import { HttpError, isMultipart, type ServerRoute } from "alepha/server";
 
@@ -21,8 +22,20 @@ export class ServerMultipartProvider {
         return;
       }
 
-      // raw web request is required
-      if (!request.raw) {
+      let webRequest: Request | undefined;
+
+      if (request.raw.web?.req) {
+        webRequest = request.raw.web.req;
+      } else if (request.raw.node?.req) {
+        webRequest = new Request(request.url, {
+          method: request.method,
+          headers: request.headers,
+          body: WebStream.from(request.raw.node.req) as ReadableStream,
+          duplex: "half",
+        } as RequestInit & { duplex: "half" });
+      }
+
+      if (!webRequest) {
         return;
       }
 
@@ -42,7 +55,7 @@ export class ServerMultipartProvider {
 
       const { body, cleanup } = await this.handleMultipartBodyFromWeb(
         route,
-        request.raw,
+        webRequest,
       );
 
       request.body = body;

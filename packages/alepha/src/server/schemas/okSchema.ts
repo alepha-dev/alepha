@@ -4,7 +4,7 @@ import { t } from "alepha";
 export const okSchema = t.object(
   {
     ok: t.boolean({ description: "True when operation succeed" }),
-    id: t.optional(t.union([t.text(), t.int()])),
+    id: t.optional(t.union([t.text(), t.integer()])),
     count: t.optional(
       t.number({ description: "Number of resources affected" }),
     ),

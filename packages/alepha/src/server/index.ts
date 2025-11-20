@@ -7,21 +7,19 @@ import {
 import { $route } from "./descriptors/$route.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import type {
+  NodeRequestEvent,
   RequestConfigSchema,
   ServerRequest,
   ServerRequestConfigEntry,
   ServerResponse,
   ServerRoute,
+  WebRequestEvent,
 } from "./interfaces/ServerRequest.ts";
 import { BunHttpServerProvider } from "./providers/BunHttpServerProvider.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
 import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
 import { ServerLoggerProvider } from "./providers/ServerLoggerProvider.ts";
 import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
-import type {
-  NodeRequestEvent,
-  WebRequestEvent,
-} from "./providers/ServerProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
 import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";

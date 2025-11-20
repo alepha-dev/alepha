@@ -1,3 +1,7 @@
+import type {
+  IncomingMessage,
+  ServerResponse as NodeServerResponse,
+} from "node:http";
 import type { Readable as NodeStream } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type {
@@ -62,8 +66,19 @@ export type ServerRequestConfigEntry<
 export interface ServerRequest<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends ServerRequestConfig<TConfig> {
+  /**
+   * HTTP method used for this request.
+   */
   method: RouteMethod;
+
+  /**
+   * Full request URL.
+   */
   url: URL;
+
+  /**
+   * Unique request ID assigned to this request.
+   */
   requestId: string;
 
   /**
@@ -85,7 +100,9 @@ export interface ServerRequest<
    */
   userAgent: UserAgentInfo;
 
-  // store request data
+  /**
+   * Arbitrary metadata attached to the request. Can be used by middlewares to store information.
+   */
   metadata: Record<string, any>;
 
   /**
@@ -96,7 +113,7 @@ export interface ServerRequest<
   /**
    * The raw underlying request object (Web Request).
    */
-  raw?: Request;
+  raw: ServerRawRequest;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -149,19 +166,33 @@ export interface ServerResponse {
 }
 
 export type ServerRouteRequestHandler = (
-  request: ServerRawRequest,
+  request: ServerRequestData,
 ) => Promise<ServerResponse>;
 
 export interface ServerRouteMatcher extends Route {
   handler: ServerRouteRequestHandler;
 }
 
-// TODO: just use Web Request, it's useless to wrap it
-export interface ServerRawRequest {
+export interface ServerRequestData {
   method: RouteMethod;
   url: URL;
   headers: Record<string, string>;
   query: Record<string, string>;
   params: Record<string, string>;
-  raw: Request;
+  raw: ServerRawRequest;
+}
+
+export interface ServerRawRequest {
+  node?: NodeRequestEvent;
+  web?: WebRequestEvent;
+}
+
+export interface NodeRequestEvent {
+  req: IncomingMessage;
+  res: NodeServerResponse;
+}
+
+export interface WebRequestEvent {
+  req: Request;
+  res?: Response;
 }

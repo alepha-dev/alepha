@@ -5,7 +5,7 @@ import { ServerProvider } from "./ServerProvider.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
 const envSchema = t.object({
-  SERVER_PORT: t.int({
+  SERVER_PORT: t.integer({
     default: 3000,
     min: 0,
     max: 65535,
