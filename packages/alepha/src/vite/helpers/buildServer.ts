@@ -81,7 +81,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
     build: {
       ssr: opts.entry,
       outDir: `${opts.distDir}/server`,
-      minify: false, // for now, we don't need to minify the server build
+      minify: true,
       chunkSizeWarningLimit: 10000,
       rollupOptions: {
         output: {
@@ -92,7 +92,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
         },
       },
     },
-    esbuild: { legalComments: "none" },
+    esbuild: { legalComments: "none", keepNames: true },
     plugins,
   };
 
