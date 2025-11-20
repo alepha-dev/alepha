@@ -1,7 +1,7 @@
-import { $auth, $authGithub, $authGoogle } from "@alepha/react/auth";
 import { $inject } from "alepha";
 import { $userRealm, SessionService } from "alepha/api/users";
 import type { UserAccountToken } from "alepha/security";
+import { $auth, $authGithub, $authGoogle } from "alepha/server/auth";
 import type { Character } from "../entities/characters.ts";
 import type { Project } from "../entities/projects.ts";
 import { Db } from "./Db.ts";
