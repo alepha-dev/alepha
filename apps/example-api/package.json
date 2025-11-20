@@ -2,7 +2,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "alepha dev"
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "start": "node dist"
   },
   "dependencies": {
     "alepha": "^0.12.0"

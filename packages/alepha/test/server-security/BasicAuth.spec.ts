@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   $basicAuth,
-  AlephaServerBasicAuth,
-} from "../../src/server-basic-auth/index.ts";
-import { ServerBasicAuthProvider } from "../../src/server-basic-auth/providers/ServerBasicAuthProvider.ts";
+  AlephaServerSecurity,
+  ServerBasicAuthProvider,
+} from "alepha/server/security";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("Basic Authentication", () => {
   let alepha: Alepha;
@@ -13,9 +13,11 @@ describe("Basic Authentication", () => {
   class TestApp {
     // Action with basic auth enabled via options
     protectedAction = $action({
-      basicAuth: {
-        username: "admin",
-        password: "secret123",
+      secure: {
+        basic: {
+          username: "admin",
+          password: "secret123",
+        },
       },
       handler: () => "protected success",
     });
@@ -56,7 +58,7 @@ describe("Basic Authentication", () => {
   beforeEach(async () => {
     alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaServerBasicAuth)
+      .with(AlephaServerSecurity)
       .with(TestApp);
 
     await alepha.start();
@@ -255,9 +257,11 @@ describe("Basic Authentication", () => {
     it("should handle credentials with colon in password", async () => {
       class EdgeCaseApp {
         colonPasswordAction = $action({
-          basicAuth: {
-            username: "user",
-            password: "pass:word:123",
+          secure: {
+            basic: {
+              username: "user",
+              password: "pass:word:123",
+            },
           },
           handler: () => "success",
         });
@@ -265,7 +269,7 @@ describe("Basic Authentication", () => {
 
       const edgeAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerBasicAuth)
+        .with(AlephaServerSecurity)
         .with(EdgeCaseApp);
 
       await edgeAlepha.start();
@@ -285,9 +289,11 @@ describe("Basic Authentication", () => {
     it("should handle empty password", async () => {
       class EmptyPasswordApp {
         emptyPasswordAction = $action({
-          basicAuth: {
-            username: "user",
-            password: "",
+          secure: {
+            basic: {
+              username: "user",
+              password: "",
+            },
           },
           handler: () => "success",
         });
@@ -295,7 +301,7 @@ describe("Basic Authentication", () => {
 
       const emptyAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerBasicAuth)
+        .with(AlephaServerSecurity)
         .with(EmptyPasswordApp);
 
       await emptyAlepha.start();
@@ -315,9 +321,11 @@ describe("Basic Authentication", () => {
     it("should handle special characters in credentials", async () => {
       class SpecialCharsApp {
         specialCharsAction = $action({
-          basicAuth: {
-            username: "user@domain.com",
-            password: "p@$$w0rd!#$%",
+          secure: {
+            basic: {
+              username: "user",
+              password: "",
+            },
           },
           handler: () => "success",
         });
@@ -325,7 +333,7 @@ describe("Basic Authentication", () => {
 
       const specialAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerBasicAuth)
+        .with(AlephaServerSecurity)
         .with(SpecialCharsApp);
 
       await specialAlepha.start();

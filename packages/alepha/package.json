@@ -231,11 +231,6 @@
       "import": "./src/server/index.ts",
       "require": "./src/server/index.ts"
     },
-    "./server/basic-auth": {
-      "types": "./src/server-basic-auth/index.ts",
-      "import": "./src/server-basic-auth/index.ts",
-      "require": "./src/server-basic-auth/index.ts"
-    },
     "./server/cache": {
       "types": "./src/server-cache/index.ts",
       "import": "./src/server-cache/index.ts",

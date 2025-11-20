@@ -2,14 +2,21 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "alepha/api/*": ["./src/api-*"],
-      "alepha/server/*": ["./src/server-*"],
-      "alepha/bucket/*": ["./src/bucket-*"],
-      "alepha/queue/*": ["./src/queue-*"],
-      "alepha/lock/*": ["./src/lock-*"],
-      "alepha/cache/*": ["./src/cache-*"],
-      "alepha/topic/*": ["./src/topic-*"],
       "alepha": ["./src/core/*"],
+      "alepha/api/*": ["./src/api-*"],
+      "alepha/api-*": [],
+      "alepha/server/*": ["./src/server-*"],
+      "alepha/server-*": [],
+      "alepha/bucket/*": ["./src/bucket-*"],
+      "alepha/bucket-*": [],
+      "alepha/queue/*": ["./src/queue-*"],
+      "alepha/queue-*": [],
+      "alepha/lock/*": ["./src/lock-*"],
+      "alepha/lock-*": [],
+      "alepha/cache/*": ["./src/cache-*"],
+      "alepha/cache-*": [],
+      "alepha/topic/*": ["./src/topic-*"],
+      "alepha/topic-*": [],
       "alepha/*": ["./src/*"]
     }
   }

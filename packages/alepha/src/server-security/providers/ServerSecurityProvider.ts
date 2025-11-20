@@ -14,6 +14,10 @@ import {
   type ServerRequest,
   UnauthorizedError,
 } from "alepha/server";
+import {
+  type BasicAuthOptions,
+  isBasicAuth,
+} from "./ServerBasicAuthProvider.ts";
 
 export class ServerSecurityProvider {
   protected readonly log = $logger();
@@ -61,6 +65,10 @@ export class ServerSecurityProvider {
         return;
       }
 
+      if (isBasicAuth(action.route.secure)) {
+        return;
+      }
+
       const permission = this.securityProvider
         .getPermissions()
         .find(
@@ -102,6 +110,10 @@ export class ServerSecurityProvider {
         this.log.trace(
           "Skipping security check for route - explicitly disabled",
         );
+        return;
+      }
+
+      if (isBasicAuth(route.secure)) {
         return;
       }
 
@@ -283,4 +295,5 @@ export class ServerSecurityProvider {
 
 export type ServerRouteSecure = {
   realm?: string;
+  basic?: BasicAuthOptions;
 };

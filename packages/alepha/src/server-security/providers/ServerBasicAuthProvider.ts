@@ -43,18 +43,16 @@ export class ServerBasicAuthProvider {
   public readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      // Attach basicAuth to matching routes for each registered auth
       for (const auth of this.registeredAuths) {
         if (auth.paths) {
           for (const pattern of auth.paths) {
-            // Use getRoutes() to find matching routes with pattern
             const matchedRoutes = this.routerProvider.getRoutes(pattern);
-
-            // Attach basicAuth to each matched route
             for (const route of matchedRoutes) {
-              route.basicAuth = {
-                username: auth.username,
-                password: auth.password,
+              route.secure = {
+                basic: {
+                  username: auth.username,
+                  password: auth.password,
+                },
               };
             }
           }
@@ -75,10 +73,13 @@ export class ServerBasicAuthProvider {
   public readonly onRequest = $hook({
     on: "server:onRequest",
     handler: async ({ route, request }) => {
-      // Check per-route basic auth
-      const routeAuth = route.basicAuth;
-      if (routeAuth) {
-        this.checkAuth(request, routeAuth);
+      const routeAuth = route.secure;
+      if (
+        typeof routeAuth === "object" &&
+        "basic" in routeAuth &&
+        routeAuth.basic
+      ) {
+        this.checkAuth(request, routeAuth.basic);
       }
     },
   });
@@ -89,13 +90,10 @@ export class ServerBasicAuthProvider {
   public readonly onActionRequest = $hook({
     on: "action:onRequest",
     handler: async ({ action, request }) => {
-      // Check if this action has basic auth enabled
-      const basicAuth = action.options?.basicAuth;
-      if (!basicAuth) {
-        return; // No basic auth for this action
+      const routeAuth = action.route.secure;
+      if (isBasicAuth(routeAuth)) {
+        this.checkAuth(request, routeAuth.basic);
       }
-
-      this.checkAuth(request, basicAuth);
     },
   });
 
@@ -113,18 +111,19 @@ export class ServerBasicAuthProvider {
       });
     }
 
-    // Decode base64 credentials
+    // decode base64 credentials
     const base64Credentials = authHeader.slice(6); // Remove "Basic "
     const credentials = Buffer.from(base64Credentials, "base64").toString(
       "utf-8",
     );
-    // Split only on the first colon to handle passwords with colons
+
+    // split only on the first colon to handle passwords with colons
     const colonIndex = credentials.indexOf(":");
     const username =
       colonIndex !== -1 ? credentials.slice(0, colonIndex) : credentials;
     const password = colonIndex !== -1 ? credentials.slice(colonIndex + 1) : "";
 
-    // Verify credentials
+    // verify credentials
     if (username !== options.username || password !== options.password) {
       this.sendAuthRequired(request);
       this.log.warn(`Failed basic auth attempt for user`, {
@@ -135,8 +134,6 @@ export class ServerBasicAuthProvider {
         message: "Invalid credentials",
       });
     }
-
-    // Authentication successful
   }
 
   /**
@@ -146,3 +143,11 @@ export class ServerBasicAuthProvider {
     request.reply.setHeader("WWW-Authenticate", `Basic realm="${this.realm}"`);
   }
 }
+
+export const isBasicAuth = (
+  value: unknown,
+): value is { basic: BasicAuthOptions } => {
+  return (
+    typeof value === "object" && !!value && "basic" in value && !!value.basic
+  );
+};

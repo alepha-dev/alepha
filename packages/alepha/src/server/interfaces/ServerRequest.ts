@@ -121,24 +121,36 @@ export interface ServerRequest<
 export interface ServerRoute<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
 > extends Route {
+  /**
+   * Handler function for this route.
+   */
   handler: ServerHandler<TConfig>;
+
+  /**
+   * HTTP method for this route.
+   */
   method?: RouteMethod;
+
+  /**
+   * Request/response schema for this route.
+   *
+   * Request schema contains:
+   * - body, for POST/PUT/PATCH requests
+   * - params, for URL parameters (e.g. /user/:id)
+   * - query, for URL query parameters (e.g. /user?id=123)
+   * - headers, for HTTP headers
+   *
+   * Response schema contains:
+   * - response
+   *
+   * Response schema is used to validate and serialize the response sent by the handler.
+   */
   schema?: TConfig;
 
   /**
    * @see ServerLoggerProvider
    */
   silent?: boolean;
-
-  /**
-   * Basic authentication configuration attached to this route.
-   * Set by ServerBasicAuthProvider at startup for routes matching auth patterns.
-   * @see ServerBasicAuthProvider
-   */
-  basicAuth?: {
-    username: string;
-    password: string;
-  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
