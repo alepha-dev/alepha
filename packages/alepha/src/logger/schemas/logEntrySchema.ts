@@ -10,7 +10,7 @@ export const logEntrySchema = t.object({
   context: t.optional(t.text()),
   app: t.optional(t.text()),
   data: t.optional(t.any()),
-  timestamp: t.datetime(),
+  timestamp: t.number(),
 });
 
 export type LogEntry = Static<typeof logEntrySchema>;

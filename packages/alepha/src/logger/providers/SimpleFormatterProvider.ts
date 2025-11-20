@@ -71,8 +71,8 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
     return output;
   }
 
-  public formatTimestamp(iso: string): string {
-    const d = new Date(iso);
+  public formatTimestamp(timestamp: number): string {
+    const d = new Date(timestamp);
     const h = d.getHours();
     const m = d.getMinutes();
     const s = d.getSeconds();
