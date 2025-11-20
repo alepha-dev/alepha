@@ -75,7 +75,7 @@ export class ProjectApi {
   getProjectUsers = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.array(users.schema),
     },
@@ -98,7 +98,7 @@ export class ProjectApi {
   updateProjectById = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.partial(t.pick(projects.insertSchema, ["title", "public"])),
       response: projects.schema,
@@ -122,7 +122,7 @@ export class ProjectApi {
   getProjectById = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.extend(projects.schema, {
         character: t.optional(characters.schema),
@@ -159,7 +159,7 @@ export class ProjectApi {
   getProjectPlayers = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.array(
         t.extend(characters.schema, {
@@ -215,7 +215,7 @@ export class ProjectApi {
   deleteProjectById = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: okSchema,
     },
@@ -237,7 +237,7 @@ export class ProjectApi {
   renameZone = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.object({
         oldZoneName: t.string(),

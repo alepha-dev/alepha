@@ -50,7 +50,7 @@ export class TaskApi {
   getTasks = $action({
     schema: {
       params: t.object({
-        projectId: t.int(),
+        projectId: t.integer(),
       }),
       query: t.extend(pageQuerySchema, {
         status: t.optional(t.enum(["new", "accepted", "completed"])),
@@ -90,7 +90,7 @@ export class TaskApi {
   abandonTask = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: tasks.schema,
     },
@@ -121,7 +121,7 @@ export class TaskApi {
   acceptTask = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: tasks.schema,
     },
@@ -152,7 +152,7 @@ export class TaskApi {
   completeTask = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.extend(tasks.schema, {
         character: characters.schema,
@@ -219,7 +219,7 @@ export class TaskApi {
   getTaskById = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: tasks.schema,
     },
@@ -239,7 +239,7 @@ export class TaskApi {
   updateTaskById = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.partial(
         t.pick(tasks.schema, [
@@ -287,10 +287,10 @@ export class TaskApi {
   completeObjective = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.object({
-        index: t.int(),
+        index: t.integer(),
       }),
       response: tasks.schema,
     },
@@ -332,7 +332,7 @@ export class TaskApi {
   updateTaskObjectives = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.object({
         objectives: t.array(
@@ -373,7 +373,7 @@ export class TaskApi {
   deleteTask = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: okSchema,
     },
@@ -397,7 +397,7 @@ export class TaskApi {
   moveTaskToZone = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.object({
         newZone: t.string(),
@@ -441,7 +441,7 @@ export class TaskApi {
   updateTaskNote = $action({
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.object({
         note: t.string({ size: "rich" }),

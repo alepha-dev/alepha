@@ -6,7 +6,7 @@ import { projects } from "./projects.js";
 export const tasks = $entity({
   name: "tasks",
   schema: t.object({
-    id: pg.primaryKey(t.int()),
+    id: pg.primaryKey(t.integer()),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     deletedAt: pg.deletedAt(),
@@ -14,7 +14,7 @@ export const tasks = $entity({
     description: t.string({ size: "rich" }),
     package: t.string(),
     priority: t.enum(["optional", "low", "medium", "high"]),
-    complexity: t.int({ minimum: 1, maximum: 5 }),
+    complexity: t.integer({ minimum: 1, maximum: 5 }),
     acceptedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),
     objectives: pg.default(
@@ -26,7 +26,7 @@ export const tasks = $entity({
       ),
       [],
     ),
-    projectId: pg.ref(t.int(), () => projects.cols.id, {
+    projectId: pg.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     createdBy: pg.ref(t.uuid(), () => users.cols.id, {

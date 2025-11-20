@@ -14,40 +14,40 @@ export class ProjectStatsApi {
     cache: true,
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.object({
         overview: t.object({
-          totalTasks: t.int(),
-          completedTasks: t.int(),
-          activePlayers: t.int(),
-          totalXP: t.int(),
+          totalTasks: t.integer(),
+          completedTasks: t.integer(),
+          activePlayers: t.integer(),
+          totalXP: t.integer(),
           averageTaskComplexity: t.number(),
         }),
         tasksByPriority: t.array(
           t.object({
             priority: t.string(),
-            count: t.int(),
-            completed: t.int(),
+            count: t.integer(),
+            completed: t.integer(),
           }),
         ),
         tasksByComplexity: t.array(
           t.object({
-            complexity: t.int(),
-            count: t.int(),
-            averageXP: t.int(),
+            complexity: t.integer(),
+            count: t.integer(),
+            averageXP: t.integer(),
           }),
         ),
         topZones: t.array(
           t.object({
             zone: t.string(),
-            totalTasks: t.int(),
+            totalTasks: t.integer(),
           }),
         ),
         activityTimeline: t.array(
           t.object({
             date: t.string(),
-            tasksCompleted: t.int(),
+            tasksCompleted: t.integer(),
           }),
         ),
         completionRate: t.object({
@@ -262,7 +262,7 @@ export class ProjectStatsApi {
     path: "/projects/:id/export",
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.file(),
     },

@@ -133,7 +133,7 @@ export class AppRouter {
     path: "/p/:projectId",
     schema: {
       params: t.object({
-        projectId: t.int(),
+        projectId: t.integer(),
       }),
     },
     lazy: () => import("./components/project/ProjectView.jsx"),
@@ -224,7 +224,7 @@ export class AppRouter {
     path: "/q/:taskId",
     schema: {
       params: t.object({
-        taskId: t.int(),
+        taskId: t.integer(),
       }),
     },
     animation: ({ meta }) => {

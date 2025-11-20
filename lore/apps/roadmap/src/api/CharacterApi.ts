@@ -9,11 +9,11 @@ export class CharacterApi {
     schema: {
       response: t.array(
         t.object({
-          id: t.int(),
-          projectId: t.int(),
+          id: t.integer(),
+          projectId: t.integer(),
           projectTitle: t.string(),
-          xp: t.int(),
-          balance: t.int(),
+          xp: t.integer(),
+          balance: t.integer(),
           owner: t.optional(t.boolean()),
           createdAt: t.datetime(),
           updatedAt: t.datetime(),
