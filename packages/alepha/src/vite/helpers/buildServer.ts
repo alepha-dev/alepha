@@ -92,7 +92,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
     build: {
       ssr: opts.entry,
       outDir: `${opts.distDir}/server`,
-      minify: false,
+      minify: true,
       chunkSizeWarningLimit: 10000,
       rollupOptions: {
         output: {
