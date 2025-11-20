@@ -35,6 +35,8 @@ export interface ViteAlephaBuildOptions {
    */
   vercel?: boolean | VercelConfig;
 
+  cloudflare?: boolean;
+
   /**
    * If true, the build will be optimized for Docker deployment.
    * Additionally, it will generate a Dockerfile in the dist directory.
@@ -118,9 +120,8 @@ export async function viteAlephaBuild(
           entry,
           distDir: `${distDir}`,
           clientDir: hasClient ? clientDir : undefined,
-          vercel: options.vercel,
-          docker: options.docker,
           stats: options.stats ?? process.env.ALEPHA_BUILD_STATS === "true",
+          ...options,
         });
 
         // server will handle index.html if both client & server are built

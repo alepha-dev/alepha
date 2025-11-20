@@ -647,6 +647,11 @@ export class Alepha {
 
     const isSubstitution = typeof entry === "object";
     if (isSubstitution) {
+      if (entry.provide === entry.use) {
+        this.inject(entry.provide);
+        return this;
+      }
+
       if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
         if (this.started) {
           throw new ContainerLockedError();
@@ -666,6 +671,7 @@ export class Alepha {
       } else if (!entry.optional) {
         throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
       }
+
       return this;
     }
 

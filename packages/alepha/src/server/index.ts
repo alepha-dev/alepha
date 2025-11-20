@@ -144,6 +144,8 @@ export const AlephaServer = $module({
           use: NodeHttpServerProvider,
         });
       }
+    } else {
+      alepha.with(ServerProvider);
     }
 
     alepha.with(ServerBodyParserProvider);

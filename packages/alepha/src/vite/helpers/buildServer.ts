@@ -4,6 +4,7 @@ import { AlephaError } from "alepha";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
+import { viteAlephaBuildCloudflare } from "../plugins/viteAlephaBuildCloudflare.ts";
 import {
   type ViteAlephaBuildDockerOptions,
   viteAlephaBuildDocker,
@@ -23,6 +24,8 @@ export interface BuildServerOptions {
   clientDir?: string;
 
   vercel?: boolean | VercelConfig;
+
+  cloudflare?: boolean;
 
   docker?: boolean | ViteAlephaBuildDockerOptions;
 
@@ -59,6 +62,14 @@ export const buildServer = async (opts: BuildServerOptions) => {
     );
   }
 
+  if (opts.cloudflare) {
+    plugins.push(
+      viteAlephaBuildCloudflare({
+        distDir: opts.distDir,
+      }),
+    );
+  }
+
   if (opts.docker) {
     const docker = typeof opts.docker === "boolean" ? {} : opts.docker;
     plugins.push(
@@ -81,7 +92,7 @@ export const buildServer = async (opts: BuildServerOptions) => {
     build: {
       ssr: opts.entry,
       outDir: `${opts.distDir}/server`,
-      minify: true,
+      minify: false,
       chunkSizeWarningLimit: 10000,
       rollupOptions: {
         output: {
