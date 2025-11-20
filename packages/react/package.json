@@ -26,7 +26,6 @@
     "@types/react": "^19.2.6",
     "alepha": "0.12.0",
     "jsdom": "^27.2.0",
-    "openid-client": "^6.8.1",
     "react": "^19.2.0",
     "vitest": "^4.0.10"
   },

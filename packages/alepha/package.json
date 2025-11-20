@@ -231,6 +231,11 @@
       "import": "./src/server/index.ts",
       "require": "./src/server/index.ts"
     },
+    "./server/auth": {
+      "types": "./src/server-auth/index.ts",
+      "import": "./src/server-auth/index.ts",
+      "require": "./src/server-auth/index.ts"
+    },
     "./server/cache": {
       "types": "./src/server-cache/index.ts",
       "import": "./src/server-cache/index.ts",

@@ -3,9 +3,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
-import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
-import type { Tokens } from "../schemas/tokensSchema.ts";
-import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
+import { alephaServerAuthRoutes, tokenResponseSchema, Tokens, userinfoResponseSchema } from "alepha/server/auth";
 
 /**
  * Browser, SSR friendly, service to handle authentication.
@@ -14,15 +12,6 @@ export class ReactAuth {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly httpClient = $inject(HttpClient);
-
-  static path = {
-    login: "/oauth/login",
-    callback: "/oauth/callback",
-    logout: "/oauth/logout",
-    token: "/_auth/token",
-    refresh: "/_auth/refresh",
-    userinfo: "/_auth/userinfo",
-  };
 
   protected readonly onBeginTransition = $hook({
     on: "react:transition:begin",
@@ -55,7 +44,7 @@ export class ReactAuth {
   }
 
   public async ping() {
-    const { data } = await this.httpClient.fetch(ReactAuth.path.userinfo, {
+    const { data } = await this.httpClient.fetch(alephaServerAuthRoutes.userinfo, {
       schema: { response: userinfoResponseSchema },
     });
 
@@ -77,7 +66,7 @@ export class ReactAuth {
   ): Promise<Tokens> {
     if (options.username || options.password) {
       const { data } = await this.httpClient.fetch(
-        `${options.hostname || ""}${ReactAuth.path.token}?provider=${provider}`,
+        `${options.hostname || ""}${alephaServerAuthRoutes.token}?provider=${provider}`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -103,7 +92,7 @@ export class ReactAuth {
           ? window.location.origin + browser.transitioning.to
           : window.location.href);
 
-      const href = `${window.location.origin}${ReactAuth.path.login}?provider=${provider}&redirect_uri=${encodeURIComponent(redirect)}`;
+      const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${provider}&redirect_uri=${encodeURIComponent(redirect)}`;
 
       if (browser.transitioning) {
         throw new Redirection(href);
@@ -114,11 +103,11 @@ export class ReactAuth {
     }
 
     throw new Redirection(
-      `${ReactAuth.path.login}?provider=${provider}&redirect_uri=${options.redirect || "/"}`,
+      `${alephaServerAuthRoutes.login}?provider=${provider}&redirect_uri=${options.redirect || "/"}`,
     );
   }
 
   public logout() {
-    window.location.href = `${ReactAuth.path.logout}?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
+    window.location.href = `${alephaServerAuthRoutes.logout}?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
   }
 }

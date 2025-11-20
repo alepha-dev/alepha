@@ -79,7 +79,6 @@ __metadata:
     "@vitejs/plugin-react": "npm:^5.1.1"
     alepha: "npm:0.12.0"
     jsdom: "npm:^27.2.0"
-    openid-client: "npm:^6.8.1"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
     vitest: "npm:^4.0.10"

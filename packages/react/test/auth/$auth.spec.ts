@@ -5,14 +5,9 @@ import { $realm } from "alepha/security";
 import { HttpClient, ServerProvider } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { AlephaServerSecurity } from "alepha/server/security";
-import type { UserInfoResponse } from "openid-client";
 import { describe, test } from "vitest";
-import { $auth, ReactAuth, type ReactAuthProvider } from "../../src/auth";
-import {
-  type TokenResponse,
-  tokenResponseSchema,
-} from "../../src/auth/schemas/tokenResponseSchema.ts";
-import { tokensSchema } from "../../src/auth/schemas/tokensSchema.ts";
+import { $auth, alephaServerAuthRoutes, TokenResponse, tokenResponseSchema, tokensSchema } from "alepha/server/auth";
+import { ReactAuth, ReactAuthProvider } from "@alepha/react/auth";
 
 describe("$auth", () => {
   describe("$auth", () => {
@@ -48,8 +43,8 @@ describe("$auth", () => {
     const userinfo = (alepha: Alepha, token?: string) =>
       alepha
         .inject(HttpClient)
-        .fetch<UserInfoResponse>(
-          `${alepha.inject(ServerProvider).hostname}${ReactAuth.path.userinfo}`,
+        .fetch(
+          `${alepha.inject(ServerProvider).hostname}${alephaServerAuthRoutes.userinfo}`,
           {
             method: "GET",
             headers: {
@@ -63,7 +58,7 @@ describe("$auth", () => {
       alepha
         .inject(HttpClient)
         .fetch(
-          `${alepha.inject(ServerProvider).hostname}${ReactAuth.path.token}?provider=auth`,
+          `${alepha.inject(ServerProvider).hostname}${alephaServerAuthRoutes.token}?provider=auth`,
           {
             method: "POST",
             body: JSON.stringify({
@@ -80,7 +75,7 @@ describe("$auth", () => {
       alepha
         .inject(HttpClient)
         .fetch(
-          `${alepha.inject(ServerProvider).hostname}${ReactAuth.path.refresh}?provider=auth`,
+          `${alepha.inject(ServerProvider).hostname}${alephaServerAuthRoutes.refresh}?provider=auth`,
           {
             method: "POST",
             body: JSON.stringify({

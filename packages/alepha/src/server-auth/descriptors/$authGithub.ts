@@ -1,6 +1,6 @@
 import { $context, t } from "alepha";
 import type { RealmDescriptor } from "alepha/security";
-import type { OAuth2Profile } from "../providers/ReactAuthProvider.ts";
+import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import { $auth, type OidcOptions } from "./$auth.ts";
 
 /**

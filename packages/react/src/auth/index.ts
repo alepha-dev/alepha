@@ -1,31 +1,18 @@
 import { AlephaReact } from "@alepha/react";
 import { $module } from "alepha";
 import type { UserAccount } from "alepha/security";
-import { AlephaServerCookies } from "alepha/server/cookies";
-import { $auth } from "./descriptors/$auth.ts";
 import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
+import { $auth, AlephaServerAuth } from "alepha/server/auth";
+import { AlephaServerLinks } from "alepha/server/links";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$auth.ts";
-export * from "./descriptors/$authGithub.ts";
-export * from "./descriptors/$authGoogle.ts";
 export * from "./index.shared.ts";
 export * from "./providers/ReactAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "alepha" {
-  export interface State {
-    /**
-     * The authenticated user account attached to the server request state.
-     *
-     * @internal
-     */
-    "alepha.server.request.user"?: UserAccount;
-  }
-}
 declare module "@alepha/react" {
   interface ReactRouterState {
     user?: UserAccount;
@@ -43,5 +30,5 @@ declare module "@alepha/react" {
 export const AlephaReactAuth = $module({
   name: "alepha.react.auth",
   descriptors: [$auth],
-  services: [AlephaReact, AlephaServerCookies, ReactAuthProvider, ReactAuth],
+  services: [AlephaReact, AlephaServerLinks, AlephaServerAuth, ReactAuthProvider, ReactAuth],
 });
