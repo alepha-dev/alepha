@@ -8,7 +8,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useState } from "react";
-import { useDialog } from "../../src/hooks/useDialog.ts";
+import { useDialog } from "../../src/core/hooks/useDialog.ts";
 
 export default function ExampleDialog() {
   const dialog = useDialog();

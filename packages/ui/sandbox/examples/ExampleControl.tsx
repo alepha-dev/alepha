@@ -14,7 +14,7 @@ import {
 } from "@mantine/core";
 import { IconRocket } from "@tabler/icons-react";
 import { t } from "alepha";
-import { Control, DarkModeButton } from "../../src";
+import { Control, DarkModeButton } from "../../src/core";
 
 const ExampleControl = () => {
   const router = useRouter();

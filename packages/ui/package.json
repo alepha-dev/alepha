@@ -35,8 +35,7 @@
   },
   "devDependencies": {
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tsdown": "^0.16.5"
+    "react-dom": "^19.2.0"
   },
   "peerDependencies": {
     "react": "*",
@@ -47,11 +46,29 @@
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "tsdown -c=../../tsdown.config.ts"
+    "build": "node scripts/build.ts"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"
   },
-  "homepage": "https://github.com/feunard/alepha"
+  "homepage": "https://github.com/feunard/alepha",
+  "exports": {
+    "./admin": {
+      "types": "./src/admin/index.ts",
+      "import": "./src/admin/index.ts",
+      "require": "./src/admin/index.ts"
+    },
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "import": "./src/auth/index.ts",
+      "require": "./src/auth/index.ts"
+    },
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "require": "./src/core/index.ts"
+    },
+    "./styles": "./styles.css"
+  }
 }

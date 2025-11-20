@@ -1,6 +1,6 @@
 import { Button, Group, Text, TextInput } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
-import type { PromptDialogProps } from "../../services/DialogService";
+import type { PromptDialogProps } from "../../services/DialogService.tsx";
 
 const PromptDialog = ({ options, onSubmit }: PromptDialogProps) => {
   const [value, setValue] = useState(options?.defaultValue || "");

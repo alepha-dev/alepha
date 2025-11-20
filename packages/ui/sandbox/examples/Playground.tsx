@@ -5,7 +5,7 @@ import { Flex, Group, Paper } from "@mantine/core";
 import { IconCheck } from "@tabler/icons-react";
 import { type TObject, TypeProvider, t } from "alepha";
 import { HttpClient } from "alepha/server";
-import { TypeForm } from "../../src";
+import { TypeForm } from "../../src/core";
 
 TypeProvider.setLocale("fr_FR");
 

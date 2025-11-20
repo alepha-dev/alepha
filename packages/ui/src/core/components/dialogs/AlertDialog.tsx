@@ -1,5 +1,5 @@
 import { Button, Group, Text } from "@mantine/core";
-import type { AlertDialogProps } from "../../services/DialogService";
+import type { AlertDialogProps } from "../../services/DialogService.tsx";
 
 const AlertDialog = ({ options, onClose }: AlertDialogProps) => (
   <>

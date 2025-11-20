@@ -2,9 +2,9 @@ import { Flex, type ModalProps } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import type { ReactNode } from "react";
 import JsonViewer from "../components/data/JsonViewer.tsx";
-import AlertDialog from "../components/dialogs/AlertDialog";
-import ConfirmDialog from "../components/dialogs/ConfirmDialog";
-import PromptDialog from "../components/dialogs/PromptDialog";
+import AlertDialog from "../components/dialogs/AlertDialog.tsx";
+import ConfirmDialog from "../components/dialogs/ConfirmDialog.tsx";
+import PromptDialog from "../components/dialogs/PromptDialog.tsx";
 import { ui } from "../constants/ui.ts";
 
 // Base interfaces

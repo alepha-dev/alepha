@@ -17,9 +17,9 @@ import {
   IconTable,
   IconUserCheck,
 } from "@tabler/icons-react";
-import ToggleSidebarButton from "../src/components/buttons/ToggleSidebarButton.tsx";
-import AdminShell from "../src/components/layout/AdminShell.tsx";
-import { ui } from "../src/constants/ui.ts";
+import ToggleSidebarButton from "../src/core/components/buttons/ToggleSidebarButton.tsx";
+import AdminShell from "../src/core/components/layout/AdminShell.tsx";
+import { ui } from "../src/core/constants/ui.ts";
 
 const Layout = () => {
   return (

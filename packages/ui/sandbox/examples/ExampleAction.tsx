@@ -40,7 +40,7 @@ import {
 } from "@tabler/icons-react";
 import { t } from "alepha";
 import { useState } from "react";
-import { ActionButton, Control, DarkModeButton } from "../../src";
+import { ActionButton, Control, DarkModeButton } from "../../src/core";
 
 const ExampleAction = () => {
   const router = useRouter();

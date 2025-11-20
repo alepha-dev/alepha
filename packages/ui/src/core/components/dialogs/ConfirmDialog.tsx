@@ -1,5 +1,5 @@
 import { Button, Group, Text } from "@mantine/core";
-import type { ConfirmDialogProps } from "../../services/DialogService";
+import type { ConfirmDialogProps } from "../../services/DialogService.tsx";
 
 const ConfirmDialog = ({ options, onConfirm }: ConfirmDialogProps) => (
   <>

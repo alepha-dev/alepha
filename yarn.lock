@@ -147,7 +147,6 @@ __metadata:
     dayjs: "npm:^1.11.19"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
-    tsdown: "npm:^0.16.5"
   peerDependencies:
     react: "*"
     react-dom: "*"

@@ -13,7 +13,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconBook } from "@tabler/icons-react";
 import { t } from "alepha";
-import { Control, TypeForm } from "../../src";
+import { Control, TypeForm } from "../../src/core";
 
 const ExampleTypeForm = () => {
   const router = useRouter();

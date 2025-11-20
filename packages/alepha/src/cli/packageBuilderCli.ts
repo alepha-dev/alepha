@@ -50,6 +50,9 @@ export class PackageBuilderCli {
         pkgData.exports["./tsconfig"] = "./tsconfig.base.json";
         pkgData.exports["./package.json"] = "./package.json";
       }
+      if (packageName === "@alepha/ui") {
+        pkgData.exports["./styles"] = "./styles.css";
+      }
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
 
       const tmpDir = join(root, "node_modules/.alepha");

@@ -2,8 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@alepha/ui": ["./src/core/*"],
-      "@alepha/ui/*": ["./src/*"]
+      "@alepha/ui/auth/*": []
     }
   }
 }
