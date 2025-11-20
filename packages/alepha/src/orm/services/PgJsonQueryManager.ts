@@ -450,7 +450,7 @@ export class PgJsonQueryManager {
    * Get the type of a field by navigating through a schema path.
    * Used for smart type casting in SQL queries.
    *
-   * @param columnSchema The schema of the JSON column (e.g., t.object({ age: t.int() }))
+   * @param columnSchema The schema of the JSON column (e.g., t.object({ age: t.integer() }))
    * @param path The path to navigate (e.g., ['contact', 'email'])
    * @returns The type string (e.g., 'integer', 'number', 'string') or undefined if not found
    */

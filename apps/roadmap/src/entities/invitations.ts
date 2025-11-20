@@ -9,7 +9,7 @@ export const invitations = $entity({
     id: pg.primaryKey(t.uuid()),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
-    projectId: pg.ref(t.int(), () => projects.cols.id, {
+    projectId: pg.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     invitedBy: pg.ref(t.uuid(), () => users.cols.id, {

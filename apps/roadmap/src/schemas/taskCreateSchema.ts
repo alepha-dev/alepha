@@ -5,8 +5,8 @@ export const taskCreateSchema = t.object({
   description: t.string({ size: "rich" }),
   package: t.string(),
   priority: t.enum(["optional", "low", "medium", "high"]),
-  complexity: t.int({ minimum: 1, maximum: 5 }),
-  projectId: t.int(),
+  complexity: t.integer({ minimum: 1, maximum: 5 }),
+  projectId: t.integer(),
   objectives: t.optional(
     t.array(
       t.object({

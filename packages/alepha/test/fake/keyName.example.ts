@@ -9,7 +9,7 @@ const userSchema = t.object({
   firstName: t.text(), // Will generate a first name (e.g. "John")
   lastName: t.text(), // Will generate a last name (e.g. "Doe")
   email: t.text(), // Will generate an email (e.g. "john.doe@example.com")
-  age: t.int(), // Will generate age between 18-99
+  age: t.integer(), // Will generate age between 18-99
   phone: t.text(), // Will generate a phone number
   address: t.text(), // Will generate a street address
   city: t.text(), // Will generate a city name

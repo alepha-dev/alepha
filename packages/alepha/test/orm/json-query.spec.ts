@@ -9,7 +9,7 @@ describe("Postgres JSON Query Tests", () => {
       id: pg.primaryKey(),
       profile: t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
         contact: t.object({
           email: t.text(),
           phone: t.text(),

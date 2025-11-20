@@ -23,7 +23,7 @@ describe("$command", () => {
         aliases: ["g"],
         flags: t.object({
           name: t.text({ description: "Name to greet." }),
-          times: t.optional(t.int({ default: 1 })),
+          times: t.optional(t.integer({ default: 1 })),
         }),
         handler: mockHandlers.greet,
       });
@@ -284,7 +284,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with integer arg",
-          args: t.int(),
+          args: t.integer(),
           handler: mockHandler,
         });
       }
@@ -464,7 +464,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with integer arg",
-          args: t.int(),
+          args: t.integer(),
           handler: vi.fn(),
         });
       }

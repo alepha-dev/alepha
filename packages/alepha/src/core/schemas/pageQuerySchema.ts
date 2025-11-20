@@ -2,14 +2,14 @@ import { type Static, t } from "../providers/TypeProvider.ts";
 
 export const pageQuerySchema = t.object({
   page: t.optional(
-    t.int({
+    t.integer({
       description: "The page number to retrieve.",
       minimum: 0,
       default: 0,
     }),
   ),
   size: t.optional(
-    t.int({
+    t.integer({
       description: "The number of items per page.",
       minimum: 1,
       maximum: 100,

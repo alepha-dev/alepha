@@ -8,14 +8,14 @@ const a = $entity({
   name: "a",
   schema: t.object({
     id: pg.primaryKey(
-      t.int(),
+      t.integer(),
       {},
       {
         mode: "byDefault",
       },
     ),
     v: pg.version(),
-    counter: t.int(),
+    counter: t.integer(),
   }),
 });
 

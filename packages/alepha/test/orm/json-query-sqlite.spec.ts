@@ -7,10 +7,10 @@ describe("SQLite JSON Query Tests", () => {
   const users = $entity({
     name: "users",
     schema: t.object({
-      id: pg.primaryKey(t.int()),
+      id: pg.primaryKey(t.integer()),
       profile: t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
         contact: t.object({
           email: t.text(),
           phone: t.text(),

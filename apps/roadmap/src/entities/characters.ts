@@ -6,17 +6,17 @@ import { projects } from "./projects.js";
 export const characters = $entity({
   name: "characters",
   schema: t.object({
-    id: pg.primaryKey(t.int()),
+    id: pg.primaryKey(t.integer()),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     userId: pg.ref(t.uuid(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    projectId: pg.ref(t.int(), () => projects.cols.id, {
+    projectId: pg.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    xp: t.int(),
-    balance: pg.default(t.int(), 0),
+    xp: t.integer(),
+    balance: pg.default(t.integer(), 0),
     owner: pg.default(t.boolean(), true),
   }),
 });

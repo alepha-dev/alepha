@@ -11,7 +11,7 @@ import { WorkerProvider } from "../../src/queue/providers/WorkerProvider.ts";
 
 const payloadSchema = t.object({
   id: t.text(),
-  count: t.int(),
+  count: t.integer(),
 });
 
 describe("WorkerProvider", () => {

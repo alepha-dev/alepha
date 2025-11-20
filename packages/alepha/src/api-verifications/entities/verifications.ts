@@ -32,7 +32,7 @@ export const verifications = $entity({
     ),
 
     attempts: pg.default(
-      t.int({
+      t.integer({
         description: "Number of failed attempts (to prevent brute-force)",
       }),
       0,

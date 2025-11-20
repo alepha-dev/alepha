@@ -64,7 +64,7 @@ describe("Pagination (Core)", () => {
 
   it("should create page schema", () => {
     const itemSchema = t.object({
-      id: t.int(),
+      id: t.integer(),
       name: t.text(),
     });
 

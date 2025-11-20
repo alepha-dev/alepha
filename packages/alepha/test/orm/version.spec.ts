@@ -17,7 +17,7 @@ class A {
       name: "a",
       schema: t.object({
         id: pg.primaryKey(),
-        counter: t.int(),
+        counter: t.integer(),
         __v: pg.version(),
       }),
     }),

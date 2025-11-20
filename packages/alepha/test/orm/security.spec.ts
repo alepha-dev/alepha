@@ -25,7 +25,7 @@ describe("SQL Injection Security Tests", () => {
       id: pg.primaryKey(),
       username: t.text(),
       email: t.text(),
-      age: t.int(),
+      age: t.integer(),
       profile: t.object({
         bio: t.text(),
         settings: t.object({

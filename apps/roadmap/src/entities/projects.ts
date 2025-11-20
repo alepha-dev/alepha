@@ -4,7 +4,7 @@ import { $entity, pg } from "alepha/orm";
 export const projects = $entity({
   name: "projects",
   schema: t.object({
-    id: pg.primaryKey(t.int()),
+    id: pg.primaryKey(t.integer()),
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     deletedAt: pg.deletedAt(),

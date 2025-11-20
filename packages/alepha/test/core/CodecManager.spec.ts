@@ -89,7 +89,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
       });
 
       const result = codecManager.encode(schema, {
@@ -199,7 +199,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
       });
 
       const result = codecManager.encode(
@@ -219,7 +219,7 @@ describe("CodecManager", () => {
       const schema = t.object({
         items: t.array(
           t.object({
-            id: t.int(),
+            id: t.integer(),
             name: t.text(),
           }),
         ),
@@ -269,7 +269,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         name: t.text(),
-        count: t.int(),
+        count: t.integer(),
       });
 
       const original = { name: "Test", count: 42 };
@@ -329,7 +329,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
       });
 
       const result = codecManager.decode(schema, {
@@ -346,7 +346,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
       });
 
       const result = codecManager.decode(schema, '{"name":"John","age":30}');
@@ -373,7 +373,7 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
 
       const schema = t.object({
-        count: t.int(),
+        count: t.integer(),
         price: t.number(),
       });
 
@@ -451,7 +451,7 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
 
       const schema = t.object({
-        age: t.int(),
+        age: t.integer(),
       });
 
       expect(() =>
@@ -466,7 +466,7 @@ describe("CodecManager", () => {
       const schema = t.object({
         items: t.array(
           t.object({
-            id: t.int(),
+            id: t.integer(),
             name: t.text(),
           }),
         ),
@@ -533,7 +533,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         user: t.object({
-          id: t.int(),
+          id: t.integer(),
           name: t.text(),
           email: t.text(),
           active: t.boolean(),
@@ -573,7 +573,7 @@ describe("CodecManager", () => {
 
       const schema = t.object({
         data: t.text(),
-        value: t.int(),
+        value: t.integer(),
       });
 
       const original = { data: "test", value: 42 };
@@ -707,7 +707,7 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
 
       const schema = t.object({
-        age: t.int({ minimum: 0, maximum: 150 }),
+        age: t.integer({ minimum: 0, maximum: 150 }),
       });
 
       expect(() => codecManager.encode(schema, { age: 200 })).toThrow(

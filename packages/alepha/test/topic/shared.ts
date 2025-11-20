@@ -11,7 +11,7 @@ import {
 
 export const payloadSchema = t.object({
   id: t.text(),
-  count: t.int(),
+  count: t.integer(),
 });
 
 export const subscriptions: Record<string, SubscribeCallback[]> = {};
@@ -82,7 +82,7 @@ export const testTopicAsSub = async (provider: Service<TopicProvider>) => {
     t = $topic({
       name: "a",
       schema: {
-        payload: t.object({ n: t.int() }),
+        payload: t.object({ n: t.integer() }),
       },
       handler: async ({ payload }) => {
         count += payload.n;

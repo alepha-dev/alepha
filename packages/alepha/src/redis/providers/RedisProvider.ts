@@ -8,7 +8,7 @@ import { $env, $hook, $inject, Alepha, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 
 const envSchema = t.object({
-  REDIS_PORT: t.int({
+  REDIS_PORT: t.integer({
     default: "6379",
   }),
   REDIS_HOST: t.text({

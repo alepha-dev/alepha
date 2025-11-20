@@ -8,11 +8,11 @@ const envSchema = t.object({
     description:
       "WebSocket server URL (e.g., ws://localhost:3001). Leave empty to auto-detect.",
   }),
-  WEBSOCKET_RECONNECT_INTERVAL: t.int({
+  WEBSOCKET_RECONNECT_INTERVAL: t.integer({
     default: 3000,
     description: "Reconnection interval in milliseconds",
   }),
-  WEBSOCKET_MAX_RECONNECT_ATTEMPTS: t.int({
+  WEBSOCKET_MAX_RECONNECT_ATTEMPTS: t.integer({
     default: 10,
     description:
       "Maximum number of reconnection attempts. Set to -1 for infinite.",

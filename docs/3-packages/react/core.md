@@ -72,7 +72,7 @@ It provides a declarative way to define pages with powerful features:
 const userProfile = $page({
   path: "/users/:id",
   schema: {
-    params: t.object({ id: t.int() }),
+    params: t.object({ id: t.integer() }),
     query: t.object({ tab: t.optional(t.text()) })
   },
   resolve: async ({ params }) => {

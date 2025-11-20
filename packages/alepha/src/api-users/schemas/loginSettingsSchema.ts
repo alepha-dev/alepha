@@ -38,14 +38,14 @@ export const loginSettingsSchema = t.object({
     }),
   ),
   maxLoginFailures: t.optional(
-    t.int({
+    t.integer({
       description: "Failed login attempts before lockout",
       default: 30,
       minimum: 1,
     }),
   ),
   passwordLockoutDuration: t.optional(
-    t.int({
+    t.integer({
       description: "Lockout duration in minutes after max login failures",
       default: 15,
       minimum: 1,
@@ -54,7 +54,7 @@ export const loginSettingsSchema = t.object({
   passwordPolicy: t.optional(
     t.object({
       minLength: t.optional(
-        t.int({
+        t.integer({
           description: "Minimum password length",
           default: 8,
           minimum: 1,

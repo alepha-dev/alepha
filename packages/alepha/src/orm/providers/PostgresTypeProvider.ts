@@ -46,7 +46,7 @@ export class PostgresTypeProvider {
     options?: TNumberOptions,
   ) =>
     pgAttr(
-      pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+      pgAttr(pgAttr(t.integer(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
       PG_DEFAULT,
     );
 
@@ -70,7 +70,7 @@ export class PostgresTypeProvider {
 
   /**
    * Creates a primary key for a given type. Supports:
-   * - `t.int()` -> PG INT (default)
+   * - `t.integer()` -> PG INT (default)
    * - `t.bigint()` -> PG BIGINT
    * - `t.uuid()` -> PG UUID
    */
@@ -101,7 +101,11 @@ export class PostgresTypeProvider {
   ): PgAttr<PgAttr<TSchema, PgPrimaryKey>, PgDefault> {
     if (!type || t.schema.isInteger(type)) {
       return pgAttr(
-        pgAttr(pgAttr(t.int(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+        pgAttr(
+          pgAttr(t.integer(options), PG_PRIMARY_KEY),
+          PG_IDENTITY,
+          identity,
+        ),
         PG_DEFAULT,
       );
     }
@@ -161,7 +165,7 @@ export class PostgresTypeProvider {
    * @see {@link PgVersionMismatchError}
    */
   public readonly version = (options: TNumberOptions = {}) =>
-    this.default(pgAttr(t.int(options), PG_VERSION), 0);
+    this.default(pgAttr(t.integer(options), PG_VERSION), 0);
 
   /**
    * Creates a column Created At. So just a datetime column with a default value of the current timestamp.

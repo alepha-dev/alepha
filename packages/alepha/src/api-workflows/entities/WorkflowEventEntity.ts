@@ -10,7 +10,9 @@ export const workflowEventEntity = $entity({
       t.uuid({ description: "Parent workflow ID" }),
       () => workflowExecutionEntity.cols.workflowId,
     ),
-    sequence: t.int({ description: "Event sequence number (for ordering)" }),
+    sequence: t.integer({
+      description: "Event sequence number (for ordering)",
+    }),
     eventType: t.text({
       description: "Event type (WorkflowStarted, ActivityScheduled, etc.)",
     }),

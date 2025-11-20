@@ -319,7 +319,7 @@ describe("TypeProvider", () => {
       it("should decode valid 32-bit integers", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.int();
+        const schema = t.integer();
 
         expect(alepha.codec.decode(schema, 0)).toBe(0);
         expect(alepha.codec.decode(schema, 123456)).toBe(123456);
@@ -331,7 +331,7 @@ describe("TypeProvider", () => {
       it("should reject non-integers", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.int();
+        const schema = t.integer();
 
         expect(alepha.codec.decode(schema, 3.14)).toBe(3);
       });
@@ -339,7 +339,7 @@ describe("TypeProvider", () => {
       it("should reject values outside 32-bit range", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.int();
+        const schema = t.integer();
 
         expect(() => alepha.codec.validate(schema, 2147483648)).toThrow();
         expect(() => alepha.codec.validate(schema, -2147483648)).toThrow();
@@ -552,7 +552,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.object({
           name: t.text(),
-          age: t.int(),
+          age: t.integer(),
           active: t.boolean(),
         });
 
@@ -566,7 +566,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.object({
           name: t.text(),
-          age: t.int(),
+          age: t.integer(),
           active: t.boolean(),
         });
 
@@ -580,7 +580,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.object({
           name: t.text(),
-          age: t.int(),
+          age: t.integer(),
           active: t.boolean(),
         });
 
@@ -594,7 +594,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.object({
           name: t.text(),
-          age: t.int(),
+          age: t.integer(),
           active: t.boolean(),
         });
 
@@ -616,7 +616,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.object({
           name: t.text(),
-          age: t.int(),
+          age: t.integer(),
           active: t.boolean(),
         });
 
@@ -692,7 +692,7 @@ describe("TypeProvider", () => {
       it("should support custom maxItems", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.array(t.int(), { maxItems: 5 });
+        const schema = t.array(t.integer(), { maxItems: 5 });
 
         expect(alepha.codec.decode(schema, [1, 2, 3, 4, 5])).toEqual([
           1, 2, 3, 4, 5,
@@ -725,7 +725,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.array(
           t.object({
-            id: t.int(),
+            id: t.integer(),
             name: t.text(),
           }),
         );
@@ -743,7 +743,7 @@ describe("TypeProvider", () => {
       it("should accept any type in the union", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.union([t.text(), t.int()]);
+        const schema = t.union([t.text(), t.integer()]);
 
         expect(alepha.codec.decode(schema, "hello")).toBe("hello");
         expect(alepha.codec.decode(schema, 123)).toBe(123);
@@ -752,7 +752,7 @@ describe("TypeProvider", () => {
       it("should reject types not in the union", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.union([t.text(), t.int()]);
+        const schema = t.union([t.text(), t.integer()]);
 
         expect(() => alepha.codec.validate(schema, {})).toThrow();
       });
@@ -762,7 +762,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.union([
           t.object({ type: t.const("A"), value: t.text() }),
-          t.object({ type: t.const("B"), count: t.int() }),
+          t.object({ type: t.const("B"), count: t.integer() }),
         ]);
 
         expect(
@@ -782,7 +782,7 @@ describe("TypeProvider", () => {
       it("should decode valid records", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.record(t.text(), t.int());
+        const schema = t.record(t.text(), t.integer());
 
         const valid = { a: 1, b: 2, c: 3 };
         expect(alepha.codec.decode(schema, valid)).toEqual(valid);
@@ -791,7 +791,7 @@ describe("TypeProvider", () => {
       it("should accept empty records", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.record(t.text(), t.int());
+        const schema = t.record(t.text(), t.integer());
 
         expect(alepha.codec.decode(schema, {})).toEqual({});
       });
@@ -799,7 +799,7 @@ describe("TypeProvider", () => {
       it("should reject invalid value types", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.record(t.text(), t.int());
+        const schema = t.record(t.text(), t.integer());
 
         expect(() =>
           alepha.codec.validate(schema, { a: "not a number" }),
@@ -829,7 +829,7 @@ describe("TypeProvider", () => {
       it("should decode valid tuples", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.tuple([t.text(), t.int(), t.boolean()]);
+        const schema = t.tuple([t.text(), t.integer(), t.boolean()]);
 
         expect(alepha.codec.decode(schema, ["hello", 42, true])).toEqual([
           "hello",
@@ -843,7 +843,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const schema = t.tuple([
           t.text(),
-          t.int(),
+          t.integer(),
           t.object({
             flag: t.boolean(),
           }),
@@ -858,7 +858,7 @@ describe("TypeProvider", () => {
       it("should reject tuples with wrong types", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.tuple([t.text(), t.int(), t.boolean()]);
+        const schema = t.tuple([t.text(), t.integer(), t.boolean()]);
 
         expect(() =>
           alepha.codec.validate(schema, ["hello", "not a number", true]),
@@ -951,7 +951,7 @@ describe("TypeProvider", () => {
         await alepha.start();
         const baseSchema = t.object({
           name: t.text(),
-          age: t.int(),
+          age: t.integer(),
           email: t.email(),
         });
 
@@ -986,10 +986,10 @@ describe("TypeProvider", () => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = t.object({
-          id: t.int(),
+          id: t.integer(),
           name: t.text(),
           email: t.email(),
-          age: t.int(),
+          age: t.integer(),
         });
 
         const pickedSchema = t.pick(baseSchema, ["name", "email"]);
@@ -1009,10 +1009,10 @@ describe("TypeProvider", () => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = t.object({
-          id: t.int(),
+          id: t.integer(),
           name: t.text(),
           email: t.email(),
-          age: t.int(),
+          age: t.integer(),
         });
 
         const pickedSchema = t.pick(baseSchema, ["name", "email"]);
@@ -1033,10 +1033,10 @@ describe("TypeProvider", () => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = t.object({
-          id: t.int(),
+          id: t.integer(),
           name: t.text(),
           email: t.email(),
-          age: t.int(),
+          age: t.integer(),
         });
 
         const pickedSchema = t.pick(baseSchema, ["name", "email"]);
@@ -1052,7 +1052,7 @@ describe("TypeProvider", () => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = t.object({
-          id: t.int(),
+          id: t.integer(),
           name: t.text(),
           email: t.email(),
           password: t.text(),
@@ -1077,7 +1077,7 @@ describe("TypeProvider", () => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = t.object({
-          id: t.int(),
+          id: t.integer(),
           name: t.text(),
           email: t.email(),
           password: t.text(),
@@ -1238,7 +1238,7 @@ describe("TypeProvider", () => {
         user: t.object({
           name: t.shortText(),
           email: t.email(),
-          age: t.optional(t.int()),
+          age: t.optional(t.integer()),
           roles: t.array(t.enum(["ADMIN", "USER", "GUEST"])),
         }),
         metadata: t.nullable(
@@ -1286,7 +1286,7 @@ describe("TypeProvider", () => {
         text: t.text(),
         number: t.number(),
         bool: t.boolean(),
-        array: t.array(t.int()),
+        array: t.array(t.integer()),
         nested: t.object({
           key: t.text(),
         }),
@@ -1314,7 +1314,7 @@ describe("TypeProvider", () => {
 
       const schema = t.object({
         name: t.text(),
-        age: t.int(),
+        age: t.integer(),
       });
 
       try {
@@ -1331,7 +1331,7 @@ describe("TypeProvider", () => {
       const { schema } = t;
 
       expect(schema.isString(t.text())).toBe(true);
-      expect(schema.isString(t.int())).toBe(false);
+      expect(schema.isString(t.integer())).toBe(false);
     });
 
     it("should correctly identify number schemas", () => {
@@ -1344,7 +1344,7 @@ describe("TypeProvider", () => {
     it("should correctly identify integer schemas", () => {
       const { schema } = t;
 
-      expect(schema.isInteger(t.int())).toBe(true);
+      expect(schema.isInteger(t.integer())).toBe(true);
       expect(schema.isInteger(t.number())).toBe(false);
     });
 
@@ -1372,7 +1372,7 @@ describe("TypeProvider", () => {
     it("should correctly identify union schemas", () => {
       const { schema } = t;
 
-      expect(schema.isUnion(t.union([t.text(), t.int()]))).toBe(true);
+      expect(schema.isUnion(t.union([t.text(), t.integer()]))).toBe(true);
       expect(schema.isUnion(t.text())).toBe(false);
     });
 
@@ -1407,14 +1407,14 @@ describe("TypeProvider", () => {
     it("should correctly identify record schemas", () => {
       const { schema } = t;
 
-      expect(schema.isRecord(t.record(t.text(), t.int()))).toBe(true);
+      expect(schema.isRecord(t.record(t.text(), t.integer()))).toBe(true);
       expect(schema.isRecord(t.object({}))).toBe(false);
     });
 
     it("should correctly identify tuple schemas", () => {
       const { schema } = t;
 
-      expect(schema.isTuple(t.tuple([t.text(), t.int()]))).toBe(true);
+      expect(schema.isTuple(t.tuple([t.text(), t.integer()]))).toBe(true);
       expect(schema.isTuple(t.array(t.text()))).toBe(false);
     });
 
@@ -1436,7 +1436,7 @@ describe("TypeProvider", () => {
       const { schema } = t;
 
       expect(schema.isBigInt(t.bigint())).toBe(true);
-      expect(schema.isBigInt(t.int())).toBe(false);
+      expect(schema.isBigInt(t.integer())).toBe(false);
     });
   });
 

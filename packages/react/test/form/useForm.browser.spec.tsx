@@ -21,7 +21,7 @@ describe("useForm", () => {
         id: "test",
         schema: t.object({
           str: t.text(),
-          int: t.int(),
+          int: t.integer(),
           nested: t.object({
             str: t.text(),
             another: t.object({

@@ -42,7 +42,7 @@ const ExampleControl = () => {
   const numberForm = useForm({
     id: "number",
     schema: t.object({
-      age: t.int({ title: "Age", description: "Must be 18 or older" }),
+      age: t.integer({ title: "Age", description: "Must be 18 or older" }),
       price: t.number({ title: "Price", description: "Enter amount in USD" }),
     }),
     handler: (values) => console.log(values),
@@ -217,7 +217,7 @@ const ExampleControl = () => {
           <Box>
             <Control input={numberForm.input.age} />
             <Code block mt="xs">
-              {`t.int({ title: "Age" })`}
+              {`t.integer({ title: "Age" })`}
             </Code>
           </Box>
 

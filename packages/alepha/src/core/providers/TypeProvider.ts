@@ -324,7 +324,7 @@ export class TypeProvider {
    * @example
    * ```ts
    * const userSchema = t.object({
-   *   id: t.int(),
+   *   id: t.integer(),
    *   name: t.string(),
    * });
    * ```
@@ -420,21 +420,14 @@ export class TypeProvider {
   }
 
   /**
-   * Create a schema for a signed 32-bit integer.
+   * @alias `t.integer()`
    */
-  public int(options?: TNumberOptions): TInteger {
+  public integer(options?: TNumberOptions): TInteger {
     return Type.Integer({
       minimum: -2147483647,
       maximum: 2147483647,
       ...options,
     });
-  }
-
-  /**
-   * @alias `t.int()`
-   */
-  public integer(options?: TNumberOptions): TInteger {
-    return this.int(options);
   }
 
   /**

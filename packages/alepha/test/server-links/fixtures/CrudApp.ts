@@ -2,7 +2,7 @@ import { type Static, t } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 
 export const userSchema = t.object({
-  id: t.int(),
+  id: t.integer(),
   name: t.text(),
 });
 
@@ -24,7 +24,7 @@ export class CrudApp {
         uppercase: t.optional(t.boolean()),
       }),
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: userSchema,
     },
@@ -62,7 +62,7 @@ export class CrudApp {
     path: "/users/:id",
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       response: t.void(),
     },
@@ -77,7 +77,7 @@ export class CrudApp {
     path: "/users/:id",
     schema: {
       params: t.object({
-        id: t.int(),
+        id: t.integer(),
       }),
       body: t.object({
         name: t.text(),

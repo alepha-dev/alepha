@@ -9,25 +9,25 @@ import {
 } from "../providers/TypeProvider.ts";
 
 export const pageMetadataSchema = t.object({
-  number: t.int({ description: "Page number, starting from 0" }),
-  size: t.int({
+  number: t.integer({ description: "Page number, starting from 0" }),
+  size: t.integer({
     description: "Number of items per page (requested page size)",
   }),
-  offset: t.int({
+  offset: t.integer({
     description: "Offset in the dataset (page × size)",
   }),
-  numberOfElements: t.int({
+  numberOfElements: t.integer({
     description:
       "Number of elements in THIS page (content.length). Different from totalElements which is the total across all pages.",
   }),
   totalElements: t.optional(
-    t.int({
+    t.integer({
       description:
         "Total number of elements across all pages. Only available when counting is enabled.",
     }),
   ),
   totalPages: t.optional(
-    t.int({
+    t.integer({
       description:
         "Total number of pages. Only available when `totalElements` is present.",
     }),
@@ -70,7 +70,7 @@ export const pageMetadataSchema = t.object({
  *
  * @example
  * ```ts
- * const userSchema = t.object({ id: t.int(), name: t.text() });
+ * const userSchema = t.object({ id: t.integer(), name: t.text() });
  * const userPageSchema = pageSchema(userSchema);
  * ```
  *

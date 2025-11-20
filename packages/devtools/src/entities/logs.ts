@@ -14,7 +14,7 @@ export const logs = $entity({
     context: t.optional(t.text()),
     app: t.optional(t.text()),
     data: t.optional(t.json()),
-    timestamp: t.datetime(),
+    timestamp: t.integer(),
   }),
 });
 

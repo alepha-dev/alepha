@@ -11,12 +11,12 @@ describe("ProtobufProvider", () => {
       const userSchema = t.object({
         username: t.text(),
         createdAt: t.datetime(),
-        age: t.int(),
+        age: t.integer(),
         isActive: t.boolean(),
         score: t.number(),
         bigNumber: t.bigint(),
-        level: t.int(),
-        points: t.int(),
+        level: t.integer(),
+        points: t.integer(),
       });
 
       const schema = protobuf.createProtobufSchema(userSchema);
@@ -42,7 +42,7 @@ message Target {
       const userSchema = t.object({
         username: t.text(),
         createdAt: t.datetime(),
-        age: t.int(),
+        age: t.integer(),
         isActive: t.boolean(),
       });
 
@@ -98,7 +98,7 @@ message Target {
         users: t.array(
           t.object({
             name: t.text(),
-            age: t.int(),
+            age: t.integer(),
           }),
         ),
       });
@@ -125,7 +125,7 @@ message Target {
         users: t.array(
           t.object({
             name: t.text(),
-            age: t.int(),
+            age: t.integer(),
           }),
         ),
       });
@@ -197,7 +197,7 @@ message Target {
             name: t.text(),
             bio: t.text(),
           }),
-          age: t.int(),
+          age: t.integer(),
         }),
       });
 
@@ -229,7 +229,7 @@ message Target {
       const schema = t.object({
         name: t.text(),
         email: t.nullable(t.text()),
-        age: t.nullable(t.int()),
+        age: t.nullable(t.integer()),
       });
 
       const protoSchema = protobuf.createProtobufSchema(schema);
@@ -415,7 +415,7 @@ message Target {
           id: t.uuid(),
           profile: t.object({
             name: t.text(),
-            age: t.nullable(t.int()),
+            age: t.nullable(t.integer()),
             tags: t.array(t.text()),
           }),
           posts: t.array(

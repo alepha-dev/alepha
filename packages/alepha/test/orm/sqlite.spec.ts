@@ -11,7 +11,7 @@ describe("sqlite", () => {
     const users = $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(t.int()),
+        id: pg.primaryKey(t.integer()),
         name: t.text(),
       }),
     });

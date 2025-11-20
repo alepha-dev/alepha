@@ -2,12 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $hook, $inject, Alepha, pageQuerySchema, t } from "alepha";
 import { $batch } from "alepha/batch";
-import {
-  $logger,
-  JsonFormatterProvider,
-  type LogEntry,
-  logEntrySchema,
-} from "alepha/logger";
+import { $logger, JsonFormatterProvider, type LogEntry } from "alepha/logger";
 import { parseQueryString } from "alepha/orm";
 import { $route, ServerProvider } from "alepha/server";
 import { $serve } from "alepha/server/static";
@@ -114,7 +109,7 @@ export class DevToolsProvider {
       query: t.extend(pageQuerySchema, {
         search: t.optional(t.string()),
       }),
-      response: t.page(logEntrySchema),
+      response: t.page(logs.schema),
     },
     handler: ({ query }) => {
       query.sort ??= "-timestamp";

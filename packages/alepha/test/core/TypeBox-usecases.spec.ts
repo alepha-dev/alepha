@@ -4,9 +4,9 @@ import { Alepha, t } from "../../src/core";
 describe("TypeBox Use Cases", () => {
   it("should remove property when omitted in schema with t.interface()", () => {
     const entity = t.object({
-      id: t.int(),
+      id: t.integer(),
       name: t.string(),
-      retryCount: t.optional(t.nullable(t.int())),
+      retryCount: t.optional(t.nullable(t.integer())),
     });
 
     const testPageSchema = t.object({

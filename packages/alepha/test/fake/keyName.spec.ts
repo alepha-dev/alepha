@@ -9,7 +9,7 @@ describe("FakeProvider - Key Name Intelligence", () => {
       firstName: t.text(),
       lastName: t.text(),
       email: t.text(),
-      age: t.int(),
+      age: t.integer(),
       phone: t.text(),
       address: t.text(),
       city: t.text(),
@@ -80,7 +80,7 @@ describe("FakeProvider - Key Name Intelligence", () => {
       fullName: t.text(),
       email: t.text(),
       username: t.text(),
-      age: t.int(),
+      age: t.integer(),
       bio: t.longText(),
       avatar: t.text(),
       website: t.text(),
@@ -123,10 +123,10 @@ describe("FakeProvider - Key Name Intelligence", () => {
   test("numeric key names influence generation", ({ expect }) => {
     const fake = new FakeProvider({ seed: 12345 });
     const schema = t.object({
-      age: t.int(),
-      year: t.int(),
-      month: t.int(),
-      day: t.int(),
+      age: t.integer(),
+      year: t.integer(),
+      month: t.integer(),
+      day: t.integer(),
       price: t.number(),
       amount: t.number(),
     });

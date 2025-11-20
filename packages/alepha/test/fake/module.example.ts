@@ -12,7 +12,7 @@ class MyApp {
       firstName: t.text(),
       lastName: t.text(),
       email: t.email(),
-      age: t.int({ minimum: 18, maximum: 99 }),
+      age: t.integer({ minimum: 18, maximum: 99 }),
       createdAt: t.string({ format: "date-time" }),
     });
 

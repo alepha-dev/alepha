@@ -105,26 +105,41 @@ export class DateTimeProvider {
   }
 
   /**
-   * Get the current date.
-   */
-  public now(): DateTime {
-    return this.of(this.getCurrentDate());
-  }
-
-  /**
    * Get the current date as a string.
-   *
-   * @param date
    */
   public toISOString(date: Date | string | DateTime = this.now()): string {
     return this.of(date).toISOString();
   }
 
   /**
+   * Get the current date.
+   */
+  public now(): DateTime {
+    return this.getCurrentDate();
+  }
+
+  /**
    * Get the current date as a string.
+   *
+   * This is much faster than `DateTimeProvider.now().toISOString()` as it avoids creating a DateTime instance.
    */
   public nowISOString(): string {
-    return this.toISOString();
+    if (this.ref) {
+      return this.ref.toISOString();
+    }
+    return new Date().toISOString();
+  }
+
+  /**
+   * Get the current date as milliseconds since epoch.
+   *
+   * This is much faster than `DateTimeProvider.now().valueOf()` as it avoids creating a DateTime instance.
+   */
+  public nowMillis(): number {
+    if (this.ref) {
+      return this.ref.valueOf();
+    }
+    return Date.now();
   }
 
   /**

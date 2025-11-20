@@ -51,7 +51,7 @@ describe("FakeProvider", () => {
 
   test("generates integer values", ({ expect }) => {
     const fake = new FakeProvider({ seed: 12345 });
-    const schema = t.int();
+    const schema = t.integer();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("number");
@@ -60,7 +60,7 @@ describe("FakeProvider", () => {
 
   test("generates integer with constraints", ({ expect }) => {
     const fake = new FakeProvider({ seed: 12345 });
-    const schema = t.int({ minimum: 5, maximum: 15 });
+    const schema = t.integer({ minimum: 5, maximum: 15 });
     const result = fake.generate(schema);
 
     expect(Number.isInteger(result)).toBe(true);
@@ -177,7 +177,7 @@ describe("FakeProvider", () => {
     const schema = t.object({
       id: t.uuid(),
       name: t.text(),
-      age: t.int(),
+      age: t.integer(),
       active: t.boolean(),
     });
     const result = fake.generate(schema);
@@ -360,7 +360,7 @@ describe("FakeProvider", () => {
     const schema = t.object({
       id: t.uuid(),
       name: t.text(),
-      age: t.int(),
+      age: t.integer(),
     });
 
     // Generate with same seed - should produce same results
@@ -397,7 +397,7 @@ describe("FakeProvider", () => {
       user: t.object({
         name: t.shortText(),
         email: t.email(),
-        age: t.int({ minimum: 18, maximum: 99 }),
+        age: t.integer({ minimum: 18, maximum: 99 }),
         phone: t.optional(t.e164()),
       }),
       tags: t.array(t.enum(["urgent", "important", "review"])),

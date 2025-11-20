@@ -21,9 +21,9 @@ describe("Joins - Comprehensive Tests", () => {
     name: "cities",
     schema: t.object({
       id: pg.primaryKey(),
-      countryId: pg.ref(t.int(), () => countries.cols.id),
+      countryId: pg.ref(t.integer(), () => countries.cols.id),
       name: t.text(),
-      population: t.optional(t.int()),
+      population: t.optional(t.integer()),
     }),
   });
 
@@ -33,8 +33,8 @@ describe("Joins - Comprehensive Tests", () => {
       id: pg.primaryKey(),
       name: t.text(),
       email: t.text(),
-      cityId: pg.ref(t.optional(t.int()), () => cities.cols.id),
-      managerId: pg.ref(t.optional(t.int()), () => users.cols.id),
+      cityId: pg.ref(t.optional(t.integer()), () => cities.cols.id),
+      managerId: pg.ref(t.optional(t.integer()), () => users.cols.id),
     }),
   });
 
@@ -42,7 +42,7 @@ describe("Joins - Comprehensive Tests", () => {
     name: "profiles",
     schema: t.object({
       id: pg.primaryKey(),
-      userId: pg.ref(t.int(), () => users.cols.id),
+      userId: pg.ref(t.integer(), () => users.cols.id),
       bio: t.text(),
       website: t.optional(t.text()),
     }),
@@ -52,7 +52,7 @@ describe("Joins - Comprehensive Tests", () => {
     name: "posts",
     schema: t.object({
       id: pg.primaryKey(),
-      authorId: pg.ref(t.int(), () => users.cols.id),
+      authorId: pg.ref(t.integer(), () => users.cols.id),
       title: t.text(),
       content: t.text(),
       publishedAt: pg.createdAt(),
@@ -63,8 +63,8 @@ describe("Joins - Comprehensive Tests", () => {
     name: "comments",
     schema: t.object({
       id: pg.primaryKey(),
-      postId: pg.ref(t.int(), () => posts.cols.id),
-      authorId: pg.ref(t.int(), () => users.cols.id),
+      postId: pg.ref(t.integer(), () => posts.cols.id),
+      authorId: pg.ref(t.integer(), () => users.cols.id),
       content: t.text(),
       createdAt: pg.createdAt(),
     }),
@@ -82,8 +82,8 @@ describe("Joins - Comprehensive Tests", () => {
     name: "post_tags",
     schema: t.object({
       id: pg.primaryKey(),
-      postId: pg.ref(t.int(), () => posts.cols.id),
-      tagId: pg.ref(t.int(), () => tags.cols.id),
+      postId: pg.ref(t.integer(), () => posts.cols.id),
+      tagId: pg.ref(t.integer(), () => tags.cols.id),
     }),
   });
 

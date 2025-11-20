@@ -61,7 +61,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * const userProfile = $page({
  *   path: "/users/:id",
  *   schema: {
- *     params: t.object({ id: t.int() }),
+ *     params: t.object({ id: t.integer() }),
  *     query: t.object({ tab: t.optional(t.text()) })
  *   },
  *   resolve: async ({ params }) => {

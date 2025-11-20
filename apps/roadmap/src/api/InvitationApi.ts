@@ -13,7 +13,7 @@ export class InvitationApi {
   createInvitation = $action({
     schema: {
       body: t.object({
-        projectId: t.int(),
+        projectId: t.integer(),
         invitedEmail: t.string({ format: "email" }),
       }),
       response: invitations.schema,
@@ -85,7 +85,7 @@ export class InvitationApi {
       response: t.array(
         t.object({
           id: t.uuid(),
-          projectId: t.int(),
+          projectId: t.integer(),
           projectTitle: t.string(),
           invitedBy: t.uuid(),
           inviterName: t.optional(t.string()),
@@ -216,7 +216,7 @@ export class InvitationApi {
   getProjectInvitations = $action({
     schema: {
       params: t.object({
-        projectId: t.int(),
+        projectId: t.integer(),
       }),
       response: t.array(invitations.schema),
     },

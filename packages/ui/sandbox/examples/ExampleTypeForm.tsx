@@ -23,7 +23,7 @@ const ExampleTypeForm = () => {
     schema: t.object({
       username: t.text({ title: "Username" }),
       email: t.text({ format: "email", title: "Email" }),
-      age: t.int({ title: "Age" }),
+      age: t.integer({ title: "Age" }),
       subscribe: t.boolean({ title: "Subscribe to newsletter" }),
     }),
     handler: (values) => {
@@ -75,7 +75,7 @@ const ExampleTypeForm = () => {
       confirmPassword: t.text({
         title: "Confirm Password",
       }),
-      age: t.int({
+      age: t.integer({
         title: "Age",
         description: "Must be 18 or older",
       }),
@@ -176,7 +176,7 @@ const ExampleTypeForm = () => {
   schema: t.object({
     username: t.text({ title: "Username" }),
     email: t.text({ format: "email", title: "Email" }),
-    age: t.int({ title: "Age" }),
+    age: t.integer({ title: "Age" }),
     subscribe: t.boolean({ title: "Subscribe" }),
   }),
   handler: (values) => console.log(values),
@@ -235,7 +235,7 @@ const ExampleTypeForm = () => {
       title: "Email"
     }),
     password: t.text({ title: "Password" }),
-    age: t.int({ title: "Age" }),
+    age: t.integer({ title: "Age" }),
     role: t.enum(["developer", "designer", "manager"]),
     interests: t.array(t.enum(["frontend", "backend"])),
     bio: t.text({ title: "Bio" }),

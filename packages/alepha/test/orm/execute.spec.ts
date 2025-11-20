@@ -10,7 +10,7 @@ describe("execute", () => {
       schema: t.object({
         id: pg.primaryKey(t.int64()),
         name: t.text(),
-        guildId: t.optional(t.int()),
+        guildId: t.optional(t.integer()),
       }),
       indexes: [{ column: "name", unique: true }],
     });
