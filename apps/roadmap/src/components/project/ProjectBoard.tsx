@@ -13,6 +13,8 @@ import {
   TextInput,
 } from "@mantine/core";
 import {
+  IconChevronDown,
+  IconChevronUp,
   IconDots,
   IconSearch,
   IconSignature,
@@ -120,7 +122,6 @@ const ProjectBoard = () => {
           params: { projectId: project.id },
           query: {
             status,
-            page: next,
             sort,
             search: searchQuery || undefined,
           },
@@ -204,6 +205,15 @@ const ProjectBoard = () => {
     return text.replace(/<[^>]*>/g, "");
   };
 
+  const getSortIcon = (key: string) => {
+    if (sortValue === key) {
+      return <IconChevronUp size={theme.icon.size.xs} />;
+    } else if (sortValue === `-${key}`) {
+      return <IconChevronDown size={theme.icon.size.xs} />;
+    }
+    return null;
+  };
+
   return (
     <Stack flex={1} gap="md" className="overflow-auto">
       <Card withBorder p={0} flex={1}>
@@ -284,17 +294,28 @@ const ProjectBoard = () => {
                         h={"auto"}
                         p={"xs"}
                         {...actions.sortBy("assignedAt")}
-                      ></Action>
+                      >
+                        <Flex align="center" gap={4}>
+                          <Text size="sm">Assigned</Text>
+                          {getSortIcon("assignedAt")}
+                        </Flex>
+                      </Action>
                     </Table.Th>
                   )}
                   <Table.Th>
                     <Action h={"auto"} p={"xs"} {...actions.sortBy("title")}>
-                      Quest
+                      <Flex align="center" gap={4}>
+                        <Text size="sm">Quest</Text>
+                        {getSortIcon("title")}
+                      </Flex>
                     </Action>
                   </Table.Th>
                   <Table.Th>
                     <Action h={"auto"} p={"xs"} {...actions.sortBy("priority")}>
-                      Priority
+                      <Flex align="center" gap={4}>
+                        <Text size="sm">Priority</Text>
+                        {getSortIcon("priority")}
+                      </Flex>
                     </Action>
                   </Table.Th>
                   <Table.Th>
@@ -303,12 +324,18 @@ const ProjectBoard = () => {
                       p={"xs"}
                       {...actions.sortBy("complexity")}
                     >
-                      Rank
+                      <Flex align="center" gap={4}>
+                        <Text size="sm">Rank</Text>
+                        {getSortIcon("complexity")}
+                      </Flex>
                     </Action>
                   </Table.Th>
                   <Table.Th>
                     <Action h={"auto"} p={"xs"} {...actions.sortBy("package")}>
-                      Zone
+                      <Flex align="center" gap={4}>
+                        <Text size="sm">Zone</Text>
+                        {getSortIcon("package")}
+                      </Flex>
                     </Action>
                   </Table.Th>
                   <Table.Th>
@@ -319,7 +346,14 @@ const ProjectBoard = () => {
                         status === "completed" ? "completedAt" : "createdAt",
                       )}
                     >
-                      {status === "completed" ? "Completed" : "Created"}
+                      <Flex align="center" gap={4}>
+                        <Text size="sm">
+                          {status === "completed" ? "Completed" : "Created"}
+                        </Text>
+                        {getSortIcon(
+                          status === "completed" ? "completedAt" : "createdAt"
+                        )}
+                      </Flex>
                     </Action>
                   </Table.Th>
                   <Table.Th></Table.Th>
