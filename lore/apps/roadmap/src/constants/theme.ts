@@ -20,7 +20,7 @@ export const theme = {
   colors: {
     card: "var(--alepha-elevated)",
     panel: "var(--alepha-surface)",
-    app: "var(--alepha-bg)",
+    app: "var(--alepha-background)",
     gold: "var(--color-gold)",
     silver: "var(--color-silver)",
     bronze: "var(--color-bronze)",

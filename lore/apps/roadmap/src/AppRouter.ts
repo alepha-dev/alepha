@@ -32,6 +32,7 @@ export class AppRouter {
 
   head = $head(() => ({
     title: "Roadmap",
+    description: "Roadmap - Gamified project management",
   }));
 
   login = $page({
