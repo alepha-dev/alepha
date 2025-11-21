@@ -351,7 +351,7 @@ const ProjectBoard = () => {
                           {status === "completed" ? "Completed" : "Created"}
                         </Text>
                         {getSortIcon(
-                          status === "completed" ? "completedAt" : "createdAt"
+                          status === "completed" ? "completedAt" : "createdAt",
                         )}
                       </Flex>
                     </Action>

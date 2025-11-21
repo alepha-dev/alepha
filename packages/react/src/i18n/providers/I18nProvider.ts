@@ -169,10 +169,7 @@ export class I18nProvider<
   ) => {
     // Handle numbers
     if (typeof value === "number") {
-      if (options.number) {
-        return new Intl.NumberFormat(this.lang, options.number).format(value);
-      }
-      return this.numberFormat.format(value);
+      return new Intl.NumberFormat(this.lang, options.number).format(value);
     }
 
     // Handle dates
@@ -215,7 +212,7 @@ export class I18nProvider<
       }
 
       // default formatting
-      return this.dateFormat.format(dt.toDate());
+      return new Intl.DateTimeFormat(this.lang).format(dt.toDate());
     }
 
     // handle TypeBox errors
