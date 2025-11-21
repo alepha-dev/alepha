@@ -465,4 +465,74 @@ export class TaskApi {
       });
     },
   });
+
+  startTimer = $action({
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: tasks.schema,
+    },
+    handler: async ({ params, user }) => {
+      const task = await this.db.tasks.findOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      // Check if timer is already running (last session has no stoppedAt)
+      const sessions = task.timerSessions || [];
+      const lastSession = sessions[sessions.length - 1];
+      if (lastSession && !lastSession.stoppedAt) {
+        throw new BadRequestError("Timer is already running");
+      }
+
+      // Add new timer session
+      sessions.push({
+        startedAt: this.dt.nowISOString(),
+      });
+
+      return await this.db.tasks.updateById(params.id, {
+        timerSessions: sessions,
+      });
+    },
+  });
+
+  stopTimer = $action({
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: tasks.schema,
+    },
+    handler: async ({ params, user }) => {
+      const task = await this.db.tasks.findOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      // Find the running timer session
+      const sessions = task.timerSessions || [];
+      const lastSession = sessions[sessions.length - 1];
+      if (!lastSession || lastSession.stoppedAt) {
+        throw new BadRequestError("No timer is running");
+      }
+
+      // Stop the timer
+      lastSession.stoppedAt = this.dt.nowISOString();
+
+      return await this.db.tasks.updateById(params.id, {
+        timerSessions: sessions,
+      });
+    },
+  });
 }

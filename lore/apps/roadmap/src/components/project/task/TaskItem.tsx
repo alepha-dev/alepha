@@ -1,8 +1,9 @@
 import { useActive, useRouter } from "@alepha/react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Flex, HoverCard, Text } from "@mantine/core";
+import { Box, Flex, HoverCard, Text } from "@mantine/core";
 import {
+  IconClock,
   IconExclamationMark,
   IconNotes,
   IconSparkles,
@@ -38,6 +39,13 @@ const TaskItem = (props: { task: Task; index: number }) => {
     width: "100%",
   };
 
+  // Check if timer is running
+  const isTimerRunning = () => {
+    if (!task.timerSessions || task.timerSessions.length === 0) return false;
+    const lastSession = task.timerSessions[task.timerSessions.length - 1];
+    return lastSession && !lastSession.stoppedAt;
+  };
+
   return (
     <div ref={setNodeRef} style={style}>
       <Action
@@ -55,6 +63,36 @@ const TaskItem = (props: { task: Task; index: number }) => {
         }}
         rightSection={
           <Flex align="center" justify="center" gap={4}>
+            {isTimerRunning() && (
+              <HoverCard openDelay={600} position="bottom-end">
+                <HoverCard.Target>
+                  <Box
+                    px={1}
+                    className="timer-active-indicator"
+                    style={{
+                      display: "flex",
+                    }}
+                  >
+                    <IconClock
+                      size={18}
+                      color="var(--mantine-color-blue-5)"
+                      fill="var(--mantine-color-blue-5)"
+                      fillOpacity={0.2}
+                    />
+                  </Box>
+                </HoverCard.Target>
+                <HoverCard.Dropdown>
+                  <Flex p={"xs"} direction={"column"}>
+                    <Text fw={"bold"} size="sm">
+                      Timer Running
+                    </Text>
+                    <Text size="xs">
+                      Time tracking is active for this quest.
+                    </Text>
+                  </Flex>
+                </HoverCard.Dropdown>
+              </HoverCard>
+            )}
             {task.note?.trim() && (
               <HoverCard
                 transitionProps={{

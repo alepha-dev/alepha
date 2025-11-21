@@ -52,6 +52,15 @@ export const tasks = $entity({
       { default: [] },
     ),
     note: pg.default(t.string({ size: "rich" }), ""),
+    timerSessions: pg.default(
+      t.array(
+        t.object({
+          startedAt: t.datetime(),
+          stoppedAt: t.optional(t.datetime()),
+        }),
+      ),
+      [],
+    ),
   }),
   indexes: [
     {

@@ -1,4 +1,5 @@
 import {
+  ClientOnly,
   useAlepha,
   useClient,
   useInject,
@@ -6,22 +7,33 @@ import {
   useStore,
 } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { Card, Drawer, Flex, Stack, Text, Textarea } from "@mantine/core";
+import {
+  Card,
+  Drawer,
+  Flex,
+  Group,
+  Stack,
+  Text,
+  Textarea,
+} from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
   IconCircleFilled,
+  IconClock,
   IconCopy,
   IconEdit,
   IconFileText,
   IconNotes,
   IconPigMoney,
+  IconPlayerPause,
+  IconPlayerPlay,
   IconSignature,
   IconSwords,
   IconTag,
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { TaskApi } from "../../../api/TaskApi.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
@@ -163,6 +175,29 @@ const TaskView = (props: TaskViewProps) => {
                   opacity: 0.1,
                   height: 1,
                   backgroundColor: "var(--alepha-text)",
+                }}
+              />
+              <TaskTimer
+                task={task}
+                onUpdate={(it) => {
+                  setTask(it);
+                  alepha.state.set(currentTaskAtom, it);
+                  const tasks =
+                    alepha.state.get(currentAssignedTasksAtom) ?? [];
+                  alepha.state.set(
+                    currentAssignedTasksAtom,
+                    tasks.map((t) => (t.id === it.id ? it : t)),
+                  );
+                }}
+              />
+              <Flex
+                style={{
+                  width: 1,
+                  height: 20,
+                  backgroundColor: "var(--mantine-color-gray-5)",
+                  opacity: 0.3,
+                  marginLeft: 4,
+                  marginRight: 4,
                 }}
               />
               <Action
@@ -529,5 +564,125 @@ const DuplicateTaskButton = (props: { task: Task }) => {
         </Card>
       </Drawer>
     </Flex>
+  );
+};
+
+const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
+  const client = useClient<TaskApi>();
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { task } = props;
+
+  // Calculate total time from all sessions
+  const calculateTotalTime = () => {
+    if (!task.timerSessions) return 0;
+
+    let total = 0;
+    const now = new Date();
+
+    for (const session of task.timerSessions) {
+      const start = new Date(session.startedAt);
+      const stop = session.stoppedAt ? new Date(session.stoppedAt) : now;
+      total += stop.getTime() - start.getTime();
+    }
+
+    return Math.floor(total / 1000); // Return in seconds
+  };
+
+  // Check if timer is running
+  const isTimerRunning = () => {
+    if (!task.timerSessions || task.timerSessions.length === 0) return false;
+    const lastSession = task.timerSessions[task.timerSessions.length - 1];
+    return lastSession && !lastSession.stoppedAt;
+  };
+
+  // Format time display
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
+
+  // Start/stop timer
+  const toggleTimer = async () => {
+    if (isTimerRunning()) {
+      const updatedTask = await client.stopTimer({
+        params: { id: task.id },
+      });
+      props.onUpdate(updatedTask);
+
+      // Clear interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    } else {
+      const updatedTask = await client.startTimer({
+        params: { id: task.id },
+      });
+      props.onUpdate(updatedTask);
+    }
+  };
+
+  // Update timer display
+  useEffect(() => {
+    // Set initial time
+    setCurrentTime(calculateTotalTime());
+
+    // If timer is running, update every second
+    if (isTimerRunning()) {
+      intervalRef.current = setInterval(() => {
+        setCurrentTime(calculateTotalTime());
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [task.timerSessions]);
+
+  // Don't show timer if task is not accepted or already completed
+  if (!task.acceptedAt || task.completedAt) {
+    return null;
+  }
+
+  // Don't show if user doesn't have permission
+  if (!client.startTimer.can() && !client.stopTimer.can()) {
+    return null;
+  }
+
+  const running = isTimerRunning();
+
+  return (
+    <Group gap="xs" ml={"xs"}>
+      <IconClock size={theme.icon.size.sm} opacity={0.6} />
+      <ClientOnly>
+        <Text size="sm" fw={500}>
+          {formatTime(currentTime)}
+        </Text>
+      </ClientOnly>
+      <Action
+        px={"xs"}
+        variant={"subtle"}
+        onClick={toggleTimer}
+        disabled={!client.startTimer.can() && !client.stopTimer.can()}
+      >
+        {running ? (
+          <IconPlayerPause size={theme.icon.size.md} />
+        ) : (
+          <IconPlayerPlay size={theme.icon.size.md} />
+        )}
+      </Action>
+    </Group>
   );
 };

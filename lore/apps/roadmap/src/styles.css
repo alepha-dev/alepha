@@ -130,3 +130,19 @@ pre > code {
     border-radius: 0; /* fullscreen rectangle */
   }
 }
+
+@keyframes timerPulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.timer-active-indicator {
+  animation: timerPulse 2s ease-in-out infinite;
+}
