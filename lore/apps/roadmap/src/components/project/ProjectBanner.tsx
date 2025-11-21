@@ -33,8 +33,7 @@ const ProjectBanner = () => {
             <Text>Level {level}</Text>
           </Flex>
           <Text size="xs" c={"dimmed"}>
-            {i18n.numberFormat.format(helper.getNextXpForLevel(character.xp))}{" "}
-            to next level
+            {i18n.l(helper.getNextXpForLevel(character.xp))} to next level
           </Text>
         </Stack>
         <Stack gap={0} flex={1} align="center" justify="center">
