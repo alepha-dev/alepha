@@ -233,6 +233,7 @@
     },
     "./server/auth": {
       "types": "./src/server-auth/index.ts",
+      "browser": "./src/server-auth/index.browser.ts",
       "import": "./src/server-auth/index.ts",
       "require": "./src/server-auth/index.ts"
     },

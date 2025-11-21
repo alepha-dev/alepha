@@ -131,7 +131,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   };
 
   return (
-    <Flex bg={"var(--alepha-bg)"} flex={1} p="lg">
+    <Flex bg={"var(--alepha-background)"} flex={1} p="lg">
       <Stack w="100%" maw={800}>
         <Group justify="space-between">
           <Title order={2}>My Identities</Title>

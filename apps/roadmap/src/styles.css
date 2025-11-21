@@ -1,8 +1,4 @@
-/** biome-ignore-all lint/suspicious/noShorthandPropertyOverrides: fine */
-@import "@mantine/core/styles.css";
-@import "@mantine/nprogress/styles.css";
-@import "@mantine/spotlight/styles.css";
-@import "@mantine/notifications/styles.css";
+@import "@alepha/ui/styles";
 @import "@mantine/tiptap/styles.css";
 @import "@mantine/charts/styles.css";
 @import "animate.css";
@@ -13,39 +9,6 @@
 @import "./components/misc/ExperienceBar.css";
 
 :root {
-  --alepha-bg-light: #f8f9fa;
-  --alepha-bg-dark: #010409;
-  --alepha-bg: var(--alepha-bg-light);
-  --alepha-surface-light: #ffffff;
-  --alepha-surface-dark: #0d1117;
-  --alepha-surface: var(--alepha-surface-light);
-  --alepha-elevated-light: #ffffff;
-  --alepha-elevated-hover-light: #f6f5f5;
-  --alepha-elevated-dark: #151b23;
-  --alepha-elevated-hover-dark: #262c36;
-  --alepha-elevated: var(--alepha-elevated-light);
-  --alepha-elevated-hover: var(--alepha-elevated-hover-light);
-
-  --alepha-border-light: #cbcbcb;
-  --alepha-border-dark: #3d444d;
-  --alepha-border: var(--alepha-border-light);
-
-  --alepha-shadow-dark: rgba(0, 0, 0, 0.5);
-  --alepha-shadow-light: rgba(0, 0, 0, 0.05);
-  --alepha-shadow: var(--alepha-shadow-light);
-
-  --alepha-text-light: #000000;
-  --alepha-text-dark: #ffffff;
-  --alepha-text-muted: #6c757d;
-  --alepha-text: var(--alepha-text-light);
-
-  --mantine-color-dimmed: var(--alepha-text-muted) !important;
-  --mantine-color-dark-8: var(--alepha-bg);
-  --mantine-color-dark-6: var(--alepha-surface);
-  --mantine-color-dark-4: var(--alepha-border);
-  --mantine-color-body: var(--alepha-surface) !important;
-  --mantine-spacing-xs: 8px;
-
   --color-gold: #db9b05;
   --color-silver: #b9b6b6ff;
   --color-bronze: #cd7f32;
@@ -66,52 +29,11 @@ html {
   }
 }
 
-html[data-mantine-color-scheme="dark"] {
-  --alepha-surface: var(--alepha-surface-dark);
-  --alepha-elevated: var(--alepha-elevated-dark);
-  --alepha-elevated-hover: var(--alepha-elevated-hover-dark);
-  --alepha-border: var(--alepha-border-dark);
-  --alepha-bg: var(--alepha-bg-dark);
-  --alepha-shadow: var(--alepha-shadow-dark);
-  --alepha-text: var(--alepha-text-dark);
-}
-
-html[data-mantine-color-scheme="light"] {
-  --mantine-color-gray-3: var(--alepha-border);
-  --alepha-surface: var(--alepha-surface-light);
-  --alepha-elevated: var(--alepha-elevated-light);
-  --alepha-elevated-hover: var(--alepha-elevated-hover-light);
-  --alepha-border: var(--alepha-border-light);
-  --alepha-bg: var(--alepha-bg-light);
-  --alepha-shadow: var(--alepha-shadow-light);
-  --alepha-text: var(--alepha-text-light);
-}
-
-html,
-body,
-#root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-}
-
-html {
-  background-color: var(--alepha-bg);
-}
-
 .root {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
-}
-
-.overflow-auto {
-  overflow: auto;
-  scrollbar-color: var(--alepha-text-muted) transparent;
-  scrollbar-width: thin;
 }
 
 .shadow {
@@ -159,10 +81,6 @@ pre > code {
 .tiptap.ProseMirror {
   height: 100%;
   min-height: 200px;
-}
-
-.mantine-Notification-root {
-  border: 1px solid var(--alepha-border);
 }
 
 /**

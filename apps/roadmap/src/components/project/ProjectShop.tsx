@@ -213,7 +213,7 @@ const ProjectShop = () => {
                 </Text>
 
                 {item.effect && (
-                  <Card withBorder p="xs" bg="var(--alepha-bg)">
+                  <Card withBorder p="xs" bg="var(--alepha-background)">
                     <Text size="xs" fw={500} ff={"monospace"}>
                       Effect: {item.effect}
                     </Text>

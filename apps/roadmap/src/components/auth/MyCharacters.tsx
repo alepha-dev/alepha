@@ -178,7 +178,7 @@ const MyCharacters = (props: MyCharactersProps) => {
 
   if (!characters || characters.length === 0) {
     return (
-      <Flex bg={"var(--alepha-bg)"} flex={1} align="center" justify="center">
+      <Flex bg={"var(--alepha-background)"} flex={1} align="center" justify="center">
         <Text c="dimmed" size="lg">
           No characters found. Join a project to create your first character!
         </Text>
@@ -187,7 +187,7 @@ const MyCharacters = (props: MyCharactersProps) => {
   }
 
   return (
-    <Flex bg={"var(--alepha-bg)"} flex={1} p="lg">
+    <Flex bg={"var(--alepha-background)"} flex={1} p="lg">
       <Stack w="100%" maw={800}>
         <Title order={2}>My Characters</Title>
 

@@ -134,7 +134,7 @@ const MyProfile = (props: ProfileProps) => {
   };
 
   return (
-    <Flex bg={"var(--alepha-bg)"} flex={1} p="lg">
+    <Flex bg={"var(--alepha-background)"} flex={1} p="lg">
       <Stack w="100%" maw={1000}>
         {/* Header Card */}
         <Card shadow="sm" padding="xl" radius="md" withBorder>
