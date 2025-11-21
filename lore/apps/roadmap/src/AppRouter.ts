@@ -1,6 +1,7 @@
 import { $page, NotFound, ReactRouter, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react/auth";
 import { $head } from "@alepha/react/head";
+import { AuthRouter } from "@alepha/ui/auth";
 import { notifications } from "@mantine/notifications";
 import { $hook, $inject, Alepha, t } from "alepha";
 import { HttpError, NotFoundError } from "alepha/server";
@@ -16,8 +17,8 @@ import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { AdminRouter } from "./components/admin/AdminRouter.ts";
-import { MeRouter } from "./components/auth/MeRouter.ts";
-import ErrorPage from "./components/shared/ErrorPage.jsx";
+import { MeRouter } from "./components/profile/MeRouter.ts";
+import ErrorPage from "./components/shared/ErrorPage.tsx";
 
 export class AppRouter {
   alepha = $inject(Alepha);
@@ -29,25 +30,16 @@ export class AppRouter {
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
   adminRouter = $inject(AdminRouter);
+  authRouter = $inject(AuthRouter);
 
   head = $head(() => ({
     title: "Roadmap",
     description: "Roadmap - Gamified project management",
   }));
 
-  login = $page({
-    path: "/login",
-    schema: {
-      query: t.object({
-        r: t.optional(t.string()),
-      }),
-    },
-    lazy: () => import("./components/auth/Login.jsx"),
-  });
-
   layout = $page({
     children: () => [
-      this.login, //
+      this.authRouter.login, //
       this.home, //
       this.project,
       this.projectCreate,
