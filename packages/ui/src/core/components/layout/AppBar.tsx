@@ -119,7 +119,7 @@ const AppBar = (props: AppBarProps) => {
           </Flex>
         ))}
       </Flex>
-      <Flex flex={1} gap="md" align={"center"} justify={"end"}>
+      <Flex flex={1} align={"center"} justify={"end"}>
         {rightItems.map((item, index) => (
           <Flex key={index} ml={index === 0 ? 0 : "md"} align="center">
             {renderItem(item, index)}

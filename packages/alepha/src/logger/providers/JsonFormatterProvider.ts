@@ -10,13 +10,13 @@ export class JsonFormatterProvider extends LogFormatterProvider {
       service: entry.service,
       module: entry.module,
       app: entry.app,
-      date: entry.timestamp,
+      time: entry.timestamp,
     };
 
     if (entry.data instanceof Error) {
       json.error = this.formatJsonError(entry.data);
     } else {
-      Object.assign(json, entry.data);
+      json.data = entry.data;
     }
 
     return JSON.stringify(json);

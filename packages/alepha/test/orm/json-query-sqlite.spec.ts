@@ -136,7 +136,7 @@ describe("SQLite JSON Query Tests", () => {
     expect(u1.profile.contact.email).toBe("bob@example.com");
   });
 
-  it("should query with pattern matching (ilike) using SQLite", async ({
+  it("should query with pattern matching (contains) using SQLite", async ({
     expect,
   }) => {
     const alepha = Alepha.create({
@@ -161,7 +161,7 @@ describe("SQLite JSON Query Tests", () => {
     const u1 = await app.users.findOne({
       where: {
         profile: {
-          name: { ilike: "%charlie%" },
+          name: { contains: "charlie" },
         },
       },
     });

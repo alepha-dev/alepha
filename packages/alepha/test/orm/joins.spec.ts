@@ -706,7 +706,7 @@ describe("Joins - Comprehensive Tests", () => {
       },
       where: {
         and: [
-          { name: { ilike: "%ar%" } }, // Charlie
+          { name: { contains: "ar" } }, // Charlie
           {
             city: {
               population: { gt: 500_000 },
@@ -925,7 +925,7 @@ describe("Joins - Comprehensive Tests", () => {
       },
       where: {
         and: [
-          { email: { ilike: "%example.com" } },
+          { email: { endsWith: "example.com" } },
           {
             or: [
               {

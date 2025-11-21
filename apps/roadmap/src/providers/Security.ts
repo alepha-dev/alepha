@@ -20,13 +20,9 @@ export class Security {
     },
   });
 
-  google = $authGoogle(this.realm, {
-    account: (user) => this.session.link("google", user),
-  });
+  google = $authGoogle(this.realm);
 
-  github = $authGithub(this.realm, {
-    account: (user) => this.session.link("github", user),
-  });
+  github = $authGithub(this.realm);
 
   async checkOwnership(
     projectId: number,

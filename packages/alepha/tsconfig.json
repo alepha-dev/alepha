@@ -5,6 +5,7 @@
       "alepha": ["./src/core/*"],
       "alepha/api/*": ["./src/api-*"],
       "alepha/api-*": [],
+      "alepha/server": ["./src/server/core/*"],
       "alepha/server/*": ["./src/server-*"],
       "alepha/server-*": [],
       "alepha/bucket/*": ["./src/bucket-*"],
@@ -17,6 +18,7 @@
       "alepha/cache-*": [],
       "alepha/topic/*": ["./src/topic-*"],
       "alepha/topic-*": [],
+      "alepha/core/*": [],
       "alepha/*": ["./src/*"]
     }
   }

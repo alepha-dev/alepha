@@ -8,6 +8,7 @@ import {
   type UserAccount,
 } from "alepha/security";
 import { type ServerRequest, UnauthorizedError } from "alepha/server";
+import type { OAuth2Profile } from "alepha/server/auth";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 
 export class SessionService {
@@ -189,8 +190,11 @@ export class SessionService {
     });
   }
 
-  // TODO: alepha/identity and replace profile: any by provider: OAuth2Profile
-  public async link(provider: string, profile: any, userRealmName?: string) {
+  public async link(
+    provider: string,
+    profile: OAuth2Profile,
+    userRealmName?: string,
+  ) {
     const identity = await this.identities(userRealmName)
       .findOne({
         where: {

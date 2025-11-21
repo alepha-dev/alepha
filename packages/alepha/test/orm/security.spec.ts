@@ -177,7 +177,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in like operator", async ({
+      it("should prevent SQL injection in contains operator", async ({
         expect,
       }) => {
         const alepha = Alepha.create();
@@ -198,7 +198,7 @@ describe("SQL Injection Security Tests", () => {
 
         for (const payload of sqlInjectionPayloads) {
           const result = await app.users.findMany({
-            where: { username: { like: `%${payload}%` } },
+            where: { username: { contains: payload } },
           });
 
           // Should safely handle the payload as a literal string
@@ -206,7 +206,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in ilike operator", async ({
+      it("should prevent SQL injection in contains operator (email field)", async ({
         expect,
       }) => {
         const alepha = Alepha.create();
@@ -227,7 +227,7 @@ describe("SQL Injection Security Tests", () => {
 
         for (const payload of sqlInjectionPayloads) {
           const result = await app.users.findMany({
-            where: { email: { ilike: `%${payload}%` } },
+            where: { email: { contains: payload } },
           });
 
           expect(result).toEqual([]);
@@ -593,7 +593,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in like operator", async ({
+      it("should prevent SQL injection in contains operator (SQLite)", async ({
         expect,
       }) => {
         const alepha = Alepha.create().with({
@@ -623,7 +623,7 @@ describe("SQL Injection Security Tests", () => {
 
         for (const payload of sqlInjectionPayloads) {
           const result = await app.users.findMany({
-            where: { username: { like: `%${payload}%` } },
+            where: { username: { contains: payload } },
           });
 
           expect(result).toEqual([]);

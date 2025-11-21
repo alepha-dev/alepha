@@ -24,6 +24,7 @@ import {
   notLike,
   or,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import type { FilterOperators } from "../interfaces/FilterOperators.ts";
@@ -174,7 +175,13 @@ export class QueryManager {
           } else {
             // Regular column query (including primitive arrays)
             const column = col(key);
-            const sql = this.mapOperatorToSql(operator, column, schema, key);
+            const sql = this.mapOperatorToSql(
+              operator,
+              column,
+              schema,
+              key,
+              options.dialect,
+            );
             if (sql) {
               conditions.push(sql);
             }
@@ -321,6 +328,7 @@ export class QueryManager {
     column: PgColumn,
     columnSchema?: TObject,
     columnName?: string,
+    dialect: "postgresql" | "sqlite" = "postgresql",
   ): SQL | undefined {
     // Helper function to encode a value for the specific column
     const encodeValue = (value: any): any => {
@@ -436,7 +444,15 @@ export class QueryManager {
         .replace(/\\/g, "\\\\") // Escape backslash first
         .replace(/%/g, "\\%") // Escape %
         .replace(/_/g, "\\_"); // Escape _
-      conditions.push(ilike(column, encodeValue(`%${escapedValue}%`)));
+
+      if (dialect === "sqlite") {
+        // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
+        conditions.push(
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}%`)})`,
+        );
+      } else {
+        conditions.push(ilike(column, encodeValue(`%${escapedValue}%`)));
+      }
     }
 
     if (operator?.startsWith != null) {
@@ -445,7 +461,15 @@ export class QueryManager {
         .replace(/\\/g, "\\\\") // Escape backslash first
         .replace(/%/g, "\\%") // Escape %
         .replace(/_/g, "\\_"); // Escape _
-      conditions.push(ilike(column, encodeValue(`${escapedValue}%`)));
+
+      if (dialect === "sqlite") {
+        // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
+        conditions.push(
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`${escapedValue}%`)})`,
+        );
+      } else {
+        conditions.push(ilike(column, encodeValue(`${escapedValue}%`)));
+      }
     }
 
     if (operator?.endsWith != null) {
@@ -454,7 +478,15 @@ export class QueryManager {
         .replace(/\\/g, "\\\\") // Escape backslash first
         .replace(/%/g, "\\%") // Escape %
         .replace(/_/g, "\\_"); // Escape _
-      conditions.push(ilike(column, encodeValue(`%${escapedValue}`)));
+
+      if (dialect === "sqlite") {
+        // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
+        conditions.push(
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}`)})`,
+        );
+      } else {
+        conditions.push(ilike(column, encodeValue(`%${escapedValue}`)));
+      }
     }
 
     if (operator?.between != null) {

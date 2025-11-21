@@ -1,23 +1,23 @@
 import { $page } from "@alepha/react";
-import { RootRouter } from "@alepha/ui";
+import { AuthRouter } from "@alepha/ui/auth";
 import { $inject } from "alepha";
-import { $client } from "alepha/server/links";
-import type { Api } from "./Api.ts";
-import Home from "./components/Home.tsx";
+import { Layout } from "./Layout.tsx";
 
 export class AppRouter {
-  rootRouter = $inject(RootRouter);
-  api = $client<Api>();
+  authRouter = $inject(AuthRouter);
+
+  layout = $page({
+    component: Layout,
+    children: () => [this.home, this.about, this.authRouter.login],
+  });
 
   home = $page({
-    parent: this.rootRouter.root,
     path: "/",
-    component: Home,
-    head: {
-      title: "Playground",
-    },
-    resolve: async () => {
-      return await this.api.ping();
-    },
+    component: () => "Hello World!",
+  });
+
+  about = $page({
+    path: "/about",
+    component: () => "about",
   });
 }

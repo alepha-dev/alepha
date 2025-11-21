@@ -7,6 +7,7 @@ import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./descriptors/$auth.ts";
+export * from "./descriptors/$authCredentials.ts";
 export * from "./descriptors/$authGithub.ts";
 export * from "./descriptors/$authGoogle.ts";
 export * from "./index.shared.ts";

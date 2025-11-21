@@ -4,11 +4,17 @@ import { $repository, type Repository } from "alepha/orm";
 import { identities } from "../entities/identities";
 import { sessions } from "../entities/sessions";
 import { users } from "../entities/users";
+import type { LoginSettings } from "../schemas/loginSettingsSchema.ts";
 
 export interface UserRealmRepositories {
   identities: Repository<typeof identities.schema>;
   sessions: Repository<typeof sessions.schema>;
   users: Repository<typeof users.schema>;
+}
+
+export interface UserRealm {
+  repositories: UserRealmRepositories;
+  settings?: LoginSettings;
 }
 
 export class UserRealmProvider {
@@ -17,24 +23,27 @@ export class UserRealmProvider {
   protected readonly defaultSessions = $repository(sessions);
   protected readonly defaultUsers = $repository(users);
 
-  protected realms = new Map<string, UserRealmRepositories>();
+  protected realms = new Map<string, UserRealm>();
 
   public register(
     userRealmName: string,
     userRealmOptions: UserRealmOptions = {},
   ) {
     this.realms.set(userRealmName, {
-      identities:
-        userRealmOptions.entities?.identities ?? this.defaultIdentities,
-      sessions: userRealmOptions.entities?.sessions ?? this.defaultSessions,
-      users: userRealmOptions.entities?.users ?? this.defaultUsers,
+      repositories: {
+        identities:
+          userRealmOptions.entities?.identities ?? this.defaultIdentities,
+        sessions: userRealmOptions.entities?.sessions ?? this.defaultSessions,
+        users: userRealmOptions.entities?.users ?? this.defaultUsers,
+      },
+      settings: userRealmOptions.settings,
     });
   }
 
   /**
    * Gets a registered realm by name, auto-creating default if needed.
    */
-  protected getRealm(userRealmName: string): UserRealmRepositories {
+  protected getRealm(userRealmName: string): UserRealm {
     let realm = this.realms.get(userRealmName);
 
     if (!realm) {
@@ -52,21 +61,30 @@ export class UserRealmProvider {
     return realm;
   }
 
+  /**
+   * Gets the login settings for a realm.
+   */
+  public getRealmSettings(
+    userRealmName = "default",
+  ): LoginSettings | undefined {
+    return this.getRealm(userRealmName).settings;
+  }
+
   public identityRepository(
     userRealmName = "default",
   ): Repository<typeof identities.schema> {
-    return this.getRealm(userRealmName).identities;
+    return this.getRealm(userRealmName).repositories.identities;
   }
 
   public sessionRepository(
     userRealmName = "default",
   ): Repository<typeof sessions.schema> {
-    return this.getRealm(userRealmName).sessions;
+    return this.getRealm(userRealmName).repositories.sessions;
   }
 
   public userRepository(
     userRealmName = "default",
   ): Repository<typeof users.schema> {
-    return this.getRealm(userRealmName).users;
+    return this.getRealm(userRealmName).repositories.users;
   }
 }

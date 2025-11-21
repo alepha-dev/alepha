@@ -19,6 +19,7 @@ import {
 } from "openid-client";
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
 import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
+import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
@@ -56,6 +57,41 @@ export class ServerAuthProvider {
     return this.alepha
       .descriptors($auth)
       .filter((auth) => !auth.options.disabled);
+  }
+
+  public getAuthenticationProviders(
+    filters: { realmName?: string } = {},
+  ): AuthenticationProvider[] {
+    const providers: AuthenticationProvider[] = [];
+
+    for (const identity of this.identities) {
+      if (filters.realmName) {
+        const realm = "realm" in identity.options && identity.options.realm;
+        if (!realm || realm.name !== filters.realmName) {
+          continue;
+        }
+      }
+
+      const type =
+        "oidc" in identity.options
+          ? "OIDC"
+          : "oauth" in identity.options
+            ? "OAUTH2"
+            : "credentials" in identity.options
+              ? "CREDENTIALS"
+              : undefined;
+
+      if (!type) {
+        continue;
+      }
+
+      providers.push({
+        name: identity.name,
+        type,
+      });
+    }
+
+    return providers;
   }
 
   protected readonly configure = $hook({

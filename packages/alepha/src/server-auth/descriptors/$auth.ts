@@ -145,11 +145,15 @@ export type AuthInternal = {
 );
 
 export type CredentialsOptions = {
-  account: (credentials: {
-    username: string;
-    password: string;
-  }) => Async<UserAccount>;
+  account: CredentialsFn;
 };
+
+export type CredentialsFn = (credentials: Credentials) => Async<UserAccount>;
+
+export interface Credentials {
+  username: string;
+  password: string;
+}
 
 export interface OidcOptions {
   /**
@@ -191,14 +195,18 @@ export interface OidcOptions {
    */
   scope?: string;
 
-  account?: (tokens: {
-    access_token: string;
-    user: OAuth2Profile;
-    id_token?: string;
-    expires_in?: number;
-    scope?: string;
-  }) => Async<UserAccount>;
+  account?: LinkAccountFn;
 }
+
+export interface LinkAccountOptions {
+  access_token: string;
+  user: OAuth2Profile;
+  id_token?: string;
+  expires_in?: number;
+  scope?: string;
+}
+
+export type LinkAccountFn = (tokens: LinkAccountOptions) => Async<UserAccount>;
 
 export interface OAuth2Options {
   /**
@@ -226,13 +234,7 @@ export interface OAuth2Options {
    */
   userinfo: (tokens: Tokens) => Async<OAuth2Profile>;
 
-  account?: (tokens: {
-    access_token: string;
-    user: OAuth2Profile;
-    id_token?: string;
-    expires_in?: number;
-    scope?: string;
-  }) => Async<UserAccount>;
+  account?: LinkAccountFn;
 
   /**
    * URL of the OAuth2 authorization endpoint.
@@ -434,3 +436,11 @@ $auth[KIND] = AuthDescriptor;
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type AccessToken = string | { token: () => Async<string> };
+
+export interface WithLinkFn {
+  link?: (name: string) => (opts: LinkAccountOptions) => Async<UserAccount>;
+}
+
+export interface WithLoginFn {
+  login?: (provider: string) => (creds: Credentials) => Async<UserAccount>;
+}

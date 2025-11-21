@@ -25,11 +25,37 @@ export interface SidebarProps {
   flexProps?: Partial<FlexProps>;
   collapsed?: boolean;
   gap?: MantineBreakpoint;
+  hide?: {
+    paths?: string[];
+  };
 }
 
 export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
   const { top = [], bottom = [], onItemClick } = props;
+  const shouldHide = () => {
+    if (props.hide?.paths) {
+      for (const path of props.hide.paths) {
+        if (router.isActive(path)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const [hide, setHide] = useState(shouldHide());
+
+  useEvents(
+    {
+      "react:transition:begin": () => {
+        if (props.hide?.paths) {
+          setHide(shouldHide());
+        }
+      },
+    },
+    [],
+  );
 
   const renderNode = (item: SidebarNode, key: number) => {
     if ("type" in item) {

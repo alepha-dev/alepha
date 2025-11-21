@@ -1,6 +1,11 @@
-import { $context, t } from "alepha";
+import { $context, AlephaError, t } from "alepha";
 import type { RealmDescriptor } from "alepha/security";
-import { $auth, type OidcOptions } from "./$auth.ts";
+import {
+  $auth,
+  type LinkAccountFn,
+  type OidcOptions,
+  type WithLinkFn,
+} from "./$auth.ts";
 
 /**
  * Already configured Google authentication descriptor.
@@ -13,8 +18,8 @@ import { $auth, type OidcOptions } from "./$auth.ts";
  * - `GOOGLE_CLIENT_SECRET`: The client secret obtained from the Google Developer Console.
  */
 export const $authGoogle = (
-  realm: RealmDescriptor,
-  options: Partial<OidcOptions>,
+  realm: RealmDescriptor & WithLinkFn,
+  options: Partial<OidcOptions> = {},
 ) => {
   const { alepha } = $context();
 
@@ -25,14 +30,26 @@ export const $authGoogle = (
     }),
   );
 
+  const name = "google";
+
+  const account: LinkAccountFn | undefined =
+    options.account ?? (realm.link ? realm.link(name) : undefined);
+
+  if (!account) {
+    throw new AlephaError(
+      "Authentication requires a link function in the realm descriptor.",
+    );
+  }
+
   return $auth({
     realm,
-    name: "google",
+    name,
     oidc: {
       issuer: "https://accounts.google.com",
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       ...options,
+      account,
     },
   });
 };

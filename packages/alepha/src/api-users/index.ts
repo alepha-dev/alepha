@@ -3,6 +3,7 @@ import { AlephaEmail } from "alepha/email";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
+import { UserRealmController } from "./controllers/UserRealmController.ts";
 import { UserRealmProvider } from "./providers/UserRealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
@@ -15,6 +16,7 @@ import { UserService } from "./services/UserService.ts";
 export * from "./controllers/IdentityController.ts";
 export * from "./controllers/SessionController.ts";
 export * from "./controllers/UserController.ts";
+export * from "./controllers/UserRealmController.ts";
 export * from "./descriptors/$userRealm.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
@@ -22,10 +24,12 @@ export * from "./entities/users.ts";
 export * from "./schemas/createUserSchema.ts";
 export * from "./schemas/identityQuerySchema.ts";
 export * from "./schemas/identityResourceSchema.ts";
+export * from "./schemas/loginSettingsSchema.ts";
 export * from "./schemas/sessionQuerySchema.ts";
 export * from "./schemas/sessionResourceSchema.ts";
 export * from "./schemas/updateUserSchema.ts";
 export * from "./schemas/userQuerySchema.ts";
+export * from "./schemas/userRealmConfigSchema.ts";
 export * from "./schemas/userResourceSchema.ts";
 export * from "./services/CredentialService.ts";
 export * from "./services/IdentityService.ts";
@@ -56,5 +60,6 @@ export const AlephaApiUsers = $module({
     UserController,
     SessionController,
     IdentityController,
+    UserRealmController,
   ],
 });

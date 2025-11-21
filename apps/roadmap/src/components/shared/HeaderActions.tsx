@@ -2,17 +2,16 @@ import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useI18n } from "@alepha/react/i18n";
 import { DarkModeButton, LanguageButton } from "@alepha/ui";
-import { Flex, Menu, useMantineColorScheme } from "@mantine/core";
+import type { AuthRouter } from "@alepha/ui/auth";
+import { Flex, Menu } from "@mantine/core";
 import { IconLogout, IconSettings, IconUser } from "@tabler/icons-react";
-import type { AppRouter } from "../../AppRouter.ts";
 import { theme } from "../../constants/theme.ts";
 import type { Security } from "../../providers/Security.ts";
 import type { I18n } from "../../services/I18n.ts";
-import type { MeRouter } from "../auth/MeRouter.ts";
+import type { MeRouter } from "../profile/MeRouter.ts";
 import Action from "../ui/Action.jsx";
 
 const HeaderActions = () => {
-  const { toggleColorScheme } = useMantineColorScheme();
   return (
     <Flex gap={"xs"} align="center" justify="center">
       <AuthButton />
@@ -26,8 +25,8 @@ export default HeaderActions;
 
 const AuthButton = () => {
   const auth = useAuth<Security>();
-  const router = useRouter<AppRouter>();
-  const routerMe = useRouter<MeRouter>();
+  const meRouter = useRouter<MeRouter>();
+  const authRouter = useRouter<AuthRouter>();
   const { tr } = useI18n<I18n, "en">();
 
   if (auth.user) {
@@ -66,7 +65,7 @@ const AuthButton = () => {
           <Menu.Label>{auth.user.email}</Menu.Label>
           <Menu.Item
             component={"a"}
-            {...routerMe.anchor("profile")}
+            {...meRouter.anchor("profile")}
             leftSection={<IconSettings size={theme.icon.size.sm} />}
           >
             Settings
@@ -89,9 +88,9 @@ const AuthButton = () => {
       style={{ textWrap: "nowrap" }}
       variant={"subtle"}
       leftSection={<IconUser />}
-      href={router.path("login", {
+      href={authRouter.path("login", {
         query: {
-          r: router.pathname,
+          r: authRouter.pathname,
         },
       })}
     >

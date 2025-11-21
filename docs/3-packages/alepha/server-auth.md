@@ -62,6 +62,12 @@ class AuthProviders {
 
 TODO: Implement Apple authentication
 
+#### $authCredentials()
+
+Already configured Credentials authentication descriptor.
+
+Uses username and password to authenticate users.
+
 #### $authGithub()
 
 Already configured GitHub authentication descriptor.

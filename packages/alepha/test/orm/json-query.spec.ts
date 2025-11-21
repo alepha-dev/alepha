@@ -159,7 +159,7 @@ describe("Postgres JSON Query Tests", () => {
     const u1 = await app.users.findOne({
       where: {
         profile: {
-          name: { ilike: "%charlie%" },
+          name: { contains: "charlie" },
         },
       },
     });
@@ -238,7 +238,7 @@ describe("Postgres JSON Query Tests", () => {
     const u1 = await app.users.findOne({
       where: {
         addresses: {
-          street: { like: "%Main%" },
+          street: { contains: "Main" },
         },
       },
     });

@@ -1,7 +1,12 @@
-import { $context, t } from "alepha";
+import { $context, AlephaError, t } from "alepha";
 import type { RealmDescriptor } from "alepha/security";
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
-import { $auth, type OidcOptions } from "./$auth.ts";
+import {
+  $auth,
+  type LinkAccountFn,
+  type OidcOptions,
+  type WithLinkFn,
+} from "./$auth.ts";
 
 /**
  * Already configured GitHub authentication descriptor.
@@ -14,8 +19,8 @@ import { $auth, type OidcOptions } from "./$auth.ts";
  * - `GITHUB_CLIENT_SECRET`: The client secret obtained from the GitHub Developer Settings.
  */
 export const $authGithub = (
-  realm: RealmDescriptor,
-  options: Partial<OidcOptions>,
+  realm: RealmDescriptor & WithLinkFn,
+  options: Partial<OidcOptions> = {},
 ) => {
   const { alepha } = $context();
 
@@ -26,9 +31,20 @@ export const $authGithub = (
     }),
   );
 
+  const name = "github";
+
+  const account: LinkAccountFn | undefined =
+    options.account ?? (realm.link ? realm.link(name) : undefined);
+
+  if (!account) {
+    throw new AlephaError(
+      "Authentication requires a link function in the realm descriptor.",
+    );
+  }
+
   return $auth({
     realm,
-    name: "github",
+    name,
     oauth: {
       clientId: env.GITHUB_CLIENT_ID,
       clientSecret: env.GITHUB_CLIENT_SECRET,
@@ -76,6 +92,7 @@ export const $authGithub = (
         return user;
       },
       ...options,
+      account,
     },
   });
 };

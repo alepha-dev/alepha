@@ -33,8 +33,12 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
       "react:transition:end": () => {
         nprogress.complete();
       },
-      "react:action:error": () => {
-        toast.danger("An error occurred while processing your action.");
+      "react:action:error": ({ error }) => {
+        toast.danger({
+          title: error.name || "Error",
+          message:
+            error.message ?? "An error occurred while processing your action.",
+        });
       },
     },
     [],

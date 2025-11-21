@@ -2,15 +2,24 @@ import { $context } from "alepha";
 import type { Repository } from "alepha/orm";
 import {
   $realm,
+  type RealmDescriptor,
   type RealmDescriptorOptions,
   SecurityProvider,
 } from "alepha/security";
+import type {
+  Credentials,
+  LinkAccountOptions,
+  WithLinkFn,
+  WithLoginFn,
+} from "alepha/server/auth";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
 import type { users } from "../entities/users.ts";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 import type { LoginSettings } from "../schemas/loginSettingsSchema.ts";
 import { SessionService } from "../services/SessionService.ts";
+
+export type UserRealmDescriptor = RealmDescriptor & WithLinkFn & WithLoginFn;
 
 /**
  * Already configured realm for user management.
@@ -25,19 +34,22 @@ import { SessionService } from "../services/SessionService.ts";
  * Environment Variables:
  * - `APP_SECRET`: Secret key for signing tokens (if not provided in options).
  */
-export const $userRealm = (options: UserRealmOptions = {}) => {
+
+export const $userRealm = (
+  options: UserRealmOptions = {},
+): UserRealmDescriptor => {
   const { alepha } = $context();
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
   const userRealmProvider = alepha.inject(UserRealmProvider);
+  const name = options.realm?.name ?? "default";
 
-  userRealmProvider.register("default", options);
+  userRealmProvider.register(name, options);
 
-  return $realm({
+  const realm: UserRealmDescriptor = $realm({
     ...options.realm,
-    name: options.realm?.name ?? "users",
+    name,
     secret: options.secret ?? securityProvider.secretKey,
-
     roles: options.realm?.roles ?? [
       {
         name: "admin",
@@ -77,6 +89,17 @@ export const $userRealm = (options: UserRealmOptions = {}) => {
       ...options.realm?.settings,
     },
   });
+
+  realm.link = (name: string) => {
+    return (ctx: LinkAccountOptions) => sessionService.link(name, ctx.user);
+  };
+
+  realm.login = (name: string) => {
+    return (credentials: Credentials) =>
+      sessionService.login(name, credentials.username, credentials.password);
+  };
+
+  return realm;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------

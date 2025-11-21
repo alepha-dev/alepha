@@ -1,4 +1,4 @@
-import { NestedView, useEvents, useStore } from "@alepha/react";
+import { NestedView, useEvents, useRouter, useStore } from "@alepha/react";
 import {
   AppShell,
   type AppShellFooterProps,
@@ -7,7 +7,7 @@ import {
   type AppShellNavbarProps,
   type AppShellProps,
 } from "@mantine/core";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import AppBar, { type AppBarProps } from "./AppBar.tsx";
 import { Sidebar, type SidebarProps } from "./Sidebar.tsx";
@@ -23,6 +23,13 @@ export interface AdminShellProps {
   header?: ReactNode;
   footer?: ReactNode;
   children?: ReactNode;
+
+  noSidebarWhen?: {
+    /**
+     * Paths where the sidebar should be hidden.
+     */
+    paths?: string[];
+  };
 }
 
 declare module "alepha" {
@@ -40,14 +47,31 @@ declare module "alepha" {
 }
 
 const AdminShell = (props: AdminShellProps) => {
+  const router = useRouter();
   const [opened, setOpened] = useStore("alepha.ui.sidebar.opened");
   const [collapsed] = useStore(
     "alepha.ui.sidebar.collapsed",
     props.sidebarProps?.collapsed,
   );
 
+  const shouldShowSidebar = () => {
+    if (props.noSidebarWhen?.paths) {
+      for (const path of props.noSidebarWhen.paths) {
+        if (router.isActive(path)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const [showSidebar, setShowSidebar] = useState(shouldShowSidebar());
+
   useEvents(
     {
+      "react:transition:end": () => {
+        setShowSidebar(shouldShowSidebar());
+      },
       "react:transition:begin": () => {
         setOpened(false);
       },
@@ -60,12 +84,15 @@ const AdminShell = (props: AdminShellProps) => {
     { position: "left" as const, type: "burger" as const },
   ];
 
+  const hasSidebar = showSidebar && props.sidebarProps !== undefined;
+  const hasAppBar = hasSidebar || props.appBarProps || props.header;
+
   return (
     <AppShell
       padding="md"
-      header={{ height: 60 }}
+      header={hasAppBar ? { height: 60 } : undefined}
       navbar={
-        props.sidebarProps !== undefined
+        hasSidebar
           ? {
               width: collapsed ? { base: 72 } : { base: 300 },
               breakpoint: "sm",
@@ -82,13 +109,13 @@ const AdminShell = (props: AdminShellProps) => {
         )}
       </AppShell.Header>
 
-      {props.sidebarProps !== undefined && (
+      {hasSidebar && (
         <AppShell.Navbar bg={ui.colors.surface} {...props.appShellNavbarProps}>
-          <Sidebar collapsed={collapsed} {...props.sidebarProps} />
+          <Sidebar collapsed={collapsed} {...(props.sidebarProps ?? {})} />
         </AppShell.Navbar>
       )}
 
-      <AppShell.Main {...props.appShellMainProps}>
+      <AppShell.Main display={"flex"} flex={1} {...props.appShellMainProps}>
         {props.children ?? <NestedView />}
       </AppShell.Main>
 

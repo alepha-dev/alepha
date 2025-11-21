@@ -6,8 +6,8 @@ import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
  *
  * Supported syntax:
  * - Simple equality: "name=John"
+ * - Wildcard patterns: "name=John*" (startsWith), "name=*John" (endsWith), "name=*John*" (contains)
  * - Operators: "age>18", "age>=18", "age<65", "age<=65", "status!=active"
- * - LIKE patterns: "name~John" (like), "name~*John" (ilike)
  * - NULL checks: "deletedAt=null", "email!=null"
  * - IN arrays: "status=[pending,active]"
  * - AND conditions: "name=John&age>18"
@@ -20,6 +20,14 @@ import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
  * // Simple equality
  * parseQueryString("name=John")
  * // => { name: { eq: "John" } }
+ *
+ * // Wildcard patterns
+ * parseQueryString("name=John*")  // startsWith
+ * // => { name: { startsWith: "John" } }
+ * parseQueryString("name=*Smith")  // endsWith
+ * // => { name: { endsWith: "Smith" } }
+ * parseQueryString("name=*oh*")  // contains
+ * // => { name: { contains: "oh" } }
  *
  * // Multiple conditions
  * parseQueryString("name=John&age>18")
@@ -155,14 +163,7 @@ class QueryStringParser {
         continue;
       }
 
-      if (
-        ch === "=" ||
-        ch === "!" ||
-        ch === ">" ||
-        ch === "<" ||
-        ch === "~" ||
-        ch === " "
-      ) {
+      if (ch === "=" || ch === "!" || ch === ">" || ch === "<" || ch === " ") {
         break;
       }
 
@@ -195,14 +196,10 @@ class QueryStringParser {
       this.pos += 2;
       return "!=";
     }
-    if (remaining.startsWith("~*")) {
-      this.pos += 2;
-      return "~*";
-    }
 
     // Single-character operators
     const ch = this.query[this.pos];
-    if (ch === "=" || ch === ">" || ch === "<" || ch === "~") {
+    if (ch === "=" || ch === ">" || ch === "<") {
       this.pos++;
       return ch;
     }
@@ -340,6 +337,28 @@ class QueryStringParser {
     if (operator === "=") {
       if (value === null) {
         filterOp = { isNull: true };
+      } else if (Array.isArray(value)) {
+        // Arrays should be treated as inArray regardless of content
+        filterOp = { inArray: value };
+      } else if (typeof value === "string" && value.includes("*")) {
+        // Handle wildcard patterns
+        const startsWithAsterisk = value.startsWith("*");
+        const endsWithAsterisk = value.endsWith("*");
+        const cleanValue = value.replace(/^\*|\*$/g, ""); // Remove leading/trailing asterisks
+
+        if (startsWithAsterisk && endsWithAsterisk) {
+          // *text* -> contains
+          filterOp = { contains: cleanValue };
+        } else if (startsWithAsterisk) {
+          // *text -> endsWith
+          filterOp = { endsWith: cleanValue };
+        } else if (endsWithAsterisk) {
+          // text* -> startsWith
+          filterOp = { startsWith: cleanValue };
+        } else {
+          // Has asterisk in the middle, treat as literal
+          filterOp = { eq: value };
+        }
       } else {
         filterOp = { eq: value };
       }
@@ -357,12 +376,6 @@ class QueryStringParser {
       filterOp = { lt: value };
     } else if (operator === "<=") {
       filterOp = { lte: value };
-    } else if (operator === "~") {
-      filterOp = { like: value };
-    } else if (operator === "~*") {
-      filterOp = { ilike: value };
-    } else if (Array.isArray(value)) {
-      filterOp = { inArray: value };
     } else {
       throw new Error(`Unsupported operator: ${operator}`);
     }
@@ -461,10 +474,12 @@ export function buildQueryString(where: any): string {
       parts.push(`${field}<${condition.lt}`);
     } else if ("lte" in condition) {
       parts.push(`${field}<=${condition.lte}`);
-    } else if ("like" in condition) {
-      parts.push(`${field}~${condition.like}`);
-    } else if ("ilike" in condition) {
-      parts.push(`${field}~*${condition.ilike}`);
+    } else if ("contains" in condition) {
+      parts.push(`${field}=*${condition.contains}*`);
+    } else if ("startsWith" in condition) {
+      parts.push(`${field}=${condition.startsWith}*`);
+    } else if ("endsWith" in condition) {
+      parts.push(`${field}=*${condition.endsWith}`);
     } else if ("isNull" in condition && condition.isNull) {
       parts.push(`${field}=null`);
     } else if ("isNotNull" in condition && condition.isNotNull) {

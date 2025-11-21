@@ -4,18 +4,12 @@ export const loginSettingsSchema = t.object({
   registrationAllowed: t.optional(
     t.boolean({
       description: "Enable user self-registration",
-      default: false,
+      default: true,
     }),
   ),
   registrationEmailAsUsername: t.optional(
     t.boolean({
       description: "Use email as username during registration",
-      default: false,
-    }),
-  ),
-  editUsernameAllowed: t.optional(
-    t.boolean({
-      description: "Allow users to change their username",
       default: false,
     }),
   ),
@@ -29,26 +23,6 @@ export const loginSettingsSchema = t.object({
     t.boolean({
       description: "Require email verification",
       default: false,
-    }),
-  ),
-  loginWithEmailAllowed: t.optional(
-    t.boolean({
-      description: "Allow login with email address",
-      default: false,
-    }),
-  ),
-  maxLoginFailures: t.optional(
-    t.integer({
-      description: "Failed login attempts before lockout",
-      default: 30,
-      minimum: 1,
-    }),
-  ),
-  passwordLockoutDuration: t.optional(
-    t.integer({
-      description: "Lockout duration in minutes after max login failures",
-      default: 15,
-      minimum: 1,
     }),
   ),
   passwordPolicy: t.optional(

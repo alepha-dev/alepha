@@ -117,8 +117,8 @@ export function getOperatorsForField(field: SchemaField): string[] {
   switch (field.type) {
     case "string":
     case "text":
-      // String fields: equality, like, and null checks
-      return [...allOperators, "~", "~*", "null"];
+      // String fields: equality and null checks (wildcards supported in = operator)
+      return [...allOperators, "null"];
 
     case "number":
     case "integer":
@@ -152,12 +152,6 @@ export const OPERATOR_INFO: Record<
   gte: { symbol: ">=", label: "greater or equal", example: "age>=18" },
   lt: { symbol: "<", label: "less than", example: "age<65" },
   lte: { symbol: "<=", label: "less or equal", example: "age<=65" },
-  like: { symbol: "~", label: "like (case-sensitive)", example: "name~John" },
-  ilike: {
-    symbol: "~*",
-    label: "like (case-insensitive)",
-    example: "name~*john",
-  },
   null: { symbol: "=null", label: "is null", example: "deletedAt=null" },
   notNull: {
     symbol: "!=null",
