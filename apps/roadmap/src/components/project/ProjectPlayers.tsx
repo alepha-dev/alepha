@@ -1,6 +1,6 @@
 import { useClient, useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
-import { useI18n } from "@alepha/react/i18n";
+import { Localize, useI18n } from "@alepha/react/i18n";
 import {
   Avatar,
   Badge,
@@ -17,11 +17,10 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
+  IconCircleFilled,
   IconCrown,
   IconMail,
   IconPlus,
-  IconStar,
-  IconTrophy,
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
@@ -130,28 +129,29 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
         </Stack>
       </Modal>
 
-      <Flex flex={1} p="lg">
-        <Stack w="100%" maw={800}>
+      <Flex flex={1} p="lg" w={"100%"} justify="center">
+        <Stack w="100%">
           <Group gap="sm" align="center" justify="space-between">
             <Group gap="sm" align="center">
               <IconUsers size={24} />
               <Title order={2}>Players</Title>
-              <Badge variant="light" color="blue">
-                {players.length + pendingInvitations.length}{" "}
-                {players.length + pendingInvitations.length === 1
-                  ? "player"
-                  : "players"}
+              <Badge variant="light">
+                {players.length + pendingInvitations.length}
               </Badge>
             </Group>
             {project && project.createdBy === auth.user?.id && (
-              <Button leftSection={<IconPlus size={16} />} onClick={open}>
+              <Button
+                variant="light"
+                leftSection={<IconPlus size={16} />}
+                onClick={open}
+              >
                 Add Player
               </Button>
             )}
           </Group>
 
-          <Text c="dimmed" size="sm">
-            All adventurers participating in this project
+          <Text c="dimmed" size="sm" fs={"italic"}>
+            All adventurers participating in this project!
           </Text>
 
           <Stack gap="md">
@@ -181,69 +181,102 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
 
               return (
                 <Card
-                  bg={"var(--alepha-elevated)"}
+                  withBorder
                   key={player.id}
                   shadow="sm"
-                  padding="lg"
+                  padding="sm"
                   radius="md"
-                  withBorder
                 >
-                  <Group gap="lg" align="flex-start">
+                  <Group gap="lg" align="center">
                     <Avatar
-                      src={player.user.picture}
-                      size={60}
+                      src={
+                        player.user.picture
+                          ? `/api/users/files/${player.user.picture}`
+                          : undefined
+                      }
+                      size={56}
                       radius="md"
-                      style={{
-                        border: player.owner
-                          ? "2px solid var(--mantine-color-yellow-6)"
-                          : "2px solid var(--mantine-color-gray-4)",
-                      }}
                     >
-                      <IconUser size={30} />
+                      <IconUser size={24} />
                     </Avatar>
 
-                    <Stack gap="xs" flex={1}>
+                    <Flex direction="column" flex={1}>
                       <Group gap="sm" align="center">
                         <Text fw={500} size="lg">
                           {player.user.name || "Anonymous User"}
                         </Text>
                         {player.owner && (
                           <Badge
-                            variant="filled"
-                            color="yellow"
+                            variant="light"
                             leftSection={<IconCrown size={12} />}
                           >
                             Owner
                           </Badge>
                         )}
-                        <Badge variant="light" color="blue">
-                          Level {level}
-                        </Badge>
                       </Group>
 
                       <Text size="sm" c="dimmed">
                         {player.user.email}
                       </Text>
+                    </Flex>
 
-                      <Group gap="lg">
-                        <Group gap="xs">
-                          <IconStar size={16} />
-                          <Text size="sm" fw={500}>
-                            {player.xp.toLocaleString()} XP
-                          </Text>
+                    <Flex flex={1} align={"center"} gap="xl">
+                      <Stack gap={2}>
+                        <Text size="xs" c="dimmed" fw={500}>
+                          Level
+                        </Text>
+                        <Text size="sm" fw={500}>
+                          {level}
+                        </Text>
+                      </Stack>
+                      <Stack gap={2}>
+                        <Text size="xs" c="dimmed" fw={500}>
+                          Experience
+                        </Text>
+                        <Text size="sm" fw={500}>
+                          {l(player.xp)}
+                        </Text>
+                      </Stack>
+                      <Stack gap={2}>
+                        <Text size="xs" c="dimmed" fw={500}>
+                          Balance
+                        </Text>
+                        <Group gap={2}>
+                          {gold > 0 && (
+                            <>
+                              <Text size="sm" fw={500}>
+                                {gold}
+                              </Text>
+                              <IconCircleFilled
+                                size={10}
+                                color="var(--color-gold)"
+                              />
+                            </>
+                          )}
+                          {silver > 0 && (
+                            <>
+                              <Text size="sm" fw={500}>
+                                {silver}
+                              </Text>
+                              <IconCircleFilled
+                                size={10}
+                                color="var(--color-silver)"
+                              />
+                            </>
+                          )}
+                          {gold === 0 && silver === 0 && (
+                            <Text size="sm" fw={500}>
+                              0
+                            </Text>
+                          )}
                         </Group>
-                        <Group gap="xs">
-                          <IconTrophy size={16} />
-                          <Text size="sm" fw={500} c="yellow.6">
-                            {gold}g {silver}s
-                          </Text>
-                        </Group>
-                      </Group>
+                      </Stack>
+                    </Flex>
 
-                      <Text size="xs" c="dimmed">
-                        Joined: {l(player.createdAt)}
-                      </Text>
-                    </Stack>
+                    <Text size="xs" c="dimmed">
+                      Joined{" "}
+                      <Localize value={player.createdAt} date="fromNow" />
+                    </Text>
                   </Group>
                 </Card>
               );
@@ -256,27 +289,19 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
                 padding="lg"
                 radius="md"
                 withBorder
-                style={{ opacity: 0.7 }}
+                style={{ opacity: 0.6 }}
               >
                 <Group gap="lg" align="flex-start">
-                  <Avatar
-                    size={60}
-                    radius="md"
-                    style={{
-                      border: "2px dashed var(--mantine-color-gray-5)",
-                    }}
-                  >
-                    <IconMail size={30} />
+                  <Avatar size={56} radius="md" color="gray">
+                    <IconMail size={24} />
                   </Avatar>
 
                   <Stack gap="xs" flex={1}>
                     <Group gap="sm" align="center">
-                      <Text fw={500} size="lg" c="dimmed">
+                      <Text fw={500} size="lg">
                         {invitation.invitedEmail}
                       </Text>
-                      <Badge variant="light" color="orange">
-                        Invited
-                      </Badge>
+                      <Badge variant="light">Pending</Badge>
                     </Group>
 
                     <Text size="sm" c="dimmed">
@@ -284,7 +309,8 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
                     </Text>
 
                     <Text size="xs" c="dimmed">
-                      Invited: {l(invitation.createdAt)}
+                      Sent{" "}
+                      <Localize value={invitation.createdAt} date="fromNow" />
                     </Text>
                   </Stack>
                 </Group>

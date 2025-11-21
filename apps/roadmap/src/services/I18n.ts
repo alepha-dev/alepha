@@ -111,11 +111,11 @@ export class I18n {
         "home.campaigns": "Campagnes",
         "home.create-campaign": "Lancer une nouvelle campagne",
 
-        "project.menu.create-task": "Créer une quête",
-        "project.menu.board": "Tableau des quêtes",
+        "project.menu.create-task": "Créer quête",
+        "project.menu.board": "Tableau",
         "project.menu.players": "Aventuriers",
         "project.menu.analytics": "Chroniques",
-        "project.menu.settings": "Paramètres du royaume",
+        "project.menu.settings": "Paramètres",
 
         "task.create.submit": "Ajouter la quête à la campagne",
         "task.create.complexity": "Difficulté",

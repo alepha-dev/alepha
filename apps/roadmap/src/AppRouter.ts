@@ -129,7 +129,6 @@ export class AppRouter {
       this.projectSettings,
       this.projectAnalytics,
       this.projectPlayers,
-      this.projectShop,
     ],
     path: "/p/:projectId",
     schema: {
@@ -214,11 +213,6 @@ export class AppRouter {
   projectSettings = $page({
     path: "/settings",
     lazy: () => import("./components/project/ProjectSettings.jsx"),
-  });
-
-  projectShop = $page({
-    path: "/shop",
-    lazy: () => import("./components/project/ProjectShop.jsx"),
   });
 
   projectTask = $page({
