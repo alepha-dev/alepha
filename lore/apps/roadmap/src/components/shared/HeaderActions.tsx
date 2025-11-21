@@ -1,13 +1,9 @@
 import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useI18n } from "@alepha/react/i18n";
-import { ActionIcon, Flex, Menu, useMantineColorScheme } from "@mantine/core";
-import {
-  IconLogout,
-  IconMoon,
-  IconSettings,
-  IconUser,
-} from "@tabler/icons-react";
+import { DarkModeButton, LanguageButton } from "@alepha/ui";
+import { Flex, Menu, useMantineColorScheme } from "@mantine/core";
+import { IconLogout, IconSettings, IconUser } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { theme } from "../../constants/theme.ts";
 import type { Security } from "../../providers/Security.ts";
@@ -20,9 +16,8 @@ const HeaderActions = () => {
   return (
     <Flex gap={"xs"} align="center" justify="center">
       <AuthButton />
-      <ActionIcon size={"lg"} variant={"subtle"} onClick={toggleColorScheme}>
-        <IconMoon />
-      </ActionIcon>
+      <LanguageButton />
+      <DarkModeButton />
     </Flex>
   );
 };
