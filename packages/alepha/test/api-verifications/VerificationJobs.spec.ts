@@ -19,14 +19,14 @@ describe("VerificationJobs", () => {
     const jobs = alepha.inject(VerificationJobs);
 
     const entry = {
-      type: "email",
+      type: "link",
       target: "hello@mail.com",
       code: "123456",
     } as const;
 
     await db.verifications.create({
       ...entry,
-      createdAt: time.now().toISOString(),
+      createdAt: time.nowISOString(),
     });
 
     await db.verifications.create({

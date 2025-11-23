@@ -76,6 +76,21 @@ export interface CreateFileFromTextOptions {
   name?: string;
 }
 
+export interface CreateFileFromResponseOptions {
+  /**
+   * The Response object containing the file data
+   */
+  response: Response;
+  /**
+   * Override the name (optional, uses filename from Content-Disposition header if not provided)
+   */
+  name?: string;
+  /**
+   * Override the MIME type (optional, uses file.type if not provided)
+   */
+  type?: string;
+}
+
 /**
  * Options for creating a file from a Web File object
  */
@@ -125,6 +140,7 @@ export type CreateFileOptions =
   | CreateFileFromStreamOptions
   | CreateFileFromTextOptions
   | CreateFileFromWebFileOptions
+  | CreateFileFromResponseOptions
   | CreateFileFromArrayBufferOptions;
 
 /**
@@ -261,6 +277,6 @@ export abstract class FileSystemProvider {
    */
   abstract writeFile(
     path: string,
-    data: Uint8Array | Buffer | string,
+    data: Uint8Array | Buffer | string | FileLike,
   ): Promise<void>;
 }

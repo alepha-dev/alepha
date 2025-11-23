@@ -57,7 +57,11 @@ const AdminShell = (props: AdminShellProps) => {
   const shouldShowSidebar = () => {
     if (props.noSidebarWhen?.paths) {
       for (const path of props.noSidebarWhen.paths) {
-        if (router.isActive(path)) {
+        if (
+          router.isActive(path, {
+            startWith: true,
+          })
+        ) {
           return false;
         }
       }

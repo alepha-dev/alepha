@@ -12,11 +12,11 @@ import type {
   WithLinkFn,
   WithLoginFn,
 } from "alepha/server/auth";
+import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
-import type { users } from "../entities/users.ts";
+import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
-import type { LoginSettings } from "../schemas/loginSettingsSchema.ts";
 import { SessionService } from "../services/SessionService.ts";
 
 export type UserRealmDescriptor = RealmDescriptor & WithLinkFn & WithLoginFn;
@@ -42,7 +42,7 @@ export const $userRealm = (
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
   const userRealmProvider = alepha.inject(UserRealmProvider);
-  const name = options.realm?.name ?? "default";
+  const name = options.realm?.name ?? DEFAULT_USER_REALM_NAME;
 
   userRealmProvider.register(name, options);
 
@@ -128,5 +128,5 @@ export interface UserRealmOptions {
     sessions?: Repository<typeof sessions.schema>;
   };
 
-  settings?: LoginSettings;
+  settings?: Partial<RealmAuthSettings>;
 }

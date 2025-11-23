@@ -297,6 +297,7 @@ const Control = (_props: ControlProps) => {
       type={getInputType()}
       {...props.input.props}
       {...textInputProps}
+      inputWrapperOrder={["label", "input", "description", "error"]}
     />
   );
   //endregion

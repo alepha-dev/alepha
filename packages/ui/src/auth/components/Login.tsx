@@ -1,11 +1,15 @@
 import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
+import { useI18n } from "@alepha/react/i18n";
 import { Card, Flex, Group, Stack, Text } from "@mantine/core";
-import { IconLock, IconMail } from "@tabler/icons-react";
+import { IconLock, IconUser } from "@tabler/icons-react";
 import { t } from "alepha";
 import type { UserRealmConfig } from "alepha/api/users";
+import { useMemo } from "react";
 import { ActionButton, Control, capitalize } from "../../core";
+import type { AuthI18n } from "../AuthI18n";
+import type { AuthRouter } from "../AuthRouter";
 import IconGithub from "./icons/IconGithub.tsx";
 import IconGoogle from "./icons/IconGoogle.tsx";
 
@@ -15,24 +19,55 @@ export interface LoginProps {
 
 const Login = (props: LoginProps) => {
   const auth = useAuth();
-  const router = useRouter();
+  const router = useRouter<AuthRouter>();
+  const { tr } = useI18n<AuthI18n, "en">();
   const redirect = router.query.redirect || "/";
 
   const hasUsernamePassword = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
   );
 
+  const settings = props.realmConfig.settings;
+
+  // Determine what login methods are available
+  const loginMethods = useMemo(() => {
+    const methods = [];
+    if (settings.usernameEnabled !== false) methods.push("username");
+    if (settings.emailEnabled !== false) methods.push("email");
+    if (settings.phoneEnabled === true) methods.push("phone");
+    return methods;
+  }, [settings]);
+
+  // Create identifier title based on enabled methods
+  const identifierTitle = useMemo(() => {
+    if (loginMethods.length === 0) return tr("loginUsername");
+    if (loginMethods.length === 1) {
+      if (loginMethods[0] === "username") return tr("loginUsername");
+      if (loginMethods[0] === "email") return tr("loginEmail");
+      if (loginMethods[0] === "phone") return tr("loginPhone");
+    }
+    const labels = loginMethods.map((m) => {
+      if (m === "username") return tr("loginUsername").toLowerCase();
+      if (m === "email") return tr("loginEmail").toLowerCase();
+      if (m === "phone") return tr("loginPhone").toLowerCase();
+      return m;
+    });
+    return capitalize(
+      `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`,
+    );
+  }, [loginMethods, tr]);
+
   const form = useForm({
     schema: t.object({
-      username: t.string({
-        minLength: 6,
+      identifier: t.string({
+        minLength: 1,
       }),
       password: t.string({
-        minLength: 6,
+        minLength: settings.passwordPolicy?.minLength || 6,
       }),
     }),
     handler: async (data) => {
-      await auth.login("usernamePassword", data);
+      // UI only - no API call
       await router.go(router.query.r || "/");
     },
   });
@@ -47,27 +82,43 @@ const Login = (props: LoginProps) => {
                 <form {...form.props}>
                   <Stack flex={1} gap={"md"}>
                     <Control
-                      input={form.input.username}
-                      icon={<IconMail />}
+                      title={identifierTitle}
+                      input={form.input.identifier}
+                      icon={<IconUser />}
                       text={{
-                        autoComplete: "username",
+                        autoComplete: loginMethods.includes("email")
+                          ? "email"
+                          : "username",
                       }}
                     />
                     <Control
+                      title={tr("loginPassword")}
                       input={form.input.password}
                       icon={<IconLock />}
                       password={{
                         autoComplete: "current-password",
                       }}
                     />
-                    <ActionButton form={form}>Sign in</ActionButton>
+                    <ActionButton form={form}>{tr("loginSignIn")}</ActionButton>
                   </Stack>
                 </form>
-                <Group align="center" justify="center" gap={"md"}>
-                  <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
-                  <Text size="xs">OR</Text>
-                  <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
-                </Group>
+                <Stack gap="xs">
+                  {settings.resetPasswordAllowed && (
+                    <Text size="sm" ta="center">
+                      <ActionButton
+                        href={router.path("resetPassword")}
+                        anchorProps={{ inherit: true }}
+                      >
+                        {tr("loginForgotPassword")}
+                      </ActionButton>
+                    </Text>
+                  )}
+                  <Group align="center" justify="center" gap={"md"}>
+                    <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
+                    <Text size="xs">{tr("loginOr")}</Text>
+                    <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
+                  </Group>
+                </Stack>
               </>
             )}
             <Stack gap={"sm"}>
@@ -84,15 +135,26 @@ const Login = (props: LoginProps) => {
                         })
                       }
                     >
-                      {`Continue with ${capitalize(method.name)}`}
+                      {tr("loginContinueWith", {
+                        args: [capitalize(method.name)],
+                      })}
                     </ActionButton>
                   ),
               )}
             </Stack>
+            <Text size="sm" ta="center">
+              {tr("loginNoAccount")}{" "}
+              <ActionButton
+                href={router.path("register")}
+                anchorProps={{ inherit: true }}
+              >
+                {tr("loginSignUp")}
+              </ActionButton>
+            </Text>
           </Stack>
         </Card>
         <ActionButton variant={"subtle"} href={redirect}>
-          Cancel
+          {tr("loginCancel")}
         </ActionButton>
       </Stack>
     </Flex>

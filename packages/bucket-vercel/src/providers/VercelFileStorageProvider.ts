@@ -11,12 +11,11 @@ import {
 } from "alepha";
 import {
   $bucket,
-  FileMetadataService,
   FileNotFoundError,
   type FileStorageProvider,
 } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
-import { FileSystemProvider } from "alepha/file";
+import { FileDetector, FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
@@ -39,9 +38,9 @@ export class VercelFileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly fileSystem = $inject(FileSystemProvider);
+  protected readonly fileDetector = $inject(FileDetector);
   protected readonly stores: Set<string> = new Set();
   protected readonly vercelBlobApi = $inject(VercelBlobApi);
-  protected readonly metadataService = $inject(FileMetadataService);
 
   protected readonly onStart = $hook({
     on: "start",
@@ -69,8 +68,9 @@ export class VercelFileStorageProvider implements FileStorageProvider {
     return name.replaceAll("/", "-").toLowerCase();
   }
 
-  protected createId(): string {
-    return crypto.randomUUID();
+  protected createId(mimeType: string): string {
+    const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
+    return `${crypto.randomUUID()}.${ext}`;
   }
 
   public async upload(
@@ -78,7 +78,7 @@ export class VercelFileStorageProvider implements FileStorageProvider {
     file: FileLike,
     fileId?: string,
   ): Promise<string> {
-    fileId ??= this.createId();
+    fileId ??= this.createId(file.type);
 
     this.log.trace(
       `Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
@@ -88,17 +88,11 @@ export class VercelFileStorageProvider implements FileStorageProvider {
     const pathname = `${storeName}/${fileId}`;
 
     try {
-      // Create a buffer with metadata and content
       const contentBuffer = Buffer.from(await file.arrayBuffer());
-      const fileBuffer = this.metadataService.createFileBuffer(
-        file,
-        contentBuffer,
-      );
 
-      // Upload the complete buffer (metadata + content) to Vercel Blob
       const result = await this.vercelBlobApi.put(
         pathname,
-        fileBuffer as unknown as Readable,
+        contentBuffer as unknown as Readable,
         {
           access: "public",
           contentType: file.type || "application/octet-stream",
@@ -130,7 +124,6 @@ export class VercelFileStorageProvider implements FileStorageProvider {
     const pathname = `${storeName}/${fileId}`;
 
     try {
-      // check if the file exists and get metadata
       const headResult = await this.vercelBlobApi.head(pathname, {
         token: this.env.BLOB_READ_WRITE_TOKEN,
       });
@@ -141,7 +134,6 @@ export class VercelFileStorageProvider implements FileStorageProvider {
         );
       }
 
-      // fetch the actual file content (with metadata)
       const response = await fetch(headResult.url);
 
       if (!response.ok) {
@@ -155,18 +147,12 @@ export class VercelFileStorageProvider implements FileStorageProvider {
         throw new FileNotFoundError("File not found - empty response body");
       }
 
-      // Decode metadata from the buffer
-      const buffer = Buffer.from(arrayBuffer);
-      const { metadata, contentStart } =
-        this.metadataService.decodeMetadataFromBuffer(buffer);
-
-      // Extract the actual content
-      const content = buffer.subarray(contentStart);
+      const mimeType = this.fileDetector.getContentType(fileId);
 
       return this.fileSystem.createFile({
-        buffer: content,
-        name: metadata.name,
-        type: metadata.type,
+        buffer: Buffer.from(arrayBuffer),
+        name: fileId,
+        type: mimeType,
       });
     } catch (error) {
       if (error instanceof FileNotFoundError) {

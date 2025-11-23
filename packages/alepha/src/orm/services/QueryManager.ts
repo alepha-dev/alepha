@@ -1,4 +1,10 @@
-import { $inject, Alepha, createPagination, type TObject } from "alepha";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  createPagination,
+  type TObject,
+} from "alepha";
 import {
   and,
   arrayContained,
@@ -399,7 +405,7 @@ export class QueryManager {
 
     if (operator?.inArray != null) {
       if (!Array.isArray(operator.inArray) || operator.inArray.length === 0) {
-        throw new Error("inArray operator requires at least one value");
+        throw new AlephaError("inArray operator requires at least one value");
       }
       conditions.push(inArray(column, encodeArray(operator.inArray)));
     }
@@ -409,7 +415,9 @@ export class QueryManager {
         !Array.isArray(operator.notInArray) ||
         operator.notInArray.length === 0
       ) {
-        throw new Error("notInArray operator requires at least one value");
+        throw new AlephaError(
+          "notInArray operator requires at least one value",
+        );
       }
       conditions.push(notInArray(column, encodeArray(operator.notInArray)));
     }

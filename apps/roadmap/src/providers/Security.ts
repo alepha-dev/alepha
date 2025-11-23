@@ -1,27 +1,21 @@
 import { $inject } from "alepha";
-import { $userRealm, SessionService } from "alepha/api/users";
+import { $userRealm } from "alepha/api/users";
 import type { UserAccountToken } from "alepha/security";
-import { $auth, $authGithub, $authGoogle } from "alepha/server/auth";
+import { $authCredentials, $authGithub, $authGoogle } from "alepha/server/auth";
 import type { Character } from "../entities/characters.ts";
 import type { Project } from "../entities/projects.ts";
 import { Db } from "./Db.ts";
 
 export class Security {
   db = $inject(Db);
-  realm = $userRealm();
-  session = $inject(SessionService);
-
-  // login providers
-  credentials = $auth({
-    realm: this.realm,
-    credentials: {
-      account: (creds) =>
-        this.session.login("credentials", creds.username, creds.password),
+  realm = $userRealm({
+    settings: {
+      usernameRequired: true,
     },
   });
 
+  credentials = $authCredentials(this.realm);
   google = $authGoogle(this.realm);
-
   github = $authGithub(this.realm);
 
   async checkOwnership(

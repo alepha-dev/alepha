@@ -21,8 +21,7 @@ export const verifications = $entity({
     }),
 
     code: t.text({
-      description:
-        "Hashed verification token (6-digit code for phone, UUID for email)",
+      description: "Hashed verification token (n-digit code or UUID)",
     }),
 
     verifiedAt: t.optional(

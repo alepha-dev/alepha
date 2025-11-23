@@ -5,7 +5,7 @@ export const Layout = () => {
     <AlephaMantineProvider>
       <AdminShell
         noSidebarWhen={{
-          paths: ["/login"],
+          paths: ["/auth"],
         }}
         sidebarProps={{}}
         appBarProps={{

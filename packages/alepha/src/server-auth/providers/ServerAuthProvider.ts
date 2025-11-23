@@ -1,8 +1,12 @@
 import { $hook, $inject, Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { SecurityError, type UserAccount } from "alepha/security";
-import { $route, BadRequestError, UnauthorizedError } from "alepha/server";
+import {
+  InvalidCredentialsError,
+  SecurityError,
+  type UserAccount,
+} from "alepha/security";
+import { $route, BadRequestError } from "alepha/server";
 import {
   $cookie,
   type Cookies,
@@ -344,13 +348,19 @@ export class ServerAuthProvider {
         );
       }
 
-      let user: UserAccount;
+      let user: UserAccount | undefined;
       try {
         user = await credentials.account(body);
       } catch (e) {
-        throw new UnauthorizedError(`Failed to authenticate user`, {
-          cause: e,
-        });
+        if (e instanceof InvalidCredentialsError) {
+          throw e;
+        }
+        this.log.error("Failed to authenticate user", e);
+        throw new InvalidCredentialsError();
+      }
+
+      if (!user) {
+        throw new InvalidCredentialsError();
       }
 
       const tokens = {

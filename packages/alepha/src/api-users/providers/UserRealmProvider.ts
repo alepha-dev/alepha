@@ -1,10 +1,15 @@
 import { AlephaError } from "alepha";
-import type { UserRealmOptions } from "alepha/api/users";
+import {
+  DEFAULT_USER_REALM_NAME,
+  realmAuthSettingsAtom,
+  type UserRealmOptions,
+} from "alepha/api/users";
 import { $repository, type Repository } from "alepha/orm";
+import { $bucket } from "../../bucket";
+import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import { identities } from "../entities/identities";
 import { sessions } from "../entities/sessions";
 import { users } from "../entities/users";
-import type { LoginSettings } from "../schemas/loginSettingsSchema.ts";
 
 export interface UserRealmRepositories {
   identities: Repository<typeof identities.schema>;
@@ -13,8 +18,9 @@ export interface UserRealmRepositories {
 }
 
 export interface UserRealm {
+  name: string;
   repositories: UserRealmRepositories;
-  settings?: LoginSettings;
+  settings: RealmAuthSettings;
 }
 
 export class UserRealmProvider {
@@ -25,32 +31,46 @@ export class UserRealmProvider {
 
   protected realms = new Map<string, UserRealm>();
 
+  public avatars = $bucket({
+    maxSize: 5 * 1024 * 1024, // 5 MB
+    mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  });
+
   public register(
     userRealmName: string,
     userRealmOptions: UserRealmOptions = {},
   ) {
     this.realms.set(userRealmName, {
+      name: userRealmName,
       repositories: {
         identities:
           userRealmOptions.entities?.identities ?? this.defaultIdentities,
         sessions: userRealmOptions.entities?.sessions ?? this.defaultSessions,
         users: userRealmOptions.entities?.users ?? this.defaultUsers,
       },
-      settings: userRealmOptions.settings,
+      // TODO: Remove deep merge when alepha supports it natively
+      settings: {
+        ...realmAuthSettingsAtom.options.default,
+        ...userRealmOptions.settings,
+        passwordPolicy: {
+          ...realmAuthSettingsAtom.options.default.passwordPolicy,
+          ...userRealmOptions.settings?.passwordPolicy,
+        },
+      },
     });
   }
 
   /**
    * Gets a registered realm by name, auto-creating default if needed.
    */
-  protected getRealm(userRealmName: string): UserRealm {
+  public getRealm(userRealmName = DEFAULT_USER_REALM_NAME): UserRealm {
     let realm = this.realms.get(userRealmName);
 
     if (!realm) {
       // Auto-register default realm for backward compatibility
-      if (userRealmName === "default") {
-        this.register("default");
-        realm = this.realms.get("default")!;
+      if (userRealmName === DEFAULT_USER_REALM_NAME) {
+        this.register(userRealmName);
+        realm = this.realms.get(userRealmName)!;
       } else {
         throw new AlephaError(
           `Missing user realm '${userRealmName}', please declare $userRealm in your application.`,
@@ -61,29 +81,20 @@ export class UserRealmProvider {
     return realm;
   }
 
-  /**
-   * Gets the login settings for a realm.
-   */
-  public getRealmSettings(
-    userRealmName = "default",
-  ): LoginSettings | undefined {
-    return this.getRealm(userRealmName).settings;
-  }
-
   public identityRepository(
-    userRealmName = "default",
+    userRealmName = DEFAULT_USER_REALM_NAME,
   ): Repository<typeof identities.schema> {
     return this.getRealm(userRealmName).repositories.identities;
   }
 
   public sessionRepository(
-    userRealmName = "default",
+    userRealmName = DEFAULT_USER_REALM_NAME,
   ): Repository<typeof sessions.schema> {
     return this.getRealm(userRealmName).repositories.sessions;
   }
 
   public userRepository(
-    userRealmName = "default",
+    userRealmName = DEFAULT_USER_REALM_NAME,
   ): Repository<typeof users.schema> {
     return this.getRealm(userRealmName).repositories.users;
   }

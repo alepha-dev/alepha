@@ -1,4 +1,4 @@
-import { $inject, createDescriptor, Descriptor, KIND } from "alepha";
+import { $inject, Async, createDescriptor, Descriptor, KIND } from "alepha";
 import { I18nProvider } from "../providers/I18nProvider.ts";
 
 /**
@@ -43,7 +43,7 @@ export const $dictionary = <T extends Record<string, string>>(
 export interface DictionaryDescriptorOptions<T extends Record<string, string>> {
   lang?: string;
   name?: string;
-  lazy: () => Promise<{ default: T }>;
+  lazy: () => Async<{ default: T }>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -54,9 +54,13 @@ export class DictionaryDescriptor<
   protected provider = $inject(I18nProvider);
   protected onInit() {
     this.provider.registry.push({
+      target: this.config.service.name,
       name: this.options.name ?? this.config.propertyKey,
       lang: this.options.lang ?? this.config.propertyKey,
-      loader: () => this.options.lazy().then((it) => it.default),
+      loader: async () => {
+        const mod = await this.options.lazy();
+        return mod.default;
+      },
       translations: {},
     });
   }

@@ -382,6 +382,39 @@ export class FileDetector {
     otf: "font/otf",
     eot: "application/vnd.ms-fontobject",
   };
+
+  /**
+   * Reverse MIME type map for looking up extensions from MIME types.
+   * Prefers shorter, more common extensions when multiple exist.
+   */
+  protected static readonly reverseMimeMap: Record<string, string> = (() => {
+    const reverse: Record<string, string> = {};
+    // Process in order so common extensions come first
+    for (const [ext, mimeType] of Object.entries(FileDetector.mimeMap)) {
+      // Only set if not already set (prefer first/shorter extension)
+      if (!reverse[mimeType]) {
+        reverse[mimeType] = ext;
+      }
+    }
+    return reverse;
+  })();
+
+  /**
+   * Returns the file extension for a given MIME type.
+   *
+   * @param mimeType - The MIME type to look up
+   * @returns The file extension (without dot), or "bin" if not found
+   *
+   * @example
+   * ```typescript
+   * const detector = alepha.inject(FileDetector);
+   * const ext = detector.getExtensionFromMimeType("image/png"); // "png"
+   * const ext2 = detector.getExtensionFromMimeType("application/octet-stream"); // "bin"
+   * ```
+   */
+  getExtensionFromMimeType(mimeType: string): string {
+    return FileDetector.reverseMimeMap[mimeType] || "bin";
+  }
   /**
    * Returns the content type of file based on its filename.
    *

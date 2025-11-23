@@ -10,8 +10,9 @@ export const identities = $entity({
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     userId: pg.ref(t.uuid(), () => users.cols.id),
-    provider: t.string(),
-    providerUserId: t.string(),
+    password: t.optional(t.text()),
+    provider: t.text(),
+    providerUserId: t.optional(t.text()),
     providerData: t.optional(t.json()),
   }),
 });

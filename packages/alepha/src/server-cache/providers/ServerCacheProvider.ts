@@ -1,3 +1,4 @@
+import type { BinaryLike } from "node:crypto";
 import { createHash } from "node:crypto";
 import { $hook, $inject, Alepha } from "alepha";
 import { $cache, type CacheDescriptorOptions } from "alepha/cache";
@@ -45,7 +46,7 @@ export class ServerCacheProvider {
     provider: "memory",
   });
 
-  public generateETag(content: string): string {
+  public generateETag(content: BinaryLike): string {
     return `"${createHash("md5").update(content).digest("hex")}"`;
   }
 
@@ -212,7 +213,18 @@ export class ServerCacheProvider {
       const shouldStore = this.shouldStore(cache);
       const shouldUseEtag = this.shouldUseEtag(cache);
 
-      if (!shouldStore && shouldUseEtag && request.reply.body != null) {
+      if (request.reply.headers.etag) {
+        // ETag already set, skip
+        return;
+      }
+
+      if (
+        !shouldStore &&
+        shouldUseEtag &&
+        request.reply.body != null &&
+        (typeof request.reply.body === "string" ||
+          Buffer.isBuffer(request.reply.body))
+      ) {
         const generatedEtag = this.generateETag(request.reply.body);
 
         if (request.headers["if-none-match"] === generatedEtag) {
@@ -234,6 +246,12 @@ export class ServerCacheProvider {
     priority: "first",
     handler: async ({ route, request, response }) => {
       const cache = route.cache;
+
+      // Set Cache-Control header if configured
+      const cacheControl = this.buildCacheControlHeader(cache);
+      if (cacheControl) {
+        response.headers["cache-control"] = cacheControl;
+      }
 
       const shouldStore = this.shouldStore(cache);
       const shouldUseEtag = this.shouldUseEtag(cache);
@@ -277,12 +295,6 @@ export class ServerCacheProvider {
           lastModified,
           hash: generatedEtag,
         });
-
-        // Set Cache-Control header if configured
-        const cacheControl = this.buildCacheControlHeader(cache);
-        if (cacheControl) {
-          response.headers["cache-control"] = cacheControl;
-        }
       }
 
       // Set ETag headers if etag is enabled

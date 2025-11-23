@@ -33,6 +33,7 @@ describe("alepha/api-users - IdentityController", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "identityuser",
       email: "identity@example.com",
       roles: ["user"],
     });
@@ -76,6 +77,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "deleteidentityuser",
       email: "deleteidentity@example.com",
       roles: ["user"],
     });
@@ -105,6 +107,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "multiidentityuser",
       email: "multiidentity@example.com",
       roles: ["user"],
     });
@@ -143,10 +146,12 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user1 = await userService.users().create({
+      username: "user1identity",
       email: "user1identity@example.com",
       roles: ["user"],
     });
     const user2 = await userService.users().create({
+      username: "user2identity",
       email: "user2identity@example.com",
       roles: ["user"],
     });
@@ -179,6 +184,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "providerfilteruser",
       email: "providerfilter@example.com",
       roles: ["user"],
     });
@@ -213,6 +219,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "sortidentityuser",
       email: "sortidentity@example.com",
       roles: ["user"],
     });
@@ -250,6 +257,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "providerdatauser",
       email: "providerdata@example.com",
       roles: ["user"],
     });
@@ -303,6 +311,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "noproviderdatauser",
       email: "noproviderdata@example.com",
       roles: ["user"],
     });
@@ -324,6 +333,7 @@ describe("alepha/api-users - IdentityController", () => {
     const { identityService, userService, controller } = await setup();
 
     const user = await userService.users().create({
+      username: "multiprovideruser",
       email: "multiprovider@example.com",
       roles: ["user"],
     });

@@ -93,6 +93,7 @@ export const isFileLike = (value: any): value is FileLike => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+// TODO: remove it, replace with WebStream
 export type StreamLike =
   | ReadableStream
   | WebReadableStream

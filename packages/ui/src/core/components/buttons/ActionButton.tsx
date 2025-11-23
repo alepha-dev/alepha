@@ -8,6 +8,8 @@ import {
 } from "@alepha/react";
 import { type FormModel, useFormState } from "@alepha/react/form";
 import {
+  Anchor,
+  type AnchorProps,
   Button,
   type ButtonProps,
   Flex,
@@ -97,11 +99,13 @@ export interface ActionMenuConfig {
   on?: "hover" | "click";
 
   targetProps?: MenuTargetProps;
+
   menuProps?: MenuProps;
 }
 
 export interface ActionCommonProps extends ButtonProps {
   children?: ReactNode;
+
   textVisibleFrom?: "xs" | "sm" | "md" | "lg" | "xl";
 
   /**
@@ -509,6 +513,7 @@ export interface ActionNavigationButtonProps extends ButtonProps {
   classNameActive?: string;
   variantActive?: ButtonProps["variant"];
   target?: string;
+  anchorProps?: AnchorProps;
 }
 
 /**
@@ -531,6 +536,14 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
   const className = buttonProps.className || "";
   if (isActive && options !== false && classNameActive) {
     buttonProps.className = `${className} ${classNameActive}`.trim();
+  }
+
+  if (props.anchorProps) {
+    return (
+      <Anchor component={"a"} {...anchorProps} {...props.anchorProps}>
+        {props.children}
+      </Anchor>
+    );
   }
 
   return (

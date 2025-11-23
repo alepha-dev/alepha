@@ -9,7 +9,7 @@ import { VerificationParameters } from "../../src/api-verifications/parameters/V
 
 const createTest = async () => {
   const alepha = Alepha.create().with(AlephaApiVerification);
-  const parameters = alepha.inject(VerificationParameters).get("phone");
+  const parameters = alepha.inject(VerificationParameters).get("code");
   const controller = alepha.inject(VerificationController);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const target = "+33633115544";
@@ -25,13 +25,13 @@ const createTest = async () => {
   };
 };
 
-describe("PhoneVerification", () => {
+describe("Code Verification", () => {
   it("should verify phone with 6-digit code correctly", async ({ expect }) => {
     const { parameters, controller, target } = await createTest();
 
     const request = await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -54,7 +54,7 @@ describe("PhoneVerification", () => {
     expect(
       await controller.validateVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -68,7 +68,7 @@ describe("PhoneVerification", () => {
     expect(
       await controller.validateVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -86,7 +86,7 @@ describe("PhoneVerification", () => {
 
     await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -96,7 +96,7 @@ describe("PhoneVerification", () => {
     await expect(() =>
       controller.validateVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -111,7 +111,7 @@ describe("PhoneVerification", () => {
 
     await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -122,7 +122,7 @@ describe("PhoneVerification", () => {
       await controller
         .validateVerificationCode({
           params: {
-            type: "phone",
+            type: "code",
           },
           body: {
             target,
@@ -135,7 +135,7 @@ describe("PhoneVerification", () => {
     await expect(() =>
       controller.validateVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -151,7 +151,7 @@ describe("PhoneVerification", () => {
 
     await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -161,7 +161,7 @@ describe("PhoneVerification", () => {
     await expect(() =>
       controller.requestVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -176,7 +176,7 @@ describe("PhoneVerification", () => {
 
     const response = await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -198,7 +198,7 @@ describe("PhoneVerification", () => {
     for (let i = 0; i < parameters.limitPerDay; i++) {
       await controller.requestVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -213,7 +213,7 @@ describe("PhoneVerification", () => {
     await expect(() =>
       controller.requestVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -230,7 +230,7 @@ describe("PhoneVerification", () => {
 
     const response = await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -245,7 +245,7 @@ describe("PhoneVerification", () => {
     await expect(() =>
       controller.validateVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target,
@@ -261,7 +261,7 @@ describe("PhoneVerification", () => {
 
     const response1 = await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -277,7 +277,7 @@ describe("PhoneVerification", () => {
 
     const response2 = await controller.requestVerificationCode({
       params: {
-        type: "phone",
+        type: "code",
       },
       body: {
         target,
@@ -300,7 +300,7 @@ describe("PhoneVerification", () => {
     for (let i = 0; i < 5; i++) {
       const response = await controller.requestVerificationCode({
         params: {
-          type: "phone",
+          type: "code",
         },
         body: {
           target: `${target}${i}`,

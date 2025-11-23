@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type * as fs from "node:fs";
-import { createReadStream, createWriteStream } from "node:fs";
-import { type FileHandle, mkdir, open, stat, unlink } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { mkdir, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import * as path from "node:path";
 import { join } from "node:path";
-import { Readable } from "node:stream";
 import {
   $atom,
   $hook,
@@ -16,11 +16,10 @@ import {
   type Static,
   t,
 } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileDetector, FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
-import { FileMetadataService } from "../services/FileMetadataService.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -55,8 +54,8 @@ declare module "alepha" {
 export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly metadataService = $inject(FileMetadataService);
-  protected readonly fileSystem = $inject(FileSystemProvider);
+  protected readonly fileDetector = $inject(FileDetector);
+  protected readonly fileSystemProvider = $inject(FileSystemProvider);
   protected readonly options = $use(localFileStorageOptions);
 
   protected get storagePath(): string {
@@ -103,51 +102,36 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     file: FileLike,
     fileId?: string,
   ): Promise<string> {
-    fileId ??= this.createId();
+    fileId ??= this.createId(file.type);
 
-    const { header, metadata } = this.metadataService.encodeMetadata(file);
+    this.log.trace(`Uploading file to ${path}`);
 
-    return new Promise((resolve, reject) => {
-      const path = this.path(bucketName, fileId!);
-      this.log.trace(`Uploading file to ${path}`);
-      const writeStream = createWriteStream(path);
-      writeStream.on("finish", () => resolve(fileId));
-      writeStream.on("error", reject);
+    await this.fileSystemProvider.writeFile(
+      this.path(bucketName, fileId),
+      file,
+    );
 
-      writeStream.write(header);
-      writeStream.write(metadata);
-      Readable.from(file.stream()).pipe(writeStream);
-    });
+    return fileId;
   }
 
   public async download(bucketName: string, fileId: string): Promise<FileLike> {
     const filePath = this.path(bucketName, fileId);
 
-    let fileHandle: FileHandle | undefined;
     try {
-      fileHandle = await open(filePath, "r");
+      const stats = await stat(filePath);
+      const mimeType = this.fileDetector.getContentType(fileId);
 
-      const { metadata, contentStart } =
-        await this.metadataService.decodeMetadata(fileHandle);
-
-      // get the total file size
-      const stats = await fileHandle.stat();
-      const contentSize = stats.size - contentStart;
-
-      // create a FileLike object that streams only the content part!
-      return this.fileSystem.createFile({
-        stream: createReadStream(filePath, { start: contentStart }),
-        name: metadata.name,
-        type: metadata.type,
-        size: contentSize,
+      return this.fileSystemProvider.createFile({
+        stream: createReadStream(filePath),
+        name: fileId,
+        type: mimeType,
+        size: stats.size,
       });
     } catch (error) {
       if (this.isErrorNoEntry(error)) {
         throw new FileNotFoundError(`File with ID ${fileId} not found.`);
       }
       throw new AlephaError("Invalid file operation", { cause: error });
-    } finally {
-      await fileHandle?.close();
     }
   }
 
@@ -178,8 +162,9 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     return stat(this.path(bucket, fileId));
   }
 
-  protected createId(): string {
-    return randomUUID();
+  protected createId(mimeType: string): string {
+    const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
+    return `${randomUUID()}.${ext}`;
   }
 
   protected path(bucket: string, fileId = ""): string {

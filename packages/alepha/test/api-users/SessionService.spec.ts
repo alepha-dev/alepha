@@ -39,6 +39,7 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "loginsuccessuser",
       email: "login-success@example.com",
       roles: ["user"],
     });
@@ -51,7 +52,7 @@ describe("alepha/api-users - SessionService.login", () => {
       provider: "local",
       providerUserId: "login-success@example.com",
       userId: user.id,
-      providerData: { password: hashedPassword },
+      password: hashedPassword,
     });
 
     // Test login
@@ -61,8 +62,8 @@ describe("alepha/api-users - SessionService.login", () => {
       password,
     );
 
-    expect(result.id).toBe(user.id);
-    expect(result.email).toBe("login-success@example.com");
+    expect(result?.id).toBe(user.id);
+    expect(result?.email).toBe("login-success@example.com");
   });
 
   it("should throw InvalidCredentialsError when identity not found", async ({
@@ -83,6 +84,7 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "invalidpassworduser",
       email: "invalid-password@example.com",
       roles: ["user"],
     });
@@ -94,7 +96,7 @@ describe("alepha/api-users - SessionService.login", () => {
       provider: "local",
       providerUserId: "invalid-password@example.com",
       userId: user.id,
-      providerData: { password: hashedPassword },
+      password: hashedPassword,
     });
 
     // Test login with wrong password
@@ -114,6 +116,7 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "nopassworduser",
       email: "no-password@example.com",
       roles: ["user"],
     });
@@ -139,6 +142,7 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Create a user, then delete them to simulate orphan identity
     const user = await userService.users().create({
+      username: "orphanidentityuser",
       email: "orphan-identity@example.com",
       roles: ["user"],
     });
@@ -149,7 +153,7 @@ describe("alepha/api-users - SessionService.login", () => {
       provider: "local",
       providerUserId: "orphan-identity@example.com",
       userId: user.id,
-      providerData: { password: hashedPassword },
+      password: hashedPassword,
     });
 
     // Delete the user to create orphan identity scenario
@@ -172,6 +176,7 @@ describe("alepha/api-users - SessionService.login", () => {
 
     // Setup for invalid password test
     const user = await userService.users().create({
+      username: "sameerroruser",
       email: "same-error@example.com",
       roles: ["user"],
     });
@@ -180,7 +185,7 @@ describe("alepha/api-users - SessionService.login", () => {
       provider: "local",
       providerUserId: "same-error@example.com",
       userId: user.id,
-      providerData: { password: hashedPassword },
+      password: hashedPassword,
     });
 
     // Test identity not found
@@ -232,6 +237,7 @@ describe("alepha/api-users - SessionService.login", () => {
       await setup();
 
     const user = await userService.users().create({
+      username: "multiprovideruser",
       email: "multi-provider@example.com",
       roles: ["user"],
     });
@@ -240,18 +246,17 @@ describe("alepha/api-users - SessionService.login", () => {
     const hashedPassword = await cryptoProvider.hashPassword("customPass");
     await identities.create({
       provider: "custom",
-      providerUserId: "custom-user-id",
       userId: user.id,
-      providerData: { password: hashedPassword },
+      password: hashedPassword,
     });
 
     // Login with correct provider
     const result = await sessionService.login(
       "custom",
-      "custom-user-id",
+      "multiprovideruser",
       "customPass",
     );
-    expect(result.id).toBe(user.id);
+    expect(result?.id).toBe(user.id);
 
     // Should fail with wrong provider
     await expect(
@@ -264,6 +269,7 @@ describe("alepha/api-users - SessionService.login", () => {
       await setup();
 
     const user = await userService.users().create({
+      username: "emptypassworduser",
       email: "empty-password@example.com",
       roles: ["user"],
     });
@@ -273,7 +279,7 @@ describe("alepha/api-users - SessionService.login", () => {
       provider: "local",
       providerUserId: "empty-password@example.com",
       userId: user.id,
-      providerData: { password: hashedPassword },
+      password: hashedPassword,
     });
 
     // Empty password should fail

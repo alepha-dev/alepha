@@ -2,7 +2,7 @@ import type { Static } from "alepha";
 import { t } from "alepha";
 
 export const verificationSettingsSchema = t.object({
-  phone: t.object(
+  code: t.object(
     {
       maxAttempts: t.integer({
         description:
@@ -33,10 +33,10 @@ export const verificationSettingsSchema = t.object({
       }),
     },
     {
-      description: "Settings specific to phone verifications.",
+      description: "Settings specific to code verifications.",
     },
   ),
-  email: t.object(
+  link: t.object(
     {
       maxAttempts: t.integer({
         description:
@@ -62,7 +62,7 @@ export const verificationSettingsSchema = t.object({
       }),
     },
     {
-      description: "Settings specific to email verifications.",
+      description: "Settings specific to link verifications.",
     },
   ),
   purgeDays: t.integer({

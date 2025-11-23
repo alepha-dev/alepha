@@ -146,33 +146,17 @@ export class VerificationService {
     return { ok: true };
   }
 
-  /**
-   * Verify a code silently - returns false instead of throwing errors.
-   * Useful for password reset where we don't want to reveal if email exists.
-   */
-  public async verifyCodeSilent(
-    entry: VerificationEntry,
-    code: string,
-  ): Promise<boolean> {
-    try {
-      const result = await this.verifyCode(entry, code);
-      return result.ok;
-    } catch {
-      return false;
-    }
-  }
-
   public hashCode(code: string): string {
     return createHash("sha256").update(code).digest("hex");
   }
 
   public generateToken(type: VerificationTypeEnum): string {
-    if (type === "phone") {
-      const settings = this.verificationParameters.get("phone");
+    if (type === "code") {
+      const settings = this.verificationParameters.get("code");
       return randomInt(0, 1_000_000)
         .toString()
         .padStart(settings.codeLength, "0");
-    } else if (type === "email") {
+    } else if (type === "link") {
       return randomUUID();
     }
 

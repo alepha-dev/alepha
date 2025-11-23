@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, t } from "alepha";
+import { $inject, Alepha, AlephaError, type Async, t } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   type ActionDescriptor,
@@ -8,10 +8,10 @@ import {
   type FetchResponse,
   HttpClient,
   type RequestConfigSchema,
-  type ServerHandler,
   ServerReply,
   type ServerRequest,
   type ServerRequestConfigEntry,
+  type ServerResponseBody,
   UnauthorizedError,
 } from "alepha/server";
 import type { ServerRouteSecure } from "alepha/server/security";
@@ -162,16 +162,19 @@ export class LinkProvider {
     // if a handler is defined, use it (ssr)
     if (link.handler && !options.request) {
       this.log.trace("Local link found", { name });
-      return link.handler({
-        method: link.method,
-        url: new URL(`http://localhost${link.path}`),
-        query: config.query ?? {},
-        body: config.body ?? {},
-        params: config.params ?? {},
-        headers: config.headers ?? {},
-        metadata: {},
-        reply: new ServerReply(),
-      } as Partial<ServerRequest> as ServerRequest);
+      return link.handler(
+        {
+          method: link.method,
+          url: new URL(`http://localhost${link.path}`),
+          query: config.query ?? {},
+          body: config.body ?? {},
+          params: config.params ?? {},
+          headers: config.headers ?? {},
+          metadata: {},
+          reply: new ServerReply(),
+        } as Partial<ServerRequest> as ServerRequest,
+        options,
+      );
     }
 
     this.log.trace("Remote link found", {
@@ -318,7 +321,10 @@ export interface HttpClientLink extends ApiLink {
   service?: string;
   // used only for local actions, not for remote actions
   schema?: RequestConfigSchema;
-  handler?: ServerHandler;
+  handler?: (
+    request: ServerRequest,
+    options: ClientRequestOptions,
+  ) => Async<ServerResponseBody>;
 }
 
 export interface ClientScope {

@@ -35,10 +35,11 @@ const setup = async () => {
   };
 };
 
-// Helper to extract token from email
-const extractToken = (emailBody: string): string => {
-  const match = emailBody.match(/token=([a-f0-9-]+)/);
-  if (!match) throw new Error("Token not found in email");
+// Helper to extract code from email
+const extractCode = (emailBody: string): string => {
+  // Code is displayed in the email body as a 6-digit number
+  const match = emailBody.match(/(\d{6})/);
+  if (!match) throw new Error("Code not found in email");
   return match[1];
 };
 
@@ -50,6 +51,7 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "testuser",
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -59,20 +61,20 @@ describe("alepha/api-users - Email Verification", () => {
     const result = await actions.requestEmailVerification({
       body: {
         email: "test@example.com",
-        verifyUrl: "https://example.com/verify-email",
       },
     });
 
     expect(result.success).toBe(true);
-    expect(result.message).toContain("verification link has been sent");
+    expect(result.message).toContain("verification code has been sent");
 
     // Verify email was sent via verification service
     await expect.poll(() => emailProvider.records.length).toBe(1);
     const email = emailProvider.records[0];
     expect(email.to).toBe("test@example.com");
     expect(email.subject).toBe("Verify your email address");
-    expect(email.body).toContain("https://example.com/verify-email?token=");
-    expect(email.body).toContain("30 minutes"); // Default email verification expiration
+    // Check for 6-digit code in email
+    expect(email.body).toMatch(/\d{6}/);
+    expect(email.body).toContain("5 minutes"); // Default code verification expiration
   });
 
   it("should not reveal if email does not exist", async ({ expect }) => {
@@ -82,13 +84,12 @@ describe("alepha/api-users - Email Verification", () => {
     const result = await actions.requestEmailVerification({
       body: {
         email: "nonexistent@example.com",
-        verifyUrl: "https://example.com/verify-email",
       },
     });
 
     // Should return success to prevent email enumeration
     expect(result.success).toBe(true);
-    expect(result.message).toContain("verification link has been sent");
+    expect(result.message).toContain("verification code has been sent");
 
     // But no email should be sent
     expect(emailProvider.records).toHaveLength(0);
@@ -99,6 +100,7 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a user with already verified email
     await userService.users().create({
+      username: "verifieduser",
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,
@@ -108,7 +110,6 @@ describe("alepha/api-users - Email Verification", () => {
     const result = await actions.requestEmailVerification({
       body: {
         email: "verified@example.com",
-        verifyUrl: "https://example.com/verify-email",
       },
     });
 
@@ -124,20 +125,18 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "testuser",
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
     });
 
     // Request email verification
-    await userService.requestEmailVerification(
-      "test@example.com",
-      "https://example.com/verify",
-    );
+    await userService.requestEmailVerification("test@example.com");
 
-    // Extract token from email
+    // Extract code from email
     await expect.poll(() => emailProvider.records.length).toBe(1);
-    const token = extractToken(emailProvider.records[0].body);
+    const token = extractCode(emailProvider.records[0].body);
 
     // Verify email
     const result = await actions.verifyEmail({
@@ -162,6 +161,7 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user
     await userService.users().create({
+      username: "testuser",
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -184,23 +184,21 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user
     await userService.users().create({
+      username: "testuser",
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
     });
 
     // Request email verification
-    await userService.requestEmailVerification(
-      "test@example.com",
-      "https://example.com/verify",
-    );
+    await userService.requestEmailVerification("test@example.com");
 
-    // Extract token
+    // Extract code
     await expect.poll(() => emailProvider.records.length).toBe(1);
-    const token = extractToken(emailProvider.records[0].body);
+    const token = extractCode(emailProvider.records[0].body);
 
-    // Travel forward in time to expire the token (default expiration is 30 minutes for email verification)
-    dateTimeProvider.travel(31, "minutes");
+    // Travel forward in time to expire the token (default expiration is 5 minutes for code verification)
+    dateTimeProvider.travel(6, "minutes");
 
     // Attempt to verify with expired token
     await expect(
@@ -220,20 +218,18 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user
     await userService.users().create({
+      username: "testuser",
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
     });
 
     // Request email verification
-    await userService.requestEmailVerification(
-      "test@example.com",
-      "https://example.com/verify",
-    );
+    await userService.requestEmailVerification("test@example.com");
 
-    // Extract token
+    // Extract code
     await expect.poll(() => emailProvider.records.length).toBe(1);
-    const token = extractToken(emailProvider.records[0].body);
+    const token = extractCode(emailProvider.records[0].body);
 
     // Verify email
     await actions.verifyEmail({
@@ -259,6 +255,7 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user with unverified email
     await userService.users().create({
+      username: "unverifieduser",
       email: "unverified@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -266,6 +263,7 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user with verified email
     await userService.users().create({
+      username: "verifieduser",
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,
@@ -298,6 +296,7 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create a test user
     await userService.users().create({
+      username: "testuser",
       email: "test@example.com",
       roles: ["user"],
       emailVerified: false,
@@ -307,7 +306,6 @@ describe("alepha/api-users - Email Verification", () => {
     await actions.requestEmailVerification({
       body: {
         email: "test@example.com",
-        verifyUrl: "https://example.com/verify-email",
       },
     });
 
@@ -317,7 +315,6 @@ describe("alepha/api-users - Email Verification", () => {
     await actions.requestEmailVerification({
       body: {
         email: "test@example.com",
-        verifyUrl: "https://example.com/verify-email",
       },
     });
 
@@ -331,7 +328,6 @@ describe("alepha/api-users - Email Verification", () => {
     await actions.requestEmailVerification({
       body: {
         email: "test@example.com",
-        verifyUrl: "https://example.com/verify-email",
       },
     });
 
@@ -345,12 +341,14 @@ describe("alepha/api-users - Email Verification", () => {
 
     // Create users with different verification statuses
     await userService.users().create({
+      username: "unverifieduser",
       email: "unverified@example.com",
       roles: ["user"],
       emailVerified: false,
     });
 
     await userService.users().create({
+      username: "verifieduser",
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,

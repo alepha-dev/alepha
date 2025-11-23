@@ -148,7 +148,9 @@ export type CredentialsOptions = {
   account: CredentialsFn;
 };
 
-export type CredentialsFn = (credentials: Credentials) => Async<UserAccount>;
+export type CredentialsFn = (
+  credentials: Credentials,
+) => Async<UserAccount | undefined>;
 
 export interface Credentials {
   username: string;
@@ -442,5 +444,7 @@ export interface WithLinkFn {
 }
 
 export interface WithLoginFn {
-  login?: (provider: string) => (creds: Credentials) => Async<UserAccount>;
+  login?: (
+    provider: string,
+  ) => (creds: Credentials) => Async<UserAccount | undefined>;
 }

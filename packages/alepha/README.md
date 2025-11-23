@@ -23,11 +23,11 @@ Easy mode for building TypeScript applications.
 
 Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), and more!
 
-Relies only on very few runtime dependencies. No more bloated frameworks.
+Relies only on very few runtime dependencies. Alepha is a "one decision" framework, meaning you don't have to choose between dozens of libraries and tools.
 
 All-in-one tool that takes care of configuration, development, build, deployment, testing, etc. Convention over configuration.
 
-Enterprise-grade framework designed for developer experience and scalability.
+All features are based on a DSL with strong typing and runtime validation which makes development safe, productive, and AI friendly.
 
 For more information, please visit the [documentation](https://feunard.github.io/alepha/).
 

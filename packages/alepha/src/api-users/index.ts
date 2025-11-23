@@ -13,6 +13,7 @@ import { UserService } from "./services/UserService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/realmAuthSettingsAtom.ts";
 export * from "./controllers/IdentityController.ts";
 export * from "./controllers/SessionController.ts";
 export * from "./controllers/UserController.ts";
@@ -21,10 +22,13 @@ export * from "./descriptors/$userRealm.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
+export * from "./providers/UserRealmProvider.ts";
 export * from "./schemas/createUserSchema.ts";
 export * from "./schemas/identityQuerySchema.ts";
 export * from "./schemas/identityResourceSchema.ts";
-export * from "./schemas/loginSettingsSchema.ts";
+export * from "./schemas/loginSchema.ts";
+export * from "./schemas/registerSchema.ts";
+export * from "./schemas/resetPasswordSchema.ts";
 export * from "./schemas/sessionQuerySchema.ts";
 export * from "./schemas/sessionResourceSchema.ts";
 export * from "./schemas/updateUserSchema.ts";

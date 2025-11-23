@@ -12,11 +12,11 @@ export const sessions = $entity({
     refreshToken: t.uuid(),
     userId: pg.ref(t.uuid(), () => users.cols.id),
     expiresAt: t.datetime(),
-    ip: t.optional(t.string()),
+    ip: t.optional(t.text()),
     userAgent: t.optional(
       t.object({
-        os: t.string(),
-        browser: t.string(),
+        os: t.text(),
+        browser: t.text(),
         device: t.enum(["MOBILE", "DESKTOP", "TABLET"]),
       }),
     ),

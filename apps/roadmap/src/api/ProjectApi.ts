@@ -62,6 +62,9 @@ export class ProjectApi {
       });
 
       const characterProjectIds = characters.map((it) => it.projectId);
+      if (characterProjectIds.length === 0) {
+        return [];
+      }
 
       return await this.db.projects.findMany({
         where: { id: { inArray: characterProjectIds } },

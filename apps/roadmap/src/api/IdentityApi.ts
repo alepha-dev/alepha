@@ -13,7 +13,7 @@ export class IdentityApi {
         t.object({
           id: t.uuid(),
           provider: t.string(),
-          providerUserId: t.string(),
+          providerUserId: t.optional(t.string()),
           createdAt: t.datetime(),
           updatedAt: t.datetime(),
         }),

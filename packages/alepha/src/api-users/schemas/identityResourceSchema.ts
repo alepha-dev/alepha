@@ -1,15 +1,7 @@
 import type { Static } from "alepha";
 import { t } from "alepha";
+import { identities } from "../entities/identities.ts";
 
-export const identityResourceSchema = t.object({
-  id: t.uuid(),
-  version: t.number(),
-  createdAt: t.datetime(),
-  updatedAt: t.datetime(),
-  userId: t.uuid(),
-  provider: t.string(),
-  providerUserId: t.string(),
-  providerData: t.optional(t.json()),
-});
+export const identityResourceSchema = t.omit(identities.schema, ["password"]);
 
 export type IdentityResource = Static<typeof identityResourceSchema>;

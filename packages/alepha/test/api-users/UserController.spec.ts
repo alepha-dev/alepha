@@ -32,16 +32,18 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     const result = await controller.createUser({
       body: {
+        username: "newuser",
         email: "newuser@example.com",
-        name: "New User",
+        phoneNumber: "+1234567890",
         firstName: "New",
         lastName: "User",
         enabled: true,
       },
     });
 
+    expect(result.username).toBe("newuser");
     expect(result.email).toBe("newuser@example.com");
-    expect(result.name).toBe("New User");
+    expect(result.phoneNumber).toBe("+1234567890");
     expect(result.firstName).toBe("New");
     expect(result.lastName).toBe("User");
     expect(result.enabled).toBe(true);
@@ -55,20 +57,23 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     const result = await controller.createUser({
       body: {
+        username: "admin",
         email: "admin@example.com",
         roles: ["admin", "user"],
       },
     });
 
+    expect(result.username).toBe("admin");
     expect(result.email).toBe("admin@example.com");
     expect(result.roles).toEqual(["admin", "user"]);
   });
 
-  it("should reject duplicate email", async ({ expect }) => {
+  it("should reject duplicate username", async ({ expect }) => {
     const { controller } = await setup();
 
     await controller.createUser({
       body: {
+        username: "duplicateuser",
         email: "duplicate@example.com",
       },
     });
@@ -76,7 +81,8 @@ describe("alepha/api-users - UserController CRUD", () => {
     await expect(
       controller.createUser({
         body: {
-          email: "duplicate@example.com",
+          username: "duplicateuser",
+          email: "duplicate2@example.com",
         },
       }),
     ).rejects.toThrowError(BadRequestError);
@@ -87,8 +93,10 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     const created = await controller.createUser({
       body: {
+        username: "getuser",
         email: "getuser@example.com",
-        name: "Get User",
+        firstName: "Get",
+        lastName: "User",
       },
     });
 
@@ -97,8 +105,10 @@ describe("alepha/api-users - UserController CRUD", () => {
     });
 
     expect(result.id).toBe(created.id);
+    expect(result.username).toBe("getuser");
     expect(result.email).toBe("getuser@example.com");
-    expect(result.name).toBe("Get User");
+    expect(result.firstName).toBe("Get");
+    expect(result.lastName).toBe("User");
   });
 
   it("should throw error for non-existent user", async ({ expect }) => {
@@ -116,23 +126,24 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     const created = await controller.createUser({
       body: {
+        username: "updateuser",
         email: "updateuser@example.com",
-        name: "Original Name",
+        firstName: "Original",
+        lastName: "Name",
       },
     });
 
     const result = await controller.updateUser({
       params: { id: created.id },
       body: {
-        name: "Updated Name",
         firstName: "Updated",
         lastName: "User",
       },
     });
 
     expect(result.id).toBe(created.id);
+    expect(result.username).toBe("updateuser");
     expect(result.email).toBe("updateuser@example.com");
-    expect(result.name).toBe("Updated Name");
     expect(result.firstName).toBe("Updated");
     expect(result.lastName).toBe("User");
   });
@@ -142,6 +153,7 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     const created = await controller.createUser({
       body: {
+        username: "roleupdate",
         email: "roleupdate@example.com",
       },
     });
@@ -163,6 +175,7 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     const created = await controller.createUser({
       body: {
+        username: "deleteuser",
         email: "deleteuser@example.com",
       },
     });
@@ -187,13 +200,28 @@ describe("alepha/api-users - UserController CRUD", () => {
 
     // Create multiple users
     const user1 = await controller.createUser({
-      body: { email: "user1@example.com", name: "User 1" },
+      body: {
+        username: "user1",
+        email: "user1@example.com",
+        firstName: "User",
+        lastName: "One",
+      },
     });
     const user2 = await controller.createUser({
-      body: { email: "user2@example.com", name: "User 2" },
+      body: {
+        username: "user2",
+        email: "user2@example.com",
+        firstName: "User",
+        lastName: "Two",
+      },
     });
     const user3 = await controller.createUser({
-      body: { email: "user3@example.com", name: "User 3" },
+      body: {
+        username: "user3",
+        email: "user3@example.com",
+        firstName: "User",
+        lastName: "Three",
+      },
     });
 
     const result = await controller.findUsers({
@@ -213,10 +241,10 @@ describe("alepha/api-users - UserController CRUD", () => {
     const { controller } = await setup();
 
     await controller.createUser({
-      body: { email: "filter1@example.com" },
+      body: { username: "filter1", email: "filter1@example.com" },
     });
     await controller.createUser({
-      body: { email: "filter2@test.com" },
+      body: { username: "filter2", email: "filter2@test.com" },
     });
 
     const result = await controller.findUsers({
@@ -224,7 +252,7 @@ describe("alepha/api-users - UserController CRUD", () => {
     });
 
     expect(result.content.length).toBeGreaterThanOrEqual(1);
-    expect(result.content.every((u) => u.email.includes("example.com"))).toBe(
+    expect(result.content.every((u) => u.email?.includes("example.com"))).toBe(
       true,
     );
   });
@@ -233,10 +261,18 @@ describe("alepha/api-users - UserController CRUD", () => {
     const { controller } = await setup();
 
     await controller.createUser({
-      body: { email: "enabled@example.com", enabled: true },
+      body: {
+        username: "enableduser",
+        email: "enabled@example.com",
+        enabled: true,
+      },
     });
     await controller.createUser({
-      body: { email: "disabled@example.com", enabled: false },
+      body: {
+        username: "disableduser",
+        email: "disabled@example.com",
+        enabled: false,
+      },
     });
 
     const enabledResult = await controller.findUsers({
@@ -256,10 +292,18 @@ describe("alepha/api-users - UserController CRUD", () => {
     const { controller } = await setup();
 
     await controller.createUser({
-      body: { email: "verified@example.com", emailVerified: true },
+      body: {
+        username: "verifieduser",
+        email: "verified@example.com",
+        emailVerified: true,
+      },
     });
     await controller.createUser({
-      body: { email: "unverified@example.com", emailVerified: false },
+      body: {
+        username: "unverifieduser",
+        email: "unverified@example.com",
+        emailVerified: false,
+      },
     });
 
     const verifiedResult = await controller.findUsers({
@@ -283,10 +327,18 @@ describe("alepha/api-users - UserController CRUD", () => {
     const { controller } = await setup();
 
     await controller.createUser({
-      body: { email: "admin@example.com", roles: ["admin", "user"] },
+      body: {
+        username: "adminuser",
+        email: "admin@example.com",
+        roles: ["admin", "user"],
+      },
     });
     await controller.createUser({
-      body: { email: "regular@example.com", roles: ["user"] },
+      body: {
+        username: "regularuser",
+        email: "regular@example.com",
+        roles: ["user"],
+      },
     });
 
     const adminResult = await controller.findUsers({
@@ -304,13 +356,13 @@ describe("alepha/api-users - UserController CRUD", () => {
     const { controller } = await setup();
 
     const user1 = await controller.createUser({
-      body: { email: "first@example.com" },
+      body: { username: "firstuser", email: "first@example.com" },
     });
     const user2 = await controller.createUser({
-      body: { email: "second@example.com" },
+      body: { username: "seconduser", email: "second@example.com" },
     });
     const user3 = await controller.createUser({
-      body: { email: "third@example.com" },
+      body: { username: "thirduser", email: "third@example.com" },
     });
 
     const result = await controller.findUsers({

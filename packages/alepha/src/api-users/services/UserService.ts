@@ -24,7 +24,6 @@ export class UserService {
    */
   public async requestEmailVerification(
     email: string,
-    verifyUrl: string,
     userRealmName?: string,
   ): Promise<boolean> {
     const user = await this.users(userRealmName)
@@ -44,16 +43,15 @@ export class UserService {
     try {
       const verification =
         await this.verificationController.requestVerificationCode({
-          params: { type: "email" },
+          params: { type: "code" },
           body: { target: email },
         });
 
-      const verifyUrlWithToken = `${verifyUrl}?token=${verification.token}`;
       await this.userNotifications.emailVerification.push({
         contact: email,
         variables: {
           email,
-          verifyUrl: verifyUrlWithToken,
+          code: verification.token,
           expiresInMinutes: Math.floor(verification.codeExpiration / 60),
         },
       });
@@ -74,7 +72,7 @@ export class UserService {
   ): Promise<void> {
     const result = await this.verificationController
       .validateVerificationCode({
-        params: { type: "email" },
+        params: { type: "code" },
         body: { target: email, token },
       })
       .catch(() => {
@@ -161,19 +159,48 @@ export class UserService {
     data: CreateUser,
     userRealmName?: string,
   ): Promise<UserEntity> {
-    const existingUser = await this.users(userRealmName)
-      .findOne({
-        where: { email: { eq: data.email } },
-      })
-      .catch(() => undefined);
+    // TODO: one query instead of 3
 
-    if (existingUser) {
-      throw new BadRequestError("User with this email already exists");
+    // Check for existing user based on provided unique fields
+    if (data.username) {
+      const existingUser = await this.users(userRealmName)
+        .findOne({
+          where: { username: { eq: data.username } },
+        })
+        .catch(() => undefined);
+
+      if (existingUser) {
+        throw new BadRequestError("User with this username already exists");
+      }
+    }
+
+    if (data.email) {
+      const existingUser = await this.users(userRealmName)
+        .findOne({
+          where: { email: { eq: data.email } },
+        })
+        .catch(() => undefined);
+
+      if (existingUser) {
+        throw new BadRequestError("User with this email already exists");
+      }
+    }
+
+    if (data.phoneNumber) {
+      const existingUser = await this.users(userRealmName)
+        .findOne({
+          where: { phoneNumber: { eq: data.phoneNumber } },
+        })
+        .catch(() => undefined);
+
+      if (existingUser) {
+        throw new BadRequestError("User with this phone number already exists");
+      }
     }
 
     return await this.users(userRealmName).create({
       ...data,
-      roles: data.roles ?? ["user"],
+      roles: data.roles ?? ["user"], // TODO: Default roles from realm settings
     });
   }
 

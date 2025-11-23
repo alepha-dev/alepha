@@ -13,14 +13,14 @@ export const verificationOptions = $atom({
   name: "alepha.api.verifications.options",
   schema: verificationSettingsSchema,
   default: {
-    phone: {
+    code: {
       maxAttempts: 5,
       codeLength: 6,
       codeExpiration: 300, // 5 minutes
       verificationCooldown: 90,
       limitPerDay: 10,
     },
-    email: {
+    link: {
       maxAttempts: 3, // Lower since UUIDs are harder to guess
       codeExpiration: 1800, // 30 minutes
       verificationCooldown: 90,

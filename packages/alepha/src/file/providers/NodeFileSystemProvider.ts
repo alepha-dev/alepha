@@ -15,7 +15,13 @@ import { join } from "node:path";
 import { PassThrough, Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
-import { $inject, AlephaError, type FileLike, type StreamLike } from "alepha";
+import {
+  $inject,
+  AlephaError,
+  type FileLike,
+  isFileLike,
+  type StreamLike,
+} from "alepha";
 import { FileDetector } from "../services/FileDetector.ts";
 import type {
   CpOptions,
@@ -86,6 +92,32 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       return this.createFileFromUrl(options.url, {
         type: options.type,
         name: options.name,
+      });
+    }
+
+    if ("response" in options) {
+      if (!options.response.body) {
+        throw new AlephaError("Response has no body stream");
+      }
+      const res = options.response;
+      // guess size from content-length header if available
+      const sizeHeader = res.headers.get("content-length");
+      const size = sizeHeader ? parseInt(sizeHeader, 10) : undefined;
+      // guess name from content-disposition header if available
+      let name = options.name;
+      const contentDisposition = res.headers.get("content-disposition");
+      if (contentDisposition && !name) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) {
+          name = match[1];
+        }
+      }
+      // guess type from content-type header if available
+      const type = options.type || res.headers.get("content-type") || undefined;
+      return this.createFileFromStream(options.response.body, {
+        type,
+        name,
+        size,
       });
     }
 
@@ -363,8 +395,12 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    */
   async writeFile(
     path: string,
-    data: Uint8Array | Buffer | string,
+    data: Uint8Array | Buffer | string | FileLike,
   ): Promise<void> {
+    if (isFileLike(data)) {
+      await fsWriteFile(path, Readable.from(data.stream()));
+      return;
+    }
     await fsWriteFile(path, data);
   }
 

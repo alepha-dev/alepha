@@ -55,7 +55,6 @@ export const testDownloadAndMetadata = async (
   const downloadedFile = await provider.download(BUCKET_NAME, fileId);
 
   // Check metadata
-  expect(downloadedFile.name).toBe("index.html");
   expect(downloadedFile.type).toBe("text/html");
   expect(downloadedFile.size).toBe(content.length);
 
@@ -156,7 +155,6 @@ export const testFileStream = async (
   const fileId = await provider.upload(BUCKET_NAME, file);
   const stream = await provider.download(BUCKET_NAME, fileId);
 
-  expect(stream.name).toBe("stream.txt");
   expect(stream.type).toBe("text/plain");
 
   const streamContent = await stream.text();
@@ -175,7 +173,6 @@ export const testEmptyFiles = async (provider: FileStorageProvider) => {
   const fileId = await provider.upload(BUCKET_NAME, emptyFile);
   const downloadedFile = await provider.download(BUCKET_NAME, fileId);
 
-  expect(downloadedFile.name).toBe("empty.txt");
   expect(downloadedFile.type).toBe("text/plain");
   expect(downloadedFile.size).toBe(0);
   expect(await downloadedFile.text()).toBe("");

@@ -9,7 +9,7 @@ import { VerificationParameters } from "../../src/api-verifications/parameters/V
 
 const createTest = async () => {
   const alepha = Alepha.create().with(AlephaApiVerification);
-  const parameters = alepha.inject(VerificationParameters).get("email");
+  const parameters = alepha.inject(VerificationParameters).get("link");
   const controller = alepha.inject(VerificationController);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const target = "test@example.com";
@@ -25,13 +25,13 @@ const createTest = async () => {
   };
 };
 
-describe("EmailVerification", () => {
-  it("should verify email with UUID token correctly", async ({ expect }) => {
+describe("Link Verification", () => {
+  it("should verify link with UUID token correctly", async ({ expect }) => {
     const { parameters, controller, target } = await createTest();
 
     const request = await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,
@@ -54,7 +54,7 @@ describe("EmailVerification", () => {
     expect(
       await controller.validateVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -68,7 +68,7 @@ describe("EmailVerification", () => {
     expect(
       await controller.validateVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -86,7 +86,7 @@ describe("EmailVerification", () => {
 
     await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,
@@ -96,7 +96,7 @@ describe("EmailVerification", () => {
     await expect(() =>
       controller.validateVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -111,7 +111,7 @@ describe("EmailVerification", () => {
 
     await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,
@@ -122,7 +122,7 @@ describe("EmailVerification", () => {
       await controller
         .validateVerificationCode({
           params: {
-            type: "email",
+            type: "link",
           },
           body: {
             target,
@@ -135,7 +135,7 @@ describe("EmailVerification", () => {
     await expect(() =>
       controller.validateVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -151,7 +151,7 @@ describe("EmailVerification", () => {
 
     await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,
@@ -161,7 +161,7 @@ describe("EmailVerification", () => {
     await expect(() =>
       controller.requestVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -176,7 +176,7 @@ describe("EmailVerification", () => {
 
     const response = await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,
@@ -198,7 +198,7 @@ describe("EmailVerification", () => {
     for (let i = 0; i < parameters.limitPerDay; i++) {
       await controller.requestVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -213,7 +213,7 @@ describe("EmailVerification", () => {
     await expect(() =>
       controller.requestVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -230,7 +230,7 @@ describe("EmailVerification", () => {
 
     const response = await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,
@@ -245,7 +245,7 @@ describe("EmailVerification", () => {
     await expect(() =>
       controller.validateVerificationCode({
         params: {
-          type: "email",
+          type: "link",
         },
         body: {
           target,
@@ -262,7 +262,7 @@ describe("EmailVerification", () => {
 
     const response = await controller.requestVerificationCode({
       params: {
-        type: "email",
+        type: "link",
       },
       body: {
         target,

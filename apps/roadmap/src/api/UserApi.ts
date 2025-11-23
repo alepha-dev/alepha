@@ -1,5 +1,6 @@
 import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
+import { UserRealmProvider } from "alepha/api/users";
 import { $action } from "alepha/server";
 import { users } from "../entities/users.ts";
 import { Db } from "../providers/Db.ts";
@@ -7,6 +8,7 @@ import { Db } from "../providers/Db.ts";
 export class UserApi {
   db = $inject(Db);
   fileService = $inject(FileService);
+  realm = $inject(UserRealmProvider);
 
   me = $action({
     schema: {
@@ -21,21 +23,6 @@ export class UserApi {
     },
   });
 
-  public readonly streamUserFile = $action({
-    path: `/users/files/:id`,
-    schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
-      response: t.file(),
-    },
-    handler: async ({ params, reply }) => {
-      const stream = await this.fileService.streamFile(params.id);
-      reply.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      return stream;
-    },
-  });
-
   updateAvatar = $action({
     schema: {
       body: t.object({
@@ -47,7 +34,7 @@ export class UserApi {
       // Store the file in the avatars bucket
       const file = await this.fileService.uploadFile(body.file, {
         user,
-        bucket: this.db.avatars.name,
+        bucket: this.realm.avatars.name,
       });
 
       // Update the user's picture field

@@ -130,7 +130,6 @@ export class UserController {
       }),
       body: t.object({
         email: t.email(),
-        resetUrl: t.string(),
       }),
       response: t.object({
         success: t.boolean(),
@@ -140,14 +139,13 @@ export class UserController {
     handler: async ({ body, query }) => {
       await this.credentialService.requestPasswordReset(
         body.email,
-        body.resetUrl,
         query.userRealmName,
       );
 
       return {
         success: true,
         message:
-          "If an account exists with this email, a password reset link has been sent.",
+          "If an account exists with this email, a password reset code has been sent.",
       };
     },
   });
@@ -238,7 +236,6 @@ export class UserController {
       }),
       body: t.object({
         email: t.email(),
-        verifyUrl: t.string(),
       }),
       response: t.object({
         success: t.boolean(),
@@ -248,14 +245,13 @@ export class UserController {
     handler: async ({ body, query }) => {
       await this.userService.requestEmailVerification(
         body.email,
-        body.verifyUrl,
         query.userRealmName,
       );
 
       return {
         success: true,
         message:
-          "If an account exists with this email, a verification link has been sent.",
+          "If an account exists with this email, a verification code has been sent.",
       };
     },
   });

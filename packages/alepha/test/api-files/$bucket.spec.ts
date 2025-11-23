@@ -60,7 +60,6 @@ const testStorageOperations = async (
   expect(await assets.images.exists(fileId)).toBe(true);
 
   const stream = await assets.images.download(fileId);
-  expect(stream.name).toEqual("hello.txt");
   expect(stream.type).toEqual("text/plain");
   expect(await stream.arrayBuffer()).toEqual(blob.buffer);
 

@@ -191,7 +191,7 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
                     <Avatar
                       src={
                         player.user.picture
-                          ? `/api/users/files/${player.user.picture}`
+                          ? `/api/files/${player.user.picture}`
                           : undefined
                       }
                       size={56}
@@ -203,7 +203,7 @@ const ProjectPlayers = (props: ProjectPlayersProps) => {
                     <Flex direction="column" flex={1}>
                       <Group gap="sm" align="center">
                         <Text fw={500} size="lg">
-                          {player.user.name || "Anonymous User"}
+                          {player.user.username}
                         </Text>
                         {player.owner && (
                           <Badge

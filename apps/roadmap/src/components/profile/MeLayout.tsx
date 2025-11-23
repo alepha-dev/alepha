@@ -25,7 +25,7 @@ const MeLayout = () => {
           px={"lg"}
           bg={theme.colors.panel}
         >
-          <Text>{auth.user?.name}</Text>
+          <Text>{auth.user?.username}</Text>
           <Text size={"xs"}>{auth.user?.email}</Text>
         </Card>
         <Flex

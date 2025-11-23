@@ -8,7 +8,7 @@ export class I18nProvider<
   S extends object,
   K extends keyof ServiceDictionary<S>,
 > {
-  protected logger = $logger();
+  protected log = $logger();
   protected alepha = $inject(Alepha);
   protected dateTimeProvider = $inject(DateTimeProvider);
 
@@ -18,6 +18,7 @@ export class I18nProvider<
   });
 
   public readonly registry: Array<{
+    target: string;
     name: string;
     lang: string;
     loader: () => Promise<Record<string, string>>;
@@ -72,6 +73,11 @@ export class I18nProvider<
             item.lang === this.lang ||
             item.lang === this.options.fallbackLang
           ) {
+            this.log.trace("Loading language", {
+              lang: item.lang,
+              name: item.name,
+              target: item.target,
+            });
             item.translations = await item.loader();
           }
         }
@@ -144,8 +150,6 @@ export class I18nProvider<
       if (item.lang === this.lang) {
         if (item.translations[key]) {
           return this.render(item.translations[key], args); // append lang for fallback
-        } else {
-          break;
         }
       }
     }
@@ -154,8 +158,6 @@ export class I18nProvider<
       if (item.lang === this.options.fallbackLang) {
         if (item.translations[key]) {
           return this.render(item.translations[key], args); // append lang for fallback
-        } else {
-          break;
         }
       }
     }

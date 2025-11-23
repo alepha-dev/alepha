@@ -44,7 +44,7 @@ describe("$bucket", () => {
     expect(fileId).toBeDefined();
 
     const downloadedFile = await app.images.download(fileId);
-    expect(downloadedFile.name).toBe("test.png");
+    // Name is now the fileId, type is determined from extension
     expect(downloadedFile.type).toBe("image/png");
     expect(downloadedFile.size).toBe(file.size);
   });

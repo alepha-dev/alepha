@@ -52,7 +52,7 @@ export class ReactRouter<T extends object> {
   }
 
   public path(
-    name: keyof VirtualRouter<T>,
+    name: keyof VirtualRouter<T> | string,
     config: {
       params?: Record<string, any>;
       query?: Record<string, any>;
@@ -60,7 +60,7 @@ export class ReactRouter<T extends object> {
   ): string {
     return this.pageApi.pathname(name as string, {
       params: {
-        ...this.state.params,
+        ...this.state?.params,
         ...config.params,
       },
       query: config.query,

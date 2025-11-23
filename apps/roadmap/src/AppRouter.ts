@@ -2,7 +2,6 @@ import { $page, NotFound, ReactRouter, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react/auth";
 import { $head } from "@alepha/react/head";
 import { AuthRouter } from "@alepha/ui/auth";
-import { notifications } from "@mantine/notifications";
 import { $hook, $inject, Alepha, t } from "alepha";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -40,6 +39,8 @@ export class AppRouter {
   layout = $page({
     children: () => [
       this.authRouter.login, //
+      this.authRouter.register, //
+      this.authRouter.resetPassword, //
       this.home, //
       this.project,
       this.projectCreate,
@@ -47,7 +48,7 @@ export class AppRouter {
       this.adminRouter.admin,
       this.notFound,
     ],
-    lazy: () => import("./components/Layout.jsx"),
+    lazy: () => import("./components/Layout.tsx"),
     resolve: async ({ user }) => {
       if (user) {
         this.alepha.state.set(
@@ -78,27 +79,19 @@ export class AppRouter {
     on: "client:onError",
     handler: async ({ error }) => {
       // when user try to access a resource without being logged in (expired session or just no logged in)
+      const loginPath = this.router.path("login");
       if (
         this.alepha.isBrowser() &&
         HttpError.is(error, 401) &&
-        this.router.state.url.pathname !== "/login"
+        this.router.state.url.pathname !== loginPath
       ) {
         this.alepha.state.set("alepha.server.request.user", undefined);
-        await this.router.go(`/login?r=${this.router.state.url.pathname}`);
+        await this.router.go(loginPath, {
+          query: {
+            redirect: this.router.state.url.pathname,
+          },
+        });
       }
-    },
-  });
-
-  onFormError = $hook({
-    on: "form:submit:error",
-    handler: async ({ error }) => {
-      notifications.show({
-        title: "Invalid Request",
-        message: error.message || "An error occurred",
-        color: "red",
-        position: "top-center",
-        autoClose: 5000,
-      });
     },
   });
 

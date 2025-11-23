@@ -20,4 +20,34 @@ export class AuthRouter {
       };
     },
   });
+
+  register = $page({
+    path: "/register",
+    schema: {
+      query: t.object({
+        redirect: t.optional(t.string()),
+      }),
+    },
+    lazy: () => import("./components/Register.tsx"),
+    resolve: async () => {
+      return {
+        realmConfig: await this.userRealmClient.getRealmConfig(),
+      };
+    },
+  });
+
+  resetPassword = $page({
+    path: "/reset-password",
+    schema: {
+      query: t.object({
+        redirect: t.optional(t.string()),
+      }),
+    },
+    lazy: () => import("./components/ResetPassword.tsx"),
+    resolve: async () => {
+      return {
+        realmConfig: await this.userRealmClient.getRealmConfig(),
+      };
+    },
+  });
 }

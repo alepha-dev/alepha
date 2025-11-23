@@ -7,7 +7,6 @@ import {
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
-import { FileMetadataService } from "./services/FileMetadataService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -16,7 +15,6 @@ export * from "./errors/FileNotFoundError.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
-export * from "./services/FileMetadataService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -62,7 +60,6 @@ export const AlephaBucket = $module({
     FileStorageProvider,
     MemoryFileStorageProvider,
     LocalFileStorageProvider,
-    FileMetadataService,
   ],
   register: (alepha) =>
     alepha.with({

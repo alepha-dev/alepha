@@ -36,6 +36,7 @@ describe("alepha/api-users - SessionController", () => {
 
     // Create a test user
     const user = await userService.users().create({
+      username: "sessionuser",
       email: "session@example.com",
       roles: ["user"],
     });
@@ -78,6 +79,7 @@ describe("alepha/api-users - SessionController", () => {
       await setup();
 
     const user = await userService.users().create({
+      username: "deletesessionuser",
       email: "deletesession@example.com",
       roles: ["user"],
     });
@@ -108,6 +110,7 @@ describe("alepha/api-users - SessionController", () => {
       await setup();
 
     const user = await userService.users().create({
+      username: "multisessionuser",
       email: "multisession@example.com",
       roles: ["user"],
     });
@@ -147,10 +150,12 @@ describe("alepha/api-users - SessionController", () => {
       await setup();
 
     const user1 = await userService.users().create({
+      username: "user1",
       email: "user1@example.com",
       roles: ["user"],
     });
     const user2 = await userService.users().create({
+      username: "user2",
       email: "user2@example.com",
       roles: ["user"],
     });
@@ -186,6 +191,7 @@ describe("alepha/api-users - SessionController", () => {
       await setup();
 
     const user = await userService.users().create({
+      username: "sorttestuser",
       email: "sorttest@example.com",
       roles: ["user"],
     });
@@ -226,6 +232,7 @@ describe("alepha/api-users - SessionController", () => {
       await setup();
 
     const user = await userService.users().create({
+      username: "useragentuser",
       email: "useragent@example.com",
       roles: ["user"],
     });

@@ -6,9 +6,18 @@ import { Layout } from "./Layout.tsx";
 export class AppRouter {
   authRouter = $inject(AuthRouter);
 
+  auth = $page({
+    path: "/auth",
+    children: [
+      this.authRouter.register,
+      this.authRouter.resetPassword,
+      this.authRouter.login,
+    ],
+  });
+
   layout = $page({
     component: Layout,
-    children: () => [this.home, this.about, this.authRouter.login],
+    children: () => [this.home, this.about, this.auth],
   });
 
   home = $page({

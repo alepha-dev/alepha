@@ -1,6 +1,8 @@
 import { randomInt } from "node:crypto";
 import { $inject, Alepha } from "alepha";
+import type { FileController } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import {
   CryptoProvider,
@@ -9,14 +11,18 @@ import {
 } from "alepha/security";
 import { type ServerRequest, UnauthorizedError } from "alepha/server";
 import type { OAuth2Profile } from "alepha/server/auth";
+import { $client } from "../../server-links";
+import type { UserEntity } from "../entities/users.ts";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 
 export class SessionService {
   protected readonly alepha = $inject(Alepha);
+  protected readonly fsp = $inject(FileSystemProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly log = $logger();
   protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly fileController = $client<FileController>();
 
   public users(userRealmName?: string) {
     return this.userRealmProvider.userRepository(userRealmName);
@@ -38,42 +44,66 @@ export class SessionService {
     return new Promise((resolve) => setTimeout(resolve, randomInt(50, 201)));
   }
 
+  /**
+   * Validate user credentials and return the user if valid.
+   */
   public async login(
     provider: string,
     username: string,
     password: string,
     userRealmName?: string,
-  ) {
-    try {
-      const identity = await this.identities(userRealmName)
-        .findOne({
-          where: {
-            provider: { eq: provider },
-            providerUserId: { eq: username },
-          },
-        })
-        .catch((error) => {
-          this.log.warn("Identity not found during login attempt", {
-            provider,
-            username,
-            error: error.message,
-          });
-          return undefined;
-        });
+  ): Promise<UserEntity> {
+    const { settings, name } = this.userRealmProvider.getRealm(userRealmName);
+    const isEmail = username.includes("@");
+    const isPhone = /^[+\d][\d\s()-]+$/.test(username);
+    const isUsername = !isEmail && !isPhone;
+    const identities = this.identities(userRealmName);
+    const users = this.users(userRealmName);
 
-      if (!identity) {
-        await this.randomDelay();
+    await this.randomDelay();
+
+    try {
+      const where = users.createQueryWhere();
+
+      where.realm = name;
+
+      if (settings.usernameEnabled !== false && isUsername) {
+        where.username = username;
+      } else if (settings.emailEnabled !== false && isEmail) {
+        where.email = username;
+      } else if (settings.phoneEnabled === true && isPhone) {
+        where.phoneNumber = username;
+      } else {
+        this.log.warn("Invalid login identifier format", {
+          provider,
+          username,
+        });
         throw new InvalidCredentialsError();
       }
 
-      const storedPassword = identity.providerData?.password;
+      const user = await users.findOne({ where }).catch(() => undefined);
+      if (!user) {
+        this.log.warn("User not found during login attempt", {
+          provider,
+          username,
+        });
+        throw new InvalidCredentialsError();
+      }
+
+      const identity = await identities.findOne({
+        where: {
+          provider: { eq: provider },
+          userId: { eq: user.id },
+        },
+      });
+
+      const storedPassword = identity.password;
       if (!storedPassword) {
         this.log.error("Identity has no password configured", {
           provider,
           username,
           identityId: identity.id,
         });
-        await this.randomDelay();
         throw new InvalidCredentialsError();
       }
 
@@ -87,44 +117,18 @@ export class SessionService {
           provider,
           username,
         });
-        await this.randomDelay();
         throw new InvalidCredentialsError();
       }
 
-      const user = await this.users(userRealmName)
-        .findOne({
-          where: {
-            id: { eq: identity.userId },
-          },
-        })
-        .catch((error) => {
-          this.log.error("User not found for valid identity", {
-            provider,
-            username,
-            userId: identity.userId,
-            error: error.message,
-          });
-          return undefined;
-        });
-
-      if (!user) {
-        await this.randomDelay();
-        throw new InvalidCredentialsError();
-      }
-
-      await this.randomDelay();
       return user;
     } catch (error) {
       if (error instanceof InvalidCredentialsError) {
+        // TODO: store failed login attempts (with request data) and lock account after threshold
         throw error;
       }
 
-      this.log.error("Unexpected error during login", {
-        provider,
-        username,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      await this.randomDelay();
+      this.log.warn("Error during login attempt", error);
+
       throw new InvalidCredentialsError();
     }
   }
@@ -195,7 +199,11 @@ export class SessionService {
     profile: OAuth2Profile,
     userRealmName?: string,
   ) {
-    const identity = await this.identities(userRealmName)
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const identities = this.identities(userRealmName);
+    const users = this.users(userRealmName);
+
+    const identity = await identities
       .findOne({
         where: {
           provider,
@@ -204,12 +212,9 @@ export class SessionService {
       })
       .catch(() => undefined);
 
+    // existing identity found, return associated user
     if (identity) {
-      return this.users(userRealmName).findOne({
-        where: {
-          id: identity.userId,
-        },
-      });
+      return users.findById(identity.userId);
     }
 
     if (!profile.email) {
@@ -219,7 +224,7 @@ export class SessionService {
       };
     }
 
-    const existing = await this.users(userRealmName)
+    const existing = await users
       .findOne({
         where: {
           email: profile.email,
@@ -228,7 +233,7 @@ export class SessionService {
       .catch(() => undefined);
 
     if (existing) {
-      await this.identities(userRealmName).create({
+      await identities.create({
         provider,
         providerUserId: profile.sub,
         userId: existing.id,
@@ -236,19 +241,48 @@ export class SessionService {
       return existing;
     }
 
-    const newUser = await this.users(userRealmName).create({
+    // TODO: check usernames for uniqueness, add suffix if needed (e.g. john.doe1)
+    // TODO: username must match a-zA-Z0-9._-
+
+    const user = await users.create({
+      realm: realm.name,
+      username: profile.email.split("@")[0],
       email: profile.email,
-      name: profile.name,
-      picture: profile.picture,
-      roles: ["user"],
+      roles: ["user"], // TODO: make default roles configurable via realm settings
     });
+
+    if (profile.picture) {
+      this.log.debug("Fetching user profile picture from OAuth2 provider", {
+        provider,
+        url: profile.picture,
+      });
+      try {
+        const response = await fetch(profile.picture);
+        const file = this.fsp.createFile({
+          response,
+        });
+        if (response.ok && response.body) {
+          const fileEntity = await this.fileController.uploadFile(
+            {
+              body: { file },
+            },
+            {
+              user,
+            },
+          );
+          await users.updateById(user.id, { picture: fileEntity.id });
+        }
+      } catch (error) {
+        this.log.warn("Failed to fetch user profile picture", error);
+      }
+    }
 
     await this.identities(userRealmName).create({
       provider,
       providerUserId: profile.sub,
-      userId: newUser.id,
+      userId: user.id,
     });
 
-    return newUser;
+    return user;
   }
 }

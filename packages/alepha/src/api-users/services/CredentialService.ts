@@ -29,12 +29,10 @@ export class CredentialService {
    * Uses the verification service for secure token generation and management.
    *
    * @param email - User's email address
-   * @param resetUrl - Base URL for the password reset page
    * @returns True if reset was initiated (regardless of whether user exists - for security)
    */
   public async requestPasswordReset(
     email: string,
-    resetUrl: string,
     userRealmName?: string,
   ): Promise<boolean> {
     // Find user by email (silent fail for security)
@@ -70,17 +68,16 @@ export class CredentialService {
     try {
       const verification =
         await this.verificationController.requestVerificationCode({
-          params: { type: "email" },
+          params: { type: "code" },
           body: { target: email },
         });
 
-      // Send password reset notification with the token
-      const resetUrlWithToken = `${resetUrl}?token=${verification.token}`;
+      // Send password reset notification with the code
       await this.userNotifications.passwordReset.push({
         contact: email,
         variables: {
           email,
-          resetUrl: resetUrlWithToken,
+          code: verification.token,
           expiresInMinutes: Math.floor(verification.codeExpiration / 60),
         },
       });
@@ -104,7 +101,7 @@ export class CredentialService {
     // Verify using verification controller
     const isValid = await this.verificationController
       .validateVerificationCode({
-        params: { type: "email" },
+        params: { type: "code" },
         body: { target: email, token },
       })
       .catch(() => undefined);
@@ -129,7 +126,7 @@ export class CredentialService {
     // Verify token using verification controller
     const result = await this.verificationController
       .validateVerificationCode({
-        params: { type: "email" },
+        params: { type: "code" },
         body: { target: email, token },
       })
       .catch(() => {
@@ -158,10 +155,7 @@ export class CredentialService {
 
     // Update the identity with new password
     await this.identities(userRealmName).updateById(identity.id, {
-      providerData: {
-        ...(identity.providerData as Record<string, unknown>),
-        password: hashedPassword,
-      },
+      password: hashedPassword,
     });
 
     // Invalidate all existing sessions for this user

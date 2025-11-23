@@ -17,8 +17,8 @@ export default defineConfig({
 				"scripts/**",
 				// ignore experimental packages
 				"packages/ui",
-				"packages/vite",
-				"packages/cli",
+				"packages/alepha/vite",
+				"packages/alepha/cli",
 			],
 		},
 		env: {
