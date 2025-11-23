@@ -141,7 +141,7 @@ const MyProfile = (props: ProfileProps) => {
           <Group gap="xl" align="flex-start">
             <Stack gap="xs" align="center">
               <Avatar
-                src={`/api/users/files/${currentUser.picture}`}
+                src={`/api/files/${currentUser.picture}`}
                 size={120}
                 radius="md"
               >
@@ -167,7 +167,7 @@ const MyProfile = (props: ProfileProps) => {
 
             <Stack gap="md" flex={1}>
               <Stack gap="xs">
-                <Title order={2}>{user.name || "Anonymous User"}</Title>
+                <Title order={2}>{user.username || "Anonymous User"}</Title>
                 <Group gap="sm">
                   <IconMail size={16} />
                   <Text c="dimmed">{user.email}</Text>

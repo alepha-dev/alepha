@@ -1,6 +1,5 @@
 import { $inject } from "alepha";
 import { identities, sessions } from "alepha/api/users";
-import { $bucket } from "alepha/bucket";
 import { $repository, DatabaseProvider } from "alepha/orm";
 import { characters } from "../entities/characters.ts";
 import { files } from "../entities/files.ts";
@@ -18,12 +17,6 @@ export class Db {
   characters = $repository(characters);
   invitations = $repository(invitations);
   files = $repository(files);
-
-  avatars = $bucket({
-    name: "avatars",
-    maxSize: 5 * 1024 * 1024, // 5MB
-    mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  });
 
   provider = $inject(DatabaseProvider);
   query = this.provider.run.bind(this.provider);

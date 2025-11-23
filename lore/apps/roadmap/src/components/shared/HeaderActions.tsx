@@ -51,14 +51,14 @@ const AuthButton = () => {
                     width: "24px",
                     borderRadius: "50%",
                   }}
-                  src={`/api/users/files/${auth.user.picture}`}
+                  src={`/api/files/${auth.user.picture}`}
                 />
               ) : (
                 <IconUser size={theme.icon.size.sm} />
               )
             }
           >
-            {auth.user.name}
+            {auth.user.username}
           </Action>
         </Menu.Target>
         <Menu.Dropdown>

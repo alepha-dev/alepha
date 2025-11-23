@@ -24,7 +24,7 @@ export interface MyInvitationsProps {
     projectTitle: string;
     invitedBy: string;
     inviterName?: string;
-    inviterEmail: string;
+    inviterEmail?: string;
     status: "pending" | "accepted" | "rejected";
     createdAt: string;
   }>;

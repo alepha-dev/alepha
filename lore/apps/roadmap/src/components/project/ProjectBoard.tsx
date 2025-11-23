@@ -192,7 +192,7 @@ const ProjectBoard = () => {
                 width: "24px",
                 borderRadius: "50%",
               }}
-              src={`/api/users/files/${user.picture}`}
+              src={`/api/files/${user.picture}`}
             />
           );
         }
