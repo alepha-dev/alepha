@@ -54,10 +54,25 @@ export const AlephaEmail = $module({
     LocalEmailProvider,
     NodemailerEmailProvider,
   ],
-  register: (alepha) =>
-    alepha.with({
-      optional: true,
-      provide: EmailProvider,
-      use: MemoryEmailProvider,
-    }),
+  register: (alepha) => {
+    if (alepha.isTest()) {
+      alepha.with({
+        optional: true,
+        provide: EmailProvider,
+        use: MemoryEmailProvider,
+      });
+    } else if (alepha.env.EMAIL_HOST) {
+      alepha.with({
+        optional: true,
+        provide: EmailProvider,
+        use: NodemailerEmailProvider,
+      });
+    } else {
+      alepha.with({
+        optional: true,
+        provide: EmailProvider,
+        use: LocalEmailProvider,
+      });
+    }
+  },
 });

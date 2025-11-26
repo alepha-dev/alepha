@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
+import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -11,6 +12,7 @@ import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
 
 export class UserService {
+  protected readonly log = $logger();
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
   protected readonly userRealmProvider = $inject(UserRealmProvider);
@@ -26,6 +28,8 @@ export class UserService {
     email: string,
     userRealmName?: string,
   ): Promise<boolean> {
+    this.log.trace("Requesting email verification", { email, userRealmName });
+
     const user = await this.users(userRealmName)
       .findOne({
         where: { email: { eq: email } },
@@ -33,10 +37,17 @@ export class UserService {
       .catch(() => undefined);
 
     if (!user) {
+      this.log.debug("Email verification requested for non-existent user", {
+        email,
+      });
       return true;
     }
 
     if (user.emailVerified) {
+      this.log.debug("Email verification requested for already verified user", {
+        email,
+        userId: user.id,
+      });
       return true;
     }
 
@@ -55,8 +66,14 @@ export class UserService {
           expiresInMinutes: Math.floor(verification.codeExpiration / 60),
         },
       });
-    } catch {
+
+      this.log.debug("Email verification code sent", {
+        email,
+        userId: user.id,
+      });
+    } catch (error) {
       // Silent fail for security
+      this.log.warn("Failed to send email verification", { email, error });
     }
 
     return true;
@@ -70,16 +87,20 @@ export class UserService {
     token: string,
     userRealmName?: string,
   ): Promise<void> {
+    this.log.trace("Verifying email", { email, userRealmName });
+
     const result = await this.verificationController
       .validateVerificationCode({
         params: { type: "code" },
         body: { target: email, token },
       })
       .catch(() => {
+        this.log.warn("Invalid email verification token", { email });
         throw new BadRequestError("Invalid or expired verification token");
       });
 
     if (result.alreadyVerified) {
+      this.log.warn("Email verification token already used", { email });
       throw new BadRequestError("Invalid or expired verification token");
     }
 
@@ -90,6 +111,8 @@ export class UserService {
     await this.users(userRealmName).updateById(user.id, {
       emailVerified: true,
     });
+
+    this.log.info("Email verified", { email, userId: user.id });
   }
 
   /**
@@ -99,6 +122,8 @@ export class UserService {
     email: string,
     userRealmName?: string,
   ): Promise<boolean> {
+    this.log.trace("Checking if email is verified", { email, userRealmName });
+
     const user = await this.users(userRealmName)
       .findOne({
         where: { email: { eq: email } },
@@ -115,6 +140,7 @@ export class UserService {
     q: UserQuery = {},
     userRealmName?: string,
   ): Promise<Page<UserEntity>> {
+    this.log.trace("Finding users", { query: q, userRealmName });
     q.sort ??= "-createdAt";
 
     const where = this.users(userRealmName).createQueryWhere();
@@ -135,11 +161,18 @@ export class UserService {
       where.roles = { arrayContains: q.roles };
     }
 
-    return await this.users(userRealmName).paginate(
+    const result = await this.users(userRealmName).paginate(
       q,
       { where },
       { count: true },
     );
+
+    this.log.debug("Users found", {
+      count: result.content.length,
+      total: result.page.totalElements,
+    });
+
+    return result;
   }
 
   /**
@@ -149,6 +182,7 @@ export class UserService {
     id: string,
     userRealmName?: string,
   ): Promise<UserEntity> {
+    this.log.trace("Getting user by ID", { id, userRealmName });
     return await this.users(userRealmName).findById(id);
   }
 
@@ -159,6 +193,12 @@ export class UserService {
     data: CreateUser,
     userRealmName?: string,
   ): Promise<UserEntity> {
+    this.log.trace("Creating user", {
+      username: data.username,
+      email: data.email,
+      userRealmName,
+    });
+
     // TODO: one query instead of 3
 
     // Check for existing user based on provided unique fields
@@ -170,6 +210,7 @@ export class UserService {
         .catch(() => undefined);
 
       if (existingUser) {
+        this.log.debug("Username already taken", { username: data.username });
         throw new BadRequestError("User with this username already exists");
       }
     }
@@ -182,6 +223,7 @@ export class UserService {
         .catch(() => undefined);
 
       if (existingUser) {
+        this.log.debug("Email already taken", { email: data.email });
         throw new BadRequestError("User with this email already exists");
       }
     }
@@ -194,14 +236,25 @@ export class UserService {
         .catch(() => undefined);
 
       if (existingUser) {
+        this.log.debug("Phone number already taken", {
+          phoneNumber: data.phoneNumber,
+        });
         throw new BadRequestError("User with this phone number already exists");
       }
     }
 
-    return await this.users(userRealmName).create({
+    const user = await this.users(userRealmName).create({
       ...data,
       roles: data.roles ?? ["user"], // TODO: Default roles from realm settings
     });
+
+    this.log.info("User created", {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+    });
+
+    return user;
   }
 
   /**
@@ -212,17 +265,22 @@ export class UserService {
     data: UpdateUser,
     userRealmName?: string,
   ): Promise<UserEntity> {
+    this.log.trace("Updating user", { id, userRealmName });
     await this.getUserById(id, userRealmName);
 
-    return await this.users(userRealmName).updateById(id, data);
+    const user = await this.users(userRealmName).updateById(id, data);
+    this.log.debug("User updated", { userId: id });
+    return user;
   }
 
   /**
    * Delete a user by ID.
    */
   public async deleteUser(id: string, userRealmName?: string): Promise<void> {
+    this.log.trace("Deleting user", { id, userRealmName });
     await this.getUserById(id, userRealmName);
 
     await this.users(userRealmName).deleteById(id);
+    this.log.info("User deleted", { userId: id });
   }
 }

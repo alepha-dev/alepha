@@ -30,6 +30,13 @@ export class AuthI18n {
         registerDisabled:
           "Registration is not available. Please contact your administrator.",
         registerBackToSignIn: "Back to sign in",
+        registerVerifyTitle: "Verify your account",
+        registerVerifyDescription:
+          "Please enter the verification code(s) sent to you.",
+        registerEmailCode: "Email verification code",
+        registerPhoneCode: "Phone verification code",
+        registerVerifySubmit: "Complete Registration",
+        registerVerifyBack: "Back to registration",
         resetPasswordTitle: "Reset password",
         resetPasswordEmail: "Email",
         resetPasswordEnterEmail:
@@ -79,6 +86,13 @@ export class AuthI18n {
         registerDisabled:
           "L'inscription n'est pas disponible. Veuillez contacter votre administrateur.",
         registerBackToSignIn: "Retour à la connexion",
+        registerVerifyTitle: "Vérifiez votre compte",
+        registerVerifyDescription:
+          "Veuillez entrer le(s) code(s) de vérification qui vous ont été envoyés.",
+        registerEmailCode: "Code de vérification par e-mail",
+        registerPhoneCode: "Code de vérification par téléphone",
+        registerVerifySubmit: "Terminer l'inscription",
+        registerVerifyBack: "Retour à l'inscription",
         resetPasswordTitle: "Réinitialiser le mot de passe",
         resetPasswordEmail: "E-mail",
         resetPasswordEnterEmail:

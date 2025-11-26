@@ -61,6 +61,23 @@ export class UserNotifications {
     }),
   });
 
+  public readonly phoneVerification = $notification({
+    category: "security",
+    description:
+      "SMS sent to users with a verification code to verify their phone number.",
+    critical: true,
+    sensitive: true,
+    sms: {
+      message: (it) =>
+        `Your verification code is: ${it.code}. This code expires in ${it.expiresInMinutes} minutes.`,
+    },
+    schema: t.object({
+      phoneNumber: t.string(),
+      code: t.string(),
+      expiresInMinutes: t.number(),
+    }),
+  });
+
   // Link-based notifications (alternative)
   public readonly passwordResetLink = $notification({
     category: "security",

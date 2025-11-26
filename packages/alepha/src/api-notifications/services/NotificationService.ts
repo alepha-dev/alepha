@@ -40,8 +40,9 @@ export class NotificationService {
     maxDuration: [15, "seconds"],
     schema: notificationCreateSchema,
     handler: async (notifications: NotificationCreate[]) => {
-      this.log.debug("Notification batch processing", {
+      this.log.debug("Processing notification batch", {
         size: notifications.length,
+        templates: [...new Set(notifications.map((n) => n.template))],
       });
 
       const entities =
@@ -50,10 +51,16 @@ export class NotificationService {
       await this.notificationQueues.processNotification.push(
         ...entities.map((it) => ({ notificationId: it.id })),
       );
+
+      this.log.info("Notification batch queued", {
+        count: entities.length,
+        ids: entities.map((it) => it.id),
+      });
     },
   });
 
   public async findNotificationById(id: string) {
+    this.log.trace("Finding notification by ID", { id });
     return this.notificationRepository.findOne({ where: { id } });
   }
 
@@ -64,8 +71,11 @@ export class NotificationService {
     entry: NotificationCreate,
     now = false,
   ): Promise<void> {
-    this.log.trace("Create notification", {
-      entry,
+    this.log.trace("Creating notification", {
+      template: entry.template,
+      type: entry.type,
+      contact: entry.contact,
+      immediate: now,
     });
 
     if (
@@ -74,13 +84,29 @@ export class NotificationService {
       (this.env.NOTIFICATION_IMMEDIATE == null &&
         (this.alepha.isServerless() || this.alepha.isTest()))
     ) {
+      this.log.debug("Sending notification immediately", {
+        template: entry.template,
+        type: entry.type,
+        contact: entry.contact,
+      });
       const notification = await this.notificationRepository.create(entry);
       await this.notificationSenderService.send(notification);
       return;
     }
 
+    this.log.debug("Queuing notification to batch", {
+      template: entry.template,
+      type: entry.type,
+      contact: entry.contact,
+    });
+
     this.notificationBatch.push(entry).catch((e) => {
-      this.log.error("Failed to push notification to batch", e);
+      this.log.error("Failed to push notification to batch", {
+        template: entry.template,
+        type: entry.type,
+        contact: entry.contact,
+        error: e,
+      });
     });
   }
 }

@@ -1,4 +1,4 @@
-import { useRouter } from "@alepha/react";
+import { useClient, useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { Alert, Card, Flex, PinInput, Stack, Text } from "@mantine/core";
@@ -9,8 +9,12 @@ import {
   IconLock,
   IconMail,
 } from "@tabler/icons-react";
-import { t } from "alepha";
-import type { UserRealmConfig } from "alepha/api/users";
+import { AlephaError, t } from "alepha";
+import type {
+  PasswordResetIntentResponse,
+  UserController,
+  UserRealmConfig,
+} from "alepha/api/users";
 import { resetPasswordRequestSchema } from "alepha/api/users";
 import { useState } from "react";
 import { ActionButton, Control } from "../../core";
@@ -23,44 +27,101 @@ export interface ResetPasswordProps {
 
 type Step = "email" | "code" | "password" | "success";
 
+interface ResetState {
+  step: Step;
+  intent?: PasswordResetIntentResponse;
+  email?: string;
+  code?: string;
+}
+
 const ResetPassword = (props: ResetPasswordProps) => {
   const router = useRouter<AuthRouter>();
+  const userCtrl = useClient<UserController>();
   const { tr } = useI18n<AuthI18n, "en">();
-  const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [resetState, setResetState] = useState<ResetState>({ step: "email" });
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const redirect = router.query.redirect || "/";
 
   const isResetPasswordAllowed =
     props.realmConfig.settings?.resetPasswordAllowed !== false;
 
+  // Phase 1: Request password reset intent
   const emailForm = useForm({
     schema: resetPasswordRequestSchema,
     handler: async (data) => {
-      // UI only - no API call
-      setEmail(data.email);
-      setStep("code");
+      setError(null);
+      const intent = await userCtrl.createPasswordResetIntent({
+        body: { email: data.email },
+      });
+
+      setResetState({
+        step: "code",
+        intent,
+        email: data.email,
+      });
     },
   });
 
-  const passwordForm = useForm({
-    schema: t.object({
-      password: t.string({ minLength: 8 }),
-      confirmPassword: t.string({ minLength: 8 }),
-    }),
-    handler: async (data) => {
-      if (data.password !== data.confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
-      // UI only - no API call
-      setStep("success");
+  // Phase 2: Complete password reset
+  const passwordForm = useForm(
+    {
+      schema: t.object({
+        password: t.string({ minLength: 8 }),
+        confirmPassword: t.string({ minLength: 8 }),
+      }),
+      handler: async (data) => {
+        if (data.password !== data.confirmPassword) {
+          throw new AlephaError("Passwords do not match");
+        }
+
+        if (!resetState.intent || !resetState.code) {
+          throw new AlephaError("Invalid reset state");
+        }
+
+        await userCtrl.completePasswordReset({
+          body: {
+            intentId: resetState.intent.intentId,
+            code: resetState.code,
+            newPassword: data.password,
+          },
+        });
+
+        setResetState({ step: "success" });
+      },
     },
-  });
+    [resetState.intent, resetState.code],
+  );
 
   const handleCodeComplete = (value: string) => {
-    setCode(value);
     if (value.length === 6) {
-      setStep("password");
+      setResetState((prev) => ({
+        ...prev,
+        step: "password",
+        code: value,
+      }));
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!resetState.email) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const intent = await userCtrl.createPasswordResetIntent({
+        body: { email: resetState.email },
+      });
+
+      setResetState((prev) => ({
+        ...prev,
+        intent,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend code");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -69,6 +130,12 @@ const ResetPassword = (props: ResetPasswordProps) => {
       <Stack gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
           <Stack gap={"md"}>
+            {error && (
+              <Alert variant="light" color="red" icon={<IconAlertCircle />}>
+                <Text size="sm">{error}</Text>
+              </Alert>
+            )}
+
             {!isResetPasswordAllowed ? (
               <>
                 <Alert
@@ -82,9 +149,12 @@ const ResetPassword = (props: ResetPasswordProps) => {
                   {tr("resetPasswordBackToSignIn")}
                 </ActionButton>
               </>
-            ) : step === "email" ? (
+            ) : resetState.step === "email" ? (
               <form {...emailForm.props}>
                 <Stack flex={1} gap={"md"}>
+                  <Text size="lg" fw={500} ta="center">
+                    {tr("resetPasswordTitle")}
+                  </Text>
                   <Text size="sm" c="dimmed">
                     {tr("resetPasswordEnterEmail")}
                   </Text>
@@ -106,8 +176,11 @@ const ResetPassword = (props: ResetPasswordProps) => {
                   </ActionButton>
                 </Stack>
               </form>
-            ) : step === "code" ? (
+            ) : resetState.step === "code" ? (
               <Stack gap={"md"}>
+                <Text size="lg" fw={500} ta="center">
+                  {tr("resetPasswordTitle")}
+                </Text>
                 <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
                   <Text size="sm">{tr("resetPasswordCodeSent")}</Text>
                 </Alert>
@@ -119,16 +192,25 @@ const ResetPassword = (props: ResetPasswordProps) => {
                     length={6}
                     type="number"
                     autoFocus
+                    oneTimeCode
                     onComplete={handleCodeComplete}
+                    aria-label="Password reset verification code"
                   />
                 </Flex>
-                <ActionButton variant="subtle" onClick={() => setStep("email")}>
+                <ActionButton
+                  variant="subtle"
+                  onClick={handleResendCode}
+                  loading={isSubmitting}
+                >
                   {tr("resetPasswordResendCode")}
                 </ActionButton>
               </Stack>
-            ) : step === "password" ? (
+            ) : resetState.step === "password" ? (
               <form {...passwordForm.props}>
                 <Stack flex={1} gap={"md"}>
+                  <Text size="lg" fw={500} ta="center">
+                    {tr("resetPasswordTitle")}
+                  </Text>
                   <Text size="sm" c="dimmed">
                     {tr("resetPasswordEnterNewPassword")}
                   </Text>

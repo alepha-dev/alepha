@@ -1,10 +1,12 @@
 import { $inject } from "alepha";
+import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import type { IdentityEntity } from "../entities/identities.ts";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";
 
 export class IdentityService {
+  protected readonly log = $logger();
   protected readonly userRealmProvider = $inject(UserRealmProvider);
 
   public identities(userRealmName?: string) {
@@ -18,6 +20,7 @@ export class IdentityService {
     q: IdentityQuery = {},
     userRealmName?: string,
   ): Promise<Page<IdentityEntity>> {
+    this.log.trace("Finding identities", { query: q, userRealmName });
     q.sort ??= "-createdAt";
 
     const where = this.identities(userRealmName).createQueryWhere();
@@ -30,11 +33,18 @@ export class IdentityService {
       where.provider = { like: q.provider };
     }
 
-    return await this.identities(userRealmName).paginate(
+    const result = await this.identities(userRealmName).paginate(
       q,
       { where },
       { count: true },
     );
+
+    this.log.debug("Identities found", {
+      count: result.content.length,
+      total: result.page.totalElements,
+    });
+
+    return result;
   }
 
   /**
@@ -44,7 +54,14 @@ export class IdentityService {
     id: string,
     userRealmName?: string,
   ): Promise<IdentityEntity> {
-    return await this.identities(userRealmName).findById(id);
+    this.log.trace("Getting identity by ID", { id, userRealmName });
+    const identity = await this.identities(userRealmName).findById(id);
+    this.log.debug("Identity retrieved", {
+      id,
+      provider: identity.provider,
+      userId: identity.userId,
+    });
+    return identity;
   }
 
   /**
@@ -54,9 +71,16 @@ export class IdentityService {
     id: string,
     userRealmName?: string,
   ): Promise<void> {
+    this.log.trace("Deleting identity", { id, userRealmName });
+
     // Verify identity exists
-    await this.getIdentityById(id, userRealmName);
+    const identity = await this.getIdentityById(id, userRealmName);
 
     await this.identities(userRealmName).deleteById(id);
+    this.log.info("Identity deleted", {
+      id,
+      provider: identity.provider,
+      userId: identity.userId,
+    });
   }
 }

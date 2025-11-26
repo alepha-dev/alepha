@@ -138,6 +138,8 @@ export class SessionService {
     expiresIn: number,
     userRealmName?: string,
   ) {
+    this.log.trace("Creating session", { userId: user.id, expiresIn });
+
     const request = this.alepha.context.get<ServerRequest>("request");
     const refreshToken = this.cryptoProvider.randomUUID();
 
@@ -154,6 +156,12 @@ export class SessionService {
       refreshToken,
     });
 
+    this.log.info("Session created", {
+      sessionId: session.id,
+      userId: user.id,
+      ip: request?.ip,
+    });
+
     return {
       refreshToken,
       sessionId: session.id,
@@ -161,6 +169,8 @@ export class SessionService {
   }
 
   public async refreshSession(refreshToken: string, userRealmName?: string) {
+    this.log.trace("Refreshing session");
+
     const session = await this.sessions(userRealmName).findOne({
       where: {
         refreshToken: { eq: refreshToken },
@@ -171,6 +181,10 @@ export class SessionService {
     const expiresAt = this.dateTimeProvider.of(session.expiresAt);
 
     if (this.dateTimeProvider.of(session.expiresAt) < now) {
+      this.log.debug("Session expired during refresh", {
+        sessionId: session.id,
+        userId: session.userId,
+      });
       await this.sessions(userRealmName).deleteById(refreshToken);
       throw new UnauthorizedError("Session expired");
     }
@@ -181,6 +195,11 @@ export class SessionService {
       },
     });
 
+    this.log.debug("Session refreshed", {
+      sessionId: session.id,
+      userId: session.userId,
+    });
+
     return {
       user,
       expiresIn: expiresAt.unix() - now.unix(),
@@ -189,9 +208,11 @@ export class SessionService {
   }
 
   public async deleteSession(refreshToken: string, userRealmName?: string) {
+    this.log.trace("Deleting session");
     await this.sessions(userRealmName).deleteOne({
       refreshToken,
     });
+    this.log.debug("Session deleted");
   }
 
   public async link(
@@ -199,6 +220,12 @@ export class SessionService {
     profile: OAuth2Profile,
     userRealmName?: string,
   ) {
+    this.log.trace("Linking OAuth2 profile", {
+      provider,
+      profileSub: profile.sub,
+      email: profile.email,
+    });
+
     const realm = this.userRealmProvider.getRealm(userRealmName);
     const identities = this.identities(userRealmName);
     const users = this.users(userRealmName);
@@ -214,10 +241,19 @@ export class SessionService {
 
     // existing identity found, return associated user
     if (identity) {
+      this.log.debug("Existing identity found", {
+        provider,
+        identityId: identity.id,
+        userId: identity.userId,
+      });
       return users.findById(identity.userId);
     }
 
     if (!profile.email) {
+      this.log.debug("OAuth2 profile has no email, returning profile as-is", {
+        provider,
+        profileSub: profile.sub,
+      });
       return {
         id: profile.sub,
         ...profile,
@@ -233,6 +269,12 @@ export class SessionService {
       .catch(() => undefined);
 
     if (existing) {
+      this.log.debug("Linking OAuth2 profile to existing user by email", {
+        provider,
+        profileSub: profile.sub,
+        userId: existing.id,
+        email: profile.email,
+      });
       await identities.create({
         provider,
         providerUserId: profile.sub,
@@ -281,6 +323,13 @@ export class SessionService {
       provider,
       providerUserId: profile.sub,
       userId: user.id,
+    });
+
+    this.log.info("New user created via OAuth2 link", {
+      provider,
+      userId: user.id,
+      email: user.email,
+      username: user.username,
     });
 
     return user;

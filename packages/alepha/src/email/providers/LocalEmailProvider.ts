@@ -7,7 +7,6 @@ import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
 export interface LocalEmailProviderOptions {
   /**
    * Directory to save email files.
-   * @default "node_modules/.email" (relative to project root)
    */
   directory?: string;
 }
@@ -17,7 +16,7 @@ export class LocalEmailProvider implements EmailProvider {
   protected readonly directory: string;
 
   constructor(options: LocalEmailProviderOptions = {}) {
-    this.directory = options.directory ?? "node_modules/.email";
+    this.directory = options.directory ?? "node_modules/.alepha/emails";
   }
 
   public async send(options: EmailSendOptions): Promise<void> {

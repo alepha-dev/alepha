@@ -35,7 +35,7 @@ export const localFileStorageOptions = $atom({
     }),
   }),
   default: {
-    storagePath: "node_modules/.buckets",
+    storagePath: "node_modules/.alepha/buckets",
   },
 });
 

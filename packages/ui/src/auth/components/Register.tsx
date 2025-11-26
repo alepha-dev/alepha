@@ -2,7 +2,7 @@ import { useClient, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
-import { Alert, Anchor, Card, Flex, Group, Stack, Text } from "@mantine/core";
+import { Alert, Card, Flex, Group, PinInput, Stack, Text } from "@mantine/core";
 import {
   IconAlertCircle,
   IconLock,
@@ -11,8 +11,12 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { TypeBoxError, t } from "alepha";
-import type { UserRealmConfig, UserRealmController } from "alepha/api/users";
-import { useMemo } from "react";
+import type {
+  RegistrationIntentResponse,
+  UserController,
+  UserRealmConfig,
+} from "alepha/api/users";
+import { useMemo, useState } from "react";
 import { ActionButton, Control, capitalize } from "../../core";
 import type { AuthI18n } from "../AuthI18n";
 import type { AuthRouter } from "../AuthRouter";
@@ -23,12 +27,35 @@ export interface RegisterProps {
   realmConfig: UserRealmConfig;
 }
 
+type RegistrationPhase = "form" | "verification";
+
+interface RegistrationState {
+  phase: RegistrationPhase;
+  intent?: RegistrationIntentResponse;
+  credentials?: {
+    identifier: string;
+    password: string;
+  };
+}
+
 const Register = (props: RegisterProps) => {
   const auth = useAuth();
-  const realmCtrl = useClient<UserRealmController>();
+  const userCtrl = useClient<UserController>();
   const router = useRouter<AuthRouter>();
   const { tr } = useI18n<AuthI18n, "en">();
   const redirect = router.query.redirect || "/";
+
+  const [registrationState, setRegistrationState] = useState<RegistrationState>(
+    {
+      phase: "form",
+    },
+  );
+  const [emailCode, setEmailCode] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null,
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasUsernamePassword = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
@@ -68,7 +95,8 @@ const Register = (props: RegisterProps) => {
         });
       }
 
-      await realmCtrl.register({
+      // Phase 1: Create registration intent
+      const intent = await userCtrl.createRegistrationIntent({
         body: {
           username: data.username,
           email: data.email,
@@ -78,6 +106,30 @@ const Register = (props: RegisterProps) => {
       });
 
       const identifier = data.username ?? data.email ?? data.phoneNumber;
+
+      // Check if verification is needed
+      if (
+        intent.expectEmailVerification ||
+        intent.expectPhoneVerification ||
+        intent.expectCaptcha
+      ) {
+        // Move to verification phase
+        setRegistrationState({
+          phase: "verification",
+          intent,
+          credentials: identifier
+            ? { identifier, password: data.password }
+            : undefined,
+        });
+        return;
+      }
+
+      // No verification needed - complete registration immediately
+      await userCtrl.createUserFromIntent({
+        body: { intentId: intent.intentId },
+      });
+
+      // Auto-login after registration
       if (identifier) {
         await auth.login("credentials", {
           username: identifier,
@@ -89,6 +141,145 @@ const Register = (props: RegisterProps) => {
     },
   });
 
+  const handleVerificationSubmit = async () => {
+    if (!registrationState.intent) return;
+
+    setIsSubmitting(true);
+    setVerificationError(null);
+
+    try {
+      // Phase 2: Complete registration with verification codes
+      await userCtrl.createUserFromIntent({
+        body: {
+          intentId: registrationState.intent.intentId,
+          emailCode: registrationState.intent.expectEmailVerification
+            ? emailCode
+            : undefined,
+          phoneCode: registrationState.intent.expectPhoneVerification
+            ? phoneCode
+            : undefined,
+        },
+      });
+
+      // Auto-login after registration
+      if (registrationState.credentials) {
+        await auth.login("credentials", {
+          username: registrationState.credentials.identifier,
+          password: registrationState.credentials.password,
+        });
+      }
+
+      await router.go(router.query.r || "/");
+    } catch (error) {
+      setVerificationError(
+        error instanceof Error ? error.message : "Verification failed",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const canSubmitVerification = () => {
+    if (!registrationState.intent) return false;
+
+    if (
+      registrationState.intent.expectEmailVerification &&
+      emailCode.length !== 6
+    ) {
+      return false;
+    }
+
+    if (
+      registrationState.intent.expectPhoneVerification &&
+      phoneCode.length !== 6
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Verification phase UI
+  if (registrationState.phase === "verification" && registrationState.intent) {
+    return (
+      <Flex flex={1} justify={"center"} align={"center"}>
+        <Stack gap={"sm"} w={360}>
+          <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
+            <Stack gap={"md"}>
+              <Text size="lg" fw={500} ta="center">
+                {tr("registerVerifyTitle") ?? "Verify your account"}
+              </Text>
+              <Text size="sm" c="dimmed" ta="center">
+                {tr("registerVerifyDescription") ??
+                  "Please enter the verification code(s) sent to you."}
+              </Text>
+
+              {verificationError && (
+                <Alert variant="light" color="red" icon={<IconAlertCircle />}>
+                  <Text size="sm">{verificationError}</Text>
+                </Alert>
+              )}
+
+              {registrationState.intent.expectEmailVerification && (
+                <Stack gap={"xs"}>
+                  <Text size="sm" fw={500}>
+                    {tr("registerEmailCode") ?? "Email verification code"}
+                  </Text>
+                  <Flex justify="center">
+                    <PinInput
+                      length={6}
+                      value={emailCode}
+                      onChange={setEmailCode}
+                      type="number"
+                      oneTimeCode
+                      aria-label="Email verification code"
+                    />
+                  </Flex>
+                </Stack>
+              )}
+
+              {registrationState.intent.expectPhoneVerification && (
+                <Stack gap={"xs"}>
+                  <Text size="sm" fw={500}>
+                    {tr("registerPhoneCode") ?? "Phone verification code"}
+                  </Text>
+                  <Flex justify="center">
+                    <PinInput
+                      length={6}
+                      value={phoneCode}
+                      onChange={setPhoneCode}
+                      type="number"
+                      oneTimeCode
+                      aria-label="Phone verification code"
+                    />
+                  </Flex>
+                </Stack>
+              )}
+
+              <ActionButton
+                onClick={handleVerificationSubmit}
+                loading={isSubmitting}
+                disabled={!canSubmitVerification()}
+              >
+                {tr("registerVerifySubmit") ?? "Complete Registration"}
+              </ActionButton>
+
+              <ActionButton
+                variant="subtle"
+                onClick={() =>
+                  setRegistrationState({ phase: "form", intent: undefined })
+                }
+              >
+                {tr("registerVerifyBack") ?? "Back to registration"}
+              </ActionButton>
+            </Stack>
+          </Card>
+        </Stack>
+      </Flex>
+    );
+  }
+
+  // Registration form phase UI
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
       <Stack gap={"sm"} w={360}>
@@ -197,9 +388,12 @@ const Register = (props: RegisterProps) => {
                 {props.realmConfig.authenticationMethods.length > 0 && (
                   <Text size="sm" ta="center">
                     {tr("registerHaveAccount")}{" "}
-                    <Anchor href={router.path("login")} inherit>
+                    <ActionButton
+                      href={router.path("login")}
+                      anchorProps={{ inherit: true }}
+                    >
                       {tr("registerSignIn")}
-                    </Anchor>
+                    </ActionButton>
                   </Text>
                 )}
               </>

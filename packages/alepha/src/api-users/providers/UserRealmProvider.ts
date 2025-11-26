@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import {
   DEFAULT_USER_REALM_NAME,
   realmAuthSettingsAtom,
@@ -24,6 +24,7 @@ export interface UserRealm {
 }
 
 export class UserRealmProvider {
+  protected readonly alepha = $inject(Alepha);
   // Default repositories using $repository() for eager initialization
   protected readonly defaultIdentities = $repository(identities);
   protected readonly defaultSessions = $repository(sessions);
@@ -34,6 +35,17 @@ export class UserRealmProvider {
   public avatars = $bucket({
     maxSize: 5 * 1024 * 1024, // 5 MB
     mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  });
+
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      this.alepha.state.set("alepha.server.security.system.user", {
+        id: "00000000-0000-0000-0000-000000000000",
+        name: "system",
+        roles: ["admin"], // TODO: use realm config
+      });
+    },
   });
 
   public register(

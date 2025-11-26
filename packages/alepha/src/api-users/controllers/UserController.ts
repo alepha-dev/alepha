@@ -1,11 +1,18 @@
 import { $inject, t } from "alepha";
 import { pg } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
+import { completePasswordResetRequestSchema } from "../schemas/completePasswordResetRequestSchema.ts";
+import { completeRegistrationRequestSchema } from "../schemas/completeRegistrationRequestSchema.ts";
 import { createUserSchema } from "../schemas/createUserSchema.ts";
+import { passwordResetIntentResponseSchema } from "../schemas/passwordResetIntentResponseSchema.ts";
+import { registerQuerySchema } from "../schemas/registerQuerySchema.ts";
+import { registerRequestSchema } from "../schemas/registerRequestSchema.ts";
+import { registrationIntentResponseSchema } from "../schemas/registrationIntentResponseSchema.ts";
 import { updateUserSchema } from "../schemas/updateUserSchema.ts";
 import { userQuerySchema } from "../schemas/userQuerySchema.ts";
 import { userResourceSchema } from "../schemas/userResourceSchema.ts";
 import { CredentialService } from "../services/CredentialService.ts";
+import { RegistrationService } from "../services/RegistrationService.ts";
 import { UserService } from "../services/UserService.ts";
 
 export class UserController {
@@ -13,6 +20,27 @@ export class UserController {
   protected readonly group = "users";
   protected readonly credentialService = $inject(CredentialService);
   protected readonly userService = $inject(UserService);
+  protected readonly registrationService = $inject(RegistrationService);
+
+  /**
+   * Phase 1: Create a registration intent.
+   * Validates data, creates verification sessions, and stores intent in cache.
+   */
+  public readonly createRegistrationIntent = $action({
+    method: "POST",
+    path: `${this.url}/register`,
+    secure: false,
+    schema: {
+      body: registerRequestSchema,
+      query: registerQuerySchema,
+      response: registrationIntentResponseSchema,
+    },
+    handler: ({ body, query }) =>
+      this.registrationService.createRegistrationIntent(
+        body,
+        query.userRealmName,
+      ),
+  });
 
   /**
    * Find users with pagination and filtering.
@@ -73,6 +101,21 @@ export class UserController {
   });
 
   /**
+   * Phase 2: Complete registration using an intent.
+   * Validates verification codes and creates the user.
+   */
+  public readonly createUserFromIntent = $action({
+    method: "POST",
+    path: `${this.url}/register/complete`,
+    secure: false,
+    schema: {
+      body: completeRegistrationRequestSchema,
+      response: userResourceSchema,
+    },
+    handler: ({ body }) => this.registrationService.completeRegistration(body),
+  });
+
+  /**
    * Update a user.
    */
   public readonly updateUser = $action({
@@ -118,8 +161,51 @@ export class UserController {
   });
 
   /**
-   * Request a password reset.
-   * Generates a reset token using verification service and sends an email to the user.
+   * Phase 1: Create a password reset intent.
+   * Validates email, sends verification code, and stores intent in cache.
+   */
+  public readonly createPasswordResetIntent = $action({
+    method: "POST",
+    path: `${this.url}/password-reset`,
+    secure: false,
+    schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
+      body: t.object({
+        email: t.email(),
+      }),
+      response: passwordResetIntentResponseSchema,
+    },
+    handler: ({ body, query }) =>
+      this.credentialService.createPasswordResetIntent(
+        body.email,
+        query.userRealmName,
+      ),
+  });
+
+  /**
+   * Phase 2: Complete password reset using an intent.
+   * Validates verification code, updates password, and invalidates sessions.
+   */
+  public readonly completePasswordReset = $action({
+    method: "POST",
+    path: `${this.url}/password-reset/complete`,
+    secure: false,
+    schema: {
+      body: completePasswordResetRequestSchema,
+      response: okSchema,
+    },
+    handler: async ({ body }) => {
+      await this.credentialService.completePasswordReset(body);
+      return { ok: true };
+    },
+  });
+
+  // Legacy endpoints for backward compatibility
+
+  /**
+   * @deprecated Use createPasswordResetIntent instead
    */
   public requestPasswordReset = $action({
     path: "/users/password-reset/request",
@@ -151,8 +237,7 @@ export class UserController {
   });
 
   /**
-   * Validate a password reset token.
-   * Checks if the token is valid and not expired.
+   * @deprecated Use completePasswordReset instead
    */
   public validateResetToken = $action({
     path: "/users/password-reset/validate",
@@ -188,8 +273,7 @@ export class UserController {
   });
 
   /**
-   * Reset password with a valid token.
-   * Updates the user's password and invalidates all sessions.
+   * @deprecated Use completePasswordReset instead
    */
   public resetPassword = $action({
     path: "/users/password-reset/reset",

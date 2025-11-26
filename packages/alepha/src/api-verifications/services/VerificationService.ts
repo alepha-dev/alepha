@@ -1,6 +1,7 @@
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import {
@@ -13,6 +14,7 @@ import type { ValidateVerificationCodeResponse } from "../schemas/validateVerifi
 import type { VerificationTypeEnum } from "../schemas/verificationTypeEnumSchema.ts";
 
 export class VerificationService {
+  protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly verificationParameters = $inject(VerificationParameters);
   protected readonly verificationRepository = $repository(verifications);
@@ -20,6 +22,11 @@ export class VerificationService {
   public async findByEntry(
     entry: VerificationEntry,
   ): Promise<VerificationEntity> {
+    this.log.trace("Finding verification by entry", {
+      type: entry.type,
+      target: entry.target,
+    });
+
     const results = await this.verificationRepository.findMany({
       limit: 1, // only need the most recent entry
       orderBy: {
@@ -33,13 +40,28 @@ export class VerificationService {
     });
 
     if (results.length === 0) {
+      this.log.debug("Verification entry not found", {
+        type: entry.type,
+        target: entry.target,
+      });
       throw new NotFoundError("Verification entry not found");
     }
+
+    this.log.debug("Verification entry found", {
+      id: results[0].id,
+      type: entry.type,
+      target: entry.target,
+    });
 
     return results[0];
   }
 
   public findRecentsByEntry(entry: VerificationEntry) {
+    this.log.trace("Finding recent verifications by entry", {
+      type: entry.type,
+      target: entry.target,
+    });
+
     return this.verificationRepository.findMany({
       orderBy: {
         column: "createdAt",
@@ -63,10 +85,21 @@ export class VerificationService {
   public async createVerification(
     entry: VerificationEntry,
   ): Promise<RequestVerificationResponse> {
+    this.log.trace("Creating verification", {
+      type: entry.type,
+      target: entry.target,
+    });
+
     const settings = this.verificationParameters.get(entry.type);
 
     const recents = await this.findRecentsByEntry(entry);
     if (recents.length >= settings.limitPerDay) {
+      this.log.warn("Daily verification limit reached", {
+        type: entry.type,
+        target: entry.target,
+        limit: settings.limitPerDay,
+        count: recents.length,
+      });
       throw new BadRequestError(
         `Maximum number of verification requests per day reached (${settings.limitPerDay})`,
       );
@@ -81,18 +114,33 @@ export class VerificationService {
 
       const diffSec = nowSec - createdAtSec;
       if (diffSec < settings.verificationCooldown) {
+        const remainingCooldown = Math.floor(
+          settings.verificationCooldown - diffSec,
+        );
+        this.log.debug("Verification on cooldown", {
+          type: entry.type,
+          target: entry.target,
+          remainingSeconds: remainingCooldown,
+        });
         throw new BadRequestError(
-          `Verification is on cooldown for ${Math.floor(settings.verificationCooldown - diffSec)} seconds`,
+          `Verification is on cooldown for ${remainingCooldown} seconds`,
         );
       }
     }
 
     const token = this.generateToken(entry.type);
 
-    await this.verificationRepository.create({
+    const verification = await this.verificationRepository.create({
       type: entry.type,
       target: entry.target,
       code: this.hashCode(token),
+    });
+
+    this.log.info("Verification created", {
+      id: verification.id,
+      type: entry.type,
+      target: entry.target,
+      expiresInSeconds: settings.codeExpiration,
     });
 
     return {
@@ -107,10 +155,21 @@ export class VerificationService {
     entry: VerificationEntry,
     code: string,
   ): Promise<ValidateVerificationCodeResponse> {
+    this.log.trace("Verifying code", {
+      type: entry.type,
+      target: entry.target,
+    });
+
     const settings = this.verificationParameters.get(entry.type);
 
     const verification = await this.findByEntry(entry);
     if (verification.verifiedAt) {
+      this.log.debug("Verification already verified", {
+        id: verification.id,
+        type: entry.type,
+        target: entry.target,
+        verifiedAt: verification.verifiedAt,
+      });
       return { ok: true, alreadyVerified: true };
     }
 
@@ -123,24 +182,52 @@ export class VerificationService {
       .add(settings.codeExpiration, "seconds");
 
     if (now > expirationDate) {
+      this.log.warn("Verification code expired", {
+        id: verification.id,
+        type: entry.type,
+        target: entry.target,
+        createdAt: verification.createdAt,
+        expiredAt: expirationDate.toISOString(),
+      });
       throw new BadRequestError("Verification code has expired");
     }
 
     if (verification.attempts >= settings.maxAttempts) {
+      this.log.warn("Verification locked due to max attempts", {
+        id: verification.id,
+        type: entry.type,
+        target: entry.target,
+        attempts: verification.attempts,
+        maxAttempts: settings.maxAttempts,
+      });
       throw new BadRequestError(
         "Maximum number of attempts reached - verification is locked",
       );
     }
 
     if (verification.code !== this.hashCode(code)) {
+      const newAttempts = verification.attempts + 1;
+      this.log.warn("Invalid verification code", {
+        id: verification.id,
+        type: entry.type,
+        target: entry.target,
+        attempts: newAttempts,
+        maxAttempts: settings.maxAttempts,
+      });
       await this.verificationRepository.updateById(verification.id, {
-        attempts: verification.attempts + 1,
+        attempts: newAttempts,
       });
       throw new BadRequestError("Invalid verification code");
     }
 
     await this.verificationRepository.updateById(verification.id, {
       verifiedAt: this.dateTimeProvider.nowISOString(),
+    });
+
+    this.log.info("Verification code verified", {
+      id: verification.id,
+      type: entry.type,
+      target: entry.target,
     });
 
     return { ok: true };
