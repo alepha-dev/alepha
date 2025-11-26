@@ -207,7 +207,7 @@ export class ServerSecurityProvider {
     } else if (type === "context") {
       user = fromContext;
     } else {
-      user = fromOptions ?? fromSystem ?? fromContext;
+      user = fromOptions ?? fromContext ?? fromSystem;
     }
 
     if (!user) {

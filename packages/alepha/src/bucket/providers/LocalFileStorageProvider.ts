@@ -3,7 +3,6 @@ import type * as fs from "node:fs";
 import { createReadStream } from "node:fs";
 import { mkdir, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import * as path from "node:path";
 import { join } from "node:path";
 import {
   $atom,
@@ -104,7 +103,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   ): Promise<string> {
     fileId ??= this.createId(file.type);
 
-    this.log.trace(`Uploading file to ${path}`);
+    this.log.trace(`Uploading file to ${bucketName}`);
 
     await this.fileSystemProvider.writeFile(
       this.path(bucketName, fileId),
