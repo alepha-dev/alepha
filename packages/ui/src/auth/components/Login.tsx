@@ -67,7 +67,10 @@ const Login = (props: LoginProps) => {
       }),
     }),
     handler: async (data) => {
-      // UI only - no API call
+      await auth.login("credentials", {
+        username: data.identifier,
+        password: data.password,
+      });
       await router.go(router.query.r || "/");
     },
   });

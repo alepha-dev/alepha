@@ -50,6 +50,34 @@ export class UserRealmController {
     },
   });
 
+  public readonly checkUsernameAvailability = $action({
+    path: `${this.url}/check-username`,
+    secure: false,
+    schema: {
+      query: t.object({
+        userRealmName: t.optional(t.text()),
+      }),
+      body: t.object({
+        username: t.text(),
+      }),
+      response: t.object({
+        available: t.boolean(),
+      }),
+    },
+    handler: async ({ query, body }) => {
+      const realmName = query.userRealmName;
+      const userRepository = this.userRealmProvider.userRepository(realmName);
+
+      const existingUser = await userRepository
+        .findOne({ where: { username: { eq: body.username } } })
+        .catch(() => undefined);
+
+      return {
+        available: !existingUser,
+      };
+    },
+  });
+
   /**
    * Register a new user account with credentials.
    * Creates a user and associated credentials identity.

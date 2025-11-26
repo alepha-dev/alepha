@@ -1,4 +1,4 @@
-import { useRouter } from "@alepha/react";
+import { useClient, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
@@ -10,8 +10,8 @@ import {
   IconPhone,
   IconUser,
 } from "@tabler/icons-react";
-import { t } from "alepha";
-import type { UserRealmConfig } from "alepha/api/users";
+import { TypeBoxError, t } from "alepha";
+import type { UserRealmConfig, UserRealmController } from "alepha/api/users";
 import { useMemo } from "react";
 import { ActionButton, Control, capitalize } from "../../core";
 import type { AuthI18n } from "../AuthI18n";
@@ -25,6 +25,7 @@ export interface RegisterProps {
 
 const Register = (props: RegisterProps) => {
   const auth = useAuth();
+  const realmCtrl = useClient<UserRealmController>();
   const router = useRouter<AuthRouter>();
   const { tr } = useI18n<AuthI18n, "en">();
   const redirect = router.query.redirect || "/";
@@ -36,66 +37,54 @@ const Register = (props: RegisterProps) => {
   const settings = props.realmConfig.settings || {};
   const isRegistrationAllowed = settings.registrationAllowed !== false;
 
-  // Build dynamic schema based on realm settings
   const registerSchema = useMemo(() => {
-    const schemaFields: Record<string, any> = {};
-
-    // Username field
-    if (settings.usernameEnabled !== false) {
-      schemaFields.username =
-        settings.usernameRequired !== false
-          ? t.string({
-              minLength: 3,
-              maxLength: 20,
-              pattern: /^[a-zA-Z0-9_]+$/,
-            })
-          : t.optional(
-              t.string({
-                minLength: 3,
-                maxLength: 20,
-                pattern: /^[a-zA-Z0-9_]+$/,
-              }),
-            );
-    }
-
-    // Email field
-    if (settings.emailEnabled !== false) {
-      schemaFields.email =
-        settings.emailRequired !== false ? t.email() : t.optional(t.email());
-    }
-
-    // Phone field
-    if (settings.phoneEnabled === true) {
-      schemaFields.phone =
-        settings.phoneRequired === true
-          ? t.string({
-              pattern: /^\+?[1-9]\d{1,14}$/,
-            })
-          : t.optional(
-              t.string({
-                pattern: /^\+?[1-9]\d{1,14}$/,
-              }),
-            );
-    }
-
-    // Password fields are always required for registration
-    schemaFields.password = t.string({
-      minLength: settings.passwordPolicy?.minLength || 8,
-    });
-    schemaFields.confirmPassword = t.string({
-      minLength: settings.passwordPolicy?.minLength || 8,
+    const registerSchema = t.object({
+      username: t.optional(t.text()),
+      email: t.optional(t.email()),
+      phoneNumber: t.optional(t.e164()),
+      password: t.string({ minLength: 8 }),
+      confirmPassword: t.string({ minLength: 8 }),
     });
 
-    return t.object(schemaFields);
-  }, [settings]);
+    const required = registerSchema.required as string[];
+
+    if (settings.usernameRequired) required.push("username");
+    if (settings.emailRequired) required.push("email");
+    if (settings.phoneRequired) required.push("phoneNumber");
+
+    return registerSchema;
+  }, []);
 
   const form = useForm({
     schema: registerSchema,
-    handler: async (data: any) => {
+    handler: async (data) => {
       if (data.password !== data.confirmPassword) {
-        throw new Error("Passwords do not match");
+        throw new TypeBoxError({
+          message: "Passwords do not match",
+          instancePath: "/confirmPassword",
+          keyword: "not",
+          schemaPath: "",
+          params: {},
+        });
       }
-      // UI only - no API call
+
+      await realmCtrl.register({
+        body: {
+          username: data.username,
+          email: data.email,
+          phoneNumber: data.phoneNumber,
+          password: data.password,
+        },
+      });
+
+      const identifier = data.username ?? data.email ?? data.phoneNumber;
+      if (identifier) {
+        await auth.login("credentials", {
+          username: identifier,
+          password: data.password,
+        });
+      }
+
       await router.go(router.query.r || "/");
     },
   });
@@ -126,7 +115,7 @@ const Register = (props: RegisterProps) => {
                       form.input.username && (
                         <Control
                           title={tr("registerUsername")}
-                          input={form.input.username as any}
+                          input={form.input.username}
                           icon={<IconUser />}
                           text={{
                             autoComplete: "username",
@@ -136,26 +125,27 @@ const Register = (props: RegisterProps) => {
                     {settings.emailEnabled !== false && form.input.email && (
                       <Control
                         title={tr("registerEmail")}
-                        input={form.input.email as any}
+                        input={form.input.email}
                         icon={<IconMail />}
                         text={{
                           autoComplete: "email",
                         }}
                       />
                     )}
-                    {settings.phoneEnabled === true && form.input.phone && (
-                      <Control
-                        title={tr("registerPhone")}
-                        input={form.input.phone as any}
-                        icon={<IconPhone />}
-                        text={{
-                          autoComplete: "tel",
-                        }}
-                      />
-                    )}
+                    {settings.phoneEnabled === true &&
+                      form.input.phoneNumber && (
+                        <Control
+                          title={tr("registerPhone")}
+                          input={form.input.phoneNumber}
+                          icon={<IconPhone />}
+                          text={{
+                            autoComplete: "tel",
+                          }}
+                        />
+                      )}
                     <Control
                       title={tr("registerPassword")}
-                      input={form.input.password as any}
+                      input={form.input.password}
                       icon={<IconLock />}
                       password={{
                         autoComplete: "new-password",
@@ -163,7 +153,7 @@ const Register = (props: RegisterProps) => {
                     />
                     <Control
                       title={tr("registerConfirmPassword")}
-                      input={form.input.confirmPassword as any}
+                      input={form.input.confirmPassword}
                       icon={<IconLock />}
                       password={{
                         autoComplete: "new-password",
