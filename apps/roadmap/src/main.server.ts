@@ -21,6 +21,10 @@ const alepha = Alepha.create({
   },
 });
 
+if (alepha.isProduction() && alepha.env.BLOB_READ_WRITE_TOKEN) {
+  alepha.with(AlephaBucketVercel);
+}
+
 alepha.with(AlephaReactAuth);
 alepha.with(AlephaReactForm);
 alepha.with(AlephaServerHelmet);
@@ -32,10 +36,6 @@ alepha.with(AlephaApiFiles);
 alepha.with(AlephaApiUsers);
 alepha.with(AlephaUI);
 alepha.with(AlephaUIAuth);
-
-if (alepha.isProduction() && alepha.env.BLOB_READ_WRITE_TOKEN) {
-  alepha.with(AlephaBucketVercel);
-}
 
 alepha.with(RoadmapServices);
 alepha.with(RoadmapApi);

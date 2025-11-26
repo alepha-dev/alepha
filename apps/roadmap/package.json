@@ -6,6 +6,7 @@
     "dev": "alepha dev",
     "build": "alepha build",
     "deploy": "cd dist && vercel --prod",
+    "build-and-deploy": "yarn build && yarn deploy",
     "typecheck": "alepha typecheck"
   },
   "dependencies": {
