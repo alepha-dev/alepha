@@ -11,6 +11,7 @@ export class Security {
   realm = $userRealm({
     settings: {
       usernameRequired: true,
+      resetPasswordAllowed: true,
     },
   });
 
