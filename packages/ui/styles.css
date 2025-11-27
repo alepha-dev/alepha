@@ -33,8 +33,6 @@
   --alepha-text-muted: #6c757d;
   --alepha-text: var(--alepha-text-light);
 
-  --alepha-focus-ring: rgba(100, 149, 237, 0.4);
-
   --mantine-color-dimmed: var(--alepha-text-muted) !important;
   --mantine-color-dark-8: var(--alepha-background);
   --mantine-color-dark-6: var(--alepha-surface);

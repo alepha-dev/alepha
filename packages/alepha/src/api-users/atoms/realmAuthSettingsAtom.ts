@@ -63,7 +63,7 @@ export const realmAuthSettingsAtom = $atom({
     registrationAllowed: true,
     emailEnabled: true,
     emailRequired: true,
-    usernameEnabled: false,
+    usernameEnabled: true,
     usernameRequired: false,
     phoneEnabled: false,
     phoneRequired: false,

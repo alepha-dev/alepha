@@ -1,4 +1,5 @@
 import { NestedView, useEvents } from "@alepha/react";
+import { FormValidationError } from "@alepha/react/form";
 import type {
   ColorSchemeScriptProps,
   MantineProviderProps,
@@ -34,6 +35,11 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
         nprogress.complete();
       },
       "react:action:error": ({ error }) => {
+        if (error instanceof FormValidationError) {
+          // Validation errors are handled by the form component
+          return;
+        }
+
         toast.danger({
           title: error.name || "Error",
           message:

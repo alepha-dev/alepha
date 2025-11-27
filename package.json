@@ -2,7 +2,7 @@
 	"private": true,
 	"description": "Alepha framework monorepo workspace",
 	"type": "module",
-	"packageManager": "yarn@4.11.0",
+	"packageManager": "yarn@4.12.0",
 	"workspaces": {
 		"packages": [
 			"apps/*",
@@ -11,14 +11,14 @@
 		]
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.6",
+		"@biomejs/biome": "^2.3.8",
 		"@types/node": "^24.10.1",
-		"@vitest/coverage-v8": "^4.0.10",
-		"@vitest/ui": "^4.0.10",
+		"@vitest/coverage-v8": "^4.0.14",
+		"@vitest/ui": "^4.0.14",
 		"depcheck": "^1.4.7",
 		"typescript": "^5.9.3",
 		"vite-plugin-dts": "^4.5.4",
-		"vitest": "^4.0.10"
+		"vitest": "^4.0.14"
 	},
 	"scripts": {
 		"alepha": "node scripts/alepha-dev-cli.ts",
@@ -31,7 +31,7 @@
 		"convert": "node scripts/convert.ts",
 		"lint": "biome check --fix",
 		"typecheck": "yarn tsc --noEmit",
-		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=@vitejs/plugin-react,jsdom,@alepha/react,shx,drizzle-kit,swagger-ui-dist,vite --ignore-patterns=dist,assets",
+		"check-dependencies": "yarn workspaces foreach -Apt --exclude alepha --no-private exec depcheck --ignores=@vitejs/plugin-react,jsdom,@alepha/ui,@alepha/react,shx,drizzle-kit,swagger-ui-dist,vite --ignore-patterns=dist,assets",
 		"test": "vitest run",
 		"build": "yarn workspaces foreach -Apt run build"
 	}

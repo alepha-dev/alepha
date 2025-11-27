@@ -80,6 +80,5 @@ $atom[KIND] = "atom";
 type TProperties = any; // it's required to avoid required [ string ] error, ...
 
 export type TAtomObject = TObject<any> | TArray;
-export type AtomStatic<T extends TAtomObject> = T extends TOptionalAdd<T>
-  ? Static<T> | undefined
-  : Static<T>;
+export type AtomStatic<T extends TAtomObject> =
+  T extends TOptionalAdd<T> ? Static<T> | undefined : Static<T>;

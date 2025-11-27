@@ -14,9 +14,7 @@ import {
 import { UserRealmProvider } from "../../src/api-users/providers/UserRealmProvider.ts";
 
 const setup = async (realmSettings?: Record<string, unknown>) => {
-  const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error" },
-  });
+  const alepha = Alepha.create();
 
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);

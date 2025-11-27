@@ -2,7 +2,7 @@ import type { TLocalizedValidationError } from "typebox/error";
 import { AlephaError } from "./AlephaError.ts";
 
 export class TypeBoxError extends AlephaError {
-  readonly name = "TypeBoxError";
+  name = "TypeBoxError";
 
   public readonly cause: TLocalizedValidationError;
   public readonly value: {

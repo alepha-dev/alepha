@@ -7,5 +7,9 @@ export class AppSecurity {
       credentials: true,
       github: true,
     },
+    settings: {
+      resetPasswordAllowed: true,
+      verifyEmailRequired: true,
+    },
   });
 }

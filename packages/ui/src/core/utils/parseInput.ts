@@ -1,7 +1,13 @@
 import type { InputField } from "@alepha/react/form";
 import { type TObject, TypeBoxError } from "alepha";
-import type { ReactNode } from "react";
+import {
+  createElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import type { ControlProps } from "../components/form/Control.tsx";
+import { ui } from "../constants/ui.ts";
 import { getDefaultIcon } from "./icons.tsx";
 import { prettyName } from "./string.ts";
 
@@ -32,29 +38,31 @@ export const parseInput = (
       : undefined;
 
   // Auto-generate icon if not provided
-  const icon =
-    props.icon ??
-    getDefaultIcon({
-      type:
-        props.input.schema && "type" in props.input.schema
-          ? String(props.input.schema.type)
-          : undefined,
-      format:
-        props.input.schema &&
-        "format" in props.input.schema &&
-        typeof props.input.schema.format === "string"
-          ? props.input.schema.format
-          : undefined,
-      name: props.input.props.name,
-      isEnum:
-        props.input.schema &&
-        "enum" in props.input.schema &&
-        Boolean(props.input.schema.enum),
-      isArray:
-        props.input.schema &&
-        "type" in props.input.schema &&
-        props.input.schema.type === "array",
-    });
+  const icon = !props.icon
+    ? getDefaultIcon({
+        type:
+          props.input.schema && "type" in props.input.schema
+            ? String(props.input.schema.type)
+            : undefined,
+        format:
+          props.input.schema &&
+          "format" in props.input.schema &&
+          typeof props.input.schema.format === "string"
+            ? props.input.schema.format
+            : undefined,
+        name: props.input.props.name,
+        isEnum:
+          props.input.schema &&
+          "enum" in props.input.schema &&
+          Boolean(props.input.schema.enum),
+        isArray:
+          props.input.schema &&
+          "type" in props.input.schema &&
+          props.input.schema.type === "array",
+      })
+    : isValidElement(props.icon)
+      ? props.icon
+      : createElement(props.icon, { size: ui.sizes.icon.md });
 
   const format =
     props.input.schema &&
@@ -100,12 +108,12 @@ export interface GenericControlProps {
   input: InputField;
   title?: string;
   description?: string;
-  icon?: ReactNode;
+  icon?: ReactElement | ((props: { size: number }) => ReactNode);
 }
 
 export interface ControlInput {
   id?: string;
-  icon: ReactNode;
+  icon: ReactElement;
   format?: string;
   schema: TObject & { $control?: ControlProps };
   inputProps: InputProps;

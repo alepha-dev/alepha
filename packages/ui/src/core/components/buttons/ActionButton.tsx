@@ -26,8 +26,7 @@ import { IconCheck, IconChevronRight } from "@tabler/icons-react";
 import {
   type ButtonHTMLAttributes,
   Children,
-  isValidElement,
-  type ReactElement,
+  type ComponentType,
   type ReactNode,
 } from "react";
 import { ui } from "../../constants/ui.ts";
@@ -138,7 +137,7 @@ export interface ActionCommonProps extends ButtonProps {
    * Icon to display on the left side of the button.
    * If no children are provided, the button will be styled as an icon-only button.
    */
-  icon?: ReactElement | ((props: { size?: number } & any) => ReactNode);
+  icon?: ReactNode | ComponentType;
 
   /**
    * Additional props to pass to the ThemeIcon wrapping the icon.
@@ -234,11 +233,13 @@ const ActionMenuItem = (props: {
 };
 
 const ActionButton = (_props: ActionProps) => {
-  const props = { variant: "subtle", ..._props };
+  const props = { variant: "default", ..._props };
   const { tooltip, menu, icon, ...restProps } = props;
 
   if (props.icon) {
-    const icon = isValidElement(props.icon) ? (
+    const icon = isComponentType(props.icon) ? (
+      <props.icon size={ui.sizes.icon.md} />
+    ) : (
       <ThemeIcon
         w={24} // TODO: make size configurable
         variant={"transparent"}
@@ -246,10 +247,8 @@ const ActionButton = (_props: ActionProps) => {
         c={"var(--mantine-color-text)"}
         {...props.themeIconProps}
       >
-        {props.icon}
+        {props.icon as ReactNode}
       </ThemeIcon>
-    ) : (
-      <props.icon size={ui.sizes.icon.md} />
     );
 
     if (!props.children) {
@@ -589,3 +588,12 @@ const ActionHrefButton = (props: ActionNavigationButtonProps) => {
     </Button>
   );
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+function isComponentType(param: any): param is ComponentType<any> {
+  return (
+    typeof param === "function" ||
+    (typeof param === "object" && param !== null && "$$typeof" in param)
+  );
+}

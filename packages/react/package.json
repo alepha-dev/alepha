@@ -23,11 +23,11 @@
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
-    "@types/react": "^19.2.6",
+    "@types/react": "^19.2.7",
     "alepha": "0.12.0",
     "jsdom": "^27.2.0",
     "react": "^19.2.0",
-    "vitest": "^4.0.10"
+    "vitest": "^4.0.14"
   },
   "peerDependencies": {
     "alepha": "0.12.0",

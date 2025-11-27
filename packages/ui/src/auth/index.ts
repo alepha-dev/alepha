@@ -1,3 +1,4 @@
+import { AlephaReactAuth } from "@alepha/react/auth";
 import { AlephaReactI18n } from "@alepha/react/i18n";
 import { $module } from "alepha";
 import { AlephaUI } from "../core";
@@ -7,7 +8,11 @@ import { AuthRouter } from "./AuthRouter.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./AuthRouter.ts";
-export * from "./components/Login.tsx";
+export type { UserButtonProps } from "./components/buttons/UserButton.tsx";
+export { default as UserButton } from "./components/buttons/UserButton.tsx";
+export { default as Login } from "./components/Login.tsx";
+export { default as Register } from "./components/Register.tsx";
+export { default as ResetPassword } from "./components/ResetPassword.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -18,5 +23,5 @@ export * from "./components/Login.tsx";
  */
 export const AlephaUIAuth = $module({
   name: "alepha.ui.auth",
-  services: [AlephaUI, AlephaReactI18n, AuthRouter, AuthI18n],
+  services: [AlephaUI, AlephaReactAuth, AlephaReactI18n, AuthRouter, AuthI18n],
 });

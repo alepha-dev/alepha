@@ -15,20 +15,10 @@ import {
   IconSelector,
   IconToggleLeft,
 } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
+import { ui } from "../constants/ui.ts";
 
-/**
- * Icon size presets following Mantine's size conventions
- */
-export const ICON_SIZES = {
-  xs: 12,
-  sm: 16,
-  md: 20,
-  lg: 24,
-  xl: 28,
-} as const;
-
-export type IconSize = keyof typeof ICON_SIZES;
+export type IconSize = keyof typeof ui.sizes.icon;
 
 /**
  * Get the default icon for an input based on its type, format, or name.
@@ -40,9 +30,9 @@ export const getDefaultIcon = (params: {
   isEnum?: boolean;
   isArray?: boolean;
   size?: IconSize;
-}): ReactNode => {
+}): ReactElement => {
   const { type, format, name, isEnum, isArray, size = "sm" } = params;
-  const iconSize = ICON_SIZES[size];
+  const iconSize = ui.sizes.icon[size];
 
   // Format-based icons (highest priority)
   if (format) {

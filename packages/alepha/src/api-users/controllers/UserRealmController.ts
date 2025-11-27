@@ -23,7 +23,12 @@ export class UserRealmController {
     method: "GET",
     path: `${this.url}/config`,
     secure: false,
-    cache: true,
+    cache: {
+      etag: true,
+      control: {
+        maxAge: [24, "hours"],
+      },
+    },
     schema: {
       query: t.object({
         userRealmName: t.optional(t.string()),

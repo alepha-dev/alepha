@@ -106,14 +106,15 @@ type PgQueryWhereConditions<
 
 type PgQueryWhereRelations<
   Relations extends PgRelationMap<TObject> | undefined = undefined,
-> = Relations extends PgRelationMap<TObject>
-  ? {
-      [K in keyof Relations]?: PgQueryWhere<
-        Relations[K]["join"]["schema"],
-        Relations[K]["with"]
-      >;
-    }
-  : {};
+> =
+  Relations extends PgRelationMap<TObject>
+    ? {
+        [K in keyof Relations]?: PgQueryWhere<
+          Relations[K]["join"]["schema"],
+          Relations[K]["with"]
+        >;
+      }
+    : {};
 
 /**
  * Recursively allow nested queries for JSONB object/array types

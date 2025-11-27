@@ -1,6 +1,7 @@
 import { $page } from "@alepha/react";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $inject } from "alepha";
+import Home from "./Home.tsx";
 import { Layout } from "./Layout.tsx";
 
 export class AppRouter {
@@ -22,7 +23,7 @@ export class AppRouter {
 
   home = $page({
     path: "/",
-    component: () => "Hello World!",
+    component: Home,
   });
 
   about = $page({

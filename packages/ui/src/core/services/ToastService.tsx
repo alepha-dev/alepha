@@ -16,8 +16,10 @@ export class ToastService {
 
   public readonly options: ToastServiceOptions = {
     default: {
-      autoClose: 5000,
+      radius: "md",
+      withBorder: true,
       withCloseButton: true,
+      autoClose: 5000,
       position: "top-center",
     },
   };

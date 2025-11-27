@@ -22,6 +22,8 @@ export type {
 } from "./components/buttons/ActionButton.tsx";
 export { default as ActionButton } from "./components/buttons/ActionButton.tsx";
 export { default as BurgerButton } from "./components/buttons/BurgerButton.tsx";
+export type { ClipboardButtonProps } from "./components/buttons/ClipboardButton.tsx";
+export { default as ClipboardButton } from "./components/buttons/ClipboardButton.tsx";
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as LanguageButton } from "./components/buttons/LanguageButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";

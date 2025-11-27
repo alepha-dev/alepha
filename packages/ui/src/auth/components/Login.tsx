@@ -1,11 +1,12 @@
 import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
-import { useForm } from "@alepha/react/form";
+import { FormValidationError, useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { Card, Flex, Group, Stack, Text } from "@mantine/core";
 import { IconLock, IconUser } from "@tabler/icons-react";
 import { t } from "alepha";
 import type { UserRealmConfig } from "alepha/api/users";
+import { HttpError } from "alepha/server";
 import { useMemo } from "react";
 import { ActionButton, Control, capitalize } from "../../core";
 import type { AuthI18n } from "../AuthI18n";
@@ -67,11 +68,24 @@ const Login = (props: LoginProps) => {
       }),
     }),
     handler: async (data) => {
-      await auth.login("credentials", {
-        username: data.identifier,
-        password: data.password,
-      });
-      await router.go(router.query.r || "/");
+      try {
+        await auth.login("credentials", {
+          username: data.identifier,
+          password: data.password,
+        });
+        await router.go(router.query.r || "/");
+      } catch (error) {
+        if (
+          error instanceof HttpError &&
+          error.error === "InvalidCredentialsError"
+        ) {
+          throw new FormValidationError({
+            message: "Invalid identifier or password",
+            path: "/password",
+          });
+        }
+        throw error;
+      }
     },
   });
 
@@ -87,7 +101,7 @@ const Login = (props: LoginProps) => {
                     <Control
                       title={identifierTitle}
                       input={form.input.identifier}
-                      icon={<IconUser />}
+                      icon={IconUser}
                       text={{
                         autoComplete: loginMethods.includes("email")
                           ? "email"
@@ -97,7 +111,7 @@ const Login = (props: LoginProps) => {
                     <Control
                       title={tr("loginPassword")}
                       input={form.input.password}
-                      icon={<IconLock />}
+                      icon={IconLock}
                       password={{
                         autoComplete: "current-password",
                       }}

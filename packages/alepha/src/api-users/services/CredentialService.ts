@@ -143,10 +143,7 @@ export class CredentialService {
       });
     } catch (error) {
       // If rate limit or cooldown hit, still return success for security
-      this.log.warn("Failed to create password reset verification", {
-        email,
-        error,
-      });
+      this.log.warn("Failed to create password reset verification", error);
     }
 
     return { intentId, expiresAt };
