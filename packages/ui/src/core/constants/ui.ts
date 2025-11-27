@@ -6,4 +6,13 @@ export const ui = {
     elevated: "var(--alepha-elevated)",
     border: "var(--alepha-border)",
   },
+  sizes: {
+    icon: {
+      xs: 12,
+      sm: 16,
+      md: 20,
+      lg: 24,
+      xl: 32,
+    },
+  },
 };

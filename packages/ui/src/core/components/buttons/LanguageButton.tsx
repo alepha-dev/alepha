@@ -11,8 +11,8 @@ const LanguageButton = (props: LanguageButtonProps) => {
   const i18n = useI18n();
   return (
     <ActionButton
-      icon={<IconLanguage />}
-      variant={"outline"}
+      variant={"default"}
+      icon={IconLanguage}
       menu={{
         items: i18n.languages.map((lang) => ({
           label: i18n.tr(lang),

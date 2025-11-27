@@ -8,6 +8,7 @@ import {
 } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { ui } from "../../constants/ui.ts";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 export interface DarkModeButtonProps {
@@ -73,18 +74,18 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
   return (
     <ActionButton
       onClick={toggleColorScheme}
-      variant={props.variant ?? "outline"}
+      variant={props.variant ?? "default"}
       size={props.size ?? "sm"}
       aria-label="Toggle color scheme"
       px={"xs"}
       fullWidth={props.fullWidth ?? false}
       icon={
         colorScheme === "dark" ? (
-          <IconSun size={20} />
+          <IconSun size={ui.sizes.icon.md} />
         ) : colorScheme === "light" ? (
-          <IconMoon size={20} />
+          <IconMoon size={ui.sizes.icon.md} />
         ) : (
-          <Flex h={20} w={20} />
+          <Flex h={ui.sizes.icon.md} w={ui.sizes.icon.md} />
         )
       }
       {...props.actionProps}

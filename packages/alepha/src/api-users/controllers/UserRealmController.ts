@@ -23,6 +23,7 @@ export class UserRealmController {
     method: "GET",
     path: `${this.url}/config`,
     secure: false,
+    cache: true,
     schema: {
       query: t.object({
         userRealmName: t.optional(t.string()),

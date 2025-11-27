@@ -23,7 +23,14 @@ import {
   type TooltipProps,
 } from "@mantine/core";
 import { IconCheck, IconChevronRight } from "@tabler/icons-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import {
+  type ButtonHTMLAttributes,
+  Children,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+import { ui } from "../../constants/ui.ts";
 
 export interface ActionMenuItem {
   /**
@@ -131,7 +138,7 @@ export interface ActionCommonProps extends ButtonProps {
    * Icon to display on the left side of the button.
    * If no children are provided, the button will be styled as an icon-only button.
    */
-  icon?: ReactNode;
+  icon?: ReactElement | ((props: { size?: number } & any) => ReactNode);
 
   /**
    * Additional props to pass to the ThemeIcon wrapping the icon.
@@ -231,7 +238,7 @@ const ActionButton = (_props: ActionProps) => {
   const { tooltip, menu, icon, ...restProps } = props;
 
   if (props.icon) {
-    const icon = (
+    const icon = isValidElement(props.icon) ? (
       <ThemeIcon
         w={24} // TODO: make size configurable
         variant={"transparent"}
@@ -241,9 +248,12 @@ const ActionButton = (_props: ActionProps) => {
       >
         {props.icon}
       </ThemeIcon>
+    ) : (
+      <props.icon size={ui.sizes.icon.md} />
     );
+
     if (!props.children) {
-      restProps.children = icon;
+      restProps.children = Children.only(icon);
       restProps.p ??= "xs";
     } else {
       restProps.leftSection = icon;

@@ -102,7 +102,9 @@ const Login = (props: LoginProps) => {
                         autoComplete: "current-password",
                       }}
                     />
-                    <ActionButton form={form}>{tr("loginSignIn")}</ActionButton>
+                    <ActionButton variant={"filled"} form={form}>
+                      {tr("loginSignIn")}
+                    </ActionButton>
                   </Stack>
                 </form>
                 <Stack gap="xs">

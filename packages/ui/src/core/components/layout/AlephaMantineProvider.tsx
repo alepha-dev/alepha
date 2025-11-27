@@ -53,12 +53,6 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
       <MantineProvider
         {...props.mantine}
         theme={{
-          primaryColor: "gray",
-          primaryShade: {
-            light: 9,
-            dark: 8,
-          },
-          cursorType: "pointer",
           ...props.mantine?.theme,
         }}
       >

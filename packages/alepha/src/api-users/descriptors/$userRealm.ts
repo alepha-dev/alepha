@@ -6,11 +6,15 @@ import {
   type RealmDescriptorOptions,
   SecurityProvider,
 } from "alepha/security";
-import type {
-  Credentials,
-  LinkAccountOptions,
-  WithLinkFn,
-  WithLoginFn,
+import {
+  $authCredentials,
+  $authGithub,
+  $authGoogle,
+  type AuthDescriptor,
+  type Credentials,
+  type LinkAccountOptions,
+  type WithLinkFn,
+  type WithLoginFn,
 } from "alepha/server/auth";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import type { identities } from "../entities/identities.ts";
@@ -99,6 +103,20 @@ export const $userRealm = (
       sessionService.login(name, credentials.username, credentials.password);
   };
 
+  if (options.identities) {
+    const identities: Record<string, AuthDescriptor> = {};
+    if (options.identities?.credentials) {
+      identities.credentials = $authCredentials(realm);
+    }
+    if (options.identities?.google) {
+      identities.google = $authGoogle(realm);
+    }
+    if (options.identities?.github) {
+      identities.github = $authGithub(realm);
+    }
+    alepha.with(() => identities);
+  }
+
   return realm;
 };
 
@@ -129,4 +147,10 @@ export interface UserRealmOptions {
   };
 
   settings?: Partial<RealmAuthSettings>;
+
+  identities?: {
+    credentials?: true;
+    google?: true;
+    github?: true;
+  };
 }

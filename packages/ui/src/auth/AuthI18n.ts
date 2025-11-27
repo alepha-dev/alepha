@@ -3,7 +3,7 @@ import { $dictionary } from "@alepha/react/i18n";
 export class AuthI18n {
   en = $dictionary({
     name: "alepha.ui.auth.en",
-    lazy: async () => ({
+    lazy: () => ({
       default: {
         loginSignIn: "Sign in",
         loginContinueWith: "Continue with $1",
@@ -59,7 +59,7 @@ export class AuthI18n {
   });
 
   fr = $dictionary({
-    lazy: async () => ({
+    lazy: () => ({
       default: {
         loginSignIn: "Se connecter",
         loginContinueWith: "Continuer avec $1",

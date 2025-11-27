@@ -11,7 +11,7 @@ export interface OmnibarButtonProps {
 const OmnibarButton = (props: OmnibarButtonProps) => {
   return (
     <ActionButton
-      variant={"outline"}
+      variant={"default"}
       miw={256}
       onClick={spotlight.open}
       justify={"space-between"}
