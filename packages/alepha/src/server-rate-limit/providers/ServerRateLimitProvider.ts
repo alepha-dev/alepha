@@ -1,6 +1,13 @@
-import { $atom, $env, $hook, $use, type Static, t } from "alepha";
+import { $atom, $env, $hook, $inject, $use, type Static, t } from "alepha";
 import { $cache } from "alepha/cache";
-import { HttpError, type ServerRequest } from "alepha/server";
+import { $logger } from "alepha/logger";
+import {
+  HttpError,
+  type ServerRequest,
+  ServerRouterProvider,
+} from "alepha/server";
+import type { RateLimitDescriptorOptions } from "../descriptors/$rateLimit.ts";
+import type { RateLimitOptions } from "../index.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -13,7 +20,7 @@ export interface RateLimitResult {
 }
 
 /**
- * Rate limit configuration atom
+ * Rate limit configuration atom (global defaults)
  */
 export const rateLimitOptions = $atom({
   name: "alepha.server.rate-limit.options",
@@ -42,11 +49,11 @@ export const rateLimitOptions = $atom({
   default: {},
 });
 
-export type RateLimitOptions = Static<typeof rateLimitOptions.schema>;
+export type RateLimitAtomOptions = Static<typeof rateLimitOptions.schema>;
 
 declare module "alepha" {
   interface State {
-    [rateLimitOptions.key]: RateLimitOptions;
+    [rateLimitOptions.key]: RateLimitAtomOptions;
   }
 }
 
@@ -64,52 +71,72 @@ const envSchema = t.object({
 });
 
 export class ServerRateLimitProvider {
-  private readonly env = $env(envSchema);
+  protected readonly log = $logger();
+  protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+  protected readonly env = $env(envSchema);
 
-  private readonly cache = $cache<RateLimitData>({
+  protected readonly cache = $cache<RateLimitData>({
     name: "server-rate-limit",
     ttl: [this.env.RATE_LIMIT_WINDOW_MS, "milliseconds"],
   });
 
-  protected readonly options = $use(rateLimitOptions);
+  protected readonly globalOptions = $use(rateLimitOptions);
+
+  /**
+   * Registered rate limit configurations with their path patterns
+   */
+  public readonly registeredConfigs: RateLimitDescriptorOptions[] = [];
+
+  /**
+   * Register a rate limit configuration (called by descriptors)
+   */
+  public registerRateLimit(config: RateLimitDescriptorOptions): void {
+    this.registeredConfigs.push(config);
+  }
+
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: async () => {
+      // Apply path-specific rate limit configs to routes
+      for (const config of this.registeredConfigs) {
+        if (config.paths) {
+          for (const pattern of config.paths) {
+            const matchedRoutes = this.serverRouterProvider.getRoutes(pattern);
+            for (const route of matchedRoutes) {
+              route.rateLimit = this.buildRateLimitOptions(config);
+            }
+          }
+        }
+      }
+
+      if (this.registeredConfigs.length > 0) {
+        this.log.info(
+          `Initialized with ${this.registeredConfigs.length} registered rate-limit configurations.`,
+        );
+      }
+    },
+  });
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
-    handler: async ({ request }) => {
-      const result = await this.checkLimit(request, this.options);
+    handler: async ({ route, request }) => {
+      // Use route-specific rate limit if defined, otherwise use global options
+      const rateLimitConfig = route.rateLimit ?? this.globalOptions;
+
+      // Skip if no rate limiting configured
+      if (!rateLimitConfig.max && !rateLimitConfig.windowMs) {
+        return;
+      }
+
+      const result = await this.checkLimit(request, rateLimitConfig);
+      this.setRateLimitHeaders(request, result);
 
       if (!result.allowed) {
-        // Set rate limit headers
-        request.reply.setHeader("X-RateLimit-Limit", result.limit.toString());
-        request.reply.setHeader(
-          "X-RateLimit-Remaining",
-          result.remaining.toString(),
-        );
-        request.reply.setHeader(
-          "X-RateLimit-Reset",
-          Math.ceil(result.resetTime / 1000).toString(),
-        );
-
-        if (result.retryAfter) {
-          request.reply.setHeader("Retry-After", result.retryAfter.toString());
-        }
-
         throw new HttpError({
           status: 429,
           message: "Too Many Requests",
         });
       }
-
-      // Set success headers for allowed requests
-      request.reply.setHeader("X-RateLimit-Limit", result.limit.toString());
-      request.reply.setHeader(
-        "X-RateLimit-Remaining",
-        result.remaining.toString(),
-      );
-      request.reply.setHeader(
-        "X-RateLimit-Reset",
-        Math.ceil(result.resetTime / 1000).toString(),
-      );
     },
   });
 
@@ -136,6 +163,46 @@ export class ServerRateLimitProvider {
       // Action allowed - no headers to set since actions are internal
     },
   });
+
+  /**
+   * Build complete rate limit options by merging with global defaults
+   */
+  protected buildRateLimitOptions(
+    config: RateLimitDescriptorOptions,
+  ): RateLimitOptions {
+    return {
+      max: config.max ?? this.globalOptions.max,
+      windowMs: config.windowMs ?? this.globalOptions.windowMs,
+      keyGenerator: config.keyGenerator,
+      skipFailedRequests:
+        config.skipFailedRequests ?? this.globalOptions.skipFailedRequests,
+      skipSuccessfulRequests:
+        config.skipSuccessfulRequests ??
+        this.globalOptions.skipSuccessfulRequests,
+    };
+  }
+
+  /**
+   * Set rate limit headers on the response
+   */
+  protected setRateLimitHeaders(
+    request: ServerRequest,
+    result: RateLimitResult,
+  ): void {
+    request.reply.setHeader("X-RateLimit-Limit", result.limit.toString());
+    request.reply.setHeader(
+      "X-RateLimit-Remaining",
+      result.remaining.toString(),
+    );
+    request.reply.setHeader(
+      "X-RateLimit-Reset",
+      Math.ceil(result.resetTime / 1000).toString(),
+    );
+
+    if (!result.allowed && result.retryAfter) {
+      request.reply.setHeader("Retry-After", result.retryAfter.toString());
+    }
+  }
 
   public async checkLimit(
     req: ServerRequest,

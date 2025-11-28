@@ -18,6 +18,14 @@ declare module "alepha/server" {
      */
     rateLimit?: RateLimitOptions;
   }
+
+  interface ServerRoute {
+    /**
+     * Route-specific rate limit configuration.
+     * If set, overrides the global rate limit options for this route.
+     */
+    rateLimit?: RateLimitOptions;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -36,10 +44,27 @@ export interface RateLimitOptions {
 }
 
 /**
- * Provides rate limiting capabilities for server actions with configurable limits and windows.
+ * Provides rate limiting capabilities for server routes and actions with configurable limits and windows.
  *
- * The server-rate-limit module enables per-action rate limiting using the `rateLimit` option in action descriptors.
+ * The server-rate-limit module enables per-route and per-action rate limiting using either:
+ * - The `$rateLimit` descriptor with `paths` option for path-based rate limiting
+ * - The `rateLimit` option in action descriptors for action-specific limiting
+ *
  * It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
+ *
+ * @example
+ * ```ts
+ * import { $rateLimit, AlephaServerRateLimit } from "alepha/server-rate-limit";
+ *
+ * class ApiService {
+ *   // Path-specific rate limiting
+ *   apiRateLimit = $rateLimit({
+ *     paths: ["/api/*"],
+ *     max: 100,
+ *     windowMs: 15 * 60 * 1000, // 15 minutes
+ *   });
+ * }
+ * ```
  *
  * @see {@link $rateLimit}
  * @module alepha.server.rate-limit
