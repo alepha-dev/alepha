@@ -4,15 +4,22 @@ import {
   type FlexProps,
   type MantineBreakpoint,
   Text,
-  ThemeIcon,
 } from "@mantine/core";
 import {
   IconChevronDown,
   IconChevronRight,
   IconSquareRounded,
 } from "@tabler/icons-react";
-import { type ReactNode, useCallback, useState } from "react";
-import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useState,
+} from "react";
+import ActionButton, {
+  type ActionProps,
+  renderIcon,
+} from "../buttons/ActionButton.tsx";
 import OmnibarButton from "../buttons/OmnibarButton.tsx";
 
 export interface SidebarProps {
@@ -59,10 +66,8 @@ export const Sidebar = (props: SidebarProps) => {
       if (item.type === "section") {
         if (props.collapsed) return;
         return (
-          <Flex mt={"md"} mb={"xs"} align={"center"} gap={"xs"}>
-            <ThemeIcon c={"dimmed"} size={"xs"} variant={"transparent"}>
-              {item.icon}
-            </ThemeIcon>
+          <Flex key={key} mt={"md"} mb={"xs"} align={"center"} gap={"xs"}>
+            {renderIcon(item.icon)}
             <Text
               key={key}
               size={"xs"}
@@ -111,7 +116,7 @@ export const Sidebar = (props: SidebarProps) => {
     (router.concretePages.map((page) => ({
       label: page.label ?? page.name,
       description: page.description,
-      icon: page.icon,
+      icon: renderIcon(page.icon),
       href: router.path(page.name),
     })) as SidebarMenuItem[]);
 
@@ -214,25 +219,19 @@ export const SidebarItem = (props: SidebarItemProps) => {
         justify="space-between"
         href={props.item.href}
         target={props.item.target}
-        variant={"subtle"}
         size={
           props.item.theme?.size ??
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
+        color={"var(--alepha-text)"}
+        variant={"subtle"}
         variantActive={"default"}
         radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
         onClick={handleItemClick}
         leftSection={
           <Flex w={"100%"} align="center" gap={"sm"}>
-            {item.icon && (
-              <ThemeIcon
-                size={level === 0 ? "sm" : "xs"}
-                variant={"transparent"}
-              >
-                {item.icon}
-              </ThemeIcon>
-            )}
+            {renderIcon(item.icon)}
             <Flex direction={"column"}>
               <Flex>{item.label}</Flex>
               {item.description && (
@@ -331,30 +330,31 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
 
   return (
     <ActionButton
-      variant={"subtle"}
       size={
         props.item.theme?.size ??
         props.theme.button?.size ??
         (level === 0 ? "sm" : "xs")
       }
+      color={"var(--alepha-text)"}
+      variant={"subtle"}
       variantActive={"default"}
       radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
       onClick={handleItemClick}
-      icon={item.icon ?? <IconSquareRounded />}
-      href={props.item.href}
+      icon={renderIcon(item.icon) ?? <IconSquareRounded />}
+      href={props.item.href as any}
       target={props.item.target}
       menu={
         item.children
-          ? {
+          ? ({
               position: "right",
               on: "hover",
               items: item.children.map((child) => ({
                 label: child.label,
                 href: child.href,
-                icon: child.icon,
+                icon: renderIcon(child.icon),
                 children: child.children,
               })),
-            }
+            } as any)
           : undefined
       }
       {...props.item.actionProps}
@@ -395,13 +395,13 @@ export interface SidebarSearch extends SidebarAbstractItem {
 export interface SidebarSection extends SidebarAbstractItem {
   type: "section";
   label: string;
-  icon?: ReactNode;
+  icon?: ReactNode | ComponentType;
 }
 
 export interface SidebarMenuItem extends SidebarAbstractItem {
   label: string | ReactNode;
   description?: string;
-  icon?: ReactNode;
+  icon?: ReactNode | ComponentType;
   href?: string;
   target?: "_blank" | "_self" | "_parent" | "_top";
   activeStartsWith?: boolean; // Use startWith matching for active state

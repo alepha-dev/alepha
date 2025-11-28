@@ -77,8 +77,8 @@ export class ProjectUtils {
 
     if (modes.react) {
       dependencies["@alepha/react"] = `^${version}`;
-      dependencies.react = "^19.2.0";
-      devDependencies["@types/react"] = "^19.2.0";
+      dependencies.react = "19.1.0";
+      devDependencies["@types/react"] = "19.1.0";
     }
 
     return {

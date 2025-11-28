@@ -7,6 +7,7 @@ export const userQuerySchema = t.extend(pageQuerySchema, {
   enabled: t.optional(t.boolean()),
   emailVerified: t.optional(t.boolean()),
   roles: t.optional(t.array(t.string())),
+  query: t.optional(t.text()),
 });
 
 export type UserQuery = Static<typeof userQuerySchema>;

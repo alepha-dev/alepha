@@ -1,4 +1,5 @@
 import { $page } from "@alepha/react";
+import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $inject } from "alepha";
 import Home from "./Home.tsx";
@@ -6,6 +7,7 @@ import { Layout } from "./Layout.tsx";
 
 export class AppRouter {
   authRouter = $inject(AuthRouter);
+  adminRouter = $inject(AdminRouter);
 
   auth = $page({
     path: "/auth",

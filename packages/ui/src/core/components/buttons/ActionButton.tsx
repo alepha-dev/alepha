@@ -27,6 +27,7 @@ import {
   type ButtonHTMLAttributes,
   Children,
   type ComponentType,
+  isValidElement,
   type ReactNode,
 } from "react";
 import { ui } from "../../constants/ui.ts";
@@ -591,9 +592,20 @@ const ActionHrefButton = (props: ActionNavigationButtonProps) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function isComponentType(param: any): param is ComponentType<any> {
+export function isComponentType(param: any): param is ComponentType<any> {
+  if (isValidElement(param)) return false;
   return (
     typeof param === "function" ||
     (typeof param === "object" && param !== null && "$$typeof" in param)
   );
 }
+
+export const renderIcon = (icon: ReactNode | ComponentType): ReactNode => {
+  if (!icon) return null;
+  if (isValidElement(icon)) return icon;
+  if (isComponentType(icon)) {
+    const IconComponent = icon;
+    return <IconComponent size={ui.sizes.icon.md} />;
+  }
+  return icon as ReactNode;
+};

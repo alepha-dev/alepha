@@ -7,4 +7,7 @@ export default defineConfig({
       serverEntry: "src/main.server.ts",
     }),
   ],
+  server: {
+    host: "0.0.0.0",
+  },
 });

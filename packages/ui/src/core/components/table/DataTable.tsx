@@ -290,7 +290,7 @@ const DataTable = <T extends object, Filters extends TObject>(
         />
       ) : null}
 
-      <Flex flex={1} className={"overflow-auto"}>
+      <Flex className={"overflow-auto"}>
         <Table
           striped
           withRowBorders

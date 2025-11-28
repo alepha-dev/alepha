@@ -18,6 +18,7 @@ import { ReactRouter } from "./services/ReactRouter.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared.ts";
+export * from "./index.shared-router.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/ReactServerProvider.ts";

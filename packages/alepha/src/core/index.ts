@@ -31,7 +31,8 @@ export const run = (
   entry: Alepha | Service | Array<Service>,
   opts?: RunOptions,
 ): Alepha => {
-  const env = typeof process === "object" ? process.env : {};
+  const env: Record<string, string | undefined> =
+    typeof process === "object" ? process.env : {};
 
   const alepha =
     entry instanceof Alepha
