@@ -1,5 +1,3 @@
-import { access, mkdir } from "node:fs/promises";
-import { join } from "node:path";
 import { $inject, t } from "alepha";
 import { $command, CliProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -31,84 +29,6 @@ export class CoreCommands {
       }
 
       this.cli.printHelp();
-    },
-  });
-
-  /**
-   * Create a new Alepha project based on one of the sample projects (for now, only one sample project is available)
-   */
-  public readonly create = $command({
-    name: "create",
-    description: "Create a new Alepha project",
-    aliases: ["new"],
-    args: t.text({
-      title: "name",
-    }),
-    flags: t.object({
-      yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
-      pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
-    }),
-    summary: false,
-    handler: async ({ run, args, flags, root }) => {
-      const name = args;
-      const dest = join(root, name);
-
-      try {
-        await access(dest);
-        this.log.error(
-          `Directory "${name}" already exists. Please choose a different project name.`,
-        );
-        return;
-      } catch {
-        // Directory does not exist, proceed
-      }
-
-      let installCmd = "npm install";
-      let execCmd = "npx";
-      if (flags.yarn) {
-        installCmd = "yarn";
-        execCmd = "yarn";
-      } else if (flags.pnpm) {
-        installCmd = "pnpm install";
-        execCmd = "pnpm";
-      }
-
-      await mkdir(dest, { recursive: true }).catch(() => null);
-
-      await run("Downloading sample project", () =>
-        this.utils.downloadSampleProject(dest),
-      );
-
-      if (flags.yarn) {
-        await this.utils.ensureYarn(dest);
-        await run(`cd ${name} && yarn set version stable`, {
-          alias: "Setting Yarn to stable version",
-        });
-      }
-
-      await run(`cd ${name} && ${installCmd}`, {
-        alias: "Installing dependencies",
-      });
-
-      await run(`cd ${name} && npx alepha lint`, {
-        alias: "Linting code",
-      });
-
-      await run(`cd ${name} && npx alepha typecheck`, {
-        alias: "Type checking",
-      });
-
-      await run(`cd ${name} && npx alepha test`, {
-        alias: "Running tests",
-      });
-
-      await run(`cd ${name} && npx alepha build`, {
-        alias: "Building project",
-      });
-
-      this.log.info("");
-      this.log.info(`$ cd ${name} && ${execCmd} alepha dev`.trim());
-      this.log.info("");
     },
   });
 

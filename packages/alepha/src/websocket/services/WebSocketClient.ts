@@ -1,4 +1,12 @@
-import { $env, $inject, Alepha, type Static, TypeBoxValue, t } from "alepha";
+import {
+  $env,
+  $inject,
+  Alepha,
+  AlephaError,
+  type Static,
+  TypeBoxValue,
+  t,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChannelDescriptor, TWSObject } from "../descriptors/$channel.ts";
 
@@ -41,6 +49,7 @@ export class WebSocketChannelConnection<
   TClient extends TWSObject,
   TServer extends TWSObject,
 > {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected ws?: WebSocket;
   protected reconnectAttempts = 0;
@@ -80,7 +89,13 @@ export class WebSocketChannelConnection<
    * Build WebSocket URL
    */
   protected buildUrl(): string {
+    this.log.trace("Building WebSocket URL", {
+      hasCustomUrl: !!this.options.url,
+      channelPath: this.channel.options.path,
+    });
+
     if (this.options.url) {
+      this.log.debug("Using custom WebSocket URL", { url: this.options.url });
       return this.options.url;
     }
 
@@ -93,11 +108,15 @@ export class WebSocketChannelConnection<
       const roomIds = Array.from(this.subscriptions.keys());
       const roomParam =
         roomIds.length > 0 ? `?roomIds=${roomIds.join(",")}` : "";
-      return `${protocol}//${host}${path}${roomParam}`;
+      const url = `${protocol}//${host}${path}${roomParam}`;
+      this.log.debug("Auto-detected WebSocket URL", { url, roomIds });
+      return url;
     }
 
     // Fallback to env URL
-    return `${this.env.WEBSOCKET_URL}${this.channel.options.path}`;
+    const url = `${this.env.WEBSOCKET_URL}${this.channel.options.path}`;
+    this.log.debug("Using env WebSocket URL", { url });
+    return url;
   }
 
   /**
@@ -112,6 +131,12 @@ export class WebSocketChannelConnection<
       onError?: (error: Error) => void;
     },
   ): () => void {
+    this.log.debug("Subscribing to room", {
+      roomId,
+      channelPath: this.channel.options.path,
+      existingSubscriptions: this.subscriptions.size,
+    });
+
     // Add subscription
     this.subscriptions.set(roomId, handler);
 
@@ -123,13 +148,17 @@ export class WebSocketChannelConnection<
 
     // Connect if not already connected
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.log.trace("No active connection, initiating connect");
       this.connect().catch((error) => {
         this.log.error("Failed to connect:", error);
       });
+    } else {
+      this.log.trace("Already connected, reusing existing connection");
     }
 
     // Return unsubscribe function
     return () => {
+      this.log.debug("Unsubscribing from room", { roomId });
       this.subscriptions.delete(roomId);
       if (callbacks?.onConnect)
         this.onConnectCallbacks.delete(callbacks.onConnect);
@@ -139,6 +168,7 @@ export class WebSocketChannelConnection<
 
       // Disconnect if no more subscriptions
       if (this.subscriptions.size === 0) {
+        this.log.debug("No more subscriptions, disconnecting");
         this.disconnect();
       }
     };
@@ -149,6 +179,7 @@ export class WebSocketChannelConnection<
    */
   protected async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
+      this.log.trace("Already connected, skipping connect");
       return;
     }
 
@@ -156,9 +187,12 @@ export class WebSocketChannelConnection<
     this.isError = false;
     this.error = undefined;
 
+    const url = this.buildUrl();
+    this.log.info("Connecting to WebSocket server", { url });
+
     return new Promise((resolve, reject) => {
       try {
-        const ws = new WebSocket(this.buildUrl());
+        const ws = new WebSocket(url);
         this.ws = ws;
 
         ws.onopen = () => {
@@ -168,10 +202,21 @@ export class WebSocketChannelConnection<
           this.error = undefined;
           this.reconnectAttempts = 0;
 
+          this.log.info("WebSocket connected", {
+            channelPath: this.channel.options.path,
+            rooms: Array.from(this.subscriptions.keys()),
+          });
+
           // Flush queued messages
+          if (this.messageQueue.length > 0) {
+            this.log.debug("Flushing queued messages", {
+              count: this.messageQueue.length,
+            });
+          }
           while (this.messageQueue.length > 0) {
             const msg = this.messageQueue.shift();
             if (msg) {
+              this.log.trace("Sending queued message", { roomId: msg.roomId });
               ws.send(
                 JSON.stringify({
                   roomId: msg.roomId,
@@ -190,13 +235,22 @@ export class WebSocketChannelConnection<
         };
 
         ws.onmessage = (event) => {
+          this.log.trace("Message received", {
+            dataLength: event.data?.length,
+          });
           this.handleMessage(event.data);
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           this.isConnected = false;
           this.isConnecting = false;
           this.ws = undefined;
+
+          this.log.info("WebSocket disconnected", {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+          });
 
           // Call all disconnect callbacks
           for (const callback of this.onDisconnectCallbacks) {
@@ -215,6 +269,8 @@ export class WebSocketChannelConnection<
           this.error = err;
           this.isConnecting = false;
 
+          this.log.error("WebSocket error", { url });
+
           // Call all error callbacks
           for (const callback of this.onErrorCallbacks) {
             callback(err);
@@ -228,6 +284,8 @@ export class WebSocketChannelConnection<
         this.isError = true;
         this.error = error;
         this.isConnecting = false;
+
+        this.log.error("Failed to create WebSocket", { error: error.message });
 
         // Call all error callbacks
         for (const callback of this.onErrorCallbacks) {
@@ -245,13 +303,15 @@ export class WebSocketChannelConnection<
   protected handleMessage(data: string): void {
     try {
       const parsed = JSON.parse(data);
+      this.log.trace("Parsed incoming message", { parsed });
 
       // Validate incoming message against schema
       const inSchema = this.channel.options.schema.in;
-      if (!TypeBoxValue.Check(inSchema, parsed)) {
-        this.log.error("Invalid message schema:", parsed);
-        return;
-      }
+      this.alepha.codec.validate(inSchema, parsed);
+
+      this.log.debug("Dispatching message to handlers", {
+        handlerCount: this.subscriptions.size,
+      });
 
       // Extract roomId from message if present (server should send it back)
       // For now, broadcast to all subscribed rooms
@@ -268,10 +328,13 @@ export class WebSocketChannelConnection<
    * Send message to a specific room
    */
   public async send(roomId: string, message: Static<TServer>): Promise<void> {
+    this.log.trace("Sending message", { roomId, message });
+
     // Validate outgoing message against schema
     const outSchema = this.channel.options.schema.out;
     if (!TypeBoxValue.Check(outSchema, message)) {
       const errors = Array.from(TypeBoxValue.Errors(outSchema, message));
+      this.log.warn("Message validation failed", { errors });
       throw new Error(
         `Message validation failed: ${errors.map((e) => e.message).join(", ")}`,
       );
@@ -279,10 +342,15 @@ export class WebSocketChannelConnection<
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       // Queue message
+      this.log.debug("Connection not ready, queuing message", {
+        roomId,
+        queueSize: this.messageQueue.length + 1,
+      });
       this.messageQueue.push({ roomId, message });
       return;
     }
 
+    this.log.debug("Sending message to server", { roomId });
     this.ws.send(
       JSON.stringify({
         roomId,
@@ -305,14 +373,26 @@ export class WebSocketChannelConnection<
       3000;
 
     if (maxAttempts !== -1 && this.reconnectAttempts >= maxAttempts) {
-      this.log.warn("Max reconnection attempts reached");
+      this.log.warn("Max reconnection attempts reached", {
+        attempts: this.reconnectAttempts,
+        maxAttempts,
+      });
       return;
     }
 
     this.reconnectAttempts++;
 
+    this.log.debug("Scheduling reconnection", {
+      attempt: this.reconnectAttempts,
+      maxAttempts,
+      intervalMs: reconnectInterval,
+    });
+
     this.reconnectTimer = window.setTimeout(() => {
-      this.log.info(`Reconnecting... (attempt ${this.reconnectAttempts})`);
+      this.log.info("Reconnecting...", {
+        attempt: this.reconnectAttempts,
+        maxAttempts,
+      });
       this.connect().catch((error) => {
         this.log.error("Reconnection failed:", error);
       });
@@ -323,6 +403,11 @@ export class WebSocketChannelConnection<
    * Disconnect from server
    */
   public disconnect(): void {
+    this.log.debug("Disconnecting", {
+      hasTimer: !!this.reconnectTimer,
+      hasConnection: !!this.ws,
+    });
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = undefined;
@@ -335,12 +420,15 @@ export class WebSocketChannelConnection<
 
     this.isConnected = false;
     this.isConnecting = false;
+
+    this.log.info("Disconnected");
   }
 
   /**
    * Reconnect manually
    */
   public reconnect(): void {
+    this.log.info("Manual reconnect requested");
     this.disconnect();
     this.connect().catch((error) => {
       this.log.error("Manual reconnection failed:", error);
@@ -398,23 +486,38 @@ export class WebSocketClient {
   ): () => void {
     const channelPath = channel.options.path;
 
+    this.log.debug("WebSocketClient.subscribe", {
+      roomId,
+      channelPath,
+      existingConnections: this.connections.size,
+    });
+
     // Get or create connection for this channel
     let connection = this.connections.get(
       channelPath,
     ) as WebSocketChannelConnection<TClient, TServer>;
 
     if (!connection) {
-      connection = new WebSocketChannelConnection(
-        channel,
-        {
-          url: options.url,
-          autoReconnect: options.autoReconnect,
-          reconnectInterval: options.reconnectInterval,
-          maxReconnectAttempts: options.maxReconnectAttempts,
-        },
-        this.env,
-      );
+      this.log.debug("Creating new connection for channel", { channelPath });
+      connection = this.alepha.inject(WebSocketChannelConnection, {
+        lifetime: "transient",
+        args: [
+          channel,
+          {
+            url: options.url,
+            autoReconnect: options.autoReconnect,
+            reconnectInterval: options.reconnectInterval,
+            maxReconnectAttempts: options.maxReconnectAttempts,
+          },
+          this.env,
+        ],
+      }) as WebSocketChannelConnection<any, any>;
+
       this.connections.set(channelPath, connection);
+    } else {
+      this.log.trace("Reusing existing connection for channel", {
+        channelPath,
+      });
     }
 
     // Subscribe to the room on this connection
@@ -426,10 +529,14 @@ export class WebSocketClient {
 
     // Return unsubscribe function
     return () => {
+      this.log.debug("WebSocketClient.unsubscribe", { roomId, channelPath });
       unsubscribe();
 
       // Clean up connection if no more rooms
       if (connection.getRooms().length === 0) {
+        this.log.debug("Removing connection for channel (no more rooms)", {
+          channelPath,
+        });
         this.connections.delete(channelPath);
       }
     };
@@ -444,12 +551,18 @@ export class WebSocketClient {
     message: Static<TServer>,
   ): Promise<void> {
     const channelPath = channel.options.path;
+
+    this.log.trace("WebSocketClient.send", { roomId, channelPath });
+
     const connection = this.connections.get(
       channelPath,
     ) as WebSocketChannelConnection<TClient, TServer>;
 
     if (!connection) {
-      throw new Error(
+      this.log.warn("Attempted to send on unsubscribed channel", {
+        channelPath,
+      });
+      throw new AlephaError(
         `Not subscribed to channel ${channelPath}. Subscribe first before sending messages.`,
       );
     }
@@ -464,18 +577,31 @@ export class WebSocketClient {
     channel: ChannelDescriptor<TClient, TServer>,
   ): WebSocketChannelConnection<TClient, TServer> | undefined {
     const channelPath = channel.options.path;
-    return this.connections.get(channelPath) as
+    const connection = this.connections.get(channelPath) as
       | WebSocketChannelConnection<TClient, TServer>
       | undefined;
+
+    this.log.trace("WebSocketClient.getConnection", {
+      channelPath,
+      found: !!connection,
+    });
+
+    return connection;
   }
 
   /**
    * Disconnect all connections
    */
   public disconnectAll(): void {
+    this.log.info("Disconnecting all connections", {
+      count: this.connections.size,
+    });
+
     for (const connection of this.connections.values()) {
       connection.disconnect();
     }
     this.connections.clear();
+
+    this.log.debug("All connections disconnected");
   }
 }

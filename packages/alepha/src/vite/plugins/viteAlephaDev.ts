@@ -221,6 +221,8 @@ const start = async (state: ViteAlephaDevState, server: ViteDevServer) => {
       return;
     }
 
+    state.app.state.set("alepha.node.server" as any, server.httpServer);
+
     await state.app.start();
     state.started = true;
 

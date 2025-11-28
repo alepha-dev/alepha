@@ -13,7 +13,7 @@ interface Module {
   node?: boolean;
 }
 
-export class PackageBuilderCli {
+export class AlephaPackageBuilderCli {
   src = "src";
   dist = "dist";
   fs = $inject(FileSystemProvider);

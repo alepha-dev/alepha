@@ -23,5 +23,6 @@ export const AlephaWebSockets = $module({
   services: [WebSocketClient],
   register: (alepha: Alepha) => {
     alepha.with(AlephaTopic);
+    alepha.with(WebSocketClient);
   },
 });

@@ -1,3 +1,4 @@
+import type { Server } from "node:http";
 import { $module, type Alepha, type DescriptorFactoryLike } from "alepha";
 import {
   $action,
@@ -28,6 +29,9 @@ import { HttpClient } from "./services/HttpClient.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
+  interface State {
+    "alepha.node.server"?: Server;
+  }
   interface Hooks {
     // -----------------------------------------------------------------------------------------------------------------
     // Local Actions hooks

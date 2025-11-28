@@ -9,7 +9,6 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import { NodeHttpServerProvider } from "alepha/server";
 import { WebSocket, WebSocketServer } from "ws";
 import type { TWSObject } from "../descriptors/$channel.ts";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
@@ -41,7 +40,6 @@ declare module "alepha" {
 
 export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly alepha = $inject(Alepha);
-  protected readonly httpServerProvider = $inject(NodeHttpServerProvider);
   protected readonly roomManager = $inject(RoomManager);
   protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly log = $logger();
@@ -59,7 +57,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     config: WebSocketDescriptorOptions<TClient, TServer>,
   ): void {
     const path = config.channel.options.path;
-    this.log.debug(`Registering WebSocket endpoint: ${path}`);
     this.endpoints.set(path, config);
   }
 
@@ -131,22 +128,28 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     request: IncomingMessage,
     socket: any,
     head: Buffer,
-  ): void {
+  ): boolean {
     const url = new URL(request.url || "/", "http://localhost");
     const path = url.pathname;
 
-    this.log.debug(`WebSocket upgrade request: ${path}`);
-
     const endpoint = this.endpoints.get(path);
     if (!endpoint) {
-      this.log.warn(`No WebSocket endpoint found for path: ${path}`);
-      socket.destroy();
-      return;
+      // Not our endpoint - in Vite dev mode, let Vite HMR handle it
+      // In production, destroy the socket
+      if (!this.alepha.isViteDev()) {
+        this.log.warn(`No WebSocket endpoint found for path: ${path}`);
+        socket.destroy();
+      }
+      return false;
     }
+
+    this.log.debug(`WebSocket upgrade request: ${path}`);
 
     this.wss?.handleUpgrade(request, socket, head, (ws) => {
       this.handleConnection(ws, endpoint, request);
     });
+
+    return true;
   }
 
   protected handleConnection<
@@ -373,8 +376,12 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
       this.wss = new WebSocketServer({ noServer: true });
 
+      for (const [path, endpoint] of this.endpoints.entries()) {
+        this.log.debug(`WebSocket endpoint registered: ${path}`);
+      }
+
       // Attach upgrade handler to the HTTP server
-      const httpServer = this.httpServerProvider.server;
+      const httpServer = this.alepha.state.get("alepha.node.server");
       if (httpServer) {
         httpServer.on("upgrade", (request, socket, head) => {
           this.handleUpgrade(request, socket, head);
@@ -393,9 +400,8 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         });
       });
 
-      this.log.info("WebSocket server initialized", {
+      this.log.info("WebSocket server OK", {
         basePath: this.env.WEBSOCKET_PATH,
-        endpoints: Array.from(this.endpoints.keys()),
       });
     },
   });

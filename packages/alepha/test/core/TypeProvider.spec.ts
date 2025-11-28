@@ -339,7 +339,7 @@ describe("TypeProvider", () => {
       it("should reject values outside 32-bit range", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.integer();
+        const schema = t.int32();
 
         expect(() => alepha.codec.validate(schema, 2147483648)).toThrow();
         expect(() => alepha.codec.validate(schema, -2147483648)).toThrow();
@@ -350,7 +350,7 @@ describe("TypeProvider", () => {
       it("should work as alias for int", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.integer();
+        const schema = t.int32();
 
         expect(alepha.codec.decode(schema, 42)).toBe(42);
         expect(alepha.codec.decode(schema, 3.14)).toBe(3);

@@ -52,6 +52,7 @@ export class NodeHttpServerProvider extends ServerProvider {
     on: "start",
     handler: async () => {
       await this.listen();
+      this.alepha.state.set("alepha.node.server", this.server);
     },
   });
 

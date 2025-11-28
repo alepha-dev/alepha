@@ -1,13 +1,10 @@
 import { access, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import type { RepositoryProvider } from "alepha/orm";
 import { boot } from "alepha/vite";
-import * as tar from "tar";
 import { tsImport } from "tsx/esm/api";
 import { biomeJson } from "../assets/biomeJson.ts";
 import { indexHtml } from "../assets/indexHtml.ts";
@@ -176,43 +173,6 @@ export class ProjectUtils {
     } catch {
       await writeFile(tsconfigPath, tsconfigJson);
     }
-  }
-
-  /**
-   * Download Alepha starter project from GitHub.
-   *
-   * Downloads and extracts the apps/starter directory from the main Alepha repository.
-   *
-   * @param targetDir - The directory where the project should be extracted
-   * @throws {AlephaError} If the download fails
-   */
-  public async downloadSampleProject(targetDir: string): Promise<void> {
-    const url = "https://api.github.com/repos/feunard/alepha/tarball/main";
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Alepha-CLI", // GitHub API requires User-Agent
-      },
-    });
-
-    if (!response.ok) {
-      throw new AlephaError(`Failed to download: ${response.statusText}`);
-    }
-
-    const tarStream = Readable.fromWeb(response.body as any);
-    await pipeline(
-      tarStream,
-      tar.extract({
-        cwd: targetDir, // Extract to target directory
-        strip: 3, // Remove feunard-alepha-<hash>/apps/starter prefix
-        filter: (path) => {
-          // Only extract files from apps/starter/
-          const parts = path.split("/");
-          return (
-            parts.length >= 3 && parts[1] === "apps" && parts[2] === "starter"
-          );
-        },
-      }),
-    );
   }
 
   // ===================================================================================================================

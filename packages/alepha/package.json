@@ -42,7 +42,6 @@
     "openid-client": "^6.8.1",
     "prom-client": "^15.1.3",
     "swagger-ui-dist": "^5.30.3",
-    "tar": "^7.5.2",
     "vitest": "^4.0.14"
   },
   "scarfSettings": {
@@ -339,7 +338,7 @@
       "import": "./src/websocket/index.ts",
       "require": "./src/websocket/index.ts"
     },
-    "./tsconfig": "./tsconfig.base.json",
+    "./tsconfig.base": "./tsconfig.base.json",
     "./package.json": "./package.json"
   },
   "types": "./src/index.ts"

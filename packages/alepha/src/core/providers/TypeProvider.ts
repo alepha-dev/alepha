@@ -420,9 +420,15 @@ export class TypeProvider {
   }
 
   /**
-   * @alias `t.integer()`
+   * Create a schema for an integer.
    */
   public integer(options?: TNumberOptions): TInteger {
+    return Type.Integer({
+      ...options,
+    });
+  }
+
+  public int32(options?: TNumberOptions): TInteger {
     return Type.Integer({
       minimum: -2147483647,
       maximum: 2147483647,
