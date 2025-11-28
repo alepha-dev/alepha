@@ -399,6 +399,8 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     root: string;
     args?: string;
     command: string;
+    commandFlags?: string;
+    provider?: string;
     logMessage: (providerName: string, dialect: string) => string;
   }): Promise<void> {
     const rootDir = options.root;
@@ -424,6 +426,14 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       }
       accepted.add(providerName);
 
+      // Skip if provider filter is set and doesn't match
+      if (options.provider && options.provider !== providerName) {
+        this.log.debug(
+          `Skipping provider '${providerName}' (filter: ${options.provider})`,
+        );
+        continue;
+      }
+
       this.log.info("");
       this.log.info(options.logMessage(providerName, dialect));
 
@@ -437,8 +447,9 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
         rootDir,
       });
 
+      const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
       await this.runner.exec(
-        `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}`,
+        `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
       );
     }
   }

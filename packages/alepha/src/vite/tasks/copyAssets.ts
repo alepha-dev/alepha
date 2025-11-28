@@ -4,18 +4,31 @@ import { dirname, join, resolve } from "node:path";
 import { importAlepha } from "../helpers/importAlepha.ts";
 
 export interface CopyAssetsOptions {
-  entry: string; // entry point for the Alepha application
-  distDir: string; // output directory for copied assets
+  /**
+   * Entry point for the built Alepha application.
+   */
+  entry: string;
+
+  /**
+   * Output directory for copied assets.
+   */
+  distDir: string;
 }
 
 /**
- * Convention for copying assets from Alepha packages to the build output directory.
- * Used for example by AlephaServerSwagger.
+ * Copy assets from Alepha packages to the build output directory.
+ *
+ * This task loads the built Alepha application, reads the
+ * `alepha.build.assets` state to find packages with assets,
+ * and copies their `/assets` directories to the build output.
+ *
+ * Used by modules like AlephaServerSwagger to distribute UI files.
  */
-export const copyAssets = async (opts: CopyAssetsOptions): Promise<void> => {
+export async function copyAssets(opts: CopyAssetsOptions): Promise<void> {
   const root = process.cwd();
   const alepha = await importAlepha(opts.entry);
   const assets = alepha.state.get("alepha.build.assets");
+
   if (!assets || assets.length === 0) {
     return;
   }
@@ -29,4 +42,4 @@ export const copyAssets = async (opts: CopyAssetsOptions): Promise<void> => {
     const assetsPkgDir = resolve(pkgDir, "assets");
     await cp(assetsPkgDir, buildAssetsDir, { recursive: true });
   }
-};
+}

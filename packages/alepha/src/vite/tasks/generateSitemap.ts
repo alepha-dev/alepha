@@ -1,16 +1,33 @@
 import type { Alepha } from "alepha";
 import { importAlepha } from "../helpers/importAlepha.ts";
 
-export interface SitemapOptions {
-  entry: string; // entry point for the Alepha application
-  baseUrl: string; // base URL for the sitemap (e.g., "https://example.com")
-  template?: string; // optional template HTML file
+export interface GenerateSitemapOptions {
+  /**
+   * Entry point for the built Alepha application.
+   */
+  entry: string;
+
+  /**
+   * Base URL for the sitemap (e.g., "https://example.com").
+   */
+  baseUrl: string;
+
+  /**
+   * Optional HTML template (for React SSR).
+   */
+  template?: string;
 }
 
 /**
- * Generate static sitemap XML from Alepha application.
+ * Generate sitemap.xml from Alepha page descriptors.
+ *
+ * This task loads the built Alepha application,
+ * queries all page descriptors, and generates a sitemap.xml
+ * containing URLs for all accessible pages.
  */
-export async function generateSitemap(opts: SitemapOptions): Promise<string> {
+export async function generateSitemap(
+  opts: GenerateSitemapOptions,
+): Promise<string> {
   const alepha = await importAlepha(opts.entry, {
     env: opts.template
       ? {

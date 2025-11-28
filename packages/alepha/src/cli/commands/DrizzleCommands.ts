@@ -7,6 +7,15 @@ import { $logger } from "alepha/logger";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 import { ProjectUtils } from "../services/ProjectUtils.ts";
 
+const drizzleCommandFlags = t.object({
+  provider: t.optional(
+    t.text({
+      description:
+        "Database provider name to target (e.g., 'postgres', 'sqlite')",
+    }),
+  ),
+});
+
 export class DrizzleCommands {
   log = $logger();
   runner = $inject(ProcessRunner);
@@ -31,7 +40,8 @@ export class DrizzleCommands {
         description: "Path to the Alepha server entry file",
       }),
     ),
-    handler: async ({ args, root }) => {
+    flags: drizzleCommandFlags,
+    handler: async ({ args, flags, root }) => {
       const rootDir = root;
       this.log.debug(`Using project root: ${rootDir}`);
       const { alepha } = await this.utils.loadAlephaFromServerEntryFile(
@@ -128,11 +138,24 @@ export class DrizzleCommands {
         description: "Path to the Alepha server entry file",
       }),
     ),
-    handler: async ({ args, root }) => {
+    flags: t.extend(drizzleCommandFlags, {
+      custom: t.optional(
+        t.text({
+          description:
+            "Custom migration name for drizzle-kit generate --custom",
+        }),
+      ),
+    }),
+    handler: async ({ args, flags, root }) => {
+      const commandFlags = flags.custom
+        ? `--custom=${flags.custom}`
+        : undefined;
       await this.utils.runDrizzleKitCommand({
         root,
         args,
         command: "generate",
+        commandFlags,
+        provider: flags.provider,
         logMessage: (providerName, dialect) =>
           `Generate '${providerName}' migrations (${dialect}) ...`,
       });
@@ -157,11 +180,13 @@ export class DrizzleCommands {
         description: "Path to the Alepha server entry file",
       }),
     ),
-    handler: async ({ root, args }) => {
+    flags: drizzleCommandFlags,
+    handler: async ({ root, args, flags }) => {
       await this.utils.runDrizzleKitCommand({
         root,
         args,
         command: "push",
+        provider: flags.provider,
         logMessage: (providerName, dialect) =>
           `Push '${providerName}' schema (${dialect}) ...`,
       });
@@ -186,11 +211,13 @@ export class DrizzleCommands {
         description: "Path to the Alepha server entry file",
       }),
     ),
-    handler: async ({ root, args }) => {
+    flags: drizzleCommandFlags,
+    handler: async ({ root, args, flags }) => {
       await this.utils.runDrizzleKitCommand({
         root,
         args,
         command: "migrate",
+        provider: flags.provider,
         logMessage: (providerName, dialect) =>
           `Migrate '${providerName}' database (${dialect}) ...`,
       });
@@ -215,14 +242,91 @@ export class DrizzleCommands {
         description: "Path to the Alepha server entry file",
       }),
     ),
-    handler: async ({ root, args }) => {
+    flags: drizzleCommandFlags,
+    handler: async ({ root, args, flags }) => {
       await this.utils.runDrizzleKitCommand({
         root,
         args,
         command: "studio",
+        provider: flags.provider,
         logMessage: (providerName, dialect) =>
           `Launch Studio for '${providerName}' (${dialect}) ...`,
       });
+    },
+  });
+
+  /**
+   * Drop database schema (development only)
+   *
+   * @experimental
+   */
+  drop = $command({
+    name: "db:drop",
+    description: "Drop database schema (development only)",
+    summary: false,
+    args: t.optional(
+      t.text({
+        title: "path",
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    flags: drizzleCommandFlags,
+    handler: async ({ flags }) => {
+      // TODO: Implement db:drop
+      this.log.warn("db:drop is not yet implemented");
+      if (flags.provider) {
+        this.log.info(`Provider filter: ${flags.provider}`);
+      }
+    },
+  });
+
+  /**
+   * Seed database with initial data
+   *
+   * @experimental
+   */
+  seed = $command({
+    name: "db:seed",
+    description: "Seed database with initial data",
+    summary: false,
+    args: t.optional(
+      t.text({
+        title: "path",
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    flags: drizzleCommandFlags,
+    handler: async ({ flags }) => {
+      // TODO: Implement db:seed
+      this.log.warn("db:seed is not yet implemented");
+      if (flags.provider) {
+        this.log.info(`Provider filter: ${flags.provider}`);
+      }
+    },
+  });
+
+  /**
+   * Show pending database migrations status
+   *
+   * @experimental
+   */
+  status = $command({
+    name: "db:status",
+    description: "Show pending database migrations status",
+    summary: false,
+    args: t.optional(
+      t.text({
+        title: "path",
+        description: "Path to the Alepha server entry file",
+      }),
+    ),
+    flags: drizzleCommandFlags,
+    handler: async ({ flags }) => {
+      // TODO: Implement db:status
+      this.log.warn("db:status is not yet implemented");
+      if (flags.provider) {
+        this.log.info(`Provider filter: ${flags.provider}`);
+      }
     },
   });
 }

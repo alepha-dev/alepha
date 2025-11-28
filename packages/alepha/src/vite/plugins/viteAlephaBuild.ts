@@ -1,17 +1,18 @@
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import type { Plugin, UserConfig } from "vite";
-import { copyAssets } from "../features/copyAssets.ts";
-import { prerender } from "../features/prerender.ts";
-import { generateSitemap } from "../features/sitemap.ts";
 import { boot } from "../helpers/boot.ts";
-import {
-  type BuildClientOptions,
-  buildClient,
-} from "../helpers/buildClient.ts";
-import { buildServer } from "../helpers/buildServer.ts";
 import { fileExists } from "../helpers/fileExists.ts";
-import type { ViteAlephaBuildDockerOptions } from "./viteAlephaBuildDocker.ts";
-import type { VercelConfig } from "./viteAlephaBuildVercel.ts";
+import { type BuildClientOptions, buildClient } from "../tasks/buildClient.ts";
+import { buildServer } from "../tasks/buildServer.ts";
+import { copyAssets } from "../tasks/copyAssets.ts";
+import { generateCloudflare } from "../tasks/generateCloudflare.ts";
+import {
+  type GenerateDockerOptions,
+  generateDocker,
+} from "../tasks/generateDocker.ts";
+import { generateSitemap } from "../tasks/generateSitemap.ts";
+import { generateVercel, type VercelConfig } from "../tasks/generateVercel.ts";
+import { prerenderPages } from "../tasks/prerenderPages.ts";
 
 export interface ViteAlephaBuildOptions {
   /**
@@ -35,13 +36,18 @@ export interface ViteAlephaBuildOptions {
    */
   vercel?: boolean | VercelConfig;
 
+  /**
+   * If true, the build will generate Cloudflare Workers configuration.
+   *
+   * @default false
+   */
   cloudflare?: boolean;
 
   /**
    * If true, the build will be optimized for Docker deployment.
    * Additionally, it will generate a Dockerfile in the dist directory.
    */
-  docker?: boolean | ViteAlephaBuildDockerOptions;
+  docker?: boolean | Omit<GenerateDockerOptions, "distDir">;
 
   /**
    * If true, build statistics will be printed after the build completes.
@@ -49,6 +55,28 @@ export interface ViteAlephaBuildOptions {
   stats?: boolean;
 }
 
+/**
+ * Build modes controlled by ALEPHA_BUILD_MODE environment variable:
+ * - "cli": Skip plugin entirely, CLI handles all tasks
+ * - "client": Only build client bundle
+ * - "server": Only build server bundle
+ * - undefined/other: Full build (default behavior)
+ */
+export type AlephaBuildMode = "cli" | "client" | "server";
+
+/**
+ * Alepha build plugin for Vite.
+ *
+ * This plugin orchestrates the complete build process:
+ * 1. Build client (if index.html exists)
+ * 2. Build server (SSR)
+ * 3. Copy assets from packages
+ * 4. Pre-render static pages (if enabled)
+ * 5. Generate sitemap (if enabled)
+ * 6. Generate deployment config (Vercel/Cloudflare/Docker)
+ *
+ * Build mode can be controlled via ALEPHA_BUILD_MODE env var for CLI integration.
+ */
 export async function viteAlephaBuild(
   options: ViteAlephaBuildOptions = {},
 ): Promise<Plugin> {
@@ -62,24 +90,39 @@ export async function viteAlephaBuild(
     name: "alepha-build",
     apply: "build",
     config(config, ctx) {
-      // ---
-      // for now, we run two separate builds: one for the client and one for the server
-      // we distinguish them using an environment variable
-      // ---
+      const buildMode = process.env.ALEPHA_BUILD_MODE as
+        | AlephaBuildMode
+        | undefined;
 
+      // CLI mode: plugin does nothing, CLI handles everything
+      if (buildMode === "cli") {
+        return;
+      }
+
+      // For now, we run two separate builds: one for the client and one for the server
+      // We distinguish them using an environment variable
       if (!process.env.VITE_DOUBLE_BUILD_DONE) {
         rootConfig = config;
       }
 
       if (ctx.isSsrBuild || !process.env.VITE_DOUBLE_BUILD_DONE) {
-        // server build, so we don't need the public directory
+        // Server build, so we don't need the public directory
         config.publicDir = false;
       } else {
-        // client build, so we need the public directory
+        // Client build, so we need the public directory
         config.publicDir = "public";
       }
     },
     async buildStart() {
+      const buildMode = process.env.ALEPHA_BUILD_MODE as
+        | AlephaBuildMode
+        | undefined;
+
+      // CLI mode: skip entirely
+      if (buildMode === "cli") {
+        return;
+      }
+
       if (process.env.VITE_DOUBLE_BUILD_DONE === "true") {
         return;
       }
@@ -92,52 +135,93 @@ export async function viteAlephaBuild(
       const buildClientOptions =
         typeof options.client === "object" ? options.client : {};
 
+      const stats = options.stats ?? process.env.ALEPHA_BUILD_STATS === "true";
+
+      // Client-only mode
+      if (buildMode === "client") {
+        if (hasClient) {
+          await buildClient({
+            ...buildClientOptions,
+            config: rootConfig,
+            dist: `${distDir}/${clientDir}`,
+            stats,
+          });
+        }
+        process.exit(0);
+      }
+
+      // Server-only mode
+      if (buildMode === "server") {
+        if (entry) {
+          // Check if client was already built (template exists)
+          let clientBuilt = false;
+          try {
+            await readFile(`${distDir}/${clientDir}/index.html`, "utf-8");
+            clientBuilt = true;
+          } catch {
+            // No client build
+          }
+
+          await buildServer({
+            config: {
+              base: rootConfig.base || "",
+            },
+            entry,
+            distDir,
+            clientDir: clientBuilt ? clientDir : undefined,
+            stats,
+          });
+        }
+        process.exit(0);
+      }
+
+      // Full build mode (default)
+
+      // Task 1: Build client
       if (hasClient) {
-        // run vite build
         await buildClient({
           ...buildClientOptions,
           config: rootConfig,
           dist: `${distDir}/${clientDir}`,
-          stats: options.stats ?? process.env.ALEPHA_BUILD_STATS === "true",
+          stats,
         });
       }
 
       let template = "";
       if (hasClient) {
-        // load output index.html
+        // Load output index.html for template embedding
         template = await readFile(
           `${distDir}/${clientDir}/index.html`,
           "utf-8",
         );
       }
 
+      // Task 2: Build server
       if (entry) {
-        // run vite build ssr
         await buildServer({
           config: {
             base: rootConfig.base || "",
           },
           entry,
-          distDir: `${distDir}`,
+          distDir,
           clientDir: hasClient ? clientDir : undefined,
-          stats: options.stats ?? process.env.ALEPHA_BUILD_STATS === "true",
-          ...options,
+          stats,
         });
 
-        // server will handle index.html if both client & server are built
+        // Server will handle index.html if both client & server are built
         if (hasClient && options.serverEntry !== false) {
           await unlink(`${distDir}/${clientDir}/index.html`);
         }
 
-        // copy swagger ui & others assets
+        // Task 3: Copy assets (swagger ui & others)
         await copyAssets({
           entry: `${distDir}/index.js`,
-          distDir: `${distDir}`,
+          distDir,
         });
       }
 
+      // Task 4: Generate sitemap
       if (buildClientOptions.sitemap && entry) {
-        // generate sitemap.xml
         await writeFile(
           `${distDir}/${clientDir}/sitemap.xml`,
           await generateSitemap({
@@ -147,17 +231,43 @@ export async function viteAlephaBuild(
         );
       }
 
+      // Task 5: Pre-render static pages
       if (buildClientOptions.prerender && template) {
-        // generate pre-rendered pages
-        await prerender({
-          template: template,
+        await prerenderPages({
+          template,
           dist: `${distDir}/${clientDir}`,
           entry: `${distDir}/index.js`,
           compress: buildClientOptions.precompress,
         });
       }
 
-      // prevent the default build from running again
+      // Task 6: Generate deployment configurations
+      if (options.vercel) {
+        const config =
+          typeof options.vercel === "boolean" ? {} : options.vercel;
+        await generateVercel({
+          distDir,
+          clientDir,
+          config,
+        });
+      }
+
+      if (options.cloudflare) {
+        await generateCloudflare({
+          distDir,
+        });
+      }
+
+      if (options.docker) {
+        const dockerOpts =
+          typeof options.docker === "boolean" ? {} : options.docker;
+        await generateDocker({
+          distDir,
+          ...dockerOpts,
+        });
+      }
+
+      // Prevent the default build from running again
       process.exit(0);
     },
   };

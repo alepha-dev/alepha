@@ -3,32 +3,30 @@ import { join } from "node:path";
 import { AlephaError } from "alepha";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
-import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
-import { viteAlephaBuildCloudflare } from "../plugins/viteAlephaBuildCloudflare.ts";
-import {
-  type ViteAlephaBuildDockerOptions,
-  viteAlephaBuildDocker,
-} from "../plugins/viteAlephaBuildDocker.ts";
-import {
-  type VercelConfig,
-  viteAlephaBuildVercel,
-} from "../plugins/viteAlephaBuildVercel.ts";
-import { viteAlephaExternalsVersion } from "../plugins/viteAlephaExternalsVersion.ts";
-import { importVite } from "./importVite.ts";
+import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
+import { importVite } from "../helpers/importVite.ts";
+import { generateExternals } from "./generateExternals.ts";
 
 export interface BuildServerOptions {
+  /**
+   * Path to the server entry file.
+   */
   entry: string;
 
+  /**
+   * Output directory for server build.
+   */
   distDir: string;
 
+  /**
+   * Optional client directory name (relative to distDir).
+   * If provided, the client template will be embedded in the server output.
+   */
   clientDir?: string;
 
-  vercel?: boolean | VercelConfig;
-
-  cloudflare?: boolean;
-
-  docker?: boolean | ViteAlephaBuildDockerOptions;
-
+  /**
+   * Override Vite config options.
+   */
   config?: UserConfig;
 
   /**
@@ -37,45 +35,30 @@ export interface BuildServerOptions {
   stats?: boolean;
 }
 
-export const buildServer = async (opts: BuildServerOptions) => {
+export interface BuildServerResult {
+  /**
+   * The filename of the built server entry (e.g., "abc123.js").
+   */
+  entryFile: string;
+}
+
+/**
+ * Build server-side SSR bundle with Vite.
+ *
+ * This task compiles the server code for production,
+ * generates the externals package.json, and creates
+ * the dist/index.js entry wrapper.
+ */
+export async function buildServer(
+  opts: BuildServerOptions,
+): Promise<BuildServerResult> {
   const { build: viteBuild, mergeConfig } = await importVite();
-  const plugins: any[] = [
-    viteAlephaExternalsVersion({ distDir: opts.distDir }),
-  ];
+  const plugins: any[] = [];
 
   if (opts.stats) {
     plugins.push(
-      viteAnalyser({
+      viteAnalyzer({
         analyzerMode: "static",
-      }),
-    );
-  }
-
-  if (opts.vercel) {
-    const config = typeof opts.vercel === "boolean" ? {} : opts.vercel;
-    plugins.push(
-      viteAlephaBuildVercel({
-        clientDir: opts.clientDir,
-        distDir: opts.distDir,
-        config,
-      }),
-    );
-  }
-
-  if (opts.cloudflare) {
-    plugins.push(
-      viteAlephaBuildCloudflare({
-        distDir: opts.distDir,
-      }),
-    );
-  }
-
-  if (opts.docker) {
-    const docker = typeof opts.docker === "boolean" ? {} : opts.docker;
-    plugins.push(
-      viteAlephaBuildDocker({
-        distDir: opts.distDir,
-        ...docker,
       }),
     );
   }
@@ -111,21 +94,30 @@ export const buildServer = async (opts: BuildServerOptions) => {
     mergeConfig(viteBuildServerConfig, opts.config || {}),
   );
 
-  const indexFileName = extractIndexFromBundle(opts.entry, result);
+  // Extract resolved config to get externals
+  const resolvedConfig = (result as any).resolvedConfig;
+  const externals: string[] = resolvedConfig?.ssr?.external ?? [];
 
+  // Generate package.json with externals
+  await generateExternals({
+    distDir: opts.distDir,
+    externals,
+  });
+
+  const entryFile = extractEntryFromBundle(opts.entry, result);
+
+  // Embed client template if client was built
   let template = "";
-
   if (opts.clientDir) {
     const index = await readFile(
       `${opts.distDir}/${opts.clientDir}/index.html`,
       "utf-8",
     );
-
     template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()}\`;\n`;
   }
 
   const warning =
-    "// ⚠️ This file was automatically generated. DO NOT MODIFY." +
+    "// This file was automatically generated. DO NOT MODIFY." +
     "\n" +
     "// Changes to this file will be lost when the code is regenerated.\n";
 
@@ -133,17 +125,22 @@ export const buildServer = async (opts: BuildServerOptions) => {
 
   await writeFile(
     `${opts.distDir}/index.js`,
-    `${warning}\n${forceProduction}${template}\nawait import('./server/${indexFileName}');`.trim(),
+    `${warning}\n${forceProduction}${template}\nawait import('./server/${entryFile}');`.trim(),
   );
-};
 
-function extractIndexFromBundle(
+  return { entryFile };
+}
+
+/**
+ * Extract entry filename from Vite build result.
+ */
+function extractEntryFromBundle(
   entry: string,
   result:
     | vite.Rollup.RollupOutput
     | vite.Rollup.RollupOutput[]
     | vite.Rollup.RollupWatcher,
-) {
+): string {
   const entryFilePath = entry.startsWith("/")
     ? entry
     : join(process.cwd(), entry);
@@ -152,15 +149,15 @@ function extractIndexFromBundle(
     Array.isArray(result) ? result[0] : result
   ) as vite.Rollup.RollupOutput;
 
-  const indexFileName = rollupOutput.output.find(
+  const entryFile = rollupOutput.output.find(
     (it) => "facadeModuleId" in it && it.facadeModuleId === entryFilePath,
   )?.fileName;
 
-  if (!indexFileName) {
+  if (!entryFile) {
     throw new AlephaError(
       `Could not find the entry file "${entryFilePath}" in the build output. Please check your entry file and try again.`,
     );
   }
 
-  return indexFileName;
+  return entryFile;
 }

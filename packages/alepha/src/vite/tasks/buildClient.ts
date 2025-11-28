@@ -1,12 +1,15 @@
 import type { UserConfig } from "vite";
-import { analyzer as viteAnalyser } from "vite-bundle-analyzer";
+import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
+import { importVite } from "../helpers/importVite.ts";
 import {
   type ViteCompressOptions,
   viteCompress,
 } from "../plugins/viteCompress.ts";
-import { importVite } from "./importVite.ts";
 
 export interface BuildClientOptions {
+  /**
+   * Output directory for client build.
+   */
   dist: string;
 
   /**
@@ -41,7 +44,13 @@ export interface BuildClientOptions {
   stats?: boolean;
 }
 
-export const buildClient = async (opts: BuildClientOptions) => {
+/**
+ * Build client-side bundle with Vite.
+ *
+ * This task compiles the browser/client code for production,
+ * including code splitting, minification, and optional compression.
+ */
+export async function buildClient(opts: BuildClientOptions): Promise<void> {
   const { build: viteBuild, mergeConfig } = await importVite();
   const plugins: any[] = [];
 
@@ -53,7 +62,7 @@ export const buildClient = async (opts: BuildClientOptions) => {
 
   if (opts.stats) {
     plugins.push(
-      viteAnalyser({
+      viteAnalyzer({
         analyzerMode: "static",
       }),
     );
@@ -85,4 +94,4 @@ export const buildClient = async (opts: BuildClientOptions) => {
   };
 
   await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
-};
+}

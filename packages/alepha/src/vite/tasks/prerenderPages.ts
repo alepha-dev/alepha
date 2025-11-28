@@ -6,18 +6,46 @@ import {
   type ViteCompressOptions,
 } from "../plugins/viteCompress.ts";
 
-export interface PrerenderOptions {
-  template: string; // template HTML file to use for pre-rendering
-  entry: string; // entry point for the Alepha application
-  dist: string; // client dist directory
-  compress?: ViteCompressOptions | boolean; // optional compression options
+export interface PrerenderPagesOptions {
+  /**
+   * HTML template to use for pre-rendering.
+   */
+  template: string;
+
+  /**
+   * Entry point for the built Alepha application.
+   */
+  entry: string;
+
+  /**
+   * Client dist directory for output files.
+   */
+  dist: string;
+
+  /**
+   * Optional compression options.
+   */
+  compress?: ViteCompressOptions | boolean;
+}
+
+export interface PrerenderPagesResult {
+  /**
+   * Number of pages pre-rendered.
+   */
+  count: number;
 }
 
 /**
- * Pre-renders static pages defined in the Alepha application.
- * Allow SSG for AlephaReact module.
+ * Pre-render static pages defined in the Alepha application.
+ *
+ * This task loads the built Alepha application, queries all page
+ * descriptors with `static: true`, and generates static HTML files
+ * for each page. Supports pages with parameterized routes via
+ * `static.entries` configuration.
  */
-export async function prerender(opts: PrerenderOptions) {
+export async function prerenderPages(
+  opts: PrerenderPagesOptions,
+): Promise<PrerenderPagesResult> {
   const alepha = await importAlepha(opts.entry, {
     env: {
       REACT_SERVER_TEMPLATE: opts.template,
@@ -34,15 +62,17 @@ export async function prerender(opts: PrerenderOptions) {
   const stats = await prerenderFromAlepha(alepha, opts.dist, opts.compress);
 
   console.log(
-    `[plugin prerender] Rendered ${stats.count} page${stats.count > 1 ? "s" : ""} in ${Date.now() - now}ms.`,
+    `[prerenderPages] Rendered ${stats.count} page${stats.count > 1 ? "s" : ""} in ${Date.now() - now}ms.`,
   );
+
+  return stats;
 }
 
 async function prerenderFromAlepha(
   alepha: Alepha,
   dist: string,
   compress?: ViteCompressOptions | boolean,
-): Promise<{ count: number }> {
+): Promise<PrerenderPagesResult> {
   let count = 0;
   const pages = alepha.descriptors("page") as any[];
 

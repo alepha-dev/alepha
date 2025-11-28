@@ -1,17 +1,20 @@
 import type { Alepha } from "alepha";
 
+// Vite re-exports
+export { defineConfig } from "vite";
+// Helpers (for advanced use)
 export * from "./helpers/boot.ts";
+// Plugins (public API)
 export * from "./plugins/viteAlepha.ts";
 export * from "./plugins/viteAlephaBuild.ts";
-export * from "./plugins/viteAlephaBuildVercel.ts";
 export * from "./plugins/viteAlephaDev.ts";
 export * from "./plugins/viteCompress.ts";
+// Tasks (for CLI integration)
+export * from "./tasks/index.ts";
 
 declare global {
   var __alepha: Alepha;
 }
-
-export { defineConfig } from "vite";
 
 /**
  * Plugin vite for Alepha framework.

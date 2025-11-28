@@ -1,9 +1,19 @@
-import { access, rm } from "node:fs/promises";
+import { access, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { boot } from "alepha/vite";
+import {
+  boot,
+  buildClient,
+  buildServer,
+  copyAssets,
+  generateCloudflare,
+  generateDocker,
+  generateSitemap,
+  generateVercel,
+  prerenderPages,
+} from "alepha/vite";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 import { ProjectUtils } from "../services/ProjectUtils.ts";
 
@@ -68,43 +78,178 @@ export class ViteCommands {
       t.text({ title: "path", description: "Filepath to build" }),
     ),
     flags: t.object({
-      config: t.optional(
-        t.text({ aliases: ["c"], description: "Path to config file" }),
-      ),
       stats: t.optional(
         t.boolean({
           description: "Generate build stats report",
         }),
       ),
+      vercel: t.optional(
+        t.boolean({
+          description: "Generate Vercel deployment configuration",
+        }),
+      ),
+      cloudflare: t.optional(
+        t.boolean({
+          description: "Generate Cloudflare Workers configuration",
+        }),
+      ),
+      docker: t.optional(
+        t.boolean({
+          description: "Generate Docker configuration",
+        }),
+      ),
+      sitemap: t.optional(
+        t.text({
+          description: "Generate sitemap.xml with base URL",
+        }),
+      ),
+      prerender: t.optional(
+        t.boolean({
+          description: "Pre-render static pages",
+        }),
+      ),
     }),
-    handler: async ({ flags, args }) => {
+    handler: async ({ flags, args, run }) => {
+      // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
+      process.env.ALEPHA_BUILD_MODE = "cli";
+
       const root = process.cwd();
       await this.utils.ensureTsConfig(root);
       await this.utils.ensurePackageJsonModule(root);
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
-      await rm("dist", { recursive: true, force: true });
+      const distDir = "dist";
+      const clientDir = "public";
+      const stats = flags.stats ?? false;
 
-      // DISABLED FOR NOW (waiting for vite-rolldown)
-      // if (flags.lib) {
-      //   await this.runner.exec(
-      //     `tsdown${flags.config ? ` -c=${flags.config}` : ""}`,
-      //   );
-      //   return;
-      // }
+      await run.rm("dist");
 
-      const configPath = await this.utils.getViteConfigPath(
-        root,
-        args ? entry : undefined,
-      );
-
-      const env: Record<string, string> = {};
-      if (flags.stats) {
-        env.ALEPHA_BUILD_STATS = "true";
+      let hasClient = false;
+      try {
+        await access(join(root, "index.html"));
+        hasClient = true;
+      } catch {
+        // No index.html
       }
 
-      await this.runner.exec(`vite build -c=${configPath}`, env);
+      // Build client
+      if (hasClient) {
+        await run({
+          name: "Build client",
+          handler: () =>
+            buildClient({
+              dist: `${distDir}/${clientDir}`,
+              stats,
+            }),
+        });
+      }
+
+      // Build server
+      await run({
+        name: "Build server",
+        handler: async () => {
+          // Check if client template exists
+          let clientBuilt = false;
+          try {
+            await readFile(`${distDir}/${clientDir}/index.html`, "utf-8");
+            clientBuilt = true;
+          } catch {
+            // No client build
+          }
+
+          await buildServer({
+            entry,
+            distDir,
+            clientDir: clientBuilt ? clientDir : undefined,
+            stats,
+          });
+
+          // Server will handle index.html if both client & server are built
+          if (clientBuilt) {
+            await unlink(`${distDir}/${clientDir}/index.html`);
+          }
+        },
+      });
+
+      // Copy assets
+      await run({
+        name: "Copy assets",
+        handler: () =>
+          copyAssets({
+            entry: `${distDir}/index.js`,
+            distDir,
+          }),
+      });
+
+      // Generate sitemap
+      if (flags.sitemap) {
+        await run({
+          name: "Generate sitemap",
+          handler: async () => {
+            await writeFile(
+              `${distDir}/${clientDir}/sitemap.xml`,
+              await generateSitemap({
+                entry: `${distDir}/index.js`,
+                baseUrl: flags.sitemap!,
+              }),
+            );
+          },
+        });
+      }
+
+      // Pre-render static pages
+      if (flags.prerender && hasClient) {
+        await run({
+          name: "Pre-render pages",
+          handler: async () => {
+            const template = await readFile(
+              `${distDir}/${clientDir}/index.html`,
+              "utf-8",
+            ).catch(() => "");
+
+            if (template) {
+              await prerenderPages({
+                template,
+                dist: `${distDir}/${clientDir}`,
+                entry: `${distDir}/index.js`,
+              });
+            }
+          },
+        });
+      }
+
+      // Generate deployment configurations
+      if (flags.vercel) {
+        await run({
+          name: "Generate Vercel config",
+          handler: () =>
+            generateVercel({
+              distDir,
+              clientDir,
+            }),
+        });
+      }
+
+      if (flags.cloudflare) {
+        await run({
+          name: "Generate Cloudflare config",
+          handler: () =>
+            generateCloudflare({
+              distDir,
+            }),
+        });
+      }
+
+      if (flags.docker) {
+        await run({
+          name: "Generate Docker config",
+          handler: () =>
+            generateDocker({
+              distDir,
+            }),
+        });
+      }
     },
   });
 
