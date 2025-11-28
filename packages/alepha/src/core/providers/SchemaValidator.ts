@@ -65,13 +65,18 @@ export class SchemaValidator {
       return value.map((it) => this.beforeParse(schema.items, it, options));
     }
 
-    if (
-      options.trim &&
-      typeof value === "string" &&
-      schema.type === "string" &&
-      schema["~options"]?.trim
-    ) {
-      return String(value).trim();
+    if (typeof value === "string" && schema.type === "string") {
+      let str = value;
+
+      if (options.trim && schema["~options"]?.trim) {
+        str = str.trim();
+      }
+
+      if (schema["~options"]?.lowercase) {
+        str = str.toLowerCase();
+      }
+
+      return str;
     }
 
     if (

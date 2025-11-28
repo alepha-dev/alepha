@@ -312,6 +312,116 @@ describe("TypeProvider", () => {
         );
       });
     });
+
+    describe("text lowercase option", () => {
+      it("should lowercase when enabled via ~options", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        // Use raw TypeBox to set ~options directly for testing
+        const schema = t.raw.String({
+          type: "string",
+          "~options": { lowercase: true },
+        });
+
+        expect(alepha.codec.decode(schema, "HELLO")).toBe("hello");
+        expect(alepha.codec.decode(schema, "Hello World")).toBe("hello world");
+        expect(alepha.codec.decode(schema, "MixedCase123")).toBe(
+          "mixedcase123",
+        );
+      });
+
+      it("should combine trim and lowercase", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.raw.String({
+          type: "string",
+          "~options": { trim: true, lowercase: true },
+        });
+
+        expect(alepha.codec.decode(schema, "  HELLO  ")).toBe("hello");
+        expect(alepha.codec.decode(schema, "\n\tTEST\n\t")).toBe("test");
+      });
+
+      it("should not lowercase when not enabled", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text();
+
+        expect(alepha.codec.decode(schema, "HELLO")).toBe("HELLO");
+        expect(alepha.codec.decode(schema, "MixedCase")).toBe("MixedCase");
+      });
+    });
+
+    describe("text pattern option (regex)", () => {
+      it("should accept values matching the pattern", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ pattern: "^[A-Z]{3}$" });
+
+        expect(alepha.codec.decode(schema, "ABC")).toBe("ABC");
+        expect(alepha.codec.decode(schema, "XYZ")).toBe("XYZ");
+      });
+
+      it("should reject values not matching the pattern", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ pattern: "^[A-Z]{3}$" });
+
+        expect(() => alepha.codec.validate(schema, "abc")).toThrow();
+        expect(() => alepha.codec.validate(schema, "ABCD")).toThrow();
+        expect(() => alepha.codec.validate(schema, "AB")).toThrow();
+        expect(() => alepha.codec.validate(schema, "123")).toThrow();
+      });
+
+      it("should work with alphanumeric pattern", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ pattern: "^[a-zA-Z0-9]+$" });
+
+        expect(alepha.codec.decode(schema, "Hello123")).toBe("Hello123");
+        expect(alepha.codec.decode(schema, "test")).toBe("test");
+        expect(alepha.codec.decode(schema, "123")).toBe("123");
+
+        expect(() => alepha.codec.validate(schema, "hello world")).toThrow();
+        expect(() => alepha.codec.validate(schema, "hello@test")).toThrow();
+      });
+
+      it("should work with slug pattern", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" });
+
+        expect(alepha.codec.decode(schema, "hello-world")).toBe("hello-world");
+        expect(alepha.codec.decode(schema, "my-blog-post")).toBe(
+          "my-blog-post",
+        );
+        expect(alepha.codec.decode(schema, "test")).toBe("test");
+
+        expect(() => alepha.codec.validate(schema, "Hello-World")).toThrow();
+        expect(() => alepha.codec.validate(schema, "hello_world")).toThrow();
+        expect(() => alepha.codec.validate(schema, "-hello")).toThrow();
+      });
+
+      it("should combine pattern with maxLength", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ pattern: "^[A-Z]+$", maxLength: 5 });
+
+        expect(alepha.codec.decode(schema, "HELLO")).toBe("HELLO");
+        expect(alepha.codec.decode(schema, "AB")).toBe("AB");
+
+        expect(() => alepha.codec.validate(schema, "TOOLONG")).toThrow();
+        expect(() => alepha.codec.validate(schema, "hello")).toThrow();
+      });
+
+      it("should trim before pattern validation", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ pattern: "^[A-Z]+$", trim: true });
+
+        expect(alepha.codec.decode(schema, "  HELLO  ")).toBe("HELLO");
+      });
+    });
   });
 
   describe("Integer Types", () => {
@@ -448,6 +558,29 @@ describe("TypeProvider", () => {
         const schema = t.email();
 
         expect(alepha.codec.decode(schema, "  user@example.com  ")).toBe(
+          "user@example.com",
+        );
+      });
+
+      it("should lowercase emails", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.email();
+
+        expect(alepha.codec.decode(schema, "User@Example.COM")).toBe(
+          "user@example.com",
+        );
+        expect(alepha.codec.decode(schema, "JOHN.DOE@GMAIL.COM")).toBe(
+          "john.doe@gmail.com",
+        );
+      });
+
+      it("should trim and lowercase emails together", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.email();
+
+        expect(alepha.codec.decode(schema, "  User@Example.COM  ")).toBe(
           "user@example.com",
         );
       });

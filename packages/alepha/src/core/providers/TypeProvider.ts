@@ -388,6 +388,7 @@ export class TypeProvider {
       maxLength,
       "~options": {
         trim: options.trim ?? true,
+        lowercase: options.lowercase ?? false,
       },
       ...rest,
     });
@@ -578,6 +579,8 @@ export class TypeProvider {
     return this.text({
       ...options,
       format: "email",
+      trim: true,
+      lowercase: true,
     });
   }
 
@@ -711,6 +714,13 @@ export interface TTextOptions extends TStringOptions {
    * @default true
    */
   trim?: boolean;
+
+  /**
+   * Convert the string to lowercase.
+   *
+   * @default false
+   */
+  lowercase?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
