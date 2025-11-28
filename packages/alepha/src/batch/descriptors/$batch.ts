@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
   $hook,
   $inject,
@@ -8,9 +7,14 @@ import {
   type Static,
   type TSchema,
 } from "alepha";
-import { DateTimeProvider, type DurationLike } from "alepha/datetime";
-import { $logger } from "alepha/logger";
-import { $retry, type RetryDescriptorOptions } from "alepha/retry";
+import type { DurationLike } from "alepha/datetime";
+import type { RetryDescriptorOptions } from "alepha/retry";
+import {
+  type BatchContext,
+  type BatchItemState,
+  type BatchItemStatus,
+  BatchProvider,
+} from "../providers/BatchProvider.ts";
 
 /**
  * Creates a batch processing descriptor for efficient grouping and processing of multiple operations.
@@ -42,6 +46,12 @@ export interface BatchDescriptorOptions<
   maxSize?: number;
 
   /**
+   * Maximum number of items that can be queued in a single partition.
+   * If exceeded, push() will throw an error.
+   */
+  maxQueueSize?: number;
+
+  /**
    * Maximum time to wait before flushing a batch, even if it hasn't reached maxSize.
    */
   maxDuration?: DurationLike;
@@ -64,25 +74,7 @@ export interface BatchDescriptorOptions<
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type BatchItemStatus = "pending" | "processing" | "completed" | "failed";
-
-export interface BatchItemState<TItem, TResponse> {
-  id: string;
-  item: TItem;
-  partitionKey: string;
-  status: BatchItemStatus;
-  result?: TResponse;
-  error?: Error;
-  promise?: Promise<TResponse>;
-  resolve?: (value: TResponse) => void;
-  reject?: (error: Error) => void;
-}
-
-interface PartitionState {
-  itemIds: string[];
-  timeout?: { clear: () => void };
-  flushing: boolean;
-}
+export type { BatchItemState, BatchItemStatus };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -90,35 +82,25 @@ export class BatchDescriptor<
   TItem extends TSchema,
   TResponse = any,
 > extends Descriptor<BatchDescriptorOptions<TItem, TResponse>> {
-  protected readonly log = $logger();
-  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly batchProvider = $inject(BatchProvider);
+  protected readonly context: BatchContext<Static<TItem>, TResponse>;
 
-  protected readonly itemStates = new Map<
-    string,
-    BatchItemState<Static<TItem>, TResponse>
-  >();
-  protected readonly partitions = new Map<string, PartitionState>();
-  protected activeHandlers: PromiseWithResolvers<void>[] = [];
-  protected isShuttingDown = false;
-  protected isReady = false;
-
-  // Computed properties with defaults
-  protected get maxSize(): number {
-    return this.options.maxSize ?? 10;
+  constructor(
+    ...args: ConstructorParameters<
+      typeof Descriptor<BatchDescriptorOptions<TItem, TResponse>>
+    >
+  ) {
+    super(...args);
+    this.context = this.batchProvider.createContext(this.alepha, {
+      handler: this.options.handler,
+      maxSize: this.options.maxSize,
+      maxQueueSize: this.options.maxQueueSize,
+      maxDuration: this.options.maxDuration,
+      partitionBy: this.options.partitionBy,
+      concurrency: this.options.concurrency,
+      retry: this.options.retry,
+    });
   }
-
-  protected get concurrency(): number {
-    return this.options.concurrency ?? 1;
-  }
-
-  protected get maxDuration(): DurationLike {
-    return this.options.maxDuration ?? [1, "second"];
-  }
-
-  protected retry = $retry({
-    ...this.options.retry,
-    handler: this.options.handler,
-  });
 
   /**
    * Pushes an item into the batch and returns immediately with a unique ID.
@@ -126,85 +108,9 @@ export class BatchDescriptor<
    * Use wait(id) to get the processing result.
    */
   public async push(item: Static<TItem>): Promise<string> {
-    // 1. Validate the item against the schema
+    // Validate the item against the schema
     const validatedItem = this.alepha.codec.validate(this.options.schema, item);
-
-    // 2. Generate unique ID
-    const id = randomUUID();
-
-    // 3. Determine the partition key
-    const partitionKey = this.options.partitionBy
-      ? this.options.partitionBy(validatedItem)
-      : "default";
-
-    // 4. Create item state
-    const itemState: BatchItemState<Static<TItem>, TResponse> = {
-      id,
-      item: validatedItem,
-      partitionKey,
-      status: "pending",
-    };
-
-    // CAUTION: Do not log.debug/info here as it may cause infinite loops if logging is batched
-    // log.trace is safe
-
-    this.log.trace("Pushing item to batch", {
-      id,
-      partitionKey,
-      item: validatedItem,
-    });
-
-    this.itemStates.set(id, itemState);
-
-    // 5. Get or create the partition state
-    if (!this.partitions.has(partitionKey)) {
-      this.partitions.set(partitionKey, {
-        itemIds: [],
-        flushing: false,
-      });
-    }
-    const partition = this.partitions.get(partitionKey)!;
-
-    // 6. Add item ID to partition
-    partition.itemIds.push(id);
-
-    // 7. Only start processing if the app is ready (after "ready" hook)
-    // During startup, items are just buffered in memory
-    if (this.isReady) {
-      // Check if the batch is full
-      if (partition.itemIds.length >= this.maxSize) {
-        this.log.trace(
-          `Batch partition '${partitionKey}' is full, flushing...`,
-        );
-        this.flushPartition(partitionKey).catch((error) =>
-          this.log.error(
-            `Failed to flush batch partition '${partitionKey}' on max size`,
-            error,
-          ),
-        );
-      } else if (!partition.timeout && !partition.flushing) {
-        // 8. Start the timeout if it's not already running for this partition and not currently flushing
-        partition.timeout = this.dateTime.createTimeout(() => {
-          this.log.trace(
-            `Batch partition '${partitionKey}' timed out, flushing...`,
-          );
-          this.flushPartition(partitionKey).catch((error) =>
-            this.log.error(
-              `Failed to flush batch partition '${partitionKey}' on timeout`,
-              error,
-            ),
-          );
-        }, this.maxDuration);
-      }
-    } else {
-      // Not ready yet - just buffer items, no size checks or timeouts
-      this.log.trace(
-        `Buffering item in partition '${partitionKey}' (app not ready yet, ${partition.itemIds.length} items buffered)`,
-      );
-    }
-
-    // 9. Return ID immediately
-    return id;
+    return this.batchProvider.push(this.context, validatedItem);
   }
 
   /**
@@ -214,28 +120,7 @@ export class BatchDescriptor<
    * @throws If the item doesn't exist or processing failed
    */
   public async wait(id: string): Promise<TResponse> {
-    const itemState = this.itemStates.get(id);
-    if (!itemState) {
-      throw new Error(`Item with id '${id}' not found`);
-    }
-
-    // If already completed or failed, return immediately
-    if (itemState.status === "completed") {
-      return itemState.result!;
-    }
-    if (itemState.status === "failed") {
-      throw itemState.error!;
-    }
-
-    // Create promise on-demand if not already created
-    if (!itemState.promise) {
-      itemState.promise = new Promise<TResponse>((resolve, reject) => {
-        itemState.resolve = resolve;
-        itemState.reject = reject;
-      });
-    }
-
-    return itemState.promise;
+    return this.batchProvider.wait(this.context, id);
   }
 
   /**
@@ -250,147 +135,31 @@ export class BatchDescriptor<
     | { status: "completed"; result: TResponse }
     | { status: "failed"; error: Error }
     | undefined {
-    const itemState = this.itemStates.get(id);
-    if (!itemState) {
-      return undefined;
-    }
-
-    if (itemState.status === "completed") {
-      return { status: "completed", result: itemState.result! };
-    }
-    if (itemState.status === "failed") {
-      return { status: "failed", error: itemState.error! };
-    }
-    return { status: itemState.status };
+    return this.batchProvider.status(this.context, id);
   }
 
+  /**
+   * Flush all partitions or a specific partition.
+   */
   public async flush(partitionKey?: string): Promise<void> {
-    const promises: Promise<void>[] = [];
-    if (partitionKey) {
-      if (this.partitions.has(partitionKey)) {
-        promises.push(this.flushPartition(partitionKey));
-      }
-    } else {
-      for (const key of this.partitions.keys()) {
-        promises.push(this.flushPartition(key));
-      }
-    }
-    await Promise.all(promises);
+    return this.batchProvider.flush(this.context, partitionKey);
   }
 
-  protected async flushPartition(
-    partitionKey: string,
-    limit?: number,
-  ): Promise<void> {
-    const partition = this.partitions.get(partitionKey);
-    if (!partition || partition.itemIds.length === 0) {
-      this.partitions.delete(partitionKey);
-      return;
-    }
-
-    // Clear the timeout and grab the item IDs (up to limit if specified)
-    partition.timeout?.clear();
-    partition.timeout = undefined;
-    const itemsToTake =
-      limit !== undefined
-        ? Math.min(limit, partition.itemIds.length)
-        : partition.itemIds.length;
-    const itemIdsToProcess = partition.itemIds.splice(0, itemsToTake);
-
-    // Mark partition as flushing to prevent race conditions
-    partition.flushing = true;
-
-    // Get the items and mark them as processing
-    const itemsToProcess: Static<TItem>[] = [];
-    for (const id of itemIdsToProcess) {
-      const itemState = this.itemStates.get(id);
-      if (itemState) {
-        itemState.status = "processing";
-        itemsToProcess.push(itemState.item);
-      }
-    }
-
-    // Wait until there's a free slot (if at concurrency limit)
-    while (this.activeHandlers.length >= this.concurrency) {
-      this.log.trace(
-        `Batch handler is at concurrency limit, waiting for a slot...`,
-      );
-      // Wait for any single handler to complete, not all of them
-      await Promise.race(this.activeHandlers.map((it) => it.promise));
-    }
-
-    const promise = Promise.withResolvers<void>();
-    this.activeHandlers.push(promise);
-    let result: any;
-    try {
-      result = await this.alepha.context.run(() =>
-        // during shutdown, call handler directly to avoid retry cancellation
-        this.isShuttingDown
-          ? this.options.handler(itemsToProcess)
-          : this.retry.run(itemsToProcess),
-      );
-
-      // Mark all items as completed and resolve their promises
-      for (const id of itemIdsToProcess) {
-        const itemState = this.itemStates.get(id);
-        if (itemState) {
-          itemState.status = "completed";
-          itemState.result = result;
-          // Only resolve if someone is waiting
-          itemState.resolve?.(result);
-        }
-      }
-    } catch (error) {
-      this.log.error(`Batch handler failed`, error);
-
-      // Mark all items as failed and reject their promises
-      for (const id of itemIdsToProcess) {
-        const itemState = this.itemStates.get(id);
-        if (itemState) {
-          itemState.status = "failed";
-          itemState.error = error as Error;
-          // Only reject if someone is waiting (promise was created)
-          itemState.reject?.(error as Error);
-        }
-      }
-    } finally {
-      promise.resolve(result);
-      this.activeHandlers = this.activeHandlers.filter((it) => it !== promise);
-
-      // Only delete partition if no new items arrived during processing
-      const currentPartition = this.partitions.get(partitionKey);
-      if (currentPartition?.flushing && currentPartition.itemIds.length === 0) {
-        this.partitions.delete(partitionKey);
-      } else if (currentPartition) {
-        // Reset flushing flag if partition still exists with items
-        currentPartition.flushing = false;
-
-        // Restart timeout for items that arrived during flush
-        if (currentPartition.itemIds.length > 0 && !currentPartition.timeout) {
-          currentPartition.timeout = this.dateTime.createTimeout(() => {
-            this.log.trace(
-              `Batch partition '${partitionKey}' timed out, flushing...`,
-            );
-            this.flushPartition(partitionKey).catch((error) =>
-              this.log.error(
-                `Failed to flush batch partition '${partitionKey}' on timeout`,
-                error,
-              ),
-            );
-          }, this.maxDuration);
-        }
-      }
-    }
+  /**
+   * Clears completed and failed items from memory.
+   * Call this periodically in long-running applications to prevent memory leaks.
+   *
+   * @param status Optional: only clear items with this specific status ('completed' or 'failed')
+   * @returns The number of items cleared
+   */
+  public clearCompleted(status?: "completed" | "failed"): number {
+    return this.batchProvider.clearCompleted(this.context, status);
   }
 
   protected readonly onReady = $hook({
     on: "ready",
     handler: async () => {
-      this.log.debug(
-        "Batch processor is now ready, starting to process buffered items...",
-      );
-      this.isReady = true;
-      await this.startProcessing();
+      await this.batchProvider.markReady(this.context);
     },
   });
 
@@ -398,59 +167,9 @@ export class BatchDescriptor<
     on: "stop",
     priority: "first",
     handler: async () => {
-      this.log.debug("Flushing all remaining batch partitions on shutdown...");
-      this.isShuttingDown = true;
-      await this.flush();
-      this.log.debug("All batch partitions flushed");
+      await this.batchProvider.shutdown(this.context);
     },
   });
-
-  /**
-   * Called after the "ready" hook to start processing buffered items that were
-   * pushed during startup. This checks all partitions and starts timeouts/flushes
-   * for items that were accumulated before the app was ready.
-   */
-  protected async startProcessing(): Promise<void> {
-    for (const [partitionKey, partition] of this.partitions.entries()) {
-      if (partition.itemIds.length === 0) {
-        continue;
-      }
-
-      this.log.trace(
-        `Starting processing for partition '${partitionKey}' with ${partition.itemIds.length} buffered items`,
-      );
-
-      // Flush batches of maxSize while we have items >= maxSize
-      while (partition.itemIds.length >= this.maxSize) {
-        this.log.trace(
-          `Partition '${partitionKey}' has ${partition.itemIds.length} items, flushing batch of ${this.maxSize}...`,
-        );
-        await this.flushPartition(partitionKey, this.maxSize);
-      }
-
-      // After flushing full batches, start timeout for any remaining items
-      if (
-        partition.itemIds.length > 0 &&
-        !partition.timeout &&
-        !partition.flushing
-      ) {
-        this.log.trace(
-          `Starting timeout for partition '${partitionKey}' with ${partition.itemIds.length} remaining items`,
-        );
-        partition.timeout = this.dateTime.createTimeout(() => {
-          this.log.trace(
-            `Batch partition '${partitionKey}' timed out, flushing...`,
-          );
-          this.flushPartition(partitionKey).catch((error) =>
-            this.log.error(
-              `Failed to flush partition '${partitionKey}' on timeout after startup`,
-              error,
-            ),
-          );
-        }, this.maxDuration);
-      }
-    }
-  }
 }
 
 $batch[KIND] = BatchDescriptor;
