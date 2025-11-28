@@ -4,10 +4,10 @@ import { test } from "vitest";
 import WebSocket from "ws";
 import { $channel } from "../../src/websocket/descriptors/$channel.ts";
 import { $websocket } from "../../src/websocket/descriptors/$websocket.ts";
-import { AlephaWebSockets } from "../../src/websocket/index.ts";
+import { AlephaWebSocket } from "../../src/websocket/index.ts";
 
 test("$websocket with channel-based architecture", async ({ expect }) => {
-  const alepha = Alepha.create().with(AlephaWebSockets);
+  const alepha = Alepha.create().with(AlephaWebSocket);
 
   const messages: any[] = [];
 
@@ -116,7 +116,7 @@ test("$websocket with channel-based architecture", async ({ expect }) => {
 });
 
 test("$websocket room isolation", async ({ expect }) => {
-  const alepha = Alepha.create().with(AlephaWebSockets);
+  const alepha = Alepha.create().with(AlephaWebSocket);
 
   class ChatController {
     chatChannel = $channel({

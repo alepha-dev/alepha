@@ -1,4 +1,4 @@
-import { $module, type Alepha, type DescriptorFactoryLike } from "alepha";
+import { $module, type Alepha } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { AlephaTopic } from "alepha/topic";
 import { $channel } from "./descriptors/$channel.ts";
@@ -70,12 +70,9 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
  * @see {@link $websocket}
  * @module alepha.websockets
  */
-export const AlephaWebSockets = $module({
-  name: "alepha.websockets",
-  descriptors: [
-    $channel as DescriptorFactoryLike,
-    $websocket as DescriptorFactoryLike,
-  ],
+export const AlephaWebSocket = $module({
+  name: "alepha.websocket",
+  descriptors: [$channel, $websocket],
   services: [
     WebSocketServerProvider,
     NodeWebSocketServerProvider,

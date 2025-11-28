@@ -1,28 +1,17 @@
+import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
-import { $channel, $websocket } from "alepha/websocket";
-import {
-  CHAT_CHANNEL_PATH,
-  chatInSchema,
-  chatOutSchema,
-} from "./chatChannel.ts";
+import { $websocket } from "alepha/websocket";
+import { ChatChannels } from "./channels/ChatChannels.ts";
 
 /**
  * Simple chat server - no database, just broadcasts messages
  */
-export class ChatServer {
+export class AppChatServer {
   protected readonly log = $logger();
-
-  chatChannel = $channel({
-    path: CHAT_CHANNEL_PATH,
-    description: "Simple chat channel",
-    schema: {
-      in: chatInSchema,
-      out: chatOutSchema,
-    },
-  });
+  protected readonly channels = $inject(ChatChannels);
 
   chat = $websocket({
-    channel: this.chatChannel,
+    channel: this.channels.chatChannel,
     handler: async ({ connectionId, message, reply }) => {
       // Broadcast message to all clients in the room
       await reply({

@@ -47,7 +47,7 @@ export class AlephaPackageBuilderCli {
         pkgData.exports[path].require = `./src/${item.name}/index.ts`;
       }
       if (packageName === "alepha") {
-        pkgData.exports["./tsconfig"] = "./tsconfig.base.json";
+        pkgData.exports["./tsconfig.base"] = "./tsconfig.base.json";
         pkgData.exports["./package.json"] = "./package.json";
       }
       if (packageName === "@alepha/ui") {

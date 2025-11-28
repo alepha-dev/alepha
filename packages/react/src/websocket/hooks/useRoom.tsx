@@ -1,4 +1,4 @@
-import { useInject } from "@alepha/react";
+import { useAlepha, useInject } from "@alepha/react";
 import type { Static } from "alepha";
 import type { ChannelDescriptor, TWSObject } from "alepha/websocket";
 import { WebSocketClient } from "alepha/websocket";
@@ -201,8 +201,27 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
       unsubscribe();
       unsubscribeRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+
+  const alepha = useAlepha();
+
+  if (!alepha.isBrowser()) {
+    return {
+      send: async (_message: Static<TServer>) => {
+        // No-op on server
+      },
+      isConnected: false,
+      isConnecting: false,
+      isError: false,
+      error: undefined,
+      reconnect: () => {
+        // No-op on server
+      },
+      disconnect: () => {
+        // No-op on server
+      },
+    };
+  }
 
   return {
     send: async (message: Static<TServer>) => {

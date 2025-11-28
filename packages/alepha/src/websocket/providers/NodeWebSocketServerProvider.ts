@@ -380,15 +380,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         this.log.debug(`WebSocket endpoint registered: ${path}`);
       }
 
-      // Attach upgrade handler to the HTTP server
-      const httpServer = this.alepha.state.get("alepha.node.server");
-      if (httpServer) {
-        httpServer.on("upgrade", (request, socket, head) => {
-          this.handleUpgrade(request, socket, head);
-        });
-        this.log.debug("WebSocket upgrade handler attached to HTTP server");
-      }
-
       // Set up topic service message handler
       this.topicService.setMessageHandler(async (event) => {
         await this.sendToLocalConnections(event.channelPath, event.message, {
@@ -403,6 +394,28 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       this.log.info("WebSocket server OK", {
         basePath: this.env.WEBSOCKET_PATH,
       });
+    },
+  });
+
+  protected readonly ready = $hook({
+    on: "ready",
+    handler: async () => {
+      if (this.alepha.isServerless() || !this.wss) {
+        return;
+      }
+
+      // Attach upgrade handler to the HTTP server (must be done after HTTP server starts)
+      const httpServer = this.alepha.state.get("alepha.node.server");
+      if (httpServer) {
+        httpServer.on("upgrade", (request, socket, head) => {
+          this.handleUpgrade(request, socket, head);
+        });
+        this.log.debug("WebSocket upgrade handler attached to HTTP server");
+      } else {
+        this.log.warn(
+          "No HTTP server found - WebSocket upgrade handler not attached",
+        );
+      }
     },
   });
 

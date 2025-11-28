@@ -1,14 +1,12 @@
-import { AlephaReact } from "@alepha/react";
 import { Alepha, run } from "alepha";
-import { AlephaWebSockets } from "alepha/websocket";
+import { AlephaWebSocket } from "alepha/websocket";
 import { AppRouter } from "./AppRouter.ts";
-import { ChatClient } from "./ChatClient.ts";
+import { ChatChannels } from "./channels/ChatChannels.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(AlephaWebSockets);
-alepha.with(AlephaReact);
+alepha.with(AlephaWebSocket);
 alepha.with(AppRouter);
-alepha.with(ChatClient);
+alepha.with(ChatChannels);
 
 run(alepha);

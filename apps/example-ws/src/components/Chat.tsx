@@ -1,14 +1,13 @@
 import { useInject } from "@alepha/react";
 import { useRoom } from "@alepha/react/websocket";
 import type { Static } from "alepha";
-import { useState } from "react";
-import { ChatClient } from "./ChatClient.ts";
-import type { chatInSchema } from "./chatChannel.ts";
+import { type FormEvent, useEffect, useState } from "react";
+import { ChatChannels, type chatInSchema } from "../channels/ChatChannels.ts";
 
 type ChatMessage = Static<typeof chatInSchema>;
 
 export function Chat() {
-  const chatClient = useInject(ChatClient);
+  const channels = useInject(ChatChannels);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const roomId = "lobby";
@@ -16,15 +15,21 @@ export function Chat() {
   const chat = useRoom(
     {
       roomId,
-      channel: chatClient.chatChannel,
+      channel: channels.chatChannel,
       handler: (message) => {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => [message, ...prev]);
       },
     },
     [roomId],
   );
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    chat.send({
+      content: "User has joined the chat",
+    });
+  }, [chat.isConnected, roomId]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
