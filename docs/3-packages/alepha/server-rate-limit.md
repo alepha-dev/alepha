@@ -8,10 +8,26 @@ npm install alepha
 
 ## Overview
 
-Provides rate limiting capabilities for server actions with configurable limits and windows.
+Provides rate limiting capabilities for server routes and actions with configurable limits and windows.
 
-The server-rate-limit module enables per-action rate limiting using the `rateLimit` option in action descriptors.
+The server-rate-limit module enables per-route and per-action rate limiting using either:
+- The `$rateLimit` descriptor with `paths` option for path-based rate limiting
+- The `rateLimit` option in action descriptors for action-specific limiting
+
 It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
+
+```ts
+import { $rateLimit, AlephaServerRateLimit } from "alepha/server-rate-limit";
+
+class ApiService {
+  // Path-specific rate limiting
+  apiRateLimit = $rateLimit({
+    paths: ["/api/*"],
+    max: 100,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+  });
+}
+```
 
 ## API Reference
 
@@ -23,6 +39,26 @@ For more details, see the [Descriptors documentation](/docs/descriptors).
 
 #### $rateLimit()
 
-Declares rate limiting for server actions or custom usage.
+Declares rate limiting for server routes or custom usage.
 This descriptor provides methods to check rate limits and configure behavior
 within the server request/response cycle.
+
+```ts
+class ApiService {
+  // Apply rate limiting to specific paths
+  apiRateLimit = $rateLimit({
+    paths: ["/api/*"],
+    max: 100,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+  });
+
+  // Or use check() method for manual rate limiting
+  customAction = $action({
+    handler: async (req) => {
+      const result = await this.apiRateLimit.check(req);
+      if (!result.allowed) throw new Error("Rate limited");
+      return "ok";
+    },
+  });
+}
+```
