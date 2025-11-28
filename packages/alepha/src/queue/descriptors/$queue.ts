@@ -1,5 +1,4 @@
 import {
-  $inject,
   createDescriptor,
   Descriptor,
   KIND,
@@ -8,9 +7,12 @@ import {
   type TSchema,
 } from "alepha";
 import { $logger } from "alepha/logger";
+import type {
+  QueueAddJobOptions,
+  QueueJobBackoff,
+} from "../interfaces/QueueJob.ts";
 import { MemoryQueueProvider } from "../providers/MemoryQueueProvider.ts";
 import { QueueProvider } from "../providers/QueueProvider.ts";
-import { WorkerProvider } from "../providers/WorkerProvider.ts";
 
 /**
  * Creates a queue descriptor for asynchronous message processing with background workers.
@@ -254,6 +256,47 @@ export interface QueueDescriptorOptions<T extends TSchema> {
    * ```
    */
   handler?: (message: QueueMessage<T>) => Promise<void>;
+
+  // ===========================================
+  // Job Options (for crash recovery and retries)
+  // ===========================================
+
+  /**
+   * Maximum number of processing attempts before the job is marked as failed.
+   * Includes the initial attempt.
+   *
+   * Set this to enable automatic retries on failure.
+   *
+   * @default 1 (no retries)
+   * @example 3 // Allows 2 retries after initial failure
+   */
+  maxAttempts?: number;
+
+  /**
+   * Backoff configuration for retries.
+   * Controls the delay between retry attempts.
+   *
+   * @example
+   * ```ts
+   * backoff: {
+   *   type: "exponential",
+   *   delay: 1000,      // Initial delay: 1 second
+   *   maxDelay: 60000   // Maximum delay: 1 minute
+   * }
+   * ```
+   */
+  backoff?: QueueJobBackoff;
+
+  /**
+   * Maximum time in milliseconds a job can be processed before it's considered stalled.
+   * If the worker doesn't complete or extend the lock within this time, the job
+   * can be picked up by another worker.
+   *
+   * Increase this for long-running jobs.
+   *
+   * @default 30000 (30 seconds)
+   */
+  lockDuration?: number;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -262,24 +305,88 @@ export class QueueDescriptor<T extends TSchema> extends Descriptor<
   QueueDescriptorOptions<T>
 > {
   protected readonly log = $logger();
-  protected readonly workerProvider = $inject(WorkerProvider);
   public readonly provider = this.$provider();
 
-  public async push(...payloads: Array<Static<T>>) {
-    await Promise.all(
-      payloads.map((payload) =>
-        this.provider.push(
-          this.name,
-          JSON.stringify({
-            headers: {},
-            payload: this.alepha.codec.decode(this.options.schema, payload),
-          }),
-        ),
-      ),
-    );
+  /**
+   * Push one or more payloads to the queue for background processing.
+   *
+   * Jobs will be processed with crash recovery, retries (if configured),
+   * and proper lifecycle management.
+   *
+   * @param payloads - One or more payloads to queue
+   */
+  public async push(...payloads: Array<Static<T>>): Promise<void>;
+  /**
+   * Push a payload to the queue with specific options.
+   *
+   * @param payload - The payload to queue
+   * @param options - Job options (priority, delay)
+   */
+  public async push(
+    payload: Static<T>,
+    options: QueueAddJobOptions,
+  ): Promise<void>;
 
-    this.log.debug(`Pushed to queue ${this.name}`, payloads);
-    this.workerProvider.wakeUp();
+  public async push(
+    payloadOrFirst: Static<T>,
+    optionsOrSecond?: QueueAddJobOptions | Static<T>,
+    ...rest: Array<Static<T>>
+  ): Promise<void> {
+    // Check if second argument is options object
+    const isOptions =
+      optionsOrSecond != null &&
+      typeof optionsOrSecond === "object" &&
+      ("priority" in optionsOrSecond || "delay" in optionsOrSecond);
+
+    if (isOptions) {
+      // Single payload with options
+      const payload = this.alepha.codec.decode(
+        this.options.schema,
+        payloadOrFirst,
+      );
+      await this.provider.addJob(this.name, payload, {
+        ...this.getDefaultJobOptions(),
+        priority: (optionsOrSecond as QueueAddJobOptions).priority,
+        delay: (optionsOrSecond as QueueAddJobOptions).delay,
+      });
+      this.log.debug(`Pushed job to queue ${this.name}`, {
+        payload,
+        options: optionsOrSecond,
+      });
+    } else {
+      // Multiple payloads without per-job options
+      const payloads =
+        optionsOrSecond != null
+          ? [payloadOrFirst, optionsOrSecond as Static<T>, ...rest]
+          : [payloadOrFirst, ...rest];
+
+      await Promise.all(
+        payloads.map((p) => {
+          const payload = this.alepha.codec.decode(this.options.schema, p);
+          return this.provider.addJob(
+            this.name,
+            payload,
+            this.getDefaultJobOptions(),
+          );
+        }),
+      );
+
+      this.log.debug(
+        `Pushed ${payloads.length} job(s) to queue ${this.name}`,
+        payloads,
+      );
+    }
+  }
+
+  /**
+   * Get default job options from descriptor configuration.
+   */
+  protected getDefaultJobOptions() {
+    return {
+      maxAttempts: this.options.maxAttempts,
+      backoff: this.options.backoff,
+      lockDuration: this.options.lockDuration,
+    };
   }
 
   public get name() {

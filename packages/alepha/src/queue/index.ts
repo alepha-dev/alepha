@@ -9,6 +9,7 @@ import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 export * from "./descriptors/$consumer.ts";
 export * from "./descriptors/$queue.ts";
+export * from "./interfaces/QueueJob.ts";
 export * from "./providers/MemoryQueueProvider.ts";
 export * from "./providers/QueueProvider.ts";
 

@@ -15,20 +15,16 @@ import {
   type QueueDescriptor,
   type QueueMessage,
 } from "../descriptors/$queue.ts";
+import type { QueueAcquiredJob } from "../interfaces/QueueJob.ts";
 import { QueueProvider } from "./QueueProvider.ts";
 
 const envSchema = t.object({
   /**
-   * The interval in milliseconds to wait before checking for new messages.
+   * The timeout in seconds for blocking job acquisition.
+   * Workers will check for shutdown after each timeout period.
    */
-  QUEUE_WORKER_INTERVAL: t.integer({
-    default: 1000,
-  }),
-  /**
-   * The maximum interval in milliseconds to wait before checking for new messages.
-   */
-  QUEUE_WORKER_MAX_INTERVAL: t.integer({
-    default: 32000,
+  QUEUE_WORKER_BLOCKING_TIMEOUT: t.integer({
+    default: 5,
   }),
   /**
    * The number of workers to run concurrently. Defaults to 1.
@@ -36,6 +32,25 @@ const envSchema = t.object({
    */
   QUEUE_WORKER_CONCURRENCY: t.integer({
     default: 1,
+  }),
+  /**
+   * Interval in milliseconds for renewing job locks during processing.
+   * Should be less than the job's lock duration.
+   */
+  QUEUE_WORKER_LOCK_RENEWAL_INTERVAL: t.integer({
+    default: 10000, // 10 seconds
+  }),
+  /**
+   * Interval in milliseconds for the scheduler to check delayed jobs and stalled jobs.
+   */
+  QUEUE_SCHEDULER_INTERVAL: t.integer({
+    default: 5000, // 5 seconds
+  }),
+  /**
+   * Threshold in milliseconds after lock expiration to consider a job stalled.
+   */
+  QUEUE_STALLED_THRESHOLD: t.integer({
+    default: 5000, // 5 seconds grace period after lock expires
   }),
 });
 
@@ -48,13 +63,17 @@ export class WorkerProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly queueProvider = $inject(QueueProvider);
-  protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   protected workerPromises: Array<Promise<void>> = [];
   protected workersRunning = 0;
-  protected abortController = new AbortController();
-  protected workerIntervals: Record<number, number> = {};
+  protected shouldStop = false;
   protected consumers: Array<Consumer> = [];
+  protected consumersByProvider: Map<QueueProvider, Consumer[]> = new Map();
+  protected schedulerPromise: Promise<void> | undefined;
+  protected schedulerRunning = false;
+  protected abortController: AbortController | undefined;
+  protected workerId: string = `worker_${process.pid}_${Date.now()}`;
 
   public get isRunning(): boolean {
     return this.workersRunning > 0;
@@ -78,8 +97,17 @@ export class WorkerProvider {
         this.consumers.push(consumer.options);
       }
 
+      // Group consumers by their provider for efficient blocking
+      for (const consumer of this.consumers) {
+        const provider = consumer.queue.provider;
+        const list = this.consumersByProvider.get(provider) ?? [];
+        list.push(consumer);
+        this.consumersByProvider.set(provider, list);
+      }
+
       if (this.consumers.length > 0) {
         this.startWorkers();
+        this.startScheduler();
         this.log.debug(
           `Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""} with ${this.env.QUEUE_WORKER_CONCURRENCY} worker${
             this.env.QUEUE_WORKER_CONCURRENCY > 1 ? "s" : ""
@@ -91,11 +119,11 @@ export class WorkerProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  // Engine part - this is the part that will run the workers and process the messages
+  // Engine part - this is the part that will run the workers and process the jobs
 
   /**
    * Start the workers.
-   * This method will create an endless loop that will check for new messages!
+   * Each worker acquires jobs and processes them with proper lifecycle management.
    */
   protected startWorkers(): void {
     const workerToStart =
@@ -103,33 +131,85 @@ export class WorkerProvider {
 
     for (let i = 0; i < workerToStart; i++) {
       this.workersRunning += 1;
-      this.log.debug(`Starting worker n-${i}`);
+      const workerIndex = i;
+      const localWorkerId = `${this.workerId}_${workerIndex}`;
+      this.log.debug(`Starting worker n-${workerIndex}`);
 
       const workerLoop = async () => {
-        while (this.workersRunning > 0) {
-          this.log.trace(`Worker n-${i} is checking for new messages`);
-          const next = await this.getNextMessage();
-          if (next) {
-            this.workerIntervals[i] = 0;
-            await this.processMessage(next);
-          } else {
-            await this.waitForNextMessage(i);
+        while (!this.shouldStop) {
+          this.log.trace(`Worker n-${workerIndex} is waiting for jobs`);
+          const acquired = await this.acquireNextJob(localWorkerId);
+          if (acquired) {
+            await this.processJob(acquired, localWorkerId);
           }
+          // If no job (timeout), loop continues and checks shouldStop
         }
-        this.log.info(`Worker n-${i} has stopped`);
-        // Only decrement if we're not already at 0 (shutdown case)
-        if (this.workersRunning > 0) {
-          this.workersRunning -= 1;
-        }
+        this.log.info(`Worker n-${workerIndex} has stopped`);
       };
 
       this.workerPromises.push(
         workerLoop().catch((e) => {
-          this.log.error(`Worker n-${i} has crashed`, e);
-          // Always decrement on crash, regardless of shutdown state
+          this.log.error(`Worker n-${workerIndex} has crashed`, e);
           this.workersRunning -= 1;
         }),
       );
+    }
+  }
+
+  /**
+   * Start the scheduler for delayed job promotion and stalled job recovery.
+   */
+  protected startScheduler(): void {
+    if (this.schedulerRunning) return;
+    this.schedulerRunning = true;
+    this.abortController = new AbortController();
+    this.log.debug("Starting scheduler");
+
+    const schedulerLoop = async () => {
+      while (!this.shouldStop) {
+        try {
+          await this.runSchedulerCycle();
+        } catch (e) {
+          this.log.error("Scheduler cycle failed", e);
+        }
+
+        // Wait for next interval (interruptible via AbortController)
+        await this.dateTime.wait(this.env.QUEUE_SCHEDULER_INTERVAL, {
+          signal: this.abortController?.signal,
+        });
+      }
+      this.log.debug("Scheduler stopped");
+    };
+
+    this.schedulerPromise = schedulerLoop();
+  }
+
+  /**
+   * Run one cycle of the scheduler.
+   * Promotes delayed jobs and recovers stalled jobs.
+   */
+  protected async runSchedulerCycle(): Promise<void> {
+    for (const [provider, consumers] of this.consumersByProvider) {
+      const queues = new Set(consumers.map((c) => c.queue.name));
+
+      for (const queue of queues) {
+        // Promote delayed jobs
+        const promoted = await provider.promoteDelayedJobs(queue);
+        if (promoted > 0) {
+          this.log.debug(`Promoted ${promoted} delayed jobs in queue ${queue}`);
+        }
+
+        // Recover stalled jobs
+        const recovered = await provider.recoverStalledJobs(
+          queue,
+          this.env.QUEUE_STALLED_THRESHOLD,
+        );
+        if (recovered.length > 0) {
+          this.log.warn(
+            `Recovered ${recovered.length} stalled jobs in queue ${queue}`,
+          );
+        }
+      }
     }
   }
 
@@ -143,93 +223,112 @@ export class WorkerProvider {
   });
 
   /**
-   * Wait for the next message, where `n` is the worker number.
-   *
-   * This method will wait for a certain amount of time, increasing the wait time again if no message is found.
+   * Acquire the next available job from any provider.
    */
-  protected async waitForNextMessage(n: number): Promise<void> {
-    const intervals = this.workerIntervals;
-    const milliseconds = intervals[n] || this.env.QUEUE_WORKER_INTERVAL;
+  protected async acquireNextJob(
+    localWorkerId: string,
+  ): Promise<AcquiredJobWithConsumer | undefined> {
+    for (const [provider, consumers] of this.consumersByProvider) {
+      const queueNames = consumers.map((c) => c.queue.name);
+      const acquired = await provider.acquireJob(
+        queueNames,
+        localWorkerId,
+        this.env.QUEUE_WORKER_BLOCKING_TIMEOUT,
+      );
 
-    this.log.trace(`Worker n-${n} is waiting for ${milliseconds}ms.`);
-
-    if (this.abortController.signal.aborted) {
-      this.log.warn(`Worker n-${n} aborted.`);
-      return;
-    }
-
-    await this.dateTimeProvider.wait(milliseconds, {
-      signal: this.abortController.signal,
-    });
-
-    if (intervals[n]) {
-      if (intervals[n] < this.env.QUEUE_WORKER_MAX_INTERVAL) {
-        intervals[n] = intervals[n] * 2;
+      if (acquired) {
+        const consumer = consumers.find((c) => c.queue.name === acquired.queue);
+        if (consumer) {
+          return { acquired, consumer, provider };
+        }
       }
-    } else {
-      intervals[n] = milliseconds;
     }
+
+    return undefined;
   }
 
   /**
-   * Get the next message.
+   * Process a job with proper lifecycle management.
+   * - Starts a lock renewal interval
+   * - Calls the handler
+   * - Marks job as completed or failed
    */
-  protected async getNextMessage(): Promise<undefined | NextMessage> {
-    for (const consumer of this.consumers) {
-      const provider = consumer.queue.provider;
-      const message = await provider.pop(consumer.queue.name);
-      if (message) {
-        return { message, consumer };
-      }
-    }
-  }
+  protected async processJob(
+    { acquired, consumer, provider }: AcquiredJobWithConsumer,
+    localWorkerId: string,
+  ): Promise<void> {
+    const { queue, job } = acquired;
 
-  /**
-   * Process a message from a queue.
-   */
-  protected async processMessage(response: {
-    message: any;
-    consumer: Consumer;
-  }) {
-    const { message, consumer } = response;
+    // Start lock renewal heartbeat
+    const lockRenewalInterval = this.dateTime.createInterval(
+      async () => {
+        try {
+          const renewed = await provider.renewJobLock(
+            queue,
+            job.id,
+            localWorkerId,
+          );
+          if (!renewed) {
+            this.log.warn(
+              `Failed to renew lock for job ${job.id}, lock may have been stolen`,
+            );
+          }
+        } catch (e) {
+          this.log.error(`Error renewing lock for job ${job.id}`, e);
+        }
+      },
+      this.env.QUEUE_WORKER_LOCK_RENEWAL_INTERVAL,
+      true, // start immediately
+    );
 
     try {
-      const json = JSON.parse(message);
+      // Decode payload and run handler
       const payload = this.alepha.codec.decode(
         consumer.queue.options.schema,
-        json.payload,
+        job.payload,
       );
+
       await this.alepha.context.run(() => consumer.handler({ payload }));
+
+      // Mark as completed
+      await provider.completeJob(queue, job.id);
+      this.log.debug(`Job ${job.id} completed successfully`, { queue });
     } catch (e) {
-      this.log.error("Failed to process message", e);
+      // Mark as failed (provider handles retry logic)
+      const error = e instanceof Error ? e.message : String(e);
+      const stackTrace = e instanceof Error ? e.stack : undefined;
+      await provider.failJob(queue, job.id, error, stackTrace);
+      this.log.error(`Job ${job.id} failed`, e);
+    } finally {
+      this.dateTime.clearInterval(lockRenewalInterval);
     }
   }
 
   /**
-   * Stop the workers.
-   *
-   * This method will stop the workers and wait for them to finish processing.
+   * Stop the workers and scheduler.
    */
-  protected async stopWorkers() {
+  protected async stopWorkers(): Promise<void> {
+    this.shouldStop = true;
     this.workersRunning = 0;
+    this.schedulerRunning = false;
+
+    // Abort the scheduler's wait immediately
+    this.abortController?.abort();
+
+    // Cancel all pending acquireJob waiters to unblock workers immediately
+    for (const provider of this.consumersByProvider.keys()) {
+      provider.cancelWaiters();
+    }
 
     this.log.trace("Stopping workers...");
-    this.abortController.abort();
-
     this.log.trace("Waiting for workers to finish...");
-    await Promise.all(this.workerPromises);
-  }
 
-  /**
-   * Force the workers to get back to work.
-   */
-  public wakeUp(): void {
-    this.log.debug("Waking up workers...");
-    this.abortController.abort();
-    this.abortController = new AbortController();
+    const promises: Promise<void>[] = [...this.workerPromises];
+    if (this.schedulerPromise) {
+      promises.push(this.schedulerPromise);
+    }
 
-    // if no workers are running, start them, (should not happen, but just in case)
-    this.startWorkers();
+    await Promise.all(promises);
   }
 }
 
@@ -238,7 +337,8 @@ export interface Consumer<T extends TSchema = TSchema> {
   handler: (message: QueueMessage<T>) => Promise<void>;
 }
 
-export interface NextMessage {
+export interface AcquiredJobWithConsumer {
+  acquired: QueueAcquiredJob;
   consumer: Consumer;
-  message: string;
+  provider: QueueProvider;
 }
