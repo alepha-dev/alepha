@@ -22,18 +22,11 @@ export class DrizzleCommands {
   utils = $inject(ProjectUtils);
 
   /**
-   * Check if database migrations are up to date
-   *
-   * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository descriptors to gather database models.
-   * - Reads the last migration snapshot from the migration journal.
-   * - Generates the current database schema representation.
-   * - Compares the current schema with the last snapshot to detect changes.
-   * - If changes are detected, prompts the user to run the migration generation command!
+   * Check if database migrations are up to date.
    */
   check = $command({
-    name: "db:check-migrations",
-    description: "Verify database migration files are up to date",
+    name: "db:migrate:check",
+    description: "Check if database migration files are up to date",
     args: t.optional(
       t.text({
         title: "path",

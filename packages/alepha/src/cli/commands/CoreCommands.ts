@@ -69,17 +69,16 @@ export class CoreCommands {
       ),
     }),
     handler: async ({ run, flags, root }) => {
-      await run("Ensuring Alepha configuration files", async () => {
-        await this.utils.ensureTsConfig(root);
-        await this.utils.ensurePackageJson(root, flags);
+      await run({
+        name: "Ensuring configuration files",
+        handler: async () => {
+          await this.utils.ensureConfig(root, {
+            tsconfigJson: true,
+            packageJson: flags,
+            indexHtml: !!flags.react,
+          });
+        },
       });
-
-      if (flags.react) {
-        // if index.html does not exist, create it
-        await run("Ensuring index.html file", async () => {
-          await this.utils.ensureIndexHtml(root);
-        });
-      }
 
       // TODO: check if all alepha dependencies are same version
 

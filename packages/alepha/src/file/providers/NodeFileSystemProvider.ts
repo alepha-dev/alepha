@@ -87,6 +87,15 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * ```
    */
   createFile(options: CreateFileOptions): FileLike {
+    if ("path" in options) {
+      const path = options.path;
+      const filename = path.split("/").pop() || "file";
+      return this.createFileFromUrl(`file://${path}`, {
+        type: options.type,
+        name: options.name || filename,
+      });
+    }
+
     // Handle URL
     if ("url" in options) {
       return this.createFileFromUrl(options.url, {

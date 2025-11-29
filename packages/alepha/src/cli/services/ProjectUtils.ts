@@ -132,6 +132,42 @@ export class ProjectUtils {
     await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
   }
 
+  public async ensureConfig(
+    root: string,
+    opts: {
+      packageJson?: boolean | DependencyModes;
+      tsconfigJson?: boolean;
+      viteConfigTs?: boolean;
+      indexHtml?: boolean;
+      biomeJson?: boolean;
+    },
+  ) {
+    const tasks: Promise<void>[] = [];
+
+    if (opts.packageJson) {
+      tasks.push(
+        this.ensurePackageJson(
+          root,
+          typeof opts.packageJson === "boolean" ? {} : opts.packageJson,
+        ),
+      );
+    }
+    if (opts.tsconfigJson) {
+      tasks.push(this.ensureTsConfig(root));
+    }
+    if (opts.viteConfigTs) {
+      tasks.push(this.ensureViteConfig(root));
+    }
+    if (opts.indexHtml) {
+      tasks.push(this.ensureIndexHtml(root));
+    }
+    if (opts.biomeJson) {
+      tasks.push(this.ensureBiomeConfig(root));
+    }
+
+    await Promise.all(tasks);
+  }
+
   /**
    * Ensure package.json exists and is configured as ES module.
    *
@@ -167,8 +203,36 @@ export class ProjectUtils {
    * @param root - The root directory of the project
    */
   public async ensureTsConfig(root: string): Promise<void> {
-    // Check if tsconfig.json exists on current directory or parent directories
-    const tsconfigPath = join(root, "tsconfig.json");
+    await this.ensureFileExists(root, "tsconfig.json", tsconfigJson, true);
+  }
+
+  /**
+   * Ensure vite.config.ts exists in the project.
+   *
+   * Creates a standard Alepha vite.config.ts if none exists.
+   */
+  public async ensureViteConfig(root: string): Promise<void> {
+    await this.ensureFileExists(root, "vite.config.ts", viteConfigTs(), false);
+  }
+
+  protected async ensureFileExists(
+    root: string,
+    name: string,
+    content: string,
+    checkParentDirectories: boolean = false,
+  ): Promise<void> {
+    const configPath = join(root, name);
+
+    if (!checkParentDirectories) {
+      try {
+        await access(configPath);
+        return;
+      } catch {
+        await writeFile(configPath, content);
+        return;
+      }
+    }
+
     let found = false;
     let currentDir = root;
     const maxIterations = 10; // safety to prevent infinite loops
@@ -176,13 +240,13 @@ export class ProjectUtils {
 
     while (level < maxIterations) {
       try {
-        await access(join(currentDir, "tsconfig.json"));
+        await access(join(currentDir, name));
         found = true;
         break;
       } catch {
         const parentDir = join(currentDir, "..");
         if (parentDir === currentDir) {
-          break; // Reached filesystem root
+          break;
         }
         currentDir = parentDir;
       }
@@ -190,7 +254,7 @@ export class ProjectUtils {
     }
 
     if (!found) {
-      await writeFile(tsconfigPath, tsconfigJson);
+      await writeFile(configPath, content);
     }
   }
 
@@ -202,27 +266,9 @@ export class ProjectUtils {
    * Get the path to Biome configuration file.
    *
    * Looks for an existing biome.json in the project root, or creates one if it doesn't exist.
-   *
-   * @param maybePath - Optional custom path to biome config
-   * @returns Absolute path to the biome.json config file
    */
-  public async getBiomeConfigPath(maybePath?: string): Promise<string> {
-    const root = process.cwd();
-    if (maybePath) {
-      try {
-        const path = join(root, maybePath);
-        await access(path);
-        return path;
-      } catch {}
-    }
-
-    try {
-      const path = join(root, "biome.json");
-      await access(path);
-      return path;
-    } catch {
-      return await this.runner.writeConfigFile("biome.json", biomeJson);
-    }
+  public async ensureBiomeConfig(root: string): Promise<void> {
+    await this.ensureFileExists(root, "biome.json", biomeJson, true);
   }
 
   // ===================================================================================================================
@@ -495,6 +541,19 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       join(root, "index.html"),
       indexHtml(entry ? entry.replace(root, "") : undefined),
     );
+  }
+
+  public async hasDir(root: string, dirName: string): Promise<boolean> {
+    return this.fs.exists(join(root, dirName));
+  }
+
+  async readPackageJson(root: string): Promise<Record<string, any>> {
+    const packageJson = await this.fs
+      .createFile({
+        path: join(root, "package.json"),
+      })
+      .text();
+    return JSON.parse(packageJson);
   }
 }
 

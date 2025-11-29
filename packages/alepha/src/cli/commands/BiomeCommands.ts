@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
@@ -9,33 +9,21 @@ export class BiomeCommands {
   protected readonly runner = $inject(ProcessRunner);
   protected readonly utils = $inject(ProjectUtils);
 
-  protected readonly biomeFlags = t.object({
-    config: t.optional(
-      t.text({
-        aliases: ["c"],
-      }),
-    ),
-  });
-
   public readonly format = $command({
     name: "format",
     description: "Format the codebase using Biome",
-    flags: this.biomeFlags,
-    handler: async ({ flags }) => {
-      const configPath = await this.utils.getBiomeConfigPath(flags.config);
-      await this.runner.exec(`biome format --fix --config-path=${configPath}`);
+    handler: async ({ root }) => {
+      await this.utils.ensureConfig(root, { biomeJson: true });
+      await this.runner.exec(`biome format --fix`);
     },
   });
 
   public readonly lint = $command({
     name: "lint",
     description: "Run linter across the codebase using Biome",
-    flags: this.biomeFlags,
-    handler: async ({ flags }) => {
-      const configPath = await this.utils.getBiomeConfigPath(flags.config);
-      await this.runner.exec(
-        `biome check --formatter-enabled=false --fix --config-path=${configPath}`,
-      );
+    handler: async ({ root }) => {
+      await this.utils.ensureConfig(root, { biomeJson: true });
+      await this.runner.exec(`biome check --formatter-enabled=false --fix`);
     },
   });
 }

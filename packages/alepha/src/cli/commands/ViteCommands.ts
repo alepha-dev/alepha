@@ -1,6 +1,6 @@
 import { access, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { $inject, OPTIONS, t } from "alepha";
+import { $env, $inject, OPTIONS, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import {
@@ -22,6 +22,12 @@ export class ViteCommands {
   protected readonly log = $logger();
   protected readonly runner = $inject(ProcessRunner);
   protected readonly utils = $inject(ProjectUtils);
+
+  protected readonly env = $env(
+    t.object({
+      VITEST_ARGS: t.string({ default: "" }),
+    }),
+  );
 
   public readonly run = $command({
     name: "run",
@@ -50,8 +56,11 @@ export class ViteCommands {
     description: "Run the project in development mode",
     args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
     handler: async ({ args, root }) => {
-      await this.utils.ensureTsConfig(root);
-      await this.utils.ensurePackageJsonModule(root);
+      await this.utils.ensureConfig(root, {
+        viteConfigTs: true,
+        tsconfigJson: true,
+      });
+
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
@@ -63,12 +72,7 @@ export class ViteCommands {
         return;
       }
 
-      const configPath = await this.utils.getViteConfigPath(
-        root,
-        args ? entry : undefined,
-      );
-      this.log.trace("Vite config found", { configPath });
-      await this.runner.exec(`vite -c=${configPath}`);
+      await this.runner.exec(`vite`);
     },
   });
 
@@ -110,13 +114,15 @@ export class ViteCommands {
         }),
       ),
     }),
-    handler: async ({ flags, args, run }) => {
+    handler: async ({ flags, args, run, root }) => {
       // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
       process.env.ALEPHA_BUILD_MODE = "cli";
 
-      const root = process.cwd();
-      await this.utils.ensureTsConfig(root);
-      await this.utils.ensurePackageJsonModule(root);
+      await this.utils.ensureConfig(root, {
+        viteConfigTs: true,
+        tsconfigJson: true,
+      });
+
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
@@ -195,45 +201,47 @@ export class ViteCommands {
           }),
       });
 
-      // Generate sitemap
-      const sitemapBaseUrl =
-        flags.sitemap ??
-        (typeof viteAlephaBuildOptions.client === "object"
-          ? viteAlephaBuildOptions.client.sitemap?.hostname
-          : undefined);
+      if (hasClient) {
+        // Generate sitemap
+        const sitemapBaseUrl =
+          flags.sitemap ??
+          (typeof viteAlephaBuildOptions.client === "object"
+            ? viteAlephaBuildOptions.client.sitemap?.hostname
+            : undefined);
 
-      if (sitemapBaseUrl) {
-        await run({
-          name: "add sitemap",
-          handler: async () => {
-            await writeFile(
-              `${distDir}/${clientDir}/sitemap.xml`,
-              await generateSitemap({
+        if (sitemapBaseUrl) {
+          await run({
+            name: "add sitemap",
+            handler: async () => {
+              await writeFile(
+                `${distDir}/${clientDir}/sitemap.xml`,
+                await generateSitemap({
+                  entry: `${distDir}/index.js`,
+                  baseUrl: sitemapBaseUrl,
+                }),
+              );
+            },
+          });
+        }
+
+        // Pre-render static pages
+        const shouldPrerender =
+          flags.prerender ??
+          (typeof viteAlephaBuildOptions.client === "object"
+            ? viteAlephaBuildOptions.client.prerender
+            : false);
+
+        if (shouldPrerender) {
+          await run({
+            name: "pre-render pages",
+            handler: async () => {
+              await prerenderPages({
+                dist: `${distDir}/${clientDir}`,
                 entry: `${distDir}/index.js`,
-                baseUrl: sitemapBaseUrl,
-              }),
-            );
-          },
-        });
-      }
-
-      // Pre-render static pages
-      const shouldPrerender =
-        flags.prerender ??
-        (typeof viteAlephaBuildOptions.client === "object"
-          ? viteAlephaBuildOptions.client.prerender
-          : false);
-
-      if (shouldPrerender && hasClient) {
-        await run({
-          name: "pre-render pages",
-          handler: async () => {
-            await prerenderPages({
-              dist: `${distDir}/${clientDir}`,
-              entry: `${distDir}/index.js`,
-            });
-          },
-        });
+              });
+            },
+          });
+        }
       }
 
       // Generate deployment configurations
@@ -284,9 +292,22 @@ export class ViteCommands {
     name: "test",
     description: "Run tests using Vitest",
     handler: async ({ root }) => {
-      await this.utils.ensureTsConfig(root);
-      const configPath = await this.utils.getViteConfigPath(root);
-      await this.runner.exec(`vitest run -c=${configPath}`);
+      await this.utils.ensureConfig(root, {
+        tsconfigJson: true,
+        viteConfigTs: true,
+      });
+
+      // check if vitest is installed
+      try {
+        await import("vitest");
+      } catch {
+        this.log.error(
+          "Vitest is not installed. Please install it with `npm install -D vitest` or `yarn add -D vitest`.",
+        );
+        process.exit(1);
+      }
+
+      await this.runner.exec(`vitest run ${this.env.VITEST_ARGS}`);
     },
   });
 }

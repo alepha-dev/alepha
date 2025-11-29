@@ -19,6 +19,24 @@ export interface CreateFileFromUrlOptions {
 }
 
 /**
+ * Options for creating a file from a path (URL with file:// scheme)
+ */
+export interface CreateFileFromPathOptions {
+  /**
+   * The path to the file on the local filesystem
+   */
+  path: string;
+  /**
+   * The MIME type of the file (optional, will be detected from filename if not provided)
+   */
+  type?: string;
+  /**
+   * The name of the file (optional, will be extracted from URL if not provided)
+   */
+  name?: string;
+}
+
+/**
  * Options for creating a file from a Buffer
  */
 export interface CreateFileFromBufferOptions {
@@ -136,6 +154,7 @@ export interface CreateFileFromArrayBufferOptions {
  */
 export type CreateFileOptions =
   | CreateFileFromUrlOptions
+  | CreateFileFromPathOptions
   | CreateFileFromBufferOptions
   | CreateFileFromStreamOptions
   | CreateFileFromTextOptions

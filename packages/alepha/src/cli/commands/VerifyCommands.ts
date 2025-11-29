@@ -1,31 +1,44 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
+import { ProjectUtils } from "../services/ProjectUtils.ts";
 
 export class VerifyCommands {
   protected readonly processRunner = $inject(ProcessRunner);
+  protected readonly utils = $inject(ProjectUtils);
 
   /**
    * Run a series of verification commands to ensure code quality and correctness.
    *
    * This command runs the following checks in order:
-   * 1. Clean the project
-   * 2. Format the code
-   * 3. Lint the code
-   * 4. Run tests
-   * 5. Type check the code
-   * 8. Build the project
-   * 9. Clean the project again
+   * - Clean the project
+   * - Format the code
+   * - Lint the code
+   * - Run tests (if Vitest is a dev dependency)
+   * - Check database migrations (if a migrations directory exists)
+   * - Type check the code
+   * - Build the project
+   * - Clean the project again
    */
   public readonly verify = $command({
     name: "verify",
     description: "Verify the Alepha project",
-    handler: async ({ run }) => {
+    handler: async ({ root, run }) => {
       await run("alepha clean");
       await run("alepha format");
       await run("alepha lint");
-      await run("alepha test");
+
       await run("alepha typecheck");
+
+      const pkg = await this.utils.readPackageJson(root);
+      if (pkg.devDependencies?.vitest) {
+        await run("alepha test");
+      }
+
+      if (await this.utils.hasDir(root, "migrations")) {
+        await run("alepha db:migrate:check");
+      }
+
       await run("alepha build");
       await run("alepha clean");
     },

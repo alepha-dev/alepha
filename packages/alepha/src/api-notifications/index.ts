@@ -6,7 +6,10 @@ import { MemorySmsProvider } from "./providers/MemorySmsProvider.ts";
 import { SmsProvider } from "./providers/SmsProvider.ts";
 import { NotificationQueues } from "./queues/NotificationQueues.ts";
 import { NotificationSenderService } from "./services/NotificationSenderService.ts";
-import { NotificationService } from "./services/NotificationService.ts";
+import {
+  NotificationService,
+  notificationServiceEnvSchema,
+} from "./services/NotificationService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -51,11 +54,15 @@ export const AlephaApiNotifications = $module({
       use: MemorySmsProvider,
     });
 
+    const env = alepha.parseEnv(notificationServiceEnvSchema);
+    if (env.NOTIFICATION_QUEUE) {
+      alepha.with(NotificationQueues);
+    }
+
     alepha
       .with(NotificationController)
       .with(NotificationService)
       .with(NotificationSenderService)
-      .with(NotificationQueues)
       .with(NotificationJobs);
   },
 });

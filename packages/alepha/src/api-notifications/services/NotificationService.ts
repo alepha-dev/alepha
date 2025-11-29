@@ -11,26 +11,25 @@ import {
 } from "../schemas/notificationCreateSchema.ts";
 import { NotificationSenderService } from "./NotificationSenderService.ts";
 
-const envSchema = t.object({
-  NOTIFICATION_IMMEDIATE: t.optional(
+export const notificationServiceEnvSchema = t.object({
+  NOTIFICATION_QUEUE: t.optional(
     t.boolean({
       description:
-        "If true, notifications will be sent immediately instead of being batched and queued. True by default in serverless and test environments.",
+        "If true, notifications will be queued instead of sent immediately",
     }),
   ),
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Static<typeof notificationServiceEnvSchema>> {}
 }
 
 export class NotificationService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly env = $env(notificationServiceEnvSchema);
   protected readonly notificationRepository = $repository(notifications);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly notificationQueues = $inject(NotificationQueues);
   protected readonly notificationSenderService = $inject(
     NotificationSenderService,
   );
@@ -48,9 +47,11 @@ export class NotificationService {
       const entities =
         await this.notificationRepository.createMany(notifications);
 
-      await this.notificationQueues.processNotification.push(
-        ...entities.map((it) => ({ notificationId: it.id })),
-      );
+      await this.alepha
+        .inject(NotificationQueues)
+        .processNotification.push(
+          ...entities.map((it) => ({ notificationId: it.id })),
+        );
 
       this.log.info("Notification batch queued", {
         count: entities.length,
@@ -67,22 +68,17 @@ export class NotificationService {
   /**
    * Create a new notification.
    */
-  public async createNotification(
-    entry: NotificationCreate,
-    now = false,
-  ): Promise<void> {
+  public async createNotification(entry: NotificationCreate): Promise<void> {
     this.log.trace("Creating notification", {
       template: entry.template,
       type: entry.type,
       contact: entry.contact,
-      immediate: now,
     });
 
     if (
-      now ||
-      this.env.NOTIFICATION_IMMEDIATE === true ||
-      (this.env.NOTIFICATION_IMMEDIATE == null &&
-        (this.alepha.isServerless() || this.alepha.isTest()))
+      this.env.NOTIFICATION_QUEUE !== true ||
+      this.alepha.isServerless() ||
+      this.alepha.isTest()
     ) {
       this.log.debug("Sending notification immediately", {
         template: entry.template,

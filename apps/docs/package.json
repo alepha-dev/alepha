@@ -10,7 +10,7 @@
     "@mantine/nprogress": "^8.3.9",
     "@mantine/spotlight": "^8.3.9",
     "@tabler/icons-react": "^3.35.0",
-    "alepha": "0.12.0",
+    "alepha": "^0.12.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -24,7 +24,7 @@
   },
   "scripts": {
     "cli": "node scripts/docs-cli.ts",
-    "dev": "yarn copy && alepha dev",
+    "dev": "alepha dev",
     "copy": "yarn cli readme && yarn cli docs",
     "start": "node dist",
     "lint": "alepha lint",
