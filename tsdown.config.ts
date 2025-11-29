@@ -12,7 +12,7 @@ export default async () => {
 		return [
 			{
 				entry: "src/index.ts",
-				format: ["esm", "cjs"],
+				format: ["esm"],
 				sourcemap: true,
         fixedExtension: false,
       },
@@ -27,7 +27,7 @@ export default async () => {
 	return [
 		{
 			entry: "src/index.ts",
-			format: ["esm", "cjs"],
+			format: ["esm"],
 			platform: "neutral", // TODO: index.node.ts for node specific build
 			sourcemap: true,
       fixedExtension: false,

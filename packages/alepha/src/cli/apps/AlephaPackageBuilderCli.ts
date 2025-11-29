@@ -34,6 +34,7 @@ export class AlephaPackageBuilderCli {
       });
 
       pkgData.exports = {};
+
       for (const item of modules) {
         const path =
           item.name === "core" ? "." : `./${item.name.replace("-", "/")}`;
@@ -46,13 +47,16 @@ export class AlephaPackageBuilderCli {
         pkgData.exports[path].import = `./src/${item.name}/index.ts`;
         pkgData.exports[path].require = `./src/${item.name}/index.ts`;
       }
+
       if (packageName === "alepha") {
         pkgData.exports["./tsconfig.base"] = "./tsconfig.base.json";
         pkgData.exports["./package.json"] = "./package.json";
       }
+
       if (packageName === "@alepha/ui") {
         pkgData.exports["./styles"] = "./styles.css";
       }
+
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
 
       const tmpDir = join(root, "node_modules/.alepha");
@@ -65,7 +69,8 @@ export class AlephaPackageBuilderCli {
 
       const external = [
         "alepha",
-        ...modules.map((item) => `alepha/${item.name}`),
+        packageName,
+        ...modules.map((item) => `${packageName}/${item.name}`),
       ];
 
       await run.rm(this.dist);
@@ -78,7 +83,7 @@ export class AlephaPackageBuilderCli {
         entries.push({
           entry: join(src, "index.ts"),
           outDir: dest,
-          format: ["esm", "cjs"],
+          format: ["esm"],
           sourcemap: true,
           fixedExtension: false,
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
