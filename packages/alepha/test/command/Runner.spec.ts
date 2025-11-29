@@ -39,14 +39,14 @@ describe("Runner", () => {
     expect(startLog.level).toBe("INFO");
 
     expect(finishLog.message).toMatch(
-      /^Finished 'echo "hello"' after \d+\.\d{2}s$/,
+      /^Finished 'echo "hello"' after \d+\.\ds$/,
     );
     expect(finishLog.level).toBe("INFO");
 
     const timers = (runner as any).timers;
     expect(timers).toHaveLength(1);
     expect(timers[0].name).toBe('echo "hello"');
-    expect(timers[0].duration).toMatch(/^\d+\.\d{2} s$/);
+    expect(timers[0].duration).toMatch(/^\d+\.\ds$/);
   });
 
   test("should execute a single shell command via run(sh`...`)", async () => {
@@ -63,7 +63,7 @@ describe("Runner", () => {
     expect(mockLogger.logs).toHaveLength(2);
     expect(mockLogger.logs[0].message).toBe("Starting 'my-test-function' ...");
     expect(mockLogger.logs[1].message).toMatch(
-      /^Finished 'my-test-function' after \d+\.\d{2}s$/,
+      /^Finished 'my-test-function' after \d+\.\ds$/,
     );
   });
 

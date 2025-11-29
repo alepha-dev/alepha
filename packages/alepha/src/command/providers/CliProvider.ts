@@ -146,6 +146,9 @@ export class CliProvider {
 
         const runner = this.runner;
 
+        // Start command session for pretty print
+        runner.startCommand(this.name, command.name);
+
         const args = {
           flags: commandFlags,
           args: commandArgs,

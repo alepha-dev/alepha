@@ -26,6 +26,8 @@ export class PrettyPrint {
     }
   >();
   protected lastLineCount = 0;
+  protected header?: string;
+  protected commandStartTime?: number;
 
   // ANSI color codes
   protected readonly colors = {
@@ -35,6 +37,32 @@ export class PrettyPrint {
     red: "\x1b[31m",
     dim: "\x1b[2m",
   };
+
+  /**
+   * Start a new command session with header
+   */
+  public startCommand(cliName: string, commandName: string): void {
+    this.header = commandName ? `${cliName} ${commandName}` : cliName;
+    this.commandStartTime = Date.now();
+    this.tasks.clear();
+    this.lastLineCount = 0;
+    process.stdout.write(`┌─ ${this.header}\n`);
+  }
+
+  /**
+   * End the command session with footer
+   */
+  public endCommand(): void {
+    if (this.commandStartTime) {
+      const totalDuration = (
+        (Date.now() - this.commandStartTime) /
+        1000
+      ).toFixed(1);
+      process.stdout.write(`└─ Done in ${totalDuration}s\n`);
+    }
+    this.header = undefined;
+    this.commandStartTime = undefined;
+  }
 
   /**
    * Start an animated spinner with a task name
@@ -101,20 +129,22 @@ export class PrettyPrint {
 
     // Render all tasks
     const taskArray = Array.from(this.tasks.values());
+    const prefix = this.header ? "│  " : "";
+
     for (const task of taskArray) {
-      let line = "";
+      let line = prefix;
 
       if (task.status === "running") {
         const frame = this.frames[task.frameIndex];
-        line = `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}`;
+        line += `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}`;
         task.frameIndex = (task.frameIndex + 1) % this.frames.length;
       } else if (task.status === "success") {
         const durationStr = task.duration
-          ? ` ${this.colors.dim}${task.duration}${this.colors.reset}`
+          ? `  ${this.colors.dim}${task.duration}${this.colors.reset}`
           : "";
-        line = `${this.colors.green}✓${this.colors.reset} ${task.taskName}${durationStr}`;
+        line += `${this.colors.green}✓${this.colors.reset} ${task.taskName}${durationStr}`;
       } else if (task.status === "error") {
-        line = `${this.colors.red}✗${this.colors.reset} ${task.taskName}`;
+        line += `${this.colors.red}✗${this.colors.reset} ${task.taskName}`;
       }
 
       process.stdout.write(`${line}\n`);

@@ -51,6 +51,15 @@ export class Runner {
     return this.alepha.env.LOG_FORMAT === "raw";
   }
 
+  /**
+   * Start a new command session with header (for pretty print mode)
+   */
+  public startCommand(cliName: string, commandName: string): void {
+    if (this.useDynamicLogger) {
+      this.prettyPrint.startCommand(cliName, commandName);
+    }
+  }
+
   protected createRunMethod() {
     const runFn: RunnerMethod = async (
       cmd: string | Task | Array<string | Task>,
@@ -163,12 +172,17 @@ export class Runner {
    * Prints a summary of all executed tasks and their durations.
    */
   public summary(): void {
+    if (this.useDynamicLogger) {
+      this.prettyPrint.endCommand();
+      return;
+    }
+
+    // Non-dynamic mode: use logging
     if (this.timers.length === 0) return;
 
     this.log.info("");
-    //this.renderTable(this.timers.map((t) => [t.name, t.duration]));
-    const totalTime = ((Date.now() - this.startTime) / 1000).toFixed(2);
-    this.log.info(`Total time: ${totalTime} s`);
+    const totalTime = ((Date.now() - this.startTime) / 1000).toFixed(1);
+    this.log.info(`Total time: ${totalTime}s`);
     this.log.info(``);
   }
 
@@ -200,7 +214,7 @@ export class Runner {
 
     if (stdout) this.log.trace(stdout);
 
-    const duration = ((Date.now() - now) / 1000).toFixed(2);
+    const duration = ((Date.now() - now) / 1000).toFixed(1);
 
     // Clear spinner and show completion
     if (this.useDynamicLogger) {
@@ -211,7 +225,7 @@ export class Runner {
 
     this.timers.push({
       name: task.name,
-      duration: `${duration} s`,
+      duration: `${duration}s`,
     });
 
     return stdout;
