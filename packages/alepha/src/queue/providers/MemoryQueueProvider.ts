@@ -8,7 +8,7 @@ import type {
   QueueJobOptions,
   QueueJobStatus,
 } from "../interfaces/QueueJob.ts";
-import type { QueueProvider } from "./QueueProvider.ts";
+import { QueueProvider } from "./QueueProvider.ts";
 
 // Default job options
 const DEFAULT_MAX_ATTEMPTS = 1;
@@ -18,7 +18,7 @@ const DEFAULT_BACKOFF_MAX_DELAY = 30000; // 30 seconds
 
 interface MessageWaiter {
   queues: Set<string>;
-  resolve: (result: { queue: string; message: string }) => void;
+  resolve: (result: { queue: string; message: string } | undefined) => void;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -37,7 +37,7 @@ interface JobWaiter {
  * - Single-instance applications
  * - Scenarios where job persistence across restarts is not required
  */
-export class MemoryQueueProvider implements QueueProvider {
+export class MemoryQueueProvider extends QueueProvider {
   protected readonly log = $logger();
 
   // Simple message API storage
@@ -163,6 +163,8 @@ export class MemoryQueueProvider implements QueueProvider {
         maxAttempts: options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
         backoff: options?.backoff,
         lockDuration: options?.lockDuration ?? DEFAULT_LOCK_DURATION,
+        removeOnComplete: options?.removeOnComplete,
+        removeOnFail: options?.removeOnFail,
       },
       state: {
         status: isDelayed ? "delayed" : "waiting",
@@ -185,6 +187,17 @@ export class MemoryQueueProvider implements QueueProvider {
       status: job.state.status,
       priority: job.options.priority,
     });
+
+    // Emit waiting event
+    if (!isDelayed) {
+      await this.emit({
+        type: "waiting",
+        queue,
+        jobId: job.id,
+        timestamp: now,
+        job,
+      });
+    }
 
     return job;
   }
@@ -272,6 +285,16 @@ export class MemoryQueueProvider implements QueueProvider {
         attempt: job.state.attempts,
       });
 
+      // Emit active event (fire and forget to not block acquisition)
+      this.emit({
+        type: "active",
+        queue,
+        jobId,
+        timestamp: now,
+        workerId,
+        attempt: job.state.attempts,
+      });
+
       return { queue, job };
     }
 
@@ -326,20 +349,48 @@ export class MemoryQueueProvider implements QueueProvider {
       return;
     }
 
+    const now = Date.now();
+    const duration = now - (job.state.processedAt ?? now);
+
     // Remove from active
     this.active.get(queue)?.delete(jobId);
 
     // Update job state
     job.state.status = "completed";
-    job.state.completedAt = Date.now();
+    job.state.completedAt = now;
     job.state.result = result;
     job.state.lockedBy = undefined;
     job.state.lockedUntil = undefined;
 
-    // Add to completed history (newest first)
-    this.completed.get(queue)!.unshift(jobId);
+    // Handle removeOnComplete
+    const removeOnComplete = job.options.removeOnComplete;
+    if (removeOnComplete === true) {
+      // Remove immediately
+      this.jobs.get(queue)?.delete(jobId);
+      this.log.debug(`Job ${jobId} completed and removed`, { queue, result });
+    } else {
+      // Add to completed history (newest first)
+      this.completed.get(queue)!.unshift(jobId);
 
-    this.log.debug(`Job ${jobId} completed`, { queue, result });
+      // If removeOnComplete is a number, trim the list (0 means keep none)
+      if (typeof removeOnComplete === "number" && removeOnComplete >= 0) {
+        await this.cleanJobs(queue, "completed", {
+          maxCount: removeOnComplete,
+        });
+      }
+
+      this.log.debug(`Job ${jobId} completed`, { queue, result });
+    }
+
+    // Emit completed event
+    await this.emit({
+      type: "completed",
+      queue,
+      jobId,
+      timestamp: now,
+      result,
+      duration,
+    });
   }
 
   public async failJob(
@@ -354,6 +405,8 @@ export class MemoryQueueProvider implements QueueProvider {
       return;
     }
 
+    const now = Date.now();
+
     // Remove from active
     this.active.get(queue)?.delete(jobId);
 
@@ -363,7 +416,6 @@ export class MemoryQueueProvider implements QueueProvider {
     if (hasMoreAttempts) {
       // Calculate backoff delay for retry
       const backoffDelay = this.calculateBackoff(job);
-      const now = Date.now();
 
       job.state.status = "delayed";
       job.state.availableAt = now + backoffDelay;
@@ -380,24 +432,59 @@ export class MemoryQueueProvider implements QueueProvider {
         maxAttempts,
         error,
       });
+
+      // Emit retrying event
+      await this.emit({
+        type: "retrying",
+        queue,
+        jobId,
+        timestamp: now,
+        error,
+        attempt: job.state.attempts + 1,
+        delay: backoffDelay,
+      });
     } else {
       // No more retries, mark as permanently failed
       job.state.status = "failed";
-      job.state.failedAt = Date.now();
+      job.state.failedAt = now;
       job.state.error = error;
       job.state.stackTrace = stackTrace;
       job.state.lockedBy = undefined;
       job.state.lockedUntil = undefined;
 
-      this.failed.get(queue)!.unshift(jobId);
+      // Handle removeOnFail
+      const removeOnFail = job.options.removeOnFail;
+      if (removeOnFail === true) {
+        // Remove immediately
+        this.jobs.get(queue)?.delete(jobId);
+        this.log.debug(
+          `Job ${jobId} permanently failed and removed after ${job.state.attempts} attempts`,
+          { queue, error },
+        );
+      } else {
+        this.failed.get(queue)!.unshift(jobId);
 
-      this.log.debug(
-        `Job ${jobId} permanently failed after ${job.state.attempts} attempts`,
-        {
-          queue,
-          error,
-        },
-      );
+        // If removeOnFail is a number, trim the list (0 means keep none)
+        if (typeof removeOnFail === "number" && removeOnFail >= 0) {
+          await this.cleanJobs(queue, "failed", { maxCount: removeOnFail });
+        }
+
+        this.log.debug(
+          `Job ${jobId} permanently failed after ${job.state.attempts} attempts`,
+          { queue, error },
+        );
+      }
+
+      // Emit failed event
+      await this.emit({
+        type: "failed",
+        queue,
+        jobId,
+        timestamp: now,
+        error,
+        stackTrace,
+        attempts: job.state.attempts,
+      });
     }
   }
 
@@ -515,6 +602,15 @@ export class MemoryQueueProvider implements QueueProvider {
       promoted++;
 
       this.log.debug(`Promoted delayed job ${jobId}`, { queue });
+
+      // Emit waiting event
+      this.emit({
+        type: "waiting",
+        queue,
+        jobId,
+        timestamp: now,
+        job,
+      });
     }
 
     if (promoted > 0) {
@@ -547,10 +643,21 @@ export class MemoryQueueProvider implements QueueProvider {
 
     for (const jobId of stalledJobIds) {
       const job = this.jobs.get(queue)!.get(jobId)!;
+      const workerId = job.state.lockedBy;
       activeSet.delete(jobId);
 
       const maxAttempts = job.options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
       const hasMoreAttempts = job.state.attempts < maxAttempts;
+
+      // Emit stalled event
+      await this.emit({
+        type: "stalled",
+        queue,
+        jobId,
+        timestamp: now,
+        workerId,
+        willRetry: hasMoreAttempts,
+      });
 
       if (hasMoreAttempts) {
         // Return to waiting for retry
@@ -564,6 +671,15 @@ export class MemoryQueueProvider implements QueueProvider {
           queue,
           attempt: job.state.attempts,
         });
+
+        // Emit waiting event
+        await this.emit({
+          type: "waiting",
+          queue,
+          jobId,
+          timestamp: now,
+          job,
+        });
       } else {
         // No more retries
         job.state.status = "failed";
@@ -572,10 +688,30 @@ export class MemoryQueueProvider implements QueueProvider {
         job.state.lockedUntil = undefined;
         job.state.error =
           "Job stalled (worker timeout) - max attempts exceeded";
-        this.failed.get(queue)!.unshift(jobId);
+
+        // Handle removeOnFail
+        const removeOnFail = job.options.removeOnFail;
+        if (removeOnFail === true) {
+          this.jobs.get(queue)?.delete(jobId);
+        } else {
+          this.failed.get(queue)!.unshift(jobId);
+          if (typeof removeOnFail === "number" && removeOnFail > 0) {
+            await this.cleanJobs(queue, "failed", { maxCount: removeOnFail });
+          }
+        }
 
         this.log.warn(`Stalled job ${jobId} permanently failed`, {
           queue,
+          attempts: job.state.attempts,
+        });
+
+        // Emit failed event
+        await this.emit({
+          type: "failed",
+          queue,
+          jobId,
+          timestamp: now,
+          error: job.state.error,
           attempts: job.state.attempts,
         });
       }
@@ -651,6 +787,8 @@ export class MemoryQueueProvider implements QueueProvider {
     const job = this.jobs.get(queue)?.get(jobId);
     if (!job) return;
 
+    const previousStatus = job.state.status;
+
     // Remove from appropriate list based on status
     switch (job.state.status) {
       case "waiting": {
@@ -683,6 +821,15 @@ export class MemoryQueueProvider implements QueueProvider {
     }
 
     this.jobs.get(queue)?.delete(jobId);
+
+    // Emit removed event
+    await this.emit({
+      type: "removed",
+      queue,
+      jobId,
+      timestamp: Date.now(),
+      previousStatus,
+    });
   }
 
   public cancelWaiters(): void {
@@ -696,7 +843,7 @@ export class MemoryQueueProvider implements QueueProvider {
     // Cancel all message waiters
     for (const waiter of this.messageWaiters) {
       clearTimeout(waiter.timer);
-      waiter.resolve(undefined as never);
+      waiter.resolve(undefined);
     }
     this.messageWaiters.clear();
   }

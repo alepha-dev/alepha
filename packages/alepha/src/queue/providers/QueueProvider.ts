@@ -1,6 +1,10 @@
 import type {
   QueueAcquiredJob,
   QueueCleanOptions,
+  QueueEvent,
+  QueueEventHandler,
+  QueueEventMap,
+  QueueEventType,
   QueueGetJobsOptions,
   QueueJob,
   QueueJobCounts,
@@ -15,6 +19,70 @@ import type {
  * The job API provides crash recovery, retries, delayed jobs, priorities, and job history.
  */
 export abstract class QueueProvider {
+  // ===========================================
+  // Event System
+  // ===========================================
+
+  protected eventHandlers: Map<
+    QueueEventType | "*",
+    Set<QueueEventHandler<QueueEvent>>
+  > = new Map();
+
+  /**
+   * Subscribe to queue events.
+   *
+   * @param event Event type to listen for, or "*" for all events.
+   * @param handler Handler function to call when event occurs.
+   * @returns Unsubscribe function.
+   *
+   * @example
+   * ```ts
+   * // Listen for completed events
+   * const unsubscribe = provider.on("completed", (event) => {
+   *   console.log(`Job ${event.jobId} completed in ${event.duration}ms`);
+   * });
+   *
+   * // Listen for all events
+   * provider.on("*", (event) => {
+   *   console.log(`Event: ${event.type} for job ${event.jobId}`);
+   * });
+   *
+   * // Unsubscribe later
+   * unsubscribe();
+   * ```
+   */
+  public on<T extends QueueEventType>(
+    event: T,
+    handler: QueueEventHandler<QueueEventMap[T]>,
+  ): () => void;
+  public on(event: "*", handler: QueueEventHandler<QueueEvent>): () => void;
+  public on(
+    event: QueueEventType | "*",
+    handler: QueueEventHandler<QueueEvent>,
+  ): () => void {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, new Set());
+    }
+    this.eventHandlers.get(event)!.add(handler);
+
+    return () => {
+      this.eventHandlers.get(event)?.delete(handler);
+    };
+  }
+
+  /**
+   * Emit a queue event to all registered handlers.
+   *
+   * @param event The event to emit.
+   */
+  protected async emit(event: QueueEvent): Promise<void> {
+    const handlers = [
+      ...(this.eventHandlers.get(event.type) ?? []),
+      ...(this.eventHandlers.get("*") ?? []),
+    ];
+
+    await Promise.all(handlers.map((handler) => handler(event)));
+  }
   // ===========================================
   // Simple Message API (backward compatible)
   // ===========================================
@@ -228,6 +296,19 @@ export type {
   QueueAcquiredJob,
   QueueAddJobOptions,
   QueueCleanOptions,
+  QueueEvent,
+  QueueEventActive,
+  QueueEventBase,
+  QueueEventCompleted,
+  QueueEventFailed,
+  QueueEventHandler,
+  QueueEventMap,
+  QueueEventProgress,
+  QueueEventRemoved,
+  QueueEventRetrying,
+  QueueEventStalled,
+  QueueEventType,
+  QueueEventWaiting,
   QueueGetJobsOptions,
   QueueJob,
   QueueJobBackoff,

@@ -297,6 +297,42 @@ export interface QueueDescriptorOptions<T extends TSchema> {
    * @default 30000 (30 seconds)
    */
   lockDuration?: number;
+
+  /**
+   * Automatically remove jobs when they complete successfully.
+   * - `true`: Remove immediately after completion
+   * - `false`: Keep in completed list (default)
+   * - `number`: Keep this many most recent completed jobs, remove older ones
+   *
+   * @default false
+   * @example
+   * ```ts
+   * // Remove immediately after completion
+   * removeOnComplete: true
+   *
+   * // Keep only the last 100 completed jobs
+   * removeOnComplete: 100
+   * ```
+   */
+  removeOnComplete?: boolean | number;
+
+  /**
+   * Automatically remove jobs when they fail permanently (after all retries exhausted).
+   * - `true`: Remove immediately after failure
+   * - `false`: Keep in failed list (default)
+   * - `number`: Keep this many most recent failed jobs, remove older ones
+   *
+   * @default false
+   * @example
+   * ```ts
+   * // Remove immediately after failure
+   * removeOnFail: true
+   *
+   * // Keep only the last 50 failed jobs for debugging
+   * removeOnFail: 50
+   * ```
+   */
+  removeOnFail?: boolean | number;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -386,6 +422,8 @@ export class QueueDescriptor<T extends TSchema> extends Descriptor<
       maxAttempts: this.options.maxAttempts,
       backoff: this.options.backoff,
       lockDuration: this.options.lockDuration,
+      removeOnComplete: this.options.removeOnComplete,
+      removeOnFail: this.options.removeOnFail,
     };
   }
 
