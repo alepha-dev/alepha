@@ -38,7 +38,7 @@ async function main(to?: string) {
       if (
         pkg.private ||
         !pkg.scripts?.build ||
-        (!pkg.main.includes("dist") && !pkg.main.includes("src"))
+        (!pkg.main?.includes("dist") && !pkg.main?.includes("src") && !pkg.bin)
       ) {
         continue;
       }

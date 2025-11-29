@@ -48,25 +48,9 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
-      - name: Clean
-        run: yarn clean
-
-      - name: Build
-        run: yarn build
-
       - name: Bump Version
         run: |
           yarn workspaces foreach --no-private --all version ${{ inputs.version_bump }}
-
-      - name: Convert to JavaScript
-        run: yarn convert js
-
-      - name: Publish to NPM
-        run: |
-          yarn workspaces foreach --no-private -Apt exec npm publish --access=public
-
-      - name: Clean
-        run: yarn clean
 
       - name: Get New Version
         id: version
@@ -97,3 +81,16 @@ jobs:
             **Version bump:** ${{ inputs.version_bump }}
           draft: false
           prerelease: false
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Build
+        run: yarn build
+
+      - name: Convert to JavaScript
+        run: yarn convert js
+
+      - name: Publish to NPM
+        run: |
+          yarn workspaces foreach --no-private -Apt exec npm publish --access=public
