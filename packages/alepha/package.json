@@ -99,11 +99,6 @@
       "import": "./src/api-verifications/index.ts",
       "require": "./src/api-verifications/index.ts"
     },
-    "./api/workflows": {
-      "types": "./src/api-workflows/index.ts",
-      "import": "./src/api-workflows/index.ts",
-      "require": "./src/api-workflows/index.ts"
-    },
     "./batch": {
       "types": "./src/batch/index.ts",
       "import": "./src/batch/index.ts",

@@ -1,4 +1,9 @@
-import { createServer } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 import { $env, $hook, $inject, Alepha, type Static, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -39,7 +44,7 @@ export class NodeHttpServerProvider extends ServerProvider {
     return `http://${this.env.SERVER_HOST}:${this.env.SERVER_PORT}`;
   }
 
-  public readonly server = createServer((req, res) => {
+  public readonly server = this.createHttpServer((req, res) => {
     this.log.trace(`Incoming Node.js message -> ${req.url}`);
     this.handleNodeRequest({ req, res }).catch((err) => {
       this.log.error("Error handling request", err);
@@ -55,6 +60,18 @@ export class NodeHttpServerProvider extends ServerProvider {
       this.alepha.state.set("alepha.node.server", this.server);
     },
   });
+
+  protected createHttpServer(
+    func: (req: IncomingMessage, res: ServerResponse) => void,
+  ): Server {
+    return createServer(
+      {
+        // nov 25 - keep connections alive for better performance, cuz we http/1.1 by default
+        keepAlive: true,
+      },
+      func,
+    );
+  }
 
   protected readonly stop = $hook({
     on: "stop",

@@ -22,6 +22,12 @@ For more details, see the [Providers documentation](/docs/providers).
 
 Redis-based queue provider with full job support.
 
+Features:
+- Atomic job acquisition using Lua scripts
+- Blocking wait using Redis BZPOPMIN (no polling)
+- Event emission for job lifecycle
+- removeOnComplete/removeOnFail support
+
 Uses the following Redis data structures:
 - HASH `{prefix}:job:{queue}:{id}` - Job data
 - ZSET `{prefix}:waiting:{queue}` - Waiting jobs (score = priority)
@@ -30,3 +36,4 @@ Uses the following Redis data structures:
 - LIST `{prefix}:completed:{queue}` - Completed jobs (newest first)
 - LIST `{prefix}:failed:{queue}` - Failed jobs (newest first)
 - LIST `{prefix}:messages:{queue}` - Simple message queue (backward compat)
+- LIST `{prefix}:notify:{queue}` - Notification list for blocking wait
