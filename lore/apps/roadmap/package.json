@@ -23,11 +23,11 @@
     "@mantine/nprogress": "^8.3.9",
     "@mantine/tiptap": "^8.3.9",
     "@tabler/icons-react": "^3.35.0",
-    "@tiptap/core": "^3.11.0",
-    "@tiptap/extension-link": "^3.11.0",
-    "@tiptap/pm": "^3.11.0",
-    "@tiptap/react": "^3.11.0",
-    "@tiptap/starter-kit": "^3.11.0",
+    "@tiptap/core": "^3.11.1",
+    "@tiptap/extension-link": "^3.11.1",
+    "@tiptap/pm": "^3.11.1",
+    "@tiptap/react": "^3.11.1",
+    "@tiptap/starter-kit": "^3.11.1",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "alepha": "^0.13.0",
@@ -36,7 +36,7 @@
     "highlight.js": "^11.11.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^3.5.0",
+    "recharts": "^3.5.1",
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
@@ -44,6 +44,6 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
-    "vercel": "^48.11.1"
+    "vercel": "^48.12.0"
   }
 }
