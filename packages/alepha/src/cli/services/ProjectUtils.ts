@@ -276,7 +276,7 @@ export class ProjectUtils {
     alepha: Alepha;
     entry: string;
   }> {
-    process.env.ALEPHA_SKIP_START = "true";
+    process.env.ALEPHA_CLI_IMPORT = "true";
 
     const entry = await boot.getServerEntry(rootDir, explicitEntry);
     const mod = await tsImport(entry, {

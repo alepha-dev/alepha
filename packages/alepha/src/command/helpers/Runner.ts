@@ -130,7 +130,7 @@ export class Runner {
         {
           env: {
             ...process.env,
-            LOG_FORMAT: "text",
+            LOG_FORMAT: "pretty",
           },
         },
         (err, stdout) => {
@@ -198,7 +198,7 @@ export class Runner {
       throw new CommandError(`Task '${task.name}' failed`, { cause: error });
     }
 
-    this.log.trace(stdout);
+    if (stdout) this.log.trace(stdout);
 
     const duration = ((Date.now() - now) / 1000).toFixed(2);
 

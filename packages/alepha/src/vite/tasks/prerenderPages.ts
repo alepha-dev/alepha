@@ -8,11 +8,6 @@ import {
 
 export interface PrerenderPagesOptions {
   /**
-   * HTML template to use for pre-rendering.
-   */
-  template: string;
-
-  /**
    * Entry point for the built Alepha application.
    */
   entry: string;
@@ -46,11 +41,7 @@ export interface PrerenderPagesResult {
 export async function prerenderPages(
   opts: PrerenderPagesOptions,
 ): Promise<PrerenderPagesResult> {
-  const alepha = await importAlepha(opts.entry, {
-    env: {
-      REACT_SERVER_TEMPLATE: opts.template,
-    },
-  });
+  const alepha = await importAlepha(opts.entry);
 
   const now = Date.now();
 
@@ -59,13 +50,7 @@ export async function prerenderPages(
     (alepha as any).configured = true;
   }
 
-  const stats = await prerenderFromAlepha(alepha, opts.dist, opts.compress);
-
-  console.log(
-    `[prerenderPages] Rendered ${stats.count} page${stats.count > 1 ? "s" : ""} in ${Date.now() - now}ms.`,
-  );
-
-  return stats;
+  return await prerenderFromAlepha(alepha, opts.dist, opts.compress);
 }
 
 async function prerenderFromAlepha(

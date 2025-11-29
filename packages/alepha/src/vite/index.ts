@@ -14,7 +14,7 @@ export * from "./plugins/viteCompress.ts";
 export * from "./tasks/index.ts";
 
 declare global {
-  var __alepha: Alepha;
+  var __cli_alepha: Alepha;
 }
 
 /**

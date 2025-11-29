@@ -124,7 +124,7 @@ export class ViteCommands {
       const clientDir = "public";
 
       await run.rm("dist", {
-        alias: "rm dist",
+        alias: "clean dist",
       });
 
       const viteConfig = await import(join(root, "vite.config.ts"));
@@ -185,8 +185,9 @@ export class ViteCommands {
       });
 
       // Copy assets
+      // TODO: only copy if assets are found? Currently will always run
       await run({
-        name: "cp assets",
+        name: "copy assets",
         handler: () =>
           copyAssets({
             entry: `${distDir}/index.js`,
@@ -227,18 +228,10 @@ export class ViteCommands {
         await run({
           name: "pre-render pages",
           handler: async () => {
-            const template = await readFile(
-              `${distDir}/${clientDir}/index.html`,
-              "utf-8",
-            ).catch(() => "");
-
-            if (template) {
-              await prerenderPages({
-                template,
-                dist: `${distDir}/${clientDir}`,
-                entry: `${distDir}/index.js`,
-              });
-            }
+            await prerenderPages({
+              dist: `${distDir}/${clientDir}`,
+              entry: `${distDir}/index.js`,
+            });
           },
         });
       }

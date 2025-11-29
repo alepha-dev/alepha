@@ -314,14 +314,10 @@ describe("TypeProvider", () => {
     });
 
     describe("text lowercase option", () => {
-      it("should lowercase when enabled via ~options", async () => {
+      it("should lowercase with t.text when enabled", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        // Use raw TypeBox to set ~options directly for testing
-        const schema = t.raw.String({
-          type: "string",
-          "~options": { lowercase: true },
-        });
+        const schema = t.text({ lowercase: true });
 
         expect(alepha.codec.decode(schema, "HELLO")).toBe("hello");
         expect(alepha.codec.decode(schema, "Hello World")).toBe("hello world");
@@ -330,13 +326,22 @@ describe("TypeProvider", () => {
         );
       });
 
-      it("should combine trim and lowercase", async () => {
+      it("should lowercase with t.enum when enabled", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.raw.String({
-          type: "string",
-          "~options": { trim: true, lowercase: true },
+        const schema = t.enum(["active", "inactive", "pending"], {
+          lowercase: true,
         });
+
+        expect(alepha.codec.decode(schema, "ACTIVE")).toBe("active");
+        expect(alepha.codec.decode(schema, "Active")).toBe("active");
+        expect(alepha.codec.validate(schema, "INACTIVE")).toBe("inactive");
+      });
+
+      it("should combine trim and lowercase with t.text", async () => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = t.text({ trim: true, lowercase: true });
 
         expect(alepha.codec.decode(schema, "  HELLO  ")).toBe("hello");
         expect(alepha.codec.decode(schema, "\n\tTEST\n\t")).toBe("test");

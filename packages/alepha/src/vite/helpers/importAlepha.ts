@@ -12,8 +12,8 @@ export const importAlepha = async (
     env: Record<string, string>;
   },
 ): Promise<Alepha> => {
-  if (global.__alepha) {
-    return global.__alepha as Alepha;
+  if (global.__cli_alepha) {
+    return global.__cli_alepha as Alepha;
   }
 
   const { loadEnv } = await importVite();
@@ -30,9 +30,9 @@ export const importAlepha = async (
     }
   }
 
-  process.env.ALEPHA_SKIP_START = "true";
+  process.env.ALEPHA_CLI_IMPORT = "true";
   process.env.LOG_LEVEL = "error";
-  process.env.LOG_FORMAT = "text";
+  process.env.LOG_FORMAT = "pretty";
   process.env.NODE_ENV = "production";
 
   const entryFile = pathToFileURL(join(process.cwd(), entry)).href;
@@ -44,7 +44,7 @@ export const importAlepha = async (
   }
 
   // else, try with global variable
-  const alepha = global.__alepha as Alepha | undefined;
+  const alepha = global.__cli_alepha as Alepha | undefined;
   if (!alepha) {
     throw new AlephaError(
       "Alepha instance not found. Ensure Alepha is initialized.",

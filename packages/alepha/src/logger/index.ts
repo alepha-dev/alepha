@@ -92,10 +92,6 @@ export * from "./services/Logger.ts";
  * **Wildcard patterns (NEW):**
  * - `LOG_LEVEL=alepha.*:debug,info` - debug for all alepha submodules
  * - `LOG_LEVEL=*.test:silent,*.core:trace,info` - silent for test modules, trace for core modules
- *
- * **Robust parsing:**
- * - Empty parts are gracefully skipped: `LOG_LEVEL=",,debug,,"` works fine
- * - Better error messages: "Invalid log level 'bad' for module pattern 'alepha'"
  */
 export const AlephaLogger = $module({
   name: "alepha.logger",
@@ -201,15 +197,17 @@ const envSchema = t.object({
    * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
    * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
    */
-  LOG_LEVEL: t.optional(t.text()),
+  LOG_LEVEL: t.optional(t.text({ lowercase: true })),
 
   /**
    * Built-in log formats.
    * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
-   * - "text" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
+   * - "pretty" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
    * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
    */
-  LOG_FORMAT: t.optional(t.enum(["json", "text", "raw"])),
+  LOG_FORMAT: t.optional(
+    t.enum(["json", "pretty", "raw"], { lowercase: true }),
+  ),
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

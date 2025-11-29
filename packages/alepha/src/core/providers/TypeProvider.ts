@@ -488,7 +488,7 @@ export class TypeProvider {
    */
   public enum<T extends string[]>(
     values: [...T],
-    options?: TStringOptions,
+    options?: TTextOptions,
   ): TUnsafe<T[number]> {
     return Type.Unsafe<T[number]>(
       t.text({

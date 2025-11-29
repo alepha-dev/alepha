@@ -50,7 +50,11 @@ export const run = (
   // it's not recommended, we should force 'export default run(alepha)'
   (globalThis as any).__alepha = alepha;
 
-  if (alepha.isServerless() || alepha.isViteDev() || env.ALEPHA_SKIP_START) {
+  if (env.ALEPHA_CLI_IMPORT) {
+    (globalThis as any).__cli_alepha = alepha;
+  }
+
+  if (alepha.isServerless() || alepha.isViteDev() || env.ALEPHA_CLI_IMPORT) {
     return alepha;
   }
 

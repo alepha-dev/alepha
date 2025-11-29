@@ -2,17 +2,19 @@ import { readFile, unlink, writeFile } from "node:fs/promises";
 import type { Plugin, UserConfig } from "vite";
 import { boot } from "../helpers/boot.ts";
 import { fileExists } from "../helpers/fileExists.ts";
-import { type BuildClientOptions, buildClient } from "../tasks/buildClient.ts";
-import { buildServer } from "../tasks/buildServer.ts";
-import { copyAssets } from "../tasks/copyAssets.ts";
-import { generateCloudflare } from "../tasks/generateCloudflare.ts";
 import {
+  type BuildClientOptions,
+  buildClient,
+  buildServer,
+  copyAssets,
   type GenerateDockerOptions,
+  generateCloudflare,
   generateDocker,
-} from "../tasks/generateDocker.ts";
-import { generateSitemap } from "../tasks/generateSitemap.ts";
-import { generateVercel, type VercelConfig } from "../tasks/generateVercel.ts";
-import { prerenderPages } from "../tasks/prerenderPages.ts";
+  generateSitemap,
+  generateVercel,
+  prerenderPages,
+  type VercelConfig,
+} from "../tasks/index.ts";
 
 export interface ViteAlephaBuildOptions {
   /**
@@ -234,7 +236,6 @@ export async function viteAlephaBuild(
       // Task 5: Pre-render static pages
       if (buildClientOptions.prerender && template) {
         await prerenderPages({
-          template,
           dist: `${distDir}/${clientDir}`,
           entry: `${distDir}/index.js`,
           compress: buildClientOptions.precompress,
