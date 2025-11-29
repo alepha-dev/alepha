@@ -4,6 +4,7 @@ import { AlephaError } from "alepha";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
+import { createBufferedLogger } from "../helpers/createBufferedLogger.ts";
 import { importVite } from "../helpers/importVite.ts";
 import { generateExternals } from "./generateExternals.ts";
 
@@ -33,6 +34,13 @@ export interface BuildServerOptions {
    * If true, generate build stats report.
    */
   stats?: boolean;
+
+  /**
+   * If true, suppress build output. Logs are buffered and only shown on failure.
+   *
+   * @default false
+   */
+  silent?: boolean;
 }
 
 export interface BuildServerResult {
@@ -63,8 +71,12 @@ export async function buildServer(
     );
   }
 
+  // Create buffered logger for silent mode
+  const logger = opts.silent ? createBufferedLogger() : undefined;
+
   const viteBuildServerConfig: UserConfig = {
     mode: "production",
+    logLevel: opts.silent ? "silent" : undefined,
     define: {
       "process.env.NODE_ENV": '"production"',
     },
@@ -87,12 +99,20 @@ export async function buildServer(
       },
     },
     esbuild: { legalComments: "none", keepNames: true },
+    customLogger: logger,
     plugins,
   };
 
-  const result = await viteBuild(
-    mergeConfig(viteBuildServerConfig, opts.config || {}),
-  );
+  let result: vite.Rollup.RollupOutput | vite.Rollup.RollupOutput[];
+  try {
+    result = (await viteBuild(
+      mergeConfig(viteBuildServerConfig, opts.config || {}),
+    )) as vite.Rollup.RollupOutput | vite.Rollup.RollupOutput[];
+  } catch (error) {
+    // Flush buffered logs on failure so user can see what happened
+    logger?.flush();
+    throw error;
+  }
 
   // Extract resolved config to get externals
   const resolvedConfig = (result as any).resolvedConfig;

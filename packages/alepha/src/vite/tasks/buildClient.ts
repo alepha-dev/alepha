@@ -1,5 +1,6 @@
 import type { UserConfig } from "vite";
 import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
+import { createBufferedLogger } from "../helpers/createBufferedLogger.ts";
 import { importVite } from "../helpers/importVite.ts";
 import {
   type ViteCompressOptions,
@@ -42,6 +43,13 @@ export interface BuildClientOptions {
    * If true, generate build stats report.
    */
   stats?: boolean;
+
+  /**
+   * If true, suppress build output. Logs are buffered and only shown on failure.
+   *
+   * @default false
+   */
+  silent?: boolean;
 }
 
 /**
@@ -72,8 +80,12 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
     plugins.push(viteCompress(compress));
   }
 
+  // Create buffered logger for silent mode
+  const logger = opts.silent ? createBufferedLogger() : undefined;
+
   const viteBuildClientConfig: UserConfig = {
     mode: "production",
+    logLevel: opts.silent ? "silent" : undefined,
     define: {
       "process.env.NODE_ENV": '"production"',
     },
@@ -90,8 +102,15 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
       },
     },
     esbuild: { legalComments: "none" },
+    customLogger: logger,
     plugins,
   };
 
-  await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
+  try {
+    await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
+  } catch (error) {
+    // Flush buffered logs on failure so user can see what happened
+    logger?.flush();
+    throw error;
+  }
 }

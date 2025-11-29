@@ -100,7 +100,7 @@ export class Runner {
       }
       this.log.trace(`Removing ${files}`);
       return runFn({
-        name: `rm -rf ${files}`,
+        name: options.alias ?? `rm -rf ${files}`,
         handler: () => rm(files, { recursive: true, force: true }),
       });
     };

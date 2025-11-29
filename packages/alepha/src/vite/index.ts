@@ -4,6 +4,7 @@ import type { Alepha } from "alepha";
 export { defineConfig } from "vite";
 // Helpers (for advanced use)
 export * from "./helpers/boot.ts";
+export * from "./helpers/createBufferedLogger.ts";
 // Plugins (public API)
 export * from "./plugins/viteAlepha.ts";
 export * from "./plugins/viteAlephaBuild.ts";

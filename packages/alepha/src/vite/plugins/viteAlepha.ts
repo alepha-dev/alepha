@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { OPTIONS } from "alepha";
 import type { Plugin } from "vite";
 import {
   type ViteAlephaBuildOptions,
@@ -18,7 +19,7 @@ export function viteAlepha(
     return [];
   }
 
-  const plugins: (Plugin | Promise<Plugin>)[] = [];
+  const plugins: (Plugin | Promise<Plugin>)[] & { [OPTIONS]?: any } = [];
 
   if (options.react !== false) {
     try {
@@ -30,6 +31,7 @@ export function viteAlepha(
   }
 
   plugins.push(viteAlephaDev(options), viteAlephaBuild(options));
+  plugins[OPTIONS] = options;
 
   return plugins;
 }
