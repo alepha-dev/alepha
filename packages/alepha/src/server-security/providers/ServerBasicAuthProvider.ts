@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import {
@@ -123,8 +124,15 @@ export class ServerBasicAuthProvider {
       colonIndex !== -1 ? credentials.slice(0, colonIndex) : credentials;
     const password = colonIndex !== -1 ? credentials.slice(colonIndex + 1) : "";
 
-    // verify credentials
-    if (username !== options.username || password !== options.password) {
+    // verify credentials using timing-safe comparison to prevent timing attacks
+    const isValid = this.timingSafeCredentialCheck(
+      username,
+      password,
+      options.username,
+      options.password,
+    );
+
+    if (!isValid) {
       this.sendAuthRequired(request);
       this.log.warn(`Failed basic auth attempt for user`, {
         username,
@@ -134,6 +142,48 @@ export class ServerBasicAuthProvider {
         message: "Invalid credentials",
       });
     }
+  }
+
+  /**
+   * Performs a timing-safe comparison of credentials to prevent timing attacks.
+   * Always compares both username and password to avoid leaking which one is wrong.
+   */
+  protected timingSafeCredentialCheck(
+    inputUsername: string,
+    inputPassword: string,
+    expectedUsername: string,
+    expectedPassword: string,
+  ): boolean {
+    // Convert to buffers for timing-safe comparison
+    const inputUserBuf = Buffer.from(inputUsername, "utf-8");
+    const expectedUserBuf = Buffer.from(expectedUsername, "utf-8");
+    const inputPassBuf = Buffer.from(inputPassword, "utf-8");
+    const expectedPassBuf = Buffer.from(expectedPassword, "utf-8");
+
+    // timingSafeEqual requires same-length buffers
+    // When lengths differ, we compare against a dummy buffer to maintain constant time
+    const userMatch = this.safeCompare(inputUserBuf, expectedUserBuf);
+    const passMatch = this.safeCompare(inputPassBuf, expectedPassBuf);
+
+    // Both must match - bitwise AND avoids short-circuit evaluation
+    // eslint-disable-next-line no-bitwise
+    return (userMatch & passMatch) === 1;
+  }
+
+  /**
+   * Compares two buffers in constant time, handling different lengths safely.
+   * Returns 1 if equal, 0 if not equal.
+   */
+  protected safeCompare(input: Buffer, expected: Buffer): number {
+    // If lengths differ, compare input against itself to maintain timing
+    // but return 0 (not equal)
+    if (input.length !== expected.length) {
+      // Still perform a comparison to keep timing consistent
+      timingSafeEqual(input, input);
+      return 0;
+    }
+
+    return timingSafeEqual(input, expected) ? 1 : 0;
   }
 
   /**

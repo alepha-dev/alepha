@@ -323,8 +323,8 @@ describe("Basic Authentication", () => {
         specialCharsAction = $action({
           secure: {
             basic: {
-              username: "user",
-              password: "",
+              username: "user@domain.com",
+              password: "p@$$w0rd!#$%",
             },
           },
           handler: () => "success",
@@ -348,6 +348,337 @@ describe("Basic Authentication", () => {
       expect(result).toBe("success");
 
       await specialAlepha.stop();
+    });
+
+    it("should handle unicode characters (UTF-8) in credentials - valid", async () => {
+      class UnicodeApp {
+        unicodeAction = $action({
+          secure: {
+            basic: {
+              username: "用户名",
+              password: "密码🔐émoji",
+            },
+          },
+          handler: () => "success",
+        });
+      }
+
+      const unicodeAlepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerSecurity)
+        .with(UnicodeApp);
+
+      await unicodeAlepha.start();
+
+      const app = unicodeAlepha.inject(UnicodeApp);
+
+      const result = await app.unicodeAction.run({
+        headers: {
+          authorization: `Basic ${Buffer.from("用户名:密码🔐émoji").toString("base64")}`,
+        },
+      });
+      expect(result).toBe("success");
+
+      await unicodeAlepha.stop();
+    });
+
+    it("should handle unicode characters (UTF-8) in credentials - invalid", async () => {
+      class UnicodeApp {
+        unicodeAction = $action({
+          secure: {
+            basic: {
+              username: "用户名",
+              password: "密码🔐émoji",
+            },
+          },
+          handler: () => "success",
+        });
+      }
+
+      const unicodeAlepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerSecurity)
+        .with(UnicodeApp);
+
+      await unicodeAlepha.start();
+
+      const app = unicodeAlepha.inject(UnicodeApp);
+
+      // Should fail with wrong unicode password
+      await expect(
+        app.unicodeAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("用户名:wrongpassword").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+
+      await unicodeAlepha.stop();
+    });
+
+    it("should handle very long credentials", async () => {
+      const longUsername = "a".repeat(1000);
+      const longPassword = "b".repeat(5000);
+
+      class LongCredsApp {
+        longCredsAction = $action({
+          secure: {
+            basic: {
+              username: longUsername,
+              password: longPassword,
+            },
+          },
+          handler: () => "success",
+        });
+      }
+
+      const longAlepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerSecurity)
+        .with(LongCredsApp);
+
+      await longAlepha.start();
+
+      const app = longAlepha.inject(LongCredsApp);
+
+      const result = await app.longCredsAction.run({
+        headers: {
+          authorization: `Basic ${Buffer.from(`${longUsername}:${longPassword}`).toString("base64")}`,
+        },
+      });
+      expect(result).toBe("success");
+
+      await longAlepha.stop();
+    });
+
+    it("should handle empty username", async () => {
+      class EmptyUsernameApp {
+        emptyUsernameAction = $action({
+          secure: {
+            basic: {
+              username: "",
+              password: "somepassword",
+            },
+          },
+          handler: () => "success",
+        });
+      }
+
+      const emptyUserAlepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerSecurity)
+        .with(EmptyUsernameApp);
+
+      await emptyUserAlepha.start();
+
+      const app = emptyUserAlepha.inject(EmptyUsernameApp);
+
+      const result = await app.emptyUsernameAction.run({
+        headers: {
+          authorization: `Basic ${Buffer.from(":somepassword").toString("base64")}`,
+        },
+      });
+      expect(result).toBe("success");
+
+      await emptyUserAlepha.stop();
+    });
+
+    it("should reject invalid base64 encoding gracefully", async () => {
+      const app = alepha.inject(TestApp);
+
+      // Invalid base64 (not valid base64 characters)
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: "Basic !!!invalid-base64!!!",
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+    });
+
+    it("should reject Bearer token (wrong auth type)", async () => {
+      const app = alepha.inject(TestApp);
+
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: "Bearer some-jwt-token",
+          },
+        }),
+      ).rejects.toThrow("Authentication required");
+    });
+
+    it("should reject lowercase 'basic' auth type", async () => {
+      const app = alepha.inject(TestApp);
+
+      // Note: HTTP headers are case-insensitive but "Basic" scheme is typically case-sensitive
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: `basic ${Buffer.from("admin:secret123").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Authentication required");
+    });
+
+    it("should handle credentials without colon (malformed)", async () => {
+      const app = alepha.inject(TestApp);
+
+      // Base64 of just "admin" without colon
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("admin").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+    });
+
+    it("should handle whitespace in credentials - valid", async () => {
+      class WhitespaceApp {
+        whitespaceAction = $action({
+          secure: {
+            basic: {
+              username: " user ",
+              password: " pass ",
+            },
+          },
+          handler: () => "success",
+        });
+      }
+
+      const wsAlepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerSecurity)
+        .with(WhitespaceApp);
+
+      await wsAlepha.start();
+
+      const app = wsAlepha.inject(WhitespaceApp);
+
+      // Whitespace should be preserved and matched exactly
+      const result = await app.whitespaceAction.run({
+        headers: {
+          authorization: `Basic ${Buffer.from(" user : pass ").toString("base64")}`,
+        },
+      });
+      expect(result).toBe("success");
+
+      await wsAlepha.stop();
+    });
+
+    it("should handle whitespace in credentials - invalid", async () => {
+      class WhitespaceApp {
+        whitespaceAction = $action({
+          secure: {
+            basic: {
+              username: " user ",
+              password: " pass ",
+            },
+          },
+          handler: () => "success",
+        });
+      }
+
+      const wsAlepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerSecurity)
+        .with(WhitespaceApp);
+
+      await wsAlepha.start();
+
+      const app = wsAlepha.inject(WhitespaceApp);
+
+      // Without whitespace should fail
+      await expect(
+        app.whitespaceAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("user:pass").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+
+      await wsAlepha.stop();
+    });
+
+    it("should give same error for wrong username vs wrong password (no info leakage)", async () => {
+      const app = alepha.inject(TestApp);
+
+      // Wrong username
+      const wrongUserError = await app.protectedAction
+        .run({
+          headers: {
+            authorization: `Basic ${Buffer.from("wronguser:secret123").toString("base64")}`,
+          },
+        })
+        .catch((e) => e);
+
+      // Wrong password
+      const wrongPassError = await app.protectedAction
+        .run({
+          headers: {
+            authorization: `Basic ${Buffer.from("admin:wrongpass").toString("base64")}`,
+          },
+        })
+        .catch((e) => e);
+
+      // Both wrong
+      const bothWrongError = await app.protectedAction
+        .run({
+          headers: {
+            authorization: `Basic ${Buffer.from("wronguser:wrongpass").toString("base64")}`,
+          },
+        })
+        .catch((e) => e);
+
+      // All should have the same error message (no information leakage)
+      expect(wrongUserError.message).toBe("Invalid credentials");
+      expect(wrongPassError.message).toBe("Invalid credentials");
+      expect(bothWrongError.message).toBe("Invalid credentials");
+    });
+
+    it("should handle different length usernames correctly", async () => {
+      const app = alepha.inject(TestApp);
+
+      // Shorter username
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("adm:secret123").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+
+      // Longer username
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("administrator:secret123").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+    });
+
+    it("should handle different length passwords correctly", async () => {
+      const app = alepha.inject(TestApp);
+
+      // Shorter password
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("admin:secret").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
+
+      // Longer password
+      await expect(
+        app.protectedAction.run({
+          headers: {
+            authorization: `Basic ${Buffer.from("admin:secret123456789").toString("base64")}`,
+          },
+        }),
+      ).rejects.toThrow("Invalid credentials");
     });
   });
 });

@@ -9,6 +9,7 @@ import {
 } from "alepha/security";
 import { AlephaServer, type FetchOptions } from "alepha/server";
 import { $basicAuth } from "./descriptors/$basicAuth.ts";
+import { ServerBasicAuthProvider } from "./providers/ServerBasicAuthProvider.ts";
 import {
   type ServerRouteSecure,
   ServerSecurityProvider,
@@ -84,5 +85,10 @@ declare module "alepha/server" {
 export const AlephaServerSecurity = $module({
   name: "alepha.server.security",
   descriptors: [$realm, $role, $permission, $basicAuth],
-  services: [AlephaServer, AlephaSecurity, ServerSecurityProvider],
+  services: [
+    AlephaServer,
+    AlephaSecurity,
+    ServerSecurityProvider,
+    ServerBasicAuthProvider,
+  ],
 });
