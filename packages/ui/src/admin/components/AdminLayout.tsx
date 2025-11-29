@@ -56,17 +56,17 @@ const AdminLayout = () => {
             {
               icon: IconMail,
               label: "Notifications",
-              href: "/admin/notifications",
+              href: router.path("adminNotifications"),
             },
             {
               icon: IconShield,
               label: "Sessions",
-              href: "/admin/sessions",
+              href: router.path("adminSessions"),
             },
             {
               icon: IconChecklist,
               label: "Verifications",
-              href: "/admin/verifications",
+              href: router.path("adminVerifications"),
             },
             {
               type: "section",
@@ -74,22 +74,22 @@ const AdminLayout = () => {
             },
             {
               label: "Jobs",
-              href: "/admin/jobs",
+              href: router.path("adminJobs"),
               icon: IconTruckDelivery,
             },
             {
               label: "Workflows",
-              href: "/admin/workflows",
+              href: router.path("adminWorkflows"),
               icon: IconJumpRope,
             },
             {
               label: "Parameters",
-              href: "/admin/parameters",
+              href: router.path("adminParameters"),
               icon: IconSettings,
             },
             {
               label: "Files",
-              href: "/admin/files",
+              href: router.path("adminFiles"),
               icon: IconFileDatabase,
             },
           ],
