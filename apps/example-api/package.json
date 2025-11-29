@@ -8,7 +8,7 @@
     "wrangler": "cd dist && wrangler"
   },
   "dependencies": {
-    "alepha": "^0.12.0"
+    "alepha": "^0.13.0"
   },
   "devDependencies": {
     "wrangler": "^4.51.0"
