@@ -5,13 +5,15 @@
 @import "@mantine/notifications/styles.css";
 
 :root {
-  --alepha-background-light: rgb(248, 249, 250);
+  --alepha-background-light: #f6f5f3;
   --alepha-background-dark: rgb(1, 4, 9);
   --alepha-background: var(--alepha-background-light);
 
-  --alepha-surface-light: #f1f3f5;
+  --alepha-surface-light: #fbfaf9;
   --alepha-surface-dark: #0d1117;
   --alepha-surface: var(--alepha-surface-light);
+
+  /* fbfaf9, F6F5F3 */
 
   --alepha-elevated-light: #fefefe;
   --alepha-elevated-hover-light: #f6f5f5;

@@ -38,6 +38,9 @@ export class Runner {
   protected readonly prettyPrint = $inject(PrettyPrint);
   protected readonly alepha = $inject(Alepha);
   public readonly run: RunnerMethod;
+  protected cliName = "";
+  protected commandName = "";
+  protected firstTaskStarted = false;
 
   constructor() {
     this.run = this.createRunMethod();
@@ -55,9 +58,8 @@ export class Runner {
    * Start a new command session with header (for pretty print mode)
    */
   public startCommand(cliName: string, commandName: string): void {
-    if (this.useDynamicLogger) {
-      this.prettyPrint.startCommand(cliName, commandName);
-    }
+    this.cliName = cliName;
+    this.commandName = commandName;
   }
 
   protected createRunMethod() {
@@ -65,6 +67,12 @@ export class Runner {
       cmd: string | Task | Array<string | Task>,
       options?: RunOptions | (() => any),
     ) => {
+      if (this.useDynamicLogger && !this.firstTaskStarted) {
+        this.prettyPrint.startCommand(this.cliName, this.commandName);
+      }
+
+      this.firstTaskStarted = true;
+
       if (Array.isArray(cmd)) {
         return await this.execute(
           cmd.map((it) =>
@@ -172,7 +180,7 @@ export class Runner {
    * Prints a summary of all executed tasks and their durations.
    */
   public summary(): void {
-    if (this.useDynamicLogger) {
+    if (this.useDynamicLogger && this.firstTaskStarted) {
       this.prettyPrint.endCommand();
       return;
     }

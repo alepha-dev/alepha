@@ -62,7 +62,7 @@ export class CreateAlephaCoreCommands {
       }),
     ),
     summary: false,
-    handler: async ({ run, args, flags, root }) => {
+    handler: async ({ run, args, root }) => {
       const name = args ?? "my-app";
       const dest = join(root, name);
 

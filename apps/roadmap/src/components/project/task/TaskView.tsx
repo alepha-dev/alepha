@@ -7,15 +7,7 @@ import {
   useStore,
 } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import {
-  Card,
-  Drawer,
-  Flex,
-  Group,
-  Stack,
-  Text,
-  Textarea,
-} from "@mantine/core";
+import { Card, Drawer, Flex, Stack, Text, Textarea } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
   IconCircleFilled,
@@ -188,16 +180,6 @@ const TaskView = (props: TaskViewProps) => {
                     currentAssignedTasksAtom,
                     tasks.map((t) => (t.id === it.id ? it : t)),
                   );
-                }}
-              />
-              <Flex
-                style={{
-                  width: 1,
-                  height: 20,
-                  backgroundColor: "var(--mantine-color-gray-5)",
-                  opacity: 0.3,
-                  marginLeft: 4,
-                  marginRight: 4,
                 }}
               />
               <Action
@@ -664,25 +646,49 @@ const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
   const running = isTimerRunning();
 
   return (
-    <Group gap="xs" ml={"xs"}>
-      <IconClock size={theme.icon.size.sm} opacity={0.6} />
-      <ClientOnly>
-        <Text size="sm" fw={500}>
-          {formatTime(currentTime)}
-        </Text>
-      </ClientOnly>
-      <Action
+    <Flex align="center">
+      <Flex
+        className={"shadow"}
+        align="center"
+        gap="xs"
+        ml={"xs"}
         px={"xs"}
-        variant={"subtle"}
-        onClick={toggleTimer}
-        disabled={!client.startTimer.can() && !client.stopTimer.can()}
+        py={2}
+        bdrs={"md"}
+        miw={150}
+        justify={"end"}
+        bd={"1px solid var(--alepha-border)"}
       >
-        {running ? (
-          <IconPlayerPause size={theme.icon.size.md} />
-        ) : (
-          <IconPlayerPlay size={theme.icon.size.md} />
-        )}
-      </Action>
-    </Group>
+        <IconClock size={theme.icon.size.sm} opacity={0.6} />
+        <ClientOnly>
+          <Text size="sm" fw={500}>
+            {formatTime(currentTime)}
+          </Text>
+        </ClientOnly>
+        <Action
+          px={"xs"}
+          variant={"subtle"}
+          onClick={toggleTimer}
+          disabled={!client.startTimer.can() && !client.stopTimer.can()}
+        >
+          {running ? (
+            <IconPlayerPause size={theme.icon.size.md} />
+          ) : (
+            <IconPlayerPlay size={theme.icon.size.md} />
+          )}
+        </Action>
+      </Flex>
+
+      <Flex
+        flex={1}
+        ml={"xs"}
+        style={{
+          width: 32,
+          opacity: 0.1,
+          height: 1,
+          backgroundColor: "var(--alepha-text)",
+        }}
+      />
+    </Flex>
   );
 };

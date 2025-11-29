@@ -112,7 +112,7 @@ export class CliProvider {
     handler: async () => {
       const argv = [...this.argv];
       const commandName = argv.find((arg) => !arg.startsWith("-")) ?? "";
-      const command = this.findCommand(commandName);
+      let command = this.findCommand(commandName);
 
       const globalFlags = this.parseFlags(
         argv,
@@ -128,11 +128,17 @@ export class CliProvider {
       }
 
       if (!command) {
-        if (commandName !== "") {
-          this.log.error(`Unknown command: '${commandName}'`);
-          this.printHelp();
+        // check if one command is the root command (name === "") and has 'args'
+        const rootCommand = this.findCommand("");
+        if (rootCommand?.options.args) {
+          command = rootCommand;
+        } else {
+          if (commandName !== "") {
+            this.log.error(`Unknown command: '${commandName}'`);
+            this.printHelp();
+          }
+          return;
         }
-        return;
       }
 
       const commandFlags = this.parseCommandFlags(argv, command.flags);

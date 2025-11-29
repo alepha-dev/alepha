@@ -1,5 +1,6 @@
 import { useClient, useRouter, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { ActionButton } from "@alepha/ui";
 import { Card, Drawer, Flex, Group, Transition } from "@mantine/core";
 import {
   IconChartLine,
@@ -86,7 +87,7 @@ const ProjectActions = () => {
 };
 
 const TabAction = (props: ActionProps & { href: string }) => {
-  return <Action {...props} textVisibleFrom={"md"} variant={"minimal"} />;
+  return <ActionButton {...props} textVisibleFrom={"md"} variant={"subtle"} />;
 };
 
 export default ProjectActions;
