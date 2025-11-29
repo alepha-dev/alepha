@@ -25,10 +25,12 @@ export const $authGoogle = (
 
   const env = alepha.parseEnv(
     t.object({
-      GOOGLE_CLIENT_ID: t.string(),
-      GOOGLE_CLIENT_SECRET: t.string(),
+      GOOGLE_CLIENT_ID: t.optional(t.text()),
+      GOOGLE_CLIENT_SECRET: t.optional(t.text()),
     }),
   );
+
+  const disabled = !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET;
 
   const name = "google";
 
@@ -46,10 +48,11 @@ export const $authGoogle = (
     name,
     oidc: {
       issuer: "https://accounts.google.com",
-      clientId: env.GOOGLE_CLIENT_ID,
+      clientId: env.GOOGLE_CLIENT_ID!,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       ...options,
       account,
     },
+    disabled,
   });
 };

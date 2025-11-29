@@ -26,10 +26,12 @@ export const $authGithub = (
 
   const env = alepha.parseEnv(
     t.object({
-      GITHUB_CLIENT_ID: t.string(),
-      GITHUB_CLIENT_SECRET: t.string(),
+      GITHUB_CLIENT_ID: t.optional(t.text()),
+      GITHUB_CLIENT_SECRET: t.optional(t.text()),
     }),
   );
+
+  const disabled = !env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET;
 
   const name = "github";
 
@@ -46,8 +48,8 @@ export const $authGithub = (
     realm,
     name,
     oauth: {
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
+      clientId: env.GITHUB_CLIENT_ID!,
+      clientSecret: env.GITHUB_CLIENT_SECRET!,
       authorization: "https://github.com/login/oauth/authorize",
       token: "https://github.com/login/oauth/access_token",
       scope: "read:user user:email",
@@ -94,5 +96,6 @@ export const $authGithub = (
       ...options,
       account,
     },
+    disabled,
   });
 };
