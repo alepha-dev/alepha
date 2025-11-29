@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, pg } from "alepha/orm";
 import { describe, it } from "vitest";
-import { $entity, $repository, pg } from "../../src/orm";
-import { NodeSqliteProvider } from "../../src/orm/providers/drivers/NodeSqliteProvider";
+import { NodeSqliteProvider } from "../../src/orm/providers/drivers/NodeSqliteProvider.ts";
 
 describe("SQLite JSON Query Tests", () => {
   const users = $entity({

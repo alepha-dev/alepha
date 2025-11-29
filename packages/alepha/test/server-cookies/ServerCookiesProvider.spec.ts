@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
+import { $cookie, AlephaServerCookies } from "alepha/server/cookies";
 import { describe, expect, test } from "vitest";
-import { $cookie, AlephaServerCookies } from "../../src/server-cookies";
 
 // A strong, 32-character secret for testing purposes
 const TEST_COOKIE_SECRET = "DCf6DvpLAfwy8XdPRucMO4tPS6dVCHob";

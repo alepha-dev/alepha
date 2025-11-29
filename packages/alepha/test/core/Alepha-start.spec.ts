@@ -1,12 +1,5 @@
+import { $env, $hook, $inject, Alepha, ContainerLockedError, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import {
-  $env,
-  $hook,
-  $inject,
-  Alepha,
-  ContainerLockedError,
-  t,
-} from "../../src/core";
 
 describe("Alepha#start", () => {
   /**

@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $queue, MemoryQueueProvider, QueueProvider } from "alepha/queue";
 import { describe, expect, test } from "vitest";
-import { $queue, MemoryQueueProvider, QueueProvider } from "../../src/queue";
 
 const payloadSchema = t.object({
   id: t.text(),

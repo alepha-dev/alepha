@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { describe, it } from "vitest";
 import {
   $logger,
   LogDestinationProvider,
   MemoryDestinationProvider,
-} from "../../src/logger";
+} from "alepha/logger";
+import { describe, it } from "vitest";
 
 describe("$logger", () => {
   class App {

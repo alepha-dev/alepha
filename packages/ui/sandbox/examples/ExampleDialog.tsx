@@ -1,3 +1,4 @@
+import { useDialog } from "@alepha/ui";
 import {
   Button,
   Card,
@@ -8,7 +9,6 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useState } from "react";
-import { useDialog } from "../../src/core/hooks/useDialog.ts";
 
 export default function ExampleDialog() {
   const dialog = useDialog();

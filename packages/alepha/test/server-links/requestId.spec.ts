@@ -5,8 +5,8 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { $action, ServerProvider } from "alepha/server";
+import { $client, $remote, AlephaServerLinks } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
-import { $client, $remote, AlephaServerLinks } from "../../src/server-links";
 
 describe("requestId", () => {
   it("should propagate requestId across multiple remote service calls", async () => {

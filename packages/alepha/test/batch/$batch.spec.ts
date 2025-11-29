@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
+import { $batch, AlephaBatch } from "alepha/batch";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { $batch, AlephaBatch } from "../../src/batch";
 
 // Mock handler to track calls and received items
 const createMockHandler = () => {

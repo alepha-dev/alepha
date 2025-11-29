@@ -1,5 +1,5 @@
+import { DataTable } from "@alepha/ui";
 import { createPagination, type PageQuery, t } from "alepha";
-import DataTable from "../../src/core/components/table/DataTable.tsx";
 
 const elements = [
   { name: "Hydrogen", symbol: "H", atomicMass: 1.008 },

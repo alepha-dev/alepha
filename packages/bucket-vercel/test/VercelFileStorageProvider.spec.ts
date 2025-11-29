@@ -15,7 +15,7 @@ import {
   testUploadAndExistence,
   testUploadIntoBuckets,
 } from "../../alepha/test/bucket/shared.ts";
-import { AlephaBucketVercel, VercelFileStorageProvider } from "../src";
+import { AlephaBucketVercel, VercelFileStorageProvider } from "../src/index.ts";
 import { VercelBlobApi } from "../src/providers/VercelBlobProvider.ts";
 import { MockVercelBlobApi } from "./MockVercelBlobApi.ts";
 

@@ -1,10 +1,10 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
 import {
   InvalidPermissionError,
   SecurityError,
   SecurityProvider,
-} from "../../src/security";
+} from "alepha/security";
+import { describe, expect, it } from "vitest";
 
 describe("SecurityProvider - Multi-layer Permissions", () => {
   describe("Permission Creation", () => {

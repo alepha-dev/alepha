@@ -1,8 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { EmailError } from "../../src/email/errors/EmailError";
-import { LocalEmailProvider } from "../../src/email/providers/LocalEmailProvider";
+import { EmailError } from "../../src/email/errors/EmailError.ts";
+import { LocalEmailProvider } from "../../src/email/providers/LocalEmailProvider.ts";
 
 // Mock fs and path modules
 vi.mock("node:fs/promises");

@@ -1,6 +1,6 @@
 import { $hook, Alepha } from "alepha";
+import { $interval, DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
-import { $interval, DateTimeProvider } from "../../src/datetime";
 
 describe("$interval", () => {
   it("should execute handler at specified intervals", async () => {

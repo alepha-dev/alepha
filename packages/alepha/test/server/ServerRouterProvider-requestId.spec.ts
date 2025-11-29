@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { HttpClient, ServerProvider } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
-import { HttpClient, ServerProvider } from "../../src/server";
 import { $action } from "../../src/server/descriptors/$action.ts";
 import { HttpError } from "../../src/server/errors/HttpError.ts";
 

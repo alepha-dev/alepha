@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Alepha, type Service } from "alepha";
+import { AlephaApiFiles } from "alepha/api/files";
 import {
   $bucket,
   FileNotFoundError,
@@ -9,7 +10,6 @@ import {
 } from "alepha/bucket";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";
-import { AlephaApiFiles } from "../../src/api-files";
 
 class A {
   images = $bucket({

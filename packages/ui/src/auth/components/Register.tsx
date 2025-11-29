@@ -2,6 +2,7 @@ import { useClient, useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { ActionButton, Control, capitalize } from "@alepha/ui";
 import { Alert, Card, Flex, Group, PinInput, Stack, Text } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -17,9 +18,8 @@ import type {
   UserRealmConfig,
 } from "alepha/api/users";
 import { useMemo, useState } from "react";
-import { ActionButton, Control, capitalize } from "../../core";
-import type { AuthI18n } from "../AuthI18n";
-import type { AuthRouter } from "../AuthRouter";
+import type { AuthI18n } from "../AuthI18n.ts";
+import type { AuthRouter } from "../AuthRouter.ts";
 import IconGithub from "./icons/IconGithub.tsx";
 import IconGoogle from "./icons/IconGoogle.tsx";
 

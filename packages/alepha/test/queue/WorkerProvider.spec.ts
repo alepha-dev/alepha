@@ -1,13 +1,13 @@
 /** biome-ignore-all lint/complexity/useLiteralKeys: testing */
 import { Alepha, t } from "alepha";
-import { describe, expect, test, vi } from "vitest";
 import {
   $consumer,
   $queue,
   MemoryQueueProvider,
   QueueProvider,
-} from "../../src/queue";
-import { WorkerProvider } from "../../src/queue/providers/WorkerProvider.ts";
+  WorkerProvider,
+} from "alepha/queue";
+import { describe, expect, test, vi } from "vitest";
 
 const payloadSchema = t.object({
   id: t.text(),

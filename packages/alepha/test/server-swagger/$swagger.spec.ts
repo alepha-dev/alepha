@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { $action } from "alepha/server";
+import { $swagger, ServerSwaggerProvider } from "alepha/server/swagger";
 import { describe, expect, it } from "vitest";
-import { $swagger, ServerSwaggerProvider } from "../../src/server-swagger";
 
 class App {
   internal = $action({

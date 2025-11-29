@@ -1,13 +1,13 @@
 import { Alepha } from "alepha";
-import { DbEntityNotFoundError } from "alepha/orm";
-import { AlephaSecurity } from "alepha/security";
-import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
   IdentityController,
   IdentityService,
   UserService,
-} from "../../src/api-users/index.ts";
+} from "alepha/api/users";
+import { DbEntityNotFoundError } from "alepha/orm";
+import { AlephaSecurity } from "alepha/security";
+import { describe, it } from "vitest";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -27,7 +27,7 @@ const setup = async () => {
   };
 };
 
-describe("alepha/api-users - IdentityController", () => {
+describe("alepha/api/users - IdentityController", () => {
   it("should get an identity by ID", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 

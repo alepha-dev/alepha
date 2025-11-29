@@ -1,5 +1,5 @@
+import { $inject, $module, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $inject, $module, Alepha } from "../../src/core";
 
 describe("$module", () => {
   it("should create a module with services", () => {

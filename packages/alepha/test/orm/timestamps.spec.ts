@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository } from "../../src/orm";
 import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
 
 // Helper function to parse dates from various formats

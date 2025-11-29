@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
+import { LinkProvider, ServerLinksProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
-import { LinkProvider, ServerLinksProvider } from "../../src/server-links";
 
 class App {
   ping = $action({

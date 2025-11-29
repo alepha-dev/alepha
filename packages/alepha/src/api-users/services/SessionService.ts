@@ -11,7 +11,7 @@ import {
 } from "alepha/security";
 import { type ServerRequest, UnauthorizedError } from "alepha/server";
 import type { OAuth2Profile } from "alepha/server/auth";
-import { $client } from "../../server-links";
+import { $client } from "alepha/server/links";
 import type { UserEntity } from "../entities/users.ts";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
 

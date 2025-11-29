@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
-import { DateTimeProvider } from "../../src/datetime";
 
 describe("DateTimeProvider", () => {
   it("should pause time and reset", async () => {

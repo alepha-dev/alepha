@@ -3,7 +3,7 @@ import { FileSystemProvider } from "alepha/file";
 import { sql } from "alepha/orm";
 import { $action } from "alepha/server";
 import { Db } from "../providers/Db.ts";
-import { Security } from "../providers/Security";
+import { Security } from "../providers/Security.ts";
 
 export class ProjectStatsApi {
   db = $inject(Db);

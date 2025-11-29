@@ -1,5 +1,6 @@
 import { useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
+import { Control, DarkModeButton } from "@alepha/ui";
 import {
   Anchor,
   Box,
@@ -14,7 +15,6 @@ import {
 } from "@mantine/core";
 import { IconRocket } from "@tabler/icons-react";
 import { t } from "alepha";
-import { Control, DarkModeButton } from "../../src/core";
 
 const ExampleControl = () => {
   const router = useRouter();

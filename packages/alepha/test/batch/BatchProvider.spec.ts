@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaBatch, BatchProvider } from "alepha/batch";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { AlephaBatch, BatchProvider } from "../../src/batch";
 
 describe("BatchProvider", () => {
   let alepha: Alepha;

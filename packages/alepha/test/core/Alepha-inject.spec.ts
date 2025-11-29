@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { Alepha } from "../../src/core";
 
 describe("Alepha#inject", () => {
   it("should handle transient lifetime", ({ expect }) => {

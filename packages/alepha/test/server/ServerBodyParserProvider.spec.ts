@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $action, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
-import { $action, HttpError } from "../../src/server";
 
 describe("ServerBodyParserProvider", () => {
   it("should handle simple body", async ({ expect }) => {

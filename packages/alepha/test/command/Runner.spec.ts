@@ -1,10 +1,10 @@
 import { Alepha } from "alepha";
+import { Runner } from "alepha/command";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { Runner } from "../../src/command";
 
 describe("Runner", () => {
   let mockLogger: MemoryDestinationProvider;

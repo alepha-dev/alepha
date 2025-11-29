@@ -1,5 +1,5 @@
+import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { Alepha, t } from "../../src/core";
 
 describe("TypeBox Use Cases", () => {
   it("should remove property when omitted in schema with t.interface()", () => {

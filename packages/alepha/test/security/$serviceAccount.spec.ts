@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $realm, $serviceAccount } from "alepha/security";
 import { describe, expect, it } from "vitest";
-import { $realm, $serviceAccount } from "../../src/security";
 
 class App {
   oauth2 = $serviceAccount({

@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
+import { AlephaServerHealth } from "alepha/server/health";
 import { describe, expect, it } from "vitest";
-import { AlephaServerHealth } from "../../src/server-health";
 
 const alepha = Alepha.create().with(AlephaServerHealth);
 

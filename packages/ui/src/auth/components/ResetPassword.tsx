@@ -1,6 +1,7 @@
 import { useClient, useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { ActionButton, Control } from "@alepha/ui";
 import { Alert, Card, Flex, PinInput, Stack, Text } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -17,9 +18,8 @@ import type {
 } from "alepha/api/users";
 import { resetPasswordRequestSchema } from "alepha/api/users";
 import { useState } from "react";
-import { ActionButton, Control } from "../../core";
-import type { AuthI18n } from "../AuthI18n";
-import type { AuthRouter } from "../AuthRouter";
+import type { AuthI18n } from "../AuthI18n.ts";
+import type { AuthRouter } from "../AuthRouter.ts";
 
 export interface ResetPasswordProps {
   realmConfig: UserRealmConfig;

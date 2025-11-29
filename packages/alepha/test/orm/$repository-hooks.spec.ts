@@ -1,6 +1,6 @@
 import { $hook, Alepha, t } from "alepha";
+import { $entity, $repository, pg } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../../src/orm";
 
 class HookTracker {
   events: Array<{ name: string; data: any }> = [];

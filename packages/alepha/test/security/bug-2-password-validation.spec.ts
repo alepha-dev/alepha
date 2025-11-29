@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { CryptoProvider } from "alepha/security";
 import { describe, expect, it } from "vitest";
-import { CryptoProvider } from "../../src/security";
 
 /**
  * Bug #2: Password Verification Missing Input Validation

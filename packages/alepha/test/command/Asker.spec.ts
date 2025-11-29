@@ -1,10 +1,10 @@
 import { Alepha, AlephaError, t } from "alepha";
+import { Asker } from "alepha/command";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { Asker } from "../../src/command";
 
 describe("Asker", () => {
   let alepha: Alepha;

@@ -1,5 +1,5 @@
+import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
-import { Alepha, type State } from "../../src/core";
 import { $atom } from "../../src/core/descriptors/$atom.ts";
 import { $use } from "../../src/core/descriptors/$use.ts";
 import { t } from "../../src/core/providers/TypeProvider.ts";

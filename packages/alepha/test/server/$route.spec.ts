@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $route, ServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
-import { $route, ServerProvider } from "../../src/server";
 
 describe("$route", () => {
   test("should return the correct route", async ({ expect }) => {

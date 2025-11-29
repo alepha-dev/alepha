@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, pg } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../../src/orm";
 
 const testSchema = t.object({
   id: pg.primaryKey(),

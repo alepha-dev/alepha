@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $entity, $repository, DbEntityNotFoundError, pg } from "alepha/orm";
 import { describe, it } from "vitest";
-import { $entity, $repository, DbEntityNotFoundError, pg } from "../../src/orm";
 
 describe("deletedAt", () => {
   const entity = $entity({

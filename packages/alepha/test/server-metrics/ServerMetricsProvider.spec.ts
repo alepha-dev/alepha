@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
+import { AlephaServerMetrics } from "alepha/server/metrics";
 import { describe, it } from "vitest";
-import { AlephaServerMetrics } from "../../src/server-metrics";
 
 describe("ServerMetricsProvider", () => {
   it("should expose metrics endpoint with process metrics", async ({

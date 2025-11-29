@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { $sequence } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $sequence } from "../../src/orm";
 
 describe("$sequence", () => {
   class App {

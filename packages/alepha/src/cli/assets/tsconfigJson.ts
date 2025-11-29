@@ -1,5 +1,5 @@
 export const tsconfigJson = `
 {
-  "extends": "alepha/tsconfig"
+  "extends": "alepha/tsconfig.base"
 }
 `.trim();

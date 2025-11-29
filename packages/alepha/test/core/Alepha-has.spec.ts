@@ -1,5 +1,5 @@
+import { $inject, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $inject, Alepha } from "../../src/core";
 
 class A {}
 

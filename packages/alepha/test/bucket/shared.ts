@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
-import { FileSystemProvider } from "alepha/file";
-import { expect } from "vitest";
 import {
   $bucket,
   FileNotFoundError,
   type FileStorageProvider,
-} from "../../src/bucket";
+} from "alepha/bucket";
+import { FileSystemProvider } from "alepha/file";
+import { expect } from "vitest";
 
 export const TEST_IMAGES_BUCKET = "test-images";
 export const TEST_DOCUMENTS_BUCKET = "test-documents";

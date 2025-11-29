@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { $serviceAccount } from "alepha/security";
 import { describe, expect, it, vi } from "vitest";
-import { $serviceAccount } from "../../src/security";
 
 /**
  * Bug #4: Missing HTTP Response Validation in OAuth2 Service Account

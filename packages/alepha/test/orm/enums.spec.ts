@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, DrizzleKitProvider, pg } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, DrizzleKitProvider, pg } from "../../src/orm";
 
 // Test 1: Basic enum using t.enum (should map to TEXT column)
 const textEnumEntity = $entity({

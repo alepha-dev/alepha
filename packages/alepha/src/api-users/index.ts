@@ -1,7 +1,7 @@
 import { $module } from "alepha";
+import { AlephaApiNotifications } from "alepha/api/notifications";
+import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail } from "alepha/email";
-import { AlephaApiNotifications } from "../api-notifications";
-import { AlephaApiVerification } from "../api-verifications";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";

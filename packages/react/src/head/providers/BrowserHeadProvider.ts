@@ -1,5 +1,5 @@
 import { $hook, $inject } from "alepha";
-import type { Head } from "../interfaces/Head";
+import type { Head } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 export class BrowserHeadProvider {

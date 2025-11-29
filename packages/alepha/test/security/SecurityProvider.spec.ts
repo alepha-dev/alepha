@@ -1,11 +1,11 @@
 import { Alepha, ContainerLockedError } from "alepha";
-import { describe, expect, it } from "vitest";
 import {
   InvalidPermissionError,
   JwtProvider,
   SecurityError,
   SecurityProvider,
-} from "../../src/security";
+} from "alepha/security";
+import { describe, expect, it } from "vitest";
 
 describe("SecurityProvider", () => {
   it("should check permissions with default role", () => {

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $realm } from "alepha/security";
 import { describe, test } from "vitest";
-import { $realm } from "../../src/security";
 
 describe("$realm", () => {
   const roles = [

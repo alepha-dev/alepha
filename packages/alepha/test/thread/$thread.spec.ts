@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $thread, AlephaThread, ThreadDescriptor } from "alepha/thread";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { $thread, AlephaThread, ThreadDescriptor } from "../../src/thread";
 
 class TestApp {
   testThread = $thread({

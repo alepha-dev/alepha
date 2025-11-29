@@ -1,9 +1,9 @@
 import { $page } from "@alepha/react";
 import { $dictionary } from "@alepha/react/i18n";
+import { AlephaUI } from "@alepha/ui";
 import { Icon3dCubeSphere } from "@tabler/icons-react";
 import { Alepha, run } from "alepha";
 import { createElement } from "react";
-import { AlephaUI } from "../src/core";
 import AlephaMantineProvider from "../src/core/components/layout/AlephaMantineProvider.tsx";
 import ExampleAction from "./examples/ExampleAction.tsx";
 import ExampleControl from "./examples/ExampleControl.tsx";

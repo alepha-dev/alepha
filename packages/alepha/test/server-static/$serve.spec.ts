@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
 import { Alepha } from "alepha";
 import { AlephaServer, ServerProvider } from "alepha/server";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {
   $serve,
   AlephaServerStatic,
   type ServeDescriptorOptions,
-} from "../../src/server-static";
+} from "alepha/server/static";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 // --- Test Setup: Create a temporary directory for static files ---
 

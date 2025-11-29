@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
+import { AlephaServerMultipart } from "alepha/server/multipart";
 import { describe, expect, test } from "vitest";
-import { AlephaServerMultipart } from "../../src/server-multipart";
 
 class App {
   upload = $action({

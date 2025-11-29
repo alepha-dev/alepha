@@ -1,7 +1,7 @@
 import { $inject, Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $entity, $repository, $transaction, pg } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, $transaction, pg } from "../../src/orm";
 import { DbConflictError } from "../../src/orm/errors/DbConflictError.ts";
 
 const a = $entity({

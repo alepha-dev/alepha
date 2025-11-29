@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { $action } from "alepha/server";
+import { AlephaServerCache, ServerCacheProvider } from "alepha/server/cache";
 import { afterEach, beforeEach, describe, test } from "vitest";
-import { AlephaServerCache, ServerCacheProvider } from "../../src/server-cache";
 
 class TestApp {
   counter = 0;

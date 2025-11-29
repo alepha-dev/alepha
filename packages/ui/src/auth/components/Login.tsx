@@ -2,15 +2,15 @@ import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { FormValidationError, useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { ActionButton, Control, capitalize } from "@alepha/ui";
 import { Card, Flex, Group, Stack, Text } from "@mantine/core";
 import { IconLock, IconUser } from "@tabler/icons-react";
 import { t } from "alepha";
 import type { UserRealmConfig } from "alepha/api/users";
 import { HttpError } from "alepha/server";
 import { useMemo } from "react";
-import { ActionButton, Control, capitalize } from "../../core";
-import type { AuthI18n } from "../AuthI18n";
-import type { AuthRouter } from "../AuthRouter";
+import type { AuthI18n } from "../AuthI18n.ts";
+import type { AuthRouter } from "../AuthRouter.ts";
 import IconGithub from "./icons/IconGithub.tsx";
 import IconGoogle from "./icons/IconGoogle.tsx";
 

@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, DatabaseProvider, pg, sql } from "alepha/orm";
 import { describe, it } from "vitest";
-import { $entity, $repository, DatabaseProvider, pg, sql } from "../../src/orm";
 import {
   NodeSqliteProvider,
   nodeSqliteOptions,

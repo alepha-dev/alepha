@@ -1,15 +1,11 @@
 import { Alepha } from "alepha";
+import { AlephaApiUsers, UserController, UserService } from "alepha/api/users";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
-import {
-  AlephaApiUsers,
-  UserController,
-  UserService,
-} from "../../src/api-users/index.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -43,7 +39,7 @@ const extractCode = (emailBody: string): string => {
   return match[1];
 };
 
-describe("alepha/api-users - Email Verification", () => {
+describe("alepha/api/users - Email Verification", () => {
   it("should successfully request email verification and send email", async ({
     expect,
   }) => {

@@ -1,13 +1,9 @@
 import { Alepha } from "alepha";
+import { AlephaApiUsers, UserController, UserService } from "alepha/api/users";
 import { DbEntityNotFoundError } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
-import {
-  AlephaApiUsers,
-  UserController,
-  UserService,
-} from "../../src/api-users/index.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -26,7 +22,7 @@ const setup = async () => {
   };
 };
 
-describe("alepha/api-users - UserController CRUD", () => {
+describe("alepha/api/users - UserController CRUD", () => {
   it("should create a new user", async ({ expect }) => {
     const { controller } = await setup();
 

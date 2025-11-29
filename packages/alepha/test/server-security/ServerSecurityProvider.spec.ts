@@ -8,8 +8,8 @@ import {
   ServerProvider,
   UnauthorizedError,
 } from "alepha/server";
+import { AlephaServerSecurity } from "alepha/server/security";
 import { describe, expect, it } from "vitest";
-import { AlephaServerSecurity } from "../../src/server-security";
 
 describe("ServerSecurityProvider", () => {
   it("should protect action from unauthorized users", async () => {

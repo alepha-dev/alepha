@@ -1,13 +1,13 @@
 import { Alepha, t } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
-import { describe, it } from "vitest";
 import {
   $client,
   $remote,
   AlephaServerLinks,
   LinkProvider,
   ServerLinksProvider,
-} from "../../src/server-links";
+} from "alepha/server/links";
+import { describe, it } from "vitest";
 
 describe("$remote", () => {
   it("should enable remote action calls between services", async ({

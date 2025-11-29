@@ -1,9 +1,0 @@
-{
-	"extends": "../../tsconfig.json",
-	"compilerOptions": {
-		"paths": {
-			"@alepha/react": ["./src/core/*"],
-			"@alepha/react/*": ["./src/*"]
-		}
-	}
-}

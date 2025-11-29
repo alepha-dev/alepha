@@ -1,5 +1,4 @@
 import { Alepha, t } from "alepha";
-import { describe, expect, test } from "vitest";
 import {
   $queue,
   MemoryQueueProvider,
@@ -11,7 +10,8 @@ import {
   type QueueEventRetrying,
   type QueueEventWaiting,
   QueueProvider,
-} from "../../src/queue";
+} from "alepha/queue";
+import { describe, expect, test } from "vitest";
 
 const payloadSchema = t.object({
   id: t.text(),

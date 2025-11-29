@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, pg } from "alepha/orm";
 import { test } from "vitest";
-import { $entity, $repository, pg } from "../../src/orm";
 
 const TestEntity = $entity({
   name: "test_validation",

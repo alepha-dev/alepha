@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
-import { describe, it } from "vitest";
 import {
   LogDestinationProvider,
   LogFormatterProvider,
   MemoryDestinationProvider,
   SimpleFormatterProvider,
-} from "../../src/logger";
+} from "alepha/logger";
+import { describe, it } from "vitest";
 import { Logger } from "../../src/logger/services/Logger.ts";
 
 describe("Logger", () => {

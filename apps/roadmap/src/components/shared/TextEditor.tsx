@@ -20,7 +20,7 @@ const TextEditor: React.FC<TextEditorProps> = (props) => {
   });
 
   return (
-    <RichTextEditor editor={editor} w={"100%"}>
+    <RichTextEditor editor={editor as never} w={"100%"}>
       <RichTextEditor.Toolbar sticky stickyOffset="var(--docs-header-height)">
         <RichTextEditor.ControlsGroup>
           <RichTextEditor.Bold />

@@ -1,10 +1,10 @@
 import { Alepha, AlephaError, t } from "alepha";
+import { $command, CommandError, cliOptions } from "alepha/command";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
-import { $command, CommandError, cliOptions } from "../../src/command";
 
 describe("$command", () => {
   const setupTestCommands = async (

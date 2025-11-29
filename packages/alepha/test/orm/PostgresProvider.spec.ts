@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { $repository, AlephaPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import { $repository, AlephaPostgres } from "../../src/orm";
 import { userEntity } from "./fixtures/userEntitySchema.ts";
 
 describe("PostgresProvider", () => {

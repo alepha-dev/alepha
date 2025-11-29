@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, pg } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import { describe, test } from "vitest";
-import { $entity, $repository, pg } from "../../src/orm";
 
 describe("Joins - Comprehensive Tests", () => {
   // ===================================================================================================================

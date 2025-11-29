@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
+import { AlephaServerCompress } from "alepha/server/compress";
 import { describe, it } from "vitest";
-import { AlephaServerCompress } from "../../src/server-compress";
 
 class App {
   hello = $action({

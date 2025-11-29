@@ -1,7 +1,7 @@
 import { useAlepha } from "@alepha/react";
 import type { TObject } from "alepha";
 import { useId, useMemo } from "react";
-import { FormCtrlOptions, FormModel } from "../services/FormModel.ts";
+import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
 
 /**
  * Custom hook to create a form with validation and field management.

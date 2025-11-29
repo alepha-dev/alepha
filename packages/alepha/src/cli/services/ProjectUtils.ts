@@ -167,10 +167,29 @@ export class ProjectUtils {
    * @param root - The root directory of the project
    */
   public async ensureTsConfig(root: string): Promise<void> {
+    // Check if tsconfig.json exists on current directory or parent directories
     const tsconfigPath = join(root, "tsconfig.json");
-    try {
-      await access(tsconfigPath);
-    } catch {
+    let found = false;
+    let currentDir = root;
+    const maxIterations = 10; // safety to prevent infinite loops
+    let level = 0;
+
+    while (level < maxIterations) {
+      try {
+        await access(join(currentDir, "tsconfig.json"));
+        found = true;
+        break;
+      } catch {
+        const parentDir = join(currentDir, "..");
+        if (parentDir === currentDir) {
+          break; // Reached filesystem root
+        }
+        currentDir = parentDir;
+      }
+      level += 1;
+    }
+
+    if (!found) {
       await writeFile(tsconfigPath, tsconfigJson);
     }
   }

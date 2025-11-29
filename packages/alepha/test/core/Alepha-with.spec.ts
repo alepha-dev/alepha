@@ -1,5 +1,5 @@
+import { Alepha } from "alepha";
 import { expect, test } from "vitest";
-import { Alepha } from "../../src/core";
 
 test("Alepha#with - from default import", async () => {
   const alepha = Alepha.create();

@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
+import { $proxy } from "alepha/server/proxy";
 import { describe, expect, it } from "vitest";
-import { $proxy } from "../../src/server-proxy";
 
 describe("$proxy", () => {
   it("should proxy requests to target server with headers and query params", async () => {

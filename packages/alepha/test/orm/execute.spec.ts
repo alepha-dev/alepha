@@ -1,7 +1,7 @@
 import { Alepha, TypeBoxError, t } from "alepha";
+import { $entity, $repository, pg, sql } from "alepha/orm";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg, sql } from "../../src/orm";
 
 describe("execute", () => {
   it("should execute basic SQL queries", async () => {

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { $email, MemoryEmailProvider } from "alepha/email";
 import { describe, test } from "vitest";
-import { $email, MemoryEmailProvider } from "../../src/email";
 
 describe("$email", () => {
   test("should send email using descriptor", async ({ expect }) => {

@@ -1,5 +1,6 @@
 import { useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
+import { ActionButton, Control, DarkModeButton } from "@alepha/ui";
 import {
   Badge,
   Box,
@@ -40,7 +41,6 @@ import {
 } from "@tabler/icons-react";
 import { t } from "alepha";
 import { useState } from "react";
-import { ActionButton, Control, DarkModeButton } from "../../src/core";
 
 const ExampleAction = () => {
   const router = useRouter();

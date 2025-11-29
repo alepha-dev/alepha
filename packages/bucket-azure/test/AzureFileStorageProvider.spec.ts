@@ -14,7 +14,7 @@ import {
   testUploadAndExistence,
   testUploadIntoBuckets,
 } from "../../alepha/test/bucket/shared.ts";
-import { AlephaBucketAzure, AzureFileStorageProvider } from "../src";
+import { AlephaBucketAzure, AzureFileStorageProvider } from "../src/index.ts";
 
 const alepha = Alepha.create().with(AlephaBucketAzure).with(TestApp);
 

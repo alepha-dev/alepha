@@ -1,6 +1,6 @@
+import { RedisLockProvider } from "alepha/lock/redis";
 import { RedisTopicProvider } from "alepha/topic/redis";
 import { describe, test } from "vitest";
-import { RedisLockProvider } from "../../src/lock-redis";
 import {
   testLockBasic,
   testLockGracePeriod,

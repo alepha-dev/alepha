@@ -4,7 +4,7 @@ import {
   testTopicAsSub,
   testTopicBasic,
   testTopicLateSubscribe,
-} from "./shared";
+} from "./shared.ts";
 
 describe("$topic - memory", () => {
   const provider = SharedTopicProvider;

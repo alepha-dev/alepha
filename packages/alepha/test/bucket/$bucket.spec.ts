@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
-import { describe, test } from "vitest";
 import {
   $bucket,
   AlephaBucket,
   FileStorageProvider,
   MemoryFileStorageProvider,
-} from "../../src/bucket";
+} from "alepha/bucket";
+import { describe, test } from "vitest";
 import { InvalidFileError } from "../../src/bucket/errors/InvalidFileError.ts";
 
 class TestApp {

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { $sms, MemorySmsProvider } from "alepha/sms";
 import { describe, test } from "vitest";
-import { $sms, MemorySmsProvider } from "../../src/sms";
 
 describe("$sms", () => {
   test("should send SMS using descriptor", async ({ expect }) => {

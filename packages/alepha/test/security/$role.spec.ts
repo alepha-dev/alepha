@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { $permission, $role } from "alepha/security";
 import { describe, expect, it } from "vitest";
-import { $permission, $role } from "../../src/security";
 
 describe("$role", () => {
   it("should accept permissions", async () => {

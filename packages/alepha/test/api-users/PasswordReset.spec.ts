@@ -1,16 +1,16 @@
 import { Alepha } from "alepha";
+import {
+  AlephaApiUsers,
+  CredentialService,
+  SessionService,
+  UserController,
+} from "alepha/api/users";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
-import {
-  AlephaApiUsers,
-  CredentialService,
-  SessionService,
-  UserController,
-} from "../../src/api-users/index.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -46,7 +46,7 @@ const extractCode = (emailBody: string): string => {
   return match[1];
 };
 
-describe("alepha/api-users - Password Reset", () => {
+describe("alepha/api/users - Password Reset", () => {
   it("should successfully request password reset and send email", async ({
     expect,
   }) => {

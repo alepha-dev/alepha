@@ -1,5 +1,5 @@
+import { Alepha, TypeBoxError, TypeProvider, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { Alepha, TypeBoxError, TypeProvider, t } from "../../src/core";
 
 describe("TypeBoxLocale", () => {
   it("should have tests", async () => {

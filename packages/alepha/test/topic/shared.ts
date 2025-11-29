@@ -1,5 +1,4 @@
 import { $inject, Alepha, type Service, t } from "alepha";
-import { expect } from "vitest";
 import {
   $subscriber,
   $topic,
@@ -7,7 +6,8 @@ import {
   MemoryTopicProvider,
   type SubscribeCallback,
   TopicProvider,
-} from "../../src/topic";
+} from "alepha/topic";
+import { expect } from "vitest";
 
 export const payloadSchema = t.object({
   id: t.text(),

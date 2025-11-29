@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
-import { describe, expect, test } from "vitest";
 import {
   AlephaServerHelmet,
   type HelmetOptions,
   helmetOptions,
-} from "../../src/server-helmet";
+} from "alepha/server/helmet";
+import { describe, expect, test } from "vitest";
 
 class TestApp {
   ping = $action({ handler: () => "pong" });

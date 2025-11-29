@@ -1,8 +1,8 @@
 import { Alepha } from "alepha";
+import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";
-import { FileService } from "../../src/api-files";
 import { FileJobs } from "../../src/api-files/jobs/FileJobs.ts";
 
 describe("FileJobRegistry", () => {

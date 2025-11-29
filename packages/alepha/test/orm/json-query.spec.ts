@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository, pg } from "alepha/orm";
 import { describe, it } from "vitest";
-import { $entity, $repository, pg } from "../../src/orm";
 
 describe("Postgres JSON Query Tests", () => {
   const users = $entity({

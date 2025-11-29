@@ -1,12 +1,12 @@
 import { Alepha } from "alepha";
-import { describe, test } from "vitest";
 import {
   $route,
   BadRequestError,
   HttpClient,
   HttpError,
   ServerProvider,
-} from "../../src/server";
+} from "alepha/server";
+import { describe, test } from "vitest";
 
 describe("HttpClient", () => {
   test("should fetch a URL", async ({ expect }) => {

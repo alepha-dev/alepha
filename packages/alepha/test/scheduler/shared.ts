@@ -2,11 +2,8 @@ import { randomUUID } from "node:crypto";
 import { Alepha, type Service } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
+import { $scheduler, type SchedulerDescriptorOptions } from "alepha/scheduler";
 import { expect } from "vitest";
-import {
-  $scheduler,
-  type SchedulerDescriptorOptions,
-} from "../../src/scheduler";
 
 const store: Record<string, string> = {};
 

@@ -1,12 +1,12 @@
 import { Alepha, AlephaError } from "alepha";
-import { describe, it } from "vitest";
 import {
   $logger,
   LogDestinationProvider,
   LogFormatterProvider,
   MemoryDestinationProvider,
   SimpleFormatterProvider,
-} from "../../src/logger";
+} from "alepha/logger";
+import { describe, it } from "vitest";
 
 describe("SimpleFormatterProvider", () => {
   class App {

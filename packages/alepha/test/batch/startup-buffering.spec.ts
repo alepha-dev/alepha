@@ -1,7 +1,7 @@
 import { $hook, Alepha, t } from "alepha";
+import { $batch, AlephaBatch } from "alepha/batch";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { $batch, AlephaBatch } from "../../src/batch";
 
 /**
  * Tests for startup buffering behavior.

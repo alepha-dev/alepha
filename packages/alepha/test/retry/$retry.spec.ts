@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $retry } from "alepha/retry";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { $retry } from "../../src/retry";
 
 describe("$retry", () => {
   let alepha: Alepha;

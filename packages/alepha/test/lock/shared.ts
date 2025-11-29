@@ -2,18 +2,18 @@ import { randomUUID } from "node:crypto";
 import { $inject, Alepha, type Service } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import {
-  MemoryTopicProvider,
-  type SubscribeCallback,
-  type TopicProvider,
-} from "alepha/topic";
-import { expect } from "vitest";
-import {
   $lock,
   AlephaLock,
   LockProvider,
   LockTopicProvider,
   MemoryLockProvider,
-} from "../../src/lock";
+} from "alepha/lock";
+import {
+  MemoryTopicProvider,
+  type SubscribeCallback,
+  type TopicProvider,
+} from "alepha/topic";
+import { expect } from "vitest";
 
 export const store: Record<string, string> = {};
 export class SharedLockProvider extends MemoryLockProvider {

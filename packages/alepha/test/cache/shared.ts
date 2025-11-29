@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Alepha, type Env, type Service } from "alepha";
+import { $cache, CacheProvider, MemoryCacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
-import { $cache, CacheProvider, MemoryCacheProvider } from "../../src/cache";
 
 export class TestCache {
   cursor_a = 0;

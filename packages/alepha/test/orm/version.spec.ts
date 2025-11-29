@@ -1,12 +1,7 @@
 import { $inject, Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $entity, $repository, pg, type TransactionContext } from "alepha/orm";
 import { describe, expect, it } from "vitest";
-import {
-  $entity,
-  $repository,
-  pg,
-  type TransactionContext,
-} from "../../src/orm";
 import { DbVersionMismatchError } from "../../src/orm/errors/DbVersionMismatchError.ts";
 
 class A {

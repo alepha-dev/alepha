@@ -1,11 +1,11 @@
 import { $inject, Alepha, type Service, t } from "alepha";
-import { expect } from "vitest";
 import {
   $consumer,
   $queue,
   MemoryQueueProvider,
   QueueProvider,
-} from "../../src/queue";
+} from "alepha/queue";
+import { expect } from "vitest";
 import { WorkerProvider } from "../../src/queue/providers/WorkerProvider.ts";
 
 export const payloadSchema = t.object({

@@ -1,5 +1,5 @@
+import { RedisQueueProvider } from "alepha/queue/redis";
 import { describe, test } from "vitest";
-import { RedisQueueProvider } from "../../src/queue-redis";
 import {
   testQueueBasic,
   testQueueHasConsumer,

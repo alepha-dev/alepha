@@ -1,8 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { SmsError } from "../../src/sms/errors/SmsError";
-import { LocalSmsProvider } from "../../src/sms/providers/LocalSmsProvider";
+import { SmsError } from "../../src/sms/errors/SmsError.ts";
+import { LocalSmsProvider } from "../../src/sms/providers/LocalSmsProvider.ts";
 
 // Mock fs and path modules
 vi.mock("node:fs/promises");

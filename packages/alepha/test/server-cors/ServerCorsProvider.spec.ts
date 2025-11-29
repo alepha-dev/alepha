@@ -1,13 +1,13 @@
 import { Alepha } from "alepha";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
-import { afterEach, describe, expect, test } from "vitest";
 import {
   $cors,
   AlephaServerCors,
   corsOptions,
   ServerCorsProvider,
   type ServerCorsProviderOptions,
-} from "../../src/server-cors";
+} from "alepha/server/cors";
+import { afterEach, describe, expect, test } from "vitest";
 
 // A simple test action to hit
 class TestApp {

@@ -1,5 +1,5 @@
+import { $hook, $inject, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $hook, $inject, Alepha } from "../../src/core";
 
 describe("$hook", () => {
   it("should track hook calls", async () => {

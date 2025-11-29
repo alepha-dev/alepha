@@ -1,10 +1,10 @@
 import { Alepha } from "alepha";
-import { describe, test } from "vitest";
 import {
   AlephaBucket,
   FileStorageProvider,
   LocalFileStorageProvider,
-} from "../../src/bucket";
+} from "alepha/bucket";
+import { describe, test } from "vitest";
 import {
   TestApp,
   testCustomFileId,

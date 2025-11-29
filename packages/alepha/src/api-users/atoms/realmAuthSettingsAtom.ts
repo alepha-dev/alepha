@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "../../core";
+import { $atom, type Static, t } from "alepha";
 
 export const realmAuthSettingsAtom = $atom({
   name: "alepha.api.users.realmAuthSettings",

@@ -1,15 +1,11 @@
 import { Alepha } from "alepha";
+import { AlephaApiUsers, SessionService, UserService } from "alepha/api/users";
 import {
   AlephaSecurity,
   CryptoProvider,
   InvalidCredentialsError,
 } from "alepha/security";
 import { describe, it } from "vitest";
-import {
-  AlephaApiUsers,
-  SessionService,
-  UserService,
-} from "../../src/api-users/index.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -32,7 +28,7 @@ const setup = async () => {
   };
 };
 
-describe("alepha/api-users - SessionService.login", () => {
+describe("alepha/api/users - SessionService.login", () => {
   it("should login successfully with valid credentials", async ({ expect }) => {
     const { sessionService, userService, cryptoProvider, identities } =
       await setup();

@@ -1,8 +1,8 @@
 import { Alepha, t } from "alepha";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
-import type { ReactRouterState } from "../../src/core";
-import { $page, PageDescriptor, Redirection } from "../../src/core";
+import type { ReactRouterState } from "../../src/core/index.ts";
+import { $page, PageDescriptor, Redirection } from "../../src/core/index.ts";
 import NestedView from "../../src/core/components/NestedView.tsx";
 
 describe("$page descriptor tests", () => {

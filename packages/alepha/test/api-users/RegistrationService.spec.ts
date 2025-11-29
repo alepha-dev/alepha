@@ -1,16 +1,16 @@
 import { Alepha } from "alepha";
+import {
+  AlephaApiUsers,
+  RegistrationService,
+  SessionService,
+  UserService,
+} from "alepha/api/users";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
-import {
-  AlephaApiUsers,
-  RegistrationService,
-  SessionService,
-  UserService,
-} from "../../src/api-users/index.ts";
 import { UserRealmProvider } from "../../src/api-users/providers/UserRealmProvider.ts";
 
 const setup = async (realmSettings?: Record<string, unknown>) => {
@@ -53,7 +53,7 @@ const extractCode = (emailBody: string): string => {
   return match[1];
 };
 
-describe("alepha/api-users - RegistrationService", () => {
+describe("alepha/api/users - RegistrationService", () => {
   describe("Phase 1: createRegistrationIntent", () => {
     it("should create a registration intent with valid data", async ({
       expect,

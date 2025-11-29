@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { AlephaBucket } from "alepha/bucket";
 import { describe, test } from "vitest";
-import { AlephaBucket } from "../../src/bucket";
 import { FileStorageProvider } from "../../src/bucket/providers/FileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "../../src/bucket/providers/MemoryFileStorageProvider.ts";
 

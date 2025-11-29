@@ -1,16 +1,16 @@
 import { Alepha } from "alepha";
+import {
+  AlephaApiUsers,
+  CredentialService,
+  SessionService,
+  UserService,
+} from "alepha/api/users";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
-import {
-  AlephaApiUsers,
-  CredentialService,
-  SessionService,
-  UserService,
-} from "../../src/api-users/index.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -70,7 +70,7 @@ const createUserWithCredentials = async (
   return user;
 };
 
-describe("alepha/api-users - CredentialService", () => {
+describe("alepha/api/users - CredentialService", () => {
   describe("Phase 1: createPasswordResetIntent", () => {
     it("should create a password reset intent for existing user", async ({
       expect,

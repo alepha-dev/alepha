@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { SecurityError, SecurityProvider } from "alepha/security";
 import { describe, expect, it } from "vitest";
-import { SecurityError, SecurityProvider } from "../../src/security";
 
 /**
  * Bug #1: Multi-layer Wildcard Permission Validation Fails After App Start

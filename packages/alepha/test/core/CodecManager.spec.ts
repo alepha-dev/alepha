@@ -1,6 +1,6 @@
+import { $inject, Alepha, CodecManager, TypeBoxError, t } from "alepha";
 import type { TSchema } from "typebox";
 import { describe, expect, it } from "vitest";
-import { $inject, Alepha, CodecManager, TypeBoxError, t } from "../../src/core";
 import { JsonSchemaCodec } from "../../src/core/providers/JsonSchemaCodec.ts";
 import { SchemaCodec } from "../../src/core/providers/SchemaCodec.ts";
 

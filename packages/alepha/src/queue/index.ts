@@ -12,6 +12,7 @@ export * from "./descriptors/$queue.ts";
 export * from "./interfaces/QueueJob.ts";
 export * from "./providers/MemoryQueueProvider.ts";
 export * from "./providers/QueueProvider.ts";
+export * from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

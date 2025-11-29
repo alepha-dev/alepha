@@ -1,14 +1,14 @@
 import { Alepha } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
-import { DbEntityNotFoundError } from "alepha/orm";
-import { AlephaSecurity } from "alepha/security";
-import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
   SessionController,
   SessionCrudService,
   UserService,
-} from "../../src/api-users/index.ts";
+} from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
+import { DbEntityNotFoundError } from "alepha/orm";
+import { AlephaSecurity } from "alepha/security";
+import { describe, it } from "vitest";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -29,7 +29,7 @@ const setup = async () => {
   };
 };
 
-describe("alepha/api-users - SessionController", () => {
+describe("alepha/api/users - SessionController", () => {
   it("should get a session by ID", async ({ expect }) => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();

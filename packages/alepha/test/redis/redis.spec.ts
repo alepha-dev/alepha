@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
+import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 import { describe, it } from "vitest";
-import { RedisProvider, RedisSubscriberProvider } from "../../src/redis";
 
 const alepha = Alepha.create();
 const redis = alepha.inject(RedisProvider);

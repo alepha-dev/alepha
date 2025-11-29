@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   $context,
   $env,
@@ -8,7 +7,8 @@ import {
   type Service,
   TypeBoxError,
   t,
-} from "../../src/core";
+} from "alepha";
+import { describe, expect, it } from "vitest";
 import { MissingContextError } from "../../src/core/errors/MissingContextError.ts";
 
 describe("$inject", () => {

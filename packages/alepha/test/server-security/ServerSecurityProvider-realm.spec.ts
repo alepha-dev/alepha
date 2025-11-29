@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { $realm } from "alepha/security";
 import { $action, $route, ForbiddenError, ServerProvider } from "alepha/server";
+import { AlephaServerSecurity } from "alepha/server/security";
 import { describe, expect, it } from "vitest";
-import { AlephaServerSecurity } from "../../src/server-security";
 
 describe("ServerSecurityProvider - Realm Protection", () => {
   it("should allow access when user belongs to the required realm", async () => {

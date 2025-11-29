@@ -1,5 +1,5 @@
+import { Alepha } from "alepha";
 import { describe, expect, it, vi } from "vitest";
-import { Alepha } from "../../src/core";
 import type { LoggerInterface } from "../../src/core/interfaces/LoggerInterface.ts";
 import { EventManager } from "../../src/core/providers/EventManager.ts";
 

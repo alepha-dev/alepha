@@ -3,7 +3,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
-import { alephaServerAuthRoutes, tokenResponseSchema, Tokens, userinfoResponseSchema } from "alepha/server/auth";
+import { alephaServerAuthRoutes, tokenResponseSchema, type Tokens, userinfoResponseSchema } from "alepha/server/auth";
 
 /**
  * Browser, SSR friendly, service to handle authentication.

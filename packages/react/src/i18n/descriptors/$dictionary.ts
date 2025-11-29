@@ -1,4 +1,4 @@
-import { $inject, Async, createDescriptor, Descriptor, KIND } from "alepha";
+import { $inject, type Async, createDescriptor, Descriptor, KIND } from "alepha";
 import { I18nProvider } from "../providers/I18nProvider.ts";
 
 /**

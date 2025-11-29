@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Alepha } from "../../src/core/Alepha";
-import { KIND } from "../../src/core/constants/KIND";
+import { Alepha } from "../../src/core/Alepha.ts";
+import { KIND } from "../../src/core/constants/KIND.ts";
 import {
   createDescriptor,
   Descriptor,
-} from "../../src/core/helpers/descriptor";
+} from "../../src/core/helpers/descriptor.ts";
 
 describe("descriptor", () => {
   it("should create custom descriptors with key and identity methods", () => {

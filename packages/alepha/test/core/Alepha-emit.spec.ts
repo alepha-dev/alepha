@@ -1,5 +1,5 @@
+import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-import { Alepha } from "../../src/core";
 
 describe("alepha.events.emit", () => {
   it("should handle errors with catch option", async ({ expect }) => {

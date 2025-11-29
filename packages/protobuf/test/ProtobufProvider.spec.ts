@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
 import { describe, test } from "vitest";
-import { AlephaProtobuf, ProtobufProvider } from "../src";
+import { AlephaProtobuf, ProtobufProvider } from "../src/index.ts";
 
 const alepha = Alepha.create().with(AlephaProtobuf);
 const protobuf = alepha.inject(ProtobufProvider);

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
+import { $cache, MemoryCacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
-import { $cache, MemoryCacheProvider } from "../../src/cache";
 import {
   TestCache,
   testCacheBasic,

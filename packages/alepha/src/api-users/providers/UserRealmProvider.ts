@@ -4,12 +4,12 @@ import {
   realmAuthSettingsAtom,
   type UserRealmOptions,
 } from "alepha/api/users";
+import { $bucket } from "alepha/bucket";
 import { $repository, type Repository } from "alepha/orm";
-import { $bucket } from "../../bucket";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
-import { identities } from "../entities/identities";
-import { sessions } from "../entities/sessions";
-import { users } from "../entities/users";
+import { identities } from "../entities/identities.ts";
+import { sessions } from "../entities/sessions.ts";
+import { users } from "../entities/users.ts";
 
 export interface UserRealmRepositories {
   identities: Repository<typeof identities.schema>;

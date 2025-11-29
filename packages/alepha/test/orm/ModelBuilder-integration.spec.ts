@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
+import { $entity, $repository } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository } from "../../src/orm";
 import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
 
 // Define test entities with all features

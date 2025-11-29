@@ -1,4 +1,4 @@
-import type { UserAccount } from "../schemas/userAccountInfoSchema";
+import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 
 /**
  * Add contextual metadata to a user account info.

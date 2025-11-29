@@ -1,5 +1,5 @@
+import { RedisTopicProvider } from "alepha/topic/redis";
 import { describe, test } from "vitest";
-import { RedisTopicProvider } from "../../src/topic-redis";
 import {
   testTopicAsSub,
   testTopicBasic,

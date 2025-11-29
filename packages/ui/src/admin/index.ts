@@ -1,5 +1,5 @@
+import { AlephaUI } from "@alepha/ui";
 import { $module } from "alepha";
-import { AlephaUI } from "../core";
 import { AdminRouter } from "./AdminRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

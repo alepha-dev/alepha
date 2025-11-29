@@ -1,8 +1,8 @@
 import { Alepha } from "alepha";
+import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { describe, it } from "vitest";
-import { AlephaApiVerification } from "../../src/api-verifications";
 import { verifications } from "../../src/api-verifications/entities/verifications.ts";
 import { VerificationJobs } from "../../src/api-verifications/jobs/VerificationJobs.ts";
 
