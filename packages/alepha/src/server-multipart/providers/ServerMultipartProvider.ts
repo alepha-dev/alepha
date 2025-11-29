@@ -3,11 +3,40 @@ import { createReadStream } from "node:fs";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import { ReadableStream as WebStream } from "node:stream/web";
-import { $hook, $inject, Alepha, type FileLike, isTypeFile, t } from "alepha";
+import {
+  $env,
+  $hook,
+  $inject,
+  Alepha,
+  type FileLike,
+  isTypeFile,
+  t,
+} from "alepha";
+import { $logger } from "alepha/logger";
 import { HttpError, isMultipart, type ServerRoute } from "alepha/server";
+
+const envSchema = t.object({
+  SERVER_MULTIPART_LIMIT: t.integer({
+    default: 10_000_000, // 10MB total
+    min: 0,
+    description: "Maximum total size of multipart request body in bytes.",
+  }),
+  SERVER_MULTIPART_FILE_LIMIT: t.integer({
+    default: 5_000_000, // 5MB per file
+    min: 0,
+    description: "Maximum size of a single file in bytes.",
+  }),
+  SERVER_MULTIPART_FILE_COUNT: t.integer({
+    default: 10,
+    min: 1,
+    description: "Maximum number of files allowed in a single request.",
+  }),
+});
 
 export class ServerMultipartProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly env = $env(envSchema);
+  protected readonly log = $logger();
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
@@ -40,6 +69,21 @@ export class ServerMultipartProvider {
       }
 
       const contentType = request.headers["content-type"];
+
+      // Check content-length before processing to fail fast on oversized requests
+      const contentLength = request.headers["content-length"];
+      if (contentLength) {
+        const size = Number.parseInt(contentLength, 10);
+        if (!Number.isNaN(size) && size > this.env.SERVER_MULTIPART_LIMIT) {
+          this.log.error(
+            `Multipart request size limit exceeded: ${size} > ${this.env.SERVER_MULTIPART_LIMIT}`,
+          );
+          throw new HttpError({
+            status: 413,
+            message: `Request body size limit exceeded. Maximum allowed: ${this.env.SERVER_MULTIPART_LIMIT} bytes`,
+          });
+        }
+      }
 
       if (!contentType?.startsWith("multipart/form-data")) {
         if (!isMultipart(route)) {
@@ -98,38 +142,97 @@ export class ServerMultipartProvider {
     const body: Record<string, any> = {};
     const tempFiles: HybridFile[] = [];
 
-    if (route.schema?.body && t.schema.isObject(route.schema.body)) {
-      for (const [key, value] of Object.entries(route.schema.body.properties)) {
-        if (t.schema.isSchema(value)) {
-          if (isTypeFile(value)) {
-            const file = formData.get(key);
-            // Check if file is a Blob (File extends Blob in Web APIs)
-            if (file && typeof file === "object" && "arrayBuffer" in file) {
-              const hybridFile = await this.createHybridFile(file as Blob, key);
-              body[key] = hybridFile;
-              tempFiles.push(hybridFile);
-            }
-          } else {
-            const fieldValue = formData.get(key);
-            if (fieldValue !== null) {
-              // FormData values are either string or File/Blob
-              const stringValue =
-                typeof fieldValue === "string" ? fieldValue : "";
-              body[key] = this.alepha.codec.decode(value, stringValue);
+    // Helper to clean up temp files on error
+    const cleanupOnError = async () => {
+      for (const file of tempFiles) {
+        try {
+          await file.cleanup();
+        } catch {
+          // Ignore cleanup errors during error handling
+        }
+      }
+    };
+
+    try {
+      let fileCount = 0;
+      let totalSize = 0;
+
+      if (route.schema?.body && t.schema.isObject(route.schema.body)) {
+        for (const [key, value] of Object.entries(
+          route.schema.body.properties,
+        )) {
+          if (t.schema.isSchema(value)) {
+            if (isTypeFile(value)) {
+              const file = formData.get(key);
+              // Check if file is a Blob (File extends Blob in Web APIs)
+              if (file && typeof file === "object" && "arrayBuffer" in file) {
+                const blob = file as Blob;
+
+                // Validate file count
+                fileCount++;
+                if (fileCount > this.env.SERVER_MULTIPART_FILE_COUNT) {
+                  this.log.error(
+                    `Too many files in multipart request: ${fileCount} > ${this.env.SERVER_MULTIPART_FILE_COUNT}`,
+                  );
+                  throw new HttpError({
+                    status: 413,
+                    message: `Too many files. Maximum allowed: ${this.env.SERVER_MULTIPART_FILE_COUNT}`,
+                  });
+                }
+
+                // Validate individual file size
+                if (blob.size > this.env.SERVER_MULTIPART_FILE_LIMIT) {
+                  this.log.error(
+                    `File "${key}" exceeds size limit: ${blob.size} > ${this.env.SERVER_MULTIPART_FILE_LIMIT}`,
+                  );
+                  throw new HttpError({
+                    status: 413,
+                    message: `File "${key}" exceeds size limit. Maximum allowed: ${this.env.SERVER_MULTIPART_FILE_LIMIT} bytes`,
+                  });
+                }
+
+                // Validate total size
+                totalSize += blob.size;
+                if (totalSize > this.env.SERVER_MULTIPART_LIMIT) {
+                  this.log.error(
+                    `Total multipart size exceeds limit: ${totalSize} > ${this.env.SERVER_MULTIPART_LIMIT}`,
+                  );
+                  throw new HttpError({
+                    status: 413,
+                    message: `Total request size exceeds limit. Maximum allowed: ${this.env.SERVER_MULTIPART_LIMIT} bytes`,
+                  });
+                }
+
+                const hybridFile = await this.createHybridFile(blob, key);
+                body[key] = hybridFile;
+                tempFiles.push(hybridFile);
+              }
+            } else {
+              const fieldValue = formData.get(key);
+              if (fieldValue !== null) {
+                // FormData values are either string or File/Blob
+                const stringValue =
+                  typeof fieldValue === "string" ? fieldValue : "";
+                body[key] = this.alepha.codec.decode(value, stringValue);
+              }
             }
           }
         }
       }
-    }
 
-    return {
-      body,
-      cleanup: async () => {
-        for (const file of tempFiles) {
-          await file.cleanup();
-        }
-      },
-    };
+      return {
+        body,
+        cleanup: async () => {
+          for (const file of tempFiles) {
+            await file.cleanup();
+          }
+        },
+      };
+    } catch (error) {
+      // Clean up any temp files that were created before the error
+      await cleanupOnError();
+      throw error;
+    }
   }
 
   /**
