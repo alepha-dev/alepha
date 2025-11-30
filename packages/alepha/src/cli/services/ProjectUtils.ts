@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import type { RepositoryProvider } from "alepha/orm";
+import type { DrizzleKitProvider, RepositoryProvider } from "alepha/orm";
 import { boot } from "alepha/vite";
 import { tsImport } from "tsx/esm/api";
 import { appRouterTs } from "../assets/appRouterTs.ts";
@@ -466,7 +466,8 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       options.args,
     );
 
-    const kit = this.getKitFromAlepha(alepha);
+    const drizzleKitProvider =
+      alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
     const repositoryProvider =
       alepha.inject<RepositoryProvider>("RepositoryProvider");
     const accepted = new Set<string>([]);
@@ -493,7 +494,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       this.log.info(options.logMessage(providerName, dialect));
 
       const drizzleConfigJsPath = await this.prepareDrizzleConfig({
-        kit,
+        kit: drizzleKitProvider,
         provider,
         providerName,
         providerUrl: provider.url,
