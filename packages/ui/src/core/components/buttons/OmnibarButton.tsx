@@ -12,18 +12,23 @@ const OmnibarButton = (props: OmnibarButtonProps) => {
   return (
     <ActionButton
       variant={"default"}
-      miw={256}
       onClick={spotlight.open}
       justify={"space-between"}
-      rightSection={<Kbd size={"sm"}>⌘+K</Kbd>}
+      rightSection={
+        <Kbd visibleFrom={"sm"} size={"sm"}>
+          ⌘+K
+        </Kbd>
+      }
       radius={"md"}
       {...props.actionProps}
     >
       <Flex align={"center"} gap={"xs"}>
         <IconSearch size={16} color={"gray"} />
-        <Text size={"xs"} c={"dimmed"}>
-          Search...
-        </Text>
+        <Flex visibleFrom={"sm"} miw={192}>
+          <Text size={"xs"} c={"dimmed"}>
+            Search...
+          </Text>
+        </Flex>
       </Flex>
     </ActionButton>
   );

@@ -42,12 +42,14 @@ export class ReactPageProvider {
     return this.pages;
   }
 
-  public getConcretePages(): PageRoute[] {
-    const pages: PageRoute[] = [];
+  public getConcretePages(): ConcretePageRoute[] {
+    const pages: ConcretePageRoute[] = [];
     for (const page of this.pages) {
       if (page.children && page.children.length > 0) {
         continue;
       }
+
+      // check if the page has dynamic params
       const fullPath = this.pathname(page.name);
       if (fullPath.includes(":") || fullPath.includes("*")) {
         if (typeof page.static === "object") {
@@ -60,6 +62,7 @@ export class ReactPageProvider {
                 pages.push({
                   ...page,
                   name: params[Object.keys(params)[0]],
+                  staticName: page.name,
                   path,
                   ...entry,
                 });
@@ -70,6 +73,7 @@ export class ReactPageProvider {
 
         continue;
       }
+
       pages.push(page);
     }
     return pages;
@@ -615,6 +619,16 @@ export const isPageRoute = (it: any): it is PageRoute => {
 export interface PageRouteEntry
   extends Omit<PagePrimitiveOptions, "children" | "parent"> {
   children?: PageRouteEntry[];
+}
+
+export interface ConcretePageRoute extends PageRoute {
+  /**
+   * When exported, static routes can be split into multiple pages with different params.
+   * We replace 'name' by the new name for each static entry, and old 'name' becomes 'staticName'.
+   */
+  staticName?: string;
+
+  params?: Record<string, string>;
 }
 
 export interface PageRoute extends PageRouteEntry {

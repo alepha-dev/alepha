@@ -20,7 +20,12 @@ const Omnibar = (props: OmnibarProps) => {
         id: page.name,
         label: page.label ?? page.name,
         description: page.description,
-        onClick: () => router.go(page.name),
+        onClick: () => {
+          if (page.staticName) {
+            return router.go(page.staticName, { params: page.params });
+          }
+          return router.go(page.name);
+        },
         leftSection: page.icon,
       })),
     [],

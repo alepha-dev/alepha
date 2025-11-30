@@ -19,16 +19,16 @@ const Header = (props: HeaderProps) => {
         <HomeButton />
       </Flex>
       <Flex>
-        <OmnibarButton />
+        <OmnibarButton actionProps={{ variant: "outline" }} />
       </Flex>
       <Flex flex={1} justify={"end"} gap={"md"}>
         <ActionButton
-          variant={"outline"}
+          variant={"subtle"}
           href={"https://github.com/feunard/alepha"}
           target={"_blank"}
           icon={<IconBrandGithub />}
         />
-        <DarkModeButton mode="segmented" />
+        <DarkModeButton variant={"subtle"} />
       </Flex>
     </Flex>
   );
