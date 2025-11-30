@@ -297,7 +297,7 @@ export class DrizzleKitProvider {
    * Try to load the official Drizzle Kit API.
    * If not available, fallback to the local kit import.
    */
-  protected importDrizzleKit(): typeof DrizzleKit {
+  public importDrizzleKit(): typeof DrizzleKit {
     try {
       return createRequire(import.meta.url)("drizzle-kit/api");
     } catch (_) {

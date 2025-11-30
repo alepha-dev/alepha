@@ -43,10 +43,8 @@ const getServerEntry = async (
   }
 
   const maybeEntry = [
-    "src/index.server.ts",
     "src/main.server.ts",
     "src/server-entry.ts",
-    "src/index.server.tsx",
     "src/main.server.tsx",
     "src/server-entry.tsx",
     "src/main.ts",
@@ -68,7 +66,9 @@ const getServerEntry = async (
     return clientEntry;
   }
 
-  throw new AlephaError(`Could not find a server entry file.`);
+  throw new AlephaError(
+    `Could not find a server entry file. List of supported entry file: ${maybeEntry.join(", ")}`,
+  );
 };
 
 /**

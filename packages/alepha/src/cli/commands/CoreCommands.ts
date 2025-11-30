@@ -57,15 +57,13 @@ export class CoreCommands {
       // }),
       // choose package manager
       yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
+      pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
       // choose which dependencies to add
-      api: t.optional(
-        t.boolean({ description: "Include Alepha Server dependencies" }),
-      ),
       react: t.optional(
         t.boolean({ description: "Include Alepha React dependencies" }),
       ),
-      orm: t.optional(
-        t.boolean({ description: "Include Alepha ORM dependencies" }),
+      admin: t.optional(
+        t.boolean({ description: "Include Alepha admin panel dependencies" }),
       ),
     }),
     handler: async ({ run, flags, root }) => {
@@ -75,6 +73,8 @@ export class CoreCommands {
           await this.utils.ensureConfig(root, {
             tsconfigJson: true,
             packageJson: flags,
+            biomeJson: true,
+            viteConfigTs: true,
             indexHtml: !!flags.react,
           });
         },
@@ -86,6 +86,7 @@ export class CoreCommands {
 
       if (flags.yarn || guessedPm === "yarn") {
         await this.utils.ensureYarn(root);
+        await run("yarn set version stable");
         await run("yarn install", {
           alias: "Installing dependencies with Yarn",
         });

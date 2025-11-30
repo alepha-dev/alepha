@@ -1,5 +1,5 @@
 export const indexHtml = (
-  browserEntry: string = "/src/main.tsx",
+  browserEntry: string,
 ) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -8,6 +8,7 @@ export const indexHtml = (
   <title>App</title>
 </head>
 <body>
+<div id="root"></div>
 <script type="module" src="${browserEntry}"></script>
 </body>
 </html>

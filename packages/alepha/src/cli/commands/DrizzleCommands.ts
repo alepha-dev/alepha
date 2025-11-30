@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
+import type { DrizzleKitProvider, RepositoryProvider } from "alepha/orm";
 import { ProcessRunner } from "../services/ProcessRunner.ts";
 import { ProjectUtils } from "../services/ProjectUtils.ts";
 
@@ -25,7 +25,7 @@ export class DrizzleCommands {
    * Check if database migrations are up to date.
    */
   check = $command({
-    name: "db:migrate:check",
+    name: "db:check-migrations",
     description: "Check if database migration files are up to date",
     args: t.optional(
       t.text({
@@ -34,81 +34,89 @@ export class DrizzleCommands {
       }),
     ),
     flags: drizzleCommandFlags,
-    handler: async ({ args, flags, root }) => {
+    handler: async ({ args, root }) => {
       const rootDir = root;
       this.log.debug(`Using project root: ${rootDir}`);
+
       const { alepha } = await this.utils.loadAlephaFromServerEntryFile(
         rootDir,
         args,
       );
 
-      const models: any[] = [];
-      const repositories = alepha.descriptors("repository") as any[];
-      const kit = createRequire(import.meta.url)("drizzle-kit/api");
-      const migrationDir = join(rootDir, "migrations");
+      const repositoryProvider =
+        alepha.inject<RepositoryProvider>("RepositoryProvider");
+      const drizzleKitProvider =
+        alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+      const accepted = new Set<string>([]);
 
-      const journalFile = await readFile(
-        `${migrationDir}/meta/_journal.json`,
-        "utf-8",
-      ).catch(() => null);
-
-      if (!journalFile) {
-        this.log.info(`No migration journal found.`);
-        return;
-      }
-
-      const journal = JSON.parse(journalFile);
-
-      const lastMigration = journal.entries[journal.entries.length - 1];
-
-      const lastSnapshot = JSON.parse(
-        await readFile(
-          `${migrationDir}/meta/${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
-          "utf-8",
-        ),
-      );
-
-      for (const repository of repositories) {
-        if (!models.includes(repository.table)) {
-          models.push(repository.table);
+      for (const descriptor of repositoryProvider.getRepositories()) {
+        const provider = descriptor.provider;
+        const providerName = provider.name;
+        if (accepted.has(providerName)) {
+          continue;
         }
+
+        accepted.add(providerName);
+
+        const migrationDir = join(rootDir, "migrations", providerName);
+
+        const journalFile = await readFile(
+          `${migrationDir}/meta/_journal.json`,
+          "utf-8",
+        ).catch(() => null);
+
+        if (!journalFile) {
+          this.log.info(`No migration journal found.`);
+          return;
+        }
+
+        const journal = JSON.parse(journalFile);
+        const lastMigration = journal.entries[journal.entries.length - 1];
+        const lastSnapshot = JSON.parse(
+          await readFile(
+            `${migrationDir}/meta/${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
+            "utf-8",
+          ),
+        );
+
+        const models = drizzleKitProvider.getModels(provider);
+        const kit = drizzleKitProvider.importDrizzleKit();
+        const now = kit.generateDrizzleJson(models, lastSnapshot.id);
+
+        const migrationStatements = await new Promise<Array<any>>((resolve) => {
+          (async () => {
+            const timer = setTimeout(() => {
+              resolve([{ message: "Migration generation timed out." }]);
+            }, 5000);
+            const statements = await kit.generateMigration(lastSnapshot, now);
+            clearTimeout(timer);
+            resolve(statements);
+          })();
+        });
+
+        if (migrationStatements.length === 0) {
+          this.log.info("No changes detected.");
+          return;
+        }
+
+        this.log.info("");
+        this.log.info("Detected migration statements:");
+        this.log.info("");
+        for (const stmt of migrationStatements) {
+          this.log.info(stmt);
+        }
+        this.log.info("");
+
+        this.log.info(
+          `At least ${migrationStatements.length} change(s) detected.`,
+        );
+        this.log.info(
+          "Please, run 'alepha db:generate' to update the migration files.",
+        );
+        this.log.info("");
+
+        throw new AlephaError("Database migrations are not up to date.");
       }
-
-      const now = kit.generateDrizzleJson(models, lastSnapshot.id);
-
-      const migrationStatements = await new Promise<Array<any>>((resolve) => {
-        (async () => {
-          const timer = setTimeout(() => {
-            resolve([{ message: "Migration generation timed out." }]);
-          }, 5000);
-          const statements = await kit.generateMigration(lastSnapshot, now);
-          clearTimeout(timer);
-          resolve(statements);
-        })();
-      });
-
-      if (migrationStatements.length === 0) {
-        this.log.info("No changes detected.");
-        return;
-      }
-
-      this.log.info("");
-      this.log.info("Detected migration statements:");
-      this.log.info("");
-      for (const stmt of migrationStatements) {
-        this.log.info(stmt);
-      }
-      this.log.info("");
-
-      this.log.info(
-        `At least ${migrationStatements.length} change(s) detected.`,
-      );
-      this.log.info(
-        "Please, run 'alepha db:generate' to update the migration files.",
-      );
-      this.log.info("");
-
-      throw new AlephaError("Database migrations are not up to date.");
     },
   });
 

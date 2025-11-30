@@ -67,7 +67,7 @@ export class NodeHttpServerProvider extends ServerProvider {
     return createServer(
       {
         // nov 25 - keep connections alive for better performance, cuz we http/1.1 by default
-        keepAlive: true,
+        keepAlive: this.alepha.isProduction(),
       },
       func,
     );

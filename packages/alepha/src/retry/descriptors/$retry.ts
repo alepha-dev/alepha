@@ -76,18 +76,20 @@ export class RetryDescriptor<
   T extends (...args: any[]) => any,
 > extends Descriptor<RetryDescriptorOptions<T>> {
   protected readonly retryProvider = $inject(RetryProvider);
-  protected appAbortController: AbortController;
+  protected appAbortController?: AbortController;
 
   constructor(args: DescriptorArgs<RetryDescriptorOptions<T>>) {
     super(args);
 
-    this.appAbortController = new AbortController();
     this.alepha.events.on("stop", () => {
-      this.appAbortController.abort();
+      this.appAbortController?.abort();
     });
   }
 
   async run(...args: Parameters<T>): Promise<ReturnType<T>> {
+    // Nov 25: Cloudflare does not like 'new AbortController' outside main handler, we can't pre-create it in the constructor.
+    this.appAbortController ??= new AbortController();
+
     return this.retryProvider.retry(
       {
         ...this.options,

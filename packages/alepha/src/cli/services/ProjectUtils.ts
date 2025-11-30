@@ -6,8 +6,10 @@ import { $logger } from "alepha/logger";
 import type { RepositoryProvider } from "alepha/orm";
 import { boot } from "alepha/vite";
 import { tsImport } from "tsx/esm/api";
+import { appRouterTs } from "../assets/appRouterTs.ts";
 import { biomeJson } from "../assets/biomeJson.ts";
 import { indexHtml } from "../assets/indexHtml.ts";
+import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { version } from "../version.ts";
@@ -40,18 +42,16 @@ export class ProjectUtils {
    * @param root - The root directory of the project
    */
   public async ensureYarn(root: string): Promise<void> {
-    const yarnrcPath = join(root, ".yarnrc.yml");
-    try {
-      await access(yarnrcPath);
-    } catch {
-      await writeFile(yarnrcPath, "nodeLinker: node-modules");
-    }
+    await this.ensureFileExists(
+      root,
+      ".yarnrc.yml",
+      "nodeLinker: node-modules",
+      false,
+    );
 
     // remove lock files from other package managers
-    const npmLockPath = join(root, "package-lock.json");
-    const pnpmLockPath = join(root, "pnpm-lock.yaml");
-    await this.fs.rm(npmLockPath, { force: true });
-    await this.fs.rm(pnpmLockPath, { force: true });
+    await this.fs.rm(join(root, "package-lock.json"), { force: true });
+    await this.fs.rm(join(root, "pnpm-lock.yaml"), { force: true });
   }
 
   /**
@@ -74,8 +74,13 @@ export class ProjectUtils {
 
     if (modes.react) {
       dependencies["@alepha/react"] = `^${version}`;
-      dependencies.react = "19.1.0";
-      devDependencies["@types/react"] = "19.1.0";
+      dependencies.react = "^19.2.0";
+      dependencies["react-dom"] = "^19.2.0";
+      devDependencies["@types/react"] = "^19.2.0";
+    }
+
+    if (modes.admin) {
+      dependencies["@alepha/ui"] = `^${version}`;
     }
 
     return {
@@ -85,6 +90,7 @@ export class ProjectUtils {
       scripts: {
         dev: "alepha dev",
         build: "alepha build",
+        verify: "alepha verify",
       },
     };
   }
@@ -354,22 +360,6 @@ export class ProjectUtils {
   }
 
   /**
-   * Get DrizzleKitProvider from an Alepha instance.
-   *
-   * Searches the Alepha registry for the DrizzleKitProvider instance.
-   *
-   * @param alepha - The Alepha instance to search
-   * @returns The DrizzleKitProvider instance
-   */
-  public getKitFromAlepha(alepha: Alepha): any {
-    // biome-ignore lint/complexity/useLiteralKeys: private key
-    return alepha["registry"]
-      .values()
-      .find((it: any) => it.instance.constructor.name === "DrizzleKitProvider")
-      ?.instance;
-  }
-
-  /**
    * Generate JavaScript code for Drizzle entities export.
    *
    * Creates a temporary entities.js file that imports from the entry file
@@ -536,11 +526,27 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       return;
     }
 
-    const entry = await boot.getServerEntry(root).catch(() => null);
-    await this.fs.writeFile(
-      join(root, "index.html"),
-      indexHtml(entry ? entry.replace(root, "") : undefined),
-    );
+    const serverEntry = "src/main.server.ts";
+    const browserEntry = "src/main.browser.ts";
+    const appRouter = "src/AppRouter.ts";
+
+    await this.fs.writeFile(join(root, "index.html"), indexHtml(browserEntry));
+
+    try {
+      await this.fs.mkdir(join(root, "src"), { recursive: true });
+    } catch {}
+
+    if (!(await this.fs.exists(join(root, browserEntry)))) {
+      await this.fs.writeFile(join(root, browserEntry), mainBrowserTs());
+    }
+
+    if (!(await this.fs.exists(join(root, serverEntry)))) {
+      await this.fs.writeFile(join(root, serverEntry), mainBrowserTs());
+    }
+
+    if (!(await this.fs.exists(join(root, appRouter)))) {
+      await this.fs.writeFile(join(root, appRouter), appRouterTs());
+    }
   }
 
   public async hasDir(root: string, dirName: string): Promise<boolean> {
@@ -559,6 +565,5 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
 
 export interface DependencyModes {
   react?: boolean;
-  // testing?: boolean;
-  // ui?: boolean;
+  admin?: boolean;
 }
