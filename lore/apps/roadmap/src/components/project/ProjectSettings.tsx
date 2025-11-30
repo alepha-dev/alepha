@@ -91,9 +91,9 @@ const ProjectSettings = () => {
                       params: { id: project.id },
                     })
                     .then(() => {
-                      alepha.state.set(
+                      alepha.store.set(
                         userProjectsAtom,
-                        (alepha.state.get(userProjectsAtom) ?? []).filter(
+                        (alepha.store.get(userProjectsAtom) ?? []).filter(
                           (p) => p.id !== project.id,
                         ),
                       );

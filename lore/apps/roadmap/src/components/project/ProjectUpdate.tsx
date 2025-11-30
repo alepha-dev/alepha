@@ -39,9 +39,9 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
         body: values,
       });
 
-      alepha.state.set(currentProjectAtom, project);
-      alepha.state.set(userProjectsAtom, [
-        ...(alepha.state.get(userProjectsAtom) ?? []).filter(
+      alepha.store.set(currentProjectAtom, project);
+      alepha.store.set(userProjectsAtom, [
+        ...(alepha.store.get(userProjectsAtom) ?? []).filter(
           (p) => p.id !== project.id,
         ),
         project,

@@ -96,9 +96,9 @@ const TaskView = (props: TaskViewProps) => {
         params: { id: task.id },
       });
 
-      alepha.state.set(
+      alepha.store.set(
         currentAssignedTasksAtom,
-        (alepha.state.get(currentAssignedTasksAtom) ?? []).filter(
+        (alepha.store.get(currentAssignedTasksAtom) ?? []).filter(
           (t) => t.id !== task.id,
         ),
       );
@@ -146,7 +146,7 @@ const TaskView = (props: TaskViewProps) => {
                     task={task}
                     onUpdate={(it) => {
                       setTask(it);
-                      alepha.state.set(currentTaskAtom, it);
+                      alepha.store.set(currentTaskAtom, it);
                     }}
                     showDialog={showDialog}
                     setShowDialog={setShowDialog}
@@ -155,7 +155,7 @@ const TaskView = (props: TaskViewProps) => {
                     task={task}
                     onUpdate={(it) => {
                       setTask(it);
-                      alepha.state.set(currentTaskAtom, it);
+                      alepha.store.set(currentTaskAtom, it);
                     }}
                   />
                   <DuplicateTaskButton task={task} />
@@ -173,10 +173,10 @@ const TaskView = (props: TaskViewProps) => {
                 task={task}
                 onUpdate={(it) => {
                   setTask(it);
-                  alepha.state.set(currentTaskAtom, it);
+                  alepha.store.set(currentTaskAtom, it);
                   const tasks =
-                    alepha.state.get(currentAssignedTasksAtom) ?? [];
-                  alepha.state.set(
+                    alepha.store.get(currentAssignedTasksAtom) ?? [];
+                  alepha.store.set(
                     currentAssignedTasksAtom,
                     tasks.map((t) => (t.id === it.id ? it : t)),
                   );
@@ -220,7 +220,7 @@ const TaskView = (props: TaskViewProps) => {
               task={task}
               onTaskUpdate={(updatedTask) => {
                 setTask(updatedTask);
-                alepha.state.set(currentTaskAtom, updatedTask);
+                alepha.store.set(currentTaskAtom, updatedTask);
               }}
             />
 
@@ -288,9 +288,9 @@ const TaskView = (props: TaskViewProps) => {
                         params: { id: task.id },
                       });
                       setTask(updatedTask);
-                      alepha.state.set(currentTaskAtom, updatedTask);
-                      alepha.state.set(currentAssignedTasksAtom, [
-                        ...(alepha.state.get(currentAssignedTasksAtom) ?? []),
+                      alepha.store.set(currentTaskAtom, updatedTask);
+                      alepha.store.set(currentAssignedTasksAtom, [
+                        ...(alepha.store.get(currentAssignedTasksAtom) ?? []),
                         updatedTask,
                       ]);
                     }}
@@ -325,11 +325,11 @@ const TaskView = (props: TaskViewProps) => {
                       const { character } = await taskApi.completeTask({
                         params: { id: task.id },
                       });
-                      alepha.state.set(currentProjectCharacterAtom, character);
-                      alepha.state.set(
+                      alepha.store.set(currentProjectCharacterAtom, character);
+                      alepha.store.set(
                         currentAssignedTasksAtom,
                         (
-                          alepha.state.get(currentAssignedTasksAtom) ?? []
+                          alepha.store.get(currentAssignedTasksAtom) ?? []
                         ).filter((t) => t.id !== task.id),
                       );
                       await router.go("projectBoard", {
@@ -427,11 +427,11 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
     });
     props.onUpdate(updatedTask);
     // Update local state
-    const currentTasks = alepha.state.get(currentAssignedTasksAtom) || [];
+    const currentTasks = alepha.store.get(currentAssignedTasksAtom) || [];
     const updatedTasks = currentTasks.map((t) =>
       t.id === updatedTask.id ? updatedTask : t,
     );
-    alepha.state.set(currentAssignedTasksAtom, updatedTasks);
+    alepha.store.set(currentAssignedTasksAtom, updatedTasks);
     setShowDialog(false);
   };
 
