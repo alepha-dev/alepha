@@ -3,12 +3,12 @@ import { DateTimeProvider } from "alepha/datetime";
 import { EmailProvider } from "alepha/email";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+import { SmsProvider } from "alepha/sms";
 import { $notification } from "../descriptors/$notification.ts";
 import {
   type NotificationEntity,
   notifications,
 } from "../entities/notifications.ts";
-import { SmsProvider } from "../providers/SmsProvider.ts";
 
 export class NotificationSenderService {
   protected readonly alepha = $inject(Alepha);
