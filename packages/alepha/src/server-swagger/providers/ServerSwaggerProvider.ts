@@ -391,6 +391,7 @@ window.onload = function() {
     const root = await this.getAssetPath(
       ui.root,
       join(dirname, "../../assets/swagger-ui"),
+      join(dirname, "../../../assets/swagger-ui"),
       join(dirname, "../../../../assets/swagger-ui"),
     );
 
