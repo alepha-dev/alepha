@@ -442,6 +442,24 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     );
   }
 
+  public async loadEnvFile(root: string): Promise<void> {
+    const envPath = join(root, ".env");
+    try {
+      const envContent = await readFile(envPath, "utf8");
+      const lines = envContent.split("\n");
+      for (const line of lines) {
+        const [key, ...rest] = line.split("=");
+        if (key) {
+          const value = rest.join("=");
+          process.env[key.trim()] = value.trim();
+        }
+      }
+      this.log.debug(`Loaded environment variables from ${envPath}`);
+    } catch {
+      this.log.debug(`No .env file found at ${envPath}, skipping load.`);
+    }
+  }
+
   /**
    * Run a drizzle-kit command for all database providers in an Alepha instance.
    *
@@ -459,6 +477,9 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     logMessage: (providerName: string, dialect: string) => string;
   }): Promise<void> {
     const rootDir = options.root;
+
+    await this.loadEnvFile(rootDir);
+
     this.log.debug(`Using project root: ${rootDir}`);
 
     const { alepha, entry } = await this.loadAlephaFromServerEntryFile(
@@ -550,7 +571,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     }
   }
 
-  public async hasDir(root: string, dirName: string): Promise<boolean> {
+  public async exists(root: string, dirName: string): Promise<boolean> {
     return this.fs.exists(join(root, dirName));
   }
 

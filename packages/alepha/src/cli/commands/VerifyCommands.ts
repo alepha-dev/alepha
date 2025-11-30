@@ -35,7 +35,7 @@ export class VerifyCommands {
         await run("alepha test");
       }
 
-      if (await this.utils.hasDir(root, "migrations")) {
+      if (await this.utils.exists(root, "migrations")) {
         await run("alepha db:check-migrations");
       }
 
