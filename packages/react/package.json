@@ -59,36 +59,36 @@
       "react-native": "./src/auth/index.browser.ts",
       "browser": "./src/auth/index.browser.ts",
       "import": "./src/auth/index.ts",
-      "require": "./src/auth/index.ts"
+      "default": "./src/auth/index.ts"
     },
     ".": {
       "types": "./src/core/index.ts",
       "react-native": "./src/core/index.native.ts",
       "browser": "./src/core/index.browser.ts",
       "import": "./src/core/index.ts",
-      "require": "./src/core/index.ts"
+      "default": "./src/core/index.ts"
     },
     "./form": {
       "types": "./src/form/index.ts",
       "import": "./src/form/index.ts",
-      "require": "./src/form/index.ts"
+      "default": "./src/form/index.ts"
     },
     "./head": {
       "types": "./src/head/index.ts",
       "react-native": "./src/head/index.browser.ts",
       "browser": "./src/head/index.browser.ts",
       "import": "./src/head/index.ts",
-      "require": "./src/head/index.ts"
+      "default": "./src/head/index.ts"
     },
     "./i18n": {
       "types": "./src/i18n/index.ts",
       "import": "./src/i18n/index.ts",
-      "require": "./src/i18n/index.ts"
+      "default": "./src/i18n/index.ts"
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",
       "import": "./src/websocket/index.ts",
-      "require": "./src/websocket/index.ts"
+      "default": "./src/websocket/index.ts"
     }
   }
 }

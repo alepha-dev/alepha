@@ -75,6 +75,7 @@ async function main(to?: string) {
               if (value["react-native"]) {
                 value["react-native"] = replace(value["react-native"]);
               }
+              value.default = value.import;
             }
           }
         }
@@ -116,6 +117,7 @@ async function main(to?: string) {
               if (value["react-native"]) {
                 value["react-native"] = replace(value["react-native"]);
               }
+              value.default = value.import;
             }
           }
         }

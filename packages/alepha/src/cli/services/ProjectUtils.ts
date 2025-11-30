@@ -429,6 +429,16 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       },
     };
 
+    if (options.dialect === "sqlite") {
+      let url = options.providerUrl;
+      url = url.replace("sqlite://", "").replace("file://", "");
+      url = join(options.rootDir, url);
+
+      config.dbCredentials = {
+        url,
+      };
+    }
+
     if (options.providerName === "pglite") {
       config.driver = "pglite";
     }

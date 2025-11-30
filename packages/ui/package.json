@@ -57,17 +57,17 @@
     "./admin": {
       "types": "./src/admin/index.ts",
       "import": "./src/admin/index.ts",
-      "require": "./src/admin/index.ts"
+      "default": "./src/admin/index.ts"
     },
     "./auth": {
       "types": "./src/auth/index.ts",
       "import": "./src/auth/index.ts",
-      "require": "./src/auth/index.ts"
+      "default": "./src/auth/index.ts"
     },
     ".": {
       "types": "./src/core/index.ts",
       "import": "./src/core/index.ts",
-      "require": "./src/core/index.ts"
+      "default": "./src/core/index.ts"
     },
     "./styles": "./styles.css"
   }
