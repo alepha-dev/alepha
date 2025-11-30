@@ -53,7 +53,6 @@ export class AlephaPackageBuilderCli {
           pkgData.exports[path].browser = `./src/${item.name}/index.browser.ts`;
         }
         pkgData.exports[path].import = `./src/${item.name}/index.ts`;
-        pkgData.exports[path].require = `./src/${item.name}/index.ts`;
       }
 
       if (packageName === "alepha") {
