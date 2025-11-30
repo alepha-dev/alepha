@@ -10,7 +10,7 @@
     "storage-blob"
   ],
   "author": "Nicolas Foures",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -26,12 +26,12 @@
     "@azure/storage-blob": "^12.29.1"
   },
   "devDependencies": {
-    "alepha": "0.13.0",
+    "alepha": "0.13.1",
     "tsdown": "^0.16.7",
     "vitest": "^4.0.14"
   },
   "peerDependencies": {
-    "alepha": "0.13.0"
+    "alepha": "0.13.1"
   },
   "scripts": {
     "lint": "alepha lint",
