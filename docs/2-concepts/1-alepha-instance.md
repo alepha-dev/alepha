@@ -1,98 +1,125 @@
-## Alepha Instance
+# The Alepha Instance
+
+The `Alepha` class is the brain of your application.
+It acts as the central container that holds your configuration, manages the state, and controls the lifecycle of all your services.
+
+Unlike frameworks that rely on global nasty side-effects, Alepha keeps everything contained within this instance.
+This makes your application portable, testable, and predictable.
+
+## Creating the Instance
+
+While you *can* use `new Alepha()`, we strongly recommend using the static factory method.
 
 ```ts
 import { Alepha } from "alepha";
 
-const alepha = new Alepha();
-```
-
-The `Alepha` class is the core of the Alepha framework. It serves as the main entry point for your application, allowing you to configure and run your app.
-
-### Factory
-
-```ts
-import { Alepha } from "alepha";
-
+// The standard way to initialize your app
 const alepha = Alepha.create();
 ```
 
-A preferred way to create an instance of Alepha is by using the `create` method.
+**Why `create()`?**
+1.  **Environment Merging:** It automatically merges `process.env` (on the server) with any custom configuration you provide.
+2.  **Test Integration:** If it detects a testing environment (like Vitest with `globals: true`), it automatically hooks into `beforeAll` and `afterAll` to manage the app lifecycle during tests.
 
-- Server-side, it will use `process.env.*`.
-- In testing environments, it will attach `.start` and `.stop` methods to `beforeAll` and `afterAll` hooks if globals is enabled.
+### Configuration & Environment
 
-### Lifecycle Methods
-
-```ts
-await alepha.start();
-await alepha.stop();
-```
-
-The `start` method initializes the Alepha instance, setting up the necessary environment and configurations.
-The `stop` method gracefully shuts down the instance, cleaning up resources and connections.
-
-#### Running the Application
+You can pass a configuration object to `create`. The most important property is `env`.
 
 ```ts
-import { run } from "alepha";
-
-run(alepha)
-// server: alepha.start().then(() => process.on("exit", () => alepha.stop()));
-// browser: alepha.start()
-```
-
-The `run` function is a convenience method that starts the Alepha instance.
-It abstracts away the details of server setup, allowing you to focus on building your application.
-On the server side, `.stop` will be called automatically when the process exits, ensuring a clean shutdown.
-
-### Configuration
-
-```ts
-import { Alepha } from "alepha";
-
-Alepha.create({
+const alepha = Alepha.create({
   env: {
-    // custom environment variables
-    MY_VAR: "value",
-  },
-  // other configuration options
+    // 1. Set defaults or overrides
+    APP_NAME: "My SaaS",
+
+    // 2. Secrets are automatically loaded from process.env
+    // You don't need to manually pass them here if they exist in the environment
+  }
 });
+
+// Access anywhere via the instance (read-only)
+console.log(alepha.env.APP_NAME);
 ```
 
-Alepha constructors can accept a configuration object that allows you to set custom environment variables and other options.
-Env variables can be accessed using `alepha.env.MY_VAR`, it's immutable, so you cannot change it after the instance is created.
+> **Tip:** While `alepha.env` gives you raw access, we recommend using the [`$env`](/docs/packages-alepha-core#$env) primitive inside your services for type-safe, validated environment variables.
 
-### Container
+## The Container (Dependency Injection)
+
+Alepha is built on a powerful Dependency Injection (DI) container. You don't manually instantiate your classes; you register them, and Alepha wires them together.
+
+### Registering Services (`.with`)
+
+Use `.with()` to add services, modules, or providers to your application.
 
 ```ts
 import { Alepha, run } from "alepha";
 import { AlephaServer } from "alepha/server";
+import { MyDatabaseService } from "./services/db";
 
 const alepha = Alepha.create();
 
-alepha.with(AlephaServer); // register a http server
+// Register the HTTP Server module
+alepha.with(AlephaServer);
 
-run(alepha); // run http server
+// Register your own service
+alepha.with(MyDatabaseService);
 ```
 
-The Alepha instance acts as a container for your application. You can register services, providers, modules, that your application needs.
+> **Auto-Registration Magic:**
+> You rarely need to manually register core modules. If you use a primitive like `$route` or `$repository` in your class, Alepha automatically detects the dependency and registers the necessary modules (like `AlephaServer` or `AlephaPostgres`) for you.
 
-> Descriptors will automatically register their module when they are used, so you don't need to register them manually. </br>
-> Example: A service with `$route()` will register the `AlephaServer` for you.
+### Using Services (`.inject`)
 
-You can also inject services.
+If you need to access a service from the outside (e.g., in a script or test), use `.inject()`.
 
 ```ts
-import { Alepha, run } from "alepha";
-
-class MyService {
-  greet() {
-    return "Hello from MyService!";
-  }
-}
-
-const alepha = Alepha.create();
 const myService = alepha.inject(MyService);
+myService.doSomething();
+```
 
-console.log(myService.greet()); // "Hello from MyService!"
+Technically, `.inject(MyService)` is nearly like `new MyService()` but with all dependencies automatically resolved and injected.
+
+## Lifecycle Management
+
+Alepha has a strict lifecycle to ensure resources (databases, ports, queues) are opened and closed correctly.
+
+### The Phases
+
+1.  **Configure:** All services register their configurations. Primitives like `$action` read their schemas.
+2.  **Start:** Providers connect to IO (Database connections open, HTTP server listens).
+3.  **Ready:** The app is live. Background jobs and schedulers start running.
+4.  **Stop:** Graceful shutdown. HTTP server stops accepting requests, DB connections close.
+
+```
+CONFIGURE --> START --> READY --> (LIVE) --> STOP
+```
+
+### Running the App
+
+You don't need to call the lifecycle methods manually. Use the `run` helper.
+
+```ts
+import { run } from "alepha";
+
+// 1. Configures
+// 2. Starts
+// 3. Handles SIGTERM/SIGINT for graceful shutdown
+run(alepha);
+```
+
+### Manual Control (For Tests)
+
+In tests, you often want manual control over the lifecycle to mock services or test specific states.
+
+```ts
+// In a test file
+test("MyService", async () => {
+  const app = Alepha.create().with(MyService);
+
+  await app.start(); // Connects to DB, etc.
+
+  const service = app.inject(MyService);
+  expect(service.isReady).toBe(true);
+
+  // await app.stop(); <- automatically called by Vitest hooks
+});
 ```

@@ -74,7 +74,7 @@ export class CronProvider {
   /**
    * Registers a cron job.
    *
-   * It's automatically done when using the `$scheduler` descriptor but can also be used manually.
+   * It's automatically done when using the `$scheduler` primitive but can also be used manually.
    */
   public createCronJob(
     name: string,

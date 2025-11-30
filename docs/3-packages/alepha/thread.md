@@ -12,17 +12,17 @@ Simple interface for managing worker threads in Alepha.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $thread()
 
-Creates a worker thread descriptor for offloading CPU-intensive tasks to separate threads.
+Creates a worker thread primitive for offloading CPU-intensive tasks to separate threads.
 
-This descriptor enables you to run JavaScript code in Node.js worker threads, allowing you to
+This primitive enables you to run JavaScript code in Node.js worker threads, allowing you to
 leverage multiple CPU cores and avoid blocking the main event loop. It provides a pool-based
 approach with intelligent thread reuse and automatic lifecycle management.
 

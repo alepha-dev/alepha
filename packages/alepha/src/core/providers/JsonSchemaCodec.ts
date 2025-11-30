@@ -1,5 +1,5 @@
 import type { TSchema } from "typebox";
-import { $inject } from "../descriptors/$inject.ts";
+import { $inject } from "../primitives/$inject.ts";
 import { Json } from "./Json.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
 import type { Static } from "./TypeProvider.ts";

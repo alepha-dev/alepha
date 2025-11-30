@@ -564,7 +564,7 @@ describe("SQL Injection Security Tests", () => {
           use: NodeSqliteProvider,
         });
 
-        alepha.state.mut(nodeSqliteOptions, (old) => ({
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
           ...old,
           path: "sqlite://:memory:",
         }));
@@ -601,7 +601,7 @@ describe("SQL Injection Security Tests", () => {
           use: NodeSqliteProvider,
         });
 
-        alepha.state.mut(nodeSqliteOptions, (old) => ({
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
           ...old,
           path: "sqlite://:memory:",
         }));
@@ -638,7 +638,7 @@ describe("SQL Injection Security Tests", () => {
           use: NodeSqliteProvider,
         });
 
-        alepha.state.mut(nodeSqliteOptions, (old) => ({
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
           ...old,
           path: "sqlite://:memory:",
         }));
@@ -677,7 +677,7 @@ describe("SQL Injection Security Tests", () => {
           use: NodeSqliteProvider,
         });
 
-        alepha.state.mut(nodeSqliteOptions, (old) => ({
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
           ...old,
           path: "sqlite://:memory:",
         }));
@@ -718,7 +718,7 @@ describe("SQL Injection Security Tests", () => {
           use: NodeSqliteProvider,
         });
 
-        alepha.state.mut(nodeSqliteOptions, (old) => ({
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
           ...old,
           path: "sqlite://:memory:",
         }));

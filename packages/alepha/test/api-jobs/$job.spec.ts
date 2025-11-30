@@ -2,10 +2,10 @@ import { Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { describe, expect, it, vi } from "vitest";
-import { $job } from "../../src/api-jobs/descriptors/$job.ts";
 import { jobExecutions } from "../../src/api-jobs/entities/jobExecutions.ts";
+import { $job } from "../../src/api-jobs/primitives/$job.ts";
 
-describe("$job descriptor", () => {
+describe("$job primitive", () => {
   describe("basic functionality", () => {
     it("should execute handler when triggered", async () => {
       const handler = vi.fn();
@@ -362,7 +362,7 @@ describe("$job descriptor", () => {
 
   describe("scheduling", () => {
     it("should support cron option", async () => {
-      // This test verifies the descriptor accepts cron option
+      // This test verifies the primitive accepts cron option
       class App {
         cronJob = $job({
           name: "cron-job",

@@ -3,7 +3,7 @@ import { $sms, MemorySmsProvider } from "alepha/sms";
 import { describe, test } from "vitest";
 
 describe("$sms", () => {
-  test("should send SMS using descriptor", async ({ expect }) => {
+  test("should send SMS using primitive", async ({ expect }) => {
     class TestService {
       readonly welcomeSms = $sms({ name: "welcome" });
     }

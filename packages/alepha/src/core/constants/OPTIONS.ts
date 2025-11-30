@@ -1,5 +1,5 @@
 /**
- * Used for descriptors options.
+ * Used for primitives options.
  *
  * @internal
  */

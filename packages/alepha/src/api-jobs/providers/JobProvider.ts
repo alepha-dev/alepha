@@ -1,6 +1,6 @@
 import { $env, $inject, Alepha, type Async, type Static, t } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
-import { $lock, type LockDescriptor } from "alepha/lock";
+import { $lock, type LockPrimitive } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
@@ -32,7 +32,7 @@ export class JobProvider {
   protected readonly jobs = new Map<string, JobRegistration>();
 
   /**
-   * Register and set up a job for execution (called during descriptor initialization).
+   * Register and set up a job for execution (called during primitive initialization).
    */
   public registerJob(options: Job): JobRegistration {
     const jobName = options.name;
@@ -55,8 +55,8 @@ export class JobProvider {
       });
     }
 
-    // Create lock descriptor if locking is enabled
-    const lockDescriptor =
+    // Create lock primitive if locking is enabled
+    const lockPrimitive =
       options.lock !== false
         ? $lock({
             name: () => {
@@ -74,7 +74,7 @@ export class JobProvider {
     const registration: JobRegistration = {
       name: jobName,
       options,
-      lockDescriptor,
+      lockPrimitive,
     };
 
     this.jobs.set(jobName, registration);
@@ -99,15 +99,15 @@ export class JobProvider {
     }
 
     // Execute handler with or without lock
-    if (registration.options.lock !== false && registration.lockDescriptor) {
-      await registration.lockDescriptor.run();
+    if (registration.options.lock !== false && registration.lockPrimitive) {
+      await registration.lockPrimitive.run();
     } else {
       await this.executeJob(jobName, registration.options.handler);
     }
   }
 
   /**
-   * Execute a job handler (called by the job descriptor).
+   * Execute a job handler (called by the job primitive).
    */
   public async executeJob(
     jobName: string,
@@ -260,5 +260,5 @@ export interface Job {
 export interface JobRegistration {
   name: string;
   options: Job;
-  lockDescriptor: LockDescriptor<() => Promise<void>> | null;
+  lockPrimitive: LockPrimitive<() => Promise<void>> | null;
 }

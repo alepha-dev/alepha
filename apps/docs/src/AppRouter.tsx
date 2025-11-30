@@ -7,7 +7,7 @@ import Layout from "./components/Layout.tsx";
 import { docs } from "./config/docs.ts";
 
 declare module "@alepha/react" {
-  interface PageDescriptorOptions {
+  interface PagePrimitiveOptions {
     sidebar?: boolean;
   }
 }

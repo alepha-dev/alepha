@@ -1,11 +1,11 @@
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
-import { $serve } from "./descriptors/$serve.ts";
+import { $serve } from "./primitives/$serve.ts";
 import { ServerStaticProvider } from "./providers/ServerStaticProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$serve.ts";
+export * from "./primitives/$serve.ts";
 export * from "./providers/ServerStaticProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -18,6 +18,6 @@ export * from "./providers/ServerStaticProvider.ts";
  */
 export const AlephaServerStatic = $module({
   name: "alepha.server.static",
-  descriptors: [$serve],
+  primitives: [$serve],
   services: [AlephaServer, ServerStaticProvider],
 });

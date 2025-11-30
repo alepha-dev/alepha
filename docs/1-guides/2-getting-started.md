@@ -1,80 +1,73 @@
-## Getting Started
+# Getting Started
 
-This guide will walk you through creating your first Alepha application in just a few minutes, demonstrating how easily it allows you to build any kind of application within a modern TypeScript project.
+Let's get your hands dirty.
 
-### Prerequisites
+This guide isn't going to ask you to configure Webpack, Babel, or ESLint. Alepha is designed to get out of your way so you can write code.
 
-All you need is a modern JavaScript runtime. Alepha is built and optimized for **Node.js 22+**.
+## Prerequisites
 
-*   [Install Node.js](https://nodejs.org/)
+You need a modern JavaScript runtime. Alepha is built for the future of the platform, so we require **Node.js 22+**.
 
-If you're new to TypeScript, don't worry! Alepha is designed to be beginner-friendly, and this guide will help you get started without any prior experience.
+*   [Download Node.js](https://nodejs.org/)
 
-### Project Setup
+## Project Setup
 
-Let's begin by creating a new project directory and initializing it.
+Create a new folder for your project. We like to start clean.
 
 ```bash
 mkdir my-app
 cd my-app
 ```
 
-Next, we'll use Alepha CLI to create the required configuration files.
+Now, initialize the project. This command doesn't scaffold a massive bloat of files; it just creates a `package.json` and a `tsconfig.json` configured correctly for Alepha.
 
 ```bash
-npx alepha init --api
+npx alepha init
 ```
 
-### Create Your First Server
+## Your First Server
 
-Now for the fun part! Create an `src/main.ts` file. This will be the entry point for your application.
+Alepha uses classes to organize logic. Forget about `app.get()` or `router.use()` chains.
 
-We'll define a simple server with a single route that responds with "Hello World!".
-
-Notice that we are using standard TypeScript classes and methods—**no decorator shims or complex syntax required.**
+Create a file at `src/main.server.ts`:
 
 ```typescript
-// src/main.ts
 import { run } from "alepha";
 import { $route } from "alepha/server";
 
 class Server {
-  // the $route descriptor declares a new HTTP endpoint
-  // by default, it's a GET request
+  // The $route primitive defines an endpoint directly in your class.
+  // No mapping files, no separate router configuration.
   hello = $route({
     path: "/",
     handler: () => "Hello World!",
   });
 }
 
-// the run function initializes the Alepha application
-// and starts the server
+// Run handles the lifecycle, error trapping, and graceful shutdowns.
 run(Server);
 ```
 
-> **Note:** Did you notice the `$` on `$route`  ?</br>
-> `$route` is a _descriptor_, a factory function usable only in Alepha Context.</br>
-> You can learn more about descriptors in the [dedicated page](/docs/descriptors).
+> **Wait, what is `$route`?**
+>
+> That `$` function is what we call a **Primitive**. It's a factory function that tells Alepha: *"This property isn't just data; it's logic."*
+>
+> You can learn more about Primitives in the [Concepts](/docs/concepts-primitives) page.
 
-That's all it takes to write a complete, working web server. Alepha plugs into your project with zero fuss.
+## Running the App
 
-### Run Your Application
+You can run your server right now using `alepha dev`.
 
-You're all set. You can run your server directly with Node.js or Bun. No extra build steps or runtime tools are needed for development.
-
-**Using Node.js:**
-```bash
-node src/main.ts
-```
-
-But for development, it's better to use `alepha dev`, which provides hot-reloading and other niceties.
-It's also mandatory when working with `@alepha/react` package, as TSX files are not natively supported by Node.js yet.
+This gives you:
+1.  **Hot Module Replacement (HMR):** Change code, server updates instantly.
+2.  **TypeScript Support:** No build step required for dev.
+3.  **Pretty Logs:** Readable, structured logging out of the box.
 
 ```bash
 npx alepha dev
 ```
 
-You should see a message indicating that the server has started:
+You should see the engine starting up:
 
 ```
 [22:05:51.123] INFO <alepha.core.Alepha>: Starting App...
@@ -82,24 +75,36 @@ You should see a message indicating that the server has started:
 [22:05:51.160] INFO <alepha.core.Alepha>: App is now ready [37ms]
 ```
 
-Now, open your web browser or use a tool like `curl` to access the endpoint:
+Open `http://localhost:3000` in your browser. You've just built a server.
+
+### "Can I run it with just Node?"
+
+Yes. Alepha doesn't rely on a magical runner. In production, or for simple scripts, you can run it directly if you compile it first, or use a runtime like `tsx` or `bun`:
 
 ```bash
-curl http://localhost:3000
+# Works perfectly fine, no lock-in
+node src/main.server.ts
 ```
-
-You should see the response: `Hello World!`
-
-Voilà! You have successfully created and run your first Alepha application using just your runtime's native capabilities.
 
 ## Building for Production
 
-When you're ready to deploy your application, you can build it for production using the Alepha CLI:
+When you are ready to ship, don't ship your source code. Build it.
 
 ```bash
 npx alepha build
 ```
 
-This command will compile your TypeScript code and prepare it for deployment.
+This produces a `dist/` folder.
 
-By default, output is generic, but you can also target specific platforms like Docker or Vercel.
+Unlike other frameworks that output a mess of files, Alepha (powered by Vite) produces a highly optimized bundle. You can deploy this folder to:
+*   **Docker:** We generate the Dockerfile for you.
+*   **Vercel:** We adapt the output to Serverless functions automatically.
+*   **VPS:** Just run `node dist/index.js`.
+
+## Next Steps
+
+"Hello World" is boring. You want to build a SaaS.
+
+*   **[Build an API](/docs/guides-api):** Learn how to use `$action` to create type-safe endpoints with automatic Swagger docs.
+*   **[Connect a Database](/docs/guides-database):** See how `$entity` creates your tables and types simultaneously.
+*   **[Add a Frontend](/docs/guides-react):** Add React to the mix with `$page`.

@@ -32,10 +32,10 @@ describe("Action Rate Limiting", () => {
       handler: () => "unlimited success",
     });
 
-    // Rate limit descriptor usage
+    // Rate limit primitive usage
     customRateLimit = $rateLimit({ max: 1, windowMs: 500 });
 
-    descriptorAction = $action({
+    primitiveAction = $action({
       handler: async (request) => {
         const result = await this.customRateLimit.check(request, {
           max: 1,
@@ -47,7 +47,7 @@ describe("Action Rate Limiting", () => {
             message: `Rate limit exceeded. Reset in ${result.retryAfter}s`,
           });
         }
-        return "descriptor success";
+        return "primitive success";
       },
     });
   }
@@ -141,8 +141,8 @@ describe("Action Rate Limiting", () => {
     });
   });
 
-  describe("$rateLimit descriptor", () => {
-    it("should create rate limit descriptor with options", () => {
+  describe("$rateLimit primitive", () => {
+    it("should create rate limit primitive with options", () => {
       const app = alepha.inject(TestApp);
 
       expect(app.customRateLimit).toBeDefined();
@@ -155,11 +155,11 @@ describe("Action Rate Limiting", () => {
       const app = alepha.inject(TestApp);
 
       // First request should succeed
-      const result1 = await app.descriptorAction.run({});
-      expect(result1).toBe("descriptor success");
+      const result1 = await app.primitiveAction.run({});
+      expect(result1).toBe("primitive success");
 
       // Second request should be blocked by custom logic
-      await expect(app.descriptorAction.run({})).rejects.toThrow(
+      await expect(app.primitiveAction.run({})).rejects.toThrow(
         "Rate limit exceeded",
       );
     });

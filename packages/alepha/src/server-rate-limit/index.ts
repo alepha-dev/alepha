@@ -1,17 +1,17 @@
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
-import { $rateLimit } from "./descriptors/$rateLimit.ts";
+import { $rateLimit } from "./primitives/$rateLimit.ts";
 import { ServerRateLimitProvider } from "./providers/ServerRateLimitProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$rateLimit.ts";
+export * from "./primitives/$rateLimit.ts";
 export * from "./providers/ServerRateLimitProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha/server" {
-  interface ActionDescriptorOptions<TConfig> {
+  interface ActionPrimitiveOptions<TConfig> {
     /**
      * Rate limiting configuration for this action.
      * When specified, the action will be rate limited according to these settings.
@@ -47,8 +47,8 @@ export interface RateLimitOptions {
  * Provides rate limiting capabilities for server routes and actions with configurable limits and windows.
  *
  * The server-rate-limit module enables per-route and per-action rate limiting using either:
- * - The `$rateLimit` descriptor with `paths` option for path-based rate limiting
- * - The `rateLimit` option in action descriptors for action-specific limiting
+ * - The `$rateLimit` primitive with `paths` option for path-based rate limiting
+ * - The `rateLimit` option in action primitives for action-specific limiting
  *
  * It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
  *
@@ -71,6 +71,6 @@ export interface RateLimitOptions {
  */
 export const AlephaServerRateLimit = $module({
   name: "alepha.server.rate-limit",
-  descriptors: [$rateLimit],
+  primitives: [$rateLimit],
   services: [AlephaServer, ServerRateLimitProvider],
 });

@@ -42,15 +42,15 @@ Migrations are supported via Drizzle ORM, you need to use the `drizzle-kit` CLI 
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $entity()
 
-Creates a database entity descriptor that defines table structure using TypeBox schemas.
+Creates a database entity primitive that defines table structure using TypeBox schemas.
 
 ```ts
 import { t } from "alepha";
@@ -72,13 +72,13 @@ Get the repository for the given entity.
 
 #### $sequence()
 
-Creates a PostgreSQL sequence descriptor for generating unique numeric values.
+Creates a PostgreSQL sequence primitive for generating unique numeric values.
 
 #### $transaction()
 
-Creates a transaction descriptor for database operations requiring atomicity and consistency.
+Creates a transaction primitive for database operations requiring atomicity and consistency.
 
-This descriptor provides a convenient way to wrap database operations in PostgreSQL
+This primitive provides a convenient way to wrap database operations in PostgreSQL
 transactions, ensuring ACID properties and automatic retry logic for version conflicts.
 It integrates seamlessly with the repository pattern and provides built-in handling
 for optimistic locking scenarios with automatic retry on version mismatches.

@@ -18,15 +18,15 @@ It's cookie-based and SSR friendly.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $auth()
 
-Creates an authentication provider descriptor for handling user login flows.
+Creates an authentication provider primitive for handling user login flows.
 
 Supports multiple authentication strategies: credentials (username/password), OAuth2,
 and OIDC (OpenID Connect). Handles token management, user profile retrieval, and
@@ -64,13 +64,13 @@ TODO: Implement Apple authentication
 
 #### $authCredentials()
 
-Already configured Credentials authentication descriptor.
+Already configured Credentials authentication primitive.
 
 Uses username and password to authenticate users.
 
 #### $authGithub()
 
-Already configured GitHub authentication descriptor.
+Already configured GitHub authentication primitive.
 
 Uses OAuth2 to authenticate users via their GitHub accounts.
 Upon successful authentication, it links the GitHub account to a user session.
@@ -81,7 +81,7 @@ Environment Variables:
 
 #### $authGoogle()
 
-Already configured Google authentication descriptor.
+Already configured Google authentication primitive.
 
 Uses OpenID Connect (OIDC) to authenticate users via their Google accounts.
 Upon successful authentication, it links the Google account to a user session.

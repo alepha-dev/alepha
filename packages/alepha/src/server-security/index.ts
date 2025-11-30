@@ -8,7 +8,7 @@ import {
   type UserAccountToken,
 } from "alepha/security";
 import { AlephaServer, type FetchOptions } from "alepha/server";
-import { $basicAuth } from "./descriptors/$basicAuth.ts";
+import { $basicAuth } from "./primitives/$basicAuth.ts";
 import { ServerBasicAuthProvider } from "./providers/ServerBasicAuthProvider.ts";
 import {
   type ServerRouteSecure,
@@ -17,7 +17,7 @@ import {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$basicAuth.ts";
+export * from "./primitives/$basicAuth.ts";
 export * from "./providers/ServerBasicAuthProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
 
@@ -84,7 +84,7 @@ declare module "alepha/server" {
  */
 export const AlephaServerSecurity = $module({
   name: "alepha.server.security",
-  descriptors: [$realm, $role, $permission, $basicAuth],
+  primitives: [$realm, $role, $permission, $basicAuth],
   services: [
     AlephaServer,
     AlephaSecurity,

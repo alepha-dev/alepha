@@ -65,7 +65,7 @@ export class AlephaRunner {
   isSsrEnabled(): boolean {
     if (!this.state.app) return false;
     return (
-      (this.state.app.state.get("alepha.react.server.ssr" as keyof State) as
+      (this.state.app.store.get("alepha.react.server.ssr" as keyof State) as
         | boolean
         | undefined) ?? false
     );
@@ -140,7 +140,7 @@ export class AlephaRunner {
         return;
       }
 
-      this.state.app.state.set("alepha.node.server" as any, server.httpServer);
+      this.state.app.store.set("alepha.node.server" as any, server.httpServer);
 
       await this.state.app.start();
       this.state.started = true;

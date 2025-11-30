@@ -7,7 +7,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { FileDetector } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
-import { $serve, type ServeDescriptorOptions } from "../descriptors/$serve.ts";
+import { $serve, type ServePrimitiveOptions } from "../primitives/$serve.ts";
 
 export class ServerStaticProvider {
   protected readonly alepha = $inject(Alepha);
@@ -22,14 +22,14 @@ export class ServerStaticProvider {
     handler: async () => {
       await Promise.all(
         this.alepha
-          .descriptors($serve)
+          .primitives($serve)
           .map((it) => this.createStaticServer(it.options)),
       );
     },
   });
 
   public async createStaticServer(
-    options: ServeDescriptorOptions,
+    options: ServePrimitiveOptions,
   ): Promise<void> {
     const prefix = options.path ?? "/";
 
@@ -107,7 +107,7 @@ export class ServerStaticProvider {
 
   public async createFileHandler(
     filepath: string,
-    options: ServeDescriptorOptions,
+    options: ServePrimitiveOptions,
   ): Promise<ServerHandler> {
     const filename = basename(filepath);
 
@@ -184,7 +184,7 @@ export class ServerStaticProvider {
 
   protected getCacheControl(
     filename: string,
-    options: ServeDescriptorOptions,
+    options: ServePrimitiveOptions,
   ): { maxAge: number; immutable: boolean } | undefined {
     if (!options.cacheControl) {
       return;
@@ -228,6 +228,6 @@ export class ServerStaticProvider {
 }
 
 export interface ServeDirectory {
-  options: ServeDescriptorOptions;
+  options: ServePrimitiveOptions;
   files: string[];
 }

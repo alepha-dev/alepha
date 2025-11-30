@@ -65,7 +65,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
   const { stats } = props;
   const alepha = useAlepha();
   const projectStatsApi = useClient<ProjectStatsApi>();
-  const currentProject = alepha.state.get(currentProjectAtom);
+  const currentProject = alepha.store.get(currentProjectAtom);
   const [timelineRange, setTimelineRange] = useState<string>("14days");
 
   const handleExportCsv = async () => {

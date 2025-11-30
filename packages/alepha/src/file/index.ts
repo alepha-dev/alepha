@@ -24,7 +24,7 @@ export * from "./services/FileDetector.ts";
  */
 export const AlephaFile = $module({
   name: "alepha.file",
-  descriptors: [],
+  primitives: [],
   services: [FileDetector, FileSystemProvider, NodeFileSystemProvider],
   register: (alepha) =>
     alepha.with({

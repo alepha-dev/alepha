@@ -14,22 +14,22 @@ This module provides only a memory implementation of the topic provider.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $subscriber()
 
-Creates a subscriber descriptor to listen for messages from a specific topic.
+Creates a subscriber primitive to listen for messages from a specific topic.
 
 Provides a dedicated message subscriber that connects to a topic and processes messages
 with custom handler logic, enabling scalable pub/sub architectures where multiple
 subscribers can react to the same events independently.
 
 **Key Features**
-- Seamless integration with any $topic descriptor
+- Seamless integration with any $topic primitive
 - Full type safety inherited from topic schema
 - Real-time message delivery when events are published
 - Error isolation between subscribers
@@ -77,7 +77,7 @@ class UserActivityService {
 
 #### $topic()
 
-Creates a topic descriptor for publish/subscribe messaging and event-driven architecture.
+Creates a topic primitive for publish/subscribe messaging and event-driven architecture.
 
 Enables decoupled communication through a pub/sub pattern where publishers send messages
 and multiple subscribers receive them. Supports type-safe messages, real-time delivery,

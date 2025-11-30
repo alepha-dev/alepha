@@ -10,7 +10,7 @@ const createMockHandler = () => {
   });
 };
 
-describe("$batch descriptor", () => {
+describe("$batch primitive", () => {
   let alepha: Alepha;
   let time: DateTimeProvider;
 

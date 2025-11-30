@@ -3,7 +3,7 @@ import { Alepha, t } from "alepha";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import NestedView from "../../src/core/components/NestedView.tsx";
-import { $page } from "../../src/core/descriptors/$page.ts";
+import { $page } from "../../src/core/primitives/$page.ts";
 import { Redirection } from "../../src/core/errors/Redirection.ts";
 import { AlephaReact } from "../../src/core/index.browser.ts";
 import { ReactRouter } from "../../src/core/services/ReactRouter.ts";

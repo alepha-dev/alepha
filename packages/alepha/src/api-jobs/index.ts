@@ -6,8 +6,8 @@ import { JobService } from "./services/JobService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./controllers/JobController.ts";
-export * from "./descriptors/$job.ts";
 export * from "./entities/jobExecutions.ts";
+export * from "./primitives/$job.ts";
 export * from "./providers/JobProvider.ts";
 export * from "./schemas/jobExecutionQuerySchema.ts";
 export * from "./schemas/jobExecutionResourceSchema.ts";

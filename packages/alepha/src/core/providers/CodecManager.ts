@@ -1,6 +1,6 @@
 import type { StaticEncode, TSchema } from "typebox";
-import { $inject } from "../descriptors/$inject.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import { $inject } from "../primitives/$inject.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
 import { SchemaValidator, type ValidateOptions } from "./SchemaValidator.ts";

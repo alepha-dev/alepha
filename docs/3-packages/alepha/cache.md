@@ -10,21 +10,21 @@ npm install alepha
 
 Provides high-performance caching capabilities for Alepha applications with configurable TTL and multiple storage backends.
 
-The cache module enables declarative caching through the `$cache` descriptor, allowing you to cache method results,
+The cache module enables declarative caching through the `$cache` primitive, allowing you to cache method results,
 API responses, or computed values with automatic invalidation and type safety. It supports both in-memory and
 persistent storage backends for different performance and durability requirements.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $cache()
 
-Creates a cache descriptor for high-performance data caching with automatic management.
+Creates a cache primitive for high-performance data caching with automatic management.
 
 Provides a caching layer that improves application performance by storing frequently accessed
 data in memory or external stores like Redis, with support for both function result caching

@@ -159,7 +159,7 @@ export const testQueueKillWorkerSleep = async (
     })
     .with({
       provide: WorkerProvider,
-      use: class FakeQueueDescriptorProvider extends WorkerProvider {
+      use: class FakeQueuePrimitiveProvider extends WorkerProvider {
         async stopWorkers() {
           await super.stopWorkers();
           count += 123;

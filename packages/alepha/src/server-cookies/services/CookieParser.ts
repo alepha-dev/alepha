@@ -1,4 +1,4 @@
-import type { Cookie } from "../descriptors/$cookie.ts";
+import type { Cookie } from "../primitives/$cookie.ts";
 
 export class CookieParser {
   public parseRequestCookies(header: string): Record<string, string> {

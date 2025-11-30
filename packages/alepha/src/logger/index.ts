@@ -1,5 +1,5 @@
 import { $module, type Static, t } from "alepha";
-import { $logger } from "./descriptors/$logger.ts";
+import { $logger } from "./primitives/$logger.ts";
 import { ConsoleDestinationProvider } from "./providers/ConsoleDestinationProvider.ts";
 import { JsonFormatterProvider } from "./providers/JsonFormatterProvider.ts";
 import { LogDestinationProvider } from "./providers/LogDestinationProvider.ts";
@@ -12,7 +12,7 @@ import { Logger } from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$logger.ts";
+export * from "./primitives/$logger.ts";
 export * from "./providers/ConsoleColorProvider.ts";
 export * from "./providers/ConsoleDestinationProvider.ts";
 export * from "./providers/JsonFormatterProvider.ts";
@@ -28,7 +28,7 @@ export * from "./services/Logger.ts";
 /**
  * Minimalist logger module for Alepha.
  *
- * It offers a global logger interface (info, warn, ...) via the `$logger` descriptor.
+ * It offers a global logger interface (info, warn, ...) via the `$logger` primitive.
  *
  * ```ts
  * import { $logger } from "alepha/logger";
@@ -95,7 +95,7 @@ export * from "./services/Logger.ts";
  */
 export const AlephaLogger = $module({
   name: "alepha.logger",
-  descriptors: [$logger],
+  primitives: [$logger],
   services: [
     Logger,
     ConsoleDestinationProvider,
@@ -121,8 +121,8 @@ export const AlephaLogger = $module({
         };
 
         try {
-          alepha.state.get("alepha.test.afterEach")?.(printOnError);
-          alepha.state.get("alepha.test.onTestFinished")?.(printOnError);
+          alepha.store.get("alepha.test.afterEach")?.(printOnError);
+          alepha.store.get("alepha.test.onTestFinished")?.(printOnError);
         } catch {
           // ignore
         }
@@ -163,7 +163,7 @@ export const AlephaLogger = $module({
       use: getLogFormatterProvider(),
     });
 
-    alepha.state.set(
+    alepha.store.set(
       "alepha.logger",
       alepha.inject(Logger, {
         lifetime: "transient",
@@ -171,7 +171,7 @@ export const AlephaLogger = $module({
       }),
     );
 
-    alepha.state.set(
+    alepha.store.set(
       "alepha.logger.level",
       env.LOG_LEVEL ?? (alepha.isTest() ? "trace" : "info"),
     );

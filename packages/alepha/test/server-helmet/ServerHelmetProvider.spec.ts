@@ -20,7 +20,7 @@ describe("ServerHelmetProvider", () => {
       .with(TestApp);
 
     if (options) {
-      alepha.state.mut(helmetOptions, (old) => ({
+      alepha.store.mut(helmetOptions, (old) => ({
         ...old,
         ...options,
       }));

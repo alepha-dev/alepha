@@ -10,15 +10,15 @@ import {
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer } from "ws";
-import type { TWSObject } from "../descriptors/$channel.ts";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
 import type {
   EmitOptions,
   WebSocketConnection,
-  WebSocketDescriptorOptions,
   WebSocketHandlerContext,
+  WebSocketPrimitiveOptions,
   WebSocketState,
 } from "../interfaces/WebSocketInterfaces.ts";
+import type { TWSObject } from "../primitives/$channel.ts";
 import { RoomManager } from "../services/RoomManager.ts";
 import { WebSocketTopicService } from "../services/WebSocketTopicService.ts";
 import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
@@ -46,7 +46,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly env = $env(envSchema);
 
   protected wss?: WebSocketServer;
-  protected endpoints = new Map<string, WebSocketDescriptorOptions<any, any>>();
+  protected endpoints = new Map<string, WebSocketPrimitiveOptions<any, any>>();
   protected connections = new Map<string, WebSocketConnection>();
   protected userConnections = new Map<string, Set<string>>(); // userId → Set<connectionId>
   protected nextConnectionId = 1;
@@ -54,7 +54,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   // -------------------------------------------------------------------------------------------------------------------
 
   public registerEndpoint<TClient extends TWSObject, TServer extends TWSObject>(
-    config: WebSocketDescriptorOptions<TClient, TServer>,
+    config: WebSocketPrimitiveOptions<TClient, TServer>,
   ): void {
     const path = config.channel.options.path;
     this.endpoints.set(path, config);
@@ -157,7 +157,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     TServer extends TWSObject,
   >(
     ws: WebSocket,
-    endpoint: WebSocketDescriptorOptions<TClient, TServer>,
+    endpoint: WebSocketPrimitiveOptions<TClient, TServer>,
     request: IncomingMessage,
   ): void {
     const connectionId = `ws-${this.nextConnectionId++}`;
@@ -405,7 +405,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       }
 
       // Attach upgrade handler to the HTTP server (must be done after HTTP server starts)
-      const httpServer = this.alepha.state.get("alepha.node.server");
+      const httpServer = this.alepha.store.get("alepha.node.server");
       if (httpServer) {
         httpServer.on("upgrade", (request, socket, head) => {
           this.handleUpgrade(request, socket, head);
@@ -458,7 +458,7 @@ export class NodeWebSocketConnection implements WebSocketConnection {
     public readonly roomIds: string[],
     protected readonly ws: WebSocket,
     protected readonly provider: NodeWebSocketServerProvider,
-    protected readonly endpoint: WebSocketDescriptorOptions<any, any>,
+    protected readonly endpoint: WebSocketPrimitiveOptions<any, any>,
   ) {}
 
   public get readyState(): WebSocketState {

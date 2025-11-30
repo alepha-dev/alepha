@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { describe, it } from "vitest";
-import { $action } from "../../src/server/descriptors/$action.ts";
-import { $route } from "../../src/server/descriptors/$route.ts";
+import { $action } from "../../src/server/primitives/$action.ts";
+import { $route } from "../../src/server/primitives/$route.ts";
 import { ServerRouterProvider } from "../../src/server/providers/ServerRouterProvider.ts";
 
 describe("ServerRouterProvider - getRoutes", () => {

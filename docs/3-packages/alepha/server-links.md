@@ -10,17 +10,17 @@ npm install alepha
 
 Provides server-side link management and remote capabilities for client-server interactions.
 
-The server-links module enables declarative link definitions using `$remote` and `$client` descriptors,
+The server-links module enables declarative link definitions using `$remote` and `$client` primitives,
 facilitating seamless API endpoint management and client-server communication. It integrates with server
 security features to ensure safe and controlled access to resources.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $client()
 
@@ -28,7 +28,7 @@ Create a new client.
 
 #### $remote()
 
-$remote is a descriptor that allows you to define remote service access.
+$remote is a primitive that allows you to define remote service access.
 
 Use it only when you have 2 or more services that need to communicate with each other.
 
@@ -40,7 +40,7 @@ You can add a service account if you want to use a security layer.
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](/docs/providers).
+For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### LinkProvider
 

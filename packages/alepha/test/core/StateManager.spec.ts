@@ -175,7 +175,7 @@ describe("StateManager", () => {
 
     beforeEach(() => {
       alepha = new Alepha();
-      stateManager = alepha.state as unknown as StateManager<TestState>;
+      stateManager = alepha.store as unknown as StateManager<TestState>;
     });
 
     it("should use ALS when available and context exists", async () => {
@@ -324,7 +324,7 @@ describe("StateManager", () => {
 
     beforeEach(() => {
       alepha = new Alepha();
-      stateManager = alepha.state as unknown as StateManager<TestState>;
+      stateManager = alepha.store as unknown as StateManager<TestState>;
     });
 
     it("should handle transitions between ALS and non-ALS contexts", async () => {
@@ -358,7 +358,7 @@ describe("StateManager", () => {
       stateManager.set("active", true);
 
       // keys() returns local store keys
-      const keys = alepha.state.keys();
+      const keys = alepha.store.keys();
       expect(keys).toEqual(["active"]);
     });
   });

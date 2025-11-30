@@ -1,5 +1,5 @@
 import { $inject, Alepha } from "alepha";
-import type { PageDescriptor } from "../descriptors/$page.ts";
+import type { PagePrimitive } from "../primitives/$page.ts";
 import {
   ReactBrowserProvider,
   type RouterGoOptions,
@@ -15,7 +15,7 @@ export class ReactRouter<T extends object> {
   protected readonly pageApi = $inject(ReactPageProvider);
 
   public get state(): ReactRouterState {
-    return this.alepha.state.get("alepha.react.router.state")!;
+    return this.alepha.store.get("alepha.react.router.state")!;
   }
 
   public get pages() {
@@ -220,5 +220,5 @@ export class ReactRouter<T extends object> {
 }
 
 export type VirtualRouter<T> = {
-  [K in keyof T as T[K] extends PageDescriptor ? K : never]: T[K];
+  [K in keyof T as T[K] extends PagePrimitive ? K : never]: T[K];
 };

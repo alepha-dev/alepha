@@ -6,8 +6,8 @@ import {
   type ServerRequest,
   ServerRouterProvider,
 } from "alepha/server";
-import type { RateLimitDescriptorOptions } from "../descriptors/$rateLimit.ts";
 import type { RateLimitOptions } from "../index.ts";
+import type { RateLimitPrimitiveOptions } from "../primitives/$rateLimit.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -85,12 +85,12 @@ export class ServerRateLimitProvider {
   /**
    * Registered rate limit configurations with their path patterns
    */
-  public readonly registeredConfigs: RateLimitDescriptorOptions[] = [];
+  public readonly registeredConfigs: RateLimitPrimitiveOptions[] = [];
 
   /**
-   * Register a rate limit configuration (called by descriptors)
+   * Register a rate limit configuration (called by primitives)
    */
-  public registerRateLimit(config: RateLimitDescriptorOptions): void {
+  public registerRateLimit(config: RateLimitPrimitiveOptions): void {
     this.registeredConfigs.push(config);
   }
 
@@ -168,7 +168,7 @@ export class ServerRateLimitProvider {
    * Build complete rate limit options by merging with global defaults
    */
   protected buildRateLimitOptions(
-    config: RateLimitDescriptorOptions,
+    config: RateLimitPrimitiveOptions,
   ): RateLimitOptions {
     return {
       max: config.max ?? this.globalOptions.max,

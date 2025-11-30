@@ -4,11 +4,11 @@ import { EmailProvider } from "alepha/email";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { SmsProvider } from "alepha/sms";
-import { $notification } from "../descriptors/$notification.ts";
 import {
   type NotificationEntity,
   notifications,
 } from "../entities/notifications.ts";
+import { $notification } from "../primitives/$notification.ts";
 
 export class NotificationSenderService {
   protected readonly alepha = $inject(Alepha);
@@ -161,7 +161,7 @@ export class NotificationSenderService {
     const variables = notification.variables || {};
     const contact = notification.contact;
     const template = this.alepha
-      .descriptors($notification)
+      .primitives($notification)
       .find((it) => it.name === notification.template);
 
     if (!template) {

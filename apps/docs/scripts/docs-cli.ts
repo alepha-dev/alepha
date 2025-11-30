@@ -32,7 +32,7 @@ export type DocNode = {
   description?: string;
 };
 
-interface DescriptorInfo {
+interface PrimitiveInfo {
   name: string;
   description: string;
 }
@@ -135,15 +135,15 @@ class DocsCliApp {
   }
 
   /**
-   * Reads a descriptor file and extracts the JSDoc comment block
-   * for the main exported descriptor function.
+   * Reads a primitive file and extracts the JSDoc comment block
+   * for the main exported primitive function.
    */
-  async extractDescriptorInfo(
+  async extractPrimitiveInfo(
     filePath: string,
     hook = false,
-  ): Promise<DescriptorInfo | null> {
+  ): Promise<PrimitiveInfo | null> {
     this.log.debug(
-      `Extracting ${hook ? "hook" : "descriptor"} info from: ${filePath}`,
+      `Extracting ${hook ? "hook" : "primitive"} info from: ${filePath}`,
     );
     try {
       const content = await fs.readFile(filePath, "utf-8");
@@ -155,13 +155,13 @@ class DocsCliApp {
         content.matchAll(new RegExp(regex.source, "g")),
       );
       this.log.trace(
-        `Found ${matches.length} potential ${hook ? "hooks" : "descriptors"}`,
+        `Found ${matches.length} potential ${hook ? "hooks" : "primitives"}`,
       );
 
       for (const match of matches) {
         if (match[1].includes("@internal")) {
           this.log.trace(
-            `Skipping @internal ${hook ? "hook" : "descriptor"}: ${match[2]}`,
+            `Skipping @internal ${hook ? "hook" : "primitive"}: ${match[2]}`,
           );
           continue;
         }
@@ -171,15 +171,15 @@ class DocsCliApp {
           description: this.cleanJsDoc(match[1]),
         };
         this.log.debug(
-          `Extracted ${hook ? "hook" : "descriptor"}: ${info.name}`,
+          `Extracted ${hook ? "hook" : "primitive"}: ${info.name}`,
         );
         return info;
       }
 
-      this.log.trace(`No ${hook ? "hooks" : "descriptors"} found`);
+      this.log.trace(`No ${hook ? "hooks" : "primitives"} found`);
       return null;
     } catch (error) {
-      this.log.error(`Error parsing descriptor file ${filePath}:`, error);
+      this.log.error(`Error parsing primitive file ${filePath}:`, error);
       return null;
     }
   }
@@ -188,7 +188,7 @@ class DocsCliApp {
    * Reads a provider file and extracts the JSDoc comment block
    * for the main exported provider function.
    */
-  async extractProviderInfo(filePath: string): Promise<DescriptorInfo | null> {
+  async extractProviderInfo(filePath: string): Promise<PrimitiveInfo | null> {
     this.log.debug(`Extracting provider info from: ${filePath}`);
     try {
       const content = await fs.readFile(filePath, "utf-8");
@@ -222,16 +222,16 @@ class DocsCliApp {
   }
 
   /**
-   * Finds all descriptors in a package's `src/descriptors` directory.
+   * Finds all primitives in a package's `src/primitives` directory.
    */
-  async getDescriptorsInfo(
+  async getPrimitivesInfo(
     packagePath: string,
-    dirName = "descriptors",
-  ): Promise<DescriptorInfo[]> {
-    const descriptorsDir = join(packagePath, dirName);
-    this.log.debug(`Getting ${dirName} info from: ${descriptorsDir}`);
+    dirName = "primitives",
+  ): Promise<PrimitiveInfo[]> {
+    const primitivesDir = join(packagePath, dirName);
+    this.log.debug(`Getting ${dirName} info from: ${primitivesDir}`);
     try {
-      const files = await fs.readdir(descriptorsDir, { withFileTypes: true });
+      const files = await fs.readdir(primitivesDir, { withFileTypes: true });
       const tsFiles = files.filter(
         (file) => file.isFile() && file.name.endsWith(".ts"),
       );
@@ -239,24 +239,24 @@ class DocsCliApp {
         `Found ${tsFiles.length} .ts files in ${dirName} directory`,
       );
 
-      const descriptorPromises = tsFiles.map((file) =>
-        this.extractDescriptorInfo(
-          join(descriptorsDir, file.name),
+      const primitivePromises = tsFiles.map((file) =>
+        this.extractPrimitiveInfo(
+          join(primitivesDir, file.name),
           dirName === "hooks",
         ),
       );
 
-      const results = await Promise.all(descriptorPromises);
+      const results = await Promise.all(primitivePromises);
       const filtered = results.filter(
-        (info): info is DescriptorInfo => info !== null,
+        (info): info is PrimitiveInfo => info !== null,
       );
       this.log.debug(
-        `Extracted ${filtered.length} ${dirName} from ${descriptorsDir}`,
+        `Extracted ${filtered.length} ${dirName} from ${primitivesDir}`,
       );
       return filtered;
     } catch (error: any) {
       if (error.code === "ENOENT") {
-        this.log.trace(`${dirName} directory not found: ${descriptorsDir}`);
+        this.log.trace(`${dirName} directory not found: ${primitivesDir}`);
         return [];
       }
       throw error;
@@ -266,7 +266,7 @@ class DocsCliApp {
   /**
    * Finds all providers in a package's `src/providers` directory.
    */
-  async getProvidersInfo(packagePath: string): Promise<DescriptorInfo[]> {
+  async getProvidersInfo(packagePath: string): Promise<PrimitiveInfo[]> {
     const providersDir = join(packagePath, "providers");
     this.log.debug(`Getting providers info from: ${providersDir}`);
     try {
@@ -284,7 +284,7 @@ class DocsCliApp {
 
       const results = await Promise.all(providerPromises);
       const filtered = results.filter(
-        (info): info is DescriptorInfo => info !== null,
+        (info): info is PrimitiveInfo => info !== null,
       );
       this.log.debug(
         `Extracted ${filtered.length} providers from ${providersDir}`,
@@ -423,12 +423,12 @@ class DocsCliApp {
       return null;
     }
 
-    const descriptors = await this.getDescriptorsInfo(sourcePath);
-    const hooks = await this.getDescriptorsInfo(sourcePath, "hooks");
+    const primitives = await this.getPrimitivesInfo(sourcePath);
+    const hooks = await this.getPrimitivesInfo(sourcePath, "hooks");
     const providers = await this.getProvidersInfo(sourcePath);
 
     this.log.debug(
-      `Found ${descriptors.length} descriptors, ${hooks.length} hooks, ${providers.length} providers`,
+      `Found ${primitives.length} primitives, ${hooks.length} hooks, ${providers.length} providers`,
     );
 
     // Build the markdown content
@@ -454,13 +454,13 @@ class DocsCliApp {
       content += `## Overview\n\n${moduleDescription}\n\n`;
     }
 
-    if (descriptors.length > 0 || providers.length > 0 || hooks.length > 0) {
+    if (primitives.length > 0 || providers.length > 0 || hooks.length > 0) {
       content += `## API Reference\n`;
     }
 
-    if (descriptors.length > 0) {
-      content += `\n### Descriptors\n\nDescriptors are functions that define and configure various aspects of your application. They follow the convention of starting with \` $ \` and return configured descriptor instances.\n\nFor more details, see the [Descriptors documentation](/docs/descriptors).\n`;
-      for (const desc of descriptors) {
+    if (primitives.length > 0) {
+      content += `\n### Primitives\n\nPrimitives are functions that define and configure various aspects of your application. They follow the convention of starting with \` $ \` and return configured primitive instances.\n\nFor more details, see the [Primitives documentation](/docs/concepts-primitives).\n`;
+      for (const desc of primitives) {
         content += `\n#### ${desc.name}()\n\n${desc.description}\n`;
       }
     }
@@ -473,7 +473,7 @@ class DocsCliApp {
     }
 
     if (providers.length > 0) {
-      content += `\n### Providers\n\nProviders are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.\n\nFor more details, see the [Providers documentation](/docs/providers).\n`;
+      content += `\n### Providers\n\nProviders are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.\n\nFor more details, see the [Providers documentation](/docs/concepts-providers).\n`;
       for (const provider of providers) {
         content += `\n#### ${provider.name}\n\n${provider.description}\n`;
       }
@@ -519,15 +519,15 @@ class DocsCliApp {
       ? await this.extractModuleDescription(indexPath)
       : null;
 
-    const descriptors = await this.getDescriptorsInfo(join(packagePath, "src"));
-    const hooks = await this.getDescriptorsInfo(
+    const primitives = await this.getPrimitivesInfo(join(packagePath, "src"));
+    const hooks = await this.getPrimitivesInfo(
       join(packagePath, "src"),
       "hooks",
     );
     const providers = await this.getProvidersInfo(join(packagePath, "src"));
 
     this.log.debug(
-      `Found ${descriptors.length} descriptors, ${hooks.length} hooks, ${providers.length} providers`,
+      `Found ${primitives.length} primitives, ${hooks.length} hooks, ${providers.length} providers`,
     );
 
     // Build the README content
@@ -549,13 +549,13 @@ class DocsCliApp {
       content += `## Module\n\n${moduleDescription}\n\n`;
     }
 
-    if (descriptors.length > 0 || providers.length > 0 || hooks.length > 0) {
+    if (primitives.length > 0 || providers.length > 0 || hooks.length > 0) {
       content += `## API Reference\n`;
     }
 
-    if (descriptors.length > 0) {
-      content += `\n### Descriptors\n\nDescriptors are functions that define and configure various aspects of your application. They follow the convention of starting with \` $ \` and return configured descriptor instances.\n\nFor more details, see the [Descriptors documentation](https://feunard.github.io/alepha/).\n`;
-      for (const desc of descriptors) {
+    if (primitives.length > 0) {
+      content += `\n### Primitives\n\nPrimitives are functions that define and configure various aspects of your application. They follow the convention of starting with \` $ \` and return configured primitive instances.\n\nFor more details, see the [Primitives documentation](https://feunard.github.io/alepha/).\n`;
+      for (const desc of primitives) {
         content += `\n#### ${desc.name}()\n\n${desc.description}\n`;
       }
     }
@@ -1046,7 +1046,7 @@ class DocsCliApp {
    * Generate full slug including category path
    * Examples:
    * - category: "1-guides", filename: "introduction" → "guides-introduction"
-   * - category: "2-concepts", filename: "descriptors" → "concepts-descriptors"
+   * - category: "2-concepts", filename: "primitives" → "concepts-primitives"
    * - category: "3-packages/alepha", filename: "api-files" → "packages-alepha-api-files"
    */
   getFullSlug(categoryPath: string, filename: string): string {

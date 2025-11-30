@@ -14,7 +14,7 @@ const AdminParameters = () => {
         <Text c="dimmed">Parameter Management</Text>
         <Text size="xs" c="dimmed" ta="center" maw={400}>
           Application parameters and configuration settings. Define parameters
-          using the $config descriptor to manage dynamic application settings.
+          using the $config primitive to manage dynamic application settings.
         </Text>
       </Stack>
     </Flex>

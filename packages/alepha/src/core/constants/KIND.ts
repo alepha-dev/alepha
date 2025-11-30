@@ -1,5 +1,5 @@
 /**
- * Used for identifying descriptors.
+ * Used for identifying primitives.
  *
  * @internal
  */

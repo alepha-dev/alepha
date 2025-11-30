@@ -32,7 +32,7 @@ export * from "./schemas/DevTopicMetadata.ts";
  */
 export const AlephaDevtools = $module({
   name: "alepha.devtools",
-  descriptors: [],
+  primitives: [],
   services: [
     DevToolsMetadataProvider,
     DevToolsProvider,
@@ -43,6 +43,6 @@ export const AlephaDevtools = $module({
     alepha.with(DevToolsProvider);
     alepha.with(DevToolsDatabaseProvider);
     alepha.with(DevToolsMetadataProvider);
-    alepha.state.push("alepha.build.assets", "@alepha/devtools");
+    alepha.store.push("alepha.build.assets", "@alepha/devtools");
   },
 });

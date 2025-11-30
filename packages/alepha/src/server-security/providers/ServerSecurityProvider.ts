@@ -28,7 +28,7 @@ export class ServerSecurityProvider {
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
-      for (const action of this.alepha.descriptors($action)) {
+      for (const action of this.alepha.primitives($action)) {
         // -------------------------------------------------------------------------------------------------------------
         // if the action is disabled or not secure, we do NOT create a permission for it
         // -------------------------------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ export class ServerSecurityProvider {
           this.check(request.user, route.secure);
         }
 
-        this.alepha.state.set(
+        this.alepha.store.set(
           "alepha.server.request.user",
           this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
@@ -139,7 +139,7 @@ export class ServerSecurityProvider {
           this.check(request.user, route.secure);
         }
 
-        this.alepha.state.set(
+        this.alepha.store.set(
           "alepha.server.request.user",
           // remove sensitive info
           this.alepha.codec.decode(userAccountInfoSchema, request.user),
@@ -198,7 +198,7 @@ export class ServerSecurityProvider {
     let user: UserAccountToken | undefined;
 
     const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
-    const fromSystem = this.alepha.state.get(
+    const fromSystem = this.alepha.store.get(
       "alepha.server.security.system.user",
     );
 

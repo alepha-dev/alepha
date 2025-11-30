@@ -4,7 +4,7 @@ import { Alepha } from "alepha";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { describe, test } from "vitest";
-import { $dictionary } from "../../src/i18n/descriptors/$dictionary.ts";
+import { $dictionary } from "../../src/i18n/primitives/$dictionary.ts";
 import { useI18n } from "../../src/i18n/hooks/useI18n.ts";
 import { AlephaReactI18n } from "../../src/i18n/index.ts";
 import { I18nProvider } from "../../src/i18n/providers/I18nProvider.ts";

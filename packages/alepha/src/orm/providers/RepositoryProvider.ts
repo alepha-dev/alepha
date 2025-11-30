@@ -1,12 +1,12 @@
 import { $inject, Alepha, type Service, type TObject } from "alepha";
-import type { EntityDescriptor } from "../descriptors/$entity.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
 import { Repository } from "../services/Repository.ts";
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
 export class RepositoryProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly registry = new Map<
-    EntityDescriptor<any>,
+    EntityPrimitive<any>,
     Service<Repository<any>>
   >();
 
@@ -21,14 +21,14 @@ export class RepositoryProvider {
   }
 
   public getRepository<T extends TObject>(
-    entity: EntityDescriptor<T>,
+    entity: EntityPrimitive<T>,
   ): Repository<T> {
     const RepositoryClass = this.createClassRepository(entity);
     return this.alepha.inject(RepositoryClass);
   }
 
   public createClassRepository<T extends TObject>(
-    entity: EntityDescriptor<T>,
+    entity: EntityPrimitive<T>,
   ): Service<Repository<T>> {
     let name = entity.name.charAt(0).toUpperCase() + entity.name.slice(1);
     if (name.endsWith("s")) {

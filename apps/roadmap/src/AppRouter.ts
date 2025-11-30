@@ -51,7 +51,7 @@ export class AppRouter {
     lazy: () => import("./components/Layout.tsx"),
     resolve: async ({ user }) => {
       if (user) {
-        this.alepha.state.set(
+        this.alepha.store.set(
           userProjectsAtom,
           await this.projectApi.getMyProjects(),
         );
@@ -85,7 +85,7 @@ export class AppRouter {
         HttpError.is(error, 401) &&
         this.router.state.url.pathname !== loginPath
       ) {
-        this.alepha.state.set("alepha.server.request.user", undefined);
+        this.alepha.store.set("alepha.server.request.user", undefined);
         await this.router.go(loginPath, {
           query: {
             redirect: this.router.state.url.pathname,
@@ -130,18 +130,18 @@ export class AppRouter {
           },
         });
 
-      this.alepha.state.set(currentProjectAtom, project);
-      this.alepha.state.set(currentProjectCharacterAtom, character);
-      this.alepha.state.set(currentAssignedTasksAtom, tasks);
+      this.alepha.store.set(currentProjectAtom, project);
+      this.alepha.store.set(currentProjectCharacterAtom, character);
+      this.alepha.store.set(currentAssignedTasksAtom, tasks);
 
       return {
         project,
       };
     },
     onLeave: () => {
-      this.alepha.state.set(currentProjectCharacterAtom, undefined);
-      this.alepha.state.set(currentProjectAtom, undefined);
-      this.alepha.state.set(currentAssignedTasksAtom, []);
+      this.alepha.store.set(currentProjectCharacterAtom, undefined);
+      this.alepha.store.set(currentProjectAtom, undefined);
+      this.alepha.store.set(currentAssignedTasksAtom, []);
     },
   });
 
@@ -154,7 +154,7 @@ export class AppRouter {
     path: "/players",
     lazy: () => import("./components/project/ProjectPlayers.jsx"),
     resolve: async ({ params }) => {
-      const project = this.alepha.state.get(currentProjectAtom);
+      const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
       }
@@ -186,7 +186,7 @@ export class AppRouter {
     resolve: async ({ params }) => {
       const stats = await this.projectStatsApi.getProjectStats({
         params: {
-          id: this.alepha.state.get(currentProjectAtom)?.id ?? -1,
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
       });
       return {
@@ -237,11 +237,11 @@ export class AppRouter {
           id: params.taskId,
         },
       });
-      this.alepha.state.set(currentTaskAtom, task);
+      this.alepha.store.set(currentTaskAtom, task);
       return { task };
     },
     onLeave: () => {
-      this.alepha.state.set(currentTaskAtom, undefined);
+      this.alepha.store.set(currentTaskAtom, undefined);
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {

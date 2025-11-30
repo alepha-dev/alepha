@@ -1,5 +1,5 @@
 import { Alepha, t } from "alepha";
-import { $thread, AlephaThread, ThreadDescriptor } from "alepha/thread";
+import { $thread, AlephaThread, ThreadPrimitive } from "alepha/thread";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 class TestApp {
@@ -12,27 +12,27 @@ class TestApp {
 }
 
 describe("$thread", () => {
-  let threadDescriptor: ThreadDescriptor;
+  let threadPrimitive: ThreadPrimitive;
   let alepha: Alepha;
 
   beforeEach(async () => {
     alepha = Alepha.create().with(AlephaThread).with(TestApp);
-    threadDescriptor = alepha.inject(TestApp).testThread;
+    threadPrimitive = alepha.inject(TestApp).testThread;
   });
 
   afterEach(async () => {
-    if (threadDescriptor) {
-      await threadDescriptor.terminate();
+    if (threadPrimitive) {
+      await threadPrimitive.terminate();
     }
     if (alepha) {
       await alepha.stop();
     }
   });
 
-  it("should create a thread descriptor", ({ expect }) => {
+  it("should create a thread primitive", ({ expect }) => {
     expect($thread).toBeDefined();
-    expect(threadDescriptor).toBeInstanceOf(ThreadDescriptor);
-    expect(threadDescriptor.name).toBe("test-thread");
+    expect(threadPrimitive).toBeInstanceOf(ThreadPrimitive);
+    expect(threadPrimitive.name).toBe("test-thread");
   });
 
   it("should have correct default configuration", async ({ expect }) => {
@@ -78,21 +78,21 @@ describe("$thread", () => {
 
     // Invalid data should throw validation error
     await expect(
-      threadDescriptor.execute({ name: "John" }, schema),
+      threadPrimitive.execute({ name: "John" }, schema),
     ).rejects.toThrow("Invalid data");
   });
 
   it("should warm up thread pool", async ({ expect }) => {
-    await expect(threadDescriptor.create()).resolves.toBeUndefined();
+    await expect(threadPrimitive.create()).resolves.toBeUndefined();
   });
 
   it("should terminate thread pool", async ({ expect }) => {
-    await threadDescriptor.create();
-    await expect(threadDescriptor.terminate()).resolves.toBeUndefined();
+    await threadPrimitive.create();
+    await expect(threadPrimitive.terminate()).resolves.toBeUndefined();
   });
 });
 
-describe("Thread descriptor configuration", () => {
+describe("Thread primitive configuration", () => {
   let testAlepha: Alepha;
 
   beforeEach(async () => {

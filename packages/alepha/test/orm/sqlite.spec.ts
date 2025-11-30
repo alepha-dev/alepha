@@ -21,7 +21,7 @@ describe("sqlite", () => {
       use: NodeSqliteProvider,
     });
 
-    alepha.state.mut(nodeSqliteOptions, (old) => ({
+    alepha.store.mut(nodeSqliteOptions, (old) => ({
       ...old,
       path: "sqlite://:memory:",
     }));

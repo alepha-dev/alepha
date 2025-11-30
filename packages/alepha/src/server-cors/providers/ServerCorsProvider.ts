@@ -1,7 +1,7 @@
 import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerRouterProvider } from "alepha/server";
-import type { CorsDescriptorConfig } from "../descriptors/$cors.ts";
+import type { CorsPrimitiveConfig } from "../primitives/$cors.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -64,12 +64,12 @@ export class ServerCorsProvider {
   /**
    * Registered CORS configurations with their path patterns
    */
-  public readonly registeredConfigs: CorsDescriptorConfig[] = [];
+  public readonly registeredConfigs: CorsPrimitiveConfig[] = [];
 
   /**
-   * Register a CORS configuration (called by descriptors)
+   * Register a CORS configuration (called by primitives)
    */
-  public registerCors(config: CorsDescriptorConfig): void {
+  public registerCors(config: CorsPrimitiveConfig): void {
     this.registeredConfigs.push(config);
   }
 
@@ -132,7 +132,7 @@ export class ServerCorsProvider {
   /**
    * Build complete CORS options by merging with global defaults
    */
-  protected buildCorsOptions(config: CorsDescriptorConfig): CorsOptions {
+  protected buildCorsOptions(config: CorsPrimitiveConfig): CorsOptions {
     return {
       origin: config.origin ?? this.globalOptions.origin,
       methods: config.methods ?? this.globalOptions.methods,

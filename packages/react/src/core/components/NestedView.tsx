@@ -1,6 +1,6 @@
 import { memo, type ReactNode, use, useRef, useState } from "react";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import type { PageAnimation } from "../descriptors/$page.ts";
+import type { PageAnimation } from "../primitives/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import { useEvents } from "../hooks/useEvents.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";

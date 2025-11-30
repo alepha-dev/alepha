@@ -10,7 +10,7 @@ export * from "./index.shared.ts";
 
 export const AlephaReact = $module({
   name: "alepha.react",
-  descriptors: [],
+  primitives: [],
   services: [
 
   ],

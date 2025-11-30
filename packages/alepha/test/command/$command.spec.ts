@@ -55,7 +55,7 @@ describe("$command", () => {
       .with(TestCommands);
 
     if (argv) {
-      alepha.state.mut(cliOptions, (old) => ({
+      alepha.store.mut(cliOptions, (old) => ({
         ...old,
         argv,
       }));
@@ -204,7 +204,7 @@ describe("$command", () => {
   describe("Help Message", () => {
     test("should print general help with --help flag", async () => {
       const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
-        alepha.state.mut(cliOptions, (old) => ({
+        alepha.store.mut(cliOptions, (old) => ({
           ...old,
           name: "my-cli",
           description: "My awesome CLI tool.",
@@ -224,7 +224,7 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["greet", "-h"],
         (alepha) =>
-          alepha.state.mut(cliOptions, (old) => ({
+          alepha.store.mut(cliOptions, (old) => ({
             ...old,
             name: "my-cli",
           })),
@@ -527,7 +527,7 @@ describe("$command", () => {
       }
 
       const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
-        alepha.state.mut(cliOptions, (old) => ({
+        alepha.store.mut(cliOptions, (old) => ({
           ...old,
           name: "my-cli",
           description: "My awesome CLI tool.",
@@ -585,7 +585,7 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
-          alepha.state.mut(cliOptions, (old) => ({
+          alepha.store.mut(cliOptions, (old) => ({
             ...old,
             name: "test-cli",
           }));
@@ -609,7 +609,7 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
-          alepha.state.mut(cliOptions, (old) => ({
+          alepha.store.mut(cliOptions, (old) => ({
             ...old,
             name: "test-cli",
           }));
@@ -633,7 +633,7 @@ describe("$command", () => {
       const { mockLogger } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
-          alepha.state.mut(cliOptions, (old) => ({
+          alepha.store.mut(cliOptions, (old) => ({
             ...old,
             name: "test-cli",
           }));

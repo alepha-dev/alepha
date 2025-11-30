@@ -30,10 +30,6 @@ import {
   PG_UPDATED_AT,
   PG_VERSION,
 } from "../constants/PG_SYMBOLS.ts";
-import type {
-  EntityDescriptor,
-  SchemaToTableConfig,
-} from "../descriptors/$entity.ts";
 import { DbConflictError } from "../errors/DbConflictError.ts";
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import { DbError } from "../errors/DbError.ts";
@@ -49,6 +45,10 @@ import type {
   PgQueryWhere,
   PgQueryWhereOrSQL,
 } from "../interfaces/PgQueryWhere.ts";
+import type {
+  EntityPrimitive,
+  SchemaToTableConfig,
+} from "../primitives/$entity.ts";
 import {
   DatabaseProvider,
   type SQLLike,
@@ -59,7 +59,7 @@ import { PgRelationManager } from "./PgRelationManager.ts";
 import { type PgJoin, QueryManager } from "./QueryManager.ts";
 
 export abstract class Repository<T extends TObject> {
-  public readonly entity: EntityDescriptor<T>;
+  public readonly entity: EntityPrimitive<T>;
   public readonly provider: DatabaseProvider;
 
   protected readonly relationManager = $inject(PgRelationManager);
@@ -67,10 +67,10 @@ export abstract class Repository<T extends TObject> {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
-  constructor(entity: EntityDescriptor<T>, provider = DatabaseProvider) {
+  constructor(entity: EntityPrimitive<T>, provider = DatabaseProvider) {
     this.entity = entity;
     this.provider = this.alepha.inject(provider);
-    this.provider.registerEntity(entity as EntityDescriptor);
+    this.provider.registerEntity(entity as EntityPrimitive);
   }
 
   /**

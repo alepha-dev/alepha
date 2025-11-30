@@ -28,13 +28,13 @@ import {
   PG_UPDATED_AT,
   type PgRefOptions,
 } from "../constants/PG_SYMBOLS.ts";
-import type { EntityDescriptor } from "../descriptors/$entity.ts";
-import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
+import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { ModelBuilder } from "./ModelBuilder.ts";
 
 export class SqliteModelBuilder extends ModelBuilder {
   public buildTable(
-    entity: EntityDescriptor<any>,
+    entity: EntityPrimitive<any>,
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
@@ -62,7 +62,7 @@ export class SqliteModelBuilder extends ModelBuilder {
   }
 
   public buildSequence(
-    sequence: SequenceDescriptor,
+    sequence: SequencePrimitive,
     options: {
       sequences: Map<string, unknown>;
       schema: string;
@@ -75,7 +75,7 @@ export class SqliteModelBuilder extends ModelBuilder {
    * Get SQLite-specific config builder for the table.
    */
   protected getTableConfig(
-    entity: EntityDescriptor,
+    entity: EntityPrimitive,
     tables: Map<string, unknown>,
   ): ((self: BuildColumns<string, any, "sqlite">) => any) | undefined {
     // SQLite-specific builders

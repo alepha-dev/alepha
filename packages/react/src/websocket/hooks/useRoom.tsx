@@ -1,6 +1,6 @@
 import { useAlepha, useInject } from "@alepha/react";
 import type { Static } from "alepha";
-import type { ChannelDescriptor, TWSObject } from "alepha/websocket";
+import type { ChannelPrimitive, TWSObject } from "alepha/websocket";
 import { WebSocketClient } from "alepha/websocket";
 import { useEffect, useRef, useState } from "react";
 
@@ -17,9 +17,9 @@ export interface UseRoomOptions<
   roomId: string;
 
   /**
-   * Channel descriptor defining the schemas
+   * Channel primitive defining the schemas
    */
-  channel: ChannelDescriptor<TClient, TServer>;
+  channel: ChannelPrimitive<TClient, TServer>;
 
   /**
    * Handler for incoming messages from the server

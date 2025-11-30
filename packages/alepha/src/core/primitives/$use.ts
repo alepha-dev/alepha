@@ -1,0 +1,43 @@
+import type { State } from "../Alepha.ts";
+import { OPTIONS } from "../constants/OPTIONS.ts";
+import type { Static, TObject } from "../providers/TypeProvider.ts";
+import type { Atom } from "./$atom.ts";
+import { $context } from "./$context.ts";
+
+/**
+ * Subscribes to an atom's state and returns its current value for use in components.
+ *
+ * Creates a reactive connection between an atom and a component, automatically registering
+ * the atom in the application state if not already registered. The returned value is reactive
+ * and will update when the atom's state changes.
+ *
+ * **Use Cases**: Accessing global state, sharing data between components, reactive UI updates
+ *
+ * @example
+ * ```ts
+ * const userState = $atom({ schema: t.object({ name: t.text(), role: t.text() }) });
+ *
+ * class UserComponent {
+ *   user = $use(userState); // Reactive reference to atom state
+ *
+ *   render() {
+ *     return <div>Hello {this.user.name}!</div>;
+ *   }
+ * }
+ * ```
+ */
+export const $use = <T extends TObject, N extends string>(
+  atom: Atom<T, N>,
+): Readonly<Static<T>> => {
+  const { alepha } = $context();
+
+  // register atom in state if not already registered
+  alepha.store.register(atom);
+
+  const init = alepha.store.get(atom.key as keyof State) as object;
+
+  return {
+    [OPTIONS]: { getter: atom.key }, // alepha will replace this with by a real 'get prop()'
+    ...init,
+  } as Static<T>;
+};

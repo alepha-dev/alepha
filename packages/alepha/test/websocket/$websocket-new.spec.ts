@@ -2,9 +2,9 @@ import { Alepha, t } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { test } from "vitest";
 import WebSocket from "ws";
-import { $channel } from "../../src/websocket/descriptors/$channel.ts";
-import { $websocket } from "../../src/websocket/descriptors/$websocket.ts";
 import { AlephaWebSocket } from "../../src/websocket/index.ts";
+import { $channel } from "../../src/websocket/primitives/$channel.ts";
+import { $websocket } from "../../src/websocket/primitives/$websocket.ts";
 
 test("$websocket with channel-based architecture", async ({ expect }) => {
   const alepha = Alepha.create().with(AlephaWebSocket);

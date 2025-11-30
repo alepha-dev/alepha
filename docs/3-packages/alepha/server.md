@@ -8,23 +8,23 @@ npm install alepha
 
 ## Overview
 
-Provides high-performance HTTP server capabilities with declarative routing and action descriptors.
+Provides high-performance HTTP server capabilities with declarative routing and action primitives.
 
-The server module enables building REST APIs and web applications using `$route` and `$action` descriptors
+The server module enables building REST APIs and web applications using `$route` and `$action` primitives
 on class properties. It provides automatic request/response handling, schema validation, middleware support,
 and seamless integration with other Alepha modules for a complete backend solution.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $action()
 
-Creates a server action descriptor for defining type-safe HTTP endpoints.
+Creates a server action primitive for defining type-safe HTTP endpoints.
 
 Server actions are the core building blocks for REST APIs in Alepha, providing declarative
 HTTP endpoints with full type safety, automatic validation, and OpenAPI documentation.
@@ -91,13 +91,13 @@ class UserController {
 
 Create a basic endpoint.
 
-It's a low level descriptor. You probably want to use `$action` instead.
+It's a low level primitive. You probably want to use `$action` instead.
 
 ### Providers
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](/docs/providers).
+For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### ServerNotReadyProvider
 

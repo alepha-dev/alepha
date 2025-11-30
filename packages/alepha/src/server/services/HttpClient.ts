@@ -10,7 +10,6 @@ import {
 import { $cache } from "alepha/cache";
 import type { DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import type { ClientRequestOptions } from "../descriptors/$action.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
 import type {
@@ -18,6 +17,7 @@ import type {
   TRequestBody,
   TResponseBody,
 } from "../interfaces/ServerRequest.ts";
+import type { ClientRequestOptions } from "../primitives/$action.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 
 export class HttpClient {

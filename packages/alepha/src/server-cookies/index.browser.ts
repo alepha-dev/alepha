@@ -3,12 +3,12 @@ import { AlephaServer } from "alepha/server";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$cookie.browser.ts";
+export * from "./primitives/$cookie.browser.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaServerCookies = $module({
   name: "alepha.server.cookies",
-  descriptors: [],
+  primitives: [],
   services: [AlephaServer],
 });

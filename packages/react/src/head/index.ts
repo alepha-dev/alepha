@@ -5,13 +5,13 @@ import {
   type TPropsParentDefault,
 } from "@alepha/react";
 import { $module } from "alepha";
-import { $head } from "./descriptors/$head.ts";
+import { $head } from "./primitives/$head.ts";
 import type { Head } from "./interfaces/Head.ts";
 import { ServerHeadProvider } from "./providers/ServerHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$head.ts";
+export * from "./primitives/$head.ts";
 export * from "./hooks/useHead.ts";
 export * from "./interfaces/Head.ts";
 export * from "./providers/ServerHeadProvider.ts";
@@ -19,7 +19,7 @@ export * from "./providers/ServerHeadProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "@alepha/react" {
-  interface PageDescriptorOptions<
+  interface PagePrimitiveOptions<
     TConfig extends PageConfigSchema = PageConfigSchema,
     TProps extends object = TPropsDefault,
     TPropsParent extends object = TPropsParentDefault,
@@ -42,6 +42,6 @@ declare module "@alepha/react" {
  */
 export const AlephaReactHead = $module({
   name: "alepha.react.head",
-  descriptors: [$head],
+  primitives: [$head],
   services: [AlephaReact, ServerHeadProvider],
 });

@@ -172,7 +172,7 @@ describe("WorkerProvider", () => {
       await app.stop();
     });
 
-    test("should handle consumer with queue descriptor", async () => {
+    test("should handle consumer with queue primitive", async () => {
       const messages: any[] = [];
 
       class TestService {

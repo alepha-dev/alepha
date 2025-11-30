@@ -1,13 +1,13 @@
 import { $module } from "alepha";
 import type { DateTime } from "alepha/datetime";
 import { AlephaLock } from "alepha/lock";
-import { $scheduler } from "./descriptors/$scheduler.ts";
+import { $scheduler } from "./primitives/$scheduler.ts";
 import { CronProvider } from "./providers/CronProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./constants/CRON.ts";
-export * from "./descriptors/$scheduler.ts";
+export * from "./primitives/$scheduler.ts";
 export * from "./providers/CronProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -42,6 +42,6 @@ declare module "alepha" {
  */
 export const AlephaScheduler = $module({
   name: "alepha.scheduler",
-  descriptors: [$scheduler],
+  primitives: [$scheduler],
   services: [AlephaLock, CronProvider],
 });

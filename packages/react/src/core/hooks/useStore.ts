@@ -18,12 +18,12 @@ function useStore(target: any, defaultValue?: any): any {
   const alepha = useAlepha();
 
   useMemo(() => {
-    if (defaultValue != null && alepha.state.get(target) == null) {
-      alepha.state.set(target, defaultValue);
+    if (defaultValue != null && alepha.store.get(target) == null) {
+      alepha.store.set(target, defaultValue);
     }
   }, [defaultValue]);
 
-  const [state, setState] = useState(alepha.state.get(target));
+  const [state, setState] = useState(alepha.store.get(target));
 
   useEffect(() => {
     if (!alepha.isBrowser()) {
@@ -42,7 +42,7 @@ function useStore(target: any, defaultValue?: any): any {
   return [
     state,
     (value: any) => {
-      alepha.state.set(target, value);
+      alepha.store.set(target, value);
     },
   ] as const;
 }

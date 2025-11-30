@@ -8,23 +8,23 @@ npm install alepha
 
 ## Overview
 
-Provides file storage capabilities through declarative bucket descriptors with support for multiple storage backends.
+Provides file storage capabilities through declarative bucket primitives with support for multiple storage backends.
 
-The bucket module enables unified file operations across different storage systems using the `$bucket` descriptor
+The bucket module enables unified file operations across different storage systems using the `$bucket` primitive
 on class properties. It abstracts storage provider differences, offering consistent APIs for local filesystem,
 cloud storage, or in-memory storage for testing environments.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $bucket()
 
-Creates a bucket descriptor for file storage and management with configurable validation.
+Creates a bucket primitive for file storage and management with configurable validation.
 
 Provides a comprehensive file storage system that handles uploads, downloads, validation,
 and management across multiple storage backends with MIME type and size limit controls.

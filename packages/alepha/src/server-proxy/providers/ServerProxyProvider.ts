@@ -7,7 +7,7 @@ import {
   type ServerRequest,
   ServerRouterProvider,
 } from "alepha/server";
-import { $proxy, type ProxyDescriptorOptions } from "../descriptors/$proxy.ts";
+import { $proxy, type ProxyPrimitiveOptions } from "../primitives/$proxy.ts";
 
 export class ServerProxyProvider {
   protected readonly log = $logger();
@@ -17,13 +17,13 @@ export class ServerProxyProvider {
   protected readonly configure = $hook({
     on: "configure",
     handler: () => {
-      for (const proxy of this.alepha.descriptors($proxy)) {
+      for (const proxy of this.alepha.primitives($proxy)) {
         this.createProxy(proxy.options);
       }
     },
   });
 
-  public createProxy(options: ProxyDescriptorOptions): void {
+  public createProxy(options: ProxyPrimitiveOptions): void {
     if (options.disabled) {
       return;
     }
@@ -52,7 +52,7 @@ export class ServerProxyProvider {
 
   public createProxyHandler(
     target: string,
-    options: Omit<ProxyDescriptorOptions, "path">,
+    options: Omit<ProxyPrimitiveOptions, "path">,
   ): ServerHandler {
     return async (request) => {
       const url = new URL(target + request.url.pathname);

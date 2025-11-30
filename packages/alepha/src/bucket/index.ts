@@ -1,17 +1,17 @@
 import { $module, type FileLike } from "alepha";
 import {
   $bucket,
-  type BucketDescriptor,
   type BucketFileOptions,
-} from "./descriptors/$bucket.ts";
+  type BucketPrimitive,
+} from "./primitives/$bucket.ts";
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$bucket.ts";
 export * from "./errors/FileNotFoundError.ts";
+export * from "./primitives/$bucket.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
@@ -27,7 +27,7 @@ declare module "alepha" {
     "bucket:file:uploaded": {
       id: string;
       file: FileLike;
-      bucket: BucketDescriptor;
+      bucket: BucketPrimitive;
       options: BucketFileOptions;
     };
     /**
@@ -35,7 +35,7 @@ declare module "alepha" {
      */
     "bucket:file:deleted": {
       id: string;
-      bucket: BucketDescriptor;
+      bucket: BucketPrimitive;
     };
   }
 }
@@ -43,9 +43,9 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides file storage capabilities through declarative bucket descriptors with support for multiple storage backends.
+ * Provides file storage capabilities through declarative bucket primitives with support for multiple storage backends.
  *
- * The bucket module enables unified file operations across different storage systems using the `$bucket` descriptor
+ * The bucket module enables unified file operations across different storage systems using the `$bucket` primitive
  * on class properties. It abstracts storage provider differences, offering consistent APIs for local filesystem,
  * cloud storage, or in-memory storage for testing environments.
  *
@@ -55,7 +55,7 @@ declare module "alepha" {
  */
 export const AlephaBucket = $module({
   name: "alepha.bucket",
-  descriptors: [$bucket],
+  primitives: [$bucket],
   services: [
     FileStorageProvider,
     MemoryFileStorageProvider,

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { $hook, $inject, Alepha, type FileLike } from "alepha";
 import {
   $bucket,
-  type BucketDescriptor,
+  type BucketPrimitive,
   FileNotFoundError,
 } from "alepha/bucket";
 import {
@@ -77,17 +77,15 @@ export class FileService {
   }
 
   /**
-   * Gets a bucket descriptor by name.
+   * Gets a bucket primitive by name.
    *
    * @param bucketName - The name of the bucket to retrieve (defaults to "default")
-   * @returns The bucket descriptor
+   * @returns The bucket primitive
    * @throws {NotFoundError} If the bucket is not found
    */
-  public bucket(
-    bucketName: string = this.defaultBucket.name,
-  ): BucketDescriptor {
+  public bucket(bucketName: string = this.defaultBucket.name): BucketPrimitive {
     const bucket = this.alepha
-      .descriptors($bucket)
+      .primitives($bucket)
       .find((it) => it.name === bucketName);
 
     if (!bucket) {

@@ -3,7 +3,7 @@ import { $email, MemoryEmailProvider } from "alepha/email";
 import { describe, test } from "vitest";
 
 describe("$email", () => {
-  test("should send email using descriptor", async ({ expect }) => {
+  test("should send email using primitive", async ({ expect }) => {
     class TestService {
       readonly welcomeEmail = $email({ name: "welcome" });
     }

@@ -2,7 +2,7 @@ import { $module } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerLinks } from "alepha/server/links";
-import { $page } from "./descriptors/$page.ts";
+import { $page } from "./primitives/$page.ts";
 import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
 import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
 import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
@@ -22,7 +22,7 @@ export * from "./providers/ReactPageProvider.ts";
 
 export const AlephaReact = $module({
   name: "alepha.react",
-  descriptors: [$page],
+  primitives: [$page],
   services: [
     ReactPageProvider,
     ReactBrowserRouterProvider,

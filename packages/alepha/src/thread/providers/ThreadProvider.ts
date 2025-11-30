@@ -1,7 +1,7 @@
 import { parentPort, workerData } from "node:worker_threads";
 import { $env, $hook, t } from "alepha";
 import { $logger } from "alepha/logger";
-import { $thread } from "../descriptors/$thread.ts";
+import { $thread } from "../primitives/$thread.ts";
 
 interface ThreadMessage<T = any> {
   id: string;
@@ -26,15 +26,15 @@ export class ThreadProvider {
         return;
       }
 
-      const threads = alepha.descriptors($thread);
-      const threadDescriptor = threads.find((thread) => thread.name === worker);
+      const threads = alepha.primitives($thread);
+      const threadPrimitive = threads.find((thread) => thread.name === worker);
 
-      if (!threadDescriptor) {
+      if (!threadPrimitive) {
         this.log.error(`Thread not found: ${worker}`);
         return;
       }
 
-      this.log.info(`Thread ready: ${threadDescriptor.name}`);
+      this.log.info(`Thread ready: ${threadPrimitive.name}`);
 
       // Use the message channel port from worker data if available, fallback to parentPort
       const communicationPort = workerData?.port || parentPort;
@@ -48,10 +48,8 @@ export class ThreadProvider {
       communicationPort.on("message", async (message: ThreadMessage) => {
         if (message.type === "execute") {
           try {
-            this.log.debug(
-              `Executing thread handler: ${threadDescriptor.name}`,
-            );
-            const result = await threadDescriptor.options.handler();
+            this.log.debug(`Executing thread handler: ${threadPrimitive.name}`);
+            const result = await threadPrimitive.options.handler();
 
             communicationPort.postMessage({
               id: message.id,

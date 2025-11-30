@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
-import { $dictionary } from "../../src/i18n/descriptors/$dictionary.ts";
+import { $dictionary } from "../../src/i18n/primitives/$dictionary.ts";
 import { AlephaReactI18n } from "../../src/i18n/index.ts";
 import { I18nProvider } from "../../src/i18n/providers/I18nProvider.ts";
 
@@ -253,10 +253,10 @@ describe("I18nProvider", () => {
 
     // State is set lazily, so we should set a language first
     await i18n.setLang("en");
-    expect(alepha.state.get("alepha.react.i18n.lang")).toBe("en");
+    expect(alepha.store.get("alepha.react.i18n.lang")).toBe("en");
 
     await i18n.setLang("fr");
-    expect(alepha.state.get("alepha.react.i18n.lang")).toBe("fr");
+    expect(alepha.store.get("alepha.react.i18n.lang")).toBe("fr");
   });
 
   test("should have number formatter for current language", async ({

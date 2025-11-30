@@ -1,12 +1,12 @@
 import { $module } from "alepha";
-import { $client } from "./descriptors/$client.ts";
-import { $remote } from "./descriptors/$remote.ts";
+import { $client } from "./primitives/$client.ts";
+import { $remote } from "./primitives/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$client.ts";
-export * from "./descriptors/$remote.ts";
+export * from "./primitives/$client.ts";
+export * from "./primitives/$remote.ts";
 export * from "./providers/LinkProvider.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
 
@@ -14,6 +14,6 @@ export * from "./schemas/apiLinksResponseSchema.ts";
 
 export const AlephaServerLinks = $module({
   name: "alepha.server.links",
-  descriptors: [$remote, $client],
+  primitives: [$remote, $client],
   services: [LinkProvider],
 });

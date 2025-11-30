@@ -3,18 +3,18 @@ import { $module } from "alepha";
 import { AlephaServer, type RequestConfigSchema } from "alepha/server";
 import { AlephaServerCache } from "alepha/server/cache";
 import { AlephaServerStatic } from "alepha/server/static";
-import { $swagger } from "./descriptors/$swagger.ts";
+import { $swagger } from "./primitives/$swagger.ts";
 import { ServerSwaggerProvider } from "./providers/ServerSwaggerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$swagger.ts";
+export * from "./primitives/$swagger.ts";
 export * from "./providers/ServerSwaggerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha/server" {
-  interface ActionDescriptorOptions<TConfig extends RequestConfigSchema> {
+  interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema> {
     /**
      * Short description of the route.
      */
@@ -39,13 +39,13 @@ declare module "alepha/server" {
  */
 export const AlephaServerSwagger = $module({
   name: "alepha.server.swagger",
-  descriptors: [$swagger],
+  primitives: [$swagger],
   services: [ServerSwaggerProvider],
   register: (alepha) => {
     alepha.with(AlephaServer);
     alepha.with(AlephaServerCache);
     alepha.with(AlephaServerStatic);
     alepha.with(ServerSwaggerProvider);
-    alepha.state.push("alepha.build.assets", "alepha");
+    alepha.store.push("alepha.build.assets", "alepha");
   },
 });

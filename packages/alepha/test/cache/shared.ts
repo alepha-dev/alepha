@@ -207,7 +207,7 @@ export const testCacheClear = async (
   expect(await test.b({ name: "A" })).toBe("A:0");
   expect(await test.b({ name: "A" })).toBe("A:0");
 
-  await Promise.all(app.descriptors($cache).map((cache) => cache.invalidate()));
+  await Promise.all(app.primitives($cache).map((cache) => cache.invalidate()));
 
   expect(await test.a({ name: "A" })).toBe("A:1");
   expect(await test.b({ name: "A" })).toBe("A:1");

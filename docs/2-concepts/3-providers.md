@@ -1,85 +1,148 @@
-## Providers
+# Providers
 
-Take a look at the following code snippet:
+If **Primitives** are the "superpowers" you attach to classes, **Providers** are the engines that power them.
+
+In strict architectural terms, a **Service** contains your Business Logic (the "What"), and a **Provider** contains the Infrastructure Logic (the "How").
+
+## The Separation of Concerns
+
+When writing an application, you often need to talk to the outside world: sending emails, connecting to Redis, uploading files to S3.
+
+You *could* put this logic directly inside your User Service, but that makes testing a nightmare. Instead, Alepha encourages you to wrap this infrastructure code into a **Provider**.
+
+> At the end, providers are just a convention to make mocking and swapping implementations easier.
+
+### Anatomy of a Provider
+
+A Provider is just a class. However, it typically does three things:
+1.  Validates its own configuration via `$env`.
+2.  Manages its connection lifecycle via `$hook` (connect/disconnect).
+3.  Exposes a clean API to the rest of the app.
+
+Here is a production-ready Email Provider:
 
 ```ts
-// this is a service
-class UserNotificationService {
-  // it's a simple method which sends a notification
-  notifyUser(to: string, message: string) {
-    // email.send(to, message);
-  }
-}
-```
+import { $env, $hook, t } from "alepha";
+import { $logger } from "alepha/logger";
+import { createTransport, type Transporter } from "my-super-mailer-lib";
 
-The class `NotificationService` inside the Alepha container is called a **service**. It's a stateless singleton.
+export class EmailProvider {
+  log = $logger();
 
-In order to send our email, we need to create a provider that will handle the email sending logic.
-Providers are classes that encapsulate specific functionality and can be injected into services or other providers.
-
-```ts
-import { $hook, $env, t, $inject } from "alepha";
-import { createTransport } from "nodemailer";
-
-class EmailProvider {
-  // configure provider with environment variables
+  // 1. Configuration: The provider validates its own requirements
   env = $env(t.object({
     SMTP_HOST: t.text(),
+    SMTP_USER: t.text(),
+    SMTP_PASS: t.text(),
   }));
 
   transporter = createTransport({
     host: this.env.SMTP_HOST,
+    auth: { user: this.env.SMTP_USER, pass: this.env.SMTP_PASS }
   });
 
-  send(to: string, message: string) {
-    return this.transporter.sendMail({
-      from: to,
-      text: message,
-    });
-  }
-}
+  // 2. Lifecycle: Connect when the app starts
+  onStart = $hook({
+    on: "start",
+    handler: async () => {
+      await this.transporter.verify();
+      this.log.info("Connected to SMTP");
+    }
+  });
 
-class UserNotificationService {
-  emailProvider = $inject(EmailProvider);
-
-  notifyUser(to: string, message: string) {
-    return this.emailProvider.send(to, message);
+  // 3. Public API: The rest of your app uses this
+  async send(to: string, subject: string) {
+    return this.transporter.sendMail({ from: "me@app.com", to, subject });
   }
 }
 ```
 
-Voila! Now we have a `UserNotificationService` that can send notifications using the `EmailProvider`.
-The `EmailProvider` is configured with environment variables and can be injected into any service that needs to send emails.
+### Using a Provider
 
-All Alepha packages contains a set of providers that can be used in your application.
-For example, the `alepha/queue` package provides a `QueueProvider` that can be used to send messages to a queue.
-
-### Polymorphic Providers
-
-Sometimes, you may want to use different implementations of a provider based on the environment or configuration.
-
-For example, `QueueProvider` may vary based on the queue system you use (e.g., Redis, RabbitMQ, etc.).
-In this case, you can use polymorphic providers.
+Injecting a provider is no different than injecting a service. Use `$inject`.
 
 ```ts
-import { $env, t, $inject, alepha } from "alepha";
-import { QueueProvider, MemoryQueueProvider } from "alepha/queue";
-import { RedisQueueProvider } from "alepha/queue-redis";
+import { $inject, $action } from "alepha";
+import { EmailProvider } from "./EmailProvider";
 
-class TransactionService {
-  // Inject the QueueProvider, which can be either Redis or Memory based on the environment
-  queue = $inject(QueueProvider);
+class UserService {
+  // Alepha injects the singleton instance of EmailProvider
+  email = $inject(EmailProvider);
+
+  register = $action({
+    handler: async ({ body }) => {
+      // ... logic to create user ...
+      await this.email.send(body.email, "Welcome!");
+    }
+  });
+}
+```
+
+## Polymorphism (The "Swap" Strategy)
+
+This is where Alepha shines.
+
+Sometimes, you want the "What" to stay the same, but the "How" to change depending on where the app is running.
+*   **Local Dev:** You want to log emails to the console (free, fast).
+*   **Production:** You want to send real emails via SendGrid/AWS SES.
+
+You can achieve this using **Service Substitution**.
+
+### 1. Define the Abstract Provider
+This defines the "Contract". Your services will depend on this.
+
+```ts
+export abstract class QueueProvider {
+  abstract push(job: object): Promise<void>;
+}
+```
+
+### 2. Define Implementations
+Different ways to fulfill the contract.
+
+```ts
+// For Production: Real Redis
+export class RedisQueueProvider extends QueueProvider {
+  async push(job: object) { /* ... redis logic ... */ }
 }
 
-const alepha = Alepha.create().with(TransactionService);
+// For Dev/Test: Just an array in memory
+export class MemoryQueueProvider extends QueueProvider {
+  queue: object[] = [];
+  async push(job: object) { this.queue.push(job); }
+}
+```
 
+### 3. Wire it up
+In your entry point, you tell Alepha which implementation to use based on the environment.
+
+```ts
+import { Alepha, run } from "alepha";
+import { QueueProvider, RedisQueueProvider, MemoryQueueProvider } from "./queue";
+
+const alepha = Alepha.create();
+
+// The Magic: Dependency Injection wiring
 if (alepha.isProduction()) {
-  // In production, use a Redis queue provider
+  // In Prod: When someone asks for 'QueueProvider', give them 'RedisQueueProvider'
   alepha.with({ provide: QueueProvider, use: RedisQueueProvider });
 } else {
-  // In development, use a memory queue provider
+  // In Dev: When someone asks for 'QueueProvider', give them 'MemoryQueueProvider'
   alepha.with({ provide: QueueProvider, use: MemoryQueueProvider });
 }
 
+// Your app logic doesn't care. It just injects 'QueueProvider'.
 run(alepha);
 ```
+
+Voilà, now you are an Alepha EXPERT.
+
+## Built-in Providers
+
+Alepha provides standard implementations for common needs so you don't have to reinvent the wheel.
+
+*   **`alepha/bucket`**: File storage. Switches between `LocalFileStorageProvider` (disk) and `S3`/`Azure` automatically.
+*   **`alepha/queue`**: Job queues. Switches between `MemoryQueue` and `RedisQueue`.
+*   **`alepha/logger`**: Logging. Switches between `Console` (pretty colors) and `JSON` (for log aggregators).
+
+You focus on the logic; Alepha handles the plumbing.

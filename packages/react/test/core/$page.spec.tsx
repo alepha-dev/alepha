@@ -2,10 +2,10 @@ import { Alepha, t } from "alepha";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
 import type { ReactRouterState } from "../../src/core/index.ts";
-import { $page, PageDescriptor, Redirection } from "../../src/core/index.ts";
+import { $page, PagePrimitive, Redirection } from "../../src/core/index.ts";
 import NestedView from "../../src/core/components/NestedView.tsx";
 
-describe("$page descriptor tests", () => {
+describe("$page primitive tests", () => {
   let alepha: Alepha;
 
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe("$page descriptor tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.basic).toBeInstanceOf(PageDescriptor);
+    expect(app.basic).toBeInstanceOf(PagePrimitive);
     expect(app.basic.name).toBe("Basic Page");
     expect(app.basic.options.path).toBe("/basic");
 

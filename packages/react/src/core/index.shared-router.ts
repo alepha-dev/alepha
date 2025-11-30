@@ -5,7 +5,7 @@ export { default as Link, type LinkProps } from "./components/Link.tsx";
 export { default as NestedView } from "./components/NestedView.tsx";
 export { default as NotFound } from "./components/NotFound.tsx";
 export * from "./contexts/RouterLayerContext.ts";
-export * from "./descriptors/$page.ts";
+export * from "./primitives/$page.ts";
 export * from "./errors/Redirection.ts";
 export * from "./hooks/useActive.ts";
 export * from "./hooks/useQueryParams.ts";

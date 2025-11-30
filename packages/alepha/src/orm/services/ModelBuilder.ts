@@ -1,6 +1,6 @@
 import type { SQL } from "drizzle-orm";
-import type { EntityDescriptor } from "../descriptors/$entity.ts";
-import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
+import type { SequencePrimitive } from "../primitives/$sequence.ts";
 
 /**
  * Database-specific table configuration functions
@@ -24,15 +24,15 @@ export interface TableConfigBuilders<TConfig> {
 }
 
 /**
- * Abstract base class for transforming Alepha Descriptors (Entity, Sequence, etc...)
+ * Abstract base class for transforming Alepha Primitives (Entity, Sequence, etc...)
  * into drizzle models (tables, enums, sequences, etc...).
  */
 export abstract class ModelBuilder {
   /**
-   * Build a table from an entity descriptor.
+   * Build a table from an entity primitive.
    */
   abstract buildTable(
-    entity: EntityDescriptor,
+    entity: EntityPrimitive,
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
@@ -41,10 +41,10 @@ export abstract class ModelBuilder {
   ): void;
 
   /**
-   * Build a sequence from a sequence descriptor.
+   * Build a sequence from a sequence primitive.
    */
   abstract buildSequence(
-    sequence: SequenceDescriptor,
+    sequence: SequencePrimitive,
     options: {
       sequences: Map<string, unknown>;
       schema: string;
@@ -65,13 +65,13 @@ export abstract class ModelBuilder {
    * Build the table configuration function for any database.
    * This includes indexes, foreign keys, constraints, and custom config.
    *
-   * @param entity - The entity descriptor
+   * @param entity - The entity primitive
    * @param builders - Database-specific builder functions
    * @param tableResolver - Function to resolve entity references to table columns
    * @param customConfigHandler - Optional handler for custom config
    */
   protected buildTableConfig<TConfig, TSelf>(
-    entity: EntityDescriptor,
+    entity: EntityPrimitive,
     builders: TableConfigBuilders<TConfig>,
     tableResolver?: (entityName: string) => any,
     customConfigHandler?: (config: any, self: TSelf) => TConfig[],

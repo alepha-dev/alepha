@@ -24,9 +24,9 @@ export class DevToolsMetadataProvider {
   protected readonly log = $logger();
 
   public getActions(): DevActionMetadata[] {
-    const actionDescriptors = this.alepha.descriptors($action);
+    const actionPrimitives = this.alepha.primitives($action);
 
-    return actionDescriptors.map((action) => {
+    return actionPrimitives.map((action) => {
       const schema = action.schema;
       const options = action.options as any; // Allow accessing augmented properties
 
@@ -52,9 +52,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getQueues(): DevQueueMetadata[] {
-    const queueDescriptors = this.alepha.descriptors($queue);
+    const queuePrimitives = this.alepha.primitives($queue);
 
-    return queueDescriptors.map((queue) => ({
+    return queuePrimitives.map((queue) => ({
       name: queue.name,
       description: queue.options.description,
       schema: queue.options.schema,
@@ -63,9 +63,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getSchedulers(): DevSchedulerMetadata[] {
-    const schedulerDescriptors = this.alepha.descriptors($scheduler);
+    const schedulerPrimitives = this.alepha.primitives($scheduler);
 
-    return schedulerDescriptors.map((scheduler) => ({
+    return schedulerPrimitives.map((scheduler) => ({
       name: scheduler.name,
       description: scheduler.options.description,
       cron: scheduler.options.cron,
@@ -75,9 +75,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getTopics(): DevTopicMetadata[] {
-    const topicDescriptors = this.alepha.descriptors($topic);
+    const topicPrimitives = this.alepha.primitives($topic);
 
-    return topicDescriptors.map((topic) => ({
+    return topicPrimitives.map((topic) => ({
       name: topic.name,
       description: topic.options.description,
       schema: topic.options.schema,
@@ -86,9 +86,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getBuckets(): DevBucketMetadata[] {
-    const bucketDescriptors = this.alepha.descriptors($bucket);
+    const bucketPrimitives = this.alepha.primitives($bucket);
 
-    return bucketDescriptors.map((bucket) => ({
+    return bucketPrimitives.map((bucket) => ({
       name: bucket.name,
       description: bucket.options.description,
       mimeTypes: bucket.options.mimeTypes,
@@ -98,9 +98,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getRealms(): DevRealmMetadata[] {
-    const realmDescriptors = this.alepha.descriptors($realm);
+    const realmPrimitives = this.alepha.primitives($realm);
 
-    return realmDescriptors.map((realm) => ({
+    return realmPrimitives.map((realm) => ({
       name: realm.name,
       description: realm.options.description,
       roles: realm.options.roles,
@@ -117,9 +117,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getCaches(): DevCacheMetadata[] {
-    const cacheDescriptors = this.alepha.descriptors($cache);
+    const cachePrimitives = this.alepha.primitives($cache);
 
-    return cacheDescriptors.map((cache) => ({
+    return cachePrimitives.map((cache) => ({
       name: cache.container,
       ttl: cache.options.ttl,
       disabled: cache.options.disabled,
@@ -128,9 +128,9 @@ export class DevToolsMetadataProvider {
   }
 
   public getPages(): DevPageMetadata[] {
-    // const pageDescriptors = this.alepha.descriptors($page);
+    // const pagePrimitives = this.alepha.primitives($page);
     //
-    // return pageDescriptors.map((page) => ({
+    // return pagePrimitives.map((page) => ({
     //   name: page.name,
     //   description: page.options.description,
     //   path: page.options.path,

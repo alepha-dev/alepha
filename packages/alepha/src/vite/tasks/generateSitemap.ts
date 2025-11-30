@@ -19,10 +19,10 @@ export interface GenerateSitemapOptions {
 }
 
 /**
- * Generate sitemap.xml from Alepha page descriptors.
+ * Generate sitemap.xml from Alepha page primitives.
  *
  * This task loads the built Alepha application,
- * queries all page descriptors, and generates a sitemap.xml
+ * queries all page primitives, and generates a sitemap.xml
  * containing URLs for all accessible pages.
  */
 export async function generateSitemap(
@@ -45,7 +45,7 @@ export async function generateSitemap(
 }
 
 function generateSitemapFromAlepha(alepha: Alepha, baseUrl: string): string {
-  const pages = alepha.descriptors("page") as any[];
+  const pages = alepha.primitives("page") as any[];
   const urls: string[] = [];
 
   for (const page of pages) {

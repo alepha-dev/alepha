@@ -2,8 +2,8 @@ import { type TObject, TypeBoxValue, t } from "alepha";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
-import type { EntityDescriptor } from "../descriptors/$entity.ts";
 import type { PgRelationMap } from "../interfaces/PgQuery.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 import type { PgJoin } from "./QueryManager.ts";
 
@@ -20,7 +20,7 @@ export class PgRelationManager {
     parentKey?: string,
   ) {
     for (const [key, join] of Object.entries(withRelations)) {
-      const from = provider.table(join.join as EntityDescriptor);
+      const from = provider.table(join.join as EntityPrimitive);
       const on = isSQLWrapper(join.on)
         ? (join.on as SQL)
         : sql`${table[join.on[0] as string]} = ${from[join.on[1].name]}`;

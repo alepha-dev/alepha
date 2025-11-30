@@ -84,7 +84,7 @@ export class ReactBrowserProvider {
   };
 
   public get state(): ReactRouterState {
-    return this.alepha.state.get("alepha.react.router.state")!;
+    return this.alepha.store.get("alepha.react.router.state")!;
   }
 
   /**
@@ -262,7 +262,7 @@ export class ReactBrowserProvider {
         // low budget, but works for now
         for (const [key, value] of Object.entries(hydration)) {
           if (key !== "layers") {
-            this.alepha.state.set(key as keyof State, value);
+            this.alepha.store.set(key as keyof State, value);
           }
         }
       }

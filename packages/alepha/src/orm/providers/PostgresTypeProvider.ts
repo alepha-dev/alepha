@@ -159,9 +159,9 @@ export class PostgresTypeProvider {
    *
    * This is used to track the version of a row in the database.
    *
-   * You can use it for optimistic concurrency control (OCC) with {@link RepositoryDescriptor#save}.
+   * You can use it for optimistic concurrency control (OCC) with {@link RepositoryPrimitive#save}.
    *
-   * @see {@link RepositoryDescriptor#save}
+   * @see {@link RepositoryPrimitive#save}
    * @see {@link PgVersionMismatchError}
    */
   public readonly version = (options: TNumberOptions = {}) =>
@@ -239,7 +239,7 @@ export class PostgresTypeProvider {
 
   /**
    * Creates a page schema for a given object schema.
-   * It's used by {@link RepositoryDescriptor#paginate} method.
+   * It's used by {@link RepositoryPrimitive#paginate} method.
    */
   public readonly page = <T extends TObject>(
     resource: T,

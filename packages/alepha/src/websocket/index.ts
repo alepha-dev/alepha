@@ -1,8 +1,8 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { AlephaTopic } from "alepha/topic";
-import { $channel } from "./descriptors/$channel.ts";
-import { $websocket } from "./descriptors/$websocket.ts";
+import { $channel } from "./primitives/$channel.ts";
+import { $websocket } from "./primitives/$websocket.ts";
 import { NodeWebSocketServerProvider } from "./providers/NodeWebSocketServerProvider.ts";
 import { WebSocketServerProvider } from "./providers/WebSocketServerProvider.ts";
 import { RoomManager } from "./services/RoomManager.ts";
@@ -60,7 +60,7 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
 /**
  * Provides real-time bidirectional communication using WebSockets.
  *
- * The WebSockets module enables building real-time applications using the `$websocket` descriptor
+ * The WebSockets module enables building real-time applications using the `$websocket` primitive
  * on class properties. It provides automatic connection management, message routing, type-safe
  * message handling, and seamless integration with other Alepha modules.
  *
@@ -72,7 +72,7 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
  */
 export const AlephaWebSocket = $module({
   name: "alepha.websocket",
-  descriptors: [$channel, $websocket],
+  primitives: [$channel, $websocket],
   services: [
     WebSocketServerProvider,
     NodeWebSocketServerProvider,

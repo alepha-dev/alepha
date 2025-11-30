@@ -1,7 +1,7 @@
-## Descriptors
+## Primitives
 
-Alepha Framework provides factory functions called **descriptors** that allow you to define various aspects of your application in a declarative way.
-These descriptors are used to create routes, services, and other components without the need for complex boilerplate code.
+Alepha Framework provides factory functions called **primitives** that allow you to define various aspects of your application in a declarative way.
+These primitives are used to create routes, services, and other components without the need for complex boilerplate code.
 
 ```ts
 import { $action } from "alepha/server";
@@ -33,11 +33,11 @@ const alepha = Alepha
 run(alepha);
 ```
 
-Descriptors are functions that return a configuration object, which Alepha uses to set up the corresponding functionality.
+Primitives are functions that return a configuration object, which Alepha uses to set up the corresponding functionality.
 
-### Collection of Descriptors
+### Collection of Primitives
 
-There are more than 30 descriptors available in Alepha, each serving a specific purpose. Here are some of the most commonly used ones:
+There are more than 30 primitives available in Alepha, each serving a specific purpose. Here are some of the most commonly used ones:
 
 - **$action**: The primary way to build type-safe APIs. Creates a full-featured API endpoint with automatic validation for request parameters, query, and body, along with response serialization.
 - **$repository**: The main interface for database interaction. Provides a fully-typed repository for a database entity, offering a complete set of CRUD and querying methods (find, create, update, delete, paginate).

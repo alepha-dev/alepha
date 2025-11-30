@@ -1,9 +1,9 @@
-import type { TWSObject } from "../descriptors/$channel.ts";
 import type {
   EmitOptions,
   WebSocketConnection,
-  WebSocketDescriptorOptions,
+  WebSocketPrimitiveOptions,
 } from "../interfaces/WebSocketInterfaces.ts";
+import type { TWSObject } from "../primitives/$channel.ts";
 
 /**
  * Abstract WebSocket server provider
@@ -18,7 +18,7 @@ export abstract class WebSocketServerProvider {
   abstract registerEndpoint<
     TClient extends TWSObject,
     TServer extends TWSObject,
-  >(config: WebSocketDescriptorOptions<TClient, TServer>): void;
+  >(config: WebSocketPrimitiveOptions<TClient, TServer>): void;
 
   /**
    * Emit a message to clients based on targeting criteria

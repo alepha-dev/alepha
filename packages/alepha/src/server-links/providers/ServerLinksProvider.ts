@@ -18,7 +18,7 @@ import {
   apiLinksResponseSchema,
 } from "../schemas/apiLinksResponseSchema.ts";
 import { LinkProvider } from "./LinkProvider.ts";
-import { RemoteDescriptorProvider } from "./RemoteDescriptorProvider.ts";
+import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
 const envSchema = t.object({
   SERVER_API_PREFIX: t.text({
@@ -31,7 +31,7 @@ export class ServerLinksProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly linkProvider = $inject(LinkProvider);
-  protected readonly remoteProvider = $inject(RemoteDescriptorProvider);
+  protected readonly remoteProvider = $inject(RemotePrimitiveProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
   public get prefix() {
@@ -42,7 +42,7 @@ export class ServerLinksProvider {
     on: "configure",
     handler: () => {
       // convert all $action to local links
-      for (const action of this.alepha.descriptors($action)) {
+      for (const action of this.alepha.primitives($action)) {
         this.linkProvider.registerLink({
           name: action.name,
           group: action.group,

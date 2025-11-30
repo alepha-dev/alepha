@@ -9,6 +9,6 @@ export * from "./index.shared.ts";
 
 export const AlephaServer = $module({
   name: "alepha.server",
-  descriptors: [],
+  primitives: [],
   services: [HttpClient],
 });

@@ -21,9 +21,9 @@ import { DEFAULT_APP_SECRET } from "alepha/security";
 import type { ServerRequest } from "alepha/server";
 import type {
   Cookie,
-  CookieDescriptorOptions,
+  CookiePrimitiveOptions,
   Cookies,
-} from "../descriptors/$cookie.ts";
+} from "../primitives/$cookie.ts";
 import { CookieParser } from "../services/CookieParser.ts";
 
 const envSchema = t.object({
@@ -96,7 +96,7 @@ export class ServerCookiesProvider {
 
   public getCookie<T extends TSchema>(
     name: string,
-    options: CookieDescriptorOptions<T>,
+    options: CookiePrimitiveOptions<T>,
     contextCookies?: Cookies,
   ): Static<T> | undefined {
     const cookies = this.getCookiesFromContext(contextCookies);
@@ -145,7 +145,7 @@ export class ServerCookiesProvider {
 
   public setCookie<T extends TSchema>(
     name: string,
-    options: CookieDescriptorOptions<T>,
+    options: CookiePrimitiveOptions<T>,
     data: Static<T>,
     contextCookies?: Cookies,
   ): void {

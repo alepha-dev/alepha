@@ -1,5 +1,5 @@
 import type { Static } from "alepha";
-import type { ChannelDescriptor, TWSObject } from "../descriptors/$channel.ts";
+import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 /**
  * WebSocket connection interface
@@ -54,14 +54,14 @@ export enum WebSocketState {
 /**
  * WebSocket endpoint configuration (server-side)
  */
-export interface WebSocketDescriptorOptions<
+export interface WebSocketPrimitiveOptions<
   TClient extends TWSObject,
   TServer extends TWSObject,
 > {
   /**
    * Channel definition with schema and path
    */
-  channel: ChannelDescriptor<TClient, TServer>;
+  channel: ChannelPrimitive<TClient, TServer>;
 
   /**
    * Handler for incoming messages from clients

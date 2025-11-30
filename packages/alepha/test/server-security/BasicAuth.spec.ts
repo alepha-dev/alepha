@@ -41,7 +41,7 @@ describe("Basic Authentication", () => {
       paths: ["/admin/*"],
     });
 
-    // Basic auth descriptor for custom usage
+    // Basic auth primitive for custom usage
     customAuth = $basicAuth({
       username: "custom",
       password: "custompass",
@@ -133,8 +133,8 @@ describe("Basic Authentication", () => {
     });
   });
 
-  describe("$basicAuth descriptor", () => {
-    it("should create basic auth descriptor with options", () => {
+  describe("$basicAuth primitive", () => {
+    it("should create basic auth primitive with options", () => {
       const app = alepha.inject(TestApp);
 
       expect(app.devtoolsAuth).toBeDefined();

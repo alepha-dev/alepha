@@ -29,6 +29,6 @@ declare module "@alepha/react" {
  */
 export const AlephaReactAuth = $module({
   name: "alepha.react.auth",
-  descriptors: [$auth],
+  primitives: [$auth],
   services: [AlephaReact, AlephaServerLinks, AlephaServerAuth, ReactAuthProvider, ReactAuth],
 });

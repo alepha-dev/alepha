@@ -1,9 +1,9 @@
 import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
-import { $entity } from "../../src/orm/descriptors/$entity.ts";
-import { $repository } from "../../src/orm/descriptors/$repository.ts";
 import { pg } from "../../src/orm/index.ts";
+import { $entity } from "../../src/orm/primitives/$entity.ts";
+import { $repository } from "../../src/orm/primitives/$repository.ts";
 
 describe("Query with Date Encoding", () => {
   it("should handle date filters with Dayjs objects", async ({ expect }) => {

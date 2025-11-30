@@ -4,8 +4,8 @@ import {
   Atom,
   type AtomStatic,
   type TAtomObject,
-} from "../descriptors/$atom.ts";
-import { $inject } from "../descriptors/$inject.ts";
+} from "../primitives/$atom.ts";
+import { $inject } from "../primitives/$inject.ts";
 import { AlsProvider } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";

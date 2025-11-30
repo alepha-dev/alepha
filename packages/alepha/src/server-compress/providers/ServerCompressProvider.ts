@@ -2,7 +2,7 @@ import { Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $hook, $inject, Alepha, type HookDescriptor } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import type { ServerResponse } from "alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -55,11 +55,11 @@ export class ServerCompressProvider {
         "text/plain",
         "text/css",
       ],
-      ...this.alepha.state.get("alepha.server.compress.options"),
+      ...this.alepha.store.get("alepha.server.compress.options"),
     };
   }
 
-  public readonly onResponse: HookDescriptor<"server:onResponse"> = $hook({
+  public readonly onResponse = $hook({
     on: "server:onResponse",
     handler: async ({ request, response }) => {
       // skip if already compressed

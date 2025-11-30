@@ -1,7 +1,7 @@
 import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $atom } from "../../src/core/descriptors/$atom.ts";
-import { $use } from "../../src/core/descriptors/$use.ts";
+import { $atom } from "../../src/core/primitives/$atom.ts";
+import { $use } from "../../src/core/primitives/$use.ts";
 import { t } from "../../src/core/providers/TypeProvider.ts";
 
 describe("$atom", () => {
@@ -22,10 +22,10 @@ describe("$atom", () => {
   it("should be get/set with state manager", () => {
     const alepha = Alepha.create();
 
-    expect(alepha.state.get(count).value).toBe(0);
+    expect(alepha.store.get(count).value).toBe(0);
 
-    alepha.state.set(count, { value: 42 });
-    expect(alepha.state.get(count).value).toBe(42);
+    alepha.store.set(count, { value: 42 });
+    expect(alepha.store.get(count).value).toBe(42);
   });
 
   it("should create virtual getter", () => {
@@ -34,10 +34,10 @@ describe("$atom", () => {
 
     expect(app.count.value).toBe(0);
 
-    alepha.state.set(count, { value: 42 });
+    alepha.store.set(count, { value: 42 });
     expect(app.count.value).toBe(42);
 
-    alepha.state.set("count" as keyof State, { value: 23 });
+    alepha.store.set("count" as keyof State, { value: 23 });
     expect(app.count.value).toBe(23);
   });
 });

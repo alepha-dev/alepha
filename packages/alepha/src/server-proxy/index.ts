@@ -1,11 +1,11 @@
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
-import { $proxy } from "./descriptors/$proxy.ts";
+import { $proxy } from "./primitives/$proxy.ts";
 import { ServerProxyProvider } from "./providers/ServerProxyProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$proxy.ts";
+export * from "./primitives/$proxy.ts";
 export * from "./providers/ServerProxyProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -18,6 +18,6 @@ export * from "./providers/ServerProxyProvider.ts";
  */
 export const AlephaServerProxy = $module({
   name: "alepha.server.proxy",
-  descriptors: [$proxy],
+  primitives: [$proxy],
   services: [AlephaServer, ServerProxyProvider],
 });

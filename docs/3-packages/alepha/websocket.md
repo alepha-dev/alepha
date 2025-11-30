@@ -10,7 +10,7 @@ npm install alepha
 
 Provides real-time bidirectional communication using WebSockets.
 
-The WebSockets module enables building real-time applications using the `$websocket` descriptor
+The WebSockets module enables building real-time applications using the `$websocket` primitive
 on class properties. It provides automatic connection management, message routing, type-safe
 message handling, and seamless integration with other Alepha modules.
 
@@ -19,17 +19,17 @@ On the client side (browser), it uses the native WebSocket API.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $channel()
 
-Channel descriptor options
+Channel primitive options
 /
-export interface ChannelDescriptorOptions<
+export interface ChannelPrimitiveOptions<
   TClient extends TWSObject,
   TServer extends TWSObject,
 > {

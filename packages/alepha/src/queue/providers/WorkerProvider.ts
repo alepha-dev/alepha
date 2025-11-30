@@ -9,13 +9,13 @@ import {
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $consumer } from "../descriptors/$consumer.ts";
+import type { QueueAcquiredJob } from "../interfaces/QueueJob.ts";
+import { $consumer } from "../primitives/$consumer.ts";
 import {
   $queue,
-  type QueueDescriptor,
   type QueueMessage,
-} from "../descriptors/$queue.ts";
-import type { QueueAcquiredJob } from "../interfaces/QueueJob.ts";
+  type QueuePrimitive,
+} from "../primitives/$queue.ts";
 import { QueueProvider } from "./QueueProvider.ts";
 
 const envSchema = t.object({
@@ -83,7 +83,7 @@ export class WorkerProvider {
     on: "start",
     priority: "last",
     handler: () => {
-      for (const queue of this.alepha.descriptors($queue)) {
+      for (const queue of this.alepha.primitives($queue)) {
         const handler = queue.options.handler;
         if (handler) {
           this.consumers.push({
@@ -93,7 +93,7 @@ export class WorkerProvider {
         }
       }
 
-      for (const consumer of this.alepha.descriptors($consumer)) {
+      for (const consumer of this.alepha.primitives($consumer)) {
         this.consumers.push(consumer.options);
       }
 
@@ -333,7 +333,7 @@ export class WorkerProvider {
 }
 
 export interface Consumer<T extends TSchema = TSchema> {
-  queue: QueueDescriptor<T>;
+  queue: QueuePrimitive<T>;
   handler: (message: QueueMessage<T>) => Promise<void>;
 }
 

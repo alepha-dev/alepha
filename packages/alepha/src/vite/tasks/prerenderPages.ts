@@ -34,7 +34,7 @@ export interface PrerenderPagesResult {
  * Pre-render static pages defined in the Alepha application.
  *
  * This task loads the built Alepha application, queries all page
- * descriptors with `static: true`, and generates static HTML files
+ * primitives with `static: true`, and generates static HTML files
  * for each page. Supports pages with parameterized routes via
  * `static.entries` configuration.
  */
@@ -59,7 +59,7 @@ async function prerenderFromAlepha(
   compress?: ViteCompressOptions | boolean,
 ): Promise<PrerenderPagesResult> {
   let count = 0;
-  const pages = alepha.descriptors("page") as any[];
+  const pages = alepha.primitives("page") as any[];
 
   for (const page of pages) {
     const options = page.options;

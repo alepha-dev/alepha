@@ -49,8 +49,8 @@ export class DrizzleCommands {
         alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
       const accepted = new Set<string>([]);
 
-      for (const descriptor of repositoryProvider.getRepositories()) {
-        const provider = descriptor.provider;
+      for (const primitive of repositoryProvider.getRepositories()) {
+        const provider = primitive.provider;
         const providerName = provider.name;
         if (accepted.has(providerName)) {
           continue;
@@ -124,7 +124,7 @@ export class DrizzleCommands {
    * Generate database migration files
    *
    * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository descriptors to gather database models.
+   * - Retrieves all repository primitives to gather database models.
    * - Creates temporary entity definitions based on the current database schema.
    * - Writes these definitions to a temporary schema file. (node_modules/.db/entities.ts)
    * - Invokes Drizzle Kit's CLI to generate migration files based on the current schema.
@@ -167,7 +167,7 @@ export class DrizzleCommands {
    * Push database schema changes directly to the database
    *
    * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository descriptors to gather database models.
+   * - Retrieves all repository primitives to gather database models.
    * - Creates temporary entity definitions and Drizzle config.
    * - Invokes Drizzle Kit's push command to apply schema changes directly.
    */
@@ -198,7 +198,7 @@ export class DrizzleCommands {
    * Apply pending database migrations
    *
    * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository descriptors to gather database models.
+   * - Retrieves all repository primitives to gather database models.
    * - Creates temporary entity definitions and Drizzle config.
    * - Invokes Drizzle Kit's migrate command to apply pending migrations.
    */
@@ -229,7 +229,7 @@ export class DrizzleCommands {
    * Launch Drizzle Studio database browser
    *
    * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository descriptors to gather database models.
+   * - Retrieves all repository primitives to gather database models.
    * - Creates temporary entity definitions and Drizzle config.
    * - Invokes Drizzle Kit's studio command to launch the web-based database browser.
    */

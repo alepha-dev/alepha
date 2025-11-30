@@ -28,7 +28,7 @@ describe("ServerCorsProvider", () => {
       .with(TestApp);
 
     if (options) {
-      alepha.state.mut(corsOptions, (old) => ({
+      alepha.store.mut(corsOptions, (old) => ({
         ...old,
         ...options,
       }));
@@ -179,7 +179,7 @@ describe("ServerCorsProvider", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("$cors descriptor", () => {
+describe("$cors primitive", () => {
   let alepha: Alepha;
   let server: ServerProvider;
 
@@ -219,7 +219,7 @@ describe("$cors descriptor", () => {
       .with(AppWithCors);
 
     // Set global CORS to different origin
-    alepha.state.mut(corsOptions, (old) => ({
+    alepha.store.mut(corsOptions, (old) => ({
       ...old,
       origin: "https://global.example.com",
     }));
@@ -430,7 +430,7 @@ describe("$cors descriptor", () => {
     expect(response.headers.get("access-control-max-age")).toBe("3600");
   });
 
-  test("should handle multiple paths in single $cors descriptor", async () => {
+  test("should handle multiple paths in single $cors primitive", async () => {
     class MultiPathApp {
       // $action creates routes at /api/v1/data and /api/v2/data
       apiCors = $cors({

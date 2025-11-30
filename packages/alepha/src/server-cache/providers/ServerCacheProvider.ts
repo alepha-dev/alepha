@@ -1,11 +1,11 @@
 import type { BinaryLike } from "node:crypto";
 import { createHash } from "node:crypto";
 import { $hook, $inject, Alepha } from "alepha";
-import { $cache, type CacheDescriptorOptions } from "alepha/cache";
+import { $cache, type CachePrimitiveOptions } from "alepha/cache";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
-  ActionDescriptor,
+  ActionPrimitive,
   type RequestConfigSchema,
   type ServerRequest,
   type ServerRoute,
@@ -25,13 +25,13 @@ declare module "alepha/server" {
     cache?: ServerRouteCache;
   }
 
-  interface ActionDescriptor<TConfig extends RequestConfigSchema> {
+  interface ActionPrimitive<TConfig extends RequestConfigSchema> {
     invalidate: () => Promise<void>;
   }
 }
 
-ActionDescriptor.prototype.invalidate = async function (
-  this: ActionDescriptor<RequestConfigSchema>,
+ActionPrimitive.prototype.invalidate = async function (
+  this: ActionPrimitive<RequestConfigSchema>,
 ) {
   await this.alepha.inject(ServerCacheProvider).invalidate(this.route);
 };
@@ -422,11 +422,11 @@ export type ServerRouteCache =
       /**
        * If true, enables storing cached responses. (in-memory, Redis, @see alepha/cache for other providers)
        * If a DurationLike is provided, it will be used as the TTL for the cache.
-       * If CacheDescriptorOptions is provided, it will be used to configure the cache storage.
+       * If CachePrimitiveOptions is provided, it will be used to configure the cache storage.
        *
        * @default false
        */
-      store?: true | DurationLike | CacheDescriptorOptions;
+      store?: true | DurationLike | CachePrimitiveOptions;
       /**
        * If true, enables ETag support for the cached responses.
        */

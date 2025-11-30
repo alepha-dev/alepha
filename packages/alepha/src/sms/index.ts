@@ -1,13 +1,13 @@
 import { $module } from "alepha";
-import { $sms } from "./descriptors/$sms.ts";
+import { $sms } from "./primitives/$sms.ts";
 import { LocalSmsProvider } from "./providers/LocalSmsProvider.ts";
 import { MemorySmsProvider } from "./providers/MemorySmsProvider.ts";
 import { SmsProvider } from "./providers/SmsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$sms.ts";
 export * from "./errors/SmsError.ts";
+export * from "./primitives/$sms.ts";
 export * from "./providers/LocalSmsProvider.ts";
 export * from "./providers/MemorySmsProvider.ts";
 export * from "./providers/SmsProvider.ts";
@@ -36,7 +36,7 @@ declare module "alepha" {
 /**
  * Provides SMS sending capabilities for Alepha applications with multiple provider backends.
  *
- * The SMS module enables declarative SMS sending through the `$sms` descriptor, allowing you to send
+ * The SMS module enables declarative SMS sending through the `$sms` primitive, allowing you to send
  * text messages through different providers: memory (for testing) or local file system.
  * It supports automatic provider selection based on environment configuration.
  *
@@ -45,7 +45,7 @@ declare module "alepha" {
  */
 export const AlephaSms = $module({
   name: "alepha.sms",
-  descriptors: [$sms],
+  primitives: [$sms],
   services: [SmsProvider, MemorySmsProvider, LocalSmsProvider],
   register: (alepha) =>
     alepha.with({

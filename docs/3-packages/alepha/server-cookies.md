@@ -8,23 +8,23 @@ npm install alepha
 
 ## Overview
 
-Provides HTTP cookie management capabilities for server requests and responses with type-safe cookie descriptors.
+Provides HTTP cookie management capabilities for server requests and responses with type-safe cookie primitives.
 
-The server-cookies module enables declarative cookie handling using the `$cookie` descriptor on class properties.
+The server-cookies module enables declarative cookie handling using the `$cookie` primitive on class properties.
 It offers automatic cookie parsing, secure cookie configuration, and seamless integration with server routes
 for managing user sessions, preferences, and authentication tokens.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $cookie()
 
-Creates a browser-side cookie descriptor for client-side cookie management.
+Creates a browser-side cookie primitive for client-side cookie management.
 
 Browser-specific version of $cookie that uses document.cookie API. Supports type-safe
 cookie operations with schema validation but excludes encryption/signing (use server-side
@@ -53,5 +53,5 @@ class ClientCookies {
 #### $cookie()
 
 Declares a type-safe, configurable HTTP cookie.
-This descriptor provides methods to get, set, and delete the cookie
+This primitive provides methods to get, set, and delete the cookie
 within the server request/response cycle.

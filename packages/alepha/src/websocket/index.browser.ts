@@ -1,7 +1,7 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaTopic } from "alepha/topic";
-import { $channel } from "./descriptors/$channel.ts";
-import { $websocket } from "./descriptors/$websocket.ts";
+import { $channel } from "./primitives/$channel.ts";
+import { $websocket } from "./primitives/$websocket.ts";
 import { WebSocketClient } from "./services/WebSocketClient.ts";
 
 /**
@@ -16,7 +16,7 @@ export * from "./index.shared.ts";
 
 export const AlephaWebSocket = $module({
   name: "alepha.websocket",
-  descriptors: [$channel, $websocket],
+  primitives: [$channel, $websocket],
   services: [WebSocketClient],
   register: (alepha: Alepha) => {
     alepha.with(AlephaTopic);

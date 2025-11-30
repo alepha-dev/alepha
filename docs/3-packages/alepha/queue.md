@@ -8,30 +8,30 @@ npm install alepha
 
 ## Overview
 
-Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.
+Provides asynchronous message queuing and processing capabilities through declarative queue primitives.
 
-The queue module enables reliable background job processing and message passing using the `$queue` descriptor
+The queue module enables reliable background job processing and message passing using the `$queue` primitive
 on class properties. It supports schema validation, automatic retries, and multiple queue backends for
 building scalable, decoupled applications with robust error handling.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $consumer()
 
-Creates a consumer descriptor to process messages from a specific queue.
+Creates a consumer primitive to process messages from a specific queue.
 
 Provides a dedicated message consumer that connects to a queue and processes messages
 with custom handler logic, enabling scalable architectures where multiple consumers
 can process messages from the same queue.
 
 **Key Features**
-- Seamless integration with any $queue descriptor
+- Seamless integration with any $queue primitive
 - Full type safety inherited from queue schema
 - Automatic worker management for background processing
 - Built-in error handling and retry mechanisms
@@ -73,9 +73,9 @@ class EmailService {
 
 #### $queue()
 
-Creates a queue descriptor for asynchronous message processing with background workers.
+Creates a queue primitive for asynchronous message processing with background workers.
 
-The $queue descriptor enables powerful asynchronous communication patterns in your application.
+The $queue primitive enables powerful asynchronous communication patterns in your application.
 It provides type-safe message queuing with automatic worker processing, making it perfect for
 decoupling components and handling background tasks efficiently.
 
@@ -184,7 +184,7 @@ const taskQueue = $queue({
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](/docs/providers).
+For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### MemoryQueueProvider
 

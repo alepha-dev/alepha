@@ -11,8 +11,8 @@ npm install alepha
 Provides rate limiting capabilities for server routes and actions with configurable limits and windows.
 
 The server-rate-limit module enables per-route and per-action rate limiting using either:
-- The `$rateLimit` descriptor with `paths` option for path-based rate limiting
-- The `rateLimit` option in action descriptors for action-specific limiting
+- The `$rateLimit` primitive with `paths` option for path-based rate limiting
+- The `rateLimit` option in action primitives for action-specific limiting
 
 It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
 
@@ -31,16 +31,16 @@ class ApiService {
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $rateLimit()
 
 Declares rate limiting for server routes or custom usage.
-This descriptor provides methods to check rate limits and configure behavior
+This primitive provides methods to check rate limits and configure behavior
 within the server request/response cycle.
 
 ```ts

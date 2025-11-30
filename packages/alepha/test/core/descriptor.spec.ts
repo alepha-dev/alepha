@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { Alepha } from "../../src/core/Alepha.ts";
 import { KIND } from "../../src/core/constants/KIND.ts";
 import {
-  createDescriptor,
-  Descriptor,
-} from "../../src/core/helpers/descriptor.ts";
+  createPrimitive,
+  Primitive,
+} from "../../src/core/helpers/primitive.ts";
 
-describe("descriptor", () => {
-  it("should create custom descriptors with key and identity methods", () => {
-    class MyDescriptor extends Descriptor<{ name?: string }> {
+describe("primitive", () => {
+  it("should create custom primitives with key and identity methods", () => {
+    class MyPrimitive extends Primitive<{ name?: string }> {
       key() {
         return this.options.name ?? this.config.propertyKey;
       }
@@ -18,9 +18,9 @@ describe("descriptor", () => {
     }
 
     const $my = (options: { name?: string } = {}) =>
-      createDescriptor(MyDescriptor, options);
+      createPrimitive(MyPrimitive, options);
 
-    $my[KIND] = MyDescriptor;
+    $my[KIND] = MyPrimitive;
 
     class TestApp {
       h1 = $my();

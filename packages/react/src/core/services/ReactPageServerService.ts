@@ -1,9 +1,9 @@
 import { $inject, AlephaError } from "alepha";
 import { ServerProvider } from "alepha/server";
 import type {
-  PageDescriptorRenderOptions,
-  PageDescriptorRenderResult,
-} from "../descriptors/$page.ts";
+  PagePrimitiveRenderOptions,
+  PagePrimitiveRenderResult,
+} from "../primitives/$page.ts";
 import { ReactServerProvider } from "../providers/ReactServerProvider.ts";
 import { ReactPageService } from "./ReactPageService.ts";
 
@@ -13,14 +13,14 @@ export class ReactPageServerService extends ReactPageService {
 
   public async render(
     name: string,
-    options: PageDescriptorRenderOptions = {},
-  ): Promise<PageDescriptorRenderResult> {
+    options: PagePrimitiveRenderOptions = {},
+  ): Promise<PagePrimitiveRenderResult> {
     return this.reactServerProvider.render(name, options);
   }
 
   public async fetch(
     pathname: string,
-    options: PageDescriptorRenderOptions = {},
+    options: PagePrimitiveRenderOptions = {},
   ): Promise<{
     html: string;
     response: Response;

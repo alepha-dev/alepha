@@ -2,7 +2,7 @@
 
 Small applications can be built with a single file, but as your application grows, you will want to organize your code into modules.
 
-Modules are a way to group related services, providers, and descriptors together.
+Modules are a way to group related services, providers, and primitives together.
 
 ```ts
 import { Alepha, run, $module } from "alepha";
@@ -31,7 +31,7 @@ Modules are not mandatory, but they help to organize your code and make it more 
 
 When using modules, it's important to avoid injecting services from one module into another.
 
-Instead, use the `$client` descriptor to communicate between modules with `$action`.
+Instead, use the `$client` primitive to communicate between modules with `$action`.
 This ensures that your modules remain decoupled and can be reused independently.
 
 ```ts

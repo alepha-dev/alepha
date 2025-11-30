@@ -54,7 +54,7 @@ export class I18nProvider<
     on: "server:onRequest",
     priority: "last",
     handler: async ({ request }) => {
-      this.alepha.state.set("alepha.react.i18n.lang", this.cookie.get(request));
+      this.alepha.store.set("alepha.react.i18n.lang", this.cookie.get(request));
     },
   });
 
@@ -65,7 +65,7 @@ export class I18nProvider<
         // get cookie lang
         const cookieLang = this.cookie.get();
         if (cookieLang) {
-          this.alepha.state.set("alepha.react.i18n.lang", cookieLang);
+          this.alepha.store.set("alepha.react.i18n.lang", cookieLang);
         }
 
         for (const item of this.registry) {
@@ -110,7 +110,7 @@ export class I18nProvider<
       this.cookie.set(lang);
     }
 
-    this.alepha.state.set("alepha.react.i18n.lang", lang);
+    this.alepha.store.set("alepha.react.i18n.lang", lang);
     this.refreshLocale();
   };
 
@@ -132,7 +132,7 @@ export class I18nProvider<
         this.refreshLocale();
 
         if (hasChanged) {
-          this.alepha.state.set("alepha.react.i18n.lang", value);
+          this.alepha.store.set("alepha.react.i18n.lang", value);
         }
       }
     },
@@ -140,7 +140,7 @@ export class I18nProvider<
 
   public get lang(): string {
     return (
-      this.alepha.state.get("alepha.react.i18n.lang") ||
+      this.alepha.store.get("alepha.react.i18n.lang") ||
       this.options.fallbackLang
     );
   }

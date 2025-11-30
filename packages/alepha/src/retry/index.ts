@@ -1,12 +1,12 @@
 import { $module } from "alepha";
-import { $retry } from "./descriptors/$retry.ts";
+import { $retry } from "./primitives/$retry.ts";
 import { RetryProvider } from "./providers/RetryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$retry.ts";
 export * from "./errors/RetryCancelError.ts";
 export * from "./errors/RetryTimeoutError.ts";
+export * from "./primitives/$retry.ts";
 export * from "./providers/RetryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -19,6 +19,6 @@ export * from "./providers/RetryProvider.ts";
  */
 export const AlephaRetry = $module({
   name: "alepha.retry",
-  descriptors: [$retry],
+  primitives: [$retry],
   services: [RetryProvider],
 });

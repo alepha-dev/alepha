@@ -56,7 +56,7 @@ export class AzureFileStorageProvider implements FileStorageProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      for (const bucket of this.alepha.descriptors($bucket)) {
+      for (const bucket of this.alepha.primitives($bucket)) {
         if (bucket.provider !== this) {
           continue;
         }

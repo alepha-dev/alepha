@@ -60,7 +60,7 @@ import { $swagger } from "alepha/server/swagger";
 
 class Api {
 
-  // Functions starting with $ are "descriptors".
+  // Functions starting with $ are "primitives".
   // Like React hooks, they must be called inside Alepha context.
   docs = $swagger();
 

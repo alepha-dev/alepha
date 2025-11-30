@@ -1,7 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import { $repository } from "alepha/orm";
-import { $job } from "../descriptors/$job.ts";
 import { jobExecutions } from "../entities/jobExecutions.ts";
+import { $job } from "../primitives/$job.ts";
 import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 
 export class JobService {
@@ -9,8 +9,8 @@ export class JobService {
   protected readonly executionRepository = $repository(jobExecutions);
 
   public async getJobs(): Promise<string[]> {
-    const jobDescriptors = this.alepha.descriptors($job);
-    return jobDescriptors.map((job) => job.name);
+    const jobPrimitives = this.alepha.primitives($job);
+    return jobPrimitives.map((job) => job.name);
   }
 
   public async getJobExecutions(query: JobExecutionQuery = {}) {
@@ -34,8 +34,8 @@ export class JobService {
   }
 
   public async triggerJob(name: string): Promise<{ ok: boolean }> {
-    const jobDescriptors = this.alepha.descriptors($job);
-    const job = jobDescriptors.find((j) => j.name === name);
+    const jobPrimitives = this.alepha.primitives($job);
+    const job = jobPrimitives.find((j) => j.name === name);
 
     if (!job) {
       throw new Error(`Job not found: ${name}`);

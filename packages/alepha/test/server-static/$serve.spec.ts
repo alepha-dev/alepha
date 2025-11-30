@@ -7,7 +7,7 @@ import { AlephaServer, ServerProvider } from "alepha/server";
 import {
   $serve,
   AlephaServerStatic,
-  type ServeDescriptorOptions,
+  type ServePrimitiveOptions,
 } from "alepha/server/static";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -44,7 +44,7 @@ afterAll(async () => {
 // --- Test Suite ---
 
 describe("alepha/server/static", () => {
-  const setupServer = async (serveOptions: ServeDescriptorOptions) => {
+  const setupServer = async (serveOptions: ServePrimitiveOptions) => {
     class TestApp {
       staticContent = $serve({ root: tempTestDir, ...serveOptions });
     }

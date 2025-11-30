@@ -12,17 +12,17 @@ Plugin for Alepha that provides a proxy server functionality.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $proxy()
 
-Creates a proxy descriptor to forward requests to another server.
+Creates a proxy primitive to forward requests to another server.
 
-This descriptor enables you to create reverse proxy functionality, allowing your Alepha server
+This primitive enables you to create reverse proxy functionality, allowing your Alepha server
 to forward requests to other services while maintaining a unified API surface. It's particularly
 useful for microservice architectures, API gateways, or when you need to aggregate multiple
 services behind a single endpoint.

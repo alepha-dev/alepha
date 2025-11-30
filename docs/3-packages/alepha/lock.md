@@ -15,15 +15,15 @@ You probably want to use an implementation like RedisLockProvider for distribute
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $lock()
 
-Creates a distributed lock descriptor for ensuring single-instance execution across processes.
+Creates a distributed lock primitive for ensuring single-instance execution across processes.
 
 Prevents multiple instances of the same operation from running simultaneously, essential for
 maintaining data consistency and preventing race conditions in distributed applications.
@@ -74,7 +74,7 @@ class TaskService {
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](/docs/providers).
+For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### MemoryLockProvider
 

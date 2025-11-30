@@ -503,8 +503,8 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       alepha.inject<RepositoryProvider>("RepositoryProvider");
     const accepted = new Set<string>([]);
 
-    for (const descriptor of repositoryProvider.getRepositories()) {
-      const provider = descriptor.provider;
+    for (const primitive of repositoryProvider.getRepositories()) {
+      const provider = primitive.provider;
       const providerName = provider.name;
       const dialect = provider.dialect;
 

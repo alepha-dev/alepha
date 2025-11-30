@@ -1,8 +1,8 @@
 import { Alepha, t } from "alepha";
 import { test } from "vitest";
-import { $channel } from "../../src/websocket/descriptors/$channel.ts";
+import { $channel } from "../../src/websocket/primitives/$channel.ts";
 
-test("$channel should create a channel descriptor", async ({ expect }) => {
+test("$channel should create a channel primitive", async ({ expect }) => {
   const alepha = Alepha.create();
 
   class TestApp {

@@ -71,16 +71,16 @@ const TaskList = (props: TaskListProps) => {
         });
 
         // Update local state
-        const currentTasks = alepha.state.get(currentAssignedTasksAtom) || [];
+        const currentTasks = alepha.store.get(currentAssignedTasksAtom) || [];
         const updatedTasks = currentTasks.map((t) =>
           t.id === updatedTask.id ? updatedTask : t,
         );
-        alepha.state.set(currentAssignedTasksAtom, updatedTasks);
+        alepha.store.set(currentAssignedTasksAtom, updatedTasks);
 
         // Update project packages if needed
-        const currentProject = alepha.state.get(currentProjectAtom);
+        const currentProject = alepha.store.get(currentProjectAtom);
         if (currentProject && !currentProject.packages.includes(newZoneName)) {
-          alepha.state.set(currentProjectAtom, {
+          alepha.store.set(currentProjectAtom, {
             ...currentProject,
             packages: [...currentProject.packages, newZoneName],
           });

@@ -1,0 +1,358 @@
+import {
+  $inject,
+  createPrimitive,
+  KIND,
+  Primitive,
+  type Service,
+  type Static,
+  type TSchema,
+} from "alepha";
+import {
+  DateTimeProvider,
+  type DurationLike,
+  type Timeout,
+} from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
+import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
+import {
+  TopicProvider,
+  type UnSubscribeFn,
+} from "../providers/TopicProvider.ts";
+
+/**
+ * Creates a topic primitive for publish/subscribe messaging and event-driven architecture.
+ *
+ * Enables decoupled communication through a pub/sub pattern where publishers send messages
+ * and multiple subscribers receive them. Supports type-safe messages, real-time delivery,
+ * event filtering, and pluggable backends (memory, Redis, custom providers).
+ *
+ * **Use Cases**: User notifications, real-time chat, event broadcasting, microservice communication
+ *
+ * @example
+ * ```ts
+ * class NotificationService {
+ *   userActivity = $topic({
+ *     name: "user-activity",
+ *     schema: {
+ *       payload: t.object({
+ *         userId: t.text(),
+ *         action: t.enum(["login", "logout", "purchase"]),
+ *         timestamp: t.number()
+ *       })
+ *     },
+ *     handler: async (message) => {
+ *       console.log(`User ${message.payload.userId}: ${message.payload.action}`);
+ *     }
+ *   });
+ *
+ *   async trackLogin(userId: string) {
+ *     await this.userActivity.publish({ userId, action: "login", timestamp: Date.now() });
+ *   }
+ *
+ *   async subscribeToEvents() {
+ *     await this.userActivity.subscribe(async (message) => {
+ *       // Additional subscriber logic
+ *     });
+ *   }
+ * }
+ * ```
+ */
+export const $topic = <T extends TopicMessageSchema>(
+  options: TopicPrimitiveOptions<T>,
+): TopicPrimitive<T> => {
+  return createPrimitive(TopicPrimitive<T>, options);
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
+  /**
+   * Unique name identifier for the topic.
+   *
+   * This name is used for:
+   * - Topic identification across the pub/sub system
+   * - Message routing between publishers and subscribers
+   * - Logging and debugging topic-related operations
+   * - Provider-specific topic management (channels, keys, etc.)
+   *
+   * If not provided, defaults to the property key where the topic is declared.
+   *
+   * **Naming Conventions**:
+   * - Use descriptive, hierarchical names: "user.activity", "order.events"
+   * - Avoid spaces and special characters
+   * - Consider using dot notation for categorization
+   * - Keep names concise but meaningful
+   *
+   * @example "user-activity"
+   * @example "chat.messages"
+   * @example "system.health.checks"
+   * @example "payment.webhooks"
+   */
+  name?: string;
+
+  /**
+   * Human-readable description of the topic's purpose and usage.
+   *
+   * Used for:
+   * - Documentation generation and API references
+   * - Developer onboarding and understanding
+   * - Monitoring dashboards and admin interfaces
+   * - Team communication about system architecture
+   *
+   * **Description Best Practices**:
+   * - Explain what events/messages this topic handles
+   * - Mention key use cases and subscribers
+   * - Include any important timing or ordering guarantees
+   * - Note any special processing requirements
+   *
+   * @example "Real-time user activity events for analytics and notifications"
+   * @example "Order lifecycle events from creation to delivery"
+   * @example "Chat messages broadcast to all room participants"
+   * @example "System health checks and service status updates"
+   */
+  description?: string;
+
+  /**
+   * Topic provider configuration for message storage and delivery.
+   *
+   * Options:
+   * - **"memory"**: In-memory provider (default for development, lost on restart)
+   * - **Service<TopicProvider>**: Custom provider class (e.g., RedisTopicProvider)
+   * - **undefined**: Uses the default topic provider from dependency injection
+   *
+   * **Provider Selection Guidelines**:
+   * - **Development**: Use "memory" for fast, simple testing without external dependencies
+   * - **Production**: Use Redis or message brokers for persistence and scalability
+   * - **Distributed systems**: Use Redis/RabbitMQ for cross-service communication
+   * - **High-throughput**: Use specialized providers with connection pooling
+   * - **Real-time**: Ensure provider supports low-latency message delivery
+   *
+   * **Provider Capabilities**:
+   * - Message persistence and durability
+   * - Subscriber management and connection handling
+   * - Message ordering and delivery guarantees
+   * - Horizontal scaling and load distribution
+   *
+   * @default Uses injected TopicProvider
+   * @example "memory"
+   * @example RedisTopicProvider
+   * @example RabbitMQTopicProvider
+   */
+  provider?: "memory" | Service<TopicProvider>;
+
+  /**
+   * TypeBox schema defining the structure of messages published to this topic.
+   *
+   * The schema must include:
+   * - **payload**: Required schema for the main message data
+   * - **headers**: Optional schema for message metadata
+   *
+   * This schema:
+   * - Validates all messages published to the topic
+   * - Provides full TypeScript type inference for subscribers
+   * - Ensures type safety between publishers and subscribers
+   * - Enables automatic serialization/deserialization
+   *
+   * **Schema Design Best Practices**:
+   * - Keep payload schemas focused and cohesive
+   * - Use optional fields for data that might not always be present
+   * - Include timestamp fields for event ordering
+   * - Consider versioning for schema evolution
+   * - Use union types for different event types in the same topic
+   *
+   * @example
+   * ```ts
+   * {
+   *   payload: t.object({
+   *     eventId: t.text(),
+   *     eventType: t.enum(["created", "updated"]),
+   *     data: t.record(t.text(), t.any()),
+   *     timestamp: t.number(),
+   *     userId: t.optional(t.text())
+   *   }),
+   *   headers: t.optional(t.object({
+   *     source: t.text(),
+   *     correlationId: t.text()
+   *   }))
+   * }
+   * ```
+   */
+  schema: T;
+
+  /**
+   * Default subscriber handler function that processes messages published to this topic.
+   *
+   * This handler:
+   * - Automatically subscribes when the topic is initialized
+   * - Receives all messages published to the topic
+   * - Runs for every message without additional subscription setup
+   * - Can be supplemented with additional subscribers via `subscribe()` method
+   * - Should handle errors gracefully to avoid breaking other subscribers
+   *
+   * **Handler Design Guidelines**:
+   * - Keep handlers focused on a single responsibility
+   * - Use proper error handling and logging
+   * - Consider performance impact for high-frequency topics
+   * - Make handlers idempotent when possible
+   * - Validate business rules within the handler logic
+   * - Log important processing steps for debugging
+   *
+   * **Error Handling Strategy**:
+   * - Log errors but don't re-throw to avoid affecting other subscribers
+   * - Use try-catch blocks for external service calls
+   * - Consider implementing circuit breakers for resilience
+   * - Monitor error rates and patterns for system health
+   *
+   * @param message - The topic message with validated payload and headers
+   * @param message.payload - The typed message data based on the schema
+   * @returns Promise that resolves when processing is complete
+   *
+   * @example
+   * ```ts
+   * handler: async (message) => {
+   *   const { eventType, data, timestamp } = message.payload;
+   *
+   *   try {
+   *     // Log message receipt
+   *     this.logger.info(`Processing ${eventType} event`, { timestamp, data });
+   *
+   *     // Process based on event type
+   *     switch (eventType) {
+   *       case "created":
+   *         await this.handleCreation(data);
+   *         break;
+   *       case "updated":
+   *         await this.handleUpdate(data);
+   *         break;
+   *       default:
+   *         this.logger.warn(`Unknown event type: ${eventType}`);
+   *     }
+   *
+   *     this.logger.info(`Successfully processed ${eventType} event`);
+   *
+   *   } catch (error) {
+   *     // Log error but don't re-throw to avoid affecting other subscribers
+   *     this.logger.error(`Failed to process ${eventType} event`, {
+   *       error: error.message,
+   *       eventType,
+   *       timestamp,
+   *       data
+   *     });
+   *   }
+   * }
+   * ```
+   */
+  handler?: TopicHandler<T>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
+  TopicPrimitiveOptions<T>
+> {
+  protected readonly log = $logger();
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  public readonly provider = this.$provider();
+
+  public get name(): string {
+    return this.options.name || this.config.propertyKey;
+  }
+
+  public async publish(payload: TopicMessage<T>["payload"]): Promise<void> {
+    await this.provider.publish(
+      this.name,
+      JSON.stringify({
+        payload: this.alepha.codec.encode(this.options.schema.payload, payload),
+      }),
+    );
+  }
+
+  public async subscribe(handler: TopicHandler<T>): Promise<UnSubscribeFn> {
+    return this.provider.subscribe(this.name, async (message) => {
+      try {
+        await handler(this.parseMessage(message));
+      } catch (error) {
+        this.log.error("Message processing has failed", error);
+      }
+    });
+  }
+
+  public async wait(
+    options: TopicWaitOptions<T> = {},
+  ): Promise<TopicMessage<T>> {
+    const filter = options.filter ?? (() => true);
+
+    return new Promise((resolve, reject) => {
+      const ref: { timeout?: Timeout } = {};
+
+      (async () => {
+        const clear = await this.provider.subscribe(this.name, (raw) => {
+          const message = this.parseMessage(raw);
+          if (!filter(message)) {
+            return;
+          }
+
+          ref.timeout?.clear();
+          clear();
+          resolve(message);
+        });
+
+        const timeoutDuration = options.timeout ?? [10, "seconds"];
+
+        ref.timeout = this.dateTimeProvider.createTimeout(() => {
+          clear();
+          reject(
+            new TopicTimeoutError(
+              this.name,
+              this.dateTimeProvider.duration(timeoutDuration).asMilliseconds(),
+            ),
+          );
+        }, timeoutDuration);
+      })();
+    });
+  }
+
+  protected $provider(): TopicProvider {
+    if (!this.options.provider) {
+      return this.alepha.inject(TopicProvider);
+    }
+
+    if (this.options.provider === "memory") {
+      return this.alepha.inject(MemoryTopicProvider);
+    }
+
+    return this.alepha.inject(this.options.provider);
+  }
+
+  protected parseMessage(message: string): TopicMessage<T> {
+    const { payload } = JSON.parse(message);
+    return {
+      payload: this.alepha.codec.decode(
+        this.options.schema.payload,
+        payload,
+      ) as TopicMessage<T>["payload"],
+    };
+  }
+}
+
+$topic[KIND] = TopicPrimitive;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface TopicMessage<T extends TopicMessageSchema> {
+  payload: Static<T["payload"]>;
+}
+
+export interface TopicWaitOptions<T extends TopicMessageSchema> {
+  timeout?: DurationLike;
+  filter?: (message: { payload: Static<T["payload"]> }) => boolean;
+}
+
+export interface TopicMessageSchema {
+  payload: TSchema;
+}
+
+export type TopicHandler<T extends TopicMessageSchema = TopicMessageSchema> = (
+  message: TopicMessage<T>,
+) => unknown;

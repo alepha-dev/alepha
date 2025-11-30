@@ -143,7 +143,7 @@ describe("ServerRateLimitProvider Module Integration", () => {
 
   it("should work with real action requests", async () => {
     // Configure rate limit for testing
-    alepha.state.mut(rateLimitOptions, () => ({
+    alepha.store.mut(rateLimitOptions, () => ({
       max: 10,
       windowMs: 60000,
     }));
@@ -164,7 +164,7 @@ describe("ServerRateLimitProvider Module Integration", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("$rateLimit descriptor", () => {
+describe("$rateLimit primitive", () => {
   let alepha: Alepha;
   let server: ServerProvider;
 
@@ -304,7 +304,7 @@ describe("$rateLimit descriptor", () => {
     expect(publicResponse.headers.get("x-ratelimit-limit")).toBe("10");
   });
 
-  test("should handle multiple paths in single $rateLimit descriptor", async () => {
+  test("should handle multiple paths in single $rateLimit primitive", async () => {
     class MultiPathApp {
       apiLimit = $rateLimit({
         paths: ["/api/v1/*", "/api/v2/*"],

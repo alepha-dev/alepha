@@ -19,9 +19,9 @@ import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import {
   $page,
   type ErrorHandler,
-  type PageDescriptor,
-  type PageDescriptorOptions,
-} from "../descriptors/$page.ts";
+  type PagePrimitive,
+  type PagePrimitiveOptions,
+} from "../primitives/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
 
 const envSchema = t.object({
@@ -481,9 +481,9 @@ export class ReactPageProvider {
     on: "configure",
     handler: () => {
       let hasNotFoundHandler = false;
-      const pages = this.alepha.descriptors($page);
+      const pages = this.alepha.primitives($page);
 
-      const hasParent = (it: PageDescriptor) => {
+      const hasParent = (it: PagePrimitive) => {
         if (it.options.parent) {
           return true;
         }
@@ -529,8 +529,8 @@ export class ReactPageProvider {
   });
 
   protected map(
-    pages: Array<PageDescriptor>,
-    target: PageDescriptor,
+    pages: Array<PagePrimitive>,
+    target: PagePrimitive,
   ): PageRouteEntry {
     const children = target.options.children
       ? Array.isArray(target.options.children)
@@ -538,7 +538,7 @@ export class ReactPageProvider {
         : target.options.children()
       : [];
 
-    const getChildrenFromParent = (it: PageDescriptor): PageDescriptor[] => {
+    const getChildrenFromParent = (it: PagePrimitive): PagePrimitive[] => {
       const children = [];
       for (const page of pages) {
         if (page.options.parent === it) {
@@ -613,7 +613,7 @@ export const isPageRoute = (it: any): it is PageRoute => {
 };
 
 export interface PageRouteEntry
-  extends Omit<PageDescriptorOptions, "children" | "parent"> {
+  extends Omit<PagePrimitiveOptions, "children" | "parent"> {
   children?: PageRouteEntry[];
 }
 

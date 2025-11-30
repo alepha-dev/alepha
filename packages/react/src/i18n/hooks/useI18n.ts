@@ -1,5 +1,5 @@
 import { useInject, useStore } from "@alepha/react";
-import type { DictionaryDescriptor } from "../descriptors/$dictionary.ts";
+import type { DictionaryPrimitive } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
 
 /**
@@ -14,5 +14,5 @@ export const useI18n = <
 };
 
 export type ServiceDictionary<T extends object> = {
-  [K in keyof T]: T[K] extends DictionaryDescriptor<infer U> ? U : never;
+  [K in keyof T]: T[K] extends DictionaryPrimitive<infer U> ? U : never;
 };

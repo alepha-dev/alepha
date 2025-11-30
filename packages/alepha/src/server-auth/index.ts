@@ -1,16 +1,16 @@
 import { $module } from "alepha";
 import type { UserAccount } from "alepha/security";
 import { AlephaServerCookies } from "alepha/server/cookies";
-import { $auth } from "./descriptors/$auth.ts";
+import { $auth } from "./primitives/$auth.ts";
 import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$auth.ts";
-export * from "./descriptors/$authCredentials.ts";
-export * from "./descriptors/$authGithub.ts";
-export * from "./descriptors/$authGoogle.ts";
 export * from "./index.shared.ts";
+export * from "./primitives/$auth.ts";
+export * from "./primitives/$authCredentials.ts";
+export * from "./primitives/$authGithub.ts";
+export * from "./primitives/$authGoogle.ts";
 export * from "./providers/ServerAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -43,6 +43,6 @@ declare module "alepha" {
  */
 export const AlephaServerAuth = $module({
   name: "alepha.server.auth",
-  descriptors: [$auth],
+  primitives: [$auth],
   services: [AlephaServerCookies, ServerAuthProvider],
 });

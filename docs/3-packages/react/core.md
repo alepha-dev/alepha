@@ -14,23 +14,23 @@ npm install @alepha/react
 
 Provides full-stack React development with declarative routing, server-side rendering, and client-side hydration.
 
-The React module enables building modern React applications using the `$page` descriptor on class properties.
+The React module enables building modern React applications using the `$page` primitive on class properties.
 It delivers seamless server-side rendering, automatic code splitting, and client-side navigation with full
 type safety and schema validation for route parameters and data.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $page()
 
-Main descriptor for defining a React route in the application.
+Main primitive for defining a React route in the application.
 
-The $page descriptor is the core building block for creating type-safe, SSR-enabled React routes.
+The $page primitive is the core building block for creating type-safe, SSR-enabled React routes.
 It provides a declarative way to define pages with powerful features:
 
 **Routing & Navigation**

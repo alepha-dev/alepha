@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha, type Service } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
-import { $scheduler, type SchedulerDescriptorOptions } from "alepha/scheduler";
+import { $scheduler, type SchedulerPrimitiveOptions } from "alepha/scheduler";
 import { expect } from "vitest";
 
 const store: Record<string, string> = {};
@@ -12,7 +12,7 @@ export class SharedLockProvider extends MemoryLockProvider {
 }
 
 export const testSchedulerBasic = async (options: {
-  scheduler: Partial<SchedulerDescriptorOptions>;
+  scheduler: Partial<SchedulerPrimitiveOptions>;
   lock?: Service<LockProvider>;
 }) => {
   let count = 0;

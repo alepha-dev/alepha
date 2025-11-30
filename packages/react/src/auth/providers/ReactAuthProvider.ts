@@ -8,7 +8,7 @@ export class ReactAuthProvider {
     handler: async ({ request, state }) => {
       if (request?.user) {
         const { token, realm, ...user } = request.user; // do not send token and realm to the client
-        this.alepha.state.set("alepha.server.request.user", user); // for hydration, browser, etc...
+        this.alepha.store.set("alepha.server.request.user", user); // for hydration, browser, etc...
         state.user = user;
       }
     },

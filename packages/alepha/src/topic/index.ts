@@ -1,14 +1,14 @@
 import { $module, type Alepha } from "alepha";
-import { $subscriber } from "./descriptors/$subscriber.ts";
-import { $topic } from "./descriptors/$topic.ts";
+import { $subscriber } from "./primitives/$subscriber.ts";
+import { $topic } from "./primitives/$topic.ts";
 import { MemoryTopicProvider } from "./providers/MemoryTopicProvider.ts";
 import { TopicProvider } from "./providers/TopicProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$subscriber.ts";
-export * from "./descriptors/$topic.ts";
 export * from "./errors/TopicTimeoutError.ts";
+export * from "./primitives/$subscriber.ts";
+export * from "./primitives/$topic.ts";
 export * from "./providers/MemoryTopicProvider.ts";
 export * from "./providers/TopicProvider.ts";
 
@@ -25,7 +25,7 @@ export * from "./providers/TopicProvider.ts";
  */
 export const AlephaTopic = $module({
   name: "alepha.topic",
-  descriptors: [$topic, $subscriber],
+  primitives: [$topic, $subscriber],
   services: [TopicProvider, MemoryTopicProvider],
   register: (alepha: Alepha) =>
     alepha.with({

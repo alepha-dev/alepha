@@ -4,7 +4,7 @@ import { AlephaServer, type ServerRequest } from "alepha/server";
 import { AlephaServerCache } from "alepha/server/cache";
 import { AlephaServerLinks } from "alepha/server/links";
 import type { ReactNode } from "react";
-import { $page, type PageAnimation } from "./descriptors/$page.ts";
+import { $page, type PageAnimation } from "./primitives/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import {
   ReactPageProvider,
@@ -128,7 +128,7 @@ declare module "alepha" {
 /**
  * Provides full-stack React development with declarative routing, server-side rendering, and client-side hydration.
  *
- * The React module enables building modern React applications using the `$page` descriptor on class properties.
+ * The React module enables building modern React applications using the `$page` primitive on class properties.
  * It delivers seamless server-side rendering, automatic code splitting, and client-side navigation with full
  * type safety and schema validation for route parameters and data.
  *
@@ -137,7 +137,7 @@ declare module "alepha" {
  */
 export const AlephaReact = $module({
   name: "alepha.react",
-  descriptors: [$page],
+  primitives: [$page],
   services: [
     ReactServerProvider,
     ReactPageProvider,

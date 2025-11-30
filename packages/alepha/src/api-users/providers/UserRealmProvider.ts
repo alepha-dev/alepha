@@ -40,7 +40,7 @@ export class UserRealmProvider {
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: () => {
-      this.alepha.state.set("alepha.server.security.system.user", {
+      this.alepha.store.set("alepha.server.security.system.user", {
         id: "00000000-0000-0000-0000-000000000000",
         name: "system",
         roles: ["admin"], // TODO: use realm config

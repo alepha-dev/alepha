@@ -17,7 +17,7 @@ import { $logger } from "alepha/logger";
 import { AlephaSecurity } from "alepha/security";
 import {
   $action,
-  type ActionDescriptor,
+  type ActionPrimitive,
   type RequestConfigSchema,
   ServerProvider,
   ServerRouterProvider,
@@ -27,8 +27,8 @@ import {
   $swagger,
   type OpenApiDocument,
   type OpenApiOperation,
-  type SwaggerDescriptorOptions,
-} from "../descriptors/$swagger.ts";
+  type SwaggerPrimitiveOptions,
+} from "../primitives/$swagger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ export class ServerSwaggerProvider {
     on: "configure",
     priority: "last", // wait for all configurations, sometimes some actions are registered late!
     handler: async (alepha) => {
-      const options = alepha.descriptors($swagger)?.[0]?.options;
+      const options = alepha.primitives($swagger)?.[0]?.options;
       if (!options) {
         return;
       }
@@ -84,14 +84,14 @@ export class ServerSwaggerProvider {
   });
 
   public async createSwagger(
-    options: SwaggerDescriptorOptions,
+    options: SwaggerPrimitiveOptions,
   ): Promise<OpenApiDocument | undefined> {
     if (options.disabled) {
       return;
     }
 
     const json = this.configureOpenApi(
-      this.alepha.descriptors($action),
+      this.alepha.primitives($action),
       options,
     );
 
@@ -111,8 +111,8 @@ export class ServerSwaggerProvider {
   }
 
   protected configureOpenApi(
-    actions: ActionDescriptor<RequestConfigSchema>[],
-    doc: SwaggerDescriptorOptions,
+    actions: ActionPrimitive<RequestConfigSchema>[],
+    doc: SwaggerPrimitiveOptions,
   ): OpenApiDocument {
     const openApi: OpenApiDocument = {
       openapi: "3.0.0",
@@ -290,7 +290,7 @@ export class ServerSwaggerProvider {
     });
   }
 
-  public getResponseSchema(route: ActionDescriptor<RequestConfigSchema>):
+  public getResponseSchema(route: ActionPrimitive<RequestConfigSchema>):
     | {
         type?: string;
         schema?: any;
@@ -357,7 +357,7 @@ export class ServerSwaggerProvider {
 
   protected async configureSwaggerUi(
     prefix: string,
-    options: SwaggerDescriptorOptions,
+    options: SwaggerPrimitiveOptions,
   ): Promise<void> {
     const ui = typeof options.ui === "object" ? options.ui : {};
     const initializer = `

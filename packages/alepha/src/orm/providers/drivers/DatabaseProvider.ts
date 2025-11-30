@@ -13,12 +13,12 @@ import {
   type PgDatabase,
   type PgTableWithColumns,
 } from "drizzle-orm/pg-core";
-import type {
-  EntityDescriptor,
-  SchemaToTableConfig,
-} from "../../descriptors/$entity.ts";
-import type { SequenceDescriptor } from "../../descriptors/$sequence.ts";
 import { DbError } from "../../errors/DbError.ts";
+import type {
+  EntityPrimitive,
+  SchemaToTableConfig,
+} from "../../primitives/$entity.ts";
+import type { SequencePrimitive } from "../../primitives/$sequence.ts";
 import type { ModelBuilder } from "../../services/ModelBuilder.ts";
 import type { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 
@@ -46,7 +46,7 @@ export abstract class DatabaseProvider {
   }
 
   public table<T extends TObject>(
-    entity: EntityDescriptor<T>,
+    entity: EntityPrimitive<T>,
   ): PgTableWithColumns<SchemaToTableConfig<T>> {
     const table = this.tables.get(entity.name);
     if (!table) {
@@ -65,11 +65,11 @@ export abstract class DatabaseProvider {
     return table as PgTableWithColumns<SchemaToTableConfig<T>>;
   }
 
-  public registerEntity(entity: EntityDescriptor) {
+  public registerEntity(entity: EntityPrimitive) {
     this.builder.buildTable(entity, this);
   }
 
-  public registerSequence(sequence: SequenceDescriptor) {
+  public registerSequence(sequence: SequencePrimitive) {
     this.builder.buildSequence(sequence, this);
   }
 

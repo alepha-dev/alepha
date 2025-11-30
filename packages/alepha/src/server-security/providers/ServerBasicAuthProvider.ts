@@ -14,7 +14,7 @@ export interface BasicAuthOptions {
   password: string;
 }
 
-export interface BasicAuthDescriptorConfig extends BasicAuthOptions {
+export interface BasicAuthPrimitiveConfig extends BasicAuthOptions {
   /** Name identifier for this basic auth (default: property key) */
   name?: string;
   /** Path patterns to match (supports wildcards like /devtools/*) */
@@ -30,14 +30,14 @@ export class ServerBasicAuthProvider {
   protected readonly realm = "Secure Area";
 
   /**
-   * Registered basic auth descriptors with their configurations
+   * Registered basic auth primitives with their configurations
    */
-  public readonly registeredAuths: BasicAuthDescriptorConfig[] = [];
+  public readonly registeredAuths: BasicAuthPrimitiveConfig[] = [];
 
   /**
-   * Register a basic auth configuration (called by descriptors)
+   * Register a basic auth configuration (called by primitives)
    */
-  public registerAuth(config: BasicAuthDescriptorConfig): void {
+  public registerAuth(config: BasicAuthPrimitiveConfig): void {
     this.registeredAuths.push(config);
   }
 

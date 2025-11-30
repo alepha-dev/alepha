@@ -8,6 +8,6 @@ export * from "./index.shared.ts";
 
 export const AlephaServerAuth = $module({
   name: "alepha.server.auth",
-  descriptors: [],
+  primitives: [],
   services: [],
 });

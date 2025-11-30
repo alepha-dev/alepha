@@ -1,9 +1,9 @@
 import { $module, type Alepha, t } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import * as drizzle from "drizzle-orm";
-import { $entity } from "./descriptors/$entity.ts";
-import { $repository } from "./descriptors/$repository.ts";
-import { $sequence } from "./descriptors/$sequence.ts";
+import { $entity } from "./primitives/$entity.ts";
+import { $repository } from "./primitives/$repository.ts";
+import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
@@ -95,10 +95,6 @@ export {
 export { sql } from "drizzle-orm";
 export * from "drizzle-orm/pg-core";
 export * from "./constants/PG_SYMBOLS.ts";
-export * from "./descriptors/$entity.ts";
-export * from "./descriptors/$repository.ts";
-export * from "./descriptors/$sequence.ts";
-export * from "./descriptors/$transaction.ts";
 export * from "./errors/DbConflictError.ts";
 export * from "./errors/DbEntityNotFoundError.ts";
 export * from "./errors/DbError.ts";
@@ -109,6 +105,10 @@ export * from "./helpers/pgAttr.ts";
 export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";
+export * from "./primitives/$entity.ts";
+export * from "./primitives/$repository.ts";
+export * from "./primitives/$sequence.ts";
+export * from "./primitives/$transaction.ts";
 export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
@@ -164,7 +164,7 @@ export * from "./types/schema.ts";
  */
 export const AlephaPostgres = $module({
   name: "alepha.postgres",
-  descriptors: [$sequence, $entity],
+  primitives: [$sequence, $entity],
   services: [
     AlephaDateTime,
     DatabaseProvider,

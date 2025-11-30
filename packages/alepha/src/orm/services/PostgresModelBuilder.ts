@@ -27,8 +27,8 @@ import {
   type PgIdentityOptions,
   type PgRefOptions,
 } from "../constants/PG_SYMBOLS.ts";
-import type { EntityDescriptor, FromSchema } from "../descriptors/$entity.ts";
-import type { SequenceDescriptor } from "../descriptors/$sequence.ts";
+import type { EntityPrimitive, FromSchema } from "../primitives/$entity.ts";
+import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/schema.ts";
 import { ModelBuilder } from "./ModelBuilder.ts";
@@ -57,7 +57,7 @@ export class PostgresModelBuilder extends ModelBuilder {
   }
 
   public buildTable(
-    entity: EntityDescriptor<any>,
+    entity: EntityPrimitive<any>,
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
@@ -88,7 +88,7 @@ export class PostgresModelBuilder extends ModelBuilder {
   }
 
   public buildSequence(
-    sequence: SequenceDescriptor,
+    sequence: SequencePrimitive,
     options: {
       sequences: Map<string, unknown>;
       schema: string;
@@ -113,7 +113,7 @@ export class PostgresModelBuilder extends ModelBuilder {
    * Get PostgreSQL-specific config builder for the table.
    */
   protected getTableConfig(
-    entity: EntityDescriptor,
+    entity: EntityPrimitive,
     tables: Map<string, unknown>,
   ):
     | ((

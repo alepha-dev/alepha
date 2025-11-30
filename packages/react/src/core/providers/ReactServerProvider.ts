@@ -23,9 +23,9 @@ import { ServerStaticProvider } from "alepha/server/static";
 import { renderToString } from "react-dom/server";
 import {
   $page,
-  type PageDescriptorRenderOptions,
-  type PageDescriptorRenderResult,
-} from "../descriptors/$page.ts";
+  type PagePrimitiveRenderOptions,
+  type PagePrimitiveRenderResult,
+} from "../primitives/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
 import {
@@ -112,12 +112,12 @@ export class ReactServerProvider {
   public readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
-      const pages = this.alepha.descriptors($page);
+      const pages = this.alepha.primitives($page);
 
       const ssrEnabled =
         pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
-      this.alepha.state.set("alepha.react.server.ssr", ssrEnabled);
+      this.alepha.store.set("alepha.react.server.ssr", ssrEnabled);
 
       // development mode
       if (this.alepha.isViteDev()) {
@@ -192,7 +192,7 @@ export class ReactServerProvider {
 
       this.serverRouterProvider.createRoute({
         ...page,
-        schema: undefined, // schema is handled by the page descriptor provider for now (shared by browser and server)
+        schema: undefined, // schema is handled by the page primitive provider for now (shared by browser and server)
         method: "GET",
         path: page.match,
         handler: this.createHandler(page, templateLoader),
@@ -257,8 +257,8 @@ export class ReactServerProvider {
    */
   public async render(
     name: string,
-    options: PageDescriptorRenderOptions = {},
-  ): Promise<PageDescriptorRenderResult> {
+    options: PagePrimitiveRenderOptions = {},
+  ): Promise<PagePrimitiveRenderResult> {
     const page = this.pageApi.page(name);
     const url = new URL(this.pageApi.url(name, options));
     const entry: Partial<ReactRouterState> = {
@@ -289,7 +289,7 @@ export class ReactServerProvider {
     }
 
     if (!options.html) {
-      this.alepha.state.set("alepha.react.router.state", state);
+      this.alepha.store.set("alepha.react.router.state", state);
 
       return {
         state,
@@ -340,7 +340,7 @@ export class ReactServerProvider {
       const state = entry as ReactRouterState;
 
       if (this.alepha.has(ServerLinksProvider)) {
-        this.alepha.state.set(
+        this.alepha.store.set(
           "alepha.server.request.apiLinks",
           await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
             user: (serverRequest as any).user, // TODO: fix type
@@ -349,7 +349,7 @@ export class ReactServerProvider {
         );
       }
 
-      let target: PageRoute | undefined = route; // TODO: move to PageDescriptorProvider
+      let target: PageRoute | undefined = route; // TODO: move to PagePrimitiveProvider
       while (target) {
         if (route.can && !route.can()) {
           // if the page is not accessible, return 403
@@ -431,7 +431,7 @@ export class ReactServerProvider {
     const element = this.pageApi.root(state);
 
     // attach react router state to the http request context
-    this.alepha.state.set("alepha.react.router.state", state);
+    this.alepha.store.set("alepha.react.router.state", state);
 
     this.serverTimingProvider.beginTiming("renderToString");
     let app = "";

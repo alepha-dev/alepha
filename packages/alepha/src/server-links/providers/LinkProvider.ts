@@ -1,7 +1,7 @@
 import { $inject, Alepha, AlephaError, type Async, t } from "alepha";
 import { $logger } from "alepha/logger";
 import {
-  type ActionDescriptor,
+  type ActionPrimitive,
   type ClientRequestEntry,
   type ClientRequestOptions,
   type ClientRequestResponse,
@@ -79,7 +79,7 @@ export class LinkProvider {
 
   public get links(): HttpClientLink[] {
     // TODO: not performant at all, use a map instead for ServerLinks
-    const apiLinks = this.alepha.state.get(
+    const apiLinks = this.alepha.store.get(
       "alepha.server.request.apiLinks",
     )?.links;
     if (apiLinks) {
@@ -114,7 +114,7 @@ export class LinkProvider {
       },
     );
 
-    this.alepha.state.set("alepha.server.request.apiLinks", data);
+    this.alepha.store.set("alepha.server.request.apiLinks", data);
 
     return data.links;
   }
@@ -277,7 +277,7 @@ export class LinkProvider {
   ): Promise<HttpClientLink> {
     if (
       this.alepha.isBrowser() &&
-      !this.alepha.state.get("alepha.server.request.apiLinks")
+      !this.alepha.store.get("alepha.server.request.apiLinks")
     ) {
       await this.fetchLinks();
     }
@@ -334,15 +334,15 @@ export interface ClientScope {
 }
 
 export type HttpVirtualClient<T> = {
-  [K in keyof T as T[K] extends ActionDescriptor<RequestConfigSchema>
+  [K in keyof T as T[K] extends ActionPrimitive<RequestConfigSchema>
     ? K
-    : never]: T[K] extends ActionDescriptor<infer Schema>
+    : never]: T[K] extends ActionPrimitive<infer Schema>
     ? VirtualAction<Schema>
     : never;
 };
 
 export interface VirtualAction<T extends RequestConfigSchema>
-  extends Pick<ActionDescriptor<T>, "name" | "run" | "fetch"> {
+  extends Pick<ActionPrimitive<T>, "name" | "run" | "fetch"> {
   (
     config?: ClientRequestEntry<T>,
     opts?: ClientRequestOptions,

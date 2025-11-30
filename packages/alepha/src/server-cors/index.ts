@@ -1,5 +1,5 @@
 import { $module } from "alepha";
-import { $cors } from "./descriptors/$cors.ts";
+import { $cors } from "./primitives/$cors.ts";
 import {
   type CorsOptions,
   ServerCorsProvider,
@@ -7,7 +7,7 @@ import {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$cors.ts";
+export * from "./primitives/$cors.ts";
 export * from "./providers/ServerCorsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -52,6 +52,6 @@ declare module "alepha/server" {
  */
 export const AlephaServerCors = $module({
   name: "alepha.server.cors",
-  descriptors: [$cors],
+  primitives: [$cors],
   services: [ServerCorsProvider],
 });

@@ -18,7 +18,7 @@ export const __alephaRef: {
 /**
  * Note:
  *
- * This file is used to share context between $descriptors and the Alepha core during the injection phase.
+ * This file is used to share context between $primitives and the Alepha core during the injection phase.
  *
  * There is no side effect as long as Alepha is not used concurrently in multiple contexts (which is not the case).
  *

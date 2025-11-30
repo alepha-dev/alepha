@@ -1,13 +1,13 @@
 import { AlephaError } from "alepha";
 import type {
-  PageDescriptorRenderOptions,
-  PageDescriptorRenderResult,
-} from "../descriptors/$page.ts";
+  PagePrimitiveRenderOptions,
+  PagePrimitiveRenderResult,
+} from "../primitives/$page.ts";
 
 export class ReactPageService {
   public fetch(
     pathname: string,
-    options: PageDescriptorRenderOptions = {},
+    options: PagePrimitiveRenderOptions = {},
   ): Promise<{
     html: string;
     response: Response;
@@ -17,8 +17,8 @@ export class ReactPageService {
 
   public render(
     name: string,
-    options: PageDescriptorRenderOptions = {},
-  ): Promise<PageDescriptorRenderResult> {
+    options: PagePrimitiveRenderOptions = {},
+  ): Promise<PagePrimitiveRenderResult> {
     throw new AlephaError("Render is not available for this environment.");
   }
 }

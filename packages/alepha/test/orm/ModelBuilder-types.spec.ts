@@ -1,6 +1,6 @@
 import { t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity } from "../../src/orm/descriptors/$entity.ts";
+import { $entity } from "../../src/orm/primitives/$entity.ts";
 import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
 
 describe("ModelBuilder Type Safety", () => {

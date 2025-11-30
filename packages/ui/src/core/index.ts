@@ -102,7 +102,7 @@ declare module "typebox" {
 }
 
 declare module "@alepha/react" {
-  interface PageDescriptorOptions {
+  interface PagePrimitiveOptions {
     /**
      * Human-readable title for the page.
      * - for Sidebar navigation

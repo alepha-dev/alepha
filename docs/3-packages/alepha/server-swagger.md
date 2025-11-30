@@ -14,17 +14,17 @@ It also provides a Swagger UI for interactive API documentation.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $swagger()
 
-Creates an OpenAPI/Swagger documentation descriptor with interactive UI.
+Creates an OpenAPI/Swagger documentation primitive with interactive UI.
 
-Automatically generates API documentation from your $action descriptors and serves
+Automatically generates API documentation from your $action primitives and serves
 an interactive Swagger UI for testing endpoints. Supports customization, tag filtering,
 and OAuth configuration.
 

@@ -22,7 +22,7 @@ import {
   randomState,
 } from "openid-client";
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
-import { $auth, type AuthDescriptor } from "../descriptors/$auth.ts";
+import { $auth, type AuthPrimitive } from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
@@ -57,9 +57,9 @@ export class ServerAuthProvider {
     schema: tokensSchema,
   });
 
-  public get identities(): Array<AuthDescriptor> {
+  public get identities(): Array<AuthPrimitive> {
     return this.alepha
-      .descriptors($auth)
+      .primitives($auth)
       .filter((auth) => !auth.options.disabled);
   }
 
@@ -603,7 +603,7 @@ export class ServerAuthProvider {
     },
   });
 
-  protected provider(opts: string | { provider: string }): AuthDescriptor {
+  protected provider(opts: string | { provider: string }): AuthPrimitive {
     const name = typeof opts === "string" ? opts : opts.provider;
     const identity = this.identities.find((identity) => identity.name === name);
 

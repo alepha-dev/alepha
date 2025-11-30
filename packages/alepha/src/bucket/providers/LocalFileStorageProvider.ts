@@ -17,8 +17,8 @@ import {
 } from "alepha";
 import { FileDetector, FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import { $bucket } from "../descriptors/$bucket.ts";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
+import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
         this.alepha.isTest() &&
         this.storagePath === localFileStorageOptions.options.default.storagePath
       ) {
-        this.alepha.state.set(localFileStorageOptions, {
+        this.alepha.store.set(localFileStorageOptions, {
           storagePath: join(tmpdir(), `alepha-test-${Date.now()}`),
         });
       }
@@ -82,7 +82,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
         await mkdir(this.storagePath, { recursive: true });
       } catch {}
 
-      for (const bucket of this.alepha.descriptors($bucket)) {
+      for (const bucket of this.alepha.primitives($bucket)) {
         if (bucket.provider !== this) {
           continue;
         }

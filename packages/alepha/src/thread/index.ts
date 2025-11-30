@@ -1,10 +1,10 @@
 import { $module, Alepha } from "alepha";
-import { $thread } from "./descriptors/$thread.ts";
+import { $thread } from "./primitives/$thread.ts";
 import { ThreadProvider } from "./providers/ThreadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./descriptors/$thread.ts";
+export * from "./primitives/$thread.ts";
 export * from "./providers/ThreadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -29,6 +29,6 @@ Alepha.prototype.isWorkerThread = function (this: Alepha): boolean {
  */
 export const AlephaThread = $module({
   name: "alepha.thread",
-  descriptors: [$thread],
+  primitives: [$thread],
   services: [ThreadProvider],
 });

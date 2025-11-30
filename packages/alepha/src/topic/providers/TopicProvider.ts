@@ -1,6 +1,6 @@
 import { $inject, Alepha } from "alepha";
-import { $subscriber } from "../descriptors/$subscriber.ts";
-import { $topic } from "../descriptors/$topic.ts";
+import { $subscriber } from "../primitives/$subscriber.ts";
+import { $topic } from "../primitives/$topic.ts";
 
 /**
  * Base class for topic providers.
@@ -40,7 +40,7 @@ export abstract class TopicProvider {
   protected subscribers(): Array<() => Promise<unknown>> {
     const handlers: Array<() => Promise<unknown>> = [];
 
-    const topics = this.alepha.descriptors($topic);
+    const topics = this.alepha.primitives($topic);
 
     for (const topic of topics) {
       if (topic.provider !== this) {
@@ -53,7 +53,7 @@ export abstract class TopicProvider {
       }
     }
 
-    const subscribers = this.alepha.descriptors($subscriber);
+    const subscribers = this.alepha.primitives($subscriber);
     for (const subscriber of subscribers) {
       if (subscriber.options.topic.provider !== this) {
         continue;

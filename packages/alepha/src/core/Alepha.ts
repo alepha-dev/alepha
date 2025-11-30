@@ -2,13 +2,11 @@ import type { Static, TObject } from "typebox";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { OPTIONS } from "./constants/OPTIONS.ts";
-import type { InjectOptions } from "./descriptors/$inject.ts";
-import { Module, type WithModule } from "./descriptors/$module.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
-import { Descriptor } from "./helpers/descriptor.ts";
+import { Primitive } from "./helpers/primitive.ts";
 import { __alephaRef } from "./helpers/ref.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
@@ -19,6 +17,8 @@ import {
   type Service,
   type ServiceEntry,
 } from "./interfaces/Service.ts";
+import type { InjectOptions } from "./primitives/$inject.ts";
+import { Module, type WithModule } from "./primitives/$module.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
 import { CodecManager } from "./providers/CodecManager.ts";
 import { EventManager } from "./providers/EventManager.ts";
@@ -82,7 +82,7 @@ import type { TSchema } from "./providers/TypeProvider.ts";
  * // You can access the environment variables using alepha.env
  * console.log(alepha.env.MY_VAR); // "value"
  *
- * // But you should use $env() descriptor to get typed values from the environment.
+ * // But you should use $env() primitive to get typed values from the environment.
  * class App {
  *   env = $env(
  *     t.object({
@@ -95,7 +95,7 @@ import type { TSchema } from "./providers/TypeProvider.ts";
  * ### Modules
  *
  * Modules are a way to group services together.
- * You can register a module using the `$module` descriptor.
+ * You can register a module using the `$module` primitive.
  *
  * ```ts
  * import { $module } from "alepha";
@@ -113,7 +113,7 @@ import type { TSchema } from "./providers/TypeProvider.ts";
  * ### Hooks
  *
  * Hooks are a way to run async functions from all registered providers/services.
- * You can register a hook using the `$hook` descriptor.
+ * You can register a hook using the `$hook` primitive.
  *
  * ```ts
  * import { $hook } from "alepha";
@@ -187,7 +187,7 @@ export class Alepha {
         // ignore
       }
 
-      alepha.state
+      alepha.store
         .set("alepha.test.beforeAll", beforeAll)
         .set("alepha.test.afterAll", afterAll)
         .set("alepha.test.afterEach", afterEach)
@@ -257,12 +257,9 @@ export class Alepha {
   protected substitutions = new Map<Service, { use: Service }>();
 
   /**
-   * Registry of descriptors.
+   * Registry of primitives.
    */
-  protected descriptorRegistry = new Map<
-    Service<Descriptor>,
-    Array<Descriptor>
-  >();
+  protected primitiveRegistry = new Map<Service<Primitive>, Array<Primitive>>();
 
   /**
    *  List of all services + how they are provided.
@@ -294,7 +291,7 @@ export class Alepha {
   /**
    * State manager to store arbitrary values.
    */
-  public get state(): StateManager<State> {
+  public get store(): StateManager<State> {
     this.events; // ensure events is initialized first (TODO: move this to constructor?)
     return this.inject(StateManager, {
       args: [this.init],
@@ -314,14 +311,14 @@ export class Alepha {
    * Get logger instance.
    */
   public get log(): LoggerInterface | undefined {
-    return this.state.get("alepha.logger");
+    return this.store.get("alepha.logger");
   }
 
   /**
    * The environment variables for the App.
    */
   public get env(): Readonly<Env> {
-    return this.state.get("env") ?? {};
+    return this.store.get("env") ?? {};
   }
 
   constructor(init: Partial<State> = {}) {
@@ -442,7 +439,7 @@ export class Alepha {
    * Starts the App.
    *
    * - Lock any further changes to the container.
-   * - Run "configure" hook for all services. Descriptors will be processed.
+   * - Run "configure" hook for all services. Primitives will be processed.
    * - Run "start" hook for all services. Providers will connect/listen/...
    * - Run "ready" hook for all services. This is the point where the App is ready to serve requests.
    *
@@ -472,10 +469,10 @@ export class Alepha {
       this.inject(key);
     }
 
-    const target = this.state.get("alepha.target");
+    const target = this.store.get("alepha.target");
     if (target) {
       this.registry = new Map();
-      this.descriptorRegistry = new Map();
+      this.primitiveRegistry = new Map();
       this.with(target);
     }
 
@@ -878,28 +875,28 @@ export class Alepha {
   }
 
   /**
-   * Get all descriptors of the specified type.
+   * Get all primitives of the specified type.
    */
-  public descriptors<TDescriptor extends Descriptor>(
+  public primitives<TPrimitive extends Primitive>(
     factory:
       | {
-          [KIND]: InstantiableClass<TDescriptor>;
+          [KIND]: InstantiableClass<TPrimitive>;
         }
       | string,
-  ): Array<TDescriptor> {
+  ): Array<TPrimitive> {
     if (typeof factory === "string") {
       const key1 = factory.toLowerCase().replace("$", "");
-      const key2 = `${key1}descriptor`;
-      for (const [key, value] of this.descriptorRegistry.entries()) {
+      const key2 = `${key1}primitive`;
+      for (const [key, value] of this.primitiveRegistry.entries()) {
         const name = key.name.toLowerCase();
         if (name === key1 || name === key2) {
-          return value as Array<TDescriptor>;
+          return value as Array<TPrimitive>;
         }
       }
       return [];
     }
-    return (this.descriptorRegistry.get(factory[KIND]) ??
-      []) as Array<TDescriptor>;
+    return (this.primitiveRegistry.get(factory[KIND]) ??
+      []) as Array<TPrimitive>;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -922,8 +919,8 @@ export class Alepha {
 
     const obj = instance as unknown as Record<string, any>;
     for (const [key, value] of Object.entries(obj)) {
-      if (value instanceof Descriptor) {
-        this.processDescriptor(value, key);
+      if (value instanceof Primitive) {
+        this.processPrimitive(value, key);
       }
       if (
         typeof value === "object" &&
@@ -933,7 +930,7 @@ export class Alepha {
       ) {
         const getter = value[OPTIONS].getter as keyof State;
         Object.defineProperty(obj, key, {
-          get: () => this.state.get(getter),
+          get: () => this.store.get(getter),
         });
       }
     }
@@ -951,13 +948,13 @@ export class Alepha {
     return instance;
   }
 
-  protected processDescriptor(value: Descriptor, propertyKey = "") {
+  protected processPrimitive(value: Primitive, propertyKey = "") {
     value.config.propertyKey = propertyKey;
     (value as any).onInit();
 
     const kind = value.constructor as Service;
-    const list = this.descriptorRegistry.get(kind) ?? [];
-    this.descriptorRegistry.set(kind, [...list, value]);
+    const list = this.primitiveRegistry.get(kind) ?? [];
+    this.primitiveRegistry.set(kind, [...list, value]);
   }
 }
 

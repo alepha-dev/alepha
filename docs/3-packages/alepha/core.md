@@ -65,7 +65,7 @@ const alepha = Alepha.create({ env: { MY_VAR: "value" } });
 // You can access the environment variables using alepha.env
 console.log(alepha.env.MY_VAR); // "value"
 
-// But you should use $env() descriptor to get typed values from the environment.
+// But you should use $env() primitive to get typed values from the environment.
 class App {
   env = $env(
     t.object({
@@ -78,7 +78,7 @@ class App {
 ### Modules
 
 Modules are a way to group services together.
-You can register a module using the `$module` descriptor.
+You can register a module using the `$module` primitive.
 
 ```ts
 import { $module } from "alepha";
@@ -96,7 +96,7 @@ Do not use modules for small applications.
 ### Hooks
 
 Hooks are a way to run async functions from all registered providers/services.
-You can register a hook using the `$hook` descriptor.
+You can register a hook using the `$hook` primitive.
 
 ```ts
 import { $hook } from "alepha";
@@ -133,11 +133,11 @@ Alepha.create()
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $atom()
 
@@ -250,7 +250,7 @@ class B {
 
 #### $module()
 
-Wrap Services and Descriptors into a Module.
+Wrap Services and Primitives into a Module.
 
 - A module is just a Service with some extra {@link Module}.
 - You must attach a `name` to it.
@@ -322,7 +322,7 @@ class UserComponent {
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](/docs/providers).
+For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### CodecManager
 

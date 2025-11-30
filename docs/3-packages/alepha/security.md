@@ -10,17 +10,17 @@ npm install alepha
 
 Provides comprehensive authentication and authorization capabilities with JWT tokens, role-based access control, and user management.
 
-The security module enables building secure applications using descriptors like `$realm`, `$role`, and `$permission`
+The security module enables building secure applications using primitives like `$realm`, `$role`, and `$permission`
 on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
 integration with various authentication providers and user management systems.
 
 ## API Reference
 
-### Descriptors
+### Primitives
 
-Descriptors are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured descriptor instances.
+Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
-For more details, see the [Descriptors documentation](/docs/descriptors).
+For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
 #### $permission()
 
@@ -66,7 +66,7 @@ class MyService {
 
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
-For more details, see the [Providers documentation](/docs/providers).
+For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### JwtProvider
 

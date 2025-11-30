@@ -2,7 +2,7 @@ import type {
   PgSequenceOptions,
   UpdateDeleteAction,
 } from "drizzle-orm/pg-core";
-import type { EntityDescriptor } from "../descriptors/$entity.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
 
 export const PG_DEFAULT = Symbol.for("Alepha.Postgres.Default");
 export const PG_PRIMARY_KEY = Symbol.for("Alepha.Postgres.PrimaryKey");
@@ -56,7 +56,7 @@ export interface PgEnumOptions {
 export interface PgRefOptions {
   ref: () => {
     name: string;
-    entity: EntityDescriptor;
+    entity: EntityPrimitive;
   };
   actions?: {
     onUpdate?: UpdateDeleteAction;

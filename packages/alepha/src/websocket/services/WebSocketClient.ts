@@ -8,7 +8,7 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { ChannelDescriptor, TWSObject } from "../descriptors/$channel.ts";
+import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 const envSchema = t.object({
   WEBSOCKET_URL: t.text({
@@ -75,7 +75,7 @@ export class WebSocketChannelConnection<
   protected onErrorCallbacks = new Set<(error: Error) => void>();
 
   constructor(
-    protected readonly channel: ChannelDescriptor<TClient, TServer>,
+    protected readonly channel: ChannelPrimitive<TClient, TServer>,
     protected readonly options: {
       url?: string;
       autoReconnect?: boolean;
@@ -472,7 +472,7 @@ export class WebSocketClient {
    */
   public subscribe<TClient extends TWSObject, TServer extends TWSObject>(
     roomId: string,
-    channel: ChannelDescriptor<TClient, TServer>,
+    channel: ChannelPrimitive<TClient, TServer>,
     handler: (message: Static<TClient>) => void,
     options: {
       url?: string;
@@ -547,7 +547,7 @@ export class WebSocketClient {
    */
   public async send<TClient extends TWSObject, TServer extends TWSObject>(
     roomId: string,
-    channel: ChannelDescriptor<TClient, TServer>,
+    channel: ChannelPrimitive<TClient, TServer>,
     message: Static<TServer>,
   ): Promise<void> {
     const channelPath = channel.options.path;
@@ -574,7 +574,7 @@ export class WebSocketClient {
    * Get connection for a channel
    */
   public getConnection<TClient extends TWSObject, TServer extends TWSObject>(
-    channel: ChannelDescriptor<TClient, TServer>,
+    channel: ChannelPrimitive<TClient, TServer>,
   ): WebSocketChannelConnection<TClient, TServer> | undefined {
     const channelPath = channel.options.path;
     const connection = this.connections.get(channelPath) as

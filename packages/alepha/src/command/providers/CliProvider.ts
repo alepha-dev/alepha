@@ -14,14 +14,14 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import {
-  $command,
-  type CommandDescriptor,
-  type CommandHandlerArgs,
-} from "../descriptors/$command.ts";
 import { CommandError } from "../errors/CommandError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { Runner } from "../helpers/Runner.ts";
+import {
+  $command,
+  type CommandHandlerArgs,
+  type CommandPrimitive,
+} from "../primitives/$command.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -176,11 +176,11 @@ export class CliProvider {
     },
   });
 
-  public get commands(): CommandDescriptor<any>[] {
-    return this.alepha.descriptors($command);
+  public get commands(): CommandPrimitive<any>[] {
+    return this.alepha.primitives($command);
   }
 
-  protected findCommand(name: string): CommandDescriptor<TObject> | undefined {
+  protected findCommand(name: string): CommandPrimitive<TObject> | undefined {
     return this.commands.find(
       (command) => command.name === name || command.aliases.includes(name),
     );
@@ -408,7 +408,7 @@ export class CliProvider {
     return "";
   }
 
-  public printHelp(command?: CommandDescriptor<any>): void {
+  public printHelp(command?: CommandPrimitive<any>): void {
     const cliName = this.name || "cli";
     this.log.info(""); // Newline
 
@@ -485,7 +485,7 @@ export class CliProvider {
     this.log.info(""); // Newline
   }
 
-  private getMaxCmdLength(commands: CommandDescriptor[]): number {
+  private getMaxCmdLength(commands: CommandPrimitive[]): number {
     return Math.max(
       ...commands.map((c) => {
         const cmdStr = [c.name, ...c.aliases].join(", ");
