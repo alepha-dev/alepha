@@ -68,7 +68,12 @@ export class ViteCommands {
         await access(join(root, "index.html"));
       } catch {
         this.log.trace("No index.html found, running entry file with tsx");
-        await this.runner.exec(`tsx watch ${entry}`);
+        let cmd = "tsx --watch";
+        if (await this.utils.exists(root, ".env")) {
+          cmd += ` --env-file=./.env`;
+        }
+        cmd += ` ${entry}`;
+        await this.runner.exec(cmd);
         return;
       }
 

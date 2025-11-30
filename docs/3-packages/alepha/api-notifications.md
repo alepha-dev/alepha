@@ -13,6 +13,8 @@ Provides notification management API endpoints for Alepha applications.
 This module includes notification sending, retrieval, status tracking,
 and user notification preferences management.
 
+Requires `AlephaSms` module to be loaded for SMS notifications.
+
 ## API Reference
 
 ### Descriptors
