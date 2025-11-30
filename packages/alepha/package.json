@@ -90,6 +90,7 @@
     },
     "./api/users": {
       "types": "./src/api-users/index.ts",
+      "react-native": "./src/api-users/index.browser.ts",
       "browser": "./src/api-users/index.browser.ts",
       "import": "./src/api-users/index.ts",
       "require": "./src/api-users/index.ts"
@@ -136,6 +137,7 @@
     },
     ".": {
       "types": "./src/core/index.ts",
+      "react-native": "./src/core/index.native.ts",
       "browser": "./src/core/index.browser.ts",
       "import": "./src/core/index.ts",
       "require": "./src/core/index.ts"
@@ -177,6 +179,7 @@
     },
     "./orm": {
       "types": "./src/orm/index.ts",
+      "react-native": "./src/orm/index.browser.ts",
       "browser": "./src/orm/index.browser.ts",
       "import": "./src/orm/index.ts",
       "require": "./src/orm/index.ts"
@@ -213,18 +216,21 @@
     },
     "./security": {
       "types": "./src/security/index.ts",
+      "react-native": "./src/security/index.browser.ts",
       "browser": "./src/security/index.browser.ts",
       "import": "./src/security/index.ts",
       "require": "./src/security/index.ts"
     },
     "./server": {
       "types": "./src/server/index.ts",
+      "react-native": "./src/server/index.browser.ts",
       "browser": "./src/server/index.browser.ts",
       "import": "./src/server/index.ts",
       "require": "./src/server/index.ts"
     },
     "./server/auth": {
       "types": "./src/server-auth/index.ts",
+      "react-native": "./src/server-auth/index.browser.ts",
       "browser": "./src/server-auth/index.browser.ts",
       "import": "./src/server-auth/index.ts",
       "require": "./src/server-auth/index.ts"
@@ -241,6 +247,7 @@
     },
     "./server/cookies": {
       "types": "./src/server-cookies/index.ts",
+      "react-native": "./src/server-cookies/index.browser.ts",
       "browser": "./src/server-cookies/index.browser.ts",
       "import": "./src/server-cookies/index.ts",
       "require": "./src/server-cookies/index.ts"
@@ -262,6 +269,7 @@
     },
     "./server/links": {
       "types": "./src/server-links/index.ts",
+      "react-native": "./src/server-links/index.browser.ts",
       "browser": "./src/server-links/index.browser.ts",
       "import": "./src/server-links/index.ts",
       "require": "./src/server-links/index.ts"
@@ -288,6 +296,7 @@
     },
     "./server/security": {
       "types": "./src/server-security/index.ts",
+      "react-native": "./src/server-security/index.browser.ts",
       "browser": "./src/server-security/index.browser.ts",
       "import": "./src/server-security/index.ts",
       "require": "./src/server-security/index.ts"
@@ -329,6 +338,7 @@
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",
+      "react-native": "./src/websocket/index.browser.ts",
       "browser": "./src/websocket/index.browser.ts",
       "import": "./src/websocket/index.ts",
       "require": "./src/websocket/index.ts"

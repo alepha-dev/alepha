@@ -56,12 +56,14 @@
   "exports": {
     "./auth": {
       "types": "./src/auth/index.ts",
+      "react-native": "./src/auth/index.browser.ts",
       "browser": "./src/auth/index.browser.ts",
       "import": "./src/auth/index.ts",
       "require": "./src/auth/index.ts"
     },
     ".": {
       "types": "./src/core/index.ts",
+      "react-native": "./src/core/index.native.ts",
       "browser": "./src/core/index.browser.ts",
       "import": "./src/core/index.ts",
       "require": "./src/core/index.ts"
@@ -73,6 +75,7 @@
     },
     "./head": {
       "types": "./src/head/index.ts",
+      "react-native": "./src/head/index.browser.ts",
       "browser": "./src/head/index.browser.ts",
       "import": "./src/head/index.ts",
       "require": "./src/head/index.ts"

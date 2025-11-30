@@ -7,7 +7,8 @@
     "build": "alepha build",
     "deploy": "cd dist && vercel --prod",
     "build-and-deploy": "yarn build && yarn deploy",
-    "typecheck": "alepha typecheck"
+    "typecheck": "alepha typecheck",
+    "studio": "alepha db:studio"
   },
   "dependencies": {
     "@alepha/bucket-vercel": "^0.13.1",

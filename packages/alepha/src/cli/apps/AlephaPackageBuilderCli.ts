@@ -9,6 +9,7 @@ import type { InlineConfig } from "tsdown";
 interface Module {
   name: string;
   dependencies: string[];
+  native?: boolean;
   browser?: boolean;
   node?: boolean;
 }
@@ -41,6 +42,13 @@ export class AlephaPackageBuilderCli {
         pkgData.exports[path] = {};
         // order is important here for compatibility
         pkgData.exports[path].types = `./src/${item.name}/index.ts`;
+        if (item.native) {
+          pkgData.exports[path]["react-native"] =
+            `./src/${item.name}/index.native.ts`;
+        } else if (item.browser) {
+          pkgData.exports[path]["react-native"] =
+            `./src/${item.name}/index.browser.ts`;
+        }
         if (item.browser) {
           pkgData.exports[path].browser = `./src/${item.name}/index.browser.ts`;
         }
@@ -70,7 +78,9 @@ export class AlephaPackageBuilderCli {
       const external = [
         "alepha",
         packageName,
-        ...modules.map((item) => `${packageName}/${item.name}`),
+        ...modules.map(
+          (item) => `${packageName}/${item.name.replace("-", "/")}`,
+        ),
       ];
 
       await run.rm(this.dist);
@@ -89,6 +99,17 @@ export class AlephaPackageBuilderCli {
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
           external,
         });
+
+        if (item.native) {
+          entries.push({
+            entry: join(src, "index.native.ts"),
+            outDir: dest,
+            platform: "neutral",
+            sourcemap: true,
+            dts: false,
+            external,
+          });
+        }
 
         if (item.browser) {
           entries.push({
@@ -244,6 +265,7 @@ export async function analyzeModules(
 
       // Check for browser/node entry points
       const hasBrowser = await fileExists(join(modulePath, "index.browser.ts"));
+      const hasNative = await fileExists(join(modulePath, "index.native.ts"));
       const hasNode = await fileExists(join(modulePath, "index.node.ts"));
 
       // Get all .ts/.tsx files in this module
@@ -276,6 +298,7 @@ export async function analyzeModules(
         dependencies: Array.from(dependencies),
       };
 
+      if (hasNative) module.native = true;
       if (hasBrowser) module.browser = true;
       if (hasNode) module.node = true;
 
