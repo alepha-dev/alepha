@@ -1,15 +1,26 @@
-import { useActive, useRouter } from "@alepha/react";
+import { ClientOnly, useActive, useRouter } from "@alepha/react";
+import { useI18n } from "@alepha/react/i18n";
 import { ActionButton } from "@alepha/ui";
-import type { ButtonProps } from "@mantine/core";
 import {
+  Affix,
+  type ButtonProps,
   Divider,
   Flex,
   SimpleGrid,
   TableOfContents,
   Text,
+  Transition,
   Typography,
 } from "@mantine/core";
-import { IconCaretLeft, IconCaretRight, IconEdit } from "@tabler/icons-react";
+import { useWindowScroll } from "@mantine/hooks";
+import {
+  IconArrowUp,
+  IconCaretLeft,
+  IconCaretRight,
+  IconClock,
+  IconEdit,
+  IconHistory,
+} from "@tabler/icons-react";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { docs, repository } from "../config/docs.ts";
 import { theme } from "../config/theme.ts";
@@ -18,9 +29,13 @@ interface ModuleProps {
   name: string;
   content: string;
   path?: string;
+  readingTime?: number;
+  lastModified?: string | null;
 }
 
 const Content = (props: ModuleProps) => {
+  const [scroll, scrollTo] = useWindowScroll();
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -44,6 +59,10 @@ const Content = (props: ModuleProps) => {
           }}
           gap={{ base: "sm", md: "xl" }}
         >
+          <DocMetadata
+            readingTime={props.readingTime}
+            lastModified={props.lastModified}
+          />
           <Typography style={{ width: "100%" }}>
             <HtmlContent html={props.content} />
           </Typography>
@@ -61,6 +80,56 @@ const Content = (props: ModuleProps) => {
         </Flex>
       </Flex>
       <ContentAside name={props.name} />
+
+      <Affix position={{ bottom: 36, right: 36 }}>
+        <Transition transition="slide-up" mounted={scroll.y > 300}>
+          {(styles) => (
+            <ActionButton
+              style={styles}
+              radius={"xl"}
+              size={"lg"}
+              px={"md"}
+              icon={IconArrowUp}
+              onClick={() => scrollTo({ y: 0 })}
+            />
+          )}
+        </Transition>
+      </Affix>
+    </Flex>
+  );
+};
+
+const DocMetadata = (props: {
+  readingTime?: number;
+  lastModified?: string | null;
+}) => {
+  const { l } = useI18n();
+
+  if (!props.readingTime && !props.lastModified) {
+    return null;
+  }
+
+  return (
+    <Flex gap="md" align="center" wrap="wrap">
+      {props.readingTime && (
+        <Flex gap={6} align="center">
+          <IconClock size={14} color="var(--mantine-color-dimmed)" />
+          <Text size="sm" c="dimmed">
+            {props.readingTime} min read
+          </Text>
+        </Flex>
+      )}
+      {props.lastModified && (
+        <Flex gap={6} align="center">
+          <IconHistory size={14} color="var(--mantine-color-dimmed)" />
+          <Text size="sm" c="dimmed">
+            Updated{" "}
+            <ClientOnly>
+              {l(props.lastModified.split("T")[0], { date: "fromNow" })}
+            </ClientOnly>
+          </Text>
+        </Flex>
+      )}
     </Flex>
   );
 };

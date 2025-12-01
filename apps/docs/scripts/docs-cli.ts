@@ -6,7 +6,6 @@ import { $command, CliProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
-import { markedHighlight } from "marked-highlight";
 import { theme } from "../src/config/theme.ts";
 import { snippets } from "./snippets.ts";
 
@@ -21,6 +20,8 @@ export type DocItem = {
   category: string;
   order: number;
   level: number;
+  readingTime: number;
+  lastModified: string | null;
 };
 
 export type DocNode = {
@@ -219,6 +220,45 @@ class DocsCliApp {
       this.log.error(`Error parsing provider file ${filePath}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Gets the last modified date of a file from git history.
+   */
+  async getGitLastModified(filePath: string): Promise<string | null> {
+    this.log.trace(`Getting git last modified for: ${filePath}`);
+    try {
+      const { exec } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      const execAsync = promisify(exec);
+
+      const { stdout } = await execAsync(
+        `git log -1 --format="%aI" -- "${filePath}"`,
+        { cwd: join(import.meta.dirname, "../../..") },
+      );
+
+      const date = stdout.trim();
+      if (date) {
+        this.log.trace(`Last modified: ${date}`);
+        return date;
+      }
+      return null;
+    } catch (error) {
+      this.log.trace(`Failed to get git last modified: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Calculates reading time in minutes based on word count.
+   * Average reading speed: 200 words per minute.
+   */
+  calculateReadingTime(content: string): number {
+    const text = content.replace(/<[^>]*>/g, "").replace(/```[\s\S]*?```/g, "");
+    const words = text.split(/\s+/).filter((word) => word.length > 0).length;
+    const minutes = Math.ceil(words / 200);
+    this.log.trace(`Reading time: ${minutes} min (${words} words)`);
+    return Math.max(1, minutes);
   }
 
   /**
@@ -863,6 +903,8 @@ class DocsCliApp {
             category: item.category,
             order: item.order,
             level: item.level,
+            readingTime: item.readingTime,
+            lastModified: item.lastModified,
             content: `${TAG}() => import('./${filename}').then(it => it.default)${TAG}`,
           });
         }
@@ -937,33 +979,53 @@ class DocsCliApp {
 
   createMarked() {
     this.log.debug("Creating Marked instance with syntax highlighting");
-    const marked = new Marked(
-      markedHighlight({
-        emptyLangClass: "hljs",
-        langPrefix: "hljs language-",
-        highlight(code, lang) {
-          const language = hljs.getLanguage(lang) ? lang : "plaintext";
-          return hljs.highlight(code, { language }).value;
-        },
-      }),
-    );
+    const marked = new Marked();
 
     const renderer = {
       heading: ({ text, depth }: Tokens.Heading) => {
         const slug = text
           .replace(/\//g, "-")
-          .replace(/[()`:/@]/g, "")
+          .replace(/[()`:/@"]/g, "")
           .trim()
           .replace(/ /g, "-")
           .toLowerCase();
+
+        // Escape quotes for HTML attribute
+        const escapedText = text.replace(/"/g, "&quot;");
 
         // trick I learned by inspecting the mantine.dev website
         // instead of go-to <h1>, you go-to a <div> with metadata with a position top negative
         // it's the only way to manage all use-cases of fixed <header>
         return `
-					<div id="${slug}" data-depth="${depth}" data-heading="${text}" style="position: relative; top: -${theme.headerHeight.base}px"></div>
+					<div id="${slug}" data-depth="${depth}" data-heading="${escapedText}" style="position: relative; top: -${theme.headerHeight.base}px"></div>
 					<h${depth}>${text}</h${depth}>
 				`.trim();
+      },
+      code: ({ text, lang }: Tokens.Code) => {
+        const language = hljs.getLanguage(lang || "") ? lang : "plaintext";
+        const highlighted = hljs.highlight(text, {
+          language: language || "plaintext",
+        }).value;
+
+        // Encode raw code as base64 to safely store in data attribute
+        const base64Code = Buffer.from(text).toString("base64");
+
+        // Display name for the language
+        const langDisplay = lang || "bash";
+
+        return `
+<div class="code-block">
+  <div class="code-block-header">
+    <span class="code-block-lang">${langDisplay}</span>
+    <button class="code-block-copy" data-code="${base64Code}" onclick="(function(btn){
+      var code = atob(btn.getAttribute('data-code'));
+      navigator.clipboard.writeText(code);
+      btn.textContent = 'Copied!';
+      setTimeout(function(){ btn.textContent = 'Copy'; }, 2000);
+    })(this)">Copy</button>
+  </div>
+  <pre><code class="hljs language-${language}">${highlighted}</code></pre>
+</div>`.trim();
       },
     };
 
@@ -1024,6 +1086,9 @@ class DocsCliApp {
         const categoryPath = category || "root";
         const fullSlug = this.getFullSlug(categoryPath, filename);
 
+        const readingTime = this.calculateReadingTime(originalContent);
+        const lastModified = await this.getGitLastModified(entryPath);
+
         const item = {
           slug: fullSlug,
           name: this.pretty(filename),
@@ -1035,6 +1100,8 @@ class DocsCliApp {
           category: categoryPath,
           order: this.extractOrder(entry.name),
           level,
+          readingTime,
+          lastModified,
         };
         items.push(item);
         this.log.debug(`Added doc item: ${item.slug}`);

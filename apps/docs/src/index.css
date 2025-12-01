@@ -66,11 +66,92 @@ html[data-mantine-color-scheme="dark"] {
   padding: var(--mantine-spacing-sm);
 }
 
+/* Code block */
+.code-block {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-gray-3);
+  background: var(--mantine-color-gray-0);
+}
+
+.code-block-header {
+  height: var(--mantine-spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--mantine-color-gray-1);
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+.code-block-lang {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mantine-color-gray-6);
+  text-transform: lowercase;
+  font-family: var(--mantine-font-family-monospace);
+}
+
+.code-block-copy {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mantine-color-gray-6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 8px;
+  border-radius: 4px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  font-family: var(--mantine-font-family);
+}
+
+.code-block-copy:hover {
+  color: var(--mantine-color-gray-8);
+  background: var(--mantine-color-gray-2);
+}
+
+#root .code-block pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+#root .code-block pre code {
+  display: block;
+  padding: 12px 16px;
+}
+
 html[data-mantine-color-scheme="dark"] {
   #root pre {
     box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
     background-color: var(--alepha-background);
     border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .code-block {
+    border-color: var(--mantine-color-dark-4);
+    background: var(--mantine-color-dark-7);
+  }
+
+  .code-block-header {
+    background: var(--mantine-color-dark-6);
+    border-bottom-color: var(--mantine-color-dark-4);
+  }
+
+  .code-block-lang {
+    color: var(--mantine-color-gray-5);
+  }
+
+  .code-block-copy {
+    color: var(--mantine-color-gray-5);
+  }
+
+  .code-block-copy:hover {
+    color: var(--mantine-color-gray-3);
+    background: var(--mantine-color-dark-5);
   }
 }
 
