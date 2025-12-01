@@ -45,6 +45,26 @@ Your `$action`s become Serverless Functions.
 Your `$page`s become SSR functions.
 Your `$static` files become CDN assets.
 
+## Target: Cloudflare (Workers)
+
+Cloudflare Workers run at the edge, close to your users. When you build with the `--cloudflare` flag, Alepha generates a Workers-compatible bundle.
+
+```bash
+# Build for Cloudflare
+npx alepha build --cloudflare
+```
+
+This outputs a `dist/` folder with a `wrangler.toml` and the compiled worker. Deploy with:
+
+```bash
+cd dist && npx wrangler deploy
+```
+
+Alepha automatically adapts to the Workers runtime:
+*   Uses the Fetch API instead of Node.js HTTP.
+*   Binds to Cloudflare KV, D1, or R2 if you configure them.
+*   Your `$action`s run on the edge with sub-millisecond cold starts.
+
 ## Environment Variables
 
 Alepha loads environment variables from `.env` files during development.

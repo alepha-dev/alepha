@@ -53,6 +53,7 @@ html[data-mantine-color-scheme="dark"] {
 
 #root code {
   font-family: var(--mantine-font-family-monospace), serif;
+  font-size: inherit;
 }
 
 #root pre {
@@ -66,12 +67,38 @@ html[data-mantine-color-scheme="dark"] {
   padding: var(--mantine-spacing-sm);
 }
 
+/* Heading anchors */
+.doc-heading {
+  position: relative;
+}
+
+.heading-anchor {
+  position: absolute;
+  left: -1.5em;
+  width: 1.5em;
+  opacity: 0;
+  font-weight: 400;
+  color: var(--mantine-color-gray-5);
+  text-decoration: none !important;
+  transition: opacity 0.15s;
+}
+
+.doc-heading:hover .heading-anchor {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--mantine-color-gray-7);
+}
+
 /* Code block */
 .code-block {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--mantine-color-gray-3);
   background: var(--mantine-color-gray-0);
+
+  margin-bottom: var(--mantine-spacing-sm);
 }
 
 .code-block-header {

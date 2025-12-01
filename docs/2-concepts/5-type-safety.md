@@ -31,10 +31,22 @@ const userSchema = t.object({
 
 We extended TypeBox with Alepha-specific helpers to cover common app scenarios without regex soup.
 
+*   `t.text()`: A **safe string**. Unlike raw `t.string()`, it enforces a max length (default 255) and auto-trims whitespace. This prevents memory attacks and common input issues out of the box.
 *   `t.email()`: Validates email format.
 *   `t.date()` / `t.datetime()`: Handles ISO date strings.
 *   `t.file()`: Handles file uploads (multipart/form-data).
 *   `t.uuid()`: Validates UUID format.
+
+```typescript
+// t.text() is safe by default
+const schema = t.object({
+  name: t.text(),                    // max 255 chars, trimmed
+  bio: t.text({ maxLength: 1000 }), // custom max length
+  code: t.text({ trim: false }),    // disable auto-trim
+});
+```
+
+Use `t.text()` for user input. Reserve `t.string()` for internal identifiers or when you explicitly need no limits.
 
 ## Usage Example
 

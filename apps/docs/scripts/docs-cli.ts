@@ -990,16 +990,18 @@ class DocsCliApp {
           .replace(/ /g, "-")
           .toLowerCase();
 
-        // Escape quotes for HTML attribute
-        const escapedText = text.replace(/"/g, "&quot;");
+        // Escape quotes for HTML attribute (strip backticks for clean data attribute)
+        const escapedText = text.replace(/"/g, "&quot;").replace(/`/g, "");
+
+        // Convert inline code (backticks) to <code> tags
+        const htmlText = text.replace(/`([^`]+)`/g, "<code>$1</code>");
 
         // trick I learned by inspecting the mantine.dev website
         // instead of go-to <h1>, you go-to a <div> with metadata with a position top negative
         // it's the only way to manage all use-cases of fixed <header>
         return `
-					<div id="${slug}" data-depth="${depth}" data-heading="${escapedText}" style="position: relative; top: -${theme.headerHeight.base}px"></div>
-					<h${depth}>${text}</h${depth}>
-				`.trim();
+<div id="${slug}" data-depth="${depth}" data-heading="${escapedText}" style="position: relative; top: -${theme.headerHeight.base}px"></div>
+<h${depth} class="doc-heading"><a href="#${slug}" class="heading-anchor">#</a>${htmlText}</h${depth}>`.trim();
       },
       code: ({ text, lang }: Tokens.Code) => {
         const language = hljs.getLanguage(lang || "") ? lang : "plaintext";

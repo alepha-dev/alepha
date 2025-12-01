@@ -7,21 +7,100 @@ In most frameworks, adding authentication involves:
 4.  Manually hashing passwords.
 5.  Praying you didn't leave a hole.
 
-In Alepha, authentication is just another set of primitives.
+In Alepha, authentication is built on two low-level primitives: `$realm` and `$auth`. You can use them directly for full control, or use the higher-level presets for common scenarios.
 
-## 1. The Realm
+## The Low-Level Primitives
 
-First, you need a **Realm**. Think of a Realm as a container for users, roles, and sessions.
+### `$realm`: Token Management
+
+A **Realm** is a security boundary. It handles JWT token creation, verification, and role management. It doesn't care *how* users authenticate—it just issues and validates tokens.
 
 ```typescript
-import { $userRealm } from "alepha/api/users";
+import { $realm } from "alepha/security";
+
+class Security {
+  // Internal realm: you control the secret
+  internal = $realm({
+    name: "app",
+    secret: process.env.APP_SECRET,
+    roles: ["admin", "user"],
+    settings: {
+      accessToken: { expiration: [15, "minutes"] },
+      refreshToken: { expiration: [30, "days"] },
+    }
+  });
+
+  // External realm: validate tokens from Keycloak, Auth0, etc.
+  external = $realm({
+    name: "keycloak",
+    jwks: () => "https://auth.example.com/realms/myrealm/protocol/openid-connect/certs",
+  });
+}
+```
+
+Use `$realm` directly when:
+*   You're integrating with an external identity provider (Keycloak, Auth0, Okta).
+*   You need fine-grained control over token lifetimes and claims.
+*   You're building a custom authentication flow.
+
+### `$auth`: Login Flows
+
+The `$auth` primitive handles *how* users authenticate. It supports three strategies:
+
+```typescript
+import { $auth } from "alepha/server-auth";
+
+class AuthProviders {
+  // 1. Credentials: username/password
+  credentials = $auth({
+    realm: this.security.internal,
+    credentials: {
+      account: async ({ username, password }) => {
+        // Your validation logic here
+        return await this.validateUser(username, password);
+      }
+    }
+  });
+
+  // 2. OAuth2: external provider (manual config)
+  github = $auth({
+    realm: this.security.internal,
+    oauth: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      authorization: "https://github.com/login/oauth/authorize",
+      token: "https://github.com/login/oauth/access_token",
+      scope: "user:email",
+      userinfo: async (tokens) => {
+        // Fetch user profile from GitHub API
+        return await fetchGitHubUser(tokens.access_token);
+      },
+    }
+  });
+
+  // 3. OIDC: OpenID Connect (auto-discovery)
+  keycloak = $auth({
+    oidc: {
+      issuer: "https://auth.example.com/realms/myrealm",
+      clientId: "my-app",
+      clientSecret: process.env.KEYCLOAK_SECRET,
+    }
+  });
+}
+```
+
+## The High-Level Way (Recommended)
+
+For most SaaS applications, you don't want to wire all this yourself. Alepha provides `$userRealm`—an extension of `$realm` that includes:
+*   User accounts stored in your database
+*   Password hashing (Scrypt)
+*   Session management
+*   Email verification hooks
+
+```typescript
+import { $userRealm } from "alepha/api-users";
 
 class AuthSystem {
-  // Creates a full user management system with 'admin' and 'user' roles.
-  // It automatically handles:
-  // - Password hashing (Scrypt)
-  // - Session management (DB + Cookies)
-  // - JWT signing
   realm = $userRealm({
     secret: process.env.APP_SECRET,
     settings: {
@@ -32,40 +111,45 @@ class AuthSystem {
 }
 ```
 
-## 2. Login Providers
+### Auth Presets
 
-Now you need a way to get into that realm. We use the `$auth` primitive for this.
+Similarly, instead of configuring OAuth2 manually, use the presets:
 
 ```typescript
-import { $authGoogle, $authCredentials } from "alepha/server/auth";
+import { $authGoogle, $authGithub, $authCredentials } from "alepha/server-auth";
 
 class AuthProviders {
-  // Standard Username/Password flow
+  // Username/password with your $userRealm
   credentials = $authCredentials(this.authSystem.realm);
 
-  // Google OAuth2
+  // Google OAuth2 (auto-configured)
   google = $authGoogle(this.authSystem.realm, {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   });
+
+  // GitHub OAuth2 (auto-configured)
+  github = $authGithub(this.authSystem.realm, {
+    clientId: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  });
 }
 ```
 
-Once these are registered, Alepha automatically creates the necessary endpoints:
+Once registered, Alepha automatically creates the necessary endpoints:
 *   `/api/oauth/login?provider=google`
 *   `/api/oauth/callback`
 *   `/api/_auth/token` (for credentials)
 
-## 3. Protecting Routes
+## Protecting Routes
 
-To protect an endpoint, you just tell the `$action` who is allowed in.
+To protect an endpoint, tell the `$action` who is allowed in.
 
 ```typescript
 class UserApi {
   // Only logged-in users can see this
   getProfile = $action({
     path: "/me",
-    // 'secure: true' means "User must be logged in"
     secure: true,
     handler: async ({ user }) => {
       return user;
@@ -75,10 +159,7 @@ class UserApi {
   // Only admins can delete things
   deleteEverything = $action({
     path: "/nuke",
-    secure: {
-      // You can define permissions in your SecurityProvider
-      permission: "system:delete"
-    },
+    secure: { permission: "system:delete" },
     handler: async () => {
       // ...
     }
@@ -86,7 +167,7 @@ class UserApi {
 }
 ```
 
-## 4. Frontend Integration
+## Frontend Integration
 
 On the client (React), you don't need to manage tokens manually. Alepha handles the cookies for you.
 

@@ -38,29 +38,29 @@ We strongly recommend organizing by **Feature**, not by Type.
 **Bad (Layered):**
 ```
 src/
-controllers/
-AuthController.ts
-BillingController.ts
-services/
-AuthService.ts
-BillingService.ts
-entities/
-User.ts
-Invoice.ts
+├── controllers/
+│   ├── AuthController.ts
+│   └── BillingController.ts
+├── services/
+│   ├── AuthService.ts
+│   └── BillingService.ts
+└── entities/
+    ├── User.ts
+    └── Invoice.ts
 ```
 
 **Good (Vertical/Modular):**
 ```
 src/
-modules/
-auth/
-AuthController.ts
-AuthService.ts
-User.ts
-billing/
-BillingController.ts
-BillingService.ts
-Invoice.ts
+└── modules/
+    ├── auth/
+    │   ├── AuthController.ts
+    │   ├── AuthService.ts
+    │   └── User.ts
+    └── billing/
+        ├── BillingController.ts
+        ├── BillingService.ts
+        └── Invoice.ts
 ```
 
 Why? Because when you work on "Billing", you want everything related to Billing in one place. You don't want to jump between 4 different folders.
