@@ -43,7 +43,12 @@ import { features } from "../config/features.ts";
 
 const Home = () => {
   return (
-    <Flex align={"center"} direction={"column"} w={"100%"} className={"graph-paper"}>
+    <Flex
+      align={"center"}
+      direction={"column"}
+      w={"100%"}
+      className={"graph-paper"}
+    >
       <ParticleCanvas />
       <HeroSection />
       <PrinciplesSection />
@@ -121,7 +126,10 @@ const ParticleCanvas = () => {
       }
     };
 
-    const connectParticles = (ctx: CanvasRenderingContext2D, isDark: boolean) => {
+    const connectParticles = (
+      ctx: CanvasRenderingContext2D,
+      isDark: boolean,
+    ) => {
       const maxDistance = 120;
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
@@ -145,7 +153,9 @@ const ParticleCanvas = () => {
     };
 
     const animate = () => {
-      const isDark = document.documentElement.getAttribute("data-mantine-color-scheme") === "dark";
+      const isDark =
+        document.documentElement.getAttribute("data-mantine-color-scheme") ===
+        "dark";
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -217,7 +227,12 @@ const HeroSectionMessage = () => {
       align="center"
       style={{ textAlign: "center" }}
     >
-      <Badge size="lg" variant="light" mb="md" leftSection={<IconSparkles size={14} />}>
+      <Badge
+        size="lg"
+        variant="light"
+        mb="md"
+        leftSection={<IconSparkles size={14} />}
+      >
         v0.13 — Now with Multi-Realm Auth
       </Badge>
 
@@ -451,7 +466,9 @@ const InstallSection = () => {
             <Flex align="center" justify="space-between" gap="md">
               <Flex align="center" gap="sm">
                 <IconTerminal size={20} color="var(--mantine-color-dimmed)" />
-                <Code style={{ background: "transparent" }}>{installCommand}</Code>
+                <Code style={{ background: "transparent" }}>
+                  {installCommand}
+                </Code>
               </Flex>
               <CopyButton value={installCommand} timeout={2000}>
                 {({ copied, copy }) => (
@@ -462,7 +479,11 @@ const InstallSection = () => {
                       onClick={copy}
                       px="xs"
                     >
-                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                      {copied ? (
+                        <IconCheck size={16} />
+                      ) : (
+                        <IconCopy size={16} />
+                      )}
                     </Button>
                   </Tooltip>
                 )}
@@ -514,9 +535,7 @@ const FooterCTA = () => (
         >
           <Flex direction="column" gap="xs">
             <Title order={3}>Start Building Today</Title>
-            <Text c="dimmed">
-              Join developers who ship faster with Alepha.
-            </Text>
+            <Text c="dimmed">Join developers who ship faster with Alepha.</Text>
           </Flex>
           <Button
             size="lg"
