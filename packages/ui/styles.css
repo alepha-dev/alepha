@@ -49,10 +49,10 @@
 }
 
 #root {
-  display: flow-root;
+  display: flex;
   background-color: var(--alepha-background);
   color: var(--alepha-text);
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

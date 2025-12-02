@@ -19,7 +19,7 @@ const Layout = () => {
           theme: theme.mantine,
         }}
       >
-        <Flex className={"root"}>
+        <Flex flex={1} direction={"column"}>
           <Header />
           <NestedView />
         </Flex>

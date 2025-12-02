@@ -1,6 +1,5 @@
 import { Link } from "@alepha/react";
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -32,7 +31,6 @@ import {
   IconPuzzle,
   IconRocket,
   IconServer,
-  IconSparkles,
   IconStack2,
   IconTerminal,
   IconTools,
@@ -227,15 +225,6 @@ const HeroSectionMessage = () => {
       align="center"
       style={{ textAlign: "center" }}
     >
-      <Badge
-        size="lg"
-        variant="light"
-        mb="md"
-        leftSection={<IconSparkles size={14} />}
-      >
-        v0.13 — Now with Multi-Realm Auth
-      </Badge>
-
       <Title
         order={1}
         style={{
@@ -279,7 +268,13 @@ const HeroSectionMessage = () => {
 
 const ShowcaseSection = () => {
   return (
-    <Paper withBorder visibleFrom={"sm"} w={640}>
+    <Paper
+      withBorder
+      visibleFrom={"sm"}
+      w={640}
+      pos="relative"
+      style={{ zIndex: 1 }}
+    >
       <Tabs defaultValue="server" variant={"pills"} h={512} w={640}>
         <Tabs.List grow p={"xs"}>
           <Tabs.Tab value="server" leftSection={<IconServer size={16} />}>
