@@ -1,15 +1,18 @@
 import { NestedView, useEvents } from "@alepha/react";
 import { FormValidationError } from "@alepha/react/form";
-import type {
-  ColorSchemeScriptProps,
-  MantineProviderProps,
+import {
+  ColorSchemeScript,
+  type ColorSchemeScriptProps,
+  type MantineColorShade,
+  MantineProvider,
+  type MantineProviderProps,
 } from "@mantine/core";
-import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import { ModalsProvider, type ModalsProviderProps } from "@mantine/modals";
 import { Notifications, type NotificationsProps } from "@mantine/notifications";
 import type { NavigationProgressProps } from "@mantine/nprogress";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import type { ReactNode } from "react";
+import { useTheme } from "../../hooks/useTheme.ts";
 import { useToast } from "../../hooks/useToast.ts";
 import Omnibar, { type OmnibarProps } from "./Omnibar.tsx";
 
@@ -25,6 +28,7 @@ export interface AlephaMantineProviderProps {
 
 const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
   const toast = useToast();
+  const [theme] = useTheme();
 
   useEvents(
     {
@@ -59,11 +63,9 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
       <MantineProvider
         {...props.mantine}
         theme={{
-          primaryColor: "gray",
-          primaryShade: {
-            light: 8,
-            dark: 7,
-          },
+          primaryColor: theme.primaryColor ?? "blue",
+          primaryShade:
+            (theme.primaryShade as MantineColorShade | undefined) ?? 6,
           ...props.mantine?.theme,
         }}
       >

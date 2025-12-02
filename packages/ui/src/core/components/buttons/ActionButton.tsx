@@ -144,6 +144,11 @@ export interface ActionCommonProps extends ButtonProps {
    * Additional props to pass to the ThemeIcon wrapping the icon.
    */
   themeIconProps?: ThemeIconProps;
+
+  /**
+   * Visual intent of the action button.
+   */
+  intent?: "primary" | "success" | "danger" | "warning" | "info";
 }
 
 export type ActionProps = ActionCommonProps &
@@ -254,15 +259,14 @@ const ActionButton = (_props: ActionProps) => {
 
     if (!props.children) {
       restProps.children = Children.only(icon);
-      restProps.p ??= "xs";
+      restProps.px ??= "xs";
     } else {
       restProps.leftSection = icon;
     }
   }
 
   if (props.leftSection && !props.children) {
-    restProps.className ??= "mantine-Action-iconOnly";
-    restProps.p ??= "xs";
+    restProps.px ??= "xs";
   }
 
   if (props.textVisibleFrom) {

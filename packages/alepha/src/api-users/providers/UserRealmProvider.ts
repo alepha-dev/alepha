@@ -70,6 +70,7 @@ export class UserRealmProvider {
         },
       },
     });
+    return this.getRealm(userRealmName);
   }
 
   /**

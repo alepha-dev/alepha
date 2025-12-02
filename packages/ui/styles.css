@@ -4,26 +4,41 @@
 @import "@mantine/dates/styles.css";
 @import "@mantine/notifications/styles.css";
 
+/* Alepha Themes */
+@import "./src/core/themes/default.css";
+@import "./src/core/themes/github.css";
+@import "./src/core/themes/claude.css";
+@import "./src/core/themes/chatgpt.css";
+@import "./src/core/themes/shadcn.css";
+@import "./src/core/themes/macos.css";
+@import "./src/core/themes/youtube.css";
+@import "./src/core/themes/whatsapp.css";
+@import "./src/core/themes/ocean.css";
+@import "./src/core/themes/forest.css";
+@import "./src/core/themes/sunset.css";
+@import "./src/core/themes/lavender.css";
+@import "./src/core/themes/rose.css";
+@import "./src/core/themes/monochrome.css";
+@import "./src/core/themes/dracula.css";
+
 :root {
-  --alepha-background-light: #f6f5f3;
-  --alepha-background-dark: rgb(1, 4, 9);
+  --alepha-background-light: var(--mantine-color-gray-1);
+  --alepha-background-dark: var(--mantine-color-dark-9);
   --alepha-background: var(--alepha-background-light);
 
-  --alepha-surface-light: #fbfaf9;
-  --alepha-surface-dark: #0d1117;
+  --alepha-surface-light: var(--mantine-color-gray-0);
+  --alepha-surface-dark: var(--mantine-color-dark-8);
   --alepha-surface: var(--alepha-surface-light);
 
-  /* fbfaf9, F6F5F3 */
-
-  --alepha-elevated-light: #fefefe;
+  --alepha-elevated-light: var(--mantine-color-white);
   --alepha-elevated-hover-light: #f6f5f5;
-  --alepha-elevated-dark: #151b23;
-  --alepha-elevated-hover-dark: #262c36;
+  --alepha-elevated-dark: var(--mantine-color-dark-7);
+  --alepha-elevated-hover-dark: var(--mantine-color-dark-6);
   --alepha-elevated: var(--alepha-elevated-light);
   --alepha-elevated-hover: var(--alepha-elevated-hover-light);
 
   --alepha-border-light: #cbcbcb;
-  --alepha-border-dark: #3d444d;
+  --alepha-border-dark: var(--mantine-color-dark-4);
   --alepha-border: var(--alepha-border-light);
 
   --alepha-shadow-dark: rgba(0, 0, 0, 0.5);
@@ -35,17 +50,17 @@
   --alepha-text-muted: #6c757d;
   --alepha-text: var(--alepha-text-light);
 
-  --mantine-color-dimmed: var(--alepha-text-muted) !important;
-  --mantine-color-dark-8: var(--alepha-background);
-  --mantine-color-dark-6: var(--alepha-surface);
-  --mantine-color-dark-5: var(--alepha-border);
-  --mantine-color-dark-4: var(--alepha-border);
-  --mantine-color-body: var(--alepha-elevated) !important;
-  --mantine-color-gray-outline: var(--alepha-border) !important;
-  --mantine-color-default: var(--alepha-elevated) !important;
-  --mantine-spacing-xs: 8px;
+  /*--mantine-color-dimmed: var(--alepha-text-muted) !important;*/
+  /*--mantine-color-dark-8: var(--alepha-background);*/
+  /*--mantine-color-dark-6: var(--alepha-surface);*/
+  /*--mantine-color-dark-5: var(--alepha-border);*/
+  /*--mantine-color-dark-4: var(--alepha-border);*/
+  /*--mantine-color-body: var(--alepha-elevated) !important;*/
+  /*--mantine-color-gray-outline: var(--alepha-border) !important;*/
+  /*--mantine-color-default: var(--alepha-elevated) !important;*/
+  /*--mantine-spacing-xs: 8px;*/
 
-  --text-color: var(--alepha-text) !important;
+  /*--text-color: var(--alepha-text) !important;*/
 }
 
 #root {
@@ -76,17 +91,6 @@
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
-
-.mantine-SegmentedControl-root {
-  background-color: var(--alepha-surface);
-  border: 1px solid var(--alepha-border);
-}
-
-.mantine-Spotlight-content {
-  border: 1px solid var(--alepha-border);
-}
-
-/* ------------------------------------------------------------------------------------------------------------------ */
 /* Modal Customizations */
 
 /* Custom modal scale animation */
@@ -109,19 +113,5 @@
   to {
     opacity: 0;
     transform: scale(0.95);
-  }
-}
-
-.mantine-Modal-content {
-  animation: modalScaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.mantine-Modal-root[data-exit] .mantine-Modal-content {
-  animation: modalScaleOut 0.15s cubic-bezier(0.4, 0, 1, 1);
-}
-
-[data-mantine-color-scheme="dark"] {
-  .mantine-Modal-content {
-    border: 1px solid var(--alepha-border);
   }
 }

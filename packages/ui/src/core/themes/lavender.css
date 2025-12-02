@@ -1,0 +1,83 @@
+/* Lavender Theme - Soft, elegant design */
+
+[data-theme="lavender"] {
+  /* Typography - Elegant, refined fonts */
+  --mantine-font-family:
+    "Quicksand", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --mantine-font-family-headings:
+    "Playfair Display", Georgia, "Times New Roman", serif;
+  --mantine-font-family-monospace:
+    "Victor Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Font sizes */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.875rem;
+  --mantine-font-size-md: 1rem;
+  --mantine-font-size-lg: 1.125rem;
+  --mantine-font-size-xl: 1.25rem;
+  --mantine-line-height: 1.6;
+
+  /* Border radius - Soft, dreamy curves */
+  --mantine-radius-default: 10px;
+  --mantine-radius-xs: 4px;
+  --mantine-radius-sm: 8px;
+  --mantine-radius-md: 10px;
+  --mantine-radius-lg: 14px;
+  --mantine-radius-xl: 20px;
+
+  /* Shadows - Soft, ethereal depth */
+  --mantine-shadow-xs: 0 1px 3px rgba(35, 31, 43, 0.06);
+  --mantine-shadow-sm: 0 2px 4px rgba(35, 31, 43, 0.08);
+  --mantine-shadow-md: 0 4px 8px rgba(35, 31, 43, 0.1);
+  --mantine-shadow-lg: 0 8px 16px rgba(35, 31, 43, 0.12);
+  --mantine-shadow-xl: 0 16px 32px rgba(35, 31, 43, 0.14);
+
+  /* Primary - Lavender purple */
+  --mantine-color-violet-0: #f5f0ff;
+  --mantine-color-violet-1: #ede5ff;
+  --mantine-color-violet-2: #ddd0ff;
+  --mantine-color-violet-3: #c9b5ff;
+  --mantine-color-violet-4: #b197fc;
+  --mantine-color-violet-5: #9775fa;
+  --mantine-color-violet-6: #845ef7;
+  --mantine-color-violet-7: #7048e8;
+  --mantine-color-violet-8: #5f3dc4;
+  --mantine-color-violet-9: #4c309c;
+
+  /* Accent - Pink */
+  --mantine-color-pink-0: #fff0f6;
+  --mantine-color-pink-1: #ffdeeb;
+  --mantine-color-pink-2: #fcc2d7;
+  --mantine-color-pink-3: #faa2c1;
+  --mantine-color-pink-4: #f783ac;
+  --mantine-color-pink-5: #f06595;
+  --mantine-color-pink-6: #e64980;
+  --mantine-color-pink-7: #d6336c;
+  --mantine-color-pink-8: #c2255c;
+  --mantine-color-pink-9: #a61e4d;
+
+  /* Purple-tinted grays */
+  --mantine-color-gray-0: #f9f8fc;
+  --mantine-color-gray-1: #f2f0f7;
+  --mantine-color-gray-2: #e4e0ed;
+  --mantine-color-gray-3: #d3cde2;
+  --mantine-color-gray-4: #b3abc7;
+  --mantine-color-gray-5: #8c84a4;
+  --mantine-color-gray-6: #686180;
+  --mantine-color-gray-7: #4d475e;
+  --mantine-color-gray-8: #363140;
+  --mantine-color-gray-9: #231f2b;
+
+  /* Lavender dark scale */
+  --mantine-color-dark-0: #d3cde2;
+  --mantine-color-dark-1: #b3abc7;
+  --mantine-color-dark-2: #7a7294;
+  --mantine-color-dark-3: #524b68;
+  --mantine-color-dark-4: #3a3448;
+  --mantine-color-dark-5: #282434;
+  --mantine-color-dark-6: #1e1b28;
+  --mantine-color-dark-7: #16141c;
+  --mantine-color-dark-8: #0c0b10;
+  --mantine-color-dark-9: #000000;
+}

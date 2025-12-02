@@ -6,6 +6,7 @@ import type { ComponentType, ReactNode } from "react";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { RootRouter } from "./RootRouter.ts";
 import { DialogService } from "./services/DialogService.tsx";
+import { ThemeService } from "./services/ThemeService.ts";
 import { ToastService } from "./services/ToastService.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -27,6 +28,8 @@ export { default as ClipboardButton } from "./components/buttons/ClipboardButton
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as LanguageButton } from "./components/buttons/LanguageButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
+export type { ThemeButtonProps } from "./components/buttons/ThemeButton.tsx";
+export { default as ThemeButton } from "./components/buttons/ThemeButton.tsx";
 export { default as JsonViewer } from "./components/data/JsonViewer.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
 export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx";
@@ -134,11 +137,12 @@ declare module "@alepha/react" {
  */
 export const AlephaUI = $module({
   name: "alepha.ui",
-  services: [DialogService, ToastService, RootRouter],
+  services: [DialogService, ToastService, ThemeService, RootRouter],
   register: (alepha) => {
     alepha.with(AlephaReactI18n);
     alepha.with(AlephaReactHead);
     alepha.with(AlephaReactForm);
+    alepha.with(ThemeService);
     alepha.with(DialogService);
     alepha.with(ToastService);
   },

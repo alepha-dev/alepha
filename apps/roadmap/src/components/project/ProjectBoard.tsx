@@ -73,6 +73,7 @@ const ProjectBoard = () => {
       const result = await taskApi.getTasks({
         params: { projectId: project.id },
         query: {
+          size: 100,
           status,
           search: searchQuery || undefined,
         },

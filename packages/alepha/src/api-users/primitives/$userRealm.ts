@@ -48,7 +48,7 @@ export const $userRealm = (
   const userRealmProvider = alepha.inject(UserRealmProvider);
   const name = options.realm?.name ?? DEFAULT_USER_REALM_NAME;
 
-  userRealmProvider.register(name, options);
+  const userRealm = userRealmProvider.register(name, options);
 
   const realm: UserRealmPrimitive = $realm({
     ...options.realm,
@@ -111,13 +111,19 @@ export const $userRealm = (
     const auth: Record<string, AuthPrimitive> = {};
     if (identities.credentials) {
       auth.credentials = $authCredentials(realm);
+    } else {
+      // if credentials auth is disabled, disable registration as well
+      userRealm.settings.registrationAllowed = false;
     }
+
     if (identities.google) {
       auth.google = $authGoogle(realm);
     }
+
     if (identities.github) {
       auth.github = $authGithub(realm);
     }
+
     alepha.with(() => auth);
   }
 

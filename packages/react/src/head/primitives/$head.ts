@@ -18,7 +18,10 @@ export type HeadPrimitiveOptions = Head | (() => Head);
 export class HeadPrimitive extends Primitive<HeadPrimitiveOptions> {
   protected readonly provider = $inject(HeadProvider);
   protected onInit() {
-    this.provider.global = this.options;
+    this.provider.global = [
+      ...(this.provider.global ?? []),
+      this.options,
+    ];
   }
 }
 

@@ -1,0 +1,95 @@
+/* Monochrome Theme - Sharp, minimal design */
+
+[data-theme="monochrome"] {
+  /* Typography - Clean, geometric fonts */
+  --mantine-font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --mantine-font-family-headings:
+    "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mantine-font-family-monospace:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Font sizes - Compact, precise */
+  --mantine-font-size-xs: 0.6875rem;
+  --mantine-font-size-sm: 0.8125rem;
+  --mantine-font-size-md: 0.875rem;
+  --mantine-font-size-lg: 1rem;
+  --mantine-font-size-xl: 1.125rem;
+  --mantine-line-height: 1.5;
+
+  /* Border radius - Sharp, angular (nearly square) */
+  --mantine-radius-default: 2px;
+  --mantine-radius-xs: 0;
+  --mantine-radius-sm: 2px;
+  --mantine-radius-md: 2px;
+  --mantine-radius-lg: 4px;
+  --mantine-radius-xl: 6px;
+
+  /* Shadows - Sharp, defined */
+  --mantine-shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.08);
+  --mantine-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --mantine-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.12);
+  --mantine-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --mantine-shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.12);
+
+  /* Pure grays */
+  --mantine-color-gray-0: #fafafa;
+  --mantine-color-gray-1: #f5f5f5;
+  --mantine-color-gray-2: #e5e5e5;
+  --mantine-color-gray-3: #d4d4d4;
+  --mantine-color-gray-4: #a3a3a3;
+  --mantine-color-gray-5: #737373;
+  --mantine-color-gray-6: #525252;
+  --mantine-color-gray-7: #404040;
+  --mantine-color-gray-8: #262626;
+  --mantine-color-gray-9: #171717;
+
+  /* Desaturated blue */
+  --mantine-color-blue-0: #f5f7f9;
+  --mantine-color-blue-1: #e8ecf0;
+  --mantine-color-blue-2: #d4dce4;
+  --mantine-color-blue-3: #b8c6d4;
+  --mantine-color-blue-4: #94a8bc;
+  --mantine-color-blue-5: #6b8299;
+  --mantine-color-blue-6: #4d6478;
+  --mantine-color-blue-7: #394a59;
+  --mantine-color-blue-8: #28343e;
+  --mantine-color-blue-9: #1a2228;
+
+  /* Desaturated green */
+  --mantine-color-green-0: #f5f9f5;
+  --mantine-color-green-1: #e8f0e8;
+  --mantine-color-green-2: #d4e4d4;
+  --mantine-color-green-3: #b8d1b8;
+  --mantine-color-green-4: #94b594;
+  --mantine-color-green-5: #6b946b;
+  --mantine-color-green-6: #4d704d;
+  --mantine-color-green-7: #395239;
+  --mantine-color-green-8: #283828;
+  --mantine-color-green-9: #1a241a;
+
+  /* Desaturated red */
+  --mantine-color-red-0: #faf6f6;
+  --mantine-color-red-1: #f0e8e8;
+  --mantine-color-red-2: #e4d4d4;
+  --mantine-color-red-3: #d1b8b8;
+  --mantine-color-red-4: #b59494;
+  --mantine-color-red-5: #946b6b;
+  --mantine-color-red-6: #704d4d;
+  --mantine-color-red-7: #523939;
+  --mantine-color-red-8: #382828;
+  --mantine-color-red-9: #241a1a;
+
+  /* Monochrome dark scale */
+  --mantine-color-dark-0: #d4d4d4;
+  --mantine-color-dark-1: #a3a3a3;
+  --mantine-color-dark-2: #737373;
+  --mantine-color-dark-3: #525252;
+  --mantine-color-dark-4: #333333;
+  --mantine-color-dark-5: #1f1f1f;
+  --mantine-color-dark-6: #171717;
+  --mantine-color-dark-7: #0f0f0f;
+  --mantine-color-dark-8: #080808;
+  --mantine-color-dark-9: #000000;
+}

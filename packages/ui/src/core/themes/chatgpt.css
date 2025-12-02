@@ -1,0 +1,182 @@
+/* ChatGPT Theme - OpenAI's clean, modern design */
+
+[data-theme="chatgpt"] {
+  /* Typography - Clean, modern fonts */
+  --mantine-font-family:
+    "Söhne", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu,
+    Cantarell, "Noto Sans", sans-serif;
+  --mantine-font-family-headings:
+    "Söhne", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mantine-font-family-monospace:
+    "Söhne Mono", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo,
+    Consolas, monospace;
+
+  /* Font sizes */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.875rem;
+  --mantine-font-size-md: 1rem;
+  --mantine-font-size-lg: 1.125rem;
+  --mantine-font-size-xl: 1.25rem;
+  --mantine-line-height: 1.5;
+
+  /* Border radius - Very rounded, pill-like */
+  --mantine-radius-default: 0.75rem;
+  --mantine-radius-xs: 0.375rem;
+  --mantine-radius-sm: 0.5rem;
+  --mantine-radius-md: 0.75rem;
+  --mantine-radius-lg: 1rem;
+  --mantine-radius-xl: 1.5rem;
+
+  /* Shadows - Subtle, clean */
+  --mantine-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --mantine-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --mantine-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --mantine-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --mantine-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+
+  /* Primary - ChatGPT teal/green */
+  --mantine-color-teal-0: #e6f7f5;
+  --mantine-color-teal-1: #ccefeb;
+  --mantine-color-teal-2: #99dfd7;
+  --mantine-color-teal-3: #66cfc3;
+  --mantine-color-teal-4: #33bfaf;
+  --mantine-color-teal-5: #10a37f;
+  --mantine-color-teal-6: #0d8266;
+  --mantine-color-teal-7: #0a624c;
+  --mantine-color-teal-8: #064133;
+  --mantine-color-teal-9: #032119;
+
+  /* ChatGPT green accent */
+  --mantine-color-green-0: #e8f8f2;
+  --mantine-color-green-1: #d1f1e5;
+  --mantine-color-green-2: #a3e3cb;
+  --mantine-color-green-3: #75d5b1;
+  --mantine-color-green-4: #47c797;
+  --mantine-color-green-5: #19c37d;
+  --mantine-color-green-6: #149c64;
+  --mantine-color-green-7: #0f754b;
+  --mantine-color-green-8: #0a4e32;
+  --mantine-color-green-9: #052719;
+
+  /* Neutral grays */
+  --mantine-color-gray-0: #f7f7f8;
+  --mantine-color-gray-1: #ececf1;
+  --mantine-color-gray-2: #d9d9e3;
+  --mantine-color-gray-3: #c5c5d2;
+  --mantine-color-gray-4: #acacbe;
+  --mantine-color-gray-5: #8e8ea0;
+  --mantine-color-gray-6: #565869;
+  --mantine-color-gray-7: #40414f;
+  --mantine-color-gray-8: #343541;
+  --mantine-color-gray-9: #202123;
+
+  /* ChatGPT dark scale */
+  --mantine-color-dark-0: #d9d9e3;
+  --mantine-color-dark-1: #acacbe;
+  --mantine-color-dark-2: #6e6e80;
+  --mantine-color-dark-3: #565869;
+  --mantine-color-dark-4: #444654;
+  --mantine-color-dark-5: #343541;
+  --mantine-color-dark-6: #202123;
+  --mantine-color-dark-7: #1a1a1c;
+  --mantine-color-dark-8: #111112;
+  --mantine-color-dark-9: #050505;
+}
+
+/* ChatGPT Component Styles - Smooth, rounded, modern */
+[data-theme="chatgpt"] .mantine-Input-input,
+[data-theme="chatgpt"] .mantine-Textarea-input {
+  border: 1px solid #d9d9e3;
+  border-radius: 0.75rem;
+  transition: all 200ms ease;
+}
+
+[data-theme="chatgpt"] .mantine-Input-input:focus,
+[data-theme="chatgpt"] .mantine-Textarea-input:focus {
+  border-color: #10a37f;
+  box-shadow: 0 0 0 1px #10a37f;
+  outline: none;
+}
+
+[data-theme="chatgpt"] .mantine-Button-root {
+  font-weight: 500;
+  border-radius: 0.75rem;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="chatgpt"] .mantine-Button-root:hover {
+  transform: translateY(-1px);
+}
+
+[data-theme="chatgpt"] .mantine-Button-root:active {
+  transform: translateY(0);
+}
+
+[data-theme="chatgpt"] .mantine-Card-root,
+[data-theme="chatgpt"] .mantine-Paper-root {
+  border: 1px solid #ececf1;
+  border-radius: 1rem;
+}
+
+[data-theme="chatgpt"] .mantine-Menu-dropdown {
+  border: 1px solid #ececf1;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+[data-theme="chatgpt"] .mantine-Menu-item {
+  border-radius: 0.5rem;
+  margin: 4px;
+  transition: background-color 150ms ease;
+}
+
+[data-theme="chatgpt"] .mantine-Menu-item:hover {
+  background-color: #f7f7f8;
+}
+
+[data-theme="chatgpt"] .mantine-Modal-content {
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="chatgpt"] .mantine-Tooltip-tooltip {
+  border-radius: 0.5rem;
+}
+
+[data-theme="chatgpt"] .mantine-Loader-root {
+  --loader-color: #10a37f;
+}
+
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"] .mantine-Input-input,
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input {
+  border-color: #444654;
+  background: #40414f;
+}
+
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"]
+  .mantine-Input-input:focus,
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input:focus {
+  border-color: #19c37d;
+  box-shadow: 0 0 0 1px #19c37d;
+}
+
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"] .mantine-Card-root,
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"] .mantine-Paper-root {
+  border-color: #444654;
+  background: #343541;
+}
+
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"]
+  .mantine-Menu-dropdown {
+  border-color: #444654;
+  background: #343541;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="chatgpt"][data-mantine-color-scheme="dark"]
+  .mantine-Menu-item:hover {
+  background-color: #40414f;
+}

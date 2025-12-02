@@ -80,7 +80,7 @@ const QuestLog = () => {
             </Flex>
             <Flex flex={1} />
             <Flex px={1}>
-              <ActionIcon disabled variant={"subtle"}>
+              <ActionIcon variant={"subtle"}>
                 <IconSelector size={theme.icon.size.md} />
               </ActionIcon>
               <Menu
@@ -90,7 +90,7 @@ const QuestLog = () => {
                 position="bottom-start"
               >
                 <Menu.Target>
-                  <ActionIcon disabled variant={"subtle"}>
+                  <ActionIcon variant={"subtle"}>
                     <IconDots size={theme.icon.size.md} />
                   </ActionIcon>
                 </Menu.Target>

@@ -3,11 +3,11 @@ import type { MantineColorScheme, MantineTheme } from "@mantine/core";
 export const theme = {
   defaultColorScheme: "dark" as MantineColorScheme,
   mantine: {
-    primaryColor: "gray",
-    primaryShade: {
-      light: 9,
-      dark: 8,
-    },
+    //primaryColor: "gray",
+    // primaryShade: {
+    //   light: 9,
+    //   dark: 8,
+    // },
     cursorType: "pointer",
   } as MantineTheme,
   container: {

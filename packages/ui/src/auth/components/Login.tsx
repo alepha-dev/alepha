@@ -116,7 +116,11 @@ const Login = (props: LoginProps) => {
                         autoComplete: "current-password",
                       }}
                     />
-                    <ActionButton variant={"filled"} form={form}>
+                    <ActionButton
+                      color={"orange"}
+                      variant={"filled"}
+                      form={form}
+                    >
                       {tr("loginSignIn")}
                     </ActionButton>
                   </Stack>
@@ -161,15 +165,17 @@ const Login = (props: LoginProps) => {
                   ),
               )}
             </Stack>
-            <Text size="sm" ta="center">
-              {tr("loginNoAccount")}{" "}
-              <ActionButton
-                href={router.path("register")}
-                anchorProps={{ inherit: true }}
-              >
-                {tr("loginSignUp")}
-              </ActionButton>
-            </Text>
+            {settings.registrationAllowed && (
+              <Text size="sm" ta="center">
+                {tr("loginNoAccount")}{" "}
+                <ActionButton
+                  href={router.path("register")}
+                  anchorProps={{ inherit: true }}
+                >
+                  {tr("loginSignUp")}
+                </ActionButton>
+              </Text>
+            )}
           </Stack>
         </Card>
         <ActionButton variant={"subtle"} href={redirect}>

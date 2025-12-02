@@ -11,6 +11,7 @@ import {
   $hook,
   $inject,
   Alepha,
+  AlephaError,
   type Static,
   type TSchema,
   t,
@@ -89,7 +90,7 @@ export class ServerCookiesProvider {
       this.alepha.context.get<ServerRequest>("request")?.cookies;
     if (cookies) return cookies;
     if (contextCookies) return contextCookies;
-    throw new Error(
+    throw new AlephaError(
       "Cookie context is not available. This method must be called within a server request cycle.",
     );
   }

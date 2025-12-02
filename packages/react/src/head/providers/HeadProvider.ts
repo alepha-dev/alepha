@@ -2,20 +2,22 @@ import type { PageRoute, ReactRouterState } from "@alepha/react";
 import type { Head } from "../interfaces/Head.ts";
 
 export class HeadProvider {
-  public global?: Head | (() => Head);
-
-  protected getGlobalHead(): Head | undefined {
-    if (typeof this.global === "function") {
-      return this.global();
-    }
-    return this.global;
-  }
+  public global?: Array<Head | (() => Head)> = [];
 
   public fillHead(state: ReactRouterState) {
     state.head = {
       ...state.head,
-      ...this.getGlobalHead(),
     };
+
+    for (const h of this.global ?? []) {
+      const head =
+        typeof h === "function" ? h() : h;
+      state.head = {
+        ...state.head,
+        ...head,
+        meta: [...(state.head.meta ?? []), ...(head.meta ?? [])],
+      };
+    }
 
     for (const layer of state.layers) {
       if (layer.route?.head && !layer.error) {

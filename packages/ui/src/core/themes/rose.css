@@ -1,0 +1,81 @@
+/* Rose Theme - Romantic, elegant design */
+
+[data-theme="rose"] {
+  /* Typography - Romantic, classic fonts */
+  --mantine-font-family:
+    "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --mantine-font-family-headings: "Playfair Display", Georgia, serif;
+  --mantine-font-family-monospace:
+    "DM Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Font sizes - Slightly larger for elegance */
+  --mantine-font-size-xs: 0.8125rem;
+  --mantine-font-size-sm: 0.9375rem;
+  --mantine-font-size-md: 1.0625rem;
+  --mantine-font-size-lg: 1.1875rem;
+  --mantine-font-size-xl: 1.375rem;
+  --mantine-line-height: 1.7;
+
+  /* Border radius - Soft, romantic curves */
+  --mantine-radius-default: 8px;
+  --mantine-radius-xs: 4px;
+  --mantine-radius-sm: 6px;
+  --mantine-radius-md: 8px;
+  --mantine-radius-lg: 12px;
+  --mantine-radius-xl: 18px;
+
+  /* Shadows - Soft, romantic glow */
+  --mantine-shadow-xs: 0 1px 2px rgba(40, 34, 35, 0.05);
+  --mantine-shadow-sm: 0 2px 4px rgba(40, 34, 35, 0.08);
+  --mantine-shadow-md: 0 4px 8px rgba(40, 34, 35, 0.1);
+  --mantine-shadow-lg: 0 8px 16px rgba(40, 34, 35, 0.12);
+  --mantine-shadow-xl: 0 16px 32px rgba(40, 34, 35, 0.14);
+
+  /* Primary - Rose pink */
+  --mantine-color-pink-0: #fff1f3;
+  --mantine-color-pink-1: #ffe4e8;
+  --mantine-color-pink-2: #fecdd6;
+  --mantine-color-pink-3: #fda4b8;
+  --mantine-color-pink-4: #fb7196;
+  --mantine-color-pink-5: #f43f6e;
+  --mantine-color-pink-6: #e11d55;
+  --mantine-color-pink-7: #be123c;
+  --mantine-color-pink-8: #9f1239;
+  --mantine-color-pink-9: #881337;
+
+  /* Accent - Warm red */
+  --mantine-color-red-0: #fff5f5;
+  --mantine-color-red-1: #ffe3e3;
+  --mantine-color-red-2: #ffc9c9;
+  --mantine-color-red-3: #ffa8a8;
+  --mantine-color-red-4: #ff8787;
+  --mantine-color-red-5: #ff6b6b;
+  --mantine-color-red-6: #fa5252;
+  --mantine-color-red-7: #f03e3e;
+  --mantine-color-red-8: #e03131;
+  --mantine-color-red-9: #c92a2a;
+
+  /* Rose-tinted grays */
+  --mantine-color-gray-0: #fcf9f9;
+  --mantine-color-gray-1: #f7f2f2;
+  --mantine-color-gray-2: #ede4e5;
+  --mantine-color-gray-3: #e0d4d5;
+  --mantine-color-gray-4: #c7b5b7;
+  --mantine-color-gray-5: #a38f91;
+  --mantine-color-gray-6: #7c6a6c;
+  --mantine-color-gray-7: #5a4d4e;
+  --mantine-color-gray-8: #3d3536;
+  --mantine-color-gray-9: #282223;
+
+  /* Rose dark scale */
+  --mantine-color-dark-0: #e0d4d5;
+  --mantine-color-dark-1: #c7b5b7;
+  --mantine-color-dark-2: #8f787a;
+  --mantine-color-dark-3: #5c4648;
+  --mantine-color-dark-4: #4d3338;
+  --mantine-color-dark-5: #332326;
+  --mantine-color-dark-6: #261b1e;
+  --mantine-color-dark-7: #1a1416;
+  --mantine-color-dark-8: #0d0a0b;
+  --mantine-color-dark-9: #000000;
+}

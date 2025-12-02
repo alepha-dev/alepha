@@ -1,0 +1,83 @@
+/* Forest Theme - Natural, earthy design */
+
+[data-theme="forest"] {
+  /* Typography - Organic, natural fonts */
+  --mantine-font-family:
+    "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --mantine-font-family-headings:
+    "Merriweather", Georgia, "Times New Roman", serif;
+  --mantine-font-family-monospace:
+    "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Font sizes */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.875rem;
+  --mantine-font-size-md: 1rem;
+  --mantine-font-size-lg: 1.125rem;
+  --mantine-font-size-xl: 1.25rem;
+  --mantine-line-height: 1.65;
+
+  /* Border radius - Organic, natural curves */
+  --mantine-radius-default: 6px;
+  --mantine-radius-xs: 3px;
+  --mantine-radius-sm: 4px;
+  --mantine-radius-md: 6px;
+  --mantine-radius-lg: 10px;
+  --mantine-radius-xl: 14px;
+
+  /* Shadows - Earthy, grounded depth */
+  --mantine-shadow-xs: 0 1px 2px rgba(28, 32, 26, 0.06);
+  --mantine-shadow-sm: 0 1px 3px rgba(28, 32, 26, 0.1);
+  --mantine-shadow-md: 0 3px 6px rgba(28, 32, 26, 0.12);
+  --mantine-shadow-lg: 0 6px 12px rgba(28, 32, 26, 0.14);
+  --mantine-shadow-xl: 0 12px 24px rgba(28, 32, 26, 0.16);
+
+  /* Primary - Forest green */
+  --mantine-color-green-0: #e6f7ed;
+  --mantine-color-green-1: #c3ebd2;
+  --mantine-color-green-2: #9ddeb5;
+  --mantine-color-green-3: #73d096;
+  --mantine-color-green-4: #4cc27a;
+  --mantine-color-green-5: #2e9e5b;
+  --mantine-color-green-6: #247d48;
+  --mantine-color-green-7: #1b5e36;
+  --mantine-color-green-8: #134025;
+  --mantine-color-green-9: #0c2a18;
+
+  /* Accent - Earthy brown/yellow */
+  --mantine-color-yellow-0: #faf6e9;
+  --mantine-color-yellow-1: #f2e9c7;
+  --mantine-color-yellow-2: #e6d7a0;
+  --mantine-color-yellow-3: #d9c379;
+  --mantine-color-yellow-4: #ccaf52;
+  --mantine-color-yellow-5: #a68b3d;
+  --mantine-color-yellow-6: #806b2f;
+  --mantine-color-yellow-7: #5c4d22;
+  --mantine-color-yellow-8: #3d3317;
+  --mantine-color-yellow-9: #28220f;
+
+  /* Warm natural grays */
+  --mantine-color-gray-0: #f7f8f5;
+  --mantine-color-gray-1: #eef0ea;
+  --mantine-color-gray-2: #dde2d5;
+  --mantine-color-gray-3: #c8d0be;
+  --mantine-color-gray-4: #a6b298;
+  --mantine-color-gray-5: #7e8c72;
+  --mantine-color-gray-6: #5c6852;
+  --mantine-color-gray-7: #424b3a;
+  --mantine-color-gray-8: #2d3328;
+  --mantine-color-gray-9: #1c201a;
+
+  /* Forest dark scale */
+  --mantine-color-dark-0: #c8d0be;
+  --mantine-color-dark-1: #a6b298;
+  --mantine-color-dark-2: #6e7d62;
+  --mantine-color-dark-3: #4a5840;
+  --mantine-color-dark-4: #2e402e;
+  --mantine-color-dark-5: #1e2a1e;
+  --mantine-color-dark-6: #162016;
+  --mantine-color-dark-7: #0e1610;
+  --mantine-color-dark-8: #080c08;
+  --mantine-color-dark-9: #000000;
+}

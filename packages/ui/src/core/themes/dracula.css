@@ -1,0 +1,132 @@
+/* Dracula Theme - Developer-focused, vibrant dark theme */
+
+[data-theme="dracula"] {
+  /* Typography - Code-friendly fonts */
+  --mantine-font-family:
+    "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --mantine-font-family-headings:
+    "Fira Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mantine-font-family-monospace:
+    "Fira Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  /* Font sizes - Readable for code */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.875rem;
+  --mantine-font-size-md: 0.9375rem;
+  --mantine-font-size-lg: 1.0625rem;
+  --mantine-font-size-xl: 1.1875rem;
+  --mantine-line-height: 1.5;
+
+  /* Border radius - Subtle, modern */
+  --mantine-radius-default: 6px;
+  --mantine-radius-xs: 3px;
+  --mantine-radius-sm: 4px;
+  --mantine-radius-md: 6px;
+  --mantine-radius-lg: 8px;
+  --mantine-radius-xl: 12px;
+
+  /* Shadows - Dark, atmospheric */
+  --mantine-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --mantine-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.25);
+  --mantine-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+  --mantine-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.35);
+  --mantine-shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.4);
+
+  /* Primary - Dracula purple */
+  --mantine-color-violet-0: #f8f2ff;
+  --mantine-color-violet-1: #ede0ff;
+  --mantine-color-violet-2: #dcc8ff;
+  --mantine-color-violet-3: #c9a9ff;
+  --mantine-color-violet-4: #bd93f9;
+  --mantine-color-violet-5: #a87deb;
+  --mantine-color-violet-6: #9167d9;
+  --mantine-color-violet-7: #7652c2;
+  --mantine-color-violet-8: #5d41a0;
+  --mantine-color-violet-9: #46327a;
+
+  /* Dracula pink */
+  --mantine-color-pink-0: #fff0f7;
+  --mantine-color-pink-1: #ffe0ef;
+  --mantine-color-pink-2: #ffc8e3;
+  --mantine-color-pink-3: #ffabd4;
+  --mantine-color-pink-4: #ff79c6;
+  --mantine-color-pink-5: #eb60b0;
+  --mantine-color-pink-6: #d4499a;
+  --mantine-color-pink-7: #b33580;
+  --mantine-color-pink-8: #912568;
+  --mantine-color-pink-9: #6e1950;
+
+  /* Dracula green */
+  --mantine-color-green-0: #e8fce8;
+  --mantine-color-green-1: #d0f9d0;
+  --mantine-color-green-2: #b0f4b0;
+  --mantine-color-green-3: #8cec8c;
+  --mantine-color-green-4: #50fa7b;
+  --mantine-color-green-5: #40e668;
+  --mantine-color-green-6: #30cf55;
+  --mantine-color-green-7: #24b044;
+  --mantine-color-green-8: #1a8d35;
+  --mantine-color-green-9: #126a28;
+
+  /* Dracula cyan */
+  --mantine-color-cyan-0: #e0feff;
+  --mantine-color-cyan-1: #c2fdff;
+  --mantine-color-cyan-2: #a0fafc;
+  --mantine-color-cyan-3: #7cf5f8;
+  --mantine-color-cyan-4: #8be9fd;
+  --mantine-color-cyan-5: #6dd4e8;
+  --mantine-color-cyan-6: #52bed1;
+  --mantine-color-cyan-7: #3aa3b6;
+  --mantine-color-cyan-8: #288594;
+  --mantine-color-cyan-9: #1a6673;
+
+  /* Dracula yellow */
+  --mantine-color-yellow-0: #fffbe6;
+  --mantine-color-yellow-1: #fff8cc;
+  --mantine-color-yellow-2: #fff4a8;
+  --mantine-color-yellow-3: #ffef80;
+  --mantine-color-yellow-4: #f1fa8c;
+  --mantine-color-yellow-5: #dce673;
+  --mantine-color-yellow-6: #c5cf5c;
+  --mantine-color-yellow-7: #a8b046;
+  --mantine-color-yellow-8: #888e34;
+  --mantine-color-yellow-9: #666a26;
+
+  /* Dracula red */
+  --mantine-color-red-0: #ffe8e8;
+  --mantine-color-red-1: #ffd0d0;
+  --mantine-color-red-2: #ffb0b0;
+  --mantine-color-red-3: #ff8c8c;
+  --mantine-color-red-4: #ff5555;
+  --mantine-color-red-5: #eb4040;
+  --mantine-color-red-6: #d42d2d;
+  --mantine-color-red-7: #b31e1e;
+  --mantine-color-red-8: #911414;
+  --mantine-color-red-9: #6e0d0d;
+
+  /* Dracula grays */
+  --mantine-color-gray-0: #f8f8f2;
+  --mantine-color-gray-1: #e8e8e0;
+  --mantine-color-gray-2: #d8d8d0;
+  --mantine-color-gray-3: #b8b8b0;
+  --mantine-color-gray-4: #6272a4;
+  --mantine-color-gray-5: #525c85;
+  --mantine-color-gray-6: #44475a;
+  --mantine-color-gray-7: #3a3d4e;
+  --mantine-color-gray-8: #313342;
+  --mantine-color-gray-9: #282a36;
+
+  /* Dracula dark scale */
+  --mantine-color-dark-0: #6272a4;
+  --mantine-color-dark-1: #525c85;
+  --mantine-color-dark-2: #44475a;
+  --mantine-color-dark-3: #3a3d4e;
+  --mantine-color-dark-4: #313342;
+  --mantine-color-dark-5: #282a36;
+  --mantine-color-dark-6: #21222c;
+  --mantine-color-dark-7: #1a1b23;
+  --mantine-color-dark-8: #14151b;
+  --mantine-color-dark-9: #0e0f13;
+}
