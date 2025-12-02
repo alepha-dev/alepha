@@ -6,6 +6,7 @@ import { VerificationService } from "./services/VerificationService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./controllers/VerificationController.ts";
+export * from "./entities/verifications.ts";
 export * from "./schemas/requestVerificationCodeResponseSchema.ts";
 export * from "./schemas/validateVerificationCodeResponseSchema.ts";
 export * from "./schemas/verificationTypeEnumSchema.ts";

@@ -49,10 +49,13 @@ export class AlephaPackageBuilderCli {
           pkgData.exports[path]["react-native"] =
             `./src/${item.name}/index.browser.ts`;
         }
+
         if (item.browser) {
           pkgData.exports[path].browser = `./src/${item.name}/index.browser.ts`;
         }
+
         pkgData.exports[path].import = `./src/${item.name}/index.ts`;
+        pkgData.exports[path].default = `./src/${item.name}/index.ts`;
       }
 
       if (packageName === "alepha") {

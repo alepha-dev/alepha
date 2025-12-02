@@ -77,16 +77,22 @@
     },
     "./api/jobs": {
       "types": "./src/api-jobs/index.ts",
+      "react-native": "./src/api-jobs/index.browser.ts",
+      "browser": "./src/api-jobs/index.browser.ts",
       "import": "./src/api-jobs/index.ts",
       "default": "./src/api-jobs/index.ts"
     },
     "./api/notifications": {
       "types": "./src/api-notifications/index.ts",
+      "react-native": "./src/api-notifications/index.browser.ts",
+      "browser": "./src/api-notifications/index.browser.ts",
       "import": "./src/api-notifications/index.ts",
       "default": "./src/api-notifications/index.ts"
     },
     "./api/parameters": {
       "types": "./src/api-parameters/index.ts",
+      "react-native": "./src/api-parameters/index.browser.ts",
+      "browser": "./src/api-parameters/index.browser.ts",
       "import": "./src/api-parameters/index.ts",
       "default": "./src/api-parameters/index.ts"
     },
@@ -99,6 +105,8 @@
     },
     "./api/verifications": {
       "types": "./src/api-verifications/index.ts",
+      "react-native": "./src/api-verifications/index.browser.ts",
+      "browser": "./src/api-verifications/index.browser.ts",
       "import": "./src/api-verifications/index.ts",
       "default": "./src/api-verifications/index.ts"
     },
