@@ -20,7 +20,7 @@ const Layout = () => {
           primaryColor: "gray",
           primaryShade: {
             light: 8,
-            dark: 8,
+            dark: 9,
           },
         },
       }}

@@ -19,6 +19,9 @@ export class AppRouter {
     head: {
       title: "Alepha",
       titleSeparator: " | ",
+      htmlAttributes: {
+        "data-theme": "github",
+      },
     },
   });
 
