@@ -4,7 +4,8 @@ export default function NotFoundPage(props: { style?: CSSProperties }) {
   return (
     <div
       style={{
-        minHeight: "95vh",
+        width: "100%",
+        minHeight: "90vh",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
