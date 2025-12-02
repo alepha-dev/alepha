@@ -9,7 +9,13 @@ import TaskHistory from "./task/TaskHistory.jsx";
 
 const ProjectView = () => {
   return (
-    <Stack p={0} gap={0} flex={1} className={"overflow-auto"}>
+    <Flex
+      direction={"column"}
+      p={0}
+      gap={0}
+      flex={1}
+      className={"overflow-auto"}
+    >
       <Card
         p={"xs"}
         flex={1}
@@ -60,7 +66,7 @@ const ProjectView = () => {
         </Flex>
       </Card>
       <ExperienceBar />
-    </Stack>
+    </Flex>
   );
 };
 
