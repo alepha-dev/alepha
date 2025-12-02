@@ -1,113 +1,103 @@
 import { NestedView, useRouter } from "@alepha/react";
-import { AdminShell, AlephaMantineProvider } from "@alepha/ui";
+import { ActionButton, AdminShell, OmnibarButton } from "@alepha/ui";
+import { UserButton } from "@alepha/ui/auth";
 import { Flex } from "@mantine/core";
-import {
-  IconChecklist,
-  IconFileDatabase,
-  IconJumpRope,
-  IconMail,
-  IconSettings,
-  IconShield,
-  IconTruckDelivery,
-  IconUser,
-} from "@tabler/icons-react";
+import { IconArrowLeft } from "@tabler/icons-react";
+import ToggleSidebarButton from "../../core/components/buttons/ToggleSidebarButton.tsx";
 import type { AdminRouter } from "../AdminRouter.ts";
 
 const AdminLayout = () => {
   const router = useRouter<AdminRouter>();
   return (
-    <AlephaMantineProvider>
-      <AdminShell
-        appShellMainProps={{
-          bg: "var(--alepha-background)",
-        }}
-        appShellHeaderProps={{
-          bg: "var(--alepha-background)",
-        }}
-        appShellNavbarProps={{
-          bg: "var(--alepha-background)",
-        }}
-        appShellProps={{
-          withBorder: false,
-        }}
-        appBarProps={{
-          items: [
-            {
-              type: "search",
-              position: "center",
-            },
-            {
-              type: "dark",
-              position: "right",
-            },
-          ],
-        }}
-        sidebarProps={{
-          menu: [
-            {
-              type: "section",
-              label: "Management",
-            },
-            {
-              icon: IconUser,
-              label: "Users",
-              href: router.path("adminUsers"),
-            },
-            {
-              icon: IconMail,
-              label: "Notifications",
-              href: router.path("adminNotifications"),
-            },
-            {
-              icon: IconShield,
-              label: "Sessions",
-              href: router.path("adminSessions"),
-            },
-            {
-              icon: IconChecklist,
-              label: "Verifications",
-              href: router.path("adminVerifications"),
-            },
-            {
-              type: "section",
-              label: "System",
-            },
-            {
-              label: "Jobs",
-              href: router.path("adminJobs"),
-              icon: IconTruckDelivery,
-            },
-            {
-              label: "Workflows",
-              href: router.path("adminWorkflows"),
-              icon: IconJumpRope,
-            },
-            {
-              label: "Parameters",
-              href: router.path("adminParameters"),
-              icon: IconSettings,
-            },
-            {
-              label: "Files",
-              href: router.path("adminFiles"),
-              icon: IconFileDatabase,
-            },
-          ],
-        }}
-      >
-        <Flex
-          flex={1}
-          p={"lg"}
-          mt={-16}
-          ml={-16}
-          bg={"var(--alepha-surface)"}
-          bdrs={"lg"}
-          bd={"1px solid var(--alepha-border)"}
-        >
-          <NestedView />
-        </Flex>
-      </AdminShell>
-    </AlephaMantineProvider>
+    <AdminShell
+      appShellMainProps={{
+        bg: "var(--alepha-surface)",
+      }}
+      appShellHeaderProps={{
+        bg: "var(--alepha-background)",
+      }}
+      appShellNavbarProps={
+        {
+          //  bg: "var(--alepha-background)",
+        }
+      }
+      appShellProps={
+        {
+          // withBorder: false,
+        }
+      }
+      appShellFooterProps={{
+        bg: "var(--alepha-background)",
+      }}
+      footer={<Flex h={12} />}
+      appBarProps={{
+        items: [
+          {
+            element: <ActionButton icon={IconArrowLeft} href={"/"} />,
+            position: "left",
+          },
+          {
+            element: <OmnibarButton actionProps={{ variant: "outline" }} />,
+            position: "right",
+          },
+          {
+            element: <UserButton />,
+            position: "right",
+          },
+          {
+            type: "dark",
+            position: "right",
+          },
+        ],
+      }}
+      sidebarProps={{
+        gap: "xs",
+        menu: [
+          {
+            element: <ToggleSidebarButton />,
+          },
+          {
+            type: "spacer",
+          },
+          {
+            ...router.node("adminUsers"),
+            description: undefined,
+          },
+          // {
+          //   icon: IconMail,
+          //   label: "Notifications",
+          //   href: router.path("adminNotifications"),
+          // },
+          // {
+          //   icon: IconShield,
+          //   label: "Sessions",
+          //   href: router.path("adminSessions"),
+          // },
+          // {
+          //   icon: IconChecklist,
+          //   label: "Verifications",
+          //   href: router.path("adminVerifications"),
+          // },
+          // {
+          //   label: "Jobs",
+          //   href: router.path("adminJobs"),
+          //   icon: IconTruckDelivery,
+          // },
+          // {
+          //   label: "Parameters",
+          //   href: router.path("adminParameters"),
+          //   icon: IconSettings,
+          // },
+          {
+            ...router.node("adminFiles"),
+          },
+        ],
+      }}
+    >
+      <Flex flex={1} bg={"var(--alepha-surface)"}>
+        <NestedView />
+      </Flex>
+    </AdminShell>
   );
 };
 

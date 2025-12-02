@@ -1,7 +1,9 @@
-import { useRouter } from "@alepha/react";
+import { useRouter, useStore } from "@alepha/react";
 import { Spotlight, type SpotlightActionData } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import { type ReactNode, useMemo } from "react";
+import { ui } from "../../constants/ui.ts";
+import { renderIcon } from "../buttons/ActionButton.tsx";
 
 export interface OmnibarProps {
   shortcut?: string | string[];
@@ -14,21 +16,31 @@ const Omnibar = (props: OmnibarProps) => {
   const searchPlaceholder = props.searchPlaceholder ?? "Search...";
   const nothingFound = props.nothingFound ?? "Nothing found...";
   const router = useRouter();
+
+  // watch user to re-render on permission changes
+  const [user] = useStore("alepha.server.request.user");
+
   const actions: SpotlightActionData[] = useMemo(
     () =>
-      router.concretePages.map((page) => ({
-        id: page.name,
-        label: page.label ?? page.name,
-        description: page.description,
-        onClick: () => {
-          if (page.staticName) {
-            return router.go(page.staticName, { params: page.params });
-          }
-          return router.go(page.name);
-        },
-        leftSection: page.icon,
-      })),
-    [],
+      router.concretePages
+        .filter((page) => {
+          if (page.can && !page.can()) return false;
+
+          return true;
+        })
+        .map((page) => ({
+          id: page.name,
+          label: page.label ?? page.name,
+          description: page.description,
+          onClick: () => {
+            if (page.staticName) {
+              return router.go(page.staticName, { params: page.params });
+            }
+            return router.go(page.name);
+          },
+          leftSection: renderIcon(page.icon),
+        })),
+    [user],
   );
 
   return (
@@ -37,7 +49,7 @@ const Omnibar = (props: OmnibarProps) => {
       shortcut={shortcut}
       limit={10}
       searchProps={{
-        leftSection: <IconSearch size={20} />,
+        leftSection: <IconSearch size={ui.sizes.icon.md} />,
         placeholder: searchPlaceholder,
       }}
       nothingFound={nothingFound}

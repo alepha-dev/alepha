@@ -86,6 +86,11 @@ export const Sidebar = (props: SidebarProps) => {
       return <Flex key={key}>{item.element}</Flex>;
     }
 
+    // Check visibility control
+    if (item.can && !item.can()) {
+      return null;
+    }
+
     if (props.collapsed) {
       return (
         <SidebarCollapsedItem
@@ -271,15 +276,17 @@ export const SidebarItem = (props: SidebarItemProps) => {
               bottom: 16,
             }}
           />
-          {item.children.map((child, index) => (
-            <SidebarItem
-              key={index}
-              item={child}
-              level={level + 1}
-              onItemClick={props.onItemClick}
-              theme={props.theme}
-            />
-          ))}
+          {item.children
+            .filter((child) => !child.can || child.can())
+            .map((child, index) => (
+              <SidebarItem
+                key={index}
+                item={child}
+                level={level + 1}
+                onItemClick={props.onItemClick}
+                theme={props.theme}
+              />
+            ))}
         </Flex>
       )}
     </Flex>
@@ -338,6 +345,14 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
       color={"var(--alepha-text)"}
       variant={"subtle"}
       variantActive={"default"}
+      tooltip={
+        item.children
+          ? undefined
+          : {
+              label: item.label,
+              position: "right",
+            }
+      }
       radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
       onClick={handleItemClick}
       icon={renderIcon(item.icon) ?? <IconSquareRounded />}
@@ -348,12 +363,14 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
           ? ({
               position: "right",
               on: "hover",
-              items: item.children.map((child) => ({
-                label: child.label,
-                href: child.href,
-                icon: renderIcon(child.icon),
-                children: child.children,
-              })),
+              items: item.children
+                .filter((child) => !child.can || child.can())
+                .map((child) => ({
+                  label: child.label,
+                  href: child.href,
+                  icon: renderIcon(child.icon),
+                  children: child.children?.filter((c) => !c.can || c.can()),
+                })),
             } as any)
           : undefined
       }
@@ -410,6 +427,7 @@ export interface SidebarMenuItem extends SidebarAbstractItem {
   rightSection?: ReactNode;
   theme?: SidebarButtonTheme;
   actionProps?: ActionProps;
+  can?: () => boolean; // Visibility control: true -> visible, false -> hidden
 }
 
 export interface SidebarButtonTheme {

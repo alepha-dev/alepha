@@ -70,6 +70,8 @@
   "exports": {
     "./api/files": {
       "types": "./src/api-files/index.ts",
+      "react-native": "./src/api-files/index.browser.ts",
+      "browser": "./src/api-files/index.browser.ts",
       "import": "./src/api-files/index.ts",
       "default": "./src/api-files/index.ts"
     },

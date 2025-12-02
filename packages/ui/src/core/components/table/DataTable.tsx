@@ -1,6 +1,7 @@
 import { useInject } from "@alepha/react";
 import { type FormModel, useForm } from "@alepha/react/form";
 import {
+  Card,
   Flex,
   Pagination,
   Select,
@@ -20,6 +21,7 @@ import {
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { type ReactNode, useEffect, useState } from "react";
+import { ui } from "../../constants/ui.ts";
 import ActionButton from "../buttons/ActionButton.tsx";
 import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";
 
@@ -283,11 +285,13 @@ const DataTable = <T extends object, Filters extends TObject>(
   return (
     <Flex direction={"column"} gap={"sm"} flex={1}>
       {props.filters ? (
-        <TypeForm
-          {...props.typeFormProps}
-          form={form as unknown as FormModel<Filters>}
-          schema={schema}
-        />
+        <Card withBorder p={"lg"} bg={ui.colors.elevated}>
+          <TypeForm
+            {...props.typeFormProps}
+            form={form as unknown as FormModel<Filters>}
+            schema={schema}
+          />
+        </Card>
       ) : null}
 
       <Flex className={"overflow-auto"}>

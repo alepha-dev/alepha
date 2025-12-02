@@ -22,7 +22,7 @@ const Login = (props: LoginProps) => {
   const auth = useAuth();
   const router = useRouter<AuthRouter>();
   const { tr } = useI18n<AuthI18n, "en">();
-  const redirect = router.query.redirect || "/";
+  const redirect = router.query.r || "/";
 
   const hasUsernamePassword = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",

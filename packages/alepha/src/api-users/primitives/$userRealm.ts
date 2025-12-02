@@ -103,18 +103,22 @@ export const $userRealm = (
       sessionService.login(name, credentials.username, credentials.password);
   };
 
-  if (options.identities) {
-    const identities: Record<string, AuthPrimitive> = {};
-    if (options.identities?.credentials) {
-      identities.credentials = $authCredentials(realm);
+  const identities = options.identities ?? {
+    credentials: true,
+  };
+
+  if (identities) {
+    const auth: Record<string, AuthPrimitive> = {};
+    if (identities.credentials) {
+      auth.credentials = $authCredentials(realm);
     }
-    if (options.identities?.google) {
-      identities.google = $authGoogle(realm);
+    if (identities.google) {
+      auth.google = $authGoogle(realm);
     }
-    if (options.identities?.github) {
-      identities.github = $authGithub(realm);
+    if (identities.github) {
+      auth.github = $authGithub(realm);
     }
-    alepha.with(() => identities);
+    alepha.with(() => auth);
   }
 
   return realm;

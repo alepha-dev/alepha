@@ -59,6 +59,11 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
       <MantineProvider
         {...props.mantine}
         theme={{
+          primaryColor: "gray",
+          primaryShade: {
+            light: 8,
+            dark: 7,
+          },
           ...props.mantine?.theme,
         }}
       >

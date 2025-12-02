@@ -98,8 +98,15 @@ export class ServerStaticProvider {
           reply.headers["content-type"] = "text/html";
           reply.status = 200;
 
-          // Serve index.html for all unmatched routes
-          return createReadStream(join(root, "index.html"));
+          return new Promise<any>((resolve, reject) => {
+            const stream = createReadStream(join(root, "index.html"));
+            stream.on("open", () => {
+              resolve(stream);
+            });
+            stream.on("error", (err) => {
+              reject(err);
+            });
+          });
         },
       });
     }
@@ -161,7 +168,15 @@ export class ServerStaticProvider {
         return;
       }
 
-      return createReadStream(path);
+      return new Promise<any>((resolve, reject) => {
+        const stream = createReadStream(path);
+        stream.on("open", () => {
+          resolve(stream);
+        });
+        stream.on("error", (err) => {
+          reject(err);
+        });
+      });
     };
   }
 

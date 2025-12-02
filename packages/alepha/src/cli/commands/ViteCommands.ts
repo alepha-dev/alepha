@@ -145,6 +145,7 @@ export class ViteCommands {
         ] ?? {};
 
       const stats = flags.stats ?? viteAlephaBuildOptions.stats ?? false;
+      const hasServer = viteAlephaBuildOptions.serverEntry !== false;
 
       let hasClient = false;
       try {
@@ -189,7 +190,7 @@ export class ViteCommands {
           });
 
           // Server will handle index.html if both client & server are built
-          if (clientBuilt) {
+          if (clientBuilt && hasServer) {
             await unlink(`${distDir}/${clientDir}/index.html`);
           }
         },

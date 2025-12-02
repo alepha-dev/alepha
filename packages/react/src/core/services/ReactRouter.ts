@@ -51,6 +51,22 @@ export class ReactRouter<T extends object> {
     return isActive;
   }
 
+  public node(
+    name: keyof VirtualRouter<T> | string,
+    config: {
+      params?: Record<string, any>;
+      query?: Record<string, any>;
+    } = {},
+  ) {
+    const page = this.pageApi.page(name as string);
+    return {
+      ...page,
+      label: page.label ?? page.name,
+      href: this.path(name, config),
+      children: undefined,
+    }
+  }
+
   public path(
     name: keyof VirtualRouter<T> | string,
     config: {

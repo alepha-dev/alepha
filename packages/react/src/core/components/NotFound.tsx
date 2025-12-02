@@ -4,20 +4,23 @@ export default function NotFoundPage(props: { style?: CSSProperties }) {
   return (
     <div
       style={{
-        height: "100vh",
+        minHeight: "95vh",
+        boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         textAlign: "center",
-        fontFamily: "sans-serif",
-        padding: "1rem",
+        fontFamily:
+          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        padding: "2rem",
         ...props.style,
       }}
     >
-      <h1 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-        404 - This page does not exist
-      </h1>
+      <div style={{ fontSize: "6rem", fontWeight: 200, lineHeight: 1 }}>404</div>
+      <div style={{ fontSize: "0.875rem", marginTop: "1rem", opacity: 0.6 }}>
+        Page not found
+      </div>
     </div>
   );
 }

@@ -234,7 +234,7 @@ const ActionMenuItem = (props: {
 };
 
 const ActionButton = (_props: ActionProps) => {
-  const props = { variant: "default", ..._props };
+  const props = { variant: "subtle", ..._props };
   const { tooltip, menu, icon, ...restProps } = props;
 
   if (props.icon) {

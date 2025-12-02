@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
 import { alephaServerAuthRoutes, tokenResponseSchema, type Tokens, userinfoResponseSchema } from "alepha/server/auth";
+import { LinkProvider } from "alepha/server/links";
 
 /**
  * Browser, SSR friendly, service to handle authentication.
@@ -12,6 +13,7 @@ export class ReactAuth {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly httpClient = $inject(HttpClient);
+  protected readonly linkProvider = $inject(LinkProvider);
 
   protected readonly onBeginTransition = $hook({
     on: "react:transition:begin",
@@ -52,6 +54,14 @@ export class ReactAuth {
     this.alepha.store.set("alepha.server.request.user", data.user);
 
     return data.user;
+  }
+
+  public can(action: string): boolean {
+    if (!this.user) {
+      return false;
+    }
+
+    return this.linkProvider.can(action);
   }
 
   public async login(

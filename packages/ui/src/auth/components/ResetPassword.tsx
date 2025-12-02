@@ -41,7 +41,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
   const [resetState, setResetState] = useState<ResetState>({ step: "email" });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const redirect = router.query.redirect || "/";
+  const redirect = router.query.r || "/";
 
   const isResetPasswordAllowed =
     props.realmConfig.settings?.resetPasswordAllowed !== false;

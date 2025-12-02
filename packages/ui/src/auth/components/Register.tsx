@@ -43,7 +43,7 @@ const Register = (props: RegisterProps) => {
   const userCtrl = useClient<UserController>();
   const router = useRouter<AuthRouter>();
   const { tr } = useI18n<AuthI18n, "en">();
-  const redirect = router.query.redirect || "/";
+  const redirect = router.query.r || "/";
 
   const [registrationState, setRegistrationState] = useState<RegistrationState>(
     {

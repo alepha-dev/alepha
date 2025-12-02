@@ -14,7 +14,7 @@ export const DevLayout = () => {
     <AdminShell
       appShellProps={{
         withBorder: false,
-        bg: ui.colors.surface,
+        bg: ui.colors.background,
       }}
       appShellNavbarProps={{
         bg: ui.colors.transparent,
@@ -64,12 +64,17 @@ export const DevLayout = () => {
       }}
     >
       <Flex
+        w={"100%"}
+        flex={1}
         bd={`1px solid ${ui.colors.border}`}
         bg={ui.colors.elevated}
-        bdrs={"lg"}
         p={"xl"}
-        ml={-8}
-        mt={-8}
+        ml={-16}
+        mr={-16}
+        mt={-16}
+        style={{
+          borderTopLeftRadius: 16,
+        }}
       >
         <NestedView />
       </Flex>

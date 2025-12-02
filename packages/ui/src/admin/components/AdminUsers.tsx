@@ -1,7 +1,7 @@
 import { useClient } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { DataTable, Flex, Text } from "@alepha/ui";
-import { Badge, Group } from "@mantine/core";
+import { DataTable, Text } from "@alepha/ui";
+import { Badge, Flex, Group } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import { type UserController, type UserEntity, users } from "alepha/api/users";
@@ -25,7 +25,7 @@ const AdminUsers = (props: AdminUsersProps) => {
   });
 
   return (
-    <Flex flex={1}>
+    <Flex flex={1} direction={"column"}>
       <DataTable<UserEntity, typeof filters>
         submitOnInit
         defaultSize={10}
@@ -36,6 +36,7 @@ const AdminUsers = (props: AdminUsersProps) => {
         tableProps={{
           horizontalSpacing: "xs",
           verticalSpacing: "xs",
+          striped: false,
         }}
         onFilterChange={(key, value, form) => {
           if (key === "query") {

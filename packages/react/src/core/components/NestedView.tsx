@@ -50,7 +50,11 @@ const NestedView = (props: NestedViewProps) => {
       "react:transition:begin": async ({ previous, state }) => {
         // --------- Animations Begin ---------
         const layer = previous.layers[index];
-        if (`${state.url.pathname}/`.startsWith(`${layer?.path}/`)) {
+        if (!layer) {
+          return;
+        }
+
+        if (`${state.url.pathname}/`.startsWith(`${layer.path}/`)) {
           return;
         }
 

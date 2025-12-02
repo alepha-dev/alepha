@@ -73,7 +73,7 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
   return (
     <ActionButton
       onClick={toggleColorScheme}
-      variant={props.variant ?? "default"}
+      variant={props.variant ?? "subtle"}
       size={props.size ?? "sm"}
       aria-label="Toggle color scheme"
       px={"xs"}

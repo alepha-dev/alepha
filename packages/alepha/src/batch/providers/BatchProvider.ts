@@ -213,13 +213,6 @@ export class BatchProvider {
     };
 
     // CAUTION: Do not log.debug/info here as it may cause infinite loops if logging is batched
-    // log.trace is safe
-
-    this.log.trace("Pushing item to batch", {
-      id,
-      partitionKey,
-      item,
-    });
 
     context.itemStates.set(id, itemState);
 

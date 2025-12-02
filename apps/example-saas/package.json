@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@alepha/devtools": "^0.13.1",
+    "@alepha/react": "^0.13.1",
+    "@alepha/ui": "^0.13.1",
+    "alepha": "^0.13.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
+  },
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "verify": "alepha verify"
+  }
+}

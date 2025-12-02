@@ -184,19 +184,17 @@ export class ReactServerProvider {
     }
 
     for (const page of this.pageApi.getPages()) {
-      if (page.children?.length) {
-        continue;
+      if (page.component || page.lazy) {
+        this.log.debug(`+ ${page.match} -> ${page.name}`);
+
+        this.serverRouterProvider.createRoute({
+          ...page,
+          schema: undefined, // schema is handled by the page primitive provider for now (shared by browser and server)
+          method: "GET",
+          path: page.match,
+          handler: this.createHandler(page, templateLoader),
+        });
       }
-
-      this.log.debug(`+ ${page.match} -> ${page.name}`);
-
-      this.serverRouterProvider.createRoute({
-        ...page,
-        schema: undefined, // schema is handled by the page primitive provider for now (shared by browser and server)
-        method: "GET",
-        path: page.match,
-        handler: this.createHandler(page, templateLoader),
-      });
     }
   }
 
@@ -352,6 +350,9 @@ export class ReactServerProvider {
       let target: PageRoute | undefined = route; // TODO: move to PagePrimitiveProvider
       while (target) {
         if (route.can && !route.can()) {
+          this.log.warn(
+            `Access to page '${route.name}' is forbidden by can() check`,
+          )
           // if the page is not accessible, return 403
           reply.status = 403;
           reply.headers["content-type"] = "text/plain";
@@ -383,6 +384,9 @@ export class ReactServerProvider {
       this.serverTimingProvider.endTiming("createLayers");
 
       if (redirect) {
+        this.log.debug("Resolver resulted in redirection", {
+          redirect,
+        });
         return reply.redirect(redirect);
       }
 
@@ -402,8 +406,13 @@ export class ReactServerProvider {
             ? html.redirect
             : this.pageApi.href(html.redirect),
         );
+        this.log.debug("Rendering resulted in redirection", {
+          redirect: html.redirect,
+        });
         return;
       }
+
+      this.log.trace("Page rendered to HTML successfully");
 
       const event = {
         request: serverRequest,
