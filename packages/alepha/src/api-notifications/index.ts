@@ -18,6 +18,7 @@ export * from "./primitives/$notification.ts";
 export * from "./queues/NotificationQueues.ts";
 export * from "./schemas/notificationContactPreferencesSchema.ts";
 export * from "./schemas/notificationCreateSchema.ts";
+export * from "./schemas/notificationQuerySchema.ts";
 export * from "./services/NotificationSenderService.ts";
 export * from "./services/NotificationService.ts";
 

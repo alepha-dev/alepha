@@ -2,13 +2,17 @@ import { $env, $inject, Alepha, type Static, t } from "alepha";
 import { $batch } from "alepha/batch";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
-import { notifications } from "../entities/notifications.ts";
+import { $repository, type Page } from "alepha/orm";
+import {
+  type NotificationEntity,
+  notifications,
+} from "../entities/notifications.ts";
 import { NotificationQueues } from "../queues/NotificationQueues.ts";
 import {
   type NotificationCreate,
   notificationCreateSchema,
 } from "../schemas/notificationCreateSchema.ts";
+import type { NotificationQuery } from "../schemas/notificationQuerySchema.ts";
 import { NotificationSenderService } from "./NotificationSenderService.ts";
 
 export const notificationServiceEnvSchema = t.object({
@@ -63,6 +67,45 @@ export class NotificationService {
   public async findNotificationById(id: string) {
     this.log.trace("Finding notification by ID", { id });
     return this.notificationRepository.findOne({ where: { id } });
+  }
+
+  public async findNotifications(
+    q: NotificationQuery = {},
+  ): Promise<Page<NotificationEntity>> {
+    this.log.trace("Finding notifications", { query: q });
+    q.sort ??= "-createdAt";
+
+    const where = this.notificationRepository.createQueryWhere();
+
+    if (q.type) {
+      where.type = { eq: q.type };
+    }
+
+    if (q.template) {
+      where.template = { like: `%${q.template}%` };
+    }
+
+    if (q.contact) {
+      where.contact = { like: `%${q.contact}%` };
+    }
+
+    if (q.category) {
+      where.category = { eq: q.category };
+    }
+
+    if (q.status) {
+      if (q.status === "sent") {
+        where.sentAt = { isNotNull: true };
+        where.error = { isNull: true };
+      } else if (q.status === "failed") {
+        where.error = { isNotNull: true };
+      } else if (q.status === "pending") {
+        where.sentAt = { isNull: true };
+        where.error = { isNull: true };
+      }
+    }
+
+    return this.notificationRepository.paginate(q, { where }, { count: true });
   }
 
   /**

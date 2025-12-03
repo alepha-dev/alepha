@@ -1,1 +1,26 @@
-export class NotificationController {}
+import { $inject } from "alepha";
+import { pg } from "alepha/orm";
+import { $action } from "alepha/server";
+import { notifications } from "../entities/notifications.ts";
+import { notificationQuerySchema } from "../schemas/notificationQuerySchema.ts";
+import { NotificationService } from "../services/NotificationService.ts";
+
+export class NotificationController {
+  protected readonly url = "/notifications";
+  protected readonly group = "notifications";
+  protected readonly notificationService = $inject(NotificationService);
+
+  /**
+   * Find notifications with pagination and filtering.
+   */
+  public readonly findNotifications = $action({
+    path: this.url,
+    group: this.group,
+    description: "Find notifications with pagination and filtering",
+    schema: {
+      query: notificationQuerySchema,
+      response: pg.page(notifications.schema),
+    },
+    handler: ({ query }) => this.notificationService.findNotifications(query),
+  });
+}

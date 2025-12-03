@@ -1,4 +1,5 @@
 import { $context } from "alepha";
+import { AlephaApiFiles } from "alepha/api/files";
 import type { Repository } from "alepha/orm";
 import {
   $realm,
@@ -49,6 +50,13 @@ export const $userRealm = (
   const name = options.realm?.name ?? DEFAULT_USER_REALM_NAME;
 
   const userRealm = userRealmProvider.register(name, options);
+
+  if (options.modules?.audits) {
+  }
+
+  if (options.modules?.files) {
+    alepha.with(AlephaApiFiles);
+  }
 
   const realm: UserRealmPrimitive = $realm({
     ...options.realm,
@@ -162,5 +170,10 @@ export interface UserRealmOptions {
     credentials?: true;
     google?: true;
     github?: true;
+  };
+
+  modules?: {
+    files?: boolean;
+    audits?: boolean;
   };
 }

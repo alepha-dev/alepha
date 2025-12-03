@@ -23,12 +23,22 @@ export class UserService {
 
   /**
    * Request email verification for a user.
+   * @param email - The email address to verify.
+   * @param userRealmName - Optional realm name.
+   * @param method - The verification method: "code" (default) or "link".
+   * @param verifyUrl - Base URL for verification link (required when method is "link").
    */
   public async requestEmailVerification(
     email: string,
     userRealmName?: string,
+    method: "code" | "link" = "code",
+    verifyUrl?: string,
   ): Promise<boolean> {
-    this.log.trace("Requesting email verification", { email, userRealmName });
+    this.log.trace("Requesting email verification", {
+      email,
+      userRealmName,
+      method,
+    });
 
     const user = await this.users(userRealmName)
       .findOne({
@@ -54,23 +64,47 @@ export class UserService {
     try {
       const verification =
         await this.verificationController.requestVerificationCode({
-          params: { type: "code" },
+          params: { type: method },
           body: { target: email },
         });
 
-      await this.userNotifications.emailVerification.push({
-        contact: email,
-        variables: {
-          email,
-          code: verification.token,
-          expiresInMinutes: Math.floor(verification.codeExpiration / 60),
-        },
-      });
+      if (method === "link") {
+        // Build verification URL with token
+        const url = new URL(verifyUrl || "/verify-email", "http://localhost");
+        url.searchParams.set("email", email);
+        url.searchParams.set("token", verification.token);
+        const fullVerifyUrl = verifyUrl
+          ? `${verifyUrl}${url.search}`
+          : url.pathname + url.search;
 
-      this.log.debug("Email verification code sent", {
-        email,
-        userId: user.id,
-      });
+        await this.userNotifications.emailVerificationLink.push({
+          contact: email,
+          variables: {
+            email,
+            verifyUrl: fullVerifyUrl,
+            expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+          },
+        });
+
+        this.log.debug("Email verification link sent", {
+          email,
+          userId: user.id,
+        });
+      } else {
+        await this.userNotifications.emailVerification.push({
+          contact: email,
+          variables: {
+            email,
+            code: verification.token,
+            expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+          },
+        });
+
+        this.log.debug("Email verification code sent", {
+          email,
+          userId: user.id,
+        });
+      }
     } catch (error) {
       // Silent fail for security
       this.log.warn("Failed to send email verification", { email, error });
@@ -81,6 +115,7 @@ export class UserService {
 
   /**
    * Verify a user's email using a valid verification token.
+   * Supports both code (6-digit) and link (UUID) verification tokens.
    */
   public async verifyEmail(
     email: string,
@@ -89,13 +124,18 @@ export class UserService {
   ): Promise<void> {
     this.log.trace("Verifying email", { email, userRealmName });
 
+    // Detect verification type based on token format
+    // Codes are 6-digit numbers, links are UUIDs
+    const isCode = /^\d{6}$/.test(token);
+    const type = isCode ? "code" : "link";
+
     const result = await this.verificationController
       .validateVerificationCode({
-        params: { type: "code" },
+        params: { type },
         body: { target: email, token },
       })
       .catch(() => {
-        this.log.warn("Invalid email verification token", { email });
+        this.log.warn("Invalid email verification token", { email, type });
         throw new BadRequestError("Invalid or expired verification token");
       });
 
@@ -112,7 +152,7 @@ export class UserService {
       emailVerified: true,
     });
 
-    this.log.info("Email verified", { email, userId: user.id });
+    this.log.info("Email verified", { email, userId: user.id, type });
   }
 
   /**

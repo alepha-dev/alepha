@@ -310,6 +310,8 @@ export class UserController {
   /**
    * Request email verification.
    * Generates a verification token using verification service and sends an email to the user.
+   * @param method - The verification method: "code" (default) sends a 6-digit code, "link" sends a clickable verification link.
+   * @param verifyUrl - Required when method is "link". The base URL for the verification link. Token and email will be appended as query params.
    */
   public requestEmailVerification = $action({
     path: "/users/email-verification/request",
@@ -317,6 +319,19 @@ export class UserController {
     schema: {
       query: t.object({
         userRealmName: t.optional(t.string()),
+        method: t.optional(
+          t.enum(["code", "link"], {
+            default: "code",
+            description:
+              'Verification method: "code" sends a 6-digit code, "link" sends a clickable verification link.',
+          }),
+        ),
+        verifyUrl: t.optional(
+          t.string({
+            description:
+              'Base URL for verification link. Required when method is "link". Token and email will be appended as query params.',
+          }),
+        ),
       }),
       body: t.object({
         email: t.email(),
@@ -327,15 +342,20 @@ export class UserController {
       }),
     },
     handler: async ({ body, query }) => {
+      const method = query.method ?? "code";
       await this.userService.requestEmailVerification(
         body.email,
         query.userRealmName,
+        method,
+        query.verifyUrl,
       );
 
       return {
         success: true,
         message:
-          "If an account exists with this email, a verification code has been sent.",
+          method === "link"
+            ? "If an account exists with this email, a verification link has been sent."
+            : "If an account exists with this email, a verification code has been sent.",
       };
     },
   });
