@@ -1,0 +1,100 @@
+/* Slate Theme - Professional, minimal design (variables only) */
+
+[data-theme="slate"] {
+  /* Typography - Inter font stack */
+  --mantine-font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --mantine-font-family-headings:
+    "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mantine-font-family-monospace:
+    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  /* Font sizes - Tight, compact */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.875rem;
+  --mantine-font-size-md: 0.875rem;
+  --mantine-font-size-lg: 1rem;
+  --mantine-font-size-xl: 1.125rem;
+  --mantine-line-height: 1.5;
+
+  /* Border radius - Subtle */
+  --mantine-radius-default: 0.375rem;
+  --mantine-radius-xs: 0.125rem;
+  --mantine-radius-sm: 0.25rem;
+  --mantine-radius-md: 0.375rem;
+  --mantine-radius-lg: 0.5rem;
+  --mantine-radius-xl: 0.75rem;
+
+  /* Shadows - Minimal */
+  --mantine-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --mantine-shadow-sm:
+    0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --mantine-shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --mantine-shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --mantine-shadow-xl:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Slate grays - Zinc palette */
+  --mantine-color-gray-0: #fafafa;
+  --mantine-color-gray-1: #f4f4f5;
+  --mantine-color-gray-2: #e4e4e7;
+  --mantine-color-gray-3: #d4d4d8;
+  --mantine-color-gray-4: #a1a1aa;
+  --mantine-color-gray-5: #71717a;
+  --mantine-color-gray-6: #52525b;
+  --mantine-color-gray-7: #3f3f46;
+  --mantine-color-gray-8: #27272a;
+  --mantine-color-gray-9: #18181b;
+
+  /* Dark scale */
+  --mantine-color-dark-0: #f4f4f5;
+  --mantine-color-dark-1: #a1a1aa;
+  --mantine-color-dark-2: #71717a;
+  --mantine-color-dark-3: #52525b;
+  --mantine-color-dark-4: #3f3f46;
+  --mantine-color-dark-5: #27272a;
+  --mantine-color-dark-6: #18181b;
+  --mantine-color-dark-7: #0f0f10;
+  --mantine-color-dark-8: #09090b;
+  --mantine-color-dark-9: #000000;
+
+  /* Blue */
+  --mantine-color-blue-0: #eff6ff;
+  --mantine-color-blue-1: #dbeafe;
+  --mantine-color-blue-2: #bfdbfe;
+  --mantine-color-blue-3: #93c5fd;
+  --mantine-color-blue-4: #60a5fa;
+  --mantine-color-blue-5: #3b82f6;
+  --mantine-color-blue-6: #2563eb;
+  --mantine-color-blue-7: #1d4ed8;
+  --mantine-color-blue-8: #1e40af;
+  --mantine-color-blue-9: #1e3a8a;
+
+  /* Green */
+  --mantine-color-green-0: #f0fdf4;
+  --mantine-color-green-1: #dcfce7;
+  --mantine-color-green-2: #bbf7d0;
+  --mantine-color-green-3: #86efac;
+  --mantine-color-green-4: #4ade80;
+  --mantine-color-green-5: #22c55e;
+  --mantine-color-green-6: #16a34a;
+  --mantine-color-green-7: #15803d;
+  --mantine-color-green-8: #166534;
+  --mantine-color-green-9: #14532d;
+
+  /* Red */
+  --mantine-color-red-0: #fef2f2;
+  --mantine-color-red-1: #fee2e2;
+  --mantine-color-red-2: #fecaca;
+  --mantine-color-red-3: #fca5a5;
+  --mantine-color-red-4: #f87171;
+  --mantine-color-red-5: #ef4444;
+  --mantine-color-red-6: #dc2626;
+  --mantine-color-red-7: #b91c1c;
+  --mantine-color-red-8: #991b1b;
+  --mantine-color-red-9: #7f1d1d;
+}

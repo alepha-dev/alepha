@@ -1,0 +1,244 @@
+/* Ember Theme - Warm, cozy design with heavy customization */
+
+[data-theme="ember"] {
+  /* Typography - Warm, readable fonts */
+  --mantine-font-family:
+    "Source Sans Pro", "Open Sans", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --mantine-font-family-headings:
+    "Source Sans Pro", "Open Sans", -apple-system, BlinkMacSystemFont,
+    sans-serif;
+  --mantine-font-family-monospace:
+    "Source Code Pro", "Fira Code", ui-monospace, Menlo, Consolas, monospace;
+
+  /* Font sizes - Comfortable reading */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.875rem;
+  --mantine-font-size-md: 1rem;
+  --mantine-font-size-lg: 1.125rem;
+  --mantine-font-size-xl: 1.25rem;
+  --mantine-line-height: 1.65;
+
+  /* Border radius - Soft, inviting */
+  --mantine-radius-default: 8px;
+  --mantine-radius-xs: 4px;
+  --mantine-radius-sm: 6px;
+  --mantine-radius-md: 8px;
+  --mantine-radius-lg: 12px;
+  --mantine-radius-xl: 16px;
+
+  /* Shadows - Warm, soft */
+  --mantine-shadow-xs: 0 1px 3px rgba(194, 65, 12, 0.06);
+  --mantine-shadow-sm: 0 2px 6px rgba(194, 65, 12, 0.08);
+  --mantine-shadow-md: 0 4px 12px rgba(194, 65, 12, 0.1);
+  --mantine-shadow-lg: 0 8px 24px rgba(194, 65, 12, 0.12);
+  --mantine-shadow-xl: 0 16px 40px rgba(194, 65, 12, 0.14);
+
+  /* Primary orange - Warm ember */
+  --mantine-color-orange-0: #fff7ed;
+  --mantine-color-orange-1: #ffedd5;
+  --mantine-color-orange-2: #fed7aa;
+  --mantine-color-orange-3: #fdba74;
+  --mantine-color-orange-4: #fb923c;
+  --mantine-color-orange-5: #f97316;
+  --mantine-color-orange-6: #ea580c;
+  --mantine-color-orange-7: #c2410c;
+  --mantine-color-orange-8: #9a3412;
+  --mantine-color-orange-9: #7c2d12;
+
+  /* Amber accent */
+  --mantine-color-yellow-0: #fffbeb;
+  --mantine-color-yellow-1: #fef3c7;
+  --mantine-color-yellow-2: #fde68a;
+  --mantine-color-yellow-3: #fcd34d;
+  --mantine-color-yellow-4: #fbbf24;
+  --mantine-color-yellow-5: #f59e0b;
+  --mantine-color-yellow-6: #d97706;
+  --mantine-color-yellow-7: #b45309;
+  --mantine-color-yellow-8: #92400e;
+  --mantine-color-yellow-9: #78350f;
+
+  /* Warm red */
+  --mantine-color-red-0: #fef2f2;
+  --mantine-color-red-1: #fee2e2;
+  --mantine-color-red-2: #fecaca;
+  --mantine-color-red-3: #fca5a5;
+  --mantine-color-red-4: #f87171;
+  --mantine-color-red-5: #ef4444;
+  --mantine-color-red-6: #dc2626;
+  --mantine-color-red-7: #b91c1c;
+  --mantine-color-red-8: #991b1b;
+  --mantine-color-red-9: #7f1d1d;
+
+  /* Warm green */
+  --mantine-color-green-0: #f0fdf4;
+  --mantine-color-green-1: #dcfce7;
+  --mantine-color-green-2: #bbf7d0;
+  --mantine-color-green-3: #86efac;
+  --mantine-color-green-4: #4ade80;
+  --mantine-color-green-5: #22c55e;
+  --mantine-color-green-6: #16a34a;
+  --mantine-color-green-7: #15803d;
+  --mantine-color-green-8: #166534;
+  --mantine-color-green-9: #14532d;
+
+  /* Blue */
+  --mantine-color-blue-0: #eff6ff;
+  --mantine-color-blue-1: #dbeafe;
+  --mantine-color-blue-2: #bfdbfe;
+  --mantine-color-blue-3: #93c5fd;
+  --mantine-color-blue-4: #60a5fa;
+  --mantine-color-blue-5: #3b82f6;
+  --mantine-color-blue-6: #2563eb;
+  --mantine-color-blue-7: #1d4ed8;
+  --mantine-color-blue-8: #1e40af;
+  --mantine-color-blue-9: #1e3a8a;
+
+  /* Gray scale - Warm stone tint */
+  --mantine-color-gray-0: #fafaf9;
+  --mantine-color-gray-1: #f5f5f4;
+  --mantine-color-gray-2: #e7e5e4;
+  --mantine-color-gray-3: #d6d3d1;
+  --mantine-color-gray-4: #a8a29e;
+  --mantine-color-gray-5: #78716c;
+  --mantine-color-gray-6: #57534e;
+  --mantine-color-gray-7: #44403c;
+  --mantine-color-gray-8: #292524;
+  --mantine-color-gray-9: #1c1917;
+
+  /* Dark scale - Warm */
+  --mantine-color-dark-0: #d6d3d1;
+  --mantine-color-dark-1: #a8a29e;
+  --mantine-color-dark-2: #78716c;
+  --mantine-color-dark-3: #57534e;
+  --mantine-color-dark-4: #44403c;
+  --mantine-color-dark-5: #292524;
+  --mantine-color-dark-6: #1c1917;
+  --mantine-color-dark-7: #171412;
+  --mantine-color-dark-8: #120f0d;
+  --mantine-color-dark-9: #0c0a09;
+}
+
+/* Ember Component Styles - Warm, cozy, inviting */
+[data-theme="ember"] .mantine-Input-input,
+[data-theme="ember"] .mantine-Textarea-input {
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fafaf9;
+  transition: all 180ms ease;
+}
+
+[data-theme="ember"] .mantine-Input-input:focus,
+[data-theme="ember"] .mantine-Textarea-input:focus {
+  border-color: #fb923c;
+  box-shadow:
+    0 0 0 3px rgba(251, 146, 60, 0.15),
+    inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  outline: none;
+}
+
+[data-theme="ember"] .mantine-Button-root {
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 180ms ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="ember"] .mantine-Button-root:hover {
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+}
+
+[data-theme="ember"] .mantine-Button-root[data-variant="filled"] {
+  background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+}
+
+[data-theme="ember"] .mantine-Button-root[data-variant="filled"]:hover {
+  background: linear-gradient(180deg, #fdba74 0%, #fb923c 100%);
+}
+
+[data-theme="ember"] .mantine-Card-root,
+[data-theme="ember"] .mantine-Paper-root {
+  border-radius: 12px;
+  border: 1px solid #e7e5e4;
+  background: #fafaf9;
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.04);
+}
+
+[data-theme="ember"] .mantine-Menu-dropdown {
+  border-radius: 10px;
+  border: 1px solid #e7e5e4;
+  background: #fafaf9;
+  box-shadow: 0 8px 24px rgba(194, 65, 12, 0.1);
+}
+
+[data-theme="ember"] .mantine-Menu-item {
+  border-radius: 6px;
+  margin: 3px;
+  transition: all 150ms ease;
+}
+
+[data-theme="ember"] .mantine-Menu-item:hover {
+  background: #fff7ed;
+}
+
+[data-theme="ember"] .mantine-Badge-root {
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+[data-theme="ember"] .mantine-Tabs-tab {
+  font-weight: 500;
+  border-radius: 8px 8px 0 0;
+  transition: all 150ms ease;
+}
+
+[data-theme="ember"] .mantine-Tabs-tab[data-active] {
+  background: #fff7ed;
+  border-bottom: 2px solid #f97316;
+}
+
+[data-theme="ember"] .mantine-Alert-root {
+  border-radius: 10px;
+  border-left: 4px solid;
+}
+
+[data-theme="ember"] .mantine-Notification-root {
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(194, 65, 12, 0.12);
+}
+
+/* Dark mode adjustments */
+[data-theme="ember"][data-mantine-color-scheme="dark"] .mantine-Input-input,
+[data-theme="ember"][data-mantine-color-scheme="dark"] .mantine-Textarea-input {
+  border-color: #44403c;
+  background: #292524;
+}
+
+[data-theme="ember"][data-mantine-color-scheme="dark"]
+  .mantine-Input-input:focus,
+[data-theme="ember"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.2);
+}
+
+[data-theme="ember"][data-mantine-color-scheme="dark"] .mantine-Card-root,
+[data-theme="ember"][data-mantine-color-scheme="dark"] .mantine-Paper-root {
+  border-color: #44403c;
+  background: #1c1917;
+}
+
+[data-theme="ember"][data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
+  border-color: #44403c;
+  background: #1c1917;
+}
+
+[data-theme="ember"][data-mantine-color-scheme="dark"]
+  .mantine-Menu-item:hover {
+  background: #292524;
+}
+
+[data-theme="ember"][data-mantine-color-scheme="dark"]
+  .mantine-Tabs-tab[data-active] {
+  background: #292524;
+}

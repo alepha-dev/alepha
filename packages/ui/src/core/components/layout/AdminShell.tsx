@@ -99,13 +99,13 @@ const AdminShell = (props: AdminShellProps) => {
       navbar={
         hasSidebar
           ? {
-              width: collapsed ? { base: 72 } : { base: 300 },
+              width: collapsed ? { base: 78 } : { base: 300 },
               breakpoint: "sm",
               collapsed: { mobile: !opened },
             }
           : undefined
       }
-      footer={props.footer ? { height: 60 } : undefined}
+      footer={props.footer ? { height: 24 } : undefined}
       {...props.appShellProps}
     >
       <AppShell.Header bg={ui.colors.surface} {...props.appShellHeaderProps}>

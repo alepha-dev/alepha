@@ -1,0 +1,230 @@
+/* Aurora Theme - Vibrant, playful design with heavy customization */
+
+[data-theme="aurora"] {
+  /* Typography - Rounded, friendly fonts */
+  --mantine-font-family:
+    "Nunito", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --mantine-font-family-headings:
+    "Nunito", "Poppins", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mantine-font-family-monospace:
+    "Fira Code", "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  /* Font sizes - Slightly larger for readability */
+  --mantine-font-size-xs: 0.8rem;
+  --mantine-font-size-sm: 0.9rem;
+  --mantine-font-size-md: 1rem;
+  --mantine-font-size-lg: 1.125rem;
+  --mantine-font-size-xl: 1.3rem;
+  --mantine-line-height: 1.6;
+
+  /* Border radius - Very rounded, playful */
+  --mantine-radius-default: 12px;
+  --mantine-radius-xs: 6px;
+  --mantine-radius-sm: 8px;
+  --mantine-radius-md: 12px;
+  --mantine-radius-lg: 16px;
+  --mantine-radius-xl: 24px;
+
+  /* Shadows - Soft, colorful */
+  --mantine-shadow-xs: 0 2px 4px rgba(139, 92, 246, 0.08);
+  --mantine-shadow-sm: 0 4px 8px rgba(139, 92, 246, 0.1);
+  --mantine-shadow-md: 0 8px 16px rgba(139, 92, 246, 0.12);
+  --mantine-shadow-lg: 0 16px 32px rgba(139, 92, 246, 0.15);
+  --mantine-shadow-xl: 0 24px 48px rgba(139, 92, 246, 0.18);
+
+  /* Primary violet - Aurora borealis inspired */
+  --mantine-color-violet-0: #f5f3ff;
+  --mantine-color-violet-1: #ede9fe;
+  --mantine-color-violet-2: #ddd6fe;
+  --mantine-color-violet-3: #c4b5fd;
+  --mantine-color-violet-4: #a78bfa;
+  --mantine-color-violet-5: #8b5cf6;
+  --mantine-color-violet-6: #7c3aed;
+  --mantine-color-violet-7: #6d28d9;
+  --mantine-color-violet-8: #5b21b6;
+  --mantine-color-violet-9: #4c1d95;
+
+  /* Cyan - Northern lights accent */
+  --mantine-color-cyan-0: #ecfeff;
+  --mantine-color-cyan-1: #cffafe;
+  --mantine-color-cyan-2: #a5f3fc;
+  --mantine-color-cyan-3: #67e8f9;
+  --mantine-color-cyan-4: #22d3ee;
+  --mantine-color-cyan-5: #06b6d4;
+  --mantine-color-cyan-6: #0891b2;
+  --mantine-color-cyan-7: #0e7490;
+  --mantine-color-cyan-8: #155e75;
+  --mantine-color-cyan-9: #164e63;
+
+  /* Pink accent */
+  --mantine-color-pink-0: #fdf2f8;
+  --mantine-color-pink-1: #fce7f3;
+  --mantine-color-pink-2: #fbcfe8;
+  --mantine-color-pink-3: #f9a8d4;
+  --mantine-color-pink-4: #f472b6;
+  --mantine-color-pink-5: #ec4899;
+  --mantine-color-pink-6: #db2777;
+  --mantine-color-pink-7: #be185d;
+  --mantine-color-pink-8: #9d174d;
+  --mantine-color-pink-9: #831843;
+
+  /* Green - Aurora green */
+  --mantine-color-green-0: #ecfdf5;
+  --mantine-color-green-1: #d1fae5;
+  --mantine-color-green-2: #a7f3d0;
+  --mantine-color-green-3: #6ee7b7;
+  --mantine-color-green-4: #34d399;
+  --mantine-color-green-5: #10b981;
+  --mantine-color-green-6: #059669;
+  --mantine-color-green-7: #047857;
+  --mantine-color-green-8: #065f46;
+  --mantine-color-green-9: #064e3b;
+
+  /* Red */
+  --mantine-color-red-0: #fef2f2;
+  --mantine-color-red-1: #fee2e2;
+  --mantine-color-red-2: #fecaca;
+  --mantine-color-red-3: #fca5a5;
+  --mantine-color-red-4: #f87171;
+  --mantine-color-red-5: #ef4444;
+  --mantine-color-red-6: #dc2626;
+  --mantine-color-red-7: #b91c1c;
+  --mantine-color-red-8: #991b1b;
+  --mantine-color-red-9: #7f1d1d;
+
+  /* Gray scale - Warm tinted */
+  --mantine-color-gray-0: #faf9fb;
+  --mantine-color-gray-1: #f3f1f5;
+  --mantine-color-gray-2: #e8e5ed;
+  --mantine-color-gray-3: #d4d0dc;
+  --mantine-color-gray-4: #a8a3b3;
+  --mantine-color-gray-5: #7c7689;
+  --mantine-color-gray-6: #5c5568;
+  --mantine-color-gray-7: #454050;
+  --mantine-color-gray-8: #302c38;
+  --mantine-color-gray-9: #1e1b24;
+
+  /* Dark scale */
+  --mantine-color-dark-0: #d4d0dc;
+  --mantine-color-dark-1: #a8a3b3;
+  --mantine-color-dark-2: #7c7689;
+  --mantine-color-dark-3: #5c5568;
+  --mantine-color-dark-4: #454050;
+  --mantine-color-dark-5: #302c38;
+  --mantine-color-dark-6: #252129;
+  --mantine-color-dark-7: #1e1b24;
+  --mantine-color-dark-8: #16141a;
+  --mantine-color-dark-9: #0d0c10;
+}
+
+/* Aurora Component Styles - Playful, rounded, vibrant */
+[data-theme="aurora"] .mantine-Input-input,
+[data-theme="aurora"] .mantine-Textarea-input {
+  border: 2px solid #e8e5ed;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #faf9fb 100%);
+  transition: all 200ms ease;
+}
+
+[data-theme="aurora"] .mantine-Input-input:focus,
+[data-theme="aurora"] .mantine-Textarea-input:focus {
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+  outline: none;
+}
+
+[data-theme="aurora"] .mantine-Button-root {
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 200ms ease;
+}
+
+[data-theme="aurora"] .mantine-Button-root:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+[data-theme="aurora"] .mantine-Button-root:active {
+  transform: translateY(0);
+}
+
+[data-theme="aurora"] .mantine-Card-root,
+[data-theme="aurora"] .mantine-Paper-root {
+  border-radius: 16px;
+  border: 1px solid #e8e5ed;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.08);
+}
+
+[data-theme="aurora"] .mantine-Menu-dropdown {
+  border-radius: 12px;
+  border: 1px solid #e8e5ed;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.12);
+  overflow: hidden;
+}
+
+[data-theme="aurora"] .mantine-Menu-item {
+  border-radius: 8px;
+  margin: 4px;
+  transition: all 150ms ease;
+}
+
+[data-theme="aurora"] .mantine-Menu-item:hover {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+}
+
+[data-theme="aurora"] .mantine-Badge-root {
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+[data-theme="aurora"] .mantine-Tabs-tab {
+  border-radius: 10px 10px 0 0;
+  font-weight: 500;
+  transition: all 150ms ease;
+}
+
+[data-theme="aurora"] .mantine-Tabs-tab[data-active] {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+}
+
+[data-theme="aurora"] .mantine-Alert-root {
+  border-radius: 14px;
+}
+
+/* Dark mode adjustments */
+[data-theme="aurora"][data-mantine-color-scheme="dark"] .mantine-Input-input,
+[data-theme="aurora"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input {
+  border-color: #454050;
+  background: linear-gradient(135deg, #252129 0%, #1e1b24 100%);
+}
+
+[data-theme="aurora"][data-mantine-color-scheme="dark"]
+  .mantine-Input-input:focus,
+[data-theme="aurora"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input:focus {
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+}
+
+[data-theme="aurora"][data-mantine-color-scheme="dark"] .mantine-Card-root,
+[data-theme="aurora"][data-mantine-color-scheme="dark"] .mantine-Paper-root {
+  border-color: #454050;
+  background: linear-gradient(135deg, #252129 0%, #1e1b24 100%);
+}
+
+[data-theme="aurora"][data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
+  border-color: #454050;
+  background: #252129;
+}
+
+[data-theme="aurora"][data-mantine-color-scheme="dark"]
+  .mantine-Menu-item:hover {
+  background: linear-gradient(135deg, #302c38 0%, #252129 100%);
+}
+
+[data-theme="aurora"][data-mantine-color-scheme="dark"]
+  .mantine-Tabs-tab[data-active] {
+  background: linear-gradient(135deg, #302c38 0%, #252129 100%);
+}

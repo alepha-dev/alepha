@@ -1,0 +1,300 @@
+/* Crystal Theme - Light, airy design with glass-morphism effects */
+
+[data-theme="crystal"] {
+  /* Typography - Clean, modern fonts */
+  --mantine-font-family:
+    "SF Pro Display", "Helvetica Neue", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --mantine-font-family-headings:
+    "SF Pro Display", "Helvetica Neue", -apple-system, BlinkMacSystemFont,
+    sans-serif;
+  --mantine-font-family-monospace:
+    "SF Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace;
+
+  /* Font sizes - Light, airy */
+  --mantine-font-size-xs: 0.75rem;
+  --mantine-font-size-sm: 0.8125rem;
+  --mantine-font-size-md: 0.9375rem;
+  --mantine-font-size-lg: 1.0625rem;
+  --mantine-font-size-xl: 1.25rem;
+  --mantine-line-height: 1.55;
+
+  /* Border radius - Smooth, refined */
+  --mantine-radius-default: 10px;
+  --mantine-radius-xs: 4px;
+  --mantine-radius-sm: 8px;
+  --mantine-radius-md: 10px;
+  --mantine-radius-lg: 14px;
+  --mantine-radius-xl: 20px;
+
+  /* Shadows - Light, glass-like */
+  --mantine-shadow-xs: 0 2px 8px rgba(59, 130, 246, 0.04);
+  --mantine-shadow-sm: 0 4px 12px rgba(59, 130, 246, 0.06);
+  --mantine-shadow-md: 0 8px 20px rgba(59, 130, 246, 0.08);
+  --mantine-shadow-lg: 0 16px 32px rgba(59, 130, 246, 0.1);
+  --mantine-shadow-xl: 0 24px 48px rgba(59, 130, 246, 0.12);
+
+  /* Primary blue - Sky blue */
+  --mantine-color-blue-0: #f0f9ff;
+  --mantine-color-blue-1: #e0f2fe;
+  --mantine-color-blue-2: #bae6fd;
+  --mantine-color-blue-3: #7dd3fc;
+  --mantine-color-blue-4: #38bdf8;
+  --mantine-color-blue-5: #0ea5e9;
+  --mantine-color-blue-6: #0284c7;
+  --mantine-color-blue-7: #0369a1;
+  --mantine-color-blue-8: #075985;
+  --mantine-color-blue-9: #0c4a6e;
+
+  /* Cyan accent */
+  --mantine-color-cyan-0: #ecfeff;
+  --mantine-color-cyan-1: #cffafe;
+  --mantine-color-cyan-2: #a5f3fc;
+  --mantine-color-cyan-3: #67e8f9;
+  --mantine-color-cyan-4: #22d3ee;
+  --mantine-color-cyan-5: #06b6d4;
+  --mantine-color-cyan-6: #0891b2;
+  --mantine-color-cyan-7: #0e7490;
+  --mantine-color-cyan-8: #155e75;
+  --mantine-color-cyan-9: #164e63;
+
+  /* Violet accent */
+  --mantine-color-violet-0: #f5f3ff;
+  --mantine-color-violet-1: #ede9fe;
+  --mantine-color-violet-2: #ddd6fe;
+  --mantine-color-violet-3: #c4b5fd;
+  --mantine-color-violet-4: #a78bfa;
+  --mantine-color-violet-5: #8b5cf6;
+  --mantine-color-violet-6: #7c3aed;
+  --mantine-color-violet-7: #6d28d9;
+  --mantine-color-violet-8: #5b21b6;
+  --mantine-color-violet-9: #4c1d95;
+
+  /* Green */
+  --mantine-color-green-0: #ecfdf5;
+  --mantine-color-green-1: #d1fae5;
+  --mantine-color-green-2: #a7f3d0;
+  --mantine-color-green-3: #6ee7b7;
+  --mantine-color-green-4: #34d399;
+  --mantine-color-green-5: #10b981;
+  --mantine-color-green-6: #059669;
+  --mantine-color-green-7: #047857;
+  --mantine-color-green-8: #065f46;
+  --mantine-color-green-9: #064e3b;
+
+  /* Red */
+  --mantine-color-red-0: #fef2f2;
+  --mantine-color-red-1: #fee2e2;
+  --mantine-color-red-2: #fecaca;
+  --mantine-color-red-3: #fca5a5;
+  --mantine-color-red-4: #f87171;
+  --mantine-color-red-5: #ef4444;
+  --mantine-color-red-6: #dc2626;
+  --mantine-color-red-7: #b91c1c;
+  --mantine-color-red-8: #991b1b;
+  --mantine-color-red-9: #7f1d1d;
+
+  /* Gray scale - Cool, light */
+  --mantine-color-gray-0: #f8fafc;
+  --mantine-color-gray-1: #f1f5f9;
+  --mantine-color-gray-2: #e2e8f0;
+  --mantine-color-gray-3: #cbd5e1;
+  --mantine-color-gray-4: #94a3b8;
+  --mantine-color-gray-5: #64748b;
+  --mantine-color-gray-6: #475569;
+  --mantine-color-gray-7: #334155;
+  --mantine-color-gray-8: #1e293b;
+  --mantine-color-gray-9: #0f172a;
+
+  /* Dark scale - Slate blue tint */
+  --mantine-color-dark-0: #cbd5e1;
+  --mantine-color-dark-1: #94a3b8;
+  --mantine-color-dark-2: #64748b;
+  --mantine-color-dark-3: #475569;
+  --mantine-color-dark-4: #334155;
+  --mantine-color-dark-5: #1e293b;
+  --mantine-color-dark-6: #0f172a;
+  --mantine-color-dark-7: #0c1322;
+  --mantine-color-dark-8: #080e1a;
+  --mantine-color-dark-9: #040711;
+}
+
+/* Crystal Component Styles - Glass-morphism, translucent, refined */
+[data-theme="crystal"] .mantine-Input-input,
+[data-theme="crystal"] .mantine-Textarea-input {
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  transition: all 200ms ease;
+}
+
+[data-theme="crystal"] .mantine-Input-input:focus,
+[data-theme="crystal"] .mantine-Textarea-input:focus {
+  border-color: #38bdf8;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 0 3px rgba(56, 189, 248, 0.12),
+    0 4px 12px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+[data-theme="crystal"] .mantine-Button-root {
+  font-weight: 500;
+  border-radius: 10px;
+  transition: all 200ms ease;
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="crystal"] .mantine-Button-root[data-variant="filled"] {
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+}
+
+[data-theme="crystal"] .mantine-Button-root[data-variant="filled"]:hover {
+  background: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 100%);
+  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.3);
+  transform: translateY(-1px);
+}
+
+[data-theme="crystal"] .mantine-Button-root[data-variant="light"] {
+  background: rgba(224, 242, 254, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="crystal"] .mantine-Button-root[data-variant="outline"],
+[data-theme="crystal"] .mantine-Button-root[data-variant="default"] {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  border-color: rgba(226, 232, 240, 0.8);
+}
+
+[data-theme="crystal"] .mantine-Card-root,
+[data-theme="crystal"] .mantine-Paper-root {
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.06);
+}
+
+[data-theme="crystal"] .mantine-Menu-dropdown {
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.12);
+}
+
+[data-theme="crystal"] .mantine-Menu-item {
+  border-radius: 8px;
+  margin: 3px;
+  transition: all 150ms ease;
+}
+
+[data-theme="crystal"] .mantine-Menu-item:hover {
+  background: rgba(224, 242, 254, 0.6);
+}
+
+[data-theme="crystal"] .mantine-Badge-root {
+  border-radius: 8px;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+[data-theme="crystal"] .mantine-Tabs-tab {
+  font-weight: 500;
+  border-radius: 10px 10px 0 0;
+  transition: all 150ms ease;
+}
+
+[data-theme="crystal"] .mantine-Tabs-tab[data-active] {
+  background: rgba(224, 242, 254, 0.5);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="crystal"] .mantine-Alert-root {
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="crystal"] .mantine-Modal-content {
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+}
+
+[data-theme="crystal"] .mantine-Notification-root {
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode adjustments - Frosted glass dark */
+[data-theme="crystal"][data-mantine-color-scheme="dark"] .mantine-Input-input,
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input {
+  border-color: rgba(51, 65, 85, 0.6);
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Input-input:focus,
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Textarea-input:focus {
+  border-color: #38bdf8;
+  background: rgba(30, 41, 59, 0.85);
+  box-shadow:
+    0 0 0 3px rgba(56, 189, 248, 0.15),
+    0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Button-root[data-variant="light"] {
+  background: rgba(14, 165, 233, 0.15);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Button-root[data-variant="outline"],
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Button-root[data-variant="default"] {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(51, 65, 85, 0.6);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"] .mantine-Card-root,
+[data-theme="crystal"][data-mantine-color-scheme="dark"] .mantine-Paper-root {
+  border-color: rgba(51, 65, 85, 0.5);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Menu-dropdown {
+  border-color: rgba(51, 65, 85, 0.5);
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(16px);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Menu-item:hover {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Tabs-tab[data-active] {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Modal-content {
+  background: rgba(15, 23, 42, 0.92);
+}
+
+[data-theme="crystal"][data-mantine-color-scheme="dark"]
+  .mantine-Notification-root {
+  background: rgba(15, 23, 42, 0.9);
+}

@@ -1,7 +1,7 @@
-/* GitHub Theme - Inspired by GitHub's design system */
+/* Midnight Theme - Clean, developer-focused design (variables only) */
 
-[data-theme="github"] {
-  /* Typography - GitHub's system font stack */
+[data-theme="midnight"] {
+  /* Typography - System font stack */
   --mantine-font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
@@ -12,14 +12,14 @@
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
     monospace;
 
-  /* Font sizes - GitHub's compact sizing */
+  /* Font sizes - Compact sizing */
   --mantine-font-size-xs: 0.75rem;
   --mantine-font-size-sm: 0.875rem;
   --mantine-font-size-md: 0.875rem;
   --mantine-font-size-lg: 1rem;
   --mantine-font-size-xl: 1.25rem;
 
-  /* Border radius - GitHub's subtle roundness */
+  /* Border radius - Subtle roundness */
   --mantine-radius-default: 6px;
   --mantine-radius-xs: 3px;
   --mantine-radius-sm: 6px;
@@ -27,7 +27,7 @@
   --mantine-radius-lg: 8px;
   --mantine-radius-xl: 12px;
 
-  /* Primary - GitHub blue */
+  /* Primary blue */
   --mantine-color-blue-0: #ddf4ff;
   --mantine-color-blue-1: #b6e3ff;
   --mantine-color-blue-2: #80ccff;
@@ -39,7 +39,7 @@
   --mantine-color-blue-8: #0a3069;
   --mantine-color-blue-9: #002155;
 
-  /* Success - GitHub green */
+  /* Success green */
   --mantine-color-green-0: #dafbe1;
   --mantine-color-green-1: #aceebb;
   --mantine-color-green-2: #6fdd8b;
@@ -51,7 +51,7 @@
   --mantine-color-green-8: #003d16;
   --mantine-color-green-9: #002d11;
 
-  /* Danger - GitHub red */
+  /* Danger red */
   --mantine-color-red-0: #ffebe9;
   --mantine-color-red-1: #ffcecb;
   --mantine-color-red-2: #ffaba8;
@@ -86,78 +86,4 @@
   --mantine-color-dark-7: #151b23;
   --mantine-color-dark-8: #0d1117;
   --mantine-color-dark-9: #010409;
-}
-
-/* GitHub Component Styles */
-[data-theme="github"] .mantine-Input-input,
-[data-theme="github"] .mantine-Textarea-input {
-  border: 1px solid #d0d7de;
-  box-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
-  transition:
-    border-color 80ms ease-in-out,
-    box-shadow 80ms ease-in-out;
-}
-
-[data-theme="github"] .mantine-Input-input:focus,
-[data-theme="github"] .mantine-Textarea-input:focus {
-  border-color: #0969da;
-  box-shadow:
-    inset 0 1px 0 rgba(208, 215, 222, 0.2),
-    0 0 0 3px rgba(9, 105, 218, 0.3);
-  outline: none;
-}
-
-[data-theme="github"] .mantine-Button-root {
-  font-weight: 500;
-  transition:
-    background-color 80ms ease-in-out,
-    border-color 80ms ease-in-out;
-}
-
-[data-theme="github"] .mantine-Button-root:active {
-  transform: scale(0.98);
-}
-
-[data-theme="github"] .mantine-Card-root,
-[data-theme="github"] .mantine-Paper-root {
-  border: 1px solid #d0d7de;
-}
-
-[data-theme="github"] .mantine-Menu-dropdown {
-  border: 1px solid #d0d7de;
-  box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
-}
-
-[data-theme="github"] .mantine-Menu-item:hover {
-  background-color: #f6f8fa;
-}
-
-[data-theme="github"][data-mantine-color-scheme="dark"] .mantine-Input-input,
-[data-theme="github"][data-mantine-color-scheme="dark"]
-  .mantine-Textarea-input {
-  border-color: #30363d;
-  box-shadow: none;
-}
-
-[data-theme="github"][data-mantine-color-scheme="dark"]
-  .mantine-Input-input:focus,
-[data-theme="github"][data-mantine-color-scheme="dark"]
-  .mantine-Textarea-input:focus {
-  border-color: #58a6ff;
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
-}
-
-[data-theme="github"][data-mantine-color-scheme="dark"] .mantine-Card-root,
-[data-theme="github"][data-mantine-color-scheme="dark"] .mantine-Paper-root {
-  border-color: #30363d;
-}
-
-[data-theme="github"][data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
-  border-color: #30363d;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="github"][data-mantine-color-scheme="dark"]
-  .mantine-Menu-item:hover {
-  background-color: #21262d;
 }

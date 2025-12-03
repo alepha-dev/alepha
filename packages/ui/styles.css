@@ -6,20 +6,11 @@
 
 /* Alepha Themes */
 @import "./src/core/themes/default.css";
-@import "./src/core/themes/github.css";
-@import "./src/core/themes/claude.css";
-@import "./src/core/themes/chatgpt.css";
-@import "./src/core/themes/shadcn.css";
-@import "./src/core/themes/macos.css";
-@import "./src/core/themes/youtube.css";
-@import "./src/core/themes/whatsapp.css";
-@import "./src/core/themes/ocean.css";
-@import "./src/core/themes/forest.css";
-@import "./src/core/themes/sunset.css";
-@import "./src/core/themes/lavender.css";
-@import "./src/core/themes/rose.css";
-@import "./src/core/themes/monochrome.css";
-@import "./src/core/themes/dracula.css";
+@import "./src/core/themes/midnight.css";
+@import "./src/core/themes/slate.css";
+@import "./src/core/themes/aurora.css";
+@import "./src/core/themes/ember.css";
+@import "./src/core/themes/crystal.css";
 
 :root {
   --alepha-background-light: var(--mantine-color-gray-1);

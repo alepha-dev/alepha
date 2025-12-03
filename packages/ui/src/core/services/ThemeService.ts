@@ -1,5 +1,5 @@
 import { $head } from "@alepha/react/head";
-import { $atom, type Static, t } from "alepha";
+import { $atom, $inject, Alepha, type Static, t } from "alepha";
 import { $cookie } from "alepha/server/cookies";
 
 export const themeAtom = $atom({
@@ -16,105 +16,58 @@ export const themeAtom = $atom({
   }),
   default: {
     id: "default",
-    primaryColor: "gray",
+    primaryColor: "blue",
   },
 });
 
 export type Theme = Static<typeof themeAtom.schema>;
 
 export class ThemeService {
+  protected readonly alepha = $inject(Alepha);
   protected themeCookie = $cookie(themeAtom);
 
   public themes = [
     {
       id: "default",
       label: "Default",
-      primaryColor: "orange",
-      primaryShade: { light: 6, dark: 7 },
-    },
-    {
-      id: "github",
-      label: "GitHub",
+      description: "Mantine defaults with no customization",
       primaryColor: "blue",
-      primaryShade: { light: 5, dark: 4 },
+      primaryShade: { light: 6, dark: 5 },
     },
     {
-      id: "claude",
-      label: "Claude",
-      primaryColor: "orange",
-      primaryShade: { light: 5, dark: 4 },
+      id: "midnight",
+      label: "Midnight",
+      description: "Clean, developer-focused design",
+      primaryColor: "gray",
+      primaryShade: { light: 8, dark: 8 },
     },
     {
-      id: "chatgpt",
-      label: "ChatGPT",
-      primaryColor: "teal",
-      primaryShade: { light: 5, dark: 5 },
-    },
-    {
-      id: "shadcn",
-      label: "shadcn",
+      id: "slate",
+      label: "Slate",
+      description: "Professional, minimal zinc palette",
       primaryColor: "dark",
       primaryShade: { light: 9, dark: 0 },
     },
     {
-      id: "macos",
-      label: "macOS",
-      primaryColor: "blue",
+      id: "aurora",
+      label: "Aurora",
+      description: "Vibrant, playful with gradients and hover effects",
+      primaryColor: "violet",
       primaryShade: { light: 5, dark: 4 },
     },
     {
-      id: "youtube",
-      label: "YouTube",
-      primaryColor: "red",
-      primaryShade: { light: 5, dark: 5 },
-    },
-    {
-      id: "whatsapp",
-      label: "WhatsApp",
-      primaryColor: "teal",
-      primaryShade: { light: 5, dark: 5 },
-    },
-    {
-      id: "ocean",
-      label: "Ocean",
-      primaryColor: "blue",
-      primaryShade: { light: 5, dark: 4 },
-    },
-    {
-      id: "forest",
-      label: "Forest",
-      primaryColor: "green",
-      primaryShade: { light: 5, dark: 4 },
-    },
-    {
-      id: "sunset",
-      label: "Sunset",
+      id: "ember",
+      label: "Ember",
+      description: "Warm, cozy with stone tints",
       primaryColor: "orange",
       primaryShade: { light: 5, dark: 4 },
     },
     {
-      id: "lavender",
-      label: "Lavender",
-      primaryColor: "violet",
+      id: "crystal",
+      label: "Crystal",
+      description: "Glass-morphism with backdrop blur effects",
+      primaryColor: "blue",
       primaryShade: { light: 5, dark: 4 },
-    },
-    {
-      id: "rose",
-      label: "Rose",
-      primaryColor: "pink",
-      primaryShade: { light: 5, dark: 4 },
-    },
-    {
-      id: "monochrome",
-      label: "Monochrome",
-      primaryColor: "gray",
-      primaryShade: { light: 7, dark: 7 },
-    },
-    {
-      id: "dracula",
-      label: "Dracula",
-      primaryColor: "violet",
-      primaryShade: { light: 4, dark: 4 },
     },
   ];
 
@@ -128,14 +81,23 @@ export class ThemeService {
 
   public setTheme(theme: Theme) {
     this.themeCookie.set(theme);
+    this.alepha.store.set(themeAtom, theme);
+
+    if (typeof document === "undefined") return;
+
+    document.documentElement.removeAttribute("data-theme");
+
+    if (theme.id !== "default") {
+      document.documentElement.setAttribute("data-theme", theme.id);
+    }
   }
 
   public getTheme() {
     // TODO: make a safe cookie getter, today it crash when Cookie Server is called inside vite pre-render
     try {
-      return this.themeCookie.get() ?? themeAtom.options.default;
+      return this.themeCookie.get() ?? this.alepha.store.get(themeAtom);
     } catch {
-      return themeAtom.options.default;
+      return this.alepha.store.get(themeAtom);
     }
   }
 }
