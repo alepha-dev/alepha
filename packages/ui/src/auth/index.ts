@@ -13,6 +13,7 @@ export { default as UserButton } from "./components/buttons/UserButton.tsx";
 export { default as Login } from "./components/Login.tsx";
 export { default as Register } from "./components/Register.tsx";
 export { default as ResetPassword } from "./components/ResetPassword.tsx";
+export { default as VerifyEmail } from "./components/VerifyEmail.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

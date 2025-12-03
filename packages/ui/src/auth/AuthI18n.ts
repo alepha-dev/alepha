@@ -54,6 +54,17 @@ export class AuthI18n {
         resetPasswordCancel: "Cancel",
         resetPasswordDisabled:
           "Password reset is not available. Please contact your administrator.",
+        verifyEmailTitle: "Email Verification",
+        verifyEmailVerifying: "Verifying your email...",
+        verifyEmailPleaseWait:
+          "Please wait while we verify your email address.",
+        verifyEmailSuccess: "Your email has been verified successfully.",
+        verifyEmailFailed:
+          "Failed to verify your email. The link may have expired or is invalid.",
+        verifyEmailMissingParams:
+          "Invalid verification link. Email and token are required.",
+        verifyEmailSignIn: "Sign in to your account",
+        verifyEmailBackToSignIn: "Back to sign in",
       },
     }),
   });
@@ -112,6 +123,17 @@ export class AuthI18n {
         resetPasswordCancel: "Annuler",
         resetPasswordDisabled:
           "La réinitialisation du mot de passe n'est pas disponible. Veuillez contacter votre administrateur.",
+        verifyEmailTitle: "Vérification de l'e-mail",
+        verifyEmailVerifying: "Vérification de votre e-mail...",
+        verifyEmailPleaseWait:
+          "Veuillez patienter pendant que nous vérifions votre adresse e-mail.",
+        verifyEmailSuccess: "Votre e-mail a été vérifié avec succès.",
+        verifyEmailFailed:
+          "Échec de la vérification de votre e-mail. Le lien a peut-être expiré ou est invalide.",
+        verifyEmailMissingParams:
+          "Lien de vérification invalide. L'e-mail et le jeton sont requis.",
+        verifyEmailSignIn: "Se connecter à votre compte",
+        verifyEmailBackToSignIn: "Retour à la connexion",
       },
     }),
   });

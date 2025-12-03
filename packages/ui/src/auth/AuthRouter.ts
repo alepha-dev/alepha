@@ -3,6 +3,7 @@ import { ReactAuth } from "@alepha/react/auth";
 import {
   IconLogin2,
   IconLogout2,
+  IconMailCheck,
   IconPasswordUser,
   IconUserPlus,
 } from "@tabler/icons-react";
@@ -18,7 +19,12 @@ export class AuthRouter {
     name: "AuthLayout",
     path: "/auth",
     lazy: () => import("./components/AuthLayout.tsx"),
-    children: () => [this.login, this.register, this.resetPassword],
+    children: () => [
+      this.login,
+      this.register,
+      this.resetPassword,
+      this.verifyEmail,
+    ],
   });
 
   login = $page({
@@ -76,6 +82,20 @@ export class AuthRouter {
         realmConfig: await this.userRealmClient.getRealmConfig(),
       };
     },
+  });
+
+  verifyEmail = $page({
+    icon: IconMailCheck,
+    label: "Verify Email",
+    description: "Verify your email address",
+    path: "/verify-email",
+    schema: {
+      query: t.object({
+        email: t.optional(t.string()),
+        token: t.optional(t.string()),
+      }),
+    },
+    lazy: () => import("./components/VerifyEmail.tsx"),
   });
 
   logout = $page({
