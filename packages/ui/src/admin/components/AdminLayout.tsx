@@ -1,5 +1,10 @@
 import { NestedView, useRouter } from "@alepha/react";
-import { ActionButton, AdminShell, OmnibarButton } from "@alepha/ui";
+import {
+  ActionButton,
+  AdminShell,
+  OmnibarButton,
+  ThemeButton,
+} from "@alepha/ui";
 import { UserButton } from "@alepha/ui/auth";
 import { Flex } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -45,6 +50,10 @@ const AdminLayout = () => {
             position: "right",
           },
           {
+            element: <ThemeButton />,
+            position: "right",
+          },
+          {
             type: "dark",
             position: "right",
           },
@@ -63,33 +72,17 @@ const AdminLayout = () => {
             ...router.node("adminUsers"),
             description: undefined,
           },
-          // {
-          //   icon: IconMail,
-          //   label: "Notifications",
-          //   href: router.path("adminNotifications"),
-          // },
-          // {
-          //   icon: IconShield,
-          //   label: "Sessions",
-          //   href: router.path("adminSessions"),
-          // },
-          // {
-          //   icon: IconChecklist,
-          //   label: "Verifications",
-          //   href: router.path("adminVerifications"),
-          // },
-          // {
-          //   label: "Jobs",
-          //   href: router.path("adminJobs"),
-          //   icon: IconTruckDelivery,
-          // },
-          // {
-          //   label: "Parameters",
-          //   href: router.path("adminParameters"),
-          //   icon: IconSettings,
-          // },
+          {
+            ...router.node("adminSessions"),
+            description: undefined,
+          },
+          {
+            ...router.node("adminNotifications"),
+            description: undefined,
+          },
           {
             ...router.node("adminFiles"),
+            description: undefined,
           },
         ],
       }}

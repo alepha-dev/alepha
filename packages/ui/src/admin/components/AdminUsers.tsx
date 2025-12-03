@@ -1,10 +1,11 @@
-import { useClient } from "@alepha/react";
+import { useClient, useRouter } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { DataTable, Text } from "@alepha/ui";
+import { ActionButton, DataTable, Text } from "@alepha/ui";
 import { Badge, Flex, Group } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import { type UserController, type UserEntity, users } from "alepha/api/users";
+import type { AdminRouter } from "../AdminRouter.ts";
 
 export interface AdminUsersProps {
   userRealmName?: string;
@@ -12,6 +13,7 @@ export interface AdminUsersProps {
 
 const AdminUsers = (props: AdminUsersProps) => {
   const client = useClient<UserController>();
+  const router = useRouter<AdminRouter>();
   const { l } = useI18n();
 
   const filters = t.object({
@@ -25,7 +27,16 @@ const AdminUsers = (props: AdminUsersProps) => {
   });
 
   return (
-    <Flex flex={1} direction={"column"}>
+    <Flex flex={1} direction="column">
+      <Flex justify="flex-end" p="md" pb={0}>
+        <ActionButton
+          leftSection={<IconPlus size={16} />}
+          href={router.path("adminUserCreate")}
+        >
+          Create User
+        </ActionButton>
+      </Flex>
+
       <DataTable<UserEntity, typeof filters>
         submitOnInit
         defaultSize={10}
@@ -37,6 +48,7 @@ const AdminUsers = (props: AdminUsersProps) => {
           horizontalSpacing: "xs",
           verticalSpacing: "xs",
           striped: false,
+          highlightOnHover: true,
         }}
         onFilterChange={(key, value, form) => {
           if (key === "query") {
@@ -45,12 +57,19 @@ const AdminUsers = (props: AdminUsersProps) => {
         }}
         filters={filters}
         tableTrProps={(item) => {
+          const baseProps: Record<string, any> = {
+            style: { cursor: "pointer" },
+            onClick: () =>
+              router.go("adminUserDetails", {
+                params: { userId: item.id },
+              }),
+          };
+
           if (!item.enabled) {
-            return {
-              opacity: 0.5,
-            };
+            baseProps.opacity = 0.5;
           }
-          return {};
+
+          return baseProps;
         }}
         items={async (filters) => {
           const response = await client.findUsers({

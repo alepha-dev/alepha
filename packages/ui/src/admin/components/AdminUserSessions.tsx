@@ -1,4 +1,4 @@
-import { useClient, useRouter } from "@alepha/react";
+import { useClient, useRouterState } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { ActionButton, DataTable, Flex, Text } from "@alepha/ui";
 import { Badge, Group } from "@mantine/core";
@@ -9,33 +9,19 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
-import {
-  type SessionController,
-  type SessionEntity,
-  sessions,
-} from "alepha/api/users";
+import type { SessionController, SessionEntity } from "alepha/api/users";
 import { useState } from "react";
-import type { AdminRouter } from "../AdminRouter.ts";
 
-export interface AdminSessionsProps {
+export interface AdminUserSessionsProps {
   userRealmName?: string;
 }
 
-const AdminSessions = (props: AdminSessionsProps) => {
+const AdminUserSessions = (props: AdminUserSessionsProps) => {
+  const state = useRouterState();
   const client = useClient<SessionController>();
-  const router = useRouter<AdminRouter>();
   const { l } = useI18n();
+  const userId = state.params.userId as string;
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const filters = t.object({
-    userId: t.optional(
-      t.uuid({
-        $control: {
-          query: t.pick(sessions.schema, ["userId"]),
-        },
-      }),
-    ),
-  });
 
   const getDeviceIcon = (device?: string) => {
     switch (device) {
@@ -60,26 +46,19 @@ const AdminSessions = (props: AdminSessionsProps) => {
     setRefreshKey((k) => k + 1);
   };
 
+  const filters = t.object({});
+
   return (
     <Flex flex={1} direction="column">
       <DataTable<SessionEntity, typeof filters>
         key={refreshKey}
         submitOnInit
         defaultSize={10}
-        typeFormProps={{
-          skipSubmitButton: true,
-          columns: 3,
-        }}
+        filters={filters}
         tableProps={{
           horizontalSpacing: "xs",
           verticalSpacing: "xs",
         }}
-        onFilterChange={(key, _value, form) => {
-          if (key === "userId") {
-            return form.submit();
-          }
-        }}
-        filters={filters}
         tableTrProps={(item) => {
           if (isExpired(item.expiresAt)) {
             return {
@@ -92,6 +71,7 @@ const AdminSessions = (props: AdminSessionsProps) => {
           const response = await client.findSessions({
             query: {
               ...filters,
+              userId,
               userRealmName: props.userRealmName,
             },
           });
@@ -99,25 +79,8 @@ const AdminSessions = (props: AdminSessionsProps) => {
           return response as Page<SessionEntity>;
         }}
         columns={{
-          userId: {
-            label: "User",
-            value: (item) => (
-              <ActionButton
-                variant="subtle"
-                size="xs"
-                href={router.path("adminUserDetails", {
-                  params: { userId: item.userId },
-                })}
-              >
-                <Text size="xs" ff="monospace">
-                  {item.userId.slice(0, 8)}...
-                </Text>
-              </ActionButton>
-            ),
-          },
           userAgent: {
             label: "Device",
-            fit: true,
             value: (item) => (
               <Group gap={4}>
                 {item.userAgent ? (
@@ -142,7 +105,7 @@ const AdminSessions = (props: AdminSessionsProps) => {
             ),
           },
           ip: {
-            label: "IP",
+            label: "IP Address",
             fit: true,
             value: (item) => (
               <Text size="xs" ff="monospace" c="dimmed">
@@ -192,4 +155,4 @@ const AdminSessions = (props: AdminSessionsProps) => {
   );
 };
 
-export default AdminSessions;
+export default AdminUserSessions;
