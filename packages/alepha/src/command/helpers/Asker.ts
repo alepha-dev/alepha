@@ -7,6 +7,7 @@ import {
   type Static,
   type TSchema,
   type TString,
+  t,
 } from "alepha";
 import { $logger } from "alepha/logger";
 
@@ -44,6 +45,8 @@ export interface AskMethod {
     question: string,
     options?: AskOptions<T>,
   ): Promise<Static<T>>;
+
+  permission: (question: string) => Promise<boolean>;
 }
 
 export class Asker {
@@ -61,6 +64,13 @@ export class Asker {
       options: AskOptions<T> = {},
     ) => {
       return await this.prompt<T>(question, options);
+    };
+
+    askFn.permission = async (question: string) => {
+      const response = await this.prompt(`${question} [Y/n]`, {
+        schema: t.enum(["Y", "y", "n", "no", "yes"], { default: "Y" }),
+      });
+      return response.charAt(0).toLowerCase() === "y";
     };
 
     return askFn;
