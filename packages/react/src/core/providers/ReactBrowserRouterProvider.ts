@@ -77,6 +77,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
         }
       }
 
+      state.name = route?.page.name;
       state.query = query;
       state.params = params ?? {};
 

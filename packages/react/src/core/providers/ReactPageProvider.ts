@@ -694,6 +694,9 @@ export interface ReactRouterState {
    * Optional meta information associated with the current page.
    */
   meta: Record<string, any>;
+
+  //
+  name?: string;
 }
 
 export interface RouterStackItem {

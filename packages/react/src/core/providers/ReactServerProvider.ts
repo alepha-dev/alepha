@@ -337,6 +337,8 @@ export class ReactServerProvider {
 
       const state = entry as ReactRouterState;
 
+      state.name = route.name;
+
       if (this.alepha.has(ServerLinksProvider)) {
         this.alepha.store.set(
           "alepha.server.request.apiLinks",
