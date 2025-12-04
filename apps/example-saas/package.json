@@ -15,6 +15,7 @@
     "dev": "alepha dev",
     "build": "alepha build",
     "verify": "alepha verify",
+    "deploy": "alepha deploy",
     "db:generate": "alepha db:generate"
   }
 }

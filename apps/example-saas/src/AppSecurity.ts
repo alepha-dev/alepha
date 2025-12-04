@@ -6,5 +6,9 @@ export class AppSecurity {
       credentials: true,
       google: true,
     },
+    settings: {
+      usernameEnabled: false,
+      verifyEmailRequired: true,
+    },
   });
 }
