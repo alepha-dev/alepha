@@ -60,10 +60,11 @@ export const realmAuthSettingsAtom = $atom({
     }),
   }),
   default: {
+    // for a fresh hello world setup, we accept registration and email login
     registrationAllowed: true,
     emailEnabled: true,
     emailRequired: true,
-    usernameEnabled: true,
+    usernameEnabled: false,
     usernameRequired: false,
     phoneEnabled: false,
     phoneRequired: false,
@@ -72,6 +73,7 @@ export const realmAuthSettingsAtom = $atom({
     resetPasswordAllowed: false,
     firstNameLastNameEnabled: false,
     firstNameLastNameRequired: false,
+    // TODO: not implemented yet
     passwordPolicy: {
       minLength: 8,
       requireUppercase: true,

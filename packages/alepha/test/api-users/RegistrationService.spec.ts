@@ -26,10 +26,11 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
   const emailProvider = alepha.inject(MemoryEmailProvider);
   emailProvider.records = [];
 
-  // Configure realm settings if provided
+  const userRealmProvider = alepha.inject(UserRealmProvider);
+
+  // Configure realm settings if provided (applies to default realm)
   if (realmSettings) {
-    const userRealmProvider = alepha.inject(UserRealmProvider);
-    userRealmProvider.register("test-realm", {
+    userRealmProvider.register("default", {
       settings: realmSettings as never,
     });
   }
@@ -42,7 +43,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
     cryptoProvider: alepha.inject(CryptoProvider),
     dateTimeProvider: alepha.inject(DateTimeProvider),
     emailProvider,
-    userRealmProvider: alepha.inject(UserRealmProvider),
+    userRealmProvider,
   };
 };
 
@@ -514,7 +515,9 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should allow login with username after registration", async ({
       expect,
     }) => {
-      const { registrationService, sessionService } = await setup();
+      const { registrationService, sessionService } = await setup({
+        usernameEnabled: true,
+      });
 
       const intent = await registrationService.createRegistrationIntent({
         email: "logintest@example.com",
@@ -541,7 +544,9 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should complete full registration flow without verification", async ({
       expect,
     }) => {
-      const { registrationService, sessionService } = await setup();
+      const { registrationService, sessionService } = await setup({
+        usernameEnabled: true,
+      });
 
       // Phase 1: Create intent
       const intent = await registrationService.createRegistrationIntent({
