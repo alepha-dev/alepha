@@ -60,7 +60,13 @@ const UserButton = (props: UserButtonProps) => {
   const authRouter = useRouter<AuthRouter>();
 
   if (!auth.user) {
-    return <ActionButton icon={IconLogin2} href={authRouter.path("login")} />;
+    return (
+      <ActionButton
+        {...buttonProps}
+        icon={IconLogin2}
+        href={authRouter.path("login")}
+      />
+    );
   }
 
   const userLabel = auth.user.username || auth.user.email;

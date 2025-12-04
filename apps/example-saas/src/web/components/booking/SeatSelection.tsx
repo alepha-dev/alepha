@@ -91,7 +91,14 @@ const SeatSelection = () => {
                 variant="subtle"
                 c="white"
                 leftSection={<IconArrowLeft size={18} />}
-                href={router.path("bookingResults")}
+                href={router.path("bookingResults", {
+                  query: {
+                    from: booking.search?.from ?? "",
+                    to: booking.search?.to ?? "",
+                    date: booking.search?.date ?? "",
+                    passengers: String(booking.search?.passengers ?? 1),
+                  },
+                })}
               >
                 Back
               </ActionButton>
@@ -378,6 +385,8 @@ const SeatSelection = () => {
                 </Group>
 
                 <ActionButton
+                  variant={"filled"}
+                  color={"pink"}
                   size="lg"
                   rightSection={<IconArrowRight size={18} />}
                   onClick={handleContinue}

@@ -51,6 +51,7 @@ const TripResults = (props: TripResultsProps) => {
   const handleDateChange = async (newDate: string | null) => {
     if (newDate && newDate !== search.date) {
       await router.go("bookingResults", {
+        force: true,
         query: {
           from: search.from,
           to: search.to,
@@ -197,6 +198,8 @@ const TripResults = (props: TripResultsProps) => {
                         </Text>
                       </Stack>
                       <ActionButton
+                        color={"pink"}
+                        variant={"filled"}
                         rightSection={<IconArrowRight size={16} />}
                         onClick={() => handleSelectTrip(trip)}
                       >

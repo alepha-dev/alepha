@@ -205,7 +205,14 @@ const Payment = () => {
 
                     <Control
                       title="Card Number"
-                      input={form.input.cardNumber}
+                      input={{
+                        ...form.input.cardNumber,
+                        props: {
+                          ...form.input.cardNumber.props,
+                          name: "cardnumber",
+                          autoComplete: "cc-number",
+                        },
+                      }}
                       text={{
                         placeholder: "1234 5678 9012 3456",
                         leftSection: <IconCreditCard size={16} />,
@@ -215,12 +222,26 @@ const Payment = () => {
                     <Group grow>
                       <Control
                         title="Expiry Date"
-                        input={form.input.expiry}
+                        input={{
+                          ...form.input.expiry,
+                          props: {
+                            ...form.input.expiry.props,
+                            name: "exp-date",
+                            autoComplete: "cc-exp",
+                          },
+                        }}
                         text={{ placeholder: "MM/YY" }}
                       />
                       <Control
                         title="CVV"
-                        input={form.input.cvv}
+                        input={{
+                          ...form.input.cvv,
+                          props: {
+                            ...form.input.cvv.props,
+                            name: "cvc",
+                            autoComplete: "cc-csc",
+                          },
+                        }}
                         text={{ placeholder: "123", type: "password" }}
                       />
                     </Group>
@@ -235,6 +256,8 @@ const Payment = () => {
                 </Card>
 
                 <ActionButton
+                  variant={"filled"}
+                  color="green"
                   form={form}
                   size="lg"
                   leftSection={<IconLock size={18} />}

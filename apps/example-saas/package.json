@@ -5,6 +5,7 @@
     "@alepha/react": "^0.13.3",
     "@alepha/ui": "^0.13.3",
     "alepha": "^0.13.3",
+    "framer-motion": "^12.23.25",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"
   },
