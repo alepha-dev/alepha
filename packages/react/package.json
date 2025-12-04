@@ -18,7 +18,7 @@
   "bin": "./src/index.ts",
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -27,8 +27,8 @@
     "@types/react-dom": "^19.2.3",
     "alepha": "0.13.2",
     "jsdom": "^27.2.0",
-    "react": "^19.2.0",
-    "vitest": "^4.0.14"
+    "react": "^19.2.1",
+    "vitest": "^4.0.15"
   },
   "peerDependencies": {
     "alepha": "0.13.2",

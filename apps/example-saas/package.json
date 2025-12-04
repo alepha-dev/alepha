@@ -5,11 +5,11 @@
     "@alepha/react": "^0.13.1",
     "@alepha/ui": "^0.13.1",
     "alepha": "^0.13.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
-    "@types/react": "^19.2.0"
+    "@types/react": "^19.2.7"
   },
   "scripts": {
     "dev": "alepha dev",

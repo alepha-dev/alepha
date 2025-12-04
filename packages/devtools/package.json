@@ -19,9 +19,9 @@
     "@alepha/ui": "0.13.2",
     "@tabler/icons-react": "^3.35.0",
     "alepha": "0.13.2",
-    "react": "^19.2.0",
-    "tsdown": "^0.16.7",
-    "vitest": "^4.0.14"
+    "react": "^19.2.1",
+    "tsdown": "^0.16.8",
+    "vitest": "^4.0.15"
   },
   "peerDependencies": {
     "alepha": "0.13.2"

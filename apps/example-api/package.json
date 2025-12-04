@@ -11,6 +11,6 @@
     "alepha": "^0.13.2"
   },
   "devDependencies": {
-    "wrangler": "^4.51.0"
+    "wrangler": "^4.52.1"
   }
 }

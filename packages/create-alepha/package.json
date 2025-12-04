@@ -18,8 +18,8 @@
     "tar": "^7.5.2"
   },
   "devDependencies": {
-    "tsdown": "^0.16.7",
-    "vitest": "^4.0.14"
+    "tsdown": "^0.16.8",
+    "vitest": "^4.0.15"
   },
   "scripts": {
     "lint": "biome check --fix",
