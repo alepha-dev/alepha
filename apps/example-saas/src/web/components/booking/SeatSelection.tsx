@@ -67,7 +67,13 @@ const SeatSelection = () => {
   if (!booking?.selectedTrip) {
     return (
       <Container size="md" py="xl">
-        <Card withBorder p="xl" ta="center">
+        <Card
+          withBorder
+          p="xl"
+          ta="center"
+          bg="var(--alepha-elevated)"
+          bd="1px solid var(--alepha-border)"
+        >
           <Stack gap="md" align="center">
             <Text c="dimmed">No trip selected</Text>
             <ActionButton href={router.path("bookingSearch")}>
@@ -82,9 +88,24 @@ const SeatSelection = () => {
   const rows = [...new Set(seats.map((s) => s.row))].sort((a, b) => a - b);
 
   return (
-    <Flex flex={1} direction="column">
-      <Flex bg="var(--mantine-color-blue-6)" py="lg" px="xl">
-        <Container size="lg" w="100%">
+    <Flex flex={1} direction="column" bg="var(--alepha-background)">
+      {/* Header with grid pattern */}
+      <Box bg="dark.9" pos="relative" style={{ overflow: "hidden" }}>
+        <Box
+          pos="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: "64px 64px",
+          }}
+        />
+        <Container size="lg" py="lg" pos="relative">
           <Group justify="space-between" align="center">
             <Group gap="lg">
               <ActionButton
@@ -102,38 +123,54 @@ const SeatSelection = () => {
               >
                 Back
               </ActionButton>
-              <Divider orientation="vertical" color="blue.4" />
+              <Divider orientation="vertical" color="dark.5" />
               <Group gap="xs">
                 <IconTrain size={18} color="white" />
                 <Text c="white" fw={600}>
                   {booking.selectedTrip.trainNumber}
                 </Text>
-                <Text c="white" opacity={0.8}>
+                <Text c="dark.3">
                   {booking.selectedTrip.departureTime} -{" "}
                   {booking.selectedTrip.arrivalTime}
                 </Text>
               </Group>
             </Group>
-            <Badge variant="light" color="white" size="lg">
+            <Badge
+              variant="outline"
+              color="gray"
+              size="lg"
+              styles={{
+                root: {
+                  borderColor: "rgba(255,255,255,0.3)",
+                  color: "white",
+                },
+              }}
+            >
               Select {requiredSeats} seat{requiredSeats > 1 ? "s" : ""}
             </Badge>
           </Group>
         </Container>
-      </Flex>
+      </Box>
 
       <Container size="lg" py="xl">
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
           <Stack gap="lg">
             <Title order={3}>Select Your Seats</Title>
 
-            <Card withBorder radius="md" p="md">
+            <Card
+              withBorder
+              radius="md"
+              p="md"
+              bg="var(--alepha-elevated)"
+              bd="1px solid var(--alepha-border)"
+            >
               <Stack gap="md">
                 <Group justify="center" gap="lg">
                   <Group gap="xs">
                     <Box
                       w={24}
                       h={24}
-                      bg="var(--mantine-color-gray-2)"
+                      bg="var(--alepha-surface)"
                       style={{ borderRadius: 4 }}
                     />
                     <Text size="sm">Available</Text>
@@ -142,7 +179,7 @@ const SeatSelection = () => {
                     <Box
                       w={24}
                       h={24}
-                      bg="var(--mantine-color-blue-6)"
+                      bg="var(--mantine-color-pink-6)"
                       style={{ borderRadius: 4 }}
                     />
                     <Text size="sm">Selected</Text>
@@ -158,10 +195,10 @@ const SeatSelection = () => {
                   </Group>
                 </Group>
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Flex direction="column" align="center" gap="sm">
-                  <Badge variant="light" mb="md">
+                  <Badge variant="light" color="dark" mb="md">
                     Front of Train
                   </Badge>
 
@@ -208,7 +245,7 @@ const SeatSelection = () => {
                                 key={seat.id}
                                 label={
                                   seat.isAvailable
-                                    ? `Seat ${seat.number} - ${seat.type} (${seat.class === "first" ? "+€" + seat.price : "Free"})`
+                                    ? `Seat ${seat.number} - ${seat.type} (${seat.class === "first" ? "+$" + seat.price : "Free"})`
                                     : "Occupied"
                                 }
                               >
@@ -228,11 +265,11 @@ const SeatSelection = () => {
                                     align="center"
                                     bg={
                                       isSelected
-                                        ? "var(--mantine-color-blue-6)"
+                                        ? "var(--mantine-color-pink-6)"
                                         : seat.isAvailable
                                           ? isFirstClass
                                             ? "var(--mantine-color-yellow-1)"
-                                            : "var(--mantine-color-gray-2)"
+                                            : "var(--alepha-surface)"
                                           : "var(--mantine-color-gray-4)"
                                     }
                                     c={isSelected ? "white" : "dark"}
@@ -263,7 +300,7 @@ const SeatSelection = () => {
                                 key={seat.id}
                                 label={
                                   seat.isAvailable
-                                    ? `Seat ${seat.number} - ${seat.type} (${seat.class === "first" ? "+€" + seat.price : "Free"})`
+                                    ? `Seat ${seat.number} - ${seat.type} (${seat.class === "first" ? "+$" + seat.price : "Free"})`
                                     : "Occupied"
                                 }
                               >
@@ -283,11 +320,11 @@ const SeatSelection = () => {
                                     align="center"
                                     bg={
                                       isSelected
-                                        ? "var(--mantine-color-blue-6)"
+                                        ? "var(--mantine-color-pink-6)"
                                         : seat.isAvailable
                                           ? isFirstClass
                                             ? "var(--mantine-color-yellow-1)"
-                                            : "var(--mantine-color-gray-2)"
+                                            : "var(--alepha-surface)"
                                           : "var(--mantine-color-gray-4)"
                                     }
                                     c={isSelected ? "white" : "dark"}
@@ -313,7 +350,7 @@ const SeatSelection = () => {
                     );
                   })}
 
-                  <Badge variant="light" mt="md">
+                  <Badge variant="light" color="dark" mt="md">
                     Rear of Train
                   </Badge>
                 </Flex>
@@ -324,7 +361,13 @@ const SeatSelection = () => {
           <Stack gap="lg">
             <Title order={3}>Booking Summary</Title>
 
-            <Card withBorder radius="md" p="lg">
+            <Card
+              withBorder
+              radius="md"
+              p="lg"
+              bg="var(--alepha-elevated)"
+              bd="1px solid var(--alepha-border)"
+            >
               <Stack gap="md">
                 <Group justify="space-between">
                   <Text c="dimmed">Route</Text>
@@ -346,13 +389,13 @@ const SeatSelection = () => {
                   </Text>
                 </Group>
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Group justify="space-between">
                   <Text c="dimmed">
-                    Base fare ({requiredSeats} × €{booking.selectedTrip.price})
+                    Base fare ({requiredSeats} × ${booking.selectedTrip.price})
                   </Text>
-                  <Text fw={500}>€{basePrice}</Text>
+                  <Text fw={500}>${basePrice} CAD</Text>
                 </Group>
 
                 {selectedSeats.length > 0 && (
@@ -366,27 +409,27 @@ const SeatSelection = () => {
                           Seat {seat.number} ({seat.class} class, {seat.type})
                         </Text>
                         <Text size="sm">
-                          {seat.price > 0 ? `+€${seat.price}` : "Free"}
+                          {seat.price > 0 ? `+$${seat.price}` : "Free"}
                         </Text>
                       </Group>
                     ))}
                   </>
                 )}
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Group justify="space-between">
                   <Text fw={600} size="lg">
                     Total
                   </Text>
-                  <Text fw={700} size="xl" c="blue">
-                    €{totalPrice}
+                  <Text fw={700} size="xl">
+                    ${totalPrice} CAD
                   </Text>
                 </Group>
 
                 <ActionButton
-                  variant={"filled"}
-                  color={"pink"}
+                  variant="filled"
+                  color="pink"
                   size="lg"
                   rightSection={<IconArrowRight size={18} />}
                   onClick={handleContinue}

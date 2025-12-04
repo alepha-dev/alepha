@@ -2,7 +2,9 @@ import { useClient, useInject, useRouter, useStore } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { ActionButton, Control, Flex, Text } from "@alepha/ui";
 import {
+  ActionIcon,
   Badge,
+  Box,
   Card,
   Container,
   Divider,
@@ -10,6 +12,7 @@ import {
   SimpleGrid,
   Stack,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -18,6 +21,7 @@ import {
   IconMail,
   IconShieldCheck,
   IconUser,
+  IconWand,
 } from "@tabler/icons-react";
 import { t } from "alepha";
 import type { BookingController } from "../../../api/controllers/BookingController.ts";
@@ -88,7 +92,7 @@ const Payment = () => {
           bookingId: createdBooking.id,
           bookingReference: createdBooking.reference,
           amount: totalPrice,
-          currency: "EUR",
+          currency: "CAD",
           method: "card",
           cardLast4: data.cardNumber.slice(-4),
           cardBrand: "Visa", // In real app, detect from card number
@@ -111,10 +115,22 @@ const Payment = () => {
     },
   });
 
+  const prefillTestData = () => {
+    form.input.cardNumber.set("4242424242424242");
+    form.input.expiry.set("12/28");
+    form.input.cvv.set("123");
+  };
+
   if (!booking?.selectedTrip || !booking?.selectedSeats?.length) {
     return (
       <Container size="md" py="xl">
-        <Card withBorder p="xl" ta="center">
+        <Card
+          withBorder
+          p="xl"
+          ta="center"
+          bg="var(--alepha-elevated)"
+          bd="1px solid var(--alepha-border)"
+        >
           <Stack gap="md" align="center">
             <Text c="dimmed">No seats selected</Text>
             <ActionButton href={router.path("bookingSearch")}>
@@ -127,9 +143,24 @@ const Payment = () => {
   }
 
   return (
-    <Flex flex={1} direction="column">
-      <Flex bg="var(--mantine-color-blue-6)" py="lg" px="xl">
-        <Container size="lg" w="100%">
+    <Flex flex={1} direction="column" bg="var(--alepha-background)">
+      {/* Header with grid pattern */}
+      <Box bg="dark.9" pos="relative" style={{ overflow: "hidden" }}>
+        <Box
+          pos="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: "64px 64px",
+          }}
+        />
+        <Container size="lg" py="lg" pos="relative">
           <Group justify="space-between" align="center">
             <Group gap="lg">
               <ActionButton
@@ -140,7 +171,7 @@ const Payment = () => {
               >
                 Back
               </ActionButton>
-              <Divider orientation="vertical" color="blue.4" />
+              <Divider orientation="vertical" color="dark.5" />
               <Group gap="xs">
                 <IconLock size={18} color="white" />
                 <Text c="white" fw={600}>
@@ -150,13 +181,13 @@ const Payment = () => {
             </Group>
             <Group gap="xs">
               <IconShieldCheck size={20} color="white" />
-              <Text c="white" size="sm">
+              <Text c="dark.3" size="sm">
                 256-bit SSL Encryption
               </Text>
             </Group>
           </Group>
         </Container>
-      </Flex>
+      </Box>
 
       <Container size="lg" py="xl">
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
@@ -165,7 +196,13 @@ const Payment = () => {
 
             <form {...form.props}>
               <Stack gap="lg">
-                <Card withBorder radius="md" p="lg">
+                <Card
+                  withBorder
+                  radius="md"
+                  p="lg"
+                  bg="var(--alepha-elevated)"
+                  bd="1px solid var(--alepha-border)"
+                >
                   <Stack gap="md">
                     <Group gap="xs">
                       <IconUser size={18} />
@@ -196,11 +233,29 @@ const Payment = () => {
                   </Stack>
                 </Card>
 
-                <Card withBorder radius="md" p="lg">
+                <Card
+                  withBorder
+                  radius="md"
+                  p="lg"
+                  bg="var(--alepha-elevated)"
+                  bd="1px solid var(--alepha-border)"
+                >
                   <Stack gap="md">
-                    <Group gap="xs">
-                      <IconCreditCard size={18} />
-                      <Text fw={500}>Card Details</Text>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <IconCreditCard size={18} />
+                        <Text fw={500}>Card Details</Text>
+                      </Group>
+                      <Tooltip label="Fill with test data">
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          size="sm"
+                          onClick={prefillTestData}
+                        >
+                          <IconWand size={16} />
+                        </ActionIcon>
+                      </Tooltip>
                     </Group>
 
                     <Control
@@ -256,13 +311,13 @@ const Payment = () => {
                 </Card>
 
                 <ActionButton
-                  variant={"filled"}
+                  variant="filled"
                   color="green"
                   form={form}
                   size="lg"
                   leftSection={<IconLock size={18} />}
                 >
-                  Pay €{totalPrice}
+                  Pay ${totalPrice} CAD
                 </ActionButton>
               </Stack>
             </form>
@@ -271,16 +326,22 @@ const Payment = () => {
           <Stack gap="lg">
             <Title order={3}>Order Summary</Title>
 
-            <Card withBorder radius="md" p="lg">
+            <Card
+              withBorder
+              radius="md"
+              p="lg"
+              bg="var(--alepha-elevated)"
+              bd="1px solid var(--alepha-border)"
+            >
               <Stack gap="md">
                 <Group justify="space-between">
                   <Text fw={500}>Journey Details</Text>
-                  <Badge variant="light">
+                  <Badge variant="light" color="dark">
                     {booking.selectedTrip.trainType}
                   </Badge>
                 </Group>
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Group justify="space-between">
                   <Text c="dimmed">Route</Text>
@@ -309,7 +370,7 @@ const Payment = () => {
                   <Text fw={500}>{booking.selectedTrip.arrivalTime}</Text>
                 </Group>
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Text fw={500}>Selected Seats</Text>
                 {booking.selectedSeats.map((seat) => (
@@ -318,39 +379,45 @@ const Payment = () => {
                       Seat {seat.number} ({seat.class} class)
                     </Text>
                     <Text size="sm">
-                      {seat.price > 0 ? `+€${seat.price}` : "Included"}
+                      {seat.price > 0 ? `+$${seat.price}` : "Included"}
                     </Text>
                   </Group>
                 ))}
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Group justify="space-between">
                   <Text c="dimmed">Base fare ({requiredSeats} passengers)</Text>
-                  <Text>€{basePrice}</Text>
+                  <Text>${basePrice}</Text>
                 </Group>
 
                 {seatPrice > 0 && (
                   <Group justify="space-between">
                     <Text c="dimmed">Seat selection</Text>
-                    <Text>€{seatPrice}</Text>
+                    <Text>${seatPrice}</Text>
                   </Group>
                 )}
 
-                <Divider />
+                <Divider color="var(--alepha-border)" />
 
                 <Group justify="space-between">
                   <Text fw={600} size="lg">
                     Total
                   </Text>
-                  <Text fw={700} size="xl" c="blue">
-                    €{totalPrice}
+                  <Text fw={700} size="xl">
+                    ${totalPrice} CAD
                   </Text>
                 </Group>
               </Stack>
             </Card>
 
-            <Card withBorder radius="md" p="md">
+            <Card
+              withBorder
+              radius="md"
+              p="md"
+              bg="var(--alepha-elevated)"
+              bd="1px solid var(--alepha-border)"
+            >
               <Group gap="xs">
                 <IconShieldCheck
                   size={20}

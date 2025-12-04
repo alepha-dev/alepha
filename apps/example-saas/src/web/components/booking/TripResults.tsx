@@ -2,6 +2,7 @@ import { useInject, useRouter } from "@alepha/react";
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import {
   Badge,
+  Box,
   Card,
   Container,
   Divider,
@@ -63,9 +64,24 @@ const TripResults = (props: TripResultsProps) => {
   };
 
   return (
-    <Flex flex={1} direction="column">
-      <Flex bg="var(--mantine-color-blue-6)" py="lg" px="xl">
-        <Container size="lg" w="100%">
+    <Flex flex={1} direction="column" bg="var(--alepha-background)">
+      {/* Header with grid pattern */}
+      <Box bg="dark.9" pos="relative" style={{ overflow: "hidden" }}>
+        <Box
+          pos="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: "64px 64px",
+          }}
+        />
+        <Container size="lg" py="lg" pos="relative">
           <Group justify="space-between" align="center">
             <Group gap="lg">
               <ActionButton
@@ -76,7 +92,7 @@ const TripResults = (props: TripResultsProps) => {
               >
                 Back
               </ActionButton>
-              <Divider orientation="vertical" color="blue.4" />
+              <Divider orientation="vertical" color="dark.5" />
               <Group gap="xs">
                 <Text c="white" fw={600}>
                   {search.from}
@@ -89,25 +105,47 @@ const TripResults = (props: TripResultsProps) => {
             </Group>
             <Group gap="md">
               <Badge
-                variant="light"
-                color="white"
+                variant="outline"
+                color="gray"
                 size="lg"
                 leftSection={<IconUsers size={14} />}
+                styles={{
+                  root: {
+                    borderColor: "rgba(255,255,255,0.3)",
+                    color: "white",
+                  },
+                }}
               >
                 {search.passengers} passenger
                 {search.passengers > 1 ? "s" : ""}
               </Badge>
-              <Badge variant="light" color="white" size="lg">
+              <Badge
+                variant="outline"
+                color="gray"
+                size="lg"
+                styles={{
+                  root: {
+                    borderColor: "rgba(255,255,255,0.3)",
+                    color: "white",
+                  },
+                }}
+              >
                 {search.date}
               </Badge>
             </Group>
           </Group>
         </Container>
-      </Flex>
+      </Box>
 
       <Container size="lg" py="xl">
         <Stack gap="md">
-          <Card withBorder radius="md" p="md">
+          <Card
+            withBorder
+            radius="md"
+            p="md"
+            bg="var(--alepha-elevated)"
+            bd="1px solid var(--alepha-border)"
+          >
             <Flex justify="center">
               <MiniCalendar
                 value={search.date}
@@ -126,7 +164,14 @@ const TripResults = (props: TripResultsProps) => {
           </Group>
 
           {trips.map((trip) => (
-            <Card key={trip.id} withBorder radius="md" p={0}>
+            <Card
+              key={trip.id}
+              withBorder
+              radius="md"
+              p={0}
+              bg="var(--alepha-elevated)"
+              bd="1px solid var(--alepha-border)"
+            >
               <Flex>
                 <Flex flex={1} p="lg" direction="column" gap="md">
                   <Group justify="space-between" align="flex-start">
@@ -142,7 +187,7 @@ const TripResults = (props: TripResultsProps) => {
 
                       <Stack gap={4} align="center">
                         <Group gap="xs">
-                          <Divider w={60} />
+                          <Divider w={60} color="var(--alepha-border)" />
                           <Flex
                             align="center"
                             gap={4}
@@ -152,9 +197,9 @@ const TripResults = (props: TripResultsProps) => {
                             <IconClock size={14} />
                             <Text size="xs">{trip.duration}</Text>
                           </Flex>
-                          <Divider w={60} />
+                          <Divider w={60} color="var(--alepha-border)" />
                         </Group>
-                        <Badge variant="light" size="sm">
+                        <Badge variant="light" size="sm" color="dark">
                           Direct
                         </Badge>
                       </Stack>
@@ -182,7 +227,7 @@ const TripResults = (props: TripResultsProps) => {
                     </Stack>
                   </Group>
 
-                  <Divider />
+                  <Divider color="var(--alepha-border)" />
 
                   <Group justify="space-between" align="center">
                     <Text size="sm" c="dimmed">
@@ -190,16 +235,16 @@ const TripResults = (props: TripResultsProps) => {
                     </Text>
                     <Group gap="md" align="center">
                       <Stack gap={0} align="flex-end">
-                        <Text size="xl" fw={700} c="blue">
-                          {trip.price}
+                        <Text size="xl" fw={700}>
+                          ${trip.price} CAD
                         </Text>
                         <Text size="xs" c="dimmed">
                           per passenger
                         </Text>
                       </Stack>
                       <ActionButton
-                        color={"pink"}
-                        variant={"filled"}
+                        color="pink"
+                        variant="filled"
                         rightSection={<IconArrowRight size={16} />}
                         onClick={() => handleSelectTrip(trip)}
                       >
