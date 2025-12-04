@@ -1,8 +1,8 @@
 import { NestedView } from "@alepha/react";
-import { DarkModeButton, ThemeButton } from "@alepha/ui";
+import { ActionButton, DarkModeButton, ThemeButton } from "@alepha/ui";
 import { UserButton } from "@alepha/ui/auth";
 import { AppShell, Flex, Group, Title } from "@mantine/core";
-import { IconTrain } from "@tabler/icons-react";
+import { IconSettings, IconTrain } from "@tabler/icons-react";
 
 const BookingLayout = () => {
   return (
@@ -16,6 +16,7 @@ const BookingLayout = () => {
           <Group gap="xs">
             <ThemeButton />
             <DarkModeButton />
+            <ActionButton href={"/admin"} icon={IconSettings} />
             <UserButton variant="subtle" />
           </Group>
         </Flex>

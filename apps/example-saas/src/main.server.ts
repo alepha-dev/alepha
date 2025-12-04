@@ -1,7 +1,6 @@
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
-import { AppSecurity } from "./AppSecurity.ts";
-import { BookingService } from "./services/BookingService.ts";
+import { ExampleSaasApi } from "./api/index.ts";
+import { ExampleSaasWeb } from "./web/index.ts";
 
 const alepha = Alepha.create({
   env: {
@@ -9,8 +8,7 @@ const alepha = Alepha.create({
   },
 });
 
-alepha.with(AppSecurity);
-alepha.with(BookingService);
-alepha.with(AppRouter);
+alepha.with(ExampleSaasApi);
+alepha.with(ExampleSaasWeb);
 
 run(alepha);

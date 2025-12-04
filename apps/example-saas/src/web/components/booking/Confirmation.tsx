@@ -21,9 +21,9 @@ import {
   IconTicket,
   IconTrain,
 } from "@tabler/icons-react";
+import { BookingService } from "../../../api/services/BookingService.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { bookingAtom } from "../../atoms/bookingAtom.ts";
-import { BookingService } from "../../services/BookingService.ts";
 
 const Confirmation = () => {
   const router = useRouter<AppRouter>();
@@ -257,12 +257,7 @@ const Confirmation = () => {
               </Stack>
             </Card>
 
-            <Card
-              withBorder
-              radius="md"
-              p="lg"
-              bg="var(--mantine-color-blue-0)"
-            >
+            <Card withBorder radius="md" p="lg">
               <Stack gap="sm">
                 <Text fw={500}>Need help?</Text>
                 <Text size="sm" c="dimmed">

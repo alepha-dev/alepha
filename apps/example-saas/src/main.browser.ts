@@ -1,8 +1,8 @@
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
+import { ExampleSaasWeb } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(AppRouter);
+alepha.with(ExampleSaasWeb);
 
 run(alepha);

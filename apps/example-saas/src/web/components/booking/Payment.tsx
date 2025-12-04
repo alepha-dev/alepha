@@ -1,4 +1,4 @@
-import { useInject, useRouter, useStore } from "@alepha/react";
+import { useClient, useInject, useRouter, useStore } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { ActionButton, Control, Flex, Text } from "@alepha/ui";
 import {
@@ -20,14 +20,24 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { t } from "alepha";
+import type { BookingController } from "../../../api/controllers/BookingController.ts";
+import type { PaymentController } from "../../../api/controllers/PaymentController.ts";
+import { BookingService } from "../../../api/services/BookingService.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { bookingAtom } from "../../atoms/bookingAtom.ts";
-import { BookingService } from "../../services/BookingService.ts";
 
 const Payment = () => {
   const router = useRouter<AppRouter>();
   const bookingService = useInject(BookingService);
+  const bookingClient = useClient<BookingController>();
+  const paymentClient = useClient<PaymentController>();
   const [booking] = useStore(bookingAtom);
+
+  const requiredSeats = booking?.search?.passengers ?? 1;
+  const basePrice = (booking?.selectedTrip?.price ?? 0) * requiredSeats;
+  const seatPrice =
+    booking?.selectedSeats?.reduce((sum, s) => sum + s.price, 0) ?? 0;
+  const totalPrice = basePrice + seatPrice;
 
   const form = useForm({
     schema: t.object({
@@ -39,10 +49,54 @@ const Payment = () => {
       cvv: t.string({ minLength: 3, maxLength: 4 }),
     }),
     handler: async (data) => {
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (
+        !booking?.selectedTrip ||
+        !booking?.search ||
+        !booking?.selectedSeats
+      ) {
+        throw new Error("Missing booking data");
+      }
 
-      const bookingRef = bookingService.generateBookingReference();
+      // 1. Create the booking in the database
+      const createdBooking = await bookingClient.createBooking({
+        body: {
+          departureStation: booking.search.from,
+          arrivalStation: booking.search.to,
+          departureTime: booking.selectedTrip.departureTime,
+          arrivalTime: booking.selectedTrip.arrivalTime,
+          travelDate: booking.search.date,
+          trainNumber: booking.selectedTrip.trainNumber,
+          trainType: booking.selectedTrip.trainType,
+          passengerFirstName: data.firstName,
+          passengerLastName: data.lastName,
+          passengerEmail: data.email,
+          seats: booking.selectedSeats.map((seat) => ({
+            number: seat.number,
+            class: seat.class,
+            price: seat.price,
+          })),
+          baseFare: basePrice,
+          seatUpgrades: seatPrice,
+          totalPrice: totalPrice,
+          passengerCount: requiredSeats,
+        },
+      });
+
+      // 2. Create the payment record
+      await paymentClient.createPayment({
+        body: {
+          bookingId: createdBooking.id,
+          bookingReference: createdBooking.reference,
+          amount: totalPrice,
+          currency: "EUR",
+          method: "card",
+          cardLast4: data.cardNumber.slice(-4),
+          cardBrand: "Visa", // In real app, detect from card number
+          payerEmail: data.email,
+        },
+      });
+
+      // 3. Update local state with booking reference
       bookingService.updateBooking({
         step: "confirmation",
         passenger: {
@@ -50,18 +104,12 @@ const Payment = () => {
           lastName: data.lastName,
           email: data.email,
         },
-        bookingReference: bookingRef,
+        bookingReference: createdBooking.reference,
       });
 
       await router.go("bookingConfirmation");
     },
   });
-
-  const requiredSeats = booking?.search?.passengers ?? 1;
-  const basePrice = (booking?.selectedTrip?.price ?? 0) * requiredSeats;
-  const seatPrice =
-    booking?.selectedSeats?.reduce((sum, s) => sum + s.price, 0) ?? 0;
-  const totalPrice = basePrice + seatPrice;
 
   if (!booking?.selectedTrip || !booking?.selectedSeats?.length) {
     return (
@@ -279,12 +327,7 @@ const Payment = () => {
               </Stack>
             </Card>
 
-            <Card
-              withBorder
-              radius="md"
-              p="md"
-              bg="var(--mantine-color-gray-0)"
-            >
+            <Card withBorder radius="md" p="md">
               <Group gap="xs">
                 <IconShieldCheck
                   size={20}

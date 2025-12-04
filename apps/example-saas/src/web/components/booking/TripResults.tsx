@@ -1,4 +1,4 @@
-import { useInject, useRouter, useStore } from "@alepha/react";
+import { useInject, useRouter } from "@alepha/react";
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import {
   Badge,
@@ -9,6 +9,7 @@ import {
   Stack,
   Title,
 } from "@mantine/core";
+import { MiniCalendar } from "@mantine/dates";
 import {
   IconArrowLeft,
   IconArrowRight,
@@ -16,47 +17,49 @@ import {
   IconTrain,
   IconUsers,
 } from "@tabler/icons-react";
-import { useMemo } from "react";
+import { BookingService } from "../../../api/services/BookingService.ts";
 import type { AppRouter } from "../../AppRouter.ts";
-import { bookingAtom, type Trip } from "../../atoms/bookingAtom.ts";
-import { BookingService } from "../../services/BookingService.ts";
+import type { Trip } from "../../atoms/bookingAtom.ts";
 
-const TripResults = () => {
+/**
+ * Props passed from $page resolve (SSR data fetching)
+ */
+export interface TripResultsProps {
+  trips: Trip[];
+  search: {
+    from: string;
+    to: string;
+    date: string;
+    passengers: number;
+  };
+}
+
+const TripResults = (props: TripResultsProps) => {
+  const { trips, search } = props;
   const router = useRouter<AppRouter>();
   const bookingService = useInject(BookingService);
-  const [booking] = useStore(bookingAtom);
-
-  const trips = useMemo(() => {
-    if (!booking?.search) return [];
-    return bookingService.searchTrips(
-      booking.search.from,
-      booking.search.to,
-      booking.search.date,
-    );
-  }, [booking?.search]);
 
   const handleSelectTrip = async (trip: Trip) => {
     bookingService.updateBooking({
       step: "seats",
       selectedTrip: trip,
+      search,
     });
     await router.go("bookingSeats");
   };
 
-  if (!booking?.search) {
-    return (
-      <Container size="md" py="xl">
-        <Card withBorder p="xl" ta="center">
-          <Stack gap="md" align="center">
-            <Text c="dimmed">No search criteria found</Text>
-            <ActionButton href={router.path("bookingSearch")}>
-              Start New Search
-            </ActionButton>
-          </Stack>
-        </Card>
-      </Container>
-    );
-  }
+  const handleDateChange = async (newDate: string | null) => {
+    if (newDate && newDate !== search.date) {
+      await router.go("bookingResults", {
+        query: {
+          from: search.from,
+          to: search.to,
+          date: newDate,
+          passengers: String(search.passengers),
+        },
+      });
+    }
+  };
 
   return (
     <Flex flex={1} direction="column">
@@ -75,11 +78,11 @@ const TripResults = () => {
               <Divider orientation="vertical" color="blue.4" />
               <Group gap="xs">
                 <Text c="white" fw={600}>
-                  {booking.search.from}
+                  {search.from}
                 </Text>
                 <IconArrowRight size={16} color="white" />
                 <Text c="white" fw={600}>
-                  {booking.search.to}
+                  {search.to}
                 </Text>
               </Group>
             </Group>
@@ -90,11 +93,11 @@ const TripResults = () => {
                 size="lg"
                 leftSection={<IconUsers size={14} />}
               >
-                {booking.search.passengers} passenger
-                {booking.search.passengers > 1 ? "s" : ""}
+                {search.passengers} passenger
+                {search.passengers > 1 ? "s" : ""}
               </Badge>
               <Badge variant="light" color="white" size="lg">
-                {booking.search.date}
+                {search.date}
               </Badge>
             </Group>
           </Group>
@@ -103,6 +106,17 @@ const TripResults = () => {
 
       <Container size="lg" py="xl">
         <Stack gap="md">
+          <Card withBorder radius="md" p="md">
+            <Flex justify="center">
+              <MiniCalendar
+                value={search.date}
+                onChange={handleDateChange}
+                numberOfDays={7}
+                minDate={new Date().toISOString().split("T")[0]}
+              />
+            </Flex>
+          </Card>
+
           <Group justify="space-between" align="center">
             <Title order={3}>{trips.length} trains available</Title>
             <Text c="dimmed" size="sm">

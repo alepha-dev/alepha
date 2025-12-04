@@ -20,9 +20,9 @@ import {
   IconTrain,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
+import { BookingService } from "../../../api/services/BookingService.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { bookingAtom, type Seat } from "../../atoms/bookingAtom.ts";
-import { BookingService } from "../../services/BookingService.ts";
 
 const SeatSelection = () => {
   const router = useRouter<AppRouter>();

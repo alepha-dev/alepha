@@ -1,4 +1,4 @@
-import { NestedView, useRouter } from "@alepha/react";
+import { NestedView, useInject, useRouter } from "@alepha/react";
 import {
   ActionButton,
   AdminShell,
@@ -8,11 +8,13 @@ import {
 import { UserButton } from "@alepha/ui/auth";
 import { Flex } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
-import ToggleSidebarButton from "../../core/components/buttons/ToggleSidebarButton.tsx";
 import type { AdminRouter } from "../AdminRouter.ts";
+import { AdminSidebar } from "../AdminSidebar.ts";
 
 const AdminLayout = () => {
   const router = useRouter<AdminRouter>();
+  const sidebar = useInject(AdminSidebar);
+
   return (
     <AdminShell
       appShellMainProps={{
@@ -61,30 +63,7 @@ const AdminLayout = () => {
       }}
       sidebarProps={{
         gap: "xs",
-        menu: [
-          {
-            element: <ToggleSidebarButton />,
-          },
-          {
-            type: "spacer",
-          },
-          {
-            ...router.node("adminUsers"),
-            description: undefined,
-          },
-          {
-            ...router.node("adminSessions"),
-            description: undefined,
-          },
-          {
-            ...router.node("adminNotifications"),
-            description: undefined,
-          },
-          {
-            ...router.node("adminFiles"),
-            description: undefined,
-          },
-        ],
+        menu: sidebar.menu(router),
       }}
     >
       <Flex flex={1} bg={"var(--alepha-surface)"}>

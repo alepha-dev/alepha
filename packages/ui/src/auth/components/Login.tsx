@@ -174,7 +174,7 @@ const Login = (props: LoginProps) => {
             )}
           </Stack>
         </Card>
-        <ActionButton variant={"subtle"} href={redirect}>
+        <ActionButton variant={"subtle"} href={"/"}>
           {tr("loginCancel")}
         </ActionButton>
       </Stack>

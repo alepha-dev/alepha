@@ -1,4 +1,4 @@
-import { useInject, useRouter } from "@alepha/react";
+import { useRouter } from "@alepha/react";
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import {
   Card,
@@ -18,13 +18,21 @@ import {
   IconTrain,
   IconUsers,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { StationResource } from "../../../api/schemas/stationSchema.ts";
+import type { Trip } from "../../../api/schemas/tripSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
-import { BookingService } from "../../services/BookingService.ts";
 
-const TripSearch = () => {
+/**
+ * Props passed from $page resolve (SSR data fetching)
+ */
+export interface TripSearchProps {
+  stations: StationResource[];
+  popularRoutes: Trip[];
+}
+
+const TripSearch = (props: TripSearchProps) => {
   const router = useRouter<AppRouter>();
-  const bookingService = useInject(BookingService);
   const [tripType, setTripType] = useState("one-way");
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
@@ -32,23 +40,26 @@ const TripSearch = () => {
   const [passengers, setPassengers] = useState<number | string>(1);
   const [loading, setLoading] = useState(false);
 
-  const stations = bookingService.stations;
+  // Transform stations for Select component
+  const stationOptions = useMemo(
+    () => props.stations.map((s) => ({ value: s.name, label: s.name })),
+    [props.stations],
+  );
 
   const handleSearch = async () => {
     if (!from || !to || !date) return;
 
     setLoading(true);
     try {
-      bookingService.updateBooking({
-        step: "results",
-        search: {
+      // Navigate with query params - resolve will fetch from API (SSR)
+      await router.go("bookingResults", {
+        query: {
           from,
           to,
           date: date.toISOString().split("T")[0],
-          passengers: Number(passengers),
+          passengers: String(passengers),
         },
       });
-      await router.go("bookingResults");
     } finally {
       setLoading(false);
     }
@@ -100,7 +111,7 @@ const TripSearch = () => {
               <Select
                 label="From"
                 placeholder="Departure station"
-                data={stations}
+                data={stationOptions}
                 value={from}
                 onChange={setFrom}
                 searchable
@@ -110,7 +121,7 @@ const TripSearch = () => {
               <Select
                 label="To"
                 placeholder="Arrival station"
-                data={stations}
+                data={stationOptions}
                 value={to}
                 onChange={setTo}
                 searchable
@@ -155,74 +166,54 @@ const TripSearch = () => {
         </Card>
       </Container>
 
-      <Container size="lg" py="xl">
-        <Stack gap="lg">
-          <Title order={3} ta="center">
-            Popular Routes
-          </Title>
-          <Group justify="center" gap="md">
-            {[
-              {
-                from: "Paris Gare du Nord",
-                to: "London St Pancras",
-                time: "2h 15min",
-                price: 79,
-              },
-              {
-                from: "Amsterdam Centraal",
-                to: "Brussels Midi",
-                time: "1h 50min",
-                price: 49,
-              },
-              {
-                from: "Frankfurt Hbf",
-                to: "Cologne Hbf",
-                time: "1h 05min",
-                price: 39,
-              },
-              {
-                from: "Lyon Part-Dieu",
-                to: "Marseille Saint-Charles",
-                time: "1h 40min",
-                price: 45,
-              },
-            ].map((route) => (
-              <Card
-                key={`${route.from}-${route.to}`}
-                withBorder
-                radius="md"
-                p="md"
-                w={260}
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  setFrom(route.from);
-                  setTo(route.to);
-                }}
-              >
-                <Stack gap="xs">
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="sm" fw={600} lineClamp={1}>
-                      {route.from.split(" ")[0]}
-                    </Text>
-                    <IconArrowRight size={14} />
-                    <Text size="sm" fw={600} lineClamp={1}>
-                      {route.to.split(" ")[0]}
-                    </Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">
-                      {route.time}
-                    </Text>
-                    <Text size="sm" fw={600} c="blue">
-                      From €{route.price}
-                    </Text>
-                  </Group>
-                </Stack>
-              </Card>
-            ))}
-          </Group>
-        </Stack>
-      </Container>
+      {props.popularRoutes.length > 0 && (
+        <Container size="lg" py="xl">
+          <Stack gap="lg">
+            <Title order={3} ta="center">
+              Popular Routes
+            </Title>
+            <Group justify="center" gap="md">
+              {props.popularRoutes.map((route) => (
+                <Card
+                  key={route.id}
+                  withBorder
+                  radius="md"
+                  p="md"
+                  w={260}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    setFrom(route.departureStation);
+                    setTo(route.arrivalStation);
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    setDate(tomorrow);
+                  }}
+                >
+                  <Stack gap="xs">
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" fw={600} lineClamp={1}>
+                        {route.departureStation.split(" ")[0]}
+                      </Text>
+                      <IconArrowRight size={14} />
+                      <Text size="sm" fw={600} lineClamp={1}>
+                        {route.arrivalStation.split(" ")[0]}
+                      </Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Text size="sm" c="dimmed">
+                        {route.duration}
+                      </Text>
+                      <Text size="sm" fw={600} c="blue">
+                        From €{route.price}
+                      </Text>
+                    </Group>
+                  </Stack>
+                </Card>
+              ))}
+            </Group>
+          </Stack>
+        </Container>
+      )}
     </Flex>
   );
 };
