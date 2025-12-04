@@ -1,5 +1,5 @@
 import { useRouter } from "@alepha/react";
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton } from "@alepha/ui";
 import {
   Avatar,
   Badge,
@@ -7,6 +7,7 @@ import {
   Card,
   Container,
   Divider,
+  Flex,
   Group,
   NumberInput,
   Select,
@@ -32,7 +33,6 @@ import {
   IconBrandX,
   IconCalendar,
   IconCheck,
-  IconChevronRight,
   IconClock,
   IconLeaf,
   IconLock,
@@ -40,13 +40,11 @@ import {
   IconPlane,
   IconShieldCheck,
   IconSparkles,
-  IconTicket,
   IconTrain,
   IconUsers,
-  IconWifi,
   IconWorld,
 } from "@tabler/icons-react";
-import { type Variants, motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useMemo, useState } from "react";
 import type { StationResource } from "../../../api/schemas/stationSchema.ts";
 import type { Trip } from "../../../api/schemas/tripSchema.ts";
@@ -209,7 +207,10 @@ const TripSearch = (props: TripSearchProps) => {
                     { icon: IconShieldCheck, text: "Government Backed" },
                   ].map((item) => (
                     <Group key={item.text} gap={6}>
-                      <item.icon size={16} color="var(--mantine-color-dark-3)" />
+                      <item.icon
+                        size={16}
+                        color="var(--mantine-color-dark-3)"
+                      />
                       <Text size="sm" c="dark.3">
                         {item.text}
                       </Text>
@@ -322,7 +323,7 @@ const TripSearch = (props: TripSearchProps) => {
               </Group>
 
               <ActionButton
-                color="dark"
+                color="pink"
                 variant="filled"
                 size="xl"
                 radius="md"
@@ -462,7 +463,12 @@ const TripSearch = (props: TripSearchProps) => {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <Stack align="center" gap={4}>
-                  <Text fz={48} fw={700} lh={1} style={{ letterSpacing: "-0.02em" }}>
+                  <Text
+                    fz={48}
+                    fw={700}
+                    lh={1}
+                    style={{ letterSpacing: "-0.02em" }}
+                  >
                     {stat.value}
                   </Text>
                   <Text size="sm" c="dimmed">
@@ -494,12 +500,6 @@ const TripSearch = (props: TripSearchProps) => {
                     Coast to coast connections
                   </Title>
                 </Stack>
-                <Group gap={4} style={{ cursor: "pointer" }}>
-                  <Text size="sm" c="dimmed">
-                    View all routes
-                  </Text>
-                  <IconChevronRight size={16} color="var(--alepha-text-muted)" />
-                </Group>
               </Group>
             </motion.div>
 
@@ -526,18 +526,29 @@ const TripSearch = (props: TripSearchProps) => {
                       const tomorrow = new Date();
                       tomorrow.setDate(tomorrow.getDate() + 1);
                       setDate(tomorrow);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                   >
                     <Stack gap="md">
                       <Group justify="space-between" align="center">
-                        <Text fw={600}>{route.departureStation.split(" ")[0]}</Text>
-                        <IconArrowRight size={16} color="var(--alepha-text-muted)" />
-                        <Text fw={600}>{route.arrivalStation.split(" ")[0]}</Text>
+                        <Text fw={600}>
+                          {route.departureStation.split(" ")[0]}
+                        </Text>
+                        <IconArrowRight
+                          size={16}
+                          color="var(--alepha-text-muted)"
+                        />
+                        <Text fw={600}>
+                          {route.arrivalStation.split(" ")[0]}
+                        </Text>
                       </Group>
                       <Divider color="var(--alepha-border)" />
                       <Group justify="space-between">
                         <Group gap={4}>
-                          <IconClock size={14} color="var(--alepha-text-muted)" />
+                          <IconClock
+                            size={14}
+                            color="var(--alepha-text-muted)"
+                          />
                           <Text size="sm" c="dimmed">
                             {route.duration}
                           </Text>
@@ -639,7 +650,11 @@ const TripSearch = (props: TripSearchProps) => {
 
       {/* Train vs Plane */}
       <Container size="lg" py={80}>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60} style={{ alignItems: "center" }}>
+        <SimpleGrid
+          cols={{ base: 1, md: 2 }}
+          spacing={60}
+          style={{ alignItems: "center" }}
+        >
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -702,7 +717,8 @@ const TripSearch = (props: TripSearchProps) => {
                   </Text>
                 </Group>
                 <Text size="sm" c="dimmed">
-                  Drive to airport + security + boarding + flight + baggage + transit
+                  Drive to airport + security + boarding + flight + baggage +
+                  transit
                 </Text>
 
                 <Divider color="var(--alepha-border)" />
@@ -717,7 +733,10 @@ const TripSearch = (props: TripSearchProps) => {
                       bg="green.0"
                       style={{ borderRadius: 10 }}
                     >
-                      <IconTrain size={20} color="var(--mantine-color-green-6)" />
+                      <IconTrain
+                        size={20}
+                        color="var(--mantine-color-green-6)"
+                      />
                     </Flex>
                     <Text fw={600}>Vectura</Text>
                   </Group>
@@ -765,7 +784,10 @@ const TripSearch = (props: TripSearchProps) => {
                         bg="var(--alepha-surface)"
                         style={{ borderRadius: 6 }}
                       >
-                        <payment.icon size={20} color="var(--alepha-text-muted)" />
+                        <payment.icon
+                          size={20}
+                          color="var(--alepha-text-muted)"
+                        />
                       </Flex>
                     </motion.div>
                   </Tooltip>
@@ -773,7 +795,10 @@ const TripSearch = (props: TripSearchProps) => {
               </Group>
               <Group gap="xl">
                 <Group gap={4}>
-                  <IconShieldCheck size={14} color="var(--mantine-color-green-6)" />
+                  <IconShieldCheck
+                    size={14}
+                    color="var(--mantine-color-green-6)"
+                  />
                   <Text size="xs" c="dimmed">
                     256-bit SSL
                   </Text>
@@ -807,22 +832,25 @@ const TripSearch = (props: TripSearchProps) => {
                 initiative connecting communities sustainably.
               </Text>
               <Group gap="xs">
-                {[IconBrandX, IconBrandFacebook, IconBrandInstagram, IconBrandLinkedin].map(
-                  (Icon, i) => (
-                    <motion.div key={i} whileHover={{ scale: 1.1 }}>
-                      <Flex
-                        w={36}
-                        h={36}
-                        align="center"
-                        justify="center"
-                        bg="dark.7"
-                        style={{ borderRadius: 8, cursor: "pointer" }}
-                      >
-                        <Icon size={18} color="white" />
-                      </Flex>
-                    </motion.div>
-                  ),
-                )}
+                {[
+                  IconBrandX,
+                  IconBrandFacebook,
+                  IconBrandInstagram,
+                  IconBrandLinkedin,
+                ].map((Icon, i) => (
+                  <motion.div key={i} whileHover={{ scale: 1.1 }}>
+                    <Flex
+                      w={36}
+                      h={36}
+                      align="center"
+                      justify="center"
+                      bg="dark.7"
+                      style={{ borderRadius: 8, cursor: "pointer" }}
+                    >
+                      <Icon size={18} color="white" />
+                    </Flex>
+                  </motion.div>
+                ))}
               </Group>
             </Stack>
 
@@ -834,7 +862,12 @@ const TripSearch = (props: TripSearchProps) => {
               },
               {
                 title: "Support",
-                links: ["Help Centre", "Accessibility", "Lost & Found", "Contact"],
+                links: [
+                  "Help Centre",
+                  "Accessibility",
+                  "Lost & Found",
+                  "Contact",
+                ],
               },
               {
                 title: "About",
@@ -847,7 +880,12 @@ const TripSearch = (props: TripSearchProps) => {
                 </Text>
                 <Stack gap="xs">
                   {section.links.map((link) => (
-                    <Text key={link} size="sm" c="dark.2" style={{ cursor: "pointer" }}>
+                    <Text
+                      key={link}
+                      size="sm"
+                      c="dark.2"
+                      style={{ cursor: "pointer" }}
+                    >
                       {link}
                     </Text>
                   ))}
