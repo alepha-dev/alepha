@@ -1,0 +1,81 @@
+import type { AlephaTheme } from "../services/ThemeProvider.ts";
+
+export const slateTheme: AlephaTheme = {
+  id: "slate",
+  label: "Slate",
+  description: "Professional, minimal zinc palette",
+  primaryColor: "dark",
+  primaryShade: { light: 9, dark: 7 },
+  fontFamily:
+    '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  fontFamilyMonospace:
+    '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  headings: {
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
+    fontWeight: "600",
+    textWrap: "wrap",
+    sizes: {
+      h1: { fontSize: "2rem", lineHeight: "1.2" },
+      h2: { fontSize: "1.5rem", lineHeight: "1.25" },
+      h3: { fontSize: "1.25rem", lineHeight: "1.3" },
+      h4: { fontSize: "1rem", lineHeight: "1.4" },
+      h5: { fontSize: "0.875rem", lineHeight: "1.5" },
+      h6: { fontSize: "0.75rem", lineHeight: "1.5" },
+    },
+  },
+  fontSizes: {
+    xs: "0.75rem",
+    sm: "0.875rem",
+    md: "0.875rem",
+    lg: "1rem",
+    xl: "1.125rem",
+  },
+  lineHeights: {
+    xs: "1.4",
+    sm: "1.45",
+    md: "1.5",
+    lg: "1.55",
+    xl: "1.6",
+  },
+  radius: {
+    xs: "0.125rem",
+    sm: "0.25rem",
+    md: "0.375rem",
+    lg: "0.5rem",
+    xl: "0.75rem",
+  },
+  defaultRadius: "md",
+  shadows: {
+    xs: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+    sm: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)",
+    md: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+    lg: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)",
+    xl: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+  },
+  colors: {
+    dark: [
+      "#f4f4f5",
+      "#a1a1aa",
+      "#71717a",
+      "#52525b",
+      "#3f3f46",
+      "#27272a",
+      "#18181b",
+      "#0f0f10",
+      "#09090b",
+      "#000000",
+    ],
+    gray: [
+      "#fafafa",
+      "#f4f4f5",
+      "#e4e4e7",
+      "#d4d4d8",
+      "#a1a1aa",
+      "#71717a",
+      "#52525b",
+      "#3f3f46",
+      "#27272a",
+      "#18181b",
+    ],
+  },
+};

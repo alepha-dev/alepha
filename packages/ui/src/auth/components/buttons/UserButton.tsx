@@ -1,3 +1,4 @@
+import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import {
   ActionButton,
@@ -7,8 +8,9 @@ import {
   ui,
 } from "@alepha/ui";
 import { Avatar } from "@mantine/core";
-import { IconLogout, IconUser } from "@tabler/icons-react";
+import { IconLogin2, IconLogout, IconUser } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+import type { AuthRouter } from "../../AuthRouter.ts";
 
 export interface UserButtonProps
   extends Omit<ActionProps, "menu" | "icon" | "onClick"> {
@@ -55,8 +57,10 @@ const UserButton = (props: UserButtonProps) => {
     picture?: string;
   }>();
 
+  const authRouter = useRouter<AuthRouter>();
+
   if (!auth.user) {
-    return null;
+    return <ActionButton icon={IconLogin2} href={authRouter.path("login")} />;
   }
 
   const userLabel = auth.user.username || auth.user.email;

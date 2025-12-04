@@ -1,7 +1,7 @@
 import { useInject } from "@alepha/react";
 import { IconPalette } from "@tabler/icons-react";
 import { useTheme } from "../../hooks/useTheme.ts";
-import { ThemeService } from "../../services/ThemeService.ts";
+import { ThemeProvider } from "../../services/ThemeProvider.ts";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 export interface ThemeButtonProps {
@@ -10,7 +10,7 @@ export interface ThemeButtonProps {
 
 const ThemeButton = (props: ThemeButtonProps) => {
   const [theme, setTheme] = useTheme();
-  const themes = useInject(ThemeService).themes;
+  const themes = useInject(ThemeProvider).themes;
 
   return (
     <ActionButton

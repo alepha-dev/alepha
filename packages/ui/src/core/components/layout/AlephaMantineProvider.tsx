@@ -3,7 +3,6 @@ import { FormValidationError } from "@alepha/react/form";
 import {
   ColorSchemeScript,
   type ColorSchemeScriptProps,
-  type MantineColorShade,
   MantineProvider,
   type MantineProviderProps,
 } from "@mantine/core";
@@ -63,9 +62,9 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
       <MantineProvider
         {...props.mantine}
         theme={{
-          primaryColor: theme.primaryColor ?? "blue",
-          primaryShade:
-            (theme.primaryShade as MantineColorShade | undefined) ?? 6,
+          // Spread all theme properties from the selected theme
+          ...theme,
+          // User overrides take precedence
           ...props.mantine?.theme,
         }}
       >

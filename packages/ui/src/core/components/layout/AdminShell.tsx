@@ -93,6 +93,7 @@ const AdminShell = (props: AdminShellProps) => {
 
   return (
     <AppShell
+      w={"100%"}
       flex={1}
       padding="md"
       header={hasAppBar ? { height: 60 } : undefined}

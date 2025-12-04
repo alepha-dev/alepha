@@ -1,18 +1,25 @@
 import { useInject, useStore } from "@alepha/react";
 import {
+  type AlephaTheme,
   type Theme,
-  ThemeService,
+  ThemeProvider,
   themeAtom,
-} from "../services/ThemeService.ts";
+} from "../services/ThemeProvider.ts";
 
 export const useTheme = () => {
   useStore(themeAtom);
 
-  const themeService = useInject(ThemeService);
+  const themeService = useInject(ThemeProvider);
+  const currentTheme = themeService.getTheme();
 
-  const applyTheme = (theme: Theme) => {
-    themeService.setTheme({ ...theme });
+  // Find the full theme object from the themes array
+  const fullTheme =
+    themeService.themes.find((t) => t.id === currentTheme.id) ??
+    themeService.themes[0];
+
+  const applyTheme = (theme: Theme | AlephaTheme) => {
+    themeService.setTheme({ id: theme.id });
   };
 
-  return [themeService.getTheme(), applyTheme] as const;
+  return [fullTheme, applyTheme] as const;
 };

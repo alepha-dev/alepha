@@ -6,7 +6,7 @@ import type { ComponentType, ReactNode } from "react";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { RootRouter } from "./RootRouter.ts";
 import { DialogService } from "./services/DialogService.tsx";
-import { ThemeService } from "./services/ThemeService.ts";
+import { ThemeProvider } from "./services/ThemeProvider.ts";
 import { ToastService } from "./services/ToastService.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -137,12 +137,12 @@ declare module "@alepha/react" {
  */
 export const AlephaUI = $module({
   name: "alepha.ui",
-  services: [DialogService, ToastService, ThemeService, RootRouter],
+  services: [DialogService, ToastService, ThemeProvider, RootRouter],
   register: (alepha) => {
     alepha.with(AlephaReactI18n);
     alepha.with(AlephaReactHead);
     alepha.with(AlephaReactForm);
-    alepha.with(ThemeService);
+    alepha.with(ThemeProvider);
     alepha.with(DialogService);
     alepha.with(ToastService);
   },

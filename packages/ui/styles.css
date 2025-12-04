@@ -4,14 +4,6 @@
 @import "@mantine/dates/styles.css";
 @import "@mantine/notifications/styles.css";
 
-/* Alepha Themes */
-@import "./src/core/themes/default.css";
-@import "./src/core/themes/midnight.css";
-@import "./src/core/themes/slate.css";
-@import "./src/core/themes/aurora.css";
-@import "./src/core/themes/ember.css";
-@import "./src/core/themes/crystal.css";
-
 :root {
   --alepha-background-light: var(--mantine-color-gray-1);
   --alepha-background-dark: var(--mantine-color-dark-9);
@@ -32,26 +24,10 @@
   --alepha-border-dark: var(--mantine-color-dark-4);
   --alepha-border: var(--alepha-border-light);
 
-  --alepha-shadow-dark: rgba(0, 0, 0, 0.5);
-  --alepha-shadow-light: rgba(0, 0, 0, 0.05);
-  --alepha-shadow: var(--alepha-shadow-light);
-
   --alepha-text-light: #000000;
   --alepha-text-dark: #ffffff;
   --alepha-text-muted: #6c757d;
   --alepha-text: var(--alepha-text-light);
-
-  /*--mantine-color-dimmed: var(--alepha-text-muted) !important;*/
-  /*--mantine-color-dark-8: var(--alepha-background);*/
-  /*--mantine-color-dark-6: var(--alepha-surface);*/
-  /*--mantine-color-dark-5: var(--alepha-border);*/
-  /*--mantine-color-dark-4: var(--alepha-border);*/
-  /*--mantine-color-body: var(--alepha-elevated) !important;*/
-  /*--mantine-color-gray-outline: var(--alepha-border) !important;*/
-  /*--mantine-color-default: var(--alepha-elevated) !important;*/
-  /*--mantine-spacing-xs: 8px;*/
-
-  /*--text-color: var(--alepha-text) !important;*/
 }
 
 #root {
