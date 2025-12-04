@@ -66,7 +66,10 @@ export const PopularRoutes = (props: PopularRoutesProps) => {
                 <Stack gap="md">
                   <Group justify="space-between" align="center">
                     <Text fw={600}>{route.departureStation.split(" ")[0]}</Text>
-                    <IconArrowRight size={16} color="var(--alepha-text-muted)" />
+                    <IconArrowRight
+                      size={16}
+                      color="var(--alepha-text-muted)"
+                    />
                     <Text fw={600}>{route.arrivalStation.split(" ")[0]}</Text>
                   </Group>
                   <Divider color="var(--alepha-border)" />

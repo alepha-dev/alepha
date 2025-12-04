@@ -67,7 +67,8 @@ export const SearchForm = (props: SearchFormProps) => {
     }
   };
 
-  const isValid = value.from && value.to && value.date && value.from !== value.to;
+  const isValid =
+    value.from && value.to && value.date && value.from !== value.to;
 
   return (
     <Container size="md" mt={-50} pos="relative" style={{ zIndex: 1 }}>
@@ -185,16 +186,18 @@ export const SearchForm = (props: SearchFormProps) => {
             </ActionButton>
 
             <Group justify="center" gap="xl">
-              {["Instant booking", "Accessible seating", "Free cancellation"].map(
-                (text) => (
-                  <Group key={text} gap={4}>
-                    <IconCheck size={14} color="var(--mantine-color-green-6)" />
-                    <Text size="xs" c="dimmed">
-                      {text}
-                    </Text>
-                  </Group>
-                ),
-              )}
+              {[
+                "Instant booking",
+                "Accessible seating",
+                "Free cancellation",
+              ].map((text) => (
+                <Group key={text} gap={4}>
+                  <IconCheck size={14} color="var(--mantine-color-green-6)" />
+                  <Text size="xs" c="dimmed">
+                    {text}
+                  </Text>
+                </Group>
+              ))}
             </Group>
           </Stack>
         </Card>

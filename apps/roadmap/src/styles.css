@@ -4,8 +4,8 @@
 @import "animate.css";
 
 @import "highlight.js/styles/github.css";
-@import "./styles/code-github-dark.css";
-@import "./components/misc/ExperienceBar.css";
+@import "./web/styles/code-github-dark.css";
+@import "./web/components/misc/ExperienceBar.css";
 
 :root {
   --color-gold: #db9b05;

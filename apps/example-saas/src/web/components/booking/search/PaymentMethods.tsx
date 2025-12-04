@@ -1,4 +1,12 @@
-import { Box, Container, Flex, Group, Stack, Text, Tooltip } from "@mantine/core";
+import {
+  Box,
+  Container,
+  Flex,
+  Group,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconBrandApple,
   IconBrandGoogle,
@@ -44,7 +52,10 @@ export const PaymentMethods = () => {
                       bg="var(--alepha-surface)"
                       style={{ borderRadius: 6 }}
                     >
-                      <payment.icon size={20} color="var(--alepha-text-muted)" />
+                      <payment.icon
+                        size={20}
+                        color="var(--alepha-text-muted)"
+                      />
                     </Flex>
                   </motion.div>
                 </Tooltip>
@@ -52,7 +63,10 @@ export const PaymentMethods = () => {
             </Group>
             <Group gap="xl">
               <Group gap={4}>
-                <IconShieldCheck size={14} color="var(--mantine-color-green-6)" />
+                <IconShieldCheck
+                  size={14}
+                  color="var(--mantine-color-green-6)"
+                />
                 <Text size="xs" c="dimmed">
                   256-bit SSL
                 </Text>
