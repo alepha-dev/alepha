@@ -62,6 +62,12 @@ export class ServerHeadProvider {
       }
     }
 
+    if (head.link) {
+      for (const link of head.link) {
+        headContent += `<link rel="${this.escapeHtml(link.rel)}" href="${this.escapeHtml(link.href)}">\n`;
+      }
+    }
+
     // Inject into <head>...</head>
     result = result.replace(
       /<head([^>]*)>(.*?)<\/head>/is,

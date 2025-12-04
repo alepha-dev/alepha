@@ -101,5 +101,18 @@ export class BrowserHeadProvider {
         }
       }
     }
+
+    if (head.link) {
+      for (const it of head.link) {
+        const { rel, href } = it;
+        let link = document.querySelector(`link[rel="${rel}"][href="${href}"]`);
+        if (!link) {
+          link = document.createElement("link");
+          link.setAttribute("rel", rel);
+          link.setAttribute("href", href);
+          document.head.appendChild(link);
+        }
+      }
+    }
   }
 }

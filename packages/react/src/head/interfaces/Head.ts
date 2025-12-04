@@ -43,4 +43,5 @@ export interface SimpleHead {
   htmlAttributes?: Record<string, string>;
   bodyAttributes?: Record<string, string>;
   meta?: Array<{ name: string; content: string }>;
+  link?: Array<{ rel: string; href: string }>;
 }
