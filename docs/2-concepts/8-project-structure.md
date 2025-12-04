@@ -12,69 +12,83 @@ When you run `alepha init`, we set up something like this:
 │   ├── main.browser.ts     # Entry point for the frontend
 │   ├── AppRouter.ts        # Routes ($page) definition
 │   │
-│   ├── modules/            # Your feature domains
-│   │   ├── auth/
-│   │   │   ├── AuthController.ts  # API Actions ($action)
-│   │   │   ├── AuthService.ts     # Business Logic
-│   │   │   ├── UserEntity.ts      # DB Schema ($entity)
-│   │   │   └── index.ts           # Module definition ($module)
-│   │   │
-│   │   └── billing/
-│   │       └── ...
+│   ├── controllers/        # API Controllers ($action)
+│   ├── services/           # Business Logic
+│   ├── entities/           # DB Schemas ($entity)
+│   ├── schemas/            # Validation Schemas (Zod)
+│   ├── providers/          # Custom Providers
+│   ├── atoms/              # Shared State (Jotai)
 │   │
-│   ├── ui/                 # React Components
-│   │   ├── layout/
-│   │   └── pages/
-│   │
-│   └── shared/             # Code shared between front and back
+│   ├── components/         # React Components
+│   └── styles/             # CSS Styles
 │
 └── package.json
 ```
 
-## Organizing by Feature (Vertical Slices)
+This is a minimalist structure for small projects. Alepha uses a **layered** organization by type—all controllers together, all entities together, etc.
 
-We strongly recommend organizing by **Feature**, not by Type.
+## Scaling with Modules
 
-**Bad (Layered):**
+As your project grows, add a module layer to group related features:
+
 ```
-src/
-├── controllers/
-│   ├── AuthController.ts
-│   └── BillingController.ts
-├── services/
-│   ├── AuthService.ts
-│   └── BillingService.ts
-└── entities/
-    ├── User.ts
-    └── Invoice.ts
+├── src/
+│   ├── main.server.ts
+│   ├── main.browser.ts
+│   │
+│   ├── users/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── entities/
+│   │   ├── schemas/
+│   │   └── index.ts          # UsersModule
+│   │
+│   ├── billing/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── entities/
+│   │   ├── schemas/
+│   │   └── index.ts          # BillingModule
+│   │
+│   └── shared/
+│       ├── components/
+│       └── styles/
+│
+└── package.json
 ```
 
-**Good (Vertical/Modular):**
-```
-src/
-└── modules/
-    ├── auth/
-    │   ├── AuthController.ts
-    │   ├── AuthService.ts
-    │   └── User.ts
-    └── billing/
-        ├── BillingController.ts
-        ├── BillingService.ts
-        └── Invoice.ts
-```
-
-Why? Because when you work on "Billing", you want everything related to Billing in one place. You don't want to jump between 4 different folders.
-
-Alepha's `$module` primitive supports this pattern natively. You can encapsulate an entire feature (API, DB, Cron jobs, etc.) into a single module export.
+Each module exports a `$module` that groups its services:
 
 ```typescript
-// src/modules/billing/index.ts
-export const BillingModule = $module({
-  name: "app.billing",
+// src/users/index.ts
+export const MyappUsers = $module({
+  name: "myapp.users",
   services: [
-    BillingController,
-    BillingService,
+    UserController,
+    UserService,
     // ...
   ]
 });
 ```
+
+You can also separate by concern (frontend/backend):
+
+```
+├── src/
+│   ├── backend/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   └── entities/
+│   │
+│   ├── frontend/
+│   │   ├── components/
+│   │   ├── atoms/
+│   │   └── styles/
+│   │
+│   └── shared/
+│       └── schemas/
+│
+└── package.json
+```
+
+The layered structure stays the same—you just add a directory level to organize by module or concern.
