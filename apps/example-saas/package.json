@@ -2,9 +2,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@alepha/react": "^0.13.1",
-    "@alepha/ui": "^0.13.1",
-    "alepha": "^0.13.1",
+    "@alepha/react": "^0.13.3",
+    "@alepha/ui": "^0.13.3",
+    "alepha": "^0.13.3",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"
   },
