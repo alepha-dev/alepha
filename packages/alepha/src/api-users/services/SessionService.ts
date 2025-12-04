@@ -290,6 +290,8 @@ export class SessionService {
       realm: realm.name,
       username: profile.email.split("@")[0],
       email: profile.email,
+      // we trust the OAuth2 provider
+      emailVerified: true,
       roles: ["user"], // TODO: make default roles configurable via realm settings
     });
 
