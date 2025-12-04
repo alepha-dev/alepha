@@ -62,8 +62,8 @@ export class CoreCommands {
       react: t.optional(
         t.boolean({ description: "Include Alepha React dependencies" }),
       ),
-      admin: t.optional(
-        t.boolean({ description: "Include Alepha admin panel dependencies" }),
+      ui: t.optional(
+        t.boolean({ description: "Include Alepha UI dependencies" }),
       ),
     }),
     handler: async ({ run, flags, root }) => {

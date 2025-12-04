@@ -72,15 +72,16 @@ export class ProjectUtils {
 
     const devDependencies: Record<string, string> = {};
 
+    if (modes.ui) {
+      dependencies["@alepha/ui"] = `^${version}`;
+      modes.react = true;
+    }
+
     if (modes.react) {
       dependencies["@alepha/react"] = `^${version}`;
       dependencies.react = "^19.2.0";
       dependencies["react-dom"] = "^19.2.0";
       devDependencies["@types/react"] = "^19.2.0";
-    }
-
-    if (modes.admin) {
-      dependencies["@alepha/ui"] = `^${version}`;
     }
 
     return {
@@ -597,5 +598,5 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
 
 export interface DependencyModes {
   react?: boolean;
-  admin?: boolean;
+  ui?: boolean;
 }
