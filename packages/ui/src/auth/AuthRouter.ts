@@ -7,7 +7,7 @@ import {
   IconPasswordUser,
   IconUserPlus,
 } from "@tabler/icons-react";
-import { $inject, t } from "alepha";
+import { $inject, AlephaError, t } from "alepha";
 import type { UserRealmController } from "alepha/api/users";
 import { $client } from "alepha/server/links";
 
@@ -41,7 +41,7 @@ export class AuthRouter {
     lazy: () => import("./components/Login.tsx"),
     resolve: async () => {
       return {
-        realmConfig: await this.userRealmClient.getRealmConfig(),
+        realmConfig: await this.loadRealmConfig(),
       };
     },
   });
@@ -60,7 +60,7 @@ export class AuthRouter {
     lazy: () => import("./components/Register.tsx"),
     resolve: async () => {
       return {
-        realmConfig: await this.userRealmClient.getRealmConfig(),
+        realmConfig: await this.loadRealmConfig(),
       };
     },
   });
@@ -79,7 +79,7 @@ export class AuthRouter {
     lazy: () => import("./components/ResetPassword.tsx"),
     resolve: async () => {
       return {
-        realmConfig: await this.userRealmClient.getRealmConfig(),
+        realmConfig: await this.loadRealmConfig(),
       };
     },
   });
@@ -110,4 +110,18 @@ export class AuthRouter {
       return {};
     },
   });
+
+  protected async loadRealmConfig() {
+    try {
+      return await this.userRealmClient.getRealmConfig();
+    } catch (e) {
+      if (e instanceof AlephaError) {
+        throw new AlephaError(
+          "Missing User-Realm Configuration - Did you forget to add '$userRealm()' to your application?",
+          e,
+        );
+      }
+      throw e;
+    }
+  }
 }

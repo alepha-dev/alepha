@@ -116,11 +116,7 @@ const Login = (props: LoginProps) => {
                         autoComplete: "current-password",
                       }}
                     />
-                    <ActionButton
-                      color={"orange"}
-                      variant={"filled"}
-                      form={form}
-                    >
+                    <ActionButton color={"blue"} variant={"filled"} form={form}>
                       {tr("loginSignIn")}
                     </ActionButton>
                   </Stack>

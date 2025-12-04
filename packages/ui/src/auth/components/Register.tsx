@@ -223,7 +223,7 @@ const Register = (props: RegisterProps) => {
               {registrationState.intent.expectEmailVerification && (
                 <Stack gap={"xs"}>
                   <Text size="sm" fw={500}>
-                    {tr("registerEmailCode") ?? "Email verification code"}
+                    {tr("registerEmailCode")}
                   </Text>
                   <Flex justify="center">
                     <PinInput
@@ -241,7 +241,7 @@ const Register = (props: RegisterProps) => {
               {registrationState.intent.expectPhoneVerification && (
                 <Stack gap={"xs"}>
                   <Text size="sm" fw={500}>
-                    {tr("registerPhoneCode") ?? "Phone verification code"}
+                    {tr("registerPhoneCode")}
                   </Text>
                   <Flex justify="center">
                     <PinInput
@@ -257,11 +257,12 @@ const Register = (props: RegisterProps) => {
               )}
 
               <ActionButton
+                color={"blue"}
                 onClick={handleVerificationSubmit}
                 loading={isSubmitting}
                 disabled={!canSubmitVerification()}
               >
-                {tr("registerVerifySubmit") ?? "Complete Registration"}
+                {tr("registerVerifySubmit")}
               </ActionButton>
 
               <ActionButton
@@ -350,7 +351,7 @@ const Register = (props: RegisterProps) => {
                         autoComplete: "new-password",
                       }}
                     />
-                    <ActionButton form={form}>
+                    <ActionButton form={form} color={"blue"} variant={"filled"}>
                       {tr("registerCreateAccount")}
                     </ActionButton>
                   </Stack>
