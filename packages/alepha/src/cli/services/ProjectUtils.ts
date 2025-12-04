@@ -176,33 +176,6 @@ export class ProjectUtils {
   }
 
   /**
-   * Ensure package.json exists and is configured as ES module.
-   *
-   * Similar to ensurePackageJson but only validates/sets the "type": "module" field.
-   * Throws an error if no package.json exists.
-   *
-   * @param root - The root directory of the project
-   * @throws {AlephaError} If no package.json is found
-   */
-  public async ensurePackageJsonModule(root: string): Promise<void> {
-    const packageJsonPath = join(root, "package.json");
-    try {
-      await access(packageJsonPath);
-    } catch (error) {
-      throw new AlephaError(
-        "No package.json found in project root. Run 'npx alepha init' to create one.",
-      );
-    }
-
-    const content = await readFile(packageJsonPath, "utf8");
-    const packageJson = JSON.parse(content);
-    if (!packageJson.type || packageJson.type !== "module") {
-      packageJson.type = "module";
-      await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-    }
-  }
-
-  /**
    * Ensure tsconfig.json exists in the project.
    *
    * Creates a standard Alepha tsconfig.json if none exists.
@@ -218,25 +191,30 @@ export class ProjectUtils {
    *
    * Creates a standard Alepha vite.config.ts if none exists.
    */
-  public async ensureViteConfig(root: string): Promise<void> {
-    await this.ensureFileExists(root, "vite.config.ts", viteConfigTs(), false);
+  public async ensureViteConfig(
+    root: string,
+    serverEntry?: string,
+  ): Promise<void> {
+    await this.ensureFileExists(
+      root,
+      "vite.config.ts",
+      viteConfigTs(serverEntry),
+      false,
+    );
   }
 
-  protected async ensureFileExists(
+  protected async checkFileExists(
     root: string,
     name: string,
-    content: string,
     checkParentDirectories: boolean = false,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const configPath = join(root, name);
-
     if (!checkParentDirectories) {
       try {
         await access(configPath);
-        return;
+        return true;
       } catch {
-        await writeFile(configPath, content);
-        return;
+        return false;
       }
     }
 
@@ -260,8 +238,23 @@ export class ProjectUtils {
       level += 1;
     }
 
+    return found;
+  }
+
+  protected async ensureFileExists(
+    root: string,
+    name: string,
+    content: string,
+    checkParentDirectories: boolean = false,
+  ): Promise<void> {
+    const found = await this.checkFileExists(
+      root,
+      name,
+      checkParentDirectories,
+    );
+
     if (!found) {
-      await writeFile(configPath, content);
+      await writeFile(join(root, name), content);
     }
   }
 
@@ -276,35 +269,6 @@ export class ProjectUtils {
    */
   public async ensureBiomeConfig(root: string): Promise<void> {
     await this.ensureFileExists(root, "biome.json", biomeJson, true);
-  }
-
-  // ===================================================================================================================
-  // Vite Configuration
-  // ===================================================================================================================
-
-  /**
-   * Get the path to Vite configuration file.
-   *
-   * Looks for an existing vite.config.ts in the project root, or creates one if it doesn't exist.
-   *
-   * @param root - The root directory of the project (defaults to process.cwd())
-   * @param serverEntry - Optional path to the server entry file to include in the config
-   * @returns Absolute path to the vite.config.ts file
-   */
-  public async getViteConfigPath(
-    root: string,
-    serverEntry?: string,
-  ): Promise<string> {
-    try {
-      const viteConfigPath = join(root, "vite.config.ts");
-      await access(viteConfigPath);
-      return viteConfigPath;
-    } catch {
-      return this.runner.writeConfigFile(
-        "vite.config.ts",
-        viteConfigTs(serverEntry),
-      );
-    }
   }
 
   // ===================================================================================================================
@@ -545,13 +509,13 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   public async getPackageManager(
     root: string,
   ): Promise<"yarn" | "pnpm" | "npm"> {
-    if (await this.fs.exists(join(root, "yarn.lock"))) {
+    if (await this.checkFileExists(root, "yarn.lock", true)) {
       return "yarn";
-    } else if (await this.fs.exists(join(root, "pnpm-lock.yaml"))) {
-      return "pnpm";
-    } else {
-      return "npm";
     }
+    if (await this.checkFileExists(root, "pnpm-lock.yaml", true)) {
+      return "pnpm";
+    }
+    return "npm";
   }
 
   public async ensureIndexHtml(root: string) {

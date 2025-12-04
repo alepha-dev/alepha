@@ -67,6 +67,10 @@ export class CoreCommands {
       ),
     }),
     handler: async ({ run, flags, root }) => {
+      if (flags.ui) {
+        flags.react = true;
+      }
+
       await run({
         name: "Ensuring configuration files",
         handler: async () => {
