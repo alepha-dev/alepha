@@ -1,7 +1,14 @@
-import { useClient, useRouter, useStore } from "@alepha/react";
+import { useClient, useRouter, useRouterState, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { ActionButton } from "@alepha/ui";
-import { Card, Drawer, Flex, Group, Transition } from "@mantine/core";
+import {
+  Card,
+  Center,
+  Drawer,
+  Flex,
+  Group,
+  SegmentedControl,
+  Transition,
+} from "@mantine/core";
 import {
   IconChartLine,
   IconPlus,
@@ -15,29 +22,68 @@ import type { TaskApi } from "../../api/TaskApi.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action, { type ActionProps } from "../ui/Action.jsx";
+import Action from "../ui/Action.jsx";
 import TaskCreate from "./task/TaskCreate.jsx";
+
+type TabValue =
+  | "projectBoard"
+  | "projectPlayers"
+  | "projectAnalytics"
+  | "projectSettings";
 
 const ProjectActions = () => {
   const [project] = useStore(currentProjectAtom);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
+  const routerState = useRouterState();
 
   const opts = {
     params: { projectId: String(project?.id) },
   };
 
+  const tabs: Array<{ value: TabValue; label: React.ReactNode }> = [
+    {
+      value: "projectBoard",
+      label: (
+        <Center style={{ gap: 6 }}>
+          <IconTable size={theme.icon.size.sm} />
+          <span>{tr("project.menu.board")}</span>
+        </Center>
+      ),
+    },
+    {
+      value: "projectPlayers",
+      label: (
+        <Center style={{ gap: 6 }}>
+          <IconUsers size={theme.icon.size.sm} />
+          <span>{tr("project.menu.players")}</span>
+        </Center>
+      ),
+    },
+    {
+      value: "projectAnalytics",
+      label: (
+        <Center style={{ gap: 6 }}>
+          <IconChartLine size={theme.icon.size.sm} />
+          <span>{tr("project.menu.analytics")}</span>
+        </Center>
+      ),
+    },
+    {
+      value: "projectSettings",
+      label: (
+        <Center style={{ gap: 6 }}>
+          <IconSettings size={theme.icon.size.sm} />
+          <span>{tr("project.menu.settings")}</span>
+        </Center>
+      ),
+    },
+  ];
+
   return (
     <Transition mounted={!!project} transition={"fade-down"}>
       {(styles) => (
-        <Card
-          style={styles}
-          flex={1}
-          py={"xs"}
-          px={"sm"}
-          withBorder
-          radius={"md"}
-        >
+        <Card style={styles} flex={1} py={2} px={2} withBorder radius={"md"}>
           <div
             style={{
               position: "absolute",
@@ -51,32 +97,12 @@ const ProjectActions = () => {
             }}
           />
           <Group flex={1}>
-            <Flex gap={"xs"}>
-              <TabAction
-                leftSection={<IconTable size={theme.icon.size.sm} />}
-                href={router.path("projectBoard", opts)}
-              >
-                {tr("project.menu.board")}
-              </TabAction>
-              <TabAction
-                leftSection={<IconUsers size={theme.icon.size.sm} />}
-                href={router.path("projectPlayers", opts)}
-              >
-                {tr("project.menu.players")}
-              </TabAction>
-              <TabAction
-                leftSection={<IconChartLine size={theme.icon.size.sm} />}
-                href={router.path("projectAnalytics", opts)}
-              >
-                {tr("project.menu.analytics")}
-              </TabAction>
-              <TabAction
-                leftSection={<IconSettings size={theme.icon.size.sm} />}
-                href={router.path("projectSettings", opts)}
-              >
-                {tr("project.menu.settings")}
-              </TabAction>
-            </Flex>
+            <SegmentedControl
+              size={"md"}
+              value={routerState.name}
+              onChange={(value) => router.go(value as TabValue, opts)}
+              data={tabs}
+            />
             <Flex flex={1} />
             <CreateTaskButton />
           </Group>
@@ -84,10 +110,6 @@ const ProjectActions = () => {
       )}
     </Transition>
   );
-};
-
-const TabAction = (props: ActionProps & { href: string }) => {
-  return <ActionButton {...props} textVisibleFrom={"md"} variant={"subtle"} />;
 };
 
 export default ProjectActions;

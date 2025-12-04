@@ -1,19 +1,51 @@
 import { $page } from "@alepha/react";
-import { AlephaMantineProvider } from "@alepha/ui";
-import { AdminRouter } from "@alepha/ui/admin";
-import { AuthRouter } from "@alepha/ui/auth";
+import { MainRouter } from "@alepha/ui/admin";
+import { IconTrain } from "@tabler/icons-react";
 import { $inject } from "alepha";
+import { BookingService } from "./services/BookingService.ts";
 
-export class AppRouter {
-  auth = $inject(AuthRouter);
-  admin = $inject(AdminRouter);
-  layout = $page({
-    component: AlephaMantineProvider,
-    children: () => [this.auth.layout, this.admin.layout],
+export class AppRouter extends MainRouter {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Train Booking System
+  // ─────────────────────────────────────────────────────────────────────────────
+  srv = $inject(BookingService);
+
+  bookingLayout = $page({
+    icon: IconTrain,
+    parent: this.layout,
+    label: "Book Train",
+    lazy: () => import("./components/booking/BookingLayout.tsx"),
+    children: () => [
+      this.bookingSearch,
+      this.bookingResults,
+      this.bookingSeats,
+      this.bookingPayment,
+      this.bookingConfirmation,
+    ],
   });
 
-  home = $page({
-    parent: this.layout,
-    component: () => "Hey there! This is the main app layout.",
+  bookingSearch = $page({
+    path: "/",
+    lazy: () => import("./components/booking/TripSearch.tsx"),
+  });
+
+  bookingResults = $page({
+    path: "/results",
+    lazy: () => import("./components/booking/TripResults.tsx"),
+  });
+
+  bookingSeats = $page({
+    path: "/seats",
+    lazy: () => import("./components/booking/SeatSelection.tsx"),
+  });
+
+  bookingPayment = $page({
+    path: "/payment",
+    lazy: () => import("./components/booking/Payment.tsx"),
+  });
+
+  bookingConfirmation = $page({
+    path: "/confirmation",
+    lazy: () => import("./components/booking/Confirmation.tsx"),
   });
 }

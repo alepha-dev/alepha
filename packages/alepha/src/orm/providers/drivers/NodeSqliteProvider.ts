@@ -82,10 +82,10 @@ export class NodeSqliteProvider extends DatabaseProvider {
       return path;
     }
 
-    if (this.alepha.isTest()) {
+    if (this.alepha.isTest() || this.alepha.isServerless()) {
       return ":memory:";
     } else {
-      return "node_modules/sqlite.db";
+      return "node_modules/.alepha/sqlite.db";
     }
   }
 
@@ -149,7 +149,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
       if (filepath !== ":memory:" && filepath !== "") {
         const dirname = filepath.split("/").slice(0, -1).join("/");
         if (dirname) {
-          await mkdir(dirname, { recursive: true });
+          await mkdir(dirname, { recursive: true }).catch(() => null);
         }
       }
 

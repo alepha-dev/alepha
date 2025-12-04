@@ -68,11 +68,19 @@ export const AlephaEmail = $module({
         use: NodemailerEmailProvider,
       });
     } else {
-      alepha.with({
-        optional: true,
-        provide: EmailProvider,
-        use: LocalEmailProvider,
-      });
+      if (alepha.isServerless()) {
+        alepha.with({
+          optional: true,
+          provide: EmailProvider,
+          use: MemoryEmailProvider,
+        });
+      } else {
+        alepha.with({
+          optional: true,
+          provide: EmailProvider,
+          use: LocalEmailProvider,
+        });
+      }
     }
   },
 });

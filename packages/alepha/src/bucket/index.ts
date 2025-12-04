@@ -61,12 +61,14 @@ export const AlephaBucket = $module({
     MemoryFileStorageProvider,
     LocalFileStorageProvider,
   ],
-  register: (alepha) =>
+  register: (alepha) => {
     alepha.with({
       optional: true,
       provide: FileStorageProvider,
-      use: alepha.isTest()
-        ? MemoryFileStorageProvider
-        : LocalFileStorageProvider,
-    }),
+      use:
+        alepha.isTest() || alepha.isServerless()
+          ? MemoryFileStorageProvider
+          : LocalFileStorageProvider,
+    });
+  },
 });
