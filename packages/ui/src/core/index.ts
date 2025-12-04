@@ -4,9 +4,9 @@ import { AlephaReactI18n } from "@alepha/react/i18n";
 import { $module } from "alepha";
 import type { ComponentType, ReactNode } from "react";
 import type { ControlProps } from "./components/form/Control.tsx";
+import { ThemeProvider } from "./providers/ThemeProvider.ts";
 import { RootRouter } from "./RootRouter.ts";
 import { DialogService } from "./services/DialogService.tsx";
-import { ThemeProvider } from "./services/ThemeProvider.ts";
 import { ToastService } from "./services/ToastService.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -80,6 +80,7 @@ export { default as DataTable } from "./components/table/DataTable.tsx";
 export * from "./constants/ui.ts";
 export { useDialog } from "./hooks/useDialog.ts";
 export { useToast } from "./hooks/useToast.ts";
+export * from "./providers/ThemeProvider.ts";
 export * from "./RootRouter.ts";
 export type {
   AlertDialogOptions,

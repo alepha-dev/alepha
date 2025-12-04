@@ -24,6 +24,12 @@ export const themeAtom = $atom({
 
 export type Theme = Static<typeof themeAtom.schema>;
 
+declare module "alepha" {
+  interface State {
+    [themeAtom.key]?: Theme;
+  }
+}
+
 export type AlephaTheme = MantineThemeOverride & {
   id: string;
   label: string;

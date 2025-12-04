@@ -1,12 +1,12 @@
-import { AlephaReactHead } from "@alepha/react/head";
-import { AlephaUI } from "@alepha/ui";
+import { AlephaUI, themeAtom } from "@alepha/ui";
 import { Alepha, run } from "alepha";
 import { AppRouter } from "./AppRouter.tsx";
 
 const alepha = Alepha.create();
 
-alepha.with(AppRouter);
 alepha.with(AlephaUI);
-alepha.with(AlephaReactHead);
+alepha.store.set(themeAtom, { id: "midnight" });
+
+alepha.with(AppRouter);
 
 run(alepha);

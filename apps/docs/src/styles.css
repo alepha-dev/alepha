@@ -3,12 +3,6 @@
 @import "./styles/code-github-dark.css";
 @import "../assets/fonts/stylesheet.css";
 
-:root {
-  --mantine-font-family: "wotfardregular", system-ui, sans-serif;
-  --mantine-font-family-heading: "wotfardregular", system-ui, sans-serif;
-  --mantine-font-family-monospace: "Fira Code", monospace;
-}
-
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 #root .mantine-Typography-root {

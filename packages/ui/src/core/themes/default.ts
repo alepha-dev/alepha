@@ -1,4 +1,4 @@
-import type { AlephaTheme } from "../services/ThemeProvider.ts";
+import type { AlephaTheme } from "../providers/ThemeProvider.ts";
 
 export const defaultTheme: AlephaTheme = {
   id: "default",

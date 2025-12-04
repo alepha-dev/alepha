@@ -4,7 +4,7 @@ import {
   type Theme,
   ThemeProvider,
   themeAtom,
-} from "../services/ThemeProvider.ts";
+} from "../providers/ThemeProvider.ts";
 
 export const useTheme = () => {
   useStore(themeAtom);
