@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/feunard/alepha/discussions
+    about: Ask questions and discuss ideas here instead of opening an issue
+  - name: Documentation
+    url: https://alepha.dev
+    about: Check the docs first — your answer might already be there

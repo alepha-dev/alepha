@@ -33,12 +33,7 @@ For more information, please visit the [documentation](https://feunard.github.io
 
 ## Examples
 
-We will show:
-
-- API endpoint with automatic OpenAPI documentation
-- Full-stack React application with server-side rendering
-
-### Requirements
+**Requirements**
 
 - [Node.js](https://nodejs.org/) v22 or higher
 
@@ -98,8 +93,10 @@ Run the development server:
 
 ```bash
 $ npx alepha dev
-# alepha dev comes with hot-reload and full TypeScript support, but you can also run:
+# alepha dev comes with hot-reload and full TypeScript support
+# but you can also run:
 $ node ./src/main.ts
+$ bun ./src/main.ts
 ```
 
 Then, open your browser at `http://localhost:3000/docs/` and enjoy your automatically generated documentation.
