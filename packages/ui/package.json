@@ -18,7 +18,8 @@
   "style": "./styles.css",
   "files": [
     "dist",
-    "src"
+    "src",
+    "styles.css"
   ],
   "dependencies": {
     "@alepha/react": "0.13.3",
