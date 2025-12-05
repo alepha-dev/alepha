@@ -1229,9 +1229,7 @@ class DocsCliApp {
 
           const node: DocNode = {
             slug: this.slug(categoryName),
-            name: isPackageNode
-              ? this.getPackageCategoryName(categoryPath, categoryName)
-              : this.pretty(categoryName),
+            name: this.pretty(categoryName),
             order: this.extractOrder(categoryName),
             children: [],
           };
