@@ -6,9 +6,12 @@ This guide isn't going to ask you to configure Webpack, Babel, or ESLint. Alepha
 
 ## Prerequisites
 
-You need a modern JavaScript runtime. Alepha is built for the future of the platform, so we require **Node.js 22+**.
+You need a modern JavaScript runtime. Alepha requires **Node.js 22+** or **Bun 1.1+**.
 
-*   [Download Node.js](https://nodejs.org/)
+- [Download Node.js](https://nodejs.org/)
+- [Download Bun](https://bun.sh/)
+
+> Bun works great with Alepha. However, this documentation uses Node.js and npm in all examples. If you're using Bun, just replace `npm` with `bun` and `npx` with `bunx`.
 
 ## Project Setup
 

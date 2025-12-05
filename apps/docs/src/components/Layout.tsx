@@ -14,7 +14,15 @@ import Header from "./Header.tsx";
 
 const Layout = () => {
   return (
-    <AlephaMantineProvider>
+    <AlephaMantineProvider
+      mantine={{
+        theme: {
+          primaryColor: "pink",
+          fontFamily: "wotfardregular",
+        },
+        defaultColorScheme: "dark",
+      }}
+    >
       <LayoutContent />
     </AlephaMantineProvider>
   );

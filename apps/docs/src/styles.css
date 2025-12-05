@@ -1,7 +1,7 @@
 @import "@alepha/ui/styles";
 @import "highlight.js/styles/github.css";
 @import "./styles/code-github-dark.css";
-@import "../assets/fonts/stylesheet.css";
+@import "../public/fonts/wotfard.css";
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 
@@ -25,21 +25,17 @@
   box-shadow: -1px 0 0 0 var(--mantine-color-gray-4);
   border-radius: 0;
 }
-
 #root .mantine-TableOfContents-root button[data-active="true"] {
-  box-shadow: -2px 0 0 0 var(--mantine-color-gray-8);
+  box-shadow: -2px 0 0 0 var(--mantine-primary-color-7);
   border-radius: 0;
 }
 
 html[data-mantine-color-scheme="dark"] {
-  #root .mantine-TableOfContents-root button[data-active="true"] {
-    box-shadow: -2px 0 0 0 var(--mantine-color-gray-1);
-  }
   #root .mantine-TableOfContents-root button {
     box-shadow: -1px 0 0 0 var(--mantine-color-gray-8);
   }
   #root .mantine-TableOfContents-root button[data-active="true"] {
-    box-shadow: -2px 0 0 0 var(--mantine-color-gray-5);
+    box-shadow: -2px 0 0 0 var(--mantine-primary-color-7);
   }
 }
 

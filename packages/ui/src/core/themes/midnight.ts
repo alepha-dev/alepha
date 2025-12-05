@@ -24,13 +24,7 @@ export const midnightTheme: AlephaTheme = {
       h6: { fontSize: "0.75rem", lineHeight: "1.5" },
     },
   },
-  fontSizes: {
-    xs: "0.75rem",
-    sm: "0.875rem",
-    md: "0.875rem",
-    lg: "1rem",
-    xl: "1.25rem",
-  },
+
   radius: {
     xs: "3px",
     sm: "6px",

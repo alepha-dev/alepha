@@ -3,132 +3,207 @@ import {
   IconBox,
   IconBrandReact,
   IconBucket,
+  IconChecklist,
   IconClock,
+  IconCloud,
+  IconCpu,
   IconDatabase,
+  IconDeviceDesktop,
+  IconFileText,
+  IconHeartRateMonitor,
+  IconLayoutDashboard,
   IconLink,
   IconLock,
   IconMail,
   IconMessage2,
   IconMessageCircle,
   IconPackage,
+  IconPhone,
   IconRepeat,
   IconSeo,
   IconServer,
   IconShieldCheck,
   IconTool,
   IconUserCheck,
+  IconUsers,
 } from "@tabler/icons-react";
 
 export const features = [
+  // Server & API
   {
     icon: IconServer,
     title: "Server",
-    description: "Core HTTP server for creating REST APIs.",
+    description: "HTTP server with type-safe REST APIs.",
     slug: "packages-alepha-server",
   },
   {
     icon: IconApi,
     title: "OpenAPI",
-    description: "Generates OpenAPI documentation for APIs.",
+    description: "Auto-generated API documentation.",
     slug: "packages-alepha-server-swagger",
   },
   {
     icon: IconShieldCheck,
     title: "Security",
-    description: "Manage realms, roles, permissions.",
-    slug: "packages-alepha-server-security",
+    description: "Realms, roles, and permissions.",
+    slug: "packages-alepha-security",
   },
 
+  // Data
   {
     icon: IconDatabase,
-    title: "Database ORM",
-    description: "A type-safe SQL query builder and ORM.",
+    title: "ORM",
+    description: "Type-safe database queries with Drizzle.",
     slug: "packages-alepha-orm",
-  },
-  {
-    icon: IconBucket,
-    title: "Bucket",
-    description: "A universal interface for object storages.",
-    slug: "packages-alepha-bucket",
   },
   {
     icon: IconBox,
     title: "Cache",
-    description: "A generic key-value caching interface.",
+    description: "In-memory or Redis caching.",
     slug: "packages-alepha-cache",
   },
+  {
+    icon: IconBucket,
+    title: "Bucket",
+    description: "File storage for local, Azure, or Vercel.",
+    slug: "packages-alepha-bucket",
+  },
 
+  // Background
   {
     icon: IconMessage2,
     title: "Queue",
-    description: "A powerful interface for message queueing systems.",
+    description: "Background job processing with retries.",
     slug: "packages-alepha-queue",
-  },
-  {
-    icon: IconMessageCircle,
-    title: "Topic",
-    description: "A publish-subscribe messaging interface.",
-    slug: "packages-alepha-topic",
   },
   {
     icon: IconClock,
     title: "Scheduler",
-    description: "Schedule recurring tasks using cron expressions.",
+    description: "Cron-based scheduled tasks.",
     slug: "packages-alepha-scheduler",
   },
+  {
+    icon: IconChecklist,
+    title: "Jobs",
+    description: "Scheduler with DB execution history.",
+    slug: "packages-alepha-api-jobs",
+  },
 
+  // React
   {
     icon: IconBrandReact,
     title: "React",
-    description: "Build SSR, CSR or SSG applications.",
+    description: "SSR, CSR, or SSG with routing.",
     slug: "packages-react-core",
   },
   {
     icon: IconSeo,
-    title: "SEO",
-    description: "Manages the document <head> and metadata.",
+    title: "Head",
+    description: "Document head and SEO metadata.",
     slug: "packages-react-head",
   },
   {
     icon: IconUserCheck,
-    title: "Auth",
-    description: "Simplifies user authentication flows.",
-    slug: "react-auth",
+    title: "Auth UI",
+    description: "Ready-to-use authentication components.",
+    slug: "packages-react-auth",
   },
+
+  // Communication
+  {
+    icon: IconMail,
+    title: "Email",
+    description: "Send emails with templates.",
+    slug: "packages-alepha-email",
+  },
+  {
+    icon: IconPhone,
+    title: "SMS",
+    description: "Send SMS messages.",
+    slug: "packages-alepha-sms",
+  },
+  {
+    icon: IconMessageCircle,
+    title: "Topic",
+    description: "Pub/sub messaging.",
+    slug: "packages-alepha-topic",
+  },
+
+  // Utilities
   {
     icon: IconLink,
     title: "Links",
-    description: "Type-safe communication between services.",
+    description: "Type-safe API client.",
     slug: "packages-alepha-server-links",
   },
   {
     icon: IconLock,
-    title: "Locking",
-    description: "Resource locking and synchronization.",
+    title: "Lock",
+    description: "Distributed locking.",
     slug: "packages-alepha-lock",
   },
   {
     icon: IconRepeat,
     title: "Retry",
-    description: "Simple, declarative retry for failed operations.",
+    description: "Retry failed operations.",
     slug: "packages-alepha-retry",
   },
   {
     icon: IconPackage,
     title: "Batch",
-    description: "Efficiently process operations in groups.",
+    description: "Group operations together.",
     slug: "packages-alepha-batch",
   },
+
+  // APIs
+  {
+    icon: IconUsers,
+    title: "Users API",
+    description: "Multi-realm user management.",
+    slug: "packages-alepha-api-users",
+  },
+  {
+    icon: IconFileText,
+    title: "Files API",
+    description: "File upload and download.",
+    slug: "packages-alepha-api-files",
+  },
+
+  // Dev & Ops
   {
     icon: IconTool,
     title: "Command",
-    description: "A versatile task runner for scripts.",
+    description: "CLI task runner.",
     slug: "packages-alepha-command",
   },
   {
-    icon: IconMail,
-    title: "Email",
-    description: "Create and send templated email.",
-    slug: "packages-alepha-email",
+    icon: IconHeartRateMonitor,
+    title: "Health",
+    description: "Health check endpoints.",
+    slug: "packages-alepha-server-health",
+  },
+  {
+    icon: IconDeviceDesktop,
+    title: "DevTools",
+    description: "Inspect actions, queues, logs.",
+    slug: "packages-devtools",
+  },
+  {
+    icon: IconLayoutDashboard,
+    title: "Admin UI",
+    description: "Auto-generated admin panel.",
+    slug: "packages-ui-admin",
+  },
+  {
+    icon: IconCloud,
+    title: "Deploy",
+    description: "Docker, Vercel, or VPS.",
+    slug: "guides-operations-deployment",
+  },
+  {
+    icon: IconCpu,
+    title: "Thread",
+    description: "Multi-threading utilities.",
+    slug: "packages-alepha-thread",
   },
 ];

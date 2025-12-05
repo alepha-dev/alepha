@@ -19,6 +19,9 @@ Easy mode for building TypeScript applications.
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
+> [!WARNING]
+> **Early Development** — Alepha is under active development. The API is stabilizing but may change. First stable release planned for early 2026. Follow the repo to stay updated.
+
 ## What is this?
 
 Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), and more!

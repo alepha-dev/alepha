@@ -1,5 +1,6 @@
 import { Link } from "@alepha/react";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -9,35 +10,66 @@ import {
   Flex,
   Group,
   Paper,
+  SegmentedControl,
   SimpleGrid,
-  Tabs,
   Text,
   ThemeIcon,
   Title,
   Tooltip,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconArrowRight,
   IconBolt,
   IconBook,
   IconBrandGithub,
   IconBrandNpm,
-  IconBrandReact,
   IconCheck,
   IconCopy,
-  IconDatabase,
-  IconMessage2,
   IconPlayerPlay,
   IconPuzzle,
   IconRocket,
-  IconServer,
   IconStack2,
   IconTerminal,
-  IconTools,
 } from "@tabler/icons-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { snippets } from "../config/docs.ts";
 import { features } from "../config/features.ts";
+
+const EarlyDevelopmentBanner = () => {
+  const [visible, setVisible] = useState(true);
+
+  if (!visible) return null;
+
+  return (
+    <Alert
+      icon={<IconAlertTriangle size={18} />}
+      color="yellow"
+      variant="light"
+      withCloseButton
+      onClose={() => setVisible(false)}
+      style={{
+        position: "absolute",
+        top: 128,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 100,
+        maxWidth: "calc(100% - 32px)",
+        width: "auto",
+      }}
+    >
+      <Text size="sm">
+        <Text span fw={600}>
+          Early Development
+        </Text>
+        <Text>
+          Alepha is under active development. API may change. Stable release
+          planned for early 2026.
+        </Text>
+      </Text>
+    </Alert>
+  );
+};
 
 const Home = () => {
   return (
@@ -47,12 +79,14 @@ const Home = () => {
       w={"100%"}
       className={"graph-paper"}
     >
+      <EarlyDevelopmentBanner />
       <ParticleCanvas />
       <HeroSection />
       <PrinciplesSection />
       <FeatureGrid />
       <InstallSection />
       <FooterCTA />
+      <Footer />
     </Flex>
   );
 };
@@ -232,13 +266,12 @@ const HeroSectionMessage = () => {
         }}
         mb="md"
       >
-        Build Type-Safe Applications
+        TypeScript Framework Made Easy
       </Title>
 
       <Text c="dimmed" size="xl" maw={500} mb="xl">
-        Alepha is a convention-driven TypeScript framework for building robust,
-        end-to-end type-safe applications, from serverless APIs to full-stack
-        React apps.
+        Stop gluing libraries together. Alepha gives you APIs, databases,
+        queues, React SSR, and more. All type-safe. All works out of the box.
       </Text>
 
       <Group justify={"center"}>
@@ -266,7 +299,25 @@ const HeroSectionMessage = () => {
   );
 };
 
+const showcaseOptions = [
+  { value: "server", label: "Server" },
+  { value: "react", label: "React" },
+  { value: "db", label: "Database" },
+  { value: "queue", label: "Queues" },
+  { value: "cli", label: "CLI" },
+];
+
+const showcaseSnippets: Record<string, string> = {
+  server: snippets.server,
+  react: snippets.react,
+  db: snippets.db,
+  queue: snippets.queue,
+  cli: snippets.command,
+};
+
 const ShowcaseSection = () => {
+  const [active, setActive] = useState("server");
+
   return (
     <Paper
       withBorder
@@ -275,41 +326,17 @@ const ShowcaseSection = () => {
       pos="relative"
       style={{ zIndex: 1 }}
     >
-      <Tabs defaultValue="server" variant={"pills"} h={512} w={640}>
-        <Tabs.List grow p={"xs"}>
-          <Tabs.Tab value="server" leftSection={<IconServer size={16} />}>
-            Server
-          </Tabs.Tab>
-          <Tabs.Tab value="react" leftSection={<IconBrandReact size={16} />}>
-            React
-          </Tabs.Tab>
-          <Tabs.Tab value="db" leftSection={<IconDatabase size={16} />}>
-            Database
-          </Tabs.Tab>
-          <Tabs.Tab value="queue" leftSection={<IconMessage2 size={16} />}>
-            Queues
-          </Tabs.Tab>
-          <Tabs.Tab value="cli" leftSection={<IconTools size={16} />}>
-            CLI
-          </Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="server">
-          <CodeSection content={snippets.server} />
-        </Tabs.Panel>
-        <Tabs.Panel value="react">
-          <CodeSection content={snippets.react} />
-        </Tabs.Panel>
-        <Tabs.Panel value="db">
-          <CodeSection content={snippets.db} />
-        </Tabs.Panel>
-        <Tabs.Panel value="queue">
-          <CodeSection content={snippets.queue} />
-        </Tabs.Panel>
-        <Tabs.Panel value="cli">
-          <CodeSection content={snippets.command} />
-        </Tabs.Panel>
-      </Tabs>
+      <Flex direction="column" h={512} w={640}>
+        <Box p="xs">
+          <SegmentedControl
+            value={active}
+            onChange={setActive}
+            data={showcaseOptions}
+            fullWidth
+          />
+        </Box>
+        <CodeSection content={showcaseSnippets[active]} />
+      </Flex>
     </Paper>
   );
 };
@@ -360,15 +387,28 @@ const PrinciplesSection = () => (
           The Alepha Philosophy
         </Title>
         <Text size="lg" c="dimmed" maw={600} ta="center">
-          We believe frameworks should accelerate you, not constrain you.
+          The four pillars that guide everything we build.
         </Text>
       </Flex>
 
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl">
-        {principles.map((principle) => (
+        {principles.map((principle, index) => (
           <Card key={principle.title} padding="xl" radius="md" withBorder>
             <Flex gap="md">
-              <ThemeIcon size={44} radius="md" variant="light">
+              <ThemeIcon
+                color={
+                  index === 0
+                    ? "grape"
+                    : index === 1
+                      ? "teal"
+                      : index === 2
+                        ? "yellow"
+                        : "indigo"
+                }
+                size={44}
+                radius="md"
+                variant="light"
+              >
                 <principle.icon size={22} />
               </ThemeIcon>
               <Flex direction="column" gap={4}>
@@ -410,6 +450,7 @@ const FeatureGrid = () => (
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
         {features.map((feature) => (
           <Button
+            color={"gray"}
             size={"xl"}
             component={Link}
             href={`/docs/${feature.slug}`}
@@ -417,7 +458,7 @@ const FeatureGrid = () => (
             px={"xs"}
             variant={"subtle"}
             leftSection={
-              <ThemeIcon variant="light" size={"lg"} radius="md">
+              <ThemeIcon color={"gray"} variant="light" size={"lg"} radius="md">
                 <feature.icon />
               </ThemeIcon>
             }
@@ -454,6 +495,16 @@ const InstallSection = () => {
             </Title>
             <Text size="lg" c="dimmed" ta="center">
               One package. Everything included.
+              <Tooltip
+                label="Some modules like @alepha/react, @alepha/ui, and cloud storage providers are separate packages, but installed seamlessly by the Alepha CLI."
+                withArrow
+                multiline
+                w={300}
+              >
+                <Text span c="dimmed" style={{ cursor: "help" }}>
+                  *
+                </Text>
+              </Tooltip>
             </Text>
           </Flex>
 
@@ -469,8 +520,8 @@ const InstallSection = () => {
                 {({ copied, copy }) => (
                   <Tooltip label={copied ? "Copied!" : "Copy"} withArrow>
                     <Button
+                      color={"gray"}
                       variant="subtle"
-                      size="compact-sm"
                       onClick={copy}
                       px="xs"
                     >
@@ -488,6 +539,7 @@ const InstallSection = () => {
 
           <Group gap="xs">
             <Button
+              color={"gray"}
               variant="subtle"
               size="sm"
               leftSection={<IconBrandGithub size={16} />}
@@ -498,6 +550,7 @@ const InstallSection = () => {
               GitHub
             </Button>
             <Button
+              color={"gray"}
               variant="subtle"
               size="sm"
               leftSection={<IconBrandNpm size={16} />}
@@ -543,6 +596,70 @@ const FooterCTA = () => (
           </Button>
         </Flex>
       </Card>
+    </Container>
+  </Box>
+);
+
+// =============================================================================
+// Footer
+// =============================================================================
+
+const Footer = () => (
+  <Box py={40} w="100%">
+    <Container size="lg">
+      <Flex
+        direction={{ base: "column", sm: "row" }}
+        justify="space-between"
+        align="center"
+        gap="md"
+      >
+        <Flex align="center" gap="xs">
+          <Text size="sm" c="dimmed">
+            MIT License
+          </Text>
+          <Text size="sm" c="dimmed">
+            ·
+          </Text>
+          <Text
+            size="sm"
+            c="dimmed"
+            component="a"
+            href="https://github.com/feunard/alepha"
+            target="_blank"
+          >
+            GitHub
+          </Text>
+          <Text size="sm" c="dimmed">
+            ·
+          </Text>
+          <Text
+            size="sm"
+            c="dimmed"
+            component="a"
+            href="https://www.npmjs.com/package/alepha"
+            target="_blank"
+          >
+            npm
+          </Text>
+        </Flex>
+        <Flex direction={"column"} align="center" gap="sm">
+          <Text size="sm" c="dimmed">
+            Made in Paris, France
+          </Text>
+          <Flex
+            style={{
+              width: 96,
+              height: 2,
+              borderRadius: 2,
+              overflow: "hidden",
+            }}
+          >
+            <Box style={{ flex: 1, background: "#002395" }} />
+            <Box style={{ flex: 1, background: "#ffffff" }} />
+            <Box style={{ flex: 1, background: "#ED2939" }} />
+          </Flex>
+        </Flex>
+      </Flex>
     </Container>
   </Box>
 );

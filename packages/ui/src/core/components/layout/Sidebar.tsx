@@ -229,7 +229,6 @@ export const SidebarItem = (props: SidebarItemProps) => {
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
-        color={"var(--alepha-text)"}
         variant={"subtle"}
         variantActive={"default"}
         radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
@@ -342,7 +341,6 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
         props.theme.button?.size ??
         (level === 0 ? "sm" : "xs")
       }
-      color={"var(--alepha-text)"}
       variant={"subtle"}
       variantActive={"default"}
       tooltip={

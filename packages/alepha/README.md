@@ -19,6 +19,9 @@ Easy mode for building TypeScript applications.
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
+> [!WARNING]
+> **Early Development** — Alepha is under active development. The API is stabilizing but may change. First stable release planned for early 2026. Follow the repo to stay updated.
+
 ## What is this?
 
 Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), and more!
@@ -33,12 +36,7 @@ For more information, please visit the [documentation](https://feunard.github.io
 
 ## Examples
 
-We will show:
-
-- API endpoint with automatic OpenAPI documentation
-- Full-stack React application with server-side rendering
-
-### Requirements
+**Requirements**
 
 - [Node.js](https://nodejs.org/) v22 or higher
 
@@ -98,8 +96,10 @@ Run the development server:
 
 ```bash
 $ npx alepha dev
-# alepha dev comes with hot-reload and full TypeScript support, but you can also run:
+# alepha dev comes with hot-reload and full TypeScript support
+# but you can also run:
 $ node ./src/main.ts
+$ bun ./src/main.ts
 ```
 
 Then, open your browser at `http://localhost:3000/docs/` and enjoy your automatically generated documentation.

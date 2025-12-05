@@ -19,7 +19,7 @@ const Header = (props: HeaderProps) => {
         <HomeButton />
       </Flex>
       <Flex>
-        <OmnibarButton actionProps={{ variant: "outline" }} />
+        <OmnibarButton actionProps={{ variant: "subtle" }} />
       </Flex>
       <Flex flex={1} justify={"end"} gap={"md"}>
         <ActionButton
