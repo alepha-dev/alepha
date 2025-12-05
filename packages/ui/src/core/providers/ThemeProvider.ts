@@ -12,7 +12,7 @@ import {
   slateTheme,
 } from "../themes/index.ts";
 
-export const themeAtom = $atom({
+export const mantineThemeAtom = $atom({
   name: "alepha.ui.theme",
   schema: t.object({
     id: t.string(),
@@ -22,11 +22,11 @@ export const themeAtom = $atom({
   },
 });
 
-export type Theme = Static<typeof themeAtom.schema>;
+export type Theme = Static<typeof mantineThemeAtom.schema>;
 
 declare module "alepha" {
   interface State {
-    [themeAtom.key]?: Theme;
+    [mantineThemeAtom.key]?: Theme;
   }
 }
 
@@ -38,7 +38,7 @@ export type AlephaTheme = MantineThemeOverride & {
 
 export class ThemeProvider {
   protected readonly alepha = $inject(Alepha);
-  protected themeCookie = $cookie(themeAtom);
+  protected themeCookie = $cookie(mantineThemeAtom);
 
   public themes: AlephaTheme[] = [
     defaultTheme,
@@ -60,7 +60,7 @@ export class ThemeProvider {
 
   public setTheme(theme: Theme) {
     this.themeCookie.set(theme);
-    this.alepha.store.set(themeAtom, theme);
+    this.alepha.store.set(mantineThemeAtom, theme);
 
     if (typeof document === "undefined") return;
 
@@ -76,12 +76,15 @@ export class ThemeProvider {
     try {
       return (
         this.themeCookie.get() ??
-        this.alepha.store.get(themeAtom) ??
-        themeAtom.options.default
+        this.alepha.store.get(mantineThemeAtom) ??
+        mantineThemeAtom.options.default
       );
     } catch {
       // TODO: atom should take default value if undefined ???
-      return this.alepha.store.get(themeAtom) ?? themeAtom.options.default;
+      return (
+        this.alepha.store.get(mantineThemeAtom) ??
+        mantineThemeAtom.options.default
+      );
     }
   }
 }

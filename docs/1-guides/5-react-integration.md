@@ -2,6 +2,30 @@
 
 Alepha isn't just a backend framework. It's a full-stack framework. We treat the frontend as just another part of your application graph.
 
+## Installation
+
+The `@alepha/react` package is **not bundled** with the main `alepha` package. It's a separate extension that you need to install explicitly.
+
+**Recommended:** Use the CLI to scaffold a React-ready project:
+
+```bash
+npx alepha init --react
+```
+
+This is the preferred method because it:
+- Installs `@alepha/react` and its peer dependencies
+- Creates the required `index.html` entry point
+- Sets up `main.browser.ts` for client-side hydration
+- Configures Vite for SSR builds
+
+**Alternative:** If you're adding React to an existing Alepha project:
+
+```bash
+npm install @alepha/react
+```
+
+Note: You'll need to manually create `index.html` and configure the browser entry point.
+
 ## The `$page` Primitive
 
 In frameworks like Next.js or Remix, you create files in a `pages/` directory. In Alepha, you define pages as properties on a class, just like API endpoints.
@@ -130,22 +154,6 @@ const NavLink = ({ page, children }) => {
 // Usage
 <NavLink page="dashboard">Dashboard</NavLink>
 <NavLink page="userProfile" params={{ id: "123" }}>Profile</NavLink>
-```
-
-### The `Link` Component
-
-For simple declarative navigation, use the built-in `Link` component.
-
-```tsx
-import { Link } from "@alepha/react";
-
-const Nav = () => (
-  <nav>
-    <Link href="/">Home</Link>
-    <Link href="/dashboard">Dashboard</Link>
-    <Link href="/users/123">User Profile</Link>
-  </nav>
-);
 ```
 
 ### Query Parameters

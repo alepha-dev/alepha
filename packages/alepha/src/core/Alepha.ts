@@ -17,6 +17,7 @@ import {
   type Service,
   type ServiceEntry,
 } from "./interfaces/Service.ts";
+import type { Atom, AtomStatic, TAtomObject } from "./primitives/$atom.ts";
 import type { InjectOptions } from "./primitives/$inject.ts";
 import { Module, type WithModule } from "./primitives/$module.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
@@ -323,6 +324,19 @@ export class Alepha {
 
   constructor(init: Partial<State> = {}) {
     this.init = init;
+  }
+
+  public set<T extends TAtomObject>(
+    target: Atom<T>,
+    value: AtomStatic<T>,
+  ): this;
+  public set<Key extends keyof State>(
+    target: Key,
+    value: State[Key] | undefined,
+  ): this;
+  public set(target: any, value: any): this {
+    this.store.set(target, value);
+    return this;
   }
 
   /**

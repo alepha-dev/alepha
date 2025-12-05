@@ -1,13 +1,13 @@
 import { useInject, useStore } from "@alepha/react";
 import {
   type AlephaTheme,
+  mantineThemeAtom,
   type Theme,
   ThemeProvider,
-  themeAtom,
 } from "../providers/ThemeProvider.ts";
 
 export const useTheme = () => {
-  useStore(themeAtom);
+  useStore(mantineThemeAtom);
 
   const themeService = useInject(ThemeProvider);
   const currentTheme = themeService.getTheme();
