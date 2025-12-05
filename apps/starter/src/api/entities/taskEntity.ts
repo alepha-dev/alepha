@@ -1,7 +1,7 @@
 import { type Static, t } from "alepha";
 import { $entity, pg } from "alepha/orm";
 
-export const tasks = $entity({
+export const taskEntity = $entity({
   name: "tasks",
   schema: t.object({
     id: pg.primaryKey(t.uuid()),
@@ -10,4 +10,4 @@ export const tasks = $entity({
   }),
 });
 
-export type TaskEntity = Static<typeof tasks.schema>;
+export type TaskEntity = Static<typeof taskEntity.schema>;

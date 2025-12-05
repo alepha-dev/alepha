@@ -1,14 +1,16 @@
 import { $page } from "@alepha/react";
+import { MainRouter } from "@alepha/ui/admin";
 import { $client } from "alepha/server/links";
 import type { TaskController } from "../api/controllers/TaskController.ts";
 
-export class AppRouter {
+export class AppRouter extends MainRouter {
   // do not use $inject() for controllers in the web layer
   // as they might have server-only dependencies
   // instead, use $client() to get a virtual client
   taskController = $client<TaskController>();
 
   root = $page({
+    parent: this.layout,
     children: () => [this.taskCreate, this.home],
     head: {
       title: "Demo App",

@@ -1,6 +1,7 @@
+import { AlephaDevtools } from "@alepha/devtools";
 import { Alepha, run } from "alepha";
-import { Api } from "./api/Api.ts";
-import { App } from "./app/App.ts";
+import { StarterApi } from "./api/index.ts";
+import { StarterWeb } from "./web/index.ts";
 
 const alepha = Alepha.create({
   env: {
@@ -8,7 +9,8 @@ const alepha = Alepha.create({
   },
 });
 
-alepha.with(App); // for SSR
-alepha.with(Api);
+alepha.with(AlephaDevtools);
+alepha.with(StarterWeb); // for SSR
+alepha.with(StarterApi);
 
 run(alepha);

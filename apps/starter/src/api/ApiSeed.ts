@@ -1,9 +1,9 @@
 import { $hook } from "alepha";
 import { $repository } from "alepha/orm";
-import { tasks } from "./entities/tasks.ts";
+import { taskEntity } from "./entities/taskEntity.ts";
 
 export class ApiSeed {
-  taskRepository = $repository(tasks);
+  taskRepository = $repository(taskEntity);
 
   ready = $hook({
     on: "ready",
@@ -14,9 +14,10 @@ export class ApiSeed {
       }
 
       await this.taskRepository.createMany([
-        { name: "Task 1" },
-        { name: "Task 2" },
-        { name: "Task 3" },
+        { name: "Read the Alepha documentation" },
+        { name: "Explore the starter app code" },
+        { name: "Create your first API endpoint" },
+        { name: "Build something amazing" },
       ]);
     },
   });

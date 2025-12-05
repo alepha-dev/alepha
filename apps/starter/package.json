@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@alepha/react": "^0.13.3",
+    "@alepha/ui": "^0.13.3",
+    "@alepha/devtools": "^0.13.3",
     "alepha": "^0.13.3",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"

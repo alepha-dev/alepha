@@ -1,14 +1,15 @@
 import { t } from "alepha";
 import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
-import { tasks } from "../entities/tasks.ts";
+import { taskEntity } from "../entities/taskEntity.ts";
 
 export class TaskController {
-  taskRepository = $repository(tasks);
+  taskRepository = $repository(taskEntity);
 
   getTasks = $action({
+    secure: false,
     schema: {
-      response: t.array(tasks.schema),
+      response: t.array(taskEntity.schema),
     },
     handler: async () => {
       return this.taskRepository.findMany();
@@ -16,9 +17,10 @@ export class TaskController {
   });
 
   createTask = $action({
+    secure: false,
     schema: {
-      body: tasks.insertSchema,
-      response: t.array(tasks.schema),
+      body: taskEntity.insertSchema,
+      response: t.array(taskEntity.schema),
     },
     handler: async ({ body }) => {
       await this.taskRepository.create(body);
@@ -27,12 +29,13 @@ export class TaskController {
   });
 
   deleteTask = $action({
+    secure: false,
     method: "DELETE",
     schema: {
       params: t.object({
         task: t.uuid(),
       }),
-      response: t.array(tasks.schema),
+      response: t.array(taskEntity.schema),
     },
     handler: async ({ params }) => {
       await this.taskRepository.deleteById(params.task);

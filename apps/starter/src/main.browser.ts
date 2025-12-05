@@ -1,8 +1,8 @@
 import { Alepha, run } from "alepha";
-import { App } from "./app/App.ts";
+import { StarterWeb } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(App);
+alepha.with(StarterWeb);
 
 run(alepha);
