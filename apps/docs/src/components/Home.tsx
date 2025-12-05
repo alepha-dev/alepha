@@ -16,7 +16,9 @@ import {
   ThemeIcon,
   Title,
   Tooltip,
+  useMantineTheme,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import {
   IconAlertTriangle,
   IconArrowRight,
@@ -38,6 +40,8 @@ import { features } from "../config/features.ts";
 
 const EarlyDevelopmentBanner = () => {
   const [visible, setVisible] = useState(true);
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.lg})`);
 
   if (!visible) return null;
 
@@ -48,21 +52,29 @@ const EarlyDevelopmentBanner = () => {
       variant="light"
       withCloseButton
       onClose={() => setVisible(false)}
-      style={{
-        position: "absolute",
-        top: 128,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 100,
-        maxWidth: "calc(100% - 32px)",
-        width: "auto",
-      }}
+      style={
+        isMobile
+          ? {
+              margin: 16,
+              width: "calc(100% - 32px)",
+            }
+          : {
+              position: "absolute",
+              top: 128,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 100,
+              maxWidth: "calc(100% - 32px)",
+              width: "auto",
+            }
+      }
     >
       <Text size="sm">
         <Text span fw={600}>
           Early Development
         </Text>
-        <Text>
+        <Text span>
+          {" "}
           Alepha is under active development. API may change. Stable release
           planned for early 2026.
         </Text>
@@ -322,11 +334,11 @@ const ShowcaseSection = () => {
     <Paper
       withBorder
       visibleFrom={"sm"}
-      w={640}
+      w={600}
       pos="relative"
       style={{ zIndex: 1 }}
     >
-      <Flex direction="column" h={512} w={640}>
+      <Flex direction="column" h={512} w={600}>
         <Box p="xs">
           <SegmentedControl
             value={active}

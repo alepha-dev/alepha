@@ -39,6 +39,7 @@ export default Header;
 const HomeButton = () => {
   return (
     <ActionButton size={"xl"} variant={"transparent"} href={"/"} active={false}>
+      <img alt={"logo"} src={"/favicon.png"} width={32} height={32} />
       <Flex direction={"column"} align={"center"}>
         <Text size={"xl"}>Alepha</Text>
       </Flex>
