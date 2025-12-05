@@ -12536,7 +12536,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "starter-6b2739@workspace:apps/starter"
   dependencies:
+    "@alepha/devtools": "npm:^0.13.3"
     "@alepha/react": "npm:^0.13.3"
+    "@alepha/ui": "npm:^0.13.3"
     "@types/react": "npm:^19.2.7"
     alepha: "npm:^0.13.3"
     react: "npm:^19.2.1"
