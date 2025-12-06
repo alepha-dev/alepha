@@ -3,20 +3,20 @@
   "type": "module",
   "name": "docs",
   "dependencies": {
-    "@alepha/react": "0.13.3",
+    "@alepha/react": "0.13.4",
     "@mantine/core": "^8.3.9",
     "@mantine/form": "^8.3.9",
     "@mantine/hooks": "^8.3.9",
     "@mantine/nprogress": "^8.3.9",
     "@mantine/spotlight": "^8.3.9",
     "@tabler/icons-react": "^3.35.0",
-    "alepha": "^0.13.3",
+    "alepha": "^0.13.4",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",
-    "alepha": "^0.13.3",
+    "alepha": "^0.13.4",
     "highlight.js": "^11.11.1",
     "marked": "^17.0.1",
     "marked-highlight": "^2.2.3",
