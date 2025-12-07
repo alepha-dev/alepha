@@ -11,6 +11,8 @@
   "dependencies": {
     "@alepha/react": "^0.13.4",
     "@alepha/ui": "^0.13.4",
+    "@mantine/core": "^8.3.9",
+    "@tabler/icons-react": "^3.35.0",
     "alepha": "^0.13.4",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"

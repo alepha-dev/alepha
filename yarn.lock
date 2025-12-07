@@ -39,7 +39,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools@npm:^0.13.4, @alepha/devtools@workspace:packages/devtools":
+"@alepha/devtools@workspace:packages/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
@@ -98,14 +98,12 @@ __metadata:
     "@alepha/bucket-vercel": "npm:^0.13.4"
     "@alepha/react": "npm:^0.13.4"
     "@dnd-kit/core": "npm:^6.3.1"
-    "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@mantine/charts": "npm:^8.3.9"
     "@mantine/core": "npm:^8.3.9"
     "@mantine/hooks": "npm:^8.3.9"
     "@mantine/modals": "npm:^8.3.9"
     "@mantine/notifications": "npm:^8.3.9"
-    "@mantine/nprogress": "npm:^8.3.9"
     "@mantine/tiptap": "npm:^8.3.9"
     "@tabler/icons-react": "npm:^3.35.0"
     "@tiptap/core": "npm:^3.12.1"
@@ -128,6 +126,7 @@ __metadata:
     recharts: "npm:^3.5.1"
     sanitize-html: "npm:^2.17.0"
     vercel: "npm:^48.12.1"
+    vitest: "npm:^4.0.15"
   languageName: unknown
   linkType: soft
 
@@ -1357,19 +1356,6 @@ __metadata:
     react: ">=16.8.0"
     react-dom: ">=16.8.0"
   checksum: 10c0/196db95d81096d9dc248983533eab91ba83591770fa5c894b1ac776f42af0d99522b3fd5bb3923411470e4733fcfa103e6ee17adc17b9b7eb54c7fbec5ff7c52
-  languageName: node
-  linkType: hard
-
-"@dnd-kit/sortable@npm:^10.0.0":
-  version: 10.0.0
-  resolution: "@dnd-kit/sortable@npm:10.0.0"
-  dependencies:
-    "@dnd-kit/utilities": "npm:^3.2.2"
-    tslib: "npm:^2.0.0"
-  peerDependencies:
-    "@dnd-kit/core": ^6.3.0
-    react: ">=16.8.0"
-  checksum: 10c0/37ee48bc6789fb512dc0e4c374a96d19abe5b2b76dc34856a5883aaa96c3297891b94cc77bbc409e074dcce70967ebcb9feb40cd9abadb8716fc280b4c7f99af
   languageName: node
   linkType: hard
 
@@ -2774,18 +2760,6 @@ __metadata:
     react: ^18.x || ^19.x
     react-dom: ^18.x || ^19.x
   checksum: 10c0/6ea59bac4de23566dedfa0a7508a89ab7340cb9c98a868967a0f9c2db1e20bd743b95f91d9b42563a9cbc490e3abfee62f5c5beca72d1bb554852729932e84a0
-  languageName: node
-  linkType: hard
-
-"@mantine/form@npm:^8.3.9":
-  version: 8.3.9
-  resolution: "@mantine/form@npm:8.3.9"
-  dependencies:
-    fast-deep-equal: "npm:^3.1.3"
-    klona: "npm:^2.0.6"
-  peerDependencies:
-    react: ^18.x || ^19.x
-  checksum: 10c0/33f9a92cc4305c561d88b1d0631bc1aa667de6e32b49804c1d553e0adff74f359caa321da886bb24245f20ac7b8f3c66e217bd908b7926f3de9075519453ece4
   languageName: node
   linkType: hard
 
@@ -5623,6 +5597,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"alepha-monorepo@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "alepha-monorepo@workspace:."
+  dependencies:
+    "@biomejs/biome": "npm:^2.3.8"
+    "@types/node": "npm:^24.10.1"
+    "@vitest/coverage-v8": "npm:^4.0.15"
+    "@vitest/ui": "npm:^4.0.15"
+    depcheck: "npm:^1.4.7"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.15"
+  languageName: unknown
+  linkType: soft
+
 "alepha@npm:0.13.4, alepha@npm:^0.13.4, alepha@workspace:packages/alepha":
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
@@ -5644,6 +5632,7 @@ __metadata:
     postgres: "npm:^3.4.7"
     prom-client: "npm:^15.1.3"
     swagger-ui-dist: "npm:^5.30.3"
+    tsdown: "npm:^0.17.0"
     tsx: "npm:^4.21.0"
     typebox: "npm:^1.0.61"
     typescript: "npm:^5.9.3"
@@ -6896,10 +6885,7 @@ __metadata:
   dependencies:
     "@alepha/react": "npm:0.13.4"
     "@mantine/core": "npm:^8.3.9"
-    "@mantine/form": "npm:^8.3.9"
     "@mantine/hooks": "npm:^8.3.9"
-    "@mantine/nprogress": "npm:^8.3.9"
-    "@mantine/spotlight": "npm:^8.3.9"
     "@tabler/icons-react": "npm:^3.35.0"
     "@types/react": "npm:^19.2.7"
     alepha: "npm:^0.13.4"
@@ -6908,7 +6894,6 @@ __metadata:
     marked-highlight: "npm:^2.2.3"
     react: "npm:^19.2.1"
     react-dom: "npm:^19.2.1"
-    vite-bundle-analyzer: "npm:^1.2.3"
   languageName: unknown
   linkType: soft
 
@@ -8104,6 +8089,9 @@ __metadata:
   dependencies:
     "@alepha/react": "npm:^0.13.4"
     "@alepha/ui": "npm:^0.13.4"
+    "@mantine/core": "npm:^8.3.9"
+    "@mantine/dates": "npm:^8.3.9"
+    "@tabler/icons-react": "npm:^3.35.0"
     "@types/react": "npm:^19.2.7"
     alepha: "npm:^0.13.4"
     framer-motion: "npm:^12.23.25"
@@ -9047,6 +9035,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"import-without-cache@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "import-without-cache@npm:0.2.2"
+  checksum: 10c0/5c3c1ac477f0832aac6762cc64437c985384aae941f077c844dd5586c2dea88a0616592f48f42aa929f1987d2a7662f0927a053e967935c233adfb08cb3a0ad8
+  languageName: node
+  linkType: hard
+
 "imurmurhash@npm:^0.1.4":
   version: 0.1.4
   resolution: "imurmurhash@npm:0.1.4"
@@ -9080,6 +9075,7 @@ __metadata:
   resolution: "integration-940784@workspace:apps/integration"
   dependencies:
     alepha: "npm:^0.13.4"
+    vitest: "npm:^4.0.15"
   languageName: unknown
   linkType: soft
 
@@ -9640,13 +9636,6 @@ __metadata:
   version: 4.1.5
   resolution: "kleur@npm:4.1.5"
   checksum: 10c0/e9de6cb49657b6fa70ba2d1448fd3d691a5c4370d8f7bbf1c2f64c24d461270f2117e1b0afe8cb3114f13bbd8e51de158c2a224953960331904e636a5e4c0f2a
-  languageName: node
-  linkType: hard
-
-"klona@npm:^2.0.6":
-  version: 2.0.6
-  resolution: "klona@npm:2.0.6"
-  checksum: 10c0/94eed2c6c2ce99f409df9186a96340558897b3e62a85afdc1ee39103954d2ebe1c1c4e9fe2b0952771771fa96d70055ede8b27962a7021406374fdb695fd4d01
   languageName: node
   linkType: hard
 
@@ -10811,7 +10800,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
   dependencies:
-    "@alepha/devtools": "npm:^0.13.4"
     alepha: "npm:^0.13.4"
     react: "npm:^19.2.1"
   languageName: unknown
@@ -11683,6 +11671,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rolldown-plugin-dts@npm:^0.18.2":
+  version: 0.18.3
+  resolution: "rolldown-plugin-dts@npm:0.18.3"
+  dependencies:
+    "@babel/generator": "npm:^7.28.5"
+    "@babel/parser": "npm:^7.28.5"
+    "@babel/types": "npm:^7.28.5"
+    ast-kit: "npm:^2.2.0"
+    birpc: "npm:^3.0.0"
+    dts-resolver: "npm:^2.1.3"
+    get-tsconfig: "npm:^4.13.0"
+    magic-string: "npm:^0.30.21"
+    obug: "npm:^2.1.1"
+  peerDependencies:
+    "@ts-macro/tsc": ^0.3.6
+    "@typescript/native-preview": ">=7.0.0-dev.20250601.1"
+    rolldown: ^1.0.0-beta.51
+    typescript: ^5.0.0
+    vue-tsc: ~3.1.0
+  peerDependenciesMeta:
+    "@ts-macro/tsc":
+      optional: true
+    "@typescript/native-preview":
+      optional: true
+    typescript:
+      optional: true
+    vue-tsc:
+      optional: true
+  checksum: 10c0/1e8a86b3532dfd8ba7b76d3c3dbe3e2ac1b1b44ad76ccfda713fdcf3da65b8dd38abca6b04ba76f0419db3dc1cbc67a075a5f0ac7850930461be6caa2f0543de
+  languageName: node
+  linkType: hard
+
 "rolldown@npm:1.0.0-beta.35":
   version: 1.0.0-beta.35
   resolution: "rolldown@npm:1.0.0-beta.35"
@@ -11927,20 +11947,6 @@ __metadata:
   checksum: 10c0/a21305aac72013083bd0dec92162b0f7f24cacf57c876ca601ec76e892895952c9ea592c1c07f23b8c125f7979c2b17f7fb565e386d03ee4c1f0952ac4ab0d75
   languageName: node
   linkType: hard
-
-"root-workspace-0b6124@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "root-workspace-0b6124@workspace:."
-  dependencies:
-    "@biomejs/biome": "npm:^2.3.8"
-    "@types/node": "npm:^24.10.1"
-    "@vitest/coverage-v8": "npm:^4.0.15"
-    "@vitest/ui": "npm:^4.0.15"
-    depcheck: "npm:^1.4.7"
-    typescript: "npm:^5.9.3"
-    vitest: "npm:^4.0.15"
-  languageName: unknown
-  linkType: soft
 
 "rope-sequence@npm:^1.3.0":
   version: 1.3.4
@@ -12538,6 +12544,8 @@ __metadata:
   dependencies:
     "@alepha/react": "npm:^0.13.4"
     "@alepha/ui": "npm:^0.13.4"
+    "@mantine/core": "npm:^8.3.9"
+    "@tabler/icons-react": "npm:^3.35.0"
     "@types/react": "npm:^19.2.7"
     alepha: "npm:^0.13.4"
     react: "npm:^19.2.1"
@@ -13059,6 +13067,50 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tsdown@npm:^0.17.0":
+  version: 0.17.0
+  resolution: "tsdown@npm:0.17.0"
+  dependencies:
+    ansis: "npm:^4.2.0"
+    cac: "npm:^6.7.14"
+    empathic: "npm:^2.0.0"
+    hookable: "npm:^5.5.3"
+    import-without-cache: "npm:^0.2.2"
+    obug: "npm:^2.1.1"
+    rolldown: "npm:1.0.0-beta.53"
+    rolldown-plugin-dts: "npm:^0.18.2"
+    semver: "npm:^7.7.3"
+    tinyexec: "npm:^1.0.2"
+    tinyglobby: "npm:^0.2.15"
+    tree-kill: "npm:^1.2.2"
+    unconfig-core: "npm:^7.4.1"
+    unrun: "npm:^0.2.16"
+  peerDependencies:
+    "@arethetypeswrong/core": ^0.18.1
+    "@vitejs/devtools": ^0.0.0-alpha.18
+    publint: ^0.3.0
+    typescript: ^5.0.0
+    unplugin-lightningcss: ^0.4.0
+    unplugin-unused: ^0.5.0
+  peerDependenciesMeta:
+    "@arethetypeswrong/core":
+      optional: true
+    "@vitejs/devtools":
+      optional: true
+    publint:
+      optional: true
+    typescript:
+      optional: true
+    unplugin-lightningcss:
+      optional: true
+    unplugin-unused:
+      optional: true
+  bin:
+    tsdown: dist/run.mjs
+  checksum: 10c0/202591b8104cd368a2a58e6b0d9de970ce37d2d1c446c32333bb3cd2c4c666cc88ab682683190c666213b5770dcd82aea1797ac388d3c419f58424b495bbf3e7
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^2.0.0, tslib@npm:^2.1.0, tslib@npm:^2.4.0, tslib@npm:^2.6.2, tslib@npm:^2.8.1":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
@@ -13339,6 +13391,23 @@ __metadata:
   bin:
     unrun: dist/cli.mjs
   checksum: 10c0/8676d5110534d48fe4c8f03b579e53e1b881b4ed273b9ea0d02253487a8a8916b158d81ee7be2fb12b76db89b9a6fc1dcf5ca876c85aad6af4ce477e90728e43
+  languageName: node
+  linkType: hard
+
+"unrun@npm:^0.2.16":
+  version: 0.2.17
+  resolution: "unrun@npm:0.2.17"
+  dependencies:
+    "@oxc-project/runtime": "npm:^0.101.0"
+    rolldown: "npm:1.0.0-beta.53"
+  peerDependencies:
+    synckit: ^0.11.11
+  peerDependenciesMeta:
+    synckit:
+      optional: true
+  bin:
+    unrun: dist/cli.mjs
+  checksum: 10c0/a0eb9cf446b85a76c887076193559d2678f623755d707c47a3b77c155cb2fa26429286b622cd8121012ac7b17b4f3c5497bd43bc105344b3e04fb4c44424ff53
   languageName: node
   linkType: hard
 

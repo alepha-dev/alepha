@@ -1,0 +1,17 @@
+ignores:
+    - 'alepha'
+    - '@vitejs/plugin-react'
+    - 'jsdom'
+    - '@alepha/ui'
+    - '@alepha/react'
+    - '@vitest/coverage-v8'
+    - 'drizzle-kit'
+    - 'swagger-ui-dist'
+    - 'vite'
+    - '@types/react'
+    - 'animate.css'
+    - 'marked-highlight'
+    - 'highlight.js'
+ignore-patterns:
+    - 'dist'
+    - 'assets'

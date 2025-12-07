@@ -8,5 +8,8 @@
   },
   "dependencies": {
     "alepha": "^0.13.4"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.15"
   }
 }
