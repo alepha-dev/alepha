@@ -9,7 +9,6 @@
     "build": "alepha build"
   },
   "dependencies": {
-    "@alepha/devtools": "^0.13.4",
     "@alepha/react": "^0.13.4",
     "@alepha/ui": "^0.13.4",
     "alepha": "^0.13.4",
