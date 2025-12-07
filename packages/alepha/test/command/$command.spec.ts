@@ -503,6 +503,121 @@ describe("$command", () => {
     });
   });
 
+  describe("Root Command with Arguments", () => {
+    test("should parse single string argument for root command", async () => {
+      const mockHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with string arg",
+          args: t.text(),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["hello"], (a) => a.with(RootCommand));
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      const [callArgs] = mockHandler.mock.calls[0];
+      expect(callArgs.args).toBe("hello");
+    });
+
+    test("should parse optional argument for root command when provided", async () => {
+      const mockHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with optional arg",
+          args: t.optional(t.text()),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["my-value"], (a) => a.with(RootCommand));
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].args).toBe("my-value");
+    });
+
+    test("should handle optional argument for root command when not provided", async () => {
+      const mockHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with optional arg",
+          args: t.optional(t.text()),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands([], (a) => a.with(RootCommand));
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].args).toBeUndefined();
+    });
+
+    test("should parse tuple arguments for root command", async () => {
+      const mockHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with tuple args",
+          args: t.tuple([t.text(), t.number()]),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["hello", "42"], (a) => a.with(RootCommand));
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].args).toEqual(["hello", 42]);
+    });
+
+    test("should parse root command args with flags mixed in", async () => {
+      const mockHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with args and flags",
+          flags: t.object({
+            verbose: t.optional(t.boolean()),
+          }),
+          args: t.text(),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["--verbose", "my-arg"], (a) =>
+        a.with(RootCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      const [callArgs] = mockHandler.mock.calls[0];
+      expect(callArgs.flags).toEqual({ verbose: true });
+      expect(callArgs.args).toBe("my-arg");
+    });
+
+    test("should throw error for missing required root command argument", async () => {
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with required arg",
+          args: t.text(),
+          handler: vi.fn(),
+        });
+      }
+
+      await expect(() =>
+        setupTestCommands([], (a) => a.with(RootCommand)),
+      ).rejects.toThrow("Missing required argument");
+    });
+  });
+
   describe("Root Command Global Flags", () => {
     test("should display root command flags as global flags in help", async () => {
       const mockRootHandler = vi.fn();

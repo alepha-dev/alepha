@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "alepha": "0.13.4",
-    "tsdown": "^0.16.8",
+    "tsdown": "^0.17.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   },
@@ -30,7 +30,7 @@
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "tsdown -c=../../tsdown.config.ts"
+    "build": "tsdown"
   },
   "homepage": "https://github.com/feunard/alepha",
   "repository": {

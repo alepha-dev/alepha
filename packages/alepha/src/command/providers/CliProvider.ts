@@ -142,7 +142,11 @@ export class CliProvider {
       }
 
       const commandFlags = this.parseCommandFlags(argv, command.flags);
-      const commandArgs = this.parseCommandArgs(argv, command.options.args);
+      const commandArgs = this.parseCommandArgs(
+        argv,
+        command.options.args,
+        command.name === "",
+      );
 
       await this.alepha.context.run(async () => {
         this.log.debug(`Executing command '${command.name}'...`, {
@@ -291,15 +295,19 @@ export class CliProvider {
     return result;
   }
 
-  protected parseCommandArgs(argv: string[], schema?: TSchema): any {
+  protected parseCommandArgs(
+    argv: string[],
+    schema?: TSchema,
+    isRootCommand = false,
+  ): any {
     if (!schema) {
       return undefined;
     }
 
     // Extract positional arguments (non-flag arguments)
     const positionalArgs = argv.filter((arg) => !arg.startsWith("-"));
-    // Remove the command name from the positional args
-    const argsOnly = positionalArgs.slice(1);
+    // For root commands, there's no command name to remove; otherwise slice off the command name
+    const argsOnly = isRootCommand ? positionalArgs : positionalArgs.slice(1);
 
     try {
       if (t.schema.isOptional(schema)) {

@@ -18,14 +18,14 @@
     "tar": "^7.5.2"
   },
   "devDependencies": {
-    "tsdown": "^0.16.8",
+    "tsdown": "^0.17.0",
     "vitest": "^4.0.15"
   },
   "scripts": {
     "lint": "biome check --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "build": "tsdown -c=../../tsdown.config.ts"
+    "build": "tsdown"
   },
   "homepage": "https://github.com/feunard/alepha",
   "repository": {

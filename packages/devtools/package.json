@@ -20,7 +20,7 @@
     "@tabler/icons-react": "^3.35.0",
     "alepha": "0.13.4",
     "react": "^19.2.1",
-    "tsdown": "^0.16.8",
+    "tsdown": "^0.17.0",
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
@@ -30,7 +30,7 @@
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "yarn ui:build && tsdown -c=../../tsdown.config.ts",
+    "build": "yarn ui:build && tsdown",
     "ui:dev": "alepha dev",
     "ui:build": "alepha build && rm -rf assets/devtools && mkdir -p assets && cp -r dist/public assets/devtools"
   },

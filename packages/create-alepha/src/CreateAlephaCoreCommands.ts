@@ -103,10 +103,6 @@ export class CreateAlephaCoreCommands {
       await run(`cd ${name} && ${pm} run build`, {
         alias: "Building project",
       });
-
-      this.log.info("");
-      this.log.info(`$ cd ${name} && ${pm} run dev`.trim());
-      this.log.info("");
     },
   });
 }
