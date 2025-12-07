@@ -51,11 +51,22 @@ export class AlephaCliUtils {
 
     const suffix = process.platform === "win32" ? ".cmd" : "";
     const [app, ...args] = command.split(" ");
-    const execPath = await this.checkFileExists(
+
+    // find executable inside project node_modules
+    let execPath = await this.checkFileExists(
       root,
       `node_modules/.bin/${app}${suffix}`,
       true,
     );
+
+    // or, find executable inside alepha package node_modules (pnpm style)
+    if (!execPath) {
+      execPath = await this.checkFileExists(
+        root,
+        `node_modules/alepha/node_modules/.bin/${app}${suffix}`,
+        true,
+      );
+    }
 
     if (!execPath) {
       throw new AlephaError(
