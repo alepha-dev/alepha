@@ -1,11 +1,9 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
-import { ProcessRunner } from "../services/ProcessRunner.ts";
-import { ProjectUtils } from "../services/ProjectUtils.ts";
+import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 export class VerifyCommands {
-  protected readonly processRunner = $inject(ProcessRunner);
-  protected readonly utils = $inject(ProjectUtils);
+  protected readonly utils = $inject(AlephaCliUtils);
 
   /**
    * Run a series of verification commands to ensure code quality and correctness.
@@ -51,7 +49,7 @@ export class VerifyCommands {
     name: "typecheck",
     description: "Check TypeScript types across the codebase",
     handler: async () => {
-      await this.processRunner.exec("tsc --noEmit");
+      await this.utils.exec("tsc --noEmit");
     },
   });
 }

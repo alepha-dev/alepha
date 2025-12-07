@@ -1,13 +1,13 @@
 import { $inject, t } from "alepha";
 import { $command, CliProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { ProjectUtils } from "../services/ProjectUtils.ts";
+import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { version } from "../version.ts";
 
 export class CoreCommands {
   protected readonly log = $logger();
   protected readonly cli = $inject(CliProvider);
-  protected readonly utils = $inject(ProjectUtils);
+  protected readonly utils = $inject(AlephaCliUtils);
 
   /**
    * Called when no command is provided

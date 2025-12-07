@@ -5,5 +5,5 @@ export * from "./commands/CoreCommands.ts";
 export * from "./commands/DrizzleCommands.ts";
 export * from "./commands/VerifyCommands.ts";
 export * from "./commands/ViteCommands.ts";
-export * from "./services/ProjectUtils.ts";
+export * from "./services/AlephaCliUtils.ts";
 export * from "./version.ts";

@@ -1,20 +1,18 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { ProcessRunner } from "../services/ProcessRunner.ts";
-import { ProjectUtils } from "../services/ProjectUtils.ts";
+import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 export class BiomeCommands {
   protected readonly log = $logger();
-  protected readonly runner = $inject(ProcessRunner);
-  protected readonly utils = $inject(ProjectUtils);
+  protected readonly utils = $inject(AlephaCliUtils);
 
   public readonly format = $command({
     name: "format",
     description: "Format the codebase using Biome",
     handler: async ({ root }) => {
       await this.utils.ensureConfig(root, { biomeJson: true });
-      await this.runner.exec(`biome format --fix`);
+      await this.utils.exec(`biome format --fix`);
     },
   });
 
@@ -23,7 +21,7 @@ export class BiomeCommands {
     description: "Run linter across the codebase using Biome",
     handler: async ({ root }) => {
       await this.utils.ensureConfig(root, { biomeJson: true });
-      await this.runner.exec(`biome check --formatter-enabled=false --fix`);
+      await this.utils.exec(`biome check --formatter-enabled=false --fix`);
     },
   });
 }

@@ -15,13 +15,11 @@ import {
   prerenderPages,
   type ViteAlephaBuildOptions,
 } from "alepha/vite";
-import { ProcessRunner } from "../services/ProcessRunner.ts";
-import { ProjectUtils } from "../services/ProjectUtils.ts";
+import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 export class ViteCommands {
   protected readonly log = $logger();
-  protected readonly runner = $inject(ProcessRunner);
-  protected readonly utils = $inject(ProjectUtils);
+  protected readonly utils = $inject(AlephaCliUtils);
 
   protected readonly env = $env(
     t.object({
@@ -41,7 +39,7 @@ export class ViteCommands {
     args: t.text({ title: "path", description: "Filepath to run" }),
     handler: async ({ args, flags, root }) => {
       await this.utils.ensureTsConfig(root);
-      await this.runner.exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
+      await this.utils.exec(`tsx ${flags.watch ? "watch " : ""}${args}`);
     },
   });
 
@@ -73,11 +71,11 @@ export class ViteCommands {
           cmd += ` --env-file=./.env`;
         }
         cmd += ` ${entry}`;
-        await this.runner.exec(cmd);
+        await this.utils.exec(cmd);
         return;
       }
 
-      await this.runner.exec(`vite`);
+      await this.utils.exec(`vite`);
     },
   });
 
@@ -313,7 +311,7 @@ export class ViteCommands {
         process.exit(1);
       }
 
-      await this.runner.exec(`vitest run ${this.env.VITEST_ARGS}`);
+      await this.utils.exec(`vitest run ${this.env.VITEST_ARGS}`);
     },
   });
 }

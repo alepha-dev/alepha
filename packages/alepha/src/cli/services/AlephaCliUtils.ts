@@ -1,4 +1,5 @@
-import { access, readFile, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/file";
@@ -13,7 +14,6 @@ import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { version } from "../version.ts";
-import { ProcessRunner } from "./ProcessRunner.ts";
 
 /**
  * Utility service for common project operations used by CLI commands.
@@ -25,10 +25,95 @@ import { ProcessRunner } from "./ProcessRunner.ts";
  * - Drizzle ORM/Kit utilities
  * - Alepha instance loading
  */
-export class ProjectUtils {
+export class AlephaCliUtils {
   protected readonly log = $logger();
-  protected readonly runner = $inject(ProcessRunner);
   protected readonly fs = $inject(FileSystemProvider);
+
+  /**
+   * Execute a command using npx with inherited stdio.
+   *
+   * @param command - The command to execute (will be passed to npx)
+   * @param env - Optional environment variables to set for the command
+   * @returns Promise that resolves when the process exits
+   *
+   * @example
+   * ```ts
+   * const runner = alepha.inject(ProcessRunner);
+   * await runner.exec("tsx watch src/index.ts");
+   * ```
+   */
+  public async exec(
+    command: string,
+    env: Record<string, string> = {},
+  ): Promise<void> {
+    const root = process.cwd();
+    this.log.debug(`Executing command: ${command}`, { cwd: root });
+
+    const suffix = process.platform === "win32" ? ".cmd" : "";
+    const [app, ...args] = command.split(" ");
+    const execPath = await this.checkFileExists(
+      root,
+      `node_modules/.bin/${app}${suffix}`,
+      true,
+    );
+
+    if (!execPath) {
+      throw new AlephaError(
+        `Could not find executable for command '${app}'. Make sure the package is installed.`,
+      );
+    }
+
+    const prog = spawn(execPath, args, {
+      stdio: "inherit",
+      cwd: root,
+      env: {
+        ...process.env,
+        ...env,
+        //  NODE_OPTIONS: "--import tsx",
+      },
+    });
+
+    await new Promise<void>((resolve) =>
+      prog.on("exit", () => {
+        resolve();
+      }),
+    );
+  }
+
+  /**
+   * Write a configuration file to node_modules/.alepha directory.
+   *
+   * Creates the .alepha directory if it doesn't exist and writes the file with the given content.
+   *
+   * @param name - The name of the config file to create
+   * @param content - The content to write to the file
+   * @param root - The root directory (defaults to process.cwd())
+   * @returns The absolute path to the created file
+   *
+   * @example
+   * ```ts
+   * const runner = alepha.inject(ProcessRunner);
+   * const configPath = await runner.writeConfigFile("biome.json", biomeConfig);
+   * ```
+   */
+  public async writeConfigFile(
+    name: string,
+    content: string,
+    root = process.cwd(),
+  ): Promise<string> {
+    const dir = join(root, "node_modules", ".alepha");
+
+    await mkdir(dir, {
+      recursive: true,
+    }).catch(() => null);
+
+    const path = join(dir, name);
+    await writeFile(path, content);
+
+    this.log.debug(`Config file written: ${path}`);
+
+    return path;
+  }
 
   // ===================================================================================================================
   // Package Manager & Project Setup
@@ -207,27 +292,26 @@ export class ProjectUtils {
     root: string,
     name: string,
     checkParentDirectories: boolean = false,
-  ): Promise<boolean> {
+  ): Promise<string | undefined> {
     const configPath = join(root, name);
     if (!checkParentDirectories) {
       try {
         await access(configPath);
-        return true;
+        return configPath;
       } catch {
-        return false;
+        return;
       }
     }
 
-    let found = false;
     let currentDir = root;
     const maxIterations = 10; // safety to prevent infinite loops
     let level = 0;
 
     while (level < maxIterations) {
       try {
-        await access(join(currentDir, name));
-        found = true;
-        break;
+        const maybe = join(currentDir, name);
+        await access(maybe);
+        return maybe;
       } catch {
         const parentDir = join(currentDir, "..");
         if (parentDir === currentDir) {
@@ -237,8 +321,6 @@ export class ProjectUtils {
       }
       level += 1;
     }
-
-    return found;
   }
 
   protected async ensureFileExists(
@@ -379,7 +461,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       models,
     );
 
-    const entitiesJsPath = await this.runner.writeConfigFile(
+    const entitiesJsPath = await this.writeConfigFile(
       "entities.js",
       entitiesJs,
       options.rootDir,
@@ -410,7 +492,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
 
     const drizzleConfigJs = `export default ${JSON.stringify(config, null, 2)}`;
 
-    return await this.runner.writeConfigFile(
+    return await this.writeConfigFile(
       "drizzle.config.js",
       drizzleConfigJs,
       options.rootDir,
@@ -500,8 +582,11 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       });
 
       const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
-      await this.runner.exec(
+      await this.exec(
         `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
+        {
+          NODE_OPTIONS: "--import tsx",
+        },
       );
     }
   }
