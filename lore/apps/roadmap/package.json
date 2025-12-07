@@ -14,14 +14,12 @@
     "@alepha/bucket-vercel": "^0.13.4",
     "@alepha/react": "^0.13.4",
     "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@mantine/charts": "^8.3.9",
     "@mantine/core": "^8.3.9",
     "@mantine/hooks": "^8.3.9",
     "@mantine/modals": "^8.3.9",
     "@mantine/notifications": "^8.3.9",
-    "@mantine/nprogress": "^8.3.9",
     "@mantine/tiptap": "^8.3.9",
     "@tabler/icons-react": "^3.35.0",
     "@tiptap/core": "^3.12.1",
@@ -45,6 +43,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
-    "vercel": "^48.12.1"
+    "vercel": "^48.12.1",
+    "vitest": "^4.0.15"
   }
 }
