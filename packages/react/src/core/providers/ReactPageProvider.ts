@@ -314,7 +314,11 @@ export class ReactPageProvider {
       if (!it.error) {
         try {
           const element = await this.createElement(it.route, {
+            // default props attached to page
+            ...it.route.props,
+            // resolved props
             ...props,
+            // context props (from previous layers)
             ...context,
           });
 
@@ -380,12 +384,6 @@ export class ReactPageProvider {
     return { state };
   }
 
-  protected createRedirectionLayer(redirect: string): CreateLayersResult {
-    return {
-      redirect,
-    };
-  }
-
   protected getErrorHandler(route: PageRoute): ErrorHandler | undefined {
     if (route.errorHandler) return route.errorHandler;
     let parent = route.parent;
@@ -431,7 +429,7 @@ export class ReactPageProvider {
   ): string {
     const found = this.pages.find((it) => it.name === page.options.name);
     if (!found) {
-      throw new Error(`Page ${page.options.name} not found`);
+      throw new AlephaError(`Page ${page.options.name} not found`);
     }
 
     let url = found.path ?? "";
@@ -475,6 +473,7 @@ export class ReactPageProvider {
         value: {
           index,
           path,
+          onError: this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
         },
       },
       element,

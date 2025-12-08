@@ -150,10 +150,10 @@ export interface PagePrimitiveOptions<
    * Load data before rendering the page.
    *
    * This function receives
-   * - the request context and
+   * - the request context (params, query, etc.)
    * - the parent props (if page has a parent)
    *
-   * In SSR, the returned data will be serialized and sent to the client, then reused during the client-side hydration.
+   * > In SSR, the returned data will be serialized and sent to the client, then reused during the client-side hydration.
    *
    * Resolve can be stopped by throwing an error, which will be handled by the `errorHandler` function.
    * It's common to throw a `NotFoundError` to display a 404 page.
@@ -161,6 +161,13 @@ export interface PagePrimitiveOptions<
    * RedirectError can be thrown to redirect the user to another page.
    */
   resolve?: (context: PageResolve<TConfig, TPropsParent>) => Async<TProps>;
+
+  /**
+   * Default props to pass to the component when rendering the page.
+   *
+   * Resolved props from the `resolve` function will override these default props.
+   */
+  props?: Partial<TProps>;
 
   /**
    * The component to render when the page is loaded.
@@ -189,6 +196,12 @@ export interface PagePrimitiveOptions<
    */
   parent?: PagePrimitive<PageConfigSchema, TPropsParent, any>;
 
+  /**
+   * Function to determine if the page can be accessed.
+   *
+   * If it returns false, the page will not be accessible and a 403 Forbidden error will be returned.
+   * This function can be used to implement permission-based access control.
+   */
   can?: () => boolean;
 
   /**

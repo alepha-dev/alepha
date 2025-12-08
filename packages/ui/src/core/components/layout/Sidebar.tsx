@@ -14,6 +14,7 @@ import {
   type ComponentType,
   type ReactNode,
   useCallback,
+  useMemo,
   useState,
 } from "react";
 import ActionButton, {
@@ -35,6 +36,15 @@ export interface SidebarProps {
   hide?: {
     paths?: string[];
   };
+
+  /**
+   * Automatically populate the menu from the router's pages.
+   */
+  autoPopulateMenu?:
+    | boolean
+    | {
+        startsWith: string;
+      };
 }
 
 export const Sidebar = (props: SidebarProps) => {
@@ -114,16 +124,29 @@ export const Sidebar = (props: SidebarProps) => {
     );
   };
 
+  const getSidebarNodes = (): SidebarNode[] => {
+    if (props.menu) return props.menu;
+    if (props.autoPopulateMenu) {
+      const items = router.concretePages.map((page) => ({
+        label: page.label ?? page.name,
+        description: page.description?.slice(0, 32),
+        icon: renderIcon(page.icon),
+        href: router.path(page.name),
+      })) as SidebarMenuItem[];
+      if (
+        typeof props.autoPopulateMenu === "object" &&
+        props.autoPopulateMenu.startsWith
+      ) {
+        const startsWith = props.autoPopulateMenu.startsWith;
+        return items.filter((item) => item.href?.startsWith(startsWith));
+      }
+    }
+    return [];
+  };
+
   const padding = "md";
   const gap = props.menu ? props.gap : "xs";
-  const menu =
-    props.menu ??
-    (router.concretePages.map((page) => ({
-      label: page.label ?? page.name,
-      description: page.description?.slice(0, 32),
-      icon: renderIcon(page.icon),
-      href: router.path(page.name),
-    })) as SidebarMenuItem[]);
+  const menu = useMemo(() => getSidebarNodes(), []);
 
   return (
     <Flex

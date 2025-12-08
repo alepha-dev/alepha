@@ -1,5 +1,4 @@
 import { $inject, t } from "alepha";
-import { CryptoProvider } from "alepha/security";
 import { $action } from "alepha/server";
 import { ServerAuthProvider } from "alepha/server/auth";
 import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
@@ -13,7 +12,6 @@ export class UserRealmController {
   protected readonly url = "/realms";
   protected readonly userRealmProvider = $inject(UserRealmProvider);
   protected readonly serverAuthProvider = $inject(ServerAuthProvider);
-  protected readonly cryptoProvider = $inject(CryptoProvider);
 
   /**
    * Get realm configuration settings.

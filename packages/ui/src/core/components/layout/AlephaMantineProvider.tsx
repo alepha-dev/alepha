@@ -22,7 +22,7 @@ export interface AlephaMantineProviderProps {
   navigationProgress?: NavigationProgressProps;
   notifications?: NotificationsProps;
   modals?: ModalsProviderProps;
-  omnibar?: OmnibarProps;
+  omnibar?: OmnibarProps | false;
 }
 
 const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
@@ -71,7 +71,7 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
         <Notifications {...props.notifications} />
         <NavigationProgress {...props.navigationProgress} />
         <ModalsProvider {...props.modals}>
-          <Omnibar {...props.omnibar} />
+          {props.omnibar !== false && <Omnibar {...props.omnibar} />}
           {props.children ?? <NestedView />}
         </ModalsProvider>
       </MantineProvider>

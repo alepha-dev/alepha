@@ -21,13 +21,3 @@ export const ExampleSaasApi = $module({
     PaymentController,
   ],
 });
-
-export * from "./controllers/AdminController.ts";
-export * from "./controllers/BookingController.ts";
-export * from "./controllers/StationController.ts";
-export * from "./controllers/TripController.ts";
-export * from "./entities/bookings.ts";
-export * from "./entities/stations.ts";
-export * from "./entities/trips.ts";
-export * from "./providers/Db.ts";
-export * from "./services/BookingService.ts";

@@ -1,5 +1,5 @@
 import type { FormModel } from "@alepha/react/form";
-import { Flex, Grid } from "@mantine/core";
+import { Flex, type FlexProps, Grid } from "@mantine/core";
 import type { TObject } from "alepha";
 import type { ReactNode } from "react";
 import ActionButton, {
@@ -26,6 +26,9 @@ export interface TypeFormProps<T extends TObject> {
   skipSubmitButton?: boolean;
   submitButtonProps?: Partial<Omit<ActionSubmitButtonProps, "form">>;
   resetButtonProps?: Partial<Omit<ActionSubmitButtonProps, "form">>;
+
+  fill?: boolean;
+  flexProps?: FlexProps;
 }
 
 /**
@@ -139,7 +142,12 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
   };
 
   const content = (
-    <Flex direction={"column"} gap={"sm"}>
+    <Flex
+      direction={"column"}
+      gap={"sm"}
+      flex={props.fill ? 1 : undefined}
+      {...props.flexProps}
+    >
       {renderFields()}
       {!skipSubmitButton && (
         <Flex gap={"sm"}>
@@ -156,7 +164,16 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     return content;
   }
 
-  return <form {...form.props}>{content}</form>;
+  return (
+    <Flex
+      component={"form"}
+      flex={props.fill ? 1 : undefined}
+      {...form.props}
+      {...props.flexProps}
+    >
+      {content}
+    </Flex>
+  );
 };
 
 export default TypeForm;

@@ -1,15 +1,16 @@
 import { useInject } from "@alepha/react";
 import { type FormModel, useForm } from "@alepha/react/form";
 import {
-  Card,
   Flex,
   Pagination,
   Select,
   Table,
   type TableProps,
   type TableTrProps,
+  Text,
 } from "@mantine/core";
 import { useDebouncedCallback } from "@mantine/hooks";
+import { IconRefresh } from "@tabler/icons-react";
 import {
   Alepha,
   type Async,
@@ -20,9 +21,9 @@ import {
   t,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
-import { type ReactNode, useEffect, useState } from "react";
+import { isValidElement, type ReactNode, useEffect, useState } from "react";
 import { ui } from "../../constants/ui.ts";
-import ActionButton from "../buttons/ActionButton.tsx";
+import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
 import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";
 
 export interface DataTableColumnContext<Filters extends TObject> {
@@ -92,7 +93,7 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
   withCheckbox?: boolean;
   checkboxActions?: any[];
 
-  actions?: any[];
+  actions?: Array<ActionProps & { label?: ReactNode }>;
 
   /**
    * Enable infinity scroll mode. When true, pagination controls are hidden and new items are loaded automatically when scrolling to the bottom.
@@ -249,15 +250,16 @@ const DataTable = <T extends object, Filters extends TObject>(
       style={{
         ...(col.fit
           ? {
-              width: "1%",
-              whiteSpace: "nowrap",
+              // TODO: not working well (bad formatting in some cases)
+              // width: "1%",
+              // whiteSpace: "nowrap",
             }
           : {}),
       }}
     >
-      <ActionButton justify={"space-between"} radius={0} fullWidth size={"xs"}>
-        {col.label}
-      </ActionButton>
+      <Flex>
+        <Text size={"xs"}>{col.label}</Text>
+      </Flex>
     </Table.Th>
   ));
 
@@ -283,26 +285,48 @@ const DataTable = <T extends object, Filters extends TObject>(
   const schema = t.omit(form.options.schema, ["page", "size", "sort"]);
 
   return (
-    <Flex direction={"column"} gap={"sm"} flex={1}>
+    <Flex
+      p={0}
+      bg={"var(--alepha-elevated)"}
+      bdrs={"sm"}
+      bd={"1px solid var(--alepha-border)"}
+      direction={"column"}
+    >
+      <Flex p={"xs"} style={{ borderBottom: "1px solid var(--alepha-border)" }}>
+        <Flex flex={1}></Flex>
+        <Flex gap={"xs"}>
+          {props.actions?.map((props, index) =>
+            !isValidElement(props) ? (
+              <ActionButton key={index} {...(props as ActionProps)}>
+                {(props as any).label}
+              </ActionButton>
+            ) : (
+              props
+            ),
+          )}
+          <ActionButton icon={IconRefresh}>Refresh</ActionButton>
+        </Flex>
+      </Flex>
+
       {props.filters ? (
-        <Card withBorder p={"lg"} bg={ui.colors.elevated}>
+        <Flex
+          w={"100%"}
+          p={"xs"}
+          bg={ui.colors.surface}
+          style={{ borderBottom: "1px solid var(--alepha-border)" }}
+        >
           <TypeForm
             {...props.typeFormProps}
+            skipSubmitButton
+            fill
             form={form as unknown as FormModel<Filters>}
             schema={schema}
           />
-        </Card>
+        </Flex>
       ) : null}
 
       <Flex className={"overflow-auto"}>
-        <Table
-          striped
-          withRowBorders
-          withColumnBorders
-          withTableBorder
-          stripedColor={""}
-          {...props.tableProps}
-        >
+        <Table withColumnBorders withRowBorders {...props.tableProps}>
           <Table.Thead>
             <Table.Tr>{head}</Table.Tr>
           </Table.Thead>
@@ -311,17 +335,19 @@ const DataTable = <T extends object, Filters extends TObject>(
       </Flex>
 
       {!props.infinityScroll && (
-        <Flex justify={"space-between"} align={"center"}>
-          <Pagination
-            withEdges
-            total={items.page?.totalPages ?? 1}
-            value={page}
-            onChange={(value) => {
-              form.input.page.set(value - 1);
-            }}
-          />
+        <Flex
+          align={"center"}
+          justify={"end"}
+          gap={"md"}
+          p={"xs"}
+          style={{
+            borderTop: "1px solid var(--alepha-border)",
+          }}
+        >
           <Flex>
             <Select
+              w={96}
+              variant={"default"}
               value={size}
               onChange={(value) => {
                 form.input.size.set(Number(value));
@@ -333,6 +359,16 @@ const DataTable = <T extends object, Filters extends TObject>(
                 { value: "50", label: "50" },
                 { value: "100", label: "100" },
               ]}
+            />
+          </Flex>
+          <Flex>
+            <Pagination
+              withEdges
+              total={items.page?.totalPages ?? 1}
+              value={page}
+              onChange={(value) => {
+                form.input.page.set(value - 1);
+              }}
             />
           </Flex>
         </Flex>

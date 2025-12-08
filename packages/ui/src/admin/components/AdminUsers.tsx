@@ -1,8 +1,8 @@
 import { useClient, useRouter } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { ActionButton, DataTable, Text } from "@alepha/ui";
+import { DataTable, Text } from "@alepha/ui";
 import { Badge, Flex, Group } from "@mantine/core";
-import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
+import { IconCheck, IconUsersPlus, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import { type UserController, type UserEntity, users } from "alepha/api/users";
 import type { AdminRouter } from "../AdminRouter.ts";
@@ -28,17 +28,15 @@ const AdminUsers = (props: AdminUsersProps) => {
 
   return (
     <Flex flex={1} direction="column">
-      <Flex justify="flex-end" p="md" pb={0}>
-        <ActionButton
-          leftSection={<IconPlus size={16} />}
-          href={router.path("adminUserCreate")}
-        >
-          Create User
-        </ActionButton>
-      </Flex>
-
       <DataTable<UserEntity, typeof filters>
         submitOnInit
+        actions={[
+          {
+            icon: IconUsersPlus,
+            href: router.path("adminUserCreate"),
+            label: "Create User",
+          },
+        ]}
         defaultSize={10}
         typeFormProps={{
           skipSubmitButton: true,

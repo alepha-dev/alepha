@@ -2,13 +2,11 @@ import { AlephaUI } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
 import { $module } from "alepha";
 import { AdminRouter } from "./AdminRouter.ts";
-import { AdminSidebar } from "./AdminSidebar.ts";
 import { MainRouter } from "./MainRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { AdminRouter } from "./AdminRouter.ts";
-export { AdminSidebar } from "./AdminSidebar.ts";
 export { default as AdminFiles } from "./components/AdminFiles.tsx";
 export { default as AdminJobs } from "./components/AdminJobs.tsx";
 export { default as AdminLayout } from "./components/AdminLayout.tsx";
@@ -33,9 +31,8 @@ export { MainRouter } from "./MainRouter.ts";
  */
 export const AlephaUIAdmin = $module({
   name: "alepha.ui.admin",
-  services: [AlephaUI, AlephaUIAuth, AdminRouter, MainRouter, AdminSidebar],
+  services: [AlephaUI, AlephaUIAuth, AdminRouter, MainRouter],
   register: (alepha) => {
     alepha.with(AdminRouter);
-    alepha.with(AdminSidebar);
   },
 });

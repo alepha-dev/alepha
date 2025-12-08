@@ -20,7 +20,7 @@
   --alepha-elevated: var(--alepha-elevated-light);
   --alepha-elevated-hover: var(--alepha-elevated-hover-light);
 
-  --alepha-border-light: #cbcbcb;
+  --alepha-border-light: var(--mantine-color-gray-3);
   --alepha-border-dark: var(--mantine-color-dark-4);
   --alepha-border: var(--alepha-border-light);
 
