@@ -28,13 +28,11 @@ export interface GenerateSitemapOptions {
 export async function generateSitemap(
   opts: GenerateSitemapOptions,
 ): Promise<string> {
-  const alepha = await importAlepha(opts.entry, {
-    env: opts.template
-      ? {
-          REACT_SERVER_TEMPLATE: opts.template,
-        }
-      : {},
-  });
+  const alepha = await importAlepha(opts.entry);
+
+  if (opts.template) {
+    alepha.set("alepha.react.server.template", opts.template);
+  }
 
   if (!alepha.isConfigured()) {
     await alepha.events.emit("configure", alepha);

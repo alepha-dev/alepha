@@ -39,17 +39,13 @@ import {
 const envSchema = t.object({
   REACT_SSR_ENABLED: t.optional(t.boolean()),
   REACT_ROOT_ID: t.text({ default: "root" }), // TODO: move to ReactPageProvider.options?
-  REACT_SERVER_TEMPLATE: t.optional(
-    t.text({
-      size: "rich",
-    }),
-  ),
 });
 
 declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
   interface State {
     "alepha.react.server.ssr"?: boolean;
+    "alepha.react.server.template"?: string;
   }
 }
 
@@ -171,7 +167,7 @@ export class ReactServerProvider {
 
   public get template() {
     return (
-      this.alepha.env.REACT_SERVER_TEMPLATE ??
+      this.alepha.store.get("alepha.react.server.template") ??
       "<!DOCTYPE html><html lang='en'><head></head><body></body></html>"
     );
   }
