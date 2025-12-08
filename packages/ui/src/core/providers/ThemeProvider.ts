@@ -38,7 +38,11 @@ export type AlephaTheme = MantineThemeOverride & {
 
 export class ThemeProvider {
   protected readonly alepha = $inject(Alepha);
-  protected themeCookie = $cookie(mantineThemeAtom);
+  protected themeCookie = $cookie({
+    name: "theme",
+    schema: mantineThemeAtom.schema,
+    ttl: [1, "year"],
+  });
 
   public themes: AlephaTheme[] = [
     defaultTheme,

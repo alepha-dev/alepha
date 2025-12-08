@@ -134,7 +134,7 @@ export async function buildServer(
       `${opts.distDir}/${opts.clientDir}/index.html`,
       "utf-8",
     );
-    template = `__alepha.set('alepha.react.server.template', \`${index.replace(/>\s*</g, "><").trim()}\`);\n`;
+    template = `__alepha.set("alepha.react.server.template", \`${index.replace(/>\s*</g, "><").trim()}\`);\n`;
   }
 
   const warning =
