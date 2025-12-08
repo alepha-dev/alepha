@@ -7970,6 +7970,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"example-ssr-fb4dc1@workspace:apps/example-ssr":
+  version: 0.0.0-use.local
+  resolution: "example-ssr-fb4dc1@workspace:apps/example-ssr"
+  dependencies:
+    alepha: "npm:^0.13.6"
+    react: "npm:^18.2.0"
+    wrangler: "npm:^4.53.0"
+  languageName: unknown
+  linkType: soft
+
 "example-ws-8da5eb@workspace:apps/example-ws":
   version: 0.0.0-use.local
   resolution: "example-ws-8da5eb@workspace:apps/example-ws"
@@ -9590,7 +9600,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"loose-envify@npm:^1.4.0":
+"loose-envify@npm:^1.1.0, loose-envify@npm:^1.4.0":
   version: 1.4.0
   resolution: "loose-envify@npm:1.4.0"
   dependencies:
@@ -11255,6 +11265,15 @@ __metadata:
     react: ">=16.6.0"
     react-dom: ">=16.6.0"
   checksum: 10c0/2ba754ba748faefa15f87c96dfa700d5525054a0141de8c75763aae6734af0740e77e11261a1e8f4ffc08fd9ab78510122e05c21c2d79066c38bb6861a886c82
+  languageName: node
+  linkType: hard
+
+"react@npm:^18.2.0":
+  version: 18.3.1
+  resolution: "react@npm:18.3.1"
+  dependencies:
+    loose-envify: "npm:^1.1.0"
+  checksum: 10c0/283e8c5efcf37802c9d1ce767f302dd569dd97a70d9bb8c7be79a789b9902451e0d16334b05d73299b20f048cbc3c7d288bbbde10b701fa194e2089c237dbea3
   languageName: node
   linkType: hard
 

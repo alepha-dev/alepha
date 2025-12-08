@@ -1,4 +1,4 @@
-import type { Static, TObject } from "typebox";
+import type { Record, Static, TObject } from "typebox";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { OPTIONS } from "./constants/OPTIONS.ts";
@@ -165,6 +165,11 @@ export class Alepha {
         ...state.env,
         ...process.env,
       };
+    }
+
+    // force production mode when building with vite
+    if (process?.env?.NODE_ENV === "production") {
+      (state.env as Record<string, string>).NODE_ENV ??= "production";
     }
 
     const alepha = new Alepha(state);
@@ -416,11 +421,16 @@ export class Alepha {
       return false;
     }
 
+    // Vercel support
     if (this.env.VERCEL_REGION) {
       return true;
     }
 
-    if (this.env.ALEPHA_SERVERLESS) {
+    // Cloudflare Workers support
+    if (
+      typeof global === "object" &&
+      typeof (global as any).Cloudflare === "object"
+    ) {
       return true;
     }
 

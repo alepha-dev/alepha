@@ -4,13 +4,13 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
+    "compile": "cd dist && bun build --compile",
     "start": "node dist",
-    "wrangler": "cd dist && wrangler",
-    "wrangler:dev": "cd dist && wrangler dev",
-    "compile": "cd dist && bun build --compile --minify --bytecode index.js"
+    "wrangler": "cd dist && wrangler"
   },
   "dependencies": {
-    "alepha": "^0.13.6"
+    "alepha": "^0.13.6",
+    "react": "^18.2.0"
   },
   "devDependencies": {
     "wrangler": "^4.53.0"

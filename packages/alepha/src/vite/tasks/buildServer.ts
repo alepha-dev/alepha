@@ -85,6 +85,7 @@ export async function buildServer(
       noExternal: true,
     },
     build: {
+      sourcemap: true, // or "hidden" if you don't want to expose source maps
       ssr: opts.entry,
       outDir: `${opts.distDir}/server`,
       minify: true,
@@ -133,7 +134,7 @@ export async function buildServer(
       `${opts.distDir}/${opts.clientDir}/index.html`,
       "utf-8",
     );
-    template = `process.env.REACT_SERVER_TEMPLATE ??= \`${index.replace(/>\s*</g, "><").trim()}\`;\n`;
+    template = `__alepha.store.set('alepha.react.ssr.template', \`${index.replace(/>\s*</g, "><").trim()}\`);\n`;
   }
 
   const warning =
@@ -141,11 +142,9 @@ export async function buildServer(
     "\n" +
     "// Changes to this file will be lost when the code is regenerated.\n";
 
-  const forceProduction = "process.env.NODE_ENV ??= 'production';\n";
-
   await writeFile(
     `${opts.distDir}/index.js`,
-    `${warning}\n${forceProduction}${template}\nawait import('./server/${entryFile}');`.trim(),
+    `${warning}\nimport './server/${entryFile}';${template}`.trim(),
   );
 
   return { entryFile };

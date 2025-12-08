@@ -3,8 +3,10 @@
   "type": "module",
   "scripts": {
     "dev": "alepha dev",
+    "build": "alepha build",
     "db:generate": "alepha db:generate",
-    "start": "alepha build && node dist"
+    "start": "alepha build && node dist",
+    "start:bun": "alepha build && bun dist"
   },
   "dependencies": {
     "alepha": "^0.13.6",

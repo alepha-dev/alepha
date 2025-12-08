@@ -50,6 +50,7 @@ export const run = (
   // it's not recommended, we should force 'export default run(alepha)'
   (globalThis as any).__alepha = alepha;
 
+  // when alepha instance is imported via CLI, use a different global variable
   if (env.ALEPHA_CLI_IMPORT) {
     (globalThis as any).__cli_alepha = alepha;
   }
@@ -63,8 +64,7 @@ export const run = (
     return alepha;
   }
 
-  // default runner
-  (async () => {
+  setTimeout(async () => {
     try {
       await opts?.configure?.(alepha);
 
@@ -106,7 +106,7 @@ export const run = (
         process.exit(1);
       }
     }
-  })();
+  });
 
   return alepha;
 };

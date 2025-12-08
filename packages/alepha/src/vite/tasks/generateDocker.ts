@@ -38,14 +38,28 @@ export async function generateDocker(
   const image = opts.image ?? "node:24-alpine";
   const command = opts.command ?? "node";
 
-  // Copy drizzle migrations if they exist
+  await copyDrizzleMigrations(distDir);
+  await writeDockerfile(distDir, image, command);
+}
+
+/**
+ * Copy drizzle migrations to the dist directory if they exist
+ */
+async function copyDrizzleMigrations(distDir: string): Promise<void> {
   const hasMigrations = await fileExists("drizzle");
   if (hasMigrations) {
-    await cp("drizzle", `${distDir}/drizzle`, {
-      recursive: true,
-    });
+    await cp("drizzle", `${distDir}/drizzle`, { recursive: true });
   }
+}
 
+/**
+ * Write the Dockerfile with the specified base image and command
+ */
+async function writeDockerfile(
+  distDir: string,
+  image: string,
+  command: string,
+): Promise<void> {
   const dockerfile = `# This file was automatically generated. DO NOT MODIFY.
 # Changes to this file will be lost when the code is regenerated.
 FROM ${image}

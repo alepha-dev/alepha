@@ -23,8 +23,8 @@ run(Api);
 import { run } from "alepha";
 import { $page } from "@alepha/react";
 
-const HelloComponent = ({ message }: { message: string }) => {
-  return <h1>{message}</h1>;
+const HelloComponent = (props: { message: string }) => {
+  return <h1>{props.message}</h1>;
 }
 
 class App {
@@ -45,7 +45,7 @@ import { t, run } from "alepha";
 import { $entity, pg, $repository } from "alepha/orm";
 
 // define an entity with a schema
-export const users = $entity({
+export const userEntity = $entity({
   name: "users",
   schema: t.object({
     id: pg.primaryKey(),
@@ -54,7 +54,8 @@ export const users = $entity({
 });
 
 class App {
-  userRepository = $repository(users)
+  userRepository = $repository(userEntity);
+  // userRepository.findMany(), ...
 }
 
 run(App);
@@ -94,7 +95,7 @@ class App {
       await run("npx alepha build");
 
       const prod = flags.env === "prod" ? " --prod" : "";
-      await run("cd dist && npx vercel$\{prod}");
+      await run(\`cd dist && npx vercel$\{prod}\`);
     }
   });
 }

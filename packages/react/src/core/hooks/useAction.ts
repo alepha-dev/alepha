@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useAlepha } from "./useAlepha.ts";
 import { useInject } from "./useInject.ts";
+import type { Async } from "alepha";
 
 /**
  * Hook for handling async actions with automatic error handling and event emission.
@@ -361,7 +362,7 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * The async action handler function.
    * Receives the action arguments plus an ActionContext as the last parameter.
    */
-  handler: (...args: [...Args, ActionContext]) => Promise<Result>;
+  handler: (...args: [...Args, ActionContext]) => Async<Result>;
 
   /**
    * Custom error handler. If provided, prevents default error re-throw.
@@ -377,6 +378,8 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * Optional identifier for this action (useful for debugging/analytics)
    */
   id?: string;
+
+  name?: string;
 
   /**
    * Debounce delay in milliseconds. If specified, the action will only execute

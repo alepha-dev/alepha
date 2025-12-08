@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { importVite } from "../helpers/importVite.ts";
 
 export interface GenerateVercelOptions {
@@ -52,33 +52,62 @@ export async function generateVercel(
   const distDir = opts.distDir ?? "dist";
   const clientDir = opts.clientDir ?? "public";
   const { loadEnv } = await importVite();
-
   const env = loadEnv("production", process.cwd(), "");
 
-  // Ensure the api directory exists
-  if (!existsSync(`${distDir}/api`)) {
-    mkdirSync(`${distDir}/api`);
+  await writeApiEntryPoint(distDir);
+  await writeVercelConfig(distDir, clientDir, opts.config?.config);
+
+  const projectId = env.VERCEL_PROJECT_ID ?? opts.config?.projectId;
+  const projectName = env.VERCEL_PROJECT_NAME ?? opts.config?.projectName;
+  const orgId = env.VERCEL_ORG_ID ?? opts.config?.orgId;
+
+  if (projectId && orgId) {
+    await writeProjectConfig(distDir, projectId, projectName, orgId);
   }
 
-  // Add the only one entry point for Vercel
-  writeFileSync(
+  await ensureClientDir(distDir, clientDir);
+}
+
+/**
+ * Check if a file or directory exists at the given path
+ */
+async function exists(path: string): Promise<boolean> {
+  return stat(path)
+    .then(() => true)
+    .catch(() => false);
+}
+
+/**
+ * Create the serverless function entry point that bootstraps Alepha and handles requests
+ */
+async function writeApiEntryPoint(distDir: string): Promise<void> {
+  await mkdir(`${distDir}/api`, { recursive: true });
+  await writeFile(
     `${distDir}/api/index.js`,
     `${WARNING_COMMENT}
 import "../index.js";
 
-export default async function (req, res) {
+export default async (req, res) => {
 \tawait __alepha.start();
-\t__alepha.events.emit("node:request", { req, res });
+\tawait __alepha.events.emit("node:request", { req, res });
 }
 `,
   );
+}
 
-  // Always generate a vercel.json file
-  writeFileSync(
+/**
+ * Generate vercel.json with route rewrites to direct all traffic to the serverless function
+ */
+async function writeVercelConfig(
+  distDir: string,
+  clientDir: string,
+  config?: VercelConfig["config"],
+): Promise<void> {
+  await writeFile(
     `${distDir}/vercel.json`,
     JSON.stringify(
       {
-        ...opts?.config?.config,
+        ...config,
         rewrites: [
           {
             source: "/(.*)",
@@ -93,36 +122,42 @@ export default async function (req, res) {
       "  ",
     ),
   );
+}
 
-  // Generate .vercel/project.json if VERCEL_PROJECT_ID and VERCEL_ORG_ID are set
-  const projectId = env.VERCEL_PROJECT_ID ?? opts.config?.projectId;
-  const projectName = env.VERCEL_PROJECT_NAME ?? opts.config?.projectName;
-  const orgId = env.VERCEL_ORG_ID ?? opts.config?.orgId;
+/**
+ * Generate .vercel/project.json to link the deployment to a Vercel project
+ */
+async function writeProjectConfig(
+  distDir: string,
+  projectId: string,
+  projectName: string | undefined,
+  orgId: string,
+): Promise<void> {
+  await mkdir(`${distDir}/.vercel`, { recursive: true });
+  await writeFile(
+    `${distDir}/.vercel/project.json`,
+    JSON.stringify(
+      {
+        projectId,
+        projectName,
+        orgId,
+      },
+      null,
+      "  ",
+    ),
+  );
+}
 
-  if (projectId && orgId) {
-    try {
-      mkdirSync(`${distDir}/.vercel`, { recursive: true });
-    } catch (_e) {
-      // Ignore error if directory already exists
-    }
-
-    writeFileSync(
-      `${distDir}/.vercel/project.json`,
-      JSON.stringify(
-        {
-          projectId,
-          projectName,
-          orgId,
-        },
-        null,
-        "  ",
-      ),
-    );
-  }
-
-  // If /public does not exist, create an empty one to avoid Vercel errors
-  if (!existsSync(`${distDir}/${clientDir}`)) {
-    mkdirSync(`${distDir}/${clientDir}`, { recursive: true });
-    writeFileSync(`${distDir}/${clientDir}/.keep`, "");
+/**
+ * Create the client directory with a .keep file if it doesn't exist to avoid Vercel errors
+ */
+async function ensureClientDir(
+  distDir: string,
+  clientDir: string,
+): Promise<void> {
+  const path = `${distDir}/${clientDir}`;
+  if (!(await exists(path))) {
+    await mkdir(path, { recursive: true });
+    await writeFile(`${path}/.keep`, "");
   }
 }

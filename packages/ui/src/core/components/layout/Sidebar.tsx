@@ -115,12 +115,12 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const padding = "md";
-  const gap = props.gap;
+  const gap = props.menu ? props.gap : "xs";
   const menu =
     props.menu ??
     (router.concretePages.map((page) => ({
       label: page.label ?? page.name,
-      description: page.description,
+      description: page.description?.slice(0, 32),
       icon: renderIcon(page.icon),
       href: router.path(page.name),
     })) as SidebarMenuItem[]);
