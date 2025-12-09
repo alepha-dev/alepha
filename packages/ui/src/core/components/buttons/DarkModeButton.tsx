@@ -77,7 +77,6 @@ const DarkModeButton = (props: DarkModeButtonProps) => {
       size={props.size ?? "sm"}
       aria-label="Toggle color scheme"
       px={"xs"}
-      c={colorScheme !== "default" ? undefined : "transparent"}
       fullWidth={props.fullWidth ?? false}
       icon={
         colorScheme === "dark"

@@ -21,6 +21,7 @@ import {
   type ThemeIconProps,
   Tooltip,
   type TooltipProps,
+  useMantineTheme,
 } from "@mantine/core";
 import { IconCheck, IconChevronRight } from "@tabler/icons-react";
 import {
@@ -148,7 +149,7 @@ export interface ActionCommonProps extends ButtonProps {
   /**
    * Visual intent of the action button.
    */
-  intent?: "primary" | "success" | "danger" | "warning" | "info";
+  intent?: "primary" | "success" | "danger" | "warning" | "info" | "none";
 }
 
 export type ActionProps = ActionCommonProps &
@@ -239,8 +240,40 @@ const ActionMenuItem = (props: {
 };
 
 const ActionButton = (_props: ActionProps) => {
-  const props = { variant: "subtle", ..._props };
+  const theme = useMantineTheme();
+  const props = { ..._props };
   const { tooltip, menu, icon, ...restProps } = props;
+
+  if (props.intent) {
+    if (props.intent === "none") {
+      restProps.c ??= "var(--mantine-color-text)";
+      restProps.color ??= "gray";
+    } else if (props.intent === "primary") {
+      restProps.c ??= "white";
+      restProps.color ??= theme.primaryColor;
+    } else if (props.intent === "success") {
+      restProps.c ??= "white";
+      restProps.color ??= "green";
+    } else if (props.intent === "danger") {
+      restProps.c ??= "white";
+      restProps.color ??= "red";
+    } else if (props.intent === "warning") {
+      restProps.c ??= "var(--mantine-color-text)";
+      restProps.color ??= "yellow";
+    } else if (props.intent === "info") {
+      restProps.c ??= "white";
+      restProps.color ??= "blue";
+    }
+  } else {
+    if (
+      !props.variant ||
+      props.variant === "subtle" ||
+      props.variant === "light"
+    ) {
+      restProps.c ??= "var(--mantine-color-text)";
+      restProps.color ??= "gray";
+    }
+  }
 
   if (props.icon) {
     const icon = isComponentType(props.icon) ? (

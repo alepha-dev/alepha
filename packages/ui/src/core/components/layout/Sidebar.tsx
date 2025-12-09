@@ -252,6 +252,8 @@ export const SidebarItem = (props: SidebarItemProps) => {
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
+        c={"var(--mantine-color-text)"}
+        color={"gray"}
         variant={"subtle"}
         variantActive={"default"}
         radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
