@@ -190,6 +190,16 @@ export class SqliteModelBuilder extends ModelBuilder {
       return pg.integer(key);
     }
 
+    if (t.schema.isBigInt(value)) {
+      if (PG_PRIMARY_KEY in value || PG_IDENTITY in value) {
+        return pg
+          .integer(key, { mode: "number" })
+          .primaryKey({ autoIncrement: true });
+      }
+
+      return pg.integer(key, { mode: "number" });
+    }
+
     if (t.schema.isNumber(value)) {
       if (PG_IDENTITY in value) {
         return pg

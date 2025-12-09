@@ -3,10 +3,10 @@ import autocannon from "autocannon";
 
 const targets = [
   { name: "Express", url: "http://localhost:3001/ping" },
-  //{ name: "Fastify", url: "http://localhost:3002/ping" },
+  { name: "Fastify", url: "http://localhost:3002/ping" },
   { name: "Alepha", url: "http://localhost:3003/ping" },
   { name: "Alepha-Bun", url: "http://localhost:3005/ping" },
-  // { name: "Raw", url: "http://localhost:3004/ping" },
+  { name: "Raw", url: "http://localhost:3004/ping" },
 ];
 
 const p = spawn("npm run concurrent", {

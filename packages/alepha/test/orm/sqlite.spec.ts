@@ -49,4 +49,63 @@ describe("sqlite", () => {
       name: "John Doe",
     });
   });
+
+  it("should create and query entities with bigint primary key", async () => {
+    const posts = $entity({
+      name: "posts",
+      schema: t.object({
+        id: pg.primaryKey(t.bigint()),
+        title: t.text(),
+      }),
+    });
+
+    const alepha = Alepha.create().with({
+      provide: DatabaseProvider,
+      use: NodeSqliteProvider,
+    });
+
+    alepha.store.mut(nodeSqliteOptions, (old) => ({
+      ...old,
+      path: "sqlite://:memory:",
+    }));
+
+    class TestApp {
+      postRepository = $repository(posts);
+    }
+
+    const repository = alepha.inject(TestApp).postRepository;
+
+    await alepha.start();
+
+    await repository.create({
+      title: "Hello World",
+    });
+
+    await repository.create({
+      title: "Second Post",
+    });
+
+    const post = await repository.findOne({
+      where: {
+        title: { eq: "Hello World" },
+      },
+    });
+
+    // bigint returns as string (for int64 safety)
+    expect(post).toStrictEqual({
+      id: "1",
+      title: "Hello World",
+    });
+
+    const secondPost = await repository.findOne({
+      where: {
+        title: { eq: "Second Post" },
+      },
+    });
+
+    expect(secondPost).toStrictEqual({
+      id: "2",
+      title: "Second Post",
+    });
+  });
 });

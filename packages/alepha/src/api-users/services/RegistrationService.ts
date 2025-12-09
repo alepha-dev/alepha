@@ -340,7 +340,7 @@ export class RegistrationService {
       this.log.debug("Email verification code sent", { email });
     } catch (error) {
       // Silent fail - verification service may have rate limiting
-      this.log.warn("Failed to send email verification code", { email, error });
+      this.log.warn("Failed to send email verification code", error);
     }
   }
 

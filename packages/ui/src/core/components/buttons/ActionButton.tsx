@@ -242,10 +242,6 @@ const ActionButton = (_props: ActionProps) => {
   const props = { variant: "subtle", ..._props };
   const { tooltip, menu, icon, ...restProps } = props;
 
-  // set default color to gray (not colored)
-  restProps.color ??= "gray";
-  restProps.c ??= "var(--mantine-color-text)";
-
   if (props.icon) {
     const icon = isComponentType(props.icon) ? (
       <props.icon size={ui.sizes.icon.md} />

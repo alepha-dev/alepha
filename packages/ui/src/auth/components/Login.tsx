@@ -89,6 +89,23 @@ const Login = (props: LoginProps) => {
     },
   });
 
+  const getAutoCompleteType = () => {
+    if (loginMethods.includes("email")) {
+      return "email";
+    }
+    if (loginMethods.includes("username")) {
+      return "username";
+    }
+    if (loginMethods.includes("phone")) {
+      return "tel";
+    }
+    return "username";
+  };
+
+  const externalLoginMethods = props.realmConfig.authenticationMethods.filter(
+    (method) => method.type !== "CREDENTIALS",
+  );
+
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
       <Stack gap={"sm"} w={360}>
@@ -103,9 +120,7 @@ const Login = (props: LoginProps) => {
                       input={form.input.identifier}
                       icon={IconUser}
                       text={{
-                        autoComplete: loginMethods.includes("email")
-                          ? "email"
-                          : "username",
+                        autoComplete: getAutoCompleteType(),
                       }}
                     />
                     <Control
@@ -116,7 +131,7 @@ const Login = (props: LoginProps) => {
                         autoComplete: "current-password",
                       }}
                     />
-                    <ActionButton color={"blue"} variant={"filled"} form={form}>
+                    <ActionButton variant={"filled"} form={form}>
                       {tr("loginSignIn")}
                     </ActionButton>
                   </Stack>
@@ -133,34 +148,35 @@ const Login = (props: LoginProps) => {
                     </Text>
                   )}
                   <Group align="center" justify="center" gap={"md"}>
-                    <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
-                    <Text size="xs">{tr("loginOr")}</Text>
-                    <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
+                    <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+                    <Text size="xs" c={"dimmed"}>
+                      {tr("loginOr")}
+                    </Text>
+                    <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
                   </Group>
                 </Stack>
               </>
             )}
-            <Stack gap={"sm"}>
-              {props.realmConfig.authenticationMethods.map(
-                (method) =>
-                  method.type !== "CREDENTIALS" && (
-                    <ActionButton
-                      variant={"default"}
-                      key={method.type}
-                      leftSection={leftSection(method.name.toLowerCase())}
-                      onClick={() =>
-                        auth.login(method.name, {
-                          redirect,
-                        })
-                      }
-                    >
-                      {tr("loginContinueWith", {
-                        args: [capitalize(method.name)],
-                      })}
-                    </ActionButton>
-                  ),
-              )}
-            </Stack>
+            {externalLoginMethods.length > 0 && (
+              <Stack gap={"sm"}>
+                {externalLoginMethods.map((method) => (
+                  <ActionButton
+                    variant={"default"}
+                    key={method.type}
+                    leftSection={leftSection(method.name.toLowerCase())}
+                    onClick={() =>
+                      auth.login(method.name, {
+                        redirect,
+                      })
+                    }
+                  >
+                    {tr("loginContinueWith", {
+                      args: [capitalize(method.name)],
+                    })}
+                  </ActionButton>
+                ))}
+              </Stack>
+            )}
             {settings.registrationAllowed && (
               <Text size="sm" ta="center">
                 {tr("loginNoAccount")}{" "}
