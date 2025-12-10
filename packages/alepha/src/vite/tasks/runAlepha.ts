@@ -91,6 +91,18 @@ export class AlephaRunner {
   async start(server: ViteDevServer): Promise<void> {
     const { loadEnv } = await importVite();
 
+    // unfortunately, vite SSR loader does not fix stack traces automatically
+    // for now, we make a global helper and alepha/logger will use it before logging errors
+    // that's not ideal but works for now
+    (global as any).ssrFixStacktrace = (e: Error) => {
+      server.ssrFixStacktrace(e);
+      let it: any = e;
+      do {
+        server.ssrFixStacktrace(it);
+        it = it.cause;
+      } while (it instanceof Error);
+    };
+
     if (this.state.started) {
       await this.restart(server, true);
       return;
@@ -160,6 +172,7 @@ export class AlephaRunner {
         if (e.cause instanceof Error) {
           server.ssrFixStacktrace(e.cause);
         }
+
         this.state.app?.log?.error("App failed to start:", e);
         this.state.app?.log?.info("Waiting for changes to restart...");
       }

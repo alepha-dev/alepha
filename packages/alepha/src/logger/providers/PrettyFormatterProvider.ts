@@ -3,7 +3,7 @@ import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { ConsoleColorProvider } from "./ConsoleColorProvider.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";
 
-export class SimpleFormatterProvider extends LogFormatterProvider {
+export class PrettyFormatterProvider extends LogFormatterProvider {
   protected color = $inject(ConsoleColorProvider);
   protected alepha = $inject(Alepha);
 
@@ -105,6 +105,15 @@ export class SimpleFormatterProvider extends LogFormatterProvider {
         console.error(error);
       });
       return "";
+    }
+
+    if (this.alepha.isViteDev()) {
+      // Node.js - try to fix stack trace with Vite SSR helper
+      // Actually, it works only because we have a global helper in viteAlephaDev.ts
+      const gl = globalThis as Record<string, unknown>;
+      if (typeof gl === "object" && typeof gl.ssrFixStacktrace === "function") {
+        gl.ssrFixStacktrace(error);
+      }
     }
 
     let str = error.stack ?? error.message;

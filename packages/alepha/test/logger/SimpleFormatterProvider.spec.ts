@@ -4,7 +4,7 @@ import {
   LogDestinationProvider,
   LogFormatterProvider,
   MemoryDestinationProvider,
-  SimpleFormatterProvider,
+  PrettyFormatterProvider,
 } from "alepha/logger";
 import { describe, it } from "vitest";
 
@@ -22,7 +22,7 @@ describe("SimpleFormatterProvider", () => {
     })
       .with({
         provide: LogFormatterProvider,
-        use: SimpleFormatterProvider,
+        use: PrettyFormatterProvider,
       })
       .with({
         provide: LogDestinationProvider,
@@ -34,7 +34,7 @@ describe("SimpleFormatterProvider", () => {
     app.log.info("Test log message");
 
     const output = alepha.inject(MemoryDestinationProvider);
-    const fmt = alepha.inject(SimpleFormatterProvider);
+    const fmt = alepha.inject(PrettyFormatterProvider);
 
     expect(output.logs[0].formatted).toMatch(
       `[${fmt.formatTimestamp(output.logs[0].timestamp)}] INFO <app.App>: Test log message`,
@@ -50,7 +50,7 @@ describe("SimpleFormatterProvider", () => {
     })
       .with({
         provide: LogFormatterProvider,
-        use: SimpleFormatterProvider,
+        use: PrettyFormatterProvider,
       })
       .with({
         provide: LogDestinationProvider,
@@ -65,7 +65,7 @@ describe("SimpleFormatterProvider", () => {
     app.log.error("Test log message", anotherError);
 
     const output = alepha.inject(MemoryDestinationProvider);
-    const fmt = alepha.inject(SimpleFormatterProvider);
+    const fmt = alepha.inject(PrettyFormatterProvider);
 
     expect(output.logs[0].formatted).toContain(
       `[${fmt.formatTimestamp(output.logs[0].timestamp)}] ERROR <app.App>: Test log message`,
@@ -85,7 +85,7 @@ describe("SimpleFormatterProvider", () => {
     })
       .with({
         provide: LogFormatterProvider,
-        use: SimpleFormatterProvider,
+        use: PrettyFormatterProvider,
       })
       .with({
         provide: LogDestinationProvider,
@@ -100,7 +100,7 @@ describe("SimpleFormatterProvider", () => {
     });
 
     const output = alepha.inject(MemoryDestinationProvider);
-    const fmt = alepha.inject(SimpleFormatterProvider);
+    const fmt = alepha.inject(PrettyFormatterProvider);
 
     expect(output.logs[0].formatted).toEqual(
       `[${fmt.formatTimestamp(output.logs[0].timestamp)}] INFO <app.App>: Test log message {"json":{"key":"value"},"anotherKey":123}`,

@@ -44,7 +44,16 @@ import {
  * - Automatic content-type handling (JSON, form-data, plain text)
  *
  * **URL Generation**
- * Actions are prefixed with `/api` by default (configurable via `SERVER_API_PREFIX`).
+ *
+ * **Important:** All `$action` paths are automatically prefixed with `/api`.
+ *
+ * ```ts
+ * $action({ path: "/users" })     // → GET /api/users
+ * $action({ path: "/users/:id" }) // → GET /api/users/:id
+ * $action({ path: "/hello" })     // → GET /api/hello
+ * ```
+ *
+ * This prefix is configurable via the `SERVER_API_PREFIX` environment variable.
  * HTTP method defaults to GET, or POST if body schema is provided.
  *
  * **Common Use Cases**

@@ -5,8 +5,8 @@ import { JsonFormatterProvider } from "./providers/JsonFormatterProvider.ts";
 import { LogDestinationProvider } from "./providers/LogDestinationProvider.ts";
 import { LogFormatterProvider } from "./providers/LogFormatterProvider.ts";
 import { MemoryDestinationProvider } from "./providers/MemoryDestinationProvider.ts";
+import { PrettyFormatterProvider } from "./providers/PrettyFormatterProvider.ts";
 import { RawFormatterProvider } from "./providers/RawFormatterProvider.ts";
-import { SimpleFormatterProvider } from "./providers/SimpleFormatterProvider.ts";
 import type { LogEntry } from "./schemas/logEntrySchema.ts";
 import { Logger } from "./services/Logger.ts";
 
@@ -19,7 +19,7 @@ export * from "./providers/JsonFormatterProvider.ts";
 export * from "./providers/LogDestinationProvider.ts";
 export * from "./providers/LogFormatterProvider.ts";
 export * from "./providers/MemoryDestinationProvider.ts";
-export * from "./providers/SimpleFormatterProvider.ts";
+export * from "./providers/PrettyFormatterProvider.ts";
 export * from "./schemas/logEntrySchema.ts";
 export * from "./services/Logger.ts";
 
@@ -101,7 +101,7 @@ export const AlephaLogger = $module({
     ConsoleDestinationProvider,
     MemoryDestinationProvider,
     JsonFormatterProvider,
-    SimpleFormatterProvider,
+    PrettyFormatterProvider,
     RawFormatterProvider,
   ],
   register: (alepha) => {
@@ -141,14 +141,14 @@ export const AlephaLogger = $module({
         if (env.LOG_FORMAT === "raw") {
           return RawFormatterProvider;
         }
-        return SimpleFormatterProvider;
+        return PrettyFormatterProvider;
       }
 
       if (alepha.isProduction() && !alepha.isBrowser()) {
         return JsonFormatterProvider;
       }
 
-      return SimpleFormatterProvider;
+      return PrettyFormatterProvider;
     };
 
     alepha.with({
@@ -202,7 +202,7 @@ const envSchema = t.object({
   /**
    * Built-in log formats.
    * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
-   * - "pretty" - Simple text format, human-readable, with colors. {@link SimpleFormatterProvider}
+   * - "pretty" - Simple text format, human-readable, with colors. {@link PrettyFormatterProvider}
    * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
    */
   LOG_FORMAT: t.optional(

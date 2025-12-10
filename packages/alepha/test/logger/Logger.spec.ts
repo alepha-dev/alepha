@@ -3,7 +3,7 @@ import {
   LogDestinationProvider,
   LogFormatterProvider,
   MemoryDestinationProvider,
-  SimpleFormatterProvider,
+  PrettyFormatterProvider,
 } from "alepha/logger";
 import { describe, it } from "vitest";
 import { Logger } from "../../src/logger/services/Logger.ts";
@@ -19,7 +19,7 @@ describe("Logger", () => {
       })
       .with({
         provide: LogFormatterProvider,
-        use: SimpleFormatterProvider,
+        use: PrettyFormatterProvider,
       });
 
     return alepha.inject(Logger, {
@@ -245,7 +245,7 @@ describe("Logger", () => {
         })
         .with({
           provide: LogFormatterProvider,
-          use: SimpleFormatterProvider,
+          use: PrettyFormatterProvider,
         });
 
       const logger = alepha.inject(Logger, {
@@ -275,7 +275,7 @@ describe("Logger", () => {
         })
         .with({
           provide: LogFormatterProvider,
-          use: SimpleFormatterProvider,
+          use: PrettyFormatterProvider,
         });
 
       const logger = alepha.inject(Logger, {
