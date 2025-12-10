@@ -1,7 +1,7 @@
-import { useInject } from "@alepha/react";
+import { useStore } from "@alepha/react";
 import { IconPalette } from "@tabler/icons-react";
+import { alephaThemeListAtom } from "../../atoms/alephaThemeListAtom.ts";
 import { useTheme } from "../../hooks/useTheme.ts";
-import { ThemeProvider } from "../../providers/ThemeProvider.ts";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 export interface ThemeButtonProps {
@@ -10,17 +10,20 @@ export interface ThemeButtonProps {
 
 const ThemeButton = (props: ThemeButtonProps) => {
   const [theme, setTheme] = useTheme();
-  const themes = useInject(ThemeProvider).themes;
+  const themeList = useStore(alephaThemeListAtom)[0];
 
   return (
     <ActionButton
       variant="subtle"
       icon={IconPalette}
       menu={{
-        items: themes.map((it) => ({
-          label: it.label,
-          onClick: () => setTheme(it),
-          active: theme.id === it.id,
+        items: themeList.map((it, index) => ({
+          label: it.name,
+          onClick: () =>
+            setTheme({
+              index,
+            }),
+          active: theme.name === it.name,
         })),
       }}
       {...props.actionProps}

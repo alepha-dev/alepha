@@ -53,14 +53,18 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
     [],
   );
 
+  const defaultColorScheme =
+    props.mantine?.defaultColorScheme ?? theme.defaultColorScheme;
+
   return (
     <>
       <ColorSchemeScript
-        defaultColorScheme={props.mantine?.defaultColorScheme}
+        defaultColorScheme={defaultColorScheme}
         {...props.colorSchemeScript}
       />
       <MantineProvider
         {...props.mantine}
+        defaultColorScheme={defaultColorScheme}
         theme={{
           // Spread all theme properties from the selected theme
           ...theme,

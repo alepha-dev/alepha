@@ -31,15 +31,16 @@ interface JsonNodeProps {
   isLast?: boolean;
   isArrayItem?: boolean;
   size?: MantineSize;
+  iconWidth: number;
 }
 
 const getSizeConfig = (size: MantineSize = "sm") => {
   const configs = {
-    xs: { text: "xs", icon: 12, indent: 16, gap: 2 },
-    sm: { text: "sm", icon: 14, indent: 20, gap: 4 },
-    md: { text: "md", icon: 16, indent: 24, gap: 6 },
-    lg: { text: "lg", icon: 18, indent: 28, gap: 8 },
-    xl: { text: "xl", icon: 20, indent: 32, gap: 10 },
+    xs: { text: "xs" as const, icon: 12, indent: 16, gap: 4, iconWidth: 18 },
+    sm: { text: "sm" as const, icon: 14, indent: 20, gap: 6, iconWidth: 20 },
+    md: { text: "md" as const, icon: 16, indent: 24, gap: 8, iconWidth: 22 },
+    lg: { text: "lg" as const, icon: 18, indent: 28, gap: 10, iconWidth: 24 },
+    xl: { text: "xl" as const, icon: 20, indent: 32, gap: 12, iconWidth: 26 },
   };
   return configs[size] || configs.sm;
 };
@@ -52,6 +53,7 @@ const JsonNode = ({
   isLast = false,
   isArrayItem = false,
   size = "sm",
+  iconWidth,
 }: JsonNodeProps) => {
   const [expanded, setExpanded] = useState(depth < 2);
   const sizeConfig = getSizeConfig(size);
@@ -68,83 +70,50 @@ const JsonNode = ({
   const renderPrimitive = (val: any): ReactNode => {
     const type = getValueType(val);
 
+    const textProps = {
+      component: "span" as const,
+      ff: "monospace" as const,
+      size: sizeConfig.text,
+    };
+
     switch (type) {
       case "string":
         return (
-          <Text
-            component="span"
-            c="teal"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ whiteSpace: "nowrap" }}
-          >
+          <Text {...textProps} c="teal">
             "{val}"
           </Text>
         );
       case "number":
         return (
-          <Text
-            component="span"
-            c="blue"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ whiteSpace: "nowrap" }}
-          >
+          <Text {...textProps} c="blue">
             {val}
           </Text>
         );
       case "boolean":
         return (
-          <Text
-            component="span"
-            c="violet"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ whiteSpace: "nowrap" }}
-          >
+          <Text {...textProps} c="violet">
             {String(val)}
           </Text>
         );
       case "null":
         return (
-          <Text
-            component="span"
-            c="dimmed"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ whiteSpace: "nowrap" }}
-          >
+          <Text {...textProps} c="dimmed">
             null
           </Text>
         );
       case "undefined":
         return (
-          <Text
-            component="span"
-            c="dimmed"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ whiteSpace: "nowrap" }}
-          >
+          <Text {...textProps} c="dimmed">
             undefined
           </Text>
         );
       default:
-        return (
-          <Text
-            component="span"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ whiteSpace: "nowrap" }}
-          >
-            {String(val)}
-          </Text>
-        );
+        return <Text {...textProps}>{String(val)}</Text>;
     }
   };
 
   const renderKey = () => {
-    if (!name) return null;
+    if (name === undefined) return null;
     return (
       <Text
         component="span"
@@ -153,10 +122,16 @@ const JsonNode = ({
         fw={500}
         size={sizeConfig.text}
       >
-        {isArrayItem ? `[${name}]` : `"${name}"`}:
+        {isArrayItem ? `[${name}]` : `"${name}"`}
       </Text>
     );
   };
+
+  const comma = !isLast && (
+    <Text component="span" c="dimmed" ff="monospace" size={sizeConfig.text}>
+      ,
+    </Text>
+  );
 
   if (valueType === "object" || valueType === "array") {
     const isObject = valueType === "object";
@@ -173,81 +148,98 @@ const JsonNode = ({
       <Box>
         <Box
           style={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: `${iconWidth}px auto`,
             alignItems: "center",
-            gap: sizeConfig.gap,
-            minWidth: "max-content",
           }}
         >
-          {canExpand && (
-            <ActionIcon
-              size="xs"
-              variant="transparent"
-              c="dimmed"
-              onClick={() => setExpanded(!expanded)}
-              style={{ cursor: "pointer", flexShrink: 0 }}
-            >
-              {expanded ? (
-                <IconChevronDown size={sizeConfig.icon} />
-              ) : (
-                <IconChevronRight size={sizeConfig.icon} />
-              )}
-            </ActionIcon>
-          )}
-          {!canExpand && (
-            <Box w={sizeConfig.icon + 6} style={{ flexShrink: 0 }} />
-          )}
-          <Box style={{ flexShrink: 0 }}>{renderKey()}</Box>{" "}
-          <Text
-            component="span"
-            c="dimmed"
-            ff="monospace"
-            size={sizeConfig.text}
-            style={{ flexShrink: 0 }}
+          <Box
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
           >
-            {brackets[0]}
-          </Text>
-          {!expanded && !isEmpty && (
+            {canExpand && (
+              <ActionIcon
+                size="xs"
+                variant="transparent"
+                c="dimmed"
+                onClick={() => setExpanded(!expanded)}
+                style={{ cursor: "pointer" }}
+              >
+                {expanded ? (
+                  <IconChevronDown size={sizeConfig.icon} />
+                ) : (
+                  <IconChevronRight size={sizeConfig.icon} />
+                )}
+              </ActionIcon>
+            )}
+          </Box>
+          <Box
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: sizeConfig.gap,
+            }}
+          >
+            {renderKey()}
+            {name !== undefined && (
+              <Text
+                component="span"
+                c="dimmed"
+                ff="monospace"
+                size={sizeConfig.text}
+              >
+                :
+              </Text>
+            )}
             <Text
               component="span"
               c="dimmed"
               ff="monospace"
-              fs="italic"
               size={sizeConfig.text}
-              style={{ flexShrink: 0 }}
             >
-              {preview}
+              {brackets[0]}
             </Text>
-          )}
-          {(isEmpty || !expanded) && (
-            <Text
-              component="span"
-              c="dimmed"
-              ff="monospace"
-              size={sizeConfig.text}
-              style={{ flexShrink: 0 }}
-            >
-              {brackets[1]}
-            </Text>
-          )}
-          {!isEmpty && !expanded && (
-            <Text
-              component="span"
-              c="dimmed"
-              size={sizeConfig.text}
-              style={{ flexShrink: 0 }}
-            >
-              {entries.length} {entries.length === 1 ? "item" : "items"}
-            </Text>
-          )}
+            {!expanded && !isEmpty && (
+              <Text
+                component="span"
+                c="dimmed"
+                ff="monospace"
+                fs="italic"
+                size={sizeConfig.text}
+              >
+                {preview}
+              </Text>
+            )}
+            {(isEmpty || !expanded) && (
+              <>
+                <Text
+                  component="span"
+                  c="dimmed"
+                  ff="monospace"
+                  size={sizeConfig.text}
+                >
+                  {brackets[1]}
+                </Text>
+                {comma}
+              </>
+            )}
+            {!isEmpty && !expanded && (
+              <Text component="span" c="dimmed" size={sizeConfig.text}>
+                {entries.length} {entries.length === 1 ? "item" : "items"}
+              </Text>
+            )}
+          </Box>
         </Box>
 
         <Collapse in={expanded && canExpand}>
           <Box
             pl={sizeConfig.indent}
+            ml={iconWidth / 2}
             style={{
               borderLeft: "1px solid var(--mantine-color-default-border)",
-              marginLeft: Math.floor((sizeConfig.icon + 6) / 2),
             }}
           >
             {entries.map(
@@ -261,20 +253,24 @@ const JsonNode = ({
                   isLast={index === entries.length - 1}
                   isArrayItem={!isObject}
                   size={size}
+                  iconWidth={iconWidth}
                 />
               ),
             )}
           </Box>
-          <Box style={{ display: "flex", minWidth: "max-content" }}>
-            <Box w={sizeConfig.icon + 6} style={{ flexShrink: 0 }} />
-            <Text
-              c="dimmed"
-              ff="monospace"
-              size={sizeConfig.text}
-              style={{ flexShrink: 0 }}
-            >
-              {brackets[1]}
-            </Text>
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: `${iconWidth}px auto`,
+            }}
+          >
+            <Box />
+            <Box style={{ display: "flex", gap: sizeConfig.gap }}>
+              <Text c="dimmed" ff="monospace" size={sizeConfig.text}>
+                {brackets[1]}
+              </Text>
+              {comma}
+            </Box>
           </Box>
         </Collapse>
       </Box>
@@ -284,26 +280,33 @@ const JsonNode = ({
   return (
     <Box
       style={{
-        display: "flex",
+        display: "grid",
+        gridTemplateColumns: `${iconWidth}px auto`,
         alignItems: "center",
-        gap: sizeConfig.gap,
-        minWidth: "max-content",
       }}
     >
-      <Box w={sizeConfig.icon + 6} style={{ flexShrink: 0 }} />
-      <Box style={{ flexShrink: 0 }}>{renderKey()}</Box>
-      <Box style={{ flexShrink: 0 }}>{renderPrimitive(value)}</Box>
-      {!isLast && (
-        <Text
-          component="span"
-          c="dimmed"
-          ff="monospace"
-          size={sizeConfig.text}
-          style={{ flexShrink: 0 }}
-        >
-          ,
-        </Text>
-      )}
+      <Box />
+      <Box
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: sizeConfig.gap,
+        }}
+      >
+        {renderKey()}
+        {name !== undefined && (
+          <Text
+            component="span"
+            c="dimmed"
+            ff="monospace"
+            size={sizeConfig.text}
+          >
+            :
+          </Text>
+        )}
+        {renderPrimitive(value)}
+        {comma}
+      </Box>
     </Box>
   );
 };
@@ -319,7 +322,7 @@ export const JsonViewer = ({
   const copyIconSize = sizeConfig.icon + 2;
 
   return (
-    <Box pos="relative" w={"100%"}>
+    <Box pos="relative" w="100%">
       {copyable && (
         <Box pos="absolute" top={0} right={0} style={{ zIndex: 1 }}>
           <CopyButton value={JSON.stringify(data, null, 2)}>
@@ -343,7 +346,13 @@ export const JsonViewer = ({
         </Box>
       )}
       <Box pt={copyable ? 30 : 0} style={{ overflowX: "auto" }}>
-        <JsonNode value={data} depth={0} maxDepth={maxDepth} size={size} />
+        <JsonNode
+          value={data}
+          depth={0}
+          maxDepth={maxDepth}
+          size={size}
+          iconWidth={sizeConfig.iconWidth}
+        />
       </Box>
     </Box>
   );

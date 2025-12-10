@@ -1,25 +1,31 @@
 import { useInject, useStore } from "@alepha/react";
 import {
-  type AlephaTheme,
-  mantineThemeAtom,
-  type Theme,
-  ThemeProvider,
-} from "../providers/ThemeProvider.ts";
+  alephaThemeAtom,
+  type CurrentAlephaTheme,
+} from "../atoms/alephaThemeAtom.ts";
+import type { AlephaTheme } from "../interfaces/AlephaTheme.ts";
+import { ThemeProvider } from "../providers/ThemeProvider.ts";
 
-export const useTheme = () => {
-  useStore(mantineThemeAtom);
+/**
+ * Hook to get and set the current theme.
+ *
+ * Returns a tuple with the current theme and a function to set the theme.
+ *
+ * ```tsx
+ * const [theme, setTheme] = useTheme();
+ * ```
+ */
+export const useTheme = (): [
+  AlephaTheme,
+  (theme: CurrentAlephaTheme) => void,
+] => {
+  useStore(alephaThemeAtom);
 
-  const themeService = useInject(ThemeProvider);
-  const currentTheme = themeService.getTheme();
-
-  // Find the full theme object from the themes array
-  const fullTheme =
-    themeService.themes.find((t) => t.id === currentTheme.id) ??
-    themeService.themes[0];
-
-  const applyTheme = (theme: Theme | AlephaTheme) => {
-    themeService.setTheme({ id: theme.id });
+  const themeProvider = useInject(ThemeProvider);
+  const theme = themeProvider.getTheme();
+  const setTheme = (theme: CurrentAlephaTheme) => {
+    themeProvider.setTheme(theme.index);
   };
 
-  return [fullTheme, applyTheme] as const;
+  return [theme, setTheme] as const;
 };

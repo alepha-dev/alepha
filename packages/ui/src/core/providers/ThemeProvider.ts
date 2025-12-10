@@ -1,94 +1,72 @@
 import { $head } from "@alepha/react/head";
-import type { MantineThemeOverride } from "@mantine/core";
-import { $atom, $inject, Alepha, type Static, t } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $cookie } from "alepha/server/cookies";
-import {
-  auroraTheme,
-  crystalTheme,
-  defaultTheme,
-  emberTheme,
-  midnightTheme,
-  remoraidTheme,
-  slateTheme,
-} from "../themes/index.ts";
-
-export const mantineThemeAtom = $atom({
-  name: "alepha.ui.theme",
-  schema: t.object({
-    id: t.string(),
-  }),
-  default: {
-    id: "default",
-  },
-});
-
-export type Theme = Static<typeof mantineThemeAtom.schema>;
-
-declare module "alepha" {
-  interface State {
-    [mantineThemeAtom.key]?: Theme;
-  }
-}
-
-export type AlephaTheme = MantineThemeOverride & {
-  id: string;
-  label: string;
-  description: string;
-};
+import { alephaThemeAtom } from "../atoms/alephaThemeAtom.ts";
+import { alephaThemeListAtom } from "../atoms/alephaThemeListAtom.ts";
+import { defaultTheme } from "../atoms/themes/default.ts";
+import type { AlephaTheme } from "../interfaces/AlephaTheme.ts";
 
 export class ThemeProvider {
   protected readonly alepha = $inject(Alepha);
-  protected themeCookie = $cookie({
+  protected readonly cookie = $cookie({
     name: "theme",
-    schema: mantineThemeAtom.schema,
+    schema: alephaThemeAtom.schema,
     ttl: [1, "year"],
   });
 
-  public themes: AlephaTheme[] = [
-    defaultTheme,
-    remoraidTheme,
-    midnightTheme,
-    slateTheme,
-    auroraTheme,
-    emberTheme,
-    crystalTheme,
-  ];
-
-  protected themeHead = $head(() => {
+  protected readonly head = $head(() => {
+    const theme = this.getTheme();
+    if (!theme || !theme.name) {
+      return {};
+    }
     return {
       htmlAttributes: {
-        "data-theme": this.getTheme().id,
+        "data-theme": theme.name,
       },
     };
   });
 
-  public setTheme(theme: Theme) {
-    this.themeCookie.set(theme);
-    this.alepha.store.set(mantineThemeAtom, theme);
+  public setTheme(index: number) {
+    const newTheme = this.alepha.store.get(alephaThemeListAtom)[
+      index
+    ] as AlephaTheme;
 
-    if (typeof document === "undefined") return;
+    if (!newTheme) {
+      throw new AlephaError(`Theme with index ${index} not found`);
+    }
+
+    this.cookie.set({ index });
+    this.alepha.store.set(alephaThemeAtom, { index });
+
+    if (typeof document === "undefined") {
+      return;
+    }
 
     document.documentElement.removeAttribute("data-theme");
 
-    if (theme.id !== "default") {
-      document.documentElement.setAttribute("data-theme", theme.id);
+    if (newTheme.name) {
+      document.documentElement.setAttribute("data-theme", newTheme.name);
     }
   }
 
   public getTheme() {
+    const index = this.getThemeIndex();
+    const list = this.alepha.store.get(
+      alephaThemeListAtom,
+    ) as Array<AlephaTheme>;
+    return list[index] || list[0] || defaultTheme;
+  }
+
+  protected getThemeIndex() {
     // TODO: make a safe cookie getter, today it crash when Cookie Server is called inside vite pre-render
     try {
       return (
-        this.themeCookie.get() ??
-        this.alepha.store.get(mantineThemeAtom) ??
-        mantineThemeAtom.options.default
+        this.cookie.get()?.index ??
+        this.alepha.store.get(alephaThemeAtom)?.index ??
+        0
       );
     } catch {
-      // TODO: atom should take default value if undefined ???
-      return (
-        this.alepha.store.get(mantineThemeAtom) ??
-        mantineThemeAtom.options.default
-      );
+      return this.alepha.store.get(alephaThemeAtom)?.index ?? 0;
     }
   }
 }

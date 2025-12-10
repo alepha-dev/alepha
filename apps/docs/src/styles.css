@@ -1,7 +1,7 @@
 @import "@alepha/ui/styles";
 @import "highlight.js/styles/github.css";
 @import "./styles/code-github-dark.css";
-@import "../public/fonts/wotfard.css";
+@import "./assets/fonts/wotfard.css";
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 

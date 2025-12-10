@@ -398,7 +398,7 @@ export class TypeProvider {
    * Create a schema for a JSON object.
    * This is a record with string keys and any values.
    */
-  public json(options?: TSchemaOptions): TRecord<string, TAny> {
+  public json<T = any>(options?: TSchemaOptions): TRecord<string, TAny> {
     return t.record(t.text(), t.any(), options);
   }
 

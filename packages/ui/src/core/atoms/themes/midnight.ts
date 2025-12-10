@@ -1,8 +1,7 @@
-import type { AlephaTheme } from "../providers/ThemeProvider.ts";
+import type { AlephaTheme } from "../../interfaces/AlephaTheme.ts";
 
 export const midnightTheme: AlephaTheme = {
-  id: "midnight",
-  label: "Midnight",
+  name: "Midnight",
   description: "Clean, developer-focused design",
   primaryColor: "gray",
   primaryShade: { light: 7, dark: 8 },
@@ -24,7 +23,6 @@ export const midnightTheme: AlephaTheme = {
       h6: { fontSize: "0.75rem", lineHeight: "1.5" },
     },
   },
-
   radius: {
     xs: "3px",
     sm: "6px",

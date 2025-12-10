@@ -1,6 +1,7 @@
 import { Flex, type ModalProps } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import type { ReactNode } from "react";
+import ErrorViewer from "../components/data/ErrorViewer.tsx";
 import JsonViewer from "../components/data/JsonViewer.tsx";
 import AlertDialog from "../components/dialogs/AlertDialog.tsx";
 import ConfirmDialog from "../components/dialogs/ConfirmDialog.tsx";
@@ -170,6 +171,29 @@ export class DialogService {
       content: (
         <Flex bdrs={"md"} w={"100%"} flex={1} p={"sm"} bg={ui.colors.surface}>
           <JsonViewer size={"xs"} data={data} />
+        </Flex>
+      ),
+    });
+  }
+
+  /**
+   * Show an error viewer dialog
+   */
+  public error(
+    error: Error | unknown,
+    options?: BaseDialogOptions & { showStack?: boolean },
+  ): void {
+    this.open({
+      size: "lg",
+      title: options?.title || "Error",
+      ...options,
+      content: (
+        <Flex bdrs={"md"} w={"100%"} flex={1} p={"sm"} bg={ui.colors.surface}>
+          <ErrorViewer
+            size={"xs"}
+            error={error}
+            showStack={options?.showStack ?? true}
+          />
         </Flex>
       ),
     });

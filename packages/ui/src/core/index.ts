@@ -1,8 +1,9 @@
 import { AlephaReactForm } from "@alepha/react/form";
 import { AlephaReactHead } from "@alepha/react/head";
 import { AlephaReactI18n } from "@alepha/react/i18n";
-import { $module } from "alepha";
+import { $module, type Static } from "alepha";
 import type { ComponentType, ReactNode } from "react";
+import { alephaThemeAtom } from "./atoms/alephaThemeAtom.ts";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { ThemeProvider } from "./providers/ThemeProvider.ts";
 import { RootRouter } from "./RootRouter.ts";
@@ -12,6 +13,10 @@ import { ToastService } from "./services/ToastService.tsx";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { Flex, Text } from "@mantine/core";
+export * from "./atoms/alephaThemeAtom.ts";
+export * from "./atoms/alephaThemeListAtom.ts";
+export * from "./atoms/themes/default.ts";
+export * from "./atoms/themes/midnight.ts";
 export type {
   ActionClickButtonProps,
   ActionCommonProps,
@@ -102,6 +107,12 @@ export * from "./utils/string.ts";
 declare module "typebox" {
   interface TSchemaOptions {
     $control?: Omit<ControlProps, "input">;
+  }
+}
+
+declare module "alepha" {
+  interface State {
+    [alephaThemeAtom.key]?: Static<typeof alephaThemeAtom.schema>;
   }
 }
 
