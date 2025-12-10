@@ -58,12 +58,17 @@ export class CoreCommands {
       // choose package manager
       yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
       pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
+      npm: t.optional(t.boolean({ description: "Use npm package manager" })),
+      bun: t.optional(t.boolean({ description: "Use Bun package manager" })),
       // choose which dependencies to add
       react: t.optional(
         t.boolean({ description: "Include Alepha React dependencies" }),
       ),
       ui: t.optional(
         t.boolean({ description: "Include Alepha UI dependencies" }),
+      ),
+      test: t.optional(
+        t.boolean({ description: "Include Vitest and create test directory" }),
       ),
     }),
     handler: async ({ run, flags, root }) => {
@@ -72,31 +77,45 @@ export class CoreCommands {
       }
 
       await run({
-        name: "Ensuring configuration files",
+        name: "ensuring configuration files",
         handler: async () => {
           await this.utils.ensureConfig(root, {
             tsconfigJson: true,
             packageJson: flags,
             biomeJson: true,
             viteConfigTs: true,
+            editorconfig: true,
             indexHtml: !!flags.react,
           });
+
+          // Create src/main.ts if src directory is empty or doesn't exist
+          if (!flags.react) {
+            await this.utils.ensureSrcMain(root);
+          }
         },
       });
 
       // TODO: check if all alepha dependencies are same version
 
-      const guessedPm = await this.utils.getPackageManager(root);
-
-      if (flags.yarn || guessedPm === "yarn") {
+      const pm = await this.utils.getPackageManager(root, flags);
+      if (pm === "yarn") {
         await this.utils.ensureYarn(root);
         await run("yarn set version stable");
-        await run("yarn install", {
-          alias: "Installing dependencies with Yarn",
-        });
+      } else if (pm === "pnpm") {
+        await this.utils.ensurePnpm(root);
       } else {
-        await run("npm install", {
-          alias: "Installing dependencies with npm",
+        await this.utils.ensureNpm(root);
+      }
+
+      await run(`${pm} install`, {
+        alias: `installing dependencies with ${pm}`,
+      });
+
+      // Install vitest and create test directory if --test flag is set
+      if (flags.test) {
+        await this.utils.ensureTestDir(root);
+        await run(`${pm} ${pm === "yarn" ? "add" : "install"} -D vitest`, {
+          alias: "setup testing with Vitest",
         });
       }
     },

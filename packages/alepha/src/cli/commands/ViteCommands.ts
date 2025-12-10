@@ -75,6 +75,8 @@ export class ViteCommands {
         return;
       }
 
+      // Ensure vite is installed before running
+      await this.utils.ensureDependency(root, "vite");
       await this.utils.exec(`vite`);
     },
   });
@@ -131,6 +133,10 @@ export class ViteCommands {
 
       const distDir = "dist";
       const clientDir = "public";
+
+      await this.utils.ensureDependency(root, "vite", {
+        run,
+      });
 
       await run.rm("dist", {
         alias: "clean dist",
@@ -301,15 +307,8 @@ export class ViteCommands {
         viteConfigTs: true,
       });
 
-      // check if vitest is installed
-      try {
-        await import("vitest");
-      } catch {
-        this.log.error(
-          "Vitest is not installed. Please install it with `npm install -D vitest` or `yarn add -D vitest`.",
-        );
-        process.exit(1);
-      }
+      // Ensure vitest is installed before running
+      await this.utils.ensureDependency(root, "vitest");
 
       await this.utils.exec(`vitest run ${this.env.VITEST_ARGS}`);
     },

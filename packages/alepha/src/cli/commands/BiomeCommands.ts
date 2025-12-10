@@ -12,6 +12,7 @@ export class BiomeCommands {
     description: "Format the codebase using Biome",
     handler: async ({ root }) => {
       await this.utils.ensureConfig(root, { biomeJson: true });
+      await this.utils.ensureDependency(root, "@biomejs/biome");
       await this.utils.exec(`biome format --fix`);
     },
   });
@@ -21,6 +22,7 @@ export class BiomeCommands {
     description: "Run linter across the codebase using Biome",
     handler: async ({ root }) => {
       await this.utils.ensureConfig(root, { biomeJson: true });
+      await this.utils.ensureDependency(root, "@biomejs/biome");
       await this.utils.exec(`biome check --formatter-enabled=false --fix`);
     },
   });

@@ -1,7 +1,5 @@
 import type { Alepha } from "alepha";
 
-// Vite re-exports
-export { defineConfig } from "vite";
 // Helpers (for advanced use)
 export * from "./helpers/boot.ts";
 export * from "./helpers/createBufferedLogger.ts";

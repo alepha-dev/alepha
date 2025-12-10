@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $inject, Alepha, AlephaError } from "alepha";
+import type { RunnerMethod } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import type { DrizzleKitProvider, RepositoryProvider } from "alepha/orm";
@@ -9,8 +10,11 @@ import { boot } from "alepha/vite";
 import { tsImport } from "tsx/esm/api";
 import { appRouterTs } from "../assets/appRouterTs.ts";
 import { biomeJson } from "../assets/biomeJson.ts";
+import { dummySpecTs } from "../assets/dummySpecTs.ts";
+import { editorconfig } from "../assets/editorconfig.ts";
 import { indexHtml } from "../assets/indexHtml.ts";
 import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
+import { mainTs } from "../assets/mainTs.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { version } from "../version.ts";
@@ -32,10 +36,6 @@ export class AlephaCliUtils {
   /**
    * Execute a command using npx with inherited stdio.
    *
-   * @param command - The command to execute (will be passed to npx)
-   * @param env - Optional environment variables to set for the command
-   * @returns Promise that resolves when the process exits
-   *
    * @example
    * ```ts
    * const runner = alepha.inject(ProcessRunner);
@@ -44,10 +44,36 @@ export class AlephaCliUtils {
    */
   public async exec(
     command: string,
-    env: Record<string, string> = {},
+    options: {
+      env?: Record<string, string>;
+      global?: boolean;
+    } = {},
   ): Promise<void> {
     const root = process.cwd();
     this.log.debug(`Executing command: ${command}`, { cwd: root });
+
+    const runExec = async (app: string, args: string[]) => {
+      const prog = spawn(app, args, {
+        stdio: "inherit",
+        cwd: root,
+        env: {
+          ...process.env,
+          ...options.env,
+        },
+      });
+
+      await new Promise<void>((resolve) =>
+        prog.on("exit", () => {
+          resolve();
+        }),
+      );
+    };
+
+    if (options.global) {
+      const [app, ...args] = command.split(" ");
+      await runExec(app, args);
+      return;
+    }
 
     const suffix = process.platform === "win32" ? ".cmd" : "";
     const [app, ...args] = command.split(" ");
@@ -74,21 +100,7 @@ export class AlephaCliUtils {
       );
     }
 
-    const prog = spawn(execPath, args, {
-      stdio: "inherit",
-      cwd: root,
-      env: {
-        ...process.env,
-        ...env,
-        //  NODE_OPTIONS: "--import tsx",
-      },
-    });
-
-    await new Promise<void>((resolve) =>
-      prog.on("exit", () => {
-        resolve();
-      }),
-    );
+    await runExec(execPath, args);
   }
 
   /**
@@ -148,6 +160,22 @@ export class AlephaCliUtils {
     // remove lock files from other package managers
     await this.fs.rm(join(root, "package-lock.json"), { force: true });
     await this.fs.rm(join(root, "pnpm-lock.yaml"), { force: true });
+  }
+
+  public async ensurePnpm(root: string): Promise<void> {
+    // remove lock files from other package managers
+    await this.fs.rm(join(root, "package-lock.json"), { force: true });
+    await this.fs.rm(join(root, "yarn.lock"), { force: true });
+    await this.fs.rm(join(root, ".yarn"), { force: true, recursive: true });
+    await this.fs.rm(join(root, ".yarnrc.yml"), { force: true });
+  }
+
+  public async ensureNpm(root: string): Promise<void> {
+    // remove lock files from other package managers
+    await this.fs.rm(join(root, "pnpm-lock.yaml"), { force: true });
+    await this.fs.rm(join(root, "yarn.lock"), { force: true });
+    await this.fs.rm(join(root, ".yarn"), { force: true, recursive: true });
+    await this.fs.rm(join(root, ".yarnrc.yml"), { force: true });
   }
 
   /**
@@ -243,6 +271,7 @@ export class AlephaCliUtils {
       viteConfigTs?: boolean;
       indexHtml?: boolean;
       biomeJson?: boolean;
+      editorconfig?: boolean;
     },
   ) {
     const tasks: Promise<void>[] = [];
@@ -266,6 +295,9 @@ export class AlephaCliUtils {
     }
     if (opts.biomeJson) {
       tasks.push(this.ensureBiomeConfig(root));
+    }
+    if (opts.editorconfig) {
+      tasks.push(this.ensureEditorConfig(root));
     }
 
     await Promise.all(tasks);
@@ -362,6 +394,17 @@ export class AlephaCliUtils {
    */
   public async ensureBiomeConfig(root: string): Promise<void> {
     await this.ensureFileExists(root, "biome.json", biomeJson, true);
+  }
+
+  /**
+   * Ensure .editorconfig exists in the project.
+   *
+   * Creates a standard .editorconfig if none exists.
+   *
+   * @param root - The root directory of the project
+   */
+  public async ensureEditorConfig(root: string): Promise<void> {
+    await this.ensureFileExists(root, ".editorconfig", editorconfig, true);
   }
 
   // ===================================================================================================================
@@ -596,7 +639,9 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       await this.exec(
         `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
         {
-          NODE_OPTIONS: "--import tsx",
+          env: {
+            NODE_OPTIONS: "--import tsx",
+          },
         },
       );
     }
@@ -604,7 +649,20 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
 
   public async getPackageManager(
     root: string,
-  ): Promise<"yarn" | "pnpm" | "npm"> {
+    flags?: { yarn?: boolean; pnpm?: boolean; npm?: boolean; bun?: boolean },
+  ): Promise<"yarn" | "pnpm" | "npm" | "bun"> {
+    if (flags?.yarn) {
+      return "yarn";
+    }
+    if (flags?.pnpm) {
+      return "pnpm";
+    }
+    if (flags?.npm) {
+      return "npm";
+    }
+    if (flags?.bun) {
+      return "bun";
+    }
     if (await this.checkFileExists(root, "yarn.lock", true)) {
       return "yarn";
     }
@@ -646,6 +704,64 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     return this.fs.exists(join(root, dirName));
   }
 
+  /**
+   * Ensure src/main.ts exists with a minimal Alepha bootstrap.
+   *
+   * Creates the src directory and main.ts file if the src directory
+   * doesn't exist or is empty.
+   *
+   * @param root - The root directory of the project
+   */
+  public async ensureSrcMain(root: string): Promise<void> {
+    const srcDir = join(root, "src");
+    const mainPath = join(srcDir, "main.ts");
+
+    // Check if src directory exists
+    const srcExists = await this.fs.exists(srcDir);
+
+    if (!srcExists) {
+      // Create src directory and main.ts
+      await this.fs.mkdir(srcDir, { recursive: true });
+      await this.fs.writeFile(mainPath, mainTs());
+      return;
+    }
+
+    // Check if src directory is empty
+    const files = await this.fs.ls(srcDir);
+    if (files.length === 0) {
+      await this.fs.writeFile(mainPath, mainTs());
+    }
+  }
+
+  /**
+   * Ensure test directory exists with a dummy test file.
+   *
+   * Creates the test directory and a dummy.spec.ts file if the test directory
+   * doesn't exist or is empty.
+   *
+   * @param root - The root directory of the project
+   */
+  public async ensureTestDir(root: string): Promise<void> {
+    const testDir = join(root, "test");
+    const dummyPath = join(testDir, "dummy.spec.ts");
+
+    // Check if test directory exists
+    const testExists = await this.fs.exists(testDir);
+
+    if (!testExists) {
+      // Create test directory and dummy.spec.ts
+      await this.fs.mkdir(testDir, { recursive: true });
+      await this.fs.writeFile(dummyPath, dummySpecTs());
+      return;
+    }
+
+    // Check if test directory is empty
+    const files = await this.fs.ls(testDir);
+    if (files.length === 0) {
+      await this.fs.writeFile(dummyPath, dummySpecTs());
+    }
+  }
+
   async readPackageJson(root: string): Promise<Record<string, any>> {
     const packageJson = await this.fs
       .createFile({
@@ -653,6 +769,70 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       })
       .text();
     return JSON.parse(packageJson);
+  }
+
+  /**
+   * Check if a dependency is installed in the project.
+   *
+   * @param root - The root directory of the project
+   * @param packageName - The name of the package to check
+   * @returns True if the package is in dependencies or devDependencies
+   */
+  async hasDependency(root: string, packageName: string): Promise<boolean> {
+    try {
+      const pkg = await this.readPackageJson(root);
+      return !!(
+        pkg.dependencies?.[packageName] || pkg.devDependencies?.[packageName]
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Install a dependency if it's missing from the project.
+   *
+   * Automatically detects the package manager (yarn, pnpm, npm) and installs
+   * the package as a dev dependency if not already present.
+   */
+  async ensureDependency(
+    root: string,
+    packageName: string,
+    options: { dev?: boolean; run?: RunnerMethod } = {},
+  ): Promise<void> {
+    const { dev = true } = options;
+
+    if (await this.hasDependency(root, packageName)) {
+      this.log.debug(`Dependency '${packageName}' is already installed`);
+      return;
+    }
+
+    const pm = await this.getPackageManager(root);
+    let cmd: string;
+
+    switch (pm) {
+      case "yarn":
+        cmd = `yarn add ${dev ? "-D" : ""} ${packageName}`;
+        break;
+      case "pnpm":
+        cmd = `pnpm add ${dev ? "-D" : ""} ${packageName}`;
+        break;
+      default:
+        cmd = `npm install ${dev ? "--save-dev" : ""} ${packageName}`;
+    }
+
+    cmd = cmd.replace(/\s+/g, " ").trim();
+
+    if (options.run) {
+      // if it's during a Runner flow, just use the runner's run method
+      await options.run(cmd, {
+        alias: `installing ${packageName}`,
+      });
+    } else {
+      // else, run directly with our util exec method
+      this.log.debug(`Installing ${packageName}`);
+      await this.exec(cmd, { global: true });
+    }
   }
 }
 

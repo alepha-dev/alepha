@@ -26,7 +26,7 @@ export const $logger = (options: LoggerPrimitiveOptions = {}): Logger => {
   return $inject(Logger, {
     lifetime: "transient",
     args: [
-      options.name ?? service?.name,
+      options.name ?? service?.name ?? "Func",
       module?.name ?? alepha.env.MODULE_NAME ?? "app",
     ],
   });

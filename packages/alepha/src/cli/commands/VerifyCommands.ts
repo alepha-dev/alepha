@@ -48,7 +48,8 @@ export class VerifyCommands {
   public readonly typecheck = $command({
     name: "typecheck",
     description: "Check TypeScript types across the codebase",
-    handler: async () => {
+    handler: async ({ root }) => {
+      await this.utils.ensureDependency(root, "typescript");
       await this.utils.exec("tsc --noEmit");
     },
   });
