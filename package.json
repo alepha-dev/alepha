@@ -16,12 +16,12 @@
 		"@types/node": "^24.10.1",
 		"@vitest/coverage-v8": "^4.0.15",
 		"@vitest/ui": "^4.0.15",
+		"alepha": "^0.13.6",
 		"depcheck": "^1.4.7",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.15"
 	},
 	"scripts": {
-		"alepha": "node scripts/alepha-dev-cli.ts",
 		"w": "yarn workspace",
 		"v": "yarn alepha verify",
 		"verify": "yarn alepha verify",

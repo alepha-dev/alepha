@@ -5491,6 +5491,7 @@ __metadata:
     "@types/node": "npm:^24.10.1"
     "@vitest/coverage-v8": "npm:^4.0.15"
     "@vitest/ui": "npm:^4.0.15"
+    alepha: "npm:^0.13.6"
     depcheck: "npm:^1.4.7"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.15"

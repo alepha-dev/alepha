@@ -185,7 +185,7 @@ export class CliProvider {
   }
 
   protected findCommand(name: string): CommandPrimitive<TObject> | undefined {
-    return this.commands.find(
+    return this.commands.findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
   }

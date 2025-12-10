@@ -31,6 +31,16 @@ const confirmed = await dialog.confirm({ title: "Confirm", message: "Are you sur
 const input = await dialog.prompt({ title: "Input", message: "Enter your name:" });
 ```
 
+#### useTheme()
+
+Hook to get and set the current theme.
+
+Returns a tuple with the current theme and a function to set the theme.
+
+```tsx
+const [theme, setTheme] = useTheme();
+```
+
 #### useToast()
 
 Use this hook to access the Toast Service for showing notifications.

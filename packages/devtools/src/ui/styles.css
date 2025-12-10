@@ -1,5 +1,4 @@
 @import "@alepha/ui/styles";
-@import "./resources/wotfardregular/stylesheet.css";
 
 :root {
   --mantine-font-family: "wotfardregular", Arial, sans-serif;
