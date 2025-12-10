@@ -50,4 +50,3 @@ export * from "./entities/users.ts";
 export * from "./providers/Db.ts";
 export * from "./providers/Security.ts";
 export * from "./schemas/taskCreateSchema.ts";
-export * from "./services/CharacterInfo.ts";
