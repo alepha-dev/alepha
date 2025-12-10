@@ -80,28 +80,28 @@ export class CreateAlephaCoreCommands {
 
       await mkdir(dest, { recursive: true }).catch(() => null);
 
-      await run("Downloading sample project", () =>
+      await run("downloading sample project", () =>
         this.downloadSampleProject(dest),
       );
 
       await run(`cd ${name} && ${pm} install`, {
-        alias: "Installing dependencies",
+        alias: "installing dependencies",
       });
 
       await run(`cd ${name} && ${pm} run lint`, {
-        alias: "Linting code",
+        alias: "linting code",
       });
 
       await run(`cd ${name} && ${pm} run typecheck`, {
-        alias: "Type checking",
+        alias: "type checking",
       });
 
       await run(`cd ${name} && ${pm} run test`, {
-        alias: "Running tests",
+        alias: "running tests",
       });
 
       await run(`cd ${name} && ${pm} run build`, {
-        alias: "Building project",
+        alias: "building project",
       });
     },
   });

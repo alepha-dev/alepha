@@ -11,5 +11,8 @@
   "dependencies": {
     "alepha": "^0.13.6",
     "react": "^19.2.1"
+  },
+  "devDependencies": {
+    "vite": "^7.2.7"
   }
 }

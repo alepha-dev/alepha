@@ -17,7 +17,7 @@
   ],
   "bin": "./src/index.ts",
   "dependencies": {
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "^5.1.2",
     "react-dom": "^19.2.1"
   },
   "devDependencies": {
@@ -26,7 +26,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "alepha": "0.13.6",
-    "jsdom": "^27.2.0",
+    "jsdom": "^27.3.0",
     "react": "^19.2.1",
     "vitest": "^4.0.15"
   },

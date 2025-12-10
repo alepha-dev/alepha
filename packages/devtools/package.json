@@ -20,7 +20,8 @@
     "@tabler/icons-react": "^3.35.0",
     "alepha": "0.13.6",
     "react": "^19.2.1",
-    "tsdown": "^0.17.0",
+    "tsdown": "^0.17.2",
+    "vite": "^7.2.7",
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
