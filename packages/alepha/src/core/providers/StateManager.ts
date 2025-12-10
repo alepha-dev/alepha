@@ -54,7 +54,9 @@ export class StateManager<State extends object = AlephaState> {
     if (!this.atoms.has(key)) {
       this.atoms.set(key, atom);
       if (!(key in this.store)) {
-        this.set(key, atom.options.default as State[keyof State]);
+        this.set(key, atom.options.default as State[keyof State], {
+          skipContext: true,
+        });
       }
     }
 
@@ -85,12 +87,14 @@ export class StateManager<State extends object = AlephaState> {
   public set<T extends TAtomObject>(
     target: Atom<T>,
     value: AtomStatic<T>,
+    options?: SetStateOptions,
   ): this;
   public set<Key extends keyof State>(
     target: Key,
     value: State[Key] | undefined,
+    options?: SetStateOptions,
   ): this;
-  public set(target: any, value: any): this {
+  public set(target: any, value: any, options?: SetStateOptions): this {
     if (target instanceof Atom) {
       this.register(target);
     }
@@ -103,7 +107,7 @@ export class StateManager<State extends object = AlephaState> {
       return this;
     }
 
-    if (this.als?.exists()) {
+    if (options?.skipContext !== true && this.als?.exists()) {
       this.als.set(key as string, value);
     } else {
       store[key] = value;
@@ -156,11 +160,11 @@ export class StateManager<State extends object = AlephaState> {
    */
   public push<Key extends keyof OnlyArray<State>>(
     key: Key,
-    value: NonNullable<State[Key]> extends Array<infer U> ? U : never,
+    ...value: Array<NonNullable<State[Key]> extends Array<infer U> ? U : never>
   ): this {
     const current = (this.get(key) ?? []) as Array<any>; // default to empty array
     if (Array.isArray(current)) {
-      this.set(key, [...current, value] as State[Key]);
+      this.set(key, [...current, ...value] as State[Key]);
     }
     return this;
   }
@@ -184,3 +188,7 @@ export class StateManager<State extends object = AlephaState> {
 type OnlyArray<T extends object> = {
   [K in keyof T]: NonNullable<T[K]> extends Array<any> ? K : never;
 };
+
+export interface SetStateOptions {
+  skipContext?: boolean;
+}
