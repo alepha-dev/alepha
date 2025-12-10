@@ -26,6 +26,6 @@ export const RoadmapWeb = $module({
       .with(I18n)
       .with(AppRouter)
       .with(CharacterInfo)
-      .set(alephaThemeAtom, { name: "Midnight" });
+      .set(alephaThemeAtom, { index: 1 });
   },
 });
