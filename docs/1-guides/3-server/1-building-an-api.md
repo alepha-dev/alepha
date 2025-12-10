@@ -11,6 +11,16 @@ An `$action` is a definition of an HTTP endpoint. It bundles three things togeth
 2.  **Validation Schema:** What goes in (Body, Query, Params) and what comes out (Response).
 3.  **Handler:** The actual function that runs.
 
+> **Important:** All `$action` paths are automatically prefixed with `/api`.
+>
+> | You write | Actual URL |
+> |-----------|------------|
+> | `path: "/users"` | `/api/users` |
+> | `path: "/users/:id"` | `/api/users/:id` |
+> | `path: "/hello"` | `/api/hello` |
+>
+> This keeps your API routes cleanly separated from pages and static files. The prefix is configurable via `SERVER_API_PREFIX` environment variable.
+
 ### A Basic GET Endpoint
 
 Let's say you want to fetch a user profile.
