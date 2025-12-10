@@ -169,7 +169,22 @@ export class CliProvider {
           root: process.cwd(),
         };
 
+        // Execute pre-hooks
+        const preHooks = this.findPreHooks(command.name);
+        for (const hook of preHooks) {
+          this.log.debug(`Executing pre-hook for '${command.name}'...`);
+          await hook.options.handler(args as CommandHandlerArgs<TObject>);
+        }
+
+        // Execute main command
         await command.options.handler(args as CommandHandlerArgs<TObject>);
+
+        // Execute post-hooks
+        const postHooks = this.findPostHooks(command.name);
+        for (const hook of postHooks) {
+          this.log.debug(`Executing post-hook for '${command.name}'...`);
+          await hook.options.handler(args as CommandHandlerArgs<TObject>);
+        }
 
         if (command.options.summary !== false) {
           runner.summary();
@@ -188,6 +203,20 @@ export class CliProvider {
     return this.commands.findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
+  }
+
+  /**
+   * Find all pre-hooks for a command.
+   */
+  protected findPreHooks(commandName: string): CommandPrimitive<TObject>[] {
+    return this.commands.filter((cmd) => cmd.name === `pre${commandName}`);
+  }
+
+  /**
+   * Find all post-hooks for a command.
+   */
+  protected findPostHooks(commandName: string): CommandPrimitive<TObject>[] {
+    return this.commands.filter((cmd) => cmd.name === `post${commandName}`);
   }
 
   /**
@@ -464,8 +493,8 @@ export class CliProvider {
       const maxCmdLength = this.getMaxCmdLength(this.commands);
 
       for (const command of this.commands) {
-        // skip root command in list
-        if (command.name === "") {
+        // skip root command and hooks in list
+        if (command.name === "" || command.options.hide) {
           continue;
         }
 
@@ -495,11 +524,13 @@ export class CliProvider {
 
   private getMaxCmdLength(commands: CommandPrimitive[]): number {
     return Math.max(
-      ...commands.map((c) => {
-        const cmdStr = [c.name, ...c.aliases].join(", ");
-        const argsUsage = this.generateArgsUsage(c.options.args);
-        return `${cmdStr}${argsUsage}`.length;
-      }),
+      ...commands
+        .filter((c) => !c.options.hide && c.name !== "")
+        .map((c) => {
+          const cmdStr = [c.name, ...c.aliases].join(", ");
+          const argsUsage = this.generateArgsUsage(c.options.args);
+          return `${cmdStr}${argsUsage}`.length;
+        }),
     );
   }
 

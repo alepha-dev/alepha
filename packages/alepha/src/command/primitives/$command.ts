@@ -82,6 +82,61 @@ export interface CommandPrimitiveOptions<T extends TObject, A extends TSchema> {
    * Equivalent to setting name to an empty string "".
    */
   root?: boolean;
+
+  /**
+   * Run this command's handler BEFORE the specified target command.
+   *
+   * Pre-hooks are not listed in help and cannot be called directly.
+   * They receive the same parsed flags and args as the target command.
+   *
+   * @example
+   * ```ts
+   * class BuildCommands {
+   *   prebuild = $command({
+   *     pre: "build",
+   *     handler: async ({ run }) => {
+   *       await run("cleaning dist folder...", () => fs.rm("dist"));
+   *     }
+   *   });
+   *
+   *   build = $command({
+   *     name: "build",
+   *     handler: async () => { ... }
+   *   });
+   * }
+   * ```
+   */
+  pre?: string;
+
+  /**
+   * Run this command's handler AFTER the specified target command.
+   *
+   * Post-hooks are not listed in help and cannot be called directly.
+   * They receive the same parsed flags and args as the target command.
+   *
+   * @example
+   * ```ts
+   * class BuildCommands {
+   *   build = $command({
+   *     name: "build",
+   *     handler: async () => { ... }
+   *   });
+   *
+   *   postbuild = $command({
+   *     post: "build",
+   *     handler: async ({ run }) => {
+   *       await run("generating checksums...", generateChecksums);
+   *     }
+   *   });
+   * }
+   * ```
+   */
+  post?: string;
+
+  /**
+   * If true, this command will be hidden from the help output.
+   */
+  hide?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -93,9 +148,21 @@ export class CommandPrimitive<
   public readonly flags = this.options.flags ?? t.object({});
   public readonly aliases = this.options.aliases ?? [];
 
+  protected onInit() {
+    if (this.options.pre || this.options.post) {
+      this.options.hide ??= true;
+    }
+  }
+
   public get name(): string {
     if (this.options.root) {
       return "";
+    }
+    if (this.options.pre) {
+      return `pre${this.options.pre}`;
+    }
+    if (this.options.post) {
+      return `post${this.options.post}`;
     }
     return this.options.name ?? `${this.config.propertyKey}`;
   }
