@@ -546,13 +546,15 @@ export abstract class Repository<T extends TObject> {
   /**
    * Create many entities.
    *
+   * Inserts are batched in chunks of 1000 to avoid hitting database limits.
+   *
    * @param values The entities to create.
    * @param opts The statement options.
    * @returns The created entities.
    */
   public async createMany(
     values: Array<Static<TObjectInsert<T>>>,
-    opts: StatementOptions = {},
+    opts: StatementOptions & { batchSize?: number } = {},
   ): Promise<Static<T>[]> {
     if (values.length === 0) {
       return [];
@@ -563,19 +565,26 @@ export abstract class Repository<T extends TObject> {
       data: values,
     });
 
+    const batchSize = opts.batchSize ?? 1000;
+    const allEntities: Static<T>[] = [];
+
     try {
-      const entities = await this.rawInsert(opts)
-        .values(values.map((data) => this.cast(data, true)))
-        .returning(this.table)
-        .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
+      for (let i = 0; i < values.length; i += batchSize) {
+        const batch = values.slice(i, i + batchSize);
+        const entities = await this.rawInsert(opts)
+          .values(batch.map((data) => this.cast(data, true)))
+          .returning(this.table)
+          .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
+        allEntities.push(...entities);
+      }
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
         data: values,
-        entity: entities,
+        entity: allEntities,
       });
 
-      return entities;
+      return allEntities;
     } catch (error) {
       throw this.handleError(error, "Insert query has failed");
     }
