@@ -1,4 +1,4 @@
-import { type InputField, useFormState } from "@alepha/react/form";
+import { type BaseInputField, useFormState } from "@alepha/react/form";
 import {
   Autocomplete,
   type AutocompleteProps,
@@ -21,7 +21,7 @@ import { TypeBoxError } from "alepha";
 import type { ComponentType, ReactNode } from "react";
 
 export interface ControlProps {
-  input: InputField;
+  input: BaseInputField;
 
   title?: string;
   description?: string;
