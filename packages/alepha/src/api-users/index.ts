@@ -6,6 +6,7 @@ import { IdentityController } from "./controllers/IdentityController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { UserRealmController } from "./controllers/UserRealmController.ts";
+import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { UserRealmProvider } from "./providers/UserRealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
@@ -76,5 +77,6 @@ export const AlephaApiUsers = $module({
     SessionController,
     IdentityController,
     UserRealmController,
+    UserNotifications,
   ],
 });

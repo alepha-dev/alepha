@@ -81,9 +81,12 @@ export class UserRealmProvider {
 
     if (!realm) {
       // Auto-register default realm for backward compatibility
-      if (userRealmName === DEFAULT_USER_REALM_NAME) {
-        this.register(userRealmName);
-        realm = this.realms.get(userRealmName)!;
+      const realms = Array.from(this.realms.values());
+      const firstRealm = realms[0];
+      if (userRealmName === DEFAULT_USER_REALM_NAME && firstRealm) {
+        realm = firstRealm;
+      } else if (this.alepha.isTest()) {
+        realm = this.register(userRealmName); // Auto-create default realm in tests
       } else {
         throw new AlephaError(
           `Missing user realm '${userRealmName}', please declare $userRealm in your application.`,

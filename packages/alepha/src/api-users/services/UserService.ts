@@ -243,6 +243,8 @@ export class UserService {
       userRealmName,
     });
 
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
     // TODO: one query instead of 3
 
     // Check for existing user based on provided unique fields
@@ -290,6 +292,7 @@ export class UserService {
     const user = await this.users(userRealmName).create({
       ...data,
       roles: data.roles ?? ["user"], // TODO: Default roles from realm settings
+      realm: realm.name,
     });
 
     this.log.info("User created", {

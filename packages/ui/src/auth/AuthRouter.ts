@@ -11,6 +11,16 @@ import { $inject, AlephaError, t } from "alepha";
 import type { UserRealmController } from "alepha/api/users";
 import { $client } from "alepha/server/links";
 
+/**
+ * Schema for realm query parameter used across auth pages.
+ */
+const realmQuerySchema = t.object({
+  r: t.optional(t.string({ description: "Redirect URL after authentication" })),
+  realm: t.optional(
+    t.string({ description: "User realm name for multi-tenant auth" }),
+  ),
+});
+
 export class AuthRouter {
   protected readonly userRealmClient = $client<UserRealmController>();
   protected readonly auth = $inject(ReactAuth);
@@ -33,15 +43,13 @@ export class AuthRouter {
     description: "Sign in to your account",
     path: "/login",
     schema: {
-      query: t.object({
-        r: t.optional(t.string()),
-      }),
+      query: realmQuerySchema,
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/Login.tsx"),
-    resolve: async () => {
+    resolve: async ({ query }) => {
       return {
-        realmConfig: await this.loadRealmConfig(),
+        realmConfig: await this.loadRealmConfig(query.realm),
       };
     },
   });
@@ -52,15 +60,13 @@ export class AuthRouter {
     description: "Create a new account",
     path: "/register",
     schema: {
-      query: t.object({
-        r: t.optional(t.string()),
-      }),
+      query: realmQuerySchema,
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/Register.tsx"),
-    resolve: async () => {
+    resolve: async ({ query }) => {
       return {
-        realmConfig: await this.loadRealmConfig(),
+        realmConfig: await this.loadRealmConfig(query.realm),
       };
     },
   });
@@ -71,15 +77,13 @@ export class AuthRouter {
     description: "Reset your account password",
     path: "/reset-password",
     schema: {
-      query: t.object({
-        r: t.optional(t.string()),
-      }),
+      query: realmQuerySchema,
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/ResetPassword.tsx"),
-    resolve: async () => {
+    resolve: async ({ query }) => {
       return {
-        realmConfig: await this.loadRealmConfig(),
+        realmConfig: await this.loadRealmConfig(query.realm),
       };
     },
   });
@@ -111,9 +115,11 @@ export class AuthRouter {
     },
   });
 
-  protected async loadRealmConfig() {
+  protected async loadRealmConfig(userRealmName?: string) {
     try {
-      return await this.userRealmClient.getRealmConfig();
+      return await this.userRealmClient.getRealmConfig({
+        query: { userRealmName },
+      });
     } catch (e) {
       if (e instanceof AlephaError) {
         throw new AlephaError(

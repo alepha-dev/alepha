@@ -77,6 +77,7 @@ export class SessionService {
         this.log.warn("Invalid login identifier format", {
           provider,
           username,
+          realm: name,
         });
         throw new InvalidCredentialsError();
       }
@@ -86,6 +87,7 @@ export class SessionService {
         this.log.warn("User not found during login attempt", {
           provider,
           username,
+          realm: name,
         });
         throw new InvalidCredentialsError();
       }
@@ -103,6 +105,7 @@ export class SessionService {
           provider,
           username,
           identityId: identity.id,
+          realm: name,
         });
         throw new InvalidCredentialsError();
       }
@@ -116,6 +119,7 @@ export class SessionService {
         this.log.warn("Invalid password during login attempt", {
           provider,
           username,
+          realm: name,
         });
         throw new InvalidCredentialsError();
       }

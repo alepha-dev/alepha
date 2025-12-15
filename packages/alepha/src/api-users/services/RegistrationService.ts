@@ -248,6 +248,7 @@ export class RegistrationService {
 
     // Create the user
     const user = await userRepository.create({
+      realm: userRealmName,
       username: intent.data.username,
       email: intent.data.email,
       phoneNumber: intent.data.phoneNumber,
