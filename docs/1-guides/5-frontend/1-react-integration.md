@@ -73,6 +73,34 @@ export class AppRouter {
 }
 ```
 
+### Schema for Params and Query
+
+If your path has dynamic segments like `:id`, you **must** declare them in `schema.params`. Same for query parameters in `schema.query`. This isn't optional - Alepha uses it for type safety and validation.
+
+```tsx
+// path has :id and :slug -> declare both in params
+postDetail = $page({
+  path: "/posts/:id/:slug",
+  schema: {
+    params: t.object({
+      id: t.uuid(),
+      slug: t.text(),
+    }),
+    query: t.object({
+      tab: t.optional(t.enum(["comments", "related"])),
+    }),
+  },
+  resolve: async ({ params, query }) => {
+    // params.id is string (validated as UUID)
+    // params.slug is string
+    // query.tab is "comments" | "related" | undefined
+  },
+  component: ({ /* ... */ }) => { /* ... */ }
+});
+```
+
+Without the schema, `params` and `query` are `unknown` and you lose type safety.
+
 ## Routing & Navigation
 
 ### The `useRouter` Hook
