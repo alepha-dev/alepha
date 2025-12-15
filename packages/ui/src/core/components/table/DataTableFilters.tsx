@@ -1,0 +1,64 @@
+import type { FormModel } from "@alepha/react/form";
+import { Flex } from "@mantine/core";
+import { type TObject, t } from "alepha";
+import { useMemo } from "react";
+import { ui } from "../../constants/ui.ts";
+import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";
+import type { FilterVisibility } from "./types.ts";
+
+export interface DataTableFiltersProps {
+  schema: TObject;
+  form: FormModel<TObject>;
+  typeFormProps?: Partial<Omit<TypeFormProps<TObject>, "form">>;
+  filterVisibility: FilterVisibility;
+}
+
+const DataTableFilters = ({
+  schema,
+  form,
+  typeFormProps,
+  filterVisibility,
+}: DataTableFiltersProps) => {
+  const visibleSchema = useMemo(() => {
+    const visibleKeys = Object.keys(schema.properties).filter(
+      (key) => filterVisibility[key] !== false,
+    );
+
+    if (visibleKeys.length === 0) {
+      return null;
+    }
+
+    const visibleProps = visibleKeys.reduce(
+      (acc, key) => {
+        acc[key] = schema.properties[key];
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
+
+    return t.object(visibleProps as TObject["properties"]);
+  }, [schema, filterVisibility]);
+
+  if (!visibleSchema) {
+    return null;
+  }
+
+  return (
+    <Flex
+      w="100%"
+      p="xs"
+      bg={ui.colors.surface}
+      style={{ borderBottom: "1px solid var(--alepha-border)" }}
+    >
+      <TypeForm
+        {...typeFormProps}
+        skipSubmitButton
+        fill
+        form={form}
+        schema={visibleSchema}
+      />
+    </Flex>
+  );
+};
+
+export default DataTableFilters;

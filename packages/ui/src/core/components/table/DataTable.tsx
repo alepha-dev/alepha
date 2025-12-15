@@ -1,117 +1,77 @@
 import { useInject } from "@alepha/react";
 import { type FormModel, useForm } from "@alepha/react/form";
-import {
-  Flex,
-  Pagination,
-  Select,
-  Table,
-  type TableProps,
-  type TableTrProps,
-  Text,
-} from "@mantine/core";
+import { Checkbox, Flex, Table, Text, UnstyledButton } from "@mantine/core";
 import { useDebouncedCallback } from "@mantine/hooks";
-import { IconRefresh } from "@tabler/icons-react";
 import {
-  Alepha,
-  type Async,
-  type Page,
-  type PageMetadata,
-  type Static,
-  type TObject,
-  t,
-} from "alepha";
-import { DateTimeProvider, type DurationLike } from "alepha/datetime";
-import { isValidElement, type ReactNode, useEffect, useState } from "react";
+  IconArrowDown,
+  IconArrowsSort,
+  IconArrowUp,
+} from "@tabler/icons-react";
+import { Alepha, type Static, type TObject, t } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ui } from "../../constants/ui.ts";
-import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
-import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";
+import DataTableFilters, {
+  type DataTableFiltersProps,
+} from "./DataTableFilters.tsx";
+import DataTablePagination from "./DataTablePagination.tsx";
+import DataTableToolbar from "./DataTableToolbar.tsx";
+import type {
+  ColumnVisibility,
+  DataTableColumnContext,
+  DataTableProps,
+  FilterVisibility,
+  MaybePage,
+} from "./types.ts";
 
-export interface DataTableColumnContext<Filters extends TObject> {
-  index: number;
-  form: FormModel<Filters>;
-  alepha: Alepha;
-}
+const DEFAULT_VISIBLE_COLUMN_COUNT = 10;
 
-export interface DataTableColumn<T extends object, Filters extends TObject> {
-  label: string;
-  value: (item: T, ctx: DataTableColumnContext<Filters>) => ReactNode;
-  fit?: boolean;
-}
+type SortDirection = "asc" | "desc" | null;
 
-export type MaybePage<T> = Omit<Page<T>, "page"> & {
-  page?: Partial<PageMetadata>;
+/**
+ * Parse the sort string to get direction for a specific field.
+ * Alepha convention: 'field' = ASC, '-field' = DESC
+ */
+const getSortDirection = (
+  sortString: string | undefined,
+  field: string,
+): SortDirection => {
+  if (!sortString) return null;
+  const parts = sortString.split(",").map((s) => s.trim());
+  for (const part of parts) {
+    if (part === field) return "asc";
+    if (part === `-${field}`) return "desc";
+  }
+  return null;
 };
 
-export interface DataTableSubmitContext<T extends object> {
-  items: T[];
-}
+/**
+ * Toggle sort for a field in the sort string.
+ * Cycles: null -> asc -> desc -> null
+ */
+const toggleSort = (
+  sortString: string | undefined,
+  field: string,
+): string | undefined => {
+  const current = getSortDirection(sortString, field);
 
-export interface DataTableProps<T extends object, Filters extends TObject> {
-  /**
-   * The items to display in the table. Can be a static page of items or a function that returns a promise resolving to a page of items.
-   */
-  items:
-    | MaybePage<T>
-    | ((
-        filters: Static<Filters> & {
-          page: number;
-          size: number;
-          sort?: string;
-        },
-        ctx: DataTableSubmitContext<T>,
-      ) => Async<MaybePage<T>>);
+  // Remove existing sort for this field
+  const parts = (sortString || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s && s !== field && s !== `-${field}`);
 
-  /**
-   * The columns to display in the table. Each column is defined by a key and a DataTableColumn object.
-   */
-  columns: {
-    [key: string]: DataTableColumn<T, Filters>;
-  };
+  if (current === null) {
+    // No sort -> ASC
+    parts.unshift(field);
+  } else if (current === "asc") {
+    // ASC -> DESC
+    parts.unshift(`-${field}`);
+  }
+  // DESC -> remove (already filtered out above)
 
-  defaultSize?: number;
-
-  typeFormProps?: Partial<Omit<TypeFormProps<Filters>, "form">>;
-
-  onFilterChange?: (
-    key: string,
-    value: unknown,
-    form: FormModel<Filters>,
-  ) => void;
-
-  /**
-   * Optional filters to apply to the data.
-   */
-  filters?: TObject;
-
-  panel?: (item: T) => ReactNode;
-  canPanel?: (item: T) => boolean;
-
-  submitOnInit?: boolean;
-  submitEvery?: DurationLike;
-
-  withLineNumbers?: boolean;
-  withCheckbox?: boolean;
-  checkboxActions?: any[];
-
-  actions?: Array<ActionProps & { label?: ReactNode }>;
-
-  /**
-   * Enable infinity scroll mode. When true, pagination controls are hidden and new items are loaded automatically when scrolling to the bottom.
-   */
-  infinityScroll?: boolean;
-
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Props to pass to the Mantine Table component.
-   */
-  tableProps?: TableProps;
-
-  /**
-   * Function to generate props for each table row based on the item.
-   */
-  tableTrProps?: (item: T) => TableTrProps;
-}
+  return parts.length > 0 ? parts.join(",") : undefined;
+};
 
 const DataTable = <T extends object, Filters extends TObject>(
   props: DataTableProps<T, Filters>,
@@ -130,6 +90,156 @@ const DataTable = <T extends object, Filters extends TObject>(
   const [currentPage, setCurrentPage] = useState(0);
   const alepha = useInject(Alepha);
 
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    () => {
+      if (props.defaultColumnVisibility) {
+        return props.defaultColumnVisibility;
+      }
+      const columnKeys = Object.keys(props.columns);
+      const maxVisible =
+        props.defaultVisibleColumnCount ?? DEFAULT_VISIBLE_COLUMN_COUNT;
+      return columnKeys.reduce(
+        (acc, key, index) => ({
+          ...acc,
+          [key]: index < maxVisible,
+        }),
+        {} as ColumnVisibility,
+      );
+    },
+  );
+
+  // Filter visibility state
+  const [filterVisibility, setFilterVisibility] = useState<FilterVisibility>(
+    () => {
+      if (props.defaultFilterVisibility) {
+        return props.defaultFilterVisibility;
+      }
+      if (!props.filters?.properties) {
+        return {};
+      }
+      return Object.keys(props.filters.properties).reduce(
+        (acc, key) => ({ ...acc, [key]: true }),
+        {} as FilterVisibility,
+      );
+    },
+  );
+
+  // Handle column visibility changes
+  const handleColumnVisibilityChange = (visibility: ColumnVisibility) => {
+    setColumnVisibility(visibility);
+    props.onColumnVisibilityChange?.(visibility);
+  };
+
+  // Handle filter visibility changes
+  const handleFilterVisibilityChange = (visibility: FilterVisibility) => {
+    setFilterVisibility(visibility);
+    props.onFilterVisibilityChange?.(visibility);
+  };
+
+  // Compute visible columns
+  const visibleColumns = useMemo(() => {
+    return Object.entries(props.columns).filter(
+      ([key]) => columnVisibility[key] !== false,
+    );
+  }, [props.columns, columnVisibility]);
+
+  // Current sort string from form
+  const [sortString, setSortString] = useState<string | undefined>(undefined);
+
+  // Handle column header click for sorting
+  const handleSortClick = (columnKey: string, sortKey?: string) => {
+    const field = sortKey || columnKey;
+    const newSort = toggleSort(sortString, field);
+    setSortString(newSort);
+    form.input.sort.set(newSort);
+    form.input.page.set(0); // Reset to first page when sorting changes
+  };
+
+  // Checkbox selection state
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+
+  // Default getItemKey uses JSON.stringify if not provided
+  const getItemKey = useCallback(
+    (item: T): string => {
+      if (props.getItemKey) {
+        return props.getItemKey(item);
+      }
+      return JSON.stringify(item);
+    },
+    [props.getItemKey],
+  );
+
+  // Get selected items from current content
+  const selectedItems = useMemo(() => {
+    if (!props.withCheckbox) return [];
+    return items.content.filter((item) =>
+      selectedKeys.has(getItemKey(item as T)),
+    ) as T[];
+  }, [items.content, selectedKeys, getItemKey, props.withCheckbox]);
+
+  // Check if all current page items are selected
+  const allSelected = useMemo(() => {
+    if (items.content.length === 0) return false;
+    return items.content.every((item) =>
+      selectedKeys.has(getItemKey(item as T)),
+    );
+  }, [items.content, selectedKeys, getItemKey]);
+
+  // Check if some (but not all) items are selected
+  const someSelected = useMemo(() => {
+    if (items.content.length === 0) return false;
+    const selectedCount = items.content.filter((item) =>
+      selectedKeys.has(getItemKey(item as T)),
+    ).length;
+    return selectedCount > 0 && selectedCount < items.content.length;
+  }, [items.content, selectedKeys, getItemKey]);
+
+  // Toggle selection of a single item
+  const toggleItemSelection = useCallback(
+    (item: T) => {
+      const key = getItemKey(item);
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        return next;
+      });
+    },
+    [getItemKey],
+  );
+
+  // Toggle selection of all items on current page
+  const toggleAllSelection = useCallback(() => {
+    if (allSelected) {
+      // Deselect all current page items
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        for (const item of items.content) {
+          next.delete(getItemKey(item as T));
+        }
+        return next;
+      });
+    } else {
+      // Select all current page items
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        for (const item of items.content) {
+          next.add(getItemKey(item as T));
+        }
+        return next;
+      });
+    }
+  }, [allSelected, items.content, getItemKey]);
+
+  // Clear all selections
+  const clearSelection = useCallback(() => {
+    setSelectedKeys(new Set());
+  }, []);
+
   const form = useForm(
     {
       schema: t.object({
@@ -138,7 +248,7 @@ const DataTable = <T extends object, Filters extends TObject>(
         size: t.number({ default: defaultSize }),
         sort: t.optional(t.string()),
       }),
-      handler: async (values, args) => {
+      handler: async (values) => {
         if (typeof props.items === "function") {
           const response = await props.items(
             values as Static<Filters> & {
@@ -182,7 +292,11 @@ const DataTable = <T extends object, Filters extends TObject>(
           return;
         }
 
-        props.onFilterChange?.(key, value, form as any);
+        props.onFilterChange?.(
+          key,
+          value,
+          form as unknown as FormModel<Filters>,
+        );
       },
     },
     [items],
@@ -244,134 +358,157 @@ const DataTable = <T extends object, Filters extends TObject>(
     form,
   ]);
 
-  const head = Object.entries(props.columns).map(([key, col]) => (
-    <Table.Th
-      key={key}
-      style={{
-        ...(col.fit
-          ? {
-              // TODO: not working well (bad formatting in some cases)
-              // width: "1%",
-              // whiteSpace: "nowrap",
-            }
-          : {}),
-      }}
-    >
-      <Flex>
-        <Text size={"xs"}>{col.label}</Text>
-      </Flex>
+  // Checkbox header column
+  const checkboxHeader = props.withCheckbox ? (
+    <Table.Th style={{ width: 40 }}>
+      <Checkbox
+        checked={allSelected}
+        indeterminate={someSelected}
+        onChange={toggleAllSelection}
+        aria-label="Select all"
+      />
     </Table.Th>
-  ));
+  ) : null;
+
+  const head = visibleColumns.map(([key, col]) => {
+    const sortField = col.sortKey || key;
+    const sortDir = col.sortable
+      ? getSortDirection(sortString, sortField)
+      : null;
+
+    const headerContent = (
+      <Flex align="center" gap={4}>
+        <Text size="xs">{col.label}</Text>
+        {col.sortable && (
+          <Flex c="dimmed">
+            {sortDir === "asc" && <IconArrowUp size={ui.sizes.icon.sm} />}
+            {sortDir === "desc" && <IconArrowDown size={ui.sizes.icon.sm} />}
+            {sortDir === null && <IconArrowsSort size={ui.sizes.icon.sm} />}
+          </Flex>
+        )}
+      </Flex>
+    );
+
+    return (
+      <Table.Th
+        key={key}
+        style={{
+          ...(col.fit
+            ? {
+                // TODO: not working well (bad formatting in some cases)
+                // width: "1%",
+                // whiteSpace: "nowrap",
+              }
+            : {}),
+          ...(col.sortable ? { cursor: "pointer" } : {}),
+        }}
+      >
+        {col.sortable ? (
+          <UnstyledButton onClick={() => handleSortClick(key, col.sortKey)}>
+            {headerContent}
+          </UnstyledButton>
+        ) : (
+          headerContent
+        )}
+      </Table.Th>
+    );
+  });
 
   const rows = items.content.map((item, index) => {
-    const trProps = props.tableTrProps
-      ? props.tableTrProps(item as T)
-      : ({} as TableTrProps);
+    const trProps = props.tableTrProps ? props.tableTrProps(item as T) : {};
+    const itemKey = getItemKey(item as T);
+    const isSelected = selectedKeys.has(itemKey);
+
     return (
-      <Table.Tr key={JSON.stringify(item)} {...trProps}>
-        {Object.entries(props.columns).map(([key, col]) => (
+      <Table.Tr key={itemKey} {...trProps}>
+        {props.withCheckbox && (
+          <Table.Td style={{ width: 40 }}>
+            <Checkbox
+              checked={isSelected}
+              onChange={() => toggleItemSelection(item as T)}
+              aria-label="Select row"
+            />
+          </Table.Td>
+        )}
+        {visibleColumns.map(([key, col]) => (
           <Table.Td key={key}>
-            {col.value(item as T, {
-              index,
-              form: form as unknown as FormModel<Filters>,
-              alepha,
-            })}
+            {col.value(
+              item as T,
+              {
+                index,
+                form: form as unknown as FormModel<Filters>,
+                alepha,
+              } as DataTableColumnContext<Filters>,
+            )}
           </Table.Td>
         ))}
       </Table.Tr>
     );
   });
 
-  const schema = t.omit(form.options.schema, ["page", "size", "sort"]);
+  const filterSchema = useMemo(() => {
+    if (!props.filters) return null;
+    return t.omit(form.options.schema, ["page", "size", "sort"]);
+  }, [props.filters, form.options.schema]);
 
   return (
     <Flex
+      flex={1}
       p={0}
-      bg={"var(--alepha-elevated)"}
-      bdrs={"sm"}
-      bd={"1px solid var(--alepha-border)"}
-      direction={"column"}
+      bg="var(--alepha-elevated)"
+      bdrs="sm"
+      bd="1px solid var(--alepha-border)"
+      direction="column"
     >
-      <Flex p={"xs"} style={{ borderBottom: "1px solid var(--alepha-border)" }}>
-        <Flex flex={1}></Flex>
-        <Flex gap={"xs"}>
-          {props.actions?.map((props, index) =>
-            !isValidElement(props) ? (
-              <ActionButton key={index} {...(props as ActionProps)}>
-                {(props as any).label}
-              </ActionButton>
-            ) : (
-              props
-            ),
-          )}
-          <ActionButton icon={IconRefresh}>Refresh</ActionButton>
-        </Flex>
-      </Flex>
+      <DataTableToolbar
+        columns={props.columns}
+        filters={props.filters}
+        columnVisibility={columnVisibility}
+        filterVisibility={filterVisibility}
+        onColumnVisibilityChange={handleColumnVisibilityChange}
+        onFilterVisibilityChange={handleFilterVisibilityChange}
+        actions={props.actions}
+        onRefresh={() => form.submit()}
+        selectedItems={selectedItems}
+        checkboxActions={props.checkboxActions}
+        onClearSelection={clearSelection}
+      />
 
-      {props.filters ? (
-        <Flex
-          w={"100%"}
-          p={"xs"}
-          bg={ui.colors.surface}
-          style={{ borderBottom: "1px solid var(--alepha-border)" }}
-        >
-          <TypeForm
-            {...props.typeFormProps}
-            skipSubmitButton
-            fill
-            form={form as unknown as FormModel<Filters>}
-            schema={schema}
-          />
-        </Flex>
-      ) : null}
+      {filterSchema && props.filters && (
+        <DataTableFilters
+          schema={filterSchema}
+          form={form as unknown as FormModel<TObject>}
+          typeFormProps={
+            props.typeFormProps as DataTableFiltersProps["typeFormProps"]
+          }
+          filterVisibility={filterVisibility}
+        />
+      )}
 
-      <Flex className={"overflow-auto"}>
+      <Flex className="overflow-auto">
         <Table withColumnBorders withRowBorders {...props.tableProps}>
           <Table.Thead>
-            <Table.Tr>{head}</Table.Tr>
+            <Table.Tr>
+              {checkboxHeader}
+              {head}
+            </Table.Tr>
           </Table.Thead>
           <Table.Tbody>{rows}</Table.Tbody>
         </Table>
       </Flex>
 
       {!props.infinityScroll && (
-        <Flex
-          align={"center"}
-          justify={"end"}
-          gap={"md"}
-          p={"xs"}
-          style={{
-            borderTop: "1px solid var(--alepha-border)",
+        <DataTablePagination
+          page={page}
+          size={size}
+          totalPages={items.page?.totalPages ?? 1}
+          onPageChange={(value) => {
+            form.input.page.set(value - 1);
           }}
-        >
-          <Flex>
-            <Select
-              w={96}
-              variant={"default"}
-              value={size}
-              onChange={(value) => {
-                form.input.size.set(Number(value));
-              }}
-              data={[
-                { value: "5", label: "5" },
-                { value: "10", label: "10" },
-                { value: "25", label: "25" },
-                { value: "50", label: "50" },
-                { value: "100", label: "100" },
-              ]}
-            />
-          </Flex>
-          <Flex>
-            <Pagination
-              withEdges
-              total={items.page?.totalPages ?? 1}
-              value={page}
-              onChange={(value) => {
-                form.input.page.set(value - 1);
-              }}
-            />
-          </Flex>
-        </Flex>
+          onSizeChange={(value) => {
+            form.input.size.set(value);
+          }}
+        />
       )}
     </Flex>
   );
