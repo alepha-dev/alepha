@@ -167,7 +167,7 @@ export interface PagePrimitiveOptions<
    *
    * Resolved props from the `resolve` function will override these default props.
    */
-  props?: Partial<TProps>;
+  props?: () => Partial<TProps>;
 
   /**
    * The component to render when the page is loaded.

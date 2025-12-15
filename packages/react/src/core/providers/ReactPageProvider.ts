@@ -315,7 +315,7 @@ export class ReactPageProvider {
         try {
           const element = await this.createElement(it.route, {
             // default props attached to page
-            ...it.route.props,
+            ...(it.route.props ? it.route.props() : {}),
             // resolved props
             ...props,
             // context props (from previous layers)
