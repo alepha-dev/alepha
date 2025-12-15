@@ -3,7 +3,7 @@ import type { AlephaTheme } from "../../interfaces/AlephaTheme.ts";
 export const midnightTheme: AlephaTheme = {
   name: "Midnight",
   description: "Clean, developer-focused design",
-  primaryColor: "gray",
+  primaryColor: "pink",
   primaryShade: { light: 7, dark: 8 },
   fontFamily:
     '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',

@@ -12,6 +12,9 @@ ignores:
     - 'animate.css'
     - 'marked-highlight'
     - 'highlight.js'
+    - '@biomejs/biome'
+    - 'typescript'
+    - 'vitest'
 ignore-patterns:
     - 'dist'
     - 'assets'

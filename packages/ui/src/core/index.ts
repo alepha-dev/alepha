@@ -40,7 +40,10 @@ export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
 export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx";
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
 export { default as Control } from "./components/form/Control.tsx";
+export { default as ControlArray } from "./components/form/ControlArray.tsx";
 export { default as ControlDate } from "./components/form/ControlDate.tsx";
+export { default as ControlNumber } from "./components/form/ControlNumber.tsx";
+export { default as ControlObject } from "./components/form/ControlObject.tsx";
 export { default as ControlQueryBuilder } from "./components/form/ControlQueryBuilder.tsx";
 export { default as ControlSelect } from "./components/form/ControlSelect.tsx";
 export { default as TypeForm } from "./components/form/TypeForm.tsx";
@@ -77,11 +80,18 @@ export type {
   SidebarTheme,
 } from "./components/layout/Sidebar.tsx";
 export { Sidebar } from "./components/layout/Sidebar.tsx";
-export type {
-  DataTableColumn,
-  DataTableProps,
-} from "./components/table/DataTable.tsx";
 export { default as DataTable } from "./components/table/DataTable.tsx";
+export type {
+  CheckboxAction,
+  CheckboxActionContext,
+  ColumnVisibility,
+  DataTableColumn,
+  DataTableColumnContext,
+  DataTableProps,
+  DataTableSubmitContext,
+  FilterVisibility,
+  MaybePage,
+} from "./components/table/types.ts";
 export * from "./constants/ui.ts";
 export { useDialog } from "./hooks/useDialog.ts";
 export { useToast } from "./hooks/useToast.ts";

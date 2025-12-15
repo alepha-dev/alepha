@@ -51,6 +51,8 @@ const UserButton = (props: UserButtonProps) => {
     ...buttonProps
   } = props;
 
+  buttonProps.variant ??= "subtle";
+
   const auth = useAuth<{
     username?: string;
     email?: string;

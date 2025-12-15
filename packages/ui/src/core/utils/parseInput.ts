@@ -1,4 +1,4 @@
-import type { InputField } from "@alepha/react/form";
+import type { BaseInputField } from "@alepha/react/form";
 import { type TObject, TypeBoxError } from "alepha";
 import {
   createElement,
@@ -105,7 +105,7 @@ export const parseInput = (
 };
 
 export interface GenericControlProps {
-  input: InputField;
+  input: BaseInputField;
   title?: string;
   description?: string;
   icon?: ReactElement | ((props: { size: number }) => ReactNode);
