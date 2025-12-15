@@ -1,13 +1,5 @@
 import type { IncomingMessage } from "node:http";
-import {
-  $env,
-  $hook,
-  $inject,
-  Alepha,
-  type Static,
-  TypeBoxValue,
-  t,
-} from "alepha";
+import { $env, $hook, $inject, Alepha, type Static, t, Value } from "alepha";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer } from "ws";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
@@ -507,8 +499,8 @@ export class NodeWebSocketConnection implements WebSocketConnection {
 
       // Validate message against schema (out = client→server)
       const outSchema = this.endpoint.channel.options.schema.out;
-      if (!TypeBoxValue.Check(outSchema, message)) {
-        const errors = Array.from(TypeBoxValue.Errors(outSchema, message));
+      if (!Value.Check(outSchema, message)) {
+        const errors = Array.from(Value.Errors(outSchema, message));
         throw new WebSocketValidationError(
           `Message validation failed: ${errors.map((e: any) => e.message).join(", ")}`,
         );

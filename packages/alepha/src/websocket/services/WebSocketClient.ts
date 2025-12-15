@@ -4,8 +4,8 @@ import {
   Alepha,
   AlephaError,
   type Static,
-  TypeBoxValue,
   t,
+  Value,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
@@ -332,8 +332,8 @@ export class WebSocketChannelConnection<
 
     // Validate outgoing message against schema
     const outSchema = this.channel.options.schema.out;
-    if (!TypeBoxValue.Check(outSchema, message)) {
-      const errors = Array.from(TypeBoxValue.Errors(outSchema, message));
+    if (!Value.Check(outSchema, message)) {
+      const errors = Array.from(Value.Errors(outSchema, message));
       this.log.warn("Message validation failed", { errors });
       throw new Error(
         `Message validation failed: ${errors.map((e) => e.message).join(", ")}`,

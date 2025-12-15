@@ -142,7 +142,9 @@ export class AlephaRunner {
 
     try {
       const now = Date.now();
-      await server.ssrLoadModule(fileUrl);
+      await server.ssrLoadModule(fileUrl, {
+        fixStacktrace: true,
+      });
       this.state.log(`[DEBUG] Alepha app loaded in ${Date.now() - now}ms`);
       await new Promise((r) => setTimeout(r, 10));
 

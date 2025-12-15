@@ -24,29 +24,21 @@ import type {
   TUnion,
   TUnsafe,
 } from "typebox";
-import * as TypeBox from "typebox";
 import { Type } from "typebox";
 import type {
   TLocalizedValidationError,
   TLocalizedValidationMessageCallback,
 } from "typebox/error";
-import TypeBoxFormat from "typebox/format";
+import Format from "typebox/format";
 import { Locale } from "typebox/system";
-import * as TypeBoxValue from "typebox/value";
+import * as Value from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
-export { TypeBox, TypeBoxValue, TypeBoxFormat };
-
-export const isUUID = TypeBoxFormat.IsUuid;
-export const isEmail = TypeBoxFormat.IsEmail;
-export const isURL = TypeBoxFormat.IsUrl;
-export const isDateTime = TypeBoxFormat.IsDateTime;
-export const isDate = TypeBoxFormat.IsDate;
-export const isTime = TypeBoxFormat.IsTime;
-export const isDuration = TypeBoxFormat.IsDuration;
+export { Type, Value, Format };
+export const isUUID = Format.IsUuid;
 
 export type {
   StaticDecode,
@@ -82,26 +74,26 @@ export type {
 export class TypeGuard {
   // -------------------------------------------------------------------------------------------------------------------
   isBigInt = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) && "format" in value && value.format === "bigint";
+    Type.IsString(value) && "format" in value && value.format === "bigint";
   isUUID = (value: TSchema): value is TString =>
-    TypeBox.IsString(value) && "format" in value && value.format === "uuid";
-  isObject = TypeBox.IsObject;
-  isNumber = TypeBox.IsNumber;
-  isString = TypeBox.IsString;
-  isBoolean = TypeBox.IsBoolean;
-  isAny = TypeBox.IsAny;
-  isArray = TypeBox.IsArray;
-  isOptional = TypeBox.IsOptional;
-  isUnion = TypeBox.IsUnion;
-  isInteger = TypeBox.IsInteger;
-  isNull = TypeBox.IsNull;
-  isUndefined = TypeBox.IsUndefined;
-  isUnsafe = TypeBox.IsUnsafe;
-  isRecord = TypeBox.IsRecord;
-  isTuple = TypeBox.IsTuple;
-  isVoid = TypeBox.IsVoid;
-  isLiteral = TypeBox.IsLiteral;
-  isSchema = TypeBox.IsSchema;
+    Type.IsString(value) && "format" in value && value.format === "uuid";
+  isObject = Type.IsObject;
+  isNumber = Type.IsNumber;
+  isString = Type.IsString;
+  isBoolean = Type.IsBoolean;
+  isAny = Type.IsAny;
+  isArray = Type.IsArray;
+  isOptional = Type.IsOptional;
+  isUnion = Type.IsUnion;
+  isInteger = Type.IsInteger;
+  isNull = Type.IsNull;
+  isUndefined = Type.IsUndefined;
+  isUnsafe = Type.IsUnsafe;
+  isRecord = Type.IsRecord;
+  isTuple = Type.IsTuple;
+  isVoid = Type.IsVoid;
+  isLiteral = Type.IsLiteral;
+  isSchema = Type.IsSchema;
   // -------------------------------------------------------------------------------------------------------------------
   isFile = isTypeFile;
   isDateTime = (schema: unknown) => {
@@ -131,10 +123,10 @@ declare module "typebox" {
 }
 
 export class TypeProvider {
-  static format = TypeBoxFormat;
+  static format = Format;
 
   static {
-    TypeBoxFormat.Set("bigint", (value: string | number) =>
+    Format.Set("bigint", (value: string | number) =>
       TypeProvider.isValidBigInt(value),
     );
   }

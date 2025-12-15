@@ -1,7 +1,7 @@
 import { cpus } from "node:os";
 import { MessageChannel, type MessagePort, Worker } from "node:worker_threads";
 import type { TSchema } from "alepha";
-import { createPrimitive, KIND, Primitive, TypeBoxValue } from "alepha";
+import { createPrimitive, KIND, Primitive, Value } from "alepha";
 
 /**
  * Creates a worker thread primitive for offloading CPU-intensive tasks to separate threads.
@@ -244,7 +244,7 @@ export class ThreadPrimitive extends Primitive<ThreadPrimitiveOptions> {
   public async execute<T = any>(data?: any, schema?: TSchema): Promise<T> {
     if (schema && data) {
       try {
-        TypeBoxValue.Decode(schema, data);
+        Value.Decode(schema, data);
       } catch (error) {
         throw new Error(
           `Invalid data: ${error instanceof Error ? error.message : error}`,
