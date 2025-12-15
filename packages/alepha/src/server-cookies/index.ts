@@ -2,6 +2,7 @@ import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { $cookie, type Cookies } from "./primitives/$cookie.ts";
 import { ServerCookiesProvider } from "./providers/ServerCookiesProvider.ts";
+import { CookieParser } from "./services/CookieParser.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -29,5 +30,5 @@ declare module "alepha/server" {
 export const AlephaServerCookies = $module({
   name: "alepha.server.cookies",
   primitives: [$cookie],
-  services: [AlephaServer, ServerCookiesProvider],
+  services: [AlephaServer, ServerCookiesProvider, CookieParser],
 });

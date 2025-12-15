@@ -5,6 +5,7 @@ import { AlephaCli, version } from "alepha/cli";
 
 const alepha = Alepha.create({
   env: {
+    APP_NAME: "CLI",
     LOG_LEVEL: "alepha.core:warn,info",
     LOG_FORMAT: "raw",
     CLI_NAME: "alepha",

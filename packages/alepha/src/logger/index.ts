@@ -1,5 +1,6 @@
 import { $module, type Static, t } from "alepha";
 import { $logger } from "./primitives/$logger.ts";
+import { ConsoleColorProvider } from "./providers/ConsoleColorProvider.ts";
 import { ConsoleDestinationProvider } from "./providers/ConsoleDestinationProvider.ts";
 import { JsonFormatterProvider } from "./providers/JsonFormatterProvider.ts";
 import { LogDestinationProvider } from "./providers/LogDestinationProvider.ts";
@@ -103,6 +104,7 @@ export const AlephaLogger = $module({
     JsonFormatterProvider,
     PrettyFormatterProvider,
     RawFormatterProvider,
+    ConsoleColorProvider,
   ],
   register: (alepha) => {
     const env = alepha.parseEnv(envSchema);

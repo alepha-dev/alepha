@@ -40,7 +40,6 @@ export interface AskOptions<T extends TSchema = TString> {
 }
 
 export interface AskMethod {
-  // biome-ignore lint/style/useShorthandFunctionType: .
   <T extends TSchema = TString>(
     question: string,
     options?: AskOptions<T>,

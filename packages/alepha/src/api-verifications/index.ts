@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { VerificationController } from "./controllers/VerificationController.ts";
 import { VerificationJobs } from "./jobs/VerificationJobs.ts";
+import { VerificationParameters } from "./parameters/VerificationParameters.ts";
 import { VerificationService } from "./services/VerificationService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -25,5 +26,10 @@ export * from "./services/VerificationService.ts";
  */
 export const AlephaApiVerification = $module({
   name: "alepha.api.verifications",
-  services: [VerificationController, VerificationJobs, VerificationService],
+  services: [
+    VerificationController,
+    VerificationJobs,
+    VerificationService,
+    VerificationParameters,
+  ],
 });
