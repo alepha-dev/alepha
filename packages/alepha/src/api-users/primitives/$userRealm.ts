@@ -1,5 +1,6 @@
 import { $context } from "alepha";
 import { AlephaApiFiles } from "alepha/api/files";
+import { AlephaApiJobs } from "alepha/api/jobs";
 import type { Repository } from "alepha/orm";
 import {
   $realm,
@@ -17,6 +18,7 @@ import {
   type WithLinkFn,
   type WithLoginFn,
 } from "alepha/server/auth";
+import { AlephaApiAudits } from "../../api-audits/index.ts";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
@@ -52,10 +54,15 @@ export const $userRealm = (
   const userRealm = userRealmProvider.register(name, options);
 
   if (options.modules?.audits) {
+    alepha.with(AlephaApiAudits);
   }
 
   if (options.modules?.files) {
     alepha.with(AlephaApiFiles);
+  }
+
+  if (options.modules?.jobs) {
+    alepha.with(AlephaApiJobs);
   }
 
   const realm: UserRealmPrimitive = $realm({
@@ -103,12 +110,19 @@ export const $userRealm = (
   });
 
   realm.link = (name: string) => {
-    return (ctx: LinkAccountOptions) => sessionService.link(name, ctx.user);
+    return (ctx: LinkAccountOptions) =>
+      sessionService.link(name, ctx.user, realm.name);
   };
 
   realm.login = (name: string) => {
-    return (credentials: Credentials) =>
-      sessionService.login(name, credentials.username, credentials.password);
+    return (credentials: Credentials) => {
+      return sessionService.login(
+        name,
+        credentials.username,
+        credentials.password,
+        realm.name,
+      );
+    };
   };
 
   const identities = options.identities ?? {
@@ -175,5 +189,6 @@ export interface UserRealmOptions {
   modules?: {
     files?: boolean;
     audits?: boolean;
+    jobs?: boolean;
   };
 }

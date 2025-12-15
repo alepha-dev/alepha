@@ -2,7 +2,16 @@ import { useClient, useRouter } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { ActionButton, Control } from "@alepha/ui";
-import { Alert, Card, Flex, PinInput, Stack, Text } from "@mantine/core";
+import {
+  Alert,
+  Card,
+  Flex,
+  Image,
+  PinInput,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   IconAlertCircle,
   IconCheck,
@@ -43,8 +52,8 @@ const ResetPassword = (props: ResetPasswordProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const redirect = router.query.r || "/";
 
-  const isResetPasswordAllowed =
-    props.realmConfig.settings?.resetPasswordAllowed !== false;
+  const settings = props.realmConfig.settings;
+  const isResetPasswordAllowed = settings?.resetPasswordAllowed !== false;
 
   // Phase 1: Request password reset intent
   const emailForm = useForm({
@@ -52,6 +61,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
     handler: async (data) => {
       setError(null);
       const intent = await userCtrl.createPasswordResetIntent({
+        query: { userRealmName: props.realmConfig.realmName },
         body: { email: data.email },
       });
 
@@ -111,6 +121,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
 
     try {
       const intent = await userCtrl.createPasswordResetIntent({
+        query: { userRealmName: props.realmConfig.realmName },
         body: { email: resetState.email },
       });
 
@@ -130,6 +141,33 @@ const ResetPassword = (props: ResetPasswordProps) => {
       <Stack gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
           <Stack gap={"md"}>
+            {/* Realm branding */}
+            {(settings.logoUrl ||
+              settings.displayName ||
+              settings.description) && (
+              <Stack gap={"xs"} align="center" mb="xs">
+                {settings.logoUrl && (
+                  <Image
+                    src={settings.logoUrl}
+                    alt={settings.displayName || props.realmConfig.realmName}
+                    h={48}
+                    w="auto"
+                    fit="contain"
+                  />
+                )}
+                {settings.displayName && (
+                  <Title order={4} ta="center">
+                    {settings.displayName}
+                  </Title>
+                )}
+                {settings.description && (
+                  <Text size="sm" c="dimmed" ta="center">
+                    {settings.description}
+                  </Text>
+                )}
+              </Stack>
+            )}
+
             {error && (
               <Alert variant="light" color="red" icon={<IconAlertCircle />}>
                 <Text size="sm">{error}</Text>
@@ -145,7 +183,11 @@ const ResetPassword = (props: ResetPasswordProps) => {
                 >
                   <Text size="sm">{tr("resetPasswordDisabled")}</Text>
                 </Alert>
-                <ActionButton href={router.path("login")}>
+                <ActionButton
+                  href={router.path("login", {
+                    query: { realm: props.realmConfig.realmName },
+                  })}
+                >
                   {tr("resetPasswordBackToSignIn")}
                 </ActionButton>
               </>
@@ -241,7 +283,11 @@ const ResetPassword = (props: ResetPasswordProps) => {
                 <Alert variant="light" color="green" icon={<IconCheck />}>
                   <Text size="sm">{tr("resetPasswordSuccess")}</Text>
                 </Alert>
-                <ActionButton href={router.path("login")}>
+                <ActionButton
+                  href={router.path("login", {
+                    query: { realm: props.realmConfig.realmName },
+                  })}
+                >
                   {tr("resetPasswordBackToSignIn")}
                 </ActionButton>
               </>

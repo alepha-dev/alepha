@@ -3,7 +3,17 @@ import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { ActionButton, Control, capitalize } from "@alepha/ui";
-import { Alert, Card, Flex, Group, PinInput, Stack, Text } from "@mantine/core";
+import {
+  Alert,
+  Card,
+  Flex,
+  Group,
+  Image,
+  PinInput,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   IconAlertCircle,
   IconLock,
@@ -57,7 +67,7 @@ const Register = (props: RegisterProps) => {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasUsernamePassword = props.realmConfig.authenticationMethods.find(
+  const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
   );
 
@@ -97,6 +107,7 @@ const Register = (props: RegisterProps) => {
 
       // Phase 1: Create registration intent
       const intent = await userCtrl.createRegistrationIntent({
+        query: { userRealmName: props.realmConfig.realmName },
         body: {
           username: data.username,
           email: data.email,
@@ -130,10 +141,11 @@ const Register = (props: RegisterProps) => {
       });
 
       // Auto-login after registration
-      if (identifier) {
-        await auth.login("credentials", {
+      if (identifier && credentialsProvider) {
+        await auth.login(credentialsProvider.name, {
           username: identifier,
           password: data.password,
+          realm: props.realmConfig.realmName,
         });
       }
 
@@ -162,10 +174,11 @@ const Register = (props: RegisterProps) => {
       });
 
       // Auto-login after registration
-      if (registrationState.credentials) {
-        await auth.login("credentials", {
+      if (registrationState.credentials && credentialsProvider) {
+        await auth.login(credentialsProvider.name, {
           username: registrationState.credentials.identifier,
           password: registrationState.credentials.password,
+          realm: props.realmConfig.realmName,
         });
       }
 
@@ -280,12 +293,46 @@ const Register = (props: RegisterProps) => {
     );
   }
 
+  // External login methods
+  const externalMethods = props.realmConfig.authenticationMethods.filter(
+    (method) => method.type !== "CREDENTIALS",
+  );
+
+  const showOrDivider = credentialsProvider && externalMethods.length > 0;
+
   // Registration form phase UI
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
       <Stack gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
           <Stack gap={"md"}>
+            {/* Realm branding */}
+            {(settings.logoUrl ||
+              settings.displayName ||
+              settings.description) && (
+              <Stack gap={"xs"} align="center" mb="xs">
+                {settings.logoUrl && (
+                  <Image
+                    src={settings.logoUrl}
+                    alt={settings.displayName || props.realmConfig.realmName}
+                    h={48}
+                    w="auto"
+                    fit="contain"
+                  />
+                )}
+                {settings.displayName && (
+                  <Title order={4} ta="center">
+                    {settings.displayName}
+                  </Title>
+                )}
+                {settings.description && (
+                  <Text size="sm" c="dimmed" ta="center">
+                    {settings.description}
+                  </Text>
+                )}
+              </Stack>
+            )}
+
             {!isRegistrationAllowed ? (
               <>
                 <Alert
@@ -295,108 +342,125 @@ const Register = (props: RegisterProps) => {
                 >
                   <Text size="sm">{tr("registerDisabled")}</Text>
                 </Alert>
-                <ActionButton href={router.path("login")}>
+                <ActionButton
+                  href={router.path("login", {
+                    query: { realm: props.realmConfig.realmName },
+                  })}
+                >
                   {tr("registerBackToSignIn")}
                 </ActionButton>
               </>
-            ) : hasUsernamePassword ? (
+            ) : (
               <>
-                <form {...form.props}>
-                  <Stack flex={1} gap={"md"}>
-                    {settings.usernameEnabled !== false &&
-                      form.input.username && (
+                {/* Credentials registration form */}
+                {credentialsProvider && (
+                  <form {...form.props}>
+                    <Stack flex={1} gap={"md"}>
+                      {settings.usernameEnabled !== false &&
+                        form.input.username && (
+                          <Control
+                            title={tr("registerUsername")}
+                            input={form.input.username}
+                            icon={<IconUser />}
+                            text={{
+                              autoComplete: "username",
+                            }}
+                          />
+                        )}
+                      {settings.emailEnabled !== false && form.input.email && (
                         <Control
-                          title={tr("registerUsername")}
-                          input={form.input.username}
-                          icon={<IconUser />}
+                          title={tr("registerEmail")}
+                          input={form.input.email}
+                          icon={<IconMail />}
                           text={{
-                            autoComplete: "username",
+                            autoComplete: "email",
                           }}
                         />
                       )}
-                    {settings.emailEnabled !== false && form.input.email && (
+                      {settings.phoneEnabled === true &&
+                        form.input.phoneNumber && (
+                          <Control
+                            title={tr("registerPhone")}
+                            input={form.input.phoneNumber}
+                            icon={<IconPhone />}
+                            text={{
+                              autoComplete: "tel",
+                            }}
+                          />
+                        )}
                       <Control
-                        title={tr("registerEmail")}
-                        input={form.input.email}
-                        icon={<IconMail />}
-                        text={{
-                          autoComplete: "email",
+                        title={tr("registerPassword")}
+                        input={form.input.password}
+                        icon={<IconLock />}
+                        password={{
+                          autoComplete: "new-password",
                         }}
                       />
-                    )}
-                    {settings.phoneEnabled === true &&
-                      form.input.phoneNumber && (
-                        <Control
-                          title={tr("registerPhone")}
-                          input={form.input.phoneNumber}
-                          icon={<IconPhone />}
-                          text={{
-                            autoComplete: "tel",
-                          }}
-                        />
-                      )}
-                    <Control
-                      title={tr("registerPassword")}
-                      input={form.input.password}
-                      icon={<IconLock />}
-                      password={{
-                        autoComplete: "new-password",
-                      }}
-                    />
-                    <Control
-                      title={tr("registerConfirmPassword")}
-                      input={form.input.confirmPassword}
-                      icon={<IconLock />}
-                      password={{
-                        autoComplete: "new-password",
-                      }}
-                    />
-                    <ActionButton form={form} color={"blue"} variant={"filled"}>
-                      {tr("registerCreateAccount")}
-                    </ActionButton>
-                  </Stack>
-                </form>
-                <Group align="center" justify="center" gap={"md"}>
-                  <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
-                  <Text size="xs">{tr("registerOr")}</Text>
-                  <Flex flex={1} h={"1px"} bg={"var(--alepha-text-muted)"} />
-                </Group>
-              </>
-            ) : null}
-            {isRegistrationAllowed && (
-              <>
-                <Stack gap={"sm"}>
-                  {props.realmConfig.authenticationMethods.map(
-                    (method) =>
-                      method.type !== "CREDENTIALS" && (
-                        <ActionButton
-                          variant={"default"}
-                          key={method.type}
-                          leftSection={leftSection(method.name.toLowerCase())}
-                          onClick={() =>
-                            auth.login(method.name, {
-                              redirect,
-                            })
-                          }
-                        >
-                          {tr("registerContinueWith", {
-                            args: [capitalize(method.name)],
-                          })}
-                        </ActionButton>
-                      ),
-                  )}
-                </Stack>
-                {props.realmConfig.authenticationMethods.length > 0 && (
-                  <Text size="sm" ta="center">
-                    {tr("registerHaveAccount")}{" "}
-                    <ActionButton
-                      href={router.path("login")}
-                      anchorProps={{ inherit: true }}
-                    >
-                      {tr("registerSignIn")}
-                    </ActionButton>
-                  </Text>
+                      <Control
+                        title={tr("registerConfirmPassword")}
+                        input={form.input.confirmPassword}
+                        icon={<IconLock />}
+                        password={{
+                          autoComplete: "new-password",
+                        }}
+                      />
+                      <ActionButton
+                        form={form}
+                        color={"blue"}
+                        variant={"filled"}
+                      >
+                        {tr("registerCreateAccount")}
+                      </ActionButton>
+                    </Stack>
+                  </form>
                 )}
+
+                {/* OR divider - only when both credentials AND external methods exist */}
+                {showOrDivider && (
+                  <Group align="center" justify="center" gap={"md"}>
+                    <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+                    <Text size="xs" c="dimmed">
+                      {tr("registerOr")}
+                    </Text>
+                    <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+                  </Group>
+                )}
+
+                {/* External login methods */}
+                {externalMethods.length > 0 && (
+                  <Stack gap={"sm"}>
+                    {externalMethods.map((method) => (
+                      <ActionButton
+                        variant={"default"}
+                        key={method.type}
+                        leftSection={leftSection(method.name.toLowerCase())}
+                        onClick={() =>
+                          auth.login(method.name, {
+                            redirect,
+                            realm: props.realmConfig.realmName,
+                          })
+                        }
+                      >
+                        {tr("registerContinueWith", {
+                          args: [capitalize(method.name)],
+                        })}
+                      </ActionButton>
+                    ))}
+                  </Stack>
+                )}
+
+                {/* Sign in link */}
+                <Text size="sm" ta="center">
+                  {tr("registerHaveAccount")}{" "}
+                  <ActionButton
+                    href={router.path("login", {
+                      query: { realm: props.realmConfig.realmName },
+                    })}
+                    anchorProps={{ inherit: true }}
+                  >
+                    {tr("registerSignIn")}
+                  </ActionButton>
+                </Text>
               </>
             )}
           </Stack>

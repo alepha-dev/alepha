@@ -3,9 +3,9 @@ import { useAuth } from "@alepha/react/auth";
 import { FormValidationError, useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { ActionButton, Control, capitalize } from "@alepha/ui";
-import { Card, Flex, Group, Stack, Text } from "@mantine/core";
+import { Card, Flex, Group, Image, Stack, Text, Title } from "@mantine/core";
 import { IconLock, IconUser } from "@tabler/icons-react";
-import { t } from "alepha";
+import { AlephaError, t } from "alepha";
 import type { UserRealmConfig } from "alepha/api/users";
 import { HttpError } from "alepha/server";
 import { useMemo } from "react";
@@ -24,7 +24,7 @@ const Login = (props: LoginProps) => {
   const { tr } = useI18n<AuthI18n, "en">();
   const redirect = router.query.r || "/";
 
-  const hasUsernamePassword = props.realmConfig.authenticationMethods.find(
+  const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
   );
 
@@ -68,10 +68,15 @@ const Login = (props: LoginProps) => {
       }),
     }),
     handler: async (data) => {
+      if (!credentialsProvider) {
+        throw new AlephaError("Credentials provider not configured");
+      }
+
       try {
-        await auth.login("credentials", {
+        await auth.login(credentialsProvider.name, {
           username: data.identifier,
           password: data.password,
+          realm: props.realmConfig.realmName,
         });
         await router.go(router.query.r || "/");
       } catch (error) {
@@ -106,12 +111,42 @@ const Login = (props: LoginProps) => {
     (method) => method.type !== "CREDENTIALS",
   );
 
+  const showOrDivider = credentialsProvider && externalLoginMethods.length > 0;
+
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
       <Stack gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
           <Stack gap={"md"}>
-            {hasUsernamePassword && (
+            {/* Realm branding */}
+            {(settings.logoUrl ||
+              settings.displayName ||
+              settings.description) && (
+              <Stack gap={"xs"} align="center" mb="xs">
+                {settings.logoUrl && (
+                  <Image
+                    src={settings.logoUrl}
+                    alt={settings.displayName || props.realmConfig.realmName}
+                    h={48}
+                    w="auto"
+                    fit="contain"
+                  />
+                )}
+                {settings.displayName && (
+                  <Title order={4} ta="center">
+                    {settings.displayName}
+                  </Title>
+                )}
+                {settings.description && (
+                  <Text size="sm" c="dimmed" ta="center">
+                    {settings.description}
+                  </Text>
+                )}
+              </Stack>
+            )}
+
+            {/* Credentials login form */}
+            {credentialsProvider && (
               <>
                 <form {...form.props}>
                   <Stack flex={1} gap={"md"}>
@@ -136,27 +171,33 @@ const Login = (props: LoginProps) => {
                     </ActionButton>
                   </Stack>
                 </form>
-                <Stack gap="xs">
-                  {settings.resetPasswordAllowed && (
-                    <Text size="sm" ta="center">
-                      <ActionButton
-                        href={router.path("resetPassword")}
-                        anchorProps={{ inherit: true }}
-                      >
-                        {tr("loginForgotPassword")}
-                      </ActionButton>
-                    </Text>
-                  )}
-                  <Group align="center" justify="center" gap={"md"}>
-                    <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
-                    <Text size="xs" c={"dimmed"}>
-                      {tr("loginOr")}
-                    </Text>
-                    <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
-                  </Group>
-                </Stack>
+                {settings.resetPasswordAllowed && (
+                  <Text size="sm" ta="center">
+                    <ActionButton
+                      href={router.path("resetPassword", {
+                        query: { realm: props.realmConfig.realmName },
+                      })}
+                      anchorProps={{ inherit: true }}
+                    >
+                      {tr("loginForgotPassword")}
+                    </ActionButton>
+                  </Text>
+                )}
               </>
             )}
+
+            {/* OR divider - only when both credentials AND external methods exist */}
+            {showOrDivider && (
+              <Group align="center" justify="center" gap={"md"}>
+                <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+                <Text size="xs" c={"dimmed"}>
+                  {tr("loginOr")}
+                </Text>
+                <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+              </Group>
+            )}
+
+            {/* External login methods */}
             {externalLoginMethods.length > 0 && (
               <Stack gap={"sm"}>
                 {externalLoginMethods.map((method) => (
@@ -167,6 +208,7 @@ const Login = (props: LoginProps) => {
                     onClick={() =>
                       auth.login(method.name, {
                         redirect,
+                        realm: props.realmConfig.realmName,
                       })
                     }
                   >
@@ -177,11 +219,15 @@ const Login = (props: LoginProps) => {
                 ))}
               </Stack>
             )}
+
+            {/* Registration link */}
             {settings.registrationAllowed && (
               <Text size="sm" ta="center">
                 {tr("loginNoAccount")}{" "}
                 <ActionButton
-                  href={router.path("register")}
+                  href={router.path("register", {
+                    query: { realm: props.realmConfig.realmName },
+                  })}
                   anchorProps={{ inherit: true }}
                 >
                   {tr("loginSignUp")}

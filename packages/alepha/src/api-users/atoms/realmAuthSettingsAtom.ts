@@ -3,6 +3,25 @@ import { $atom, type Static, t } from "alepha";
 export const realmAuthSettingsAtom = $atom({
   name: "alepha.api.users.realmAuthSettings",
   schema: t.object({
+    // Branding and display settings
+    displayName: t.optional(
+      t.string({
+        description:
+          "Display name shown on auth pages (e.g., 'Customer Portal')",
+      }),
+    ),
+    description: t.optional(
+      t.string({
+        description: "Description shown on auth pages",
+      }),
+    ),
+    logoUrl: t.optional(
+      t.string({
+        description: "Logo URL for auth pages",
+      }),
+    ),
+
+    // Auth settings
     registrationAllowed: t.boolean({
       description: "Enable user self-registration",
     }),
