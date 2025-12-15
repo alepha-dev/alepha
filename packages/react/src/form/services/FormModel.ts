@@ -1,11 +1,5 @@
-import {
-  $inject,
-  Alepha,
-  type Static,
-  type TObject,
-  type TSchema,
-  t,
-} from "alepha";
+import type { TArray } from "alepha";
+import { $inject, Alepha, type Static, t, type TObject, type TSchema, } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
@@ -221,17 +215,21 @@ export class FormModel<T extends TObject> {
         if (!options.schema || !t.schema.isObject(schema)) {
           return {};
         }
+
         if (prop in schema.properties) {
-          if (t.schema.isObject(schema.properties[prop])) {
-            return this.createProxyFromSchema(
-              options,
-              schema.properties[prop],
-              {
-                parent: parent ? `${parent}.${prop}` : prop,
-                store: context.store,
-              },
-            );
-          }
+
+          // // it's a nested object, create another proxy
+          // if (t.schema.isObject(schema.properties[prop])) {
+          //   return this.createProxyFromSchema(
+          //     options,
+          //     schema.properties[prop],
+          //     {
+          //       parent: parent ? `${parent}.${prop}` : prop,
+          //       store: context.store,
+          //     },
+          //   );
+          // }
+
           return this.createInputFromSchema<T>(
             prop as keyof Static<T> & string,
             options,
@@ -253,7 +251,7 @@ export class FormModel<T extends TObject> {
       parent: string;
       store: Record<string, any>;
     },
-  ): InputField {
+  ): BaseInputField {
     const parent = context.parent || "";
     const field = schema.properties?.[name];
     if (!field) {
@@ -268,7 +266,6 @@ export class FormModel<T extends TObject> {
     }
 
     const isRequired = schema.required?.includes(name) ?? false;
-
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 
@@ -278,7 +275,7 @@ export class FormModel<T extends TObject> {
 
       if (context.store[key] === typedValue) {
         // no change, do not update
-        // return;
+        // return; <- disabled for now, as some inputs may need to sync even if value is same
       }
 
       context.store[key] = typedValue;
@@ -291,6 +288,8 @@ export class FormModel<T extends TObject> {
         id: this.id,
         path: path,
         value: typedValue,
+      }, {
+        catch: true
       });
 
       if (sync) {
@@ -299,6 +298,7 @@ export class FormModel<T extends TObject> {
         );
         if (inputElement instanceof HTMLInputElement) {
           if (t.schema.isBoolean(field)) {
+            inputElement.value = value;
             inputElement.checked = Boolean(value);
           } else {
             inputElement.value = value;
@@ -324,7 +324,15 @@ export class FormModel<T extends TObject> {
         }
 
         if (t.schema.isBoolean(field)) {
-          set(event.target.checked, false);
+          if (event.target.value === "true") {
+            set(true, false);
+          } else if (event.target.value === "false") {
+            set(false, false);
+          } else if (event.target.value === "") {
+            set(undefined, false);
+          } else {
+            set(event.target.checked, false);
+          }
         } else {
           set(event.target.value, false);
         }
@@ -389,6 +397,39 @@ export class FormModel<T extends TObject> {
     if (options.onCreateField) {
       const customAttr = options.onCreateField(name, field);
       Object.assign(attr, customAttr);
+    }
+
+    // if type = object, add items: { [key: string]: InputField }
+    if (t.schema.isObject(field)) {
+      return {
+        path,
+        props: attr,
+        schema: field,
+        set,
+        form: this,
+        required,
+        items: this.createProxyFromSchema(
+          options,
+          field,
+          {
+            parent: key,
+            store: context.store,
+          },
+        )
+      } as ObjectInputField<any>;
+    }
+
+    // if type = array, add items: InputField[]
+    if (t.schema.isArray(field)) {
+      return {
+        path,
+        props: attr,
+        schema: field,
+        set,
+        form: this,
+        required,
+        items: [], // <- will be populated dynamically in the UI
+      } as ArrayInputField<any>;
     }
 
     return {
@@ -466,9 +507,7 @@ export class FormModel<T extends TObject> {
 }
 
 export type SchemaToInput<T extends TObject> = {
-  [K in keyof T["properties"]]: T["properties"][K] extends TObject
-    ? SchemaToInput<T["properties"][K]>
-    : InputField;
+  [K in keyof T["properties"]]: InputField<T["properties"][K]>;
 };
 
 export interface FormEventLike {
@@ -476,13 +515,29 @@ export interface FormEventLike {
   stopPropagation?: () => void;
 }
 
-export interface InputField {
+export type InputField<T extends TSchema> =
+  T extends TObject
+    ? ObjectInputField<T>
+    : T extends TArray<infer U>
+      ? ArrayInputField<U>
+      : BaseInputField;
+
+export interface BaseInputField {
   path: string;
   required: boolean;
   props: InputHTMLAttributesLike;
   schema: TSchema;
   set: (value: any) => void;
   form: FormModel<any>;
+  items?: any;
+}
+
+export interface ObjectInputField<T extends TObject> extends BaseInputField {
+  items: SchemaToInput<T>;
+}
+
+export interface ArrayInputField<T extends TSchema> extends BaseInputField {
+  items: Array<InputField<T>>
 }
 
 export type InputHTMLAttributesLike = Pick<

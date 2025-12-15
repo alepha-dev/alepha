@@ -6,11 +6,16 @@ import { HttpClient, ServerProvider } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { AlephaServerSecurity } from "alepha/server/security";
 import { describe, test } from "vitest";
-import { $auth, alephaServerAuthRoutes, type TokenResponse, tokenResponseSchema, tokensSchema } from "alepha/server/auth";
+import {
+  $auth,
+  alephaServerAuthRoutes,
+  type TokenResponse,
+  tokenResponseSchema,
+  tokensSchema
+} from "alepha/server/auth";
 import { ReactAuth, ReactAuthProvider } from "@alepha/react/auth";
 
 describe("$auth", () => {
-  describe("$auth", () => {
     const user = {
       id: randomUUID(),
       name: "John Doe",
@@ -180,5 +185,4 @@ describe("$auth", () => {
         "Failed to refresh access token using the refresh token (realm)",
       );
     });
-  });
 });
