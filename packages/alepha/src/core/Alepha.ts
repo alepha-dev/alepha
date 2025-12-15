@@ -230,13 +230,6 @@ export class Alepha {
   protected starting?: PromiseWithResolvers<this>;
 
   /**
-   * Initial state of the container.
-   *
-   * > Used to initialize the StateManager.
-   */
-  protected init: Partial<State>;
-
-  /**
    * During the instantiation process, we keep a list of pending instantiations.
    * > It allows us to detect circular dependencies.
    */
@@ -281,37 +274,24 @@ export class Alepha {
    *
    * Mocked for browser environments.
    */
-  public get context(): AlsProvider {
-    return this.inject(AlsProvider);
-  }
+  public context: AlsProvider;
 
   /**
    * Event manager to handle lifecycle events and custom events.
    */
-  public get events(): EventManager {
-    return this.inject(EventManager, {
-      args: [() => this.log],
-    });
-  }
+  public events: EventManager;
 
   /**
    * State manager to store arbitrary values.
    */
-  public get store(): StateManager<State> {
-    this.events; // ensure events is initialized first (TODO: move this to constructor?)
-    return this.inject(StateManager, {
-      args: [this.init],
-    });
-  }
+  public store: StateManager<State>;
 
   /**
    * Codec manager for encoding and decoding data with different formats.
    *
    * Supports multiple codec formats (JSON, Protobuf, etc.) with a unified interface.
    */
-  public get codec(): CodecManager {
-    return this.inject(CodecManager);
-  }
+  public codec: CodecManager;
 
   /**
    * Get logger instance.
@@ -327,8 +307,14 @@ export class Alepha {
     return this.store.get("env") ?? {};
   }
 
-  constructor(init: Partial<State> = {}) {
-    this.init = init;
+  constructor(state: Partial<State> = {}) {
+    this.store = this.inject(StateManager, {
+      args: [state],
+    });
+    this.events = this.inject(EventManager);
+    this.events.logFn = () => this.log;
+    this.context = this.inject(AlsProvider);
+    this.codec = this.inject(CodecManager);
   }
 
   public set<T extends TAtomObject>(
@@ -480,8 +466,6 @@ export class Alepha {
       this.log?.warn("App is already starting, waiting for it to finish...");
       return this.starting.promise;
     }
-
-    this.codec; // ensure codec is initialized
 
     this.starting = Promise.withResolvers();
 
@@ -840,6 +824,22 @@ export class Alepha {
     this.cacheEnv.set(schema, config);
 
     return config as Static<T>;
+  }
+
+  /**
+   * Get all environment variable schemas and their parsed values.
+   *
+   * This is useful for DevTools to display all expected environment variables.
+   */
+  public getEnvSchemas(): Array<{
+    schema: TSchema;
+    values: Record<string, any>;
+  }> {
+    const result: Array<{ schema: TSchema; values: Record<string, any> }> = [];
+    for (const [schema, values] of this.cacheEnv.entries()) {
+      result.push({ schema, values });
+    }
+    return result;
   }
 
   // -------------------------------------------------------------------------------------------------------------------

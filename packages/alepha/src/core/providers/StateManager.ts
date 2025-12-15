@@ -113,13 +113,15 @@ export class StateManager<State extends object = AlephaState> {
       store[key] = value;
     }
 
-    this.events
-      ?.emit(
-        "state:mutate",
-        { key: key as keyof AlephaState, value, prevValue },
-        { catch: true },
-      )
-      .catch(() => null);
+    if (options?.skipEvents !== true) {
+      this.events
+        ?.emit(
+          "state:mutate",
+          { key: key as keyof AlephaState, value, prevValue },
+          { catch: true },
+        )
+        .catch(() => null);
+    }
 
     return this;
   }
@@ -191,4 +193,5 @@ type OnlyArray<T extends object> = {
 
 export interface SetStateOptions {
   skipContext?: boolean;
+  skipEvents?: boolean;
 }

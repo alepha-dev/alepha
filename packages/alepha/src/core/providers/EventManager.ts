@@ -4,7 +4,7 @@ import type { Async } from "../interfaces/Async.ts";
 import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
 
 export class EventManager {
-  protected logFn?: () => LoggerInterface | undefined;
+  public logFn?: () => LoggerInterface | undefined;
 
   /**
    * List of events that can be triggered. Powered by $hook().
