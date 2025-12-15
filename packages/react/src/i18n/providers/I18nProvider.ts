@@ -171,7 +171,7 @@ export class I18nProvider<
     options: I18nLocalizeOptions = {},
   ) => {
     // Handle numbers
-    if (typeof value === "number") {
+    if (typeof value === "number" && !options.date) {
       return new Intl.NumberFormat(this.lang, options.number).format(value);
     }
 
@@ -179,7 +179,8 @@ export class I18nProvider<
     if (
       value instanceof Date ||
       this.dateTimeProvider.isDateTime(value) ||
-      (typeof value === "string" && options.date)
+      (typeof value === "string" && options.date) ||
+      (typeof value === "number" && options.date)
     ) {
       // convert to DateTime with locale applied
       let dt = this.dateTimeProvider.of(value);

@@ -8,6 +8,7 @@ import { $module } from "alepha";
 import { $head } from "./primitives/$head.ts";
 import type { Head } from "./interfaces/Head.ts";
 import { ServerHeadProvider } from "./providers/ServerHeadProvider.ts";
+import { HeadProvider } from "./providers/HeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -43,5 +44,5 @@ declare module "@alepha/react" {
 export const AlephaReactHead = $module({
   name: "alepha.react.head",
   primitives: [$head],
-  services: [AlephaReact, ServerHeadProvider],
+  services: [AlephaReact, ServerHeadProvider, HeadProvider],
 });
