@@ -1,5 +1,5 @@
 import type { FormModel } from "@alepha/react/form";
-import { Flex, type FlexProps, Grid } from "@mantine/core";
+import { Card, Flex, type FlexProps, Grid } from "@mantine/core";
 import type { TObject } from "alepha";
 import type { ReactNode } from "react";
 import ActionButton, {
@@ -21,7 +21,17 @@ export interface TypeFormProps<T extends TObject> {
       };
   schema?: TObject;
   children?: (input: FormModel<T>["input"]) => ReactNode;
+
+  /**
+   * Control props applied to all fields.
+   */
   controlProps?: Partial<Omit<ControlProps, "input">>;
+
+  /**
+   * Per-field control props override.
+   * Keys are field names from the schema.
+   */
+  fieldControlProps?: Record<string, Partial<Omit<ControlProps, "input">>>;
   skipFormElement?: boolean;
   skipSubmitButton?: boolean;
   submitButtonProps?: Partial<Omit<ActionSubmitButtonProps, "form">>;
@@ -35,6 +45,13 @@ export interface TypeFormProps<T extends TObject> {
  * TypeForm component that automatically renders all form inputs based on schema.
  * Uses the Control component to render individual fields and Mantine Grid for responsive layout.
  *
+ * Supports all field types including:
+ * - Primitive types (string, number, boolean, etc.)
+ * - Enum types (rendered as Select)
+ * - Arrays of primitives (rendered as MultiSelect/TagsInput)
+ * - Arrays of objects (rendered as ControlArray)
+ * - Nested objects (rendered as ControlObject)
+ *
  * @example
  * ```tsx
  * import { t } from "alepha";
@@ -47,6 +64,15 @@ export interface TypeFormProps<T extends TObject> {
  *     email: t.text(),
  *     age: t.integer(),
  *     subscribe: t.boolean(),
+ *     address: t.object({
+ *       street: t.text(),
+ *       city: t.text(),
+ *     }),
+ *     tags: t.array(t.text()),
+ *     contacts: t.array(t.object({
+ *       name: t.text(),
+ *       email: t.text(),
+ *     })),
  *   }),
  *   handler: (values) => {
  *     console.log(values);
@@ -62,6 +88,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     columns = 3,
     children,
     controlProps,
+    fieldControlProps,
     skipFormElement = false,
     skipSubmitButton = false,
     submitButtonProps,
@@ -74,30 +101,9 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
 
   const fieldNames = Object.keys(schema.properties);
 
-  // Filter out unsupported field types (objects only, arrays are now supported)
-  const supportedFields = fieldNames.filter((fieldName) => {
-    const field = form.input[fieldName as keyof typeof form.input];
-    if (!field || typeof field !== "object" || !("schema" in field)) {
-      return false;
-    }
-
-    const schema: any = field.schema;
-
-    // Skip if it's an object (not supported by Control)
-    // Arrays are now supported via ControlSelect (MultiSelect/TagsInput)
-    if ("type" in schema) {
-      if (schema.type === "object") {
-        return false;
-      }
-    }
-
-    // Check if it has properties (nested object)
-    if ("properties" in schema && schema.properties) {
-      return false;
-    }
-
-    return true;
-  });
+  // Filter to only include valid InputFields
+  // All types are now supported: primitives, enums, arrays, objects
+  const supportedFields = fieldNames;
 
   // Handle column configuration with defaults: xs=1, sm=2, lg=3
   const colSpan =
@@ -125,15 +131,40 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
       <Grid>
         {supportedFields.map((fieldName) => {
           const field = form.input[fieldName as keyof typeof form.input];
+          const fieldSchema: any = schema.properties[fieldName];
 
           // Type guard to ensure field has the expected structure
-          if (!field || typeof field !== "object" || !("schema" in field)) {
+          if (!field || !fieldSchema) {
             return null;
           }
 
+          // Determine if this is a complex type (object or array of objects)
+          // that should span full width
+          const isObject =
+            fieldSchema &&
+            "type" in fieldSchema &&
+            fieldSchema.type === "object";
+
+          const isArrayOfObjects =
+            fieldSchema &&
+            "type" in fieldSchema &&
+            fieldSchema.type === "array" &&
+            "items" in fieldSchema &&
+            fieldSchema.items &&
+            "properties" in fieldSchema.items;
+
+          // Complex types span full width, primitives use grid columns
+          const span = isObject || isArrayOfObjects ? 12 : colSpan;
+
+          // Merge control props: base controlProps + field-specific overrides
+          const mergedControlProps = {
+            ...controlProps,
+            ...fieldControlProps?.[fieldName],
+          };
+
           return (
-            <Grid.Col key={fieldName} span={colSpan}>
-              <Control input={field as any} {...controlProps} />
+            <Grid.Col key={fieldName} span={span}>
+              <Control input={field} {...mergedControlProps} />
             </Grid.Col>
           );
         })}
@@ -148,14 +179,28 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
       flex={props.fill ? 1 : undefined}
       {...props.flexProps}
     >
-      {renderFields()}
+      <Flex direction={"column"} gap={"sm"} flex={1}>
+        {renderFields()}
+      </Flex>
       {!skipSubmitButton && (
-        <Flex gap={"sm"}>
-          <ActionButton form={form} {...submitButtonProps}>
-            {submitButtonProps?.children ?? "Submit"}
-          </ActionButton>
-          <ActionButton type={"reset"}>Reset</ActionButton>
-        </Flex>
+        <Card w={"100%"} withBorder>
+          <Flex gap={"sm"} flex={1}>
+            <Flex></Flex>
+            <Flex flex={1}></Flex>
+            <Flex gap={"sm"}>
+              <ActionButton variant={"subtle"} type={"reset"}>
+                Reset
+              </ActionButton>
+              <ActionButton
+                intent={"primary"}
+                form={form}
+                {...submitButtonProps}
+              >
+                {submitButtonProps?.children ?? "Submit"}
+              </ActionButton>
+            </Flex>
+          </Flex>
+        </Card>
       )}
     </Flex>
   );

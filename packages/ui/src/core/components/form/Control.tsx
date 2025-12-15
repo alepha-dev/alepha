@@ -25,8 +25,10 @@ import {
   type GenericControlProps,
   parseInput,
 } from "../../utils/parseInput.ts";
+import ControlArray, { type ControlArrayProps } from "./ControlArray.tsx";
 import ControlDate from "./ControlDate.tsx";
 import ControlNumber, { type ControlNumberProps } from "./ControlNumber.tsx";
+import ControlObject, { type ControlObjectProps } from "./ControlObject.tsx";
 import ControlQueryBuilder from "./ControlQueryBuilder.tsx";
 import ControlSelect, { type ControlSelectProps } from "./ControlSelect.tsx";
 
@@ -43,6 +45,8 @@ export interface ControlProps extends GenericControlProps {
   datetime?: boolean | DateTimePickerProps;
   time?: boolean | TimeInputProps;
   query?: any; // Enable query builder mode with schema-aware autocomplete
+  object?: boolean | Partial<Omit<ControlObjectProps, "input">>; // Nested object editing
+  array?: boolean | Partial<Omit<ControlArrayProps, "input">>; // Array of items editing
   custom?: ComponentType<CustomControlProps>;
 }
 
@@ -64,16 +68,21 @@ export interface ControlProps extends GenericControlProps {
  * - DateTimePicker (for date-time format)
  * - TimeInput (for time format)
  * - QueryBuilder (for building type-safe queries with autocomplete)
+ * - ControlObject (for nested object schemas)
+ * - ControlArray (for arrays of objects)
  * - Custom component
  *
  * Automatically handles labels, descriptions, error messages, required state, and default icons.
  */
 const Control = (_props: ControlProps) => {
   const form = useFormState(_props.input, ["error"]);
-  const { inputProps, id, icon, format, schema } = parseInput(_props, form);
+
+  // Early return if input is not properly initialized
   if (!_props.input?.props) {
     return null;
   }
+
+  const { inputProps, id, icon, format, schema } = parseInput(_props, form);
 
   const props = {
     ..._props,
@@ -110,6 +119,56 @@ const Control = (_props: ControlProps) => {
           />
         </Flex>
       </Input.Wrapper>
+    );
+  }
+  //endregion
+
+  //region <ControlObject/>
+  // Handle nested objects with properties
+  const isObject =
+    props.input.schema &&
+    "type" in props.input.schema &&
+    props.input.schema.type === "object" &&
+    "properties" in props.input.schema;
+
+  if (props.object || isObject) {
+    const controlObjectProps =
+      typeof props.object === "object" ? props.object : {};
+    return (
+      <ControlObject
+        input={props.input}
+        title={props.title}
+        description={props.description}
+        {...controlObjectProps}
+      />
+    );
+  }
+  //endregion
+
+  //region <ControlArray/>
+  // Handle arrays of objects (arrays of primitives are handled by ControlSelect)
+  const isArray =
+    props.input.schema &&
+    "type" in props.input.schema &&
+    props.input.schema.type === "array";
+
+  const isArrayOfObjects =
+    isArray &&
+    "items" in props.input.schema &&
+    props.input.schema.items &&
+    typeof props.input.schema.items === "object" &&
+    "properties" in props.input.schema.items;
+
+  if (props.array || isArrayOfObjects) {
+    const controlArrayProps =
+      typeof props.array === "object" ? props.array : {};
+    return (
+      <ControlArray
+        input={props.input}
+        title={props.title}
+        description={props.description}
+        {...controlArrayProps}
+      />
     );
   }
   //endregion
@@ -170,16 +229,13 @@ const Control = (_props: ControlProps) => {
 
   //region <ControlSelect/>
   // Handle: single enum, array of enum, array of strings, or explicit select/multi/tags props
+  // Note: arrays of objects are handled by ControlArray above, this handles primitive arrays
   const isEnum =
     props.input.schema &&
     "enum" in props.input.schema &&
     props.input.schema.enum;
-  const isArray =
-    props.input.schema &&
-    "type" in props.input.schema &&
-    props.input.schema.type === "array";
 
-  if (isEnum || isArray || props.select) {
+  if (isEnum || (isArray && !isArrayOfObjects) || props.select) {
     const opts = typeof props.select === "object" ? props.select : {};
     return (
       <ControlSelect
@@ -195,21 +251,42 @@ const Control = (_props: ControlProps) => {
 
   //region <Switch/>
   if (
-    (props.input.schema &&
-      "type" in props.input.schema &&
-      props.input.schema.type === "boolean") ||
-    props.switch
+    props.input.schema &&
+    "type" in props.input.schema &&
+    props.input.schema.type === "boolean"
   ) {
-    const switchProps = typeof props.switch === "object" ? props.switch : {};
+    if (props.switch) {
+      const switchProps = typeof props.switch === "object" ? props.switch : {};
+
+      return (
+        <Switch
+          {...inputProps}
+          id={id}
+          color={"blue"}
+          defaultChecked={props.input.props.defaultValue}
+          {...props.input.props}
+          {...switchProps}
+        />
+      );
+    }
+
+    // by default, render as <Select/> with Yes/No/Empty options
+    const selectProps: Partial<ControlSelectProps> = {
+      loader: async () => [
+        { value: "true", label: "Yes" },
+        { value: "false", label: "No" },
+        { value: "", label: "" },
+      ],
+      ...props.input.props,
+    };
 
     return (
-      <Switch
-        {...inputProps}
-        id={id}
-        color={"blue"}
-        defaultChecked={props.input.props.defaultValue}
-        {...props.input.props}
-        {...switchProps}
+      <ControlSelect
+        input={props.input}
+        title={props.title}
+        description={props.description}
+        icon={icon}
+        {...selectProps}
       />
     );
   }
