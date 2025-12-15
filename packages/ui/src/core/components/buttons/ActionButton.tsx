@@ -28,10 +28,10 @@ import {
   type ButtonHTMLAttributes,
   Children,
   type ComponentType,
-  isValidElement,
   type ReactNode,
 } from "react";
 import { ui } from "../../constants/ui.ts";
+import { isComponentType } from "../../helpers/isComponentType.ts";
 
 export interface ActionMenuItem {
   /**
@@ -120,7 +120,7 @@ export interface ActionCommonProps extends ButtonProps {
    * Tooltip to display on hover. Can be a string for simple tooltips
    * or a TooltipProps object for advanced configuration.
    */
-  tooltip?: string | TooltipProps;
+  tooltip?: string | number | TooltipProps;
 
   /**
    * Menu configuration. When provided, the action will display a dropdown menu.
@@ -244,6 +244,11 @@ const ActionButton = (_props: ActionProps) => {
   const props = { ..._props };
   const { tooltip, menu, icon, ...restProps } = props;
 
+  if (props.variant === "subtle") {
+    restProps.c ??= "var(--mantine-color-text)";
+    restProps.color ??= "gray";
+  }
+
   if (props.intent) {
     if (props.intent === "none") {
       restProps.c ??= "var(--mantine-color-text)";
@@ -263,15 +268,6 @@ const ActionButton = (_props: ActionProps) => {
     } else if (props.intent === "info") {
       restProps.c ??= "white";
       restProps.color ??= "blue";
-    }
-  } else {
-    if (
-      !props.variant ||
-      props.variant === "subtle" ||
-      props.variant === "light"
-    ) {
-      restProps.c ??= "var(--mantine-color-text)";
-      restProps.color ??= "gray";
     }
   }
 
@@ -408,7 +404,7 @@ const ActionButton = (_props: ActionProps) => {
       openDelay: 1000,
     };
     const tooltipProps: TooltipProps =
-      typeof tooltip === "string"
+      typeof tooltip === "string" || typeof tooltip === "number"
         ? {
             ...defaultTooltipProps,
             label: tooltip,
@@ -628,21 +624,3 @@ const ActionHrefButton = (props: ActionNavigationButtonProps) => {
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-export function isComponentType(param: any): param is ComponentType<any> {
-  if (isValidElement(param)) return false;
-  return (
-    typeof param === "function" ||
-    (typeof param === "object" && param !== null && "$$typeof" in param)
-  );
-}
-
-export const renderIcon = (icon: ReactNode | ComponentType): ReactNode => {
-  if (!icon) return null;
-  if (isValidElement(icon)) return icon;
-  if (isComponentType(icon)) {
-    const IconComponent = icon;
-    return <IconComponent size={ui.sizes.icon.md} />;
-  }
-  return icon as ReactNode;
-};

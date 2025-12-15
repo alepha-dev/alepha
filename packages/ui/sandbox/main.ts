@@ -1,33 +1,26 @@
 import { $page } from "@alepha/react";
 import { $dictionary } from "@alepha/react/i18n";
-import { AlephaUI } from "@alepha/ui";
 import { Icon3dCubeSphere } from "@tabler/icons-react";
 import { Alepha, run } from "alepha";
 import { createElement } from "react";
 import AlephaMantineProvider from "../src/core/components/layout/AlephaMantineProvider.tsx";
+import {
+  AlephaUI,
+  alephaThemeListAtom,
+  midnightTheme,
+} from "../src/core/index.ts";
 import ExampleAction from "./examples/ExampleAction.tsx";
 import ExampleControl from "./examples/ExampleControl.tsx";
 import ExampleDataTable from "./examples/ExampleDataTable.tsx";
 import ExampleDialog from "./examples/ExampleDialog.tsx";
 import ExampleTypeForm from "./examples/ExampleTypeForm.tsx";
+import ExampleTypeForm2 from "./examples/ExampleTypeForm2.tsx";
 import Playground from "./examples/Playground.tsx";
 import Layout from "./Layout.tsx";
 
 export class AppRouter {
   public readonly root = $page({
     component: AlephaMantineProvider,
-    resolve: () => ({
-      mantine: {
-        theme: {
-          primaryColor: "gray",
-          primaryShade: {
-            light: 9,
-            dark: 8,
-          },
-          cursorType: "pointer",
-        },
-      } as const,
-    }),
   });
 
   layout = $page({
@@ -51,9 +44,12 @@ export class AppRouter {
     parent: this.layout,
     component: ExampleTypeForm,
     path: "/typeform",
-    resolve: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    },
+  });
+
+  typeform2 = $page({
+    parent: this.layout,
+    component: ExampleTypeForm2,
+    path: "/typeform2",
   });
 
   action = $page({
@@ -100,5 +96,6 @@ const alepha = Alepha.create();
 
 alepha.with(AlephaUI);
 alepha.with(AppRouter);
+alepha.set(alephaThemeListAtom, [midnightTheme]);
 
 run(alepha);

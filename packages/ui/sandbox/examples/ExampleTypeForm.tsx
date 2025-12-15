@@ -147,6 +147,218 @@ const ExampleTypeForm = () => {
     },
   });
 
+  // Complex real-world form with nested objects and arrays
+  const projectForm = useForm({
+    schema: t.object({
+      // Basic project info
+      name: t.text({
+        title: "Project Name",
+        description: "A unique name for your project",
+      }),
+      description: t.text({
+        title: "Description",
+        description: "Describe what this project is about",
+      }),
+      status: t.enum(["planning", "active", "on-hold", "completed"], {
+        title: "Status",
+        default: "planning",
+      }),
+      priority: t.enum(["low", "medium", "high", "critical"], {
+        title: "Priority",
+        default: "medium",
+      }),
+      startDate: t.text({
+        format: "date",
+        title: "Start Date",
+      }),
+      budget: t.number({
+        title: "Budget ($)",
+        description: "Estimated project budget",
+      }),
+
+      // Nested object - Project Settings
+      settings: t.object(
+        {
+          isPublic: t.boolean({
+            title: "Public Project",
+            description: "Allow anyone to view this project",
+            default: false,
+          }),
+          allowComments: t.boolean({
+            title: "Allow Comments",
+            description: "Team members can leave comments",
+            default: true,
+          }),
+          notifyOnChanges: t.boolean({
+            title: "Email Notifications",
+            description: "Send emails when project is updated",
+            default: true,
+          }),
+          maxAttachmentSize: t.integer({
+            title: "Max Attachment Size (MB)",
+            description: "Maximum file size for uploads",
+            default: 10,
+          }),
+        },
+        {
+          title: "Project Settings",
+          description: "Configure project behavior and permissions",
+        },
+      ),
+
+      // Array of objects - Team Members
+      team: t.array(
+        t.object({
+          name: t.text({ title: "Name" }),
+          email: t.text({ format: "email", title: "Email" }),
+          role: t.enum(["owner", "admin", "member", "viewer"], {
+            title: "Role",
+            default: "member",
+          }),
+        }),
+        {
+          title: "Team Members",
+          description: "Add people to collaborate on this project",
+        },
+      ),
+
+      // Array of objects - Milestones
+      milestones: t.array(
+        t.object({
+          title: t.text({ title: "Milestone" }),
+          dueDate: t.text({ format: "date", title: "Due Date" }),
+          status: t.enum(["pending", "in-progress", "completed"], {
+            title: "Status",
+            default: "pending",
+          }),
+          description: t.text({ title: "Notes" }),
+        }),
+        {
+          title: "Milestones",
+          description: "Key deliverables and deadlines",
+        },
+      ),
+
+      // Array of strings - Tags (handled by TagsInput)
+      tags: t.array(t.text(), {
+        title: "Tags",
+        description: "Add tags to categorize this project",
+      }),
+    }),
+    handler: (values) => {
+      console.log("Project form submitted:", values);
+      notifications.show({
+        title: "Project Created!",
+        message: `"${values.name}" has been created with ${values.team?.length || 0} team members and ${values.milestones?.length || 0} milestones.`,
+        color: "teal",
+      });
+    },
+  });
+
+  // Deeply nested objects example (3+ levels deep)
+  const companyForm = useForm({
+    schema: t.object({
+      name: t.text({
+        title: "Company Name",
+        description: "Legal company name",
+      }),
+      industry: t.enum(
+        ["technology", "finance", "healthcare", "retail", "manufacturing"],
+        { title: "Industry" },
+      ),
+      foundedYear: t.integer({ title: "Founded Year" }),
+
+      // Level 1: Headquarters (nested object)
+      headquarters: t.object(
+        {
+          officeName: t.text({ title: "Office Name" }),
+          capacity: t.integer({ title: "Capacity (people)" }),
+
+          // Level 2: Address (nested inside headquarters)
+          address: t.object(
+            {
+              street: t.text({ title: "Street Address" }),
+              city: t.text({ title: "City" }),
+              postalCode: t.text({ title: "Postal Code" }),
+
+              // Level 3: Country (nested inside address)
+              country: t.object(
+                {
+                  name: t.text({ title: "Country Name" }),
+                  code: t.text({
+                    title: "Country Code",
+                    description: "ISO 3166-1 alpha-2",
+                  }),
+
+                  // Level 4: Currency (nested inside country)
+                  currency: t.object(
+                    {
+                      name: t.text({ title: "Currency Name" }),
+                      symbol: t.text({ title: "Symbol" }),
+                      code: t.text({
+                        title: "Currency Code",
+                        description: "ISO 4217",
+                      }),
+                    },
+                    {
+                      title: "Local Currency",
+                      description: "Default currency for this country",
+                    },
+                  ),
+                },
+                {
+                  title: "Country",
+                  description: "Country information",
+                },
+              ),
+            },
+            {
+              title: "Address",
+              description: "Physical location details",
+            },
+          ),
+
+          // Level 2: Contact (another nested object at same level as address)
+          contact: t.object(
+            {
+              phone: t.text({ format: "tel", title: "Phone" }),
+              email: t.text({ format: "email", title: "Email" }),
+              website: t.text({ format: "url", title: "Website" }),
+            },
+            {
+              title: "Contact Information",
+            },
+          ),
+        },
+        {
+          title: "Headquarters",
+          description: "Main office information",
+        },
+      ),
+
+      // Level 1: Legal Info (another top-level nested object)
+      legal: t.object(
+        {
+          registrationNumber: t.text({ title: "Registration Number" }),
+          taxId: t.text({ title: "Tax ID" }),
+          isPublic: t.boolean({ title: "Publicly Traded" }),
+        },
+        {
+          title: "Legal Information",
+          description: "Company registration details",
+        },
+      ),
+    }),
+    handler: (values) => {
+      console.log("Company form submitted:", values);
+      notifications.show({
+        title: "Company Profile Saved!",
+        message: `${values.name} profile has been saved successfully.`,
+        color: "indigo",
+      });
+    },
+  });
+
   return (
     <Stack p="xl" maw={1200} mx="auto">
       {/* Header */}
@@ -410,6 +622,162 @@ const ExampleTypeForm = () => {
 // No button
 <TypeForm form={form} skipSubmitButton />
 <Button onClick={form.onSubmit}>Custom Button</Button>`}
+        </Code>
+      </Paper>
+
+      {/* Complex Real-World Example */}
+      <Paper shadow="xs" p="xl" withBorder>
+        <Title order={2} mb="md">
+          Complex Real-World Example: Project Setup
+        </Title>
+        <Text c="dimmed" mb="lg">
+          Demonstrates nested objects, arrays of objects, and arrays of
+          primitives. This form includes project settings (nested object), team
+          members (array of objects), milestones (array of objects), and tags
+          (array of strings).
+        </Text>
+
+        <TypeForm
+          form={projectForm}
+          columns={2}
+          fieldControlProps={{
+            description: { area: { minRows: 3, autosize: true } },
+          }}
+          submitButtonProps={{
+            children: "Create Project",
+            color: "teal",
+          }}
+        />
+
+        <Code block mt="xl">
+          {`const projectForm = useForm({
+  schema: t.object({
+    // Basic fields
+    name: t.text({ title: "Project Name" }),
+    description: t.text({ title: "Description" }),
+    status: t.enum(["planning", "active", "on-hold", "completed"]),
+    priority: t.enum(["low", "medium", "high", "critical"]),
+    startDate: t.text({ format: "date", title: "Start Date" }),
+    budget: t.number({ title: "Budget ($)" }),
+
+    // Nested object - Settings
+    settings: t.object({
+      isPublic: t.boolean({ title: "Public Project" }),
+      allowComments: t.boolean({ title: "Allow Comments" }),
+      notifyOnChanges: t.boolean({ title: "Email Notifications" }),
+      maxAttachmentSize: t.integer({ title: "Max Attachment (MB)" }),
+    }, { title: "Project Settings" }),
+
+    // Array of objects - Team Members
+    team: t.array(
+      t.object({
+        name: t.text({ title: "Name" }),
+        email: t.text({ format: "email", title: "Email" }),
+        role: t.enum(["owner", "admin", "member", "viewer"]),
+      }),
+      { title: "Team Members" }
+    ),
+
+    // Array of objects - Milestones
+    milestones: t.array(
+      t.object({
+        title: t.text({ title: "Milestone" }),
+        dueDate: t.text({ format: "date", title: "Due Date" }),
+        status: t.enum(["pending", "in-progress", "completed"]),
+        description: t.text({ title: "Notes" }),
+      }),
+      { title: "Milestones" }
+    ),
+
+    // Array of strings - Tags
+    tags: t.array(t.text(), { title: "Tags" }),
+  }),
+  handler: (values) => console.log(values),
+});
+
+<TypeForm
+  form={projectForm}
+  columns={2}
+  fieldControlProps={{
+    description: { area: { minRows: 3 } },
+    team: { array: { addLabel: "Add team member", columns: 3 } },
+    milestones: { array: { addLabel: "Add milestone", columns: 2 } },
+  }}
+/>`}
+        </Code>
+      </Paper>
+
+      {/* Deeply Nested Objects Example */}
+      <Paper shadow="xs" p="xl" withBorder>
+        <Title order={2} mb="md">
+          Deeply Nested Objects (4 Levels Deep)
+        </Title>
+        <Text c="dimmed" mb="lg">
+          Demonstrates recursive ControlObject rendering with objects nested
+          inside objects. This example shows a company profile with headquarters
+          → address → country → currency (4 levels of nesting).
+        </Text>
+
+        <TypeForm
+          form={companyForm}
+          columns={2}
+          submitButtonProps={{
+            children: "Save Company Profile",
+            color: "indigo",
+          }}
+        />
+
+        <Code block mt="xl">
+          {`const companyForm = useForm({
+  schema: t.object({
+    name: t.text({ title: "Company Name" }),
+    industry: t.enum(["technology", "finance", "healthcare"]),
+    foundedYear: t.integer({ title: "Founded Year" }),
+
+    // Level 1: Headquarters
+    headquarters: t.object({
+      officeName: t.text({ title: "Office Name" }),
+      capacity: t.integer({ title: "Capacity" }),
+
+      // Level 2: Address
+      address: t.object({
+        street: t.text({ title: "Street" }),
+        city: t.text({ title: "City" }),
+
+        // Level 3: Country
+        country: t.object({
+          name: t.text({ title: "Country" }),
+          code: t.text({ title: "Code" }),
+
+          // Level 4: Currency
+          currency: t.object({
+            name: t.text({ title: "Currency" }),
+            symbol: t.text({ title: "Symbol" }),
+            code: t.text({ title: "Code" }),
+          }, { title: "Local Currency" }),
+
+        }, { title: "Country" }),
+      }, { title: "Address" }),
+
+      // Level 2: Contact (sibling to address)
+      contact: t.object({
+        phone: t.text({ format: "tel" }),
+        email: t.text({ format: "email" }),
+      }, { title: "Contact" }),
+
+    }, { title: "Headquarters" }),
+
+    // Level 1: Legal (sibling to headquarters)
+    legal: t.object({
+      registrationNumber: t.text(),
+      taxId: t.text(),
+      isPublic: t.boolean(),
+    }, { title: "Legal Information" }),
+  }),
+  handler: (values) => console.log(values),
+});
+
+<TypeForm form={companyForm} columns={2} />`}
         </Code>
       </Paper>
 

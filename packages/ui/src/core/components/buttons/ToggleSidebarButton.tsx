@@ -1,4 +1,5 @@
 import { useStore } from "@alepha/react";
+import { Flex } from "@mantine/core";
 import {
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarRightCollapse,
@@ -9,22 +10,24 @@ const ToggleSidebarButton = () => {
   const [collapsed, setCollapsed] = useStore("alepha.ui.sidebar.collapsed");
 
   return (
-    <ActionButton
-      icon={
-        collapsed ? (
-          <IconLayoutSidebarRightCollapse />
-        ) : (
-          <IconLayoutSidebarLeftCollapse />
-        )
-      }
-      variant={"subtle"}
-      size={"md"}
-      onClick={() => setCollapsed(!collapsed)}
-      tooltip={{
-        position: "right",
-        label: collapsed ? "Show sidebar" : "Hide sidebar",
-      }}
-    />
+    <Flex>
+      <ActionButton
+        icon={
+          collapsed ? (
+            <IconLayoutSidebarRightCollapse />
+          ) : (
+            <IconLayoutSidebarLeftCollapse />
+          )
+        }
+        variant={"subtle"}
+        size={"md"}
+        onClick={() => setCollapsed(!collapsed)}
+        tooltip={{
+          position: "right",
+          label: collapsed ? "Show sidebar" : "Hide sidebar",
+        }}
+      />
+    </Flex>
   );
 };
 

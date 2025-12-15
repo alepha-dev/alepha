@@ -3,7 +3,7 @@ import { Spotlight, type SpotlightActionData } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import { type ReactNode, useMemo } from "react";
 import { ui } from "../../constants/ui.ts";
-import { renderIcon } from "../buttons/ActionButton.tsx";
+import { renderIcon } from "../../helpers/renderIcon.tsx";
 
 export interface OmnibarProps {
   shortcut?: string | string[];

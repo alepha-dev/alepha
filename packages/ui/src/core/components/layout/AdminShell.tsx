@@ -91,6 +91,10 @@ const AdminShell = (props: AdminShellProps) => {
   const hasSidebar = showSidebar && props.sidebarProps !== undefined;
   const hasAppBar = hasSidebar || props.appBarProps || props.header;
 
+  const headerHeight = hasAppBar ? 60 : 0;
+  const footerHeight = props.footer ? 24 : 0;
+  const sidebarWidth = hasSidebar ? (collapsed ? 78 : 300) : 0;
+
   return (
     <AppShell
       w={"100%"}
@@ -121,7 +125,16 @@ const AdminShell = (props: AdminShellProps) => {
         </AppShell.Navbar>
       )}
 
-      <AppShell.Main display={"flex"} flex={1} {...props.appShellMainProps}>
+      <AppShell.Main
+        pl={sidebarWidth}
+        pt={headerHeight}
+        pb={footerHeight}
+        pr={0}
+        display={"flex"}
+        flex={1}
+        style={{ flexDirection: "column" }}
+        {...props.appShellMainProps}
+      >
         {props.children ?? <NestedView />}
       </AppShell.Main>
 

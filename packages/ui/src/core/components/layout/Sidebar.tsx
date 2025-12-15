@@ -17,11 +17,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import ActionButton, {
-  type ActionProps,
-  renderIcon,
-} from "../buttons/ActionButton.tsx";
+import { renderIcon } from "../../helpers/renderIcon.tsx";
+import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
 import OmnibarButton from "../buttons/OmnibarButton.tsx";
+import ToggleSidebarButton from "../buttons/ToggleSidebarButton.tsx";
 
 export interface SidebarProps {
   menu?: SidebarNode[];
@@ -71,6 +70,10 @@ export const Sidebar = (props: SidebarProps) => {
 
       if (item.type === "search") {
         return <OmnibarButton collapsed={props.collapsed} key={key} />;
+      }
+
+      if (item.type === "toggle") {
+        return <ToggleSidebarButton key={key} />;
       }
 
       if (item.type === "section") {
@@ -410,7 +413,8 @@ export type SidebarNode =
   | SidebarDivider
   | SidebarSearch
   | SidebarElement
-  | SidebarSection;
+  | SidebarSection
+  | SidebarToggle;
 
 export interface SidebarAbstractItem {
   position?: "top" | "bottom";
@@ -430,6 +434,10 @@ export interface SidebarDivider extends SidebarAbstractItem {
 
 export interface SidebarSearch extends SidebarAbstractItem {
   type: "search";
+}
+
+export interface SidebarToggle extends SidebarAbstractItem {
+  type: "toggle";
 }
 
 export interface SidebarSection extends SidebarAbstractItem {

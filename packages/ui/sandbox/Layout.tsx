@@ -38,6 +38,11 @@ const Layout = () => {
             backdropFilter: "blur(20px)",
           },
         },
+        items: [
+          { type: "burger", position: "left" },
+          { type: "spacer", position: "left" },
+          { type: "dark", position: "right" },
+        ],
       }}
       sidebarProps={{
         menu: [
@@ -60,6 +65,11 @@ const Layout = () => {
                 label: "TypeForm",
                 icon: <IconFileText />,
                 href: "/typeform",
+              },
+              {
+                label: "TypeForm2",
+                icon: <IconFileText />,
+                href: "/typeform2",
               },
               {
                 label: "DataTable",
