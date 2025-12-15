@@ -9,7 +9,7 @@ import {
 } from "@tabler/icons-react";
 import type { UserController, UserEntity } from "alepha/api/users";
 import { useEffect, useState } from "react";
-import type { AdminRouter } from "../AdminRouter.ts";
+import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUserSettingsProps {
   userRealmName?: string;

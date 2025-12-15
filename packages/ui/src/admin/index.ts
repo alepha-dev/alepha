@@ -7,19 +7,30 @@ import { MainRouter } from "./MainRouter.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { AdminRouter } from "./AdminRouter.ts";
-export { default as AdminFiles } from "./components/AdminFiles.tsx";
-export { default as AdminJobs } from "./components/AdminJobs.tsx";
+// Layout
 export { default as AdminLayout } from "./components/AdminLayout.tsx";
-export { default as AdminNotifications } from "./components/AdminNotifications.tsx";
-export { default as AdminParameters } from "./components/AdminParameters.tsx";
-export { default as AdminSessions } from "./components/AdminSessions.tsx";
-export { default as AdminUserCreate } from "./components/AdminUserCreate.tsx";
-export { default as AdminUserDetails } from "./components/AdminUserDetails.tsx";
-export { default as AdminUserLayout } from "./components/AdminUserLayout.tsx";
-export { default as AdminUserSessions } from "./components/AdminUserSessions.tsx";
-export { default as AdminUserSettings } from "./components/AdminUserSettings.tsx";
-export { default as AdminUsers } from "./components/AdminUsers.tsx";
-export { default as AdminVerifications } from "./components/AdminVerifications.tsx";
+// Audits
+export { default as AdminAudits } from "./components/audits/AdminAudits.tsx";
+// Files
+export { default as AdminFiles } from "./components/files/AdminFiles.tsx";
+// Jobs
+export { default as AdminJobs } from "./components/jobs/AdminJobs.tsx";
+// Notifications
+export { default as AdminNotifications } from "./components/notifications/AdminNotifications.tsx";
+// Parameters
+export { default as AdminParameters } from "./components/parameters/AdminParameters.tsx";
+// Sessions
+export { default as AdminSessions } from "./components/sessions/AdminSessions.tsx";
+// Users
+export { default as AdminUserAudits } from "./components/users/AdminUserAudits.tsx";
+export { default as AdminUserCreate } from "./components/users/AdminUserCreate.tsx";
+export { default as AdminUserDetails } from "./components/users/AdminUserDetails.tsx";
+export { default as AdminUserLayout } from "./components/users/AdminUserLayout.tsx";
+export { default as AdminUserSessions } from "./components/users/AdminUserSessions.tsx";
+export { default as AdminUserSettings } from "./components/users/AdminUserSettings.tsx";
+export { default as AdminUsers } from "./components/users/AdminUsers.tsx";
+// Verifications
+export { default as AdminVerifications } from "./components/verifications/AdminVerifications.tsx";
 export { MainRouter } from "./MainRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,6 @@ import {
   type AdminShellProps,
   AlephaMantineProvider,
   OmnibarButton,
-  ThemeButton,
 } from "@alepha/ui";
 import { UserButton } from "@alepha/ui/auth";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -20,19 +19,21 @@ const AdminLayout = (props: AdminLayoutProps) => {
         appBarProps={{
           items: [
             {
-              element: <ActionButton icon={IconArrowLeft} href={"/"} />,
+              element: (
+                <ActionButton
+                  variant={"subtle"}
+                  icon={IconArrowLeft}
+                  href={"/"}
+                />
+              ),
               position: "left",
             },
             {
-              element: <OmnibarButton actionProps={{ variant: "outline" }} />,
-              position: "right",
+              element: <OmnibarButton />,
+              position: "center",
             },
             {
               element: <UserButton />,
-              position: "right",
-            },
-            {
-              element: <ThemeButton />,
               position: "right",
             },
             {

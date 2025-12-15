@@ -5,7 +5,7 @@ import { Badge, Flex, Group } from "@mantine/core";
 import { IconCheck, IconUsersPlus, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import { type UserController, type UserEntity, users } from "alepha/api/users";
-import type { AdminRouter } from "../AdminRouter.ts";
+import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUsersProps {
   userRealmName?: string;

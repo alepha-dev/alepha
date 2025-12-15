@@ -4,7 +4,7 @@ import { ActionButton, Control, Flex } from "@alepha/ui";
 import { Card, Stack, Text } from "@mantine/core";
 import { t } from "alepha";
 import type { UserController } from "alepha/api/users";
-import type { AdminRouter } from "../AdminRouter.ts";
+import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUserCreateProps {
   userRealmName?: string;

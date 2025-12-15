@@ -15,7 +15,7 @@ import {
   sessions,
 } from "alepha/api/users";
 import { useState } from "react";
-import type { AdminRouter } from "../AdminRouter.ts";
+import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminSessionsProps {
   userRealmName?: string;

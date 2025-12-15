@@ -1,17 +1,22 @@
 import { $page, ReactRouter, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react/auth";
+import type { AdminShellProps } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import {
   IconBell,
   IconDevices,
   IconFile,
+  IconHistory,
   IconPlus,
+  IconSettings,
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
 import { $inject } from "alepha";
+import type { AuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import type { NotificationController } from "alepha/api/notifications";
+import type { ConfigController } from "alepha/api/parameters";
 import type { SessionController, UserController } from "alepha/api/users";
 import { $client } from "alepha/server/links";
 
@@ -23,6 +28,22 @@ export class AdminRouter {
   protected readonly sessionCtrl = $client<SessionController>();
   protected readonly notificationCtrl = $client<NotificationController>();
   protected readonly fileCtrl = $client<FileController>();
+  protected readonly configCtrl = $client<ConfigController>();
+  protected readonly auditCtrl = $client<AuditController>();
+
+  protected adminShellProps(): AdminShellProps {
+    return {};
+  }
+
+  protected onNotAuthorized(url: URL) {
+    return new Redirection(
+      this.router.path(this.authRouter.login.name, {
+        query: {
+          r: url.pathname,
+        },
+      }),
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Layout
@@ -33,15 +54,12 @@ export class AdminRouter {
     path: "/admin",
     label: "Admin",
     lazy: () => import("./components/AdminLayout.tsx"),
+    props: () => ({
+      adminShellProps: this.adminShellProps(),
+    }),
     resolve: ({ user, url }) => {
       if (!user) {
-        throw new Redirection(
-          this.router.path(this.authRouter.login.name, {
-            query: {
-              r: url.pathname,
-            },
-          }),
-        );
+        throw this.onNotAuthorized(url);
       }
       return {};
     },
@@ -57,7 +75,7 @@ export class AdminRouter {
     path: "/users",
     label: "Users",
     description: "Manage application users and their roles.",
-    lazy: () => import("./components/AdminUsers.tsx"),
+    lazy: () => import("./components/users/AdminUsers.tsx"),
     can: () => this.userCtrl.findUsers.can(),
   });
 
@@ -67,7 +85,7 @@ export class AdminRouter {
     path: "/users/create",
     label: "Create User",
     description: "Create a new user account.",
-    lazy: () => import("./components/AdminUserCreate.tsx"),
+    lazy: () => import("./components/users/AdminUserCreate.tsx"),
     can: () => this.userCtrl.createUser.can(),
   });
 
@@ -76,7 +94,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/users/:userId",
     label: "User",
-    lazy: () => import("./components/AdminUserLayout.tsx"),
+    lazy: () => import("./components/users/AdminUserLayout.tsx"),
     can: () => this.userCtrl.getUser.can(),
   });
 
@@ -84,21 +102,43 @@ export class AdminRouter {
     parent: this.adminUserLayout,
     path: "/details",
     label: "Details",
-    lazy: () => import("./components/AdminUserDetails.tsx"),
+    lazy: () => import("./components/users/AdminUserDetails.tsx"),
   });
 
   public readonly adminUserSessions = $page({
     parent: this.adminUserLayout,
     path: "/sessions",
     label: "Sessions",
-    lazy: () => import("./components/AdminUserSessions.tsx"),
+    lazy: () => import("./components/users/AdminUserSessions.tsx"),
   });
 
   public readonly adminUserSettings = $page({
     parent: this.adminUserLayout,
     path: "/settings",
     label: "Settings",
-    lazy: () => import("./components/AdminUserSettings.tsx"),
+    lazy: () => import("./components/users/AdminUserSettings.tsx"),
+  });
+
+  public readonly adminUserAudits = $page({
+    parent: this.adminUserLayout,
+    path: "/audits",
+    label: "Audit Log",
+    lazy: () => import("./components/users/AdminUserAudits.tsx"),
+    can: () => this.auditCtrl.findByUser.can(),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Audits (Global)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminAudits = $page({
+    icon: IconHistory,
+    parent: this.layout,
+    path: "/audits",
+    label: "Audit Log",
+    description: "View system-wide audit trail and activity logs.",
+    lazy: () => import("./components/audits/AdminAudits.tsx"),
+    can: () => this.auditCtrl.findAudits.can(),
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -111,7 +151,7 @@ export class AdminRouter {
     path: "/sessions",
     label: "Sessions",
     description: "View and manage all active sessions.",
-    lazy: () => import("./components/AdminSessions.tsx"),
+    lazy: () => import("./components/sessions/AdminSessions.tsx"),
     can: () => this.sessionCtrl.findSessions.can(),
   });
 
@@ -125,7 +165,7 @@ export class AdminRouter {
     path: "/notifications",
     label: "Notifications",
     description: "View notification history and status.",
-    lazy: () => import("./components/AdminNotifications.tsx"),
+    lazy: () => import("./components/notifications/AdminNotifications.tsx"),
     can: () => this.notificationCtrl.findNotifications.can(),
   });
 
@@ -139,7 +179,21 @@ export class AdminRouter {
     path: "/files",
     label: "Files",
     description: "Manage uploaded files and storage.",
-    lazy: () => import("./components/AdminFiles.tsx"),
+    lazy: () => import("./components/files/AdminFiles.tsx"),
     can: () => this.fileCtrl.findFiles.can(),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Parameters
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminParameters = $page({
+    icon: IconSettings,
+    parent: this.layout,
+    path: "/parameters",
+    label: "Parameters",
+    description: "View and manage application configuration parameters.",
+    lazy: () => import("./components/parameters/AdminParameters.tsx"),
+    can: () => this.configCtrl.getConfigTree.can(),
   });
 }

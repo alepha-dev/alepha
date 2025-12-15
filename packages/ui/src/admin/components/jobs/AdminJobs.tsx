@@ -70,7 +70,7 @@ const AdminJobs = () => {
   };
 
   return (
-    <Flex flex={1}>
+    <Flex flex={1} direction={"column"}>
       <DataTable<JobExecutionEntity, typeof filters>
         submitOnInit
         defaultSize={10}

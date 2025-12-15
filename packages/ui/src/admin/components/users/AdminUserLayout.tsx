@@ -9,7 +9,7 @@ import { Avatar, Badge, Card, Group, Loader, Stack, Tabs } from "@mantine/core";
 import { IconDevices, IconSettings, IconUser } from "@tabler/icons-react";
 import type { UserController, UserEntity } from "alepha/api/users";
 import { useEffect, useState } from "react";
-import type { AdminRouter } from "../AdminRouter.ts";
+import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUserLayoutProps {
   userRealmName?: string;
@@ -112,7 +112,6 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
       <Tabs value={activeTab}>
         <Tabs.List>
           <ActionButton
-            variant="subtle"
             href={detailsPath}
             leftSection={<IconUser size={16} />}
             c={activeTab === "details" ? undefined : "dimmed"}
@@ -128,7 +127,6 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
             Details
           </ActionButton>
           <ActionButton
-            variant="subtle"
             href={sessionsPath}
             leftSection={<IconDevices size={16} />}
             c={activeTab === "sessions" ? undefined : "dimmed"}
@@ -144,7 +142,6 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
             Sessions
           </ActionButton>
           <ActionButton
-            variant="subtle"
             href={settingsPath}
             leftSection={<IconSettings size={16} />}
             c={activeTab === "settings" ? undefined : "dimmed"}
