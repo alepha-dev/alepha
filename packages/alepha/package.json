@@ -67,6 +67,13 @@
     "api"
   ],
   "exports": {
+    "./api/audits": {
+      "types": "./src/api-audits/index.ts",
+      "react-native": "./src/api-audits/index.browser.ts",
+      "browser": "./src/api-audits/index.browser.ts",
+      "import": "./src/api-audits/index.ts",
+      "default": "./src/api-audits/index.ts"
+    },
     "./api/files": {
       "types": "./src/api-files/index.ts",
       "react-native": "./src/api-files/index.browser.ts",

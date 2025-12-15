@@ -1,5 +1,6 @@
 import { ReadableStream as WebStream } from "node:stream/web";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
+import type { TSchema } from "alepha";
 import { $env, $hook, $inject, Alepha, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "../errors/HttpError.ts";
@@ -44,7 +45,11 @@ export class ServerBodyParserProvider {
 
       if (route.schema?.body) {
         try {
-          const body = await this.parse(stream, request.headers);
+          const body = await this.parse(
+            stream,
+            request.headers,
+            route.schema.body,
+          );
           if (body) {
             request.body = body;
           }
@@ -68,18 +73,19 @@ export class ServerBodyParserProvider {
   public async parse(
     stream: ReadableStream,
     headers: Record<string, string>,
+    schema: TSchema,
   ): Promise<object | string | undefined> {
     const contentType = headers["content-type"];
     const contentEncoding = headers["content-encoding"];
 
     if (!contentType) return undefined;
 
-    if (contentType.startsWith("application/json")) {
-      return this.parseJson(stream, contentEncoding);
+    if (contentType.startsWith("text/plain") || t.schema.isString(schema)) {
+      return this.parseText(stream, contentEncoding);
     }
 
-    if (contentType.startsWith("text/plain")) {
-      return this.parseText(stream, contentEncoding);
+    if (contentType.startsWith("application/json")) {
+      return this.parseJson(stream, contentEncoding);
     }
 
     if (contentType.startsWith("application/x-www-form-urlencoded")) {

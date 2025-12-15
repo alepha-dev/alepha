@@ -3,11 +3,23 @@ import {
   ActionButton,
   AdminShell,
   DarkModeButton,
-  Flex,
   OmnibarButton,
   ui,
 } from "@alepha/ui";
-import { IconDashboard, IconLogs, IconTools } from "@tabler/icons-react";
+import { Flex } from "@mantine/core";
+import {
+  IconApi,
+  IconArchive,
+  IconAtom,
+  IconDashboard,
+  IconDatabase,
+  IconLogs,
+  IconMessageCircle,
+  IconStack2,
+  IconTools,
+  IconTopologyRing,
+  IconVariable,
+} from "@tabler/icons-react";
 
 export const DevLayout = () => {
   return (
@@ -34,6 +46,49 @@ export const DevLayout = () => {
             icon: <IconDashboard />,
             href: "/",
           },
+          { type: "divider" },
+          {
+            label: "Actions",
+            icon: <IconApi />,
+            href: "/actions",
+          },
+          {
+            label: "Queues",
+            icon: <IconStack2 />,
+            href: "/queues",
+          },
+          {
+            label: "Topics",
+            icon: <IconMessageCircle />,
+            href: "/topics",
+          },
+          {
+            label: "Caches",
+            icon: <IconArchive />,
+            href: "/caches",
+          },
+          {
+            label: "DB Studio",
+            icon: <IconDatabase />,
+            href: "/db",
+          },
+          { type: "divider" },
+          {
+            label: "Environment",
+            icon: <IconVariable />,
+            href: "/env",
+          },
+          {
+            label: "Atoms",
+            icon: <IconAtom />,
+            href: "/atoms",
+          },
+          { type: "divider" },
+          {
+            label: "Graph",
+            icon: <IconTopologyRing />,
+            href: "/graph",
+          },
           {
             label: "Logs",
             icon: <IconLogs />,
@@ -47,7 +102,12 @@ export const DevLayout = () => {
           {
             position: "left",
             element: (
-              <ActionButton icon={<IconTools />} href={"/"} active={false}>
+              <ActionButton
+                intent={"none"}
+                icon={IconTools}
+                href={"/"}
+                active={false}
+              >
                 Devtools
               </ActionButton>
             ),
@@ -64,11 +124,12 @@ export const DevLayout = () => {
       }}
     >
       <Flex
+        className={"overflow-auto"}
         w={"100%"}
         flex={1}
+        direction={"column"}
         bd={`1px solid ${ui.colors.border}`}
         bg={ui.colors.elevated}
-        p={"xl"}
         ml={-16}
         mr={-16}
         mt={-16}

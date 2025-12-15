@@ -17,10 +17,15 @@
   "devDependencies": {
     "@alepha/react": "0.13.6",
     "@alepha/ui": "0.13.6",
+    "@biomejs/biome": "^2.3.8",
+    "@mantine/core": "^8.3.10",
+    "@mantine/hooks": "^8.3.10",
     "@tabler/icons-react": "^3.35.0",
+    "@xyflow/react": "^12.6.6",
     "alepha": "0.13.6",
     "react": "^19.2.1",
     "tsdown": "^0.17.2",
+    "typescript": "^5.9.3",
     "vite": "^7.2.7",
     "vitest": "^4.0.15"
   },

@@ -1,23 +1,26 @@
 import { $module } from "alepha";
-import { DevToolsProvider } from "./DevToolsProvider.ts";
-import { DevToolsDatabaseProvider } from "./providers/DevToolsDatabaseProvider.ts";
-import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
-import { LogRepository } from "./repositories/LogRepository.ts";
+import { DevToolsProvider } from "./api/DevToolsProvider.ts";
+import { DevToolsDatabaseProvider } from "./api/providers/DevToolsDatabaseProvider.ts";
+import { DevToolsMetadataProvider } from "./api/providers/DevToolsMetadataProvider.ts";
+import { LogRepository } from "./api/repositories/LogRepository.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./providers/DevToolsMetadataProvider.ts";
-export * from "./schemas/DevActionMetadata.ts";
-export * from "./schemas/DevBucketMetadata.ts";
-export * from "./schemas/DevCacheMetadata.ts";
-export * from "./schemas/DevMetadata.ts";
-export * from "./schemas/DevModuleMetadata.ts";
-export * from "./schemas/DevPageMetadata.ts";
-export * from "./schemas/DevProviderMetadata.ts";
-export * from "./schemas/DevQueueMetadata.ts";
-export * from "./schemas/DevRealmMetadata.ts";
-export * from "./schemas/DevSchedulerMetadata.ts";
-export * from "./schemas/DevTopicMetadata.ts";
+export * from "./api/providers/DevToolsMetadataProvider.ts";
+export * from "./api/schemas/DevActionMetadata.ts";
+export * from "./api/schemas/DevBucketMetadata.ts";
+export * from "./api/schemas/DevCacheMetadata.ts";
+export * from "./api/schemas/DevCommandMetadata.ts";
+export * from "./api/schemas/DevEntityMetadata.ts";
+export * from "./api/schemas/DevMetadata.ts";
+export * from "./api/schemas/DevModuleMetadata.ts";
+export * from "./api/schemas/DevPageMetadata.ts";
+export * from "./api/schemas/DevProviderMetadata.ts";
+export * from "./api/schemas/DevQueueMetadata.ts";
+export * from "./api/schemas/DevRealmMetadata.ts";
+export * from "./api/schemas/DevRouteMetadata.ts";
+export * from "./api/schemas/DevSchedulerMetadata.ts";
+export * from "./api/schemas/DevTopicMetadata.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -40,6 +43,10 @@ export const AlephaDevtools = $module({
     LogRepository,
   ],
   register: (alepha) => {
+    if (!alepha.isViteDev()) {
+      return;
+    }
+
     alepha.with(DevToolsProvider);
     alepha.with(DevToolsDatabaseProvider);
     alepha.with(DevToolsMetadataProvider);

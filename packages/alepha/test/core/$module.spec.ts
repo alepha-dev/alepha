@@ -35,19 +35,35 @@ describe("$module", () => {
       DatabaseService: { from: ["database"], module: "database" },
       ServerProvider: { from: ["server"], module: "server" },
       AlsProvider: {
-        from: ["StateManager"],
+        from: ["StateManager", "Alepha"],
+        module: "alepha.core",
       },
       EventManager: {
-        from: ["Alepha", "StateManager"],
+        from: ["StateManager", "Alepha"],
+        module: "alepha.core",
       },
       StateManager: {
         from: ["Alepha"],
+        module: "alepha.core",
       },
       Json: {
         from: ["JsonSchemaCodec"],
+        module: "alepha.core",
       },
       JsonSchemaCodec: {
-        from: ["StateManager"],
+        from: ["StateManager", "CodecManager"],
+        module: "alepha.core",
+      },
+      CodecManager: {
+        from: ["Alepha"],
+        module: "alepha.core",
+      },
+      SchemaValidator: {
+        from: ["CodecManager"],
+        module: "alepha.core",
+      },
+      "alepha.core": {
+        from: ["Alepha"],
       },
     });
   });

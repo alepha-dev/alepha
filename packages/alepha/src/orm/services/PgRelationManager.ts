@@ -1,4 +1,4 @@
-import { type TObject, TypeBoxValue, t } from "alepha";
+import { type TObject, t, Value } from "alepha";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -103,7 +103,7 @@ export class PgRelationManager {
     joins: PgJoin[],
     parentPath?: string,
   ): TObject {
-    const schema = TypeBoxValue.Clone(baseSchema) as TObject;
+    const schema = Value.Clone(baseSchema) as TObject;
 
     // Group joins by parent
     const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);

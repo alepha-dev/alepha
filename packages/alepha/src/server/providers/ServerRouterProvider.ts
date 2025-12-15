@@ -391,13 +391,19 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     if (route.schema?.body) {
-      try {
-        request.body = this.alepha.codec.decode(
-          route.schema.body,
-          request.body,
-        );
-      } catch (error) {
-        throw new ValidationError("Invalid request body", error);
+      if (t.schema.isString(route.schema.body)) {
+        if (typeof request.body !== "string") {
+          throw new ValidationError("Request body is not a string");
+        }
+      } else {
+        try {
+          request.body = this.alepha.codec.decode(
+            route.schema.body,
+            request.body,
+          );
+        } catch (error) {
+          throw new ValidationError("Invalid request body", error);
+        }
       }
     }
   }

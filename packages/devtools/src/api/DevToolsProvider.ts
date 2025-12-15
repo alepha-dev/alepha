@@ -49,6 +49,8 @@ export class DevToolsProvider {
           return;
         }
 
+        ev.entry.message = ev.entry.message?.slice(0, 2000); // limit message size
+
         if (ev.entry.module === "alepha.devtools") {
           // skip devtools logs to avoid infinite loop
           return;
@@ -85,7 +87,7 @@ export class DevToolsProvider {
 
   protected readonly uiRoute = $serve({
     path: "/devtools",
-    root: join(fileURLToPath(import.meta.url), "../../assets/devtools"),
+    root: join(fileURLToPath(import.meta.url), "../../../assets/devtools"),
     historyApiFallback: true,
   });
 
@@ -124,6 +126,32 @@ export class DevToolsProvider {
           count: true,
         },
       );
+    },
+  });
+
+  protected readonly updateAtomRoute = $route({
+    method: "POST",
+    path: "/devtools/api/atoms",
+    silent: true,
+    schema: {
+      body: t.object({
+        name: t.text(),
+        value: t.any(),
+      }),
+      response: t.object({
+        success: t.boolean(),
+      }),
+    },
+    handler: ({ body }) => {
+      const atoms = this.alepha.store.getAtoms(false);
+      const atomEntry = atoms.find((a) => a.atom.key === body.name);
+
+      if (atomEntry) {
+        this.alepha.store.set(atomEntry.atom, body.value);
+        return { success: true };
+      }
+
+      return { success: false };
     },
   });
 }

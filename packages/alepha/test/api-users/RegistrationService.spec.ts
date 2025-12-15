@@ -622,6 +622,7 @@ describe("alepha/api/users - RegistrationService", () => {
         "credentials",
         "fullverify@example.com",
         "SecurePassword123!",
+        "full-verify-realm",
       );
       expect(session?.id).toBe(user.id);
     });
