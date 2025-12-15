@@ -279,6 +279,13 @@ export class PostgresModelBuilder extends ModelBuilder {
       return schema(key, value);
     }
 
+    const isTypeEnum = (value: any): value is { enum: any[] } =>
+      t.schema.isUnsafe(value) &&
+      "type" in value &&
+      value.type === "string" &&
+      "enum" in value &&
+      Array.isArray(value.enum);
+
     if (t.schema.isArray(value)) {
       if (t.schema.isObject(value.items)) {
         return schema(key, value);
@@ -298,16 +305,13 @@ export class PostgresModelBuilder extends ModelBuilder {
       if (t.schema.isBoolean(value.items)) {
         return pg.boolean(key).array();
       }
+      if (isTypeEnum(value.items)) {
+        return pg.text(key).array();
+      }
     }
 
     // Enum handling
-    if (
-      t.schema.isUnsafe(value) &&
-      "type" in value &&
-      value.type === "string" &&
-      "enum" in value &&
-      Array.isArray(value.enum)
-    ) {
+    if (isTypeEnum(value)) {
       if (!value.enum.every((it) => typeof it === "string")) {
         throw new AlephaError(
           `Enum for ${fieldName} must be an array of strings, got ${JSON.stringify(
