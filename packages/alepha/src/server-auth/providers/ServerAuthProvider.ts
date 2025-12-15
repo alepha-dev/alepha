@@ -41,6 +41,7 @@ export class ServerAuthProvider {
     httpOnly: true,
     schema: t.object({
       provider: t.text(),
+      realm: t.optional(t.text()),
       codeVerifier: t.optional(t.text({ size: "long" })),
       redirectUri: t.optional(t.text({ size: "long" })),
       state: t.optional(t.text()),
@@ -163,7 +164,7 @@ export class ServerAuthProvider {
   protected async cookiesToTokens(
     cookies: Cookies,
   ): Promise<Tokens | undefined> {
-    const tokens = this.tokens.get({ cookies });
+    const tokens = this.getTokens(cookies);
     if (!tokens) {
       // no cookie, no tokens
       this.log.trace("No tokens found in cookies");
@@ -247,7 +248,7 @@ export class ServerAuthProvider {
       response: userinfoResponseSchema,
     },
     handler: async ({ user, headers, cookies }) => {
-      const tokens = this.tokens.get({ cookies });
+      const tokens = this.getTokens(cookies);
       if (tokens) {
         const provider = this.provider(tokens);
         if (!("realm" in provider.options)) {
@@ -323,6 +324,9 @@ export class ServerAuthProvider {
     schema: {
       query: t.object({
         provider: t.text(),
+        realm: t.optional(
+          t.text({ description: "Realm name for multi-realm setups" }),
+        ),
       }),
       body: t.object({
         username: t.text(),
@@ -331,7 +335,11 @@ export class ServerAuthProvider {
       response: tokenResponseSchema,
     },
     handler: async ({ query, body, cookies }) => {
-      const provider = this.provider(query);
+      const provider = this.provider({
+        provider: query.provider,
+        realm: query.realm,
+      });
+
       const realm = "realm" in provider.options && provider.options.realm;
       if (!realm) {
         throw new SecurityError(
@@ -347,6 +355,8 @@ export class ServerAuthProvider {
           `Auth provider '${query.provider}' does not support password grant`,
         );
       }
+
+      console.log("->", body);
 
       let user: UserAccount | undefined;
       try {
@@ -392,11 +402,17 @@ export class ServerAuthProvider {
     schema: {
       query: t.object({
         provider: t.text(),
+        realm: t.optional(
+          t.text({ description: "Realm name for multi-realm setups" }),
+        ),
         redirect_uri: t.optional(t.text({ size: "rich" })),
       }),
     },
     handler: async ({ query, url, reply }) => {
-      const provider = this.provider(query);
+      const provider = this.provider({
+        provider: query.provider,
+        realm: query.realm,
+      });
       const oauth = provider.oauth;
       if (!oauth) {
         throw new SecurityError(
@@ -433,6 +449,7 @@ export class ServerAuthProvider {
           nonce: parameters.nonce,
           redirectUri: query.redirect_uri ?? "/",
           provider: query.provider,
+          realm: query.realm,
         });
 
         reply.redirect(buildAuthorizationUrl(oauth, parameters).toString());
@@ -456,6 +473,7 @@ export class ServerAuthProvider {
         codeVerifier,
         redirectUri: query.redirect_uri ?? "/",
         provider: query.provider,
+        realm: query.realm,
       });
 
       reply.redirect(buildAuthorizationUrl(oauth, parameters).toString());
@@ -543,7 +561,7 @@ export class ServerAuthProvider {
     },
     handler: async ({ query, reply, cookies }) => {
       const redirect = query.post_logout_redirect_uri ?? "/";
-      const tokens = this.tokens.get({ cookies });
+      const tokens = this.getTokens(cookies);
       if (!tokens) {
         reply.redirect(redirect);
         return;
@@ -603,15 +621,40 @@ export class ServerAuthProvider {
     },
   });
 
-  protected provider(opts: string | { provider: string }): AuthPrimitive {
+  /**
+   * Find an auth provider by name and optionally by realm.
+   * When realm is specified, it filters providers by both name and realm.
+   * This enables multi-realm setups where multiple providers share the same name (e.g., "credentials").
+   */
+  protected provider(
+    opts: string | { provider: string; realm?: string },
+  ): AuthPrimitive {
     const name = typeof opts === "string" ? opts : opts.provider;
-    const identity = this.identities.find((identity) => identity.name === name);
+    const realmName = typeof opts === "string" ? undefined : opts.realm;
+
+    const identity = this.identities.find((identity) => {
+      if (identity.name !== name) {
+        return false;
+      }
+
+      // If realm filter is specified, match against provider's realm
+      if (realmName && identity.realm?.name !== realmName) {
+        return false;
+      }
+
+      return true;
+    });
 
     if (!identity) {
-      throw new SecurityError(`Auth provider '${name}' not found`);
+      const realmInfo = realmName ? ` for realm '${realmName}'` : "";
+      throw new SecurityError(`Auth provider '${name}'${realmInfo} not found`);
     }
 
     return identity;
+  }
+
+  protected getTokens(cookies?: Cookies): Tokens | undefined {
+    return this.tokens.get({ cookies });
   }
 
   protected setTokens(tokens: Tokens, cookies?: Cookies): void {

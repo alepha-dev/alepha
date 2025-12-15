@@ -261,6 +261,13 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     return this.options.name ?? this.config.propertyKey;
   }
 
+  public get realm(): RealmPrimitive | undefined {
+    if ("realm" in this.options) {
+      return this.options.realm;
+    }
+    return undefined;
+  }
+
   public get jwks_uri(): string {
     const jwks = this.oauth?.serverMetadata().jwks_uri;
     if (!jwks) {

@@ -71,18 +71,20 @@ export class ReactAuth {
       username?: string;
       password?: string;
       redirect?: string;
+      realm?: string;
       [extra: string]: any;
     },
   ): Promise<Tokens> {
+    const realmParam = options.realm ? `&realm=${encodeURIComponent(options.realm)}` : "";
+
     if (options.username || options.password) {
       const { data } = await this.httpClient.fetch(
-        `${options.hostname || ""}${alephaServerAuthRoutes.token}?provider=${provider}`,
+        `${options.hostname || ""}${alephaServerAuthRoutes.token}?provider=${provider}${realmParam}`,
         {
           method: "POST",
           body: JSON.stringify({
             username: options.username,
             password: options.password,
-            ...options,
           }),
           schema: { response: tokenResponseSchema },
         },
@@ -102,7 +104,7 @@ export class ReactAuth {
           ? window.location.origin + browser.transitioning.to
           : window.location.href);
 
-      const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${provider}&redirect_uri=${encodeURIComponent(redirect)}`;
+      const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${encodeURIComponent(redirect)}`;
 
       if (browser.transitioning) {
         throw new Redirection(href);
@@ -113,7 +115,7 @@ export class ReactAuth {
     }
 
     throw new Redirection(
-      `${alephaServerAuthRoutes.login}?provider=${provider}&redirect_uri=${options.redirect || "/"}`,
+      `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
     );
   }
 

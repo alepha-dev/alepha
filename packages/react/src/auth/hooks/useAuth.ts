@@ -17,6 +17,7 @@ export const useAuth = <T extends object = any>() => {
         username?: string;
         password?: string;
         redirect?: string;
+        realm?: string;
         [extra: string]: any;
       } = {},
     ) => {
