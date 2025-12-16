@@ -1,4 +1,9 @@
-import { AlephaUI, alephaThemeAtom } from "@alepha/ui";
+import {
+  AlephaUI,
+  alephaThemeListAtom,
+  defaultTheme,
+  midnightTheme,
+} from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
 import { $module } from "alepha";
 import { CharacterInfo } from "../api/services/CharacterInfo.ts";
@@ -26,6 +31,12 @@ export const RoadmapWeb = $module({
       .with(I18n)
       .with(AppRouter)
       .with(CharacterInfo)
-      .set(alephaThemeAtom, { index: 1 });
+      .set(alephaThemeListAtom, [
+        defaultTheme,
+        {
+          ...midnightTheme,
+          primaryColor: "gray",
+        },
+      ]);
   },
 });
