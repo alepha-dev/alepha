@@ -124,7 +124,10 @@ export class AlephaPackageBuilderCli {
           });
         }
 
-        const config = join(tmpDir, `tsdown-${item.name}.config.js`);
+        const config = join(
+          tmpDir,
+          `tsdown-${item.name.replace("/", "-")}.config.js`,
+        );
         await this.fs.writeFile(
           config,
           `export default ${JSON.stringify(entries, null, 2)};`,
@@ -257,56 +260,75 @@ export async function analyzeModules(
   packageName: string,
 ): Promise<Module[]> {
   const modules: Module[] = [];
-  const entries = await readdir(srcDir, { withFileTypes: true });
 
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      const moduleName = entry.name;
-      const modulePath = join(srcDir, moduleName);
-      const dependencies = new Set<string>();
+  async function scanDirectory(dir: string, prefix: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true });
 
-      // Check for browser/node entry points
-      const hasBrowser = await fileExists(join(modulePath, "index.browser.ts"));
-      const hasNative = await fileExists(join(modulePath, "index.native.ts"));
-      const hasNode = await fileExists(join(modulePath, "index.node.ts"));
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const moduleName = prefix ? `${prefix}/${entry.name}` : entry.name;
+        const modulePath = join(dir, entry.name);
 
-      // Get all .ts/.tsx files in this module
-      const files = await getAllFiles(modulePath);
+        // Check if this directory has an index.ts (is a module)
+        const hasIndex = await fileExists(join(modulePath, "index.ts"));
 
-      for (const file of files) {
-        const content = await readFile(file, "utf-8");
-        const deps = extractAlephaDependencies(
-          content,
-          packageName,
-          moduleName,
-        );
-        for (const dep of deps) {
-          if (dep.endsWith(".ts")) {
-            throw new Error(
-              `Invalid dependency '${dep}' in module '${moduleName}'. Do not include file extensions in Alepha module imports.`,
+        if (hasIndex) {
+          // This is a module
+          const dependencies = new Set<string>();
+
+          // Check for browser/node entry points
+          const hasBrowser = await fileExists(
+            join(modulePath, "index.browser.ts"),
+          );
+          const hasNative = await fileExists(
+            join(modulePath, "index.native.ts"),
+          );
+          const hasNode = await fileExists(join(modulePath, "index.node.ts"));
+
+          // Get all .ts/.tsx files in this module
+          const files = await getAllFiles(modulePath);
+
+          for (const file of files) {
+            const content = await readFile(file, "utf-8");
+            const deps = extractAlephaDependencies(
+              content,
+              packageName,
+              moduleName,
             );
+            for (const dep of deps) {
+              if (dep.endsWith(".ts")) {
+                throw new Error(
+                  `Invalid dependency '${dep}' in module '${moduleName}'. Do not include file extensions in Alepha module imports.`,
+                );
+              }
+              if (dep.includes("-")) {
+                throw new Error(
+                  `Invalid dependency '${dep}' in module '${moduleName}'. Use '/' instead of '-' in Alepha module imports.`,
+                );
+              }
+              dependencies.add(dep);
+            }
           }
-          if (dep.includes("-")) {
-            throw new Error(
-              `Invalid dependency '${dep}' in module '${moduleName}'. Use '/' instead of '-' in Alepha module imports.`,
-            );
-          }
-          dependencies.add(dep);
+
+          const module: Module = {
+            name: moduleName,
+            dependencies: Array.from(dependencies),
+          };
+
+          if (hasNative) module.native = true;
+          if (hasBrowser) module.browser = true;
+          if (hasNode) module.node = true;
+
+          modules.push(module);
+        } else {
+          // No index.ts, check subdirectories for modules
+          await scanDirectory(modulePath, moduleName);
         }
       }
-
-      const module: Module = {
-        name: moduleName,
-        dependencies: Array.from(dependencies),
-      };
-
-      if (hasNative) module.native = true;
-      if (hasBrowser) module.browser = true;
-      if (hasNode) module.node = true;
-
-      modules.push(module);
     }
   }
+
+  await scanDirectory(srcDir, "");
 
   // Check for circular dependencies
   detectCircularDependencies(modules);

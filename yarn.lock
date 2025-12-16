@@ -39,7 +39,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools@npm:^0.13.7, @alepha/devtools@workspace:packages/devtools":
+"@alepha/devtools@workspace:packages/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
@@ -3108,17 +3108,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-leaflet/core@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@react-leaflet/core@npm:3.0.0"
-  peerDependencies:
-    leaflet: ^1.9.0
-    react: ^19.0.0
-    react-dom: ^19.0.0
-  checksum: 10c0/1e20f92ea99d378121d7ba57b9571ca3a67a86247729d8cd5726ded26105fcbffbbdf727da34b2ad5976438979819a38c93b94389313abb3ff80ca81632609a6
-  languageName: node
-  linkType: hard
-
 "@redis/client@npm:^5.10.0":
   version: 5.10.0
   resolution: "@redis/client@npm:5.10.0"
@@ -4172,26 +4161,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stripe/react-stripe-js@npm:^3.6.1":
-  version: 3.10.0
-  resolution: "@stripe/react-stripe-js@npm:3.10.0"
-  dependencies:
-    prop-types: "npm:^15.7.2"
-  peerDependencies:
-    "@stripe/stripe-js": ">=1.44.1 <8.0.0"
-    react: ">=16.8.0 <20.0.0"
-    react-dom: ">=16.8.0 <20.0.0"
-  checksum: 10c0/d7629436629571883e1ab44b1fdbdd5bc002c9020400bbad212caccddad5eaedefbdb171e970bd34276b72d9c23deac86d1e0898db11961de2a7e8951bf9711a
-  languageName: node
-  linkType: hard
-
-"@stripe/stripe-js@npm:^7.5.0":
-  version: 7.9.0
-  resolution: "@stripe/stripe-js@npm:7.9.0"
-  checksum: 10c0/ca7dd386df944ed05be115422dde9f5a2b04846e508f482d996db273d95bf8ac8ab5078e58480534b8bc6e29c26c67e16c7e75e478c3112813f971ec6aba49f8
-  languageName: node
-  linkType: hard
-
 "@tabler/icons-react@npm:^3.35.0":
   version: 3.35.0
   resolution: "@tabler/icons-react@npm:3.35.0"
@@ -4807,26 +4776,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/geojson@npm:*":
-  version: 7946.0.16
-  resolution: "@types/geojson@npm:7946.0.16"
-  checksum: 10c0/1ff24a288bd5860b766b073ead337d31d73bdc715e5b50a2cee5cb0af57a1ed02cc04ef295f5fa68dc40fe3e4f104dd31282b2b818a5ba3231bc1001ba084e3c
-  languageName: node
-  linkType: hard
-
 "@types/json-schema@npm:^7.0.6":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
   checksum: 10c0/a996a745e6c5d60292f36731dd41341339d4eeed8180bb09226e5c8d23759067692b1d88e5d91d72ee83dfc00d3aca8e7bd43ea120516c17922cbcb7c3e252db
-  languageName: node
-  linkType: hard
-
-"@types/leaflet@npm:^1.9.18":
-  version: 1.9.21
-  resolution: "@types/leaflet@npm:1.9.21"
-  dependencies:
-    "@types/geojson": "npm:*"
-  checksum: 10c0/96a86bdeff7bf56104242e97536f39005a53dd857853aa0c5de127ce2c72f3f36638f2a5b8d23e2e825a2bfe32113be731ab26634a3143413b891299c29621ce
   languageName: node
   linkType: hard
 
@@ -4874,15 +4827,6 @@ __metadata:
   version: 16.18.11
   resolution: "@types/node@npm:16.18.11"
   checksum: 10c0/7bdf5e865a7959a72881ede19a882219f9d0baadf9ef8fdf24523291d401a7fc43bf91aa3223b1961ca54e1363f542cc4d60c8b00a70b457b2e9439b82adac70
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:>=8.1.0":
-  version: 25.0.1
-  resolution: "@types/node@npm:25.0.1"
-  dependencies:
-    undici-types: "npm:~7.16.0"
-  checksum: 10c0/1d5ca9f240d0cf8e43d5281c0e6ee96fb22d37dc2e5ef52c6ca71de47957a6128e124990cedf5b14c03d0250737bd78ad370d93bcf1729a75ca4e54384fdd51a
   languageName: node
   linkType: hard
 
@@ -8258,32 +8202,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"example-saas-891c98@workspace:apps/example-saas":
-  version: 0.0.0-use.local
-  resolution: "example-saas-891c98@workspace:apps/example-saas"
-  dependencies:
-    "@alepha/devtools": "npm:^0.13.7"
-    "@alepha/react": "npm:^0.13.7"
-    "@alepha/ui": "npm:^0.13.7"
-    "@mantine/core": "npm:^8.3.10"
-    "@mantine/dates": "npm:^8.3.10"
-    "@mantine/hooks": "npm:^8.3.10"
-    "@stripe/react-stripe-js": "npm:^3.6.1"
-    "@stripe/stripe-js": "npm:^7.5.0"
-    "@tabler/icons-react": "npm:^3.35.0"
-    "@types/leaflet": "npm:^1.9.18"
-    "@types/react": "npm:^19.2.7"
-    alepha: "npm:^0.13.7"
-    framer-motion: "npm:^12.23.26"
-    leaflet: "npm:^1.9.4"
-    react: "npm:^19.2.1"
-    react-dom: "npm:^19.2.1"
-    react-leaflet: "npm:^5.0.0"
-    stripe: "npm:^17.7.0"
-    vite: "npm:^7.2.7"
-  languageName: unknown
-  linkType: soft
-
 "example-ssr-fb4dc1@workspace:apps/example-ssr":
   version: 0.0.0-use.local
   resolution: "example-ssr-fb4dc1@workspace:apps/example-ssr"
@@ -9834,13 +9752,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"leaflet@npm:^1.9.4":
-  version: 1.9.4
-  resolution: "leaflet@npm:1.9.4"
-  checksum: 10c0/f639441dbb7eb9ae3fcd29ffd7d3508f6c6106892441634b0232fafb9ffb1588b05a8244ec7085de2c98b5ed703894df246898477836cfd0ce5b96d4717b5ca1
-  languageName: node
-  linkType: hard
-
 "light-my-request@npm:^6.0.0":
   version: 6.6.0
   resolution: "light-my-request@npm:6.6.0"
@@ -11124,7 +11035,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prop-types@npm:^15.6.2, prop-types@npm:^15.7.2":
+"prop-types@npm:^15.6.2":
   version: 15.8.1
   resolution: "prop-types@npm:15.8.1"
   dependencies:
@@ -11383,7 +11294,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.11.0, qs@npm:^6.14.0":
+"qs@npm:^6.14.0":
   version: 6.14.0
   resolution: "qs@npm:6.14.0"
   dependencies:
@@ -11466,19 +11377,6 @@ __metadata:
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 10c0/2bdb6b93fbb1820b024b496042cce405c57e2f85e777c9aabd55f9b26d145408f9f74f5934676ffdc46f3dcff656d78413a6e43968e7b3f92eea35b3052e9053
-  languageName: node
-  linkType: hard
-
-"react-leaflet@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "react-leaflet@npm:5.0.0"
-  dependencies:
-    "@react-leaflet/core": "npm:^3.0.0"
-  peerDependencies:
-    leaflet: ^1.9.0
-    react: ^19.0.0
-    react-dom: ^19.0.0
-  checksum: 10c0/f0b6fb797cc2d81bc8cbb54e0cb32aefa689d35ca5f52d203ce3c5a1d14668e51244f10844bd2c88d5cb4aca5eb05bc280794e6d1652727ff9da2358e89d1b86
   languageName: node
   linkType: hard
 
@@ -12872,16 +12770,6 @@ __metadata:
   version: 2.0.0
   resolution: "strip-final-newline@npm:2.0.0"
   checksum: 10c0/bddf8ccd47acd85c0e09ad7375409d81653f645fda13227a9d459642277c253d877b68f2e5e4d819fe75733b0e626bac7e954c04f3236f6d196f79c94fa4a96f
-  languageName: node
-  linkType: hard
-
-"stripe@npm:^17.7.0":
-  version: 17.7.0
-  resolution: "stripe@npm:17.7.0"
-  dependencies:
-    "@types/node": "npm:>=8.1.0"
-    qs: "npm:^6.11.0"
-  checksum: 10c0/df67c6d455bd0dd87140640924c220fa9581fc00c3267d171f407c8d088f946f61e3ae7e88a89e7dd705b10fd5254630fc943222eb6f003390ebafbd391f81b2
   languageName: node
   linkType: hard
 

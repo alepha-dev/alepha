@@ -14,6 +14,7 @@ import { FileService } from "./services/FileService.ts";
 export * from "./controllers/FileController.ts";
 export * from "./controllers/StorageStatsController.ts";
 export * from "./entities/files.ts";
+export * from "./jobs/FileJobs.ts";
 export * from "./schemas/storageStatsSchema.ts";
 export * from "./services/FileService.ts";
 

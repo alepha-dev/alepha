@@ -1,4 +1,5 @@
 import { $context } from "alepha";
+import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiFiles } from "alepha/api/files";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import type { Repository } from "alepha/orm";
@@ -18,7 +19,6 @@ import {
   type WithLinkFn,
   type WithLoginFn,
 } from "alepha/server/auth";
-import { AlephaApiAudits } from "../../api-audits/index.ts";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";

@@ -1,9 +1,8 @@
 import { Alepha } from "alepha";
+import { FileService, StorageStatsController } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";
-import { StorageStatsController } from "../../src/api-files/controllers/StorageStatsController.ts";
-import { FileService } from "../../src/api-files/services/FileService.ts";
 
 describe("StorageStatsController", () => {
   class App {

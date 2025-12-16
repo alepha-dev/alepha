@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Alepha, type Service } from "alepha";
-import { AlephaApiFiles } from "alepha/api/files";
+import { AlephaApiFiles, FileController } from "alepha/api/files";
 import {
   $bucket,
   FileStorageProvider,
@@ -9,7 +9,6 @@ import {
 } from "alepha/bucket";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";
-import { FileController } from "../../src/api-files/controllers/FileController.ts";
 
 const testFileServiceOperations = async (
   provider: Service<FileStorageProvider>,

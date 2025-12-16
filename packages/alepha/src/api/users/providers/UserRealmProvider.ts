@@ -1,15 +1,14 @@
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
-import {
-  DEFAULT_USER_REALM_NAME,
-  realmAuthSettingsAtom,
-  type UserRealmOptions,
-} from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
 import { $repository, type Repository } from "alepha/orm";
-import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
+import {
+  type RealmAuthSettings,
+  realmAuthSettingsAtom,
+} from "../atoms/realmAuthSettingsAtom.ts";
 import { identities } from "../entities/identities.ts";
 import { sessions } from "../entities/sessions.ts";
-import { users } from "../entities/users.ts";
+import { DEFAULT_USER_REALM_NAME, users } from "../entities/users.ts";
+import type { UserRealmOptions } from "../primitives/$userRealm.ts";
 
 export interface UserRealmRepositories {
   identities: Repository<typeof identities.schema>;

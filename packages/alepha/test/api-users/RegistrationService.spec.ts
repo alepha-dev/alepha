@@ -3,6 +3,7 @@ import {
   AlephaApiUsers,
   RegistrationService,
   SessionService,
+  UserRealmProvider,
   UserService,
 } from "alepha/api/users";
 import { AlephaApiVerification } from "alepha/api/verifications";
@@ -11,7 +12,6 @@ import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
-import { UserRealmProvider } from "../../src/api-users/providers/UserRealmProvider.ts";
 
 const setup = async (realmSettings?: Record<string, unknown>) => {
   const alepha = Alepha.create();

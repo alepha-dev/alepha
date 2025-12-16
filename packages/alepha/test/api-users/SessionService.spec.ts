@@ -1,5 +1,10 @@
 import { Alepha } from "alepha";
-import { AlephaApiUsers, SessionService, UserService } from "alepha/api/users";
+import {
+  AlephaApiUsers,
+  SessionService,
+  UserRealmProvider,
+  UserService,
+} from "alepha/api/users";
 import {
   AlephaSecurity,
   CryptoProvider,
@@ -21,9 +26,6 @@ const setup = async (options?: { usernameEnabled?: boolean }) => {
 
   // Configure realm settings if provided
   if (options?.usernameEnabled) {
-    const { UserRealmProvider } = await import(
-      "../../src/api-users/providers/UserRealmProvider.ts"
-    );
     const userRealmProvider = alepha.inject(UserRealmProvider);
     userRealmProvider.register("default", {
       settings: {

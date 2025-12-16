@@ -2,10 +2,10 @@ import { Alepha } from "alepha";
 import {
   AlephaApiVerification,
   VerificationController,
+  VerificationParameters,
 } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
-import { VerificationParameters } from "../../src/api-verifications/parameters/VerificationParameters.ts";
 
 const createTest = async () => {
   const alepha = Alepha.create().with(AlephaApiVerification);

@@ -1,9 +1,8 @@
 import { Alepha } from "alepha";
+import { $job, jobExecutions } from "alepha/api/jobs";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { describe, expect, it, vi } from "vitest";
-import { jobExecutions } from "../../src/api-jobs/entities/jobExecutions.ts";
-import { $job } from "../../src/api-jobs/primitives/$job.ts";
 
 describe("$job primitive", () => {
   describe("basic functionality", () => {

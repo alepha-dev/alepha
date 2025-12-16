@@ -1,10 +1,8 @@
 import { Alepha } from "alepha";
+import { $job, JobController, JobService } from "alepha/api/jobs";
 import { DateTimeProvider, dayjs } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { describe, expect, it } from "vitest";
-import { JobController } from "../../src/api-jobs/controllers/JobController.ts";
-import { $job } from "../../src/api-jobs/primitives/$job.ts";
-import { JobService } from "../../src/api-jobs/services/JobService.ts";
 
 describe("JobController", () => {
   class App {

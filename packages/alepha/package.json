@@ -68,53 +68,53 @@
   ],
   "exports": {
     "./api/audits": {
-      "types": "./src/api-audits/index.ts",
-      "react-native": "./src/api-audits/index.browser.ts",
-      "browser": "./src/api-audits/index.browser.ts",
-      "import": "./src/api-audits/index.ts",
-      "default": "./src/api-audits/index.ts"
+      "types": "./src/api/audits/index.ts",
+      "react-native": "./src/api/audits/index.browser.ts",
+      "browser": "./src/api/audits/index.browser.ts",
+      "import": "./src/api/audits/index.ts",
+      "default": "./src/api/audits/index.ts"
     },
     "./api/files": {
-      "types": "./src/api-files/index.ts",
-      "react-native": "./src/api-files/index.browser.ts",
-      "browser": "./src/api-files/index.browser.ts",
-      "import": "./src/api-files/index.ts",
-      "default": "./src/api-files/index.ts"
+      "types": "./src/api/files/index.ts",
+      "react-native": "./src/api/files/index.browser.ts",
+      "browser": "./src/api/files/index.browser.ts",
+      "import": "./src/api/files/index.ts",
+      "default": "./src/api/files/index.ts"
     },
     "./api/jobs": {
-      "types": "./src/api-jobs/index.ts",
-      "react-native": "./src/api-jobs/index.browser.ts",
-      "browser": "./src/api-jobs/index.browser.ts",
-      "import": "./src/api-jobs/index.ts",
-      "default": "./src/api-jobs/index.ts"
+      "types": "./src/api/jobs/index.ts",
+      "react-native": "./src/api/jobs/index.browser.ts",
+      "browser": "./src/api/jobs/index.browser.ts",
+      "import": "./src/api/jobs/index.ts",
+      "default": "./src/api/jobs/index.ts"
     },
     "./api/notifications": {
-      "types": "./src/api-notifications/index.ts",
-      "react-native": "./src/api-notifications/index.browser.ts",
-      "browser": "./src/api-notifications/index.browser.ts",
-      "import": "./src/api-notifications/index.ts",
-      "default": "./src/api-notifications/index.ts"
+      "types": "./src/api/notifications/index.ts",
+      "react-native": "./src/api/notifications/index.browser.ts",
+      "browser": "./src/api/notifications/index.browser.ts",
+      "import": "./src/api/notifications/index.ts",
+      "default": "./src/api/notifications/index.ts"
     },
     "./api/parameters": {
-      "types": "./src/api-parameters/index.ts",
-      "react-native": "./src/api-parameters/index.browser.ts",
-      "browser": "./src/api-parameters/index.browser.ts",
-      "import": "./src/api-parameters/index.ts",
-      "default": "./src/api-parameters/index.ts"
+      "types": "./src/api/parameters/index.ts",
+      "react-native": "./src/api/parameters/index.browser.ts",
+      "browser": "./src/api/parameters/index.browser.ts",
+      "import": "./src/api/parameters/index.ts",
+      "default": "./src/api/parameters/index.ts"
     },
     "./api/users": {
-      "types": "./src/api-users/index.ts",
-      "react-native": "./src/api-users/index.browser.ts",
-      "browser": "./src/api-users/index.browser.ts",
-      "import": "./src/api-users/index.ts",
-      "default": "./src/api-users/index.ts"
+      "types": "./src/api/users/index.ts",
+      "react-native": "./src/api/users/index.browser.ts",
+      "browser": "./src/api/users/index.browser.ts",
+      "import": "./src/api/users/index.ts",
+      "default": "./src/api/users/index.ts"
     },
     "./api/verifications": {
-      "types": "./src/api-verifications/index.ts",
-      "react-native": "./src/api-verifications/index.browser.ts",
-      "browser": "./src/api-verifications/index.browser.ts",
-      "import": "./src/api-verifications/index.ts",
-      "default": "./src/api-verifications/index.ts"
+      "types": "./src/api/verifications/index.ts",
+      "react-native": "./src/api/verifications/index.browser.ts",
+      "browser": "./src/api/verifications/index.browser.ts",
+      "import": "./src/api/verifications/index.ts",
+      "default": "./src/api/verifications/index.ts"
     },
     "./batch": {
       "types": "./src/batch/index.ts",
