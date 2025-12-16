@@ -1,8 +1,6 @@
 import { Alepha } from "alepha";
-import { HttpClient, ServerProvider } from "alepha/server";
+import { $action, HttpClient, HttpError, ServerProvider } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
-import { HttpError } from "../../src/server/errors/HttpError.ts";
-import { $action } from "../../src/server/primitives/$action.ts";
 
 class TestApp {
   // HttpError with custom message

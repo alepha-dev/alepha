@@ -1,11 +1,8 @@
 import { Alepha } from "alepha";
 import { AlephaCache } from "alepha/cache";
 import { $action, AlephaServer, HttpError } from "alepha/server";
+import { $rateLimit, AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  $rateLimit,
-  AlephaServerRateLimit,
-} from "../../src/server-rate-limit/index.ts";
 
 describe("Action Rate Limiting", () => {
   let alepha: Alepha;

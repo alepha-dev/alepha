@@ -6,15 +6,13 @@ import {
   ServerProvider,
   type ServerRequest,
 } from "alepha/server";
-import { afterEach, beforeEach, describe, expect, it, test } from "vitest";
 import {
   $rateLimit,
   AlephaServerRateLimit,
-} from "../../src/server-rate-limit/index.ts";
-import {
   rateLimitOptions,
   ServerRateLimitProvider,
-} from "../../src/server-rate-limit/providers/ServerRateLimitProvider.ts";
+} from "alepha/server/rate-limit";
+import { afterEach, beforeEach, describe, expect, it, test } from "vitest";
 
 describe("ServerRateLimitProvider", () => {
   let alepha: Alepha;

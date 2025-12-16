@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { RedisCacheProvider } from "alepha/cache/redis";
 import { describe, it } from "vitest";
-import { RedisCacheProvider } from "../../src/cache-redis/providers/RedisCacheProvider.ts";
 import {
   testCacheBasic,
   testCacheClear,

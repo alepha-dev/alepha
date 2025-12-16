@@ -37,8 +37,10 @@ export class AlephaPackageBuilderCli {
       pkgData.exports = {};
 
       for (const item of modules) {
-        const path =
-          item.name === "core" ? "." : `./${item.name.replace("-", "/")}`;
+        let m = `./${item.name.replace("core", "")}`;
+        if (m.endsWith("/")) m = m.slice(0, -1);
+        const path = m;
+
         pkgData.exports[path] = {};
         // order is important here for compatibility
         pkgData.exports[path].types = `./src/${item.name}/index.ts`;

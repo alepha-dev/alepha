@@ -393,6 +393,7 @@ window.onload = function() {
       join(dirname, "../../assets/swagger-ui"),
       join(dirname, "../../../assets/swagger-ui"),
       join(dirname, "../../../../assets/swagger-ui"),
+      join(dirname, "../../../../../assets/swagger-ui"),
     );
 
     if (!root) {

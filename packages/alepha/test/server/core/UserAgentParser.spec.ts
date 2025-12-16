@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
+import { UserAgentParser } from "alepha/server";
 import { describe, it } from "vitest";
-import { UserAgentParser } from "../../src/server/services/UserAgentParser.ts";
 
 describe("UserAgentParser", () => {
   const alepha = Alepha.create();

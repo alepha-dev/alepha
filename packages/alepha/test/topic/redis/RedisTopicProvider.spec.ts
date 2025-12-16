@@ -4,7 +4,7 @@ import {
   testTopicAsSub,
   testTopicBasic,
   testTopicLateSubscribe,
-} from "../topic/shared.ts";
+} from "../core/shared.ts";
 
 describe("$topic - redis", () => {
   const provider = RedisTopicProvider;

@@ -132,14 +132,14 @@
       "default": "./src/bucket/index.ts"
     },
     "./cache": {
-      "types": "./src/cache/index.ts",
-      "import": "./src/cache/index.ts",
-      "default": "./src/cache/index.ts"
+      "types": "./src/cache/core/index.ts",
+      "import": "./src/cache/core/index.ts",
+      "default": "./src/cache/core/index.ts"
     },
     "./cache/redis": {
-      "types": "./src/cache-redis/index.ts",
-      "import": "./src/cache-redis/index.ts",
-      "default": "./src/cache-redis/index.ts"
+      "types": "./src/cache/redis/index.ts",
+      "import": "./src/cache/redis/index.ts",
+      "default": "./src/cache/redis/index.ts"
     },
     "./cli": {
       "types": "./src/cli/index.ts",
@@ -179,14 +179,14 @@
       "default": "./src/file/index.ts"
     },
     "./lock": {
-      "types": "./src/lock/index.ts",
-      "import": "./src/lock/index.ts",
-      "default": "./src/lock/index.ts"
+      "types": "./src/lock/core/index.ts",
+      "import": "./src/lock/core/index.ts",
+      "default": "./src/lock/core/index.ts"
     },
     "./lock/redis": {
-      "types": "./src/lock-redis/index.ts",
-      "import": "./src/lock-redis/index.ts",
-      "default": "./src/lock-redis/index.ts"
+      "types": "./src/lock/redis/index.ts",
+      "import": "./src/lock/redis/index.ts",
+      "default": "./src/lock/redis/index.ts"
     },
     "./logger": {
       "types": "./src/logger/index.ts",
@@ -201,14 +201,14 @@
       "default": "./src/orm/index.ts"
     },
     "./queue": {
-      "types": "./src/queue/index.ts",
-      "import": "./src/queue/index.ts",
-      "default": "./src/queue/index.ts"
+      "types": "./src/queue/core/index.ts",
+      "import": "./src/queue/core/index.ts",
+      "default": "./src/queue/core/index.ts"
     },
     "./queue/redis": {
-      "types": "./src/queue-redis/index.ts",
-      "import": "./src/queue-redis/index.ts",
-      "default": "./src/queue-redis/index.ts"
+      "types": "./src/queue/redis/index.ts",
+      "import": "./src/queue/redis/index.ts",
+      "default": "./src/queue/redis/index.ts"
     },
     "./redis": {
       "types": "./src/redis/index.ts",
@@ -237,95 +237,95 @@
       "import": "./src/security/index.ts",
       "default": "./src/security/index.ts"
     },
-    "./server": {
-      "types": "./src/server/index.ts",
-      "react-native": "./src/server/index.browser.ts",
-      "browser": "./src/server/index.browser.ts",
-      "import": "./src/server/index.ts",
-      "default": "./src/server/index.ts"
-    },
     "./server/auth": {
-      "types": "./src/server-auth/index.ts",
-      "react-native": "./src/server-auth/index.browser.ts",
-      "browser": "./src/server-auth/index.browser.ts",
-      "import": "./src/server-auth/index.ts",
-      "default": "./src/server-auth/index.ts"
+      "types": "./src/server/auth/index.ts",
+      "react-native": "./src/server/auth/index.browser.ts",
+      "browser": "./src/server/auth/index.browser.ts",
+      "import": "./src/server/auth/index.ts",
+      "default": "./src/server/auth/index.ts"
     },
     "./server/cache": {
-      "types": "./src/server-cache/index.ts",
-      "import": "./src/server-cache/index.ts",
-      "default": "./src/server-cache/index.ts"
+      "types": "./src/server/cache/index.ts",
+      "import": "./src/server/cache/index.ts",
+      "default": "./src/server/cache/index.ts"
     },
     "./server/compress": {
-      "types": "./src/server-compress/index.ts",
-      "import": "./src/server-compress/index.ts",
-      "default": "./src/server-compress/index.ts"
+      "types": "./src/server/compress/index.ts",
+      "import": "./src/server/compress/index.ts",
+      "default": "./src/server/compress/index.ts"
     },
     "./server/cookies": {
-      "types": "./src/server-cookies/index.ts",
-      "react-native": "./src/server-cookies/index.browser.ts",
-      "browser": "./src/server-cookies/index.browser.ts",
-      "import": "./src/server-cookies/index.ts",
-      "default": "./src/server-cookies/index.ts"
+      "types": "./src/server/cookies/index.ts",
+      "react-native": "./src/server/cookies/index.browser.ts",
+      "browser": "./src/server/cookies/index.browser.ts",
+      "import": "./src/server/cookies/index.ts",
+      "default": "./src/server/cookies/index.ts"
+    },
+    "./server": {
+      "types": "./src/server/core/index.ts",
+      "react-native": "./src/server/core/index.browser.ts",
+      "browser": "./src/server/core/index.browser.ts",
+      "import": "./src/server/core/index.ts",
+      "default": "./src/server/core/index.ts"
     },
     "./server/cors": {
-      "types": "./src/server-cors/index.ts",
-      "import": "./src/server-cors/index.ts",
-      "default": "./src/server-cors/index.ts"
+      "types": "./src/server/cors/index.ts",
+      "import": "./src/server/cors/index.ts",
+      "default": "./src/server/cors/index.ts"
     },
     "./server/health": {
-      "types": "./src/server-health/index.ts",
-      "import": "./src/server-health/index.ts",
-      "default": "./src/server-health/index.ts"
+      "types": "./src/server/health/index.ts",
+      "import": "./src/server/health/index.ts",
+      "default": "./src/server/health/index.ts"
     },
     "./server/helmet": {
-      "types": "./src/server-helmet/index.ts",
-      "import": "./src/server-helmet/index.ts",
-      "default": "./src/server-helmet/index.ts"
+      "types": "./src/server/helmet/index.ts",
+      "import": "./src/server/helmet/index.ts",
+      "default": "./src/server/helmet/index.ts"
     },
     "./server/links": {
-      "types": "./src/server-links/index.ts",
-      "react-native": "./src/server-links/index.browser.ts",
-      "browser": "./src/server-links/index.browser.ts",
-      "import": "./src/server-links/index.ts",
-      "default": "./src/server-links/index.ts"
+      "types": "./src/server/links/index.ts",
+      "react-native": "./src/server/links/index.browser.ts",
+      "browser": "./src/server/links/index.browser.ts",
+      "import": "./src/server/links/index.ts",
+      "default": "./src/server/links/index.ts"
     },
     "./server/metrics": {
-      "types": "./src/server-metrics/index.ts",
-      "import": "./src/server-metrics/index.ts",
-      "default": "./src/server-metrics/index.ts"
+      "types": "./src/server/metrics/index.ts",
+      "import": "./src/server/metrics/index.ts",
+      "default": "./src/server/metrics/index.ts"
     },
     "./server/multipart": {
-      "types": "./src/server-multipart/index.ts",
-      "import": "./src/server-multipart/index.ts",
-      "default": "./src/server-multipart/index.ts"
+      "types": "./src/server/multipart/index.ts",
+      "import": "./src/server/multipart/index.ts",
+      "default": "./src/server/multipart/index.ts"
     },
     "./server/proxy": {
-      "types": "./src/server-proxy/index.ts",
-      "import": "./src/server-proxy/index.ts",
-      "default": "./src/server-proxy/index.ts"
+      "types": "./src/server/proxy/index.ts",
+      "import": "./src/server/proxy/index.ts",
+      "default": "./src/server/proxy/index.ts"
     },
     "./server/rate-limit": {
-      "types": "./src/server-rate-limit/index.ts",
-      "import": "./src/server-rate-limit/index.ts",
-      "default": "./src/server-rate-limit/index.ts"
+      "types": "./src/server/rate-limit/index.ts",
+      "import": "./src/server/rate-limit/index.ts",
+      "default": "./src/server/rate-limit/index.ts"
     },
     "./server/security": {
-      "types": "./src/server-security/index.ts",
-      "react-native": "./src/server-security/index.browser.ts",
-      "browser": "./src/server-security/index.browser.ts",
-      "import": "./src/server-security/index.ts",
-      "default": "./src/server-security/index.ts"
+      "types": "./src/server/security/index.ts",
+      "react-native": "./src/server/security/index.browser.ts",
+      "browser": "./src/server/security/index.browser.ts",
+      "import": "./src/server/security/index.ts",
+      "default": "./src/server/security/index.ts"
     },
     "./server/static": {
-      "types": "./src/server-static/index.ts",
-      "import": "./src/server-static/index.ts",
-      "default": "./src/server-static/index.ts"
+      "types": "./src/server/static/index.ts",
+      "import": "./src/server/static/index.ts",
+      "default": "./src/server/static/index.ts"
     },
     "./server/swagger": {
-      "types": "./src/server-swagger/index.ts",
-      "import": "./src/server-swagger/index.ts",
-      "default": "./src/server-swagger/index.ts"
+      "types": "./src/server/swagger/index.ts",
+      "import": "./src/server/swagger/index.ts",
+      "default": "./src/server/swagger/index.ts"
     },
     "./sms": {
       "types": "./src/sms/index.ts",
@@ -338,14 +338,14 @@
       "default": "./src/thread/index.ts"
     },
     "./topic": {
-      "types": "./src/topic/index.ts",
-      "import": "./src/topic/index.ts",
-      "default": "./src/topic/index.ts"
+      "types": "./src/topic/core/index.ts",
+      "import": "./src/topic/core/index.ts",
+      "default": "./src/topic/core/index.ts"
     },
     "./topic/redis": {
-      "types": "./src/topic-redis/index.ts",
-      "import": "./src/topic-redis/index.ts",
-      "default": "./src/topic-redis/index.ts"
+      "types": "./src/topic/redis/index.ts",
+      "import": "./src/topic/redis/index.ts",
+      "default": "./src/topic/redis/index.ts"
     },
     "./vite": {
       "types": "./src/vite/index.ts",

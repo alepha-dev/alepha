@@ -4,9 +4,9 @@ import {
   $queue,
   MemoryQueueProvider,
   QueueProvider,
+  WorkerProvider,
 } from "alepha/queue";
 import { expect } from "vitest";
-import { WorkerProvider } from "../../src/queue/providers/WorkerProvider.ts";
 
 export const payloadSchema = t.object({
   id: t.text(),
