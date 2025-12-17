@@ -13,31 +13,9 @@ export const payloadSchema = t.object({
   count: t.integer(),
 });
 
-// Shared storage for cross-app testing
-export const sharedMessageQueues: Record<string, string[]> = {};
-export const sharedJobs: Map<string, Map<string, any>> = new Map();
-export const sharedWaiting: Map<string, string[]> = new Map();
-export const sharedDelayed: Map<string, string[]> = new Map();
-export const sharedActive: Map<string, Set<string>> = new Map();
-export const sharedCompleted: Map<string, string[]> = new Map();
-export const sharedFailed: Map<string, string[]> = new Map();
-export const sharedJobWaiters: Set<any> = new Set();
-export const sharedMessageWaiters: Set<any> = new Set();
-
-/**
- * Shared queue provider for testing cross-app communication.
- * All instances share the same storage.
- */
+export const queueList: Record<string, string[]> = {};
 export class SharedQueueProvider extends MemoryQueueProvider {
-  protected messageQueues = sharedMessageQueues;
-  protected jobs = sharedJobs;
-  protected waiting = sharedWaiting;
-  protected delayed = sharedDelayed;
-  protected active = sharedActive;
-  protected completed = sharedCompleted;
-  protected failed = sharedFailed;
-  protected jobWaiters = sharedJobWaiters;
-  protected messageWaiters = sharedMessageWaiters;
+  queueList = queueList;
 }
 
 export const testQueueBasic = async (provider: Service<QueueProvider>) => {
@@ -64,9 +42,7 @@ export const testQueueBasic = async (provider: Service<QueueProvider>) => {
   ): Promise<{ app: Alepha; test: T }> => {
     const app = Alepha.create({
       env: {
-        QUEUE_WORKER_BLOCKING_TIMEOUT: 1,
-        QUEUE_SCHEDULER_INTERVAL: 100,
-        QUEUE_STALLED_THRESHOLD: 100,
+        QUEUE_WORKER_INTERVAL: 10,
       },
     });
 
@@ -110,13 +86,7 @@ export const testQueueHasConsumer = async (
       },
     });
   }
-  const app = Alepha.create({
-    env: {
-      QUEUE_WORKER_BLOCKING_TIMEOUT: 1,
-      QUEUE_SCHEDULER_INTERVAL: 100,
-      QUEUE_STALLED_THRESHOLD: 100,
-    },
-  })
+  const app = Alepha.create()
     .with({
       provide: QueueProvider,
       use: provider,
@@ -128,8 +98,6 @@ export const testQueueHasConsumer = async (
 
   await app.inject(A).q.push({ n: 123 });
   await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
-
-  await app.stop();
 };
 
 export const testQueueKillWorkerSleep = async (
@@ -148,9 +116,7 @@ export const testQueueKillWorkerSleep = async (
 
   const app = Alepha.create({
     env: {
-      QUEUE_WORKER_BLOCKING_TIMEOUT: 1,
-      QUEUE_SCHEDULER_INTERVAL: 100,
-      QUEUE_STALLED_THRESHOLD: 100,
+      QUEUE_WORKER_INTERVAL: 10000,
     },
   })
     .with({
@@ -159,7 +125,7 @@ export const testQueueKillWorkerSleep = async (
     })
     .with({
       provide: WorkerProvider,
-      use: class FakeQueuePrimitiveProvider extends WorkerProvider {
+      use: class FakeQueueDescriptorProvider extends WorkerProvider {
         async stopWorkers() {
           await super.stopWorkers();
           count += 123;

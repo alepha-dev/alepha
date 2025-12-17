@@ -8,9 +8,9 @@ npm install alepha
 
 ## Overview
 
-Provides asynchronous message queuing and processing capabilities through declarative queue primitives.
+Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.
 
-The queue module enables reliable background job processing and message passing using the `$queue` primitive
+The queue module enables reliable background job processing and message passing using the `$queue` descriptor
 on class properties. It supports schema validation, automatic retries, and multiple queue backends for
 building scalable, decoupled applications with robust error handling.
 
@@ -179,18 +179,3 @@ const taskQueue = $queue({
   }
 });
 ```
-
-### Providers
-
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### MemoryQueueProvider
-
-In-memory queue provider with full job support.
-
-This provider stores all data in memory and is suitable for:
-- Development and testing
-- Single-instance applications
-- Scenarios where job persistence across restarts is not required

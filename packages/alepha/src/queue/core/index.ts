@@ -7,7 +7,6 @@ import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./interfaces/QueueJob.ts";
 export * from "./primitives/$consumer.ts";
 export * from "./primitives/$queue.ts";
 export * from "./providers/MemoryQueueProvider.ts";
@@ -17,9 +16,9 @@ export * from "./providers/WorkerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides asynchronous message queuing and processing capabilities through declarative queue primitives.
+ * Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.
  *
- * The queue module enables reliable background job processing and message passing using the `$queue` primitive
+ * The queue module enables reliable background job processing and message passing using the `$queue` descriptor
  * on class properties. It supports schema validation, automatic retries, and multiple queue backends for
  * building scalable, decoupled applications with robust error handling.
  *

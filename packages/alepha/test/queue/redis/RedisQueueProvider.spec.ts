@@ -4,7 +4,7 @@ import {
   testQueueBasic,
   testQueueHasConsumer,
   testQueueKillWorkerSleep,
-} from "../queue/shared.ts";
+} from "../core/shared.ts";
 
 describe("RedisQueueProvider", () => {
   const Provider = RedisQueueProvider;

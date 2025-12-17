@@ -108,6 +108,6 @@ Unlike other frameworks that output a mess of files, Alepha (powered by Vite) pr
 
 "Hello World" is boring. You want to build a SaaS.
 
-*   **[Build an API](/docs/guides-building-an-api):** Learn how to use `$action` to create type-safe endpoints with automatic Swagger docs.
-*   **[Connect a Database](/docs/guides-database-access):** See how `$entity` creates your tables and types simultaneously.
-*   **[Add a Frontend](/docs/guides-react-integration):** Add React to the mix with `$page`.
+*   **[Build an API](/docs/guides-server-building-an-api):** Learn how to use `$action` to create type-safe endpoints with automatic Swagger docs.
+*   **[Connect a Database](/docs/guides-data-database-access):** See how `$entity` creates your tables and types simultaneously.
+*   **[Add a Frontend](/docs/guides-frontend-react-integration):** Add React to the mix with `$page`.

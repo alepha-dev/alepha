@@ -1,4 +1,5 @@
 import {
+  $inject,
   createPrimitive,
   KIND,
   Primitive,
@@ -7,12 +8,9 @@ import {
   type TSchema,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type {
-  QueueAddJobOptions,
-  QueueJobBackoff,
-} from "../interfaces/QueueJob.ts";
 import { MemoryQueueProvider } from "../providers/MemoryQueueProvider.ts";
 import { QueueProvider } from "../providers/QueueProvider.ts";
+import { WorkerProvider } from "../providers/WorkerProvider.ts";
 
 /**
  * Creates a queue primitive for asynchronous message processing with background workers.
@@ -256,83 +254,6 @@ export interface QueuePrimitiveOptions<T extends TSchema> {
    * ```
    */
   handler?: (message: QueueMessage<T>) => Promise<void>;
-
-  // ===========================================
-  // Job Options (for crash recovery and retries)
-  // ===========================================
-
-  /**
-   * Maximum number of processing attempts before the job is marked as failed.
-   * Includes the initial attempt.
-   *
-   * Set this to enable automatic retries on failure.
-   *
-   * @default 1 (no retries)
-   * @example 3 // Allows 2 retries after initial failure
-   */
-  maxAttempts?: number;
-
-  /**
-   * Backoff configuration for retries.
-   * Controls the delay between retry attempts.
-   *
-   * @example
-   * ```ts
-   * backoff: {
-   *   type: "exponential",
-   *   delay: 1000,      // Initial delay: 1 second
-   *   maxDelay: 60000   // Maximum delay: 1 minute
-   * }
-   * ```
-   */
-  backoff?: QueueJobBackoff;
-
-  /**
-   * Maximum time in milliseconds a job can be processed before it's considered stalled.
-   * If the worker doesn't complete or extend the lock within this time, the job
-   * can be picked up by another worker.
-   *
-   * Increase this for long-running jobs.
-   *
-   * @default 30000 (30 seconds)
-   */
-  lockDuration?: number;
-
-  /**
-   * Automatically remove jobs when they complete successfully.
-   * - `true`: Remove immediately after completion
-   * - `false`: Keep in completed list (default)
-   * - `number`: Keep this many most recent completed jobs, remove older ones
-   *
-   * @default false
-   * @example
-   * ```ts
-   * // Remove immediately after completion
-   * removeOnComplete: true
-   *
-   * // Keep only the last 100 completed jobs
-   * removeOnComplete: 100
-   * ```
-   */
-  removeOnComplete?: boolean | number;
-
-  /**
-   * Automatically remove jobs when they fail permanently (after all retries exhausted).
-   * - `true`: Remove immediately after failure
-   * - `false`: Keep in failed list (default)
-   * - `number`: Keep this many most recent failed jobs, remove older ones
-   *
-   * @default false
-   * @example
-   * ```ts
-   * // Remove immediately after failure
-   * removeOnFail: true
-   *
-   * // Keep only the last 50 failed jobs for debugging
-   * removeOnFail: 50
-   * ```
-   */
-  removeOnFail?: boolean | number;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -341,90 +262,24 @@ export class QueuePrimitive<T extends TSchema> extends Primitive<
   QueuePrimitiveOptions<T>
 > {
   protected readonly log = $logger();
+  protected readonly workerProvider = $inject(WorkerProvider);
   public readonly provider = this.$provider();
 
-  /**
-   * Push one or more payloads to the queue for background processing.
-   *
-   * Jobs will be processed with crash recovery, retries (if configured),
-   * and proper lifecycle management.
-   *
-   * @param payloads - One or more payloads to queue
-   */
-  public async push(...payloads: Array<Static<T>>): Promise<void>;
-  /**
-   * Push a payload to the queue with specific options.
-   *
-   * @param payload - The payload to queue
-   * @param options - Job options (priority, delay)
-   */
-  public async push(
-    payload: Static<T>,
-    options: QueueAddJobOptions,
-  ): Promise<void>;
+  public async push(...payloads: Array<Static<T>>) {
+    await Promise.all(
+      payloads.map((payload) =>
+        this.provider.push(
+          this.name,
+          JSON.stringify({
+            headers: {},
+            payload: this.alepha.codec.decode(this.options.schema, payload),
+          }),
+        ),
+      ),
+    );
 
-  public async push(
-    payloadOrFirst: Static<T>,
-    optionsOrSecond?: QueueAddJobOptions | Static<T>,
-    ...rest: Array<Static<T>>
-  ): Promise<void> {
-    // Check if second argument is options object
-    const isOptions =
-      optionsOrSecond != null &&
-      typeof optionsOrSecond === "object" &&
-      ("priority" in optionsOrSecond || "delay" in optionsOrSecond);
-
-    if (isOptions) {
-      // Single payload with options
-      const payload = this.alepha.codec.decode(
-        this.options.schema,
-        payloadOrFirst,
-      );
-      await this.provider.addJob(this.name, payload, {
-        ...this.getDefaultJobOptions(),
-        priority: (optionsOrSecond as QueueAddJobOptions).priority,
-        delay: (optionsOrSecond as QueueAddJobOptions).delay,
-      });
-      this.log.debug(`Pushed job to queue ${this.name}`, {
-        payload,
-        options: optionsOrSecond,
-      });
-    } else {
-      // Multiple payloads without per-job options
-      const payloads =
-        optionsOrSecond != null
-          ? [payloadOrFirst, optionsOrSecond as Static<T>, ...rest]
-          : [payloadOrFirst, ...rest];
-
-      await Promise.all(
-        payloads.map((p) => {
-          const payload = this.alepha.codec.decode(this.options.schema, p);
-          return this.provider.addJob(
-            this.name,
-            payload,
-            this.getDefaultJobOptions(),
-          );
-        }),
-      );
-
-      this.log.debug(
-        `Pushed ${payloads.length} job(s) to queue ${this.name}`,
-        payloads,
-      );
-    }
-  }
-
-  /**
-   * Get default job options from primitive configuration.
-   */
-  protected getDefaultJobOptions() {
-    return {
-      maxAttempts: this.options.maxAttempts,
-      backoff: this.options.backoff,
-      lockDuration: this.options.lockDuration,
-      removeOnComplete: this.options.removeOnComplete,
-      removeOnFail: this.options.removeOnFail,
-    };
+    this.log.debug(`Pushed to queue ${this.name}`, payloads);
+    this.workerProvider.wakeUp();
   }
 
   public get name() {

@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/complexity/useLiteralKeys: testing */
 import { Alepha, t } from "alepha";
 import {
   $consumer,
@@ -16,14 +15,17 @@ const payloadSchema = t.object({
 
 describe("WorkerProvider", () => {
   const createTestApp = async (
-    options: { workerConcurrency?: number; blockingTimeout?: number } = {},
+    options: {
+      workerConcurrency?: number;
+      workerInterval?: number;
+      workerMaxInterval?: number;
+    } = {},
   ) => {
     const app = Alepha.create({
       env: {
         QUEUE_WORKER_CONCURRENCY: options.workerConcurrency ?? 1,
-        QUEUE_WORKER_BLOCKING_TIMEOUT: options.blockingTimeout ?? 1,
-        QUEUE_SCHEDULER_INTERVAL: 100, // Fast scheduler for tests
-        QUEUE_STALLED_THRESHOLD: 100,
+        QUEUE_WORKER_INTERVAL: options.workerInterval ?? 10,
+        QUEUE_WORKER_MAX_INTERVAL: options.workerMaxInterval ?? 1000,
       },
     });
 
@@ -105,6 +107,67 @@ describe("WorkerProvider", () => {
     });
   });
 
+  describe("WakeUp Functionality", () => {
+    test("should wake up workers and start missing ones", async () => {
+      class TestService {
+        queue = $queue({
+          name: "test",
+          schema: payloadSchema,
+          handler: async () => {},
+        });
+      }
+
+      const app = await createTestApp({ workerConcurrency: 2 });
+      app.with(TestService);
+
+      const workerProvider = app.inject(WorkerProvider);
+      const debugSpy = vi.spyOn(workerProvider["log"], "debug");
+
+      await app.start();
+      expect(workerProvider["workersRunning"]).toBe(2);
+
+      // Simulate worker crash by manually decrementing counter
+      workerProvider["workersRunning"] = 1;
+
+      // Call wakeUp - should detect missing worker and restart it
+      workerProvider.wakeUp();
+
+      expect(debugSpy).toHaveBeenCalledWith("Waking up workers...");
+      expect(workerProvider["workersRunning"]).toBe(2);
+
+      await app.stop();
+    });
+
+    test("should create new AbortController on wakeUp", async () => {
+      class TestService {
+        queue = $queue({
+          name: "test",
+          schema: payloadSchema,
+          handler: async () => {},
+        });
+      }
+
+      const app = await createTestApp();
+      app.with(TestService);
+
+      const workerProvider = app.inject(WorkerProvider);
+
+      await app.start();
+
+      const oldController = workerProvider["abortController"];
+      expect(oldController.signal.aborted).toBe(false);
+
+      workerProvider.wakeUp();
+
+      const newController = workerProvider["abortController"];
+      expect(oldController.signal.aborted).toBe(true);
+      expect(newController.signal.aborted).toBe(false);
+      expect(newController).not.toBe(oldController);
+
+      await app.stop();
+    });
+  });
+
   describe("Message Processing", () => {
     test("should process messages correctly", async () => {
       const messages: any[] = [];
@@ -118,7 +181,7 @@ describe("WorkerProvider", () => {
         });
       }
 
-      const app = await createTestApp();
+      const app = await createTestApp({ workerInterval: 5 });
       app.with(TestService);
 
       await app.start();
@@ -172,7 +235,7 @@ describe("WorkerProvider", () => {
       await app.stop();
     });
 
-    test("should handle consumer with queue primitive", async () => {
+    test("should handle consumer with queue descriptor", async () => {
       const messages: any[] = [];
 
       class TestService {
@@ -207,7 +270,7 @@ describe("WorkerProvider", () => {
   });
 
   describe("Edge Cases", () => {
-    test("should handle invalid payload during processing", async () => {
+    test("should handle malformed JSON messages", async () => {
       class TestService {
         queue = $queue({
           name: "test",
@@ -225,36 +288,30 @@ describe("WorkerProvider", () => {
 
       await app.start();
 
-      // Push job with invalid payload directly via job API
-      // This bypasses schema validation at push time
-      await queueProvider.addJob("test", {
-        id: 123, // Should be string
-        count: "invalid", // Should be number
-      });
+      // Push malformed JSON directly to the queue
+      await queueProvider.push("test", "invalid-json");
 
       await expect
         .poll(() => errorSpy.mock.calls.length > 0, { timeout: 500 })
         .toBeTruthy();
 
-      // Worker should still be running after processing error
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to process message",
+        expect.any(Error),
+      );
+
+      // Worker should still be running
       expect(workerProvider["workersRunning"]).toBe(1);
 
       await app.stop();
     });
 
-    test("should handle handler errors and mark job as failed", async () => {
-      const processedIds: string[] = [];
-
+    test("should handle schema validation errors", async () => {
       class TestService {
         queue = $queue({
-          name: "error-test",
+          name: "test",
           schema: payloadSchema,
-          handler: async ({ payload }) => {
-            processedIds.push(payload.id);
-            if (payload.id === "fail") {
-              throw new Error("Handler error");
-            }
-          },
+          handler: async () => {},
         });
       }
 
@@ -267,25 +324,53 @@ describe("WorkerProvider", () => {
 
       await app.start();
 
-      const testService = app.inject(TestService);
-      await testService.queue.push({ id: "fail", count: 1 });
+      // Push message with invalid schema
+      await queueProvider.push(
+        "test",
+        JSON.stringify({
+          payload: { id: 123, count: "invalid" }, // id should be string, count should be number
+        }),
+      );
 
       await expect
-        .poll(() => processedIds.includes("fail"), { timeout: 500 })
+        .poll(() => errorSpy.mock.calls.length > 0, { timeout: 500 })
         .toBeTruthy();
 
-      // Check error was logged
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("failed"),
+        "Failed to process message",
         expect.any(Error),
       );
 
-      // Job should be marked as failed
-      const jobCounts = await queueProvider.getJobCounts("error-test");
-      expect(jobCounts.failed).toBe(1);
-
       // Worker should still be running
       expect(workerProvider["workersRunning"]).toBe(1);
+
+      await app.stop();
+    });
+
+    test("should handle abort signal during wait", async () => {
+      class TestService {
+        queue = $queue({
+          name: "test",
+          schema: payloadSchema,
+          handler: async () => {},
+        });
+      }
+
+      const app = await createTestApp({ workerInterval: 5000 });
+      app.with(TestService);
+
+      const workerProvider = app.inject(WorkerProvider);
+      const warnSpy = vi.spyOn(workerProvider["log"], "warn");
+
+      await app.start();
+
+      // Abort the controller to simulate abort during wait
+      workerProvider["abortController"].abort();
+
+      // This should detect the abort and return early
+      await workerProvider["waitForNextMessage"](0);
+
+      expect(warnSpy).toHaveBeenCalledWith("Worker n-0 aborted.");
 
       await app.stop();
     });
