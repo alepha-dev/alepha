@@ -6,4 +6,4 @@ export class AppRouter {
     component: () => "Hello World",
   });
 }
-`.trim()
+`.trim();

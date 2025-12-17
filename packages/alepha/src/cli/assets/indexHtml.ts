@@ -12,4 +12,4 @@ export const indexHtml = (
 <script type="module" src="${browserEntry}"></script>
 </body>
 </html>
-`.trim()
+`.trim();

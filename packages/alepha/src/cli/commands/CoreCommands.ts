@@ -111,6 +111,9 @@ export class CoreCommands {
         alias: `installing dependencies with ${pm}`,
       });
 
+      await this.utils.ensureDependency(root, "vite", { run });
+      await this.utils.ensureDependency(root, "@biomejs/biome", { run });
+
       // Install vitest and create test directory if --test flag is set
       if (flags.test) {
         await this.utils.ensureTestDir(root);

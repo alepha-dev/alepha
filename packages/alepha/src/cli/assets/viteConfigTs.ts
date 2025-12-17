@@ -11,4 +11,4 @@ export default {
     globals: true,
   },
 };
-`.trim()
+`.trim();

@@ -7,4 +7,4 @@ const alepha = Alepha.create();
 alepha.with(AppRouter);
 
 run(alepha);
-`.trim()
+`.trim();

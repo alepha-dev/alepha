@@ -30,4 +30,4 @@ export const biomeJson = `
     }
   }
 }
-`.trim()
+`.trim();
