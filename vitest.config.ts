@@ -21,6 +21,8 @@ export default defineConfig({
 				"packages/create-alepha",
 				"packages/alepha/src/vite",
 				"packages/alepha/src/cli",
+				"packages/alepha/src/bin",
+				"packages/alepha/src/thread",
 			],
 		},
 		env: {
