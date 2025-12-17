@@ -39,7 +39,7 @@ import {
   ConflictError,
 } from "alepha/server";
 
-class UserApi {
+class UserController {
   repo = $repository(userEntity);
 
   // Repository methods already throw DbEntityNotFoundError (404) if not found
@@ -53,7 +53,7 @@ class UserApi {
 }
 
 // When working with non-ORM data sources, throw errors explicitly
-class ConfigApi {
+class ConfigController {
   protected configs = new Map<string, Config>();
 
   getConfig = $action({
@@ -97,7 +97,7 @@ For custom status codes, use `HttpError` directly:
 ```typescript
 import { HttpError } from "alepha/server";
 
-class TeapotApi {
+class TeapotController {
   brew = $action({
     path: "/brew",
     handler: async () => {
@@ -188,7 +188,7 @@ Available database errors:
 Because these errors have `status`, they automatically translate to proper HTTP responses:
 
 ```typescript
-class UserApi {
+class UserController {
   updateUser = $action({
     path: "/users/:id",
     schema: { body: userUpdateSchema },
@@ -205,7 +205,7 @@ class UserApi {
 When TypeBox schema validation fails, Alepha throws a `TypeBoxError`:
 
 ```typescript
-class UserApi {
+class UserController {
   createUser = $action({
     schema: {
       body: t.object({
@@ -418,7 +418,7 @@ class UserService {
 Convert internal errors to HTTP errors at the API layer:
 
 ```typescript
-class UserApi {
+class UserController {
   getUser = $action({
     path: "/users/:id",
     handler: async ({ params }) => {
@@ -440,7 +440,7 @@ class UserApi {
 For non-critical features, fail silently:
 
 ```typescript
-class UserApi {
+class UserController {
   getUser = $action({
     path: "/users/:id",
     handler: async ({ params }) => {

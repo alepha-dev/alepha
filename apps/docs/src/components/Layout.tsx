@@ -87,7 +87,7 @@ const LayoutContent = () => {
 
   const adminShellProps: AdminShellProps = {
     appShellProps: {
-      withBorder: false,
+      withBorder: true,
       padding: "md",
       footer: { height: 32 },
     },

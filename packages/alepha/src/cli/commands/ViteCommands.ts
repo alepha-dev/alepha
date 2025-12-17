@@ -201,14 +201,11 @@ export class ViteCommands {
       });
 
       // Copy assets
-      // TODO: only copy if assets are found? Currently will always run
-      await run({
-        name: "copy assets",
-        handler: () =>
-          copyAssets({
-            entry: `${distDir}/index.js`,
-            distDir,
-          }),
+      await copyAssets({
+        root,
+        entry: `${distDir}/index.js`,
+        distDir,
+        run,
       });
 
       if (hasClient) {

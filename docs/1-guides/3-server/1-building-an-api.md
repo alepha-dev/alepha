@@ -2,7 +2,7 @@
 
 So you have the server running. Now you need to actually *do* something with it.
 
-In Alepha, we don't write "controllers" full of decorators, and we don't write "route handlers" that are just untyped middleware functions. We write **Actions**.
+In Alepha, we don't write controllers full of "decorators", and we don't write "route handlers" that are just untyped middleware functions. We write **Actions**.
 
 ## The `$action` Primitive
 
@@ -29,10 +29,12 @@ Let's say you want to fetch a user profile.
 import { t } from "alepha";
 import { $action } from "alepha/server";
 
-class UsersApi {
+class UserController {
+  path = "/users";
+
   // GET /api/users/:id
   getProfile = $action({
-    path: "/users/:id",
+    path: `${this.path}/:id`,
     schema: {
       // 1. Define the URL parameters
       params: t.object({
@@ -78,7 +80,7 @@ When you define a `body` in the schema, Alepha automatically:
       }),
       response: t.object({
         id: t.uuid(),
-        status: t.literal("created"),
+        status: t.const("created"),
       }),
     },
     handler: async ({ body }) => {
@@ -100,25 +102,4 @@ Because you were a good developer and defined your schemas using `t` (TypeBox), 
 
 You don't need to write a YAML file. You don't need to add `@ApiProperty()` decorators to random classes.
 
-Just go to `http://localhost:3000/docs` (or wherever your dev server is). You will see a full, interactive Swagger UI generated from your `$action` definitions. It updates in real-time as you code.
-
-## Calling Actions Internally
-
-Here is a cool trick. Since `$action` is just a property on your class, you can call it like a regular function if you are on the server.
-
-```typescript
-class OtherService {
-  usersApi = $inject(UsersApi);
-
-  async doSomething() {
-    // This doesn't make an HTTP request!
-    // It calls the handler directly, bypassing the network stack,
-    // but still performing validation logic.
-    const user = await this.usersApi.getProfile.run({
-      params: { id: "123" }
-    });
-  }
-}
-```
-
-This effectively eliminates the need to split your logic into "Controller" vs "Service" layers for simple CRUD operations. The Action *is* the unit of logic.
+Just go to `http://localhost:3000/docs/` (or wherever your dev server is). You will see a full, interactive Swagger UI generated from your `$action` definitions. It updates in real-time as you code.

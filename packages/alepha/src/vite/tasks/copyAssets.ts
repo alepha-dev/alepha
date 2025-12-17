@@ -13,6 +13,19 @@ export interface CopyAssetsOptions {
    * Output directory for copied assets.
    */
   distDir: string;
+
+  /**
+   * @default process.cwd()
+   */
+  root?: string;
+
+  /**
+   * Add Runner for logging (@see Alepha CLI)
+   */
+  run?: (opts: {
+    name: string;
+    handler: () => Promise<void>;
+  }) => Promise<string>;
 }
 
 /**
@@ -25,7 +38,7 @@ export interface CopyAssetsOptions {
  * Used by modules like AlephaServerSwagger to distribute UI files.
  */
 export async function copyAssets(opts: CopyAssetsOptions): Promise<void> {
-  const root = process.cwd();
+  const root = opts.root ?? process.cwd();
   const alepha = await importAlepha(opts.entry);
   const assets = alepha.store.get("alepha.build.assets");
 
@@ -33,13 +46,24 @@ export async function copyAssets(opts: CopyAssetsOptions): Promise<void> {
     return;
   }
 
-  const require = createRequire(join(root, opts.entry));
-  const buildAssetsDir = join(root, `${opts.distDir}/assets`);
-  await mkdir(buildAssetsDir).catch(() => null);
+  const fn = async () => {
+    const require = createRequire(join(root, opts.entry));
+    const buildAssetsDir = join(root, `${opts.distDir}/assets`);
+    await mkdir(buildAssetsDir).catch(() => null);
 
-  for (const pkgName of assets ?? []) {
-    const pkgDir = dirname(require.resolve(`${pkgName}/package.json`));
-    const assetsPkgDir = resolve(pkgDir, "assets");
-    await cp(assetsPkgDir, buildAssetsDir, { recursive: true });
+    for (const pkgName of assets ?? []) {
+      const pkgDir = dirname(require.resolve(`${pkgName}/package.json`));
+      const assetsPkgDir = resolve(pkgDir, "assets");
+      await cp(assetsPkgDir, buildAssetsDir, { recursive: true });
+    }
+  };
+
+  if (opts.run) {
+    await opts.run({
+      name: "copy assets",
+      handler: fn,
+    });
+  } else {
+    await fn();
   }
 }

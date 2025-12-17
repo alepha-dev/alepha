@@ -17,13 +17,21 @@ A **Realm** is a security boundary. It handles JWT token creation, verification,
 
 ```typescript
 import { $realm } from "alepha/security";
+import { $env, t } from "alepha";
 
-class Security {
+class AppSecurity {
+  env = $env(t.object({
+    REALM_SECRET: t.string({ default: "***********" }),
+  }))
+
   // Internal realm: you control the secret
   internal = $realm({
     name: "app",
-    secret: process.env.APP_SECRET,
-    roles: ["admin", "user"],
+    secret: this.env.REALM_SECRET,
+    roles: [{
+      name: "user",
+      permissions: [{ name: "*" }],
+    }],
     settings: {
       accessToken: { expiration: [15, "minutes"] },
       refreshToken: { expiration: [30, "days"] },
@@ -34,9 +42,18 @@ class Security {
   external = $realm({
     name: "keycloak",
     jwks: () => "https://auth.example.com/realms/myrealm/protocol/openid-connect/certs",
+    roles: [{
+      name: "user",
+      permissions: [{ name: "*" }],
+    }],
   });
 }
 ```
+
+- Including a `$realm` in your app automatically enables security check.
+- System is permission based by default. You can define roles and permissions as needed.
+- Alepha generates permissions automatically for each action (e.g., `module:action`).
+- `$realm` is considered low-level. You usually want to use high-level `$userRealm` for full user management.
 
 Use `$realm` directly when:
 *   You're integrating with an external identity provider (Keycloak, Auth0, Okta).
@@ -48,7 +65,7 @@ Use `$realm` directly when:
 The `$auth` primitive handles *how* users authenticate. It supports three strategies:
 
 ```typescript
-import { $auth } from "alepha/server-auth";
+import { $auth } from "alepha/server/auth";
 
 class AuthProviders {
   // 1. Credentials: username/password
@@ -62,12 +79,17 @@ class AuthProviders {
     }
   });
 
+  env = $env(t.object({
+    GITHUB_CLIENT_ID: t.string(),
+    GITHUB_CLIENT_SECRET: t.string(),
+  }));
+
   // 2. OAuth2: external provider (manual config)
   github = $auth({
     realm: this.security.internal,
     oauth: {
-      clientId: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      clientId: this.env.GITHUB_CLIENT_ID,
+      clientSecret: this.env.GITHUB_CLIENT_SECRET,
       authorization: "https://github.com/login/oauth/authorize",
       token: "https://github.com/login/oauth/access_token",
       scope: "user:email",
@@ -75,15 +97,6 @@ class AuthProviders {
         // Fetch user profile from GitHub API
         return await fetchGitHubUser(tokens.access_token);
       },
-    }
-  });
-
-  // 3. OIDC: OpenID Connect (auto-discovery)
-  keycloak = $auth({
-    oidc: {
-      issuer: "https://auth.example.com/realms/myrealm",
-      clientId: "my-app",
-      clientSecret: process.env.KEYCLOAK_SECRET,
     }
   });
 }
@@ -98,14 +111,22 @@ For most SaaS applications, you don't want to wire all this yourself. Alepha pro
 *   Email verification hooks
 
 ```typescript
-import { $userRealm } from "alepha/api-users";
+import { $userRealm } from "alepha/api/users";
+import { $env, t } from "alepha";
 
-class AuthSystem {
+class AppSecurity {
+  env = $env(t.object({
+    APP_SECRET: t.string(),
+  }));
+
   realm = $userRealm({
-    secret: process.env.APP_SECRET,
+    secret: this.env.APP_SECRET,
     settings: {
       registrationAllowed: true,
       emailRequired: true,
+    },
+    identities: {
+      google: true,
     }
   });
 }
@@ -116,7 +137,7 @@ class AuthSystem {
 Similarly, instead of configuring OAuth2 manually, use the presets:
 
 ```typescript
-import { $authGoogle, $authGithub, $authCredentials } from "alepha/server-auth";
+import { $authGoogle, $authGithub, $authCredentials } from "alepha/server/auth";
 
 class AuthProviders {
   // Username/password with your $userRealm
@@ -124,45 +145,38 @@ class AuthProviders {
 
   // Google OAuth2 (auto-configured)
   google = $authGoogle(this.authSystem.realm, {
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    clientId: "...",
+    clientSecret: "...",
   });
 
   // GitHub OAuth2 (auto-configured)
   github = $authGithub(this.authSystem.realm, {
-    clientId: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    clientId: "...",
+    clientSecret: "...",
   });
 }
 ```
-
-Once registered, Alepha automatically creates the necessary endpoints:
-*   `/api/oauth/login?provider=google`
-*   `/api/oauth/callback`
-*   `/api/_auth/token` (for credentials)
 
 ## Protecting Routes
 
 To protect an endpoint, tell the `$action` who is allowed in.
 
+- $action: By default, only authenticated users can access.
+- $route: `secure: true` to require authentication.
+
 ```typescript
-class UserApi {
+class UserController {
   // Only logged-in users can see this
   getProfile = $action({
     path: "/me",
-    secure: true,
     handler: async ({ user }) => {
       return user;
     }
   });
 
-  // Only admins can delete things
-  deleteEverything = $action({
-    path: "/nuke",
-    secure: { permission: "system:delete" },
-    handler: async () => {
-      // ...
-    }
+  noAuthNeeded = $action({
+    secure: false,
+    handler: () => "This is public!",
   });
 }
 ```

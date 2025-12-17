@@ -61,6 +61,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/docs@workspace:apps/docs":
+  version: 0.0.0-use.local
+  resolution: "@alepha/docs@workspace:apps/docs"
+  dependencies:
+    "@alepha/react": "npm:0.13.7"
+    "@mantine/core": "npm:^8.3.10"
+    "@mantine/hooks": "npm:^8.3.10"
+    "@tabler/icons-react": "npm:^3.35.0"
+    "@types/react": "npm:^19.2.7"
+    alepha: "npm:^0.13.7"
+    highlight.js: "npm:^11.11.1"
+    marked: "npm:^17.0.1"
+    marked-highlight: "npm:^2.2.3"
+    react: "npm:^19.2.1"
+    react-dom: "npm:^19.2.1"
+    vite: "npm:^7.2.7"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/protobuf@workspace:packages/protobuf":
   version: 0.0.0-use.local
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
@@ -6995,25 +7014,6 @@ __metadata:
   checksum: 10c0/81b91f9d39c4eaca068eb0c1eb0e4afbdc5bb2941d197f513dd596b820b956fef43485876226d65d497bebc15666aa2aa82c679e84f65d5f2bfbf14ee46e32c1
   languageName: node
   linkType: hard
-
-"docs@workspace:apps/docs":
-  version: 0.0.0-use.local
-  resolution: "docs@workspace:apps/docs"
-  dependencies:
-    "@alepha/react": "npm:0.13.7"
-    "@mantine/core": "npm:^8.3.10"
-    "@mantine/hooks": "npm:^8.3.10"
-    "@tabler/icons-react": "npm:^3.35.0"
-    "@types/react": "npm:^19.2.7"
-    alepha: "npm:^0.13.7"
-    highlight.js: "npm:^11.11.1"
-    marked: "npm:^17.0.1"
-    marked-highlight: "npm:^2.2.3"
-    react: "npm:^19.2.1"
-    react-dom: "npm:^19.2.1"
-    vite: "npm:^7.2.7"
-  languageName: unknown
-  linkType: soft
 
 "dom-accessibility-api@npm:^0.5.9":
   version: 0.5.16

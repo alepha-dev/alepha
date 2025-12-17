@@ -3,5 +3,5 @@ Disclaimer: This is not a serious benchmark, just a fun way to compare different
 ## Commands
 
 ```bash
-yarn benchmark
+yarn start
 ```
