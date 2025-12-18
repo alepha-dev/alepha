@@ -96,8 +96,11 @@ Run the development server:
 
 ```bash
 $ npx alepha dev
-# alepha dev comes with hot-reload and full TypeScript support
-# but you can also run:
+```
+
+Command `alepha dev` comes with hot-reload and full TypeScript support but you can also run:
+
+```bash
 $ node ./src/main.ts
 $ bun ./src/main.ts
 ```

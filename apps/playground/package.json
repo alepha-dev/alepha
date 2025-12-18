@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "alepha": "^0.13.7",
-    "react": "^19.2.1"
+    "react": "^19.2.3"
   },
   "devDependencies": {
     "vite": "^7.2.7"
