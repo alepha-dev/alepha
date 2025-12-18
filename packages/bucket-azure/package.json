@@ -28,7 +28,7 @@
   "devDependencies": {
     "alepha": "0.13.7",
     "tsdown": "^0.17.2",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   },
   "peerDependencies": {
     "alepha": "0.13.7"

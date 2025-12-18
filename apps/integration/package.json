@@ -10,6 +10,6 @@
     "alepha": "^0.13.7"
   },
   "devDependencies": {
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   }
 }

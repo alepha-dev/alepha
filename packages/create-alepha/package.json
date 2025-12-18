@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "tsdown": "^0.17.2",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   },
   "scripts": {
     "lint": "biome check --fix",

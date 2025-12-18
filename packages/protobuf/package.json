@@ -15,13 +15,13 @@
     "src"
   ],
   "dependencies": {
-    "protobufjs": "^7.5.4"
+    "protobufjs": "^8.0.0"
   },
   "devDependencies": {
     "alepha": "0.13.7",
     "tsdown": "^0.17.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   },
   "peerDependencies": {
     "alepha": "0.13.7"

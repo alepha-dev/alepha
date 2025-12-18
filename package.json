@@ -19,7 +19,7 @@
 		"alepha": "^0.13.7",
 		"depcheck": "^1.4.7",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.15"
+		"vitest": "^4.0.16"
 	},
 	"scripts": {
 		"w": "yarn workspace",

@@ -44,7 +44,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
     "vercel": "^50.1.2",
-    "vite": "^7.2.7",
-    "vitest": "^4.0.15"
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
   }
 }
