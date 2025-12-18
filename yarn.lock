@@ -5910,7 +5910,7 @@ __metadata:
     swagger-ui-dist: "npm:^5.31.0"
     tsdown: "npm:^0.17.2"
     tsx: "npm:^4.21.0"
-    typebox: "npm:^1.0.61"
+    typebox: "npm:^1.0.64"
     vite: "npm:^7.3.0"
     vite-bundle-analyzer: "npm:^1.3.2"
     vitest: "npm:^4.0.16"
@@ -13464,10 +13464,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.61":
-  version: 1.0.61
-  resolution: "typebox@npm:1.0.61"
-  checksum: 10c0/94a1ad9f51b3ad74bef72ebd11765232a162039cb923cd51816110965ab5498ee851c4715fac12b9eed8a03cd0803403f6dd5682b4072a8b37f912233a38b2cd
+"typebox@npm:^1.0.64":
+  version: 1.0.64
+  resolution: "typebox@npm:1.0.64"
+  checksum: 10c0/eab183ff2bc4810b61a2010cc886bff4e85aabbd2e95b8c7d08ed205e15381cb9d67535c4f7cbfe99a9dcafdc90b62ef30a1ff45405965696b95e10282fa3a28
   languageName: node
   linkType: hard
 

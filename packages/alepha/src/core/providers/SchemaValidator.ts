@@ -23,7 +23,7 @@ export class SchemaValidator {
     });
 
     try {
-      return this.getValidator(schema).Parse(newValue);
+      return this.getValidator(schema).Parse(newValue) as Static<T>;
     } catch (error: any) {
       if (error.cause?.errors?.[0]) {
         throw new TypeBoxError(error.cause.errors[0]);
