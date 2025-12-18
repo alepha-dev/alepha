@@ -21,7 +21,7 @@
     "@mantine/modals": "^8.3.10",
     "@mantine/notifications": "^8.3.10",
     "@mantine/tiptap": "^8.3.10",
-    "@tabler/icons-react": "^3.35.0",
+    "@tabler/icons-react": "^3.36.0",
     "@tiptap/core": "^3.13.0",
     "@tiptap/extension-link": "^3.13.0",
     "@tiptap/pm": "^3.13.0",
@@ -33,17 +33,17 @@
     "animate.css": "^4.1.1",
     "framer-motion": "^12.23.26",
     "highlight.js": "^11.11.1",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
-    "recharts": "^3.5.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "recharts": "^3.6.0",
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
-    "@types/node": "^25.0.0",
+    "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
-    "vercel": "^49.2.0",
+    "vercel": "^50.1.2",
     "vite": "^7.2.7",
     "vitest": "^4.0.15"
   }
