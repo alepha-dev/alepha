@@ -12,7 +12,8 @@
   "types": "./src/index.ts",
   "files": [
     "dist",
-    "src"
+    "src",
+    "assets"
   ],
   "devDependencies": {
     "@alepha/react": "0.13.7",

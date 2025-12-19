@@ -67,7 +67,9 @@ async function main(to?: string) {
             pkg.exports as Record<string, any>,
           )) {
             if (typeof value === "object") {
-              value.types = replace(value.types);
+              value.types = value.types
+                .replace("dist/", "src/")
+                .replace("index.d.ts", "index.ts");
               value.import = replace(value.import);
               if (value.browser) {
                 value.browser = replace(value.browser);
@@ -108,7 +110,9 @@ async function main(to?: string) {
                 delete value.require;
               }
 
-              value.types = replace(value.types);
+              value.types = value.types
+                .replace("src/", "dist/")
+                .replace(".ts", ".d.ts");
               value.import = replace(value.import);
               if (value.browser) {
                 value.browser = replace(value.browser);
