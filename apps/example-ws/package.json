@@ -6,8 +6,8 @@
     "start": "alepha build && node dist"
   },
   "dependencies": {
-    "@alepha/react": "^0.13.7",
-    "alepha": "^0.13.7",
+    "@alepha/react": "^0.13.8",
+    "alepha": "^0.13.8",
     "react": "^19.2.3"
   }
 }

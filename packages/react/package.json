@@ -2,7 +2,7 @@
   "name": "@alepha/react",
   "description": "React components and hooks for building Alepha applications.",
   "author": "Nicolas Foures",
-  "version": "0.13.7",
+  "version": "0.13.8",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -25,13 +25,13 @@
     "@testing-library/react": "^16.3.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "alepha": "0.13.7",
+    "alepha": "0.13.8",
     "jsdom": "^27.3.0",
     "react": "^19.2.3",
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
-    "alepha": "0.13.7",
+    "alepha": "0.13.8",
     "react": "^19"
   },
   "scripts": {

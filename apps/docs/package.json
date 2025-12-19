@@ -3,17 +3,17 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@alepha/react": "0.13.7",
+    "@alepha/react": "0.13.8",
     "@mantine/core": "^8.3.10",
     "@mantine/hooks": "^8.3.10",
     "@tabler/icons-react": "^3.36.0",
-    "alepha": "^0.13.7",
+    "alepha": "^0.13.8",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",
-    "alepha": "^0.13.7",
+    "alepha": "^0.13.8",
     "highlight.js": "^11.11.1",
     "marked": "^17.0.1",
     "marked-highlight": "^2.2.3",
