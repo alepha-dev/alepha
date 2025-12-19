@@ -54,7 +54,7 @@ export interface RateLimitOptions {
  *
  * @example
  * ```ts
- * import { $rateLimit, AlephaServerRateLimit } from "alepha/server-rate-limit";
+ * import { $rateLimit, AlephaServerRateLimit } from "alepha/server/rate-limit";
  *
  * class ApiService {
  *   // Path-specific rate limiting

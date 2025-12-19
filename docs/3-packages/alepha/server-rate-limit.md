@@ -17,7 +17,7 @@ The server-rate-limit module enables per-route and per-action rate limiting usin
 It offers sliding window rate limiting, custom key generation, and seamless integration with server routes.
 
 ```ts
-import { $rateLimit, AlephaServerRateLimit } from "alepha/server-rate-limit";
+import { $rateLimit, AlephaServerRateLimit } from "alepha/server/rate-limit";
 
 class ApiService {
   // Path-specific rate limiting

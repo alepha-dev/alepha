@@ -32,7 +32,7 @@ class MediaService {
 }
 ```
 
-### Layer 2: `alepha/api-files` - Managed File Storage
+### Layer 2: `alepha/api/files` - Managed File Storage
 
 The `AlephaApiFiles` module is a **superset** of `alepha/bucket`. It adds:
 - Database persistence for file metadata
@@ -45,7 +45,7 @@ The `AlephaApiFiles` module is a **superset** of `alepha/bucket`. It adds:
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaApiFiles } from "alepha/api-files";
+import { AlephaApiFiles } from "alepha/api/files";
 
 const alepha = Alepha.create().with(AlephaApiFiles);
 
@@ -128,7 +128,7 @@ class AvatarApi {
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaApiFiles, FileService } from "alepha/api-files";
+import { AlephaApiFiles, FileService } from "alepha/api/files";
 
 const alepha = Alepha.create().with(AlephaApiFiles);
 
@@ -377,7 +377,7 @@ The `AlephaApiFiles` module uses these hooks internally to persist metadata to t
 
 ## Comparison: Raw vs Managed
 
-| Feature | `alepha/bucket` | `alepha/api-files` |
+| Feature | `alepha/bucket` | `alepha/api/files` |
 |---------|-----------------|-------------------|
 | Blob storage | Yes | Yes |
 | MIME/size validation | Yes | Yes |
@@ -395,7 +395,7 @@ The `AlephaApiFiles` module uses these hooks internally to persist metadata to t
 - You don't need TTL or tags
 - You want minimal dependencies
 
-**Use `alepha/api-files` when:**
+**Use `alepha/api/files` when:**
 - You need file metadata in the database
 - You want automatic TTL cleanup
 - You need audit trails (who uploaded what)

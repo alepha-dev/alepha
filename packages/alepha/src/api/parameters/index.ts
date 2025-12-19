@@ -34,7 +34,7 @@ export * from "./services/ConfigStore.ts";
  * @example
  * ```ts
  * import { Alepha } from "alepha";
- * import { AlephaApiParameters } from "alepha/api-parameters";
+ * import { AlephaApiParameters } from "alepha/api/parameters";
  *
  * const alepha = Alepha.create();
  * alepha.with(AlephaApiParameters);

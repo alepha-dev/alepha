@@ -122,7 +122,7 @@ await this.trackEvent.flush();
 `$job` is a scheduler that keeps a paper trail. Every execution is stored in the database with its status and logs.
 
 ```typescript
-import { $job } from "alepha/api-jobs";
+import { $job } from "alepha/api/jobs";
 
 class ReportService {
   generateDailyReport = $job({
@@ -177,7 +177,7 @@ If your handler throws, the job is marked as `FAILED` and the error is captured:
 ### Querying Job History
 
 ```typescript
-import { JobProvider } from "alepha/api-jobs";
+import { JobProvider } from "alepha/api/jobs";
 
 class AdminService {
   jobs = $inject(JobProvider);

@@ -149,35 +149,12 @@ Want to log every HTTP request? Alepha does it automatically when you enable the
 [14:32:05.150] INFO <alepha.server> <-- GET /api/users 200 50ms
 ```
 
-### Custom Request Context
-
-Add request-specific data to all logs in that request:
-
-```typescript
-class UserApi {
-  log = $logger();
-
-  getUser = $action({
-    handler: async ({ params, request }) => {
-      // add user ID to all subsequent logs in this request
-      this.log.context({ userId: params.id });
-
-      this.log.info("Fetching user");        // includes userId
-      const user = await this.findUser();
-      this.log.info("User found");           // includes userId
-
-      return user;
-    },
-  });
-}
-```
-
 ## Health Checks
 
 Every production app needs a health endpoint. Alepha provides one out of the box:
 
 ```typescript
-import { AlephaServerHealth } from "alepha/server-health";
+import { AlephaServerHealth } from "alepha/server/health";
 
 const alepha = Alepha.create()
   .with(AlephaServerHealth);
@@ -187,32 +164,12 @@ const alepha = Alepha.create()
 // GET /healthz  -> "ok" (for k8s probes)
 ```
 
-### Custom Health Checks
-
-Add checks for your dependencies:
-
-```typescript
-class DatabaseHealth {
-  db = $inject(Database);
-
-  check = $hook({
-    on: "health:check",
-    handler: async () => {
-      // throw if unhealthy
-      await this.db.ping();
-    },
-  });
-}
-```
-
-If any health check throws, `/health` returns 503.
-
 ## Prometheus Metrics
 
 For serious monitoring, enable the metrics module:
 
 ```typescript
-import { AlephaServerMetrics } from "alepha/server-metrics";
+import { AlephaServerMetrics } from "alepha/server/metrics";
 
 const alepha = Alepha.create()
   .with(AlephaServerMetrics);
@@ -224,31 +181,6 @@ You get automatic metrics for:
 - HTTP request count and duration
 - Response status codes
 - Active connections
-
-### Custom Metrics
-
-```typescript
-import { $inject } from "alepha";
-import { MetricsProvider } from "alepha/server-metrics";
-
-class PaymentService {
-  metrics = $inject(MetricsProvider);
-
-  async processPayment(amount: number) {
-    const timer = this.metrics.startTimer("payment_duration");
-
-    try {
-      await this.charge(amount);
-      this.metrics.increment("payments_total", { status: "success" });
-    } catch (e) {
-      this.metrics.increment("payments_total", { status: "failed" });
-      throw e;
-    } finally {
-      timer.end();
-    }
-  }
-}
-```
 
 Scrape `/metrics` with Prometheus, visualize in Grafana.
 
@@ -266,7 +198,7 @@ const alepha = Alepha.create()
 ```
 
 DevTools shows:
-- All registered actions, queues, schedulers
+- All registered actions, schedulers
 - Last 10,000 log entries (filterable)
 - Current atom state
 - Active jobs and their status

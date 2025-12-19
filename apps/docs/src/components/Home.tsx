@@ -385,7 +385,7 @@ const principles = [
   },
   {
     icon: IconRocket,
-    title: "Production Ready",
+    title: "Deploy Anywhere",
     description:
       "Compiles to optimized bundles. Deploy anywhere: Vercel, Docker, Cloudflare, or a simple VPS.",
   },
