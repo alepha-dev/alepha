@@ -79,14 +79,14 @@ export class AlephaPackageBuilderCli {
         JSON.stringify(modules, null, 2),
       );
 
-      const external = [
-        "alepha",
-        packageName,
-        ...modules.map(
-          (item) =>
-            `${packageName}/${item.name.replace("-", "/").replace("/core", "")}`,
-        ),
-      ];
+      const tsconfig = await readFile(
+        join(root, "../../tsconfig.json"),
+        "utf-8",
+      );
+
+      const external: string[] = Object.keys(
+        JSON.parse(tsconfig).compilerOptions.paths,
+      );
 
       await run.rm(this.dist);
 
@@ -103,6 +103,10 @@ export class AlephaPackageBuilderCli {
           fixedExtension: false,
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
           external,
+          dts: {
+            sourcemap: true,
+            resolve: false,
+          },
         });
 
         if (item.native) {
