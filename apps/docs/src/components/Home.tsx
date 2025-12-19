@@ -63,7 +63,7 @@ const EarlyDevelopmentBanner = () => {
               top: 128,
               left: "50%",
               transform: "translateX(-50%)",
-              zIndex: 100,
+              zIndex: 98,
               maxWidth: "calc(100% - 32px)",
               width: "auto",
             }
