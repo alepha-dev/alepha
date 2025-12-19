@@ -47,8 +47,8 @@ async function main(to?: string) {
       if (action === "ts") {
         const replace = (str: any) =>
           String(str).replace("dist/", "src/").replace(".js", ".ts");
-        pkg.main = "./src/index.ts";
-        pkg.types = "./src/index.ts";
+        pkg.main = pkg.main.replace(".js", ".ts").replace("dist/", "src/");
+        pkg.types = pkg.types.replace(".d.ts", ".ts").replace("dist/", "src/");
         pkg.module = undefined;
         if (pkg.browser) {
           pkg.browser = "./src/index.browser.ts";
@@ -82,9 +82,8 @@ async function main(to?: string) {
       } else {
         const replace = (str: any) =>
           String(str).replace("src/", "dist/").replace(".ts", ".js");
-        pkg.main = "./dist/index.js";
-        pkg.module = "./dist/index.js";
-        pkg.types = "./dist/index.d.ts";
+        pkg.main = pkg.main.replace(".ts", ".js").replace("src/", "dist/");
+        pkg.types = pkg.types.replace(".ts", ".d.ts").replace("src/", "dist/");
         if (pkg.browser) {
           pkg.browser = {
             "./dist/index.js": "./dist/index.browser.js",

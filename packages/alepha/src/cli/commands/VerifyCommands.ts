@@ -37,7 +37,10 @@ export class VerifyCommands {
         await run("alepha db:check-migrations");
       }
 
-      await run("alepha build");
+      const isExpo = await this.utils.hasExpo(root);
+      if (!isExpo) {
+        await run("alepha build");
+      }
       await run("alepha clean");
     },
   });

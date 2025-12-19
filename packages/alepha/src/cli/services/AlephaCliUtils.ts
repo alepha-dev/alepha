@@ -196,6 +196,14 @@ export class AlephaCliUtils {
 
     const devDependencies: Record<string, string> = {};
 
+    const scripts: Record<string, string> = {
+      dev: "alepha dev",
+      build: "alepha build",
+      lint: "alepha lint",
+      typecheck: "alepha typecheck",
+      verify: "alepha verify",
+    };
+
     if (modes.ui) {
       dependencies["@alepha/ui"] = `^${version}`;
       modes.react = true;
@@ -212,11 +220,7 @@ export class AlephaCliUtils {
       type: "module",
       dependencies,
       devDependencies,
-      scripts: {
-        dev: "alepha dev",
-        build: "alepha build",
-        verify: "alepha verify",
-      },
+      scripts,
     };
   }
 
@@ -234,16 +238,14 @@ export class AlephaCliUtils {
   public async ensurePackageJson(
     root: string,
     modes: DependencyModes,
-  ): Promise<void> {
+  ): Promise<object> {
     const packageJsonPath = join(root, "package.json");
     try {
       await access(packageJsonPath);
     } catch (error) {
-      await writeFile(
-        packageJsonPath,
-        JSON.stringify(this.generatePackageJsonContent(modes), null, 2),
-      );
-      return;
+      const obj = this.generatePackageJsonContent(modes);
+      await writeFile(packageJsonPath, JSON.stringify(obj, null, 2));
+      return obj;
     }
 
     const content = await readFile(packageJsonPath, "utf8");
@@ -261,6 +263,8 @@ export class AlephaCliUtils {
     Object.assign(packageJson.scripts, newPackageJson.scripts);
 
     await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+
+    return packageJson;
   }
 
   public async ensureConfig(
@@ -273,8 +277,8 @@ export class AlephaCliUtils {
       biomeJson?: boolean;
       editorconfig?: boolean;
     },
-  ) {
-    const tasks: Promise<void>[] = [];
+  ): Promise<Array<void | object>> {
+    const tasks: Promise<void | object>[] = [];
 
     if (opts.packageJson) {
       tasks.push(
@@ -300,7 +304,7 @@ export class AlephaCliUtils {
       tasks.push(this.ensureEditorConfig(root));
     }
 
-    await Promise.all(tasks);
+    return await Promise.all(tasks);
   }
 
   /**
@@ -790,6 +794,16 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   }
 
   /**
+   * Check if Expo is present in the project.
+   *
+   * @param root - The root directory of the project
+   * @returns True if expo is in dependencies or devDependencies
+   */
+  async hasExpo(root: string): Promise<boolean> {
+    return this.hasDependency(root, "expo");
+  }
+
+  /**
    * Install a dependency if it's missing from the project.
    *
    * Automatically detects the package manager (yarn, pnpm, npm) and installs
@@ -839,4 +853,5 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
 export interface DependencyModes {
   react?: boolean;
   ui?: boolean;
+  expo?: boolean;
 }

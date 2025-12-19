@@ -29,6 +29,7 @@ export class ViteCommands {
 
   public readonly run = $command({
     name: "run",
+    hide: true,
     description: "Run a TypeScript file directly",
     flags: t.object({
       watch: t.optional(
@@ -54,10 +55,17 @@ export class ViteCommands {
     description: "Run the project in development mode",
     args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
     handler: async ({ args, root }) => {
+      const expo = await this.utils.hasExpo(root);
+
       await this.utils.ensureConfig(root, {
-        viteConfigTs: true,
+        viteConfigTs: !expo,
         tsconfigJson: true,
       });
+
+      if (expo) {
+        await this.utils.exec(`expo start`);
+        return;
+      }
 
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
@@ -122,6 +130,12 @@ export class ViteCommands {
     handler: async ({ flags, args, run, root }) => {
       // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
       process.env.ALEPHA_BUILD_MODE = "cli";
+
+      if (await this.utils.hasExpo(root)) {
+        // will coming soon
+        // 1. ensure "expo prebuild" is run
+        return;
+      }
 
       await this.utils.ensureConfig(root, {
         viteConfigTs: true,

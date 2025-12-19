@@ -51,10 +51,6 @@ export class CoreCommands {
     name: "init",
     description: "Add missing Alepha configuration files to the project",
     flags: t.object({
-      // TODO:
-      // force: t.boolean({
-      //   description: "If true, all config files will be overwritten",
-      // }),
       // choose package manager
       yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
       pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
@@ -76,6 +72,8 @@ export class CoreCommands {
         flags.react = true;
       }
 
+      const isExpo = await this.utils.hasExpo(root);
+
       await run({
         name: "ensuring configuration files",
         handler: async () => {
@@ -83,9 +81,9 @@ export class CoreCommands {
             tsconfigJson: true,
             packageJson: flags,
             biomeJson: true,
-            viteConfigTs: true,
+            viteConfigTs: !isExpo,
             editorconfig: true,
-            indexHtml: !!flags.react,
+            indexHtml: !!flags.react && !isExpo,
           });
 
           // Create src/main.ts if src directory is empty or doesn't exist
@@ -111,7 +109,10 @@ export class CoreCommands {
         alias: `installing dependencies with ${pm}`,
       });
 
-      await this.utils.ensureDependency(root, "vite", { run });
+      if (!isExpo) {
+        await this.utils.ensureDependency(root, "vite", { run });
+      }
+
       await this.utils.ensureDependency(root, "@biomejs/biome", { run });
 
       // Install vitest and create test directory if --test flag is set

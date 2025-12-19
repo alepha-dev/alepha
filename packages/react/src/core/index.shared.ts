@@ -1,3 +1,4 @@
+export * from "./contexts/AlephaProvider.tsx";
 export * from "./contexts/AlephaContext.ts";
 export * from "./hooks/useAction.ts";
 export * from "./hooks/useAlepha.ts";

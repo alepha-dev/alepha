@@ -83,7 +83,8 @@ export class AlephaPackageBuilderCli {
         "alepha",
         packageName,
         ...modules.map(
-          (item) => `${packageName}/${item.name.replace("-", "/")}`,
+          (item) =>
+            `${packageName}/${item.name.replace("-", "/").replace("/core", "")}`,
         ),
       ];
 
@@ -135,7 +136,7 @@ export class AlephaPackageBuilderCli {
           `export default ${JSON.stringify(entries, null, 2)};`,
         );
         await run(`npx tsdown -c=${config}`);
-        await this.fs.rm(config);
+        //await this.fs.rm(config);
       };
 
       const concurrency = Math.ceil(os.cpus().length / 2);
