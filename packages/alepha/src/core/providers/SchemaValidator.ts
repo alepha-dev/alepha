@@ -1,10 +1,12 @@
 import type { TSchema } from "typebox";
 import { Compile, type Validator } from "typebox/compile";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
-import type { Static } from "./TypeProvider.ts";
+import { $hook } from "../primitives/$hook.ts";
+import { type Static, t, Value } from "./TypeProvider.ts";
 
 export class SchemaValidator {
   protected cache = new Map<TSchema, Validator>();
+  protected useEval: boolean = true;
 
   /**
    * Validate the value against the provided schema.
@@ -23,6 +25,10 @@ export class SchemaValidator {
     });
 
     try {
+      //
+      if (!this.useEval) {
+        return Value.Parse(schema, newValue);
+      }
       return this.getValidator(schema).Parse(newValue) as Static<T>;
     } catch (error: any) {
       if (error.cause?.errors?.[0]) {
@@ -130,6 +136,22 @@ export class SchemaValidator {
     }
     return false;
   };
+
+  protected onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      this.useEval = this.canEval();
+    },
+  });
+
+  protected canEval(): boolean {
+    try {
+      Compile(t.object({ test: t.string() })).Parse({ test: "value" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export interface ValidateOptions {

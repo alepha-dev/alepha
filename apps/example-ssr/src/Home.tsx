@@ -16,6 +16,7 @@ const Home = (props: HomeProps) => {
 
   return (
     <div>
+      <p>Add queryParam "name".</p>
       <h1>{props.greeting}</h1>
       <button onClick={inc.run}>{count}</button>
     </div>

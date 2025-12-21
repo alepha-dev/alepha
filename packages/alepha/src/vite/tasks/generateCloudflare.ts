@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { fileExists } from "../helpers/fileExists.ts";
 
 export interface GenerateCloudflareOptions {
   /**
@@ -27,8 +28,9 @@ export async function generateCloudflare(
   const distDir = opts.distDir ?? "dist";
   const root = process.cwd();
   const name = basename(root);
+  const hasAssets = await fileExists(join(root, "public"));
 
-  await writeWranglerConfig(root, distDir, name);
+  await writeWranglerConfig(root, distDir, name, hasAssets);
   await writeWorkerEntryPoint(root, distDir);
 }
 
@@ -39,12 +41,19 @@ async function writeWranglerConfig(
   root: string,
   distDir: string,
   name: string,
+  hasAssets: boolean,
 ): Promise<void> {
   const wrangler = {
     name,
     main: "./main.cloudflare.js",
     compatibility_flags: ["nodejs_compat"],
     compatibility_date: "2025-11-17",
+    assets: hasAssets
+      ? {
+          directory: "./public",
+          binding: "ASSETS",
+        }
+      : undefined,
   };
 
   await writeFile(

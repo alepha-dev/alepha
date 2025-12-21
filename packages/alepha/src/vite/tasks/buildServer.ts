@@ -144,7 +144,7 @@ export async function buildServer(
 
   await writeFile(
     `${opts.distDir}/index.js`,
-    `${warning}\nimport './server/${entryFile}';${template}`.trim(),
+    `${warning}\nimport './server/${entryFile}';\n\n${template}`.trim(),
   );
 
   return { entryFile };
