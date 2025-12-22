@@ -1,25 +1,35 @@
-import { useAction } from "@alepha/react";
+import { useAction, useClient } from "@alepha/react";
 import { useState } from "react";
+import type { CountApi } from "./CountApi.ts";
 
 export interface HomeProps {
   greeting: string;
+  count: number;
 }
 
 const Home = (props: HomeProps) => {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(props.count);
+  const countApi = useClient<CountApi>();
   const inc = useAction(
     {
-      handler: () => setCount(count + 1),
+      handler: async () => {
+        const result = await countApi.inc();
+        setCount(result.count);
+      },
     },
     [count],
   );
 
   return (
-    <div>
-      <p>Add queryParam "name".</p>
-      <h1>{props.greeting}</h1>
-      <button onClick={inc.run}>{count}</button>
-    </div>
+    <fieldset>
+      <legend>{props.greeting}</legend>
+      <p>
+        <button onClick={inc.run}>Click {count}</button>
+      </p>
+      <p>
+        <small>Add ?name=your-name to URL</small>
+      </p>
+    </fieldset>
   );
 };
 

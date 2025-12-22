@@ -5,6 +5,7 @@ import { $entity } from "./primitives/$entity.ts";
 import { $repository } from "./primitives/$repository.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
+import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
@@ -113,6 +114,7 @@ export * from "./primitives/$repository.ts";
 export * from "./primitives/$sequence.ts";
 export * from "./primitives/$transaction.ts";
 export * from "./providers/DrizzleKitProvider.ts";
+export * from "./providers/drivers/CloudflareD1Provider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/NodeSqliteProvider.ts";
@@ -174,6 +176,7 @@ export const AlephaPostgres = $module({
     NodePostgresProvider,
     PglitePostgresProvider,
     NodeSqliteProvider,
+    CloudflareD1Provider,
     SqliteModelBuilder,
     PostgresModelBuilder,
     DrizzleKitProvider,
@@ -199,6 +202,15 @@ export const AlephaPostgres = $module({
     const isSqlite = url?.startsWith("sqlite:");
     const isMemory = url?.includes(":memory:");
     const isFile = !!url && !isPostgres && !isMemory;
+
+    if (url?.startsWith("cloudflare-d1:")) {
+      alepha.with({
+        optional: true,
+        provide: DatabaseProvider,
+        use: CloudflareD1Provider,
+      });
+      return;
+    }
 
     if (hasPGlite && (isMemory || isFile || !url) && !isSqlite) {
       alepha.with({

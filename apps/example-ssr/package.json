@@ -3,11 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "alepha dev",
-    "build": "alepha build --cloudflare",
-    "compile": "cd dist && bun build --compile",
-    "start": "node dist",
-    "wrangler": "cd dist && wrangler",
-    "wrangler:dev": "yarn build && cd dist && wrangler dev"
+    "build": "alepha build --stats --cloudflare",
+    "deploy": "alepha deploy"
   },
   "dependencies": {
     "alepha": "^0.13.8",

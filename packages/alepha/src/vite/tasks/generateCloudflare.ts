@@ -8,6 +8,15 @@ export interface GenerateCloudflareOptions {
    * @default "dist"
    */
   distDir?: string;
+
+  /**
+   * Additional Wrangler configuration options to merge into wrangler.jsonc.
+   */
+  config?: WranglerConfig;
+}
+
+export interface WranglerConfig {
+  [key: string]: any;
 }
 
 const WARNING_COMMENT =
@@ -31,36 +40,43 @@ export async function generateCloudflare(
     .then(() => true)
     .catch(() => false);
 
-  await writeWranglerConfig(root, distDir, name, hasAssets);
-  await writeWorkerEntryPoint(root, distDir);
-}
-
-/**
- * Write the wrangler.jsonc configuration file for Cloudflare Workers
- */
-async function writeWranglerConfig(
-  root: string,
-  distDir: string,
-  name: string,
-  hasAssets: boolean,
-): Promise<void> {
-  const wrangler = {
+  const wrangler: WranglerConfig = {
     name,
     main: "./main.cloudflare.js",
     compatibility_flags: ["nodejs_compat"],
     compatibility_date: "2025-11-17",
-    assets: hasAssets
-      ? {
-          directory: "./public",
-          binding: "ASSETS",
-        }
-      : undefined,
+    ...opts.config,
   };
+
+  if (hasAssets) {
+    wrangler.assets ??= {
+      directory: "./public",
+      binding: "ASSETS",
+    };
+  }
+
+  const url = process.env.DATABASE_URL;
+  if (url?.startsWith("cloudflare-d1:")) {
+    const [name, id] = url
+      .replace("cloudflare-d1://", "")
+      .replace("cloudflare-d1:", "")
+      .split(":");
+    wrangler.d1_databases = wrangler.d1_databases || [];
+    wrangler.d1_databases.push({
+      binding: name,
+      database_name: name,
+      database_id: id,
+    });
+    wrangler.vars ??= {};
+    wrangler.vars.DATABASE_URL = `cloudflare-d1://${name}:${id}`;
+  }
 
   await writeFile(
     join(root, distDir, "wrangler.jsonc"),
     JSON.stringify(wrangler, null, 2),
   );
+
+  await writeWorkerEntryPoint(root, distDir);
 }
 
 /**
@@ -74,8 +90,10 @@ async function writeWorkerEntryPoint(
 import "./index.js";
 
 export default {
-  fetch: async (request) => {
+  fetch: async (request, env) => {
     const ctx = { req: request, res: undefined };
+
+    __alepha.set("cloudflare.env", env);
 
     await __alepha.start();
     await __alepha.events.emit("web:request", ctx);

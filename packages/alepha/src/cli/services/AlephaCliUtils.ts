@@ -5,7 +5,6 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import type { DrizzleKitProvider, RepositoryProvider } from "alepha/orm";
 import { boot } from "alepha/vite";
 import { tsImport } from "tsx/esm/api";
 import { appRouterTs } from "../assets/appRouterTs.ts";
@@ -495,159 +494,33 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   }
 
   /**
-   * Prepare Drizzle configuration files for a database provider.
+   * Load environment variables from a .env file.
    *
-   * Creates temporary entities.js and drizzle.config.js files needed
-   * for Drizzle Kit commands to run properly.
-   *
-   * @param options - Configuration options including kit, provider info, and paths
-   * @returns Path to the generated drizzle.config.js file
+   * Reads the .env file in the specified root directory and sets
+   * the environment variables in process.env.
    */
-  public async prepareDrizzleConfig(options: {
-    kit: any;
-    provider: any;
-    providerName: string;
-    providerUrl: string;
-    dialect: string;
-    entry: string;
-    rootDir: string;
-  }): Promise<string> {
-    const models = Object.keys(options.kit.getModels(options.provider));
-    const entitiesJs = this.generateEntitiesJs(
-      options.entry,
-      options.providerName,
-      models,
-    );
-
-    const entitiesJsPath = await this.writeConfigFile(
-      "entities.js",
-      entitiesJs,
-      options.rootDir,
-    );
-
-    const config: Record<string, any> = {
-      schema: entitiesJsPath,
-      out: `./migrations/${options.providerName}`,
-      dialect: options.dialect,
-      dbCredentials: {
-        url: options.providerUrl,
-      },
-    };
-
-    if (options.dialect === "sqlite") {
-      let url = options.providerUrl;
-      url = url.replace("sqlite://", "").replace("file://", "");
-      url = join(options.rootDir, url);
-
-      config.dbCredentials = {
-        url,
-      };
-    }
-
-    if (options.providerName === "pglite") {
-      config.driver = "pglite";
-    }
-
-    const drizzleConfigJs = `export default ${JSON.stringify(config, null, 2)}`;
-
-    return await this.writeConfigFile(
-      "drizzle.config.js",
-      drizzleConfigJs,
-      options.rootDir,
-    );
-  }
-
-  public async loadEnvFile(root: string): Promise<void> {
-    const envPath = join(root, ".env");
-    try {
-      const envContent = await readFile(envPath, "utf8");
-      const lines = envContent.split("\n");
-      for (const line of lines) {
-        const [key, ...rest] = line.split("=");
-        if (key) {
-          const value = rest.join("=");
-          process.env[key.trim()] = value.trim();
+  public async loadEnvFile(
+    root: string,
+    files: string[] = [".env"],
+  ): Promise<void> {
+    for (const it of files) {
+      for (const file of [it, `${it}.local`]) {
+        const envPath = join(root, file);
+        try {
+          const envContent = await readFile(envPath, "utf8");
+          const lines = envContent.split("\n");
+          for (const line of lines) {
+            const [key, ...rest] = line.split("=");
+            if (key) {
+              const value = rest.join("=");
+              process.env[key.trim()] = value.trim();
+            }
+          }
+          this.log.debug(`Loaded environment variables from ${envPath}`);
+        } catch {
+          this.log.debug(`No ${file} file found at ${envPath}, skipping load.`);
         }
       }
-      this.log.debug(`Loaded environment variables from ${envPath}`);
-    } catch {
-      this.log.debug(`No .env file found at ${envPath}, skipping load.`);
-    }
-  }
-
-  /**
-   * Run a drizzle-kit command for all database providers in an Alepha instance.
-   *
-   * Iterates through all repository providers, prepares Drizzle config for each,
-   * and executes the specified drizzle-kit command.
-   *
-   * @param options - Configuration including command to run, flags, and logging
-   */
-  public async runDrizzleKitCommand(options: {
-    root: string;
-    args?: string;
-    command: string;
-    commandFlags?: string;
-    provider?: string;
-    logMessage: (providerName: string, dialect: string) => string;
-  }): Promise<void> {
-    const rootDir = options.root;
-
-    await this.loadEnvFile(rootDir);
-
-    this.log.debug(`Using project root: ${rootDir}`);
-
-    const { alepha, entry } = await this.loadAlephaFromServerEntryFile(
-      rootDir,
-      options.args,
-    );
-
-    const drizzleKitProvider =
-      alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
-    const repositoryProvider =
-      alepha.inject<RepositoryProvider>("RepositoryProvider");
-    const accepted = new Set<string>([]);
-
-    for (const primitive of repositoryProvider.getRepositories()) {
-      const provider = primitive.provider;
-      const providerName = provider.name;
-      const dialect = provider.dialect;
-
-      if (accepted.has(providerName)) {
-        continue;
-      }
-      accepted.add(providerName);
-
-      // Skip if provider filter is set and doesn't match
-      if (options.provider && options.provider !== providerName) {
-        this.log.debug(
-          `Skipping provider '${providerName}' (filter: ${options.provider})`,
-        );
-        continue;
-      }
-
-      this.log.info("");
-      this.log.info(options.logMessage(providerName, dialect));
-
-      const drizzleConfigJsPath = await this.prepareDrizzleConfig({
-        kit: drizzleKitProvider,
-        provider,
-        providerName,
-        providerUrl: provider.url,
-        dialect,
-        entry,
-        rootDir,
-      });
-
-      const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
-      await this.exec(
-        `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
-        {
-          env: {
-            NODE_OPTIONS: "--import tsx",
-          },
-        },
-      );
     }
   }
 

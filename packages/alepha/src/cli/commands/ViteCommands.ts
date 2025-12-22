@@ -1,4 +1,5 @@
 import { access, readFile, unlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { $env, $inject, OPTIONS, t } from "alepha";
 import { $command } from "alepha/command";
@@ -13,8 +14,8 @@ import {
   generateSitemap,
   generateVercel,
   prerenderPages,
-  type ViteAlephaBuildOptions,
 } from "alepha/vite";
+import type * as Vite from "vite";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 export class ViteCommands {
@@ -130,6 +131,7 @@ export class ViteCommands {
     handler: async ({ flags, args, run, root }) => {
       // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
       process.env.ALEPHA_BUILD_MODE = "cli";
+      process.env.NODE_ENV = "production";
 
       if (await this.utils.hasExpo(root)) {
         // will coming soon
@@ -156,11 +158,14 @@ export class ViteCommands {
         alias: "clean dist",
       });
 
-      const viteConfig = await import(join(root, "vite.config.ts"));
-      const viteAlephaBuildOptions: ViteAlephaBuildOptions =
-        viteConfig?.default?.plugins.find((it: any) => !!it[OPTIONS])?.[
-          OPTIONS
-        ] ?? {};
+      const vite: typeof Vite = createRequire(import.meta.url)("vite");
+      const config = await vite.resolveConfig({}, "build", "production");
+      const alephaPlugin: any = config.plugins.find(
+        (it) => it.name === "alepha:build",
+      );
+      const viteAlephaBuildOptions = alephaPlugin?.[OPTIONS] || {};
+
+      await this.utils.loadEnvFile(root, [".env", ".env.production"]);
 
       const stats = flags.stats ?? viteAlephaBuildOptions.stats ?? false;
       const hasServer = viteAlephaBuildOptions.serverEntry !== false;
@@ -283,11 +288,16 @@ export class ViteCommands {
       }
 
       if (flags.cloudflare || viteAlephaBuildOptions.cloudflare) {
+        const config =
+          typeof viteAlephaBuildOptions.cloudflare === "boolean"
+            ? {}
+            : viteAlephaBuildOptions.cloudflare;
         await run({
           name: "add Cloudflare config",
           handler: () =>
             generateCloudflare({
               distDir,
+              config,
             }),
         });
       }

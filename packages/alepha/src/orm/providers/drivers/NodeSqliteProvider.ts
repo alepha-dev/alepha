@@ -145,7 +145,9 @@ export class NodeSqliteProvider extends DatabaseProvider {
     on: "start",
     handler: async () => {
       const { DatabaseSync } = await import("node:sqlite");
-      const filepath = this.url.replace("sqlite://", "");
+
+      const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");
+
       if (filepath !== ":memory:" && filepath !== "") {
         const dirname = filepath.split("/").slice(0, -1).join("/");
         if (dirname) {

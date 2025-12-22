@@ -15,6 +15,7 @@ ignores:
     - '@biomejs/biome'
     - 'typescript'
     - 'vitest'
+    - 'wrangler'
 ignore-patterns:
     - 'dist'
     - 'assets'

@@ -1,4 +1,5 @@
 import { readFile, unlink, writeFile } from "node:fs/promises";
+import { OPTIONS } from "alepha";
 import type { Plugin, UserConfig } from "vite";
 import { boot } from "../helpers/boot.ts";
 import { fileExists } from "../helpers/fileExists.ts";
@@ -14,6 +15,7 @@ import {
   generateVercel,
   prerenderPages,
   type VercelConfig,
+  type WranglerConfig,
 } from "../tasks/index.ts";
 
 export interface ViteAlephaBuildOptions {
@@ -43,7 +45,7 @@ export interface ViteAlephaBuildOptions {
    *
    * @default false
    */
-  cloudflare?: boolean;
+  cloudflare?: boolean | WranglerConfig;
 
   /**
    * If true, the build will be optimized for Docker deployment.
@@ -89,8 +91,9 @@ export async function viteAlephaBuild(
   let rootConfig: UserConfig = {};
 
   return {
-    name: "alepha-build",
+    name: "alepha:build",
     apply: "build",
+    [OPTIONS as any]: options,
     config(config, ctx) {
       const buildMode = process.env.ALEPHA_BUILD_MODE as
         | AlephaBuildMode
@@ -254,8 +257,11 @@ export async function viteAlephaBuild(
       }
 
       if (options.cloudflare) {
+        const config =
+          typeof options.cloudflare === "boolean" ? {} : options.cloudflare;
         await generateCloudflare({
           distDir,
+          config,
         });
       }
 

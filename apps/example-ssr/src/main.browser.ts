@@ -1,10 +1,8 @@
 import { Alepha, run } from "alepha";
 import { AppRouter } from "./AppRouter.ts";
-import { CountApi } from "./CountApi.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(CountApi);
 alepha.with(AppRouter);
 
 run(alepha);
