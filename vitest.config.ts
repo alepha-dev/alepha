@@ -38,11 +38,10 @@ export default defineConfig({
       // used for testing @bucket/vercel
 			BLOB_READ_WRITE_TOKEN: env.BLOB_READ_WRITE_TOKEN ?? "vercel_blob_rw_mock_token_123456789",
       // S3-compatible storage (MinIO via docker-compose) for testing @alepha/bucket-s3
-      S3_ENDPOINT: "http://127.0.0.1:9000",
+      S3_ENDPOINT: "http://127.0.0.1:9090",
       S3_REGION: "us-east-1",
-      S3_ACCESS_KEY_ID: "minioadmin",
-      S3_SECRET_ACCESS_KEY: "minioadmin",
-      S3_FORCE_PATH_STYLE: "true",
+      S3_ACCESS_KEY_ID: "mock",
+      S3_SECRET_ACCESS_KEY: "mock"
 		},
 		projects: [
 			{

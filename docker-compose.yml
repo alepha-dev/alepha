@@ -17,22 +17,17 @@ services:
       POSTGRES_PASSWORD: postgres
 
   azurite:
-    restart: "always"
+    restart: always
     pull_policy: "always"
     image: mcr.microsoft.com/azure-storage/azurite
     ports:
       - "10000:10000"
 
-  minio:
+  s3mock:
     restart: always
-    image: minio/minio:latest
+    image: adobe/s3mock:latest
     ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
+      - "9090:9090"
 
   verdaccio:
     restart: always

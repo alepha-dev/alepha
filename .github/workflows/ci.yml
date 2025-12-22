@@ -30,13 +30,10 @@ jobs:
         ports:
           - 10000:10000
 
-      minio:
-        image: bitnami/minio
+      s3mock:
+        image: adobe/s3mock
         ports:
-          - 9000:9000
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
+          - 9090:9090
 
     steps:
       - name: Git Checkout
