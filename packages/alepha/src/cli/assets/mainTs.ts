@@ -1,21 +1,13 @@
 export const mainTs = () => `
-import { $hook, Alepha, run } from "alepha";
-import { $logger } from "alepha/logger";
+import { run } from "alepha";
+import { $route } from "alepha/server";
 
-class Hello {
-  log = $logger();
-
-  ready = $hook({
-    on: "ready",
-    handler: () => {
-      this.log.info("Hello Alepha!");
-    }
-  })
+class App {
+  root = $route({
+    path: "/",
+    handler: () => "Hello, Alepha!",
+  });
 }
 
-const alepha = Alepha.create();
-
-alepha.with(Hello);
-
-run(alepha);
+run(App);
 `.trim();

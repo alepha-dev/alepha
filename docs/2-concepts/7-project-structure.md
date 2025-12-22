@@ -15,9 +15,9 @@ When you run `alepha init`, we set up something like this:
 │   ├── controllers/        # API Controllers ($action)
 │   ├── services/           # Business Logic
 │   ├── entities/           # DB Schemas ($entity)
-│   ├── schemas/            # Validation Schemas (Zod)
+│   ├── schemas/            # Validation Schemas (TypeBox)
 │   ├── providers/          # Custom Providers
-│   ├── atoms/              # Shared State (Jotai)
+│   ├── atoms/              # Shared State ($atom)
 │   │
 │   ├── components/         # React Components
 │   └── styles/             # CSS Styles

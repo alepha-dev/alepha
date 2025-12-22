@@ -94,7 +94,6 @@ const Home = () => {
       <EarlyDevelopmentBanner />
       <ParticleCanvas />
       <HeroSection />
-      <PrinciplesSection />
       <FeatureGrid />
       <InstallSection />
       <FooterCTA />
@@ -495,7 +494,7 @@ const FeatureGrid = () => (
 // =============================================================================
 
 const InstallSection = () => {
-  const installCommand = "npm install alepha";
+  const installCommand = "npx alepha init";
 
   return (
     <Box py={80}>

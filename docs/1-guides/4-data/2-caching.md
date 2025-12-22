@@ -191,7 +191,7 @@ Good for: development, single-instance apps, short-lived data.
 ### Redis
 
 ```typescript
-import { RedisCacheProvider } from "alepha/cache-redis";
+import { RedisCacheProvider } from "alepha/cache/redis";
 
 const alepha = Alepha.create()
   .with({ provide: CacheProvider, use: RedisCacheProvider });
