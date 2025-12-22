@@ -175,6 +175,148 @@ describe("$command", () => {
       expect(mockHandlers.greet).toHaveBeenCalledOnce();
       expect(mockHandlers.greet.mock.calls[0][0].flags.times).toBe(5);
     });
+
+    test("should parse space-separated flag values", async () => {
+      const { mockHandlers } = await setupTestCommands([
+        "greet",
+        "--name",
+        "Alepha",
+      ]);
+
+      expect(mockHandlers.greet).toHaveBeenCalledOnce();
+      expect(mockHandlers.greet.mock.calls[0][0].flags).toEqual({
+        name: "Alepha",
+        times: 1,
+      });
+    });
+
+    test("should parse space-separated flag values with aliases", async () => {
+      const { mockHandlers } = await setupTestCommands([
+        "deploy",
+        "--key",
+        "my-secret-key",
+      ]);
+
+      expect(mockHandlers.deploy).toHaveBeenCalledOnce();
+      expect(mockHandlers.deploy.mock.calls[0][0].flags).toEqual({
+        "api-key": "my-secret-key",
+      });
+    });
+
+    test("should mix space-separated and equals syntax", async () => {
+      const { mockHandlers } = await setupTestCommands([
+        "greet",
+        "--name",
+        "World",
+        "--times=3",
+      ]);
+
+      expect(mockHandlers.greet).toHaveBeenCalledOnce();
+      expect(mockHandlers.greet.mock.calls[0][0].flags).toEqual({
+        name: "World",
+        times: 3,
+      });
+    });
+
+    test("should parse space-separated with boolean flag before it", async () => {
+      const { mockHandlers } = await setupTestCommands([
+        "deploy",
+        "--production",
+        "--api-key",
+        "xyz-123",
+      ]);
+
+      expect(mockHandlers.deploy).toHaveBeenCalledOnce();
+      expect(mockHandlers.deploy.mock.calls[0][0].flags).toEqual({
+        production: true,
+        "api-key": "xyz-123",
+      });
+    });
+
+    test("should handle space-separated with short flag alias", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommand {
+        cmd = $command({
+          description: "Test command",
+          flags: t.object({
+            output: t.text({ alias: "o" }),
+          }),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["cmd", "-o", "output.txt"], (a) =>
+        a.with(TestCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].flags).toEqual({
+        output: "output.txt",
+      });
+    });
+
+    test("should parse JSON object with space-separated syntax", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommand {
+        cmd = $command({
+          description: "Test command with JSON flag",
+          flags: t.object({
+            data: t.object({
+              name: t.string(),
+              age: t.number(),
+            }),
+          }),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(
+        ["cmd", "--data", '{"name":"John","age":30}'],
+        (a) => a.with(TestCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].flags).toEqual({
+        data: { name: "John", age: 30 },
+      });
+    });
+
+    test("should parse JSON array with space-separated syntax", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommand {
+        cmd = $command({
+          description: "Test command with array flag",
+          flags: t.object({
+            items: t.array(t.string()),
+          }),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["cmd", "--items", '["a","b","c"]'], (a) =>
+        a.with(TestCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].flags).toEqual({
+        items: ["a", "b", "c"],
+      });
+    });
+
+    test("should throw error when space-separated value is missing (next arg is a flag)", async () => {
+      await expect(() =>
+        setupTestCommands(["greet", "--name", "--times=5"]),
+      ).rejects.toThrow("Flag --name requires a value");
+    });
+
+    test("should throw error when space-separated value is missing (end of args)", async () => {
+      await expect(() =>
+        setupTestCommands(["greet", "--name"]),
+      ).rejects.toThrow("Flag --name requires a value");
+    });
   });
 
   describe("Error Handling", () => {
@@ -412,6 +554,56 @@ describe("$command", () => {
       expect(callArgs.args).toEqual(["hello", 42]);
     });
 
+    test("should handle arguments with space-separated flags", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommand {
+        cmd = $command({
+          description: "Test command with args and space-separated flags",
+          flags: t.object({
+            output: t.text(),
+          }),
+          args: t.text(),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["cmd", "--output", "file.txt", "my-arg"], (a) =>
+        a.with(TestCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      const [callArgs] = mockHandler.mock.calls[0];
+      expect(callArgs.flags).toEqual({ output: "file.txt" });
+      expect(callArgs.args).toBe("my-arg");
+    });
+
+    test("should handle tuple arguments with space-separated flags interspersed", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommand {
+        cmd = $command({
+          description: "Test command with tuple args and space-separated flags",
+          flags: t.object({
+            config: t.text(),
+            verbose: t.optional(t.boolean()),
+          }),
+          args: t.tuple([t.text(), t.number()]),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(
+        ["cmd", "--config", "app.json", "hello", "--verbose", "42"],
+        (a) => a.with(TestCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      const [callArgs] = mockHandler.mock.calls[0];
+      expect(callArgs.flags).toEqual({ config: "app.json", verbose: true });
+      expect(callArgs.args).toEqual(["hello", 42]);
+    });
+
     test("should pass fs and glob to handler", async () => {
       const mockHandler = vi.fn();
 
@@ -599,6 +791,31 @@ describe("$command", () => {
       expect(mockHandler).toHaveBeenCalledOnce();
       const [callArgs] = mockHandler.mock.calls[0];
       expect(callArgs.flags).toEqual({ verbose: true });
+      expect(callArgs.args).toBe("my-arg");
+    });
+
+    test("should parse root command with space-separated flags and args", async () => {
+      const mockHandler = vi.fn();
+
+      class RootCommand {
+        root = $command({
+          name: "",
+          description: "Root command with space-separated flags",
+          flags: t.object({
+            config: t.text(),
+          }),
+          args: t.text(),
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["--config", "app.json", "my-arg"], (a) =>
+        a.with(RootCommand),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      const [callArgs] = mockHandler.mock.calls[0];
+      expect(callArgs.flags).toEqual({ config: "app.json" });
       expect(callArgs.args).toBe("my-arg");
     });
 

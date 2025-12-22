@@ -146,6 +146,7 @@ export class CliProvider {
         argv,
         command.options.args,
         command.name === "",
+        command.flags,
       );
 
       await this.alepha.context.run(async () => {
@@ -297,9 +298,12 @@ export class CliProvider {
   ): Record<string, any> {
     const result: Record<string, any> = {};
 
-    for (const arg of argv.filter((a) => a.startsWith("-"))) {
+    for (let i = 0; i < argv.length; i++) {
+      const arg = argv[i];
+      if (!arg.startsWith("-")) continue;
+
       const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
-      const value = valueParts.join("=");
+      let value = valueParts.join("=");
 
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
       if (!def) continue;
@@ -307,6 +311,7 @@ export class CliProvider {
       if (t.schema.isBoolean(def.schema)) {
         result[def.key] = true;
       } else if (value) {
+        // Value provided via --flag=value syntax
         try {
           if (t.schema.isObject(def.schema) || t.schema.isArray(def.schema)) {
             result[def.key] = JSON.parse(value);
@@ -317,24 +322,90 @@ export class CliProvider {
           throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
         }
       } else {
-        throw new CommandError(`Flag --${rawKey} requires a value.`);
+        // Check for space-separated value: --flag value
+        const nextArg = argv[i + 1];
+        if (nextArg && !nextArg.startsWith("-")) {
+          value = nextArg;
+          try {
+            if (t.schema.isObject(def.schema) || t.schema.isArray(def.schema)) {
+              result[def.key] = JSON.parse(value);
+            } else {
+              result[def.key] = value;
+            }
+          } catch {
+            throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
+          }
+        } else {
+          throw new CommandError(`Flag --${rawKey} requires a value.`);
+        }
       }
     }
 
     return result;
   }
 
+  /**
+   * Get indices of argv elements that are consumed by flags (including space-separated values).
+   */
+  protected getFlagConsumedIndices(
+    argv: string[],
+    flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
+  ): Set<number> {
+    const consumed = new Set<number>();
+
+    for (let i = 0; i < argv.length; i++) {
+      const arg = argv[i];
+      if (!arg.startsWith("-")) continue;
+
+      consumed.add(i);
+
+      const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
+      const hasEqualValue = valueParts.length > 0;
+
+      const def = flagDefs.find((d) => d.aliases.includes(rawKey));
+      if (!def) continue;
+
+      // If not a boolean flag and no = value, the next arg is consumed as the value
+      if (!t.schema.isBoolean(def.schema) && !hasEqualValue) {
+        const nextArg = argv[i + 1];
+        if (nextArg && !nextArg.startsWith("-")) {
+          consumed.add(i + 1);
+        }
+      }
+    }
+
+    return consumed;
+  }
+
   protected parseCommandArgs(
     argv: string[],
     schema?: TSchema,
     isRootCommand = false,
+    flagSchema?: TObject,
   ): any {
     if (!schema) {
       return undefined;
     }
 
-    // Extract positional arguments (non-flag arguments)
-    const positionalArgs = argv.filter((arg) => !arg.startsWith("-"));
+    // Get indices consumed by flags (including space-separated values)
+    const flagDefs = flagSchema
+      ? Object.entries(flagSchema.properties).map(([key, value]) => ({
+          key,
+          aliases: [
+            key,
+            ...((value as any).aliases ??
+              ((value as any).alias ? [(value as any).alias] : undefined) ??
+              []),
+          ],
+          schema: value as TSchema,
+        }))
+      : [];
+    const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
+
+    // Extract positional arguments (non-flag arguments that aren't consumed as flag values)
+    const positionalArgs = argv.filter(
+      (arg, idx) => !arg.startsWith("-") && !consumedIndices.has(idx),
+    );
     // For root commands, there's no command name to remove; otherwise slice off the command name
     const argsOnly = isRootCommand ? positionalArgs : positionalArgs.slice(1);
 
