@@ -18,7 +18,7 @@
     "tar": "^7.5.2"
   },
   "devDependencies": {
-    "tsdown": "^0.18.1",
+    "tsdown": "^0.18.3",
     "vitest": "^4.0.16"
   },
   "scripts": {
