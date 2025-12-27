@@ -535,4 +535,95 @@ export class TaskController {
       });
     },
   });
+
+  upvoteTask = $action({
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: t.object({
+        voted: t.boolean(),
+        voteCount: t.integer(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const task = await this.db.tasks.findOne({
+        where: {
+          id: { eq: params.id },
+        },
+      });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      // Check if user already voted
+      const [existingVote] = await this.db.taskVotes.findMany({
+        where: {
+          taskId: { eq: params.id },
+          userId: { eq: user.id },
+        },
+        limit: 1,
+      });
+
+      if (existingVote) {
+        // Remove vote (toggle off)
+        await this.db.taskVotes.deleteById(existingVote.id);
+      } else {
+        // Add vote
+        await this.db.taskVotes.create({
+          taskId: params.id,
+          userId: user.id,
+        });
+      }
+
+      // Get updated vote count
+      const voteCount = await this.db.taskVotes.count({
+        taskId: { eq: params.id },
+      });
+
+      return {
+        voted: !existingVote,
+        voteCount,
+      };
+    },
+  });
+
+  getTaskVotes = $action({
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: t.object({
+        voted: t.boolean(),
+        voteCount: t.integer(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const task = await this.db.tasks.findOne({
+        where: {
+          id: { eq: params.id },
+        },
+      });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      // Check if user voted
+      const [existingVote] = await this.db.taskVotes.findMany({
+        where: {
+          taskId: { eq: params.id },
+          userId: { eq: user.id },
+        },
+        limit: 1,
+      });
+
+      // Get vote count
+      const voteCount = await this.db.taskVotes.count({
+        taskId: { eq: params.id },
+      });
+
+      return {
+        voted: !!existingVote,
+        voteCount,
+      };
+    },
+  });
 }

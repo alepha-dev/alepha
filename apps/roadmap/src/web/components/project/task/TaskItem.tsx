@@ -1,4 +1,4 @@
-import { useActive, useRouter } from "@alepha/react";
+import { useActive, useRouter, useStore } from "@alepha/react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Box, Flex, HoverCard, Text } from "@mantine/core";
@@ -7,9 +7,11 @@ import {
   IconExclamationMark,
   IconNotes,
   IconSparkles,
+  IconThumbUp,
 } from "@tabler/icons-react";
 import type { Task } from "../../../../api/entities/tasks.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
+import { getTaskVote, taskVotesAtom } from "../../../atoms/taskVotesAtom.ts";
 import Action from "../../ui/Action.jsx";
 import TaskComplexity from "./TaskComplexity.jsx";
 
@@ -20,6 +22,8 @@ const TaskItem = (props: { task: Task; index: number }) => {
   const { isActive, anchorProps } = useActive(
     router.path("projectTask", { params: { taskId: task.id } }),
   );
+  const [taskVotes] = useStore(taskVotesAtom);
+  const voteData = getTaskVote(taskVotes, task.id);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -63,6 +67,41 @@ const TaskItem = (props: { task: Task; index: number }) => {
         }}
         rightSection={
           <Flex align="center" justify="center" gap={4}>
+            {voteData && voteData.voteCount > 0 && (
+              <HoverCard openDelay={600} position="bottom-end">
+                <HoverCard.Target>
+                  <Flex px={1} align="center" gap={2}>
+                    <IconThumbUp
+                      size={14}
+                      color={
+                        voteData.voted
+                          ? "var(--mantine-color-blue-5)"
+                          : "var(--alepha-text-muted)"
+                      }
+                      fill={
+                        voteData.voted ? "var(--mantine-color-blue-5)" : "none"
+                      }
+                    />
+                    <Text size="xs" c={isActive ? "white" : "dimmed"}>
+                      {voteData.voteCount}
+                    </Text>
+                  </Flex>
+                </HoverCard.Target>
+                <HoverCard.Dropdown>
+                  <Flex p={"xs"} direction={"column"}>
+                    <Text fw={"bold"} size="sm">
+                      {voteData.voteCount}{" "}
+                      {voteData.voteCount === 1 ? "vote" : "votes"}
+                    </Text>
+                    <Text size="xs">
+                      {voteData.voted
+                        ? "You upvoted this quest"
+                        : "This quest has community interest"}
+                    </Text>
+                  </Flex>
+                </HoverCard.Dropdown>
+              </HoverCard>
+            )}
             {isTimerRunning() && (
               <HoverCard openDelay={600} position="bottom-end">
                 <HoverCard.Target>
