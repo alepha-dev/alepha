@@ -10,6 +10,23 @@ import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { McpAuth } from "../McpAuth.ts";
 
 /**
+ * Common project parameters for MCP tools.
+ */
+const projectParams = {
+  project: t.optional(
+    t.integer({
+      description: "Project ID. Required if project_name is not provided.",
+    }),
+  ),
+  project_name: t.optional(
+    t.string({
+      description:
+        "Project name (campaign title). Case-insensitive. Required if project is not provided.",
+    }),
+  ),
+};
+
+/**
  * MCP tools for task operations.
  *
  * These tools expose task management functionality to LLM clients
@@ -23,13 +40,14 @@ export class TaskTools {
   protected readonly characterInfo = $inject(CharacterInfo);
 
   /**
-   * List tasks for the authenticated project.
+   * List tasks for a project.
    */
   task_list = $tool({
     description:
       "List tasks for the project. Can filter by status (new, accepted, completed) and search by title.",
     schema: {
       params: t.object({
+        ...projectParams,
         status: t.optional(
           t.enum(["new", "accepted", "completed"], {
             description: "Filter by task status",
@@ -82,9 +100,14 @@ export class TaskTools {
     },
     handler: async ({ params, context }) => {
       const auth = await this.auth.authenticate(context);
+      const projectId = await this.auth.resolveProject(
+        auth,
+        params.project,
+        params.project_name,
+      );
 
       const where = this.db.tasks.createQueryWhere();
-      where.projectId = { eq: auth.projectId };
+      where.projectId = { eq: projectId };
 
       if (params.search) {
         where.title = { ilike: `%${params.search}%` };
@@ -142,6 +165,7 @@ export class TaskTools {
     description: "Create a new task in the project.",
     schema: {
       params: t.object({
+        ...projectParams,
         title: t.string({
           description: "Task title",
         }),
@@ -179,9 +203,14 @@ export class TaskTools {
     },
     handler: async ({ params, context }) => {
       const auth = await this.auth.authenticate(context);
+      const projectId = await this.auth.resolveProject(
+        auth,
+        params.project,
+        params.project_name,
+      );
 
       const { project } = await this.security.checkOwnership(
-        auth.projectId,
+        projectId,
         auth.user,
       );
 
@@ -202,7 +231,7 @@ export class TaskTools {
         priority: params.priority,
         complexity: params.complexity,
         objectives: params.objectives ?? [],
-        projectId: auth.projectId,
+        projectId,
         createdBy: auth.user.id,
         history: [],
       });

@@ -38,12 +38,11 @@ interface ApiKey {
   expiresAt?: string;
 }
 
-export interface ProjectApiKeysProps {
-  projectId: number;
+export interface MyApiKeysProps {
   apiKeys: ApiKey[];
 }
 
-const ProjectApiKeys = (props: ProjectApiKeysProps) => {
+const MyApiKeys = (props: MyApiKeysProps) => {
   const dt = useInject(DateTimeProvider);
   const apiKeyApi = useClient<McpApiKeyController>();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(props.apiKeys);
@@ -58,7 +57,6 @@ const ProjectApiKeys = (props: ProjectApiKeysProps) => {
     handler: async (data) => {
       const result = await apiKeyApi.createApiKey({
         body: {
-          projectId: props.projectId,
           name: data.name,
         },
       });
@@ -84,90 +82,85 @@ const ProjectApiKeys = (props: ProjectApiKeysProps) => {
   };
 
   return (
-    <>
-      <Stack gap="xs">
-        <Group justify="space-between">
-          <Text>MCP API Keys</Text>
+    <Stack w="100%" p="xs" gap={0}>
+      <Group p="xs" justify="space-between">
+        <Flex px={1}>
+          <Text size="xs" c="dimmed">
+            MCP API keys allow Claude and other LLM clients to access all your
+            campaigns.
+          </Text>
+        </Flex>
+
+        <Flex align="center" justify="center">
           <Action leftSection={<IconPlus size={16} />} onClick={open}>
             Create Key
           </Action>
-        </Group>
+        </Flex>
+      </Group>
 
-        <Card
-          radius={0}
-          withBorder
-          className="shadow"
-          bg={theme.colors.panel}
-          p="sm"
-        >
-          <Stack gap="xs">
-            {apiKeys.length === 0 ? (
-              <Text size="sm" c="dimmed" ta="center" py="md">
-                No API keys yet. Create one to connect Claude or other MCP
-                clients.
-              </Text>
-            ) : (
-              apiKeys.map((key) => (
-                <Card
-                  key={key.id}
-                  withBorder
-                  bg={theme.colors.card}
-                  p="sm"
-                  radius="sm"
-                >
-                  <Group justify="space-between" wrap="nowrap">
-                    <Flex align="center" gap="sm">
-                      <IconKey size={20} />
-                      <Stack gap={0}>
-                        <Group gap="xs">
-                          <Text size="sm" fw={500}>
-                            {key.name}
-                          </Text>
-                          <Code>...{key.tokenSuffix}</Code>
-                        </Group>
-                        <Group gap="xs">
-                          <Text size="xs" c="dimmed">
-                            Created {dt.of(key.createdAt).fromNow()}
-                          </Text>
-                          {key.lastUsedAt && (
-                            <>
-                              <Text size="xs" c="dimmed">
-                                |
-                              </Text>
-                              <Text size="xs" c="dimmed">
-                                Last used {dt.of(key.lastUsedAt).fromNow()}
-                              </Text>
-                            </>
-                          )}
-                          {key.expiresAt && (
-                            <Badge size="xs" color="yellow">
-                              Expires {dt.of(key.expiresAt).fromNow()}
-                            </Badge>
-                          )}
-                        </Group>
-                      </Stack>
-                    </Flex>
-                    <Tooltip label="Revoke key">
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        onClick={() => handleRevoke(key.id)}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Group>
-                </Card>
-              ))
-            )}
-          </Stack>
-        </Card>
-
-        <Text size="xs" c="dimmed">
-          API keys allow MCP clients like Claude to access your project tasks.
-          Keep them secret and revoke any that are compromised.
-        </Text>
-      </Stack>
+      <Card withBorder bg={theme.colors.panel} w="100%" p="xs" radius="md">
+        <Stack gap="xs">
+          {apiKeys.length === 0 ? (
+            <Text size="sm" c="dimmed" ta="center" py="md">
+              No API keys yet. Create one to connect Claude or other MCP
+              clients.
+            </Text>
+          ) : (
+            apiKeys.map((key) => (
+              <Card
+                key={key.id}
+                withBorder
+                bg={theme.colors.card}
+                p="sm"
+                radius="sm"
+              >
+                <Group justify="space-between" wrap="nowrap">
+                  <Flex align="center" gap="sm">
+                    <IconKey size={20} />
+                    <Stack gap={0}>
+                      <Group gap="xs">
+                        <Text size="sm" fw={500}>
+                          {key.name}
+                        </Text>
+                        <Code>...{key.tokenSuffix}</Code>
+                      </Group>
+                      <Group gap="xs">
+                        <Text size="xs" c="dimmed">
+                          Created {dt.of(key.createdAt).fromNow()}
+                        </Text>
+                        {key.lastUsedAt && (
+                          <>
+                            <Text size="xs" c="dimmed">
+                              |
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              Last used {dt.of(key.lastUsedAt).fromNow()}
+                            </Text>
+                          </>
+                        )}
+                        {key.expiresAt && (
+                          <Badge size="xs" color="yellow">
+                            Expires {dt.of(key.expiresAt).fromNow()}
+                          </Badge>
+                        )}
+                      </Group>
+                    </Stack>
+                  </Flex>
+                  <Tooltip label="Revoke key">
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      onClick={() => handleRevoke(key.id)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Card>
+            ))
+          )}
+        </Stack>
+      </Card>
 
       <Modal opened={opened} onClose={close} title="Create MCP API Key">
         <form {...form.props}>
@@ -243,13 +236,18 @@ const ProjectApiKeys = (props: ProjectApiKeysProps) => {
               )}
             </Code>
           </Card>
+          <Text size="xs" c="dimmed">
+            This key gives access to all your campaigns. Use the project_list
+            tool to see available campaigns, then specify project_name in other
+            tools.
+          </Text>
           <Group justify="flex-end">
             <Action onClick={() => setNewToken(null)}>Done</Action>
           </Group>
         </Stack>
       </Modal>
-    </>
+    </Stack>
   );
 };
 
-export default ProjectApiKeys;
+export default MyApiKeys;

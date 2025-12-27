@@ -3,6 +3,7 @@ import { useAuth } from "@alepha/react/auth";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import {
   IconAntenna,
+  IconKey,
   IconMail,
   IconMapRoute,
   IconShield,
@@ -113,6 +114,12 @@ const MeMenu = () => {
           href={meRouter.path("sessions")}
         >
           Sessions
+        </ActionNavLink>
+        <ActionNavLink
+          leftSection={<IconKey size={20} />}
+          href={meRouter.path("apiKeys")}
+        >
+          API Keys
         </ActionNavLink>
       </Flex>
     </Card>

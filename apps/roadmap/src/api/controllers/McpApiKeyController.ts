@@ -2,28 +2,30 @@ import { $inject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
-import { $action, BadRequestError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
 import type { McpApiKey } from "../entities/mcpApiKeys.ts";
 import { Db } from "../providers/Db.ts";
-import { Security } from "../providers/Security.ts";
 
 export class McpApiKeyController {
   protected readonly log = $logger();
   protected readonly db = $inject(Db);
-  protected readonly security = $inject(Security);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dt = $inject(DateTimeProvider);
 
   // -----------------------------------------------------------------------------------------------------------------
 
   /**
-   * Create a new MCP API key for a project.
+   * Create a new MCP API key for the current user.
    * Returns the raw token once - it cannot be retrieved later.
    */
   createApiKey = $action({
     schema: {
       body: t.object({
-        projectId: t.integer(),
         name: t.string({ minLength: 1, maxLength: 100 }),
         expiresAt: t.optional(t.datetime()),
       }),
@@ -40,14 +42,11 @@ export class McpApiKeyController {
       }),
     },
     handler: async ({ body, user }) => {
-      // Verify project ownership
-      await this.security.checkOwnership(body.projectId, user);
-
-      // Check for duplicate name
+      // Check for duplicate name for this user
       const existing = await this.db.mcpApiKeys
         .findOne({
           where: {
-            projectId: { eq: body.projectId },
+            userId: { eq: user.id },
             name: { eq: body.name },
           },
         })
@@ -67,7 +66,6 @@ export class McpApiKeyController {
 
       const apiKey = await this.db.mcpApiKeys.create({
         userId: user.id,
-        projectId: body.projectId,
         name: body.name,
         tokenHash,
         tokenSuffix,
@@ -89,13 +87,10 @@ export class McpApiKeyController {
   // -----------------------------------------------------------------------------------------------------------------
 
   /**
-   * List all API keys for a project.
+   * List all API keys for the current user.
    */
   listApiKeys = $action({
     schema: {
-      params: t.object({
-        projectId: t.integer(),
-      }),
       response: t.array(
         t.object({
           id: t.uuid(),
@@ -107,11 +102,9 @@ export class McpApiKeyController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.projectId, user);
-
+    handler: async ({ user }) => {
       const keys = await this.db.mcpApiKeys.findMany({
-        where: { projectId: { eq: params.projectId } },
+        where: { userId: { eq: user.id } },
       });
 
       return keys.map((key) => ({
@@ -142,8 +135,10 @@ export class McpApiKeyController {
         where: { id: { eq: params.id } },
       });
 
-      // Verify ownership
-      await this.security.checkOwnership(apiKey.projectId, user);
+      // Verify ownership - user can only revoke their own keys
+      if (apiKey.userId !== user.id) {
+        throw new ForbiddenError("Cannot revoke API key owned by another user");
+      }
 
       await this.db.mcpApiKeys.deleteById(params.id);
 
@@ -160,7 +155,6 @@ export class McpApiKeyController {
   public async validateApiKey(token: string): Promise<{
     apiKey: McpApiKey;
     userId: string;
-    projectId: number;
     roles: string[];
   } | null> {
     // Find keys that might match (we need to check all since we can't reverse the hash)
@@ -183,7 +177,6 @@ export class McpApiKeyController {
         return {
           apiKey: key,
           userId: key.userId,
-          projectId: key.projectId,
           roles: key.roles,
         };
       }

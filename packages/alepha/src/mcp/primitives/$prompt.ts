@@ -26,11 +26,6 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  * with arguments at runtime. They're useful for creating consistent
  * interaction patterns.
  *
- * **Key Features**
- * - Typed arguments with validation
- * - Dynamic message generation
- * - Support for multi-turn conversations
- *
  * @example
  * ```ts
  * class Prompts {

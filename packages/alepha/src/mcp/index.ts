@@ -7,33 +7,15 @@ import { SseMcpTransport } from "./transports/SseMcpTransport.ts";
 import { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Primitives
-// ---------------------------------------------------------------------------------------------------------------------
 
-export type { PromptPrimitiveOptions } from "./primitives/$prompt.ts";
-export { $prompt, PromptPrimitive } from "./primitives/$prompt.ts";
-export type { ResourcePrimitiveOptions } from "./primitives/$resource.ts";
-export { $resource, ResourcePrimitive } from "./primitives/$resource.ts";
-export type { ToolPrimitiveOptions } from "./primitives/$tool.ts";
-export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Providers
-// ---------------------------------------------------------------------------------------------------------------------
-
-export { McpServerProvider } from "./providers/McpServerProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Transports
-// ---------------------------------------------------------------------------------------------------------------------
-
-export { SseMcpTransport } from "./transports/SseMcpTransport.ts";
-export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------------------------------------------------
-
+export {
+  McpError,
+  McpInvalidParamsError,
+  McpMethodNotFoundError,
+  McpPromptNotFoundError,
+  McpResourceNotFoundError,
+  McpToolNotFoundError,
+} from "./errors/McpError.ts";
 export {
   createErrorResponse,
   createInternalError,
@@ -51,24 +33,6 @@ export {
   MCP_PROTOCOL_VERSION,
   parseMessage,
 } from "./helpers/jsonrpc.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------------------------------------------------
-
-export {
-  McpError,
-  McpInvalidParamsError,
-  McpMethodNotFoundError,
-  McpPromptNotFoundError,
-  McpResourceNotFoundError,
-  McpToolNotFoundError,
-} from "./errors/McpError.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------------------------------------------------
-
 export type {
   JsonRpcError,
   JsonRpcNotification,
@@ -113,9 +77,16 @@ export type {
   // Handler types
   ToolPrimitiveSchema,
 } from "./interfaces/McpTypes.ts";
+export type { PromptPrimitiveOptions } from "./primitives/$prompt.ts";
+export { $prompt, PromptPrimitive } from "./primitives/$prompt.ts";
+export type { ResourcePrimitiveOptions } from "./primitives/$resource.ts";
+export { $resource, ResourcePrimitive } from "./primitives/$resource.ts";
+export type { ToolPrimitiveOptions } from "./primitives/$tool.ts";
+export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
+export { McpServerProvider } from "./providers/McpServerProvider.ts";
+export { SseMcpTransport } from "./transports/SseMcpTransport.ts";
+export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Modules
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -152,30 +123,8 @@ export type {
 export const AlephaMcp = $module({
   name: "alepha.mcp",
   primitives: [$tool, $resource, $prompt],
-  services: [McpServerProvider],
-});
-
-/**
- * Stdio transport module for MCP.
- *
- * Use this for local MCP servers that communicate via stdin/stdout.
- * This is the standard transport for CLI-based MCP servers.
- */
-export const AlephaMcpStdio = $module({
-  name: "alepha.mcp.stdio",
-  services: [StdioMcpTransport],
-});
-
-/**
- * SSE transport module for MCP.
- *
- * Use this for HTTP-based MCP servers that communicate via
- * Server-Sent Events (SSE) for server-to-client messages
- * and POST requests for client-to-server messages.
- *
- * Requires the AlephaServer module.
- */
-export const AlephaMcpSse = $module({
-  name: "alepha.mcp.sse",
-  services: [SseMcpTransport],
+  services: [McpServerProvider, SseMcpTransport, StdioMcpTransport],
+  register: (alepha) => {
+    alepha.with(McpServerProvider);
+  },
 });

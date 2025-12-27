@@ -3,6 +3,7 @@ import { $client } from "alepha/server/links";
 import type { CharacterController } from "../../../api/controllers/CharacterController.ts";
 import type { IdentityController } from "../../../api/controllers/IdentityController.ts";
 import type { InvitationController } from "../../../api/controllers/InvitationController.ts";
+import type { McpApiKeyController } from "../../../api/controllers/McpApiKeyController.ts";
 import type { SessionController } from "../../../api/controllers/SessionController.ts";
 import type { UserController } from "../../../api/controllers/UserController.ts";
 
@@ -12,6 +13,7 @@ export class MeRouter {
   identityApi = $client<IdentityController>();
   invitationApi = $client<InvitationController>();
   userApi = $client<UserController>();
+  mcpApiKeyApi = $client<McpApiKeyController>();
 
   me = $page({
     path: "/me",
@@ -76,6 +78,17 @@ export class MeRouter {
     resolve: async () => {
       return {
         sessions: await this.sessionApi.getMySessions(),
+      };
+    },
+  });
+
+  apiKeys = $page({
+    parent: this.me,
+    path: "/api-keys",
+    lazy: () => import("./MyApiKeys.jsx"),
+    resolve: async () => {
+      return {
+        apiKeys: await this.mcpApiKeyApi.listApiKeys(),
       };
     },
   });
