@@ -119,6 +119,8 @@ export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
  *     .with(MyMcpServer)
  * );
  * ```
+ *
+ * @module alepha.mcp
  */
 export const AlephaMcp = $module({
   name: "alepha.mcp",

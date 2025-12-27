@@ -1,6 +1,7 @@
 import { Link } from "@alepha/react";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -31,12 +32,13 @@ import {
   IconPlayerPlay,
   IconPuzzle,
   IconRocket,
+  IconSparkles,
   IconStack2,
   IconTerminal,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { snippets } from "../config/docs.ts";
-import { features } from "../config/features.ts";
+import { apiFeatures, coreFeatures } from "../config/features.ts";
 
 const EarlyDevelopmentBanner = () => {
   const [visible, setVisible] = useState(true);
@@ -442,49 +444,89 @@ const PrinciplesSection = () => (
 // Feature Grid
 // =============================================================================
 
+const FeatureCard = (props: {
+  feature: (typeof coreFeatures)[number];
+}) => {
+  const { feature } = props;
+  return (
+    <Button
+      color={"gray"}
+      size={"xl"}
+      component={Link}
+      href={`/docs/${feature.slug}`}
+      flex={1}
+      px={"xs"}
+      variant={"subtle"}
+      leftSection={
+        <ThemeIcon color={"gray"} variant="light" size={"lg"} radius="md">
+          <feature.icon />
+        </ThemeIcon>
+      }
+      justify={"left"}
+    >
+      <Flex flex={1} ta={"left"} direction={"column"}>
+        <Flex align="center" gap="xs">
+          <Text>{feature.title}</Text>
+          {"new" in feature && feature.new && (
+            <Badge
+              size="xs"
+              variant="light"
+              color="teal"
+              leftSection={<IconSparkles size={10} />}
+            >
+              New
+            </Badge>
+          )}
+        </Flex>
+        <Text size="xs" c="dimmed">
+          {feature.description}
+        </Text>
+      </Flex>
+    </Button>
+  );
+};
+
 const FeatureGrid = () => (
   <Container size="lg" py={80} w={"100%"}>
-    <Flex direction="column" gap={"xl"}>
-      <Flex w={"100%"} justify="center">
-        <Flex direction="column" maw={800} align="center" gap="sm">
-          <Title order={2} ta="center">
-            A Complete Toolkit for Modern Applications
-          </Title>
-
-          <Text size="sm" c="dimmed" ta="center">
-            Alepha offers a comprehensive suite of 50+ packages designed to
-            streamline the development of type-safe applications.
-          </Text>
+    <Flex direction="column" gap={60}>
+      <Flex direction="column" gap={"xl"}>
+        <Flex w={"100%"} justify="center">
+          <Flex direction="column" maw={800} align="center" gap="sm">
+            <Title order={2} ta="center">
+              Core Packages
+            </Title>
+            <Text size="sm" c="dimmed" ta="center">
+              Low-level primitives and building blocks for type-safe
+              applications.
+            </Text>
+          </Flex>
         </Flex>
+
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
+          {coreFeatures.map((feature) => (
+            <FeatureCard key={feature.title} feature={feature} />
+          ))}
+        </SimpleGrid>
       </Flex>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
-        {features.map((feature) => (
-          <Button
-            color={"gray"}
-            size={"xl"}
-            component={Link}
-            href={`/docs/${feature.slug}`}
-            flex={1}
-            px={"xs"}
-            variant={"subtle"}
-            leftSection={
-              <ThemeIcon color={"gray"} variant="light" size={"lg"} radius="md">
-                <feature.icon />
-              </ThemeIcon>
-            }
-            justify={"left"}
-            key={feature.title}
-          >
-            <Flex flex={1} ta={"left"} direction={"column"}>
-              <Text>{feature.title}</Text>
-              <Text size="xs" c="dimmed">
-                {feature.description}
-              </Text>
-            </Flex>
-          </Button>
-        ))}
-      </SimpleGrid>
+      <Flex direction="column" gap={"xl"}>
+        <Flex w={"100%"} justify="center">
+          <Flex direction="column" maw={800} align="center" gap="sm">
+            <Title order={2} ta="center">
+              Application Modules
+            </Title>
+            <Text size="sm" c="dimmed" ta="center">
+              Ready-to-use modules for common application needs.
+            </Text>
+          </Flex>
+        </Flex>
+
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xl">
+          {apiFeatures.map((feature) => (
+            <FeatureCard key={feature.title} feature={feature} />
+          ))}
+        </SimpleGrid>
+      </Flex>
     </Flex>
   </Container>
 );

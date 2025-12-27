@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type {
   JsonRpcError,
   JsonRpcNotification,
@@ -157,10 +158,6 @@ export function isNotification(request: JsonRpcRequest): boolean {
 // Errors
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class JsonRpcParseError extends Error {
+export class JsonRpcParseError extends AlephaError {
   name = "JsonRpcParseError";
-
-  constructor(message: string) {
-    super(message);
-  }
 }

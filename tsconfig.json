@@ -24,6 +24,7 @@
       "alepha/lock": ["./packages/alepha/src/lock/index.ts"],
       "alepha/lock/redis": ["./packages/alepha/src/lock/redis/index.ts"],
       "alepha/logger": ["./packages/alepha/src/logger/index.ts"],
+      "alepha/mcp": ["./packages/alepha/src/mcp/index.ts"],
       "alepha/orm": ["./packages/alepha/src/orm/index.ts"],
       "alepha/queue": ["./packages/alepha/src/queue/index.ts"],
       "alepha/queue/redis": ["./packages/alepha/src/queue/redis/index.ts"],

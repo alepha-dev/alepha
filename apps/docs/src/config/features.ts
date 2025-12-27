@@ -6,7 +6,6 @@ import {
   IconChecklist,
   IconClock,
   IconCloud,
-  IconCpu,
   IconDatabase,
   IconDeviceDesktop,
   IconFileText,
@@ -20,6 +19,7 @@ import {
   IconPackage,
   IconPhone,
   IconRepeat,
+  IconRobot,
   IconSeo,
   IconServer,
   IconShieldCheck,
@@ -28,7 +28,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
-export const features = [
+export const coreFeatures = [
   // Server & API
   {
     icon: IconServer,
@@ -47,6 +47,13 @@ export const features = [
     title: "Security",
     description: "Realms, roles, and permissions.",
     slug: "packages-alepha-security",
+  },
+  {
+    icon: IconRobot,
+    title: "MCP",
+    description: "Model Context Protocol for AI agents.",
+    slug: "packages-alepha-mcp",
+    new: true,
   },
 
   // Data
@@ -81,12 +88,6 @@ export const features = [
     title: "Scheduler",
     description: "Cron-based scheduled tasks.",
     slug: "packages-alepha-scheduler",
-  },
-  {
-    icon: IconChecklist,
-    title: "Jobs",
-    description: "Scheduler with DB execution history.",
-    slug: "packages-alepha-api-jobs",
   },
 
   // React
@@ -155,20 +156,6 @@ export const features = [
     slug: "packages-alepha-batch",
   },
 
-  // APIs
-  {
-    icon: IconUsers,
-    title: "Users API",
-    description: "Multi-realm user management.",
-    slug: "packages-alepha-api-users",
-  },
-  {
-    icon: IconFileText,
-    title: "Files API",
-    description: "File upload and download.",
-    slug: "packages-alepha-api-files",
-  },
-
   // Dev & Ops
   {
     icon: IconTool,
@@ -189,21 +176,36 @@ export const features = [
     slug: "packages-devtools",
   },
   {
-    icon: IconLayoutDashboard,
-    title: "Admin UI",
-    description: "Auto-generated admin panel.",
-    slug: "packages-ui-admin",
-  },
-  {
     icon: IconCloud,
     title: "Deploy",
     description: "Docker, Vercel, or VPS.",
     slug: "guides-operations-deployment",
   },
+];
+
+export const apiFeatures = [
   {
-    icon: IconCpu,
-    title: "Thread",
-    description: "Multi-threading utilities.",
-    slug: "packages-alepha-thread",
+    icon: IconUsers,
+    title: "Users API",
+    description: "Multi-realm user management.",
+    slug: "packages-alepha-api-users",
+  },
+  {
+    icon: IconFileText,
+    title: "Files API",
+    description: "File upload and download.",
+    slug: "packages-alepha-api-files",
+  },
+  {
+    icon: IconChecklist,
+    title: "Jobs API",
+    description: "Scheduler with DB execution history.",
+    slug: "packages-alepha-api-jobs",
+  },
+  {
+    icon: IconLayoutDashboard,
+    title: "Admin UI",
+    description: "Auto-generated admin panel.",
+    slug: "packages-ui-admin",
   },
 ];
