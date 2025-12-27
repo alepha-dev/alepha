@@ -7,10 +7,12 @@ import { invitations } from "../entities/invitations.ts";
 import { mcpApiKeys } from "../entities/mcpApiKeys.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
+import { taskVotes } from "../entities/taskVotes.ts";
 import { users } from "../entities/users.ts";
 
 export class Db {
   tasks = $repository(tasks);
+  taskVotes = $repository(taskVotes);
   users = $repository(users);
   projects = $repository(projects);
   identities = $repository(identities);

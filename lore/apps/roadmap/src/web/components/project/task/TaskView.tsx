@@ -22,6 +22,7 @@ import {
   IconSignature,
   IconSwords,
   IconTag,
+  IconThumbUp,
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
@@ -34,6 +35,11 @@ import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAto
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "../../../atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "../../../atoms/currentTaskAtom.ts";
+import {
+  getTaskVote,
+  taskVotesAtom,
+  updateTaskVote,
+} from "../../../atoms/taskVotesAtom.ts";
 import { theme } from "../../../constants/theme.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import Action from "../../ui/Action.jsx";
@@ -159,6 +165,7 @@ const TaskView = (props: TaskViewProps) => {
                     }}
                   />
                   <DuplicateTaskButton task={task} />
+                  <VoteButton task={task} />
                 </>
               )}
               <Flex
@@ -545,6 +552,74 @@ const DuplicateTaskButton = (props: { task: Task }) => {
           />
         </Card>
       </Drawer>
+    </Flex>
+  );
+};
+
+const VoteButton = (props: { task: Task }) => {
+  const client = useClient<TaskController>();
+  const [taskVotes, setTaskVotes] = useStore(taskVotesAtom);
+  const voteData = getTaskVote(taskVotes, props.task.id);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load initial vote data
+  useEffect(() => {
+    if (!voteData && client.getTaskVotes.can()) {
+      client
+        .getTaskVotes({
+          params: { id: props.task.id },
+        })
+        .then((result) => {
+          setTaskVotes(
+            updateTaskVote(taskVotes, props.task.id, {
+              voted: result.voted,
+              voteCount: result.voteCount,
+            }),
+          );
+        });
+    }
+  }, [props.task.id]);
+
+  if (!client.upvoteTask.can()) {
+    return null;
+  }
+
+  const handleVote = async () => {
+    setIsLoading(true);
+    try {
+      const result = await client.upvoteTask({
+        params: { id: props.task.id },
+      });
+      setTaskVotes(
+        updateTaskVote(taskVotes, props.task.id, {
+          voted: result.voted,
+          voteCount: result.voteCount,
+        }),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Flex align="center" gap={4}>
+      <Action
+        px={"xs"}
+        variant={"subtle"}
+        onClick={handleVote}
+        disabled={isLoading}
+        c={voteData?.voted ? "blue" : undefined}
+      >
+        <IconThumbUp
+          size={theme.icon.size.md}
+          fill={voteData?.voted ? "currentColor" : "none"}
+        />
+      </Action>
+      {voteData && voteData.voteCount > 0 && (
+        <Text size="sm" c="dimmed">
+          {voteData.voteCount}
+        </Text>
+      )}
     </Flex>
   );
 };
