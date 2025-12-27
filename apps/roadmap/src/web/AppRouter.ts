@@ -7,6 +7,7 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { InvitationController } from "../api/controllers/InvitationController.ts";
+import type { McpApiKeyController } from "../api/controllers/McpApiKeyController.ts";
 import type { ProjectController } from "../api/controllers/ProjectController.ts";
 import type { ProjectStatsController } from "../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../api/controllers/TaskController.ts";
@@ -25,6 +26,7 @@ export class AppRouter {
   projectApi = $client<ProjectController>();
   projectStatsApi = $client<ProjectStatsController>();
   invitationApi = $client<InvitationController>();
+  mcpApiKeyApi = $client<McpApiKeyController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
@@ -196,6 +198,21 @@ export class AppRouter {
   projectSettings = $page({
     path: "/settings",
     lazy: () => import("./components/project/ProjectSettings.jsx"),
+    resolve: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+
+      const apiKeys = await this.mcpApiKeyApi.listApiKeys({
+        params: { projectId: project.id },
+      });
+
+      return {
+        project,
+        apiKeys,
+      };
+    },
   });
 
   projectTask = $page({

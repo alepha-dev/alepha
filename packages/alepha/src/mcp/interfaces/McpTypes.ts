@@ -177,35 +177,69 @@ export interface PromptPrimitiveSchema {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Context Types
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Context passed to MCP handlers from the transport layer.
+ *
+ * This allows tools, resources, and prompts to access request-level
+ * information like headers for authentication.
+ */
+export interface McpContext<T = unknown> {
+  /**
+   * HTTP headers from the request (for SSE transport).
+   */
+  headers?: Record<string, string | string[] | undefined>;
+
+  /**
+   * Custom context data set by transport or middleware.
+   * Can be used to pass authenticated user, project scope, etc.
+   */
+  data?: T;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Handler Types
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type ToolHandler<T extends ToolPrimitiveSchema> = (
-  args: ToolHandlerArgs<T>,
+export type ToolHandler<T extends ToolPrimitiveSchema, TContext = unknown> = (
+  args: ToolHandlerArgs<T, TContext>,
 ) => Async<ToolHandlerResult<T>>;
 
-export interface ToolHandlerArgs<T extends ToolPrimitiveSchema> {
+export interface ToolHandlerArgs<
+  T extends ToolPrimitiveSchema,
+  TContext = unknown,
+> {
   params: T["params"] extends TObject
     ? Static<T["params"]>
     : Record<string, never>;
+  context?: McpContext<TContext>;
 }
 
 export type ToolHandlerResult<T extends ToolPrimitiveSchema> =
   T["result"] extends TSchema ? Static<T["result"]> : unknown;
 
-export type ResourceHandler = () => Async<ResourceContent>;
+export type ResourceHandler<TContext = unknown> = (
+  args: ResourceHandlerArgs<TContext>,
+) => Async<ResourceContent>;
+
+export interface ResourceHandlerArgs<TContext = unknown> {
+  context?: McpContext<TContext>;
+}
 
 export interface ResourceContent {
   text?: string;
   blob?: Uint8Array;
 }
 
-export type PromptHandler<T extends TObject> = (
-  args: PromptHandlerArgs<T>,
+export type PromptHandler<T extends TObject, TContext = unknown> = (
+  args: PromptHandlerArgs<T, TContext>,
 ) => Async<PromptMessage[]>;
 
-export interface PromptHandlerArgs<T extends TObject> {
+export interface PromptHandlerArgs<T extends TObject, TContext = unknown> {
   args: Static<T>;
+  context?: McpContext<TContext>;
 }
 
 export interface PromptMessage {

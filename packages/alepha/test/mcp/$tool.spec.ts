@@ -1,5 +1,10 @@
 import { Alepha, t } from "alepha";
-import { $tool, AlephaMcp, McpServerProvider } from "alepha/mcp";
+import {
+  $tool,
+  AlephaMcp,
+  type McpContext,
+  McpServerProvider,
+} from "alepha/mcp";
 import { describe, expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -263,5 +268,139 @@ describe("$tool primitive", () => {
     const tool = provider.getTool("failing");
 
     await expect(tool?.execute({})).rejects.toThrow("Tool failed");
+  });
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Context tests
+  // -----------------------------------------------------------------------------------------------------------------
+
+  test("should receive context in handler", async () => {
+    const alepha = Alepha.create();
+
+    let receivedContext: McpContext | undefined;
+
+    class Tools {
+      contextTool = $tool({
+        description: "Context tool",
+        handler: async ({ context }) => {
+          receivedContext = context;
+          return "done";
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Tools);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const tool = provider.getTool("contextTool");
+
+    const testContext: McpContext = {
+      headers: { authorization: "Bearer test-token" },
+    };
+
+    await tool?.execute({}, testContext);
+
+    expect(receivedContext).toBeDefined();
+    expect(receivedContext?.headers?.authorization).toBe("Bearer test-token");
+  });
+
+  test("should receive context with custom data", async () => {
+    const alepha = Alepha.create();
+
+    interface AuthContext {
+      userId: string;
+      projectId: number;
+    }
+
+    let receivedData: AuthContext | undefined;
+
+    class Tools {
+      authTool = $tool({
+        description: "Authenticated tool",
+        handler: async ({ context }) => {
+          receivedData = context?.data as AuthContext;
+          return `User: ${receivedData?.userId}`;
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Tools);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const tool = provider.getTool("authTool");
+
+    const testContext: McpContext<AuthContext> = {
+      headers: {},
+      data: { userId: "user-123", projectId: 42 },
+    };
+
+    const result = await tool?.execute({}, testContext);
+
+    expect(result).toBe("User: user-123");
+    expect(receivedData).toEqual({ userId: "user-123", projectId: 42 });
+  });
+
+  test("should work without context", async () => {
+    const alepha = Alepha.create();
+
+    let contextWasUndefined = false;
+
+    class Tools {
+      noContext = $tool({
+        description: "No context tool",
+        handler: async ({ context }) => {
+          contextWasUndefined = context === undefined;
+          return "done";
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Tools);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const tool = provider.getTool("noContext");
+
+    await tool?.execute({});
+
+    expect(contextWasUndefined).toBe(true);
+  });
+
+  test("should use context for authentication in handler", async () => {
+    const alepha = Alepha.create();
+
+    class Tools {
+      protected = $tool({
+        description: "Protected tool",
+        schema: {
+          result: t.text(),
+        },
+        handler: async ({ context }) => {
+          const authHeader = context?.headers?.authorization;
+          if (!authHeader || !authHeader.toString().startsWith("Bearer ")) {
+            throw new Error("Unauthorized");
+          }
+          return "Access granted";
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Tools);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const tool = provider.getTool("protected");
+
+    // Without auth - should fail
+    await expect(tool?.execute({})).rejects.toThrow("Unauthorized");
+
+    // With auth - should succeed
+    const result = await tool?.execute(
+      {},
+      { headers: { authorization: "Bearer valid-token" } },
+    );
+    expect(result).toBe("Access granted");
   });
 });

@@ -5,6 +5,7 @@ import {
   $tool,
   AlephaMcp,
   MCP_PROTOCOL_VERSION,
+  type McpContext,
   McpServerProvider,
 } from "alepha/mcp";
 import { describe, expect, test } from "vitest";
@@ -573,6 +574,224 @@ describe("McpServerProvider", () => {
       const prompts = provider.getPrompts();
 
       expect(prompts).toHaveLength(2);
+    });
+  });
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Context tests
+  // -----------------------------------------------------------------------------------------------------------------
+
+  describe("context passing", () => {
+    test("should pass context to tools/call", async () => {
+      const alepha = Alepha.create();
+
+      let receivedContext: McpContext | undefined;
+
+      class Tools {
+        contextTool = $tool({
+          description: "Tool that receives context",
+          schema: {
+            params: t.object({ value: t.text() }),
+            result: t.text(),
+          },
+          handler: async ({ params, context }) => {
+            receivedContext = context;
+            return `Received: ${params.value}`;
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+      const context: McpContext = {
+        headers: { authorization: "Bearer test-token-123" },
+        data: { userId: "user-1", projectId: 42 },
+      };
+
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "contextTool", arguments: { value: "test" } },
+        },
+        context,
+      );
+
+      expect(receivedContext).toBeDefined();
+      expect(receivedContext?.headers?.authorization).toBe(
+        "Bearer test-token-123",
+      );
+      expect(receivedContext?.data).toEqual({
+        userId: "user-1",
+        projectId: 42,
+      });
+    });
+
+    test("should pass context to resources/read", async () => {
+      const alepha = Alepha.create();
+
+      let receivedContext: McpContext | undefined;
+
+      class Resources {
+        contextResource = $resource({
+          uri: "context://test",
+          handler: async ({ context }) => {
+            receivedContext = context;
+            return { text: "content" };
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Resources);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+      const context: McpContext = {
+        headers: { "x-custom-header": "custom-value" },
+      };
+
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "resources/read",
+          params: { uri: "context://test" },
+        },
+        context,
+      );
+
+      expect(receivedContext).toBeDefined();
+      expect(receivedContext?.headers?.["x-custom-header"]).toBe(
+        "custom-value",
+      );
+    });
+
+    test("should pass context to prompts/get", async () => {
+      const alepha = Alepha.create();
+
+      let receivedContext: McpContext | undefined;
+
+      class Prompts {
+        contextPrompt = $prompt({
+          description: "Prompt that receives context",
+          args: t.object({ name: t.text() }),
+          handler: async ({ args, context }) => {
+            receivedContext = context;
+            return [{ role: "user", content: `Hello ${args.name}` }];
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Prompts);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+      const context: McpContext = {
+        headers: { authorization: "Bearer prompt-token" },
+        data: { role: "admin" },
+      };
+
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "prompts/get",
+          params: { name: "contextPrompt", arguments: { name: "World" } },
+        },
+        context,
+      );
+
+      expect(receivedContext).toBeDefined();
+      expect(receivedContext?.headers?.authorization).toBe(
+        "Bearer prompt-token",
+      );
+      expect(receivedContext?.data).toEqual({ role: "admin" });
+    });
+
+    test("should work without context (backward compatibility)", async () => {
+      const alepha = Alepha.create();
+
+      let contextWasUndefined = false;
+
+      class Tools {
+        noContextTool = $tool({
+          description: "Tool without context",
+          handler: async ({ context }) => {
+            contextWasUndefined = context === undefined;
+            return "done";
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+
+      // Call without context parameter
+      await provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "noContextTool", arguments: {} },
+      });
+
+      expect(contextWasUndefined).toBe(true);
+    });
+
+    test("should use context for authentication in tools", async () => {
+      const alepha = Alepha.create();
+
+      class Tools {
+        protected = $tool({
+          description: "Protected tool",
+          schema: { result: t.text() },
+          handler: async ({ context }) => {
+            const auth = context?.headers?.authorization;
+            if (!auth || !auth.toString().startsWith("Bearer ")) {
+              throw new Error("Unauthorized");
+            }
+            return "Access granted";
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+
+      // Without auth - should return error in result
+      const response1 = await provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "protected", arguments: {} },
+      });
+
+      expect((response1?.result as any)?.isError).toBe(true);
+      expect((response1?.result as any)?.content[0].text).toContain(
+        "Unauthorized",
+      );
+
+      // With auth - should succeed
+      const response2 = await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "protected", arguments: {} },
+        },
+        { headers: { authorization: "Bearer valid-token" } },
+      );
+
+      expect((response2?.result as any)?.isError).toBeUndefined();
+      expect((response2?.result as any)?.content[0].text).toBe(
+        "Access granted",
+      );
     });
   });
 });

@@ -18,6 +18,7 @@ import type {
   JsonRpcResponse,
   McpCapabilities,
   McpContent,
+  McpContext,
   McpInitializeResult,
   McpPromptDescriptor,
   McpPromptGetResult,
@@ -152,10 +153,12 @@ export class McpServerProvider {
    * Handle an incoming JSON-RPC request.
    *
    * @param request - The parsed JSON-RPC request
+   * @param context - Optional context from the transport layer (headers, auth, etc.)
    * @returns The JSON-RPC response, or null for notifications
    */
   public async handleMessage(
     request: JsonRpcRequest,
+    context?: McpContext,
   ): Promise<JsonRpcResponse | null> {
     const id = request.id;
 
@@ -166,7 +169,7 @@ export class McpServerProvider {
     }
 
     try {
-      const result = await this.handleRequest(request);
+      const result = await this.handleRequest(request, context);
       return createResponse(id, result);
     } catch (error) {
       this.log.error("MCP request failed", error);
@@ -187,7 +190,10 @@ export class McpServerProvider {
   /**
    * Handle a JSON-RPC request that expects a response.
    */
-  protected async handleRequest(request: JsonRpcRequest): Promise<unknown> {
+  protected async handleRequest(
+    request: JsonRpcRequest,
+    context?: McpContext,
+  ): Promise<unknown> {
     const { method, params = {} } = request;
 
     switch (method) {
@@ -198,15 +204,15 @@ export class McpServerProvider {
       case "tools/list":
         return this.handleToolsList();
       case "tools/call":
-        return this.handleToolsCall(params);
+        return this.handleToolsCall(params, context);
       case "resources/list":
         return this.handleResourcesList();
       case "resources/read":
-        return this.handleResourcesRead(params);
+        return this.handleResourcesRead(params, context);
       case "prompts/list":
         return this.handlePromptsList();
       case "prompts/get":
-        return this.handlePromptsGet(params);
+        return this.handlePromptsGet(params, context);
       default:
         throw new McpMethodNotFoundError(method);
     }
@@ -263,6 +269,7 @@ export class McpServerProvider {
 
   protected async handleToolsCall(
     params: Record<string, unknown>,
+    context?: McpContext,
   ): Promise<McpToolCallResult> {
     const name = params.name as string;
     const args = (params.arguments ?? {}) as Record<string, unknown>;
@@ -273,7 +280,7 @@ export class McpServerProvider {
     }
 
     try {
-      const result = await tool.execute(args);
+      const result = await tool.execute(args, context);
 
       const content: McpContent[] = [
         {
@@ -309,6 +316,7 @@ export class McpServerProvider {
 
   protected async handleResourcesRead(
     params: Record<string, unknown>,
+    context?: McpContext,
   ): Promise<McpResourceReadResult> {
     const uri = params.uri as string;
 
@@ -317,7 +325,7 @@ export class McpServerProvider {
       throw new McpResourceNotFoundError(uri);
     }
 
-    const content = await resource.read();
+    const content = await resource.read(context);
 
     const resourceContent: McpResourceContent = {
       uri,
@@ -346,6 +354,7 @@ export class McpServerProvider {
 
   protected async handlePromptsGet(
     params: Record<string, unknown>,
+    context?: McpContext,
   ): Promise<McpPromptGetResult> {
     const name = params.name as string;
     const args = (params.arguments ?? {}) as Record<string, string>;
@@ -355,7 +364,7 @@ export class McpServerProvider {
       throw new McpPromptNotFoundError(name);
     }
 
-    const messages = await prompt.get(args);
+    const messages = await prompt.get(args, context);
 
     const mcpMessages: McpPromptMessage[] = messages.map((msg) => ({
       role: msg.role,

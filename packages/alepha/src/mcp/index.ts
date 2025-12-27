@@ -1,4 +1,4 @@
-import { $module, type PrimitiveFactoryLike } from "alepha";
+import { $module } from "alepha";
 import { $prompt } from "./primitives/$prompt.ts";
 import { $resource } from "./primitives/$resource.ts";
 import { $tool } from "./primitives/$tool.ts";
@@ -79,6 +79,8 @@ export type {
   McpCapabilities,
   McpClientInfo,
   McpContent,
+  // Context type for auth/headers
+  McpContext,
   McpInitializeParams,
   McpInitializeResult,
   McpJsonSchema,
@@ -104,6 +106,7 @@ export type {
   PromptMessage,
   ResourceContent,
   ResourceHandler,
+  ResourceHandlerArgs,
   ToolHandler,
   ToolHandlerArgs,
   ToolHandlerResult,
@@ -148,11 +151,7 @@ export type {
  */
 export const AlephaMcp = $module({
   name: "alepha.mcp",
-  primitives: [
-    $tool as PrimitiveFactoryLike,
-    $resource as PrimitiveFactoryLike,
-    $prompt as PrimitiveFactoryLike,
-  ],
+  primitives: [$tool, $resource, $prompt],
   services: [McpServerProvider],
 });
 

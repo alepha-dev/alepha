@@ -1,5 +1,10 @@
 import { Alepha } from "alepha";
-import { $resource, AlephaMcp, McpServerProvider } from "alepha/mcp";
+import {
+  $resource,
+  AlephaMcp,
+  type McpContext,
+  McpServerProvider,
+} from "alepha/mcp";
 import { describe, expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -246,5 +251,140 @@ describe("$resource primitive", () => {
 
     const content2 = await resource?.read();
     expect(content2?.text).toBe("Count: 2");
+  });
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Context tests
+  // -----------------------------------------------------------------------------------------------------------------
+
+  test("should receive context in handler", async () => {
+    const alepha = Alepha.create();
+
+    let receivedContext: McpContext | undefined;
+
+    class Resources {
+      contextResource = $resource({
+        uri: "context://resource",
+        handler: async ({ context }) => {
+          receivedContext = context;
+          return { text: "content" };
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Resources);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const resource = provider.getResource("context://resource");
+
+    const testContext: McpContext = {
+      headers: { authorization: "Bearer test-token" },
+    };
+
+    await resource?.read(testContext);
+
+    expect(receivedContext).toBeDefined();
+    expect(receivedContext?.headers?.authorization).toBe("Bearer test-token");
+  });
+
+  test("should receive context with custom data", async () => {
+    const alepha = Alepha.create();
+
+    interface UserContext {
+      userId: string;
+      projectId: number;
+    }
+
+    let receivedData: UserContext | undefined;
+
+    class Resources {
+      userResource = $resource({
+        uri: "user://data",
+        handler: async ({ context }) => {
+          receivedData = context?.data as UserContext;
+          return {
+            text: JSON.stringify({
+              userId: receivedData?.userId,
+              projectId: receivedData?.projectId,
+            }),
+          };
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Resources);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const resource = provider.getResource("user://data");
+
+    const testContext: McpContext<UserContext> = {
+      headers: {},
+      data: { userId: "user-456", projectId: 123 },
+    };
+
+    const content = await resource?.read(testContext);
+
+    expect(content?.text).toBe('{"userId":"user-456","projectId":123}');
+    expect(receivedData).toEqual({ userId: "user-456", projectId: 123 });
+  });
+
+  test("should work without context", async () => {
+    const alepha = Alepha.create();
+
+    let contextWasUndefined = false;
+
+    class Resources {
+      noContext = $resource({
+        uri: "no://context",
+        handler: async ({ context }) => {
+          contextWasUndefined = context === undefined;
+          return { text: "done" };
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Resources);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const resource = provider.getResource("no://context");
+
+    await resource?.read();
+
+    expect(contextWasUndefined).toBe(true);
+  });
+
+  test("should use context for access control", async () => {
+    const alepha = Alepha.create();
+
+    class Resources {
+      protected = $resource({
+        uri: "protected://resource",
+        handler: async ({ context }) => {
+          const authHeader = context?.headers?.authorization;
+          if (!authHeader || !authHeader.toString().startsWith("Bearer ")) {
+            throw new Error("Unauthorized");
+          }
+          return { text: "Secret content" };
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Resources);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const resource = provider.getResource("protected://resource");
+
+    // Without auth - should fail
+    await expect(resource?.read()).rejects.toThrow("Unauthorized");
+
+    // With auth - should succeed
+    const content = await resource?.read({
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(content?.text).toBe("Secret content");
   });
 });

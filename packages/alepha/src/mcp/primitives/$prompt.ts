@@ -9,6 +9,7 @@ import {
   t,
 } from "alepha";
 import type {
+  McpContext,
   McpPromptArgument,
   McpPromptDescriptor,
   PromptHandlerArgs,
@@ -141,16 +142,20 @@ export class PromptPrimitive<T extends TObject> extends Primitive<
    * Get the prompt messages with the given arguments.
    *
    * @param rawArgs - Raw arguments to validate and pass to the handler
+   * @param context - Optional context from the transport layer
    * @returns Array of prompt messages
    */
-  public async get(rawArgs: unknown): Promise<PromptMessage[]> {
+  public async get(
+    rawArgs: unknown,
+    context?: McpContext,
+  ): Promise<PromptMessage[]> {
     let args = (rawArgs ?? {}) as Static<T>;
 
     if (this.options.args) {
       args = this.alepha.codec.decode(this.options.args, rawArgs ?? {});
     }
 
-    return this.options.handler({ args });
+    return this.options.handler({ args, context });
   }
 
   /**

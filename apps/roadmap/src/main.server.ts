@@ -8,6 +8,7 @@ import { AlephaServerHelmet } from "alepha/server/helmet";
 import { AlephaServerMultipart } from "alepha/server/multipart";
 import { AlephaServerSecurity } from "alepha/server/security";
 import { RoadmapApi } from "./api/index.ts";
+import { RoadmapMcp } from "./mcp/index.ts";
 import { RoadmapWeb } from "./web/index.ts";
 
 const alepha = Alepha.create({
@@ -30,5 +31,6 @@ alepha.with(AlephaApiUsers);
 
 alepha.with(RoadmapApi);
 alepha.with(RoadmapWeb);
+alepha.with(RoadmapMcp);
 
 run(alepha);

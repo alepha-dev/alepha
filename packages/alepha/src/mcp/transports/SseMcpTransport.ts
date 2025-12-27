@@ -8,6 +8,7 @@ import {
   JsonRpcParseError,
   parseMessage,
 } from "../helpers/jsonrpc.ts";
+import type { McpContext } from "../interfaces/McpTypes.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -111,6 +112,10 @@ export class SseMcpTransport {
   message = $route({
     method: "POST",
     path: this.env.MCP_SSE_PATH,
+    secure: false,
+    schema: {
+      body: t.json(),
+    },
     handler: async (request) => {
       try {
         const body =
@@ -118,8 +123,25 @@ export class SseMcpTransport {
             ? request.body
             : JSON.stringify(request.body);
 
+        this.log.debug("MCP request body", {
+          body,
+          bodyType: typeof request.body,
+        });
+
         const rpcRequest = parseMessage(body);
-        const response = await this.mcpServer.handleMessage(rpcRequest);
+
+        // Build context from request headers
+        const context: McpContext = {
+          headers: request.headers as Record<
+            string,
+            string | string[] | undefined
+          >,
+        };
+
+        const response = await this.mcpServer.handleMessage(
+          rpcRequest,
+          context,
+        );
 
         request.reply.headers["content-type"] = "application/json";
         request.reply.body = response ? JSON.stringify(response) : "";

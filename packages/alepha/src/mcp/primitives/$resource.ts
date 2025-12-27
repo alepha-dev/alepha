@@ -1,5 +1,6 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
 import type {
+  McpContext,
   McpResourceDescriptor,
   ResourceContent,
   ResourceHandler,
@@ -147,10 +148,11 @@ export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
   /**
    * Read the resource content.
    *
+   * @param context - Optional context from the transport layer
    * @returns The resource content
    */
-  public async read(): Promise<ResourceContent> {
-    return this.options.handler();
+  public async read(context?: McpContext): Promise<ResourceContent> {
+    return this.options.handler({ context });
   }
 
   /**

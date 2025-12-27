@@ -1,5 +1,10 @@
 import { Alepha, t } from "alepha";
-import { $prompt, AlephaMcp, McpServerProvider } from "alepha/mcp";
+import {
+  $prompt,
+  AlephaMcp,
+  type McpContext,
+  McpServerProvider,
+} from "alepha/mcp";
 import { describe, expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -312,5 +317,152 @@ describe("$prompt primitive", () => {
     // With formal style
     const messages2 = await prompt?.get({ name: "Bob", style: "formal" });
     expect(messages2?.[0].content).toBe("Good day, Bob.");
+  });
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Context tests
+  // -----------------------------------------------------------------------------------------------------------------
+
+  test("should receive context in handler", async () => {
+    const alepha = Alepha.create();
+
+    let receivedContext: McpContext | undefined;
+
+    class Prompts {
+      contextPrompt = $prompt({
+        description: "Context prompt",
+        handler: async ({ context }) => {
+          receivedContext = context;
+          return [{ role: "user", content: "test" }];
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Prompts);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const prompt = provider.getPrompt("contextPrompt");
+
+    const testContext: McpContext = {
+      headers: { authorization: "Bearer test-token" },
+    };
+
+    await prompt?.get({}, testContext);
+
+    expect(receivedContext).toBeDefined();
+    expect(receivedContext?.headers?.authorization).toBe("Bearer test-token");
+  });
+
+  test("should receive context with custom data", async () => {
+    const alepha = Alepha.create();
+
+    interface UserContext {
+      userId: string;
+      userName: string;
+    }
+
+    let receivedData: UserContext | undefined;
+
+    class Prompts {
+      userPrompt = $prompt({
+        description: "User-specific prompt",
+        handler: async ({ context }) => {
+          receivedData = context?.data as UserContext;
+          return [
+            {
+              role: "user",
+              content: `Hello, I am ${receivedData?.userName}`,
+            },
+          ];
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Prompts);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const prompt = provider.getPrompt("userPrompt");
+
+    const testContext: McpContext<UserContext> = {
+      headers: {},
+      data: { userId: "user-789", userName: "Alice" },
+    };
+
+    const messages = await prompt?.get({}, testContext);
+
+    expect(messages?.[0].content).toBe("Hello, I am Alice");
+    expect(receivedData).toEqual({ userId: "user-789", userName: "Alice" });
+  });
+
+  test("should work without context", async () => {
+    const alepha = Alepha.create();
+
+    let contextWasUndefined = false;
+
+    class Prompts {
+      noContext = $prompt({
+        description: "No context prompt",
+        handler: async ({ context }) => {
+          contextWasUndefined = context === undefined;
+          return [{ role: "user", content: "done" }];
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Prompts);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const prompt = provider.getPrompt("noContext");
+
+    await prompt?.get({});
+
+    expect(contextWasUndefined).toBe(true);
+  });
+
+  test("should use context for personalization", async () => {
+    const alepha = Alepha.create();
+
+    interface AuthContext {
+      role: "admin" | "user";
+    }
+
+    class Prompts {
+      rolePrompt = $prompt({
+        description: "Role-based prompt",
+        args: t.object({
+          task: t.text(),
+        }),
+        handler: async ({ args, context }) => {
+          const authContext = context?.data as AuthContext | undefined;
+          const rolePrefix =
+            authContext?.role === "admin"
+              ? "As an administrator, "
+              : "As a user, ";
+          return [{ role: "user", content: `${rolePrefix}${args.task}` }];
+        },
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Prompts);
+    await alepha.start();
+
+    const provider = alepha.inject(McpServerProvider);
+    const prompt = provider.getPrompt("rolePrompt");
+
+    // Without context - default user behavior
+    const messages1 = await prompt?.get({ task: "help me" });
+    expect(messages1?.[0].content).toBe("As a user, help me");
+
+    // With admin context
+    const messages2 = await prompt?.get(
+      { task: "delete everything" },
+      { headers: {}, data: { role: "admin" } },
+    );
+    expect(messages2?.[0].content).toBe(
+      "As an administrator, delete everything",
+    );
   });
 });

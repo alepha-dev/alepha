@@ -9,6 +9,7 @@ import {
   t,
 } from "alepha";
 import type {
+  McpContext,
   McpJsonSchema,
   McpToolDescriptor,
   ToolHandlerArgs,
@@ -148,9 +149,13 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
    * Execute the tool with the given parameters.
    *
    * @param params - Raw parameters to validate and pass to the handler
+   * @param context - Optional context from the transport layer
    * @returns The tool result
    */
-  public async execute(params: unknown): Promise<ToolHandlerResult<T>> {
+  public async execute(
+    params: unknown,
+    context?: McpContext,
+  ): Promise<ToolHandlerResult<T>> {
     let validatedParams: any = params ?? {};
 
     // Validate params using alepha.codec if schema provided
@@ -161,7 +166,10 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       );
     }
 
-    const result = await this.options.handler({ params: validatedParams });
+    const result = await this.options.handler({
+      params: validatedParams,
+      context,
+    });
 
     // Validate and encode result if schema provided
     if (this.options.schema?.result && result !== undefined) {
@@ -216,24 +224,27 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   protected propertyToJsonSchema(schema: TSchema): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
+    // Check for description on all types
+    if ("description" in schema) {
+      result.description = schema.description;
+    }
+
     if (t.schema.isString(schema)) {
       result.type = "string";
-      if ("description" in schema) result.description = schema.description;
       if ("minLength" in schema) result.minLength = schema.minLength;
       if ("maxLength" in schema) result.maxLength = schema.maxLength;
       if ("pattern" in schema) result.pattern = schema.pattern;
       if ("enum" in schema) result.enum = schema.enum;
     } else if (t.schema.isNumber(schema)) {
       result.type = "number";
-      if ("description" in schema) result.description = schema.description;
       if ("minimum" in schema) result.minimum = schema.minimum;
       if ("maximum" in schema) result.maximum = schema.maximum;
     } else if (t.schema.isInteger(schema)) {
       result.type = "integer";
-      if ("description" in schema) result.description = schema.description;
+      if ("minimum" in schema) result.minimum = schema.minimum;
+      if ("maximum" in schema) result.maximum = schema.maximum;
     } else if (t.schema.isBoolean(schema)) {
       result.type = "boolean";
-      if ("description" in schema) result.description = schema.description;
     } else if (t.schema.isArray(schema)) {
       result.type = "array";
       if ("items" in schema) {
@@ -241,12 +252,27 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       }
     } else if (t.schema.isObject(schema)) {
       Object.assign(result, this.schemaToJsonSchema(schema));
-    } else if (t.schema.isOptional(schema)) {
-      // Unwrap optional and get inner type
-      const innerSchema = (schema as any)[Symbol.for("TypeBox.Kind")]
-        ? schema
-        : schema;
-      return this.propertyToJsonSchema(innerSchema);
+    } else if (t.schema.isUnsafe(schema) || t.schema.isOptional(schema)) {
+      // Handle Unsafe types (like t.enum) and optional wrappers by checking the underlying type property
+      const schemaAny = schema as { type?: string; enum?: unknown[] };
+      if (schemaAny.type === "string") {
+        result.type = "string";
+        if ("enum" in schema) result.enum = schema.enum;
+        if ("pattern" in schema) result.pattern = schema.pattern;
+      } else if (schemaAny.type === "number") {
+        result.type = "number";
+      } else if (schemaAny.type === "integer") {
+        result.type = "integer";
+      } else if (schemaAny.type === "boolean") {
+        result.type = "boolean";
+      } else if (schemaAny.type === "array") {
+        result.type = "array";
+      } else if (schemaAny.type === "object") {
+        result.type = "object";
+      } else {
+        // Fallback
+        result.type = "string";
+      }
     } else {
       // Fallback for other types
       result.type = "string";
