@@ -13,15 +13,22 @@ import {
 import { modals } from "@mantine/modals";
 import { useState } from "react";
 import type { ProjectController } from "../../../api/controllers/ProjectController.ts";
+import type { Project } from "../../../api/entities/projects.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.jsx";
+import ProjectApiKeys, { type ProjectApiKeysProps } from "./ProjectApiKeys.jsx";
 import ProjectUpdate from "./ProjectUpdate.jsx";
 
-const ProjectSettings = () => {
+export interface ProjectSettingsProps {
+  project: Project;
+  apiKeys: ProjectApiKeysProps["apiKeys"];
+}
+
+const ProjectSettings = (props: ProjectSettingsProps) => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
@@ -52,6 +59,8 @@ const ProjectSettings = () => {
         <Text>{tr("project.settings.general.title")}</Text>
         <ProjectUpdate project={project} />
       </Stack>
+      <ProjectApiKeys projectId={project.id} apiKeys={props.apiKeys} />
+
       <Stack gap={"xs"}>
         <Text>{tr("project.settings.danger.title")}</Text>
         <Card

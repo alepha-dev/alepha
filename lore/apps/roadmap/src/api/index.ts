@@ -3,6 +3,7 @@ import { AdminController } from "./controllers/AdminController.ts";
 import { CharacterController } from "./controllers/CharacterController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
+import { McpApiKeyController } from "./controllers/McpApiKeyController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectStatsController } from "./controllers/ProjectStatsController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
@@ -27,6 +28,7 @@ export const RoadmapApi = $module({
     ProjectStatsController,
     InvitationController,
     AdminController,
+    McpApiKeyController,
   ],
 });
 
@@ -34,6 +36,7 @@ export * from "./controllers/AdminController.ts";
 export * from "./controllers/CharacterController.ts";
 export * from "./controllers/IdentityController.ts";
 export * from "./controllers/InvitationController.ts";
+export * from "./controllers/McpApiKeyController.ts";
 export * from "./controllers/ProjectController.ts";
 export * from "./controllers/ProjectStatsController.ts";
 export * from "./controllers/SessionController.ts";
@@ -43,6 +46,7 @@ export * from "./entities/characters.ts";
 export * from "./entities/files.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/invitations.ts";
+export * from "./entities/mcpApiKeys.ts";
 export * from "./entities/projects.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/tasks.ts";
