@@ -1,0 +1,373 @@
+import { $inject, Alepha } from "alepha";
+import { $logger } from "alepha/logger";
+import {
+  McpError,
+  McpMethodNotFoundError,
+  McpPromptNotFoundError,
+  McpResourceNotFoundError,
+  McpToolNotFoundError,
+} from "../errors/McpError.ts";
+import {
+  createErrorResponse,
+  createInternalError,
+  createResponse,
+  MCP_PROTOCOL_VERSION,
+} from "../helpers/jsonrpc.ts";
+import type {
+  JsonRpcRequest,
+  JsonRpcResponse,
+  McpCapabilities,
+  McpContent,
+  McpInitializeResult,
+  McpPromptDescriptor,
+  McpPromptGetResult,
+  McpPromptMessage,
+  McpResourceContent,
+  McpResourceDescriptor,
+  McpResourceReadResult,
+  McpServerInfo,
+  McpToolCallResult,
+  McpToolDescriptor,
+} from "../interfaces/McpTypes.ts";
+import type { PromptPrimitive } from "../primitives/$prompt.ts";
+import type { ResourcePrimitive } from "../primitives/$resource.ts";
+import type { ToolPrimitive } from "../primitives/$tool.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Core MCP server provider that handles protocol messages.
+ *
+ * This provider maintains registries of tools, resources, and prompts,
+ * and routes incoming JSON-RPC requests to the appropriate handlers.
+ *
+ * It is transport-agnostic - actual communication is handled by
+ * transport providers like StdioMcpTransport or SseMcpTransport.
+ */
+export class McpServerProvider {
+  protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
+
+  protected readonly tools = new Map<string, ToolPrimitive<any>>();
+  protected readonly resources = new Map<string, ResourcePrimitive>();
+  protected readonly prompts = new Map<string, PromptPrimitive<any>>();
+
+  protected initialized = false;
+
+  protected serverInfo: McpServerInfo = {
+    name: "alepha-mcp",
+    version: "1.0.0",
+  };
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Registration Methods
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Register a tool with the MCP server.
+   */
+  public registerTool(tool: ToolPrimitive<any>): void {
+    this.log.trace(`Registering MCP tool: ${tool.name}`);
+    this.tools.set(tool.name, tool);
+  }
+
+  /**
+   * Register a resource with the MCP server.
+   */
+  public registerResource(resource: ResourcePrimitive): void {
+    this.log.trace(`Registering MCP resource: ${resource.uri}`);
+    this.resources.set(resource.uri, resource);
+  }
+
+  /**
+   * Register a prompt with the MCP server.
+   */
+  public registerPrompt(prompt: PromptPrimitive<any>): void {
+    this.log.trace(`Registering MCP prompt: ${prompt.name}`);
+    this.prompts.set(prompt.name, prompt);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Getters
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Get the server capabilities based on registered primitives.
+   */
+  public getCapabilities(): McpCapabilities {
+    return {
+      tools: this.tools.size > 0 ? {} : undefined,
+      resources: this.resources.size > 0 ? {} : undefined,
+      prompts: this.prompts.size > 0 ? {} : undefined,
+    };
+  }
+
+  /**
+   * Get all registered tools.
+   */
+  public getTools(): ToolPrimitive<any>[] {
+    return Array.from(this.tools.values());
+  }
+
+  /**
+   * Get all registered resources.
+   */
+  public getResources(): ResourcePrimitive[] {
+    return Array.from(this.resources.values());
+  }
+
+  /**
+   * Get all registered prompts.
+   */
+  public getPrompts(): PromptPrimitive<any>[] {
+    return Array.from(this.prompts.values());
+  }
+
+  /**
+   * Get a tool by name.
+   */
+  public getTool(name: string): ToolPrimitive<any> | undefined {
+    return this.tools.get(name);
+  }
+
+  /**
+   * Get a resource by URI.
+   */
+  public getResource(uri: string): ResourcePrimitive | undefined {
+    return this.resources.get(uri);
+  }
+
+  /**
+   * Get a prompt by name.
+   */
+  public getPrompt(name: string): PromptPrimitive<any> | undefined {
+    return this.prompts.get(name);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Message Handling
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Handle an incoming JSON-RPC request.
+   *
+   * @param request - The parsed JSON-RPC request
+   * @returns The JSON-RPC response, or null for notifications
+   */
+  public async handleMessage(
+    request: JsonRpcRequest,
+  ): Promise<JsonRpcResponse | null> {
+    const id = request.id;
+
+    // Notifications have no id and expect no response
+    if (id === undefined) {
+      await this.handleNotification(request);
+      return null;
+    }
+
+    try {
+      const result = await this.handleRequest(request);
+      return createResponse(id, result);
+    } catch (error) {
+      this.log.error("MCP request failed", error);
+      // Preserve error code from McpError instances
+      if (error instanceof McpError) {
+        return createErrorResponse(id, {
+          code: error.code,
+          message: error.message,
+        });
+      }
+      return createErrorResponse(
+        id,
+        createInternalError((error as Error).message),
+      );
+    }
+  }
+
+  /**
+   * Handle a JSON-RPC request that expects a response.
+   */
+  protected async handleRequest(request: JsonRpcRequest): Promise<unknown> {
+    const { method, params = {} } = request;
+
+    switch (method) {
+      case "initialize":
+        return this.handleInitialize(params);
+      case "ping":
+        return this.handlePing();
+      case "tools/list":
+        return this.handleToolsList();
+      case "tools/call":
+        return this.handleToolsCall(params);
+      case "resources/list":
+        return this.handleResourcesList();
+      case "resources/read":
+        return this.handleResourcesRead(params);
+      case "prompts/list":
+        return this.handlePromptsList();
+      case "prompts/get":
+        return this.handlePromptsGet(params);
+      default:
+        throw new McpMethodNotFoundError(method);
+    }
+  }
+
+  /**
+   * Handle a notification (no response expected).
+   */
+  protected async handleNotification(request: JsonRpcRequest): Promise<void> {
+    const { method } = request;
+
+    switch (method) {
+      case "notifications/initialized":
+        this.log.debug("MCP client initialized");
+        break;
+      case "notifications/cancelled":
+        this.log.debug("MCP request cancelled", request.params);
+        break;
+      default:
+        this.log.debug(`Unknown MCP notification: ${method}`);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Protocol Handlers
+  // -----------------------------------------------------------------------------------------------------------------
+
+  protected handleInitialize(
+    params: Record<string, unknown>,
+  ): McpInitializeResult {
+    this.log.info("MCP client initializing", {
+      clientInfo: params.clientInfo,
+      protocolVersion: params.protocolVersion,
+    });
+
+    this.initialized = true;
+
+    return {
+      protocolVersion: MCP_PROTOCOL_VERSION,
+      capabilities: this.getCapabilities(),
+      serverInfo: this.serverInfo,
+    };
+  }
+
+  protected handlePing(): Record<string, never> {
+    return {};
+  }
+
+  protected handleToolsList(): { tools: McpToolDescriptor[] } {
+    return {
+      tools: Array.from(this.tools.values()).map((t) => t.toDescriptor()),
+    };
+  }
+
+  protected async handleToolsCall(
+    params: Record<string, unknown>,
+  ): Promise<McpToolCallResult> {
+    const name = params.name as string;
+    const args = (params.arguments ?? {}) as Record<string, unknown>;
+
+    const tool = this.tools.get(name);
+    if (!tool) {
+      throw new McpToolNotFoundError(name);
+    }
+
+    try {
+      const result = await tool.execute(args);
+
+      const content: McpContent[] = [
+        {
+          type: "text",
+          text:
+            typeof result === "string"
+              ? result
+              : JSON.stringify(result ?? null),
+        },
+      ];
+
+      return { content };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: ${(error as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  protected handleResourcesList(): { resources: McpResourceDescriptor[] } {
+    return {
+      resources: Array.from(this.resources.values()).map((r) =>
+        r.toDescriptor(),
+      ),
+    };
+  }
+
+  protected async handleResourcesRead(
+    params: Record<string, unknown>,
+  ): Promise<McpResourceReadResult> {
+    const uri = params.uri as string;
+
+    const resource = this.resources.get(uri);
+    if (!resource) {
+      throw new McpResourceNotFoundError(uri);
+    }
+
+    const content = await resource.read();
+
+    const resourceContent: McpResourceContent = {
+      uri,
+      mimeType: resource.mimeType,
+    };
+
+    if (content.text !== undefined) {
+      resourceContent.text = content.text;
+    }
+
+    if (content.blob !== undefined) {
+      // Convert binary to base64 for transport
+      resourceContent.blob = Buffer.from(content.blob).toString("base64");
+    }
+
+    return {
+      contents: [resourceContent],
+    };
+  }
+
+  protected handlePromptsList(): { prompts: McpPromptDescriptor[] } {
+    return {
+      prompts: Array.from(this.prompts.values()).map((p) => p.toDescriptor()),
+    };
+  }
+
+  protected async handlePromptsGet(
+    params: Record<string, unknown>,
+  ): Promise<McpPromptGetResult> {
+    const name = params.name as string;
+    const args = (params.arguments ?? {}) as Record<string, string>;
+
+    const prompt = this.prompts.get(name);
+    if (!prompt) {
+      throw new McpPromptNotFoundError(name);
+    }
+
+    const messages = await prompt.get(args);
+
+    const mcpMessages: McpPromptMessage[] = messages.map((msg) => ({
+      role: msg.role,
+      content: {
+        type: "text" as const,
+        text: msg.content,
+      },
+    }));
+
+    return {
+      description: prompt.description,
+      messages: mcpMessages,
+    };
+  }
+}

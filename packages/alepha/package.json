@@ -194,6 +194,11 @@
       "import": "./src/logger/index.ts",
       "default": "./src/logger/index.ts"
     },
+    "./mcp": {
+      "types": "./src/mcp/index.ts",
+      "import": "./src/mcp/index.ts",
+      "default": "./src/mcp/index.ts"
+    },
     "./orm": {
       "types": "./src/orm/index.ts",
       "react-native": "./src/orm/index.browser.ts",
