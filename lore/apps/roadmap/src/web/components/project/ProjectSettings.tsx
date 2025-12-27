@@ -20,12 +20,10 @@ import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import Action from "../ui/Action.jsx";
-import ProjectApiKeys, { type ProjectApiKeysProps } from "./ProjectApiKeys.jsx";
 import ProjectUpdate from "./ProjectUpdate.jsx";
 
 export interface ProjectSettingsProps {
   project: Project;
-  apiKeys: ProjectApiKeysProps["apiKeys"];
 }
 
 const ProjectSettings = (props: ProjectSettingsProps) => {
@@ -59,7 +57,6 @@ const ProjectSettings = (props: ProjectSettingsProps) => {
         <Text>{tr("project.settings.general.title")}</Text>
         <ProjectUpdate project={project} />
       </Stack>
-      <ProjectApiKeys projectId={project.id} apiKeys={props.apiKeys} />
 
       <Stack gap={"xs"}>
         <Text>{tr("project.settings.danger.title")}</Text>

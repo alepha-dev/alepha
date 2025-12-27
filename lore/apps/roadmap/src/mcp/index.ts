@@ -1,9 +1,18 @@
 import { $module } from "alepha";
-import { AlephaMcp, AlephaMcpSse } from "alepha/mcp";
+import { AlephaMcp, SseMcpTransport } from "alepha/mcp";
 import { McpAuth } from "./McpAuth.ts";
 import { ProjectResources } from "./resources/ProjectResources.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
 import { TaskTools } from "./tools/TaskTools.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./McpAuth.ts";
+export * from "./resources/ProjectResources.ts";
+export * from "./tools/ProjectTools.ts";
+export * from "./tools/TaskTools.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Roadmap MCP module.
@@ -25,15 +34,10 @@ export const RoadmapMcp = $module({
   name: "roadmap.mcp",
   services: [
     AlephaMcp,
-    AlephaMcpSse,
+    SseMcpTransport,
     McpAuth,
     TaskTools,
     ProjectTools,
     ProjectResources,
   ],
 });
-
-export * from "./McpAuth.ts";
-export * from "./resources/ProjectResources.ts";
-export * from "./tools/ProjectTools.ts";
-export * from "./tools/TaskTools.ts";

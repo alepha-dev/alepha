@@ -1,7 +1,6 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, pg } from "alepha/orm";
-import { projects } from "./projects.ts";
 
 export const mcpApiKeys = $entity({
   name: "mcp_api_keys",
@@ -10,9 +9,6 @@ export const mcpApiKeys = $entity({
     createdAt: pg.createdAt(),
     updatedAt: pg.updatedAt(),
     userId: pg.ref(t.uuid(), () => users.cols.id, {
-      onDelete: "cascade",
-    }),
-    projectId: pg.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     name: t.string({ maxLength: 100 }),
@@ -40,7 +36,7 @@ export const mcpApiKeys = $entity({
   }),
   indexes: [
     {
-      columns: ["projectId", "name"],
+      columns: ["userId", "name"],
       unique: true,
     },
     {
