@@ -1,4 +1,4 @@
-# Logging & Monitoring
+# Logging
 
 `console.log` is fine for debugging. It's not fine for production.
 
@@ -41,7 +41,7 @@ Output in production (JSON, one line):
 
 JSON logs are parseable by Datadog, Grafana Loki, CloudWatch, etc.
 
-### Log Destination
+## Log Destination
 
 By default, logs go to **stdout** and are **synchronous**. This means every `log.info()` call blocks until the message is written.
 
@@ -149,62 +149,6 @@ Want to log every HTTP request? Alepha does it automatically when you enable the
 [14:32:05.150] INFO <alepha.server> <-- GET /api/users 200 50ms
 ```
 
-## Health Checks
-
-Every production app needs a health endpoint. Alepha provides one out of the box:
-
-```typescript
-import { AlephaServerHealth } from "alepha/server/health";
-
-const alepha = Alepha.create()
-  .with(AlephaServerHealth);
-
-// now you have:
-// GET /health   -> { status: "ok", uptime: 12345 }
-// GET /healthz  -> "ok" (for k8s probes)
-```
-
-## Prometheus Metrics
-
-For serious monitoring, enable the metrics module:
-
-```typescript
-import { AlephaServerMetrics } from "alepha/server/metrics";
-
-const alepha = Alepha.create()
-  .with(AlephaServerMetrics);
-
-// GET /metrics -> prometheus format
-```
-
-You get automatic metrics for:
-- HTTP request count and duration
-- Response status codes
-- Active connections
-
-Scrape `/metrics` with Prometheus, visualize in Grafana.
-
-## DevTools
-
-Alepha has built-in DevTools for development:
-
-```typescript
-import { AlephaDevtools } from "@alepha/devtools";
-
-const alepha = Alepha.create()
-  .with(AlephaDevtools);
-
-// visit http://localhost:3000/devtools
-```
-
-DevTools shows:
-- All registered actions, schedulers
-- Last 10,000 log entries (filterable)
-- Current atom state
-- Active jobs and their status
-
-It's like Redux DevTools but for your entire backend.
-
 ## Comparison: Winston vs Pino vs Alepha
 
 **Winston:**
@@ -302,8 +246,5 @@ this.log.error("Database connection lost");               // something broke
 | JSON logs for production | `LOG_FORMAT=json` (default in prod) |
 | Debug specific module | `LOG_LEVEL="module.name:debug,info"` |
 | Debug with wildcards | `LOG_LEVEL="app.*:debug,info"` |
-| Health endpoint | `AlephaServerHealth` |
-| Prometheus metrics | `AlephaServerMetrics` |
-| Visual debugging | `AlephaDevtools` |
 
 Logging is unglamorous but essential. Alepha makes it structured, filterable, and production-ready out of the box.
