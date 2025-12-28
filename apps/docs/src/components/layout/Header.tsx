@@ -40,7 +40,9 @@ const Header = (props: HeaderProps) => {
           <button
             type="button"
             className="visible-mobile flex items-center justify-center h-full border-r"
-            onClick={() => window.dispatchEvent(new CustomEvent("toggle-mobile-sidebar"))}
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("toggle-mobile-sidebar"))
+            }
             style={{
               width: 44,
               background: "transparent",
@@ -64,7 +66,10 @@ const Header = (props: HeaderProps) => {
             alt="Alepha"
             style={{ width: 20, height: 20 }}
           />
-          <span className="font-semibold hidden-mobile" style={{ fontSize: 14 }}>
+          <span
+            className="font-semibold hidden-mobile"
+            style={{ fontSize: 14 }}
+          >
             alepha
           </span>
         </Link>
@@ -95,7 +100,9 @@ const Header = (props: HeaderProps) => {
         <div className="hidden-mobile">
           <HeaderButton
             icon={<IconKeyboard size={16} />}
-            onClick={() => window.dispatchEvent(new CustomEvent("show-keyboard-help"))}
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("show-keyboard-help"))
+            }
           />
         </div>
 

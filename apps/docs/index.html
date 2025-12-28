@@ -4,6 +4,18 @@
   <meta charset="UTF-8">
   <title>Alepha</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<script>
+		// Prevent flash of incorrect theme by setting it before CSS loads
+		(function() {
+			var stored = localStorage.getItem('alepha-docs-mode');
+			var theme = stored === 'light' || stored === 'dark'
+				? stored
+				: window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+					? 'light'
+					: 'dark';
+			document.documentElement.setAttribute('data-theme', theme);
+		})();
+	</script>
 	<link rel="stylesheet" href="/src/styles.css"/>
 
 	<meta name="description" content="Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools." />

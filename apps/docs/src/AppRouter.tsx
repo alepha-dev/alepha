@@ -1,7 +1,7 @@
 import { $page, NotFound } from "@alepha/react";
 import { t } from "alepha";
 import { NotFoundError } from "alepha/server";
-import { Content } from "./components/doc/index.ts";
+import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
 import { Layout } from "./components/layout/index.ts";
 import { docs } from "./config/docs.ts";
@@ -35,7 +35,7 @@ export class AppRouter {
   m = $page({
     sidebar: true,
     path: "/docs/:slug",
-    component: Content,
+    component: Docs,
     schema: {
       params: t.object({
         slug: t.text(),

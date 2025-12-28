@@ -1,0 +1,122 @@
+import { Link } from "@alepha/react";
+import { IconArrowRight } from "@tabler/icons-react";
+import CodeDemo from "./CodeDemo.tsx";
+import ScrollButton from "./ScrollButton.tsx";
+
+const HeroSection = () => {
+  return (
+    <section
+      id="hero"
+      className="home-block container"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingTop: 40,
+        paddingBottom: 40,
+      }}
+    >
+      <div className="intro-grid">
+        {/* Left: Hero Text */}
+        <div className="flex flex-col gap-6 intro-hero">
+          <h1
+            style={{
+              fontSize: "clamp(28px, 7vw, 42px)",
+              fontWeight: 700,
+              margin: 0,
+              color: "var(--color-text-bright)",
+              lineHeight: 1.15,
+            }}
+          >
+            TypeScript Framework
+            <br />
+            <span style={{ color: "var(--color-accent)" }}>Made Easy</span>
+          </h1>
+
+          <p
+            style={{
+              fontSize: "clamp(14px, 3.5vw, 17px)",
+              color: "var(--color-text-muted)",
+              maxWidth: 440,
+              lineHeight: 1.7,
+              margin: 0,
+            }}
+          >
+            Stop gluing libraries together. Alepha gives you APIs, databases,
+            queues, React SSR, and more.{" "}
+            <span style={{ color: "var(--color-text)" }}>
+              All type-safe. All works out of the box.
+            </span>
+          </p>
+
+          {/* Quick Actions */}
+          <div className="flex gap-4 flex-wrap hero-buttons">
+            <Link
+              href="/docs/guides-introduction"
+              style={{ textDecoration: "none" }}
+            >
+              <button
+                type="button"
+                className="hero-btn"
+                style={{
+                  background: "var(--color-accent)",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "14px 32px",
+                  borderRadius: 6,
+                  fontFamily: "inherit",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                Get Started
+                <IconArrowRight size={18} />
+              </button>
+            </Link>
+            <Link
+              href="/docs/packages-alepha-core"
+              style={{ textDecoration: "none" }}
+            >
+              <button
+                type="button"
+                className="hero-btn"
+                style={{
+                  background: "transparent",
+                  color: "var(--color-text)",
+                  border: "1px solid var(--color-border)",
+                  padding: "14px 32px",
+                  borderRadius: 6,
+                  fontFamily: "inherit",
+                  fontSize: 15,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                Explore Packages
+                <IconArrowRight size={18} />
+              </button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Right: Code Demo - Hidden on mobile */}
+        <div className="intro-code hidden-mobile">
+          <CodeDemo />
+        </div>
+      </div>
+
+      {/* Scroll to Features */}
+      <ScrollButton targetId="features" label="Explore Features" />
+    </section>
+  );
+};
+
+export default HeroSection;

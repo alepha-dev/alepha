@@ -1,4 +1,5 @@
 import { NestedView, useEvents, useRouterState } from "@alepha/react";
+import { IconLock, IconLockOpen } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useKonamiCode } from "../../hooks/useKonamiCode.ts";
 import CommandPalette from "./CommandPalette.tsx";
@@ -243,13 +244,19 @@ const SidebarResizer = (props: {
       setIsDragging(true);
 
       const onMouseMove = (e: MouseEvent) => {
-        const newWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX));
+        const newWidth = Math.min(
+          SIDEBAR_MAX,
+          Math.max(SIDEBAR_MIN, e.clientX),
+        );
         props.onResize(newWidth);
       };
 
       const onMouseUp = (e: MouseEvent) => {
         setIsDragging(false);
-        const finalWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX));
+        const finalWidth = Math.min(
+          SIDEBAR_MAX,
+          Math.max(SIDEBAR_MIN, e.clientX),
+        );
         props.onResizeEnd(finalWidth);
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
@@ -366,7 +373,8 @@ const LayoutContent = () => {
   useEffect(() => {
     const handleShowHelp = () => setShowHelp(true);
     window.addEventListener("show-keyboard-help", handleShowHelp);
-    return () => window.removeEventListener("show-keyboard-help", handleShowHelp);
+    return () =>
+      window.removeEventListener("show-keyboard-help", handleShowHelp);
   }, []);
 
   // Listen for mobile sidebar toggle and close events
@@ -559,7 +567,10 @@ const LayoutContent = () => {
             animation: "slideUp 0.3s ease",
           }}
         >
-          {hackerMode ? "🔓 HACKER MODE ACTIVATED" : "HACKER MODE DEACTIVATED"}
+          <span className="flex items-center gap-2">
+            {hackerMode ? <IconLockOpen size={14} /> : <IconLock size={14} />}
+            {hackerMode ? "HACKER MODE ACTIVATED" : "HACKER MODE DEACTIVATED"}
+          </span>
         </div>
       )}
 
@@ -587,10 +598,7 @@ const LayoutContent = () => {
 
       {/* Mobile Sidebar Drawer */}
       {mobileSidebarOpen && (
-        <div
-          className="visible-mobile fixed inset-0"
-          style={{ zIndex: 1000 }}
-        >
+        <div className="visible-mobile fixed inset-0" style={{ zIndex: 1000 }}>
           {/* Backdrop */}
           <div
             className="absolute inset-0"

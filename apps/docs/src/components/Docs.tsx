@@ -1,10 +1,10 @@
 import { IconArrowUp } from "@tabler/icons-react";
 import { useEffect } from "react";
-import { useWindowScroll } from "../../hooks/useWindowScroll.ts";
-import BottomNavigation from "./BottomNavigation.tsx";
-import FileHeader from "./FileHeader.tsx";
-import HtmlContent from "./HtmlContent.tsx";
-import TableOfContents from "./TableOfContents.tsx";
+import { useWindowScroll } from "../hooks/useWindowScroll.ts";
+import BottomNavigation from "./doc/BottomNavigation.tsx";
+import FileHeader from "./doc/FileHeader.tsx";
+import HtmlContent from "./doc/HtmlContent.tsx";
+import TableOfContents from "./doc/TableOfContents.tsx";
 
 interface ContentProps {
   name: string;
@@ -14,7 +14,7 @@ interface ContentProps {
   lastModified?: string | null;
 }
 
-const Content = (props: ContentProps) => {
+const Docs = (props: ContentProps) => {
   const [scroll, scrollTo] = useWindowScroll();
 
   useEffect(() => {
@@ -97,4 +97,4 @@ const Content = (props: ContentProps) => {
   );
 };
 
-export default Content;
+export default Docs;

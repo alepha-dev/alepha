@@ -1,5 +1,6 @@
 import { ClientOnly, useRouterState } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { IconLockOpen } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 interface StatusBarProps {
@@ -50,8 +51,12 @@ const StatusBar = (props: StatusBarProps) => {
         {props.hackerMode && (
           <>
             <span style={{ color: "var(--color-border)" }}>│</span>
-            <span style={{ color: "var(--color-accent)", fontWeight: 600 }}>
-              🔓 HACKER
+            <span
+              className="flex items-center gap-1"
+              style={{ color: "var(--color-accent)", fontWeight: 600 }}
+            >
+              <IconLockOpen size={12} />
+              HACKER
             </span>
           </>
         )}

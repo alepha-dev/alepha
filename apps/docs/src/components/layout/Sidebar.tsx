@@ -27,7 +27,9 @@ const Sidebar = (props: SidebarProps) => {
 
   return (
     <div
-      className={isMobileDrawer ? "flex flex-col" : "sidebar-container flex flex-col"}
+      className={
+        isMobileDrawer ? "flex flex-col" : "sidebar-container flex flex-col"
+      }
       style={{
         width,
         minWidth: width,
