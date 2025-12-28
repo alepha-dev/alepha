@@ -2,6 +2,7 @@ import { useRouter } from "@alepha/react";
 import { IconFile } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type DocNode, tree } from "../../config/docs.ts";
+import styles from "./CommandPalette.module.css";
 
 // Helper to flatten tree
 const flattenTree = (nodes: DocNode[]): DocNode[] => {
@@ -24,7 +25,6 @@ const CommandPalette = () => {
   const router = useRouter();
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Flatten tree for search
   const allDocs = flattenTree(tree);
 
   const filtered = query
@@ -35,24 +35,19 @@ const CommandPalette = () => {
       )
     : allDocs.slice(0, 10);
 
-  // Reset selected index when filtered results change
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
 
-  // Scroll selected item into view
   useEffect(() => {
     if (resultsRef.current) {
-      const selected = resultsRef.current.children[
-        selectedIndex
-      ] as HTMLElement;
+      const selected = resultsRef.current.children[selectedIndex] as HTMLElement;
       if (selected) {
         selected.scrollIntoView({ block: "nearest" });
       }
     }
   }, [selectedIndex]);
 
-  // Keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -70,7 +65,6 @@ const CommandPalette = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
-  // Handle arrow navigation and enter
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "ArrowDown") {
@@ -104,35 +98,11 @@ const CommandPalette = () => {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 flex justify-center command-palette-overlay"
-      style={{
-        background: "rgba(0, 0, 0, 0.8)",
-        zIndex: 10000,
-      }}
-      onClick={() => setOpen(false)}
-    >
-      <div
-        className="command-palette-container w-full"
-        style={{
-          maxWidth: 600,
-          height: "fit-content",
-          maxHeight: "calc(100vh - 40px)",
-          background: "var(--color-bg-panel)",
-          border: "1px solid var(--color-border)",
-          borderRadius: 8,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className={styles.overlay} onClick={() => setOpen(false)}>
+      <div className={styles.container} onClick={(e) => e.stopPropagation()}>
         {/* Input */}
-        <div
-          className="flex items-center gap-4 p-4"
-          style={{ borderBottom: "1px solid var(--color-border)" }}
-        >
-          <span style={{ color: "var(--color-accent)" }}>{">"}</span>
+        <div className={styles.inputSection}>
+          <span className={styles.prompt}>{">"}</span>
           <input
             type="text"
             value={query}
@@ -140,77 +110,24 @@ const CommandPalette = () => {
             onKeyDown={handleInputKeyDown}
             placeholder="Type to search documentation..."
             autoFocus
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "var(--color-text)",
-              fontSize: 16,
-              fontFamily: "inherit",
-            }}
+            className={styles.input}
           />
-          <span
-            className="kbd"
-            style={{ fontSize: 10, padding: "2px 6px", height: 20 }}
-          >
-            ESC
-          </span>
+          <span className={`kbd ${styles.escBadge}`}>ESC</span>
         </div>
 
         {/* Results */}
-        <div
-          ref={resultsRef}
-          className="scroll-area flex-1"
-          style={{ overflowY: "auto" }}
-        >
+        <div ref={resultsRef} className={styles.results}>
           {filtered.map((doc, index) => (
             <button
               type="button"
               key={doc.href || doc.name}
               onClick={() => doc.href && handleSelect(doc.href)}
               onMouseEnter={() => setSelectedIndex(index)}
-              className="btn-reset w-full command-palette-item"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 16px",
-                color:
-                  index === selectedIndex
-                    ? "var(--color-text)"
-                    : "var(--color-text-muted)",
-                background:
-                  index === selectedIndex
-                    ? "var(--color-bg-elevated)"
-                    : "transparent",
-                borderLeft:
-                  index === selectedIndex
-                    ? "2px solid var(--color-accent)"
-                    : "2px solid transparent",
-                cursor: doc.href ? "pointer" : "default",
-                transition: "all 0.1s ease",
-              }}
+              className={`${styles.item} ${index === selectedIndex ? styles.itemSelected : ""}`}
             >
-              <IconFile
-                size={16}
-                style={{
-                  color:
-                    index === selectedIndex
-                      ? "var(--color-accent)"
-                      : "var(--color-cyan)",
-                }}
-              />
+              <IconFile size={16} className={styles.itemIcon} />
               <span className="truncate">{doc.name}</span>
-              <span
-                className="hidden-mobile"
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 12,
-                  color: "var(--color-text-muted)",
-                  flexShrink: 0,
-                }}
-              >
+              <span className={styles.itemPath}>
                 {doc.href?.replace("/docs/", "")}
               </span>
             </button>
@@ -218,14 +135,7 @@ const CommandPalette = () => {
         </div>
 
         {/* Footer */}
-        <div
-          className="flex items-center gap-4 p-3 px-4"
-          style={{
-            borderTop: "1px solid var(--color-border)",
-            fontSize: 12,
-            color: "var(--color-text-muted)",
-          }}
-        >
+        <div className={styles.footer}>
           <span>
             <span className="kbd">↑↓</span> Navigate
           </span>

@@ -6,8 +6,9 @@ import {
   IconFolder,
   IconFolderOpen,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import type { DocNode } from "../../config/docs.ts";
+import styles from "./FileTree.module.css";
 
 // Grid constants for perfect alignment
 const INDENT = 20; // pixels per depth level
@@ -27,20 +28,12 @@ export const FileTree = (props: FileTreeProps) => {
   const guideLeft = BASE + (depth - 1) * INDENT + COL / 2;
 
   return (
-    <div className="relative" style={{ overflow: "auto", flex: 1 }}>
+    <div className={styles.container}>
       {/* Vertical indent guide */}
       {depth > 0 && (
         <div
-          style={{
-            position: "absolute",
-            left: guideLeft,
-            top: 0,
-            bottom: 0,
-            width: 1,
-            background:
-              "linear-gradient(to bottom, transparent 0%, var(--color-border) 10%, var(--color-border) 90%, transparent 100%)",
-            opacity: 0.4,
-          }}
+          className={styles.indentGuide}
+          style={{ "--guide-left": `${guideLeft}px` } as CSSProperties}
         />
       )}
       {props.nodes.map((node) => (
@@ -74,7 +67,6 @@ const hasActiveDescendant = (node: DocNode, currentPath: string): boolean => {
 
 const FileTreeNode = (props: FileTreeNodeProps) => {
   const { node, depth, defaultExpanded } = props;
-  const [isHovered, setIsHovered] = useState(false);
   const hasChildren = node.children && node.children.length > 0;
   const router = useRouter();
   const state = useRouterState();
@@ -117,26 +109,6 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
     }
   }, [hasChildren, expanded, node.href, node.asset, router]);
 
-  // Determine colors based on state
-  const getTextColor = () => {
-    if (isActive) return "var(--color-text)";
-    if (isHovered) return "var(--color-text)";
-    if (hasChildren) return "var(--color-text)";
-    return "var(--color-text-muted)";
-  };
-
-  const getBackground = () => {
-    if (isActive) return "var(--color-surface-active)";
-    if (isHovered) return "var(--color-surface-hover)";
-    return "transparent";
-  };
-
-  const getIconColor = () => {
-    if (isActive) return "var(--color-cyan)";
-    if (isHovered) return "var(--color-cyan)";
-    return "var(--color-cyan)";
-  };
-
   // Row padding: BASE + depth * INDENT
   const rowPaddingLeft = BASE + depth * INDENT;
 
@@ -154,58 +126,29 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
     }
   };
 
+  // Build class names
+  const rowClasses = [
+    styles.row,
+    hasChildren && styles.rowFolder,
+    isActive && styles.rowActive,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="relative">
       <Element
         href={node.href}
         type={node.href ? undefined : "button"}
         onClick={handleClickWithEvent}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className="btn-reset file-tree-item w-full"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "5px 8px",
-          paddingLeft: rowPaddingLeft,
-          borderRadius: 4,
-          fontSize: 13,
-          color: getTextColor(),
-          background: getBackground(),
-          cursor: "pointer",
-          transition: "all 0.15s ease",
-          position: "relative",
-          textDecoration: "none",
-          boxSizing: "border-box",
-          width: "100%",
-        }}
+        className={rowClasses}
+        style={{ "--indent": `${rowPaddingLeft}px` } as React.CSSProperties}
       >
         {/* Active indicator bar */}
-        {isActive && (
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 4,
-              bottom: 4,
-              width: 2,
-              background: "var(--color-accent)",
-              borderRadius: 1,
-            }}
-          />
-        )}
+        {isActive && <div className={styles.activeIndicator} />}
 
-        {/* Chevron column - fixed width */}
-        <span
-          style={{
-            width: COL,
-            height: COL,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        {/* Chevron column */}
+        <span className={styles.iconCol}>
           {hasChildren &&
             (expanded ? (
               <IconChevronDown size={14} />
@@ -214,18 +157,9 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
             ))}
         </span>
 
-        {/* Icon column - fixed width */}
+        {/* Icon column */}
         <span
-          style={{
-            width: COL,
-            height: COL,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: hasChildren ? "var(--color-amber)" : getIconColor(),
-            transition: "color 0.15s ease",
-          }}
+          className={`${styles.iconCol} ${hasChildren ? styles.iconFolder : styles.iconFile}`}
         >
           {hasChildren ? (
             expanded ? (
@@ -239,26 +173,15 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
         </span>
 
         {/* Name */}
-        <span
-          className="truncate"
-          style={{
-            fontSize: 13,
-            marginLeft: 2,
-            transition: "color 0.15s ease",
-          }}
-        >
+        <span className={styles.name}>
           {node.name.toLowerCase()}
           {!hasChildren && (
-            <span style={{ opacity: 0.5 }}>.{node.asset || "md"}</span>
+            <span className={styles.extension}>.{node.asset || "md"}</span>
           )}
         </span>
 
         {/* Hover arrow indicator for files */}
-        {!hasChildren && isHovered && (
-          <span style={{ marginLeft: "auto", opacity: 0.5, fontSize: 10 }}>
-            →
-          </span>
-        )}
+        {!hasChildren && <span className={styles.hoverArrow}>→</span>}
       </Element>
 
       {/* Children */}

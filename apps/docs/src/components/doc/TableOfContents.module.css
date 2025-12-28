@@ -1,0 +1,138 @@
+/* =============================================================================
+   TABLE OF CONTENTS - CSS Module
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   CONTAINER
+   ----------------------------------------------------------------------------- */
+
+.container {
+  width: 280px;
+  min-height: 100%;
+  background: var(--color-surface-subtle);
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  padding-top: 16px;
+}
+
+/* -----------------------------------------------------------------------------
+   HEADER
+   ----------------------------------------------------------------------------- */
+
+.header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-muted);
+  padding: 12px 20px;
+}
+
+/* -----------------------------------------------------------------------------
+   SCROLL AREA
+   ----------------------------------------------------------------------------- */
+
+.scrollArea {
+  max-height: calc(100vh - 120px);
+  padding: 8px 16px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* -----------------------------------------------------------------------------
+   ITEMS CONTAINER
+   ----------------------------------------------------------------------------- */
+
+.itemsContainer {
+  --indicator-top: 0;
+  --indicator-height: 0;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -----------------------------------------------------------------------------
+   ACTIVE INDICATOR
+   ----------------------------------------------------------------------------- */
+
+.indicator {
+  position: absolute;
+  left: 0;
+  top: var(--indicator-top);
+  height: var(--indicator-height);
+  width: 2px;
+  background: var(--color-accent);
+  border-radius: 1px;
+  transition: top 0.2s ease-out, height 0.2s ease-out;
+  z-index: 1;
+}
+
+/* -----------------------------------------------------------------------------
+   TOC ITEM
+   ----------------------------------------------------------------------------- */
+
+.item {
+  --item-indent: 20px;
+
+  position: relative;
+  padding: 6px 12px;
+  padding-left: var(--item-indent);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  transition: color 0.15s ease, opacity 0.15s ease;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+}
+
+.item:hover {
+  color: var(--color-text);
+  opacity: 1;
+}
+
+.item:active {
+  transform: translateY(1px);
+}
+
+/* Depth variants */
+.itemH2 {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.itemH3 {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+/* Active state */
+.itemActive {
+  color: var(--color-text);
+  font-weight: 500;
+  opacity: 1;
+}
+
+/* -----------------------------------------------------------------------------
+   EMPTY STATE
+   ----------------------------------------------------------------------------- */
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: italic;
+}

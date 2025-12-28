@@ -1,0 +1,166 @@
+/* =============================================================================
+   COMMAND PALETTE - CSS Module
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   OVERLAY
+   ----------------------------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  padding: 80px 16px 20px;
+  align-items: flex-start;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+}
+
+@media (max-width: 767px) {
+  .overlay {
+    padding: 12px;
+    align-items: stretch;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   CONTAINER
+   ----------------------------------------------------------------------------- */
+
+.container {
+  width: 100%;
+  max-width: 600px;
+  height: fit-content;
+  max-height: calc(100vh - 40px);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .container {
+    max-width: 100%;
+    max-height: calc(100vh - 24px);
+    border-radius: 12px;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   INPUT SECTION
+   ----------------------------------------------------------------------------- */
+
+.inputSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.prompt {
+  color: var(--color-accent);
+}
+
+.input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.escBadge {
+  font-size: 10px;
+  padding: 2px 6px;
+  height: 20px;
+}
+
+/* -----------------------------------------------------------------------------
+   RESULTS
+   ----------------------------------------------------------------------------- */
+
+.results {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* -----------------------------------------------------------------------------
+   RESULT ITEM
+   ----------------------------------------------------------------------------- */
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  width: 100%;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+}
+
+.item:hover,
+.itemSelected {
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  border-left-color: var(--color-accent);
+}
+
+.item:active {
+  transform: translateY(1px);
+}
+
+.itemIcon {
+  color: var(--color-cyan);
+  flex-shrink: 0;
+}
+
+.itemSelected .itemIcon {
+  color: var(--color-accent);
+}
+
+.itemPath {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .itemPath {
+    display: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   FOOTER
+   ----------------------------------------------------------------------------- */
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

@@ -1,5 +1,6 @@
 import { useRouter } from "@alepha/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import styles from "./TableOfContents.module.css";
 
 interface HeadingItem {
   id: string;
@@ -19,33 +20,10 @@ const TableOfContents = (props: TableOfContentsProps) => {
   }, [props.name, router]);
 
   return (
-    <div
-      className="visible-xl"
-      style={{
-        width: 280,
-        minHeight: "100%",
-        background: "var(--color-surface-subtle)",
-      }}
-    >
-      <div className="sticky top-0" style={{ paddingTop: 16 }}>
-        {/* Header */}
-        <div
-          style={{
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: 1,
-            color: "var(--color-text-muted)",
-            padding: "12px 20px",
-          }}
-        >
-          On This Page
-        </div>
-
-        {/* ToC Items */}
-        <div
-          className="scroll-area"
-          style={{ maxHeight: "calc(100vh - 120px)", padding: "8px 16px" }}
-        >
+    <div className={`visible-xl ${styles.container}`}>
+      <div className={styles.sticky}>
+        <div className={styles.header}>On This Page</div>
+        <div className={`scroll-area ${styles.scrollArea}`}>
           <TocItems key={props.name} />
         </div>
       </div>
@@ -78,7 +56,6 @@ const TocItems = () => {
     }));
     setHeadings(items);
 
-    // Set initial active to first heading
     if (items.length > 0 && !activeId) {
       setActiveId(items[0].id);
     }
@@ -113,10 +90,8 @@ const TocItems = () => {
     const createObserver = () => {
       return new IntersectionObserver(
         (entries) => {
-          // If we have a clicked ID, ignore observer updates
           if (clickedIdRef.current) return;
 
-          // Find the topmost visible heading
           let topMostId: string | null = null;
           let topMostTop = Infinity;
 
@@ -153,14 +128,10 @@ const TocItems = () => {
   const handleClick = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      // Lock to this ID - prevents observer from changing it
       clickedIdRef.current = id;
       setActiveId(id);
-
-      // Update URL hash without triggering scroll
       history.replaceState(null, "", `#${id}`);
 
-      // Detect scroll end by monitoring element position stability
       let lastTop = element.getBoundingClientRect().top;
       let stableFrames = 0;
 
@@ -168,7 +139,6 @@ const TocItems = () => {
         const currentTop = element.getBoundingClientRect().top;
         if (Math.abs(currentTop - lastTop) < 1) {
           stableFrames++;
-          // Element position stable for 5 frames = scroll complete
           if (stableFrames >= 5) {
             clickedIdRef.current = null;
             return;
@@ -180,63 +150,30 @@ const TocItems = () => {
         requestAnimationFrame(checkScrollEnd);
       };
 
-      // Start checking after a small delay to let scroll begin
       requestAnimationFrame(() => requestAnimationFrame(checkScrollEnd));
-
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  // Depth-based styling
-  const getDepthStyle = (depth: number, isActive: boolean) => {
-    return {
-      fontSize: depth === 2 ? 12 : 11,
-      fontWeight: depth === 2 ? 500 : 400,
-      opacity: isActive ? 1 : depth === 2 ? 0.7 : 0.5,
-    };
-  };
-
   if (headings.length === 0) {
-    return (
-      <div
-        style={{
-          color: "var(--color-text-muted)",
-          fontSize: 12,
-          fontStyle: "italic",
-        }}
-      >
-        No headings found...
-      </div>
-    );
+    return <div className={styles.empty}>No headings found...</div>;
   }
 
   return (
     <div
       ref={containerRef}
-      className="flex flex-col"
+      className={styles.itemsContainer}
       style={{
-        position: "relative",
-      }}
+        "--indicator-top": `${indicatorStyle.top}px`,
+        "--indicator-height": `${indicatorStyle.height}px`,
+      } as CSSProperties}
     >
-      {/* Floating indicator bar */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: indicatorStyle.top,
-          height: indicatorStyle.height,
-          width: 2,
-          background: "var(--color-accent)",
-          borderRadius: 1,
-          transition: "top 0.2s ease-out, height 0.2s ease-out",
-          zIndex: 1,
-        }}
-      />
+      <div className={styles.indicator} />
 
       {headings.map((heading) => {
         const isActive = activeId === heading.id;
-        const depthStyle = getDepthStyle(heading.depth, isActive);
         const indent = (heading.depth - 2) * 8;
+        const depthClass = heading.depth === 2 ? styles.itemH2 : styles.itemH3;
 
         return (
           <button
@@ -246,21 +183,8 @@ const TocItems = () => {
             }}
             type="button"
             onClick={() => handleClick(heading.id)}
-            className="btn-reset text-left cursor-pointer toc-item truncate"
-            style={{
-              position: "relative",
-              padding: "6px 12px",
-              paddingLeft: 20 + indent,
-              fontSize: depthStyle.fontSize,
-              fontWeight: isActive ? 500 : depthStyle.fontWeight,
-              color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
-              opacity: depthStyle.opacity,
-              transition: "color 0.15s ease, opacity 0.15s ease",
-              display: "block",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className={`${styles.item} ${depthClass} ${isActive ? styles.itemActive : ""}`}
+            style={{ "--item-indent": `${20 + indent}px` } as CSSProperties}
           >
             {heading.text}
           </button>
