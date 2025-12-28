@@ -6,9 +6,11 @@ import styles from "./PackageChip.module.css";
 interface PackageChipProps {
   feature: (typeof coreFeatures)[number];
   index: number;
+  isActive?: boolean;
+  isReverse?: boolean;
 }
 
-const PackageChip = ({ feature, index }: PackageChipProps) => {
+const PackageChip = ({ feature, index, isActive, isReverse }: PackageChipProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -32,7 +34,7 @@ const PackageChip = ({ feature, index }: PackageChipProps) => {
       onMouseLeave={handleMouseLeave}
     >
       <div
-        className={styles.chip}
+        className={`${styles.chip} ${isActive ? styles.snakeBorder : ""}`}
         style={{ "--animation-delay": `${index * 0.02}s` } as CSSProperties}
       >
         <feature.icon size={16} className={styles.icon} />
@@ -40,6 +42,21 @@ const PackageChip = ({ feature, index }: PackageChipProps) => {
 
         {"new" in feature && feature.new && (
           <span className={styles.badge}>NEW</span>
+        )}
+
+        {isActive && (
+          <svg className={styles.snakeBorderSvg} viewBox="0 0 100 100" preserveAspectRatio="none">
+            <rect
+              className={`${styles.snakeBorderRect} ${isReverse ? styles.snakeBorderReverse : ""}`}
+              x="1"
+              y="1"
+              width="98"
+              height="98"
+              rx="2"
+              ry="2"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
         )}
 
         {showTooltip && (

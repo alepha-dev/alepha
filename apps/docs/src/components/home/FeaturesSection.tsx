@@ -1,8 +1,34 @@
+import { useEffect, useState } from "react";
 import { apiFeatures, coreFeatures } from "../../config/features.ts";
 import PackageChip from "./PackageChip.tsx";
 import ScrollButton from "./ScrollButton.tsx";
 
 const FeaturesSection = () => {
+  const [activeChip, setActiveChip] = useState<{ id: string; reverse: boolean } | null>(null);
+
+  useEffect(() => {
+    const allChips = [
+      ...coreFeatures.map((_, i) => `core-${i}`),
+      ...apiFeatures.map((_, i) => `api-${i}`),
+    ];
+
+    const triggerAnimation = () => {
+      const randomChip = allChips[Math.floor(Math.random() * allChips.length)];
+      const reverse = Math.random() > 0.5;
+      setActiveChip({ id: randomChip, reverse });
+      // Animation lasts 4s
+      setTimeout(() => setActiveChip(null), 4000);
+    };
+
+    const initialDelay = setTimeout(triggerAnimation, 2000);
+    const interval = setInterval(triggerAnimation, 6000);
+
+    return () => {
+      clearTimeout(initialDelay);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <section
       id="features"
@@ -103,6 +129,8 @@ const FeaturesSection = () => {
                 key={feature.title}
                 feature={feature}
                 index={index}
+                isActive={activeChip?.id === `core-${index}`}
+                isReverse={activeChip?.id === `core-${index}` && activeChip.reverse}
               />
             ))}
           </div>
@@ -140,6 +168,8 @@ const FeaturesSection = () => {
                 key={feature.title}
                 feature={feature}
                 index={index}
+                isActive={activeChip?.id === `api-${index}`}
+                isReverse={activeChip?.id === `api-${index}` && activeChip.reverse}
               />
             ))}
           </div>

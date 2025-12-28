@@ -28,7 +28,7 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--color-border-rgb), 0.3);
-  border-radius: 8px;
+  border-radius: 2px;
   color: var(--color-text);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -141,4 +141,82 @@
   background: var(--color-bg-elevated);
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* -----------------------------------------------------------------------------
+   SNAKE BORDER ANIMATION
+   ----------------------------------------------------------------------------- */
+
+.snakeBorder {
+  /* Keep normal border for structure */
+}
+
+.snakeBorderSvg {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.snakeBorderRect {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 60 300;
+  stroke-dashoffset: 0;
+  animation: snakeDash 4s ease-in-out forwards;
+  filter: drop-shadow(0 0 6px var(--color-accent));
+}
+
+@keyframes snakeDash {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: -360;
+    opacity: 0;
+  }
+}
+
+.snakeBorderReverse {
+  animation: snakeDashReverse 4s ease-in-out forwards;
+}
+
+@keyframes snakeDashReverse {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 360;
+    opacity: 0;
+  }
 }
