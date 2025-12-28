@@ -21,6 +21,7 @@ export type DocItem = {
   level: number;
   readingTime: number;
   lastModified: string | null;
+  keywords: string[];
 };
 
 export type DocNode = {
@@ -31,6 +32,7 @@ export type DocNode = {
   href?: string;
   description?: string;
   asset?: string; // file extension for assets (e.g., "txt"), uses window.location instead of router
+  keywords?: string[];
 };
 
 interface PrimitiveInfo {
@@ -259,6 +261,53 @@ class DocsCliApp {
     const minutes = Math.ceil(words / 200);
     this.log.trace(`Reading time: ${minutes} min (${words} words)`);
     return Math.max(1, minutes);
+  }
+
+  /**
+   * Extracts keywords from markdown content by parsing headings (h2, h3, h4).
+   * Extracts meaningful terms like function names ($atom, $env), class names, etc.
+   */
+  extractKeywords(content: string): string[] {
+    const keywords: Set<string> = new Set();
+
+    // Match markdown headings: ## heading, ### heading, #### heading
+    const headingRegex = /^#{2,4}\s+(.+)$/gm;
+    const matches = content.matchAll(headingRegex);
+
+    for (const match of matches) {
+      const heading = match[1].trim();
+
+      // Extract the raw heading text
+      keywords.add(heading);
+
+      // Extract code/function names from backticks: `$atom()` -> $atom
+      const codeMatches = heading.matchAll(/`([^`]+)`/g);
+      for (const codeMatch of codeMatches) {
+        const code = codeMatch[1].replace(/[()]/g, "").trim();
+        if (code) {
+          keywords.add(code);
+        }
+      }
+
+      // Extract individual words that look like identifiers (camelCase, PascalCase, $prefixed)
+      const words = heading.replace(/`[^`]+`/g, "").split(/\s+/);
+      for (const word of words) {
+        const cleaned = word.replace(/[():`]/g, "").trim();
+        // Include if it looks like an identifier: starts with $, or has mixed case, or is a common term
+        if (
+          cleaned.startsWith("$") ||
+          cleaned.startsWith("use") ||
+          /^[A-Z][a-z]/.test(cleaned) ||
+          /[a-z][A-Z]/.test(cleaned)
+        ) {
+          keywords.add(cleaned);
+        }
+      }
+    }
+
+    const result = Array.from(keywords).filter((k) => k.length > 1);
+    this.log.trace(`Extracted ${result.length} keywords`);
+    return result;
   }
 
   /**
@@ -1182,6 +1231,7 @@ class DocsCliApp {
             level: item.level,
             readingTime: item.readingTime,
             lastModified: item.lastModified,
+            keywords: item.keywords,
             content: `${TAG}() => import('./${filename}').then(it => it.default)${TAG}`,
           });
         }
@@ -1300,7 +1350,9 @@ class DocsCliApp {
           return this.renderEnhancedCodeBlock(text, actualLang, meta);
         }
 
-        const language = hljs.getLanguage(actualLang || "") ? actualLang : "plaintext";
+        const language = hljs.getLanguage(actualLang || "")
+          ? actualLang
+          : "plaintext";
         const highlighted = hljs.highlight(text, {
           language: language || "plaintext",
         }).value;
@@ -1386,6 +1438,7 @@ class DocsCliApp {
 
         const readingTime = this.calculateReadingTime(originalContent);
         const lastModified = await this.getGitLastModified(entryPath);
+        const keywords = this.extractKeywords(originalContent);
 
         const item = {
           slug: fullSlug,
@@ -1400,9 +1453,12 @@ class DocsCliApp {
           level,
           readingTime,
           lastModified,
+          keywords,
         };
         items.push(item);
-        this.log.debug(`Added doc item: ${item.slug}`);
+        this.log.debug(
+          `Added doc item: ${item.slug} (${keywords.length} keywords)`,
+        );
       }
     }
   }
@@ -1566,6 +1622,7 @@ class DocsCliApp {
           order: item.order,
           href: `/docs/${item.slug}`,
           description: item.description,
+          keywords: item.keywords,
         });
         this.log.trace(`Added doc leaf: ${displayName}`);
       }

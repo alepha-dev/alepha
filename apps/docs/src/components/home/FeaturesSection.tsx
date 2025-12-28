@@ -23,14 +23,23 @@ const FeaturesSection = () => {
         paddingRight: "var(--space-4)",
       }}
     >
-      {/* Noise texture overlay */}
+      {/* Dotted grid pattern */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          backgroundSize: "256px 256px",
-          opacity: 0.05,
+          backgroundImage: `radial-gradient(circle, var(--color-dot-grid) 1px, transparent 1px)`,
+          backgroundSize: "24px 24px",
+          pointerEvents: "none",
+        }}
+      />
+      {/* Subtle accent glow */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(var(--color-accent-rgb), 0.04) 0%, transparent 50%)",
           pointerEvents: "none",
         }}
       />

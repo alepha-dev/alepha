@@ -3,6 +3,50 @@
    ============================================================================= */
 
 /* -----------------------------------------------------------------------------
+   ANIMATIONS
+   ----------------------------------------------------------------------------- */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dialogOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+}
+
+/* -----------------------------------------------------------------------------
    OVERLAY
    ----------------------------------------------------------------------------- */
 
@@ -15,6 +59,11 @@
   align-items: flex-start;
   background: rgba(0, 0, 0, 0.8);
   z-index: 10000;
+  animation: overlayIn 0.15s ease-out forwards;
+}
+
+.overlayClosing {
+  animation: overlayOut 0.12s ease-in forwards;
 }
 
 @media (max-width: 767px) {
@@ -40,6 +89,11 @@
   display: flex;
   flex-direction: column;
   margin: 0 auto;
+  animation: dialogIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.containerClosing {
+  animation: dialogOut 0.12s ease-in forwards;
 }
 
 @media (max-width: 767px) {
@@ -145,9 +199,23 @@
   flex-shrink: 0;
 }
 
+.matchedKeyword {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
 @media (max-width: 767px) {
   .itemPath {
     display: none;
+  }
+
+  .matchedKeyword {
+    margin-left: auto;
   }
 }
 

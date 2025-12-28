@@ -86,13 +86,40 @@ const NavigationProgress = () => {
 // =============================================================================
 
 const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
+  const [closing, setClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setClosing(true);
+    setTimeout(() => {
+      props.onClose();
+    }, 120);
+  }, [props.onClose]);
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !closing) {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closing, handleClose]);
+
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center"
-      style={{ zIndex: 10002, background: "rgba(0, 0, 0, 0.7)" }}
-      onClick={props.onClose}
+      className="fixed inset-0 flex items-center justify-center dialog-overlay"
+      style={{
+        zIndex: 10002,
+        background: "rgba(0, 0, 0, 0.7)",
+        animation: closing
+          ? "dialogOverlayOut 0.12s ease-in forwards"
+          : undefined,
+      }}
+      onClick={handleClose}
     >
       <div
+        className="dialog-container"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--color-bg-elevated)",
@@ -101,6 +128,7 @@ const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
           padding: 24,
           maxWidth: 400,
           width: "90%",
+          animation: closing ? "dialogOut 0.12s ease-in forwards" : undefined,
         }}
       >
         <div
@@ -146,7 +174,7 @@ const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
                   padding: "2px 8px",
                   fontFamily: "monospace",
                   fontSize: 12,
-                  color: "var(--color-cyan)",
+                  color: "var(--color-text)",
                 }}
               >
                 {key}

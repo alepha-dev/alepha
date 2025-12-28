@@ -180,7 +180,7 @@ const MoreSection = () => {
           style={{ marginBottom: "clamp(32px, 8vw, 64px)" }}
         >
           <a
-            href="https://github.com/anthropics/alepha"
+            href="https://github.com/feunard/alepha"
             target="_blank"
             rel="noopener noreferrer"
             className="footer-link flex items-center gap-2"
@@ -308,7 +308,7 @@ const MoreSection = () => {
             <span>MIT License</span>
             <span style={{ opacity: 0.4 }}>·</span>
             <a
-              href="https://github.com/anthropics/alepha"
+              href="https://github.com/feunard/alepha"
               target="_blank"
               rel="noopener noreferrer"
               className="footer-link"
@@ -325,6 +325,14 @@ const MoreSection = () => {
               style={{ color: "inherit", textDecoration: "none" }}
             >
               npm
+            </a>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <a
+              href="mailto:contact@alepha.dev"
+              className="footer-link"
+              style={{ color: "inherit", textDecoration: "none" }}
+            >
+              Contact
             </a>
           </div>
 

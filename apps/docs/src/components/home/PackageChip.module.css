@@ -24,20 +24,27 @@
   padding: 10px 16px;
   font-family: monospace;
   font-size: 13px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  background: rgba(var(--color-bg-rgb), 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--color-border-rgb), 0.3);
+  border-radius: 8px;
   color: var(--color-text);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   animation: slideUp 0.5s ease forwards;
   animation-delay: var(--animation-delay);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .chip:hover {
-  border-color: var(--color-border-focus);
+  background: rgba(var(--color-bg-rgb), 0.9);
+  border-color: rgba(var(--color-accent-rgb), 0.5);
   color: var(--color-text-bright);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(var(--color-accent-rgb), 0.2);
 }
 
 .chip:active {
