@@ -126,8 +126,8 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
   };
 
   const getBackground = () => {
-    if (isActive) return "rgba(255, 255, 255, 0.08)";
-    if (isHovered) return "rgba(255, 255, 255, 0.04)";
+    if (isActive) return "var(--color-surface-active)";
+    if (isHovered) return "var(--color-surface-hover)";
     return "transparent";
   };
 

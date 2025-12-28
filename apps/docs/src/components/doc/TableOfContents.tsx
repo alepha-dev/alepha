@@ -24,7 +24,7 @@ const TableOfContents = (props: TableOfContentsProps) => {
       style={{
         width: 280,
         minHeight: "100%",
-        background: "rgba(255, 255, 255, 0.01)",
+        background: "var(--color-surface-subtle)",
       }}
     >
       <div className="sticky top-0" style={{ paddingTop: 16 }}>
@@ -35,7 +35,6 @@ const TableOfContents = (props: TableOfContentsProps) => {
             textTransform: "uppercase",
             letterSpacing: 1,
             color: "var(--color-text-muted)",
-            opacity: 0.5,
             padding: "12px 20px",
           }}
         >

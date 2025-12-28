@@ -19,7 +19,7 @@ const FileHeader = (props: FileHeaderProps) => {
   const directory = pathParts.join("/");
 
   return (
-    <div className="pt-6 mb-8 pb-6 border-b">
+    <div className="pt-6 mb-8 pb-6">
       {/* Breadcrumb Path + Edit Button - Hidden on mobile */}
       <div className="hidden-mobile flex items-center justify-between mb-2 text-sm gap-4 flex-wrap">
         <div className="flex items-center gap-2">
