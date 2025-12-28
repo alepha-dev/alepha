@@ -1,0 +1,86 @@
+/* =============================================================================
+   DIALOG - Reusable Modal Component
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   ANIMATIONS (scoped to module)
+   ----------------------------------------------------------------------------- */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dialogOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   OVERLAY
+   ----------------------------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: var(--z-max);
+  animation: overlayIn var(--dialog-overlay-duration-in) ease-out forwards;
+}
+
+.overlayClosing {
+  animation: overlayOut var(--dialog-duration-out) var(--dialog-easing-out) forwards;
+}
+
+.overlayCenter {
+  align-items: center;
+}
+
+/* -----------------------------------------------------------------------------
+   CONTAINER
+   ----------------------------------------------------------------------------- */
+
+.container {
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: dialogIn var(--dialog-duration-in) var(--dialog-easing-in) forwards;
+}
+
+.containerClosing {
+  animation: dialogOut var(--dialog-duration-out) var(--dialog-easing-out) forwards;
+}

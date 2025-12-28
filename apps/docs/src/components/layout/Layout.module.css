@@ -1,0 +1,171 @@
+/* =============================================================================
+   LAYOUT - CSS Module
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   NAVIGATION PROGRESS BAR
+   ----------------------------------------------------------------------------- */
+
+.progressContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--color-accent);
+}
+
+/* -----------------------------------------------------------------------------
+   SIDEBAR RESIZER
+   ----------------------------------------------------------------------------- */
+
+.resizer {
+  width: 6px;
+  cursor: col-resize;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.resizerGrip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.resizerGripActive {
+  opacity: 0.5;
+}
+
+.resizerDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.resizerHitbox {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: -3px;
+}
+
+/* -----------------------------------------------------------------------------
+   NOTIFICATIONS
+   ----------------------------------------------------------------------------- */
+
+.notification {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  border-radius: 4px;
+  animation: slideUp 0.3s ease;
+}
+
+.hackerNotification {
+  top: 60px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.hackerNotificationActive {
+  background: var(--color-accent);
+  color: #0a0a0a;
+}
+
+.hackerNotificationInactive {
+  background: var(--color-red);
+  color: #0a0a0a;
+}
+
+.focusNotification {
+  bottom: 40px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.focusKey {
+  color: var(--color-cyan);
+}
+
+/* -----------------------------------------------------------------------------
+   MOBILE SIDEBAR DRAWER
+   ----------------------------------------------------------------------------- */
+
+.mobileOverlay {
+  z-index: 1000;
+}
+
+.mobileBackdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.mobileDrawer {
+  width: 280px;
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border);
+  animation: slideInLeft 0.2s ease;
+}
+
+/* -----------------------------------------------------------------------------
+   MAIN LAYOUT
+   ----------------------------------------------------------------------------- */
+
+.mainContainer {
+  overflow: hidden;
+  position: relative;
+}
+
+.contentArea {
+  overflow: auto;
+  background: var(--color-bg);
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* -----------------------------------------------------------------------------
+   ANIMATIONS
+   ----------------------------------------------------------------------------- */
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}

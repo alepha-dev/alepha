@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useKonamiCode } from "../../hooks/useKonamiCode.ts";
 import CommandPalette from "./CommandPalette.tsx";
 import Header from "./Header.tsx";
+import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp.tsx";
+import styles from "./Layout.module.css";
 import Sidebar from "./Sidebar.tsx";
 import StatusBar from "./StatusBar.tsx";
 
@@ -55,157 +57,17 @@ const NavigationProgress = () => {
   if (!visible) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 3,
-        zIndex: 9999,
-        pointerEvents: "none",
-      }}
-    >
+    <div className={styles.progressContainer}>
       <div
+        className={styles.progressBar}
         style={{
-          height: "100%",
           width: `${progress}%`,
-          background: "var(--color-accent)",
           transition: isLoading
             ? "width 0.1s ease-out"
             : "width 0.2s ease-out, opacity 0.2s ease-out",
           opacity: isLoading ? 1 : 0,
         }}
       />
-    </div>
-  );
-};
-
-// =============================================================================
-// KEYBOARD SHORTCUTS HELP
-// =============================================================================
-
-const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
-  const [closing, setClosing] = useState(false);
-
-  const handleClose = useCallback(() => {
-    setClosing(true);
-    setTimeout(() => {
-      props.onClose();
-    }, 120);
-  }, [props.onClose]);
-
-  // Handle Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !closing) {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closing, handleClose]);
-
-  return (
-    <div
-      className="fixed inset-0 flex items-center justify-center dialog-overlay"
-      style={{
-        zIndex: 10002,
-        background: "rgba(0, 0, 0, 0.7)",
-        animation: closing
-          ? "dialogOverlayOut 0.12s ease-in forwards"
-          : undefined,
-      }}
-      onClick={handleClose}
-    >
-      <div
-        className="dialog-container"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--color-bg-elevated)",
-          border: "1px solid var(--color-border)",
-          borderRadius: 8,
-          padding: 24,
-          maxWidth: 400,
-          width: "90%",
-          animation: closing ? "dialogOut 0.12s ease-in forwards" : undefined,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            marginBottom: 16,
-            color: "var(--color-accent)",
-          }}
-        >
-          Keyboard Shortcuts
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            fontSize: 13,
-          }}
-        >
-          {[
-            ["j / k", "Scroll down / up"],
-            ["g g", "Go to top"],
-            ["G", "Go to bottom"],
-            ["/", "Open search"],
-            ["f", "Toggle focus mode"],
-            ["Esc", "Close dialogs"],
-            ["?", "Show this help"],
-          ].map(([key, desc]) => (
-            <div
-              key={key}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 16,
-              }}
-            >
-              <kbd
-                style={{
-                  background: "var(--color-bg)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 4,
-                  padding: "2px 8px",
-                  fontFamily: "monospace",
-                  fontSize: 12,
-                  color: "var(--color-text)",
-                }}
-              >
-                {key}
-              </kbd>
-              <span style={{ color: "var(--color-text-muted)" }}>{desc}</span>
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            marginTop: 16,
-            paddingTop: 16,
-            borderTop: "1px solid var(--color-border)",
-            fontSize: 11,
-            color: "var(--color-text-muted)",
-            textAlign: "center",
-          }}
-        >
-          Press{" "}
-          <kbd
-            style={{
-              background: "var(--color-bg)",
-              padding: "1px 4px",
-              borderRadius: 2,
-            }}
-          >
-            Esc
-          </kbd>{" "}
-          or click outside to close
-        </div>
-      </div>
     </div>
   );
 };
@@ -307,50 +169,18 @@ const SidebarResizer = (props: {
       onMouseDown={handleMouseDown}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      style={{
-        width: 6,
-        cursor: "col-resize",
-        position: "relative",
-        flexShrink: 0,
-        zIndex: 10,
-      }}
+      className={styles.resizer}
     >
       {/* Subtle grip dots - only visible on hover */}
       <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 3,
-          opacity: isActive ? 0.5 : 0,
-          transition: "opacity 0.15s ease",
-        }}
+        className={`${styles.resizerGrip} ${isActive ? styles.resizerGripActive : ""}`}
       >
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            style={{
-              width: 3,
-              height: 3,
-              borderRadius: "50%",
-              background: "var(--color-text-muted)",
-            }}
-          />
+          <div key={i} className={styles.resizerDot} />
         ))}
       </div>
       {/* Hover hitbox extension */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: -3,
-          right: -3,
-        }}
-      />
+      <div className={styles.resizerHitbox} />
     </div>
   );
 };
@@ -553,12 +383,13 @@ const LayoutContent = () => {
     return (
       <div className="flex flex-col min-h-screen w-full">
         {/* Keyboard Shortcuts Help */}
-        {showHelp && (
-          <KeyboardShortcutsHelp onClose={() => setShowHelp(false)} />
-        )}
+        <KeyboardShortcutsHelp
+          open={showHelp}
+          onClose={() => setShowHelp(false)}
+        />
 
         {/* Header without tabs - sticky */}
-        <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
+        <div className={styles.stickyHeader}>
           <Header showTabs={false} />
         </div>
 
@@ -580,25 +411,15 @@ const LayoutContent = () => {
       style={{ minHeight: "100vh", width: "100%" }}
     >
       {/* Keyboard Shortcuts Help */}
-      {showHelp && <KeyboardShortcutsHelp onClose={() => setShowHelp(false)} />}
+      <KeyboardShortcutsHelp
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+      />
 
       {/* Hacker Mode Notification */}
       {showHackerNotification && (
         <div
-          className="fixed"
-          style={{
-            top: 60,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10001,
-            background: hackerMode ? "var(--color-accent)" : "var(--color-red)",
-            color: "#0a0a0a",
-            padding: "8px 16px",
-            borderRadius: 4,
-            fontWeight: 600,
-            fontSize: 12,
-            animation: "slideUp 0.3s ease",
-          }}
+          className={`${styles.notification} ${styles.hackerNotification} ${hackerMode ? styles.hackerNotificationActive : styles.hackerNotificationInactive}`}
         >
           <span className="flex items-center gap-2">
             {hackerMode ? <IconLockOpen size={14} /> : <IconLock size={14} />}
@@ -609,44 +430,25 @@ const LayoutContent = () => {
 
       {/* Focus Mode Notification */}
       {focusMode && (
-        <div
-          className="fixed"
-          style={{
-            bottom: 40,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10001,
-            background: "var(--color-bg-elevated)",
-            border: "1px solid var(--color-border)",
-            color: "var(--color-text-muted)",
-            padding: "6px 12px",
-            borderRadius: 4,
-            fontSize: 11,
-          }}
-        >
-          Focus mode • Press <kbd style={{ color: "var(--color-cyan)" }}>f</kbd>{" "}
-          or <kbd style={{ color: "var(--color-cyan)" }}>Esc</kbd> to exit
+        <div className={`${styles.notification} ${styles.focusNotification}`}>
+          Focus mode • Press <kbd className={styles.focusKey}>f</kbd> or{" "}
+          <kbd className={styles.focusKey}>Esc</kbd> to exit
         </div>
       )}
 
       {/* Mobile Sidebar Drawer */}
       {mobileSidebarOpen && (
-        <div className="visible-mobile fixed inset-0" style={{ zIndex: 1000 }}>
+        <div
+          className={`visible-mobile fixed inset-0 ${styles.mobileOverlay}`}
+        >
           {/* Backdrop */}
           <div
-            className="absolute inset-0"
-            style={{ background: "rgba(0, 0, 0, 0.5)" }}
+            className={`absolute inset-0 ${styles.mobileBackdrop}`}
             onClick={() => setMobileSidebarOpen(false)}
           />
           {/* Drawer */}
           <div
-            className="absolute top-0 left-0 bottom-0 flex flex-col"
-            style={{
-              width: 280,
-              background: "var(--color-bg)",
-              borderRight: "1px solid var(--color-border)",
-              animation: "slideInLeft 0.2s ease",
-            }}
+            className={`absolute top-0 left-0 bottom-0 flex flex-col ${styles.mobileDrawer}`}
           >
             <Sidebar width={280} isMobileDrawer />
           </div>
@@ -659,10 +461,7 @@ const LayoutContent = () => {
         {!focusMode && <Header showTabs />}
 
         {/* Main Content Area */}
-        <div
-          className="flex flex-1 w-full"
-          style={{ overflow: "hidden", position: "relative" }}
-        >
+        <div className={`flex flex-1 w-full ${styles.mainContainer}`}>
           {/* Sidebar - File Tree */}
           {!focusMode && <Sidebar width={sidebarWidth} />}
 
@@ -675,14 +474,7 @@ const LayoutContent = () => {
           )}
 
           {/* Content */}
-          <div
-            ref={contentRef}
-            className="flex-1"
-            style={{
-              overflow: "auto",
-              background: "var(--color-bg)",
-            }}
-          >
+          <div ref={contentRef} className={`flex-1 ${styles.contentArea}`}>
             <NestedView />
           </div>
         </div>

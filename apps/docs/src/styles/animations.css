@@ -47,11 +47,19 @@
 }
 
 .dialog-overlay {
-  animation: dialogOverlayIn 0.15s ease-out forwards;
+  animation: dialogOverlayIn var(--dialog-overlay-duration-in) ease-out forwards;
+}
+
+.dialog-overlay-closing {
+  animation: dialogOverlayOut var(--dialog-duration-out) var(--dialog-easing-out) forwards;
 }
 
 .dialog-container {
-  animation: dialogIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: dialogIn var(--dialog-duration-in) var(--dialog-easing-in) forwards;
+}
+
+.dialog-container-closing {
+  animation: dialogOut var(--dialog-duration-out) var(--dialog-easing-out) forwards;
 }
 
 /* -----------------------------------------------------------------------------
