@@ -3,7 +3,7 @@ import { t } from "alepha";
 import { NotFoundError } from "alepha/server";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
-import { Layout } from "./components/layout/index.ts";
+import Layout from "./components/layout/Layout.tsx";
 import { docs } from "./config/docs.ts";
 
 declare module "@alepha/react" {

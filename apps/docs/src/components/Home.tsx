@@ -1,9 +1,7 @@
-import {
-  FeaturesSection,
-  HeroSection,
-  MoreSection,
-  ParticleNetwork,
-} from "./home/index.ts";
+import FeaturesSection from "./home/FeaturesSection.tsx";
+import HeroSection from "./home/HeroSection.tsx";
+import MoreSection from "./home/MoreSection.tsx";
+import ParticleNetwork from "./home/ParticleNetwork.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
 
 const Home = () => {

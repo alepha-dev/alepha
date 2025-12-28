@@ -1,6 +1,4 @@
-import { IconArrowUp } from "@tabler/icons-react";
 import { useEffect } from "react";
-import { useWindowScroll } from "../hooks/useWindowScroll.ts";
 import BottomNavigation from "./doc/BottomNavigation.tsx";
 import FileHeader from "./doc/FileHeader.tsx";
 import HtmlContent from "./doc/HtmlContent.tsx";
@@ -15,8 +13,6 @@ interface ContentProps {
 }
 
 const Docs = (props: ContentProps) => {
-  const [scroll, scrollTo] = useWindowScroll();
-
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -38,7 +34,7 @@ const Docs = (props: ContentProps) => {
     >
       {/* Main Content */}
       <div
-        className="flex flex-1 flex-col p-4 md:p-6 w-full mx-auto gap-2"
+        className="flex flex-1 flex-col p-4 md:p-6 w-full mx-auto gap-4"
         style={{ maxWidth: 900 }}
       >
         {/* File Header */}
@@ -66,33 +62,6 @@ const Docs = (props: ContentProps) => {
 
       {/* Table of Contents */}
       <TableOfContents name={props.name} />
-
-      {/* Scroll to Top */}
-      <div
-        className="affix affix-bottom-right"
-        style={{
-          opacity: scroll.y > 300 ? 1 : 0,
-          transform: scroll.y > 300 ? "translateY(0)" : "translateY(16px)",
-          transition: "opacity 0.2s, transform 0.2s",
-          pointerEvents: scroll.y > 300 ? "auto" : "none",
-        }}
-      >
-        <button
-          type="button"
-          className="btn-reset flex items-center justify-center cursor-pointer"
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 8,
-            background: "var(--color-bg-panel)",
-            border: "1px solid var(--color-border)",
-            color: "var(--color-accent)",
-          }}
-          onClick={() => scrollTo({ y: 0 })}
-        >
-          <IconArrowUp size={18} />
-        </button>
-      </div>
     </div>
   );
 };

@@ -29,7 +29,7 @@ const BottomNavigation = (props: BottomNavigationProps) => {
 
   return (
     <div
-      className="mt-6 pt-6 border-t bottom-nav"
+      className="mt-6 pt-6 pb-6 bottom-nav"
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
@@ -94,6 +94,7 @@ const NavButton = (props: NavButtonProps) => {
       {direction === "prev" && (
         <IconChevronLeft
           size={16}
+          className="nav-arrow nav-arrow-prev"
           style={{ color: "var(--color-text-muted)" }}
         />
       )}
@@ -106,13 +107,14 @@ const NavButton = (props: NavButtonProps) => {
         <span className="text-xs text-muted">
           {direction === "prev" ? "Previous" : "Next"}
         </span>
-        <span className="text-sm" style={{ color: "var(--color-cyan)" }}>
+        <span className="text-sm" style={{ color: "var(--color-text-bright)" }}>
           {name}.md
         </span>
       </div>
       {direction === "next" && (
         <IconChevronRight
           size={16}
+          className="nav-arrow nav-arrow-next"
           style={{ color: "var(--color-text-muted)" }}
         />
       )}

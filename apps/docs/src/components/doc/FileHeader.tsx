@@ -1,7 +1,6 @@
 import { ClientOnly } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { IconClock, IconGitBranch, IconTerminal } from "@tabler/icons-react";
-import { repository } from "../../config/docs.ts";
+import { IconClock, IconGitBranch } from "@tabler/icons-react";
 
 interface FileHeaderProps {
   name: string;
@@ -35,25 +34,6 @@ const FileHeader = (props: FileHeaderProps) => {
           </div>
           <span style={{ color: "var(--term-text)" }}>cat {fileName}</span>
         </div>
-        {props.path && (
-          <a
-            href={`https://github.com/${repository.name}/edit/main/${props.path}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="edit-link flex items-center gap-2 text-sm rounded-md transition-colors"
-            style={{
-              color: "var(--color-text-muted)",
-              textDecoration: "none",
-              padding: "4px 10px",
-              background: "var(--color-bg-panel)",
-              border: "1px solid var(--color-border)",
-            }}
-          >
-            <IconTerminal size={14} />
-            <span style={{ color: "var(--color-amber)" }}>$</span>
-            <span>vim {fileName}</span>
-          </a>
-        )}
       </div>
 
       {/* Metadata */}

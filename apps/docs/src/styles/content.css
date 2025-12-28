@@ -184,6 +184,18 @@
   background: var(--color-bg-panel);
 }
 
+.nav-arrow {
+  transition: transform 0.2s ease;
+}
+
+.nav-button:hover .nav-arrow-prev {
+  transform: translateX(-3px);
+}
+
+.nav-button:hover .nav-arrow-next {
+  transform: translateX(3px);
+}
+
 @media (max-width: 480px) {
   .bottom-nav {
     grid-template-columns: 1fr !important;
