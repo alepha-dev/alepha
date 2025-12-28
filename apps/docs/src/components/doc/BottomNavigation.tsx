@@ -47,7 +47,11 @@ const BottomNavigation = (props: BottomNavigationProps) => {
       </div>
       <div>
         {nav.next && (
-          <NavButton direction="next" name={nav.next.name} href={nav.next.path} />
+          <NavButton
+            direction="next"
+            name={nav.next.name}
+            href={nav.next.path}
+          />
         )}
       </div>
     </div>
@@ -78,16 +82,19 @@ const NavButton = (props: NavButtonProps) => {
       className="btn-reset nav-button flex items-center gap-3 cursor-pointer transition-colors w-full"
       style={{
         padding: "16px 20px",
-        background: "var(--term-bg-panel)",
-        border: "1px solid var(--term-border)",
+        background: "var(--color-bg-panel)",
+        border: "1px solid var(--color-border)",
         borderRadius: 8,
-        color: "var(--term-text)",
+        color: "var(--color-text)",
         justifyContent: direction === "next" ? "flex-end" : "flex-start",
         opacity: isPending ? 0.5 : 1,
       }}
     >
       {direction === "prev" && (
-        <IconChevronLeft size={16} style={{ color: "var(--term-text-dim)" }} />
+        <IconChevronLeft
+          size={16}
+          style={{ color: "var(--color-text-muted)" }}
+        />
       )}
       <div
         className="flex flex-col"
@@ -95,15 +102,18 @@ const NavButton = (props: NavButtonProps) => {
           alignItems: direction === "next" ? "flex-end" : "flex-start",
         }}
       >
-        <span className="text-xs text-term-dim">
+        <span className="text-xs text-muted">
           {direction === "prev" ? "Previous" : "Next"}
         </span>
-        <span className="text-sm" style={{ color: "var(--term-cyan)" }}>
+        <span className="text-sm" style={{ color: "var(--color-cyan)" }}>
           {name}.md
         </span>
       </div>
       {direction === "next" && (
-        <IconChevronRight size={16} style={{ color: "var(--term-text-dim)" }} />
+        <IconChevronRight
+          size={16}
+          style={{ color: "var(--color-text-muted)" }}
+        />
       )}
     </button>
   );

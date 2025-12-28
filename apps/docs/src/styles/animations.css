@@ -1,0 +1,352 @@
+/* =============================================================================
+   ANIMATIONS - Keyframes and Animation Classes
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   BASIC ANIMATIONS
+   ----------------------------------------------------------------------------- */
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Stagger delays */
+.delay-1 {
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+.delay-2 {
+  animation-delay: 0.2s;
+  opacity: 0;
+}
+.delay-3 {
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+.delay-4 {
+  animation-delay: 0.4s;
+  opacity: 0;
+}
+.delay-5 {
+  animation-delay: 0.5s;
+  opacity: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   BLINK / PULSE ANIMATIONS
+   ----------------------------------------------------------------------------- */
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   TYPING EFFECT
+   ----------------------------------------------------------------------------- */
+
+.typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--color-accent);
+  animation:
+    typing 2s steps(40, end),
+    blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink-caret {
+  from,
+  to {
+    border-color: transparent;
+  }
+  50% {
+    border-color: var(--color-accent);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   PAGE TRANSITIONS
+   ----------------------------------------------------------------------------- */
+
+/* Terminal dissolve effect - exit */
+@keyframes terminalDissolve {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) brightness(1);
+  }
+  30% {
+    opacity: 0.8;
+    transform: scale(0.98);
+    filter: blur(0) brightness(1.2);
+  }
+  60% {
+    opacity: 0.4;
+    transform: scale(0.96);
+    filter: blur(4px) brightness(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(8px) brightness(0.5);
+  }
+}
+
+/* Terminal boot-up effect - enter */
+@keyframes terminalMaterialize {
+  0% {
+    opacity: 0;
+    transform: scale(1.02);
+    filter: blur(6px) brightness(1.5);
+    clip-path: inset(0 0 100% 0);
+  }
+  40% {
+    opacity: 0.6;
+    transform: scale(1.01);
+    filter: blur(2px) brightness(1.2);
+    clip-path: inset(0 0 50% 0);
+  }
+  70% {
+    opacity: 0.9;
+    transform: scale(1.005);
+    filter: blur(0.5px) brightness(1.05);
+    clip-path: inset(0 0 10% 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) brightness(1);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Quick glitch exit for home page */
+@keyframes homeExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    transform: translateY(-2px) scale(0.995);
+    filter: hue-rotate(10deg);
+  }
+  40% {
+    transform: translateY(1px) scale(0.99);
+    filter: hue-rotate(-5deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.98);
+    filter: blur(4px);
+  }
+}
+
+/* Docs page slide up entry */
+@keyframes docsEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 0.8;
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Docs page exit - slide down */
+@keyframes docsExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(4px);
+  }
+}
+
+/* Home page entry - fade zoom */
+@keyframes homeEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+    filter: blur(6px);
+  }
+  50% {
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   EASTER EGG ANIMATIONS
+   ----------------------------------------------------------------------------- */
+
+/* Boot sequence */
+@keyframes bootFadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bootProgress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Glitch effect */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+    filter: none;
+  }
+  20% {
+    transform: translate(-2px, 2px);
+    filter: hue-rotate(90deg);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+    filter: hue-rotate(180deg);
+  }
+  60% {
+    transform: translate(2px, 2px);
+    filter: hue-rotate(270deg);
+  }
+  80% {
+    transform: translate(2px, -2px);
+    filter: hue-rotate(360deg);
+  }
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+}
+
+.glitch-text {
+  animation: glitch 0.3s ease-in-out;
+}
+
+/* Hacker mode flicker */
+@keyframes hackerFlicker {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: brightness(1.02);
+  }
+}
+
+/* Hacker mode glow */
+@keyframes hackerGlow {
+  from {
+    text-shadow:
+      0 0 10px var(--color-accent-glow),
+      0 0 20px var(--color-accent-glow);
+  }
+  to {
+    text-shadow:
+      0 0 20px var(--color-accent-glow),
+      0 0 40px var(--color-accent-glow),
+      0 0 60px var(--color-accent-glow);
+  }
+}
+
+/* Cursor trail fade */
+@keyframes cursorFade {
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Terminal glitch */
+@keyframes terminalGlitch {
+  0% {
+    clip-path: inset(40% 0 61% 0);
+    transform: translate(-20px, 0);
+  }
+  20% {
+    clip-path: inset(92% 0 1% 0);
+    transform: translate(20px, 0);
+  }
+  40% {
+    clip-path: inset(43% 0 1% 0);
+    transform: translate(-10px, 0);
+  }
+  60% {
+    clip-path: inset(25% 0 58% 0);
+    transform: translate(10px, 0);
+  }
+  80% {
+    clip-path: inset(54% 0 7% 0);
+    transform: translate(-5px, 0);
+  }
+  100% {
+    clip-path: inset(58% 0 43% 0);
+    transform: translate(0, 0);
+  }
+}

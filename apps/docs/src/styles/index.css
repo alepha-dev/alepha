@@ -1,0 +1,26 @@
+/* =============================================================================
+   ALEPHA DOCS - Terminal/IDE Design System
+
+   Split into modular CSS files:
+   - variables.css   : CSS custom properties for all themes
+   - base.css        : Global styles, scrollbars, container
+   - effects.css     : CRT overlay, backgrounds, glow effects
+   - animations.css  : All @keyframes and animation classes
+   - components.css  : Terminal UI components
+   - code.css        : Code blocks and syntax highlighting
+   - content.css     : Markdown content styles
+   - utilities.css   : Tailwind-like utility classes
+   - interactions.css: Hover effects and active states
+   - home.css        : Home page specific styles
+   ============================================================================= */
+
+@import "./variables.css";
+@import "./base.css";
+@import "./effects.css";
+@import "./animations.css";
+@import "./components.css";
+@import "./code.css";
+@import "./content.css";
+@import "./utilities.css";
+@import "./interactions.css";
+@import "./home.css";

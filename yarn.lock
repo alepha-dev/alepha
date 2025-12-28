@@ -82,8 +82,6 @@ __metadata:
   dependencies:
     "@alepha/react": "npm:0.13.8"
     "@biomejs/biome": "npm:^2.3.10"
-    "@mantine/core": "npm:^8.3.10"
-    "@mantine/hooks": "npm:^8.3.10"
     "@tabler/icons-react": "npm:^3.36.0"
     "@types/react": "npm:^19.2.7"
     alepha: "npm:^0.13.8"
@@ -91,7 +89,6 @@ __metadata:
     marked: "npm:^17.0.1"
     marked-highlight: "npm:^2.2.3"
     react: "npm:^19.2.3"
-    react-dom: "npm:^19.2.3"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.3.0"
   languageName: unknown

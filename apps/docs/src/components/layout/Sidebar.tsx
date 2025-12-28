@@ -1,15 +1,13 @@
-import {
-  IconFile,
-  IconFold,
-  IconFoldDown,
-} from "@tabler/icons-react";
+import { IconFold, IconFoldDown } from "@tabler/icons-react";
 import { useState } from "react";
 import { tree } from "../../config/docs.ts";
 import { FileTree } from "./FileTree.tsx";
 
 const Sidebar = () => {
   const [expandKey, setExpandKey] = useState(0);
-  const [defaultExpanded, setDefaultExpanded] = useState<boolean | undefined>(undefined);
+  const [defaultExpanded, setDefaultExpanded] = useState<boolean | undefined>(
+    undefined,
+  );
 
   const handleExpandAll = () => {
     setDefaultExpanded(true);
@@ -23,23 +21,23 @@ const Sidebar = () => {
 
   return (
     <div
-      className="sidebar-container flex flex-col texture-dots"
+      className="sidebar-container flex flex-col"
       style={{
         width: 280,
-        background: "var(--term-bg-elevated)",
-        borderRight: "1px solid var(--term-border)",
-        overflow: "auto",
+        background: "var(--color-bg)",
+        borderRight: "1px solid var(--color-border)",
+        overflow: "hidden",
       }}
     >
       {/* Explorer Header */}
       <div
         className="flex items-center gap-2 px-4 py-2"
         style={{
-          borderBottom: "1px solid var(--term-border)",
+          borderBottom: "1px solid var(--color-border)",
           fontSize: 11,
           textTransform: "uppercase",
           letterSpacing: 1,
-          color: "var(--term-text-dim)",
+          color: "var(--color-text-muted)",
         }}
       >
         <span>Explorer</span>
@@ -58,7 +56,7 @@ const Sidebar = () => {
               width: 20,
               height: 20,
               borderRadius: 3,
-              color: "var(--term-text-dim)",
+              color: "var(--color-text-muted)",
               transition: "all 0.15s ease",
             }}
           >
@@ -73,7 +71,7 @@ const Sidebar = () => {
               width: 20,
               height: 20,
               borderRadius: 3,
-              color: "var(--term-text-dim)",
+              color: "var(--color-text-muted)",
               transition: "all 0.15s ease",
             }}
           >
@@ -83,39 +81,16 @@ const Sidebar = () => {
       </div>
 
       {/* File Tree */}
-      <div className="flex-1 scroll-area p-2" style={{ overflow: "auto" }}>
+      <div
+        className="flex-1 scroll-area p-2"
+        style={{ overflowX: "hidden", overflowY: "auto" }}
+      >
         <FileTree
           key={expandKey}
           nodes={tree}
           depth={0}
           defaultExpanded={defaultExpanded}
         />
-      </div>
-
-      {/* Bottom Links */}
-      <div
-        className="p-3"
-        style={{
-          borderTop: "1px solid var(--term-border)",
-          fontSize: 12,
-        }}
-      >
-        <a
-          href="/llms.txt"
-          target="_self"
-          style={{
-            color: "var(--term-text-dim)",
-            textDecoration: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "4px 8px",
-            borderRadius: 4,
-          }}
-        >
-          <IconFile size={14} />
-          <span>llms.txt</span>
-        </a>
       </div>
     </div>
   );

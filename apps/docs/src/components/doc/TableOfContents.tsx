@@ -20,25 +20,23 @@ const TableOfContents = (props: TableOfContentsProps) => {
 
   return (
     <div
-      className="visible-xl texture-dots"
+      className="visible-xl"
       style={{
         width: 280,
         minHeight: "100%",
-        background: "var(--term-bg-elevated)",
-        borderLeft: "1px solid var(--term-border)",
+        background: "rgba(255, 255, 255, 0.01)",
       }}
     >
-      <div className="sticky top-0">
-        {/* Header - same style as Explorer */}
+      <div className="sticky top-0" style={{ paddingTop: 16 }}>
+        {/* Header */}
         <div
-          className="flex items-center gap-2 px-4 py-2"
           style={{
-            borderBottom: "1px solid var(--term-border)",
             fontSize: 11,
             textTransform: "uppercase",
             letterSpacing: 1,
-            color: "var(--term-text-dim)",
-            background: "var(--term-bg-elevated)",
+            color: "var(--color-text-muted)",
+            opacity: 0.5,
+            padding: "12px 20px",
           }}
         >
           On This Page
@@ -46,8 +44,8 @@ const TableOfContents = (props: TableOfContentsProps) => {
 
         {/* ToC Items */}
         <div
-          className="scroll-area p-4"
-          style={{ maxHeight: "calc(100vh - 60px)" }}
+          className="scroll-area"
+          style={{ maxHeight: "calc(100vh - 120px)", padding: "8px 16px" }}
         >
           <TocItems key={props.name} />
         </div>
@@ -66,10 +64,10 @@ const TocItems = () => {
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [activeId, setActiveId] = useState("");
   const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0 });
-  const isScrollingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const visibleHeadingsRef = useRef<Set<string>>(new Set());
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const clickedIdRef = useRef<string | null>(null);
 
   // Parse headings from DOM
   useEffect(() => {
@@ -113,65 +111,89 @@ const TocItems = () => {
 
     if (elements.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Skip updates during programmatic scroll
-        if (isScrollingRef.current) return;
+    const createObserver = () => {
+      return new IntersectionObserver(
+        (entries) => {
+          // If we have a clicked ID, ignore observer updates
+          if (clickedIdRef.current) return;
 
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            visibleHeadingsRef.current.add(entry.target.id);
-          } else {
-            visibleHeadingsRef.current.delete(entry.target.id);
-          }
-        }
+          // Find the topmost visible heading
+          let topMostId: string | null = null;
+          let topMostTop = Infinity;
 
-        // Find the first visible heading in document order
-        for (const heading of headings) {
-          if (visibleHeadingsRef.current.has(heading.id)) {
-            setActiveId(heading.id);
-            break;
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const rect = entry.boundingClientRect;
+              if (rect.top < topMostTop && rect.top >= -20) {
+                topMostTop = rect.top;
+                topMostId = entry.target.id;
+              }
+            }
           }
-        }
-      },
-      {
-        rootMargin: "-64px 0px -70% 0px",
-        threshold: [0, 0.5, 1],
-      },
-    );
+
+          if (topMostId) {
+            setActiveId(topMostId);
+          }
+        },
+        {
+          rootMargin: "-20px 0px -60% 0px",
+          threshold: [0, 1],
+        },
+      );
+    };
+
+    observerRef.current = createObserver();
 
     for (const el of elements) {
-      observer.observe(el);
+      observerRef.current.observe(el);
     }
 
-    return () => observer.disconnect();
+    return () => observerRef.current?.disconnect();
   }, [headings]);
 
   const handleClick = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      // Disable observer during programmatic scroll
-      isScrollingRef.current = true;
-      // Clear stale visibility data
-      visibleHeadingsRef.current.clear();
+      // Lock to this ID - prevents observer from changing it
+      clickedIdRef.current = id;
       setActiveId(id);
 
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Update URL hash without triggering scroll
+      history.replaceState(null, "", `#${id}`);
 
-      // Re-enable observer after scroll completes
-      // Use longer timeout to ensure scroll is fully settled
-      setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 1000);
+      // Detect scroll end by monitoring element position stability
+      let lastTop = element.getBoundingClientRect().top;
+      let stableFrames = 0;
+
+      const checkScrollEnd = () => {
+        const currentTop = element.getBoundingClientRect().top;
+        if (Math.abs(currentTop - lastTop) < 1) {
+          stableFrames++;
+          // Element position stable for 5 frames = scroll complete
+          if (stableFrames >= 5) {
+            clickedIdRef.current = null;
+            return;
+          }
+        } else {
+          stableFrames = 0;
+          lastTop = currentTop;
+        }
+        requestAnimationFrame(checkScrollEnd);
+      };
+
+      // Start checking after a small delay to let scroll begin
+      requestAnimationFrame(() => requestAnimationFrame(checkScrollEnd));
+
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
   // Depth-based styling
   const getDepthStyle = (depth: number, isActive: boolean) => {
     return {
-      fontSize: depth === 2 ? 13 : 12,
+      fontSize: depth === 2 ? 12 : 11,
       fontWeight: depth === 2 ? 500 : 400,
-      opacity: isActive ? 1 : depth === 2 ? 0.8 : 0.6,
+      opacity: isActive ? 1 : depth === 2 ? 0.7 : 0.5,
     };
   };
 
@@ -179,7 +201,7 @@ const TocItems = () => {
     return (
       <div
         style={{
-          color: "var(--term-text-dim)",
+          color: "var(--color-text-muted)",
           fontSize: 12,
           fontStyle: "italic",
         }}
@@ -195,10 +217,9 @@ const TocItems = () => {
       className="flex flex-col"
       style={{
         position: "relative",
-        marginLeft: 4,
       }}
     >
-      {/* Animated indicator bar */}
+      {/* Floating indicator bar */}
       <div
         style={{
           position: "absolute",
@@ -206,7 +227,7 @@ const TocItems = () => {
           top: indicatorStyle.top,
           height: indicatorStyle.height,
           width: 2,
-          background: "var(--term-green)",
+          background: "var(--color-accent)",
           borderRadius: 1,
           transition: "top 0.2s ease-out, height 0.2s ease-out",
           zIndex: 1,
@@ -226,17 +247,15 @@ const TocItems = () => {
             }}
             type="button"
             onClick={() => handleClick(heading.id)}
-            className={`btn-reset text-left cursor-pointer toc-item truncate ${isActive ? "active" : ""}`}
+            className="btn-reset text-left cursor-pointer toc-item truncate"
             style={{
               position: "relative",
-              padding: "6px 10px",
-              paddingLeft: 16 + indent,
+              padding: "6px 12px",
+              paddingLeft: 20 + indent,
               fontSize: depthStyle.fontSize,
               fontWeight: isActive ? 500 : depthStyle.fontWeight,
-              color: isActive ? "var(--term-text)" : "var(--term-text-dim)",
+              color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
               opacity: depthStyle.opacity,
-              background: "transparent",
-              borderRadius: "0 4px 4px 0",
               transition: "color 0.15s ease, opacity 0.15s ease",
               display: "block",
               overflow: "hidden",

@@ -1,6 +1,7 @@
 import { ClientOnly } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
-import { IconClock, IconGitBranch } from "@tabler/icons-react";
+import { IconClock, IconGitBranch, IconTerminal } from "@tabler/icons-react";
+import { repository } from "../../config/docs.ts";
 
 interface FileHeaderProps {
   name: string;
@@ -19,31 +20,52 @@ const FileHeader = (props: FileHeaderProps) => {
 
   return (
     <div className="pt-6 mb-8 pb-6 border-b">
-      {/* Breadcrumb Path */}
-      <div className="flex items-center mb-2 text-sm gap-1">
-        <div>
-          <span style={{ color: "var(--term-green)" }}>alepha</span>
-          <span style={{ color: "var(--term-text-dim)" }}>@</span>
-          <span style={{ color: "var(--term-cyan)" }}>docs</span>
-          <span style={{ color: "var(--term-text-dim)" }}>:</span>
-          <span style={{ color: "var(--term-amber)" }}>
-            ~/docs{directory ? `/${directory}` : ""}
-          </span>
-          <span style={{ color: "var(--term-text-dim)" }}>$</span>
+      {/* Breadcrumb Path + Edit Button - Hidden on mobile */}
+      <div className="hidden-mobile flex items-center justify-between mb-2 text-sm gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <span style={{ color: "var(--color-accent)" }}>alepha</span>
+            <span style={{ color: "var(--color-text-muted)" }}>@</span>
+            <span style={{ color: "var(--color-cyan)" }}>docs</span>
+            <span style={{ color: "var(--color-text-muted)" }}>:</span>
+            <span style={{ color: "var(--color-amber)" }}>
+              ~/docs{directory ? `/${directory}` : ""}
+            </span>
+            <span style={{ color: "var(--color-text-muted)" }}>$</span>
+          </div>
+          <span style={{ color: "var(--term-text)" }}>cat {fileName}</span>
         </div>
-        <span style={{ color: "var(--term-text)" }}>cat {fileName}</span>
+        {props.path && (
+          <a
+            href={`https://github.com/${repository.name}/edit/main/${props.path}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="edit-link flex items-center gap-2 text-sm rounded-md transition-colors"
+            style={{
+              color: "var(--color-text-muted)",
+              textDecoration: "none",
+              padding: "4px 10px",
+              background: "var(--color-bg-panel)",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <IconTerminal size={14} />
+            <span style={{ color: "var(--color-amber)" }}>$</span>
+            <span>vim {fileName}</span>
+          </a>
+        )}
       </div>
 
       {/* Metadata */}
       <div className="flex gap-4 items-center flex-wrap text-sm">
         {props.readingTime && (
-          <div className="flex gap-1 items-center text-term-dim">
+          <div className="flex gap-1 items-center text-muted">
             <IconClock size={14} />
             <span>{props.readingTime} min read</span>
           </div>
         )}
         {props.lastModified && (
-          <div className="flex gap-1 items-center text-term-dim">
+          <div className="flex gap-1 items-center text-muted">
             <IconGitBranch size={14} />
             <span>
               Last commit:{" "}

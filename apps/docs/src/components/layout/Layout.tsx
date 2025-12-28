@@ -7,45 +7,73 @@ import Sidebar from "./Sidebar.tsx";
 import StatusBar from "./StatusBar.tsx";
 
 // =============================================================================
-// READING PROGRESS BAR
+// NAVIGATION PROGRESS BAR
 // =============================================================================
 
-const ReadingProgress = (props: { containerRef: React.RefObject<HTMLDivElement | null> }) => {
+const NavigationProgress = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    const container = props.containerRef.current;
-    if (!container) return;
+  useEvents(
+    {
+      "react:transition:begin": () => {
+        // Reset and start
+        setProgress(0);
+        setVisible(true);
+        setIsLoading(true);
 
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const scrollable = scrollHeight - clientHeight;
-      const percent = scrollable > 0 ? (scrollTop / scrollable) * 100 : 0;
-      setProgress(Math.min(100, Math.max(0, percent)));
-    };
+        // Simulate progress (starts fast, slows down as it approaches 90%)
+        let currentProgress = 0;
+        intervalRef.current = setInterval(() => {
+          currentProgress += (90 - currentProgress) * 0.1;
+          setProgress(Math.min(90, currentProgress));
+        }, 100);
+      },
+      "react:transition:end": () => {
+        // Clear interval and complete
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
 
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [props.containerRef]);
+        setProgress(100);
+        setIsLoading(false);
+
+        // Hide after animation completes
+        setTimeout(() => {
+          setVisible(false);
+          setProgress(0);
+        }, 200);
+      },
+    },
+    [],
+  );
+
+  if (!visible) return null;
 
   return (
     <div
       style={{
-        position: "absolute",
+        position: "fixed",
         top: 0,
         left: 0,
         right: 0,
-        height: 2,
-        background: "var(--term-border)",
-        zIndex: 1000,
+        height: 3,
+        zIndex: 9999,
+        pointerEvents: "none",
       }}
     >
       <div
         style={{
           height: "100%",
           width: `${progress}%`,
-          background: "var(--term-green)",
-          transition: "width 0.1s ease-out",
+          background: "var(--color-accent)",
+          transition: isLoading
+            ? "width 0.1s ease-out"
+            : "width 0.2s ease-out, opacity 0.2s ease-out",
+          opacity: isLoading ? 1 : 0,
         }}
       />
     </div>
@@ -66,8 +94,8 @@ const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "var(--term-bg-elevated)",
-          border: "1px solid var(--term-border)",
+          background: "var(--color-bg-elevated)",
+          border: "1px solid var(--color-border)",
           borderRadius: 8,
           padding: 24,
           maxWidth: 400,
@@ -79,12 +107,19 @@ const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
             fontSize: 14,
             fontWeight: 600,
             marginBottom: 16,
-            color: "var(--term-green)",
+            color: "var(--color-accent)",
           }}
         >
           Keyboard Shortcuts
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            fontSize: 13,
+          }}
+        >
           {[
             ["j / k", "Scroll down / up"],
             ["g g", "Go to top"],
@@ -94,21 +129,28 @@ const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
             ["Esc", "Close dialogs"],
             ["?", "Show this help"],
           ].map(([key, desc]) => (
-            <div key={key} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+            <div
+              key={key}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+              }}
+            >
               <kbd
                 style={{
-                  background: "var(--term-bg)",
-                  border: "1px solid var(--term-border)",
+                  background: "var(--color-bg)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: 4,
                   padding: "2px 8px",
                   fontFamily: "monospace",
                   fontSize: 12,
-                  color: "var(--term-cyan)",
+                  color: "var(--color-cyan)",
                 }}
               >
                 {key}
               </kbd>
-              <span style={{ color: "var(--term-text-dim)" }}>{desc}</span>
+              <span style={{ color: "var(--color-text-muted)" }}>{desc}</span>
             </div>
           ))}
         </div>
@@ -116,13 +158,23 @@ const KeyboardShortcutsHelp = (props: { onClose: () => void }) => {
           style={{
             marginTop: 16,
             paddingTop: 16,
-            borderTop: "1px solid var(--term-border)",
+            borderTop: "1px solid var(--color-border)",
             fontSize: 11,
-            color: "var(--term-text-dim)",
+            color: "var(--color-text-muted)",
             textAlign: "center",
           }}
         >
-          Press <kbd style={{ background: "var(--term-bg)", padding: "1px 4px", borderRadius: 2 }}>Esc</kbd> or click outside to close
+          Press{" "}
+          <kbd
+            style={{
+              background: "var(--color-bg)",
+              padding: "1px 4px",
+              borderRadius: 2,
+            }}
+          >
+            Esc
+          </kbd>{" "}
+          or click outside to close
         </div>
       </div>
     </div>
@@ -166,7 +218,12 @@ const Layout = () => {
     logConsoleEasterEgg();
   }, []);
 
-  return <LayoutContent />;
+  return (
+    <>
+      <NavigationProgress />
+      <LayoutContent />
+    </>
+  );
 };
 
 export default Layout;
@@ -203,7 +260,11 @@ const LayoutContent = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in an input
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
         return;
       }
 
@@ -211,7 +272,11 @@ const LayoutContent = () => {
       const now = Date.now();
 
       // Handle key sequences (like gg)
-      if (e.key === "g" && lastKeyRef.current === "g" && now - lastKeyTimeRef.current < 500) {
+      if (
+        e.key === "g" &&
+        lastKeyRef.current === "g" &&
+        now - lastKeyTimeRef.current < 500
+      ) {
         // gg - go to top
         container?.scrollTo({ top: 0, behavior: "smooth" });
         lastKeyRef.current = "";
@@ -232,7 +297,10 @@ const LayoutContent = () => {
           break;
         case "G":
           // Go to bottom
-          container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+          container?.scrollTo({
+            top: container.scrollHeight,
+            behavior: "smooth",
+          });
           break;
         case "f":
           // Toggle focus mode
@@ -319,10 +387,10 @@ const LayoutContent = () => {
 
   // Docs page layout - full IDE with sidebar
   return (
-    <div className="terminal-page" style={{ minHeight: "100vh", width: "100%" }}>
-      {/* CRT Overlay */}
-      <div className="crt-overlay" />
-
+    <div
+      className="terminal-page"
+      style={{ minHeight: "100vh", width: "100%" }}
+    >
       {/* Keyboard Shortcuts Help */}
       {showHelp && <KeyboardShortcutsHelp onClose={() => setShowHelp(false)} />}
 
@@ -335,7 +403,7 @@ const LayoutContent = () => {
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10001,
-            background: hackerMode ? "var(--term-green)" : "var(--term-red)",
+            background: hackerMode ? "var(--color-accent)" : "var(--color-red)",
             color: "#0a0a0a",
             padding: "8px 16px",
             borderRadius: 4,
@@ -357,15 +425,16 @@ const LayoutContent = () => {
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10001,
-            background: "var(--term-bg-elevated)",
-            border: "1px solid var(--term-border)",
-            color: "var(--term-text-dim)",
+            background: "var(--color-bg-elevated)",
+            border: "1px solid var(--color-border)",
+            color: "var(--color-text-muted)",
             padding: "6px 12px",
             borderRadius: 4,
             fontSize: 11,
           }}
         >
-          Focus mode • Press <kbd style={{ color: "var(--term-cyan)" }}>f</kbd> or <kbd style={{ color: "var(--term-cyan)" }}>Esc</kbd> to exit
+          Focus mode • Press <kbd style={{ color: "var(--color-cyan)" }}>f</kbd>{" "}
+          or <kbd style={{ color: "var(--color-cyan)" }}>Esc</kbd> to exit
         </div>
       )}
 
@@ -375,10 +444,10 @@ const LayoutContent = () => {
         {!focusMode && <Header showTabs />}
 
         {/* Main Content Area */}
-        <div className="flex flex-1 w-full" style={{ overflow: "hidden", position: "relative" }}>
-          {/* Reading Progress Bar */}
-          <ReadingProgress containerRef={contentRef} />
-
+        <div
+          className="flex flex-1 w-full"
+          style={{ overflow: "hidden", position: "relative" }}
+        >
           {/* Sidebar - File Tree */}
           {!focusMode && <Sidebar />}
 
@@ -388,7 +457,7 @@ const LayoutContent = () => {
             className="flex-1"
             style={{
               overflow: "auto",
-              background: "var(--term-bg)",
+              background: "var(--color-bg)",
             }}
           >
             <NestedView />

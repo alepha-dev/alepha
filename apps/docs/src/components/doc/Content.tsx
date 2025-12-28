@@ -2,7 +2,6 @@ import { IconArrowUp } from "@tabler/icons-react";
 import { useEffect } from "react";
 import { useWindowScroll } from "../../hooks/useWindowScroll.ts";
 import BottomNavigation from "./BottomNavigation.tsx";
-import EditLink from "./EditLink.tsx";
 import FileHeader from "./FileHeader.tsx";
 import HtmlContent from "./HtmlContent.tsx";
 import TableOfContents from "./TableOfContents.tsx";
@@ -33,7 +32,7 @@ const Content = (props: ContentProps) => {
       className="flex flex-1 w-full"
       style={{
         minHeight: "100%",
-        background: "var(--term-bg)",
+        background: "var(--color-bg)",
         fontFamily: '"JetBrains Mono", "Fira Code", monospace',
       }}
     >
@@ -55,14 +54,11 @@ const Content = (props: ContentProps) => {
           style={{
             lineHeight: 1.8,
             fontSize: 14,
-            color: "var(--term-text)",
+            color: "var(--color-text)",
           }}
         >
           <HtmlContent html={props.content} />
         </div>
-
-        {/* Edit Link */}
-        <EditLink path={props.path} />
 
         {/* Navigation */}
         <BottomNavigation name={props.name} />
@@ -88,9 +84,9 @@ const Content = (props: ContentProps) => {
             width: 40,
             height: 40,
             borderRadius: 8,
-            background: "var(--term-bg-panel)",
-            border: "1px solid var(--term-border)",
-            color: "var(--term-green)",
+            background: "var(--color-bg-panel)",
+            border: "1px solid var(--color-border)",
+            color: "var(--color-accent)",
           }}
           onClick={() => scrollTo({ y: 0 })}
         >

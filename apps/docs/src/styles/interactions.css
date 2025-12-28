@@ -1,0 +1,121 @@
+/* =============================================================================
+   INTERACTIONS - Hover Effects & Active States
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   HOVER EFFECTS
+   ----------------------------------------------------------------------------- */
+
+.header-btn:hover {
+  color: var(--color-accent) !important;
+  background: var(--color-accent-bg) !important;
+}
+
+.tab-close:hover {
+  color: var(--color-red) !important;
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+.explorer-action:hover {
+  color: var(--color-text) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.edit-link:hover {
+  border-color: var(--color-accent) !important;
+  color: var(--color-accent) !important;
+}
+
+.nav-button:hover {
+  border-color: var(--color-accent) !important;
+  background: var(--color-accent-bg) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   PILL TABS
+   ----------------------------------------------------------------------------- */
+
+/* Hide inactive tabs on tablet & mobile */
+@media (max-width: 767px) {
+  .tab-inactive {
+    display: none !important;
+  }
+}
+
+.pill-tab:hover {
+  background: var(--color-bg-elevated) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+.pill-tab:active {
+  transform: translateY(1px);
+}
+
+.pill-tab:hover .tab-close {
+  opacity: 0.5 !important;
+}
+
+.pill-tab:hover .tab-close:hover {
+  opacity: 1 !important;
+  color: var(--color-red) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.pill-tab:hover .tab-close:active {
+  transform: translateY(1px);
+}
+
+/* -----------------------------------------------------------------------------
+   ACTIVE / PRESS STATES
+   ----------------------------------------------------------------------------- */
+
+/* Header buttons */
+.header-btn:active {
+  transform: translateY(1px);
+}
+
+/* Sidebar file tree items */
+.file-tree-item:active {
+  transform: translateY(1px);
+}
+
+/* Table of Contents items */
+.toc-item:active {
+  transform: translateY(1px);
+}
+
+/* Generic button reset active state */
+.btn-reset:active {
+  transform: translateY(1px);
+}
+
+/* Tab close button */
+.tab-close:active {
+  transform: translateY(1px) !important;
+}
+
+/* Explorer action buttons */
+.explorer-action:active {
+  transform: translateY(1px);
+}
+
+/* Navigation buttons */
+.nav-button:active {
+  transform: translateY(1px);
+}
+
+/* Edit link */
+.edit-link:active {
+  transform: translateY(1px);
+}
+
+/* Feature cards */
+.feature-terminal:active {
+  transform: translateY(2px);
+}
+
+/* Command palette items */
+.command-item:active {
+  transform: translateY(1px);
+}

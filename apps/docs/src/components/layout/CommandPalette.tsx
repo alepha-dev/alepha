@@ -43,7 +43,9 @@ const CommandPalette = () => {
   // Scroll selected item into view
   useEffect(() => {
     if (resultsRef.current) {
-      const selected = resultsRef.current.children[selectedIndex] as HTMLElement;
+      const selected = resultsRef.current.children[
+        selectedIndex
+      ] as HTMLElement;
       if (selected) {
         selected.scrollIntoView({ block: "nearest" });
       }
@@ -116,8 +118,8 @@ const CommandPalette = () => {
         style={{
           maxWidth: 600,
           height: "fit-content",
-          background: "var(--term-bg-panel)",
-          border: "1px solid var(--term-border)",
+          background: "var(--color-bg-panel)",
+          border: "1px solid var(--color-border)",
           borderRadius: 8,
           overflow: "hidden",
         }}
@@ -126,9 +128,9 @@ const CommandPalette = () => {
         {/* Input */}
         <div
           className="flex items-center gap-4 p-4"
-          style={{ borderBottom: "1px solid var(--term-border)" }}
+          style={{ borderBottom: "1px solid var(--color-border)" }}
         >
-          <span style={{ color: "var(--term-green)" }}>{">"}</span>
+          <span style={{ color: "var(--color-accent)" }}>{">"}</span>
           <input
             type="text"
             value={query}
@@ -141,7 +143,7 @@ const CommandPalette = () => {
               background: "transparent",
               border: "none",
               outline: "none",
-              color: "var(--term-text)",
+              color: "var(--color-text)",
               fontSize: 16,
               fontFamily: "inherit",
             }}
@@ -155,7 +157,11 @@ const CommandPalette = () => {
         </div>
 
         {/* Results */}
-        <div ref={resultsRef} className="scroll-area" style={{ maxHeight: 400 }}>
+        <div
+          ref={resultsRef}
+          className="scroll-area"
+          style={{ maxHeight: 400 }}
+        >
           {filtered.map((doc, index) => (
             <button
               type="button"
@@ -168,20 +174,22 @@ const CommandPalette = () => {
                 alignItems: "center",
                 gap: 12,
                 padding: "8px 16px",
-                color: "var(--term-text)",
+                color: "var(--color-text)",
                 background:
-                  index === selectedIndex ? "rgba(34, 197, 94, 0.1)" : "transparent",
+                  index === selectedIndex
+                    ? "rgba(34, 197, 94, 0.1)"
+                    : "transparent",
                 cursor: doc.href ? "pointer" : "default",
               }}
             >
-              <IconFile size={16} style={{ color: "var(--term-cyan)" }} />
+              <IconFile size={16} style={{ color: "var(--color-cyan)" }} />
               <span>{doc.name}</span>
               {doc.href && (
                 <span
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
-                    color: "var(--term-text-dim)",
+                    color: "var(--color-text-muted)",
                   }}
                 >
                   {doc.href.replace("/docs/", "")}
@@ -195,9 +203,9 @@ const CommandPalette = () => {
         <div
           className="flex items-center gap-4 p-3 px-4"
           style={{
-            borderTop: "1px solid var(--term-border)",
+            borderTop: "1px solid var(--color-border)",
             fontSize: 12,
-            color: "var(--term-text-dim)",
+            color: "var(--color-text-muted)",
           }}
         >
           <span>

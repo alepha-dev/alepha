@@ -18,7 +18,9 @@ export const useKonamiCode = (callback: () => void) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      inputRef.current = [...inputRef.current, e.key].slice(-KONAMI_CODE.length);
+      inputRef.current = [...inputRef.current, e.key].slice(
+        -KONAMI_CODE.length,
+      );
 
       if (
         inputRef.current.length === KONAMI_CODE.length &&

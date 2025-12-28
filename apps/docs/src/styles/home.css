@@ -1,0 +1,105 @@
+/* =============================================================================
+   HOME PAGE STYLES
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   HERO BUTTONS
+   ----------------------------------------------------------------------------- */
+
+.hero-btn {
+  transition: all 0.15s ease;
+}
+
+.hero-btn:hover {
+  transform: translateY(-2px);
+}
+
+.hero-btn:active {
+  transform: translateY(0);
+}
+
+/* -----------------------------------------------------------------------------
+   FOOTER LINKS
+   ----------------------------------------------------------------------------- */
+
+.footer-link {
+  transition: color 0.15s ease;
+}
+
+.footer-link:hover {
+  color: var(--color-accent) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   INSTALL BUTTON
+   ----------------------------------------------------------------------------- */
+
+.install-btn:hover {
+  border-color: var(--color-accent) !important;
+  background: var(--color-accent-bg) !important;
+}
+
+.install-btn:active {
+  transform: translateY(1px);
+}
+
+/* -----------------------------------------------------------------------------
+   FULLSCREEN SECTIONS
+   ----------------------------------------------------------------------------- */
+
+.section-fullscreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+
+/* First section accounts for header (40px) and status bar (24px) */
+.section-fullscreen:first-child {
+  min-height: calc(100vh - 40px);
+  padding-top: 20px;
+  padding-bottom: 100px;
+}
+
+/* -----------------------------------------------------------------------------
+   INTRO GRID - Side by side layout
+   ----------------------------------------------------------------------------- */
+
+.intro-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  align-items: center;
+}
+
+.intro-hero {
+  text-align: center;
+  align-items: center;
+}
+
+.intro-code {
+  width: 100%;
+  max-width: 600px;
+}
+
+@media (min-width: 1280px) {
+  .intro-grid {
+    flex-direction: row;
+    gap: 64px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .intro-hero {
+    text-align: left;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  .intro-code {
+    flex: 1;
+    max-width: 550px;
+  }
+}

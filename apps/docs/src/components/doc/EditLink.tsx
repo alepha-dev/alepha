@@ -16,16 +16,16 @@ const EditLink = (props: EditLinkProps) => {
         rel="noopener noreferrer"
         className="edit-link flex items-center gap-2 text-sm rounded-md transition-colors"
         style={{
-          color: "var(--term-text-dim)",
+          color: "var(--color-text-muted)",
           textDecoration: "none",
           padding: "8px 12px",
-          background: "var(--term-bg-panel)",
-          border: "1px solid var(--term-border)",
+          background: "var(--color-bg-panel)",
+          border: "1px solid var(--color-border)",
           display: "inline-flex",
         }}
       >
         <IconTerminal size={14} />
-        <span style={{ color: "var(--term-amber)" }}>$</span>
+        <span style={{ color: "var(--color-amber)" }}>$</span>
         <span>vim {props.path?.split("/").pop()}</span>
       </a>
     </div>

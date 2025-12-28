@@ -6,7 +6,6 @@ import { $command, CliProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
-import { theme } from "../src/config/theme.ts";
 import { snippets } from "./snippets.ts";
 
 export type DocItem = {
@@ -31,6 +30,7 @@ export type DocNode = {
   children?: DocNode[];
   href?: string;
   description?: string;
+  asset?: string; // file extension for assets (e.g., "txt"), uses window.location instead of router
 };
 
 interface PrimitiveInfo {
@@ -996,11 +996,9 @@ class DocsCliApp {
         // Convert inline code (backticks) to <code> tags
         const htmlText = text.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-        // trick I learned by inspecting the mantine.dev website
-        // instead of go-to <h1>, you go-to a <div> with metadata with a position top negative
-        // it's the only way to manage all use-cases of fixed <header>
+        // Anchor div for scroll targeting - small negative offset for visual breathing room
         return `
-<div id="${slug}" data-depth="${depth}" data-heading="${escapedText}" style="position: relative; top: -${theme.headerHeight.base}px"></div>
+<div id="${slug}" data-depth="${depth}" data-heading="${escapedText}" style="position: relative; top: -16px"></div>
 <h${depth} class="doc-heading"><a href="#${slug}" class="heading-anchor">#</a>${htmlText}</h${depth}>`.trim();
       },
       code: ({ text, lang }: Tokens.Code) => {

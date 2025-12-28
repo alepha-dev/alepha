@@ -3,46 +3,7 @@
    ============================================================================= */
 
 /* Fonts */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-@import "./styles/wotfard.css";
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
-/* Design System - Theme, Components, Utilities, Code Highlighting */
-@import "./styles/design-system.css";
-
-/* =============================================================================
-   GRAPH PAPER BACKGROUND
-   ============================================================================= */
-
-:root {
-  --graph-paper-bg-color: rgb(16, 16, 16);
-  --graph-paper-line-color-1: rgba(51, 102, 102, 0.04);
-  --graph-paper-line-color-2: rgba(169, 169, 169, 0.04);
-}
-
-[data-theme="light"] {
-  --graph-paper-bg-color: rgb(248, 249, 250);
-  --graph-paper-line-color-1: rgba(51, 102, 102, 0.06);
-  --graph-paper-line-color-2: rgba(100, 100, 100, 0.06);
-}
-
-.graph-paper {
-  width: 100%;
-  background-image:
-    linear-gradient(var(--graph-paper-line-color-1) 1.5px, transparent 1.5px),
-    linear-gradient(
-      90deg,
-      var(--graph-paper-line-color-2) 1.5px,
-      transparent 1.5px
-    ), linear-gradient(var(--graph-paper-line-color-2) 1px, transparent 1px),
-    linear-gradient(90deg, var(--graph-paper-line-color-2) 1px, transparent 1px);
-  background-position:
-    -1.5px -1.5px,
-    -1.5px -1.5px,
-    -1px -1px,
-    -1px -1px;
-  background-size:
-    100px 100px,
-    100px 100px,
-    20px 20px,
-    20px 20px;
-}
+/* Design System - Modular CSS files */
+@import "./styles/index.css";

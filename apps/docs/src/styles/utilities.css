@@ -1,0 +1,616 @@
+/* =============================================================================
+   UTILITY CLASSES - Tailwind-like Utilities
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   LAYOUT - Flex
+   ----------------------------------------------------------------------------- */
+
+.flex {
+  display: flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-row {
+  flex-direction: row;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-1 {
+  flex: 1;
+}
+.items-center {
+  align-items: center;
+}
+.items-start {
+  align-items: flex-start;
+}
+.items-end {
+  align-items: flex-end;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-start {
+  justify-content: flex-start;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+
+/* -----------------------------------------------------------------------------
+   LAYOUT - Gap
+   ----------------------------------------------------------------------------- */
+
+.gap-1 {
+  gap: 4px;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-3 {
+  gap: 12px;
+}
+.gap-4 {
+  gap: 16px;
+}
+.gap-5 {
+  gap: 20px;
+}
+.gap-6 {
+  gap: 24px;
+}
+.gap-8 {
+  gap: 32px;
+}
+.gap-10 {
+  gap: 40px;
+}
+
+/* -----------------------------------------------------------------------------
+   LAYOUT - Grid
+   ----------------------------------------------------------------------------- */
+
+.grid {
+  display: grid;
+}
+.grid-cols-1 {
+  grid-template-columns: repeat(1, 1fr);
+}
+.grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   SPACING - Padding
+   ----------------------------------------------------------------------------- */
+
+.p-0 {
+  padding: 0;
+}
+.p-1 {
+  padding: 4px;
+}
+.p-2 {
+  padding: 8px;
+}
+.p-3 {
+  padding: 12px;
+}
+.p-4 {
+  padding: 16px;
+}
+.p-5 {
+  padding: 20px;
+}
+.p-6 {
+  padding: 24px;
+}
+.p-8 {
+  padding: 32px;
+}
+
+.px-2 {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.px-3 {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.px-4 {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.px-6 {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.py-2 {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.py-4 {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.py-6 {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+.py-10 {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+.py-15 {
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+.py-20 {
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+
+.pt-6 {
+  padding-top: 24px;
+}
+.pb-6 {
+  padding-bottom: 24px;
+}
+.pb-10 {
+  padding-bottom: 40px;
+}
+
+/* -----------------------------------------------------------------------------
+   SPACING - Margin
+   ----------------------------------------------------------------------------- */
+
+.m-0 {
+  margin: 0;
+}
+.m-auto {
+  margin: auto;
+}
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+.mx-4 {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+.ml-auto {
+  margin-left: auto;
+}
+.mr-auto {
+  margin-right: auto;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+.mt-4 {
+  margin-top: 16px;
+}
+.mt-6 {
+  margin-top: 24px;
+}
+.mb-2 {
+  margin-bottom: 8px;
+}
+.mb-4 {
+  margin-bottom: 16px;
+}
+.mb-6 {
+  margin-bottom: 24px;
+}
+
+/* -----------------------------------------------------------------------------
+   SIZING
+   ----------------------------------------------------------------------------- */
+
+.w-full {
+  width: 100%;
+}
+.w-auto {
+  width: auto;
+}
+.h-full {
+  height: 100%;
+}
+.h-screen {
+  height: 100vh;
+}
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.max-w-sm {
+  max-width: 500px;
+}
+.max-w-md {
+  max-width: 600px;
+}
+.max-w-lg {
+  max-width: 800px;
+}
+.max-w-xl {
+  max-width: 900px;
+}
+.max-w-2xl {
+  max-width: 1024px;
+}
+
+/* -----------------------------------------------------------------------------
+   POSITION
+   ----------------------------------------------------------------------------- */
+
+.relative {
+  position: relative;
+}
+.absolute {
+  position: absolute;
+}
+.fixed {
+  position: fixed;
+}
+.sticky {
+  position: sticky;
+}
+
+.top-0 {
+  top: 0;
+}
+.left-0 {
+  left: 0;
+}
+.right-0 {
+  right: 0;
+}
+.bottom-0 {
+  bottom: 0;
+}
+.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.z-10 {
+  z-index: 10;
+}
+.z-50 {
+  z-index: 50;
+}
+.z-100 {
+  z-index: 100;
+}
+.z-1000 {
+  z-index: 1000;
+}
+.z-max {
+  z-index: 10000;
+}
+
+/* -----------------------------------------------------------------------------
+   DISPLAY
+   ----------------------------------------------------------------------------- */
+
+.hidden {
+  display: none;
+}
+.block {
+  display: block;
+}
+.inline {
+  display: inline;
+}
+.inline-block {
+  display: inline-block;
+}
+.inline-flex {
+  display: inline-flex;
+}
+
+/* Responsive visibility */
+@media (max-width: 767px) {
+  .hidden-mobile {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
+  .visible-md {
+    display: block;
+  }
+  .hidden-md {
+    display: none !important;
+  }
+  .flex-md {
+    display: flex;
+  }
+  .md\:p-6 {
+    padding: 24px;
+  }
+  .sidebar-container {
+    display: flex;
+  }
+}
+@media (max-width: 767px) {
+  .visible-md {
+    display: none !important;
+  }
+  .sidebar-container {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .visible-lg {
+    display: block;
+  }
+  .hidden-lg {
+    display: none !important;
+  }
+}
+@media (max-width: 1023px) {
+  .visible-lg {
+    display: none !important;
+  }
+}
+@media (min-width: 1280px) {
+  .visible-xl {
+    display: block;
+  }
+  .hidden-xl {
+    display: none !important;
+  }
+}
+@media (max-width: 1279px) {
+  .visible-xl {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   OVERFLOW
+   ----------------------------------------------------------------------------- */
+
+.overflow-hidden {
+  overflow: hidden;
+}
+.overflow-auto {
+  overflow: auto;
+}
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* -----------------------------------------------------------------------------
+   TEXT
+   ----------------------------------------------------------------------------- */
+
+.text-xs {
+  font-size: 10px;
+}
+.text-sm {
+  font-size: 12px;
+}
+.text-base {
+  font-size: 14px;
+}
+.text-lg {
+  font-size: 16px;
+}
+.text-xl {
+  font-size: 20px;
+}
+.text-2xl {
+  font-size: 24px;
+}
+
+.font-normal {
+  font-weight: 400;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 700;
+}
+
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+.lowercase {
+  text-transform: lowercase;
+}
+.capitalize {
+  text-transform: capitalize;
+}
+
+.tracking-wide {
+  letter-spacing: 0.5px;
+}
+.tracking-wider {
+  letter-spacing: 1px;
+}
+
+.leading-relaxed {
+  line-height: 1.6;
+}
+.leading-loose {
+  line-height: 1.8;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+.whitespace-pre {
+  white-space: pre;
+}
+
+/* -----------------------------------------------------------------------------
+   BORDER
+   ----------------------------------------------------------------------------- */
+
+.border {
+  border: 1px solid var(--color-border);
+}
+.border-t {
+  border-top: 1px solid var(--color-border);
+}
+.border-b {
+  border-bottom: 1px solid var(--color-border);
+}
+.border-l {
+  border-left: 1px solid var(--color-border);
+}
+.border-r {
+  border-right: 1px solid var(--color-border);
+}
+
+.rounded {
+  border-radius: 4px;
+}
+.rounded-md {
+  border-radius: 6px;
+}
+.rounded-lg {
+  border-radius: 8px;
+}
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* -----------------------------------------------------------------------------
+   BACKGROUND
+   ----------------------------------------------------------------------------- */
+
+.bg-base {
+  background: var(--color-bg);
+}
+.bg-elevated {
+  background: var(--color-bg-elevated);
+}
+.bg-panel {
+  background: var(--color-bg-panel);
+}
+.bg-transparent {
+  background: transparent;
+}
+
+/* -----------------------------------------------------------------------------
+   COLOR
+   ----------------------------------------------------------------------------- */
+
+.text-base {
+  color: var(--color-text);
+}
+.text-muted {
+  color: var(--color-text-muted);
+}
+.text-bright {
+  color: var(--color-text-bright);
+}
+.text-green {
+  color: var(--color-accent);
+}
+.text-amber {
+  color: var(--color-amber);
+}
+.text-cyan {
+  color: var(--color-cyan);
+}
+.text-red {
+  color: var(--color-red);
+}
+
+/* -----------------------------------------------------------------------------
+   TRANSITIONS
+   ----------------------------------------------------------------------------- */
+
+.transition-all {
+  transition: all 0.2s ease;
+}
+
+.transition-colors {
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.transition-opacity {
+  transition: opacity 0.2s ease;
+}
+
+.transition-transform {
+  transition: transform 0.2s ease;
+}
+
+/* -----------------------------------------------------------------------------
+   POINTER / CURSOR
+   ----------------------------------------------------------------------------- */
+
+.cursor-pointer {
+  cursor: pointer;
+}
+.cursor-default {
+  cursor: default;
+}
+.pointer-events-none {
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------------------------
+   MISC
+   ----------------------------------------------------------------------------- */
+
+.select-none {
+  user-select: none;
+}
+.shrink-0 {
+  flex-shrink: 0;
+}

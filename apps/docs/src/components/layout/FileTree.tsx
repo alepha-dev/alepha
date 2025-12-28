@@ -37,7 +37,8 @@ export const FileTree = (props: FileTreeProps) => {
             top: 0,
             bottom: 0,
             width: 1,
-            background: "var(--term-border)",
+            background:
+              "linear-gradient(to bottom, transparent 0%, var(--color-border) 10%, var(--color-border) 90%, transparent 100%)",
             opacity: 0.4,
           }}
         />
@@ -64,7 +65,9 @@ interface FileTreeNodeProps {
 const hasActiveDescendant = (node: DocNode, currentPath: string): boolean => {
   if (node.href === currentPath) return true;
   if (node.children) {
-    return node.children.some((child) => hasActiveDescendant(child, currentPath));
+    return node.children.some((child) =>
+      hasActiveDescendant(child, currentPath),
+    );
   }
   return false;
 };
@@ -81,57 +84,80 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
   const isActive = node.href === currentPath;
   const containsActive = hasChildren && hasActiveDescendant(node, currentPath);
 
-  // Expand state: controlled by defaultExpanded (from expand all button) or if contains active route
-  const [expanded, setExpanded] = useState(
-    defaultExpanded ?? containsActive,
-  );
+  // Expand state: controlled by defaultExpanded (from expand all button) or if contains active route on init
+  const [expanded, setExpanded] = useState(defaultExpanded ?? containsActive);
 
-  // Auto-expand/collapse when route changes or defaultExpanded changes
+  // Only respond to defaultExpanded changes (from expand/collapse all buttons)
+  // Don't auto-collapse when navigating between files
   useEffect(() => {
     if (defaultExpanded !== undefined) {
       setExpanded(defaultExpanded);
-    } else {
-      setExpanded(containsActive);
     }
-  }, [defaultExpanded, containsActive]);
+  }, [defaultExpanded]);
+
+  // Auto-expand when a child becomes active (but don't collapse)
+  useEffect(() => {
+    if (containsActive && !expanded) {
+      setExpanded(true);
+    }
+  }, [containsActive]);
 
   const handleClick = useCallback(() => {
     if (hasChildren) {
       setExpanded(!expanded);
     }
     if (node.href) {
-      router.go(node.href);
+      if (node.asset) {
+        window.location.href = node.href;
+      } else {
+        router.go(node.href);
+      }
     }
-  }, [hasChildren, expanded, node.href, router]);
+  }, [hasChildren, expanded, node.href, node.asset, router]);
 
   // Determine colors based on state
   const getTextColor = () => {
-    if (isActive) return "var(--term-green)";
-    if (isHovered) return "var(--term-text)";
-    if (hasChildren) return "var(--term-text)";
-    return "var(--term-text-dim)";
+    if (isActive) return "var(--color-text)";
+    if (isHovered) return "var(--color-text)";
+    if (hasChildren) return "var(--color-text)";
+    return "var(--color-text-muted)";
   };
 
   const getBackground = () => {
-    if (isActive) return "var(--term-green-bg, rgba(34, 197, 94, 0.15))";
-    if (isHovered) return "rgba(255, 255, 255, 0.05)";
+    if (isActive) return "rgba(255, 255, 255, 0.08)";
+    if (isHovered) return "rgba(255, 255, 255, 0.04)";
     return "transparent";
   };
 
   const getIconColor = () => {
-    if (isActive) return "var(--term-green)";
-    if (isHovered) return "var(--term-cyan)";
-    return "var(--term-cyan)";
+    if (isActive) return "var(--color-cyan)";
+    if (isHovered) return "var(--color-cyan)";
+    return "var(--color-cyan)";
   };
 
   // Row padding: BASE + depth * INDENT
   const rowPaddingLeft = BASE + depth * INDENT;
 
+  // Use <a> for items with href (files), <button> for folders
+  const Element = node.href ? "a" : "button";
+
+  const handleClickWithEvent = (e: React.MouseEvent) => {
+    // For links, only intercept normal clicks (not shift/ctrl/cmd clicks)
+    if (node.href && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      handleClick();
+    } else if (!node.href) {
+      // For folders, always handle click
+      handleClick();
+    }
+  };
+
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={handleClick}
+      <Element
+        href={node.href}
+        type={node.href ? undefined : "button"}
+        onClick={handleClickWithEvent}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className="btn-reset file-tree-item w-full"
@@ -147,6 +173,9 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
           cursor: "pointer",
           transition: "all 0.15s ease",
           position: "relative",
+          textDecoration: "none",
+          boxSizing: "border-box",
+          width: "100%",
         }}
       >
         {/* Active indicator bar */}
@@ -158,7 +187,7 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
               top: 4,
               bottom: 4,
               width: 2,
-              background: "var(--term-green)",
+              background: "var(--color-accent)",
               borderRadius: 1,
             }}
           />
@@ -175,9 +204,12 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
             justifyContent: "center",
           }}
         >
-          {hasChildren && (
-            expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />
-          )}
+          {hasChildren &&
+            (expanded ? (
+              <IconChevronDown size={14} />
+            ) : (
+              <IconChevronRight size={14} />
+            ))}
         </span>
 
         {/* Icon column - fixed width */}
@@ -189,12 +221,16 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: hasChildren ? "var(--term-amber)" : getIconColor(),
+            color: hasChildren ? "var(--color-amber)" : getIconColor(),
             transition: "color 0.15s ease",
           }}
         >
           {hasChildren ? (
-            expanded ? <IconFolderOpen size={14} /> : <IconFolder size={14} />
+            expanded ? (
+              <IconFolderOpen size={14} />
+            ) : (
+              <IconFolder size={14} />
+            )
           ) : (
             <IconFile size={14} />
           )}
@@ -210,7 +246,9 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
           }}
         >
           {node.name.toLowerCase()}
-          {!hasChildren && <span style={{ opacity: 0.5 }}>.md</span>}
+          {!hasChildren && (
+            <span style={{ opacity: 0.5 }}>.{node.asset || "md"}</span>
+          )}
         </span>
 
         {/* Hover arrow indicator for files */}
@@ -219,7 +257,7 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
             →
           </span>
         )}
-      </button>
+      </Element>
 
       {/* Children */}
       {hasChildren && expanded && (

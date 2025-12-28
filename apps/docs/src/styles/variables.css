@@ -1,0 +1,231 @@
+/* =============================================================================
+   DESIGN SYSTEM - CSS Custom Properties
+
+   A comprehensive design token system for the Alepha docs.
+   Foundation tokens are theme-independent; color tokens vary per theme.
+   ============================================================================= */
+
+/* =============================================================================
+   FOUNDATION TOKENS (Theme-Independent)
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------------
+     TYPOGRAPHY - Font Families
+     --------------------------------------------------------------------------- */
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* ---------------------------------------------------------------------------
+     TYPOGRAPHY - Font Sizes (px)
+     --------------------------------------------------------------------------- */
+  --text-xs: 10px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
+  --text-4xl: 32px;
+  --text-5xl: 42px;
+
+  /* ---------------------------------------------------------------------------
+     TYPOGRAPHY - Font Weights
+     --------------------------------------------------------------------------- */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* ---------------------------------------------------------------------------
+     TYPOGRAPHY - Line Heights
+     --------------------------------------------------------------------------- */
+  --leading-none: 1;
+  --leading-tight: 1.15;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.8;
+
+  /* ---------------------------------------------------------------------------
+     SPACING SCALE (px)
+     --------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---------------------------------------------------------------------------
+     BORDER RADIUS
+     --------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-full: 9999px;
+
+  /* ---------------------------------------------------------------------------
+     SHADOWS
+     --------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 20px var(--color-accent-glow);
+
+  /* ---------------------------------------------------------------------------
+     Z-INDEX SCALE
+     --------------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 50;
+  --z-fixed: 100;
+  --z-overlay: 200;
+  --z-modal: 500;
+  --z-popover: 1000;
+  --z-tooltip: 5000;
+  --z-max: 10000;
+
+  /* ---------------------------------------------------------------------------
+     TRANSITIONS
+     --------------------------------------------------------------------------- */
+  --duration-fast: 0.1s;
+  --duration-normal: 0.15s;
+  --duration-slow: 0.2s;
+  --duration-slower: 0.3s;
+  --ease-default: ease;
+  --ease-in-out: ease-in-out;
+  --ease-out: ease-out;
+
+  /* ---------------------------------------------------------------------------
+     LAYOUT
+     --------------------------------------------------------------------------- */
+  --container-max: 1024px;
+  --sidebar-width: 260px;
+  --header-height: 40px;
+  --status-bar-height: 24px;
+}
+
+/* =============================================================================
+   DARK THEME (Default)
+   ============================================================================= */
+
+:root,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --color-bg: #010409;
+  --color-bg-elevated: #0d1117;
+  --color-bg-panel: #151b23;
+
+  /* Borders */
+  --color-border: #262c36;
+  --color-border-focus: #3d444d;
+
+  /* Text */
+  --color-text: #c9d1d9;
+  --color-text-muted: #8b949e;
+  --color-text-bright: #f0f6fc;
+
+  /* Accent (Pink) */
+  --color-accent: #c2255c;
+  --color-accent-dim: #9a1c49;
+  --color-accent-glow: rgba(194, 37, 92, 0.4);
+  --color-accent-bg: rgba(194, 37, 92, 0.15);
+
+  /* Semantic */
+  --color-success: #3fb950;
+  --color-warning: #d29922;
+  --color-error: #f85149;
+  --color-info: #58a6ff;
+
+  /* Additional */
+  --color-amber: #d29922;
+  --color-amber-dim: #9e6a03;
+  --color-cyan: #58a6ff;
+  --color-red: #f85149;
+  --color-purple: #bc8cff;
+  --color-blue: #58a6ff;
+
+  /* Code */
+  --code-bg: #010409;
+  --code-header-bg: #0d1117;
+  --code-border: #262c36;
+  --code-text: #c9d1d9;
+  --code-keyword: #ff7b72;
+  --code-function: #d2a8ff;
+  --code-string: #a5d6ff;
+  --code-comment: #8b949e;
+  --code-number: #79c0ff;
+  --code-tag: #7ee787;
+  --code-builtin: #ffa657;
+}
+
+/* =============================================================================
+   LIGHT THEME
+   ============================================================================= */
+
+[data-theme="light"] {
+  /* Backgrounds */
+  --color-bg: #ffffff;
+  --color-bg-elevated: #fdfdfd;
+  --color-bg-panel: #fafafa;
+
+  /* Borders */
+  --color-border: #e1e4e8;
+  --color-border-focus: #d1d5da;
+
+  /* Text */
+  --color-text: #24292f;
+  --color-text-muted: #6e7781;
+  --color-text-bright: #1f2328;
+
+  /* Accent (Pink) */
+  --color-accent: #c2255c;
+  --color-accent-dim: #9a1c49;
+  --color-accent-glow: rgba(194, 37, 92, 0.3);
+  --color-accent-bg: rgba(194, 37, 92, 0.1);
+
+  /* Semantic */
+  --color-success: #1a7f37;
+  --color-warning: #9a6700;
+  --color-error: #cf222e;
+  --color-info: #0969da;
+
+  /* Additional */
+  --color-amber: #9a6700;
+  --color-amber-dim: #bf8700;
+  --color-cyan: #0969da;
+  --color-red: #cf222e;
+  --color-purple: #8250df;
+  --color-blue: #0969da;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  /* Code */
+  --code-bg: #fdfdfd;
+  --code-header-bg: #fafafa;
+  --code-border: #e1e4e8;
+  --code-text: #24292f;
+  --code-keyword: #cf222e;
+  --code-function: #8250df;
+  --code-string: #0a3069;
+  --code-comment: #6e7781;
+  --code-number: #0550ae;
+  --code-tag: #116329;
+  --code-builtin: #953800;
+}

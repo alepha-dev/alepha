@@ -16,16 +16,16 @@ const StatusBar = (props: StatusBarProps) => {
       className="flex items-center px-4"
       style={{
         height: 24,
-        background: "var(--term-bg-elevated)",
-        borderTop: "1px solid var(--term-border)",
+        background: "var(--color-bg)",
+        borderTop: "1px solid var(--color-border)",
         fontSize: 12,
-        color: "var(--term-text-dim)",
+        color: "var(--color-text-muted)",
         fontFamily: "monospace",
       }}
     >
       {/* Left side */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 hidden-mobile">
           <span
             style={{
               width: 8,
@@ -39,18 +39,28 @@ const StatusBar = (props: StatusBarProps) => {
           <span>{props.hackerMode ? "root" : "ready"}</span>
         </div>
 
-        <span style={{ color: "var(--term-border)" }}>│</span>
+        <span
+          className="hidden-mobile"
+          style={{ color: "var(--color-border)" }}
+        >
+          │
+        </span>
 
-        <span>main</span>
+        <span className="hidden-mobile">main</span>
 
-        <span style={{ color: "var(--term-border)" }}>│</span>
+        <span
+          className="hidden-mobile"
+          style={{ color: "var(--color-border)" }}
+        >
+          │
+        </span>
 
-        <span>TypeScript React</span>
+        <span className="hidden-mobile">TypeScript React</span>
 
         {props.hackerMode && (
           <>
-            <span style={{ color: "var(--term-border)" }}>│</span>
-            <span style={{ color: "var(--term-green)", fontWeight: 600 }}>
+            <span style={{ color: "var(--color-border)" }}>│</span>
+            <span style={{ color: "var(--color-accent)", fontWeight: 600 }}>
               🔓 HACKER
             </span>
           </>
@@ -68,15 +78,25 @@ const StatusBar = (props: StatusBarProps) => {
           </ClientOnly>
         </span>
 
-        <span style={{ color: "var(--term-border)" }}>│</span>
+        <span style={{ color: "var(--color-border)" }}>│</span>
 
-        <span style={{ color: "var(--term-cyan)" }}>
-          {currentPage === "/" ? "home" : currentPage.replace("/docs/", "").replace(/-/g, "_")}.md
+        <span style={{ color: "var(--color-cyan)" }}>
+          {currentPage === "/"
+            ? "home"
+            : currentPage.replace("/docs/", "").replace(/-/g, "_")}
+          .md
         </span>
 
-        <span style={{ color: "var(--term-border)" }}>│</span>
+        <span
+          className="hidden-mobile"
+          style={{ color: "var(--color-border)" }}
+        >
+          │
+        </span>
 
-        <LiveClock />
+        <span className="hidden-mobile">
+          <LiveClock />
+        </span>
       </div>
     </div>
   );

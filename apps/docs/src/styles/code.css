@@ -1,0 +1,246 @@
+/* =============================================================================
+   CODE BLOCKS - Syntax Highlighting
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   CODE BLOCK CONTAINER
+   ----------------------------------------------------------------------------- */
+
+.code-block {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--code-border);
+  background: var(--code-bg);
+  margin-bottom: 16px;
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+}
+
+.code-block-header {
+  height: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--code-header-bg);
+  border-bottom: 1px solid var(--code-border);
+}
+
+.code-block-lang {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: lowercase;
+  font-family: inherit;
+}
+
+.code-block-copy {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  font-family: inherit;
+}
+
+.code-block-copy:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+}
+
+.code-block pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow-x: auto;
+}
+
+.code-block pre code {
+  display: block;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--code-text);
+}
+
+/* -----------------------------------------------------------------------------
+   CODE LINE ENHANCEMENTS
+   ----------------------------------------------------------------------------- */
+
+.code-line {
+  display: flex;
+  align-items: flex-start;
+}
+
+.code-line-number {
+  width: 40px;
+  text-align: right;
+  padding-right: 16px;
+  color: var(--color-text-muted);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.code-line-content {
+  flex: 1;
+}
+
+.code-comment {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.code-keyword {
+  color: var(--color-purple);
+}
+
+.code-string {
+  color: var(--color-accent);
+}
+
+.code-function {
+  color: var(--color-amber);
+}
+
+.code-type {
+  color: var(--color-cyan);
+}
+
+/* -----------------------------------------------------------------------------
+   HIGHLIGHT.JS OVERRIDES
+   ----------------------------------------------------------------------------- */
+
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+  background: var(--code-bg);
+  color: var(--code-text);
+}
+
+code.hljs {
+  padding: 3px 5px;
+}
+
+.hljs {
+  color: var(--code-text);
+  background: var(--code-bg);
+}
+
+/* Keywords: if, else, return, const, let, var, function, class, etc. */
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--code-keyword);
+}
+
+/* Functions and class names */
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: var(--code-function);
+}
+
+/* Numbers, operators, attributes */
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--code-number);
+}
+
+/* Strings */
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  color: var(--code-string);
+}
+
+/* Built-ins and symbols */
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--code-builtin);
+}
+
+/* Comments */
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+/* HTML/JSX tags */
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  color: var(--code-tag);
+}
+
+/* Template substitutions */
+.hljs-subst {
+  color: var(--code-text);
+}
+
+/* Section headings (markdown) */
+.hljs-section {
+  color: var(--color-blue);
+  font-weight: bold;
+}
+
+/* List bullets */
+.hljs-bullet {
+  color: var(--color-amber);
+}
+
+/* Emphasis */
+.hljs-emphasis {
+  color: var(--code-text);
+  font-style: italic;
+}
+
+.hljs-strong {
+  color: var(--code-text);
+  font-weight: bold;
+}
+
+/* Diff additions/deletions */
+.hljs-addition {
+  color: var(--code-tag);
+  background-color: rgba(22, 163, 74, 0.15);
+}
+
+.hljs-deletion {
+  color: var(--code-keyword);
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* -----------------------------------------------------------------------------
+   CODE DEMO (Home Page)
+   ----------------------------------------------------------------------------- */
+
+.code-demo-content .code-block,
+.code-demo-content pre,
+.code-demo-content code {
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+}
