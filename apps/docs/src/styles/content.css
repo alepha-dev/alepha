@@ -105,6 +105,20 @@
   margin-bottom: 0;
 }
 
+/* Tables inside blockquotes: solid background, no stripes */
+.terminal-content blockquote table {
+  background: var(--color-bg);
+  margin: 12px 0 0 0;
+}
+
+.terminal-content blockquote th {
+  background: var(--color-bg-panel);
+}
+
+.terminal-content blockquote tr:nth-child(even) {
+  background: transparent;
+}
+
 .terminal-content hr {
   border: none;
   border-top: 1px solid var(--color-border);

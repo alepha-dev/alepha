@@ -95,6 +95,16 @@ Alepha takes the "Batteries Included" concept seriously.
 
 When you build for production, Alepha compiles everything into a highly optimized, lightweight bundle that runs anywhere: Vercel, Docker, Cloudflare, or a $5 VPS.
 
+## Built for the AI Era
+
+Alepha is designed to work seamlessly with AI coding assistants like Claude, ChatGPT, Cursor, and GitHub Copilot.
+
+We provide a machine-readable documentation file at [alepha.dev/llms.txt](https://alepha.dev/llms.txt) that AI assistants can consume to understand the entire framework. Point your AI tool to this URL and it will know how to write Alepha code correctly.
+
+> **Why this matters**
+>
+> AI assistants work best when they understand the conventions of your framework. Alepha's opinionated, primitive-based architecture gives AI tools clear patterns to follow - making AI-assisted development faster and more accurate.
+
 ## Who is this for?
 
 Alepha is for the **Pragmatic Developer**.

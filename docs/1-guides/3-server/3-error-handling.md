@@ -290,7 +290,7 @@ class ErrorHandler {
   log = $logger();
 
   onError = $hook({
-    on: "server:error",
+    on: "server:onError",
     handler: async ({ error, request }) => {
       // Log every error
       this.log.error("Request failed", {
@@ -471,7 +471,7 @@ class UserController {
 | Duplicate entity | `throw new ConflictError()` |
 | Business rule violation | Custom error extending `AlephaError` with `status` |
 | Check error type | `HttpError.is(error, 404)` |
-| Global logging | `$hook({ on: "server:error" })` |
+| Global logging | `$hook({ on: "server:onError" })` |
 | React error UI | `errorHandler` in `$page` |
 | Client-side toast | `alepha.events.on("react:action:error")` |
 

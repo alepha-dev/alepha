@@ -202,7 +202,7 @@ export const coreFeatures = [
     icon: IconCloud,
     title: "Deploy",
     module: null,
-    description: "Docker, Vercel, or VPS.",
+    description: "Docker, Vercel, and more.",
     slug: "guides-operations-deployment",
   },
 ];

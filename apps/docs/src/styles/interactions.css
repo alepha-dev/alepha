@@ -11,6 +11,18 @@
   background: var(--color-accent-bg) !important;
 }
 
+.logo-btn {
+  transition: all 0.15s ease;
+}
+
+.logo-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.logo-btn:active {
+  background: var(--color-surface-active);
+}
+
 .tab-close:hover {
   color: var(--color-red) !important;
   background: rgba(239, 68, 68, 0.2) !important;

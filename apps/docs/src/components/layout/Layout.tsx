@@ -524,6 +524,11 @@ const LayoutContent = () => {
   if (!hasSidebar) {
     return (
       <div className="flex flex-col min-h-screen w-full">
+        {/* Keyboard Shortcuts Help */}
+        {showHelp && (
+          <KeyboardShortcutsHelp onClose={() => setShowHelp(false)} />
+        )}
+
         {/* Header without tabs - sticky */}
         <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
           <Header showTabs={false} />

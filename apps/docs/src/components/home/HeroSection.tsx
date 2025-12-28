@@ -1,5 +1,5 @@
 import { Link } from "@alepha/react";
-import { IconArrowRight } from "@tabler/icons-react";
+import { IconArrowRight, IconPackage } from "@tabler/icons-react";
 import CodeDemo from "./CodeDemo.tsx";
 import ScrollButton from "./ScrollButton.tsx";
 
@@ -76,7 +76,9 @@ const HeroSection = () => {
                 }}
               >
                 Get Started
-                <IconArrowRight size={18} />
+                <span className="hero-icon hero-icon-arrow">
+                  <IconArrowRight size={18} />
+                </span>
               </button>
             </Link>
             <Link
@@ -101,7 +103,9 @@ const HeroSection = () => {
                 }}
               >
                 Explore Packages
-                <IconArrowRight size={18} />
+                <span className="hero-icon hero-icon-package">
+                  <IconPackage size={18} />
+                </span>
               </button>
             </Link>
           </div>
@@ -114,7 +118,7 @@ const HeroSection = () => {
       </div>
 
       {/* Scroll to Features */}
-      <ScrollButton targetId="features" label="Explore Features" />
+      <ScrollButton targetId="features" label="See What's Included" />
     </section>
   );
 };

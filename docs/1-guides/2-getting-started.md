@@ -34,7 +34,7 @@ Alepha uses classes to organize logic. Forget about `app.get()` or `router.use()
 
 Create a file at `src/main.server.ts`:
 
-```typescript
+```typescript filename="src/main.server.ts"
 import { run } from "alepha";
 import { $route } from "alepha/server";
 

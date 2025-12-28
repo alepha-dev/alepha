@@ -96,7 +96,7 @@ const MoreSection = () => {
                   textAlign: "left",
                   lineHeight: 1.5,
                   zIndex: 100,
-                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+                  boxShadow: "var(--shadow-xl)",
                 }}
               >
                 Some modules like{" "}
@@ -125,10 +125,7 @@ const MoreSection = () => {
         </p>
 
         {/* Command Box */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="install-btn"
+        <div
           style={{
             display: "flex",
             alignItems: "center",
@@ -137,8 +134,6 @@ const MoreSection = () => {
             background: "var(--color-bg-panel)",
             border: "1px solid var(--color-border)",
             borderRadius: 8,
-            cursor: "pointer",
-            transition: "all 0.15s ease",
             marginBottom: 24,
           }}
         >
@@ -160,8 +155,14 @@ const MoreSection = () => {
           >
             {command}
           </code>
-          <span
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="copy-btn"
             style={{
+              border: "none",
+              padding: 4,
+              cursor: "pointer",
               color: copied ? "var(--color-accent)" : "var(--color-text-muted)",
               transition: "color 0.15s",
               display: "flex",
@@ -170,8 +171,8 @@ const MoreSection = () => {
             }}
           >
             {copied ? <IconCheck size={18} /> : <IconCopy size={18} />}
-          </span>
-        </button>
+          </button>
+        </div>
 
         {/* GitHub & npm links */}
         <div

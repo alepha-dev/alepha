@@ -18,6 +18,20 @@
   transform: translateY(0);
 }
 
+/* Hero button icon animations */
+.hero-icon {
+  display: inline-flex;
+  transition: transform 0.2s ease;
+}
+
+.hero-btn:hover .hero-icon-arrow {
+  transform: translateX(4px);
+}
+
+.hero-btn:hover .hero-icon-package {
+  transform: rotate(-10deg) scale(1.1);
+}
+
 /* -----------------------------------------------------------------------------
    FOOTER LINKS
    ----------------------------------------------------------------------------- */
@@ -41,6 +55,24 @@
 
 .install-btn:active {
   transform: translateY(1px);
+}
+
+/* -----------------------------------------------------------------------------
+   COPY BUTTON
+   ----------------------------------------------------------------------------- */
+
+.copy-btn {
+  background: transparent;
+  transition: all 0.15s ease;
+  border-radius: 4px;
+}
+
+.copy-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.copy-btn:active {
+  transform: scale(0.9);
 }
 
 /* -----------------------------------------------------------------------------

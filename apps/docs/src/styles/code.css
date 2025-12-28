@@ -70,25 +70,121 @@
 }
 
 /* -----------------------------------------------------------------------------
+   ENHANCED CODE BLOCKS (with line numbers)
+   ----------------------------------------------------------------------------- */
+
+.code-block-enhanced.has-line-numbers pre {
+  position: relative;
+}
+
+.code-block-enhanced.has-line-numbers pre code {
+  padding: 16px 16px 16px 0;
+}
+
+/* Full-height border between line numbers and code */
+.code-block-enhanced.has-line-numbers pre::before {
+  content: "";
+  position: absolute;
+  left: 3em;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--code-border);
+}
+
+.code-block-filename {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-block-expand {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  font-family: inherit;
+}
+
+.code-block-expand:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+/* Collapsed state */
+.code-block.collapsed pre {
+  max-height: 300px;
+  overflow: hidden;
+  position: relative;
+}
+
+.code-block.collapsed pre::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(transparent, var(--code-bg));
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------------------------
    CODE LINE ENHANCEMENTS
    ----------------------------------------------------------------------------- */
 
+/* Remove gaps caused by whitespace between span elements (only when line numbers are present) */
+.code-block-enhanced.has-line-numbers pre code {
+  font-size: 0;
+}
+
 .code-line {
-  display: flex;
-  align-items: flex-start;
+  display: block;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .code-line-number {
-  width: 40px;
+  display: inline-block;
+  min-width: 3em;
+  padding-right: 1em;
+  padding-left: 1em;
   text-align: right;
-  padding-right: 16px;
   color: var(--color-text-muted);
+  opacity: 0.5;
   user-select: none;
-  flex-shrink: 0;
+  margin-right: 1em;
 }
 
 .code-line-content {
-  flex: 1;
+  display: inline;
+}
+
+/* Line highlighting */
+.code-line-highlighted {
+  background: var(--color-accent-bg);
+  display: block;
+  margin: 0 -16px;
+  padding: 0 16px;
+  border-left: 2px solid var(--color-accent);
+}
+
+.code-line-highlighted .code-line-number {
+  opacity: 0.8;
 }
 
 .code-comment {

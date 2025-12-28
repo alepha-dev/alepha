@@ -58,7 +58,7 @@ const Header = (props: HeaderProps) => {
         {/* Alepha Logo/Home */}
         <Link
           href="/"
-          className="flex items-center gap-2 px-4 h-full border-r"
+          className="logo-btn flex items-center gap-2 px-4 h-full border-r"
           style={{ textDecoration: "none", color: "var(--color-text-bright)" }}
         >
           <img
@@ -96,10 +96,11 @@ const Header = (props: HeaderProps) => {
         {/* Search Button */}
         <SearchButton />
 
-        {/* Keyboard Shortcuts - Hidden on mobile */}
+        {/* Keyboard Shortcuts */}
         <div className="hidden-mobile">
           <HeaderButton
             icon={<IconKeyboard size={16} />}
+            title="Keyboard Shortcuts"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("show-keyboard-help"))
             }
@@ -109,6 +110,7 @@ const Header = (props: HeaderProps) => {
         {/* GitHub */}
         <HeaderButton
           icon={<IconBrandGithub size={16} />}
+          title="View on GitHub"
           href="https://github.com/feunard/alepha"
           target="_blank"
         />
@@ -147,6 +149,7 @@ const SearchButton = () => {
     <button
       type="button"
       onClick={openSearch}
+      title="Search"
       className="header-btn flex items-center gap-2 rounded transition-colors"
       style={{
         padding: "4px 8px",
@@ -301,6 +304,7 @@ const Tab = (props: {
 const HeaderButton = (props: {
   icon: React.ReactNode;
   label?: string;
+  title?: string;
   href?: string;
   target?: string;
   onClick?: () => void;
@@ -312,6 +316,7 @@ const HeaderButton = (props: {
       href={props.href}
       target={props.target}
       onClick={props.onClick}
+      title={props.title}
       className="header-btn flex items-center gap-1 rounded transition-colors"
       style={{
         padding: "4px 8px",
@@ -369,6 +374,7 @@ const DarkModeToggle = () => {
   return (
     <HeaderButton
       icon={mode === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+      title={mode === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
       onClick={toggleMode}
     />
   );

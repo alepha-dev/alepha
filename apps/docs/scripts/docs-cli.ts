@@ -747,6 +747,156 @@ class DocsCliApp {
       .replace(/>/g, "&gt;");
   }
 
+  /**
+   * Languages that should show line numbers
+   */
+  lineNumberLanguages = new Set([
+    "typescript",
+    "ts",
+    "javascript",
+    "js",
+    "tsx",
+    "jsx",
+    "json",
+    "css",
+    "html",
+    "yaml",
+    "yml",
+    "sql",
+    "python",
+    "py",
+    "go",
+    "rust",
+    "java",
+    "c",
+    "cpp",
+    "csharp",
+    "php",
+    "ruby",
+    "swift",
+    "kotlin",
+  ]);
+
+  /**
+   * Parse code block meta info (e.g., ```ts {1,3-5} filename="example.ts")
+   */
+  parseCodeMeta(meta: string | null | undefined): {
+    highlights: Set<number>;
+    filename: string | null;
+    showLineNumbers: boolean;
+    collapsed: boolean;
+  } {
+    const result = {
+      highlights: new Set<number>(),
+      filename: null as string | null,
+      showLineNumbers: true,
+      collapsed: false,
+    };
+
+    if (!meta) return result;
+
+    // Parse highlights: {1,3-5,10}
+    const highlightMatch = meta.match(/\{([^}]+)\}/);
+    if (highlightMatch) {
+      const parts = highlightMatch[1].split(",");
+      for (const part of parts) {
+        if (part.includes("-")) {
+          const [start, end] = part.split("-").map(Number);
+          for (let i = start; i <= end; i++) {
+            result.highlights.add(i);
+          }
+        } else {
+          result.highlights.add(Number(part));
+        }
+      }
+    }
+
+    // Parse filename: filename="example.ts" or title="example.ts"
+    const filenameMatch = meta.match(/(?:filename|title)=["']([^"']+)["']/);
+    if (filenameMatch) {
+      result.filename = filenameMatch[1];
+    }
+
+    // Parse showLineNumbers: showLineNumbers=false
+    if (meta.includes("showLineNumbers=false") || meta.includes("nolines")) {
+      result.showLineNumbers = false;
+    }
+
+    // Parse collapsed: collapsed or collapse
+    if (meta.includes("collapsed") || meta.includes("collapse")) {
+      result.collapsed = true;
+    }
+
+    return result;
+  }
+
+  /**
+   * Render enhanced code block with line numbers and highlighting
+   */
+  renderEnhancedCodeBlock(
+    text: string,
+    lang: string,
+    meta: string | null | undefined,
+  ): string {
+    const language = hljs.getLanguage(lang) ? lang : "plaintext";
+    const highlighted = hljs.highlight(text, { language }).value;
+    const lines = highlighted.split("\n");
+    const rawLines = text.split("\n");
+
+    const { highlights, filename, showLineNumbers, collapsed } =
+      this.parseCodeMeta(meta);
+
+    // Determine if we should show line numbers
+    const shouldShowLineNumbers =
+      showLineNumbers && this.lineNumberLanguages.has(lang.toLowerCase());
+
+    // Auto-collapse if more than 25 lines
+    const isCollapsible = lines.length > 25 || collapsed;
+    const isCollapsed = collapsed && lines.length > 15;
+
+    // Encode raw code as base64
+    const base64Code = Buffer.from(text).toString("base64");
+
+    // Build header content
+    const headerLeft = filename
+      ? `<span class="code-block-filename">${filename}</span>`
+      : `<span class="code-block-lang">${lang || "bash"}</span>`;
+
+    const headerRight = `
+      ${isCollapsible ? `<button class="code-block-expand" onclick="(function(btn){var block=btn.closest('.code-block');block.classList.toggle('collapsed');btn.textContent=block.classList.contains('collapsed')?'Expand':'Collapse'})(this)">${isCollapsed ? "Expand" : "Collapse"}</button>` : ""}
+      <button class="code-block-copy" data-code="${base64Code}" onclick="(function(btn){var code=atob(btn.getAttribute('data-code'));navigator.clipboard.writeText(code);btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},2000)})(this)">Copy</button>
+    `.trim();
+
+    // Build code lines
+    let codeContent: string;
+    if (shouldShowLineNumbers) {
+      const lineNumberWidth = String(lines.length).length;
+      codeContent = lines
+        .map((line, i) => {
+          const lineNum = i + 1;
+          const isHighlighted = highlights.has(lineNum);
+          const highlightClass = isHighlighted ? " code-line-highlighted" : "";
+          const lineNumPadded = String(lineNum).padStart(lineNumberWidth, " ");
+          return `<span class="code-line${highlightClass}"><span class="code-line-number">${lineNumPadded}</span><span class="code-line-content">${line || " "}</span></span>`;
+        })
+        .join("\n");
+    } else {
+      codeContent = highlighted;
+    }
+
+    const collapsedClass = isCollapsed ? " collapsed" : "";
+    const lineNumClass = shouldShowLineNumbers ? " has-line-numbers" : "";
+
+    return `
+<div class="code-block code-block-enhanced${collapsedClass}${lineNumClass}">
+  <div class="code-block-header">
+    ${headerLeft}
+    <div class="code-block-actions">${headerRight}</div>
+  </div>
+  <pre><code class="hljs language-${language}">${codeContent}</code></pre>
+</div>`.trim();
+  }
+
   readme = $command({
     name: "readme",
     description: "Generate package documentation and READMEs",
@@ -1042,7 +1192,7 @@ class DocsCliApp {
         >) {
           this.log.trace(`Rendering snippet: ${key}`);
           snippets[key] = await this.renderContent(
-            `\`\`\`tsx\n${snippets[key].trim()}\n\`\`\``,
+            `\`\`\`tsx nolines\n${snippets[key].trim()}\n\`\`\``,
           );
         }
 
@@ -1129,13 +1279,28 @@ class DocsCliApp {
 <h${depth} class="doc-heading"><a href="#${slug}" class="heading-anchor">#</a>${htmlText}</h${depth}>`.trim();
       },
       code: ({ text, lang }: Tokens.Code) => {
+        // Extract actual language and meta from info string
+        // marked's `lang` contains full info string: "typescript filename="x.ts""
+        const langParts = (lang || "").split(/\s+/);
+        const actualLang = langParts[0] || "";
+        const meta = langParts.slice(1).join(" ") || null;
+
         // Check if this is a package manager command (bash/sh or no lang specified)
-        const isBashLike = !lang || lang === "bash" || lang === "sh";
+        const isBashLike =
+          !actualLang || actualLang === "bash" || actualLang === "sh";
         if (isBashLike && this.isPackageManagerCommand(text)) {
           return this.renderPackageManagerBlock(text);
         }
 
-        const language = hljs.getLanguage(lang || "") ? lang : "plaintext";
+        // Use enhanced block for languages with line numbers
+        if (
+          actualLang &&
+          this.lineNumberLanguages.has(actualLang.toLowerCase())
+        ) {
+          return this.renderEnhancedCodeBlock(text, actualLang, meta);
+        }
+
+        const language = hljs.getLanguage(actualLang || "") ? actualLang : "plaintext";
         const highlighted = hljs.highlight(text, {
           language: language || "plaintext",
         }).value;
@@ -1144,7 +1309,7 @@ class DocsCliApp {
         const base64Code = Buffer.from(text).toString("base64");
 
         // Display name for the language
-        const langDisplay = lang || "bash";
+        const langDisplay = actualLang || "bash";
 
         return `
 <div class="code-block">
