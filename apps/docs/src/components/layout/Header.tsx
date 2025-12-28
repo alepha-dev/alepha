@@ -2,7 +2,9 @@ import { Link, useRouterState } from "@alepha/react";
 import {
   IconBrandGithub,
   IconFile,
+  IconGitBranch,
   IconMoon,
+  IconPalette,
   IconSearch,
   IconSun,
   IconX,
@@ -38,9 +40,18 @@ const Header = (props: HeaderProps) => {
           className="flex items-center gap-2 px-4 h-full text-green border-r"
           style={{ textDecoration: "none" }}
         >
-          <span style={{ fontSize: 16 }}>λ</span>
+          <img src="/favicon.png" alt="Alepha" style={{ width: 20, height: 20 }} />
           <span className="font-semibold" style={{ fontSize: 13 }}>alepha</span>
         </Link>
+
+        {/* Version */}
+        <div
+          className="flex items-center gap-2 px-4 h-full border-r"
+          style={{ color: "var(--term-text-dim)", fontSize: 12 }}
+        >
+          <IconGitBranch size={14} />
+          <span>v{import.meta.env.VITE_VERSION || "0.0.0"}</span>
+        </div>
 
         {/* Tabs - Only shown on docs pages */}
         {showTabs && <TabBar />}
@@ -49,29 +60,7 @@ const Header = (props: HeaderProps) => {
       {/* Right - Actions */}
       <div className="flex items-center gap-1 px-3">
         {/* Search Button */}
-        <button
-          type="button"
-          onClick={() => {
-            window.dispatchEvent(
-              new KeyboardEvent("keydown", {
-                key: "k",
-                metaKey: true,
-              }),
-            );
-          }}
-          className="header-btn flex items-center gap-2 rounded transition-colors"
-          style={{
-            padding: "4px 8px",
-            background: "transparent",
-            border: "none",
-            color: "var(--term-text-dim)",
-            cursor: "pointer",
-            fontSize: 12,
-          }}
-        >
-          <IconSearch size={14} />
-          <span style={{ fontSize: 11, opacity: 0.7 }}>⌘K</span>
-        </button>
+        <SearchButton />
 
         {/* GitHub */}
         <HeaderButton
@@ -80,7 +69,10 @@ const Header = (props: HeaderProps) => {
           target="_blank"
         />
 
-        {/* Dark Mode Toggle */}
+        {/* Theme Select */}
+        <ThemeSelector />
+
+        {/* Dark/Light Mode Toggle */}
         <DarkModeToggle />
       </div>
     </header>
@@ -88,6 +80,47 @@ const Header = (props: HeaderProps) => {
 };
 
 export default Header;
+
+// =============================================================================
+// SEARCH BUTTON
+// =============================================================================
+
+const SearchButton = () => {
+  const [isMac, setIsMac] = useState(true);
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toLowerCase().includes("mac"));
+  }, []);
+
+  const openSearch = useCallback(() => {
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "k",
+        metaKey: isMac,
+        ctrlKey: !isMac,
+      }),
+    );
+  }, [isMac]);
+
+  return (
+    <button
+      type="button"
+      onClick={openSearch}
+      className="header-btn flex items-center gap-2 rounded transition-colors"
+      style={{
+        padding: "4px 8px",
+        background: "transparent",
+        border: "none",
+        color: "var(--term-text-dim)",
+        cursor: "pointer",
+        fontSize: 12,
+      }}
+    >
+      <IconSearch size={14} />
+      <span style={{ fontSize: 11, opacity: 0.7 }}>{isMac ? "⌘" : "Ctrl+"}K</span>
+    </button>
+  );
+};
 
 // =============================================================================
 // TAB BAR
@@ -119,7 +152,10 @@ const TabBar = () => {
   }, [currentPath, currentName]);
 
   return (
-    <div className="flex h-full items-end overflow-hidden">
+    <div
+      className="flex h-full items-center"
+      style={{ paddingLeft: 12 }}
+    >
       {tabs.map((tab) => (
         <Tab
           key={tab.path}
@@ -134,7 +170,7 @@ const TabBar = () => {
 };
 
 // =============================================================================
-// TAB
+// TAB - Clean pill-style tabs
 // =============================================================================
 
 const Tab = (props: {
@@ -147,27 +183,48 @@ const Tab = (props: {
 
   return (
     <div
-      className="flex items-center gap-2 px-3 border-r cursor-pointer"
+      className={`pill-tab ${isActive ? "" : "tab-inactive"}`}
       style={{
-        height: 32,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        height: 28,
+        padding: "0 12px",
+        marginRight: 4,
+        borderRadius: 6,
         background: isActive ? "var(--term-bg-panel)" : "transparent",
-        borderTop: isActive ? "1px solid var(--term-green)" : "1px solid transparent",
+        border: isActive ? "1px solid var(--term-border)" : "1px solid transparent",
         color: isActive ? "var(--term-text)" : "var(--term-text-dim)",
         fontSize: 12,
-        position: "relative",
-        marginTop: isActive ? 0 : 2,
+        cursor: "pointer",
+        transition: "all 0.15s ease",
       }}
     >
       <Link
         href={path}
-        className="flex items-center gap-1"
+        className="flex items-center gap-2"
         style={{
           textDecoration: "none",
           color: "inherit",
         }}
       >
-        <IconFile size={14} style={{ color: "var(--term-cyan)" }} />
-        <span>{name}.md</span>
+        <IconFile
+          size={14}
+          style={{
+            color: isActive ? "var(--term-cyan)" : "var(--term-text-dim)",
+            transition: "color 0.15s ease",
+          }}
+        />
+        <span
+          style={{
+            maxWidth: 120,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {name}.md
+        </span>
       </Link>
 
       <button
@@ -181,10 +238,10 @@ const Tab = (props: {
         style={{
           width: 16,
           height: 16,
-          borderRadius: 3,
+          borderRadius: 4,
           color: "var(--term-text-dim)",
-          opacity: isActive ? 1 : 0,
-          transition: "opacity 0.1s",
+          opacity: isActive ? 0.6 : 0,
+          transition: "all 0.15s ease",
         }}
       >
         <IconX size={12} />
@@ -229,19 +286,39 @@ const HeaderButton = (props: {
 };
 
 // =============================================================================
-// DARK MODE TOGGLE
+// THEME SELECTOR & DARK MODE TOGGLE
 // =============================================================================
 
-const THEME_KEY = "alepha-docs-theme";
+const SCHEME_KEY = "alepha-docs-scheme";
+const MODE_KEY = "alepha-docs-mode";
 
-const getInitialTheme = (): "dark" | "light" => {
-  // Check localStorage first
+const SCHEMES = ["terminal", "github"] as const;
+type Scheme = (typeof SCHEMES)[number];
+type Mode = "dark" | "light";
+
+const getThemeAttribute = (scheme: Scheme, mode: Mode): string => {
+  if (scheme === "terminal") {
+    return mode; // "dark" or "light"
+  }
+  return mode === "dark" ? "github" : "github-light";
+};
+
+const getInitialScheme = (): Scheme => {
   if (typeof window !== "undefined") {
-    const stored = localStorage.getItem(THEME_KEY);
+    const stored = localStorage.getItem(SCHEME_KEY);
+    if (stored && SCHEMES.includes(stored as Scheme)) {
+      return stored as Scheme;
+    }
+  }
+  return "terminal";
+};
+
+const getInitialMode = (): Mode => {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(MODE_KEY);
     if (stored === "light" || stored === "dark") {
       return stored;
     }
-    // Check system preference
     if (window.matchMedia?.("(prefers-color-scheme: light)").matches) {
       return "light";
     }
@@ -249,27 +326,70 @@ const getInitialTheme = (): "dark" | "light" => {
   return "dark";
 };
 
-const DarkModeToggle = () => {
-  const [isDark, setIsDark] = useState(true);
+const ThemeSelector = () => {
+  const [scheme, setScheme] = useState<Scheme>("terminal");
 
-  // Initialize theme on mount
   useEffect(() => {
-    const theme = getInitialTheme();
-    setIsDark(theme === "dark");
-    document.documentElement.setAttribute("data-theme", theme);
+    const initialScheme = getInitialScheme();
+    const initialMode = getInitialMode();
+    setScheme(initialScheme);
+    document.documentElement.setAttribute(
+      "data-theme",
+      getThemeAttribute(initialScheme, initialMode),
+    );
   }, []);
 
-  const toggle = useCallback(() => {
-    const newTheme = isDark ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem(THEME_KEY, newTheme);
-    setIsDark(!isDark);
-  }, [isDark]);
+  const cycleScheme = useCallback(() => {
+    const currentIndex = SCHEMES.indexOf(scheme);
+    const nextIndex = (currentIndex + 1) % SCHEMES.length;
+    const nextScheme = SCHEMES[nextIndex];
+    const currentMode = getInitialMode();
+
+    document.documentElement.setAttribute(
+      "data-theme",
+      getThemeAttribute(nextScheme, currentMode),
+    );
+    localStorage.setItem(SCHEME_KEY, nextScheme);
+    setScheme(nextScheme);
+  }, [scheme]);
 
   return (
     <HeaderButton
-      icon={isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
-      onClick={toggle}
+      icon={<IconPalette size={16} />}
+      onClick={cycleScheme}
+    />
+  );
+};
+
+const DarkModeToggle = () => {
+  const [mode, setMode] = useState<Mode>("dark");
+
+  useEffect(() => {
+    const initialMode = getInitialMode();
+    const initialScheme = getInitialScheme();
+    setMode(initialMode);
+    document.documentElement.setAttribute(
+      "data-theme",
+      getThemeAttribute(initialScheme, initialMode),
+    );
+  }, []);
+
+  const toggleMode = useCallback(() => {
+    const newMode = mode === "dark" ? "light" : "dark";
+    const currentScheme = getInitialScheme();
+
+    document.documentElement.setAttribute(
+      "data-theme",
+      getThemeAttribute(currentScheme, newMode),
+    );
+    localStorage.setItem(MODE_KEY, newMode);
+    setMode(newMode);
+  }, [mode]);
+
+  return (
+    <HeaderButton
+      icon={mode === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+      onClick={toggleMode}
     />
   );
 };

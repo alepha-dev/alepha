@@ -1,5 +1,5 @@
 import { useRouter } from "@alepha/react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 interface HeadingItem {
   id: string;
@@ -20,9 +20,10 @@ const TableOfContents = (props: TableOfContentsProps) => {
 
   return (
     <div
-      className="visible-xl"
+      className="visible-xl texture-dots"
       style={{
         width: 280,
+        minHeight: "100%",
         background: "var(--term-bg-elevated)",
         borderLeft: "1px solid var(--term-border)",
       }}
@@ -45,7 +46,7 @@ const TableOfContents = (props: TableOfContentsProps) => {
 
         {/* ToC Items */}
         <div
-          className="scroll-area p-2"
+          className="scroll-area p-4"
           style={{ maxHeight: "calc(100vh - 60px)" }}
         >
           <TocItems key={props.name} />
@@ -64,6 +65,11 @@ export default TableOfContents;
 const TocItems = () => {
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [activeId, setActiveId] = useState("");
+  const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0 });
+  const isScrollingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const visibleHeadingsRef = useRef<Set<string>>(new Set());
 
   // Parse headings from DOM
   useEffect(() => {
@@ -81,6 +87,22 @@ const TocItems = () => {
     }
   }, []);
 
+  // Update indicator position when active changes
+  useEffect(() => {
+    if (!activeId || !containerRef.current) return;
+
+    const activeItem = itemRefs.current.get(activeId);
+    if (activeItem) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+
+      setIndicatorStyle({
+        top: itemRect.top - containerRect.top,
+        height: itemRect.height,
+      });
+    }
+  }, [activeId, headings]);
+
   // Scroll spy with Intersection Observer
   useEffect(() => {
     if (headings.length === 0) return;
@@ -91,22 +113,22 @@ const TocItems = () => {
 
     if (elements.length === 0) return;
 
-    // Track which headings are visible
-    const visibleHeadings = new Set<string>();
-
     const observer = new IntersectionObserver(
       (entries) => {
+        // Skip updates during programmatic scroll
+        if (isScrollingRef.current) return;
+
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            visibleHeadings.add(entry.target.id);
+            visibleHeadingsRef.current.add(entry.target.id);
           } else {
-            visibleHeadings.delete(entry.target.id);
+            visibleHeadingsRef.current.delete(entry.target.id);
           }
         }
 
         // Find the first visible heading in document order
         for (const heading of headings) {
-          if (visibleHeadings.has(heading.id)) {
+          if (visibleHeadingsRef.current.has(heading.id)) {
             setActiveId(heading.id);
             break;
           }
@@ -128,19 +150,25 @@ const TocItems = () => {
   const handleClick = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-      // Update active immediately for snappy feel
+      // Disable observer during programmatic scroll
+      isScrollingRef.current = true;
+      // Clear stale visibility data
+      visibleHeadingsRef.current.clear();
       setActiveId(id);
+
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // Re-enable observer after scroll completes
+      // Use longer timeout to ensure scroll is fully settled
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 1000);
     }
   };
 
   // Depth-based styling
   const getDepthStyle = (depth: number, isActive: boolean) => {
-    const baseIndent = 12;
-    const indent = (depth - 2) * baseIndent;
-
     return {
-      paddingLeft: indent,
       fontSize: depth === 2 ? 13 : 12,
       fontWeight: depth === 2 ? 500 : 400,
       opacity: isActive ? 1 : depth === 2 ? 0.8 : 0.6,
@@ -162,32 +190,60 @@ const TocItems = () => {
   }
 
   return (
-    <div className="flex flex-col">
+    <div
+      ref={containerRef}
+      className="flex flex-col"
+      style={{
+        position: "relative",
+        marginLeft: 4,
+      }}
+    >
+      {/* Animated indicator bar */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: indicatorStyle.top,
+          height: indicatorStyle.height,
+          width: 2,
+          background: "var(--term-green)",
+          borderRadius: 1,
+          transition: "top 0.2s ease-out, height 0.2s ease-out",
+          zIndex: 1,
+        }}
+      />
+
       {headings.map((heading) => {
         const isActive = activeId === heading.id;
         const depthStyle = getDepthStyle(heading.depth, isActive);
+        const indent = (heading.depth - 2) * 8;
 
         return (
           <button
             key={heading.id}
+            ref={(el) => {
+              if (el) itemRefs.current.set(heading.id, el);
+            }}
             type="button"
             onClick={() => handleClick(heading.id)}
-            className="btn-reset text-left cursor-pointer toc-item truncate"
+            className={`btn-reset text-left cursor-pointer toc-item truncate ${isActive ? "active" : ""}`}
             style={{
-              padding: "5px 0",
-              paddingLeft: depthStyle.paddingLeft,
+              position: "relative",
+              padding: "6px 10px",
+              paddingLeft: 16 + indent,
               fontSize: depthStyle.fontSize,
-              fontWeight: depthStyle.fontWeight,
-              color: isActive ? "var(--term-green)" : "var(--term-text-dim)",
+              fontWeight: isActive ? 500 : depthStyle.fontWeight,
+              color: isActive ? "var(--term-text)" : "var(--term-text-dim)",
               opacity: depthStyle.opacity,
-              transition: "color 0.15s, opacity 0.15s",
+              background: "transparent",
+              borderRadius: "0 4px 4px 0",
+              transition: "color 0.15s ease, opacity 0.15s ease",
               display: "block",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
           >
-            {heading.depth > 2 && <span style={{ opacity: 0.4 }}>└ </span>}
             {heading.text}
           </button>
         );

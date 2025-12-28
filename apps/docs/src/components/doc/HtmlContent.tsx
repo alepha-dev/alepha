@@ -19,7 +19,6 @@ const HtmlContent = (props: HtmlContentProps) => {
     <div
       id="html-content"
       className="terminal-content"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted content
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

@@ -9,7 +9,7 @@ const EditLink = (props: EditLinkProps) => {
   if (!props.path) return null;
 
   return (
-    <div className="mt-6 pt-4 border-t">
+    <div className="mt-8 pt-6 border-t">
       <a
         href={`https://github.com/${repository.name}/edit/main/${props.path}`}
         target="_blank"

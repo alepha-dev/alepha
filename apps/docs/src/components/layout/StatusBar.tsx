@@ -31,7 +31,7 @@ const StatusBar = (props: StatusBarProps) => {
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: "var(--term-green)",
+              background: "#22c55e",
               animation: "pulse 2s ease-in-out infinite",
               display: "inline-block",
             }}
@@ -61,6 +61,7 @@ const StatusBar = (props: StatusBarProps) => {
       <div className="flex items-center gap-4 ml-auto">
         <span>
           <ClientOnly>
+            built{" "}
             {l(import.meta.env.VITE_BUILD_DATE?.split("T")[0] || "", {
               date: "fromNow",
             })}
@@ -70,7 +71,7 @@ const StatusBar = (props: StatusBarProps) => {
         <span style={{ color: "var(--term-border)" }}>│</span>
 
         <span style={{ color: "var(--term-cyan)" }}>
-          {currentPage.replace("/docs/", "").replace(/-/g, "_")}.md
+          {currentPage === "/" ? "home" : currentPage.replace("/docs/", "").replace(/-/g, "_")}.md
         </span>
 
         <span style={{ color: "var(--term-border)" }}>│</span>

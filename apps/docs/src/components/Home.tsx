@@ -1,305 +1,197 @@
 import { Link } from "@alepha/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	IconArrowRight,
+	IconBrandGithub,
+	IconBrandNpm,
+	IconCheck,
+	IconChevronDown,
+	IconCopy,
+} from "@tabler/icons-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { snippets } from "../config/docs.ts";
 import { apiFeatures, coreFeatures } from "../config/features.ts";
+import StatusBar from "./layout/StatusBar.tsx";
 
 // =============================================================================
-// ASCII ART
+// 3D CONNECTED DOTS BACKGROUND
 // =============================================================================
 
-const ASCII_LOGO = `
-    _    _     _____ ____  _   _    _
-   / \\  | |   | ____|  _ \\| | | |  / \\
-  / _ \\ | |   |  _| | |_) | |_| | / _ \\
- / ___ \\| |___| |___|  __/|  _  |/ ___ \\
-/_/   \\_\\_____|_____|_|   |_| |_/_/   \\_\\
-`;
+interface Particle {
+	x: number;
+	y: number;
+	z: number;
+	vx: number;
+	vy: number;
+	vz: number;
+}
 
-const SMALL_LOGO = `╔═══════════════════════════════════╗
-║  ALEPHA FRAMEWORK v0.14.0         ║
-║  Type-safe TypeScript Framework   ║
-╚═══════════════════════════════════╝`;
+const ParticleNetwork = () => {
+	const canvasRef = useRef<HTMLCanvasElement>(null);
 
-// =============================================================================
-// BOOT SEQUENCE
-// =============================================================================
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (!canvas) return;
 
-const bootMessages = [
-  { text: "ALEPHA BIOS v1.0.0", delay: 0 },
-  { text: "Initializing framework modules...", delay: 200 },
-  { text: "Loading @alepha/core.............. OK", delay: 400 },
-  { text: "Loading @alepha/server............ OK", delay: 500 },
-  { text: "Loading @alepha/react............. OK", delay: 600 },
-  { text: "Loading @alepha/orm............... OK", delay: 700 },
-  { text: "Type system ready.", delay: 900 },
-  { text: "Starting documentation server...", delay: 1100 },
-];
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
 
-const BootSequence = (props: { onComplete: () => void }) => {
-  const [visibleLines, setVisibleLines] = useState(0);
-  const [progress, setProgress] = useState(0);
+		let animationId: number;
+		let particles: Particle[] = [];
+		const particleCount = 80;
+		const connectionDistance = 150;
+		const depth = 400;
 
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
+		const resize = () => {
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+			initParticles();
+		};
 
-    bootMessages.forEach((msg, index) => {
-      timers.push(
-        setTimeout(() => {
-          setVisibleLines(index + 1);
-          setProgress(((index + 1) / bootMessages.length) * 100);
-        }, msg.delay),
-      );
-    });
+		const initParticles = () => {
+			particles = [];
+			for (let i = 0; i < particleCount; i++) {
+				particles.push({
+					x: Math.random() * canvas.width,
+					y: Math.random() * canvas.height,
+					z: Math.random() * depth,
+					vx: (Math.random() - 0.5) * 0.5,
+					vy: (Math.random() - 0.5) * 0.5,
+					vz: (Math.random() - 0.5) * 0.3,
+				});
+			}
+		};
 
-    timers.push(
-      setTimeout(() => {
-        props.onComplete();
-      }, 1800),
-    );
+		const project = (p: Particle) => {
+			const scale = depth / (depth + p.z);
+			const x = p.x * scale + (canvas.width * (1 - scale)) / 2;
+			const y = p.y * scale + (canvas.height * (1 - scale)) / 2;
+			return { x, y, scale };
+		};
 
-    return () => timers.forEach(clearTimeout);
-  }, [props.onComplete]);
+		const draw = () => {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  return (
-    <div className="boot-sequence">
-      <div style={{ fontFamily: "monospace", fontSize: 14 }}>
-        {bootMessages.slice(0, visibleLines).map((msg, i) => (
-          <div
-            key={msg.text}
-            className="boot-line"
-            style={{
-              animationDelay: `${i * 0.1}s`,
-              color:
-                msg.text.includes("OK")
-                  ? "var(--term-green)"
-                  : "var(--term-text)",
-            }}
-          >
-            {msg.text}
-          </div>
-        ))}
-      </div>
-      <div className="boot-progress">
-        <div className="boot-progress-bar" style={{ width: `${progress}%` }} />
-      </div>
-    </div>
-  );
+			for (const p of particles) {
+				p.x += p.vx;
+				p.y += p.vy;
+				p.z += p.vz;
+
+				if (p.x < 0) p.x = canvas.width;
+				if (p.x > canvas.width) p.x = 0;
+				if (p.y < 0) p.y = canvas.height;
+				if (p.y > canvas.height) p.y = 0;
+				if (p.z < 0) p.z = depth;
+				if (p.z > depth) p.z = 0;
+			}
+
+			const sorted = [...particles].sort((a, b) => b.z - a.z);
+
+			for (let i = 0; i < sorted.length; i++) {
+				for (let j = i + 1; j < sorted.length; j++) {
+					const p1 = sorted[i];
+					const p2 = sorted[j];
+					const dx = p1.x - p2.x;
+					const dy = p1.y - p2.y;
+					const dz = p1.z - p2.z;
+					const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+					if (dist < connectionDistance) {
+						const proj1 = project(p1);
+						const proj2 = project(p2);
+						const opacity = (1 - dist / connectionDistance) * 0.35 * proj1.scale * proj2.scale;
+
+						ctx.beginPath();
+						ctx.moveTo(proj1.x, proj1.y);
+						ctx.lineTo(proj2.x, proj2.y);
+						ctx.strokeStyle = `rgba(128, 128, 128, ${opacity})`;
+						ctx.lineWidth = 1;
+						ctx.stroke();
+					}
+				}
+			}
+
+			for (const p of sorted) {
+				const proj = project(p);
+				const radius = 2 * proj.scale;
+				const opacity = 0.3 + 0.4 * proj.scale;
+
+				ctx.beginPath();
+				ctx.arc(proj.x, proj.y, radius, 0, Math.PI * 2);
+				ctx.fillStyle = `rgba(128, 128, 128, ${opacity})`;
+				ctx.fill();
+			}
+
+			animationId = requestAnimationFrame(draw);
+		};
+
+		resize();
+		window.addEventListener("resize", resize);
+		draw();
+
+		return () => {
+			cancelAnimationFrame(animationId);
+			window.removeEventListener("resize", resize);
+		};
+	}, []);
+
+	return (
+		<canvas
+			ref={canvasRef}
+			style={{
+				position: "fixed",
+				top: 0,
+				left: 0,
+				width: "100%",
+				height: "100%",
+				pointerEvents: "none",
+				zIndex: 0,
+			}}
+		/>
+	);
 };
 
 // =============================================================================
-// MATRIX RAIN BACKGROUND
+// SCROLL BUTTON COMPONENT
 // =============================================================================
 
-const MatrixRain = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const ScrollButton = ({ targetId, label }: { targetId: string; label?: string }) => {
+	const handleScroll = useCallback(() => {
+		const target = document.getElementById(targetId);
+		if (target) {
+			target.scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+	}, [targetId]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-
-    const chars = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789$@#%&";
-    const fontSize = 14;
-    const columns = Math.floor(canvas.width / fontSize);
-    const drops: number[] = Array(columns).fill(1);
-
-    const draw = () => {
-      ctx.fillStyle = "rgba(10, 10, 10, 0.05)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = "#22c55e";
-      ctx.font = `${fontSize}px monospace`;
-
-      for (let i = 0; i < drops.length; i++) {
-        const char = chars[Math.floor(Math.random() * chars.length)];
-        ctx.fillText(char, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        drops[i]++;
-      }
-    };
-
-    const interval = setInterval(draw, 50);
-    window.addEventListener("resize", resize);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="matrix-bg"
-      style={{ position: "fixed", top: 0, left: 0, opacity: 0.04 }}
-    />
-  );
-};
-
-// =============================================================================
-// TERMINAL PROMPT WITH TYPING
-// =============================================================================
-
-const TerminalPrompt = (props: {
-  command: string;
-  typing?: boolean;
-  onTypingComplete?: () => void;
-}) => {
-  const [displayedText, setDisplayedText] = useState(
-    props.typing ? "" : props.command,
-  );
-  const [showCursor, setShowCursor] = useState(true);
-
-  useEffect(() => {
-    if (!props.typing) return;
-
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < props.command.length) {
-        setDisplayedText(props.command.slice(0, index + 1));
-        index++;
-      } else {
-        clearInterval(interval);
-        props.onTypingComplete?.();
-      }
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [props.command, props.typing, props.onTypingComplete]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowCursor((prev) => !prev);
-    }, 530);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="prompt" style={{ fontFamily: "monospace" }}>
-      <span className="prompt-user">alepha</span>
-      <span className="prompt-separator">@</span>
-      <span className="prompt-path">docs</span>
-      <span className="prompt-symbol">$</span>
-      <span style={{ color: "var(--term-text)" }}>{displayedText}</span>
-      {showCursor && (
-        <span
-          style={{
-            background: "var(--term-green)",
-            width: 8,
-            height: 18,
-            display: "inline-block",
-            marginLeft: 2,
-          }}
-        />
-      )}
-    </div>
-  );
-};
-
-// =============================================================================
-// TERMINAL OUTPUT
-// =============================================================================
-
-const TerminalOutput = (props: { lines: React.ReactNode[] }) => (
-  <div style={{ marginTop: 16, fontFamily: "monospace", fontSize: 14 }}>
-    {props.lines.map((line, i) => (
-      <div key={i} style={{ marginBottom: 4 }}>
-        {line}
-      </div>
-    ))}
-  </div>
-);
-
-// =============================================================================
-// LIVE CLOCK
-// =============================================================================
-
-const LiveClock = () => {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <span style={{ fontFamily: "monospace" }}>
-      {time.toLocaleTimeString("en-US", { hour12: false })}
-    </span>
-  );
-};
-
-// =============================================================================
-// FEATURE CARD - TERMINAL STYLE
-// =============================================================================
-
-const FeatureTerminalCard = (props: {
-  feature: (typeof coreFeatures)[number];
-  index: number;
-}) => {
-  const { feature, index } = props;
-  const [hovered, setHovered] = useState(false);
-
-  const command = useMemo(() => {
-    const name = feature.title.toLowerCase().replace(/\s+/g, "-");
-    return `alepha add ${name}`;
-  }, [feature.title]);
-
-  return (
-    <Link
-      href={`/docs/${feature.slug}`}
-      style={{ textDecoration: "none" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div
-        className="feature-terminal animate-slide-up"
-        style={{ animationDelay: `${index * 0.05}s` }}
-      >
-        <div className="feature-command">{command}</div>
-        <div className="flex items-center gap-3">
-          <feature.icon
-            size={24}
-            className="feature-icon"
-            style={{
-              color: hovered ? "var(--term-green)" : "var(--term-text-dim)",
-              transition: "color 0.2s",
-            }}
-          />
-          <div>
-            <div className="feature-name">
-              {feature.title}
-              {"new" in feature && feature.new && (
-                <span
-                  style={{
-                    marginLeft: 8,
-                    fontSize: 10,
-                    color: "var(--term-green)",
-                    border: "1px solid var(--term-green)",
-                    padding: "2px 6px",
-                    borderRadius: 3,
-                  }}
-                >
-                  NEW
-                </span>
-              )}
-            </div>
-            <div className="feature-desc">{feature.description}</div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
+	return (
+		<button
+			type="button"
+			onClick={handleScroll}
+			className="scroll-down-btn"
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 8,
+				background: "transparent",
+				border: "none",
+				cursor: "pointer",
+				padding: "16px 24px",
+				marginTop: 48,
+				color: "var(--term-text-dim)",
+				transition: "all 0.2s ease",
+			}}
+		>
+			{label && (
+				<span style={{ fontSize: 12, fontFamily: "monospace", letterSpacing: "0.5px" }}>{label}</span>
+			)}
+			<IconChevronDown
+				size={28}
+				style={{
+					animation: "bounceDown 2s ease-in-out infinite",
+				}}
+			/>
+		</button>
+	);
 };
 
 // =============================================================================
@@ -307,422 +199,807 @@ const FeatureTerminalCard = (props: {
 // =============================================================================
 
 const Home = () => {
-  const [booted, setBooted] = useState(false);
-  const [heroTyped, setHeroTyped] = useState(false);
+	return (
+		<div className="terminal-page grid-bg">
+			{/* CRT Overlay Effect */}
+			<div className="crt-overlay" />
 
-  const handleBootComplete = useCallback(() => {
-    setBooted(true);
-  }, []);
+			{/* 3D Particle Network Background */}
+			<ParticleNetwork />
 
-  // Skip boot on subsequent renders (check sessionStorage)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hasBooted = sessionStorage.getItem("alepha-booted");
-      if (hasBooted) {
-        setBooted(true);
-        setHeroTyped(true);
-      } else {
-        sessionStorage.setItem("alepha-booted", "true");
-      }
-    }
-  }, []);
+			{/* Main Content */}
+			<div className="flex flex-col relative" style={{ paddingBottom: 24 }}>
+				{/* Block 1: Hero */}
+				<HeroSection />
 
-  if (!booted) {
-    return <BootSequence onComplete={handleBootComplete} />;
-  }
+				{/* Block 2: Features */}
+				<FeaturesSection />
 
-  return (
-    <div className="terminal-page grid-bg">
-      {/* CRT Overlay Effect */}
-      <div className="crt-overlay" />
+				{/* Block 3: More */}
+				<MoreSection />
+			</div>
 
-      {/* Matrix Rain Background */}
-      <MatrixRain />
+			{/* Status Bar (docs footer) */}
+			<div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+				<StatusBar />
+			</div>
 
-      {/* Main Content */}
-      <div className="flex flex-col min-h-screen pb-10 relative">
-        {/* Hero Section */}
-        <HeroSection heroTyped={heroTyped} setHeroTyped={setHeroTyped} />
-
-        {/* Features Section */}
-        <FeaturesSection />
-
-        {/* Install Section */}
-        <InstallSection />
-
-        {/* Footer */}
-        <FooterSection />
-      </div>
-
-      {/* Status Bar */}
-      <StatusBar />
-    </div>
-  );
+			{/* Bounce animation for scroll button */}
+			<style>{`
+				@keyframes bounceDown {
+					0%, 20%, 50%, 80%, 100% {
+						transform: translateY(0);
+					}
+					40% {
+						transform: translateY(8px);
+					}
+					60% {
+						transform: translateY(4px);
+					}
+				}
+				.scroll-down-btn:hover {
+					color: var(--term-green) !important;
+				}
+				.scroll-down-btn:hover svg {
+					color: var(--term-green);
+				}
+			`}</style>
+		</div>
+	);
 };
 
 export default Home;
 
 // =============================================================================
-// HERO SECTION
+// BLOCK 1: HERO SECTION
 // =============================================================================
 
-const HeroSection = (props: {
-  heroTyped: boolean;
-  setHeroTyped: (v: boolean) => void;
-}) => {
-  return (
-    <div className="container py-20">
-      <div className="flex flex-col items-center gap-10">
-        {/* ASCII Logo */}
-        <pre
-          className="ascii-art ascii-art-large crt-flicker text-center"
-        >
-          {ASCII_LOGO}
-        </pre>
+const HeroSection = () => {
+	return (
+		<section
+			id="hero"
+			className="home-block container"
+			style={{
+				minHeight: "100vh",
+				display: "flex",
+				flexDirection: "column",
+				justifyContent: "center",
+				alignItems: "center",
+				paddingTop: 40,
+				paddingBottom: 40,
+			}}
+		>
+			<div className="intro-grid">
+				{/* Left: Hero Text */}
+				<div className="flex flex-col gap-6 intro-hero">
+					<h1
+						style={{
+							fontSize: 42,
+							fontWeight: 700,
+							margin: 0,
+							color: "var(--term-text-bright)",
+							lineHeight: 1.15,
+						}}
+					>
+						TypeScript Framework
+						<br />
+						<span style={{ color: "var(--term-green)" }}>Made Easy</span>
+					</h1>
 
-        {/* Terminal Window */}
-        <div className="w-full max-w-lg">
-          <div className="terminal-window">
-            <div className="terminal-titlebar">
-              <div className="terminal-buttons">
-                <div className="terminal-btn terminal-btn-close" />
-                <div className="terminal-btn terminal-btn-minimize" />
-                <div className="terminal-btn terminal-btn-maximize" />
-              </div>
-              <div className="terminal-title">alepha — docs — 80×24</div>
-            </div>
-            <div className="terminal-body">
-              <TerminalPrompt
-                command="alepha --version"
-                typing={!props.heroTyped}
-                onTypingComplete={() => props.setHeroTyped(true)}
-              />
+					<p
+						style={{
+							fontSize: 17,
+							color: "var(--term-text-dim)",
+							maxWidth: 440,
+							lineHeight: 1.7,
+							margin: 0,
+						}}
+					>
+						Stop gluing libraries together. Alepha gives you APIs, databases, queues, React SSR, and
+						more.{" "}
+						<span style={{ color: "var(--term-text)" }}>All type-safe. All works out of the box.</span>
+					</p>
 
-              {props.heroTyped && (
-                <TerminalOutput
-                  lines={[
-                    <span key="v" style={{ color: "var(--term-green)" }}>
-                      Alepha Framework v0.14.0
-                    </span>,
-                    "",
-                    <span key="d" style={{ color: "var(--term-text-dim)" }}>
-                      The convention-driven TypeScript framework for building
-                    </span>,
-                    <span key="d2" style={{ color: "var(--term-text-dim)" }}>
-                      robust, end-to-end type-safe applications.
-                    </span>,
-                    "",
-                    <span key="f">
-                      <span style={{ color: "var(--term-cyan)" }}>
-                        Features:
-                      </span>
-                    </span>,
-                    <span key="f1">
-                      {"  "}• Type-safe HTTP APIs with{" "}
-                      <span className="glow-amber">$action</span>
-                    </span>,
-                    <span key="f2">
-                      {"  "}• React SSR/SSG with{" "}
-                      <span className="glow-amber">$page</span>
-                    </span>,
-                    <span key="f3">
-                      {"  "}• Database ORM with{" "}
-                      <span className="glow-amber">$entity</span>
-                    </span>,
-                    <span key="f4">
-                      {"  "}• Background jobs with{" "}
-                      <span className="glow-amber">$queue</span>
-                    </span>,
-                    <span key="f5">
-                      {"  "}• Scheduled tasks with{" "}
-                      <span className="glow-amber">$scheduler</span>
-                    </span>,
-                    "",
-                    <span key="run">
-                      <span style={{ color: "var(--term-text-dim)" }}>
-                        Run{" "}
-                      </span>
-                      <span className="glow-green">npx alepha init</span>
-                      <span style={{ color: "var(--term-text-dim)" }}>
-                        {" "}
-                        to get started.
-                      </span>
-                    </span>,
-                  ]}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+					{/* Quick Actions */}
+					<div className="flex gap-4 flex-wrap">
+						<Link href="/docs/guides-introduction" style={{ textDecoration: "none" }}>
+							<button
+								type="button"
+								className="hero-btn"
+								style={{
+									background: "var(--term-green)",
+									color: "#ffffff",
+									border: "none",
+									padding: "14px 32px",
+									borderRadius: 6,
+									fontFamily: "inherit",
+									fontSize: 15,
+									fontWeight: 600,
+									cursor: "pointer",
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+								}}
+							>
+								Get Started
+								<IconArrowRight size={18} />
+							</button>
+						</Link>
+						<a
+							href="https://github.com/feunard/alepha"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ textDecoration: "none" }}
+						>
+							<button
+								type="button"
+								className="hero-btn"
+								style={{
+									background: "transparent",
+									color: "var(--term-text)",
+									border: "1px solid var(--term-border)",
+									padding: "14px 32px",
+									borderRadius: 6,
+									fontFamily: "inherit",
+									fontSize: 15,
+									cursor: "pointer",
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+								}}
+							>
+								<IconBrandGithub size={20} />
+								GitHub
+							</button>
+						</a>
+					</div>
+				</div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4 flex-wrap justify-center">
-          <Link
-            href="/docs/guides-introduction"
-            style={{ textDecoration: "none" }}
-          >
-            <button
-              type="button"
-              style={{
-                background: "var(--term-green)",
-                color: "var(--term-bg)",
-                border: "none",
-                padding: "12px 24px",
-                borderRadius: 6,
-                fontFamily: "inherit",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span>{">"}</span> Get Started
-            </button>
-          </Link>
-          <a
-            href="https://github.com/feunard/alepha"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: "none" }}
-          >
-            <button
-              type="button"
-              style={{
-                background: "transparent",
-                color: "var(--term-text)",
-                border: "1px solid var(--term-border)",
-                padding: "12px 24px",
-                borderRadius: 6,
-                fontFamily: "inherit",
-                fontSize: 14,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span style={{ color: "var(--term-text-dim)" }}>$</span> git clone
-            </button>
-          </a>
-        </div>
-      </div>
-    </div>
-  );
+				{/* Right: Code Demo */}
+				<div className="intro-code">
+					<CodeDemoSection />
+				</div>
+			</div>
+
+			{/* Scroll to Features */}
+			<ScrollButton targetId="features" label="Explore Features" />
+		</section>
+	);
 };
 
 // =============================================================================
-// FEATURES SECTION
+// CODE SNIPPET (trusted build-time HTML)
+// =============================================================================
+
+const CodeSnippet = ({ html }: { html: string }) => (
+	<div className="code-demo-content" dangerouslySetInnerHTML={{ __html: html }} />
+);
+
+// =============================================================================
+// CODE DEMO SECTION
+// =============================================================================
+
+const CODE_TABS = [
+	{ key: "server", label: "$action" },
+	{ key: "react", label: "$page" },
+	{ key: "db", label: "$entity" },
+	{ key: "queue", label: "$queue" },
+	{ key: "command", label: "$command" },
+] as const;
+
+const CodeDemoSection = () => {
+	const [activeTab, setActiveTab] = useState(0);
+	const activeKey = CODE_TABS[activeTab].key;
+
+	return (
+		<div className="w-full" style={{ maxWidth: 750, margin: "0 auto" }}>
+			{/* Code Window */}
+			<div
+				style={{
+					background: "var(--term-bg-panel)",
+					border: "1px solid var(--term-border)",
+					borderRadius: 10,
+					overflow: "hidden",
+				}}
+			>
+				{/* Title bar */}
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						padding: "12px 16px",
+						background: "var(--term-bg-elevated)",
+						borderBottom: "1px solid var(--term-border)",
+						gap: 12,
+					}}
+				>
+					{/* Traffic lights */}
+					<div style={{ display: "flex", gap: 8 }}>
+						<div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ff5f57" }} />
+						<div style={{ width: 12, height: 12, borderRadius: "50%", background: "#febc2e" }} />
+						<div style={{ width: 12, height: 12, borderRadius: "50%", background: "#28c840" }} />
+					</div>
+
+					{/* Tabs */}
+					<div style={{ display: "flex", gap: 4, flex: 1, justifyContent: "center" }}>
+						{CODE_TABS.map((tab, index) => (
+							<button
+								key={tab.key}
+								type="button"
+								onClick={() => setActiveTab(index)}
+								style={{
+									padding: "6px 14px",
+									fontSize: 12,
+									fontFamily: "monospace",
+									background: activeTab === index ? "var(--term-bg)" : "transparent",
+									border:
+										activeTab === index ? "1px solid var(--term-border)" : "1px solid transparent",
+									borderRadius: 5,
+									color: activeTab === index ? "var(--term-green)" : "var(--term-text-dim)",
+									cursor: "pointer",
+									transition: "all 0.15s ease",
+								}}
+							>
+								{tab.label}
+							</button>
+						))}
+					</div>
+
+					{/* Spacer for symmetry */}
+					<div style={{ width: 52 }} />
+				</div>
+
+				{/* Code content from snippets */}
+				<CodeSnippet html={snippets[activeKey]} />
+			</div>
+		</div>
+	);
+};
+
+// =============================================================================
+// BLOCK 2: FEATURES SECTION
 // =============================================================================
 
 const FeaturesSection = () => {
-  return (
-    <div className="container py-15">
-      {/* Core Packages */}
-      <div style={{ marginBottom: 80 }}>
-        <h2 className="section-header text-xl font-semibold">
-          Core Packages
-        </h2>
-        <p className="text-term-dim mb-6 text-base">
-          Low-level primitives and building blocks for type-safe applications.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {coreFeatures.map((feature, index) => (
-            <FeatureTerminalCard
-              key={feature.title}
-              feature={feature}
-              index={index}
-            />
-          ))}
-        </div>
-      </div>
+	return (
+		<section
+			id="features"
+			className="home-block"
+			style={{
+				minHeight: "100vh",
+				display: "flex",
+				flexDirection: "column",
+				justifyContent: "center",
+				alignItems: "center",
+				background: "var(--term-bg-elevated)",
+				borderTop: "1px solid var(--term-border)",
+				borderBottom: "1px solid var(--term-border)",
+				position: "relative",
+				paddingTop: 60,
+				paddingBottom: 60,
+			}}
+		>
+			{/* Noise texture overlay */}
+			<div
+				style={{
+					position: "absolute",
+					inset: 0,
+					backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+					backgroundSize: "256px 256px",
+					opacity: 0.05,
+					pointerEvents: "none",
+				}}
+			/>
+			<div className="container" style={{ position: "relative" }}>
+				{/* Section Title */}
+				<div className="flex flex-col items-center gap-3" style={{ marginBottom: 64 }}>
+					<h2
+						style={{
+							fontSize: 36,
+							fontWeight: 600,
+							margin: 0,
+							color: "var(--term-text-bright)",
+						}}
+					>
+						Batteries Included
+					</h2>
+					<p
+						style={{ color: "var(--term-text-dim)", fontSize: 16, margin: 0, textAlign: "center" }}
+					>
+						Everything you need to build production-ready applications.
+					</p>
+				</div>
 
-      {/* Application Modules */}
-      <div>
-        <h2 className="section-header text-xl font-semibold">
-          Application Modules
-        </h2>
-        <p className="text-term-dim mb-6 text-base">
-          Pre-built modules for common application needs.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {apiFeatures.map((feature, index) => (
-            <FeatureTerminalCard
-              key={feature.title}
-              feature={feature}
-              index={index}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+				{/* Core Packages */}
+				<div style={{ marginBottom: 40 }}>
+					<div className="flex items-center gap-3 mb-4">
+						<span
+							style={{
+								color: "var(--term-green)",
+								fontFamily: "monospace",
+								fontSize: 14,
+							}}
+						>
+							{"//"}
+						</span>
+						<h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "var(--term-text)" }}>
+							Core Primitives
+						</h3>
+					</div>
+					<div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+						{coreFeatures.map((feature, index) => (
+							<PackageChip key={feature.title} feature={feature} index={index} />
+						))}
+					</div>
+				</div>
+
+				{/* Application Modules */}
+				<div>
+					<div className="flex items-center gap-3 mb-4">
+						<span
+							style={{
+								color: "var(--term-green)",
+								fontFamily: "monospace",
+								fontSize: 14,
+							}}
+						>
+							{"//"}
+						</span>
+						<h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "var(--term-text)" }}>
+							Application Modules
+						</h3>
+					</div>
+					<div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+						{apiFeatures.map((feature, index) => (
+							<PackageChip key={feature.title} feature={feature} index={index} />
+						))}
+					</div>
+				</div>
+
+				{/* Scroll to More */}
+				<div className="flex justify-center">
+					<ScrollButton targetId="more" label="Get Started" />
+				</div>
+			</div>
+		</section>
+	);
 };
 
 // =============================================================================
-// INSTALL SECTION
+// PACKAGE CHIP
 // =============================================================================
 
-const InstallSection = () => {
-  const [copied, setCopied] = useState(false);
-  const command = "npx alepha init";
+const PackageChip = (props: {
+	feature: (typeof coreFeatures)[number];
+	index: number;
+}) => {
+	const { feature, index } = props;
+	const [hovered, setHovered] = useState(false);
+	const [showTooltip, setShowTooltip] = useState(false);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(command);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, []);
+	const handleMouseEnter = useCallback(() => {
+		setHovered(true);
+		timeoutRef.current = setTimeout(() => setShowTooltip(true), 400);
+	}, []);
 
-  return (
-    <div className="container py-15">
-      <div className="flex flex-col items-center gap-6">
-        <pre className="ascii-art text-center">
-          {SMALL_LOGO}
-        </pre>
+	const handleMouseLeave = useCallback(() => {
+		setHovered(false);
+		setShowTooltip(false);
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
+			timeoutRef.current = null;
+		}
+	}, []);
 
-        <div className="terminal-window w-full max-w-sm">
-          <div className="terminal-titlebar">
-            <div className="terminal-buttons">
-              <div className="terminal-btn terminal-btn-close" />
-              <div className="terminal-btn terminal-btn-minimize" />
-              <div className="terminal-btn terminal-btn-maximize" />
-            </div>
-            <div className="terminal-title">Quick Start</div>
-          </div>
-          <div
-            className="terminal-body flex justify-between items-center"
-          >
-            <div className="prompt">
-              <span className="prompt-symbol">$</span>
-              <span style={{ color: "var(--term-text)" }}>{command}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopy}
-              style={{
-                background: copied ? "var(--term-green)" : "var(--term-bg)",
-                color: copied ? "var(--term-bg)" : "var(--term-text-dim)",
-                border: "1px solid var(--term-border)",
-                padding: "6px 12px",
-                borderRadius: 4,
-                fontFamily: "inherit",
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        </div>
+	return (
+		<Link
+			href={`/docs/${feature.slug}`}
+			style={{ textDecoration: "none" }}
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+		>
+			<div
+				className="animate-slide-up"
+				style={{
+					animationDelay: `${index * 0.02}s`,
+					position: "relative",
+					display: "inline-flex",
+					alignItems: "center",
+					gap: 8,
+					padding: "10px 16px",
+					fontFamily: "monospace",
+					fontSize: 13,
+					background: "var(--term-bg)",
+					border: `1px solid ${hovered ? "var(--term-border-focus)" : "var(--term-border)"}`,
+					borderRadius: 6,
+					color: hovered ? "var(--term-text-bright)" : "var(--term-text)",
+					cursor: "pointer",
+					transition: "all 0.15s ease",
+					transform: hovered ? "translateY(-1px)" : "translateY(0)",
+				}}
+			>
+				<feature.icon
+					size={16}
+					style={{
+						color: "var(--term-cyan)",
+						flexShrink: 0,
+					}}
+				/>
+				<span>{feature.title}</span>
+				{"new" in feature && feature.new && (
+					<span
+						style={{
+							fontSize: 8,
+							fontWeight: 700,
+							color: "var(--term-bg)",
+							background: "var(--term-green)",
+							padding: "2px 4px",
+							borderRadius: 3,
+							marginLeft: 2,
+						}}
+					>
+						NEW
+					</span>
+				)}
 
-        <div className="flex gap-6 text-base text-term-dim">
-          <a
-            href="https://github.com/feunard/alepha"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
-            <span style={{ color: "var(--term-text-dim)" }}>[</span>
-            <span style={{ color: "var(--term-cyan)" }}>GitHub</span>
-            <span style={{ color: "var(--term-text-dim)" }}>]</span>
-          </a>
-          <a
-            href="https://www.npmjs.com/package/alepha"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
-            <span style={{ color: "var(--term-text-dim)" }}>[</span>
-            <span style={{ color: "var(--term-cyan)" }}>npm</span>
-            <span style={{ color: "var(--term-text-dim)" }}>]</span>
-          </a>
-          <Link
-            href="/docs/guides-introduction"
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
-            <span style={{ color: "var(--term-text-dim)" }}>[</span>
-            <span style={{ color: "var(--term-cyan)" }}>Docs</span>
-            <span style={{ color: "var(--term-text-dim)" }}>]</span>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+				{/* Tooltip */}
+				{showTooltip && (
+					<div
+						style={{
+							position: "absolute",
+							bottom: "calc(100% + 8px)",
+							left: "50%",
+							transform: "translateX(-50%)",
+							padding: "10px 14px",
+							background: "var(--term-bg-elevated)",
+							border: "1px solid var(--term-border)",
+							borderRadius: 6,
+							fontSize: 12,
+							fontFamily: "inherit",
+							whiteSpace: "nowrap",
+							zIndex: 100,
+							boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
+							display: "flex",
+							flexDirection: "column",
+							gap: 6,
+						}}
+					>
+						<span style={{ color: "var(--term-text)" }}>{feature.description}</span>
+						{feature.module && (
+							<span style={{ color: "var(--term-text-dim)", fontSize: 10, fontFamily: "monospace" }}>
+								{feature.module}
+							</span>
+						)}
+						<div
+							style={{
+								position: "absolute",
+								bottom: -5,
+								left: "50%",
+								transform: "translateX(-50%) rotate(45deg)",
+								width: 8,
+								height: 8,
+								background: "var(--term-bg-elevated)",
+								borderRight: "1px solid var(--term-border)",
+								borderBottom: "1px solid var(--term-border)",
+							}}
+						/>
+					</div>
+				)}
+			</div>
+		</Link>
+	);
 };
 
 // =============================================================================
-// FOOTER SECTION
+// BLOCK 3: MORE SECTION (Install + Links)
 // =============================================================================
 
-const FooterSection = () => {
-  return (
-    <div className="container py-10">
-      <div
-        className="flex justify-between items-center flex-wrap gap-4 text-sm text-term-dim border-t pt-6"
-      >
-        <div className="flex gap-4">
-          <span>MIT License</span>
-          <span>•</span>
-          <a
-            href="https://github.com/feunard/alepha"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "inherit" }}
-          >
-            GitHub
-          </a>
-          <span>•</span>
-          <a
-            href="https://www.npmjs.com/package/alepha"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "inherit" }}
-          >
-            npm
-          </a>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>Made in Paris</span>
-          <span
-            style={{
-              display: "inline-flex",
-              width: 36,
-              height: 2,
-              borderRadius: 1,
-              overflow: "hidden",
-            }}
-          >
-            <span style={{ flex: 1, background: "#002395" }} />
-            <span style={{ flex: 1, background: "#ffffff" }} />
-            <span style={{ flex: 1, background: "#ED2939" }} />
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
+const MoreSection = () => {
+	const [copied, setCopied] = useState(false);
+	const [showTooltip, setShowTooltip] = useState(false);
+	const command = "npx alepha init";
 
-// =============================================================================
-// STATUS BAR
-// =============================================================================
+	const handleCopy = useCallback(() => {
+		navigator.clipboard.writeText(command);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	}, []);
 
-const StatusBar = () => {
-  return (
-    <div className="status-bar">
-      <div className="status-item">
-        <span className="status-dot" />
-        <span>ready</span>
-      </div>
-      <div className="status-item">
-        <span>main</span>
-      </div>
-      <div className="status-item">
-        <span>TypeScript</span>
-      </div>
-      <div className="status-item" style={{ marginLeft: "auto" }}>
-        <LiveClock />
-      </div>
-    </div>
-  );
+	return (
+		<section
+			id="more"
+			className="home-block"
+			style={{
+				minHeight: "100vh",
+				display: "flex",
+				flexDirection: "column",
+				position: "relative",
+			}}
+		>
+			{/* Main Content - Centered */}
+			<div
+				style={{
+					flex: 1,
+					display: "flex",
+					flexDirection: "column",
+					justifyContent: "center",
+					alignItems: "center",
+					paddingTop: 80,
+					paddingBottom: 40,
+				}}
+			>
+				{/* Section Title */}
+				<h2
+					style={{
+						fontSize: 32,
+						fontWeight: 600,
+						margin: 0,
+						marginBottom: 12,
+						color: "var(--term-text-bright)",
+						textAlign: "center",
+					}}
+				>
+					Ready to Start?
+				</h2>
+
+				{/* Subtitle with asterisk tooltip */}
+				<p
+					style={{
+						color: "var(--term-text-dim)",
+						fontSize: 16,
+						margin: 0,
+						marginBottom: 32,
+						textAlign: "center",
+					}}
+				>
+					One package. Everything included.
+					<span
+						style={{
+							position: "relative",
+							display: "inline-block",
+							cursor: "help",
+						}}
+						onMouseEnter={() => setShowTooltip(true)}
+						onMouseLeave={() => setShowTooltip(false)}
+					>
+						<span style={{ color: "var(--term-green)" }}>*</span>
+						{showTooltip && (
+							<span
+								style={{
+									position: "absolute",
+									bottom: "calc(100% + 8px)",
+									left: "50%",
+									transform: "translateX(-50%)",
+									padding: "12px 16px",
+									background: "var(--term-bg-panel)",
+									border: "1px solid var(--term-border)",
+									borderRadius: 8,
+									fontSize: 12,
+									fontFamily: "inherit",
+									color: "var(--term-text-dim)",
+									width: 280,
+									textAlign: "left",
+									lineHeight: 1.5,
+									zIndex: 100,
+									boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+								}}
+							>
+								Some modules like <span style={{ color: "var(--term-cyan)" }}>@alepha/react</span>,{" "}
+								<span style={{ color: "var(--term-cyan)" }}>@alepha/ui</span>, and cloud storage
+								providers are separate packages, but installed seamlessly by the Alepha CLI.
+								<span
+									style={{
+										position: "absolute",
+										bottom: -5,
+										left: "50%",
+										transform: "translateX(-50%) rotate(45deg)",
+										width: 10,
+										height: 10,
+										background: "var(--term-bg-panel)",
+										borderRight: "1px solid var(--term-border)",
+										borderBottom: "1px solid var(--term-border)",
+									}}
+								/>
+							</span>
+						)}
+					</span>
+				</p>
+
+				{/* Command Box */}
+				<button
+					type="button"
+					onClick={handleCopy}
+					className="install-btn"
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 16,
+						padding: "16px 24px",
+						background: "var(--term-bg-panel)",
+						border: "1px solid var(--term-border)",
+						borderRadius: 8,
+						cursor: "pointer",
+						transition: "all 0.15s ease",
+						marginBottom: 24,
+					}}
+				>
+					<span style={{ color: "var(--term-text-dim)", fontFamily: "monospace", fontSize: 14 }}>
+						{">_"}
+					</span>
+					<code
+						style={{
+							fontSize: 15,
+							fontFamily: "monospace",
+							color: "var(--term-text)",
+						}}
+					>
+						{command}
+					</code>
+					<span
+						style={{
+							color: copied ? "var(--term-green)" : "var(--term-text-dim)",
+							transition: "color 0.15s",
+							display: "flex",
+							alignItems: "center",
+							marginLeft: 8,
+						}}
+					>
+						{copied ? <IconCheck size={18} /> : <IconCopy size={18} />}
+					</span>
+				</button>
+
+				{/* GitHub & npm links */}
+				<div className="flex gap-6" style={{ marginBottom: 64 }}>
+					<a
+						href="https://github.com/feunard/alepha"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="footer-link flex items-center gap-2"
+						style={{ color: "var(--term-text-dim)", textDecoration: "none", fontSize: 14 }}
+					>
+						<IconBrandGithub size={18} />
+						<span>GitHub</span>
+					</a>
+					<a
+						href="https://www.npmjs.com/package/alepha"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="footer-link flex items-center gap-2"
+						style={{ color: "var(--term-text-dim)", textDecoration: "none", fontSize: 14 }}
+					>
+						<IconBrandNpm size={18} />
+						<span>npm</span>
+					</a>
+				</div>
+
+				{/* CTA Card */}
+				<div
+					className="container"
+					style={{
+						maxWidth: 700,
+					}}
+				>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "space-between",
+							flexWrap: "wrap",
+							gap: 24,
+							padding: "28px 32px",
+							background: "var(--term-bg-panel)",
+							border: "1px solid var(--term-border)",
+							borderRadius: 12,
+						}}
+					>
+						<div>
+							<h3
+								style={{
+									fontSize: 18,
+									fontWeight: 600,
+									margin: 0,
+									marginBottom: 6,
+									color: "var(--term-text-bright)",
+								}}
+							>
+								Start Building Today
+							</h3>
+							<p style={{ fontSize: 14, color: "var(--term-text-dim)", margin: 0 }}>
+								Join developers who ship faster with Alepha.
+							</p>
+						</div>
+						<Link href="/docs/guides-introduction" style={{ textDecoration: "none" }}>
+							<button
+								type="button"
+								className="hero-btn"
+								style={{
+									background: "var(--term-green)",
+									color: "#ffffff",
+									border: "none",
+									padding: "14px 28px",
+									borderRadius: 6,
+									fontFamily: "inherit",
+									fontSize: 14,
+									fontWeight: 600,
+									cursor: "pointer",
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+									whiteSpace: "nowrap",
+								}}
+							>
+								Read the Docs
+								<IconArrowRight size={16} />
+							</button>
+						</Link>
+					</div>
+				</div>
+			</div>
+
+			{/* Footer */}
+			<footer
+				className="container"
+				style={{
+					paddingTop: 24,
+					paddingBottom: 40,
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						justifyContent: "space-between",
+						alignItems: "center",
+						flexWrap: "wrap",
+						gap: 16,
+						fontSize: 13,
+						color: "var(--term-text-dim)",
+					}}
+				>
+					{/* Left: License + Links */}
+					<div className="flex items-center gap-2">
+						<span>MIT License</span>
+						<span style={{ opacity: 0.4 }}>·</span>
+						<a
+							href="https://github.com/feunard/alepha"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="footer-link"
+							style={{ color: "inherit", textDecoration: "none" }}
+						>
+							GitHub
+						</a>
+						<span style={{ opacity: 0.4 }}>·</span>
+						<a
+							href="https://www.npmjs.com/package/alepha"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="footer-link"
+							style={{ color: "inherit", textDecoration: "none" }}
+						>
+							npm
+						</a>
+					</div>
+
+					{/* Right: Made in France */}
+					<div className="flex items-center gap-2">
+						<span>Made in Paris, France</span>
+						<span
+							style={{
+								display: "inline-flex",
+								width: 36,
+								height: 3,
+								borderRadius: 1,
+								overflow: "hidden",
+							}}
+						>
+							<span style={{ flex: 1, background: "#002395" }} />
+							<span style={{ flex: 1, background: "#ffffff" }} />
+							<span style={{ flex: 1, background: "#ED2939" }} />
+						</span>
+					</div>
+				</div>
+			</footer>
+		</section>
+	);
 };

@@ -24,6 +24,7 @@
   --term-green: #22c55e;
   --term-green-dim: #166534;
   --term-green-glow: rgba(34, 197, 94, 0.4);
+  --term-green-bg: rgba(34, 197, 94, 0.15);
   --term-amber: #f59e0b;
   --term-amber-dim: #b45309;
   --term-cyan: #06b6d4;
@@ -56,21 +57,70 @@
 }
 
 /* -------------------------------------------------------------------------------------------------
-   LIGHT THEME
+   GITHUB DARK THEME
+   ------------------------------------------------------------------------------------------------- */
+
+[data-theme="github"] {
+  /* GitHub Dark Colors - More black */
+  --term-bg: #010409;
+  --term-bg-elevated: #0d1117;
+  --term-bg-panel: #151b23;
+  --term-border: #262c36;
+  --term-border-focus: #3d444d;
+
+  /* GitHub Accent Colors - Pink */
+  --term-green: #c2255c;
+  --term-green-dim: #9a1c49;
+  --term-green-glow: rgba(194, 37, 92, 0.4);
+  --term-green-bg: rgba(194, 37, 92, 0.15);
+  --term-amber: #d29922;
+  --term-amber-dim: #9e6a03;
+  --term-cyan: #58a6ff;
+  --term-red: #f85149;
+  --term-purple: #bc8cff;
+  --term-blue: #58a6ff;
+
+  /* Text */
+  --term-text: #c9d1d9;
+  --term-text-dim: #8b949e;
+  --term-text-bright: #f0f6fc;
+
+  /* Effects */
+  --scanline-opacity: 0.02;
+  --crt-curve: 2px;
+  --glow-intensity: 0.4;
+
+  /* Code Block - GitHub Dark */
+  --code-bg: #010409;
+  --code-header-bg: #0d1117;
+  --code-border: #262c36;
+  --code-text: #c9d1d9;
+  --code-keyword: #ff7b72;
+  --code-function: #d2a8ff;
+  --code-string: #a5d6ff;
+  --code-comment: #8b949e;
+  --code-number: #79c0ff;
+  --code-tag: #7ee787;
+  --code-builtin: #ffa657;
+}
+
+/* -------------------------------------------------------------------------------------------------
+   LIGHT THEME (Terminal)
    ------------------------------------------------------------------------------------------------- */
 
 [data-theme="light"] {
-  /* Terminal Colors - Light variant */
-  --term-bg: #f8f9fa;
-  --term-bg-elevated: #ffffff;
-  --term-bg-panel: #f1f3f5;
-  --term-border: #dee2e6;
-  --term-border-focus: #adb5bd;
+  /* Terminal Colors - Light variant (more white) */
+  --term-bg: #ffffff;
+  --term-bg-elevated: #fdfdfd;
+  --term-bg-panel: #fafafa;
+  --term-border: #e5e5e5;
+  --term-border-focus: #d4d4d4;
 
   /* Phosphor Colors - Slightly darker for light bg */
   --term-green: #16a34a;
   --term-green-dim: #22c55e;
   --term-green-glow: rgba(22, 163, 74, 0.3);
+  --term-green-bg: rgba(22, 163, 74, 0.1);
   --term-amber: #d97706;
   --term-amber-dim: #f59e0b;
   --term-cyan: #0891b2;
@@ -79,8 +129,8 @@
   --term-blue: #2563eb;
 
   /* Text */
-  --term-text: #1a1a1a;
-  --term-text-dim: #6b7280;
+  --term-text: #171717;
+  --term-text-dim: #737373;
   --term-text-bright: #000000;
 
   /* Effects - Reduced for light theme */
@@ -88,10 +138,58 @@
   --crt-curve: 2px;
   --glow-intensity: 0.3;
 
+  /* Code Block - Light */
+  --code-bg: #fdfdfd;
+  --code-header-bg: #fafafa;
+  --code-border: #e5e5e5;
+  --code-text: #171717;
+  --code-keyword: #cf222e;
+  --code-function: #8250df;
+  --code-string: #0a3069;
+  --code-comment: #737373;
+  --code-number: #0550ae;
+  --code-tag: #116329;
+  --code-builtin: #953800;
+}
+
+/* -------------------------------------------------------------------------------------------------
+   GITHUB LIGHT THEME
+   ------------------------------------------------------------------------------------------------- */
+
+[data-theme="github-light"] {
+  /* GitHub Light Colors (more white) */
+  --term-bg: #ffffff;
+  --term-bg-elevated: #fdfdfd;
+  --term-bg-panel: #fafafa;
+  --term-border: #e1e4e8;
+  --term-border-focus: #d1d5da;
+
+  /* GitHub Accent Colors - Pink */
+  --term-green: #c2255c;
+  --term-green-dim: #9a1c49;
+  --term-green-glow: rgba(194, 37, 92, 0.3);
+  --term-green-bg: rgba(194, 37, 92, 0.1);
+  --term-amber: #9a6700;
+  --term-amber-dim: #bf8700;
+  --term-cyan: #0969da;
+  --term-red: #cf222e;
+  --term-purple: #8250df;
+  --term-blue: #0969da;
+
+  /* Text */
+  --term-text: #24292f;
+  --term-text-dim: #6e7781;
+  --term-text-bright: #1f2328;
+
+  /* Effects */
+  --scanline-opacity: 0.015;
+  --crt-curve: 2px;
+  --glow-intensity: 0.3;
+
   /* Code Block - GitHub Light */
-  --code-bg: #f6f8fa;
-  --code-header-bg: #f0f3f6;
-  --code-border: #d0d7de;
+  --code-bg: #fdfdfd;
+  --code-header-bg: #fafafa;
+  --code-border: #e1e4e8;
   --code-text: #24292f;
   --code-keyword: #cf222e;
   --code-function: #8250df;
@@ -210,6 +308,12 @@ body {
     transparent 0%,
     rgba(0, 0, 0, 0.2) 100%
   );
+}
+
+/* Disable CRT overlay for light themes */
+[data-theme="light"] .crt-overlay,
+[data-theme="github-light"] .crt-overlay {
+  display: none;
 }
 
 /* Screen flicker animation */
@@ -442,7 +546,7 @@ body {
 
 .feature-terminal:hover {
   border-color: var(--term-green);
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 20px var(--term-green-bg);
 }
 
 .feature-terminal:hover .feature-icon {
@@ -616,7 +720,7 @@ body {
 
 .terminal-input-container:focus-within {
   border-color: var(--term-green);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 0 3px var(--term-green-bg);
 }
 
 .terminal-input {
@@ -790,6 +894,23 @@ body {
     linear-gradient(rgba(34, 197, 94, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
+}
+
+/* Subtle dot texture for sidebars */
+.texture-dots {
+  background-image: radial-gradient(
+    circle,
+    var(--term-border) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+}
+
+/* Subtle noise texture for panels */
+.texture-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  opacity: 0.03;
 }
 
 /* -------------------------------------------------------------------------------------------------
@@ -969,12 +1090,17 @@ body {
 
 .header-btn:hover {
   color: var(--term-green) !important;
-  background: rgba(34, 197, 94, 0.1) !important;
+  background: var(--term-green-bg) !important;
 }
 
 .tab-close:hover {
   color: var(--term-red) !important;
   background: rgba(239, 68, 68, 0.2) !important;
+}
+
+.explorer-action:hover {
+  color: var(--term-text) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .edit-link:hover {
@@ -984,7 +1110,7 @@ body {
 
 .nav-button:hover {
   border-color: var(--term-green) !important;
-  background: rgba(34, 197, 94, 0.05) !important;
+  background: var(--term-green-bg) !important;
 }
 
 /* =================================================================================================
@@ -1126,29 +1252,32 @@ body {
 
 /* Responsive visibility */
 @media (max-width: 767px) {
-  .hidden-mobile { display: none; }
+  .hidden-mobile { display: none !important; }
 }
 @media (min-width: 768px) {
   .visible-md { display: block; }
-  .hidden-md { display: none; }
+  .hidden-md { display: none !important; }
   .flex-md { display: flex; }
+  .md\:p-6 { padding: 24px; }
+  .sidebar-container { display: flex; }
 }
 @media (max-width: 767px) {
-  .visible-md { display: none; }
+  .visible-md { display: none !important; }
+  .sidebar-container { display: none !important; }
 }
 @media (min-width: 1024px) {
   .visible-lg { display: block; }
-  .hidden-lg { display: none; }
+  .hidden-lg { display: none !important; }
 }
 @media (max-width: 1023px) {
-  .visible-lg { display: none; }
+  .visible-lg { display: none !important; }
 }
 @media (min-width: 1280px) {
   .visible-xl { display: block; }
-  .hidden-xl { display: none; }
+  .hidden-xl { display: none !important; }
 }
 @media (max-width: 1279px) {
-  .visible-xl { display: none; }
+  .visible-xl { display: none !important; }
 }
 
 /* -------------------------------------------------------------------------------------------------
@@ -1402,7 +1531,7 @@ body {
 
 .code-block-copy:hover {
   color: var(--term-green);
-  background: rgba(34, 197, 94, 0.1);
+  background: var(--term-green-bg);
 }
 
 .code-block pre {
@@ -1606,11 +1735,33 @@ code.hljs {
 }
 
 .terminal-content blockquote {
-  border-left: 3px solid var(--term-green);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   margin: 16px 0;
-  padding: 12px 16px;
-  background: var(--term-bg-panel);
-  color: var(--term-text-dim);
+  padding: 16px 20px 16px 52px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--term-text);
+  position: relative;
+  border-radius: 6px;
+}
+
+.terminal-content blockquote::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 20px;
+  width: 18px;
+  height: 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.terminal-content blockquote p:first-child {
+  margin-top: 0;
+}
+
+.terminal-content blockquote p:last-child {
+  margin-bottom: 0;
 }
 
 .terminal-content hr {
@@ -1670,8 +1821,211 @@ code.hljs {
    TABLE OF CONTENTS
    ================================================================================================= */
 
-/* ToC item hover effect */
+/* ToC item hover effect - but active (green) takes priority */
 .toc-item:hover {
-  color: var(--term-text) !important;
+  color: var(--term-text);
   opacity: 1 !important;
+}
+
+.toc-item.active,
+.toc-item.active:hover {
+  color: var(--term-green) !important;
+}
+
+/* =================================================================================================
+   PILL-STYLE TABS
+   Clean, minimal pill tabs with subtle hover effects
+   ================================================================================================= */
+
+/* Hide inactive tabs on tablet & mobile */
+@media (max-width: 767px) {
+  .tab-inactive { display: none !important; }
+}
+
+.pill-tab:hover {
+  background: var(--term-bg-elevated) !important;
+  border-color: var(--term-border) !important;
+  color: var(--term-text) !important;
+}
+
+.pill-tab:active {
+  transform: translateY(1px);
+}
+
+.pill-tab:hover .tab-close {
+  opacity: 0.5 !important;
+}
+
+.pill-tab:hover .tab-close:hover {
+  opacity: 1 !important;
+  color: var(--term-red) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.pill-tab:hover .tab-close:active {
+  transform: translateY(1px);
+}
+
+/* =================================================================================================
+   INTERACTIVE FEEDBACK - Active/Press States
+   Mantine-style press feedback with subtle translateY
+   ================================================================================================= */
+
+/* Header buttons */
+.header-btn:active {
+  transform: translateY(1px);
+}
+
+/* Sidebar file tree items */
+.file-tree-item:active {
+  transform: translateY(1px);
+}
+
+/* Table of Contents items */
+.toc-item:active {
+  transform: translateY(1px);
+}
+
+/* Generic button reset active state */
+.btn-reset:active {
+  transform: translateY(1px);
+}
+
+/* Tab close button */
+.tab-close:active {
+  transform: translateY(1px) !important;
+}
+
+/* Explorer action buttons */
+.explorer-action:active {
+  transform: translateY(1px);
+}
+
+/* Navigation buttons */
+.nav-button:active {
+  transform: translateY(1px);
+}
+
+/* Edit link */
+.edit-link:active {
+  transform: translateY(1px);
+}
+
+/* Feature cards */
+.feature-terminal:active {
+  transform: translateY(2px);
+}
+
+/* Command palette items */
+.command-item:active {
+  transform: translateY(1px);
+}
+
+/* =================================================================================================
+   HOME PAGE STYLES
+   ================================================================================================= */
+
+/* Hero buttons */
+.hero-btn {
+  transition: all 0.15s ease;
+}
+
+.hero-btn:hover {
+  transform: translateY(-2px);
+}
+
+.hero-btn:active {
+  transform: translateY(0);
+}
+
+/* Footer links */
+.footer-link {
+  transition: color 0.15s ease;
+}
+
+.footer-link:hover {
+  color: var(--term-green) !important;
+}
+
+/* Install button */
+.install-btn:hover {
+  border-color: var(--term-green) !important;
+  background: var(--term-green-bg) !important;
+}
+
+.install-btn:active {
+  transform: translateY(1px);
+}
+
+/* Code demo in hero - no rounded corners inside */
+.code-demo-content .code-block,
+.code-demo-content pre,
+.code-demo-content code {
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+/* Full screen sections */
+.section-fullscreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+
+/* First section accounts for header (40px) and status bar (24px) */
+/* Content shifted up slightly for better visual balance */
+.section-fullscreen:first-child {
+  min-height: calc(100vh - 40px);
+  padding-top: 20px;
+  padding-bottom: 100px;
+}
+
+/* Intro section grid - side by side on desktop */
+.intro-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  align-items: center;
+  perspective: 1000px;
+}
+
+.intro-grid > * {
+  transform: translateZ(0);
+  transition: transform 0.3s ease;
+}
+
+.intro-hero {
+  transform: translateZ(40px);
+  text-align: center;
+  align-items: center;
+}
+
+.intro-code {
+  transform: translateZ(-20px) scale(0.98);
+  width: 100%;
+  max-width: 600px;
+}
+
+@media (min-width: 1024px) {
+  .intro-grid {
+    flex-direction: row;
+    gap: 64px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .intro-hero {
+    text-align: left;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  .intro-code {
+    flex: 1;
+    max-width: 550px;
+  }
 }

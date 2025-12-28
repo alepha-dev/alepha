@@ -12,17 +12,26 @@ interface FileHeaderProps {
 const FileHeader = (props: FileHeaderProps) => {
   const { l } = useI18n();
 
+  // Extract directory and filename from path
+  const pathParts = props.path?.split("/") || [];
+  const fileName = pathParts.pop() || "README.md";
+  const directory = pathParts.join("/");
+
   return (
-    <div className="mb-6 pb-4 border-b">
+    <div className="pt-6 mb-8 pb-6 border-b">
       {/* Breadcrumb Path */}
-      <div className="flex items-center gap-1 mb-2 text-sm">
-        <span style={{ color: "var(--term-green)" }}>alepha</span>
-        <span style={{ color: "var(--term-text-dim)" }}>@</span>
-        <span style={{ color: "var(--term-cyan)" }}>docs</span>
-        <span style={{ color: "var(--term-text-dim)" }}>:</span>
-        <span style={{ color: "var(--term-amber)" }}>~/{props.path || ""}</span>
-        <span style={{ color: "var(--term-text-dim)" }}>$</span>
-        <span style={{ color: "var(--term-text)" }}>cat README.md</span>
+      <div className="flex items-center mb-2 text-sm gap-1">
+        <div>
+          <span style={{ color: "var(--term-green)" }}>alepha</span>
+          <span style={{ color: "var(--term-text-dim)" }}>@</span>
+          <span style={{ color: "var(--term-cyan)" }}>docs</span>
+          <span style={{ color: "var(--term-text-dim)" }}>:</span>
+          <span style={{ color: "var(--term-amber)" }}>
+            ~/docs{directory ? `/${directory}` : ""}
+          </span>
+          <span style={{ color: "var(--term-text-dim)" }}>$</span>
+        </div>
+        <span style={{ color: "var(--term-text)" }}>cat {fileName}</span>
       </div>
 
       {/* Metadata */}

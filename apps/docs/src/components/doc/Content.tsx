@@ -32,6 +32,7 @@ const Content = (props: ContentProps) => {
     <div
       className="flex flex-1 w-full"
       style={{
+        minHeight: "100%",
         background: "var(--term-bg)",
         fontFamily: '"JetBrains Mono", "Fira Code", monospace',
       }}
