@@ -209,6 +209,118 @@ const logConsoleEasterEgg = () => {
 };
 
 // =============================================================================
+// SIDEBAR RESIZER
+// =============================================================================
+
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 500;
+const SIDEBAR_DEFAULT = 280;
+const SIDEBAR_WIDTH_KEY = "alepha-docs-sidebar-width";
+
+const getInitialSidebarWidth = (): number => {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    if (stored) {
+      const width = Number.parseInt(stored, 10);
+      if (width >= SIDEBAR_MIN && width <= SIDEBAR_MAX) {
+        return width;
+      }
+    }
+  }
+  return SIDEBAR_DEFAULT;
+};
+
+const SidebarResizer = (props: {
+  onResize: (width: number) => void;
+  onResizeEnd: (width: number) => void;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
+
+      const onMouseMove = (e: MouseEvent) => {
+        const newWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX));
+        props.onResize(newWidth);
+      };
+
+      const onMouseUp = (e: MouseEvent) => {
+        setIsDragging(false);
+        const finalWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, e.clientX));
+        props.onResizeEnd(finalWidth);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [props],
+  );
+
+  const isActive = isDragging || isHovered;
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        width: 6,
+        cursor: "col-resize",
+        position: "relative",
+        flexShrink: 0,
+        zIndex: 10,
+      }}
+    >
+      {/* Subtle grip dots - only visible on hover */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+          opacity: isActive ? 0.5 : 0,
+          transition: "opacity 0.15s ease",
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            style={{
+              width: 3,
+              height: 3,
+              borderRadius: "50%",
+              background: "var(--color-text-muted)",
+            }}
+          />
+        ))}
+      </div>
+      {/* Hover hitbox extension */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: -3,
+          right: -3,
+        }}
+      />
+    </div>
+  );
+};
+
+// =============================================================================
 // LAYOUT
 // =============================================================================
 
@@ -239,15 +351,50 @@ const LayoutContent = () => {
   const [showHackerNotification, setShowHackerNotification] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const lastKeyRef = useRef<string>("");
   const lastKeyTimeRef = useRef<number>(0);
 
-  // Scroll restoration for the nested scroll container
+  // Load sidebar width from localStorage on mount
+  useEffect(() => {
+    setSidebarWidth(getInitialSidebarWidth());
+  }, []);
+
+  // Listen for keyboard help event from header button
+  useEffect(() => {
+    const handleShowHelp = () => setShowHelp(true);
+    window.addEventListener("show-keyboard-help", handleShowHelp);
+    return () => window.removeEventListener("show-keyboard-help", handleShowHelp);
+  }, []);
+
+  // Listen for mobile sidebar toggle and close events
+  useEffect(() => {
+    const handleToggle = () => setMobileSidebarOpen((prev) => !prev);
+    const handleClose = () => setMobileSidebarOpen(false);
+    window.addEventListener("toggle-mobile-sidebar", handleToggle);
+    window.addEventListener("close-mobile-sidebar", handleClose);
+    return () => {
+      window.removeEventListener("toggle-mobile-sidebar", handleToggle);
+      window.removeEventListener("close-mobile-sidebar", handleClose);
+    };
+  }, []);
+
+  const handleSidebarResize = useCallback((width: number) => {
+    setSidebarWidth(width);
+  }, []);
+
+  const handleSidebarResizeEnd = useCallback((width: number) => {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width));
+  }, []);
+
+  // Scroll restoration and close mobile sidebar on navigation
   useEvents(
     {
       "react:transition:end": () => {
         contentRef.current?.scrollTo(0, 0);
+        setMobileSidebarOpen(false);
       },
     },
     [],
@@ -438,6 +585,33 @@ const LayoutContent = () => {
         </div>
       )}
 
+      {/* Mobile Sidebar Drawer */}
+      {mobileSidebarOpen && (
+        <div
+          className="visible-mobile fixed inset-0"
+          style={{ zIndex: 1000 }}
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0, 0, 0, 0.5)" }}
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          {/* Drawer */}
+          <div
+            className="absolute top-0 left-0 bottom-0 flex flex-col"
+            style={{
+              width: 280,
+              background: "var(--color-bg)",
+              borderRight: "1px solid var(--color-border)",
+              animation: "slideInLeft 0.2s ease",
+            }}
+          >
+            <Sidebar width={280} isMobileDrawer />
+          </div>
+        </div>
+      )}
+
       {/* Main IDE Layout */}
       <div className="flex flex-col h-screen w-full">
         {/* Header with tabs */}
@@ -449,7 +623,15 @@ const LayoutContent = () => {
           style={{ overflow: "hidden", position: "relative" }}
         >
           {/* Sidebar - File Tree */}
-          {!focusMode && <Sidebar />}
+          {!focusMode && <Sidebar width={sidebarWidth} />}
+
+          {/* Resizer */}
+          {!focusMode && (
+            <SidebarResizer
+              onResize={handleSidebarResize}
+              onResizeEnd={handleSidebarResizeEnd}
+            />
+          )}
 
           {/* Content */}
           <div

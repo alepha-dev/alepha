@@ -174,3 +174,19 @@
 .toc-item.active:hover {
   color: var(--color-accent) !important;
 }
+
+/* -----------------------------------------------------------------------------
+   BOTTOM NAVIGATION
+   ----------------------------------------------------------------------------- */
+
+.nav-button:hover {
+  border-color: var(--color-border-focus);
+  background: var(--color-bg-panel);
+}
+
+@media (max-width: 480px) {
+  .bottom-nav {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}

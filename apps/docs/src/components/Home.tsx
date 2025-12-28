@@ -186,7 +186,7 @@ const ScrollButton = ({
         border: "none",
         cursor: "pointer",
         padding: "16px 24px",
-        marginTop: 48,
+        marginTop: "clamp(24px, 6vw, 48px)",
         color: "var(--color-text-muted)",
         transition: "all 0.2s ease",
       }}
@@ -320,7 +320,7 @@ const HeroSection = () => {
           </p>
 
           {/* Quick Actions */}
-          <div className="flex gap-4 flex-wrap">
+          <div className="flex gap-4 flex-wrap hero-buttons">
             <Link
               href="/docs/guides-introduction"
               style={{ textDecoration: "none" }}
@@ -347,10 +347,8 @@ const HeroSection = () => {
                 <IconArrowRight size={18} />
               </button>
             </Link>
-            <a
-              href="https://github.com/feunard/alepha"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/docs/packages-alepha-core"
               style={{ textDecoration: "none" }}
             >
               <button
@@ -370,10 +368,10 @@ const HeroSection = () => {
                   gap: 8,
                 }}
               >
-                <IconBrandGithub size={20} />
-                GitHub
+                Explore Packages
+                <IconArrowRight size={18} />
               </button>
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -520,6 +518,7 @@ const CodeDemoSection = () => {
         <div
           style={{
             height: 455,
+            width: 600,
             overflow: "hidden",
             background: "var(--code-bg)",
           }}
@@ -550,8 +549,10 @@ const FeaturesSection = () => {
         borderTop: "1px solid var(--color-border)",
         borderBottom: "1px solid var(--color-border)",
         position: "relative",
-        paddingTop: 60,
-        paddingBottom: 60,
+        paddingTop: "clamp(40px, 8vw, 60px)",
+        paddingBottom: "clamp(40px, 8vw, 60px)",
+        paddingLeft: "var(--space-4)",
+        paddingRight: "var(--space-4)",
       }}
     >
       {/* Noise texture overlay */}
@@ -569,7 +570,7 @@ const FeaturesSection = () => {
         {/* Section Title */}
         <div
           className="flex flex-col items-center gap-3"
-          style={{ marginBottom: 64 }}
+          style={{ marginBottom: "clamp(32px, 8vw, 64px)" }}
         >
           <h2
             style={{
@@ -616,7 +617,10 @@ const FeaturesSection = () => {
               Core Primitives
             </h3>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <div
+            className="features-grid"
+            style={{ display: "flex", flexWrap: "wrap", gap: 10 }}
+          >
             {coreFeatures.map((feature, index) => (
               <PackageChip
                 key={feature.title}
@@ -650,7 +654,10 @@ const FeaturesSection = () => {
               Application Modules
             </h3>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <div
+            className="features-grid"
+            style={{ display: "flex", flexWrap: "wrap", gap: 10 }}
+          >
             {apiFeatures.map((feature, index) => (
               <PackageChip
                 key={feature.title}
@@ -705,7 +712,7 @@ const PackageChip = (props: {
       onMouseLeave={handleMouseLeave}
     >
       <div
-        className="animate-slide-up"
+        className="animate-slide-up package-chip"
         style={{
           animationDelay: `${index * 0.02}s`,
           position: "relative",
@@ -822,7 +829,7 @@ const MoreSection = () => {
   return (
     <section
       id="more"
-      className="home-block"
+      className="home-block p-3"
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -832,14 +839,15 @@ const MoreSection = () => {
     >
       {/* Main Content - Centered */}
       <div
+        className="container"
         style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          paddingTop: 80,
-          paddingBottom: 40,
+          paddingTop: "clamp(40px, 10vw, 80px)",
+          paddingBottom: "clamp(24px, 6vw, 40px)",
         }}
       >
         {/* Section Title */}
@@ -973,7 +981,10 @@ const MoreSection = () => {
         </button>
 
         {/* GitHub & npm links */}
-        <div className="flex gap-6" style={{ marginBottom: 64 }}>
+        <div
+          className="flex gap-6"
+          style={{ marginBottom: "clamp(32px, 8vw, 64px)" }}
+        >
           <a
             href="https://github.com/feunard/alepha"
             target="_blank"
@@ -1012,6 +1023,7 @@ const MoreSection = () => {
           }}
         >
           <div
+            className="cta-card"
             style={{
               display: "flex",
               alignItems: "center",
@@ -1086,6 +1098,7 @@ const MoreSection = () => {
         }}
       >
         <div
+          className="home-footer"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -1097,7 +1110,7 @@ const MoreSection = () => {
           }}
         >
           {/* Left: License + Links */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span>MIT License</span>
             <span style={{ opacity: 0.4 }}>·</span>
             <a
@@ -1123,7 +1136,7 @@ const MoreSection = () => {
 
           {/* Right: Made in France */}
           <div
-            className="flex flex-col items-center gap-1"
+            className="flex flex-col items-center gap-2"
             style={{ textAlign: "center" }}
           >
             <span>Made in Paris, France</span>

@@ -29,7 +29,7 @@ const FileHeader = (props: FileHeaderProps) => {
             <span style={{ color: "var(--color-cyan)" }}>docs</span>
             <span style={{ color: "var(--color-text-muted)" }}>:</span>
             <span style={{ color: "var(--color-amber)" }}>
-              ~/docs{directory ? `/${directory}` : ""}
+              ~{directory ? `/${directory}` : ""}
             </span>
             <span style={{ color: "var(--color-text-muted)" }}>$</span>
           </div>

@@ -3,6 +3,8 @@ import {
   IconBrandGithub,
   IconFile,
   IconGitBranch,
+  IconKeyboard,
+  IconMenu2,
   IconMoon,
   IconSearch,
   IconSun,
@@ -33,6 +35,24 @@ const Header = (props: HeaderProps) => {
     >
       {/* Left - Menu Button & Tabs */}
       <div className="flex flex-1 items-center">
+        {/* Mobile Menu Button - Only on docs pages */}
+        {showTabs && (
+          <button
+            type="button"
+            className="visible-mobile flex items-center justify-center h-full border-r"
+            onClick={() => window.dispatchEvent(new CustomEvent("toggle-mobile-sidebar"))}
+            style={{
+              width: 44,
+              background: "transparent",
+              border: "none",
+              color: "var(--color-text-muted)",
+              cursor: "pointer",
+            }}
+          >
+            <IconMenu2 size={20} />
+          </button>
+        )}
+
         {/* Alepha Logo/Home */}
         <Link
           href="/"
@@ -44,14 +64,14 @@ const Header = (props: HeaderProps) => {
             alt="Alepha"
             style={{ width: 20, height: 20 }}
           />
-          <span className="font-semibold" style={{ fontSize: 14 }}>
+          <span className="font-semibold hidden-mobile" style={{ fontSize: 14 }}>
             alepha
           </span>
         </Link>
 
-        {/* Version */}
+        {/* Version - Hidden on mobile */}
         <div
-          className="flex items-center gap-2 px-4 h-full border-r"
+          className="hidden-mobile flex items-center gap-2 px-4 h-full border-r"
           style={{ color: "var(--color-text-muted)", fontSize: 12 }}
         >
           <IconGitBranch size={14} />
@@ -70,6 +90,14 @@ const Header = (props: HeaderProps) => {
       <div className="flex items-center gap-1 px-3">
         {/* Search Button */}
         <SearchButton />
+
+        {/* Keyboard Shortcuts - Hidden on mobile */}
+        <div className="hidden-mobile">
+          <HeaderButton
+            icon={<IconKeyboard size={16} />}
+            onClick={() => window.dispatchEvent(new CustomEvent("show-keyboard-help"))}
+          />
+        </div>
 
         {/* GitHub */}
         <HeaderButton

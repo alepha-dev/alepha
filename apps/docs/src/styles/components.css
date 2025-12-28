@@ -553,3 +553,29 @@
   opacity: 0.03;
   overflow: hidden;
 }
+
+/* -----------------------------------------------------------------------------
+   COMMAND PALETTE
+   ----------------------------------------------------------------------------- */
+
+.command-palette-overlay {
+  padding: 80px 16px 20px;
+  align-items: flex-start;
+}
+
+.command-palette-container {
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .command-palette-overlay {
+    padding: 12px;
+    align-items: stretch;
+  }
+
+  .command-palette-container {
+    max-width: 100% !important;
+    max-height: calc(100vh - 24px) !important;
+    border-radius: 12px !important;
+  }
+}

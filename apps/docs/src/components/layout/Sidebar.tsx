@@ -3,7 +3,13 @@ import { useState } from "react";
 import { tree } from "../../config/docs.ts";
 import { FileTree } from "./FileTree.tsx";
 
-const Sidebar = () => {
+interface SidebarProps {
+  width?: number;
+  isMobileDrawer?: boolean;
+}
+
+const Sidebar = (props: SidebarProps) => {
+  const { width = 280, isMobileDrawer = false } = props;
   const [expandKey, setExpandKey] = useState(0);
   const [defaultExpanded, setDefaultExpanded] = useState<boolean | undefined>(
     undefined,
@@ -21,12 +27,14 @@ const Sidebar = () => {
 
   return (
     <div
-      className="sidebar-container flex flex-col"
+      className={isMobileDrawer ? "flex flex-col" : "sidebar-container flex flex-col"}
       style={{
-        width: 280,
+        width,
+        minWidth: width,
         background: "var(--color-bg)",
-        borderRight: "1px solid var(--color-border)",
+        borderRight: isMobileDrawer ? "none" : "1px solid var(--color-border)",
         overflow: "hidden",
+        height: "100%",
       }}
     >
       {/* Explorer Header */}

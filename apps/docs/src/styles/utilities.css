@@ -340,6 +340,11 @@
   }
 }
 @media (min-width: 768px) {
+  .visible-mobile {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
   .visible-md {
     display: block;
   }

@@ -13,7 +13,7 @@ const StatusBar = (props: StatusBarProps) => {
 
   return (
     <div
-      className="flex items-center px-4"
+      className="flex items-center px-4 hidden-mobile"
       style={{
         height: 24,
         background: "var(--color-bg)",
@@ -25,7 +25,7 @@ const StatusBar = (props: StatusBarProps) => {
     >
       {/* Left side */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1 hidden-mobile">
+        <div className="flex items-center gap-1">
           <span
             style={{
               width: 8,
@@ -39,23 +39,13 @@ const StatusBar = (props: StatusBarProps) => {
           <span>{props.hackerMode ? "root" : "ready"}</span>
         </div>
 
-        <span
-          className="hidden-mobile"
-          style={{ color: "var(--color-border)" }}
-        >
-          │
-        </span>
+        <span style={{ color: "var(--color-border)" }}>│</span>
 
-        <span className="hidden-mobile">main</span>
+        <span>main</span>
 
-        <span
-          className="hidden-mobile"
-          style={{ color: "var(--color-border)" }}
-        >
-          │
-        </span>
+        <span style={{ color: "var(--color-border)" }}>│</span>
 
-        <span className="hidden-mobile">TypeScript React</span>
+        <span>TypeScript</span>
 
         {props.hackerMode && (
           <>
@@ -77,6 +67,10 @@ const StatusBar = (props: StatusBarProps) => {
             })}
           </ClientOnly>
         </span>
+
+        <span style={{ color: "var(--color-border)" }}>│</span>
+
+        <span>UTF-8</span>
 
         <span style={{ color: "var(--color-border)" }}>│</span>
 

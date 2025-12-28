@@ -12,6 +12,13 @@
   overflow-x: hidden;
 }
 
+/* Box sizing for all elements */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Base styles - Terminal font for entire app */
 html,
 body,

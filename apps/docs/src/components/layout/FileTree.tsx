@@ -107,6 +107,8 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
       setExpanded(!expanded);
     }
     if (node.href) {
+      // Close mobile sidebar when navigating
+      window.dispatchEvent(new CustomEvent("close-mobile-sidebar"));
       if (node.asset) {
         window.location.href = node.href;
       } else {

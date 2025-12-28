@@ -105,23 +105,25 @@ const CommandPalette = () => {
 
   return (
     <div
-      className="fixed inset-0 flex justify-center"
+      className="fixed inset-0 flex justify-center command-palette-overlay"
       style={{
         background: "rgba(0, 0, 0, 0.8)",
         zIndex: 10000,
-        paddingTop: 100,
       }}
       onClick={() => setOpen(false)}
     >
       <div
-        className="w-full mx-4"
+        className="command-palette-container w-full"
         style={{
           maxWidth: 600,
           height: "fit-content",
+          maxHeight: "calc(100vh - 40px)",
           background: "var(--color-bg-panel)",
           border: "1px solid var(--color-border)",
           borderRadius: 8,
           overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -159,8 +161,8 @@ const CommandPalette = () => {
         {/* Results */}
         <div
           ref={resultsRef}
-          className="scroll-area"
-          style={{ maxHeight: 400 }}
+          className="scroll-area flex-1"
+          style={{ overflowY: "auto" }}
         >
           {filtered.map((doc, index) => (
             <button
@@ -173,28 +175,44 @@ const CommandPalette = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: 12,
-                padding: "8px 16px",
-                color: "var(--color-text)",
+                padding: "10px 16px",
+                color:
+                  index === selectedIndex
+                    ? "var(--color-text)"
+                    : "var(--color-text-muted)",
                 background:
                   index === selectedIndex
-                    ? "rgba(34, 197, 94, 0.1)"
+                    ? "var(--color-bg-elevated)"
                     : "transparent",
+                borderLeft:
+                  index === selectedIndex
+                    ? "2px solid var(--color-accent)"
+                    : "2px solid transparent",
                 cursor: doc.href ? "pointer" : "default",
+                transition: "all 0.1s ease",
               }}
             >
-              <IconFile size={16} style={{ color: "var(--color-cyan)" }} />
-              <span>{doc.name}</span>
-              {doc.href && (
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    fontSize: 12,
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  {doc.href.replace("/docs/", "")}
-                </span>
-              )}
+              <IconFile
+                size={16}
+                style={{
+                  color:
+                    index === selectedIndex
+                      ? "var(--color-accent)"
+                      : "var(--color-cyan)",
+                }}
+              />
+              <span className="truncate">{doc.name}</span>
+              <span
+                className="hidden-mobile"
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 12,
+                  color: "var(--color-text-muted)",
+                  flexShrink: 0,
+                }}
+              >
+                {doc.href?.replace("/docs/", "")}
+              </span>
             </button>
           ))}
         </div>

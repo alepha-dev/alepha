@@ -29,7 +29,7 @@ const BottomNavigation = (props: BottomNavigationProps) => {
 
   return (
     <div
-      className="mt-6 pt-6 border-t"
+      className="mt-6 pt-6 border-t bottom-nav"
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
@@ -79,15 +79,16 @@ const NavButton = (props: NavButtonProps) => {
     <button
       type="button"
       onClick={() => router.go(href)}
-      className="btn-reset nav-button flex items-center gap-3 cursor-pointer transition-colors w-full"
+      className="btn-reset nav-button flex items-center gap-3 cursor-pointer w-full"
       style={{
-        padding: "16px 20px",
-        background: "var(--color-bg-panel)",
+        padding: "12px 16px",
+        background: "transparent",
         border: "1px solid var(--color-border)",
         borderRadius: 8,
         color: "var(--color-text)",
         justifyContent: direction === "next" ? "flex-end" : "flex-start",
         opacity: isPending ? 0.5 : 1,
+        transition: "all 0.15s ease",
       }}
     >
       {direction === "prev" && (
