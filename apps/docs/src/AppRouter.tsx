@@ -1,9 +1,9 @@
 import { $page, NotFound } from "@alepha/react";
 import { t } from "alepha";
 import { NotFoundError } from "alepha/server";
-import Content from "./components/Content.tsx";
+import { Content } from "./components/doc/index.ts";
 import Home from "./components/Home.tsx";
-import Layout from "./components/Layout.tsx";
+import { Layout } from "./components/layout/index.ts";
 import { docs } from "./config/docs.ts";
 
 declare module "@alepha/react" {

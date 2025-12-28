@@ -1,19 +1,11 @@
-import { AlephaUI, alephaThemeListAtom, midnightTheme } from "@alepha/ui";
+import { AlephaReactI18n } from "@alepha/react/i18n";
 import { Alepha, run } from "alepha";
 import { AppRouter } from "./AppRouter.tsx";
 
 const alepha = Alepha.create();
 
 alepha //
-  .with(AlephaUI)
-  .set(alephaThemeListAtom, [
-    {
-      ...midnightTheme,
-      primaryColor: "pink",
-      fontFamily: "wotfardregular",
-      defaultColorScheme: "dark",
-    },
-  ])
+  .with(AlephaReactI18n)
   .with(AppRouter);
 
 run(alepha);
