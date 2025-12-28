@@ -6,7 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<script>
 		// Prevent flash of incorrect theme by setting it before CSS loads
-		(function() {
+		(() => {
 			var stored = localStorage.getItem('alepha-docs-mode');
 			var theme = stored === 'light' || stored === 'dark'
 				? stored

@@ -620,6 +620,133 @@ class DocsCliApp {
 
   marked = this.createMarked();
 
+  /**
+   * Converts npm commands to other package manager equivalents
+   */
+  convertToPackageManager(
+    npmCommand: string,
+    target: "npm" | "yarn" | "pnpm" | "bun",
+  ): string {
+    return npmCommand
+      .split("\n")
+      .map((line) => {
+        const trimmed = line.trim();
+
+        // npx commands → yarn dlx / pnpm dlx / bunx
+        if (trimmed.startsWith("npx ")) {
+          const rest = trimmed.slice(4);
+          switch (target) {
+            case "npm":
+              return `npx ${rest}`;
+            case "yarn":
+              return `yarn dlx ${rest}`;
+            case "pnpm":
+              return `pnpm dlx ${rest}`;
+            case "bun":
+              return `bunx ${rest}`;
+          }
+        }
+
+        // npm install with packages
+        const installMatch = trimmed.match(/^npm (install|i) (.+)$/);
+        if (installMatch) {
+          const packages = installMatch[2];
+          switch (target) {
+            case "npm":
+              return `npm install ${packages}`;
+            case "yarn":
+              return `yarn add ${packages}`;
+            case "pnpm":
+              return `pnpm add ${packages}`;
+            case "bun":
+              return `bun add ${packages}`;
+          }
+        }
+
+        // npm install without packages
+        if (trimmed === "npm install" || trimmed === "npm i") {
+          switch (target) {
+            case "npm":
+              return "npm install";
+            case "yarn":
+              return "yarn";
+            case "pnpm":
+              return "pnpm install";
+            case "bun":
+              return "bun install";
+          }
+        }
+
+        return line;
+      })
+      .join("\n");
+  }
+
+  /**
+   * Checks if code is a package manager command
+   */
+  isPackageManagerCommand(code: string): boolean {
+    const trimmed = code.trim();
+    return /^(npm install|npm i |npx )/.test(trimmed);
+  }
+
+  /**
+   * Renders a code block with package manager switcher
+   */
+  renderPackageManagerBlock(text: string): string {
+    const managers = ["npm", "yarn", "pnpm", "bun"] as const;
+
+    // Generate code variants
+    const variants = Object.fromEntries(
+      managers.map((pm) => [pm, this.convertToPackageManager(text, pm)]),
+    );
+
+    // Highlight each variant
+    const highlighted = Object.fromEntries(
+      managers.map((pm) => [
+        pm,
+        hljs.highlight(variants[pm], { language: "bash" }).value,
+      ]),
+    );
+
+    // Encode as base64 for data attributes
+    const base64 = Object.fromEntries(
+      managers.map((pm) => [pm, Buffer.from(variants[pm]).toString("base64")]),
+    );
+
+    // Build data attributes for highlighted HTML
+    const htmlAttrs = managers
+      .map((pm) => `data-html-${pm}="${this.escapeHtml(highlighted[pm])}"`)
+      .join(" ");
+
+    // Build data attributes for copy (base64)
+    const codeAttrs = managers
+      .map((pm) => `data-code-${pm}="${base64[pm]}"`)
+      .join(" ");
+
+    return `
+<div class="code-block code-block-pm">
+  <div class="code-block-header">
+    <div class="pm-tabs">
+      ${managers.map((pm, i) => `<button type="button" class="pm-tab${i === 0 ? " pm-tab-active" : ""}" data-pm="${pm}" onclick="(function(btn){var block=btn.closest('.code-block-pm');block.querySelectorAll('.pm-tab').forEach(function(t){t.classList.remove('pm-tab-active')});btn.classList.add('pm-tab-active');var code=block.querySelector('code');code.innerHTML=code.getAttribute('data-html-'+btn.dataset.pm);var copy=block.querySelector('.code-block-copy');copy.setAttribute('data-code',copy.getAttribute('data-code-'+btn.dataset.pm))})(this)">${pm}</button>`).join("")}
+    </div>
+    <button class="code-block-copy" data-code="${base64.npm}" ${codeAttrs} onclick="(function(btn){var code=atob(btn.getAttribute('data-code'));navigator.clipboard.writeText(code);btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},2000)})(this)">Copy</button>
+  </div>
+  <pre><code class="hljs language-bash" ${htmlAttrs} data-code="${base64.npm}">${highlighted.npm}</code></pre>
+</div>`.trim();
+  }
+
+  /**
+   * Escape HTML for use in data attributes
+   */
+  escapeHtml(html: string): string {
+    return html
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
   readme = $command({
     name: "readme",
     description: "Generate package documentation and READMEs",
@@ -1002,6 +1129,12 @@ class DocsCliApp {
 <h${depth} class="doc-heading"><a href="#${slug}" class="heading-anchor">#</a>${htmlText}</h${depth}>`.trim();
       },
       code: ({ text, lang }: Tokens.Code) => {
+        // Check if this is a package manager command (bash/sh or no lang specified)
+        const isBashLike = !lang || lang === "bash" || lang === "sh";
+        if (isBashLike && this.isPackageManagerCommand(text)) {
+          return this.renderPackageManagerBlock(text);
+        }
+
         const language = hljs.getLanguage(lang || "") ? lang : "plaintext";
         const highlighted = hljs.highlight(text, {
           language: language || "plaintext",

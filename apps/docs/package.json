@@ -20,7 +20,7 @@
   },
   "scripts": {
     "cli": "node scripts/docs-cli.ts",
-    "dev": "yarn copy && alepha dev",
+    "dev": "alepha dev",
     "copy": "yarn cli readme && yarn cli docs",
     "start": "node dist",
     "lint": "alepha lint",

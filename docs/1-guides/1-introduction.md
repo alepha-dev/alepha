@@ -8,7 +8,9 @@ We built Alepha because we wanted to stop building "stacks" and start building *
 
 ## What is Alepha?
 
-Alepha is an integrated, opinionated, full-stack framework for Node.js 22+.
+Alepha is an integrated, opinionated, full-stack framework for **Node.js 22+** and **Bun**.
+
+We're working to make Alepha fully **Bun-native** - when running on Bun, we automatically use Bun's built-in APIs (file system, SQLite, HTTP server, etc.) instead of Node.js equivalents for better performance.
 
 It is not a wrapper around Express or Fastify. It is not just a React meta-framework like Next.js. It is a complete **SaaS Operating System**.
 

@@ -41,7 +41,9 @@ const CommandPalette = () => {
 
   useEffect(() => {
     if (resultsRef.current) {
-      const selected = resultsRef.current.children[selectedIndex] as HTMLElement;
+      const selected = resultsRef.current.children[
+        selectedIndex
+      ] as HTMLElement;
       if (selected) {
         selected.scrollIntoView({ block: "nearest" });
       }

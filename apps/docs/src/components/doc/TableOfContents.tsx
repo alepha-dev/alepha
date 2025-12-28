@@ -1,5 +1,11 @@
 import { useRouter } from "@alepha/react";
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import styles from "./TableOfContents.module.css";
 
 interface HeadingItem {
@@ -163,10 +169,12 @@ const TocItems = () => {
     <div
       ref={containerRef}
       className={styles.itemsContainer}
-      style={{
-        "--indicator-top": `${indicatorStyle.top}px`,
-        "--indicator-height": `${indicatorStyle.height}px`,
-      } as CSSProperties}
+      style={
+        {
+          "--indicator-top": `${indicatorStyle.top}px`,
+          "--indicator-height": `${indicatorStyle.height}px`,
+        } as CSSProperties
+      }
     >
       <div className={styles.indicator} />
 
