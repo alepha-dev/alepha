@@ -132,12 +132,16 @@ export async function viteAlephaDev(
       });
 
       server.config.logger.info = (msg: string) => {
-        runner.app?.log?.info(msg.trim());
+        console.log(msg);
       };
 
       server.config.logger.clearScreen = () => {};
 
-      await runner.start(server);
+      // Return a function - it runs AFTER internal middlewares are set up
+      // and after buildStart has been called
+      return async () => {
+        await runner.start(server);
+      };
     },
     async closeBundle() {
       // Cleanup handled by runner

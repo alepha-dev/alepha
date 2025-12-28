@@ -156,6 +156,7 @@ export class AlephaRunner {
 
       this.state.app.store.set("alepha.node.server" as any, server.httpServer);
 
+      console.log("");
       await this.state.app.start();
       this.state.started = true;
 
