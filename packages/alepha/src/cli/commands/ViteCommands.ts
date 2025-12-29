@@ -178,6 +178,12 @@ export class ViteCommands {
         // No index.html
       }
 
+      // Extract client options
+      const clientOptions =
+        typeof viteAlephaBuildOptions.client === "object"
+          ? viteAlephaBuildOptions.client
+          : {};
+
       // Build client
       if (hasClient) {
         await run({
@@ -187,6 +193,7 @@ export class ViteCommands {
               silent: true,
               dist: `${distDir}/${clientDir}`,
               stats,
+              precompress: clientOptions.precompress,
             }),
         });
       }
@@ -229,11 +236,7 @@ export class ViteCommands {
 
       if (hasClient) {
         // Generate sitemap
-        const sitemapBaseUrl =
-          flags.sitemap ??
-          (typeof viteAlephaBuildOptions.client === "object"
-            ? viteAlephaBuildOptions.client.sitemap?.hostname
-            : undefined);
+        const sitemapBaseUrl = flags.sitemap ?? clientOptions.sitemap?.hostname;
 
         if (sitemapBaseUrl) {
           await run({
@@ -251,11 +254,7 @@ export class ViteCommands {
         }
 
         // Pre-render static pages
-        const shouldPrerender =
-          flags.prerender ??
-          (typeof viteAlephaBuildOptions.client === "object"
-            ? viteAlephaBuildOptions.client.prerender
-            : false);
+        const shouldPrerender = flags.prerender ?? clientOptions.prerender;
 
         if (shouldPrerender) {
           await run({
@@ -264,6 +263,7 @@ export class ViteCommands {
               await prerenderPages({
                 dist: `${distDir}/${clientDir}`,
                 entry: `${distDir}/index.js`,
+                compress: clientOptions.precompress,
               });
             },
           });
