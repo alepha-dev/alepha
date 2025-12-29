@@ -928,7 +928,7 @@ class DocsCliApp {
           const lineNumPadded = String(lineNum).padStart(lineNumberWidth, " ");
           return `<span class="code-line${highlightClass}"><span class="code-line-number">${lineNumPadded}</span><span class="code-line-content">${line || " "}</span></span>`;
         })
-        .join("\n");
+        .join("");
     } else {
       codeContent = highlighted;
     }
