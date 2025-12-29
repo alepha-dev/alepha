@@ -1,5 +1,6 @@
 import { viteAlepha } from "alepha/vite";
 import { defineConfig } from "vite";
+import { VitePWA as vitePWA } from "vite-plugin-pwa";
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 
 process.env.VITE_BUILD_DATE = new Date().toISOString();
@@ -14,6 +15,60 @@ export default defineConfig({
         sitemap: {
           hostname: "https://alepha.dev",
         },
+      },
+    }),
+    vitePWA({
+      registerType: "autoUpdate",
+      devOptions: {
+        enabled: true,
+      },
+      includeAssets: ["favicon.ico", "favicon.png", "apple-touch-icon.png"],
+      manifest: {
+        name: "Alepha Documentation",
+        short_name: "Alepha Docs",
+        description:
+          "Documentation for Alepha - TypeScript Framework Made Easy",
+        theme_color: "#1a1a2e",
+        background_color: "#1a1a2e",
+        display: "standalone",
+        start_url: "/",
+        icons: [
+          {
+            src: "icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/alepha\.dev\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "alepha-docs-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
     }),
   ],
