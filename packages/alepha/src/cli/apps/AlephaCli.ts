@@ -15,7 +15,8 @@ class AlephaCliExtension {
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
-      const extensionPath = join(process.cwd(), "alepha.config.ts");
+      const root = process.cwd();
+      const extensionPath = join(root, "alepha.config.ts");
       const hasExtension = await this.fs.exists(extensionPath);
       if (!hasExtension) {
         return;
@@ -27,7 +28,9 @@ class AlephaCliExtension {
         return;
       }
 
-      this.alepha.with(Extension);
+      this.alepha.inject(Extension, {
+        args: [this.alepha],
+      });
     },
   });
 }

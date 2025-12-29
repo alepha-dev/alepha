@@ -82,6 +82,7 @@ __metadata:
   dependencies:
     "@alepha/react": "npm:0.14.0"
     "@biomejs/biome": "npm:^2.3.10"
+    "@fontsource/jetbrains-mono": "npm:^5.2.8"
     "@playwright/test": "npm:^1.49.1"
     "@tabler/icons-react": "npm:^3.36.0"
     "@testing-library/dom": "npm:^10.4.1"
@@ -4246,6 +4247,13 @@ __metadata:
   version: 0.2.10
   resolution: "@floating-ui/utils@npm:0.2.10"
   checksum: 10c0/e9bc2a1730ede1ee25843937e911ab6e846a733a4488623cd353f94721b05ec2c9ec6437613a2ac9379a94c2fd40c797a2ba6fa1df2716f5ce4aa6ddb1cf9ea4
+  languageName: node
+  linkType: hard
+
+"@fontsource/jetbrains-mono@npm:^5.2.8":
+  version: 5.2.8
+  resolution: "@fontsource/jetbrains-mono@npm:5.2.8"
+  checksum: 10c0/a51a1ad9cc847ccb3f5986d00b49fcd0eb2061200eb9caf215f968d658806e96e0ee305ab45df3d167f62223e45935cb7e89f984e7fb88fbe6928855a20e044e
   languageName: node
   linkType: hard
 

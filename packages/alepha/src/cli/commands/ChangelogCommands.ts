@@ -1,13 +1,40 @@
 import { exec } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { promisify } from "node:util";
-import { t } from "alepha";
+import { $inject, $use, t } from "alepha";
 import { $command } from "alepha/command";
+import { $logger } from "alepha/logger";
+import { changelogOptions } from "../atoms/changelogOptions.ts";
+import { GitMessageParser } from "../services/GitMessageParser.ts";
+
+export {
+  type ChangelogOptions,
+  changelogOptions,
+  DEFAULT_IGNORE,
+} from "../atoms/changelogOptions.ts";
+export { GitMessageParser } from "../services/GitMessageParser.ts";
 
 const execAsync = promisify(exec);
 
-interface Commit {
+// =============================================================================
+// GIT PROVIDER
+// =============================================================================
+
+/**
+ * Git provider for executing git commands.
+ * Can be substituted in tests with a mock implementation.
+ */
+export class GitProvider {
+  async exec(cmd: string, cwd: string): Promise<string> {
+    const { stdout } = await execAsync(`git ${cmd}`, { cwd });
+    return stdout;
+  }
+}
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+export interface Commit {
   hash: string;
   type: string;
   scope: string | null;
@@ -16,374 +43,198 @@ interface Commit {
 }
 
 interface ChangelogEntry {
-  version: string;
-  date: string;
   features: Commit[];
   fixes: Commit[];
-  docs: Commit[];
-  improvements: Commit[];
   breaking: Commit[];
 }
 
-interface ChangelogConfig {
+// =============================================================================
+// CHANGELOG COMMANDS
+// =============================================================================
+
+/**
+ * Changelog command for generating release notes from git commits.
+ *
+ * Usage:
+ * - `alepha changelog` - Show unreleased changes since latest tag
+ * - `alepha changelog --from=1.0.0` - Show changes from version to HEAD
+ * - `alepha changelog > CHANGELOG.md` - Pipe to file
+ */
+export class ChangelogCommands {
+  protected readonly log = $logger();
+  protected readonly git = $inject(GitProvider);
+  protected readonly parser = $inject(GitMessageParser);
+  protected readonly config = $use(changelogOptions);
+
+  // ---------------------------------------------------------------------------
+  // FORMATTING
+  // ---------------------------------------------------------------------------
+
   /**
-   * Commit prefixes to ignore (e.g., "project", "release", "chore")
+   * Format a single commit line.
+   * Example: `- **cli**: add new command (\`abc1234\`)`
    */
-  ignore?: string[];
+  protected formatCommit(commit: Commit): string {
+    return `- **${commit.scope}**: ${commit.description} (\`${commit.hash}\`)`;
+  }
+
   /**
-   * Module scopes to recognize (e.g., "ui", "cli", "core")
-   * If not provided, all non-ignored scopes are included
+   * Format the changelog entry with sections.
    */
-  scopes?: string[];
-}
+  protected formatEntry(entry: ChangelogEntry): string {
+    const sections: string[] = [];
 
-const DEFAULT_IGNORE = [
-  "project",
-  "release",
-  "starter",
-  "example",
-  "chore",
-  "ci",
-  "build",
-  "test",
-  "style",
-];
+    if (entry.breaking.length > 0) {
+      sections.push("### Breaking Changes\n");
+      for (const commit of entry.breaking) {
+        sections.push(this.formatCommit(commit));
+      }
+      sections.push("");
+    }
 
-function parseCommit(line: string, config: ChangelogConfig): Commit | null {
-  const match = line.match(/^([a-f0-9]+)\s+(.+)$/);
-  if (!match) return null;
+    if (entry.features.length > 0) {
+      sections.push("### Features\n");
+      for (const commit of entry.features) {
+        sections.push(this.formatCommit(commit));
+      }
+      sections.push("");
+    }
 
-  const [, hash, message] = match;
-  const breaking =
-    message.includes("!:") || message.toLowerCase().includes("breaking");
-  const ignore = config.ignore ?? DEFAULT_IGNORE;
+    if (entry.fixes.length > 0) {
+      sections.push("### Bug Fixes\n");
+      for (const commit of entry.fixes) {
+        sections.push(this.formatCommit(commit));
+      }
+      sections.push("");
+    }
 
-  // Conventional commit: feat(scope): description or feat!: description
-  const conventionalMatch = message.match(
-    /^(feat|fix|docs|refactor|perf|revert)(?:\(([^)]+)\))?!?:\s*(.+)$/i,
-  );
-  if (conventionalMatch) {
-    const [, type, scope, description] = conventionalMatch;
+    return sections.join("\n");
+  }
 
-    // Skip if scope matches ignore list
-    if (scope) {
-      const baseScope = scope.split("/")[0];
-      if (ignore.includes(baseScope) || ignore.includes(scope)) {
-        return null;
+  // ---------------------------------------------------------------------------
+  // PARSING
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Parse git log output into a changelog entry.
+   */
+  protected parseCommits(commitsOutput: string): ChangelogEntry {
+    const entry: ChangelogEntry = {
+      features: [],
+      fixes: [],
+      breaking: [],
+    };
+
+    for (const line of commitsOutput.trim().split("\n")) {
+      if (!line.trim()) continue;
+
+      const commit = this.parser.parseCommit(line, this.config);
+      if (!commit) {
+        this.log.trace("Skipping commit", { line });
+        continue;
+      }
+
+      this.log.trace("Parsed commit", { commit });
+
+      // Categorize commit
+      if (commit.breaking) {
+        entry.breaking.push(commit);
+      }
+      if (commit.type === "feat") {
+        entry.features.push(commit);
+      } else if (commit.type === "fix") {
+        entry.fixes.push(commit);
       }
     }
 
-    // Skip if type (without scope) matches ignore list (e.g., "docs" in ignore)
-    if (!scope && ignore.includes(type.toLowerCase())) {
-      return null;
-    }
-
-    return {
-      hash: hash.substring(0, 8),
-      type: type.toLowerCase(),
-      scope: scope || null,
-      description: description.trim(),
-      breaking,
-    };
+    return entry;
   }
 
-  // Module-specific commit: module: description or module/submodule: description
-  const moduleMatch = message.match(
-    /^([a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?):\s*(.+)$/i,
-  );
-  if (moduleMatch) {
-    const [, module, description] = moduleMatch;
-    const baseModule = module.split("/")[0];
-
-    // Skip ignored prefixes
-    if (ignore.includes(baseModule)) {
-      return null;
-    }
-
-    // If scopes are defined, check if this is a known scope
-    if (config.scopes && !config.scopes.includes(baseModule)) {
-      return null;
-    }
-
-    // Determine type based on description keywords
-    const desc = description.toLowerCase();
-    let type = "improve";
-    if (
-      desc.includes("fix") ||
-      desc.includes("bug") ||
-      desc.includes("issue")
-    ) {
-      type = "fix";
-    } else if (
-      desc.includes("add") ||
-      desc.includes("new") ||
-      desc.includes("implement")
-    ) {
-      type = "feat";
-    }
-
-    return {
-      hash: hash.substring(0, 8),
-      type,
-      scope: module,
-      description: description.trim(),
-      breaking,
-    };
+  /**
+   * Check if entry has any public commits.
+   */
+  protected hasChanges(entry: ChangelogEntry): boolean {
+    return (
+      entry.features.length > 0 ||
+      entry.fixes.length > 0 ||
+      entry.breaking.length > 0
+    );
   }
 
-  return null;
-}
+  /**
+   * Get the latest version tag.
+   */
+  protected async getLatestTag(
+    git: (cmd: string) => Promise<string>,
+  ): Promise<string | null> {
+    const tagsOutput = await git("tag --sort=-version:refname");
+    const tags = tagsOutput
+      .trim()
+      .split("\n")
+      .filter((tag) => tag.match(/^\d+\.\d+\.\d+$/));
 
-function formatCommit(commit: Commit): string {
-  const scope = commit.scope ? `**${commit.scope}**: ` : "";
-  return `- ${scope}${commit.description} (\`${commit.hash}\`)`;
-}
-
-function generateChangelog(entries: ChangelogEntry[]): string {
-  let output = "# Changelog\n\n";
-  output +=
-    "All notable changes to this project will be documented in this file.\n\n";
-
-  for (const entry of entries) {
-    output += `## [${entry.version}] - ${entry.date}\n\n`;
-    output += formatEntry(entry);
+    return tags[0] || null;
   }
 
-  return output;
-}
+  // ---------------------------------------------------------------------------
+  // COMMAND
+  // ---------------------------------------------------------------------------
 
-function formatEntry(entry: ChangelogEntry): string {
-  let output = "";
-
-  if (entry.breaking.length > 0) {
-    output += "### Breaking Changes\n\n";
-    for (const commit of entry.breaking) {
-      output += `${formatCommit(commit)}\n`;
-    }
-    output += "\n";
-  }
-
-  if (entry.features.length > 0) {
-    output += "### Features\n\n";
-    for (const commit of entry.features) {
-      output += `${formatCommit(commit)}\n`;
-    }
-    output += "\n";
-  }
-
-  if (entry.fixes.length > 0) {
-    output += "### Bug Fixes\n\n";
-    for (const commit of entry.fixes) {
-      output += `${formatCommit(commit)}\n`;
-    }
-    output += "\n";
-  }
-
-  return output;
-}
-
-async function loadConfig(root: string): Promise<ChangelogConfig> {
-  try {
-    const pkgPath = join(root, "package.json");
-    const pkg = JSON.parse(await readFile(pkgPath, "utf8"));
-    return pkg.changelog ?? {};
-  } catch {
-    return {};
-  }
-}
-
-export class ChangelogCommands {
   public readonly changelog = $command({
     name: "changelog",
-    description: "Generate CHANGELOG.md from git commits",
+    description: "Show changelog (outputs to stdout, pipe to file if needed)",
     flags: t.object({
-      release: t.optional(
-        t.boolean({
-          when: ["--release", "-r"],
-          description:
-            "Output release notes for the latest version only (for GitHub Release)",
-        }),
-      ),
-      preview: t.optional(
-        t.boolean({
-          when: ["--preview", "-p"],
-          description: "Preview unreleased changes (commits since last tag)",
-        }),
-      ),
-      output: t.optional(
+      /**
+       * Show changes from this version to HEAD.
+       * Example: --from=1.0.0
+       */
+      from: t.optional(
         t.string({
-          when: ["--output", "-o"],
-          description:
-            "Output file path (defaults to CHANGELOG.md, use - for stdout)",
-        }),
-      ),
-      limit: t.optional(
-        t.number({
-          when: ["--limit", "-l"],
-          description: "Limit number of versions to include",
+          aliases: ["f"],
+          description: "Show changes from this version to HEAD",
         }),
       ),
     }),
-    handler: async ({ flags, run, root }) => {
-      const config = await loadConfig(root);
+    handler: async ({ flags, root }) => {
+      const git = (cmd: string) => this.git.exec(cmd, root);
 
-      const git = async (cmd: string) => {
-        const { stdout } = await execAsync(`git ${cmd}`, { cwd: root });
-        return stdout;
-      };
+      // Determine the starting point
+      let fromVersion: string;
 
-      // Get all tags sorted by version
-      const tagsOutput = await git("tag --sort=-version:refname");
-      const tags = tagsOutput
-        .trim()
-        .split("\n")
-        .filter((tag) => tag.match(/^\d+\.\d+\.\d+$/));
-
-      if (tags.length === 0) {
-        throw new Error("No version tags found");
+      if (flags.from) {
+        // User specified a version
+        fromVersion = flags.from;
+        this.log.debug("Using specified version", { from: fromVersion });
+      } else {
+        // Use latest tag
+        const latestTag = await this.getLatestTag(git);
+        if (!latestTag) {
+          console.log("No version tags found in repository");
+          return;
+        }
+        fromVersion = latestTag;
+        this.log.debug("Using latest tag", { from: fromVersion });
       }
 
-      // Preview mode: show unreleased changes
-      if (flags.preview) {
-        const latestTag = tags[0];
-        const commitsOutput = await git(`log ${latestTag}..HEAD --oneline`);
+      // Get commits from version to HEAD
+      const commitsOutput = await git(`log ${fromVersion}..HEAD --oneline`);
 
-        if (!commitsOutput.trim()) {
-          console.log("No unreleased changes since", latestTag);
-          return;
-        }
-
-        const entry: ChangelogEntry = {
-          version: "Unreleased",
-          date: new Date().toISOString().split("T")[0],
-          features: [],
-          fixes: [],
-          docs: [],
-          improvements: [],
-          breaking: [],
-        };
-
-        for (const line of commitsOutput.trim().split("\n")) {
-          if (!line.trim()) continue;
-          const commit = parseCommit(line, config);
-          if (!commit) continue;
-
-          if (commit.breaking) entry.breaking.push(commit);
-
-          switch (commit.type) {
-            case "feat":
-              entry.features.push(commit);
-              break;
-            case "fix":
-              entry.fixes.push(commit);
-              break;
-            case "docs":
-              entry.docs.push(commit);
-              break;
-            case "refactor":
-            case "perf":
-            case "improve":
-              entry.improvements.push(commit);
-              break;
-          }
-        }
-
-        const hasCommits =
-          entry.features.length > 0 ||
-          entry.fixes.length > 0 ||
-          entry.breaking.length > 0;
-
-        if (!hasCommits) {
-          console.log("No public changes since", latestTag);
-          return;
-        }
-
-        console.log(`## [Unreleased] - since ${latestTag}\n`);
-        console.log(formatEntry(entry));
+      if (!commitsOutput.trim()) {
+        console.log(`No changes since ${fromVersion}`);
         return;
       }
 
-      const entries: ChangelogEntry[] = [];
-      const limit = flags.limit || (flags.release ? 1 : tags.length);
+      // Parse and format
+      const entry = this.parseCommits(commitsOutput);
 
-      for (let i = 0; i < Math.min(limit, tags.length); i++) {
-        const tag = tags[i];
-        const prevTag = tags[i + 1];
-
-        // Get tag date
-        const dateOutput = await git(`log -1 --format=%ci ${tag}`);
-        const date = dateOutput.trim().split(" ")[0];
-
-        // Get commits between tags
-        const range = prevTag ? `${prevTag}..${tag}` : tag;
-        const commitsOutput = await git(`log ${range} --oneline`);
-
-        const entry: ChangelogEntry = {
-          version: tag,
-          date,
-          features: [],
-          fixes: [],
-          docs: [],
-          improvements: [],
-          breaking: [],
-        };
-
-        for (const line of commitsOutput.trim().split("\n")) {
-          if (!line.trim()) continue;
-          const commit = parseCommit(line, config);
-          if (!commit) continue;
-
-          if (commit.breaking) entry.breaking.push(commit);
-
-          switch (commit.type) {
-            case "feat":
-              entry.features.push(commit);
-              break;
-            case "fix":
-              entry.fixes.push(commit);
-              break;
-            case "docs":
-              entry.docs.push(commit);
-              break;
-            case "refactor":
-            case "perf":
-            case "improve":
-              entry.improvements.push(commit);
-              break;
-          }
-        }
-
-        // Only add entry if it has any commits
-        const hasCommits =
-          entry.features.length > 0 ||
-          entry.fixes.length > 0 ||
-          entry.breaking.length > 0;
-
-        if (hasCommits) {
-          entries.push(entry);
-        }
-      }
-
-      if (entries.length === 0) {
-        console.log("No public commits found");
+      if (!this.hasChanges(entry)) {
+        console.log(`No public changes since ${fromVersion}`);
         return;
       }
 
-      let output: string;
-      if (flags.release) {
-        output = formatEntry(entries[0]);
-      } else {
-        output = generateChangelog(entries);
-      }
-
-      const outputPath = flags.output ?? "CHANGELOG.md";
-      if (outputPath === "-") {
-        console.log(output);
-      } else {
-        await run(`Writing ${outputPath}`, () =>
-          writeFile(join(root, outputPath), output, "utf8"),
-        );
-      }
+      // Output to stdout
+      console.log(`## Changes since ${fromVersion}\n`);
+      console.log(this.formatEntry(entry));
     },
   });
 }

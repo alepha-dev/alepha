@@ -946,6 +946,35 @@ class DocsCliApp {
 </div>`.trim();
   }
 
+  /**
+   * Maps package names to their output directories.
+   * Core packages (alepha, react, ui) get their own numbered directories.
+   * All other packages go into the plugins directory.
+   */
+  getPackageOutputDir(
+    packageName: string,
+    baseDocsDir: string,
+  ): { dir: string; order: number } {
+    const corePackages: Record<string, { dir: string; order: number }> = {
+      alepha: { dir: "1-alepha", order: 1 },
+      react: { dir: "2-react", order: 2 },
+      ui: { dir: "3-ui", order: 3 },
+    };
+
+    if (corePackages[packageName]) {
+      return {
+        dir: join(baseDocsDir, corePackages[packageName].dir),
+        order: corePackages[packageName].order,
+      };
+    }
+
+    // All other packages go into plugins
+    return {
+      dir: join(baseDocsDir, "4-plugins"),
+      order: 4,
+    };
+  }
+
   readme = $command({
     name: "readme",
     description: "Generate package documentation and READMEs",
@@ -959,9 +988,17 @@ class DocsCliApp {
       this.log.debug(`Packages directory: ${packagesDir}`);
       this.log.debug(`Docs directory: ${docsDir}`);
 
-      // Ensure docs directory exists
+      // Clean and recreate docs directory
+      await fs.rm(docsDir, { recursive: true, force: true });
       await fs.mkdir(docsDir, { recursive: true });
-      this.log.trace("Created/verified docs directory");
+      this.log.trace("Cleaned and recreated docs directory");
+
+      // Create the four main directories
+      await fs.mkdir(join(docsDir, "1-alepha"), { recursive: true });
+      await fs.mkdir(join(docsDir, "2-react"), { recursive: true });
+      await fs.mkdir(join(docsDir, "3-ui"), { recursive: true });
+      await fs.mkdir(join(docsDir, "4-plugins"), { recursive: true });
+      this.log.trace("Created package directories");
 
       let dirents: Dirent[];
 
@@ -1012,17 +1049,21 @@ class DocsCliApp {
           const packageName =
             pkgJson.name?.replace("@alepha/", "") || dirent.name;
 
+          // Determine output directory based on package name
+          const { dir: outputDir } = this.getPackageOutputDir(
+            packageName,
+            docsDir,
+          );
+
           // Check if package has multiple modules
           const modules = this.extractModules(pkgJson, packagePath);
 
           if (modules) {
-            // Create directory for multi-module package
+            // Multi-module package - write each module as separate file
             this.log.debug(
               `Creating multi-module documentation for ${packageName}`,
             );
-            const packageDocsDir = join(docsDir, packageName);
-            await fs.mkdir(packageDocsDir, { recursive: true });
-            this.log.trace(`Created directory: ${packageDocsDir}`);
+            this.log.trace(`Using directory: ${outputDir}`);
 
             for (const module of modules) {
               this.log.debug(`Generating docs for module: ${module.name}`);
@@ -1040,7 +1081,7 @@ class DocsCliApp {
                 continue;
               }
 
-              const markdownPath = join(packageDocsDir, `${module.name}.md`);
+              const markdownPath = join(outputDir, `${module.name}.md`);
               await fs.writeFile(markdownPath, markdown, "utf-8");
               this.log.debug(`Wrote module docs: ${markdownPath}`);
               stats.generated++;
@@ -1064,7 +1105,7 @@ class DocsCliApp {
               this.log.debug(`Skipped package: ${packageName}`);
               stats.skipped++;
             } else {
-              const markdownPath = join(docsDir, `${packageName}.md`);
+              const markdownPath = join(outputDir, `${packageName}.md`);
               await fs.writeFile(markdownPath, markdown, "utf-8");
               this.log.debug(`Wrote single-module docs: ${markdownPath}`);
               stats.generated++;

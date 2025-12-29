@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <script>
     // Set theme immediately to prevent flash (runs before any rendering)
-    (function() {
+    (() => {
       var stored = localStorage.getItem('alepha-docs-mode');
       var theme = stored === 'light' || stored === 'dark'
         ? stored

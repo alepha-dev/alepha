@@ -122,11 +122,6 @@ export class ViteCommands {
           description: "Generate sitemap.xml with base URL",
         }),
       ),
-      prerender: t.optional(
-        t.boolean({
-          description: "Pre-render static pages",
-        }),
-      ),
     }),
     handler: async ({ flags, args, run, root }) => {
       // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
@@ -254,7 +249,7 @@ export class ViteCommands {
         }
 
         // Pre-render static pages
-        const shouldPrerender = flags.prerender ?? clientOptions.prerender;
+        const shouldPrerender = clientOptions.prerender;
 
         if (shouldPrerender) {
           await run({

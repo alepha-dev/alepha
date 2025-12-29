@@ -16,6 +16,7 @@ ignores:
     - 'typescript'
     - 'vitest'
     - 'wrangler'
+    - '@fontsource/jetbrains-mono'
 ignore-patterns:
     - 'dist'
     - 'assets'

@@ -1,6 +1,7 @@
 export * from "./apps/AlephaCli.ts";
 export * from "./apps/AlephaPackageBuilderCli.ts";
 export * from "./commands/BiomeCommands.ts";
+export * from "./commands/ChangelogCommands.ts";
 export * from "./commands/CoreCommands.ts";
 export * from "./commands/DrizzleCommands.ts";
 export * from "./commands/VerifyCommands.ts";

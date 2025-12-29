@@ -56,7 +56,8 @@ export default defineConfig({
         runtimeCaching: [
           {
             // HTML pages - network first (always fresh content)
-            urlPattern: /^https:\/\/alepha\.dev\/(?!.*\.(js|css|png|svg|woff2?|ico|webp|jpg|jpeg|gif)$).*/i,
+            urlPattern:
+              /^https:\/\/alepha\.dev\/(?!.*\.(js|css|png|svg|woff2?|ico|webp|jpg|jpeg|gif)$).*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "alepha-pages-cache",
@@ -71,7 +72,8 @@ export default defineConfig({
           },
           {
             // Static assets - cache first (fast, versioned by Vite)
-            urlPattern: /^https:\/\/alepha\.dev\/.*\.(js|css|png|svg|woff2?|ico|webp|jpg|jpeg|gif)$/i,
+            urlPattern:
+              /^https:\/\/alepha\.dev\/.*\.(js|css|png|svg|woff2?|ico|webp|jpg|jpeg|gif)$/i,
             handler: "CacheFirst",
             options: {
               cacheName: "alepha-assets-cache",
