@@ -11,8 +11,8 @@
     "studio": "alepha db:studio"
   },
   "dependencies": {
-    "@alepha/bucket-vercel": "^0.13.8",
-    "@alepha/react": "^0.13.8",
+    "@alepha/bucket-vercel": "^0.14.0",
+    "@alepha/react": "^0.14.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
     "@mantine/charts": "^8.3.10",
@@ -29,7 +29,7 @@
     "@tiptap/starter-kit": "^3.14.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
-    "alepha": "^0.13.8",
+    "alepha": "^0.14.0",
     "animate.css": "^4.1.1",
     "framer-motion": "^12.23.26",
     "highlight.js": "^11.11.1",

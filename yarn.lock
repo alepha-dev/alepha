@@ -17,11 +17,11 @@ __metadata:
   resolution: "@alepha/bucket-azure@workspace:packages/bucket-azure"
   dependencies:
     "@azure/storage-blob": "npm:^12.29.1"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     tsdown: "npm:^0.18.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
-    alepha: 0.13.8
+    alepha: 0.14.0
   languageName: unknown
   linkType: soft
 
@@ -31,26 +31,26 @@ __metadata:
   dependencies:
     "@aws-sdk/client-s3": "npm:^3.958.0"
     "@biomejs/biome": "npm:^2.3.10"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     tsdown: "npm:^0.18.3"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
-    alepha: 0.13.8
+    alepha: 0.14.0
   languageName: unknown
   linkType: soft
 
-"@alepha/bucket-vercel@npm:^0.13.8, @alepha/bucket-vercel@workspace:packages/bucket-vercel":
+"@alepha/bucket-vercel@npm:^0.14.0, @alepha/bucket-vercel@workspace:packages/bucket-vercel":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-vercel@workspace:packages/bucket-vercel"
   dependencies:
     "@types/node": "npm:^25.0.3"
     "@vercel/blob": "npm:^2.0.0"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     tsdown: "npm:^0.18.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
-    alepha: 0.13.8
+    alepha: 0.14.0
   languageName: unknown
   linkType: soft
 
@@ -58,21 +58,21 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
-    "@alepha/react": "npm:0.13.8"
-    "@alepha/ui": "npm:0.13.8"
+    "@alepha/react": "npm:0.14.0"
+    "@alepha/ui": "npm:0.14.0"
     "@biomejs/biome": "npm:^2.3.10"
     "@mantine/core": "npm:^8.3.10"
     "@mantine/hooks": "npm:^8.3.10"
     "@tabler/icons-react": "npm:^3.36.0"
     "@xyflow/react": "npm:^12.10.0"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     react: "npm:^19.2.3"
     tsdown: "npm:^0.18.3"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.3.0"
     vitest: "npm:^4.0.16"
   peerDependencies:
-    alepha: 0.13.8
+    alepha: 0.14.0
   languageName: unknown
   linkType: soft
 
@@ -80,7 +80,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/docs@workspace:apps/docs"
   dependencies:
-    "@alepha/react": "npm:0.13.8"
+    "@alepha/react": "npm:0.14.0"
     "@biomejs/biome": "npm:^2.3.10"
     "@playwright/test": "npm:^1.49.1"
     "@tabler/icons-react": "npm:^3.36.0"
@@ -89,7 +89,7 @@ __metadata:
     "@types/react": "npm:^19.2.7"
     "@types/react-dom": "npm:^19"
     "@xmldom/xmldom": "npm:^0.8.11"
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     fuse.js: "npm:^7.1.0"
     highlight.js: "npm:^11.11.1"
     jsdom: "npm:^27.4.0"
@@ -108,17 +108,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
   dependencies:
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     protobufjs: "npm:^8.0.0"
     tsdown: "npm:^0.18.3"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
-    alepha: 0.13.8
+    alepha: 0.14.0
   languageName: unknown
   linkType: soft
 
-"@alepha/react@npm:0.13.8, @alepha/react@npm:^0.13.8, @alepha/react@workspace:packages/react":
+"@alepha/react@npm:0.14.0, @alepha/react@npm:^0.14.0, @alepha/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@alepha/react@workspace:packages/react"
   dependencies:
@@ -128,13 +128,13 @@ __metadata:
     "@types/react": "npm:^19"
     "@types/react-dom": "npm:^19"
     "@vitejs/plugin-react": "npm:^5.1.2"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     jsdom: "npm:^27.4.0"
     react: "npm:^19.2.3"
     react-dom: "npm:^19"
     vitest: "npm:^4.0.16"
   peerDependencies:
-    alepha: 0.13.8
+    alepha: 0.14.0
     react: ^19
   languageName: unknown
   linkType: soft
@@ -143,8 +143,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/roadmap@workspace:apps/roadmap"
   dependencies:
-    "@alepha/bucket-vercel": "npm:^0.13.8"
-    "@alepha/react": "npm:^0.13.8"
+    "@alepha/bucket-vercel": "npm:^0.14.0"
+    "@alepha/react": "npm:^0.14.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@mantine/charts": "npm:^8.3.10"
@@ -165,7 +165,7 @@ __metadata:
     "@types/sanitize-html": "npm:^2.16.0"
     "@vercel/analytics": "npm:^1.6.1"
     "@vercel/speed-insights": "npm:^1.3.1"
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     animate.css: "npm:^4.1.1"
     framer-motion: "npm:^12.23.26"
     highlight.js: "npm:^11.11.1"
@@ -179,11 +179,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.13.8, @alepha/ui@npm:^0.13.8, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.14.0, @alepha/ui@npm:^0.14.0, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
-    "@alepha/react": "npm:0.13.8"
+    "@alepha/react": "npm:0.14.0"
     "@biomejs/biome": "npm:^2.3.10"
     "@mantine/core": "npm:^8.3.10"
     "@mantine/dates": "npm:^8.3.10"
@@ -193,7 +193,7 @@ __metadata:
     "@mantine/nprogress": "npm:^8.3.10"
     "@mantine/spotlight": "npm:^8.3.10"
     "@tabler/icons-react": "npm:^3.36.0"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     dayjs: "npm:^1.11.19"
     react: "npm:^19.2.3"
     react-dom: "npm:^19.2.3"
@@ -8102,14 +8102,14 @@ __metadata:
     "@types/node": "npm:^25.0.3"
     "@vitest/coverage-v8": "npm:^4.0.16"
     "@vitest/ui": "npm:^4.0.16"
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     depcheck: "npm:^1.4.7"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.16"
   languageName: unknown
   linkType: soft
 
-"alepha@npm:0.13.8, alepha@npm:^0.13.8, alepha@workspace:packages/alepha":
+"alepha@npm:0.14.0, alepha@npm:^0.14.0, alepha@workspace:packages/alepha":
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
@@ -8516,7 +8516,7 @@ __metadata:
   resolution: "benchmark-5bbce0@workspace:apps/benchmark"
   dependencies:
     "@types/autocannon": "npm:^7.12.7"
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     autocannon: "npm:^8.0.0"
     express: "npm:^5.2.1"
     fastify: "npm:^5.6.2"
@@ -9058,7 +9058,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "create-alepha@workspace:packages/create-alepha"
   dependencies:
-    alepha: "npm:0.13.8"
+    alepha: "npm:0.14.0"
     tar: "npm:^7.5.2"
     tsdown: "npm:^0.18.3"
     vitest: "npm:^4.0.16"
@@ -10890,7 +10890,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-api-b382ca@workspace:apps/example-api"
   dependencies:
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     vite: "npm:^7.3.0"
     wrangler: "npm:^4.54.0"
   languageName: unknown
@@ -10900,7 +10900,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-ssr-fb4dc1@workspace:apps/example-ssr"
   dependencies:
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     react: "npm:^19.2.3"
     vite: "npm:^7.3.0"
     wrangler: "npm:^4.54.0"
@@ -10911,8 +10911,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-ws-8da5eb@workspace:apps/example-ws"
   dependencies:
-    "@alepha/react": "npm:^0.13.8"
-    alepha: "npm:^0.13.8"
+    "@alepha/react": "npm:^0.14.0"
+    alepha: "npm:^0.14.0"
     react: "npm:^19.2.3"
   languageName: unknown
   linkType: soft
@@ -11975,7 +11975,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "integration-940784@workspace:apps/integration"
   dependencies:
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     vitest: "npm:^4.0.16"
   languageName: unknown
   linkType: soft
@@ -13804,7 +13804,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
   dependencies:
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     react: "npm:^19.2.3"
     vite: "npm:^7.3.0"
   languageName: unknown
@@ -15648,13 +15648,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "starter-6b2739@workspace:apps/starter"
   dependencies:
-    "@alepha/react": "npm:^0.13.8"
-    "@alepha/ui": "npm:^0.13.8"
+    "@alepha/react": "npm:^0.14.0"
+    "@alepha/ui": "npm:^0.14.0"
     "@mantine/core": "npm:^8.3.10"
     "@mantine/hooks": "npm:^8.3.10"
     "@tabler/icons-react": "npm:^3.36.0"
     "@types/react": "npm:^19.2.7"
-    alepha: "npm:^0.13.8"
+    alepha: "npm:^0.14.0"
     react: "npm:^19.2.3"
     react-dom: "npm:^19.2.3"
     vite: "npm:^7.3.0"
