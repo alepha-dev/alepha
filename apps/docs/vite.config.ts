@@ -55,13 +55,29 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/alepha\.dev\/.*/i,
+            // HTML pages - network first (always fresh content)
+            urlPattern: /^https:\/\/alepha\.dev\/(?!.*\.(js|css|png|svg|woff2?|ico|webp|jpg|jpeg|gif)$).*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "alepha-pages-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24, // 1 day fallback
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Static assets - cache first (fast, versioned by Vite)
+            urlPattern: /^https:\/\/alepha\.dev\/.*\.(js|css|png|svg|woff2?|ico|webp|jpg|jpeg|gif)$/i,
             handler: "CacheFirst",
             options: {
-              cacheName: "alepha-docs-cache",
+              cacheName: "alepha-assets-cache",
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
               },
               cacheableResponse: {
                 statuses: [0, 200],
