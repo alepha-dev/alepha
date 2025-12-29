@@ -11,6 +11,8 @@ export default () => {
 
         await run.rm([
           `coverage`,
+          `apps/*/playwright-report`,
+          `apps/*/test-results`,
           `apps/*/dist`,
           `apps/*/node_modules`,
           `apps/*/coverage`,
@@ -104,6 +106,6 @@ export default () => {
         await run(`git tag -a ${version} -m "release: ${version}"`);
         await run("git push --follow-tags");
       },
-    })
+    }),
   };
 };

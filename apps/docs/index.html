@@ -2,23 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Alepha</title>
+  <title>Alepha - TypeScript Framework Made Easy</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<script>
-		// Prevent flash of incorrect theme by setting it before CSS loads
-		(() => {
-			var stored = localStorage.getItem('alepha-docs-mode');
-			var theme = stored === 'light' || stored === 'dark'
-				? stored
-				: window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
-					? 'light'
-					: 'dark';
-			document.documentElement.setAttribute('data-theme', theme);
-		})();
-	</script>
 	<link rel="stylesheet" href="/src/styles.css"/>
 
-	<meta name="description" content="Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools." />
+	<meta name="description" content="Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months." />
 
 	<!-- Canonical -->
 	<link rel="canonical" href="https://alepha.dev/" />
@@ -26,19 +14,28 @@
 	<!-- OpenGraph for social share -->
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://alepha.dev/" />
-	<meta property="og:title" content="Alepha Framework" />
-	<meta property="og:description" content="A TypeScript-first framework with React SSR, schema validation, and modern backend tools." />
-	<meta property="og:image" content="https://alepha.dev/favicon.png" />
+	<meta property="og:title" content="Alepha - TypeScript Framework Made Easy" />
+	<meta property="og:description" content="Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months." />
+	<meta property="og:image" content="https://alepha.dev/og-image.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:site_name" content="Alepha" />
+	<meta property="og:locale" content="en_US" />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:url" content="https://alepha.dev/" />
-	<meta name="twitter:title" content="Alepha Framework" />
-	<meta name="twitter:description" content="A TypeScript-first framework with React SSR, schema validation, and modern backend tools." />
-	<meta name="twitter:image" content="https://alepha.dev/favicon.png" />
+	<meta name="twitter:title" content="Alepha - TypeScript Framework Made Easy" />
+	<meta name="twitter:description" content="Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months." />
+	<meta name="twitter:image" content="https://alepha.dev/og-image.png" />
+	<meta name="twitter:image:alt" content="Alepha Framework - TypeScript Made Easy" />
 
 	<!-- Favicon -->
 	<link rel="icon" type="image/png" href="/favicon.png" />
+
+	<!-- PWA -->
+	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+	<meta name="theme-color" content="#1a1a2e" />
 </head>
 <body>
 <script type="module" src="/src/main.ts"></script>

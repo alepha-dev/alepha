@@ -15,3 +15,4 @@ test-report.junit.xml
 .run
 test-results
 playwright-report
+.playwright-mcp

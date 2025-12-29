@@ -11,6 +11,7 @@
       "!.yarn",
       "!**/node_modules",
       "!**/dist",
+      "!**/dev-dist",
       "!**/coverage",
       "!**/assets"
     ]
