@@ -2,8 +2,11 @@
    ALEPHA DOCS - Main Stylesheet
    ============================================================================= */
 
-/* Fonts */
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+/* Fonts - Self-hosted via @fontsource */
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/jetbrains-mono/700.css";
 
 /* Design System - Modular CSS files */
 @import "./styles/index.css";
