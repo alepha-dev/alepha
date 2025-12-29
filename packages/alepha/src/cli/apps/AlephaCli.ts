@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { $hook, $inject, $module, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { BiomeCommands } from "../commands/BiomeCommands.ts";
+import { ChangelogCommands } from "../commands/ChangelogCommands.ts";
 import { CoreCommands } from "../commands/CoreCommands.ts";
 import { DrizzleCommands } from "../commands/DrizzleCommands.ts";
 import { VerifyCommands } from "../commands/VerifyCommands.ts";
@@ -35,6 +36,7 @@ export const AlephaCli = $module({
   name: "alepha.cli",
   services: [
     AlephaCliExtension,
+    ChangelogCommands,
     CoreCommands,
     DrizzleCommands,
     VerifyCommands,

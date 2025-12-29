@@ -35,5 +35,16 @@
 		"test": "vitest run",
 		"build": "yarn workspaces foreach -Apt run build",
 		"e2e": "yarn workspaces foreach -Apt run e2e"
+	},
+	"changelog": {
+		"ignore": [
+			"project",
+			"tests",
+			"docs",
+			"release",
+			"task",
+			"roadmap",
+			"roadmap/api"
+		]
 	}
 }
