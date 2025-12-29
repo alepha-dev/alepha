@@ -69,6 +69,12 @@ jobs:
       - name: Build Project
         run: yarn build
 
+      - name: Install Playwright
+        run: cd apps/docs && npx playwright install chromium --with-deps
+
+      - name: Run E2E Tests
+        run: yarn e2e
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:

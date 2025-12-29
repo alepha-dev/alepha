@@ -51,7 +51,8 @@
 }
 
 .dialog-overlay-closing {
-  animation: dialogOverlayOut var(--dialog-duration-out) var(--dialog-easing-out) forwards;
+  animation: dialogOverlayOut var(--dialog-duration-out)
+    var(--dialog-easing-out) forwards;
 }
 
 .dialog-container {
@@ -59,7 +60,8 @@
 }
 
 .dialog-container-closing {
-  animation: dialogOut var(--dialog-duration-out) var(--dialog-easing-out) forwards;
+  animation: dialogOut var(--dialog-duration-out) var(--dialog-easing-out)
+    forwards;
 }
 
 /* -----------------------------------------------------------------------------

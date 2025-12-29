@@ -33,6 +33,7 @@ export default () => {
         await run(`yarn test`);
         await run(`yarn check-dependencies`);
         await run(`yarn build`);
+        await run(`yarn e2e`);
         await run(`yarn clean`);
       },
     }),

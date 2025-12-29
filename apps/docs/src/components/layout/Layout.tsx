@@ -438,9 +438,7 @@ const LayoutContent = () => {
 
       {/* Mobile Sidebar Drawer */}
       {mobileSidebarOpen && (
-        <div
-          className={`visible-mobile fixed inset-0 ${styles.mobileOverlay}`}
-        >
+        <div className={`visible-mobile fixed inset-0 ${styles.mobileOverlay}`}>
           {/* Backdrop */}
           <div
             className={`absolute inset-0 ${styles.mobileBackdrop}`}

@@ -4,7 +4,10 @@ import PackageChip from "./PackageChip.tsx";
 import ScrollButton from "./ScrollButton.tsx";
 
 const FeaturesSection = () => {
-  const [activeChip, setActiveChip] = useState<{ id: string; reverse: boolean } | null>(null);
+  const [activeChip, setActiveChip] = useState<{
+    id: string;
+    reverse: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const allChips = [
@@ -130,7 +133,9 @@ const FeaturesSection = () => {
                 feature={feature}
                 index={index}
                 isActive={activeChip?.id === `core-${index}`}
-                isReverse={activeChip?.id === `core-${index}` && activeChip.reverse}
+                isReverse={
+                  activeChip?.id === `core-${index}` && activeChip.reverse
+                }
               />
             ))}
           </div>
@@ -169,7 +174,9 @@ const FeaturesSection = () => {
                 feature={feature}
                 index={index}
                 isActive={activeChip?.id === `api-${index}`}
-                isReverse={activeChip?.id === `api-${index}` && activeChip.reverse}
+                isReverse={
+                  activeChip?.id === `api-${index}` && activeChip.reverse
+                }
               />
             ))}
           </div>

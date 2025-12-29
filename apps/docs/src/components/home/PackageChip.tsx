@@ -10,7 +10,12 @@ interface PackageChipProps {
   isReverse?: boolean;
 }
 
-const PackageChip = ({ feature, index, isActive, isReverse }: PackageChipProps) => {
+const PackageChip = ({
+  feature,
+  index,
+  isActive,
+  isReverse,
+}: PackageChipProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -45,7 +50,11 @@ const PackageChip = ({ feature, index, isActive, isReverse }: PackageChipProps) 
         )}
 
         {isActive && (
-          <svg className={styles.snakeBorderSvg} viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className={styles.snakeBorderSvg}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <rect
               className={`${styles.snakeBorderRect} ${isReverse ? styles.snakeBorderReverse : ""}`}
               x="1"

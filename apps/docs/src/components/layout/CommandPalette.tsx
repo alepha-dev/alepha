@@ -2,7 +2,12 @@ import { useRouter } from "@alepha/react";
 import { IconFile } from "@tabler/icons-react";
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type DocNode, tree } from "../../config/docs.ts";
+import { tree } from "../../config/docs.ts";
+import {
+  findMatchedKeyword,
+  flattenTree,
+  type SearchableDoc,
+} from "../../helpers/search.ts";
 import styles from "./CommandPalette.module.css";
 import Dialog, { useDialog } from "./Dialog.tsx";
 
@@ -10,61 +15,11 @@ import Dialog, { useDialog } from "./Dialog.tsx";
 // TYPES
 // =============================================================================
 
-interface SearchableDoc {
-  name: string;
-  href: string;
-  keywords: string[];
-  keywordsJoined: string;
-}
-
 interface SearchResult {
   doc: SearchableDoc;
   matchedKeyword: string | null;
   score: number;
 }
-
-// =============================================================================
-// HELPERS
-// =============================================================================
-
-/** Flatten the doc tree to get all docs with hrefs */
-const flattenTree = (nodes: DocNode[]): SearchableDoc[] => {
-  const result: SearchableDoc[] = [];
-  for (const node of nodes) {
-    if (node.href) {
-      result.push({
-        name: node.name,
-        href: node.href,
-        keywords: node.keywords || [],
-        keywordsJoined: (node.keywords || []).join(" "),
-      });
-    }
-    if (node.children) {
-      result.push(...flattenTree(node.children));
-    }
-  }
-  return result;
-};
-
-/** Find the best matching keyword for display */
-const findMatchedKeyword = (
-  doc: SearchableDoc,
-  query: string,
-): string | null => {
-  if (!query) return null;
-  const q = query.toLowerCase();
-
-  // Don't show keyword match if name or path already matches
-  if (doc.name.toLowerCase().includes(q)) return null;
-  if (doc.href.toLowerCase().includes(q)) return null;
-
-  // Find matching keywords
-  const matches = doc.keywords.filter((kw) => kw.toLowerCase().includes(q));
-  if (!matches.length) return null;
-
-  // Return shortest match (most specific)
-  return matches.sort((a, b) => a.length - b.length)[0];
-};
 
 // =============================================================================
 // FUSE.JS CONFIGURATION
@@ -129,7 +84,9 @@ const CommandPalette = () => {
   // Scroll selected item into view
   useEffect(() => {
     if (resultsRef.current) {
-      const selected = resultsRef.current.children[selectedIndex] as HTMLElement;
+      const selected = resultsRef.current.children[
+        selectedIndex
+      ] as HTMLElement;
       if (selected) {
         selected.scrollIntoView({ block: "nearest" });
       }
