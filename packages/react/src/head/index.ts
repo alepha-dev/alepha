@@ -15,6 +15,7 @@ import { HeadProvider } from "./providers/HeadProvider.ts";
 export * from "./primitives/$head.ts";
 export * from "./hooks/useHead.ts";
 export * from "./interfaces/Head.ts";
+export * from "./helpers/SeoExpander.ts";
 export * from "./providers/ServerHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

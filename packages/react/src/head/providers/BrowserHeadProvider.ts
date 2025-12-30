@@ -1,5 +1,5 @@
 import { $hook, $inject } from "alepha";
-import type { Head } from "../interfaces/Head.ts";
+import type { Head, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 export class BrowserHeadProvider {
@@ -49,12 +49,21 @@ export class BrowserHeadProvider {
         return attrs;
       },
       get meta() {
-        const metas: { name: string; content: string }[] = [];
+        const metas: HeadMeta[] = [];
+        // Get meta tags with name attribute
         for (const meta of document.head.querySelectorAll("meta[name]")) {
           const name = meta.getAttribute("name");
           const content = meta.getAttribute("content");
           if (name && content) {
             metas.push({ name, content });
+          }
+        }
+        // Get meta tags with property attribute (OpenGraph)
+        for (const meta of document.head.querySelectorAll("meta[property]")) {
+          const property = meta.getAttribute("property");
+          const content = meta.getAttribute("content");
+          if (property && content) {
+            metas.push({ property, content });
           }
         }
         return metas;
@@ -89,16 +98,7 @@ export class BrowserHeadProvider {
 
     if (head.meta) {
       for (const it of head.meta) {
-        const { name, content } = it;
-        const meta = document.querySelector(`meta[name="${name}"]`);
-        if (meta) {
-          meta.setAttribute("content", content);
-        } else {
-          const newMeta = document.createElement("meta");
-          newMeta.setAttribute("name", name);
-          newMeta.setAttribute("content", content);
-          document.head.appendChild(newMeta);
-        }
+        this.renderMetaTag(document, it);
       }
     }
 
@@ -112,6 +112,39 @@ export class BrowserHeadProvider {
           link.setAttribute("href", href);
           document.head.appendChild(link);
         }
+      }
+    }
+  }
+
+  protected renderMetaTag(document: Document, meta: HeadMeta): void {
+    const { content } = meta;
+
+    // Handle OpenGraph tags (property attribute)
+    if (meta.property) {
+      const existing = document.querySelector(
+        `meta[property="${meta.property}"]`,
+      );
+      if (existing) {
+        existing.setAttribute("content", content);
+      } else {
+        const newMeta = document.createElement("meta");
+        newMeta.setAttribute("property", meta.property);
+        newMeta.setAttribute("content", content);
+        document.head.appendChild(newMeta);
+      }
+      return;
+    }
+
+    // Handle standard meta tags (name attribute)
+    if (meta.name) {
+      const existing = document.querySelector(`meta[name="${meta.name}"]`);
+      if (existing) {
+        existing.setAttribute("content", content);
+      } else {
+        const newMeta = document.createElement("meta");
+        newMeta.setAttribute("name", meta.name);
+        newMeta.setAttribute("content", content);
+        document.head.appendChild(newMeta);
       }
     }
   }

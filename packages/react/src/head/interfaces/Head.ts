@@ -1,39 +1,68 @@
-export interface Head extends SimpleHead {
+/**
+ * Complete head configuration combining basic head elements with SEO fields.
+ *
+ * @example
+ * ```ts
+ * $head({
+ *   title: "My App",
+ *   description: "Build amazing apps",
+ *   image: "https://example.com/og.png",
+ *   url: "https://example.com/",
+ *   siteName: "My App",
+ *   twitter: { card: "summary_large_image" },
+ * })
+ * ```
+ */
+export interface Head extends SimpleHead, Seo {}
+
+/**
+ * SEO configuration for automatic meta tag generation.
+ * Fields are used for meta description, OpenGraph, and Twitter Card tags.
+ */
+export interface Seo {
+  /** Page description - used for meta description, og:description, twitter:description */
   description?: string;
+  /** Primary image URL - used for og:image and twitter:image */
+  image?: string;
+  /** Canonical URL - used for og:url and link rel="canonical" */
+  url?: string;
+  /** Site name - used for og:site_name */
+  siteName?: string;
+  /** Locale - used for og:locale (e.g., "en_US") */
+  locale?: string;
+  /** Content type - used for og:type (default: "website") */
+  type?: "website" | "article" | "product" | "profile" | string;
+  /** Image width in pixels - used for og:image:width */
+  imageWidth?: number;
+  /** Image height in pixels - used for og:image:height */
+  imageHeight?: number;
+  /** Image alt text - used for og:image:alt and twitter:image:alt */
+  imageAlt?: string;
 
-  // TODO
-  keywords?: string[];
-  author?: string;
-  robots?: string;
-  themeColor?: string;
-  viewport?:
-    | string
-    | {
-        width?: string;
-        height?: string;
-        initialScale?: string;
-        maximumScale?: string;
-        userScalable?: "no" | "yes" | "0" | "1";
-        interactiveWidget?:
-          | "resizes-visual"
-          | "resizes-content"
-          | "overlays-content";
-      };
-
-  og?: {
+  /** Twitter-specific overrides */
+  twitter?: {
+    /** Twitter card type */
+    card?: "summary" | "summary_large_image" | "app" | "player";
+    /** @username of website */
+    site?: string;
+    /** @username of content creator */
+    creator?: string;
+    /** Override title for Twitter */
     title?: string;
+    /** Override description for Twitter */
     description?: string;
+    /** Override image for Twitter */
     image?: string;
-    url?: string;
-    type?: string;
   };
 
-  twitter?: {
-    card?: string;
+  /** OpenGraph-specific overrides */
+  og?: {
+    /** Override title for OpenGraph */
     title?: string;
+    /** Override description for OpenGraph */
     description?: string;
+    /** Override image for OpenGraph */
     image?: string;
-    site?: string;
   };
 }
 
@@ -42,6 +71,16 @@ export interface SimpleHead {
   titleSeparator?: string;
   htmlAttributes?: Record<string, string>;
   bodyAttributes?: Record<string, string>;
-  meta?: Array<{ name: string; content: string }>;
+  /** Meta tags - supports both name and property attributes */
+  meta?: Array<HeadMeta>;
   link?: Array<{ rel: string; href: string }>;
+}
+
+export interface HeadMeta {
+  /** Meta name attribute (e.g., "description", "twitter:card") */
+  name?: string;
+  /** Meta property attribute (e.g., "og:title", "og:image") */
+  property?: string;
+  /** Meta content value */
+  content: string;
 }

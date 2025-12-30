@@ -1,6 +1,6 @@
 import { $hook, $inject } from "alepha";
 import { ServerTimingProvider } from "alepha/server";
-import type { SimpleHead } from "../interfaces/Head.ts";
+import type { HeadMeta, SimpleHead } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 export class ServerHeadProvider {
@@ -58,7 +58,7 @@ export class ServerHeadProvider {
 
     if (head.meta) {
       for (const meta of head.meta) {
-        headContent += `<meta name="${this.escapeHtml(meta.name)}" content="${this.escapeHtml(meta.content)}">\n`;
+        headContent += this.renderMetaTag(meta);
       }
     }
 
@@ -111,5 +111,17 @@ export class ServerHeadProvider {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  protected renderMetaTag(meta: HeadMeta): string {
+    // OpenGraph tags use property attribute
+    if (meta.property) {
+      return `<meta property="${this.escapeHtml(meta.property)}" content="${this.escapeHtml(meta.content)}">\n`;
+    }
+    // Standard meta tags use name attribute
+    if (meta.name) {
+      return `<meta name="${this.escapeHtml(meta.name)}" content="${this.escapeHtml(meta.content)}">\n`;
+    }
+    return "";
   }
 }
